@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Maintenance — Dashboard</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header>
+      <h1>Maintenance System</h1>
+      <nav id="nav" style="display: none">
+        <a href="index.html" class="active">Dashboard</a>
+        <a href="request.html">Request</a>
+        <a href="work-orders.html">Work orders</a>
+        <a href="pm.html">PM</a>
+        <a href="assets.html">Assets</a>
+        <button type="button" class="secondary" id="logoutBtn">Log out</button>
+      </nav>
+    </header>
+    <main>
+      <section id="loginPanel">
+        <h2 style="margin-top: 0">Sign in</h2>
+        <p class="muted">Demo: manager@demo.example.com / demo12345</p>
+        <label>Email <input type="email" id="email" autocomplete="username" /></label>
+        <label>Password <input type="password" id="password" autocomplete="current-password" /></label>
+        <button type="button" id="loginBtn">Log in</button>
+        <p class="error" id="loginErr"></p>
+      </section>
+      <section id="dashPanel" style="display: none">
+        <h2 style="margin-top: 0">Dashboard</h2>
+        <p class="muted">Integration-ready module — data lives in <code id="apiHost"></code></p>
+        <div class="grid">
+          <div class="card">
+            <h2>Active work orders</h2>
+            <div class="stat" id="statWo">—</div>
+          </div>
+          <div class="card">
+            <h2>Pending requests</h2>
+            <div class="stat" id="statReq">—</div>
+          </div>
+          <div class="card">
+            <h2>Upcoming PM (14d)</h2>
+            <div class="stat" id="statPm">—</div>
+          </div>
+        </div>
+      </section>
+    </main>
+    <script src="config.js"></script>
+    <script src="app.js"></script>
+    <script>
+      const loginPanel = document.getElementById("loginPanel");
+      const dashPanel = document.getElementById("dashPanel");
+      const nav = document.getElementById("nav");
+      document.getElementById("apiHost").textContent = Maint.API;
+
+      function showDash() {
+        loginPanel.style.display = "none";
+        dashPanel.style.display = "block";
+        nav.style.display = "flex";
+      }
+      function showLogin() {
+        dashPanel.style.display = "none";
+        loginPanel.style.display = "block";
+        nav.style.display = "none";
+      }
+
+      async function loadDash() {
+        const s = await Maint.api("/dashboard/summary");
+        document.getElementById("statWo").textContent = s.active_work_orders;
+        document.getElementById("statReq").textContent = s.pending_requests;
+        document.getElementById("statPm").textContent = s.upcoming_pm_schedules;
+      }
+
+      document.getElementById("loginBtn").onclick = async () => {
+        document.getElementById("loginErr").textContent = "";
+        try {
+          const body = JSON.stringify({
+            email: document.getElementById("email").value.trim(),
+            password: document.getElementById("password").value,
+          });
+          const res = await fetch(Maint.API + "/auth/login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body,
+          });
+          const data = await res.json();
+          if (!res.ok) {
+            const d = data.detail;
+            throw new Error(Array.isArray(d) ? d.map((x) => x.msg).join("; ") : d || res.statusText);
+          }
+          Maint.setToken(data.access_token);
+          showDash();
+          await loadDash();
+        } catch (e) {
+          document.getElementById("loginErr").textContent = e.message || String(e);
+        }
+      };
+
+      document.getElementById("logoutBtn").onclick = () => {
+        Maint.clearToken();
+        showLogin();
+      };
+
+      (async function init() {
+        if (Maint.token()) {
+          showDash();
+          try {
+            await loadDash();
+          } catch {
+            Maint.clearToken();
+            showLogin();
+          }
+        }
+      })();
+    </script>
+  </body>
+</html>

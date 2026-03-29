@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Work order</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header>
+      <h1>Maintenance System</h1>
+      <nav>
+        <a href="index.html">Dashboard</a>
+        <a href="request.html">Request</a>
+        <a href="work-orders.html" class="active">Work orders</a>
+        <a href="pm.html">PM</a>
+        <a href="assets.html">Assets</a>
+      </nav>
+    </header>
+    <main>
+      <p><a href="work-orders.html">← Back</a></p>
+      <div id="head"></div>
+      <label
+        >Status (manager or assignee)
+        <select id="status">
+          <option value="open">open</option>
+          <option value="in_progress">in_progress</option>
+          <option value="on_hold">on_hold</option>
+          <option value="completed">completed</option>
+          <option value="closed">closed</option>
+        </select>
+      </label>
+      <button type="button" id="saveSt">Update status</button>
+      <h3>Notes</h3>
+      <div id="notes"></div>
+      <label>New note <textarea id="noteBody"></textarea></label>
+      <button type="button" id="addNote">Add note</button>
+      <h3>Attachments (placeholder)</h3>
+      <label>Filename <input id="attName" placeholder="photo.jpg" /></label>
+      <button type="button" id="addAtt">Register attachment</button>
+      <p class="error" id="err"></p>
+    </main>
+    <script src="config.js"></script>
+    <script src="app.js"></script>
+    <script>
+      if (!Maint.requireAuth()) {
+      } else {
+      const params = new URLSearchParams(window.location.search);
+      const id = params.get("id");
+      if (!id) document.getElementById("err").textContent = "Missing id";
+
+      async function refresh() {
+        const wo = await Maint.api("/work-orders/" + id);
+        document.getElementById("head").innerHTML =
+          "<h2>" +
+          wo.work_order_number +
+          " — " +
+          wo.title +
+          "</h2><p class=muted>Priority: " +
+          wo.priority +
+          " · Assigned: " +
+          (wo.assigned_to_user_id || "—") +
+          "</p>";
+        document.getElementById("status").value = wo.status;
+        const nd = document.getElementById("notes");
+        nd.innerHTML = "";
+        (wo.notes || []).forEach((n) => {
+          const p = document.createElement("div");
+          p.className = "card";
+          p.style.marginBottom = "0.5rem";
+          p.innerHTML =
+            "<div class=muted>" +
+            n.created_at +
+            " · user " +
+            n.author_user_id.slice(0, 8) +
+            "…</div>" +
+            n.body;
+          nd.appendChild(p);
+        });
+      }
+
+      document.getElementById("saveSt").onclick = async () => {
+        document.getElementById("err").textContent = "";
+        try {
+          await Maint.api("/work-orders/" + id + "/status", {
+            method: "POST",
+            body: JSON.stringify({ status: document.getElementById("status").value }),
+          });
+          await refresh();
+        } catch (e) {
+          document.getElementById("err").textContent = e.message;
+        }
+      };
+
+      document.getElementById("addNote").onclick = async () => {
+        document.getElementById("err").textContent = "";
+        try {
+          await Maint.api("/work-orders/" + id + "/notes", {
+            method: "POST",
+            body: JSON.stringify({ body: document.getElementById("noteBody").value }),
+          });
+          document.getElementById("noteBody").value = "";
+          await refresh();
+        } catch (e) {
+          document.getElementById("err").textContent = e.message;
+        }
+      };
+
+      document.getElementById("addAtt").onclick = async () => {
+        document.getElementById("err").textContent = "";
+        try {
+          await Maint.api("/work-orders/" + id + "/attachments", {
+            method: "POST",
+            body: JSON.stringify({ filename: document.getElementById("attName").value || "file.bin" }),
+          });
+          await refresh();
+        } catch (e) {
+          document.getElementById("err").textContent = e.message;
+        }
+      };
+
+      if (id) refresh().catch((e) => (document.getElementById("err").textContent = e.message));
+      }
+    </script>
+  </body>
+</html>

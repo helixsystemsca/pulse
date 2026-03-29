@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Work request</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header>
+      <h1>Maintenance System</h1>
+      <nav>
+        <a href="index.html">Dashboard</a>
+        <a href="request.html" class="active">Request</a>
+        <a href="work-orders.html">Work orders</a>
+        <a href="pm.html">PM</a>
+        <a href="assets.html">Assets</a>
+      </nav>
+    </header>
+    <main>
+      <h2>Submit work request</h2>
+      <label>Title <input id="title" /></label>
+      <label>Description <textarea id="description"></textarea></label>
+      <label
+        >Priority
+        <select id="priority">
+          <option value="low">Low</option>
+          <option value="medium" selected>Medium</option>
+          <option value="high">High</option>
+          <option value="critical">Critical</option>
+        </select>
+      </label>
+      <label>Location <input id="location" /></label>
+      <label>Asset ID (optional) <input id="asset_id" placeholder="UUID from Assets" /></label>
+      <button type="button" id="submitBtn">Submit</button>
+      <p class="error" id="err"></p>
+      <pre class="stack" id="out" style="display: none"></pre>
+    </main>
+    <script src="config.js"></script>
+    <script src="app.js"></script>
+    <script>
+      if (!Maint.requireAuth()) {
+      } else {
+      document.getElementById("submitBtn").onclick = async () => {
+        document.getElementById("err").textContent = "";
+        const asset = document.getElementById("asset_id").value.trim();
+        try {
+          const payload = {
+            title: document.getElementById("title").value.trim(),
+            description: document.getElementById("description").value,
+            priority: document.getElementById("priority").value,
+            location: document.getElementById("location").value,
+            asset_id: asset || null,
+          };
+          const r = await Maint.api("/work-requests", {
+            method: "POST",
+            body: JSON.stringify(payload),
+          });
+          document.getElementById("out").style.display = "block";
+          document.getElementById("out").textContent = JSON.stringify(r, null, 2);
+        } catch (e) {
+          document.getElementById("err").textContent = e.message;
+        }
+      };
+      }
+    </script>
+  </body>
+</html>

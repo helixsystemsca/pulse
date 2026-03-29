@@ -1,0 +1,276 @@
+import {
+  ArrowLeft,
+  Camera,
+  ChevronDown,
+  Droplets,
+  Keyboard,
+  LayoutGrid,
+  MapPin,
+  Package,
+  QrCode,
+  Settings,
+  Wrench,
+  Zap,
+} from "lucide-react";
+import type { ReactNode } from "react";
+import { FeatureItem } from "./FeatureItem";
+import { SectionWrapper } from "./SectionWrapper";
+
+function BottomNav() {
+  return (
+    <nav className="flex h-11 shrink-0 items-stretch border-t border-slate-200 bg-white px-2">
+      {[
+        { Icon: LayoutGrid, label: "Dashboard" },
+        { Icon: Wrench, label: "Assets" },
+        { Icon: QrCode, label: "Scan", active: true },
+        { Icon: Settings, label: "Settings" },
+      ].map(({ Icon, label, active }) => (
+        <button
+          key={label}
+          type="button"
+          className={`flex flex-1 flex-col items-center justify-center gap-0.5 rounded-md py-1 ${active ? "text-white" : "text-slate-500"}`}
+        >
+          <span
+            className={`flex h-7 w-10 items-center justify-center rounded-full ${active ? "bg-pulse-navy shadow-sm shadow-slate-900/20" : ""}`}
+          >
+            <Icon className={`h-3.5 w-3.5 ${active ? "text-white" : ""}`} strokeWidth={2} aria-hidden />
+          </span>
+          <span className={`text-[7px] font-bold uppercase tracking-wide ${active ? "text-pulse-navy" : "text-slate-500"}`}>
+            {label}
+          </span>
+        </button>
+      ))}
+    </nav>
+  );
+}
+
+/** Equipment Setup screen tuned for landscape tablet density (embedded in frame). */
+function EquipmentSetupScreen() {
+  return (
+    <div className="flex h-full min-h-0 flex-col bg-slate-100 text-pulse-navy">
+      <header className="flex shrink-0 items-center gap-2 border-b border-slate-200 bg-white px-2 py-1.5">
+        <button
+          type="button"
+          className="flex h-7 w-7 items-center justify-center rounded-lg text-pulse-navy hover:bg-slate-100"
+          aria-label="Back"
+        >
+          <ArrowLeft className="h-4 w-4" strokeWidth={2} />
+        </button>
+        <h1 className="min-w-0 flex-1 truncate text-sm font-bold text-pulse-navy">Equipment Setup</h1>
+      </header>
+
+      <div className="min-h-0 flex-1 overflow-hidden p-2">
+        <div className="grid h-full grid-cols-2 gap-2 min-[480px]:gap-3">
+          {/* Left column */}
+          <div className="flex min-h-0 min-w-0 flex-col gap-2 overflow-y-auto overflow-x-hidden">
+            <div className="flex gap-1.5">
+              <button
+                type="button"
+                className="relative flex flex-1 items-center justify-center gap-1 rounded-xl bg-pulse-navy px-2 py-2 text-[10px] font-bold text-white shadow-md shadow-slate-900/25 ring-2 ring-white/25 ring-offset-1 ring-offset-slate-100"
+              >
+                <QrCode className="h-3.5 w-3.5 shrink-0" strokeWidth={2} aria-hidden />
+                <span className="leading-tight">Scan QR / Barcode</span>
+              </button>
+              <button
+                type="button"
+                className="flex flex-1 items-center justify-center gap-1 rounded-xl border border-slate-200 bg-slate-200/80 px-2 py-2 text-[10px] font-bold text-pulse-navy"
+              >
+                <Keyboard className="h-3.5 w-3.5 shrink-0" strokeWidth={2} aria-hidden />
+                Manual
+              </button>
+            </div>
+
+            <div>
+              <label className="text-[8px] font-bold uppercase tracking-wider text-slate-500">Equipment name</label>
+              <input
+                type="text"
+                readOnly
+                placeholder="e.g., Industrial Water Pump"
+                className="mt-0.5 w-full rounded-xl border border-slate-200 bg-white px-2 py-1.5 text-[11px] text-pulse-navy placeholder:text-slate-400"
+              />
+            </div>
+            <div>
+              <label className="text-[8px] font-bold uppercase tracking-wider text-slate-500">Asset ID</label>
+              <input
+                type="text"
+                readOnly
+                placeholder="e.g., PUMP-PR-001"
+                className="mt-0.5 w-full rounded-xl border border-slate-200 bg-white px-2 py-1.5 text-[11px] text-pulse-navy placeholder:text-slate-400"
+              />
+            </div>
+
+            <div>
+              <p className="text-[8px] font-bold uppercase tracking-wider text-slate-500">Category</p>
+              <div className="mt-1 grid grid-cols-2 gap-1">
+                {[
+                  { label: "Mech / fluid", Icon: Droplets, on: true },
+                  { label: "Electrical", Icon: Zap, on: false },
+                  { label: "Tools", Icon: Wrench, on: false },
+                  { label: "Other", Icon: Package, on: false },
+                ].map((c) => (
+                  <button
+                    key={c.label}
+                    type="button"
+                    className={`flex min-h-[2.75rem] flex-col items-center justify-center gap-0.5 rounded-xl border px-1 py-1.5 text-center shadow-sm ${
+                      c.on
+                        ? "border-pulse-navy bg-pulse-navy text-white shadow-md shadow-slate-900/15"
+                        : "border-slate-200 bg-white text-pulse-navy"
+                    }`}
+                  >
+                    <c.Icon className={`h-4 w-4 ${c.on ? "text-white" : "text-slate-600"}`} strokeWidth={2} aria-hidden />
+                    <span className="text-[9px] font-bold leading-tight">{c.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Right column */}
+          <div className="flex min-h-0 min-w-0 flex-col gap-2 overflow-y-auto overflow-x-hidden">
+            <section className="rounded-2xl border border-slate-200/80 bg-slate-200/40 p-2 shadow-sm">
+              <div className="flex items-center gap-1 text-xs font-bold text-pulse-navy">
+                <MapPin className="h-3.5 w-3.5 text-pulse-accent" strokeWidth={2} aria-hidden />
+                Location &amp; Access
+              </div>
+              <label className="mt-1.5 block text-[8px] font-bold uppercase tracking-wider text-slate-500">Site / facility</label>
+              <button
+                type="button"
+                className="mt-0.5 flex w-full items-center justify-between rounded-xl border border-slate-200 bg-white px-2 py-1.5 text-left text-[11px] text-pulse-muted"
+              >
+                Select Facility
+                <ChevronDown className="h-3.5 w-3.5 text-slate-400" strokeWidth={2} aria-hidden />
+              </button>
+              <label className="mt-1.5 block text-[8px] font-bold uppercase tracking-wider text-slate-500">Designated area</label>
+              <div className="mt-0.5 rounded-xl border border-slate-200 bg-white px-2 py-1.5 text-[11px] font-medium text-pulse-navy">
+                Pump Room B-4
+              </div>
+            </section>
+
+            <section className="rounded-2xl border border-slate-200/80 bg-white p-2 shadow-sm">
+              <p className="text-[10px] font-bold text-pulse-navy">Photo</p>
+              <div className="relative mt-1 overflow-hidden rounded-xl bg-slate-900">
+                {/* Industrial equipment preview — abstract, readable at small sizes */}
+                <div
+                  className="relative aspect-[16/10] w-full bg-gradient-to-br from-amber-200 via-amber-500 to-slate-800"
+                  aria-hidden
+                >
+                  <div className="absolute inset-0 opacity-40 mix-blend-overlay bg-[radial-gradient(circle_at_30%_40%,white,transparent_55%)]" />
+                  <div className="absolute bottom-0 left-0 right-0 h-1/2 bg-gradient-to-t from-black/35 to-transparent" />
+                </div>
+                <button
+                  type="button"
+                  className="absolute left-1/2 top-1/2 flex h-10 w-10 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-white/95 text-pulse-navy shadow-lg ring-2 ring-white/50"
+                  aria-label="Capture photo"
+                >
+                  <Camera className="h-4 w-4" strokeWidth={2} />
+                </button>
+              </div>
+              <p className="mt-1 text-center text-[9px] text-pulse-muted">Captured: Today, 10:45 AM</p>
+            </section>
+
+            <div className="flex items-center justify-between gap-1">
+              <span className="text-[10px] font-bold text-pulse-navy">Authorized workers</span>
+              <button type="button" className="text-[9px] font-bold text-pulse-accent">
+                + Manage
+              </button>
+            </div>
+            <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-2 py-1.5 shadow-sm">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-200 text-[10px] font-bold text-pulse-navy">
+                JD
+              </span>
+              <div className="min-w-0 leading-tight">
+                <p className="truncate text-[11px] font-bold text-pulse-navy">John Doe</p>
+                <p className="text-[8px] font-bold uppercase tracking-wide text-pulse-muted">Lead technician</p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              className="relative mt-auto flex w-full shrink-0 items-center justify-center gap-1.5 rounded-xl bg-pulse-navy py-2.5 text-[11px] font-bold text-white shadow-lg shadow-slate-900/30 ring-2 ring-pulse-accent/35 ring-offset-2 ring-offset-slate-100"
+            >
+              <Zap className="h-4 w-4 text-amber-200" strokeWidth={2} aria-hidden />
+              Assign &amp; Activate
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <BottomNav />
+    </div>
+  );
+}
+
+function RuggedTabletFrame({ children }: { children: ReactNode }) {
+  return (
+    <div className="relative mx-auto w-full max-w-[700px]">
+      {/* Environmental backdrop */}
+      <div
+        className="pointer-events-none absolute -inset-[min(12%,5rem)] -z-10 rounded-[2.5rem] bg-gradient-to-br from-slate-400/35 via-slate-300/25 to-slate-500/40 blur-2xl"
+        aria-hidden
+      />
+
+      <div className="relative rounded-3xl bg-gradient-to-b from-slate-600 via-slate-800 to-slate-950 p-2 shadow-2xl shadow-slate-950/45 ring-1 ring-white/10">
+        {/* Corner bumpers */}
+        <span
+          className="pointer-events-none absolute -left-0.5 top-6 h-10 w-1.5 rounded-l-md bg-slate-900/90"
+          aria-hidden
+        />
+        <span
+          className="pointer-events-none absolute -right-0.5 bottom-8 h-14 w-1.5 rounded-r-md bg-slate-900/90"
+          aria-hidden
+        />
+
+        <div className="aspect-[4/3] w-full">
+          <div className="flex h-full flex-col rounded-2xl border border-slate-500/40 bg-slate-950 p-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
+            {/* Front camera / sensor */}
+            <div className="relative flex h-4 shrink-0 items-end justify-center pb-0.5">
+              <span className="h-1.5 w-1.5 rounded-full bg-slate-700 ring-1 ring-slate-600/80" />
+            </div>
+            <div className="relative min-h-0 flex-1 overflow-hidden rounded-[0.65rem] bg-slate-950">
+              <div className="pointer-events-none absolute inset-0 z-10 bg-gradient-to-br from-white/[0.07] via-transparent to-transparent" aria-hidden />
+              <div className="pointer-events-none absolute inset-0 z-10 bg-gradient-to-tr from-transparent via-white/[0.02] to-white/[0.06]" aria-hidden />
+              <div className="relative z-0 h-full w-full origin-top scale-[0.98]">{children}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function EquipmentSetupTabletSection() {
+  return (
+    <SectionWrapper id="equipment-setup" className="scroll-mt-24 bg-gradient-to-b from-white/80 via-pulse-bg to-slate-100/60">
+      <div className="grid items-center gap-10 lg:grid-cols-12 lg:gap-8 xl:gap-10">
+        <div className="mx-auto max-w-xl text-center lg:col-span-5 lg:mx-0 lg:max-w-none lg:text-left">
+          <p className="text-xs font-semibold uppercase tracking-wider text-pulse-muted">Field deployment</p>
+          <h2 className="mt-2 text-3xl font-bold tracking-tight text-pulse-navy md:text-4xl">Equipment setup, ready anywhere.</h2>
+          <p className="mt-4 text-base leading-relaxed text-pulse-muted md:text-lg">
+            Configure assets on rugged tablets with scans, structured locations, and sign-offs—so what happens on the floor
+            matches what operations sees upstream.
+          </p>
+          <ul className="mt-8 space-y-5 text-left">
+            <FeatureItem
+              title="Guided onboarding"
+              description="QR and manual paths capture IDs, categories, and placement without guesswork or duplicate spreadsheets."
+            />
+            <FeatureItem
+              title="Audit-ready documentation"
+              description="Photos, facilities, and authorized personnel are tied to the record for IoT rollouts and compliance."
+            />
+            <FeatureItem
+              title="Activate in one step"
+              description="Assign ownership and push live when the hardware checks complete—faster commissioning in industrial environments."
+            />
+          </ul>
+        </div>
+
+        <div className="flex justify-center lg:col-span-7 lg:justify-end">
+          <RuggedTabletFrame>
+            <EquipmentSetupScreen />
+          </RuggedTabletFrame>
+        </div>
+      </div>
+    </SectionWrapper>
+  );
+}

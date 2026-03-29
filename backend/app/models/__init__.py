@@ -1,0 +1,55 @@
+"""SQLAlchemy ORM models — normalized schema."""
+
+from app.models.base import Base
+from app.models.domain import (
+    AuditLog,
+    Company,
+    CompanyFeature,
+    DomainEventRow,
+    Invite,
+    InventoryItem,
+    Job,
+    JobInventoryLink,
+    JobToolLink,
+    MaintenanceLog,
+    MaintenanceSchedule,
+    NotificationRule,
+    RolePermission,
+    SystemLog,
+    SystemSecureToken,
+    Tool,
+    User,
+    Zone,
+)
+from app.models.pulse_models import (
+    PulseBeaconEquipment,
+    PulseScheduleShift,
+    PulseWorkRequest,
+    PulseWorkerProfile,
+)
+
+__all__ = [
+    "Base",
+    "AuditLog",
+    "Company",
+    "CompanyFeature",
+    "Invite",
+    "User",
+    "Zone",
+    "Tool",
+    "DomainEventRow",
+    "InventoryItem",
+    "Job",
+    "JobToolLink",
+    "JobInventoryLink",
+    "MaintenanceSchedule",
+    "MaintenanceLog",
+    "NotificationRule",
+    "RolePermission",
+    "SystemLog",
+    "SystemSecureToken",
+    "PulseWorkRequest",
+    "PulseWorkerProfile",
+    "PulseScheduleShift",
+    "PulseBeaconEquipment",
+]

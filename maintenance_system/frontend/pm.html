@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Preventive maintenance</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header>
+      <h1>Maintenance System</h1>
+      <nav>
+        <a href="index.html">Dashboard</a>
+        <a href="request.html">Request</a>
+        <a href="work-orders.html">Work orders</a>
+        <a href="pm.html" class="active">PM</a>
+        <a href="assets.html">Assets</a>
+      </nav>
+    </header>
+    <main>
+      <h2>PM schedules</h2>
+      <p class="muted">
+        Managers can generate due work orders from the API:
+        <code>POST /pm/generate-due</code> (button below).
+      </p>
+      <button type="button" id="genBtn">Generate due work orders</button>
+      <table style="margin-top: 1rem">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Asset</th>
+            <th>Frequency</th>
+            <th>Next due</th>
+            <th>Active</th>
+          </tr>
+        </thead>
+        <tbody id="rows"></tbody>
+      </table>
+      <h3>Recent completions</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Schedule</th>
+            <th>Completed</th>
+            <th>WO</th>
+          </tr>
+        </thead>
+        <tbody id="comp"></tbody>
+      </table>
+      <p class="error" id="err"></p>
+    </main>
+    <script src="config.js"></script>
+    <script src="app.js"></script>
+    <script>
+      if (!Maint.requireAuth()) {
+      } else {
+      async function load() {
+        document.getElementById("err").textContent = "";
+        const list = await Maint.api("/pm/schedules");
+        const tb = document.getElementById("rows");
+        tb.innerHTML = "";
+        list.forEach((p) => {
+          const tr = document.createElement("tr");
+          tr.innerHTML =
+            "<td>" +
+            p.name +
+            "</td><td class=muted>" +
+            p.asset_id.slice(0, 8) +
+            "…</td><td>" +
+            p.frequency +
+            "</td><td>" +
+            (p.next_due_at || "—") +
+            "</td><td>" +
+            p.is_active +
+            "</td>";
+          tb.appendChild(tr);
+        });
+        const comps = await Maint.api("/pm/completions");
+        const ctb = document.getElementById("comp");
+        ctb.innerHTML = "";
+        comps.slice(0, 25).forEach((c) => {
+          const tr = document.createElement("tr");
+          tr.innerHTML =
+            "<td class=muted>" +
+            c.pm_schedule_id.slice(0, 8) +
+            "…</td><td>" +
+            c.completed_at +
+            "</td><td class=muted>" +
+            (c.work_order_id ? c.work_order_id.slice(0, 8) + "…" : "—") +
+            "</td>";
+          ctb.appendChild(tr);
+        });
+      }
+
+      document.getElementById("genBtn").onclick = async () => {
+        document.getElementById("err").textContent = "";
+        try {
+          await Maint.api("/pm/generate-due", { method: "POST" });
+          await load();
+        } catch (e) {
+          document.getElementById("err").textContent = e.message;
+        }
+      };
+
+      load().catch((e) => (document.getElementById("err").textContent = e.message));
+      }
+    </script>
+  </body>
+</html>

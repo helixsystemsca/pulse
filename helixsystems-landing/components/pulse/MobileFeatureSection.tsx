@@ -1,0 +1,228 @@
+import { Battery, Bell, ChevronRight, Disc3, Drill, Home, MapPin, Package, Search, User } from "lucide-react";
+import { FeatureItem } from "./FeatureItem";
+import { SectionWrapper } from "./SectionWrapper";
+
+function PhoneChrome() {
+  return (
+    <div className="relative mx-auto w-full max-w-[300px] shrink-0">
+      <div className="relative mx-auto w-full max-w-[300px]">
+        <div className="aspect-[9/19.5] w-full overflow-hidden rounded-3xl bg-gradient-to-b from-slate-500 via-slate-700 to-slate-900 p-[3px] shadow-2xl shadow-slate-900/40 ring-1 ring-white/15">
+          <div className="relative h-full min-h-0 overflow-hidden rounded-[1.35rem]">
+            <div
+              className="pointer-events-none absolute inset-0 z-0 bg-gradient-to-br from-slate-100 via-sky-50/90 to-blue-100/80"
+              aria-hidden
+            />
+            <div
+              className="pointer-events-none absolute inset-0 z-0 bg-gradient-to-t from-pulse-accent/[0.09] via-transparent to-white/40"
+              aria-hidden
+            />
+            <div className="relative z-10 flex h-full min-h-0 flex-col">
+              <header className="shrink-0 border-b border-white/30 bg-gradient-to-r from-white/70 via-blue-50/50 to-white/65 px-4 py-3 backdrop-blur-xl backdrop-saturate-150 shadow-[inset_0_-1px_0_rgba(255,255,255,0.45)]">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex min-w-0 items-center gap-1.5">
+                    <MapPin className="h-3.5 w-3.5 shrink-0 text-pulse-accent" aria-hidden />
+                    <span className="truncate text-sm font-medium text-pulse-navy">Headquarters</span>
+                  </div>
+                  <button
+                    type="button"
+                    className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-pulse-navy/90 backdrop-blur-sm transition-colors active:bg-white/35"
+                    aria-label="Search"
+                  >
+                    <Search className="h-3.5 w-3.5" strokeWidth={2} />
+                  </button>
+                </div>
+
+                <div className="mt-3 flex items-start justify-between gap-4">
+                  <div className="min-w-0 flex-1 pt-0.5">
+                    <p className="text-base font-semibold leading-tight tracking-tight text-pulse-navy">Hi, Liz!</p>
+                  </div>
+                  <div className="flex shrink-0 flex-col items-center gap-1.5">
+                    <div className="relative flex h-10 w-10 items-center justify-center rounded-full bg-slate-200/90 text-xs font-bold text-pulse-navy shadow-sm ring-2 ring-white">
+                      LG
+                      <span
+                        className="pointer-events-none absolute -right-0.5 -top-0.5 z-10 flex h-[18px] w-[18px] items-center justify-center rounded-full bg-pulse-accent text-[9px] font-bold leading-none text-white shadow-sm ring-2 ring-white"
+                        aria-hidden
+                      >
+                        M
+                      </span>
+                    </div>
+                    <div className="flex flex-col items-center gap-0.5 text-center">
+                      <p className="flex items-center gap-1 text-[10px] font-semibold leading-none text-pulse-navy">
+                        <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" aria-hidden />
+                        On-site
+                      </p>
+                      <p className="text-[10px] font-medium leading-none text-pulse-muted">Zone 1</p>
+                    </div>
+                  </div>
+                </div>
+              </header>
+
+              <div className="relative z-10 min-h-0 flex-1 overflow-y-auto overflow-x-hidden bg-white/40 backdrop-blur-md backdrop-saturate-150">
+                <div className="flex flex-col gap-4 p-4 pb-3">
+                  <div className="rounded-xl border border-indigo-200/70 bg-gradient-to-br from-sky-50 via-blue-50/95 to-indigo-100/40 p-5 shadow-md shadow-indigo-900/10 ring-1 ring-indigo-100/80">
+                    <p className="text-xs font-semibold leading-snug text-pulse-navy">
+                      Tools you have are commonly associated with Carpentry.
+                    </p>
+                    <p className="mt-2 text-xs leading-snug text-pulse-muted">
+                      Are you working on: <span className="font-bold text-indigo-950">WR#1953</span>
+                    </p>
+                    <button
+                      type="button"
+                      className="mt-4 flex h-10 w-full items-center justify-center rounded-xl bg-pulse-accent text-sm font-semibold text-white shadow-md shadow-blue-600/20 transition-colors active:bg-pulse-accent-hover"
+                    >
+                      Confirm
+                    </button>
+                    <p className="mt-2.5 text-center text-[11px] font-medium tabular-nums leading-snug text-indigo-900/80">
+                      Current time on task: 1h 32m
+                    </p>
+                  </div>
+
+                  <section className="flex flex-col gap-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <h3 className="text-sm font-semibold text-pulse-navy">Current Toolbox</h3>
+                      <button type="button" className="text-xs font-medium text-pulse-accent active:opacity-80">
+                        View All
+                      </button>
+                    </div>
+                    <ul className="flex flex-col gap-2">
+                      <li>
+                        <button
+                          type="button"
+                          className="flex w-full items-center gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2 text-left transition-colors active:bg-slate-50"
+                        >
+                          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-pulse-accent">
+                            <Disc3 className="h-3.5 w-3.5" aria-hidden />
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-medium text-pulse-navy">Circular Saw</p>
+                            <p className="text-sm text-pulse-muted">Ready · Blade guard OK</p>
+                          </div>
+                          <ChevronRight className="h-4 w-4 shrink-0 text-slate-400" strokeWidth={2} aria-hidden />
+                        </button>
+                      </li>
+                      <li>
+                        <button
+                          type="button"
+                          className="flex w-full items-center gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2 text-left transition-colors active:bg-slate-50"
+                        >
+                          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-pulse-accent">
+                            <Drill className="h-3.5 w-3.5" aria-hidden />
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-medium text-pulse-navy">Drill</p>
+                            <p className="text-sm text-pulse-muted">Charged · 18V pack</p>
+                          </div>
+                          <ChevronRight className="h-4 w-4 shrink-0 text-slate-400" strokeWidth={2} aria-hidden />
+                        </button>
+                      </li>
+                      <li>
+                        <button
+                          type="button"
+                          className="flex w-full items-center gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2 text-left transition-colors active:bg-slate-50"
+                        >
+                          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-pulse-accent">
+                            <Battery className="h-3.5 w-3.5" aria-hidden />
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                              <p className="text-sm font-medium text-pulse-navy">Batteries (×2)</p>
+                              <span className="text-sm font-medium text-emerald-700">Charged</span>
+                            </div>
+                            <div className="mt-1 flex items-center gap-2">
+                              <div className="h-1 flex-1 overflow-hidden rounded-full bg-slate-200">
+                                <div className="h-full rounded-full bg-emerald-500" style={{ width: "80%" }} />
+                              </div>
+                              <span className="text-xs tabular-nums text-pulse-muted">80%</span>
+                            </div>
+                          </div>
+                          <ChevronRight className="h-4 w-4 shrink-0 text-slate-400" strokeWidth={2} aria-hidden />
+                        </button>
+                      </li>
+                    </ul>
+                  </section>
+                </div>
+              </div>
+
+              <nav className="relative z-10 flex h-14 shrink-0 items-center justify-between border-t border-white/35 bg-gradient-to-t from-blue-50/75 via-white/65 to-white/55 px-2 pb-1 pt-1 backdrop-blur-xl backdrop-saturate-150 shadow-[inset_0_1px_0_rgba(255,255,255,0.5)]">
+                <button
+                  type="button"
+                  className="flex flex-1 flex-col items-center gap-0.5 rounded-lg py-1 text-pulse-accent"
+                >
+                  <span className="flex h-8 w-12 items-center justify-center rounded-lg bg-pulse-accent/15 ring-1 ring-pulse-accent/20 backdrop-blur-sm">
+                    <Home className="h-[18px] w-[18px]" strokeWidth={2} aria-hidden />
+                  </span>
+                  <span className="text-[10px] font-semibold leading-none">Home</span>
+                </button>
+                <button
+                  type="button"
+                  className="flex flex-1 flex-col items-center gap-0.5 rounded-lg py-1 text-slate-600 active:bg-white/30"
+                >
+                  <span className="flex h-8 w-12 items-center justify-center rounded-lg">
+                    <Package className="h-[18px] w-[18px]" strokeWidth={2} aria-hidden />
+                  </span>
+                  <span className="text-[10px] font-medium leading-none">Toolbox</span>
+                </button>
+                <button
+                  type="button"
+                  className="flex flex-1 flex-col items-center gap-0.5 rounded-lg py-1 text-slate-600 active:bg-white/30"
+                >
+                  <span className="flex h-8 w-12 items-center justify-center rounded-lg">
+                    <Bell className="h-[18px] w-[18px]" strokeWidth={2} aria-hidden />
+                  </span>
+                  <span className="text-[10px] font-medium leading-none">Alerts</span>
+                </button>
+                <button
+                  type="button"
+                  className="flex flex-1 flex-col items-center gap-0.5 rounded-lg py-1 text-slate-600 active:bg-white/30"
+                >
+                  <span className="flex h-8 w-12 items-center justify-center rounded-lg">
+                    <User className="h-[18px] w-[18px]" strokeWidth={2} aria-hidden />
+                  </span>
+                  <span className="text-[10px] font-medium leading-none">Profile</span>
+                </button>
+              </nav>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function MobileFeatureSection() {
+  return (
+    <SectionWrapper id="worker-app" className="scroll-mt-24 bg-white/60">
+      <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-14">
+        <div className="flex justify-center lg:justify-start">
+          <PhoneChrome />
+        </div>
+
+        <div className="mx-auto max-w-xl lg:mx-0">
+          <h2 className="text-3xl font-bold leading-tight tracking-tight text-pulse-navy md:text-4xl lg:text-[2.5rem]">
+            Precision in
+            <br />
+            <span className="text-pulse-accent">Every Palm.</span>
+          </h2>
+          <p className="mt-6 text-lg leading-relaxed text-pulse-muted">
+            Give your field teams real-time visibility with a mobile interface designed for fast decisions, not data
+            entry.
+          </p>
+          <ul className="mt-8 space-y-6">
+            <FeatureItem
+              title="Offline-first syncing"
+              description="Capture sign-offs and scans offline; Pulse reconciles when connectivity returns—no duplicate work."
+            />
+            <FeatureItem
+              title="Real-time task updates"
+              description="Jobs, holds, and reassignments propagate instantly so crews aren’t working off stale paperwork."
+            />
+            <FeatureItem
+              title="Visual confirmation workflows"
+              description="Photo prompts and structured attestations make handoffs and audits defensible in regulated environments."
+            />
+          </ul>
+        </div>
+      </div>
+    </SectionWrapper>
+  );
+}

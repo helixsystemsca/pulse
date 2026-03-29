@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Alerts | Alpha-7 Sector</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@700;800&amp;family=Be+Vietnam+Pro:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "secondary-fixed": "#d5e4f5",
+              "surface-bright": "#f8f9fa",
+              "on-tertiary-fixed": "#261900",
+              "tertiary-fixed": "#ffdea4",
+              "surface": "#f8f9fa",
+              "tertiary": "#705000",
+              "surface-tint": "#395f94",
+              "secondary-fixed-dim": "#b9c8d8",
+              "primary": "#30568b",
+              "on-surface-variant": "#43474f",
+              "on-error-container": "#93000a",
+              "on-background": "#191c1d",
+              "primary-fixed": "#d5e3ff",
+              "outline": "#737780",
+              "outline-variant": "#c3c6d1",
+              "on-primary-fixed-variant": "#1e477b",
+              "primary-fixed-dim": "#a7c8ff",
+              "on-error": "#ffffff",
+              "on-primary": "#ffffff",
+              "on-secondary": "#ffffff",
+              "on-tertiary-fixed-variant": "#5d4200",
+              "error": "#ba1a1a",
+              "surface-container-low": "#f3f4f5",
+              "secondary": "#51606e",
+              "surface-variant": "#e1e3e4",
+              "primary-container": "#4a6fa5",
+              "on-tertiary": "#ffffff",
+              "surface-container": "#edeeef",
+              "tertiary-container": "#8c6814",
+              "on-surface": "#191c1d",
+              "inverse-primary": "#a7c8ff",
+              "on-primary-container": "#edf1ff",
+              "background": "#f8f9fa",
+              "on-primary-fixed": "#001c3b",
+              "error-container": "#ffdad6",
+              "surface-dim": "#d9dadb",
+              "inverse-surface": "#2e3132",
+              "on-secondary-fixed": "#0e1d29",
+              "inverse-on-surface": "#f0f1f2",
+              "on-tertiary-container": "#fff0d9",
+              "surface-container-highest": "#e1e3e4",
+              "on-secondary-container": "#556472",
+              "surface-container-high": "#e7e8e9",
+              "on-secondary-fixed-variant": "#3a4856",
+              "secondary-container": "#d2e1f2",
+              "tertiary-fixed-dim": "#edc065",
+              "surface-container-lowest": "#ffffff"
+            },
+            fontFamily: {
+              "headline": ["Plus Jakarta Sans"],
+              "body": ["Be Vietnam Pro"],
+              "label": ["Be Vietnam Pro"]
+            },
+            borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+<style>
+      .material-symbols-outlined {
+        font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+      }
+      .tonal-layering-no-borders {
+        border: none !important;
+      }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface font-body text-on-surface min-h-screen pb-32">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 bg-surface/80 dark:bg-slate-900/80 backdrop-blur-xl shadow-[0_12px_32px_rgba(48,86,139,0.08)]">
+<div class="flex items-center justify-between px-6 h-16 w-full">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-[#30568b] dark:text-[#4a6fa5]" data-icon="location_on">location_on</span>
+<h1 class="text-lg font-bold text-[#191c1d] dark:text-white font-headline tracking-tight">Site: Alpha-7 Sector</h1>
+</div>
+<div class="flex gap-4">
+<button class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-[#f3f4f5] transition-colors active:scale-95 duration-200">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="search">search</span>
+</button>
+</div>
+</div>
+</header>
+<main class="pt-24 px-6 max-w-2xl mx-auto">
+<!-- Header Section -->
+<div class="mb-10">
+<h2 class="text-4xl font-extrabold font-headline tracking-tight text-on-surface mb-2">Priority Alerts</h2>
+<p class="text-on-surface-variant font-medium">Critical protocol updates for your current shift.</p>
+</div>
+<!-- Alerts List (No borders, using tonal layering) -->
+<div class="space-y-6">
+<!-- Alert Card: Tools Missing -->
+<div class="bg-surface-container-lowest p-6 rounded-[2rem] shadow-[0_12px_32px_rgba(48,86,139,0.04)] relative overflow-hidden group">
+<!-- Status Pill Accessory -->
+<div class="absolute top-0 left-0 w-2 h-full bg-error"></div>
+<div class="flex flex-col gap-6">
+<div class="flex items-start justify-between">
+<div class="flex gap-4">
+<div class="w-14 h-14 rounded-2xl bg-error-container flex items-center justify-center text-error">
+<span class="material-symbols-outlined text-3xl" data-icon="warning" style="font-variation-settings: 'FILL' 1;">warning</span>
+</div>
+<div>
+<h3 class="text-xl font-bold font-headline text-on-surface">2 tools missing</h3>
+<p class="text-on-surface-variant mt-1">Inventory mismatch detected in Zone B storage locker.</p>
+</div>
+</div>
+<span class="bg-error text-on-error text-[10px] font-bold px-3 py-1 rounded-full tracking-wider uppercase">High Priority</span>
+</div>
+<div class="flex gap-3">
+<button class="flex-1 bg-primary py-4 px-6 rounded-full flex items-center justify-center gap-2 text-on-primary font-bold active:scale-95 transition-all shadow-lg shadow-primary/20">
+<span class="material-symbols-outlined" data-icon="my_location">my_location</span>
+                            Locate
+                        </button>
+</div>
+</div>
+</div>
+<!-- Alert Card: Maintenance -->
+<div class="bg-surface-container-lowest p-6 rounded-[2rem] shadow-[0_12px_32px_rgba(48,86,139,0.04)] relative overflow-hidden">
+<div class="absolute top-0 left-0 w-2 h-full bg-tertiary"></div>
+<div class="flex flex-col gap-6">
+<div class="flex items-start justify-between">
+<div class="flex gap-4">
+<div class="w-14 h-14 rounded-2xl bg-tertiary-fixed flex items-center justify-center text-tertiary">
+<span class="material-symbols-outlined text-3xl" data-icon="engineering" style="font-variation-settings: 'FILL' 1;">engineering</span>
+</div>
+<div>
+<h3 class="text-xl font-bold font-headline text-on-surface">Confirm Maintenance</h3>
+<p class="text-on-surface-variant mt-1">Scheduled inspection for Generator Unit 04 is overdue.</p>
+</div>
+</div>
+</div>
+<div class="flex flex-col sm:flex-row gap-3">
+<button class="flex-1 bg-secondary-container py-4 px-6 rounded-full flex items-center justify-center text-on-secondary-container font-bold active:scale-95 transition-all">
+                            Postpone
+                        </button>
+<button class="flex-1 bg-primary py-4 px-6 rounded-full flex items-center justify-center text-on-primary font-bold active:scale-95 transition-all shadow-lg shadow-primary/20">
+                            Confirm
+                        </button>
+</div>
+</div>
+</div>
+<!-- Alert Card: Weather Advisory (Contextual) -->
+<div class="bg-surface-container-low p-6 rounded-[2rem] relative overflow-hidden">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-xl bg-primary-fixed flex items-center justify-center text-primary">
+<span class="material-symbols-outlined" data-icon="cloud_sync">cloud_sync</span>
+</div>
+<div class="flex-1">
+<h4 class="font-bold text-on-surface">Syncing Protocols</h4>
+<p class="text-sm text-on-surface-variant">Updating sector safety guidelines...</p>
+</div>
+<div class="w-8 h-8 rounded-full border-4 border-primary/20 border-t-primary animate-spin"></div>
+</div>
+</div>
+<!-- Visual Asset: Field Context -->
+<div class="mt-8 rounded-[2rem] overflow-hidden h-48 relative shadow-xl">
+<img alt="Close-up of industrial machinery components in a clean facility" class="w-full h-full object-cover" data-alt="industrial machinery components and metal structures in a high-tech facility with soft cinematic lighting and cool blue tones" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDx4D7OMBFJ64TZfceiwVomkpt_FO-ex0N-B_qAWba0YIHn4Qns4vyAbTsrCNiv-yDWI_BUTYD1sCTWYaC2iJYREqLaX3iIXNxve7H9OyVfE7savz614yrCUJrE6P-tlkYcNfrKLEHNQ1C2OAG8fk6l9Kio-JkP0JWd34JIcCMp2kJMGFy8oiMYVrjk7Cc6f7RM09rqTJB6FyeBG863xRbHty6shEzKBTIXZF1SDUDzboOn6BgS7kP2GnYP2Ntz8bLmpNRpfxFZ0cRq"/>
+<div class="absolute inset-0 bg-gradient-to-t from-primary/60 to-transparent flex items-end p-6">
+<p class="text-white font-bold text-lg">Alpha-7 Sector Integrity: 98.4%</p>
+</div>
+</div>
+</div>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full flex justify-around items-center px-4 pb-6 pt-3 bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl z-50 rounded-t-[2rem] shadow-[0_-8px_24px_rgba(48,86,139,0.06)] tonal-layering-no-borders">
+<!-- Home -->
+<a class="flex flex-col items-center justify-center text-[#43474f] dark:text-slate-400 px-5 py-1.5 hover:opacity-80 transition-opacity active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="home">home</span>
+<span class="font-['Be_Vietnam_Pro'] text-xs font-semibold">Home</span>
+</a>
+<!-- Toolbox -->
+<a class="flex flex-col items-center justify-center text-[#43474f] dark:text-slate-400 px-5 py-1.5 hover:opacity-80 transition-opacity active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="construction">construction</span>
+<span class="font-['Be_Vietnam_Pro'] text-xs font-semibold">Toolbox</span>
+</a>
+<!-- Alerts (Active) -->
+<a class="flex flex-col items-center justify-center bg-[#d2e1f2] dark:bg-[#30568b]/30 text-[#30568b] dark:text-[#d2e1f2] rounded-full px-5 py-1.5 hover:opacity-80 transition-opacity active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="notifications" style="font-variation-settings: 'FILL' 1;">notifications</span>
+<span class="font-['Be_Vietnam_Pro'] text-xs font-semibold">Alerts</span>
+</a>
+<!-- Profile -->
+<a class="flex flex-col items-center justify-center text-[#43474f] dark:text-slate-400 px-5 py-1.5 hover:opacity-80 transition-opacity active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="person">person</span>
+<span class="font-['Be_Vietnam_Pro'] text-xs font-semibold">Profile</span>
+</a>
+</nav>
+</body></html>

@@ -1,0 +1,217 @@
+:root {
+  color-scheme: light dark;
+  --bg: #0f1419;
+  --panel: #1a2332;
+  --muted: #8b9bb4;
+  --text: #e8eef7;
+  --accent: #3d8bfd;
+  --border: #2a3648;
+  --danger: #f85149;
+  --ok: #3fb950;
+  font-family: system-ui, "Segoe UI", Roboto, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.5;
+}
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel);
+}
+
+header h1 {
+  font-size: 1.1rem;
+  margin: 0;
+  font-weight: 600;
+}
+
+nav a {
+  margin-right: 1rem;
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+nav a:hover,
+nav a.active {
+  color: var(--text);
+}
+
+main {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 1.5rem;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+  margin: 1.5rem 0;
+}
+
+.card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1rem 1.25rem;
+}
+
+.card h2 {
+  margin: 0 0 0.35rem;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.card .stat {
+  font-size: 1.75rem;
+  font-weight: 700;
+}
+
+label {
+  display: block;
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin-top: 0.75rem;
+}
+
+input,
+select,
+textarea,
+button {
+  font: inherit;
+  margin-top: 0.25rem;
+}
+
+input,
+select,
+textarea {
+  width: 100%;
+  max-width: 520px;
+  padding: 0.5rem 0.65rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: #0b0f14;
+  color: var(--text);
+}
+
+textarea {
+  min-height: 100px;
+}
+
+button {
+  margin-top: 1rem;
+  padding: 0.55rem 1rem;
+  border-radius: 8px;
+  border: none;
+  background: var(--accent);
+  color: #fff;
+  cursor: pointer;
+}
+
+button.secondary {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--muted);
+}
+
+button:hover {
+  filter: brightness(1.08);
+}
+
+.muted {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.92rem;
+}
+
+th,
+td {
+  text-align: left;
+  padding: 0.5rem 0.35rem;
+  border-bottom: 1px solid var(--border);
+}
+
+th {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.badge {
+  display: inline-block;
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  background: #263041;
+  color: var(--muted);
+}
+
+.badge.critical {
+  background: #3d1f24;
+  color: #ffa198;
+}
+
+.badge.high {
+  background: #3d2f1f;
+  color: #ffdf99;
+}
+
+.error {
+  color: var(--danger);
+  font-size: 0.9rem;
+  margin-top: 0.5rem;
+}
+
+.stack {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: #0b0f14;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  white-space: pre-wrap;
+  font-size: 0.85rem;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #f4f6f9;
+    --panel: #ffffff;
+    --muted: #5c6b7f;
+    --text: #1a2535;
+    --border: #d8dee8;
+  }
+  input,
+  select,
+  textarea {
+    background: #fff;
+  }
+  .stack {
+    background: #f0f3f7;
+  }
+}
