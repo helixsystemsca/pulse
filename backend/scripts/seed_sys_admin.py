@@ -2,10 +2,10 @@
 Create or update the internal system admin (jc@helixpulse.com).
 
 Usage (from the `backend` directory):
-    set SYS_ADMIN_PASSWORD=your-secret-here
     python -m scripts.seed_sys_admin
 
-Requires PostgreSQL and DATABASE_URL in `.env` (same as the API).
+Loads `SYS_ADMIN_PASSWORD` and `DATABASE_URL` from `backend/.env` (same as the API).
+You can also `set SYS_ADMIN_PASSWORD=...` in the shell to override.
 """
 
 from __future__ import annotations
@@ -15,10 +15,14 @@ import os
 import sys
 from pathlib import Path
 
+from dotenv import load_dotenv
+
 # Add backend root to path when run as script
 _ROOT = Path(__file__).resolve().parents[1]
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
+
+load_dotenv(_ROOT / ".env")
 
 
 async def _main() -> None:
