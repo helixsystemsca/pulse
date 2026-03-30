@@ -6,8 +6,16 @@ Create Date: 2026-03-26
 
 """
 
+from pathlib import Path
+import sys
+
 from alembic import op
 from sqlalchemy import text
+
+_BACK = Path(__file__).resolve().parents[2]
+if str(_BACK) not in sys.path:
+    sys.path.insert(0, str(_BACK))
+import alembic_helpers as ah  # noqa: E402
 
 revision = "0002"
 down_revision = "0001"
@@ -16,6 +24,9 @@ depends_on = None
 
 
 def upgrade() -> None:
+    conn = op.get_bind()
+    if not ah.table_exists(conn, "tenants"):
+        return
     op.execute(
         text(
             "ALTER TABLE tenants ADD COLUMN IF NOT EXISTS enabled_features JSONB NOT NULL DEFAULT '[]'::jsonb"

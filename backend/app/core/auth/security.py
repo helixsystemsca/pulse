@@ -3,21 +3,30 @@
 from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 
+import bcrypt
 from jose import JWTError, jwt
-from passlib.context import CryptContext
 
 from app.core.config import get_settings
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 settings = get_settings()
 
 
 def verify_password(plain: str, hashed: str) -> bool:
-    return pwd_context.verify(plain, hashed)
+    try:
+        return bcrypt.checkpw(
+            plain.encode("utf-8"),
+            hashed.encode("utf-8"),
+        )
+    except (ValueError, AttributeError):
+        return False
 
 
 def hash_password(plain: str) -> str:
-    return pwd_context.hash(plain)
+    # bcrypt truncates at 72 bytes; bcrypt 5.x errors if callers pass longer—match that behavior explicitly.
+    p = plain.encode("utf-8")
+    if len(p) > 72:
+        p = p[:72]
+    return bcrypt.hashpw(p, bcrypt.gensalt(rounds=12)).decode("utf-8")
 
 
 def create_access_token(subject: str, extra_claims: Optional[dict[str, Any]] = None) -> str:

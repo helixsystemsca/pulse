@@ -6,9 +6,17 @@ Create Date: 2026-03-29
 
 """
 
+from pathlib import Path
+import sys
+
 from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects.postgresql import JSONB, UUID
+
+_BACK = Path(__file__).resolve().parents[2]
+if str(_BACK) not in sys.path:
+    sys.path.insert(0, str(_BACK))
+import alembic_helpers as ah  # noqa: E402
 
 revision = "0005"
 down_revision = "0004"
@@ -17,6 +25,9 @@ depends_on = None
 
 
 def upgrade() -> None:
+    conn = op.get_bind()
+    if ah.table_exists(conn, "pulse_work_requests"):
+        return
     op.create_table(
         "pulse_work_requests",
         sa.Column("id", UUID(as_uuid=False), primary_key=True),

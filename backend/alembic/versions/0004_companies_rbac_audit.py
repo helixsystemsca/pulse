@@ -6,10 +6,18 @@ Create Date: 2026-03-26
 
 """
 
+from pathlib import Path
+import sys
+
 from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy import text
+
+_BACK = Path(__file__).resolve().parents[2]
+if str(_BACK) not in sys.path:
+    sys.path.insert(0, str(_BACK))
+import alembic_helpers as ah  # noqa: E402
 
 revision = "0004"
 down_revision = "0003"
@@ -18,6 +26,9 @@ depends_on = None
 
 
 def upgrade() -> None:
+    conn = op.get_bind()
+    if not ah.table_exists(conn, "tenants"):
+        return
     # --- Users: new columns before table renames ---
     op.add_column(
         "users",
