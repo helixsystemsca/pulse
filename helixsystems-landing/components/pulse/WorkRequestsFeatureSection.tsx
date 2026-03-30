@@ -10,6 +10,7 @@ import {
   Users,
   Wrench,
 } from "lucide-react";
+import { FeatureItem } from "./FeatureItem";
 
 function CmmsDesktopChrome() {
   return (
@@ -200,14 +201,19 @@ export function WorkRequestsFeatureSection() {
       <div className="mx-auto w-full max-w-[min(100%,88rem)] px-4 sm:px-5 lg:px-6">
         <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-12 lg:gap-5 xl:gap-6">
           <div className="order-2 max-w-xl lg:order-1 lg:col-span-4 lg:max-w-none xl:col-span-3 xl:pr-2">
-            <p className="text-xs font-semibold uppercase tracking-wider text-pulse-muted">CMMS</p>
+            <p className="text-xs font-semibold uppercase tracking-wider text-pulse-muted">Work requests</p>
             <h2 className="mt-2 text-3xl font-bold tracking-tight text-pulse-navy md:text-4xl">
-              Maintenance &amp; Work Requests
+              Manage work from start to finish.
             </h2>
             <p className="mt-4 text-base leading-relaxed text-pulse-muted md:text-lg">
-              Manage maintenance tasks, assign work, and track completion across your operation — all in one
-              place.
+              Create, assign, and track work without losing visibility.
             </p>
+            <ul className="mt-8 space-y-5">
+              <FeatureItem title="Create and assign work requests" />
+              <FeatureItem title="Track status (open, in progress, complete)" />
+              <FeatureItem title="Prioritize critical work" description="Keep urgent jobs at the top so nothing critical sits in the queue." />
+              <FeatureItem title="See what is delayed or unassigned" description="Spot stuck tickets before they become downtime or customer issues." />
+            </ul>
           </div>
 
           <div className="order-1 min-w-0 lg:order-2 lg:col-span-8 xl:col-span-9">

@@ -10,5 +10,6 @@ export { MobileFeatureSection } from "./MobileFeatureSection";
 export { PulsePageIntro } from "./PulsePageIntro";
 export { SectionWrapper } from "./SectionWrapper";
 export { StatBlock, StatCard } from "./StatCard";
+export { ToolEquipmentTrackingSection } from "./ToolEquipmentTrackingSection";
 export { WorkRequestsFeatureSection } from "./WorkRequestsFeatureSection";
 export { WorkforceSchedulingSection } from "./WorkforceSchedulingSection";

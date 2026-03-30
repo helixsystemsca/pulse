@@ -243,25 +243,18 @@ export function EquipmentSetupTabletSection() {
     <SectionWrapper id="equipment-setup" className="scroll-mt-24 bg-gradient-to-b from-white/80 via-pulse-bg to-slate-100/60">
       <div className="grid items-center gap-10 lg:grid-cols-12 lg:gap-8 xl:gap-10">
         <div className="mx-auto max-w-xl text-center lg:col-span-5 lg:mx-0 lg:max-w-none lg:text-left">
-          <p className="text-xs font-semibold uppercase tracking-wider text-pulse-muted">Field deployment</p>
-          <h2 className="mt-2 text-3xl font-bold tracking-tight text-pulse-navy md:text-4xl">Equipment setup, ready anywhere.</h2>
+          <p className="text-xs font-semibold uppercase tracking-wider text-pulse-muted">Equipment setup</p>
+          <h2 className="mt-2 text-3xl font-bold tracking-tight text-pulse-navy md:text-4xl">
+            Add and organize your equipment quickly.
+          </h2>
           <p className="mt-4 text-base leading-relaxed text-pulse-muted md:text-lg">
-            Configure assets on rugged tablets with scans, structured locations, and sign-offs—so what happens on the floor
-            matches what operations sees upstream.
+            Get tools and assets into the system without spreadsheets or duplicate work.
           </p>
           <ul className="mt-8 space-y-5 text-left">
-            <FeatureItem
-              title="Guided onboarding"
-              description="QR and manual paths capture IDs, categories, and placement without guesswork or duplicate spreadsheets."
-            />
-            <FeatureItem
-              title="Audit-ready documentation"
-              description="Photos, facilities, and authorized personnel are tied to the record for IoT rollouts and compliance."
-            />
-            <FeatureItem
-              title="Activate in one step"
-              description="Assign ownership and push live when the hardware checks complete—faster commissioning in industrial environments."
-            />
+            <FeatureItem title="Scan or manually add equipment" />
+            <FeatureItem title="Assign to zones or jobs" />
+            <FeatureItem title="Link equipment to workers" description="Record who is responsible for or carrying each asset." />
+            <FeatureItem title="Activate assets immediately" description="Turn records on as soon as onboarding is done." />
           </ul>
         </div>
 

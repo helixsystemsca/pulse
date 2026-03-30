@@ -2,7 +2,7 @@ import { Check } from "lucide-react";
 
 type FeatureItemProps = {
   title: string;
-  description: string;
+  description?: string;
 };
 
 export function FeatureItem({ title, description }: FeatureItemProps) {
@@ -13,7 +13,9 @@ export function FeatureItem({ title, description }: FeatureItemProps) {
       </span>
       <div className="min-w-0">
         <p className="font-semibold text-pulse-navy">{title}</p>
-        <p className="mt-1 text-sm leading-relaxed text-pulse-muted">{description}</p>
+        {description ? (
+          <p className="mt-1 text-sm leading-relaxed text-pulse-muted">{description}</p>
+        ) : null}
       </div>
     </li>
   );

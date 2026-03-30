@@ -1,12 +1,11 @@
 import {
   AlertTriangle,
   Battery,
-  Box,
   Eye,
   LayoutDashboard,
   MapPin,
-  Network,
   Radio,
+  Shield,
 } from "lucide-react";
 import { PulseDashboardLink } from "./PulseDashboardLink";
 import { SectionWrapper } from "./SectionWrapper";
@@ -438,10 +437,10 @@ export function AdminControlSection() {
     <SectionWrapper id="admin-panel" className="scroll-mt-24 bg-pulse-bg">
       <div className="mx-auto max-w-3xl text-center md:max-w-4xl">
         <h2 className="text-3xl font-bold tracking-tight text-pulse-navy md:text-4xl">
-          System Overview
+          See everything in one place.
         </h2>
         <p className="mx-auto mt-5 max-w-2xl text-lg leading-relaxed text-pulse-muted">
-          Monitoring live operational status across zones and workforce.
+          Monitor work, tools, and workforce across your operation.
         </p>
       </div>
 
@@ -455,32 +454,29 @@ export function AdminControlSection() {
       >
         <div className="text-center md:text-left">
           <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-pulse-accent md:mx-0">
+            <LayoutDashboard className="h-6 w-6" strokeWidth={1.75} />
+          </div>
+          <h3 className="text-lg font-semibold text-pulse-navy">Active work and alerts</h3>
+          <p className="mt-2 text-sm leading-relaxed text-pulse-muted">
+            Open work requests, exceptions, and queue depth stay visible on the home dashboard.
+          </p>
+        </div>
+        <div className="text-center md:text-left">
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-pulse-accent md:mx-0">
             <Eye className="h-6 w-6" strokeWidth={1.75} />
           </div>
-          <h3 className="text-lg font-semibold text-pulse-navy">Full Visibility</h3>
+          <h3 className="text-lg font-semibold text-pulse-navy">Tool and asset status</h3>
           <p className="mt-2 text-sm leading-relaxed text-pulse-muted">
-            Live asset states, open jobs, and exception queues surface instantly—filterable by site,
-            crew, or severity.
+            In-use, idle, and missing flags update as the floor reports them—no clipboard audit required.
           </p>
         </div>
         <div className="text-center md:text-left">
           <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-pulse-accent md:mx-0">
-            <Network className="h-6 w-6" strokeWidth={1.75} />
+            <Shield className="h-6 w-6" strokeWidth={1.75} />
           </div>
-          <h3 className="text-lg font-semibold text-pulse-navy">Worker Role Management</h3>
+          <h3 className="text-lg font-semibold text-pulse-navy">Users, roles, and company settings</h3>
           <p className="mt-2 text-sm leading-relaxed text-pulse-muted">
-            Granular roles mirror how crews actually work—contractors, leads, and admins each see
-            only what they should.
-          </p>
-        </div>
-        <div className="text-center md:text-left">
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-pulse-accent md:mx-0">
-            <Box className="h-6 w-6" strokeWidth={1.75} />
-          </div>
-          <h3 className="text-lg font-semibold text-pulse-navy">Facility Mapping</h3>
-          <p className="mt-2 text-sm leading-relaxed text-pulse-muted">
-            Zones and beacon anchors translate physical layout into digital context for proximity,
-            compliance, and routing.
+            Invite workers, set admin vs. manager vs. worker access, and tune company-level options from one admin surface.
           </p>
         </div>
       </div>

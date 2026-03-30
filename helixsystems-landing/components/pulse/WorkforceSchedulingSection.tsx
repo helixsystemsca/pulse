@@ -18,6 +18,7 @@ import {
   X,
 } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from "react";
+import { FeatureItem } from "./FeatureItem";
 
 type ShiftCode = "D" | "A" | "N" | "TR" | "VAC";
 
@@ -1441,11 +1442,19 @@ export function WorkforceSchedulingSection() {
       <div className="mx-auto w-full max-w-[min(100%,88rem)] px-4 sm:px-5 lg:px-6">
         <div className="grid grid-cols-1 items-center gap-8 lg:grid-cols-12 lg:gap-6 xl:gap-8">
           <div className="order-2 max-w-xl lg:order-1 lg:col-span-4 lg:max-w-none xl:col-span-3 xl:pr-2">
-            <p className="text-xs font-semibold uppercase tracking-wider text-pulse-muted">Operations</p>
-            <h2 className="mt-2 text-3xl font-bold tracking-tight text-pulse-navy md:text-4xl">Workforce Scheduling</h2>
+            <p className="text-xs font-semibold uppercase tracking-wider text-pulse-muted">Workforce</p>
+            <h2 className="mt-2 text-3xl font-bold tracking-tight text-pulse-navy md:text-4xl">
+              Keep your crew organized.
+            </h2>
             <p className="mt-4 text-base leading-relaxed text-pulse-muted md:text-lg">
-              Plan, assign, and manage your workforce across shifts, zones, and real-time operations.
+              Plan shifts and assignments without confusion or overlap.
             </p>
+            <ul className="mt-8 space-y-5">
+              <FeatureItem title="Schedule workers by shift or zone" />
+              <FeatureItem title="Adjust assignments quickly" description="Update who works where when plans change mid-week." />
+              <FeatureItem title="See coverage gaps" description="Spot understaffed windows before the line starts." />
+              <FeatureItem title="Track workload across teams" description="Balance hours and skills without a wall of sticky notes." />
+            </ul>
           </div>
 
           <div className="order-1 min-w-0 lg:order-2 lg:col-span-8 xl:col-span-9">

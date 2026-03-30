@@ -17,41 +17,60 @@ function PhoneChrome() {
               aria-hidden
             />
             <div className="relative z-10 flex h-full min-h-0 flex-col">
-              <header className="shrink-0 border-b border-white/30 bg-gradient-to-r from-white/70 via-blue-50/50 to-white/65 px-4 py-3 backdrop-blur-xl backdrop-saturate-150 shadow-[inset_0_-1px_0_rgba(255,255,255,0.45)]">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex min-w-0 items-center gap-1.5">
-                    <MapPin className="h-3.5 w-3.5 shrink-0 text-pulse-accent" aria-hidden />
-                    <span className="truncate text-sm font-medium text-pulse-navy">Headquarters</span>
-                  </div>
-                  <button
-                    type="button"
-                    className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-pulse-navy/90 backdrop-blur-sm transition-colors active:bg-white/35"
-                    aria-label="Search"
-                  >
-                    <Search className="h-3.5 w-3.5" strokeWidth={2} />
-                  </button>
-                </div>
+              <header className="relative shrink-0 overflow-hidden border-b border-white/25 shadow-[inset_0_-1px_0_rgba(255,255,255,0.2)]">
+                {/* Background image — subtle, header only */}
+                <div
+                  className="pointer-events-none absolute inset-0 z-0 scale-105 bg-cover bg-center blur-[1.5px]"
+                  style={{ backgroundImage: "url('/images/panorama.jpg')" }}
+                  aria-hidden
+                />
+                <div
+                  className="pointer-events-none absolute inset-0 z-[1] bg-gradient-to-b from-black/55 via-black/42 to-black/30"
+                  aria-hidden
+                />
+                <div
+                  className="pointer-events-none absolute inset-x-0 bottom-0 z-[1] h-10 bg-gradient-to-t from-slate-100/40 via-slate-100/15 to-transparent"
+                  aria-hidden
+                />
 
-                <div className="mt-3 flex items-start justify-between gap-4">
-                  <div className="min-w-0 flex-1 pt-0.5">
-                    <p className="text-base font-semibold leading-tight tracking-tight text-pulse-navy">Hi, Liz!</p>
-                  </div>
-                  <div className="flex shrink-0 flex-col items-center gap-1.5">
-                    <div className="relative flex h-10 w-10 items-center justify-center rounded-full bg-slate-200/90 text-xs font-bold text-pulse-navy shadow-sm ring-2 ring-white">
-                      LG
-                      <span
-                        className="pointer-events-none absolute -right-0.5 -top-0.5 z-10 flex h-[18px] w-[18px] items-center justify-center rounded-full bg-pulse-accent text-[9px] font-bold leading-none text-white shadow-sm ring-2 ring-white"
-                        aria-hidden
-                      >
-                        M
-                      </span>
+                <div className="relative z-10 px-4 py-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex min-w-0 items-center gap-1.5">
+                      <MapPin className="h-3.5 w-3.5 shrink-0 text-sky-200" aria-hidden />
+                      <span className="truncate text-sm font-medium text-white drop-shadow-sm">Headquarters</span>
                     </div>
-                    <div className="flex flex-col items-center gap-0.5 text-center">
-                      <p className="flex items-center gap-1 text-[10px] font-semibold leading-none text-pulse-navy">
-                        <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" aria-hidden />
-                        On-site
+                    <button
+                      type="button"
+                      className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-white/95 backdrop-blur-sm transition-colors active:bg-white/20"
+                      aria-label="Search"
+                    >
+                      <Search className="h-3.5 w-3.5" strokeWidth={2} />
+                    </button>
+                  </div>
+
+                  <div className="mt-3 flex items-start justify-between gap-4">
+                    <div className="min-w-0 flex-1 pt-0.5">
+                      <p className="text-base font-semibold leading-tight tracking-tight text-white drop-shadow-md">
+                        Hi, Liz!
                       </p>
-                      <p className="text-[10px] font-medium leading-none text-pulse-muted">Zone 1</p>
+                    </div>
+                    <div className="flex shrink-0 flex-col items-center gap-1.5">
+                      <div className="relative flex h-10 w-10 items-center justify-center rounded-full bg-white/20 text-xs font-bold text-white shadow-md ring-2 ring-white/90 backdrop-blur-sm">
+                        LG
+                        <span
+                          className="pointer-events-none absolute -right-0.5 -top-0.5 z-10 flex h-[18px] w-[18px] items-center justify-center rounded-full bg-pulse-accent text-[9px] font-bold leading-none text-white shadow-sm ring-2 ring-white"
+                          aria-hidden
+                        >
+                          M
+                        </span>
+                      </div>
+                      <div className="flex flex-col items-center gap-0.5 text-center">
+                        <p className="flex items-center gap-1 text-[10px] font-semibold leading-none text-white drop-shadow-sm">
+                          <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-400 shadow-sm" aria-hidden />
+                          On-site
+                        </p>
+                        <p className="text-[10px] font-medium leading-none text-white/80">Zone 1</p>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -199,27 +218,16 @@ export function MobileFeatureSection() {
 
         <div className="mx-auto max-w-xl lg:mx-0">
           <h2 className="text-3xl font-bold leading-tight tracking-tight text-pulse-navy md:text-4xl lg:text-[2.5rem]">
-            Precision in
-            <br />
-            <span className="text-pulse-accent">Every Palm.</span>
+            Simple tools for the field.
           </h2>
           <p className="mt-6 text-lg leading-relaxed text-pulse-muted">
-            Give your field teams real-time visibility with a mobile interface designed for fast decisions, not data
-            entry.
+            Give your team what they need without slowing them down.
           </p>
           <ul className="mt-8 space-y-6">
-            <FeatureItem
-              title="Offline-first syncing"
-              description="Capture sign-offs and scans offline; Pulse reconciles when connectivity returns—no duplicate work."
-            />
-            <FeatureItem
-              title="Real-time task updates"
-              description="Jobs, holds, and reassignments propagate instantly so crews aren’t working off stale paperwork."
-            />
-            <FeatureItem
-              title="Visual confirmation workflows"
-              description="Photo prompts and structured attestations make handoffs and audits defensible in regulated environments."
-            />
+            <FeatureItem title="Works offline when needed" description="Capture data in dead zones; sync resumes when coverage returns." />
+            <FeatureItem title="View assigned work and tools" description="Open the app and see today&apos;s jobs and gear in one feed." />
+            <FeatureItem title="Submit photos and confirmations" description="Attach proof and sign-offs without switching apps." />
+            <FeatureItem title="Get updates as they happen" description="Assignments and changes show up without waiting for paper rounds." />
           </ul>
         </div>
       </div>

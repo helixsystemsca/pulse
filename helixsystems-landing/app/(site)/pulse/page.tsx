@@ -7,6 +7,7 @@ import {
   MaintenanceSection,
   MobileFeatureSection,
   PulsePageIntro,
+  ToolEquipmentTrackingSection,
   WorkforceSchedulingSection,
   WorkRequestsFeatureSection,
 } from "@/components/pulse";
@@ -24,11 +25,12 @@ export default function PulseProductPage() {
       <PulsePageIntro />
       <main>
         <Hero />
-        <MobileFeatureSection />
-        <EquipmentSetupTabletSection />
-        <AdminControlSection />
-        <WorkforceSchedulingSection />
         <WorkRequestsFeatureSection />
+        <ToolEquipmentTrackingSection />
+        <EquipmentSetupTabletSection />
+        <WorkforceSchedulingSection />
+        <MobileFeatureSection />
+        <AdminControlSection />
         <MaintenanceSection />
         <InventoryAlertsSection />
       </main>

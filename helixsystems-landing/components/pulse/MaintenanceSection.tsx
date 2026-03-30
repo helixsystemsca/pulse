@@ -1,4 +1,4 @@
-import { Calendar, Wrench } from "lucide-react";
+import { Calendar, ClipboardList, Timer, Wrench } from "lucide-react";
 import { SectionWrapper } from "./SectionWrapper";
 import { SmallFeatureCard } from "./FeatureCard";
 
@@ -27,29 +27,34 @@ export function MaintenanceSection() {
     <SectionWrapper className="bg-white/70">
       <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-14">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.15em] text-pulse-accent">
-            Next-Gen CMMS
-          </p>
+          <p className="text-xs font-bold uppercase tracking-[0.15em] text-pulse-accent">Maintenance</p>
           <h2 className="mt-3 text-3xl font-bold leading-tight tracking-tight text-pulse-navy md:text-4xl lg:text-[2.35rem]">
-            Integrated Maintenance &amp;
-            <br />
-            <span className="text-pulse-accent">Asset Intelligence</span>
+            Stay ahead of equipment issues.
           </h2>
           <p className="mt-6 max-w-xl text-lg leading-relaxed text-pulse-muted">
-            Manage work requests, schedule preventative maintenance, and track asset health — all
-            connected to real-time field data.
+            Plan and track maintenance without relying on memory or spreadsheets.
           </p>
 
           <div className="mt-8 grid gap-4 sm:grid-cols-2 sm:gap-4">
             <SmallFeatureCard
-              icon={<Wrench className="h-5 w-5" />}
-              title="Smart Work Orders"
-              description="Templates, approvals, and digital sign-offs keep turnaround repeatable and auditable."
+              icon={<Calendar className="h-5 w-5" />}
+              title="Schedule preventative maintenance"
+              description="Calendar- or meter-based windows create tasks before failures show up on the line."
             />
             <SmallFeatureCard
-              icon={<Calendar className="h-5 w-5" />}
-              title="Predictive Schedule"
-              description="Meter- and calendar-based PM windows surface before failure modes interrupt production."
+              icon={<ClipboardList className="h-5 w-5" />}
+              title="Track service history"
+              description="Every visit, part swap, and sign-off stays on the asset record."
+            />
+            <SmallFeatureCard
+              icon={<Wrench className="h-5 w-5" />}
+              title="Standardize work processes"
+              description="Repeatable checklists mean junior and veteran techs follow the same steps."
+            />
+            <SmallFeatureCard
+              icon={<Timer className="h-5 w-5" />}
+              title="Reduce unexpected downtime"
+              description="Catch wear-and-tear work while it is cheap—not after an emergency stop."
             />
           </div>
         </div>
