@@ -22,7 +22,7 @@ from app.api.core_routes import router as core_router
 from app.api.realtime import router as realtime_router
 from app.api.system_routes import router as system_router
 from app.api.users_routes import router as users_router
-from app.core.bootstrap import ensure_bootstrap_system_admin, ensure_pulse_bootstrap_tenant_admin
+from app.core.bootstrap import ensure_bootstrap_system_admin
 from app.core.config import get_settings
 from app.core.database import AsyncSessionLocal
 from app.limiter import limiter
@@ -38,7 +38,6 @@ settings = get_settings()
 async def lifespan(app: FastAPI):
     async with AsyncSessionLocal() as db:
         await ensure_bootstrap_system_admin(db)
-        await ensure_pulse_bootstrap_tenant_admin(db)
     yield
 
 

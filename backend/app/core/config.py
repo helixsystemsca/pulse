@@ -29,10 +29,6 @@ class Settings(BaseSettings):
     pulse_uploads_dir: str = "var/uploads"
     system_invite_expire_hours: int = 48
     system_password_reset_expire_hours: int = 24
-    # Optional: auto-create a tenant company_admin on startup (rotate in production).
-    pulse_bootstrap_tenant_email: str = ""
-    pulse_bootstrap_tenant_password: str = ""
-    pulse_bootstrap_tenant_company_name: str = "Helix Pulse"
 
     @property
     def cors_origin_list(self) -> List[str]:

@@ -23,17 +23,9 @@ This guide covers the **helixsystems-landing** Next.js Pulse UI with the **backe
 
    This applies revision **`0005`** (Pulse tables: work requests, worker profiles, schedule shifts, beacon equipment).
 
-## Temporary Pulse tenant (staging / demos)
+## First system admin (seed)
 
-With the defaults in `backend/.env.example`, the API creates a **company admin** on first startup (if that email is not already in the database):
-
-| Sign-in field | Value |
-|---------------|--------|
-| **Username** (Next.js + `NEXT_PUBLIC_PULSE_LOGIN_EMAIL_DOMAIN=helixpulse.local`) | `sysadmin` |
-| **Email** (API / full form) | `sysadmin@helixpulse.local` |
-| **Password** | `HelixPulse` |
-
-Copy those lines into `backend/.env`, restart the API once, and use the same domain line in `helixsystems-landing/.env.local`. **Remove or change these values before production.**
+Set **`SYS_ADMIN_PASSWORD`** (8+ characters), then from `backend/` run **`python -m scripts.seed_sys_admin`**. That creates or updates **`jc@helixpulse.com`**. Use that email and password to sign in and reach **`/api/system`**; from there you can create companies and tenant users. See **Internal system admin API** at the end of this doc.
 
 ## 2. Backend (FastAPI)
 
