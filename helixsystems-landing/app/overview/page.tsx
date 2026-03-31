@@ -1,12 +1,12 @@
 "use client";
 
-import { LayoutDashboard, LogOut } from "lucide-react";
+import { LayoutDashboard } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { apiFetch, isApiMode } from "@/lib/api";
 import { pulseRoutes } from "@/lib/pulse-app";
-import { clearSession, readSession } from "@/lib/pulse-session";
+import { readSession } from "@/lib/pulse-session";
 
 type DashboardPayload = {
   active_workers: number;
@@ -85,11 +85,6 @@ export default function OverviewPage() {
       cancelled = true;
     };
   }, [ready]);
-
-  const signOut = useCallback(() => {
-    clearSession();
-    router.push(pulseRoutes.login);
-  }, [router]);
 
   if (!ready) {
     return (
@@ -188,14 +183,6 @@ export default function OverviewPage() {
           >
             Product overview
           </Link>
-          <button
-            type="button"
-            onClick={signOut}
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:bg-slate-800"
-          >
-            <LogOut className="h-4 w-4" aria-hidden />
-            Sign out
-          </button>
         </div>
       </div>
     </div>

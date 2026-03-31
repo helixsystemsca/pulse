@@ -1,21 +1,25 @@
 import { MapPin, Package, Radar, Wrench } from "lucide-react";
+import { FacilityMap } from "./FacilityMap";
 import { FeatureCard } from "./FeatureCard";
 import { SectionWrapper } from "./SectionWrapper";
 
 export function ToolEquipmentTrackingSection() {
   return (
     <SectionWrapper id="tool-tracking" className="scroll-mt-24 bg-white/60">
-      <div className="grid items-start gap-8 md:gap-10 lg:grid-cols-2 lg:gap-14">
-        <div>
-          <h2 className="text-3xl font-bold leading-tight tracking-tight text-pulse-navy md:text-4xl lg:text-[2.35rem]">
-            Know where your tools are.
-          </h2>
-          <p className="mt-6 max-w-xl text-lg leading-relaxed text-pulse-muted">
-            Track equipment across zones, jobs, and crews without manual checks.
-          </p>
+      <div className="grid items-start gap-8 md:gap-10 lg:grid-cols-2 lg:gap-10 xl:gap-12">
+        <div className="flex min-w-0 flex-col items-stretch space-y-6">
+          <div className="w-full max-w-xl space-y-6">
+            <h2 className="text-3xl font-bold leading-tight tracking-tight text-pulse-navy md:text-4xl lg:text-[2.35rem]">
+              Know where your tools are.
+            </h2>
+            <p className="text-lg leading-relaxed text-pulse-muted">
+              Track equipment across zones, jobs, and crews without manual checks.
+            </p>
+          </div>
+          <FacilityMap compact className="w-full max-w-xl" />
         </div>
 
-        <div className="flex flex-col gap-5">
+        <div className="flex min-w-0 flex-col gap-5">
           <FeatureCard
             icon={Radar}
             title="Track tools and equipment in real time"

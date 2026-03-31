@@ -1,6 +1,7 @@
 export { AdminControlSection } from "./AdminControlSection";
 export { EquipmentSetupTabletSection } from "./EquipmentSetupTabletSection";
 export { Card } from "./Card";
+export { FacilityMap } from "./FacilityMap";
 export { FeatureCard, SmallFeatureCard } from "./FeatureCard";
 export { FeatureItem } from "./FeatureItem";
 export { Hero } from "./Hero";

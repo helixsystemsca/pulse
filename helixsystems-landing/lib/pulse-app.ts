@@ -11,7 +11,25 @@ function origin(): string {
 export const pulseRoutes = {
   login: "/login",
   overview: "/overview",
+  /** Pulse product / marketing page (facility map, features, etc.). */
+  pulseLanding: "/pulse",
 } as const;
+
+/** Tenant app — center nav when signed in (links into product areas). */
+export const pulseTenantNav = [
+  { href: "/overview", label: "Overview" },
+  { href: "/pulse#work-requests", label: "Work orders" },
+  { href: "/pulse#inventory", label: "Inventory" },
+  { href: "/pulse#workforce-scheduling", label: "Scheduling" },
+] as const;
+
+/** System administration shell — center nav on `/system/*`. */
+export const pulseSystemNav = [
+  { href: "/system", label: "Overview" },
+  { href: "/system/companies", label: "Companies" },
+  { href: "/system/users", label: "Users" },
+  { href: "/system/logs", label: "System logs" },
+] as const;
 
 export const pulseApp = {
   origin,

@@ -1,13 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { isLoggedIn } from "@/lib/pulse-session";
+import { readSession, type PulseAuthSession } from "@/lib/pulse-session";
 
 export function usePulseAuth() {
-  const [authed, setAuthed] = useState(false);
+  const [session, setSession] = useState<PulseAuthSession | null>(null);
 
   const refresh = useCallback(() => {
-    setAuthed(isLoggedIn());
+    setSession(readSession());
   }, []);
 
   useEffect(() => {
@@ -21,5 +21,5 @@ export function usePulseAuth() {
     };
   }, [refresh]);
 
-  return { authed, refresh };
+  return { authed: session !== null, session, refresh };
 }

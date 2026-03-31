@@ -20,7 +20,7 @@ const inter = Inter({
 export default function PulseProductPage() {
   return (
     <div
-      className={`${inter.className} min-h-screen bg-pulse-bg text-pulse-navy antialiased [font-feature-settings:'liga'_1,'kern'_1]`}
+      className={`${inter.className} min-h-full bg-pulse-bg text-pulse-navy antialiased [font-feature-settings:'liga'_1,'kern'_1]`}
     >
       <PulsePageIntro />
       <main>
