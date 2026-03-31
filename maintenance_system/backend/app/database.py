@@ -6,7 +6,15 @@ from app.config import get_settings
 
 settings = get_settings()
 
-engine = create_async_engine(settings.database_url, echo=False)
+_connect: dict = {}
+if settings.database_url.startswith("postgresql+asyncpg"):
+    _connect["statement_cache_size"] = 0
+
+engine = create_async_engine(
+    settings.database_url,
+    echo=False,
+    connect_args=_connect,
+)
 
 AsyncSessionLocal = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 

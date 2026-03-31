@@ -8,10 +8,17 @@ from app.core.config import get_settings
 
 settings = get_settings()
 
+# statement_cache_size=0: required behind PgBouncer (e.g. Render) in transaction pool mode —
+# otherwise asyncpg prepared statements error with InvalidSQLStatementNameError.
+_engine_connect_args: dict = {}
+if settings.database_url.startswith("postgresql+asyncpg"):
+    _engine_connect_args["statement_cache_size"] = 0
+
 engine = create_async_engine(
     settings.database_url,
     echo=False,
     pool_pre_ping=True,
+    connect_args=_engine_connect_args,
 )
 
 AsyncSessionLocal = async_sessionmaker(
