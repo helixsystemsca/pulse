@@ -7,18 +7,17 @@ function PhoneChrome() {
     <div className="relative mx-auto w-full max-w-[300px] shrink-0">
       <div className="relative mx-auto w-full max-w-[300px]">
         <div className="aspect-[9/19.5] w-full overflow-hidden rounded-3xl bg-gradient-to-b from-slate-500 via-slate-700 to-slate-900 p-[3px] shadow-2xl shadow-slate-900/40 ring-1 ring-white/15">
-          <div className="h-full rounded-[1.35rem] bg-black p-[2.5px] sm:p-[3px]">
-            <div className="relative h-full min-h-0 overflow-hidden rounded-[1.12rem] sm:rounded-[1.15rem]">
-              <div
-                className="pointer-events-none absolute inset-0 z-0 bg-gradient-to-br from-slate-100 via-sky-50/90 to-blue-100/80"
-                aria-hidden
-              />
-              <div
-                className="pointer-events-none absolute inset-0 z-0 bg-gradient-to-t from-pulse-accent/[0.09] via-transparent to-white/40"
-                aria-hidden
-              />
-              <div className="relative z-10 flex h-full min-h-0 flex-col">
-                <header className="relative shrink-0 overflow-hidden border-b border-white/25 shadow-[inset_0_-1px_0_rgba(255,255,255,0.2)]">
+          <div className="relative h-full min-h-0 overflow-hidden rounded-[1.35rem] shadow-[inset_0_0_0_2.5px_rgb(10,10,10)] sm:shadow-[inset_0_0_0_3px_rgb(10,10,10)]">
+            <div
+              className="pointer-events-none absolute inset-0 z-0 bg-gradient-to-br from-slate-100 via-sky-50/90 to-blue-100/80"
+              aria-hidden
+            />
+            <div
+              className="pointer-events-none absolute inset-0 z-0 bg-gradient-to-t from-pulse-accent/[0.09] via-transparent to-white/40"
+              aria-hidden
+            />
+            <div className="relative z-10 flex h-full min-h-0 flex-col">
+              <header className="relative shrink-0 overflow-hidden border-b border-white/25 shadow-[inset_0_-1px_0_rgba(255,255,255,0.2)]">
                 {/* Background image — subtle, header only */}
                 <div
                   className="pointer-events-none absolute inset-0 z-0 scale-105 bg-cover bg-center blur-[1.5px]"
@@ -195,7 +194,6 @@ function PhoneChrome() {
                   <span className="text-[10px] font-medium leading-none">Profile</span>
                 </button>
               </nav>
-              </div>
             </div>
           </div>
         </div>

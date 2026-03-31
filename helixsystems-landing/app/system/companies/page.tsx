@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { apiFetch } from "@/lib/api";
 
@@ -9,11 +10,13 @@ type CompanyRow = {
   enabled_features: string[];
   user_count: number;
   is_active: boolean;
+  owner_admin_id?: string | null;
 };
 
 type ModalMode = "invite" | "password";
 
 export default function SystemCompaniesPage() {
+  const router = useRouter();
   const [rows, setRows] = useState<CompanyRow[]>([]);
   const [catalog, setCatalog] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
@@ -68,25 +71,9 @@ export default function SystemCompaniesPage() {
     setModal(mode);
   };
 
-  const toggleCompanyFeature = async (companyId: string, current: string[], feature: string, on: boolean) => {
-    const next = on ? Array.from(new Set([...current, feature])) : current.filter((x) => x !== feature);
-    await apiFetch(`/api/system/companies/${companyId}`, { method: "PATCH", json: { enabled_features: next } });
-    void load();
-  };
-
   const disableCompany = async (companyId: string) => {
     if (!confirm("Soft-delete (deactivate) this company?")) return;
     await apiFetch(`/api/system/companies/${companyId}`, { method: "DELETE" });
-    void load();
-  };
-
-  const enableAll = async (companyId: string) => {
-    await apiFetch(`/api/system/companies/${companyId}`, { method: "PATCH", json: { enabled_features: [...catalog] } });
-    void load();
-  };
-
-  const disableAllFeats = async (companyId: string) => {
-    await apiFetch(`/api/system/companies/${companyId}`, { method: "PATCH", json: { enabled_features: [] } });
     void load();
   };
 
@@ -272,69 +259,72 @@ export default function SystemCompaniesPage() {
               <tr>
                 <th className="px-4 py-3">Company</th>
                 <th className="px-4 py-3">Users</th>
-                <th className="px-4 py-3">Features</th>
-                <th className="px-4 py-3">Toggles</th>
-                <th className="px-4 py-3">Actions</th>
+                <th className="px-4 py-3">Enabled features</th>
+                <th className="px-4 py-3">Status</th>
+                <th className="px-4 py-3 w-28 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-800 bg-zinc-950/50">
               {rows.map((r) => (
-                <tr key={r.id} className={r.is_active ? "" : "opacity-50"}>
+                <tr
+                  key={r.id}
+                  role="link"
+                  tabIndex={0}
+                  onClick={() => router.push(`/system/companies/${r.id}`)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      router.push(`/system/companies/${r.id}`);
+                    }
+                  }}
+                  className={`cursor-pointer transition-colors hover:bg-zinc-900/70 ${
+                    r.is_active ? "" : "opacity-60"
+                  }`}
+                >
                   <td className="px-4 py-3 font-medium text-white">
-                    {r.name}
+                    <span className="text-blue-300">{r.name}</span>
                     <div className="text-xs font-normal text-zinc-500">{r.id}</div>
+                    <p className="mt-0.5 text-[11px] text-zinc-600">Click for features &amp; settings</p>
                   </td>
                   <td className="px-4 py-3 text-zinc-400">{r.user_count}</td>
                   <td className="px-4 py-3">
-                    <div className="flex flex-wrap gap-1">
-                      {r.enabled_features.map((f) => (
-                        <span key={f} className="rounded bg-zinc-800 px-1.5 py-0.5 text-xs text-zinc-300">
-                          {f}
-                        </span>
-                      ))}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex max-w-md flex-wrap gap-2">
-                      {catalog.map((f) => (
-                        <label key={f} className="flex items-center gap-1 text-xs text-zinc-400">
-                          <input
-                            type="checkbox"
-                            checked={r.enabled_features.includes(f)}
-                            onChange={(e) => void toggleCompanyFeature(r.id, r.enabled_features, f, e.target.checked)}
-                          />
-                          {f}
-                        </label>
-                      ))}
-                    </div>
-                    <div className="mt-2 flex gap-2">
-                      <button
-                        type="button"
-                        className="text-xs text-blue-400 hover:underline"
-                        onClick={() => void enableAll(r.id)}
-                      >
-                        Enable all
-                      </button>
-                      <button
-                        type="button"
-                        className="text-xs text-zinc-500 hover:underline"
-                        onClick={() => void disableAllFeats(r.id)}
-                      >
-                        Disable all
-                      </button>
-                    </div>
+                    {r.enabled_features.length === 0 ? (
+                      <span className="text-xs text-zinc-600">None</span>
+                    ) : (
+                      <div className="flex max-w-md flex-wrap gap-1">
+                        {r.enabled_features.map((f) => (
+                          <span key={f} className="rounded bg-zinc-800 px-1.5 py-0.5 text-xs text-zinc-300">
+                            {f}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </td>
                   <td className="px-4 py-3">
                     {r.is_active ? (
+                      <span className="rounded-full bg-emerald-950/80 px-2 py-0.5 text-xs font-medium text-emerald-400 ring-1 ring-emerald-800/60">
+                        Active
+                      </span>
+                    ) : (
+                      <span className="rounded-full bg-zinc-800 px-2 py-0.5 text-xs font-medium text-zinc-500">
+                        Inactive
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    {r.is_active ? (
                       <button
                         type="button"
-                        onClick={() => void disableCompany(r.id)}
-                        className="text-xs text-red-400 hover:underline"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          void disableCompany(r.id);
+                        }}
+                        className="text-xs font-semibold text-red-400 hover:underline"
                       >
                         Deactivate
                       </button>
                     ) : (
-                      <span className="text-xs text-zinc-600">Inactive</span>
+                      <span className="text-xs text-zinc-600">—</span>
                     )}
                   </td>
                 </tr>
