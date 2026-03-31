@@ -36,7 +36,8 @@ type ScheduleState = {
   settings: ScheduleSettings;
   pendingRequests: number;
 
-  addShift: (partial: Omit<Shift, "id">) => void;
+  /** `eventType` defaults to `"work"` when omitted (backward-compatible). */
+  addShift: (partial: Omit<Shift, "id" | "eventType"> & { eventType?: ShiftEventType }) => void;
   updateShift: (id: string, patch: Partial<Shift>) => void;
   deleteShift: (id: string) => void;
 
@@ -88,7 +89,10 @@ export const useScheduleStore = create<ScheduleState>()(
 
       addShift: (partial) =>
         set((s) => ({
-          shifts: [...s.shifts, { ...partial, id: newId("shift") }],
+          shifts: [
+            ...s.shifts,
+            { ...partial, eventType: partial.eventType ?? "work", id: newId("shift") },
+          ],
         })),
 
       updateShift: (id, patch) =>
