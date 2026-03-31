@@ -32,6 +32,34 @@ export const pulseSystemNav = [
   { href: "/system/logs", label: "System logs" },
 ] as const;
 
+/**
+ * Root left rail — icons by default, expands on hover (tenant / product areas).
+ * Links map to routes and `/pulse` section IDs that exist today.
+ */
+export const pulseTenantSidebarNav = [
+  { href: "/overview", label: "Dashboard", icon: "layout" as const },
+  { href: "/schedule", label: "Schedule", icon: "calendar" as const },
+  { href: "/pulse#work-requests", label: "Issue tracking", icon: "clipboard" as const },
+  { href: "/pulse#inventory", label: "Inventory", icon: "package" as const },
+  { href: "/pulse#tool-tracking", label: "Equipment", icon: "wrench" as const },
+  { href: "/pulse#workforce-scheduling", label: "Workforce", icon: "users" as const },
+  { href: "/pulse#equipment-setup", label: "Zones & devices", icon: "map-pin" as const },
+  { href: "/pulse#admin-panel", label: "Control panel", icon: "gauge" as const },
+] as const;
+
+/** System admin rail (alongside top tabs). */
+export const pulseSystemSidebarNav = [
+  { href: "/overview", label: "Operations", icon: "layout" as const },
+  { href: "/system", label: "Admin home", icon: "shield" as const },
+  { href: "/system/companies", label: "Companies", icon: "building" as const },
+  { href: "/system/users", label: "Users", icon: "user-cog" as const },
+  { href: "/system/logs", label: "System logs", icon: "scroll-text" as const },
+] as const;
+
+export type PulseSidebarIcon =
+  | (typeof pulseTenantSidebarNav)[number]["icon"]
+  | (typeof pulseSystemSidebarNav)[number]["icon"];
+
 export const pulseApp = {
   origin,
 

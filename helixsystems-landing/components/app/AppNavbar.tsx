@@ -6,6 +6,7 @@ import { Activity, ChevronDown, LogOut, Menu, Settings, User, X } from "lucide-r
 import { useCallback, useEffect, useRef, useState } from "react";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
 import { pulseRoutes, pulseSystemNav, pulseTenantNav } from "@/lib/pulse-app";
+import { isPulseNavActive } from "@/lib/pulse-nav-active";
 import { clearSession } from "@/lib/pulse-session";
 
 function initialsFrom(email: string, fullName: string | null | undefined): string {
@@ -18,17 +19,6 @@ function initialsFrom(email: string, fullName: string | null | undefined): strin
   }
   const local = email.split("@")[0] ?? "";
   return local.slice(0, 2).toUpperCase() || "—";
-}
-
-function navLinkActive(href: string, pathname: string): boolean {
-  if (href.includes("#")) {
-    const [path] = href.split("#");
-    return pathname === path;
-  }
-  if (href === "/overview") return pathname === "/overview";
-  if (href === "/schedule") return pathname === "/schedule" || pathname.startsWith("/schedule/");
-  if (href === "/system") return pathname === "/system";
-  return pathname === href || pathname.startsWith(`${href}/`);
 }
 
 export function AppNavbar() {
@@ -93,7 +83,7 @@ export function AppNavbar() {
           <div className="hidden flex-1 justify-center px-2 lg:flex">
             <div className="inline-flex max-w-full items-center gap-0.5 overflow-x-auto rounded-xl border border-slate-200/90 bg-slate-50 p-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]">
               {centerLinks.map((item) => {
-                const active = navLinkActive(item.href, pathname);
+                const active = isPulseNavActive(item.href, pathname);
                 return (
                   <Link
                     key={item.href}
@@ -243,7 +233,7 @@ export function AppNavbar() {
             </div>
             <div className="flex flex-col gap-0.5 p-2">
               {centerLinks.map((item) => {
-                const active = navLinkActive(item.href, pathname);
+                const active = isPulseNavActive(item.href, pathname);
                 return (
                   <Link
                     key={item.href}
