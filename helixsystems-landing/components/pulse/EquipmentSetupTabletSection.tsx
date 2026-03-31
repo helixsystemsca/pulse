@@ -149,17 +149,16 @@ function EquipmentSetupScreen() {
             <section className="rounded-2xl border border-slate-200/80 bg-white p-2 shadow-sm">
               <p className="text-[10px] font-bold text-pulse-navy">Photo</p>
               <div className="relative mt-1 overflow-hidden rounded-xl bg-slate-900">
-                {/* Industrial equipment preview — abstract, readable at small sizes */}
-                <div
-                  className="relative aspect-[16/10] w-full bg-gradient-to-br from-amber-200 via-amber-500 to-slate-800"
-                  aria-hidden
-                >
-                  <div className="absolute inset-0 opacity-40 mix-blend-overlay bg-[radial-gradient(circle_at_30%_40%,white,transparent_55%)]" />
-                  <div className="absolute bottom-0 left-0 right-0 h-1/2 bg-gradient-to-t from-black/35 to-transparent" />
+                <div className="relative aspect-[16/10] w-full" aria-hidden>
+                  <div
+                    className="pointer-events-none absolute inset-0 z-0 scale-105 bg-cover bg-center blur-[1.5px]"
+                    style={{ backgroundImage: "url('/images/pumps.avif')" }}
+                  />
+                  <div className="pointer-events-none absolute inset-0 z-[1] bg-gradient-to-b from-black/55 via-black/42 to-black/30" />
                 </div>
                 <button
                   type="button"
-                  className="absolute left-1/2 top-1/2 flex h-10 w-10 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-white/95 text-pulse-navy shadow-lg ring-2 ring-white/50"
+                  className="absolute left-1/2 top-1/2 z-10 flex h-10 w-10 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-white/95 text-pulse-navy shadow-lg ring-2 ring-white/50"
                   aria-label="Capture photo"
                 >
                   <Camera className="h-4 w-4" strokeWidth={2} />
@@ -241,7 +240,7 @@ function RuggedTabletFrame({ children }: { children: ReactNode }) {
 export function EquipmentSetupTabletSection() {
   return (
     <SectionWrapper id="equipment-setup" className="scroll-mt-24 bg-gradient-to-b from-white/80 via-pulse-bg to-slate-100/60">
-      <div className="grid items-center gap-10 lg:grid-cols-12 lg:gap-8 xl:gap-10">
+      <div className="grid items-center gap-8 md:gap-10 lg:grid-cols-12 lg:gap-8 xl:gap-10">
         <div className="mx-auto max-w-xl text-center lg:col-span-5 lg:mx-0 lg:max-w-none lg:text-left">
           <p className="text-xs font-semibold uppercase tracking-wider text-pulse-muted">Equipment setup</p>
           <h2 className="mt-2 text-3xl font-bold tracking-tight text-pulse-navy md:text-4xl">

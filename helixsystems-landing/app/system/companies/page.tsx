@@ -11,13 +11,17 @@ type CompanyRow = {
   is_active: boolean;
 };
 
+type ModalMode = "invite" | "password";
+
 export default function SystemCompaniesPage() {
   const [rows, setRows] = useState<CompanyRow[]>([]);
   const [catalog, setCatalog] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
-  const [modal, setModal] = useState(false);
+  const [modal, setModal] = useState<ModalMode | null>(null);
   const [companyName, setCompanyName] = useState("");
   const [adminEmail, setAdminEmail] = useState("");
+  const [adminPassword, setAdminPassword] = useState("");
+  const [adminFullName, setAdminFullName] = useState("");
   const [selectedFeat, setSelectedFeat] = useState<Record<string, boolean>>({});
   const catalogKey = useMemo(() => catalog.join(","), [catalog]);
   useEffect(() => {
@@ -29,6 +33,12 @@ export default function SystemCompaniesPage() {
     });
   }, [catalogKey, catalog]);
   const [invitePath, setInvitePath] = useState<string | null>(null);
+  const [bootstrapOk, setBootstrapOk] = useState<{ companyId: string; adminEmail: string } | null>(null);
+  const [bootstrapFail, setBootstrapFail] = useState<{
+    message: string;
+    status?: number;
+    requestUrl?: string;
+  } | null>(null);
   const [q, setQ] = useState("");
 
   const load = useCallback(async () => {
@@ -48,6 +58,15 @@ export default function SystemCompaniesPage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  const openModal = (mode: ModalMode) => {
+    setInvitePath(null);
+    setBootstrapOk(null);
+    setBootstrapFail(null);
+    setAdminPassword("");
+    setAdminFullName("");
+    setModal(mode);
+  };
 
   const toggleCompanyFeature = async (companyId: string, current: string[], feature: string, on: boolean) => {
     const next = on ? Array.from(new Set([...current, feature])) : current.filter((x) => x !== feature);
@@ -71,12 +90,15 @@ export default function SystemCompaniesPage() {
     void load();
   };
 
+  const featurePayload = () =>
+    Object.entries(selectedFeat)
+      .filter(([, v]) => v)
+      .map(([k]) => k);
+
   const submitCreateInvite = async (e: React.FormEvent) => {
     e.preventDefault();
     setInvitePath(null);
-    const enabled_features = Object.entries(selectedFeat)
-      .filter(([, v]) => v)
-      .map(([k]) => k);
+    const enabled_features = featurePayload();
     const res = await apiFetch<{ company_id: string; invite_link_path: string }>(
       "/api/system/companies/create-and-invite",
       {
@@ -89,10 +111,66 @@ export default function SystemCompaniesPage() {
       },
     );
     setInvitePath(res.invite_link_path);
-    setModal(false);
+    setModal(null);
     setCompanyName("");
     setAdminEmail("");
     void load();
+  };
+
+  const submitBootstrapPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBootstrapFail(null);
+    const enabled_features = featurePayload();
+    try {
+      const res = await apiFetch<{ company_id: string; company_admin_id: string }>(
+        "/api/system/companies/bootstrap-legacy",
+        {
+          method: "POST",
+          json: {
+            company_name: companyName,
+            admin_email: adminEmail,
+            admin_password: adminPassword,
+            admin_full_name: adminFullName.trim() || null,
+            enabled_features,
+          },
+        },
+      );
+      setBootstrapOk({ companyId: res.company_id, adminEmail });
+      setBootstrapFail(null);
+      setModal(null);
+      setCompanyName("");
+      setAdminEmail("");
+      setAdminPassword("");
+      setAdminFullName("");
+      void load();
+    } catch (err: unknown) {
+      let msg = "Request failed";
+      let status: number | undefined;
+      let requestUrl: string | undefined;
+      if (err && typeof err === "object") {
+        if ("status" in err && typeof (err as { status: unknown }).status === "number") {
+          status = (err as { status: number }).status;
+        }
+        if (
+          "requestUrl" in err &&
+          typeof (err as { requestUrl: unknown }).requestUrl === "string"
+        ) {
+          requestUrl = (err as { requestUrl: string }).requestUrl;
+        }
+        if ("body" in err) {
+          const body = (err as { body?: { detail?: unknown } }).body;
+          const d = body?.detail;
+          if (typeof d === "string") msg = d;
+          else if (Array.isArray(d) && d[0] && typeof d[0] === "object" && "msg" in d[0]) {
+            msg = String((d[0] as { msg: unknown }).msg);
+          }
+        }
+      }
+      if (err instanceof Error && msg === "Request failed") {
+        msg = err.message;
+      }
+      setBootstrapFail({ message: msg, status, requestUrl });
+    }
   };
 
   return (
@@ -102,16 +180,22 @@ export default function SystemCompaniesPage() {
           <h1 className="text-xl font-semibold text-white">Companies</h1>
           <p className="mt-1 text-sm text-zinc-500">Create tenants, features, and invites.</p>
         </div>
-        <button
-          type="button"
-          onClick={() => {
-            setInvitePath(null);
-            setModal(true);
-          }}
-          className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500"
-        >
-          Create company + invite
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => openModal("password")}
+            className="rounded-lg border border-amber-700/80 bg-amber-950/50 px-4 py-2 text-sm font-semibold text-amber-100 hover:bg-amber-900/40"
+          >
+            Quick create (password, no email)
+          </button>
+          <button
+            type="button"
+            onClick={() => openModal("invite")}
+            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500"
+          >
+            Create company + invite
+          </button>
+        </div>
       </div>
 
       <div className="flex gap-2">
@@ -134,6 +218,48 @@ export default function SystemCompaniesPage() {
         <div className="rounded-lg border border-blue-800 bg-blue-950/40 px-4 py-3 text-sm text-blue-200">
           <p className="font-medium">Invite link path (append to your app origin):</p>
           <code className="mt-2 block break-all text-xs text-blue-100">{invitePath}</code>
+        </div>
+      ) : null}
+
+      {bootstrapOk ? (
+        <div className="rounded-lg border border-emerald-800 bg-emerald-950/40 px-4 py-3 text-sm text-emerald-100">
+          <p className="font-medium">Company created without email.</p>
+          <p className="mt-1 text-emerald-200/90">
+            Log in as <strong className="text-white">{bootstrapOk.adminEmail}</strong> using the password you set. Company
+            id: <code className="text-xs text-emerald-200">{bootstrapOk.companyId}</code>
+          </p>
+        </div>
+      ) : null}
+
+      {bootstrapFail ? (
+        <div className="rounded-lg border border-red-900 bg-red-950/40 px-4 py-3 text-sm text-red-200">
+          <p className="font-medium text-red-100">{bootstrapFail.message}</p>
+          {bootstrapFail.status === 403 ? (
+            <p className="mt-2 text-xs text-red-300/90">
+              Set <code className="text-red-100">ALLOW_PASSWORD_COMPANY_BOOTSTRAP=true</code> on the API host and redeploy.
+            </p>
+          ) : null}
+          {bootstrapFail.status === 404 ? (
+            <div className="mt-2 space-y-1.5 text-xs text-red-300/90">
+              <p>
+                A 404 here is usually <strong className="text-red-200">not</strong> your Vercel env format: the app calls{" "}
+                <code className="text-red-100">/api/system/...</code> on your Render host. The service at that URL is missing
+                those routes (wrong service name, old deploy, or Render root/start command not running this API).
+              </p>
+              {bootstrapFail.requestUrl ? (
+                <p className="break-all">
+                  Request was: <code className="text-[11px] text-red-100">{bootstrapFail.requestUrl}</code>
+                </p>
+              ) : null}
+              <p>
+                On Render: redeploy from the branch that has system admin routes, set <strong>Root Directory</strong> to{" "}
+                <code className="text-red-100">backend</code>, run{" "}
+                <code className="text-red-100">uvicorn app.main:app --host 0.0.0.0 --port $PORT</code>. A working server
+                should return <strong>401</strong> (not 404) for{" "}
+                <code className="text-red-100">GET /api/system/overview</code> without a token.
+              </p>
+            </div>
+          ) : null}
         </div>
       ) : null}
 
@@ -218,7 +344,7 @@ export default function SystemCompaniesPage() {
         </div>
       )}
 
-      {modal ? (
+      {modal === "invite" ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
           <div className="w-full max-w-md rounded-xl border border-zinc-700 bg-zinc-900 p-6 shadow-xl">
             <h2 className="text-lg font-semibold text-white">Create company + invite</h2>
@@ -260,13 +386,117 @@ export default function SystemCompaniesPage() {
               <div className="flex justify-end gap-2 pt-2">
                 <button
                   type="button"
-                  onClick={() => setModal(false)}
+                  onClick={() => setModal(null)}
                   className="rounded-lg border border-zinc-600 px-4 py-2 text-sm text-zinc-300"
                 >
                   Cancel
                 </button>
                 <button type="submit" className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white">
                   Create &amp; generate invite
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      ) : null}
+
+      {modal === "password" ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+          <div className="w-full max-w-md rounded-xl border border-amber-900/60 bg-zinc-900 p-6 shadow-xl">
+            <h2 className="text-lg font-semibold text-amber-50">Quick create (no email)</h2>
+            <p className="mt-1 text-xs text-amber-200/70">
+              Creates the company and a company admin you can log in with immediately. Requires{" "}
+              <code className="text-amber-100">ALLOW_PASSWORD_COMPANY_BOOTSTRAP=true</code> on the API.
+            </p>
+            {bootstrapFail ? (
+              <div className="mt-4 rounded-lg border border-red-800 bg-red-950/70 px-3 py-2 text-sm text-red-100">
+                <p className="font-medium">{bootstrapFail.message}</p>
+                {bootstrapFail.status === 403 ? (
+                  <p className="mt-1.5 text-xs text-red-200/90">
+                    Set <code className="text-red-100">ALLOW_PASSWORD_COMPANY_BOOTSTRAP=true</code> on the API and redeploy.
+                  </p>
+                ) : null}
+                {bootstrapFail.status === 404 ? (
+                  <div className="mt-1.5 space-y-1 text-xs text-red-200/90">
+                    <p>Render is not serving <code className="text-red-100">/api/system/*</code> (wrong deploy or start command).</p>
+                    {bootstrapFail.requestUrl ? (
+                      <p className="break-all text-[11px]">
+                        URL: <code className="text-red-100">{bootstrapFail.requestUrl}</code>
+                      </p>
+                    ) : null}
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+            <form className="mt-4 space-y-4" onSubmit={(e) => void submitBootstrapPassword(e)}>
+              <div>
+                <label className="text-xs font-medium uppercase text-zinc-500">Company name</label>
+                <input
+                  required
+                  value={companyName}
+                  onChange={(e) => setCompanyName(e.target.value)}
+                  className="mt-1 w-full rounded-lg border border-zinc-600 bg-zinc-950 px-3 py-2 text-sm text-white"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium uppercase text-zinc-500">Admin email (login)</label>
+                <input
+                  required
+                  type="email"
+                  value={adminEmail}
+                  onChange={(e) => setAdminEmail(e.target.value)}
+                  placeholder="you@example.com"
+                  className="mt-1 w-full rounded-lg border border-zinc-600 bg-zinc-950 px-3 py-2 text-sm text-white placeholder:text-zinc-600"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium uppercase text-zinc-500">Admin full name (optional)</label>
+                <input
+                  value={adminFullName}
+                  onChange={(e) => setAdminFullName(e.target.value)}
+                  className="mt-1 w-full rounded-lg border border-zinc-600 bg-zinc-950 px-3 py-2 text-sm text-white"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium uppercase text-zinc-500">Password (min 8 characters)</label>
+                <input
+                  required
+                  type="password"
+                  minLength={8}
+                  autoComplete="new-password"
+                  value={adminPassword}
+                  onChange={(e) => setAdminPassword(e.target.value)}
+                  className="mt-1 w-full rounded-lg border border-zinc-600 bg-zinc-950 px-3 py-2 text-sm text-white"
+                />
+              </div>
+              <div>
+                <p className="text-xs font-medium uppercase text-zinc-500">Initial features</p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {catalog.map((f) => (
+                    <label key={f} className="flex items-center gap-1 text-xs text-zinc-400">
+                      <input
+                        type="checkbox"
+                        checked={selectedFeat[f] ?? false}
+                        onChange={(e) => setSelectedFeat((s) => ({ ...s, [f]: e.target.checked }))}
+                      />
+                      {f}
+                    </label>
+                  ))}
+                </div>
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setModal(null)}
+                  className="rounded-lg border border-zinc-600 px-4 py-2 text-sm text-zinc-300"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-500"
+                >
+                  Create company &amp; admin
                 </button>
               </div>
             </form>

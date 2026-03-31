@@ -1,36 +1,74 @@
+import Link from "next/link";
+import { Activity, LineChart, ShieldCheck } from "lucide-react";
+
 export function PulsePageIntro() {
   return (
-    <section className="border-b border-pulse-border bg-white px-6 py-12 md:py-14">
-      <div className="mx-auto max-w-7xl">
-        <p className="text-xs font-bold uppercase tracking-[0.2em] text-pulse-accent">
-          Helix Systems Product
-        </p>
-        <h1 className="mt-3 font-headline text-3xl font-extrabold tracking-tight text-pulse-navy md:text-4xl lg:text-5xl">
-          Pulse
-        </h1>
-        <p className="mt-4 max-w-3xl text-lg leading-relaxed text-pulse-muted md:text-xl">
-          Work, tools, schedules, and alerts share one backbone—scoped by company and role so people only touch what
-          belongs to them.
-        </p>
+    <section className="grid w-full grid-cols-1 overflow-hidden border-b border-slate-800/50 md:h-[min(85vh,56rem)] md:min-h-[36rem] md:grid-cols-2">
+      {/* LEFT — IMAGE: fills half the hero; crop/zoom to worker on the left of Header.jpg (spills clipped). */}
+      <div className="relative min-h-[38vh] w-full overflow-hidden bg-[#0f172a] md:min-h-0">
+        <img
+          src="/images/Header.jpg"
+          alt="Industrial worker using a tablet on the operations floor"
+          className="absolute left-0 top-0 h-full w-[138%] max-w-none object-cover object-[14%_44%] sm:object-[16%_42%] md:w-[125%] md:object-[18%_center]"
+        />
+        <div className="pointer-events-none absolute inset-0 bg-slate-900/25" aria-hidden />
+      </div>
 
-        <div className="mt-10 border-t border-pulse-border pt-10">
-          <h2 className="text-sm font-bold uppercase tracking-wider text-pulse-navy">Core features</h2>
-          <ul className="mt-4 grid max-w-3xl gap-3 text-base leading-relaxed text-pulse-muted sm:grid-cols-2 lg:grid-cols-3">
-            <li className="rounded-lg border border-pulse-border bg-slate-50/80 px-4 py-3">
-              <span className="font-semibold text-pulse-navy">Multi-company support</span>
-              <span className="mt-1 block text-sm">
-                Run separate companies in one install—data stays partitioned by tenant.
+      {/* RIGHT — PANEL */}
+      <div className="relative flex w-full items-center bg-[#1e2d44]">
+        <div className="relative z-10 w-full px-6 py-12 sm:px-10 sm:py-14 md:py-10 lg:px-14 lg:py-16">
+          <span className="inline-flex rounded-full border border-blue-800/80 bg-blue-950/90 px-3 py-1 text-[10px] font-bold tracking-wide text-sky-400 sm:text-[11px]">
+            New release
+          </span>
+
+          <h1 className="font-headline mt-5 text-4xl font-bold tracking-tight text-white sm:mt-6 sm:text-5xl md:text-6xl lg:text-[3.5rem] lg:leading-[1.05]">
+            Pulse
+          </h1>
+
+          <p className="mt-3 text-xl font-medium text-sky-50 sm:mt-4 sm:text-2xl md:text-[1.65rem] md:leading-snug">
+            Your all-in-one operations hub.
+          </p>
+
+          <p className="mt-4 max-w-lg text-base leading-relaxed text-slate-300 sm:mt-5 sm:text-lg md:text-xl md:leading-relaxed">
+            Manage maintenance, inventory, scheduling, and teams—without the friction between the field and the office.
+            Built for the modern workforce.
+          </p>
+
+          <ul className="mt-8 space-y-4 sm:mt-10">
+            <li className="flex items-center gap-3">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-900 text-white shadow-inner ring-1 ring-blue-700/60">
+                <Activity className="h-[18px] w-[18px]" strokeWidth={2} aria-hidden />
               </span>
+              <span className="text-sm font-medium text-white sm:text-base">Real-time Telemetry</span>
             </li>
-            <li className="rounded-lg border border-pulse-border bg-slate-50/80 px-4 py-3">
-              <span className="font-semibold text-pulse-navy">Role-based access</span>
-              <span className="mt-1 block text-sm">Admin, manager, and worker roles—each with the right reach.</span>
+            <li className="flex items-center gap-3">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-900 text-white shadow-inner ring-1 ring-blue-700/60">
+                <LineChart className="h-[18px] w-[18px]" strokeWidth={2} aria-hidden />
+              </span>
+              <span className="text-sm font-medium text-white sm:text-base">Predictive Analytics</span>
             </li>
-            <li className="rounded-lg border border-pulse-border bg-slate-50/80 px-4 py-3 sm:col-span-2 lg:col-span-1">
-              <span className="font-semibold text-pulse-navy">Secure sign-in &amp; invites</span>
-              <span className="mt-1 block text-sm">Password login plus invite-only onboarding—no open self-serve signup.</span>
+            <li className="flex items-center gap-3">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-900 text-white shadow-inner ring-1 ring-blue-700/60">
+                <ShieldCheck className="h-[18px] w-[18px]" strokeWidth={2} aria-hidden />
+              </span>
+              <span className="text-sm font-medium text-white sm:text-base">Advanced Security Protocols</span>
             </li>
           </ul>
+
+          <div className="mt-9 flex flex-col gap-3 sm:mt-10 sm:flex-row sm:flex-wrap sm:items-center">
+            <Link
+              href="/login"
+              className="inline-flex items-center justify-center rounded-xl bg-pulse-accent px-6 py-3 text-center text-sm font-semibold text-white shadow-md shadow-blue-900/25 transition-colors hover:bg-pulse-accent-hover"
+            >
+              Buy Now
+            </Link>
+            <Link
+              href="#overview"
+              className="inline-flex items-center justify-center rounded-xl border border-slate-400/50 bg-[#152338]/80 px-6 py-3 text-center text-sm font-semibold text-white backdrop-blur-sm transition-colors hover:border-slate-300/60 hover:bg-[#1a2d45]/90"
+            >
+              Request Demo
+            </Link>
+          </div>
         </div>
       </div>
     </section>

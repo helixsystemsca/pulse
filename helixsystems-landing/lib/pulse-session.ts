@@ -3,6 +3,8 @@
  * and NEXT_PUBLIC_USE_MOCK_AUTH is not "true".
  */
 
+import { normalizeApiBaseUrl } from "@/lib/api-base-url";
+
 export const PULSE_AUTH_STORAGE_KEY = "pulse_auth_v1";
 
 export type PulseAuthSession = {
@@ -184,7 +186,7 @@ export async function loginWithBackend(
 ): Promise<
   { ok: true; token: string; user: UserOut } | { ok: false; reason: "invalid_credentials" | "api_config" }
 > {
-  const base = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ?? "";
+  const base = normalizeApiBaseUrl(process.env.NEXT_PUBLIC_API_URL);
   if (!base) {
     return { ok: false, reason: "api_config" };
   }

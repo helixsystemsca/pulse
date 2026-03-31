@@ -37,7 +37,7 @@ function PhoneChrome() {
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex min-w-0 items-center gap-1.5">
                       <MapPin className="h-3.5 w-3.5 shrink-0 text-sky-200" aria-hidden />
-                      <span className="truncate text-sm font-medium text-white drop-shadow-sm">Headquarters</span>
+                      <span className="truncate text-sm font-medium text-white drop-shadow-sm">Panorama</span>
                     </div>
                     <button
                       type="button"
@@ -51,25 +51,19 @@ function PhoneChrome() {
                   <div className="mt-3 flex items-start justify-between gap-4">
                     <div className="min-w-0 flex-1 pt-0.5">
                       <p className="text-base font-semibold leading-tight tracking-tight text-white drop-shadow-md">
-                        Hi, Liz!
+                        Hi, Deb!
                       </p>
                     </div>
                     <div className="flex shrink-0 flex-col items-center gap-1.5">
-                      <div className="relative flex h-10 w-10 items-center justify-center rounded-full bg-white/20 text-xs font-bold text-white shadow-md ring-2 ring-white/90 backdrop-blur-sm">
-                        LG
-                        <span
-                          className="pointer-events-none absolute -right-0.5 -top-0.5 z-10 flex h-[18px] w-[18px] items-center justify-center rounded-full bg-pulse-accent text-[9px] font-bold leading-none text-white shadow-sm ring-2 ring-white"
-                          aria-hidden
-                        >
-                          M
-                        </span>
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/20 text-xs font-bold text-white shadow-md ring-2 ring-white/90 backdrop-blur-sm">
+                        DH
                       </div>
                       <div className="flex flex-col items-center gap-0.5 text-center">
                         <p className="flex items-center gap-1 text-[10px] font-semibold leading-none text-white drop-shadow-sm">
                           <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-400 shadow-sm" aria-hidden />
                           On-site
                         </p>
-                        <p className="text-[10px] font-medium leading-none text-white/80">Zone 1</p>
+                        <p className="text-[10px] font-medium leading-none text-white/80">Garage</p>
                       </div>
                     </div>
                   </div>
@@ -78,24 +72,6 @@ function PhoneChrome() {
 
               <div className="relative z-10 min-h-0 flex-1 overflow-y-auto overflow-x-hidden bg-white/40 backdrop-blur-md backdrop-saturate-150">
                 <div className="flex flex-col gap-4 p-4 pb-3">
-                  <div className="rounded-xl border border-indigo-200/70 bg-gradient-to-br from-sky-50 via-blue-50/95 to-indigo-100/40 p-5 shadow-md shadow-indigo-900/10 ring-1 ring-indigo-100/80">
-                    <p className="text-xs font-semibold leading-snug text-pulse-navy">
-                      Tools you have are commonly associated with Carpentry.
-                    </p>
-                    <p className="mt-2 text-xs leading-snug text-pulse-muted">
-                      Are you working on: <span className="font-bold text-indigo-950">WR#1953</span>
-                    </p>
-                    <button
-                      type="button"
-                      className="mt-4 flex h-10 w-full items-center justify-center rounded-xl bg-pulse-accent text-sm font-semibold text-white shadow-md shadow-blue-600/20 transition-colors active:bg-pulse-accent-hover"
-                    >
-                      Confirm
-                    </button>
-                    <p className="mt-2.5 text-center text-[11px] font-medium tabular-nums leading-snug text-indigo-900/80">
-                      Current time on task: 1h 32m
-                    </p>
-                  </div>
-
                   <section className="flex flex-col gap-2">
                     <div className="flex items-center justify-between gap-2">
                       <h3 className="text-sm font-semibold text-pulse-navy">Current Toolbox</h3>
@@ -159,6 +135,24 @@ function PhoneChrome() {
                       </li>
                     </ul>
                   </section>
+
+                  <div className="rounded-xl border border-indigo-200/70 bg-gradient-to-br from-sky-50 via-blue-50/95 to-indigo-100/40 p-5 shadow-md shadow-indigo-900/10 ring-1 ring-indigo-100/80">
+                    <p className="text-xs font-semibold leading-snug text-pulse-navy">
+                      Tools you have are commonly associated with Carpentry.
+                    </p>
+                    <p className="mt-2 text-xs leading-snug text-pulse-muted">
+                      Are you working on: <span className="font-bold text-indigo-950">WR#1953</span>
+                    </p>
+                    <button
+                      type="button"
+                      className="mt-4 flex h-10 w-full items-center justify-center rounded-xl bg-pulse-accent text-sm font-semibold text-white shadow-md shadow-blue-600/20 transition-colors active:bg-pulse-accent-hover"
+                    >
+                      Confirm
+                    </button>
+                    <p className="mt-2.5 text-center text-[11px] font-medium tabular-nums leading-snug text-indigo-900/80">
+                      Current time on task: 1h 32m
+                    </p>
+                  </div>
                 </div>
               </div>
 
@@ -211,7 +205,7 @@ function PhoneChrome() {
 export function MobileFeatureSection() {
   return (
     <SectionWrapper id="worker-app" className="scroll-mt-24 bg-white/60">
-      <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-14">
+      <div className="grid items-center gap-8 md:gap-10 lg:grid-cols-2 lg:gap-14">
         <div className="flex justify-center lg:justify-start">
           <PhoneChrome />
         </div>

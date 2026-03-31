@@ -1,7 +1,7 @@
 export function Hero() {
   return (
     <div id="overview" className="scroll-mt-28">
-      <div className="mx-auto max-w-3xl px-6 pb-20 pt-12 text-center md:pb-24 md:pt-16">
+      <div className="mx-auto max-w-3xl px-5 pb-16 pt-14 text-center sm:px-6 md:pb-24 md:pt-16">
         <h1 className="text-4xl font-bold leading-[1.1] tracking-tight text-pulse-navy md:text-5xl lg:text-[3.15rem]">
           Know what&apos;s happening across your operation.
         </h1>

@@ -5,7 +5,7 @@ import { SectionWrapper } from "./SectionWrapper";
 export function InventoryAlertsSection() {
   return (
     <SectionWrapper className="bg-pulse-bg">
-      <div className="grid items-start gap-12 lg:grid-cols-2 lg:gap-14">
+      <div className="grid items-start gap-8 md:gap-10 lg:grid-cols-2 lg:gap-14">
         <div>
           <h2 className="text-3xl font-bold leading-tight tracking-tight text-pulse-navy md:text-4xl lg:text-[2.35rem]">
             Catch problems early.

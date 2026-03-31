@@ -15,8 +15,8 @@ export function SectionWrapper({
   innerClassName = "",
 }: SectionWrapperProps) {
   return (
-    <section id={id} className={`py-20 md:py-24 ${className}`}>
-      <div className={`mx-auto max-w-7xl px-6 ${innerClassName}`}>{children}</div>
+    <section id={id} className={`py-16 md:py-24 ${className}`}>
+      <div className={`mx-auto max-w-7xl px-5 sm:px-6 ${innerClassName}`}>{children}</div>
     </section>
   );
 }

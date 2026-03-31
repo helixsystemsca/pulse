@@ -25,7 +25,7 @@ function DonutChart() {
 export function MaintenanceSection() {
   return (
     <SectionWrapper className="bg-white/70">
-      <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-14">
+      <div className="grid items-center gap-8 md:gap-10 lg:grid-cols-2 lg:gap-14">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.15em] text-pulse-accent">Maintenance</p>
           <h2 className="mt-3 text-3xl font-bold leading-tight tracking-tight text-pulse-navy md:text-4xl lg:text-[2.35rem]">

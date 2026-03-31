@@ -34,6 +34,15 @@ class Settings(BaseSettings):
     pulse_uploads_dir: str = "var/uploads"
     system_invite_expire_hours: int = 48
     system_password_reset_expire_hours: int = 24
+    #: Lets system_admin call POST /api/system/companies/bootstrap-legacy (company + admin with password, no email).
+    #: Keep false in production unless you intentionally accept that trade-off.
+    allow_password_company_bootstrap: bool = Field(
+        default=False,
+        validation_alias=AliasChoices(
+            "ALLOW_PASSWORD_COMPANY_BOOTSTRAP",
+            "allow_password_company_bootstrap",
+        ),
+    )
 
     @property
     def cors_origin_list(self) -> List[str]:
@@ -45,6 +54,8 @@ class Settings(BaseSettings):
             o = part.strip()
             if len(o) >= 2 and o[0] == o[-1] and o[0] in "\"'":
                 o = o[1:-1].strip()
+            # Origins must match the browser's Origin header (no path, no trailing slash).
+            o = o.rstrip("/")
             if not o:
                 continue
             if o not in seen:

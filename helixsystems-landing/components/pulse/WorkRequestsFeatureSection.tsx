@@ -11,10 +11,11 @@ import {
   Wrench,
 } from "lucide-react";
 import { FeatureItem } from "./FeatureItem";
+import { SectionWrapper } from "./SectionWrapper";
 
 function CmmsDesktopChrome() {
   return (
-    <div className="relative mx-auto w-full max-w-[1100px]">
+    <div className="relative mx-auto w-full max-w-[1100px] lg:mx-0">
       <div className="rounded-2xl bg-gradient-to-b from-slate-500 via-slate-700 to-slate-900 p-[3px] shadow-2xl shadow-slate-900/35 ring-1 ring-white/12">
         <div className="relative flex min-h-[min(28rem,55vw)] overflow-hidden rounded-[1.05rem] bg-slate-100 md:min-h-[26rem] lg:min-h-[28.5rem] xl:min-h-[31rem]">
           <div
@@ -197,30 +198,28 @@ function CmmsDesktopChrome() {
 
 export function WorkRequestsFeatureSection() {
   return (
-    <section id="work-requests" className="scroll-mt-24 bg-white/60 py-20 md:py-24">
-      <div className="mx-auto w-full max-w-[min(100%,88rem)] px-4 sm:px-5 lg:px-6">
-        <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-12 lg:gap-5 xl:gap-6">
-          <div className="order-2 max-w-xl lg:order-1 lg:col-span-4 lg:max-w-none xl:col-span-3 xl:pr-2">
-            <p className="text-xs font-semibold uppercase tracking-wider text-pulse-muted">Work requests</p>
-            <h2 className="mt-2 text-3xl font-bold tracking-tight text-pulse-navy md:text-4xl">
-              Manage work from start to finish.
-            </h2>
-            <p className="mt-4 text-base leading-relaxed text-pulse-muted md:text-lg">
-              Create, assign, and track work without losing visibility.
-            </p>
-            <ul className="mt-8 space-y-5">
-              <FeatureItem title="Create and assign work requests" />
-              <FeatureItem title="Track status (open, in progress, complete)" />
-              <FeatureItem title="Prioritize critical work" description="Keep urgent jobs at the top so nothing critical sits in the queue." />
-              <FeatureItem title="See what is delayed or unassigned" description="Spot stuck tickets before they become downtime or customer issues." />
-            </ul>
-          </div>
+    <SectionWrapper id="work-requests" className="scroll-mt-24 bg-white/60">
+      <div className="grid items-start gap-8 md:gap-10 lg:grid-cols-12 lg:gap-8 xl:gap-10">
+        <div className="order-2 mx-auto max-w-xl text-center lg:order-1 lg:col-span-5 lg:mx-0 lg:max-w-none lg:text-left">
+          <p className="text-xs font-semibold uppercase tracking-wider text-pulse-muted">Work requests</p>
+          <h2 className="mt-2 text-3xl font-bold tracking-tight text-pulse-navy md:text-4xl">
+            Manage work from start to finish.
+          </h2>
+          <p className="mt-4 text-base leading-relaxed text-pulse-muted md:text-lg">
+            Create, assign, and track work without losing visibility.
+          </p>
+          <ul className="mt-8 space-y-5 text-left">
+            <FeatureItem title="Create and assign work requests" />
+            <FeatureItem title="Track status (open, in progress, complete)" />
+            <FeatureItem title="Prioritize critical work" description="Keep urgent jobs at the top so nothing critical sits in the queue." />
+            <FeatureItem title="See what is delayed or unassigned" description="Spot stuck tickets before they become downtime or customer issues." />
+          </ul>
+        </div>
 
-          <div className="order-1 min-w-0 lg:order-2 lg:col-span-8 xl:col-span-9">
-            <CmmsDesktopChrome />
-          </div>
+        <div className="order-1 flex min-w-0 justify-center lg:order-2 lg:col-span-7 lg:justify-end">
+          <CmmsDesktopChrome />
         </div>
       </div>
-    </section>
+    </SectionWrapper>
   );
 }

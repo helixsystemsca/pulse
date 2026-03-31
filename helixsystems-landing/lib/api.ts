@@ -1,8 +1,8 @@
+import { normalizeApiBaseUrl } from "@/lib/api-base-url";
 import { readSession, writeApiSession, type UserOut } from "@/lib/pulse-session";
 
 export function getApiBaseUrl(): string {
-  const raw = process.env.NEXT_PUBLIC_API_URL?.trim() ?? "";
-  return raw.replace(/\/$/, "");
+  return normalizeApiBaseUrl(process.env.NEXT_PUBLIC_API_URL);
 }
 
 export function isApiMode(): boolean {
@@ -48,9 +48,10 @@ export async function apiFetch<T>(
     }
   }
   if (!res.ok) {
-    const err = new Error(`API ${res.status}`) as Error & { status: number; body: unknown };
+    const err = new Error(`API ${res.status}`) as Error & { status: number; body: unknown; requestUrl: string };
     err.status = res.status;
     err.body = data;
+    err.requestUrl = url;
     throw err;
   }
   return data as T;

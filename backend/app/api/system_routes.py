@@ -42,7 +42,8 @@ from app.schemas.system_admin import (
     SystemUserRow,
 )
 
-router = APIRouter(prefix="/system", tags=["system"])
+# Mounted in main.py at prefix `/api/system` — do not add another `/system` here or routes become `/api/system/system/...`.
+router = APIRouter(tags=["system"])
 settings = get_settings()
 
 
@@ -160,6 +161,11 @@ async def bootstrap_company_with_password_admin(
     system: Annotated[User, Depends(require_system_admin)],
 ) -> dict[str, str]:
     """Create company and first company_admin with password (no email invite)."""
+    if not settings.allow_password_company_bootstrap:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Password company bootstrap is disabled. Set ALLOW_PASSWORD_COMPANY_BOOTSTRAP=true on the API.",
+        )
     exists = await db.execute(select(User).where(User.email == body.admin_email))
     if exists.scalar_one_or_none():
         raise HTTPException(status_code=400, detail="Email already in use")

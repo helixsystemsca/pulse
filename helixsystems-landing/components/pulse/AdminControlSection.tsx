@@ -7,7 +7,6 @@ import {
   Radio,
   Shield,
 } from "lucide-react";
-import { PulseDashboardLink } from "./PulseDashboardLink";
 import { SectionWrapper } from "./SectionWrapper";
 
 type ActiveRosterRole = "worker" | "lead" | "supervisor";
@@ -60,17 +59,30 @@ function DashboardMock() {
 
   return (
     <div className="overflow-hidden rounded-2xl border border-pulse-border bg-white shadow-lg ring-1 ring-slate-900/[0.05]">
-      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-pulse-border bg-slate-50/80 px-6 py-4">
-        <span className="text-xl font-bold tracking-tight text-pulse-navy md:text-2xl">
-          PULSE
+      <header className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 border-b border-pulse-border bg-slate-50/80 px-4 py-4 sm:px-6">
+        <span className="min-w-0 text-base font-bold leading-tight tracking-tight text-pulse-navy sm:text-lg md:text-xl lg:text-2xl">
+          Panorama Dashboard
         </span>
-        <div className="flex items-center gap-3">
-          <p className="text-sm text-pulse-muted">
+        <div className="flex justify-center">
+          <img
+            src="/images/panologo.png"
+            alt="Panorama"
+            className="h-7 w-auto max-w-[min(100%,11rem)] object-contain object-center md:h-8"
+          />
+        </div>
+        <div className="flex min-w-0 items-center justify-end gap-2 sm:gap-3">
+          <p className="min-w-0 truncate text-xs text-pulse-muted sm:text-sm">
             Welcome,{" "}
-            <span className="font-semibold text-pulse-navy">Marcus Reid</span>
+            <span className="font-semibold text-pulse-navy">Liz Gregg</span>
           </p>
-          <span className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 text-xs font-bold text-pulse-accent ring-2 ring-white">
-            MR
+          <span className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-100 text-xs font-bold text-pulse-accent ring-2 ring-white">
+            LG
+            <span
+              className="pointer-events-none absolute -right-0.5 -top-0.5 z-10 flex h-[18px] w-[18px] items-center justify-center rounded-full bg-pulse-accent text-[9px] font-bold leading-none text-white shadow-sm ring-2 ring-white"
+              aria-hidden
+            >
+              M
+            </span>
           </span>
         </div>
       </header>
@@ -419,15 +431,6 @@ function DashboardMock() {
       <footer className="border-t border-pulse-border bg-slate-50/60 px-6 py-3 text-center text-xs font-medium text-pulse-muted">
         Powered by Helix Systems
       </footer>
-
-      <div className="border-t border-pulse-border bg-white p-6">
-        <div className="flex justify-center">
-          <PulseDashboardLink className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-6 py-3 text-sm font-semibold text-white shadow-lg no-underline transition-transform hover:scale-[1.02] hover:bg-slate-800">
-            <LayoutDashboard className="h-4 w-4" />
-            Launch Admin Panel
-          </PulseDashboardLink>
-        </div>
-      </div>
     </div>
   );
 }
@@ -444,13 +447,13 @@ export function AdminControlSection() {
         </p>
       </div>
 
-      <div className="relative mx-auto mt-12 max-w-5xl md:mt-14">
+      <div className="relative mx-auto mt-10 max-w-5xl md:mt-14">
         <DashboardMock />
       </div>
 
       <div
         id="features"
-        className="mx-auto mt-16 grid max-w-5xl scroll-mt-24 gap-10 md:mt-20 md:grid-cols-3 md:gap-12"
+        className="mx-auto mt-12 grid max-w-5xl scroll-mt-24 gap-8 md:mt-16 md:grid-cols-3 md:gap-12"
       >
         <div className="text-center md:text-left">
           <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-pulse-accent md:mx-0">

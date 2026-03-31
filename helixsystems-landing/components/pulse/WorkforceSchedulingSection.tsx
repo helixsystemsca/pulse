@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from "react";
 import { FeatureItem } from "./FeatureItem";
+import { SectionWrapper } from "./SectionWrapper";
 
 type ShiftCode = "D" | "A" | "N" | "TR" | "VAC";
 
@@ -238,6 +239,7 @@ function shiftAccentBorder(code: ShiftCode): string {
 
 function zoneShort(zone: string): string {
   const z = zone.trim().toLowerCase();
+  if (z === "gg" || z === "pano") return zone.trim();
   if (z.includes("garage")) return "GAR";
   if (z.includes("zone 1") && z.includes("zone 3")) return "Z1+3";
   if (z.includes("zone 1")) return "Z1";
@@ -246,132 +248,103 @@ function zoneShort(zone: string): string {
   return zone.length > 6 ? `${zone.slice(0, 5)}…` : zone;
 }
 
+/** Demo roster for first 3 days: D×(2 workers + supervisor), A×(2 workers + lead), N×(3 workers + lead). One day worker on GG; rest Pano. */
+function demoThreeShiftBundle(): ShiftBlock[] {
+  return [
+    {
+      code: "D",
+      short: "Elena R.",
+      fullName: "Elena Rivera",
+      workerId: "elena",
+      role: "Worker",
+      zone: "GG",
+      time: "06:00–14:00",
+    },
+    {
+      code: "D",
+      short: "James M.",
+      fullName: "James Morrison",
+      workerId: "james",
+      role: "Worker",
+      ticketed: true,
+      zone: "Pano",
+      time: "06:00–14:00",
+    },
+    {
+      code: "D",
+      short: "Marcus J.",
+      fullName: "Marcus Jameson",
+      workerId: "marcus",
+      role: "Supervisor",
+      roleTag: "S",
+      zone: "Pano",
+      time: "06:00–14:00",
+    },
+    {
+      code: "A",
+      short: "Chen W.",
+      fullName: "Chen Wei",
+      workerId: "chen",
+      role: "Worker",
+      zone: "Pano",
+      time: "14:00–22:00",
+    },
+    {
+      code: "A",
+      short: "Tariq K.",
+      fullName: "Tariq Khan",
+      workerId: "tariq",
+      role: "Worker",
+      zone: "Pano",
+      time: "14:00–22:00",
+    },
+    {
+      code: "A",
+      short: "Sarah W.",
+      fullName: "Sarah Williams",
+      workerId: "sarah",
+      role: "Lead",
+      roleTag: "L",
+      zone: "Pano",
+      time: "14:00–22:00",
+    },
+    {
+      code: "N",
+      short: "Robert K.",
+      fullName: "Robert Kim",
+      workerId: "robert",
+      role: "Worker",
+      zone: "Pano",
+      time: "22:00–06:00",
+    },
+    { code: "N", short: "Priya N.", fullName: "Priya Nair", role: "Worker", zone: "Pano", time: "22:00–06:00" },
+    { code: "N", short: "Aisha T.", fullName: "Aisha Thomas", role: "Worker", zone: "Pano", time: "22:00–06:00" },
+    {
+      code: "N",
+      short: "Diego F.",
+      fullName: "Diego Fernandez",
+      role: "Lead",
+      roleTag: "L",
+      zone: "Pano",
+      time: "22:00–06:00",
+    },
+  ];
+}
+
 /** Static September 2024 grid: Sep 1 = Sunday */
 const SEPTEMBER_2024: DayMeta[] = enrichCalendarMeta((() => {
   const days: DayMeta[] = [];
   const push = (d: DayMeta) => days.push(d);
   // Leading: none (Sep 1 is Sunday)
   for (let day = 1; day <= 30; day += 1) {
-    const isToday = day === 7;
-    if (day === 1) {
+    if (day <= 3) {
       push({
-        day: 1,
+        day,
         inMonth: true,
-        shifts: [
-          {
-            code: "D",
-            short: "Marcus J.",
-            fullName: "Marcus Jameson",
-            role: "Lead",
-            roleTag: "L",
-            ticketed: true,
-            zone: "Zone 1",
-            time: "06:00–14:00",
-            notes: "Opening checklist signed.",
-          },
-          {
-            code: "D",
-            short: "Elena R.",
-            fullName: "Elena Rivera",
-            role: "Worker",
-            zone: "Zone 1",
-            time: "06:00–14:00",
-          },
-          {
-            code: "D",
-            short: "James M.",
-            fullName: "James Morrison",
-            role: "Worker",
-            ticketed: true,
-            zone: "Zone 3",
-            time: "06:00–14:00",
-          },
-          {
-            code: "A",
-            short: "Tariq K.",
-            fullName: "Tariq Khan",
-            role: "Worker",
-            zone: "Garage",
-            time: "14:00–22:00",
-          },
-          {
-            code: "A",
-            short: "Sarah W.",
-            fullName: "Sarah Williams",
-            role: "Supervisor",
-            roleTag: "S",
-            zone: "Zone 3",
-            time: "14:00–22:00",
-          },
-          {
-            code: "N",
-            short: "Robert K.",
-            fullName: "Robert Kim",
-            role: "Worker",
-            zone: "Garage",
-            time: "22:00–06:00",
-          },
-        ],
+        isToday: day === 2,
+        shifts: demoThreeShiftBundle(),
         staffing: "full",
         staffingDetail: "Fully staffed",
-        pendingRequests: 1,
-      });
-    } else if (day === 2) {
-      push({
-        day: 2,
-        inMonth: true,
-        shifts: [
-          {
-            code: "D",
-            short: "Elena R.",
-            fullName: "Elena Rivera",
-            role: "Supervisor",
-            roleTag: "S",
-            ticketed: true,
-            zone: "Zone 3",
-            time: "06:00–14:00",
-          },
-          {
-            code: "N",
-            short: "James M.",
-            fullName: "James Morrison",
-            role: "Worker",
-            ticketed: true,
-            zone: "Zone 1",
-            time: "22:00–06:00",
-            needSupervisor: true,
-          },
-        ],
-        staffing: "no_supervisor",
-        staffingDetail: "Night: no supervisor",
-      });
-    } else if (day === 3) {
-      push({
-        day: 3,
-        inMonth: true,
-        shifts: [
-          {
-            code: "A",
-            short: "Sarah W.",
-            fullName: "Sarah Williams",
-            role: "Lead",
-            roleTag: "L",
-            zone: "Zone 3",
-            time: "14:00–22:00",
-          },
-          {
-            code: "N",
-            short: "Robert K.",
-            fullName: "Robert Kim",
-            role: "Worker",
-            zone: "Garage",
-            time: "22:00–06:00",
-            needTicketed: true,
-          },
-        ],
-        staffing: "understaffed",
-        staffingDetail: "1 worker missing",
-        pendingRequests: 2,
       });
     } else if (day === 4) {
       push({
@@ -430,7 +403,6 @@ const SEPTEMBER_2024: DayMeta[] = enrichCalendarMeta((() => {
       push({
         day: 7,
         inMonth: true,
-        isToday: true,
         shifts: [
           {
             code: "D",
@@ -555,42 +527,46 @@ const SEPTEMBER_2024: DayMeta[] = enrichCalendarMeta((() => {
   return days;
 })());
 
+/** Sun–Tue with full demo shifts (days 1–3). */
+const SCHEDULE_VIEW_DAYS = SEPTEMBER_2024.filter((m) => m.inMonth && m.day >= 1 && m.day <= 3).sort(
+  (a, b) => a.day - b.day,
+);
+const SCHEDULE_VIEW_WEEKDAYS = WEEKDAYS.slice(0, 3);
+
 function ScheduleLegend() {
   return (
-    <div className="space-y-2 rounded-lg border border-slate-200 bg-white px-2.5 py-2 sm:px-3">
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] leading-tight text-pulse-navy">
-        <span className="font-bold uppercase tracking-wide text-pulse-muted">Legend</span>
+    <div className="flex h-full min-h-0 flex-col gap-1 rounded-md border border-slate-200 bg-white px-1 py-1.5 md:px-1.5 md:py-2">
+      <p className="text-center text-[7px] font-bold uppercase tracking-wide text-pulse-muted md:text-[8px]">
+        Key
+      </p>
+      <ul className="flex flex-col gap-1 text-[7px] leading-tight text-pulse-navy md:text-[8px]">
         {[
           { label: "Day", bar: "bg-emerald-500" },
           { label: "Aft", bar: "bg-amber-500" },
           { label: "Night", bar: "bg-violet-500" },
         ].map((x) => (
-          <span key={x.label} className="inline-flex items-center gap-1">
-            <span className={`h-2 w-2 shrink-0 rounded-full ${x.bar}`} aria-hidden />
-            {x.label}
-          </span>
+          <li key={x.label} className="flex items-center gap-1">
+            <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${x.bar}`} aria-hidden />
+            <span className="font-semibold">{x.label}</span>
+          </li>
         ))}
-        <span className="inline-flex items-center gap-0.5 text-pulse-muted">
-          <BookOpen className="h-3 w-3" strokeWidth={2} aria-hidden />
+        <li className="flex items-center gap-0.5 text-pulse-muted">
+          <BookOpen className="h-2 w-2 shrink-0" strokeWidth={2} aria-hidden />
           Train
-        </span>
-        <span className="inline-flex items-center gap-0.5 text-pulse-muted">
-          <Palmtree className="h-3 w-3" strokeWidth={2} aria-hidden />
+        </li>
+        <li className="flex items-center gap-0.5 text-pulse-muted">
+          <Palmtree className="h-2 w-2 shrink-0" strokeWidth={2} aria-hidden />
           PTO
-        </span>
-        <span className="text-pulse-border">·</span>
-        <span className="inline-flex items-center gap-1 text-pulse-muted">
-          <User className="h-3 w-3" strokeWidth={2} aria-hidden />
-          <span className="font-mono font-bold text-pulse-navy">L</span> Lead{" "}
-          <span className="font-mono font-bold text-pulse-navy">S</span> Sup
-        </span>
-        <span className="text-pulse-border">·</span>
-        <span className="text-emerald-700">✔ ticketed</span>
-        <span className="text-pulse-border">·</span>
-        <span className="tabular-nums text-pulse-muted">Z1 / Z3 / GAR</span>
-        <span className="text-pulse-border">·</span>
-        <span className="text-amber-800/90">Tint = incomplete day</span>
-      </div>
+        </li>
+        <li className="border-t border-slate-100 pt-1 text-pulse-muted">
+          <User className="mb-0.5 inline h-2 w-2" strokeWidth={2} aria-hidden />{" "}
+          <span className="font-mono font-bold text-pulse-navy">L</span>{" "}
+          <span className="font-mono font-bold text-pulse-navy">S</span>
+        </li>
+        <li className="text-emerald-700">✔ tick</li>
+        <li className="text-[6px] text-pulse-muted md:text-[7px]">GG / Pano</li>
+        <li className="text-[6px] text-amber-800/90 md:text-[7px]">Tint = incomplete</li>
+      </ul>
     </div>
   );
 }
@@ -660,56 +636,64 @@ function ShiftTag({
         }
       }}
       tabIndex={0}
-      className={`flex w-full min-w-0 cursor-pointer items-center gap-0 border-l-2 bg-slate-50 py-px pl-1 pr-0.5 text-[10px] leading-snug text-pulse-navy antialiased outline-none ring-pulse-accent/30 focus-visible:ring-1 sm:text-[11px] ${accent} ${
+      className={`flex w-full min-w-0 cursor-pointer flex-col gap-0.5 border-l-2 bg-slate-50 py-0.5 pl-1 pr-0.5 text-pulse-navy antialiased outline-none ring-pulse-accent/30 focus-visible:ring-1 ${accent} ${
         active ? "bg-sky-50" : ""
       } ${s.schedulingConflict ? "ring-1 ring-amber-200/90 ring-inset" : ""}`}
     >
-      <span className="shrink-0 tabular-nums font-semibold text-slate-700">{s.code}</span>
-      <span className="mx-0.5 shrink-0 text-slate-300">|</span>
-      <span className="min-w-0 flex-1 truncate font-medium">{s.short}</span>
-      <span className="mx-0.5 shrink-0 text-slate-300">|</span>
-      <span className="shrink-0 tabular-nums font-semibold text-slate-600">{z}</span>
-      {tailStr ? (
-        <span className="ml-1 shrink-0 whitespace-nowrap text-slate-700">{tailStr}</span>
-      ) : null}
-      {s.needSupervisor ? (
-        <span className="ml-0.5 shrink-0 font-bold leading-none text-red-600" title="No supervisor coverage">
-          !
+      <div className="flex items-start justify-between gap-1 leading-none">
+        <span className="shrink-0 text-[8px] font-bold tabular-nums text-slate-800">{s.code}</span>
+        <span className="max-w-[3.75rem] truncate text-right text-[7px] font-semibold capitalize text-slate-500">
+          {s.role}
         </span>
-      ) : null}
-      {s.needTicketed ? (
-        <span className="ml-0.5 shrink-0 font-bold leading-none text-amber-600" title="Ticketed worker required">
-          ⚠
-        </span>
-      ) : null}
+      </div>
+      <p className="text-[7.5px] font-semibold leading-snug tracking-tight text-pulse-navy [word-break:break-word] sm:text-[8px]">
+        {s.fullName}
+      </p>
+      <div className="flex min-w-0 flex-wrap items-center gap-x-1 text-[7px] leading-tight text-slate-600">
+        <span className="min-w-0 shrink tabular-nums">{s.time}</span>
+        <span className="shrink-0 text-slate-300">·</span>
+        <span className="shrink-0 font-bold text-slate-700">{z}</span>
+        {tailStr ? <span className="shrink-0 font-semibold text-slate-700">{tailStr}</span> : null}
+        {s.needSupervisor ? (
+          <span className="shrink-0 font-bold leading-none text-red-600" title="No supervisor coverage">
+            !
+          </span>
+        ) : null}
+        {s.needTicketed ? (
+          <span className="shrink-0 font-bold leading-none text-amber-600" title="Ticketed worker required">
+            ⚠
+          </span>
+        ) : null}
+      </div>
     </div>
   );
 }
 
 function ScheduleCompletionBanner({ onFinish }: { onFinish: () => void }) {
   return (
-    <div className="mb-2 flex flex-wrap items-center gap-2 rounded-lg border border-amber-200/90 bg-amber-50/90 px-2.5 py-2 text-[11px] text-amber-950 shadow-sm">
-      <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600" strokeWidth={2} aria-hidden />
+    <div className="mb-1.5 flex flex-wrap items-center gap-1.5 rounded-md border border-amber-200/90 bg-amber-50/90 px-2 py-1 text-[9px] text-amber-950 shadow-sm sm:text-[10px]">
+      <AlertTriangle className="h-3 w-3 shrink-0 text-amber-600" strokeWidth={2} aria-hidden />
       <div className="min-w-0 flex-1 leading-snug">
-        <p className="font-bold text-amber-950">Next month schedule incomplete · {NEXT_MONTH_SCHEDULE.label}</p>
+        <p className="font-bold text-amber-950">
+          Next month incomplete · {NEXT_MONTH_SCHEDULE.label}
+        </p>
         <p className="text-amber-900/85">
-          <span className="font-semibold tabular-nums">{NEXT_MONTH_SCHEDULE.unscheduledDays} days</span> remaining
-          unscheduled
+          <span className="font-semibold tabular-nums">{NEXT_MONTH_SCHEDULE.unscheduledDays}d</span> open
           {NEXT_MONTH_SCHEDULE.daysMissingSupervisor > 0 ? (
             <>
               {" "}
-              · <span className="font-semibold">{NEXT_MONTH_SCHEDULE.daysMissingSupervisor}</span> need supervisor
+              · <span className="font-semibold">{NEXT_MONTH_SCHEDULE.daysMissingSupervisor}</span> no sup.
             </>
           ) : null}
         </p>
-        <p className="mt-0.5 text-[10px] text-amber-800/80">{NEXT_MONTH_SCHEDULE.detail}</p>
+        <p className="mt-0.5 text-[8px] text-amber-800/80">{NEXT_MONTH_SCHEDULE.detail}</p>
       </div>
       <button
         type="button"
         onClick={onFinish}
-        className="shrink-0 rounded-md border border-amber-300 bg-white px-2.5 py-1.5 text-[10px] font-bold text-amber-950 shadow-sm hover:bg-amber-100/80"
+        className="shrink-0 rounded border border-amber-300 bg-white px-2 py-0.5 text-[8px] font-bold text-amber-950 shadow-sm hover:bg-amber-100/80 sm:text-[9px]"
       >
-        Finish schedule
+        Finish
       </button>
     </div>
   );
@@ -1141,9 +1125,9 @@ function SchedulingCalendarMock() {
       : "";
 
   return (
-    <div className="relative mx-auto w-full max-w-[1100px]">
+    <div className="relative w-full">
       <div className="rounded-xl border border-slate-300/90 bg-slate-200/80 p-px shadow-md shadow-slate-900/10">
-        <div className="relative flex min-h-[min(28rem,52vw)] flex-col overflow-hidden rounded-[11px] bg-slate-50 md:min-h-[26rem]">
+        <div className="relative flex min-h-[33.5rem] flex-col overflow-hidden rounded-[11px] bg-slate-50 sm:min-h-[36rem] md:min-h-[35rem]">
           <header className="relative z-10 flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 bg-white px-2.5 py-2 sm:px-3 md:px-4">
             <div className="flex min-w-0 items-center gap-2">
               <span className="flex h-7 w-7 items-center justify-center rounded-md bg-pulse-accent text-white">
@@ -1199,9 +1183,9 @@ function SchedulingCalendarMock() {
             ))}
           </nav>
 
-          <div className="relative z-10 flex min-h-0 flex-1 flex-col gap-2 overflow-auto p-2 sm:p-3 md:flex-row md:gap-3">
+          <div className="relative z-10 flex min-h-0 flex-1 flex-col gap-2 overflow-auto p-2 sm:p-3 md:flex-row md:gap-2">
             {navTab === "calendar" ? (
-              <div className="min-w-0 shrink-0 md:w-[min(100%,260px)]">
+              <div className="w-12 shrink-0 self-stretch sm:w-14 md:w-[4.5rem]">
                 <ScheduleLegend />
               </div>
             ) : null}
@@ -1211,60 +1195,62 @@ function SchedulingCalendarMock() {
                 <PersonnelPanel selectedId={selectedPersonId} onSelect={setSelectedPersonId} />
               ) : (
                 <>
-              <ScheduleCompletionBanner onFinish={scrollToFirstIncomplete} />
-              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-2">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h4 className="text-base font-bold tracking-tight text-pulse-navy sm:text-lg">{MONTH_LABEL}</h4>
-                    <span className="rounded bg-slate-100 px-1.5 py-px text-[9px] font-bold uppercase text-slate-600">
-                      Month
-                    </span>
-                  </div>
-                  <p className="text-[10px] text-pulse-muted">
-                    Click a day to edit · click a worker for profile · hover shift for detail
-                  </p>
-                </div>
-                <div className="flex items-center gap-0.5">
-                  <button
-                    type="button"
-                    className="rounded border border-slate-200 bg-white p-1 text-pulse-navy"
-                    aria-label="Previous month"
-                  >
-                    <ChevronLeft className="h-3.5 w-3.5" strokeWidth={2} />
-                  </button>
-                  <button
-                    type="button"
-                    className="rounded border border-slate-200 bg-white px-2 py-1 text-[10px] font-bold text-pulse-navy"
-                  >
-                    Today
-                  </button>
-                  <button
-                    type="button"
-                    className="rounded border border-slate-200 bg-white p-1 text-pulse-navy"
-                    aria-label="Next month"
-                  >
-                    <ChevronRight className="h-3.5 w-3.5" strokeWidth={2} />
-                  </button>
-                </div>
-              </div>
+              <div className="relative min-h-[26.5rem] overflow-hidden rounded-md sm:min-h-[28rem] md:min-h-[30rem]">
+                <div className="relative">
+                    <ScheduleCompletionBanner onFinish={scrollToFirstIncomplete} />
+                    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-2">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h4 className="text-sm font-bold tracking-tight text-pulse-navy sm:text-base">{MONTH_LABEL}</h4>
+                          <span className="rounded bg-slate-100 px-1 py-px text-[8px] font-bold uppercase text-slate-600">
+                            3 days
+                          </span>
+                        </div>
+                        <p className="text-[9px] text-pulse-muted">
+                          Sun–Tue · click a day · click worker for profile · hover shift for detail
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-0.5">
+                        <button
+                          type="button"
+                          className="rounded border border-slate-200 bg-white p-1 text-pulse-navy"
+                          aria-label="Previous month"
+                        >
+                          <ChevronLeft className="h-3.5 w-3.5" strokeWidth={2} />
+                        </button>
+                        <button
+                          type="button"
+                          className="rounded border border-slate-200 bg-white px-2 py-1 text-[10px] font-bold text-pulse-navy"
+                        >
+                          Today
+                        </button>
+                        <button
+                          type="button"
+                          className="rounded border border-slate-200 bg-white p-1 text-pulse-navy"
+                          aria-label="Next month"
+                        >
+                          <ChevronRight className="h-3.5 w-3.5" strokeWidth={2} />
+                        </button>
+                      </div>
+                    </div>
 
-              <div className="mt-2 grid grid-cols-7 gap-px border-b border-slate-100 pb-1">
-                {WEEKDAYS.map((d) => (
-                  <div key={d} className="text-center text-[9px] font-bold uppercase tracking-wide text-pulse-muted">
-                    {d}
-                  </div>
-                ))}
-              </div>
+                    <div className="mt-2 grid grid-cols-3 gap-px border-b border-slate-100 pb-1">
+                      {SCHEDULE_VIEW_WEEKDAYS.map((d) => (
+                        <div key={d} className="text-center text-[8px] font-bold uppercase tracking-wide text-pulse-muted">
+                          {d}
+                        </div>
+                      ))}
+                    </div>
 
-              <div className="mt-1 grid grid-cols-7 gap-1 sm:gap-1.5">
-                {SEPTEMBER_2024.map((meta, idx) => {
+                    <div className="mt-1 grid grid-cols-3 gap-1.5 sm:gap-2">
+                      {SCHEDULE_VIEW_DAYS.map((meta, idx) => {
                   const muted = !meta.inMonth;
                   const today = meta.isToday;
                   return (
                     <div
                       key={`${meta.inMonth ? "m" : "n"}-${meta.day}-${idx}`}
                       id={meta.inMonth ? `ws-day-${meta.day}` : undefined}
-                      className={`relative flex min-h-[5.5rem] flex-col rounded-md border px-1 pb-1 pt-4 sm:min-h-[6rem] md:min-h-[6.25rem] ${
+                      className={`relative flex min-h-[7.25rem] flex-col rounded-md border px-1.5 pb-1.5 pt-3.5 sm:min-h-[8rem] md:min-h-[8.5rem] ${
                         muted
                           ? "border-transparent bg-slate-50/60 text-slate-400"
                           : "border-slate-200 bg-white"
@@ -1290,27 +1276,27 @@ function SchedulingCalendarMock() {
                       }
                     >
                       <span
-                        className={`absolute left-1 top-0.5 text-[10px] font-bold tabular-nums leading-none ${
+                        className={`absolute left-1 top-0.5 text-[9px] font-bold tabular-nums leading-none ${
                           muted ? "text-slate-300" : "text-pulse-navy"
                         }`}
                       >
                         {meta.day}
                       </span>
                       {today ? (
-                        <span className="absolute right-0.5 top-0.5 rounded px-1 py-px text-[7px] font-bold uppercase leading-none text-pulse-accent ring-1 ring-pulse-accent/40">
+                        <span className="absolute right-0.5 top-0.5 rounded px-0.5 py-px text-[6px] font-bold uppercase leading-none text-pulse-accent ring-1 ring-pulse-accent/40">
                           Now
                         </span>
                       ) : null}
                       {meta.inMonth ? (
                         <span
-                          className="pointer-events-none absolute right-0.5 top-4 flex h-4 w-4 items-center justify-center rounded border border-slate-200 bg-white text-pulse-navy"
+                          className="pointer-events-none absolute right-0.5 top-3.5 flex h-3.5 w-3.5 items-center justify-center rounded border border-slate-200 bg-white text-pulse-navy"
                           aria-hidden
                         >
-                          <Plus className="h-2.5 w-2.5" strokeWidth={2.5} />
+                          <Plus className="h-2 w-2" strokeWidth={2.5} />
                         </span>
                       ) : null}
 
-                      <div className="mt-0.5 flex min-h-[0.875rem] items-center gap-1 text-[9px] leading-none text-pulse-muted">
+                      <div className="mt-0.5 flex min-h-[0.75rem] items-center gap-0.5 text-[8px] leading-none text-pulse-muted">
                         <StaffingGlyph meta={meta} />
                         {meta.pendingRequests ? (
                           <span className="tabular-nums text-slate-500" title="Pending requests">
@@ -1320,25 +1306,25 @@ function SchedulingCalendarMock() {
                       </div>
 
                       {meta.leaveIcons?.includes("vacation") ? (
-                        <span className="mt-0.5 inline-flex items-center gap-0.5 truncate text-[9px] font-medium text-slate-500">
-                          <Palmtree className="h-2.5 w-2.5 shrink-0" strokeWidth={2} aria-hidden />
+                        <span className="mt-0.5 inline-flex items-center gap-0.5 truncate text-[8px] font-medium text-slate-500">
+                          <Palmtree className="h-2 w-2 shrink-0" strokeWidth={2} aria-hidden />
                           PTO
                         </span>
                       ) : null}
                       {meta.leaveIcons?.includes("training") ? (
-                        <span className="mt-0.5 inline-flex items-center gap-0.5 truncate text-[9px] font-medium text-sky-800">
-                          <BookOpen className="h-2.5 w-2.5 shrink-0" strokeWidth={2} aria-hidden />
+                        <span className="mt-0.5 inline-flex items-center gap-0.5 truncate text-[8px] font-medium text-sky-800">
+                          <BookOpen className="h-2 w-2 shrink-0" strokeWidth={2} aria-hidden />
                           Train
                         </span>
                       ) : null}
                       {meta.availabilityNote ? (
-                        <span className="mt-0.5 inline-flex items-center gap-0.5 truncate text-[9px] text-amber-800">
-                          <Ban className="h-2.5 w-2.5 shrink-0" strokeWidth={2} aria-hidden />
+                        <span className="mt-0.5 inline-flex items-center gap-0.5 truncate text-[8px] text-amber-800">
+                          <Ban className="h-2 w-2 shrink-0" strokeWidth={2} aria-hidden />
                           {meta.availabilityNote}
                         </span>
                       ) : null}
 
-                      <div className="mt-0.5 flex min-h-0 flex-1 flex-col gap-1">
+                      <div className="mt-0.5 flex min-h-0 flex-1 flex-col gap-0.5">
                         {meta.shifts.map((s, si) => (
                           <ShiftTag
                             key={`${meta.day}-${si}-${s.short}`}
@@ -1401,6 +1387,12 @@ function SchedulingCalendarMock() {
                     </div>
                   </div>
                 ))}
+                    </div>
+                </div>
+                <div
+                  className="pointer-events-none absolute inset-0 rounded-md shadow-[inset_0_0_12px_rgba(255,255,255,0.18)] ring-1 ring-inset ring-slate-200/35"
+                  aria-hidden
+                />
               </div>
 
               <QuickEditPanel
@@ -1438,30 +1430,28 @@ function SchedulingCalendarMock() {
 
 export function WorkforceSchedulingSection() {
   return (
-    <section id="workforce-scheduling" className="scroll-mt-24 bg-pulse-bg/80 py-20 md:py-24">
-      <div className="mx-auto w-full max-w-[min(100%,88rem)] px-4 sm:px-5 lg:px-6">
-        <div className="grid grid-cols-1 items-center gap-8 lg:grid-cols-12 lg:gap-6 xl:gap-8">
-          <div className="order-2 max-w-xl lg:order-1 lg:col-span-4 lg:max-w-none xl:col-span-3 xl:pr-2">
-            <p className="text-xs font-semibold uppercase tracking-wider text-pulse-muted">Workforce</p>
-            <h2 className="mt-2 text-3xl font-bold tracking-tight text-pulse-navy md:text-4xl">
-              Keep your crew organized.
-            </h2>
-            <p className="mt-4 text-base leading-relaxed text-pulse-muted md:text-lg">
-              Plan shifts and assignments without confusion or overlap.
-            </p>
-            <ul className="mt-8 space-y-5">
-              <FeatureItem title="Schedule workers by shift or zone" />
-              <FeatureItem title="Adjust assignments quickly" description="Update who works where when plans change mid-week." />
-              <FeatureItem title="See coverage gaps" description="Spot understaffed windows before the line starts." />
-              <FeatureItem title="Track workload across teams" description="Balance hours and skills without a wall of sticky notes." />
-            </ul>
-          </div>
+    <SectionWrapper id="workforce-scheduling" className="scroll-mt-24 bg-pulse-bg/80">
+      <div className="grid items-center gap-8 md:gap-10 lg:grid-cols-[minmax(0,3.5fr)_minmax(0,8.5fr)] lg:gap-8 xl:gap-10">
+        <div className="order-2 mx-auto max-w-xl text-center lg:order-1 lg:mx-0 lg:max-w-none lg:text-left">
+          <p className="text-xs font-semibold uppercase tracking-wider text-pulse-muted">Workforce</p>
+          <h2 className="mt-2 text-3xl font-bold tracking-tight text-pulse-navy md:text-4xl">
+            Keep your crew organized.
+          </h2>
+          <p className="mt-4 text-base leading-relaxed text-pulse-muted md:text-lg">
+            Plan shifts and assignments without confusion or overlap.
+          </p>
+          <ul className="mt-8 space-y-5 text-left">
+            <FeatureItem title="Schedule workers by shift or zone" />
+            <FeatureItem title="Adjust assignments quickly" description="Update who works where when plans change mid-week." />
+            <FeatureItem title="See coverage gaps" description="Spot understaffed windows before the line starts." />
+            <FeatureItem title="Track workload across teams" description="Balance hours and skills without a wall of sticky notes." />
+          </ul>
+        </div>
 
-          <div className="order-1 min-w-0 lg:order-2 lg:col-span-8 xl:col-span-9">
-            <SchedulingCalendarMock />
-          </div>
+        <div className="order-1 flex min-w-0 justify-center lg:order-2 lg:justify-end">
+          <SchedulingCalendarMock />
         </div>
       </div>
-    </section>
+    </SectionWrapper>
   );
 }
