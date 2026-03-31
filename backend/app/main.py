@@ -7,6 +7,7 @@ Layers:
 - `app/api`: public HTTP surface (admin, auth, realtime)
 """
 
+import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -32,6 +33,15 @@ from app.modules.pulse.router import router as pulse_router
 from app.modules.registry import register_modules
 
 settings = get_settings()
+
+_cors_origins = settings.cors_origin_list
+_cors_log = logging.getLogger(__name__)
+_cors_log.info("CORS allow_origins (%d): %s", len(_cors_origins), _cors_origins)
+if not _cors_origins:
+    _cors_log.warning(
+        "CORS_ORIGINS resolved to an empty list — cross-origin browser requests will fail. "
+        "Set CORS_ORIGINS to a comma-separated list (e.g. https://helixsystems.ca,https://www.helixsystems.ca).",
+    )
 
 
 @asynccontextmanager
@@ -63,7 +73,7 @@ app.add_middleware(
 app.add_middleware(FeatureGateMiddleware)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origin_list,
+    allow_origins=_cors_origins,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type", "Accept", "X-Requested-With"],
