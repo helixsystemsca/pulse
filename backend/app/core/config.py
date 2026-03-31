@@ -1,7 +1,7 @@
 """Application configuration (env-driven)."""
 
 from functools import lru_cache
-from typing import List, Set
+from typing import List, Optional, Set
 
 from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -19,9 +19,17 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 60
     algorithm: str = "HS256"
     # Comma-separated origins, no paths. Env: CORS_ORIGINS (preferred) or CORS_ORIGIN.
+    # Production: include every site the browser uses (https://www.example.com and https://example.com
+    # are different Origins). See also cors_origin_regex.
     cors_origins: str = Field(
         default="http://localhost:3000",
         validation_alias=AliasChoices("CORS_ORIGINS", "CORS_ORIGIN", "cors_origins"),
+    )
+    #: Optional regex (full match on Origin header), e.g. ^https://(www\\.)?helixsystems\\.ca$
+    #: Use when you serve the same API to apex + www without duplicating both in CORS_ORIGINS.
+    cors_origin_regex: str = Field(
+        default="",
+        validation_alias=AliasChoices("CORS_ORIGIN_REGEX", "cors_origin_regex"),
     )
     inference_min_confidence: float = 0.45
     environment: str = "development"
@@ -62,6 +70,11 @@ class Settings(BaseSettings):
                 seen.add(o)
                 out.append(o)
         return out
+
+    @property
+    def cors_origin_regex_pattern(self) -> Optional[str]:
+        r = self.cors_origin_regex.strip()
+        return r if r else None
 
     @property
     def is_production(self) -> bool:

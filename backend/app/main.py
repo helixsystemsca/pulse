@@ -36,11 +36,17 @@ settings = get_settings()
 
 _cors_origins = settings.cors_origin_list
 _cors_log = logging.getLogger(__name__)
-_cors_log.info("CORS allow_origins (%d): %s", len(_cors_origins), _cors_origins)
-if not _cors_origins:
+_cors_log.info(
+    "CORS allow_origins (%d): %s; regex: %s",
+    len(_cors_origins),
+    _cors_origins,
+    settings.cors_origin_regex_pattern or "(none)",
+)
+if not _cors_origins and not settings.cors_origin_regex_pattern:
     _cors_log.warning(
-        "CORS_ORIGINS resolved to an empty list — cross-origin browser requests will fail. "
-        "Set CORS_ORIGINS to a comma-separated list (e.g. https://helixsystems.ca,https://www.helixsystems.ca).",
+        "CORS_ORIGINS is empty and CORS_ORIGIN_REGEX unset — cross-origin browser requests will fail. "
+        "Set CORS_ORIGINS=https://helixsystems.ca,https://www.helixsystems.ca (exact Origins, no trailing slash) "
+        "or CORS_ORIGIN_REGEX=^https://(www\\.)?helixsystems\\.ca$",
     )
 
 
@@ -74,6 +80,7 @@ app.add_middleware(FeatureGateMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_cors_origins,
+    allow_origin_regex=settings.cors_origin_regex_pattern,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type", "Accept", "X-Requested-With"],
