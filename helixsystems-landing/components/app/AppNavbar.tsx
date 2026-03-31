@@ -26,6 +26,7 @@ function navLinkActive(href: string, pathname: string): boolean {
     return pathname === path;
   }
   if (href === "/overview") return pathname === "/overview";
+  if (href === "/schedule") return pathname === "/schedule" || pathname.startsWith("/schedule/");
   if (href === "/system") return pathname === "/system";
   return pathname === href || pathname.startsWith(`${href}/`);
 }
@@ -71,7 +72,7 @@ export function AppNavbar() {
   }, [router]);
 
   return (
-    <header className="sticky top-0 z-50 h-16 shrink-0 border-b border-slate-200/90 bg-white/95 shadow-[0_1px_0_rgba(15,23,42,0.04)] backdrop-blur-md">
+    <header className="sticky top-0 z-50 h-16 shrink-0 border-b border-slate-200/80 bg-white shadow-[0_1px_3px_rgba(15,23,42,0.04)]">
       <nav
         className="mx-auto flex h-full max-w-7xl items-center justify-between gap-3 px-4 sm:gap-4 sm:px-6"
         aria-label="Main"
@@ -79,9 +80,9 @@ export function AppNavbar() {
         <div className="flex min-w-0 items-center gap-2 sm:gap-3">
           <Link
             href={logoHref}
-            className="flex items-center gap-2 font-headline text-lg font-bold tracking-tight text-pulse-navy no-underline hover:text-pulse-accent sm:text-xl"
+            className="flex items-center gap-2.5 font-headline text-lg font-bold tracking-tight text-pulse-navy no-underline hover:text-pulse-accent sm:text-xl"
           >
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-pulse-accent">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-200/80 bg-slate-50 text-pulse-accent shadow-sm">
               <Activity className="h-4 w-4" strokeWidth={2} aria-hidden />
             </span>
             <span>Pulse</span>
@@ -89,23 +90,25 @@ export function AppNavbar() {
         </div>
 
         {authed && centerLinks.length > 0 ? (
-          <div className="hidden flex-1 items-center justify-center gap-0.5 px-2 lg:flex">
-            {centerLinks.map((item) => {
-              const active = navLinkActive(item.href, pathname);
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`rounded-md px-3 py-2 text-sm font-medium transition-colors ${
-                    active
-                      ? "bg-slate-100 text-pulse-navy"
-                      : "text-pulse-muted hover:bg-slate-50 hover:text-pulse-navy"
-                  }`}
-                >
-                  {item.label}
-                </Link>
-              );
-            })}
+          <div className="hidden flex-1 justify-center px-2 lg:flex">
+            <div className="inline-flex max-w-full items-center gap-0.5 overflow-x-auto rounded-xl border border-slate-200/90 bg-slate-50 p-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]">
+              {centerLinks.map((item) => {
+                const active = navLinkActive(item.href, pathname);
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={`whitespace-nowrap rounded-lg px-3.5 py-2 text-sm font-semibold transition-colors ${
+                      active
+                        ? "bg-white text-pulse-navy shadow-sm ring-1 ring-slate-200/90"
+                        : "text-pulse-muted hover:bg-white/80 hover:text-pulse-navy"
+                    }`}
+                  >
+                    {item.label}
+                  </Link>
+                );
+              })}
+            </div>
           </div>
         ) : (
           <div className="hidden flex-1 lg:block" aria-hidden />
@@ -152,12 +155,12 @@ export function AppNavbar() {
                 <button
                   type="button"
                   onClick={() => setUserOpen((o) => !o)}
-                  className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white py-1 pl-1.5 pr-1.5 shadow-sm hover:bg-slate-50 sm:py-1.5 sm:pl-2 sm:pr-2.5"
+                  className="flex items-center gap-2 rounded-xl border border-slate-200/90 bg-white py-1 pl-1.5 pr-1.5 shadow-sm hover:bg-slate-50 sm:py-1.5 sm:pl-2 sm:pr-2.5"
                   aria-expanded={userOpen}
                   aria-haspopup="menu"
                 >
                   <span
-                    className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-pulse-navy"
+                    className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-pulse-navy ring-1 ring-slate-200/60"
                     title={session?.email}
                   >
                     {session ? initialsFrom(session.email, session.full_name) : "?"}
@@ -239,16 +242,21 @@ export function AppNavbar() {
               </button>
             </div>
             <div className="flex flex-col gap-0.5 p-2">
-              {centerLinks.map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className="rounded-lg px-3 py-2.5 text-sm font-medium text-pulse-navy hover:bg-slate-50"
-                  onClick={() => setMobileOpen(false)}
-                >
-                  {item.label}
-                </Link>
-              ))}
+              {centerLinks.map((item) => {
+                const active = navLinkActive(item.href, pathname);
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={`rounded-lg px-3 py-2.5 text-sm font-semibold ${
+                      active ? "bg-slate-100 text-pulse-navy" : "text-pulse-navy hover:bg-slate-50"
+                    }`}
+                    onClick={() => setMobileOpen(false)}
+                  >
+                    {item.label}
+                  </Link>
+                );
+              })}
             </div>
           </div>
         </div>

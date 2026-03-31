@@ -11,6 +11,7 @@ function origin(): string {
 export const pulseRoutes = {
   login: "/login",
   overview: "/overview",
+  schedule: "/schedule",
   /** Pulse product / marketing page (facility map, features, etc.). */
   pulseLanding: "/pulse",
 } as const;
@@ -18,9 +19,9 @@ export const pulseRoutes = {
 /** Tenant app — center nav when signed in (links into product areas). */
 export const pulseTenantNav = [
   { href: "/overview", label: "Overview" },
+  { href: "/schedule", label: "Schedule" },
   { href: "/pulse#work-requests", label: "Work orders" },
   { href: "/pulse#inventory", label: "Inventory" },
-  { href: "/pulse#workforce-scheduling", label: "Scheduling" },
 ] as const;
 
 /** System administration shell — center nav on `/system/*`. */
