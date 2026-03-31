@@ -25,8 +25,8 @@ function DonutChart() {
 export function MaintenanceSection() {
   return (
     <SectionWrapper className="bg-white/70" showMobileSeparator>
-      <div className="grid items-center gap-8 md:gap-10 lg:grid-cols-2 lg:gap-14">
-        <div>
+      <div className="space-y-8 md:space-y-10">
+        <div className="max-w-3xl">
           <p className="text-xs font-bold uppercase tracking-[0.15em] text-pulse-accent">Maintenance</p>
           <h2 className="mt-3 text-3xl font-bold leading-tight tracking-tight text-pulse-navy md:text-4xl lg:text-[2.35rem]">
             Stay ahead of equipment issues.
@@ -34,8 +34,10 @@ export function MaintenanceSection() {
           <p className="mt-6 max-w-xl text-lg leading-relaxed text-pulse-muted">
             Plan and track maintenance without relying on memory or spreadsheets.
           </p>
+        </div>
 
-          <div className="mt-8 grid gap-4 sm:grid-cols-2 sm:gap-4">
+        <div className="grid gap-8 lg:grid-cols-2 lg:items-stretch lg:gap-14">
+          <div className="grid gap-4 sm:grid-cols-2 sm:gap-4">
             <SmallFeatureCard
               icon={<Calendar className="h-5 w-5" />}
               title="Schedule preventative maintenance"
@@ -57,52 +59,56 @@ export function MaintenanceSection() {
               description="Catch wear-and-tear work while it is cheap—not after an emergency stop."
             />
           </div>
-        </div>
 
-        <div className="rounded-2xl border border-pulse-border bg-white p-6 shadow-lg md:p-8">
-          <div className="flex items-start justify-between border-b border-pulse-border pb-5">
-            <div>
-              <p className="text-sm font-semibold text-pulse-navy">Maintenance Hub</p>
-              <p className="text-xs text-pulse-muted">Work order pipeline</p>
-            </div>
-            <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
-              Live
-            </span>
-          </div>
-
-          <div className="grid gap-8 py-6 sm:grid-cols-2 sm:items-center sm:gap-8">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-pulse-muted">
-                Work Orders
-              </p>
-              <div className="mt-3 flex gap-8">
+          <div className="flex min-h-0 min-w-0">
+            <div className="flex h-full min-h-full w-full flex-col rounded-2xl border border-pulse-border bg-white p-6 shadow-lg md:p-8">
+              <div className="flex items-start justify-between border-b border-pulse-border pb-5">
                 <div>
-                  <p className="text-2xl font-bold text-pulse-navy">24</p>
-                  <p className="text-xs text-pulse-muted">Open</p>
+                  <p className="text-sm font-semibold text-pulse-navy">Maintenance Hub</p>
+                  <p className="text-xs text-pulse-muted">Work order pipeline</p>
                 </div>
-                <div>
-                  <p className="text-2xl font-bold text-pulse-accent">114</p>
-                  <p className="text-xs text-pulse-muted">Completed</p>
+                <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
+                  Live
+                </span>
+              </div>
+
+              <div className="flex flex-1 flex-col py-6">
+                <div className="grid flex-1 gap-8 sm:grid-cols-2 sm:items-center sm:gap-8">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-pulse-muted">
+                      Work Orders
+                    </p>
+                    <div className="mt-3 flex gap-8">
+                      <div>
+                        <p className="text-2xl font-bold text-pulse-navy">24</p>
+                        <p className="text-xs text-pulse-muted">Open</p>
+                      </div>
+                      <div>
+                        <p className="text-2xl font-bold text-pulse-accent">114</p>
+                        <p className="text-xs text-pulse-muted">Completed</p>
+                      </div>
+                    </div>
+                  </div>
+                  <DonutChart />
+                </div>
+
+                <div className="mt-auto border-t border-pulse-border pt-5">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-pulse-muted">
+                    Upcoming Schedule
+                  </p>
+                  <ul className="mt-3 space-y-2">
+                    <li className="flex items-center justify-between gap-3 rounded-xl bg-slate-50 px-4 py-3 text-sm">
+                      <span className="font-medium text-pulse-navy">Main Feed Pump Inspection</span>
+                      <span className="shrink-0 text-xs text-pulse-muted">Tue</span>
+                    </li>
+                    <li className="flex items-center justify-between gap-3 rounded-xl bg-slate-50 px-4 py-3 text-sm">
+                      <span className="font-medium text-pulse-navy">Precision Alignment · Line 2</span>
+                      <span className="shrink-0 text-xs text-pulse-muted">Thu</span>
+                    </li>
+                  </ul>
                 </div>
               </div>
             </div>
-            <DonutChart />
-          </div>
-
-          <div className="border-t border-pulse-border pt-5">
-            <p className="text-xs font-semibold uppercase tracking-wide text-pulse-muted">
-              Upcoming Schedule
-            </p>
-            <ul className="mt-3 space-y-2">
-              <li className="flex items-center justify-between gap-3 rounded-xl bg-slate-50 px-4 py-3 text-sm">
-                <span className="font-medium text-pulse-navy">Main Feed Pump Inspection</span>
-                <span className="shrink-0 text-xs text-pulse-muted">Tue</span>
-              </li>
-              <li className="flex items-center justify-between gap-3 rounded-xl bg-slate-50 px-4 py-3 text-sm">
-                <span className="font-medium text-pulse-navy">Precision Alignment · Line 2</span>
-                <span className="shrink-0 text-xs text-pulse-muted">Thu</span>
-              </li>
-            </ul>
           </div>
         </div>
       </div>
