@@ -204,20 +204,20 @@ function PhoneChrome() {
 
 export function MobileFeatureSection() {
   return (
-    <SectionWrapper id="worker-app" className="scroll-mt-24 bg-white/60">
+    <SectionWrapper id="worker-app" className="scroll-mt-24 bg-white/60" showMobileSeparator>
       <div className="grid items-center gap-8 md:gap-10 lg:grid-cols-2 lg:gap-14">
-        <div className="flex justify-center lg:justify-start">
+        <div className="order-2 flex justify-center lg:order-1 lg:justify-start">
           <PhoneChrome />
         </div>
 
-        <div className="mx-auto max-w-xl lg:mx-0">
+        <div className="order-1 mx-auto max-w-xl text-center lg:order-2 lg:mx-0 lg:text-left">
           <h2 className="text-3xl font-bold leading-tight tracking-tight text-pulse-navy md:text-4xl lg:text-[2.5rem]">
             Simple tools for the field.
           </h2>
           <p className="mt-6 text-lg leading-relaxed text-pulse-muted">
             Give your team what they need without slowing them down.
           </p>
-          <ul className="mt-8 space-y-6">
+          <ul className="mt-8 space-y-6 text-left">
             <FeatureItem title="Works offline when needed" description="Capture data in dead zones; sync resumes when coverage returns." />
             <FeatureItem title="View assigned work and tools" description="Open the app and see today&apos;s jobs and gear in one feed." />
             <FeatureItem title="Submit photos and confirmations" description="Attach proof and sign-offs without switching apps." />

@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { AppMain } from "./AppMain";
 import { AppNavbar } from "./AppNavbar";
 import { AppSideNav } from "./AppSideNav";
 
@@ -10,11 +11,11 @@ type AppLayoutProps = {
 
 export function AppLayout({ children, mainClassName = "" }: AppLayoutProps) {
   return (
-    <div className="flex min-h-screen bg-white">
+    <div className="relative min-h-screen bg-white">
       <AppSideNav />
-      <div className="flex min-h-screen min-w-0 flex-1 flex-col">
+      <div className="flex min-h-screen min-w-0 flex-col">
         <AppNavbar />
-        <main className={`min-h-0 flex-1 ${mainClassName}`.trim()}>{children}</main>
+        <AppMain className={mainClassName}>{children}</AppMain>
       </div>
     </div>
   );

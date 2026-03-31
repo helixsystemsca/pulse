@@ -4,7 +4,7 @@ import { SectionWrapper } from "./SectionWrapper";
 
 export function AdminControlSection() {
   return (
-    <SectionWrapper id="admin-panel" className="scroll-mt-24 bg-pulse-bg">
+    <SectionWrapper id="admin-panel" className="scroll-mt-24 bg-pulse-bg" showMobileSeparator>
       <div className="mx-auto max-w-3xl text-center md:max-w-4xl">
         <h2 className="text-3xl font-bold tracking-tight text-pulse-navy md:text-4xl">
           See everything in one place.
@@ -15,7 +15,9 @@ export function AdminControlSection() {
       </div>
 
       <div className="relative mx-auto mt-10 max-w-5xl md:mt-14">
-        <OperationalDashboard variant="demo" />
+        <div className="origin-top max-md:-mb-8 max-md:scale-[0.7] sm:max-md:scale-[0.8] md:mb-0 md:scale-100">
+          <OperationalDashboard variant="demo" />
+        </div>
       </div>
 
       <div

@@ -17,7 +17,7 @@ function CmmsDesktopChrome() {
   return (
     <div className="relative mx-auto w-full max-w-[1100px] lg:mx-0">
       <div className="rounded-2xl bg-gradient-to-b from-slate-500 via-slate-700 to-slate-900 p-[3px] shadow-2xl shadow-slate-900/35 ring-1 ring-white/12">
-        <div className="relative flex min-h-[min(28rem,55vw)] overflow-hidden rounded-[1.05rem] bg-slate-100 md:min-h-[26rem] lg:min-h-[28.5rem] xl:min-h-[31rem]">
+        <div className="relative flex min-h-[13.5rem] overflow-hidden rounded-[1.05rem] bg-slate-100 sm:min-h-[20rem] md:min-h-[26rem] lg:min-h-[28.5rem] xl:min-h-[31rem]">
           <div
             className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(148,163,184,0.11)_1px,transparent_1px)] [background-size:12px_12px]"
             aria-hidden
@@ -198,9 +198,9 @@ function CmmsDesktopChrome() {
 
 export function WorkRequestsFeatureSection() {
   return (
-    <SectionWrapper id="work-requests" className="scroll-mt-24 bg-white/60">
+    <SectionWrapper id="work-requests" className="scroll-mt-24 bg-white/60" showMobileSeparator>
       <div className="grid items-start gap-8 md:gap-10 lg:grid-cols-12 lg:gap-8 xl:gap-10">
-        <div className="order-2 mx-auto max-w-xl text-center lg:order-1 lg:col-span-5 lg:mx-0 lg:max-w-none lg:text-left">
+        <div className="order-1 mx-auto max-w-xl text-center lg:col-span-5 lg:mx-0 lg:max-w-none lg:text-left">
           <p className="text-xs font-semibold uppercase tracking-wider text-pulse-muted">Work requests</p>
           <h2 className="mt-2 text-3xl font-bold tracking-tight text-pulse-navy md:text-4xl">
             Manage work from start to finish.
@@ -216,8 +216,10 @@ export function WorkRequestsFeatureSection() {
           </ul>
         </div>
 
-        <div className="order-1 flex min-w-0 justify-center lg:order-2 lg:col-span-7 lg:justify-end">
-          <CmmsDesktopChrome />
+        <div className="order-2 flex min-w-0 justify-center lg:col-span-7 lg:justify-end">
+          <div className="w-full origin-top max-md:-mb-6 max-md:scale-[0.68] sm:max-md:scale-[0.78] md:mb-0 md:scale-100">
+            <CmmsDesktopChrome />
+          </div>
         </div>
       </div>
     </SectionWrapper>

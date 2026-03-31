@@ -5,9 +5,9 @@ import { SectionWrapper } from "./SectionWrapper";
 
 export function ToolEquipmentTrackingSection() {
   return (
-    <SectionWrapper id="tool-tracking" className="scroll-mt-24 bg-white/60">
+    <SectionWrapper id="tool-tracking" className="scroll-mt-24 bg-white/60" showMobileSeparator>
       <div className="grid items-start gap-8 md:gap-10 lg:grid-cols-2 lg:gap-10 xl:gap-12">
-        <div className="flex min-w-0 flex-col items-stretch space-y-6">
+        <div className="order-1 flex min-w-0 flex-col items-stretch space-y-6">
           <div className="w-full max-w-xl space-y-6">
             <h2 className="text-3xl font-bold leading-tight tracking-tight text-pulse-navy md:text-4xl lg:text-[2.35rem]">
               Know where your tools are.
@@ -16,10 +16,12 @@ export function ToolEquipmentTrackingSection() {
               Track equipment across zones, jobs, and crews without manual checks.
             </p>
           </div>
-          <FacilityMap compact className="w-full max-w-xl" />
+          <div className="w-full max-w-xl origin-top max-md:mx-auto max-md:scale-[0.82] sm:max-md:scale-[0.9] md:scale-100">
+            <FacilityMap compact className="w-full" />
+          </div>
         </div>
 
-        <div className="flex min-w-0 flex-col gap-5">
+        <div className="order-2 flex min-w-0 flex-col gap-5">
           <FeatureCard
             icon={Radar}
             title="Track tools and equipment in real time"

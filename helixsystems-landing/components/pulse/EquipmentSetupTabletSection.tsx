@@ -201,7 +201,7 @@ function EquipmentSetupScreen() {
 
 function RuggedTabletFrame({ children }: { children: ReactNode }) {
   return (
-    <div className="relative mx-auto w-full max-w-[700px]">
+    <div className="relative mx-auto w-full max-w-[min(100%,700px)] origin-top max-md:-mb-10 max-md:max-w-[420px] max-md:scale-[0.78] sm:max-md:scale-[0.86] md:mb-0 md:max-w-[700px] md:scale-100">
       {/* Environmental backdrop */}
       <div
         className="pointer-events-none absolute -inset-[min(12%,5rem)] -z-10 rounded-[2.5rem] bg-gradient-to-br from-slate-400/35 via-slate-300/25 to-slate-500/40 blur-2xl"
@@ -239,9 +239,13 @@ function RuggedTabletFrame({ children }: { children: ReactNode }) {
 
 export function EquipmentSetupTabletSection() {
   return (
-    <SectionWrapper id="equipment-setup" className="scroll-mt-24 bg-gradient-to-b from-white/80 via-pulse-bg to-slate-100/60">
+    <SectionWrapper
+      id="equipment-setup"
+      className="scroll-mt-24 bg-gradient-to-b from-white/80 via-pulse-bg to-slate-100/60"
+      showMobileSeparator
+    >
       <div className="grid items-center gap-8 md:gap-10 lg:grid-cols-12 lg:gap-8 xl:gap-10">
-        <div className="mx-auto max-w-xl text-center lg:col-span-5 lg:mx-0 lg:max-w-none lg:text-left">
+        <div className="order-1 mx-auto max-w-xl text-center lg:col-span-5 lg:mx-0 lg:max-w-none lg:text-left">
           <p className="text-xs font-semibold uppercase tracking-wider text-pulse-muted">Equipment setup</p>
           <h2 className="mt-2 text-3xl font-bold tracking-tight text-pulse-navy md:text-4xl">
             Add and organize your equipment quickly.
@@ -257,7 +261,7 @@ export function EquipmentSetupTabletSection() {
           </ul>
         </div>
 
-        <div className="flex justify-center lg:col-span-7 lg:justify-end">
+        <div className="order-2 flex justify-center lg:col-span-7 lg:justify-end">
           <RuggedTabletFrame>
             <EquipmentSetupScreen />
           </RuggedTabletFrame>

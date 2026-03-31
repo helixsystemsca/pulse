@@ -533,18 +533,54 @@ const SCHEDULE_VIEW_DAYS = SEPTEMBER_2024.filter((m) => m.inMonth && m.day >= 1 
 );
 const SCHEDULE_VIEW_WEEKDAYS = WEEKDAYS.slice(0, 3);
 
-function ScheduleLegend() {
+function ScheduleLegend({ variant }: { variant: "sidebar" | "strip" }) {
+  const shifts = [
+    { label: "Day", bar: "bg-emerald-500" },
+    { label: "Aft", bar: "bg-amber-500" },
+    { label: "Night", bar: "bg-violet-500" },
+  ] as const;
+
+  if (variant === "strip") {
+    return (
+      <div
+        className="flex flex-wrap items-center justify-center gap-x-2.5 gap-y-1 rounded-md border border-slate-200 bg-white px-2 py-1 shadow-sm sm:gap-x-3"
+        aria-label="Schedule legend"
+      >
+        <span className="text-[7px] font-bold uppercase tracking-wide text-pulse-muted sm:text-[8px]">Key</span>
+        {shifts.map((x) => (
+          <span key={x.label} className="inline-flex items-center gap-1 text-[7px] font-semibold text-pulse-navy sm:text-[8px]">
+            <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${x.bar}`} aria-hidden />
+            {x.label}
+          </span>
+        ))}
+        <span className="hidden h-3 w-px bg-slate-200 sm:block" aria-hidden />
+        <span className="inline-flex items-center gap-0.5 text-[7px] text-pulse-muted sm:text-[8px]">
+          <BookOpen className="h-2 w-2 shrink-0" strokeWidth={2} aria-hidden />
+          Train
+        </span>
+        <span className="inline-flex items-center gap-0.5 text-[7px] text-pulse-muted sm:text-[8px]">
+          <Palmtree className="h-2 w-2 shrink-0" strokeWidth={2} aria-hidden />
+          PTO
+        </span>
+        <span className="inline-flex items-center gap-0.5 text-[7px] text-pulse-muted sm:text-[8px]">
+          <User className="h-2 w-2 shrink-0" strokeWidth={2} aria-hidden />
+          <span className="font-mono font-bold text-pulse-navy">L</span>
+          <span className="font-mono font-bold text-pulse-navy">S</span>
+        </span>
+        <span className="text-[7px] font-semibold text-emerald-800 sm:text-[8px]">✔ tick</span>
+        <span className="text-[6px] text-pulse-muted sm:text-[7px]">GG/Pano</span>
+        <span className="text-[6px] text-amber-800/90 sm:text-[7px]">Tint=incomplete</span>
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-full min-h-0 flex-col gap-1 rounded-md border border-slate-200 bg-white px-1 py-1.5 md:px-1.5 md:py-2">
       <p className="text-center text-[7px] font-bold uppercase tracking-wide text-pulse-muted md:text-[8px]">
         Key
       </p>
       <ul className="flex flex-col gap-1 text-[7px] leading-tight text-pulse-navy md:text-[8px]">
-        {[
-          { label: "Day", bar: "bg-emerald-500" },
-          { label: "Aft", bar: "bg-amber-500" },
-          { label: "Night", bar: "bg-violet-500" },
-        ].map((x) => (
+        {shifts.map((x) => (
           <li key={x.label} className="flex items-center gap-1">
             <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${x.bar}`} aria-hidden />
             <span className="font-semibold">{x.label}</span>
@@ -1127,7 +1163,7 @@ function SchedulingCalendarMock() {
   return (
     <div className="relative w-full">
       <div className="rounded-xl border border-slate-300/90 bg-slate-200/80 p-px shadow-md shadow-slate-900/10">
-        <div className="relative flex min-h-[33.5rem] flex-col overflow-hidden rounded-[11px] bg-slate-50 sm:min-h-[36rem] md:min-h-[35rem]">
+        <div className="relative flex min-h-[30rem] flex-col overflow-hidden rounded-[11px] bg-slate-50 sm:min-h-[33.5rem] md:min-h-[35rem] lg:min-h-[36rem]">
           <header className="relative z-10 flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 bg-white px-2.5 py-2 sm:px-3 md:px-4">
             <div className="flex min-w-0 items-center gap-2">
               <span className="flex h-7 w-7 items-center justify-center rounded-md bg-pulse-accent text-white">
@@ -1185,8 +1221,8 @@ function SchedulingCalendarMock() {
 
           <div className="relative z-10 flex min-h-0 flex-1 flex-col gap-2 overflow-auto p-2 sm:p-3 md:flex-row md:gap-2">
             {navTab === "calendar" ? (
-              <div className="w-12 shrink-0 self-stretch sm:w-14 md:w-[4.5rem]">
-                <ScheduleLegend />
+              <div className="hidden w-14 shrink-0 self-stretch md:block md:w-[4.5rem]">
+                <ScheduleLegend variant="sidebar" />
               </div>
             ) : null}
 
@@ -1195,7 +1231,12 @@ function SchedulingCalendarMock() {
                 <PersonnelPanel selectedId={selectedPersonId} onSelect={setSelectedPersonId} />
               ) : (
                 <>
-              <div className="relative min-h-[26.5rem] overflow-hidden rounded-md sm:min-h-[28rem] md:min-h-[30rem]">
+              {navTab === "calendar" ? (
+                <div className="mb-2 md:hidden">
+                  <ScheduleLegend variant="strip" />
+                </div>
+              ) : null}
+              <div className="relative min-h-[21rem] overflow-hidden rounded-md sm:min-h-[26.5rem] md:min-h-[28rem] lg:min-h-[30rem]">
                 <div className="relative">
                     <ScheduleCompletionBanner onFinish={scrollToFirstIncomplete} />
                     <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-2">
@@ -1250,7 +1291,7 @@ function SchedulingCalendarMock() {
                     <div
                       key={`${meta.inMonth ? "m" : "n"}-${meta.day}-${idx}`}
                       id={meta.inMonth ? `ws-day-${meta.day}` : undefined}
-                      className={`relative flex min-h-[7.25rem] flex-col rounded-md border px-1.5 pb-1.5 pt-3.5 sm:min-h-[8rem] md:min-h-[8.5rem] ${
+                      className={`relative flex min-h-[6.25rem] flex-col rounded-md border px-1.5 pb-1.5 pt-3.5 sm:min-h-[7.25rem] md:min-h-[8rem] lg:min-h-[8.5rem] ${
                         muted
                           ? "border-transparent bg-slate-50/60 text-slate-400"
                           : "border-slate-200 bg-white"
@@ -1430,9 +1471,9 @@ function SchedulingCalendarMock() {
 
 export function WorkforceSchedulingSection() {
   return (
-    <SectionWrapper id="workforce-scheduling" className="scroll-mt-24 bg-pulse-bg/80">
+    <SectionWrapper id="workforce-scheduling" className="scroll-mt-24 bg-pulse-bg/80" showMobileSeparator>
       <div className="grid items-center gap-8 md:gap-10 lg:grid-cols-[minmax(0,3.5fr)_minmax(0,8.5fr)] lg:gap-8 xl:gap-10">
-        <div className="order-2 mx-auto max-w-xl text-center lg:order-1 lg:mx-0 lg:max-w-none lg:text-left">
+        <div className="order-1 mx-auto max-w-xl text-center lg:mx-0 lg:max-w-none lg:text-left">
           <p className="text-xs font-semibold uppercase tracking-wider text-pulse-muted">Workforce</p>
           <h2 className="mt-2 text-3xl font-bold tracking-tight text-pulse-navy md:text-4xl">
             Keep your crew organized.
@@ -1448,8 +1489,10 @@ export function WorkforceSchedulingSection() {
           </ul>
         </div>
 
-        <div className="order-1 flex min-w-0 justify-center lg:order-2 lg:justify-end">
-          <SchedulingCalendarMock />
+        <div className="order-2 flex min-w-0 justify-center lg:justify-end">
+          <div className="w-full max-w-full origin-top max-md:-mb-4 max-md:scale-[0.92] sm:max-md:scale-[0.96] md:mb-0 md:scale-100">
+            <SchedulingCalendarMock />
+          </div>
         </div>
       </div>
     </SectionWrapper>
