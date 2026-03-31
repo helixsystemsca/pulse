@@ -1,9 +1,10 @@
 "use client";
 
-import { Plus, Trash2, X } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useScheduleStore } from "@/lib/schedule/schedule-store";
-import type { ScheduleRoleDefinition, ShiftTypeConfig } from "@/lib/schedule/types";
+import type { ShiftTypeConfig } from "@/lib/schedule/types";
+import { PulseDrawer } from "./PulseDrawer";
 
 const TABS = ["General", "Roles", "Shift types", "Zones", "Staffing"] as const;
 type Tab = (typeof TABS)[number];
@@ -16,6 +17,12 @@ type Props = {
 function newRoleId(): string {
   return `role-${typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID().slice(0, 8) : Date.now()}`;
 }
+
+const FIELD =
+  "mt-1.5 w-full rounded-[10px] border border-slate-200/90 bg-white px-3 py-2.5 text-sm text-pulse-navy shadow-sm focus:border-[#2B4C7E]/35 focus:outline-none focus:ring-1 focus:ring-[#2B4C7E]/25";
+const LABEL = "text-[11px] font-semibold uppercase tracking-wider text-pulse-muted";
+const PRIMARY_BTN =
+  "rounded-[10px] bg-[#2B4C7E] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#234066]";
 
 export function ScheduleSettingsModal({ open, onClose }: Props) {
   const settings = useScheduleStore((s) => s.settings);
@@ -68,38 +75,41 @@ export function ScheduleSettingsModal({ open, onClose }: Props) {
   }
 
   return (
-    <div className="fixed inset-0 z-[85] flex items-end justify-center sm:items-center sm:p-4">
-      <button type="button" className="absolute inset-0 bg-slate-900/40" aria-label="Close" onClick={onClose} />
-      <div
-        className="relative flex max-h-[min(92vh,720px)] w-full max-w-2xl flex-col rounded-t-2xl border border-slate-200 bg-white shadow-xl sm:rounded-2xl"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="settings-title"
-      >
-        <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
-          <h2 id="settings-title" className="text-lg font-semibold text-pulse-navy">
-            Schedule settings
-          </h2>
-          <button
-            type="button"
-            className="rounded-lg p-2 text-pulse-muted hover:bg-slate-100"
-            onClick={onClose}
-            aria-label="Close"
-          >
-            <X className="h-5 w-5" />
+    <PulseDrawer
+      open={open}
+      title="Schedule settings"
+      subtitle="Defaults for calendar behavior, roles, zones, and staffing rules"
+      onClose={onClose}
+      wide
+      elevated
+      labelledBy="settings-drawer-title"
+      footer={
+        <div className="flex flex-wrap items-center justify-end gap-4">
+          <button type="button" className="text-sm font-semibold text-pulse-muted hover:text-pulse-navy" onClick={onClose}>
+            Cancel
+          </button>
+          <button type="button" className={PRIMARY_BTN} onClick={onClose}>
+            Save & close
           </button>
         </div>
-        <div className="border-b border-slate-100 px-3">
-          <div className="flex gap-1 overflow-x-auto py-2">
+      }
+    >
+      <div className="mx-auto max-w-xl space-y-5">
+        <div>
+          <p className={LABEL}>Section</p>
+          <div className="mt-1.5 flex flex-wrap gap-1 rounded-[10px] border border-slate-200/80 bg-slate-100/85 p-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.65)]">
             {TABS.map((t) => (
               <button
                 key={t}
                 type="button"
-                onClick={() => setTab(t)}
-                className={`shrink-0 rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${
+                onClick={() => {
+                  setTab(t);
+                  setRoleError(null);
+                }}
+                className={`rounded-lg px-2.5 py-2 text-center text-xs font-semibold transition-colors sm:text-sm ${
                   tab === t
-                    ? "bg-white text-pulse-navy shadow-sm ring-1 ring-slate-200/90"
-                    : "text-pulse-muted hover:bg-slate-50 hover:text-pulse-navy"
+                    ? "bg-white text-[#2B4C7E] shadow-sm ring-1 ring-slate-200/90"
+                    : "text-pulse-muted hover:bg-white/70 hover:text-pulse-navy"
                 }`}
               >
                 {t}
@@ -107,7 +117,7 @@ export function ScheduleSettingsModal({ open, onClose }: Props) {
             ))}
           </div>
         </div>
-        <div className="flex-1 overflow-y-auto px-5 py-4">
+        <div className="space-y-4">
           {roleError ? (
             <p className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">
               {roleError}
@@ -411,16 +421,7 @@ export function ScheduleSettingsModal({ open, onClose }: Props) {
             </div>
           ) : null}
         </div>
-        <div className="border-t border-slate-100 px-5 py-4">
-          <button
-            type="button"
-            className="w-full rounded-xl bg-pulse-accent py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-pulse-accent-hover sm:w-auto sm:px-6"
-            onClick={onClose}
-          >
-            Done
-          </button>
-        </div>
       </div>
-    </div>
+    </PulseDrawer>
   );
 }

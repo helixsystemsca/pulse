@@ -15,6 +15,7 @@ import type {
   Zone,
 } from "@/lib/schedule/types";
 import { PulseDrawer } from "./PulseDrawer";
+import { SegmentedControl } from "./SegmentedControl";
 
 export type ShiftDraft = Omit<Shift, "id"> & { id?: string };
 
@@ -101,38 +102,6 @@ function coverageMessage(
     return `No supervisor or lead is currently assigned to ${zoneLabel} on this date. Confirm staffing before publishing.`;
   }
   return null;
-}
-
-function Segmented<T extends string>({
-  value,
-  onChange,
-  options,
-}: {
-  value: T;
-  onChange: (v: T) => void;
-  options: { value: T; label: string }[];
-}) {
-  return (
-    <div className="flex rounded-[10px] border border-slate-200/80 bg-slate-100/85 p-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.65)]">
-      {options.map((o) => {
-        const active = o.value === value;
-        return (
-          <button
-            key={o.value}
-            type="button"
-            onClick={() => onChange(o.value)}
-            className={`flex-1 rounded-lg px-2 py-2 text-center text-xs font-semibold transition-colors sm:text-sm ${
-              active
-                ? "bg-white text-[#2B4C7E] shadow-sm ring-1 ring-slate-200/90"
-                : "text-pulse-muted hover:bg-white/70 hover:text-pulse-navy"
-            }`}
-          >
-            {o.label}
-          </button>
-        );
-      })}
-    </div>
-  );
 }
 
 export function ShiftEditModal({
@@ -253,9 +222,14 @@ export function ShiftEditModal({
     >
       <div className="mx-auto max-w-lg space-y-5">
         <div>
-          <label className={LABEL} htmlFor="shift-worker">
-            Worker
-          </label>
+          <div className="flex items-center justify-between gap-2">
+            <label className={LABEL} htmlFor="shift-worker">
+              Worker
+            </label>
+            <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${badge.className}`}>
+              {badge.text}
+            </span>
+          </div>
           <div className="relative mt-1.5">
             <User
               className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-pulse-muted"
@@ -264,7 +238,7 @@ export function ShiftEditModal({
             />
             <select
               id="shift-worker"
-              className={`${FIELD} appearance-none pl-10 pr-10`}
+              className={`${FIELD} appearance-none pl-10 pr-4`}
               value={draft.workerId ?? ""}
               onChange={(e) =>
                 setDraft((d) => ({
@@ -282,11 +256,6 @@ export function ShiftEditModal({
                   </option>
                 ))}
             </select>
-            <span
-              className={`pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 rounded-full px-2 py-0.5 text-[10px] font-bold ${badge.className}`}
-            >
-              {badge.text}
-            </span>
           </div>
         </div>
 
@@ -334,7 +303,7 @@ export function ShiftEditModal({
           <div>
             <p className={LABEL}>Shift type</p>
             <div className="mt-1.5">
-              <Segmented
+              <SegmentedControl
                 value={draft.shiftType}
                 onChange={(v) => setDraft((d) => ({ ...d, shiftType: v }))}
                 options={shiftTypeOptions}
@@ -344,7 +313,7 @@ export function ShiftEditModal({
           <div>
             <p className={LABEL}>Event type</p>
             <div className="mt-1.5">
-              <Segmented
+              <SegmentedControl
                 value={draft.eventType ?? "work"}
                 onChange={(v) => setDraft((d) => ({ ...d, eventType: v }))}
                 options={eventOptions}
@@ -356,9 +325,9 @@ export function ShiftEditModal({
         <div>
           <p className={LABEL}>Duration</p>
           <div className="mt-1.5 flex flex-wrap gap-2">
-            {presetChips.slice(0, 5).map((p) => (
+            {presetChips.slice(0, 5).map((p, i) => (
               <button
-                key={p.label}
+                key={`${p.label}-${i}`}
                 type="button"
                 onClick={() => setDraft((d) => ({ ...d, startTime: p.start, endTime: p.end }))}
                 className="rounded-lg border border-slate-200/90 bg-white px-2.5 py-1.5 text-xs font-semibold text-[#2B4C7E] shadow-sm hover:bg-slate-50"

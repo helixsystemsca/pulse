@@ -13,6 +13,8 @@ type PulseDrawerProps = {
   /** Wider settings drawer */
   wide?: boolean;
   labelledBy?: string;
+  /** Stack above shift drawer when both could interact */
+  elevated?: boolean;
 };
 
 /** Right-side panel: reference layout (light shell, subtle border, soft shadow). */
@@ -25,11 +27,12 @@ export function PulseDrawer({
   footer,
   wide,
   labelledBy = "pulse-drawer-title",
+  elevated = false,
 }: PulseDrawerProps) {
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-[80]">
+    <div className={`fixed inset-0 ${elevated ? "z-[90]" : "z-[80]"}`}>
       <button
         type="button"
         className="absolute inset-0 bg-slate-900/35 backdrop-blur-[2px]"

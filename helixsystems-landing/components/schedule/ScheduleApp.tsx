@@ -85,6 +85,7 @@ export function ScheduleApp() {
         startTime: draft.startTime,
         endTime: draft.endTime,
         shiftType: draft.shiftType,
+        eventType: draft.eventType ?? "work",
         role: draft.role,
         zoneId: draft.zoneId,
       });
@@ -95,6 +96,7 @@ export function ScheduleApp() {
         startTime: draft.startTime,
         endTime: draft.endTime,
         shiftType: draft.shiftType,
+        eventType: draft.eventType ?? "work",
         role: draft.role,
         zoneId: draft.zoneId,
       });
@@ -215,6 +217,7 @@ export function ScheduleApp() {
         roles={roles}
         shiftTypes={shiftTypes}
         settings={settings}
+        allShifts={shifts}
         onClose={() => setShiftModal(null)}
         onSave={saveShift}
         onDelete={shiftModal?.shift ? (id) => deleteShift(id) : undefined}

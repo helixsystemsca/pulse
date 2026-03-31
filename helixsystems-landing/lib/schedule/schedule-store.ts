@@ -14,6 +14,7 @@ import type {
   ScheduleRoleDefinition,
   ScheduleSettings,
   Shift,
+  ShiftEventType,
   ShiftTypeConfig,
   Worker,
   Zone,
@@ -150,6 +151,19 @@ export const useScheduleStore = create<ScheduleState>()(
         settings: s.settings,
         pendingRequests: s.pendingRequests,
       }),
+      merge: (persisted, current) => {
+        const p = persisted as Partial<ScheduleState> | undefined;
+        if (!p) return current;
+        const mergedShifts = (p.shifts ?? current.shifts).map((s) => ({
+          ...s,
+          eventType: (s as Shift).eventType ?? ("work" as ShiftEventType),
+        }));
+        return {
+          ...current,
+          ...p,
+          shifts: mergedShifts,
+        };
+      },
     },
   ),
 );
