@@ -1,5 +1,6 @@
 "use client";
 
+import { Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { apiFetch } from "@/lib/api";
@@ -142,7 +143,16 @@ export default function SystemCompaniesPage() {
       await apiFetch(`/api/system/companies/${companyId}/purge`, { method: "DELETE" });
       void load();
     } catch (err: unknown) {
-      setBootstrapFail(parseClientApiError(err));
+      const parsed = parseClientApiError(err);
+      if (parsed.status === 404) {
+        setBootstrapFail({
+          ...parsed,
+          message:
+            "This API doesn’t expose permanent delete yet (404 on …/purge). Redeploy the Render service from the latest backend branch (Root Directory: backend, start: uvicorn app.main:app --host 0.0.0.0 --port $PORT). Until then, use Deactivate.",
+        });
+      } else {
+        setBootstrapFail(parsed);
+      }
     }
   };
 
@@ -443,16 +453,47 @@ export default function SystemCompaniesPage() {
 
       {modal === "invite" ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-          <div className="w-full max-w-md rounded-xl border border-zinc-700 bg-zinc-900 p-6 shadow-xl">
+          <div className="relative w-full max-w-md rounded-xl border border-zinc-700 bg-zinc-900 p-6 shadow-xl">
+            {inviteSubmitting ? (
+              <div
+                className="absolute inset-0 z-20 flex flex-col items-center justify-center rounded-xl bg-zinc-950/90 px-6 backdrop-blur-sm"
+                aria-busy="true"
+                aria-live="polite"
+              >
+                <Loader2 className="h-10 w-10 animate-spin text-blue-400" aria-hidden />
+                <p className="mt-4 text-center text-sm font-semibold text-zinc-100">Working on it…</p>
+                <p className="mt-2 max-w-sm text-center text-xs leading-relaxed text-zinc-400">
+                  Creating the tenant, storing the invite, and sending mail from your API (often a few seconds). If SMTP
+                  isn’t configured, the company is still created—you’ll get the invite link in the blue banner after this
+                  closes.
+                </p>
+              </div>
+            ) : null}
             <h2 className="text-lg font-semibold text-white">Create company + invite</h2>
+            <p className="mt-1 text-xs text-zinc-500">
+              Email uses the full template from the API and is sent from{" "}
+              <span className="text-zinc-400">{HELIX_NOREPLY_EMAIL}</span> when SMTP is configured.
+            </p>
             <form className="mt-4 space-y-4" onSubmit={(e) => void submitCreateInvite(e)}>
+              {bootstrapFail ? (
+                <div className="rounded-lg border border-red-800 bg-red-950/70 px-3 py-2 text-sm text-red-100">
+                  <p className="font-medium">{bootstrapFail.message}</p>
+                  {bootstrapFail.status === 409 ? (
+                    <p className="mt-1.5 text-xs text-red-200/90">
+                      An invite for that email may already exist—check the list or use{" "}
+                      <strong className="text-red-100">Delete permanently</strong> on an empty duplicate.
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
               <div>
                 <label className="text-xs font-medium uppercase text-zinc-500">Company name</label>
                 <input
                   required
                   value={companyName}
                   onChange={(e) => setCompanyName(e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-zinc-600 bg-zinc-950 px-3 py-2 text-sm text-white"
+                  disabled={inviteSubmitting}
+                  className="mt-1 w-full rounded-lg border border-zinc-600 bg-zinc-950 px-3 py-2 text-sm text-white disabled:opacity-50"
                 />
               </div>
               <div>
@@ -462,18 +503,23 @@ export default function SystemCompaniesPage() {
                   type="email"
                   value={adminEmail}
                   onChange={(e) => setAdminEmail(e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-zinc-600 bg-zinc-950 px-3 py-2 text-sm text-white"
+                  disabled={inviteSubmitting}
+                  className="mt-1 w-full rounded-lg border border-zinc-600 bg-zinc-950 px-3 py-2 text-sm text-white disabled:opacity-50"
                 />
               </div>
               <div>
                 <p className="text-xs font-medium uppercase text-zinc-500">Initial features</p>
                 <div className="mt-2 flex flex-wrap gap-2">
                   {catalog.map((f) => (
-                    <label key={f} className="flex items-center gap-1 text-xs text-zinc-400">
+                    <label
+                      key={f}
+                      className={`flex items-center gap-1 text-xs text-zinc-400 ${inviteSubmitting ? "pointer-events-none opacity-50" : ""}`}
+                    >
                       <input
                         type="checkbox"
                         checked={selectedFeat[f] ?? false}
                         onChange={(e) => setSelectedFeat((s) => ({ ...s, [f]: e.target.checked }))}
+                        disabled={inviteSubmitting}
                       />
                       {f}
                     </label>
@@ -484,16 +530,24 @@ export default function SystemCompaniesPage() {
                 <button
                   type="button"
                   onClick={() => setModal(null)}
-                  className="rounded-lg border border-zinc-600 px-4 py-2 text-sm text-zinc-300"
+                  disabled={inviteSubmitting}
+                  className="rounded-lg border border-zinc-600 px-4 py-2 text-sm text-zinc-300 disabled:opacity-50"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={inviteSubmitting}
-                  className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+                  className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
                 >
-                  {inviteSubmitting ? "Creating…" : "Create & generate invite"}
+                  {inviteSubmitting ? (
+                    <>
+                      <Loader2 className="h-4 w-4 shrink-0 animate-spin" aria-hidden />
+                      Creating…
+                    </>
+                  ) : (
+                    "Create & generate invite"
+                  )}
                 </button>
               </div>
             </form>
@@ -503,7 +557,17 @@ export default function SystemCompaniesPage() {
 
       {modal === "password" ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-          <div className="w-full max-w-md rounded-xl border border-amber-900/60 bg-zinc-900 p-6 shadow-xl">
+          <div className="relative w-full max-w-md rounded-xl border border-amber-900/60 bg-zinc-900 p-6 shadow-xl">
+            {passwordSubmitting ? (
+              <div
+                className="absolute inset-0 z-20 flex flex-col items-center justify-center rounded-xl bg-zinc-950/90 px-6 backdrop-blur-sm"
+                aria-busy="true"
+                aria-live="polite"
+              >
+                <Loader2 className="h-10 w-10 animate-spin text-amber-400" aria-hidden />
+                <p className="mt-4 text-center text-sm font-semibold text-zinc-100">Creating company…</p>
+              </div>
+            ) : null}
             <h2 className="text-lg font-semibold text-amber-50">Quick create (no email)</h2>
             <p className="mt-1 text-xs text-amber-200/70">
               Creates the company and a company admin you can log in with immediately. Requires{" "}
@@ -536,7 +600,8 @@ export default function SystemCompaniesPage() {
                   required
                   value={companyName}
                   onChange={(e) => setCompanyName(e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-zinc-600 bg-zinc-950 px-3 py-2 text-sm text-white"
+                  disabled={passwordSubmitting}
+                  className="mt-1 w-full rounded-lg border border-zinc-600 bg-zinc-950 px-3 py-2 text-sm text-white disabled:opacity-50"
                 />
               </div>
               <div>
@@ -547,7 +612,8 @@ export default function SystemCompaniesPage() {
                   value={adminEmail}
                   onChange={(e) => setAdminEmail(e.target.value)}
                   placeholder="you@example.com"
-                  className="mt-1 w-full rounded-lg border border-zinc-600 bg-zinc-950 px-3 py-2 text-sm text-white placeholder:text-zinc-600"
+                  disabled={passwordSubmitting}
+                  className="mt-1 w-full rounded-lg border border-zinc-600 bg-zinc-950 px-3 py-2 text-sm text-white placeholder:text-zinc-600 disabled:opacity-50"
                 />
               </div>
               <div>
@@ -555,7 +621,8 @@ export default function SystemCompaniesPage() {
                 <input
                   value={adminFullName}
                   onChange={(e) => setAdminFullName(e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-zinc-600 bg-zinc-950 px-3 py-2 text-sm text-white"
+                  disabled={passwordSubmitting}
+                  className="mt-1 w-full rounded-lg border border-zinc-600 bg-zinc-950 px-3 py-2 text-sm text-white disabled:opacity-50"
                 />
               </div>
               <div>
@@ -567,18 +634,23 @@ export default function SystemCompaniesPage() {
                   autoComplete="new-password"
                   value={adminPassword}
                   onChange={(e) => setAdminPassword(e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-zinc-600 bg-zinc-950 px-3 py-2 text-sm text-white"
+                  disabled={passwordSubmitting}
+                  className="mt-1 w-full rounded-lg border border-zinc-600 bg-zinc-950 px-3 py-2 text-sm text-white disabled:opacity-50"
                 />
               </div>
               <div>
                 <p className="text-xs font-medium uppercase text-zinc-500">Initial features</p>
                 <div className="mt-2 flex flex-wrap gap-2">
                   {catalog.map((f) => (
-                    <label key={f} className="flex items-center gap-1 text-xs text-zinc-400">
+                    <label
+                      key={f}
+                      className={`flex items-center gap-1 text-xs text-zinc-400 ${passwordSubmitting ? "pointer-events-none opacity-50" : ""}`}
+                    >
                       <input
                         type="checkbox"
                         checked={selectedFeat[f] ?? false}
                         onChange={(e) => setSelectedFeat((s) => ({ ...s, [f]: e.target.checked }))}
+                        disabled={passwordSubmitting}
                       />
                       {f}
                     </label>
@@ -589,16 +661,24 @@ export default function SystemCompaniesPage() {
                 <button
                   type="button"
                   onClick={() => setModal(null)}
-                  className="rounded-lg border border-zinc-600 px-4 py-2 text-sm text-zinc-300"
+                  disabled={passwordSubmitting}
+                  className="rounded-lg border border-zinc-600 px-4 py-2 text-sm text-zinc-300 disabled:opacity-50"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={passwordSubmitting}
-                  className="rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-500 disabled:opacity-60"
+                  className="inline-flex items-center justify-center gap-2 rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-500 disabled:opacity-60"
                 >
-                  {passwordSubmitting ? "Creating…" : "Create company & admin"}
+                  {passwordSubmitting ? (
+                    <>
+                      <Loader2 className="h-4 w-4 shrink-0 animate-spin" aria-hidden />
+                      Creating…
+                    </>
+                  ) : (
+                    "Create company & admin"
+                  )}
                 </button>
               </div>
             </form>
