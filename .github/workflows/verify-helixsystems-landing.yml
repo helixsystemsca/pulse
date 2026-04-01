@@ -1,0 +1,31 @@
+# Catches broken Next.js builds before they land on main (same command Vercel runs).
+# Pair with Vercel “Production Branch: main” + Root Directory: helixsystems-landing.
+name: Verify helixsystems-landing
+on:
+  push:
+    branches: [main]
+    paths:
+      - "helixsystems-landing/**"
+      - ".github/workflows/verify-helixsystems-landing.yml"
+  pull_request:
+    paths:
+      - "helixsystems-landing/**"
+      - ".github/workflows/verify-helixsystems-landing.yml"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: helixsystems-landing
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: helixsystems-landing/package-lock.json
+      - name: Install
+        run: npm ci
+      - name: Build (production)
+        run: npm run build

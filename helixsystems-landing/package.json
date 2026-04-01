@@ -6,7 +6,11 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "deploy:check": "npm run build"
+  },
+  "engines": {
+    "node": ">=18.18.0"
   },
   "dependencies": {
     "lucide-react": "^0.460.0",
