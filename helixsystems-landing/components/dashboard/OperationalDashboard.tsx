@@ -5,8 +5,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { apiFetch, isApiMode } from "@/lib/api";
-import { pulseRoutes, pulseTenantNav } from "@/lib/pulse-app";
-import { usePulseAuth } from "@/hooks/usePulseAuth";
+import { pulseTenantNav } from "@/lib/pulse-app";
+import { canAccessPulseTenantApis, readSession } from "@/lib/pulse-session";
 
 type AlertItem = { severity: "critical" | "warning"; title: string; subtitle?: string };
 
@@ -880,7 +880,6 @@ function DashboardBody({
 export type OperationalDashboardVariant = "demo" | "live";
 
 export function OperationalDashboard({ variant }: { variant: OperationalDashboardVariant }) {
-  const { session } = usePulseAuth();
   const [liveModel, setLiveModel] = useState<DashboardViewModel | null>(null);
   const [loading, setLoading] = useState(variant === "live");
   const [error, setError] = useState<string | null>(null);
@@ -889,6 +888,18 @@ export function OperationalDashboard({ variant }: { variant: OperationalDashboar
   const workOrdersHref = pulseTenantNav[2]?.href ?? "/pulse#work-requests";
 
   const fetchLive = useCallback(async () => {
+    const sess = readSession();
+    if (!canAccessPulseTenantApis(sess)) {
+      setLoading(false);
+      setError(
+        sess && (sess.is_system_admin === true || sess.role === "system_admin")
+          ? "The operations dashboard is for tenant accounts. Sign in with a company user, or open System admin and use impersonation to view a tenant."
+          : "Your account is not linked to an organization. Contact your administrator.",
+      );
+      setLiveModel(null);
+      return;
+    }
+
     setLoading(true);
     setError(null);
     const now = new Date();
@@ -910,13 +921,14 @@ export function OperationalDashboard({ variant }: { variant: OperationalDashboar
         apiFetch<BeaconEquipmentOut[]>("/api/v1/pulse/equipment"),
       ]);
       const model = buildLiveModel(dash, wrList, workers, shiftList, assetList, lowStock, zoneList, beaconList);
-      const welcome = welcomeFromSession(session?.email, session?.full_name);
+      const auth = readSession();
+      const welcome = welcomeFromSession(auth?.email, auth?.full_name);
       setLiveModel({ ...model, welcomeName: welcome });
     } catch (err) {
       const e = err as Error & { status?: number; body?: unknown };
       if (e.status === 403) {
         setError(
-          "Pulse data is available for company accounts only. Sign in as a tenant user (not the global system admin).",
+          "You don’t have access to this dashboard with the current account. Tenant users see live data here; system admins should impersonate a company user from System admin.",
         );
       } else {
         setError("Could not load dashboard. Check that the API is running and you are signed in.");
@@ -925,7 +937,9 @@ export function OperationalDashboard({ variant }: { variant: OperationalDashboar
     } finally {
       setLoading(false);
     }
-  }, [session?.email, session?.full_name]);
+    // Intentionally omit session from deps: usePulseAuth hydrates after mount and would re-run this eight-way
+    // fetch. Welcome uses readSession() inside the try block above.
+  }, [variant]);
 
   useEffect(() => {
     if (variant !== "live" || !isApiMode()) return;

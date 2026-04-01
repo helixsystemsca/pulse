@@ -81,6 +81,14 @@ export function isLoggedIn(): boolean {
   return readSession() !== null;
 }
 
+/** True when this JWT session may call `/api/v1/pulse/*` (tenant users only; system admin must impersonate). */
+export function canAccessPulseTenantApis(session: PulseAuthSession | null): boolean {
+  if (!session?.access_token) return false;
+  if (session.is_system_admin === true || session.role === "system_admin") return false;
+  const cid = session.company_id;
+  return cid != null && String(cid).length > 0;
+}
+
 export function writeSession(email: string, remember: boolean) {
   if (typeof window === "undefined") return;
   const now = Math.floor(Date.now() / 1000);

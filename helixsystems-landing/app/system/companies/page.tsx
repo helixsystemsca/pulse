@@ -16,6 +16,43 @@ type CompanyRow = {
 
 type ModalMode = "invite" | "password";
 
+function parseClientApiError(err: unknown): {
+  message: string;
+  status?: number;
+  requestUrl?: string;
+} {
+  let msg = "Request failed";
+  let status: number | undefined;
+  let requestUrl: string | undefined;
+  if (err && typeof err === "object") {
+    if ("status" in err && typeof (err as { status: unknown }).status === "number") {
+      status = (err as { status: number }).status;
+    }
+    if (
+      "requestUrl" in err &&
+      typeof (err as { requestUrl: unknown }).requestUrl === "string"
+    ) {
+      requestUrl = (err as { requestUrl: string }).requestUrl;
+    }
+    if ("body" in err) {
+      const body = (err as { body?: { detail?: unknown } }).body;
+      const d = body?.detail;
+      if (typeof d === "string") msg = d;
+      else if (Array.isArray(d) && d[0] && typeof d[0] === "object" && "msg" in d[0]) {
+        msg = String((d[0] as { msg: unknown }).msg);
+      }
+    }
+  }
+  if (err instanceof Error && msg === "Request failed") {
+    msg = err.message;
+  }
+  if (err instanceof TypeError && /fetch/i.test(String(err.message))) {
+    msg =
+      "Could not reach the API (network or CORS). Confirm the backend allows this site’s origin (e.g. https://pulse.helixsystems.ca), redeploy the API, and try again.";
+  }
+  return { message: msg, status, requestUrl };
+}
+
 export default function SystemCompaniesPage() {
   const router = useRouter();
   const [rows, setRows] = useState<CompanyRow[]>([]);
@@ -90,30 +127,35 @@ export default function SystemCompaniesPage() {
   const submitCreateInvite = async (e: React.FormEvent) => {
     e.preventDefault();
     setInviteBanner(null);
+    setBootstrapFail(null);
     const enabled_features = featurePayload();
-    const res = await apiFetch<{
-      company_id: string;
-      invite_link_path: string;
-      invite_email_sent?: boolean;
-    }>(
-      "/api/system/companies/create-and-invite",
-      {
-        method: "POST",
-        json: {
-          company_name: companyName,
-          admin_email: adminEmail,
-          enabled_features,
+    try {
+      const res = await apiFetch<{
+        company_id: string;
+        invite_link_path: string;
+        invite_email_sent?: boolean;
+      }>(
+        "/api/system/companies/create-and-invite",
+        {
+          method: "POST",
+          json: {
+            company_name: companyName,
+            admin_email: adminEmail,
+            enabled_features,
+          },
         },
-      },
-    );
-    setInviteBanner({
-      path: res.invite_link_path,
-      emailSent: Boolean(res.invite_email_sent),
-    });
-    setModal(null);
-    setCompanyName("");
-    setAdminEmail("");
-    void load();
+      );
+      setInviteBanner({
+        path: res.invite_link_path,
+        emailSent: Boolean(res.invite_email_sent),
+      });
+      setModal(null);
+      setCompanyName("");
+      setAdminEmail("");
+      void load();
+    } catch (err: unknown) {
+      setBootstrapFail(parseClientApiError(err));
+    }
   };
 
   const submitBootstrapPassword = async (e: React.FormEvent) => {
@@ -143,32 +185,7 @@ export default function SystemCompaniesPage() {
       setAdminFullName("");
       void load();
     } catch (err: unknown) {
-      let msg = "Request failed";
-      let status: number | undefined;
-      let requestUrl: string | undefined;
-      if (err && typeof err === "object") {
-        if ("status" in err && typeof (err as { status: unknown }).status === "number") {
-          status = (err as { status: number }).status;
-        }
-        if (
-          "requestUrl" in err &&
-          typeof (err as { requestUrl: unknown }).requestUrl === "string"
-        ) {
-          requestUrl = (err as { requestUrl: string }).requestUrl;
-        }
-        if ("body" in err) {
-          const body = (err as { body?: { detail?: unknown } }).body;
-          const d = body?.detail;
-          if (typeof d === "string") msg = d;
-          else if (Array.isArray(d) && d[0] && typeof d[0] === "object" && "msg" in d[0]) {
-            msg = String((d[0] as { msg: unknown }).msg);
-          }
-        }
-      }
-      if (err instanceof Error && msg === "Request failed") {
-        msg = err.message;
-      }
-      setBootstrapFail({ message: msg, status, requestUrl });
+      setBootstrapFail(parseClientApiError(err));
     }
   };
 
