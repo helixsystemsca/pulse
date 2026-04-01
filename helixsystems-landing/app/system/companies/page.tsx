@@ -81,6 +81,8 @@ export default function SystemCompaniesPage() {
     requestUrl?: string;
   } | null>(null);
   const [q, setQ] = useState("");
+  const [inviteSubmitting, setInviteSubmitting] = useState(false);
+  const [passwordSubmitting, setPasswordSubmitting] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -114,9 +116,34 @@ export default function SystemCompaniesPage() {
   };
 
   const disableCompany = async (companyId: string) => {
-    if (!confirm("Soft-delete (deactivate) this company?")) return;
+    if (!confirm("Deactivate this company? It will be hidden from active lists; you can re-activate or permanently delete it later if it has no users.")) return;
     await apiFetch(`/api/system/companies/${companyId}`, { method: "DELETE" });
     void load();
+  };
+
+  const reactivateCompany = async (companyId: string) => {
+    await apiFetch<CompanyRow>(`/api/system/companies/${companyId}`, {
+      method: "PATCH",
+      json: { is_active: true },
+    });
+    void load();
+  };
+
+  const purgeCompany = async (companyId: string, name: string, userCount: number) => {
+    if (userCount > 0) return;
+    if (
+      !confirm(
+        `Permanently delete “${name}”? This cannot be undone. Only use for empty mistake tenants (no users). Invites and features for this tenant will be removed.`,
+      )
+    ) {
+      return;
+    }
+    try {
+      await apiFetch(`/api/system/companies/${companyId}/purge`, { method: "DELETE" });
+      void load();
+    } catch (err: unknown) {
+      setBootstrapFail(parseClientApiError(err));
+    }
   };
 
   const featurePayload = () =>
@@ -126,9 +153,11 @@ export default function SystemCompaniesPage() {
 
   const submitCreateInvite = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (inviteSubmitting) return;
     setInviteBanner(null);
     setBootstrapFail(null);
     const enabled_features = featurePayload();
+    setInviteSubmitting(true);
     try {
       const res = await apiFetch<{
         company_id: string;
@@ -155,13 +184,17 @@ export default function SystemCompaniesPage() {
       void load();
     } catch (err: unknown) {
       setBootstrapFail(parseClientApiError(err));
+    } finally {
+      setInviteSubmitting(false);
     }
   };
 
   const submitBootstrapPassword = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (passwordSubmitting) return;
     setBootstrapFail(null);
     const enabled_features = featurePayload();
+    setPasswordSubmitting(true);
     try {
       const res = await apiFetch<{ company_id: string; company_admin_id: string }>(
         "/api/system/companies/bootstrap-legacy",
@@ -186,6 +219,8 @@ export default function SystemCompaniesPage() {
       void load();
     } catch (err: unknown) {
       setBootstrapFail(parseClientApiError(err));
+    } finally {
+      setPasswordSubmitting(false);
     }
   };
 
@@ -272,6 +307,12 @@ export default function SystemCompaniesPage() {
               Set <code className="text-red-100">ALLOW_PASSWORD_COMPANY_BOOTSTRAP=true</code> on the API host and redeploy.
             </p>
           ) : null}
+          {bootstrapFail.status === 409 ? (
+            <p className="mt-2 text-xs text-red-300/90">
+              A pending invite for that email already exists—the first request likely created the company. Find it in the
+              list, or deactivate an empty duplicate and use <strong className="text-red-200">Delete permanently</strong>.
+            </p>
+          ) : null}
           {bootstrapFail.status === 404 ? (
             <div className="mt-2 space-y-1.5 text-xs text-red-300/90">
               <p>
@@ -307,7 +348,7 @@ export default function SystemCompaniesPage() {
                 <th className="px-4 py-3">Users</th>
                 <th className="px-4 py-3">Enabled features</th>
                 <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3 w-28 text-right">Actions</th>
+                <th className="px-4 py-3 w-44 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-800 bg-zinc-950/50">
@@ -357,21 +398,41 @@ export default function SystemCompaniesPage() {
                       </span>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-right">
-                    {r.is_active ? (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          void disableCompany(r.id);
-                        }}
-                        className="text-xs font-semibold text-red-400 hover:underline"
-                      >
-                        Deactivate
-                      </button>
-                    ) : (
-                      <span className="text-xs text-zinc-600">—</span>
-                    )}
+                  <td className="px-4 py-3 text-right align-top">
+                    <div className="flex flex-col items-end gap-1.5" onClick={(e) => e.stopPropagation()}>
+                      {r.is_active ? (
+                        <button
+                          type="button"
+                          onClick={() => void disableCompany(r.id)}
+                          className="text-xs font-semibold text-amber-400/95 hover:underline"
+                        >
+                          Deactivate
+                        </button>
+                      ) : (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => void reactivateCompany(r.id)}
+                            className="text-xs font-semibold text-emerald-400 hover:underline"
+                          >
+                            Re-activate
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void purgeCompany(r.id, r.name, r.user_count)}
+                            disabled={r.user_count > 0}
+                            title={
+                              r.user_count > 0
+                                ? "Remove all users before permanent delete"
+                                : "Remove this empty tenant forever"
+                            }
+                            className="text-xs font-semibold text-red-400 hover:underline disabled:cursor-not-allowed disabled:opacity-40 disabled:no-underline"
+                          >
+                            Delete permanently
+                          </button>
+                        </>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -427,8 +488,12 @@ export default function SystemCompaniesPage() {
                 >
                   Cancel
                 </button>
-                <button type="submit" className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white">
-                  Create &amp; generate invite
+                <button
+                  type="submit"
+                  disabled={inviteSubmitting}
+                  className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+                >
+                  {inviteSubmitting ? "Creating…" : "Create & generate invite"}
                 </button>
               </div>
             </form>
@@ -530,9 +595,10 @@ export default function SystemCompaniesPage() {
                 </button>
                 <button
                   type="submit"
-                  className="rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-500"
+                  disabled={passwordSubmitting}
+                  className="rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-500 disabled:opacity-60"
                 >
-                  Create company &amp; admin
+                  {passwordSubmitting ? "Creating…" : "Create company & admin"}
                 </button>
               </div>
             </form>
