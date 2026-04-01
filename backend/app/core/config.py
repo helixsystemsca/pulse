@@ -20,7 +20,7 @@ class Settings(BaseSettings):
     algorithm: str = "HS256"
     # Comma-separated origins, no paths. Env: CORS_ORIGINS (preferred) or CORS_ORIGIN.
     # Production: include every site the browser uses (https://www.example.com and https://example.com
-    # are different Origins). See also cors_origin_regex.
+    # are different Origins). The origin of `pulse_app_public_url` is always merged in. See also cors_origin_regex.
     cors_origins: str = Field(
         default="http://localhost:3000",
         validation_alias=AliasChoices("CORS_ORIGINS", "CORS_ORIGIN", "cors_origins"),
@@ -96,6 +96,12 @@ class Settings(BaseSettings):
             if o not in seen:
                 seen.add(o)
                 out.append(o)
+        # Pulse app origin: same host as email deep-links (`PULSE_APP_PUBLIC_URL`). Keeps CORS aligned when
+        # production only listed marketing apex/www origins.
+        pulse_o = self.pulse_app_public_origin
+        if pulse_o and pulse_o not in seen:
+            seen.add(pulse_o)
+            out.append(pulse_o)
         return out
 
     @property
