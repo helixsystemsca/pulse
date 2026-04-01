@@ -5,12 +5,7 @@ import Link from "next/link";
 import { Activity, ChevronDown, LogOut, Settings, User } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
-import {
-  helixMarketingHref,
-  navigateToPulseLogin,
-  pulseApp,
-  pulseRoutes,
-} from "@/lib/pulse-app";
+import { navigateToPulseLogin, pulseApp, pulseRoutes } from "@/lib/pulse-app";
 import { clearSession } from "@/lib/pulse-session";
 
 function initialsFrom(email: string, fullName: string | null | undefined): string {
@@ -32,7 +27,6 @@ export function AppNavbar() {
   const userMenuRef = useRef<HTMLDivElement>(null);
 
   const logoHref = authed ? pulseApp.to(pulseRoutes.overview) : pulseRoutes.pulseLanding;
-  const onLoginPage = pathname === "/login";
 
   useEffect(() => {
     if (!userOpen) return;
@@ -54,10 +48,10 @@ export function AppNavbar() {
   return (
     <header className="sticky top-0 z-50 h-16 shrink-0 border-b border-slate-200/80 bg-white shadow-[0_1px_3px_rgba(15,23,42,0.04)]">
       <nav
-        className="mx-auto flex h-full max-w-7xl items-center justify-between gap-3 px-4 sm:gap-4 sm:px-6"
+        className="flex h-full w-full items-center justify-between gap-4 px-3 sm:px-5 lg:px-8"
         aria-label="Main"
       >
-        <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+        <div className="flex min-w-0 items-center">
           <Link
             href={logoHref}
             className="flex items-center gap-2.5 font-headline text-lg font-bold tracking-tight text-pulse-navy no-underline hover:text-pulse-accent sm:text-xl"
@@ -69,41 +63,16 @@ export function AppNavbar() {
           </Link>
         </div>
 
-        <div className="flex items-center gap-1.5 sm:gap-2">
+        <div className="flex items-center">
           {!authed ? (
-            <>
-              {!onLoginPage ? (
-                <Link
-                  href={pulseApp.login()}
-                  className="hidden rounded-lg px-3 py-2 text-sm font-semibold text-pulse-navy hover:bg-slate-50 sm:inline-flex"
-                >
-                  Login
-                </Link>
-              ) : null}
-              {onLoginPage ? (
-                <Link
-                  href={helixMarketingHref("/pulse")}
-                  className="rounded-lg bg-pulse-accent px-3 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-pulse-accent-hover sm:px-4"
-                >
-                  View product
-                </Link>
-              ) : (
-                <>
-                  <Link
-                    href={pulseApp.login()}
-                    className="rounded-lg bg-pulse-accent px-3 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-pulse-accent-hover sm:px-4"
-                  >
-                    Get started
-                  </Link>
-                  <Link
-                    href={helixMarketingHref("/pulse")}
-                    className="hidden rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-pulse-navy shadow-sm hover:bg-slate-50 md:inline-flex"
-                  >
-                    View product
-                  </Link>
-                </>
-              )}
-            </>
+            pathname !== "/login" ? (
+              <Link
+                href={pulseApp.login()}
+                className="rounded-lg px-2 py-2 text-sm font-semibold text-pulse-navy hover:bg-slate-50 sm:px-3"
+              >
+                Login
+              </Link>
+            ) : null
           ) : (
             <div className="relative" ref={userMenuRef}>
               <button

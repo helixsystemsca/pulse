@@ -6,18 +6,27 @@ function PhoneChrome() {
   return (
     <div className="relative mx-auto w-full max-w-[300px] shrink-0">
       <div className="relative mx-auto w-full max-w-[300px]">
-        <div className="aspect-[9/19.5] w-full overflow-hidden rounded-3xl bg-gradient-to-b from-slate-500 via-slate-700 to-slate-900 p-[3px] shadow-2xl shadow-slate-900/40 ring-1 ring-white/15">
-          <div className="relative h-full min-h-0 overflow-hidden rounded-[1.35rem] shadow-[inset_0_0_0_2.5px_rgb(10,10,10)] sm:shadow-[inset_0_0_0_3px_rgb(10,10,10)]">
-            <div
-              className="pointer-events-none absolute inset-0 z-0 bg-gradient-to-br from-slate-100 via-sky-50/90 to-blue-100/80"
-              aria-hidden
-            />
-            <div
-              className="pointer-events-none absolute inset-0 z-0 bg-gradient-to-t from-pulse-accent/[0.09] via-transparent to-white/40"
-              aria-hidden
-            />
-            <div className="relative z-10 flex h-full min-h-0 flex-col">
-              <header className="relative shrink-0 overflow-hidden border-b border-white/25 shadow-[inset_0_-1px_0_rgba(255,255,255,0.2)]">
+        {/* Outer device chassis */}
+        <div className="aspect-[9/19.5] w-full overflow-hidden rounded-[1.85rem] bg-zinc-950 p-[10px] shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5),0_0_0_1px_rgba(0,0,0,0.65),inset_0_1px_0_rgba(255,255,255,0.08)] ring-1 ring-zinc-800/90 sm:rounded-[2rem] sm:p-3">
+          {/* Thick inner bezel (screen border) */}
+          <div className="relative h-full min-h-0 overflow-hidden rounded-[1.35rem] bg-black p-[5px] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.05)] sm:rounded-[1.45rem] sm:p-[6px]">
+            {/* Display glass */}
+            <div className="relative h-full min-h-0 overflow-hidden rounded-[1.05rem] sm:rounded-[1.12rem]">
+              <div
+                className="pointer-events-none absolute inset-0 z-0 bg-gradient-to-br from-slate-100 via-sky-50/90 to-blue-100/80"
+                aria-hidden
+              />
+              <div
+                className="pointer-events-none absolute inset-0 z-0 bg-gradient-to-t from-pulse-accent/[0.09] via-transparent to-white/40"
+                aria-hidden
+              />
+              {/* Dynamic Island–style camera bar */}
+              <div
+                className="pointer-events-none absolute left-1/2 top-2 z-[60] h-[22px] w-[min(34%,5.75rem)] min-w-[4.75rem] -translate-x-1/2 rounded-full bg-black shadow-[inset_0_1px_2px_rgba(255,255,255,0.14),0_2px_6px_rgba(0,0,0,0.45)] ring-1 ring-black/90 sm:top-2.5 sm:h-6 sm:min-w-[5.25rem] sm:w-[min(36%,6rem)]"
+                aria-hidden
+              />
+              <div className="relative z-10 flex h-full min-h-0 flex-col">
+              <header className="relative shrink-0 overflow-hidden border-b border-white/25 pt-7 shadow-[inset_0_-1px_0_rgba(255,255,255,0.2)] sm:pt-8">
                 {/* Background image — subtle, header only */}
                 <div
                   className="pointer-events-none absolute inset-0 z-0 scale-105 bg-cover bg-center blur-[1.5px]"
@@ -194,6 +203,7 @@ function PhoneChrome() {
                   <span className="text-[10px] font-medium leading-none">Profile</span>
                 </button>
               </nav>
+              </div>
             </div>
           </div>
         </div>
