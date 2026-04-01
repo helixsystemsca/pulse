@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 232 40" fill="none" aria-labelledby="pulseLogoTitleDark">
+  <title id="pulseLogoTitleDark">Pulse</title>
+  <path
+    d="M 7 22 H 19 L 25 22 L 33.5 7 L 41.5 33 L 49.5 13 L 57 22 H 79"
+    stroke="#2563eb"
+    stroke-width="2.75"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+  <line x1="88" y1="7" x2="88" y2="33" stroke="#cbd5e1" stroke-width="1" />
+  <text
+    x="96"
+    y="28"
+    fill="#ffffff"
+    font-family="system-ui, -apple-system, 'Segoe UI', sans-serif"
+    font-size="17.5"
+    font-weight="700"
+    letter-spacing="0.06em"
+  >
+    PULSE
+  </text>
+</svg>

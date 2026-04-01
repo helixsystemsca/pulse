@@ -6,6 +6,7 @@ import {
   InventoryAlertsSection,
   MaintenanceSection,
   MobileFeatureSection,
+  PulseMarketingHeader,
   PulsePageIntro,
   ToolEquipmentTrackingSection,
   WorkforceSchedulingSection,
@@ -22,6 +23,7 @@ export default function PulseProductPage() {
     <div
       className={`${inter.className} min-h-full bg-pulse-bg text-pulse-navy antialiased [font-feature-settings:'liga'_1,'kern'_1]`}
     >
+      <PulseMarketingHeader />
       <PulsePageIntro />
       <main>
         <Hero />

@@ -2,8 +2,9 @@
 
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
-import { Activity, ChevronDown, LogOut, Settings, User } from "lucide-react";
+import { ChevronDown, LogOut, Settings, User } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { PulseLogo } from "@/components/brand/PulseLogo";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
 import { pulseRoutes } from "@/lib/pulse-app";
 import { clearSession } from "@/lib/pulse-session";
@@ -54,14 +55,8 @@ export function AppNavbar() {
         aria-label="Main"
       >
         <div className="flex min-w-0 items-center gap-2 sm:gap-3">
-          <Link
-            href={logoHref}
-            className="flex items-center gap-2.5 font-headline text-lg font-bold tracking-tight text-pulse-navy no-underline hover:text-pulse-accent sm:text-xl"
-          >
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-200/80 bg-slate-50 text-pulse-accent shadow-sm">
-              <Activity className="h-4 w-4" strokeWidth={2} aria-hidden />
-            </span>
-            <span>Pulse</span>
+          <Link href={logoHref} className="group no-underline">
+            <PulseLogo variant="light" className="group-hover:text-pulse-accent" />
           </Link>
         </div>
 
