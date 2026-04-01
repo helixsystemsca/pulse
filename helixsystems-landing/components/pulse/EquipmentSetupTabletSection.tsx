@@ -1,7 +1,6 @@
 import {
   ArrowLeft,
   Camera,
-  ChevronDown,
   Droplets,
   Keyboard,
   LayoutGrid,
@@ -133,16 +132,12 @@ function EquipmentSetupScreen() {
                 Location &amp; Access
               </div>
               <label className="mt-1.5 block text-[8px] font-bold uppercase tracking-wider text-slate-500">Site / facility</label>
-              <button
-                type="button"
-                className="mt-0.5 flex w-full items-center justify-between rounded-xl border border-slate-200 bg-white px-2 py-1.5 text-left text-[11px] text-pulse-muted"
-              >
-                Select Facility
-                <ChevronDown className="h-3.5 w-3.5 text-slate-400" strokeWidth={2} aria-hidden />
-              </button>
+              <div className="mt-0.5 rounded-xl border border-slate-200 bg-white px-2 py-1.5 text-[11px] font-medium text-pulse-navy">
+                Panorama
+              </div>
               <label className="mt-1.5 block text-[8px] font-bold uppercase tracking-wider text-slate-500">Designated area</label>
               <div className="mt-0.5 rounded-xl border border-slate-200 bg-white px-2 py-1.5 text-[11px] font-medium text-pulse-navy">
-                Pump Room B-4
+                Pool Pump Room
               </div>
             </section>
 
@@ -173,13 +168,24 @@ function EquipmentSetupScreen() {
                 + Manage
               </button>
             </div>
-            <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-2 py-1.5 shadow-sm">
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-200 text-[10px] font-bold text-pulse-navy">
-                JD
-              </span>
-              <div className="min-w-0 leading-tight">
-                <p className="truncate text-[11px] font-bold text-pulse-navy">John Doe</p>
-                <p className="text-[8px] font-bold uppercase tracking-wide text-pulse-muted">Lead technician</p>
+            <div className="flex flex-col gap-1.5">
+              <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-2 py-1.5 shadow-sm">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-200 text-[10px] font-bold text-pulse-navy">
+                  DD
+                </span>
+                <div className="min-w-0 leading-tight">
+                  <p className="truncate text-[11px] font-bold text-pulse-navy">Daniel Dupree</p>
+                  <p className="text-[8px] font-bold uppercase tracking-wide text-pulse-muted">Lead technician</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-2 py-1.5 shadow-sm">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-200 text-[10px] font-bold text-pulse-navy">
+                  MS
+                </span>
+                <div className="min-w-0 leading-tight">
+                  <p className="truncate text-[11px] font-bold text-pulse-navy">Mauro Sartori</p>
+                  <p className="text-[8px] font-bold uppercase tracking-wide text-pulse-muted">Senior technician</p>
+                </div>
               </div>
             </div>
 
