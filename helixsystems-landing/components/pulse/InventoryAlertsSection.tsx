@@ -5,17 +5,17 @@ import { SectionWrapper } from "./SectionWrapper";
 export function InventoryAlertsSection() {
   return (
     <SectionWrapper id="inventory" className="scroll-mt-24 bg-pulse-bg" showMobileSeparator>
-      <div className="grid items-start gap-8 md:gap-10 lg:grid-cols-2 lg:gap-14">
-        <div>
+      <div className="flex flex-col items-center gap-10 md:gap-12">
+        <div className="mx-auto max-w-3xl text-center">
           <h2 className="text-3xl font-bold leading-tight tracking-tight text-pulse-navy md:text-4xl lg:text-[2.35rem]">
             Catch problems early.
           </h2>
-          <p className="mt-6 max-w-xl text-lg leading-relaxed text-pulse-muted">
+          <p className="mt-6 text-lg leading-relaxed text-pulse-muted">
             Get notified when something needs attention.
           </p>
         </div>
 
-        <div className="flex flex-col gap-5">
+        <div className="grid w-full max-w-7xl grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
           <FeatureCard
             icon={MapPinOff}
             title="Alerts for missing equipment"
