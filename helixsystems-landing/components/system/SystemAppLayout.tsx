@@ -1,36 +1,34 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { type ReactNode, useCallback, useEffect, useState } from "react";
 import { apiFetch, getApiBaseUrl, refreshSessionWithToken } from "@/lib/api";
-import { pulseRoutes } from "@/lib/pulse-app";
+import { navigateToPulseLogin } from "@/lib/pulse-app";
 import { clearSession, readSession, type UserOut } from "@/lib/pulse-session";
 
 export function SystemAppLayout({ children }: { children: ReactNode }) {
-  const router = useRouter();
   const [ready, setReady] = useState(false);
   const [me, setMe] = useState<UserOut | null>(null);
 
   const loadMe = useCallback(async () => {
     const s = readSession();
     if (!s?.access_token) {
-      router.replace(pulseRoutes.login);
+      navigateToPulseLogin();
       return;
     }
     try {
       const u = await apiFetch<UserOut>("/api/v1/auth/me");
       if (!u.is_system_admin) {
         clearSession();
-        router.replace(pulseRoutes.login);
+        navigateToPulseLogin();
         return;
       }
       setMe(u);
       setReady(true);
     } catch {
       clearSession();
-      router.replace(pulseRoutes.login);
+      navigateToPulseLogin();
     }
-  }, [router]);
+  }, []);
 
   useEffect(() => {
     void loadMe();

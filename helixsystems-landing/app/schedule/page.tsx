@@ -1,22 +1,20 @@
 "use client";
 
 import { ScheduleApp } from "@/components/schedule";
-import { pulseRoutes } from "@/lib/pulse-app";
+import { navigateToPulseLogin } from "@/lib/pulse-app";
 import { readSession } from "@/lib/pulse-session";
-import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 export default function SchedulePage() {
-  const router = useRouter();
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
     if (!readSession()) {
-      router.replace(pulseRoutes.login);
+      navigateToPulseLogin();
       return;
     }
     setReady(true);
-  }, [router]);
+  }, []);
 
   if (!ready) {
     return (

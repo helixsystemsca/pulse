@@ -1,9 +1,18 @@
 /**
- * Base URL for the Pulse web application (Operations Intelligence / worker-admin app).
- * Deploy helixsystems.ca as marketing; point this at pulse.example.com or /app as you prefer.
+ * Pulse app (sign-in, dashboard, schedule) — default `pulse.helixsystems.ca`.
+ * Override with `NEXT_PUBLIC_PULSE_APP_URL` (no trailing slash).
  */
-function origin(): string {
-  const raw = process.env.NEXT_PUBLIC_PULSE_APP_URL ?? "https://app.helixsystems.ca";
+function pulseAppOrigin(): string {
+  const raw = process.env.NEXT_PUBLIC_PULSE_APP_URL ?? "https://pulse.helixsystems.ca";
+  return raw.replace(/\/$/, "");
+}
+
+/**
+ * Helix marketing (home, `/pulse` product page, contact). Default `www.helixsystems.ca`.
+ * Override with `NEXT_PUBLIC_HELIX_MARKETING_URL`.
+ */
+function helixMarketingOrigin(): string {
+  const raw = process.env.NEXT_PUBLIC_HELIX_MARKETING_URL ?? "https://www.helixsystems.ca";
   return raw.replace(/\/$/, "");
 }
 
@@ -60,18 +69,53 @@ export type PulseSidebarIcon =
   | (typeof pulseTenantSidebarNav)[number]["icon"]
   | (typeof pulseSystemSidebarNav)[number]["icon"];
 
-export const pulseApp = {
-  origin,
+/** Absolute URL to a path on the Pulse app host (for `<a href>`, mailto templates, etc.). */
+export function pulseAppHref(path: string): string {
+  const p = path.startsWith("/") ? path : `/${path}`;
+  return `${pulseAppOrigin()}${p}`;
+}
 
+/**
+ * Send the browser to Pulse app sign-in. Prefer this over `router.replace('/login')` so
+ * unauthenticated users on the marketing host land on `pulse.helixsystems.ca`.
+ */
+export function navigateToPulseLogin(): void {
+  if (typeof window === "undefined") return;
+  window.location.replace(pulseAppHref("/login"));
+}
+
+/** Open Pulse app overview on the configured app host (after sign-in). */
+export function navigateToPulseOverview(): void {
+  if (typeof window === "undefined") return;
+  window.location.assign(pulseAppHref("/overview"));
+}
+
+/** Marketing site URL with path and/or hash (e.g. `"/#contact"`). */
+export function helixMarketingHref(pathWithOptionalHash: string): string {
+  const p = pathWithOptionalHash.startsWith("/")
+    ? pathWithOptionalHash
+    : `/${pathWithOptionalHash}`;
+  return `${helixMarketingOrigin()}${p}`;
+}
+
+export const pulseApp = {
+  origin: pulseAppOrigin,
+
+  /** Same as `pulseAppHref` — sign-in page on the Pulse host. */
   login(): string {
-    return `${origin()}/login`;
+    return pulseAppHref("/login");
+  },
+
+  /** Dashboard and other authenticated routes on the Pulse host. */
+  to(path: string): string {
+    return pulseAppHref(path);
   },
 
   admin(): string {
-    return `${origin()}/admin`;
+    return pulseAppHref("/admin");
   },
 
   workRequests(): string {
-    return `${origin()}/work-requests`;
+    return pulseAppHref("/work-requests");
   },
 };

@@ -1,11 +1,16 @@
 "use client";
 
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { Activity, ChevronDown, LogOut, Settings, User } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
-import { pulseRoutes } from "@/lib/pulse-app";
+import {
+  helixMarketingHref,
+  navigateToPulseLogin,
+  pulseApp,
+  pulseRoutes,
+} from "@/lib/pulse-app";
 import { clearSession } from "@/lib/pulse-session";
 
 function initialsFrom(email: string, fullName: string | null | undefined): string {
@@ -22,12 +27,11 @@ function initialsFrom(email: string, fullName: string | null | undefined): strin
 
 export function AppNavbar() {
   const pathname = usePathname();
-  const router = useRouter();
   const { authed, session } = usePulseAuth();
   const [userOpen, setUserOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
 
-  const logoHref = authed ? pulseRoutes.overview : pulseRoutes.pulseLanding;
+  const logoHref = authed ? pulseApp.to(pulseRoutes.overview) : pulseRoutes.pulseLanding;
   const onLoginPage = pathname === "/login";
 
   useEffect(() => {
@@ -44,8 +48,8 @@ export function AppNavbar() {
   const signOut = useCallback(() => {
     clearSession();
     setUserOpen(false);
-    router.push(pulseRoutes.login);
-  }, [router]);
+    navigateToPulseLogin();
+  }, []);
 
   return (
     <header className="sticky top-0 z-50 h-16 shrink-0 border-b border-slate-200/80 bg-white shadow-[0_1px_3px_rgba(15,23,42,0.04)]">
@@ -70,7 +74,7 @@ export function AppNavbar() {
             <>
               {!onLoginPage ? (
                 <Link
-                  href={pulseRoutes.login}
+                  href={pulseApp.login()}
                   className="hidden rounded-lg px-3 py-2 text-sm font-semibold text-pulse-navy hover:bg-slate-50 sm:inline-flex"
                 >
                   Login
@@ -78,7 +82,7 @@ export function AppNavbar() {
               ) : null}
               {onLoginPage ? (
                 <Link
-                  href={pulseRoutes.pulseLanding}
+                  href={helixMarketingHref("/pulse")}
                   className="rounded-lg bg-pulse-accent px-3 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-pulse-accent-hover sm:px-4"
                 >
                   View product
@@ -86,13 +90,13 @@ export function AppNavbar() {
               ) : (
                 <>
                   <Link
-                    href={pulseRoutes.login}
+                    href={pulseApp.login()}
                     className="rounded-lg bg-pulse-accent px-3 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-pulse-accent-hover sm:px-4"
                   >
                     Get started
                   </Link>
                   <Link
-                    href={pulseRoutes.pulseLanding}
+                    href={helixMarketingHref("/pulse")}
                     className="hidden rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-pulse-navy shadow-sm hover:bg-slate-50 md:inline-flex"
                   >
                     View product
@@ -126,7 +130,7 @@ export function AppNavbar() {
                   role="menu"
                 >
                   <Link
-                    href={pulseRoutes.overview}
+                    href={pulseApp.to(pulseRoutes.overview)}
                     className="flex items-center gap-2 px-3 py-2 text-sm text-pulse-navy hover:bg-slate-50"
                     onClick={() => setUserOpen(false)}
                     role="menuitem"
@@ -135,7 +139,7 @@ export function AppNavbar() {
                     Profile
                   </Link>
                   <Link
-                    href={pulseRoutes.overview}
+                    href={pulseApp.to(pulseRoutes.overview)}
                     className="flex items-center gap-2 px-3 py-2 text-sm text-pulse-navy hover:bg-slate-50"
                     onClick={() => setUserOpen(false)}
                     role="menuitem"

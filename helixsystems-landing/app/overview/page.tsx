@@ -3,25 +3,23 @@
 import { OperationalDashboard } from "@/components/dashboard/OperationalDashboard";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
 import { isApiMode } from "@/lib/api";
-import { pulseRoutes } from "@/lib/pulse-app";
+import { navigateToPulseLogin } from "@/lib/pulse-app";
 import { readSession } from "@/lib/pulse-session";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 export default function OverviewPage() {
-  const router = useRouter();
   const { session } = usePulseAuth();
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
     const s = readSession();
     if (!s) {
-      router.replace(pulseRoutes.login);
+      navigateToPulseLogin();
       return;
     }
     setReady(true);
-  }, [router]);
+  }, []);
 
   if (!ready) {
     return (

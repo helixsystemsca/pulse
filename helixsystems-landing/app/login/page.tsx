@@ -2,7 +2,6 @@
 
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useId, useState } from "react";
 import { isApiMode } from "@/lib/api";
 import {
@@ -15,10 +14,9 @@ import {
   writeApiSession,
   writeSession,
 } from "@/lib/pulse-session";
-import { pulseRoutes } from "@/lib/pulse-app";
+import { helixMarketingHref, navigateToPulseOverview } from "@/lib/pulse-app";
 
 export default function LoginPage() {
-  const router = useRouter();
   const emailFieldId = useId();
   const passwordFieldId = useId();
   const rememberId = useId();
@@ -33,9 +31,9 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (isLoggedIn()) {
-      router.replace(pulseRoutes.overview);
+      navigateToPulseOverview();
     }
-  }, [router]);
+  }, []);
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -87,7 +85,7 @@ export default function LoginPage() {
           return;
         }
         writeApiSession(result.token, result.user, remember);
-        router.push(pulseRoutes.overview);
+        navigateToPulseOverview();
         return;
       }
 
@@ -105,7 +103,7 @@ export default function LoginPage() {
       }
 
       writeSession(identifier.trim(), remember);
-      router.push(pulseRoutes.overview);
+      navigateToPulseOverview();
     } finally {
       setSubmitting(false);
     }
@@ -226,7 +224,7 @@ export default function LoginPage() {
           <div className="mt-8 border-t border-pulse-border pt-6">
             <p className="text-center text-xs text-pulse-muted">Need help?</p>
             <p className="mt-1 text-center text-xs text-pulse-muted">
-              <Link href="/#contact" className="font-medium text-pulse-accent hover:underline">
+              <Link href={helixMarketingHref("/#contact")} className="font-medium text-pulse-accent hover:underline">
                 Contact support
               </Link>
             </p>

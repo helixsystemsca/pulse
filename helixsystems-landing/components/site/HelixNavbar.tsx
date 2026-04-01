@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { pulseRoutes } from "@/lib/pulse-app";
+import { pulseApp } from "@/lib/pulse-app";
 
 const navLinkBase =
   "border-b-2 border-transparent pb-0.5 text-sm font-semibold no-underline transition-colors duration-200 hover:text-helix-primary";
@@ -17,7 +17,7 @@ export function HelixNavbar() {
   const pathname = usePathname();
   const productsHref = pathname === "/" ? "#products" : "/#products";
   const contactHref = pathname === "/" ? "#contact" : "/#contact";
-  const pulseHref = pulseRoutes.login;
+  const pulseHref = pulseApp.login();
 
   const homeActive = pathname === "/";
   const homeClass = `${navLinkBase} ${
@@ -55,12 +55,7 @@ export function HelixNavbar() {
         </div>
 
         <div className="flex items-center gap-3">
-          <Link
-            href={pulseHref}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={`hidden md:inline-flex ${launchPulseClass}`}
-          >
+          <Link href={pulseHref} className={`hidden md:inline-flex ${launchPulseClass}`}>
             Launch Pulse
           </Link>
         </div>
@@ -89,12 +84,7 @@ export function HelixNavbar() {
         >
           Contact
         </a>
-        <Link
-          href={pulseHref}
-          target="_blank"
-          rel="noopener noreferrer"
-          className={`${launchPulseClass} text-xs`}
-        >
+        <Link href={pulseHref} className={`${launchPulseClass} text-xs`}>
           Launch Pulse
         </Link>
       </div>

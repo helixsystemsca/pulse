@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Activity, LineChart, ShieldCheck } from "lucide-react";
+import { pulseApp } from "@/lib/pulse-app";
 
 export function PulsePageIntro() {
   return (
@@ -57,7 +58,7 @@ export function PulsePageIntro() {
 
           <div className="mt-9 flex flex-col gap-3 sm:mt-10 sm:flex-row sm:flex-wrap sm:items-center">
             <Link
-              href="/login"
+              href={pulseApp.login()}
               className="inline-flex items-center justify-center rounded-xl bg-pulse-accent px-6 py-3 text-center text-sm font-semibold text-white shadow-md shadow-blue-900/25 transition-colors hover:bg-pulse-accent-hover"
             >
               Buy Now

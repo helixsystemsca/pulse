@@ -1,14 +1,13 @@
 "use client";
 
-import { useSearchParams, useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { FormEvent, Suspense, useState } from "react";
 import { getApiBaseUrl } from "@/lib/api";
-import { pulseRoutes } from "@/lib/pulse-app";
+import { navigateToPulseOverview, pulseApp } from "@/lib/pulse-app";
 import { writeApiSession } from "@/lib/pulse-session";
 import type { UserOut } from "@/lib/pulse-session";
 
 function ResetForm() {
-  const router = useRouter();
   const search = useSearchParams();
   const token = search.get("token") || "";
   const [password, setPassword] = useState("");
@@ -38,7 +37,7 @@ function ResetForm() {
       });
       const user = (await meRes.json()) as UserOut;
       writeApiSession(access_token, user, true);
-      router.replace("/overview");
+      navigateToPulseOverview();
     } finally {
       setBusy(false);
     }
@@ -71,7 +70,7 @@ function ResetForm() {
         {busy ? "Updating…" : "Save and sign in"}
       </button>
       <p className="text-center text-xs text-zinc-500">
-        <a href={pulseRoutes.login} className="text-blue-400">
+        <a href={pulseApp.login()} className="text-blue-400">
           Back to login
         </a>
       </p>
