@@ -32,7 +32,7 @@ export const pulseRoutes = {
 export const pulseTenantNav = [
   { href: "/overview", label: "Overview" },
   { href: "/schedule", label: "Schedule" },
-  { href: "/pulse#work-requests", label: "Work orders" },
+  { href: "/dashboard/work-requests", label: "Work orders" },
   { href: "/pulse#inventory", label: "Inventory" },
 ] as const;
 
@@ -53,7 +53,7 @@ export const pulseTenantSidebarNav = [
   { href: "/dashboard/compliance", label: "Compliance", icon: "shield-check" as const },
   { href: "/dashboard/payments", label: "Payments", icon: "credit-card" as const },
   { href: "/schedule", label: "Schedule", icon: "calendar" as const },
-  { href: "/pulse#work-requests", label: "Issue tracking", icon: "clipboard" as const },
+  { href: "/dashboard/work-requests", label: "Issue tracking", icon: "clipboard" as const },
   { href: "/pulse#inventory", label: "Inventory", icon: "package" as const },
   { href: "/pulse#tool-tracking", label: "Equipment", icon: "wrench" as const },
   { href: "/pulse#workforce-scheduling", label: "Workforce", icon: "users" as const },

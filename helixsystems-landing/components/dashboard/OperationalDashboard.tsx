@@ -183,10 +183,12 @@ type WorkRequestOut = {
   id: string;
   title: string;
   description: string | null;
-  priority: number;
+  /** String level from API (`low` | `medium` | `high` | `critical`); legacy numeric still accepted. */
+  priority: number | string;
   status: string;
   assigned_user_id: string | null;
   updated_at: string;
+  due_date?: string | null;
 };
 
 type WorkRequestListOut = { items: WorkRequestOut[]; total: number };
@@ -223,13 +225,31 @@ type ZoneOut = { id: string; name: string };
 
 type BeaconEquipmentOut = { id: string };
 
+function priorityRank(p: number | string): number {
+  if (typeof p === "number") return p;
+  switch (String(p).toLowerCase()) {
+    case "critical":
+      return 4;
+    case "high":
+      return 3;
+    case "medium":
+      return 2;
+    case "low":
+      return 1;
+    default:
+      return 0;
+  }
+}
+
 function workRequestTag(w: WorkRequestOut): WorkTag {
   const st = w.status.toLowerCase();
+  const pr = priorityRank(w.priority);
+  if (st === "completed") return { kind: "progress", label: "Completed" };
+  if (st === "cancelled") return { kind: "progress", label: "Cancelled" };
+  const due = w.due_date ? new Date(w.due_date).getTime() : null;
+  if (due != null && due < Date.now()) return { kind: "overdue", label: "Overdue" };
   if (st === "in_progress") return { kind: "progress", label: "In progress" };
-  const updated = new Date(w.updated_at).getTime();
-  const days = (Date.now() - updated) / (86400 * 1000);
-  if (st === "open" && days > 7) return { kind: "overdue", label: "Overdue" };
-  if (w.priority >= 5) return { kind: "urgent", label: "Urgent" };
+  if (pr >= 3) return { kind: "urgent", label: "Urgent" };
   return { kind: "progress", label: st.replace(/_/g, " ") };
 }
 
@@ -305,8 +325,8 @@ function buildLiveModel(
     (a, b) => new Date(a.updated_at).getTime() - new Date(b.updated_at).getTime(),
   );
   const critical = [...openItems]
-    .filter((i) => i.priority >= 5)
-    .sort((a, b) => b.priority - a.priority)
+    .filter((i) => priorityRank(i.priority) >= 3)
+    .sort((a, b) => priorityRank(b.priority) - priorityRank(a.priority))
     .slice(0, 4)
     .map((i) => ({
       title: i.title,
