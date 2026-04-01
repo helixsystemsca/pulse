@@ -7,8 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "deploy:check": "npm run build",
-    "brand:png": "node scripts/generate-pulse-brand-png.mjs"
+    "deploy:check": "npm run build"
   },
   "engines": {
     "node": ">=18.18.0"
@@ -28,7 +27,6 @@
     "eslint": "^8.57.0",
     "eslint-config-next": "14.2.5",
     "postcss": "^8.4.49",
-    "sharp": "^0.34.5",
     "tailwindcss": "^3.4.15",
     "typescript": "^5.5.0"
   }

@@ -8,7 +8,6 @@ export { Hero } from "./Hero";
 export { InventoryAlertsSection } from "./InventoryAlertsSection";
 export { MaintenanceSection } from "./MaintenanceSection";
 export { MobileFeatureSection } from "./MobileFeatureSection";
-export { PulseMarketingHeader } from "./PulseMarketingHeader";
 export { PulsePageIntro } from "./PulsePageIntro";
 export { SectionWrapper } from "./SectionWrapper";
 export { StatBlock, StatCard } from "./StatCard";
