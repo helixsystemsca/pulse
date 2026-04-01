@@ -3,7 +3,7 @@
 import { useSearchParams } from "next/navigation";
 import { FormEvent, Suspense, useState } from "react";
 import { getApiBaseUrl } from "@/lib/api";
-import { navigateToPulseOverview, pulseApp } from "@/lib/pulse-app";
+import { navigateAfterPulseLogin, pulseApp } from "@/lib/pulse-app";
 import { writeApiSession } from "@/lib/pulse-session";
 import type { UserOut } from "@/lib/pulse-session";
 
@@ -37,7 +37,7 @@ function ResetForm() {
       });
       const user = (await meRes.json()) as UserOut;
       writeApiSession(access_token, user, true);
-      navigateToPulseOverview();
+      navigateAfterPulseLogin(user);
     } finally {
       setBusy(false);
     }

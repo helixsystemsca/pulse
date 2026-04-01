@@ -1,13 +1,19 @@
 "use client";
 
 import { type ReactNode, useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { apiFetch, getApiBaseUrl, refreshSessionWithToken } from "@/lib/api";
-import { navigateToPulseLogin } from "@/lib/pulse-app";
+import { navigateToPulseLogin, pulsePostLoginPath } from "@/lib/pulse-app";
 import { clearSession, readSession, type UserOut } from "@/lib/pulse-session";
 
 export function SystemAppLayout({ children }: { children: ReactNode }) {
+  const router = useRouter();
   const [ready, setReady] = useState(false);
   const [me, setMe] = useState<UserOut | null>(null);
+
+  const bounceTenantToOverview = useCallback(() => {
+    router.replace("/overview");
+  }, [router]);
 
   const loadMe = useCallback(async () => {
     const s = readSession();
@@ -15,20 +21,28 @@ export function SystemAppLayout({ children }: { children: ReactNode }) {
       navigateToPulseLogin();
       return;
     }
+    if (pulsePostLoginPath(s) !== "/system") {
+      bounceTenantToOverview();
+      return;
+    }
     try {
       const u = await apiFetch<UserOut>("/api/v1/auth/me");
-      if (!u.is_system_admin) {
-        clearSession();
-        navigateToPulseLogin();
+      if (pulsePostLoginPath(u) !== "/system") {
+        bounceTenantToOverview();
         return;
       }
       setMe(u);
       setReady(true);
-    } catch {
-      clearSession();
-      navigateToPulseLogin();
+    } catch (err) {
+      const status = err && typeof err === "object" && "status" in err ? (err as { status: number }).status : undefined;
+      if (status === 401) {
+        clearSession();
+        navigateToPulseLogin();
+        return;
+      }
+      bounceTenantToOverview();
     }
-  }, []);
+  }, [bounceTenantToOverview]);
 
   useEffect(() => {
     void loadMe();

@@ -19,7 +19,7 @@ export function PulsePageIntro() {
       {/* RIGHT — PANEL */}
       <div className="relative flex w-full items-center bg-[#1e2d44]">
         <div className="relative z-10 w-full px-6 py-12 sm:px-10 sm:py-14 md:py-10 lg:px-14 lg:py-16">
-          <span className="inline-flex rounded-full border border-blue-800/80 bg-blue-950/90 px-3 py-1 text-[10px] font-bold tracking-wide text-sky-400 sm:text-[11px]">
+          <span className="inline-flex rounded-full border border-pulse-accent/45 bg-pulse-accent/15 px-3 py-1 text-[10px] font-bold tracking-wide text-blue-100 shadow-sm shadow-pulse-accent/15 ring-1 ring-white/5 sm:text-[11px]">
             New release
           </span>
 

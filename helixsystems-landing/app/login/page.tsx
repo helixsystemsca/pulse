@@ -10,11 +10,12 @@ import {
   isEmailShape,
   isLoggedIn,
   loginWithBackend,
+  readSession,
   validateIdentifier,
   writeApiSession,
   writeSession,
 } from "@/lib/pulse-session";
-import { helixMarketingHref, navigateToPulseOverview } from "@/lib/pulse-app";
+import { helixMarketingHref, navigateAfterPulseLogin } from "@/lib/pulse-app";
 import { mailtoInfo } from "@/lib/helix-emails";
 
 export default function LoginPage() {
@@ -31,9 +32,9 @@ export default function LoginPage() {
   const [fieldErrors, setFieldErrors] = useState<{ identifier?: string; password?: string }>({});
 
   useEffect(() => {
-    if (isLoggedIn()) {
-      navigateToPulseOverview();
-    }
+    if (!isLoggedIn()) return;
+    const s = readSession();
+    if (s) navigateAfterPulseLogin(s);
   }, []);
 
   async function onSubmit(e: FormEvent) {
@@ -86,7 +87,7 @@ export default function LoginPage() {
           return;
         }
         writeApiSession(result.token, result.user, remember);
-        navigateToPulseOverview();
+        navigateAfterPulseLogin(result.user);
         return;
       }
 
@@ -104,7 +105,7 @@ export default function LoginPage() {
       }
 
       writeSession(identifier.trim(), remember);
-      navigateToPulseOverview();
+      navigateAfterPulseLogin(readSession()!);
     } finally {
       setSubmitting(false);
     }

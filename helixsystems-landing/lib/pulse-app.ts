@@ -90,6 +90,29 @@ export function navigateToPulseOverview(): void {
   window.location.assign(pulseAppHref("/overview"));
 }
 
+/** Minimal fields from `/auth/me` or stored session for routing after sign-in. */
+export type PulsePostLoginIdentity = {
+  role?: string;
+  is_system_admin?: boolean;
+};
+
+/**
+ * System operators use `/system`; everyone else (tenant / company users) uses `/overview`.
+ * Impersonation tokens look like a tenant — they stay on `/overview`.
+ */
+export function pulsePostLoginPath(user: PulsePostLoginIdentity): "/system" | "/overview" {
+  if (user.is_system_admin === true || user.role === "system_admin") {
+    return "/system";
+  }
+  return "/overview";
+}
+
+/** Same-origin navigation after successful login / invite / password reset. */
+export function navigateAfterPulseLogin(user: PulsePostLoginIdentity): void {
+  if (typeof window === "undefined") return;
+  window.location.assign(pulseAppHref(pulsePostLoginPath(user)));
+}
+
 /** Marketing site URL with path and/or hash (e.g. `"/#contact"`). */
 export function helixMarketingHref(pathWithOptionalHash: string): string {
   const p = pathWithOptionalHash.startsWith("/")
