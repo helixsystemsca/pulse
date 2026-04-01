@@ -1,5 +1,9 @@
 "use client";
 
+/**
+ * Collapsible icon rail: tenant links (dashboard, compliance, schedule, marketing anchors) or,
+ * on `/system/*`, system-admin links. Expands on hover (desktop) or tap (mobile).
+ */
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { LucideIcon } from "lucide-react";
@@ -8,6 +12,7 @@ import {
   CalendarDays,
   ChevronRight,
   ClipboardList,
+  CreditCard,
   Gauge,
   LayoutDashboard,
   MapPin,
@@ -35,6 +40,7 @@ const ICONS: Record<PulseSidebarIcon, LucideIcon> = {
   gauge: Gauge,
   shield: Shield,
   "shield-check": ShieldCheck,
+  "credit-card": CreditCard,
   building: Building2,
   "user-cog": UserCog,
   "scroll-text": ScrollText,

@@ -1,3 +1,7 @@
+/**
+ * Typed API calls for `/api/compliance` (summary, list, review, resend, flag).
+ * Pass `companyId` as a query param when the caller is a system admin.
+ */
 import { apiFetch } from "@/lib/api";
 
 export type ComplianceEffectiveStatus = "completed" | "pending" | "overdue" | "ignored";

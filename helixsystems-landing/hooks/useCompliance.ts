@@ -1,5 +1,9 @@
 "use client";
 
+/**
+ * React hooks that load compliance summary and paginated list data from the backend.
+ * Surfaces 403 as a clear permission message for non-manager roles.
+ */
 import { useCallback, useEffect, useState } from "react";
 import {
   fetchComplianceList,

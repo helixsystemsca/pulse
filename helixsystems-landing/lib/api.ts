@@ -1,3 +1,7 @@
+/**
+ * Browser client for the Operations Intelligence backend: resolves `NEXT_PUBLIC_API_URL`,
+ * attaches the Pulse session bearer token, and throws structured errors for non-OK responses.
+ */
 import { normalizeApiBaseUrl } from "@/lib/api-base-url";
 import { readSession, writeApiSession, type UserOut } from "@/lib/pulse-session";
 

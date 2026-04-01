@@ -1,5 +1,8 @@
 "use client";
 
+/**
+ * Sticky top bar: Pulse logo, login CTA, or user menu (profile/settings/sign-out links).
+ */
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { Activity, ChevronDown, LogOut, Settings, User } from "lucide-react";

@@ -1,3 +1,6 @@
+/**
+ * Route group for in-app dashboards (e.g. compliance analytics under `/dashboard/compliance`).
+ */
 import { AppLayout } from "@/components/app/AppLayout";
 import type { Metadata } from "next";
 

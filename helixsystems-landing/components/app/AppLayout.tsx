@@ -1,3 +1,6 @@
+/**
+ * Authenticated shell: floating `AppSideNav` rail, top `AppNavbar`, and scrollable `AppMain`.
+ */
 import type { ReactNode } from "react";
 import { AppMain } from "./AppMain";
 import { AppNavbar } from "./AppNavbar";

@@ -1,6 +1,6 @@
 /**
- * Pulse auth: demo mock, or JWT + /auth/me when NEXT_PUBLIC_API_URL is set
- * and NEXT_PUBLIC_USE_MOCK_AUTH is not "true".
+ * Pulse auth persistence: `localStorage` session shape, read/write/clear, mock vs API login,
+ * and helpers (`canAccessPulseTenantApis`, JWT expiry) used by `apiFetch` and route guards.
  */
 
 import { normalizeApiBaseUrl } from "@/lib/api-base-url";

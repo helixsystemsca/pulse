@@ -1,6 +1,9 @@
 /**
- * Pulse app (sign-in, dashboard, schedule) — default `pulse.helixsystems.ca`.
- * Override with `NEXT_PUBLIC_PULSE_APP_URL` (no trailing slash).
+ * Pulse product routing helpers: absolute URLs for the app host, post-login paths,
+ * left-rail (`pulseTenantSidebarNav` / `pulseSystemSidebarNav`) and top-nav definitions,
+ * and marketing-site links. Marketing vs Pulse app hosts are intentionally split.
+ *
+ * Default app origin: `pulse.helixsystems.ca`. Override with `NEXT_PUBLIC_PULSE_APP_URL`.
  */
 function pulseAppOrigin(): string {
   const raw = process.env.NEXT_PUBLIC_PULSE_APP_URL ?? "https://pulse.helixsystems.ca";
@@ -48,6 +51,7 @@ export const pulseSystemNav = [
 export const pulseTenantSidebarNav = [
   { href: "/overview", label: "Dashboard", icon: "layout" as const },
   { href: "/dashboard/compliance", label: "Compliance", icon: "shield-check" as const },
+  { href: "/dashboard/payments", label: "Payments", icon: "credit-card" as const },
   { href: "/schedule", label: "Schedule", icon: "calendar" as const },
   { href: "/pulse#work-requests", label: "Issue tracking", icon: "clipboard" as const },
   { href: "/pulse#inventory", label: "Inventory", icon: "package" as const },
@@ -61,6 +65,7 @@ export const pulseTenantSidebarNav = [
 export const pulseSystemSidebarNav = [
   { href: "/overview", label: "Operations", icon: "layout" as const },
   { href: "/dashboard/compliance", label: "Compliance", icon: "shield-check" as const },
+  { href: "/dashboard/payments", label: "Payments", icon: "credit-card" as const },
   { href: "/system", label: "Admin home", icon: "shield" as const },
   { href: "/system/companies", label: "Companies", icon: "building" as const },
   { href: "/system/users", label: "Users", icon: "user-cog" as const },

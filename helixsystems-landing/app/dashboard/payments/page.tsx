@@ -1,15 +1,15 @@
 "use client";
 
 /**
- * Compliance analytics page: requires API session; renders `ComplianceApp` for managers+.
+ * Company billing: payment methods, banks, invoices (company_admin + system admin with company).
  */
-import { ComplianceApp } from "@/components/compliance/ComplianceApp";
+import { PaymentsApp } from "@/components/payments/PaymentsApp";
 import { isApiMode } from "@/lib/api";
 import { navigateToPulseLogin } from "@/lib/pulse-app";
 import { readSession } from "@/lib/pulse-session";
 import { useEffect, useState } from "react";
 
-export default function ComplianceDashboardPage() {
+export default function PaymentsDashboardPage() {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
@@ -33,5 +33,5 @@ export default function ComplianceDashboardPage() {
     );
   }
 
-  return <ComplianceApp />;
+  return <PaymentsApp />;
 }

@@ -1,5 +1,9 @@
 "use client";
 
+/**
+ * Full compliance UI: KPI cards, category tabs, filters, paginated table, row actions,
+ * CSV export. System admins pick a `company_id`; tenant users use the JWT company.
+ */
 import {
   AlertTriangle,
   Download,

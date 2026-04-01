@@ -1,10 +1,11 @@
+/**
+ * Pulse host rewrite: for configured worker hostnames, `/` → `/login` so the marketing homepage
+ * is not served on the Pulse subdomain. Override hosts with `PULSE_APP_HOSTNAMES` (comma-separated).
+ */
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
-/**
- * Hostnames that serve the worker app with `/` → `/login` (same Next.js app, different domain).
- * Set `PULSE_APP_HOSTNAMES` to a comma-separated list to override or add preview/staging hosts.
- */
+/** Default worker hostname(s) if `PULSE_APP_HOSTNAMES` is unset. */
 const DEFAULT_PULSE_APP_HOSTS = ["pulse.helixsystems.ca"];
 
 function pulseAppHostSet(): Set<string> {

@@ -1,5 +1,8 @@
 "use client";
 
+/**
+ * Main content column; adds left padding when signed in so body text clears the collapsed rail.
+ */
 import type { ReactNode } from "react";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
 
