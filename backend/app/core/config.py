@@ -51,6 +51,33 @@ class Settings(BaseSettings):
             "allow_password_company_bootstrap",
         ),
     )
+    # --- Outbound email (SMTP). Leave host empty to skip sending (invites = link-only in UI).
+    smtp_host: str = Field(default="", validation_alias=AliasChoices("SMTP_HOST", "smtp_host"))
+    smtp_port: int = Field(default=587, validation_alias=AliasChoices("SMTP_PORT", "smtp_port"))
+    smtp_username: str = Field(default="", validation_alias=AliasChoices("SMTP_USERNAME", "SMTP_USER", "smtp_username"))
+    smtp_password: str = Field(default="", validation_alias=AliasChoices("SMTP_PASSWORD", "smtp_password"))
+    smtp_use_tls: bool = Field(default=True, validation_alias=AliasChoices("SMTP_USE_TLS", "smtp_use_tls"))
+    #: Use SMTP_SSL on port 465 instead of STARTTLS (e.g. some legacy hosts).
+    smtp_use_ssl: bool = Field(default=False, validation_alias=AliasChoices("SMTP_USE_SSL", "smtp_use_ssl"))
+    #: Envelope + From for transactional mail (invites, password reset). Use your DNS alias.
+    email_from_noreply: str = Field(
+        default="noreply@helixsystems.ca",
+        validation_alias=AliasChoices("EMAIL_FROM_NOREPLY", "email_from_noreply"),
+    )
+    email_from_display: str = Field(
+        default="Helix Systems",
+        validation_alias=AliasChoices("EMAIL_FROM_DISPLAY", "email_from_display"),
+    )
+    #: Inbound mailbox for marketing contact form submissions.
+    email_to_info: str = Field(
+        default="info@helixsystems.ca",
+        validation_alias=AliasChoices("EMAIL_TO_INFO", "email_to_info"),
+    )
+    #: Base URL for links in emails (invite/reset). Must match the Pulse web app; no trailing slash.
+    pulse_app_public_url: str = Field(
+        default="https://pulse.helixsystems.ca",
+        validation_alias=AliasChoices("PULSE_APP_PUBLIC_URL", "pulse_app_public_url"),
+    )
 
     @property
     def cors_origin_list(self) -> List[str]:
@@ -83,6 +110,15 @@ class Settings(BaseSettings):
     @property
     def trusted_host_list(self) -> List[str]:
         return [h.strip() for h in self.trusted_hosts.split(",") if h.strip()]
+
+    @property
+    def smtp_configured(self) -> bool:
+        """Host + From address required; username required for most providers (password may be empty for some relays)."""
+        return bool(self.smtp_host.strip() and self.smtp_username.strip() and self.email_from_noreply.strip())
+
+    @property
+    def pulse_app_public_origin(self) -> str:
+        return self.pulse_app_public_url.rstrip("/")
 
 
 @lru_cache

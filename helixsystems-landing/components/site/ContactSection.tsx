@@ -2,6 +2,8 @@
 
 import type { FormEvent } from "react";
 import { useState } from "react";
+import { getApiBaseUrl } from "@/lib/api";
+import { HELIX_INFO_EMAIL, mailtoInfo } from "@/lib/helix-emails";
 
 type FormState = {
   name: string;
@@ -21,6 +23,8 @@ export function ContactSection({ id }: { id?: string }) {
   });
   const [errors, setErrors] = useState<Errors>({});
   const [submitted, setSubmitted] = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
+  const [sending, setSending] = useState(false);
 
   function validate(): boolean {
     const next: Errors = {};
@@ -35,10 +39,48 @@ export function ContactSection({ id }: { id?: string }) {
     return Object.keys(next).length === 0;
   }
 
-  function handleSubmit(e: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setSubmitted(false);
+    setSendError(null);
     if (!validate()) return;
+
+    const base = getApiBaseUrl();
+    const payload = {
+      name: form.name.trim(),
+      email: form.email.trim(),
+      company: form.company.trim(),
+      message: form.message.trim(),
+    };
+
+    if (base) {
+      setSending(true);
+      try {
+        const res = await fetch(`${base.replace(/\/$/, "")}/api/public/contact`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Accept: "application/json" },
+          body: JSON.stringify(payload),
+        });
+        if (!res.ok) {
+          const data = (await res.json().catch(() => ({}))) as { detail?: unknown };
+          const d = data.detail;
+          setSendError(
+            typeof d === "string" ? d : "Could not send. Try email below or try again later.",
+          );
+          return;
+        }
+        setSubmitted(true);
+        setForm({ name: "", email: "", company: "", message: "" });
+      } catch {
+        setSendError("Network error. Email us directly at " + HELIX_INFO_EMAIL);
+      } finally {
+        setSending(false);
+      }
+      return;
+    }
+
+    const body = `${payload.message}\n\n—\n${payload.name}\n${payload.email}\n${payload.company || "Company not provided"}`;
+    window.location.href = mailtoInfo("Helix — contact from website", body);
     setSubmitted(true);
   }
 
@@ -51,7 +93,11 @@ export function ContactSection({ id }: { id?: string }) {
         </h2>
         <p className="mt-4 max-w-2xl text-lg text-helix-onSurfaceVariant">
           Share your site context and we’ll follow up for a discovery conversation—no spam, no cold
-          lists.
+          lists. You can also reach us at{" "}
+          <a className="font-semibold text-helix-primary underline-offset-2 hover:underline" href={`mailto:${HELIX_INFO_EMAIL}`}>
+            {HELIX_INFO_EMAIL}
+          </a>
+          .
         </p>
 
         <form
@@ -120,13 +166,15 @@ export function ContactSection({ id }: { id?: string }) {
           <div className="flex flex-wrap items-center gap-4 pt-2">
             <button
               type="submit"
-              className="h-12 rounded-full bg-helix-primary px-8 font-semibold text-white shadow-md transition-colors hover:bg-helix-primary-dim"
+              disabled={sending}
+              className="h-12 rounded-full bg-helix-primary px-8 font-semibold text-white shadow-md transition-colors hover:bg-helix-primary-dim disabled:opacity-60"
             >
-              Submit
+              {sending ? "Sending…" : "Submit"}
             </button>
+            {sendError ? <p className="text-sm text-red-600">{sendError}</p> : null}
             {submitted ? (
               <p className="text-sm font-medium text-emerald-700">
-                Thanks — your message is ready to send. (Backend hookup pending.)
+                Thanks — we received your message and will follow up shortly.
               </p>
             ) : null}
           </div>

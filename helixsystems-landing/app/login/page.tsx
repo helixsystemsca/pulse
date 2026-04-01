@@ -15,6 +15,7 @@ import {
   writeSession,
 } from "@/lib/pulse-session";
 import { helixMarketingHref, navigateToPulseOverview } from "@/lib/pulse-app";
+import { mailtoInfo } from "@/lib/helix-emails";
 
 export default function LoginPage() {
   const emailFieldId = useId();
@@ -197,12 +198,12 @@ export default function LoginPage() {
                 />
                 <span>Keep me signed in</span>
               </label>
-              <Link
-                href="/#contact"
+              <a
+                href={mailtoInfo("Pulse — password help")}
                 className="text-sm font-semibold text-pulse-accent underline-offset-2 transition-colors hover:text-pulse-accent-hover hover:underline"
               >
                 Forgot password?
-              </Link>
+              </a>
             </div>
 
             <button

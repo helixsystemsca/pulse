@@ -1,9 +1,10 @@
 import Link from "next/link";
+import { mailtoSupport } from "@/lib/helix-emails";
 
 const links = [
   { href: "#", label: "Privacy Policy" },
   { href: "#", label: "Terms of Service" },
-  { href: "#", label: "Support" },
+  { href: mailtoSupport("Support request"), label: "Support" },
   { href: "#contact", label: "Contact Us" },
 ] as const;
 

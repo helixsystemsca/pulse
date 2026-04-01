@@ -13,6 +13,7 @@ from app.core.audit.service import record_audit
 from app.core.auth.security import create_access_token, hash_password as hash_pw
 from app.core.config import get_settings
 from app.core.database import get_db
+from app.core.email_smtp import send_company_admin_invite, send_password_reset_email
 from app.core.company_features import list_enabled_names, sync_enabled_features
 from app.core.features.cache import invalidate
 from app.core.features.service import MODULE_KEYS
@@ -57,6 +58,11 @@ def _reset_path(raw_token: str) -> str:
     from urllib.parse import quote
 
     return f"/reset-password?token={quote(raw_token, safe='')}"
+
+
+def _pulse_app_link(path: str) -> str:
+    base = settings.pulse_app_public_origin
+    return f"{base}{path if path.startswith('/') else '/' + path}"
 
 
 @router.get("/overview", response_model=SystemOverviewOut)
@@ -151,7 +157,19 @@ async def create_company_and_invite(
         metadata={"admin_email": body.admin_email},
     )
     await db.commit()
-    return {"company_id": company.id, "invite_link_path": _invite_path(raw)}
+    link_path = _invite_path(raw)
+    invite_url = _pulse_app_link(link_path)
+    invite_email_sent = await send_company_admin_invite(
+        settings,
+        to_email=body.admin_email,
+        company_name=company.name,
+        invite_url=invite_url,
+    )
+    return {
+        "company_id": company.id,
+        "invite_link_path": link_path,
+        "invite_email_sent": invite_email_sent,
+    }
 
 
 @router.post("/companies/bootstrap-legacy", status_code=status.HTTP_201_CREATED)
@@ -371,7 +389,15 @@ async def create_invite(
         metadata={"email": body.email, "role": body.role},
     )
     await db.commit()
-    return {"invite_link_path": _invite_path(raw)}
+    link_path = _invite_path(raw)
+    invite_url = _pulse_app_link(link_path)
+    invite_email_sent = await send_company_admin_invite(
+        settings,
+        to_email=body.email,
+        company_name=c.name,
+        invite_url=invite_url,
+    )
+    return {"invite_link_path": link_path, "invite_email_sent": invite_email_sent}
 
 
 @router.get("/users", response_model=list[SystemUserRow])
@@ -488,7 +514,14 @@ async def request_password_reset(
         metadata={"email": u.email, "company_id": u.company_id},
     )
     await db.commit()
-    return {"reset_link_path": _reset_path(raw)}
+    reset_path = _reset_path(raw)
+    reset_url = _pulse_app_link(reset_path)
+    reset_email_sent = await send_password_reset_email(
+        settings,
+        to_email=u.email,
+        reset_url=reset_url,
+    )
+    return {"reset_link_path": reset_path, "reset_email_sent": reset_email_sent}
 
 
 @router.get("/logs", response_model=list[SystemLogRow])

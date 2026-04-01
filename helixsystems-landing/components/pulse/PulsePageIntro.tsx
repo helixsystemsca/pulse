@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Activity, LineChart, ShieldCheck } from "lucide-react";
 import { pulseApp } from "@/lib/pulse-app";
+import { mailtoInfo } from "@/lib/helix-emails";
 
 export function PulsePageIntro() {
   return (
@@ -63,12 +64,12 @@ export function PulsePageIntro() {
             >
               Buy Now
             </Link>
-            <Link
-              href="#overview"
-              className="inline-flex items-center justify-center rounded-xl border border-slate-400/50 bg-[#152338]/80 px-6 py-3 text-center text-sm font-semibold text-white backdrop-blur-sm transition-colors hover:border-slate-300/60 hover:bg-[#1a2d45]/90"
+            <a
+              href={mailtoInfo("Pulse — request a demo", "Hello,\n\nI'd like to request a demo of Pulse.\n\n")}
+              className="inline-flex items-center justify-center rounded-xl border border-slate-400/50 bg-[#152338]/80 px-6 py-3 text-center text-sm font-semibold text-white no-underline backdrop-blur-sm transition-colors hover:border-slate-300/60 hover:bg-[#1a2d45]/90"
             >
               Request Demo
-            </Link>
+            </a>
           </div>
         </div>
       </div>

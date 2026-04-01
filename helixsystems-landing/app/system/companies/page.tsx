@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { apiFetch } from "@/lib/api";
+import { HELIX_NOREPLY_EMAIL } from "@/lib/helix-emails";
 
 type CompanyRow = {
   id: string;
@@ -35,7 +36,7 @@ export default function SystemCompaniesPage() {
       return next;
     });
   }, [catalogKey, catalog]);
-  const [invitePath, setInvitePath] = useState<string | null>(null);
+  const [inviteBanner, setInviteBanner] = useState<{ path: string; emailSent: boolean } | null>(null);
   const [bootstrapOk, setBootstrapOk] = useState<{ companyId: string; adminEmail: string } | null>(null);
   const [bootstrapFail, setBootstrapFail] = useState<{
     message: string;
@@ -62,8 +63,12 @@ export default function SystemCompaniesPage() {
     void load();
   }, [load]);
 
+  const pulseAppOrigin = (
+    process.env.NEXT_PUBLIC_PULSE_APP_URL ?? "https://pulse.helixsystems.ca"
+  ).replace(/\/$/, "");
+
   const openModal = (mode: ModalMode) => {
-    setInvitePath(null);
+    setInviteBanner(null);
     setBootstrapOk(null);
     setBootstrapFail(null);
     setAdminPassword("");
@@ -84,9 +89,13 @@ export default function SystemCompaniesPage() {
 
   const submitCreateInvite = async (e: React.FormEvent) => {
     e.preventDefault();
-    setInvitePath(null);
+    setInviteBanner(null);
     const enabled_features = featurePayload();
-    const res = await apiFetch<{ company_id: string; invite_link_path: string }>(
+    const res = await apiFetch<{
+      company_id: string;
+      invite_link_path: string;
+      invite_email_sent?: boolean;
+    }>(
       "/api/system/companies/create-and-invite",
       {
         method: "POST",
@@ -97,7 +106,10 @@ export default function SystemCompaniesPage() {
         },
       },
     );
-    setInvitePath(res.invite_link_path);
+    setInviteBanner({
+      path: res.invite_link_path,
+      emailSent: Boolean(res.invite_email_sent),
+    });
     setModal(null);
     setCompanyName("");
     setAdminEmail("");
@@ -201,10 +213,27 @@ export default function SystemCompaniesPage() {
         </button>
       </div>
 
-      {invitePath ? (
+      {inviteBanner ? (
         <div className="rounded-lg border border-blue-800 bg-blue-950/40 px-4 py-3 text-sm text-blue-200">
-          <p className="font-medium">Invite link path (append to your app origin):</p>
-          <code className="mt-2 block break-all text-xs text-blue-100">{invitePath}</code>
+          <p className="font-medium">Company admin invite</p>
+          <p className="mt-1 text-xs text-blue-300/90">
+            {inviteBanner.emailSent ? (
+              <>
+                An email was sent to the new admin from <strong className="text-blue-100">{HELIX_NOREPLY_EMAIL}</strong>{" "}
+                (if SMTP is configured on the API).
+              </>
+            ) : (
+              <>
+                No invite email was sent—configure SMTP on the API to deliver from{" "}
+                <strong className="text-blue-100">{HELIX_NOREPLY_EMAIL}</strong>, or share the link below manually.
+              </>
+            )}
+          </p>
+          <p className="mt-2 text-[10px] uppercase tracking-wide text-blue-400/80">Full URL</p>
+          <code className="mt-0.5 block break-all text-xs text-blue-100">
+            {pulseAppOrigin}
+            {inviteBanner.path}
+          </code>
         </div>
       ) : null}
 

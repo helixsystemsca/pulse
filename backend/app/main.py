@@ -20,6 +20,7 @@ from slowapi.middleware import SlowAPIMiddleware
 from app.api.admin_routes import router as admin_router
 from app.api.auth_routes import router as auth_router
 from app.api.core_routes import router as core_router
+from app.api.public_routes import router as public_router
 from app.api.realtime import router as realtime_router
 from app.api.system_routes import router as system_router
 from app.api.users_routes import router as users_router
@@ -88,6 +89,7 @@ app.add_middleware(
 if settings.trusted_host_list:
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=settings.trusted_host_list)
 
+app.include_router(public_router, prefix="/api/public")
 app.include_router(auth_router, prefix="/api/v1")
 app.include_router(admin_router, prefix="/api/v1")
 app.include_router(system_router, prefix="/api/system")
