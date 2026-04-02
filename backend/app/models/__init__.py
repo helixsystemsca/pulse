@@ -3,6 +3,14 @@ ORM model package: re-exports `Base`, core tenant/RBAC entities from `domain`, a
 Import concrete classes from here in services and routers for a stable public shape.
 """
 
+from app.models.automation_engine import (
+    AutomationEvent,
+    AutomationFeatureConfig,
+    AutomationLog,
+    AutomationNotification,
+    AutomationStateTracking,
+)
+from app.models.device_hub import AutomationBleDevice, AutomationGateway, AutomationUnknownDevice
 from app.models.base import Base
 from app.models.domain import (
     AuditLog,
@@ -41,6 +49,14 @@ from app.models.pulse_models import (
 )
 
 __all__ = [
+    "AutomationEvent",
+    "AutomationFeatureConfig",
+    "AutomationNotification",
+    "AutomationStateTracking",
+    "AutomationLog",
+    "AutomationBleDevice",
+    "AutomationGateway",
+    "AutomationUnknownDevice",
     "Base",
     "AuditLog",
     "Company",

@@ -238,6 +238,7 @@ class Zone(Base):
         UUID(as_uuid=False), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True
     )
     name: Mapped[str] = mapped_column(String(255), nullable=False)
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     meta: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
 
 
