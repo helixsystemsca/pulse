@@ -18,7 +18,6 @@ import {
   MapPin,
   Package,
   ScrollText,
-  Shield,
   ShieldCheck,
   UserCog,
   Users,
@@ -38,7 +37,6 @@ const ICONS: Record<PulseSidebarIcon, LucideIcon> = {
   users: Users,
   "map-pin": MapPin,
   gauge: Gauge,
-  shield: Shield,
   "shield-check": ShieldCheck,
   "credit-card": CreditCard,
   building: Building2,
@@ -67,9 +65,9 @@ export function AppSideNav() {
   if (!authed) return null;
 
   const isSystemAdmin = Boolean(session?.is_system_admin || session?.role === "system_admin");
-  const onSystem = pathname.startsWith("/system");
-  const items = onSystem && isSystemAdmin ? pulseSystemSidebarNav : pulseTenantSidebarNav;
-  const dark = onSystem && isSystemAdmin;
+  /** Platform shell: always use the slim system rail (not tenant product links). Imp JWTs look like tenant users. */
+  const items = isSystemAdmin ? pulseSystemSidebarNav : pulseTenantSidebarNav;
+  const dark = isSystemAdmin;
 
   return (
     <>
