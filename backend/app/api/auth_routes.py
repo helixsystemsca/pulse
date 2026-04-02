@@ -6,7 +6,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user, require_system_admin
@@ -67,9 +67,12 @@ async def login(
     body: LoginRequest,
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> Token:
-    q = await db.execute(select(User).where(User.email == body.email))
+    email_norm = str(body.email).strip().lower()
+    q = await db.execute(select(User).where(func.lower(User.email) == email_norm))
     user = q.scalar_one_or_none()
-    if not user or not verify_password(body.password, user.hashed_password):
+    if not user or not user.is_active:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
+    if not verify_password(body.password, user.hashed_password):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
 
     user.last_login = datetime.now(timezone.utc)
