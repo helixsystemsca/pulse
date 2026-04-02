@@ -1,0 +1,1698 @@
+"use client";
+
+/**
+ * Inventory management: assets, parts, consumables — filters, KPIs, table, detail drawer,
+ * movements / WR usage, settings (categories, thresholds, locations, alerts).
+ * Matches Work Requests / Workers industrial shell styling.
+ */
+import {
+  AlertTriangle,
+  ArrowRightLeft,
+  Box,
+  ClipboardList,
+  Download,
+  Loader2,
+  MapPin,
+  MoreVertical,
+  Package,
+  Search,
+  Settings,
+  UserPlus,
+  Wrench,
+} from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { PulseDrawer } from "@/components/schedule/PulseDrawer";
+import { apiFetch } from "@/lib/api";
+import type {
+  InventoryDetail,
+  InventoryModuleSettings,
+  InventoryRow,
+  InventorySummary,
+} from "@/lib/inventoryService";
+import {
+  createInventoryItem,
+  fetchInventoryDetail,
+  fetchInventoryList,
+  fetchInventorySettings,
+  patchInventoryItem,
+  patchInventorySettings,
+  postInventoryAssign,
+  postInventoryMove,
+  postInventoryUse,
+} from "@/lib/inventoryService";
+import { readSession } from "@/lib/pulse-session";
+import { fetchWorkRequestList } from "@/lib/workRequestsService";
+
+type CompanyOption = { id: string; name: string };
+type ZoneOpt = { id: string; name: string };
+type AssetOpt = { id: string; name: string; tag_id?: string | null };
+type WorkerOpt = { id: string; email: string; full_name: string | null };
+
+const PRIMARY_BTN =
+  "rounded-[10px] bg-[#2B4C7E] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#234066] disabled:opacity-50";
+const FIELD =
+  "mt-1.5 w-full rounded-[10px] border border-slate-200/90 bg-white px-3 py-2.5 text-sm text-pulse-navy shadow-sm focus:border-[#2B4C7E]/35 focus:outline-none focus:ring-1 focus:ring-[#2B4C7E]/25";
+const LABEL = "text-[11px] font-semibold uppercase tracking-wider text-pulse-muted";
+
+const DEFAULT_SETTINGS: Required<
+  Pick<
+    InventoryModuleSettings,
+    "categories" | "threshold_defaults" | "locations" | "assignment_rules" | "alerts" | "status_rules"
+  >
+> = {
+  categories: ["Tool", "Part", "Consumable", "Fasteners", "Electrical"],
+  status_rules: {
+    in_stock: true,
+    assigned: true,
+    low_stock: true,
+    missing: true,
+    maintenance: true,
+  },
+  threshold_defaults: { default_min: 5 },
+  locations: [],
+  assignment_rules: { checkout_required: true },
+  alerts: { low_stock: true, missing: true },
+};
+
+const SETTINGS_TABS = [
+  "Categories",
+  "Status rules",
+  "Thresholds",
+  "Locations",
+  "Assignment",
+  "Alerts",
+] as const;
+type SettingsTab = (typeof SETTINGS_TABS)[number];
+
+function managerOrAbove(role: string | undefined, isSys: boolean | undefined): boolean {
+  if (isSys || role === "system_admin") return true;
+  return role === "manager" || role === "company_admin";
+}
+
+function initials(name: string | null | undefined, email: string | null | undefined): string {
+  if (name?.trim()) {
+    const p = name.trim().split(/\s+/).filter(Boolean);
+    if (p.length >= 2) return (p[0][0] + p[p.length - 1][0]).toUpperCase();
+    return p[0].slice(0, 2).toUpperCase();
+  }
+  return (email?.split("@")[0] ?? "").slice(0, 2).toUpperCase() || "?";
+}
+
+function formatTs(iso: string | null | undefined): string {
+  if (!iso) return "—";
+  return new Date(iso).toLocaleString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function statusBadge(status: string): string {
+  switch (status) {
+    case "assigned":
+      return "bg-[#ebf8ff] text-[#3182ce] ring-1 ring-blue-200/80";
+    case "low_stock":
+      return "bg-amber-50 text-amber-900 ring-1 ring-amber-200/80";
+    case "missing":
+      return "bg-[#fff5eb] text-[#c05621] ring-1 ring-orange-200/80";
+    case "maintenance":
+      return "bg-violet-50 text-violet-900 ring-1 ring-violet-200/75";
+    case "in_stock":
+    default:
+      return "bg-sky-50/90 text-[#2B4C7E] ring-1 ring-sky-200/70";
+  }
+}
+
+function statusLabel(status: string): string {
+  return status.replace(/_/g, " ");
+}
+
+function conditionLabel(c: string): string {
+  if (c === "needs_maintenance") return "Needs maintenance";
+  if (c === "critical") return "Critical";
+  return "Good";
+}
+
+function conditionBadge(c: string): string {
+  if (c === "critical") return "bg-rose-50 text-rose-800 ring-1 ring-rose-200/75";
+  if (c === "needs_maintenance") return "bg-amber-50 text-amber-900 ring-1 ring-amber-200/75";
+  return "bg-emerald-50 text-emerald-900 ring-1 ring-emerald-200/70";
+}
+
+function typeIcon(t: string) {
+  if (t === "tool") return Wrench;
+  if (t === "consumable") return Box;
+  return Package;
+}
+
+export function InventoryApp() {
+  const session = readSession();
+  const isSystemAdmin = Boolean(session?.is_system_admin || session?.role === "system_admin");
+  const sessionCompanyId = session?.company_id ?? null;
+  const canManage = managerOrAbove(session?.role, session?.is_system_admin);
+
+  const [companyPick, setCompanyPick] = useState<string | null>(null);
+  const [companies, setCompanies] = useState<CompanyOption[]>([]);
+  const effectiveCompanyId = isSystemAdmin ? companyPick : sessionCompanyId;
+  const dataEnabled = Boolean(effectiveCompanyId) && canManage;
+  const apiCompany = isSystemAdmin ? effectiveCompanyId : null;
+
+  const [q, setQ] = useState("");
+  const [qDebounced, setQDebounced] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [typeFilter, setTypeFilter] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("");
+  const [zoneFilter, setZoneFilter] = useState("");
+  const [workerFilter, setWorkerFilter] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [page, setPage] = useState(0);
+  const pageSize = 12;
+
+  const [zones, setZones] = useState<ZoneOpt[]>([]);
+  const [assets, setAssets] = useState<AssetOpt[]>([]);
+  const [workers, setWorkers] = useState<WorkerOpt[]>([]);
+  const [settingsBaseline, setSettingsBaseline] = useState<InventoryModuleSettings>({});
+
+  const [listLoading, setListLoading] = useState(false);
+  const [listError, setListError] = useState<string | null>(null);
+  const [rows, setRows] = useState<InventoryRow[]>([]);
+  const [total, setTotal] = useState(0);
+  const [summary, setSummary] = useState<InventorySummary | null>(null);
+
+  const mergedSettings = useMemo(() => {
+    const s = settingsBaseline;
+    return {
+      categories: [...(s.categories?.length ? s.categories : DEFAULT_SETTINGS.categories)],
+      status_rules: { ...DEFAULT_SETTINGS.status_rules, ...s.status_rules },
+      threshold_defaults: { ...DEFAULT_SETTINGS.threshold_defaults, ...s.threshold_defaults },
+      locations: [...(s.locations?.length ? s.locations : DEFAULT_SETTINGS.locations)],
+      assignment_rules: { ...DEFAULT_SETTINGS.assignment_rules, ...s.assignment_rules },
+      alerts: { ...DEFAULT_SETTINGS.alerts, ...s.alerts },
+    };
+  }, [settingsBaseline]);
+
+  const [menuFor, setMenuFor] = useState<string | null>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsTab, setSettingsTab] = useState<SettingsTab>("Categories");
+  const [settingsDraft, setSettingsDraft] = useState(mergedSettings);
+  const [settingsLoading, setSettingsLoading] = useState(false);
+  const [actionBusy, setActionBusy] = useState(false);
+
+  const [detailId, setDetailId] = useState<string | null>(null);
+  const [detail, setDetail] = useState<InventoryDetail | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+
+  const [editOpen, setEditOpen] = useState(false);
+  const [editMode, setEditMode] = useState<"create" | "edit">("create");
+  const [editTargetId, setEditTargetId] = useState<string | null>(null);
+  const [editFormLoading, setEditFormLoading] = useState(false);
+  const [form, setForm] = useState({
+    name: "",
+    sku: "",
+    item_type: "part",
+    category: "",
+    quantity: "0",
+    unit: "count",
+    low_stock_threshold: String(DEFAULT_SETTINGS.threshold_defaults.default_min ?? 5),
+    zone_id: "",
+    assigned_user_id: "",
+    linked_tool_id: "",
+    condition: "good",
+    unit_cost: "",
+    reorder_flag: false,
+  });
+
+  const [assignUserId, setAssignUserId] = useState("");
+  const [moveZoneId, setMoveZoneId] = useState("");
+  const [useWrId, setUseWrId] = useState("");
+  const [useQty, setUseQty] = useState("1");
+  const [wrOptions, setWrOptions] = useState<{ id: string; title: string }[]>([]);
+
+  const [detailPanel, setDetailPanel] = useState<"none" | "assign" | "move" | "use">("none");
+
+  useEffect(() => {
+    setSettingsDraft(mergedSettings);
+  }, [mergedSettings]);
+
+  useEffect(() => {
+    const t = window.setTimeout(() => setQDebounced(q.trim()), 300);
+    return () => window.clearTimeout(t);
+  }, [q]);
+
+  useEffect(() => {
+    if (!isSystemAdmin || !session?.access_token) return;
+    void (async () => {
+      try {
+        const r = await apiFetch<CompanyOption[]>(`/api/system/companies?include_inactive=false&q=`);
+        setCompanies(r.map((x) => ({ id: x.id, name: x.name })));
+      } catch {
+        setCompanies([]);
+      }
+    })();
+  }, [isSystemAdmin, session?.access_token]);
+
+  useEffect(() => {
+    if (!dataEnabled || !session?.access_token) {
+      setZones([]);
+      setAssets([]);
+      setWorkers([]);
+      return;
+    }
+    void (async () => {
+      try {
+        const [z, a, w] = await Promise.all([
+          apiFetch<ZoneOpt[]>(`/api/v1/pulse/zones`),
+          apiFetch<AssetOpt[]>(`/api/v1/pulse/assets`),
+          apiFetch<WorkerOpt[]>(`/api/v1/pulse/workers`),
+        ]);
+        setZones(z);
+        setAssets(a);
+        setWorkers(w);
+      } catch {
+        setZones([]);
+        setAssets([]);
+        setWorkers([]);
+      }
+    })();
+  }, [dataEnabled, session?.access_token]);
+
+  const loadSettings = useCallback(async () => {
+    if (!effectiveCompanyId) return;
+    try {
+      const r = await fetchInventorySettings(apiCompany);
+      setSettingsBaseline(r.settings ?? {});
+    } catch {
+      setSettingsBaseline({});
+    }
+  }, [apiCompany, effectiveCompanyId]);
+
+  useEffect(() => {
+    void loadSettings();
+  }, [loadSettings]);
+
+  const loadList = useCallback(async () => {
+    if (!dataEnabled || !effectiveCompanyId) return;
+    setListLoading(true);
+    setListError(null);
+    try {
+      const date_from = dateFrom ? `${dateFrom}T00:00:00.000Z` : undefined;
+      const date_to = dateTo ? `${dateTo}T23:59:59.999Z` : undefined;
+      const res = await fetchInventoryList({
+        companyId: apiCompany,
+        q: qDebounced || undefined,
+        status: statusFilter || undefined,
+        item_type: typeFilter || undefined,
+        category: categoryFilter || undefined,
+        zone_id: zoneFilter || undefined,
+        assigned_user_id: workerFilter || undefined,
+        date_from,
+        date_to,
+        limit: pageSize,
+        offset: page * pageSize,
+      });
+      setRows(res.items);
+      setTotal(res.total);
+      setSummary(res.summary);
+    } catch (e: unknown) {
+      setListError(e instanceof Error ? e.message : "Failed to load");
+      setRows([]);
+      setTotal(0);
+      setSummary(null);
+    } finally {
+      setListLoading(false);
+    }
+  }, [
+    dataEnabled,
+    effectiveCompanyId,
+    apiCompany,
+    qDebounced,
+    statusFilter,
+    typeFilter,
+    categoryFilter,
+    zoneFilter,
+    workerFilter,
+    dateFrom,
+    dateTo,
+    page,
+  ]);
+
+  useEffect(() => {
+    void loadList();
+  }, [loadList]);
+
+  const loadDetail = useCallback(async () => {
+    if (!detailId || !effectiveCompanyId) return;
+    setDetailLoading(true);
+    try {
+      const d = await fetchInventoryDetail(apiCompany, detailId);
+      setDetail(d);
+      setAssignUserId(d.assigned_user_id ?? "");
+      setMoveZoneId(d.zone_id ?? "");
+    } catch {
+      setDetail(null);
+    } finally {
+      setDetailLoading(false);
+    }
+  }, [detailId, effectiveCompanyId, apiCompany]);
+
+  useEffect(() => {
+    if (detailId) void loadDetail();
+    else setDetail(null);
+  }, [detailId, loadDetail]);
+
+  useEffect(() => {
+    if (!detailId || !dataEnabled) return;
+    void (async () => {
+      try {
+        const wr = await fetchWorkRequestList({
+          companyId: apiCompany,
+          status: "open",
+          limit: 40,
+          offset: 0,
+        });
+        const wr2 = await fetchWorkRequestList({
+          companyId: apiCompany,
+          status: "in_progress",
+          limit: 40,
+          offset: 0,
+        });
+        const map = new Map<string, string>();
+        [...wr.items, ...wr2.items].forEach((x) => map.set(x.id, x.title));
+        setWrOptions([...map.entries()].map(([id, title]) => ({ id, title })));
+      } catch {
+        setWrOptions([]);
+      }
+    })();
+  }, [detailId, dataEnabled, apiCompany]);
+
+  useEffect(() => {
+    if (!settingsOpen || !effectiveCompanyId) return;
+    setSettingsLoading(true);
+    void (async () => {
+      try {
+        const r = await fetchInventorySettings(apiCompany);
+        const base = r.settings ?? {};
+        setSettingsBaseline(base);
+        const merged = {
+          categories: [...(base.categories?.length ? base.categories : DEFAULT_SETTINGS.categories)],
+          status_rules: { ...DEFAULT_SETTINGS.status_rules, ...base.status_rules },
+          threshold_defaults: { ...DEFAULT_SETTINGS.threshold_defaults, ...base.threshold_defaults },
+          locations: [...(base.locations?.length ? base.locations : DEFAULT_SETTINGS.locations)],
+          assignment_rules: { ...DEFAULT_SETTINGS.assignment_rules, ...base.assignment_rules },
+          alerts: { ...DEFAULT_SETTINGS.alerts, ...base.alerts },
+        };
+        setSettingsDraft(merged);
+      } catch {
+        setSettingsDraft({
+          categories: [...DEFAULT_SETTINGS.categories],
+          status_rules: { ...DEFAULT_SETTINGS.status_rules },
+          threshold_defaults: { ...DEFAULT_SETTINGS.threshold_defaults },
+          locations: [...DEFAULT_SETTINGS.locations],
+          assignment_rules: { ...DEFAULT_SETTINGS.assignment_rules },
+          alerts: { ...DEFAULT_SETTINGS.alerts },
+        });
+      } finally {
+        setSettingsLoading(false);
+      }
+    })();
+  }, [settingsOpen, effectiveCompanyId, apiCompany]);
+
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const start = total === 0 ? 0 : page * pageSize + 1;
+  const end = Math.min(total, (page + 1) * pageSize);
+
+  function clearFilters() {
+    setQ("");
+    setStatusFilter("");
+    setTypeFilter("");
+    setCategoryFilter("");
+    setZoneFilter("");
+    setWorkerFilter("");
+    setDateFrom("");
+    setDateTo("");
+    setPage(0);
+  }
+
+  function openCreate() {
+    setEditMode("create");
+    setEditTargetId(null);
+    setForm({
+      name: "",
+      sku: "",
+      item_type: "part",
+      category: "",
+      quantity: "0",
+      unit: "count",
+      low_stock_threshold: String(mergedSettings.threshold_defaults.default_min ?? 5),
+      zone_id: "",
+      assigned_user_id: "",
+      linked_tool_id: "",
+      condition: "good",
+      unit_cost: "",
+      reorder_flag: false,
+    });
+    setEditOpen(true);
+  }
+
+  function openEdit(row: InventoryRow) {
+    setEditMode("edit");
+    setEditTargetId(row.id);
+    setForm({
+      name: row.name,
+      sku: row.sku,
+      item_type: row.item_type,
+      category: row.category ?? "",
+      quantity: String(row.quantity),
+      unit: row.unit,
+      low_stock_threshold: String(row.low_stock_threshold),
+      zone_id: row.zone_id ?? "",
+      assigned_user_id: row.assigned_user_id ?? "",
+      linked_tool_id: row.linked_tool_id ?? "",
+      condition: row.condition,
+      unit_cost: "",
+      reorder_flag: row.reorder_flag,
+    });
+    setEditOpen(true);
+  }
+
+  function openEditFromDetail(d: InventoryDetail) {
+    setEditMode("edit");
+    setEditTargetId(d.id);
+    setForm({
+      name: d.name,
+      sku: d.sku,
+      item_type: d.item_type,
+      category: d.category ?? "",
+      quantity: String(d.quantity),
+      unit: d.unit,
+      low_stock_threshold: String(d.low_stock_threshold),
+      zone_id: d.zone_id ?? "",
+      assigned_user_id: d.assigned_user_id ?? "",
+      linked_tool_id: d.linked_tool_id ?? "",
+      condition: d.condition,
+      unit_cost: d.unit_cost != null ? String(d.unit_cost) : "",
+      reorder_flag: d.reorder_flag,
+    });
+    setEditOpen(true);
+  }
+
+  useEffect(() => {
+    if (!editOpen || editMode !== "edit" || !editTargetId || !effectiveCompanyId) return;
+    setEditFormLoading(true);
+    void (async () => {
+      try {
+        const d = await fetchInventoryDetail(apiCompany, editTargetId);
+        setForm({
+          name: d.name,
+          sku: d.sku,
+          item_type: d.item_type,
+          category: d.category ?? "",
+          quantity: String(d.quantity),
+          unit: d.unit,
+          low_stock_threshold: String(d.low_stock_threshold),
+          zone_id: d.zone_id ?? "",
+          assigned_user_id: d.assigned_user_id ?? "",
+          linked_tool_id: d.linked_tool_id ?? "",
+          condition: d.condition,
+          unit_cost: d.unit_cost != null ? String(d.unit_cost) : "",
+          reorder_flag: d.reorder_flag,
+        });
+      } catch {
+        /* keep table row snapshot */
+      } finally {
+        setEditFormLoading(false);
+      }
+    })();
+  }, [editOpen, editMode, editTargetId, effectiveCompanyId, apiCompany]);
+
+  async function submitForm() {
+    if (!effectiveCompanyId || !form.name.trim()) return;
+    setActionBusy(true);
+    try {
+      const unit_cost =
+        form.unit_cost.trim() === "" ? null : Number.parseFloat(form.unit_cost);
+      const payload = {
+        name: form.name.trim(),
+        sku: form.sku.trim() || null,
+        item_type: form.item_type,
+        category: form.category.trim() || null,
+        quantity: Number.parseFloat(form.quantity) || 0,
+        unit: form.unit.trim() || "count",
+        low_stock_threshold: Number.parseFloat(form.low_stock_threshold) || 0,
+        zone_id: form.zone_id || null,
+        assigned_user_id: form.assigned_user_id || null,
+        linked_tool_id: form.linked_tool_id || null,
+        condition: form.condition,
+        unit_cost: unit_cost != null && !Number.isNaN(unit_cost) ? unit_cost : null,
+        reorder_flag: form.reorder_flag,
+      };
+      if (editMode === "create") {
+        const d = await createInventoryItem(apiCompany, payload);
+        setEditOpen(false);
+        setEditTargetId(null);
+        setDetailId(d.id);
+      } else if (editTargetId) {
+        const eid = editTargetId;
+        await patchInventoryItem(apiCompany, eid, {
+          ...payload,
+          sku: payload.sku ?? undefined,
+        });
+        setEditOpen(false);
+        setEditTargetId(null);
+        if (detailId === eid) await loadDetail();
+      }
+      await loadList();
+    } finally {
+      setActionBusy(false);
+    }
+  }
+
+  async function saveSettings() {
+    if (!effectiveCompanyId) return;
+    setActionBusy(true);
+    try {
+      await patchInventorySettings(apiCompany, {
+        categories: settingsDraft.categories,
+        status_rules: settingsDraft.status_rules,
+        threshold_defaults: settingsDraft.threshold_defaults,
+        locations: settingsDraft.locations,
+        assignment_rules: settingsDraft.assignment_rules,
+        alerts: settingsDraft.alerts,
+      });
+      setSettingsOpen(false);
+      await loadSettings();
+    } finally {
+      setActionBusy(false);
+    }
+  }
+
+  async function runAssignFromDetail() {
+    if (!detailId) return;
+    setActionBusy(true);
+    try {
+      await postInventoryAssign(apiCompany, detailId, assignUserId || null);
+      await loadDetail();
+      await loadList();
+      setDetailPanel("none");
+    } finally {
+      setActionBusy(false);
+    }
+  }
+
+  async function runMoveFromDetail() {
+    if (!detailId) return;
+    setActionBusy(true);
+    try {
+      await postInventoryMove(apiCompany, detailId, moveZoneId || null);
+      await loadDetail();
+      await loadList();
+      setDetailPanel("none");
+    } finally {
+      setActionBusy(false);
+    }
+  }
+
+  async function runUseFromDetail() {
+    if (!detailId || !useWrId) return;
+    const qn = Number.parseFloat(useQty);
+    if (Number.isNaN(qn) || qn <= 0) return;
+    setActionBusy(true);
+    try {
+      await postInventoryUse(apiCompany, detailId, { work_request_id: useWrId, quantity: qn });
+      setUseQty("1");
+      setUseWrId("");
+      await loadDetail();
+      await loadList();
+      setDetailPanel("none");
+    } finally {
+      setActionBusy(false);
+    }
+  }
+
+  async function quickPatch(id: string, body: Record<string, unknown>) {
+    setActionBusy(true);
+    try {
+      await patchInventoryItem(apiCompany, id, body);
+      setMenuFor(null);
+      await loadList();
+      if (detailId === id) await loadDetail();
+    } finally {
+      setActionBusy(false);
+    }
+  }
+
+  function exportCsv() {
+    const headers = [
+      "SKU",
+      "Name",
+      "Type",
+      "Category",
+      "Status",
+      "Qty",
+      "Unit",
+      "Assignee",
+      "Location",
+      "Condition",
+    ];
+    const lines = rows.map((r) =>
+      [
+        r.sku,
+        r.name.replace(/"/g, '""'),
+        r.item_type,
+        r.category ?? "",
+        r.inv_status,
+        String(r.quantity),
+        r.unit,
+        r.assignee_name ?? "",
+        r.location_name ?? "",
+        r.condition,
+      ]
+        .map((c) => `"${c}"`)
+        .join(","),
+    );
+    const blob = new Blob([[headers.join(","), ...lines].join("\n")], { type: "text/csv;charset=utf-8" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `pulse-inventory-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  if (!canManage) {
+    return (
+      <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+        <p className="text-sm text-pulse-muted">Inventory is available to managers and administrators.</p>
+      </div>
+    );
+  }
+
+  const sum = summary;
+
+  return (
+    <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <div className="flex items-center gap-2 text-pulse-navy">
+            <Package className="h-7 w-7 text-[#2B4C7E]" strokeWidth={2} aria-hidden />
+            <h1 className="font-headline text-xl font-bold tracking-tight sm:text-2xl">Inventory</h1>
+          </div>
+          <p className="mt-1 text-sm text-pulse-muted">
+            Tools, spare parts, and consumables — locations, assignments, and work request usage.
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            className="inline-flex items-center gap-2 rounded-[10px] border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-pulse-navy shadow-sm hover:bg-slate-50 disabled:opacity-50"
+            onClick={() => exportCsv()}
+            disabled={rows.length === 0}
+          >
+            <Download className="h-4 w-4" aria-hidden />
+            Export CSV
+          </button>
+          <button
+            type="button"
+            className="inline-flex items-center gap-2 rounded-[10px] border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-pulse-navy shadow-sm hover:bg-slate-50"
+            onClick={() => setSettingsOpen(true)}
+          >
+            <Settings className="h-4 w-4" aria-hidden />
+            Settings
+          </button>
+          <button type="button" className={PRIMARY_BTN} onClick={() => openCreate()} disabled={!dataEnabled}>
+            + Register item
+          </button>
+        </div>
+      </div>
+
+      {isSystemAdmin ? (
+        <div className="mt-6 rounded-xl border border-pulse-border bg-white p-4 shadow-sm">
+          <label className="block text-xs font-semibold uppercase tracking-wide text-pulse-muted">Company</label>
+          <select
+            className="mt-1.5 w-full max-w-md rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2 text-sm font-medium text-pulse-navy outline-none focus:border-pulse-accent focus:ring-2 focus:ring-pulse-accent/25 md:w-auto"
+            value={companyPick ?? ""}
+            onChange={(e) => {
+              setCompanyPick(e.target.value || null);
+              setPage(0);
+            }}
+          >
+            <option value="">Select company…</option>
+            {companies.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      ) : null}
+
+      {!dataEnabled ? (
+        <p className="mt-8 text-sm text-pulse-muted">
+          {isSystemAdmin ? "Select a company to load inventory." : "Unable to resolve organization."}
+        </p>
+      ) : (
+        <>
+          {sum ? (
+            <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+              {[
+                {
+                  label: "Total items",
+                  value: sum.total_items,
+                  icon: Package,
+                  sub: null as string | null,
+                  tone: "text-[#2B4C7E]",
+                },
+                {
+                  label: "In stock",
+                  value: sum.in_stock,
+                  icon: Box,
+                  sub: null,
+                  tone: "text-[#3182ce]",
+                },
+                {
+                  label: "Low stock",
+                  value: sum.low_stock,
+                  icon: AlertTriangle,
+                  sub: sum.low_stock > 0 ? "Review thresholds" : null,
+                  tone: "text-amber-800",
+                  alert: sum.low_stock > 0,
+                },
+                {
+                  label: "Assigned / in use",
+                  value: sum.assigned,
+                  icon: UserPlus,
+                  sub: null,
+                  tone: "text-[#2B4C7E]",
+                },
+                {
+                  label: "Missing",
+                  value: sum.missing,
+                  icon: AlertTriangle,
+                  sub: sum.missing > 0 ? "Alert" : null,
+                  tone: "text-[#c05621]",
+                  alert: sum.missing > 0,
+                },
+                {
+                  label: "Inventory value",
+                  value: sum.estimated_value != null ? `$${sum.estimated_value.toLocaleString()}` : "—",
+                  icon: ClipboardList,
+                  sub: "Qty × unit cost",
+                  tone: "text-slate-800",
+                },
+              ].map((card) => (
+                <div
+                  key={card.label}
+                  className={`rounded-xl border bg-white p-4 shadow-sm ring-1 ${
+                    "alert" in card && card.alert ? "border-amber-200 ring-amber-100/90" : "border-pulse-border ring-slate-100/80"
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="text-xs font-bold uppercase tracking-wide text-pulse-muted">{card.label}</p>
+                    <card.icon className={`h-5 w-5 shrink-0 opacity-80 ${card.tone}`} aria-hidden />
+                  </div>
+                  <p className="mt-2 text-2xl font-bold tracking-tight text-pulse-navy">{card.value}</p>
+                  {card.sub ? (
+                    <p
+                      className={`mt-0.5 text-xs font-semibold ${
+                        "alert" in card && card.alert ? "text-rose-600" : "text-pulse-muted"
+                      }`}
+                    >
+                      {card.sub}
+                    </p>
+                  ) : null}
+                </div>
+              ))}
+            </div>
+          ) : null}
+
+          <div className="mt-4 flex flex-wrap gap-2">
+            {[
+              { id: "", label: "All" },
+              { id: "in_stock", label: "In stock" },
+              { id: "assigned", label: "Assigned" },
+              { id: "low_stock", label: "Low stock" },
+              { id: "maintenance", label: "Maintenance" },
+              { id: "missing", label: "Missing" },
+            ].map((t) => (
+              <button
+                key={t.label}
+                type="button"
+                onClick={() => {
+                  setStatusFilter(t.id);
+                  setPage(0);
+                }}
+                className={`rounded-full px-3.5 py-1.5 text-xs font-bold transition-colors ${
+                  statusFilter === t.id
+                    ? "bg-[#2B4C7E] text-white shadow-sm"
+                    : "bg-slate-100 text-pulse-navy hover:bg-slate-200/90"
+                }`}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="mt-6 flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-end lg:justify-between">
+            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+              <div className="relative min-w-[14rem]">
+                <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-pulse-muted" />
+                <input
+                  type="search"
+                  placeholder="Search inventory, tools, parts…"
+                  value={q}
+                  onChange={(e) => {
+                    setQ(e.target.value);
+                    setPage(0);
+                  }}
+                  className="w-full rounded-lg border border-slate-200 bg-slate-50/80 py-2 pl-9 pr-3 text-sm text-pulse-navy placeholder:text-slate-400 outline-none focus:border-pulse-accent focus:ring-2 focus:ring-pulse-accent/25"
+                />
+              </div>
+              <select
+                className="rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2 text-sm font-medium text-pulse-navy outline-none focus:border-pulse-accent focus:ring-2 focus:ring-pulse-accent/25"
+                value={typeFilter}
+                onChange={(e) => {
+                  setTypeFilter(e.target.value);
+                  setPage(0);
+                }}
+              >
+                <option value="">Type</option>
+                <option value="tool">Tool</option>
+                <option value="part">Part</option>
+                <option value="consumable">Consumable</option>
+              </select>
+              <select
+                className="rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2 text-sm font-medium text-pulse-navy outline-none focus:border-pulse-accent focus:ring-2 focus:ring-pulse-accent/25"
+                value={categoryFilter}
+                onChange={(e) => {
+                  setCategoryFilter(e.target.value);
+                  setPage(0);
+                }}
+              >
+                <option value="">Category</option>
+                {mergedSettings.categories.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+              <select
+                className="rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2 text-sm font-medium text-pulse-navy outline-none focus:border-pulse-accent focus:ring-2 focus:ring-pulse-accent/25"
+                value={zoneFilter}
+                onChange={(e) => {
+                  setZoneFilter(e.target.value);
+                  setPage(0);
+                }}
+              >
+                <option value="">Location</option>
+                {zones.map((z) => (
+                  <option key={z.id} value={z.id}>
+                    {z.name}
+                  </option>
+                ))}
+              </select>
+              <select
+                className="rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2 text-sm font-medium text-pulse-navy outline-none focus:border-pulse-accent focus:ring-2 focus:ring-pulse-accent/25"
+                value={workerFilter}
+                onChange={(e) => {
+                  setWorkerFilter(e.target.value);
+                  setPage(0);
+                }}
+              >
+                <option value="">Assigned worker</option>
+                {workers.map((w) => (
+                  <option key={w.id} value={w.id}>
+                    {w.full_name || w.email}
+                  </option>
+                ))}
+              </select>
+              <input
+                type="date"
+                value={dateFrom}
+                onChange={(e) => {
+                  setDateFrom(e.target.value);
+                  setPage(0);
+                }}
+                className="rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2 text-sm text-pulse-navy outline-none focus:border-pulse-accent focus:ring-2 focus:ring-pulse-accent/25"
+              />
+              <input
+                type="date"
+                value={dateTo}
+                onChange={(e) => {
+                  setDateTo(e.target.value);
+                  setPage(0);
+                }}
+                className="rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2 text-sm text-pulse-navy outline-none focus:border-pulse-accent focus:ring-2 focus:ring-pulse-accent/25"
+              />
+            </div>
+            <button type="button" className="text-sm font-semibold text-[#2B4C7E] hover:underline" onClick={clearFilters}>
+              Clear filters
+            </button>
+          </div>
+
+          <div className="mt-4 overflow-hidden rounded-xl border border-pulse-border bg-white shadow-sm ring-1 ring-slate-100/80">
+            {listLoading ? (
+              <div className="flex items-center justify-center gap-2 py-16 text-pulse-muted">
+                <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
+                Loading inventory…
+              </div>
+            ) : listError ? (
+              <p className="p-6 text-sm text-rose-600">{listError}</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-[1200px] w-full border-collapse text-left text-sm">
+                  <thead>
+                    <tr className="border-b border-pulse-border bg-slate-50/80 text-xs font-bold uppercase tracking-wide text-pulse-muted">
+                      <th className="px-4 py-3">Item</th>
+                      <th className="px-4 py-3">Category / type</th>
+                      <th className="px-4 py-3">Status</th>
+                      <th className="px-4 py-3">Quantity</th>
+                      <th className="px-4 py-3">Assigned to</th>
+                      <th className="px-4 py-3">Location</th>
+                      <th className="px-4 py-3">Last movement</th>
+                      <th className="px-4 py-3">Condition</th>
+                      <th className="px-4 py-3 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rows.map((row) => {
+                      const Icon = typeIcon(row.item_type);
+                      const qtyDisplay =
+                        row.item_type === "tool" ? "1 (tracked)" : `${row.quantity} ${row.unit}`;
+                      return (
+                        <tr
+                          key={row.id}
+                          className="cursor-pointer border-b border-slate-100 last:border-0 hover:bg-slate-50/60"
+                          onClick={() => {
+                            setDetailPanel("none");
+                            setDetailId(row.id);
+                          }}
+                        >
+                          <td className="px-4 py-3 align-top">
+                            <div className="flex items-start gap-2">
+                              <span className="mt-0.5 flex h-8 w-8 items-center justify-center rounded-lg bg-[#ebf8ff] text-[#2B4C7E]">
+                                <Icon className="h-4 w-4" aria-hidden />
+                              </span>
+                              <div>
+                                <p className="font-semibold text-pulse-navy">{row.name}</p>
+                                <p className="text-xs text-pulse-muted">{row.sku}</p>
+                                {row.linked_asset_name ? (
+                                  <p className="mt-0.5 text-xs text-[#2B4C7E]">
+                                    Linked: {row.linked_asset_name}
+                                  </p>
+                                ) : null}
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 align-top text-pulse-navy">
+                            <span className="capitalize">{row.item_type}</span>
+                            {row.category ? (
+                              <>
+                                <br />
+                                <span className="text-xs text-pulse-muted">{row.category}</span>
+                              </>
+                            ) : null}
+                          </td>
+                          <td className="px-4 py-3 align-top">
+                            <span
+                              className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-bold capitalize ${statusBadge(
+                                row.inv_status,
+                              )}`}
+                            >
+                              <span className="h-1.5 w-1.5 rounded-full bg-current opacity-70" aria-hidden />
+                              {statusLabel(row.inv_status)}
+                            </span>
+                            {row.reorder_flag ? (
+                              <span className="mt-1 block text-[10px] font-bold uppercase text-amber-800">
+                                Reorder flagged
+                              </span>
+                            ) : null}
+                          </td>
+                          <td className="px-4 py-3 align-top font-medium text-pulse-navy">{qtyDisplay}</td>
+                          <td className="px-4 py-3 align-top">
+                            {row.assignee_name ? (
+                              <div className="flex items-center gap-2">
+                                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-100 text-[10px] font-bold text-pulse-navy">
+                                  {initials(row.assignee_name, null)}
+                                </span>
+                                <span className="text-pulse-navy">{row.assignee_name}</span>
+                              </div>
+                            ) : (
+                              <span className="text-pulse-muted">—</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 align-top">
+                            <span className="inline-flex items-center gap-1 text-pulse-navy">
+                              <MapPin className="h-3.5 w-3.5 text-[#3182ce]" aria-hidden />
+                              {row.location_name ?? "—"}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 align-top text-xs text-pulse-muted">
+                            <div className="flex flex-col gap-0.5">
+                              <span className="inline-flex items-center gap-1">
+                                <ArrowRightLeft className="h-3.5 w-3.5" aria-hidden />
+                                {formatTs(row.last_movement_at)}
+                              </span>
+                              {row.last_used_at ? (
+                                <span>Used: {formatTs(row.last_used_at)}</span>
+                              ) : null}
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 align-top">
+                            <span
+                              className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-bold ${conditionBadge(
+                                row.condition,
+                              )}`}
+                            >
+                              {conditionLabel(row.condition)}
+                            </span>
+                          </td>
+                          <td className="relative px-4 py-3 text-right align-top" onClick={(e) => e.stopPropagation()}>
+                            <button
+                              type="button"
+                              className="rounded-lg p-2 text-pulse-muted hover:bg-slate-100 hover:text-pulse-navy"
+                              aria-label="Actions"
+                              onClick={() => setMenuFor(menuFor === row.id ? null : row.id)}
+                            >
+                              <MoreVertical className="h-4 w-4" />
+                            </button>
+                            {menuFor === row.id ? (
+                              <div className="absolute right-3 z-10 mt-1 w-52 rounded-xl border border-slate-200 bg-white py-1 text-left shadow-lg">
+                                <button
+                                  type="button"
+                                  className="block w-full px-3 py-2 text-left text-sm hover:bg-slate-50"
+                                  onClick={() => {
+                                    setMenuFor(null);
+                                    openEdit(row);
+                                  }}
+                                >
+                                  Edit item
+                                </button>
+                                <button
+                                  type="button"
+                                  className="block w-full px-3 py-2 text-left text-sm hover:bg-slate-50"
+                                  onClick={() => {
+                                    setMenuFor(null);
+                                    setDetailId(row.id);
+                                    setDetailPanel("assign");
+                                  }}
+                                >
+                                  Assign / return
+                                </button>
+                                <button
+                                  type="button"
+                                  className="block w-full px-3 py-2 text-left text-sm hover:bg-slate-50"
+                                  onClick={() => quickPatch(row.id, { reorder_flag: !row.reorder_flag })}
+                                >
+                                  {row.reorder_flag ? "Clear reorder flag" : "Flag for reorder"}
+                                </button>
+                                <button
+                                  type="button"
+                                  className="block w-full px-3 py-2 text-left text-sm hover:bg-slate-50"
+                                  onClick={() => quickPatch(row.id, { inv_status: "missing" })}
+                                >
+                                  Mark missing
+                                </button>
+                                <button
+                                  type="button"
+                                  className="block w-full px-3 py-2 text-left text-sm hover:bg-slate-50"
+                                  onClick={() => quickPatch(row.id, { inv_status: "maintenance" })}
+                                >
+                                  Send to maintenance
+                                </button>
+                                <button
+                                  type="button"
+                                  className="block w-full px-3 py-2 text-left text-sm hover:bg-slate-50"
+                                  onClick={() => quickPatch(row.id, { inv_status: "in_stock" })}
+                                >
+                                  Mark in stock
+                                </button>
+                              </div>
+                            ) : null}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm text-pulse-muted">
+              Showing {start}–{end} of {total} items
+            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-semibold text-pulse-navy disabled:opacity-40"
+                disabled={page <= 0}
+                onClick={() => setPage((p) => Math.max(0, p - 1))}
+              >
+                Previous
+              </button>
+              <span className="text-sm text-pulse-muted">
+                Page {page + 1} / {totalPages}
+              </span>
+              <button
+                type="button"
+                className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-semibold text-pulse-navy disabled:opacity-40"
+                disabled={page + 1 >= totalPages}
+                onClick={() => setPage((p) => p + 1)}
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+
+      <PulseDrawer
+        open={Boolean(detailId)}
+        wide
+        title={detail?.name ?? "Inventory item"}
+        subtitle={detail ? `${detail.sku} · ${detail.item_type}` : undefined}
+        onClose={() => {
+          setDetailId(null);
+          setDetailPanel("none");
+        }}
+        footer={
+          detail ? (
+            <div className="flex flex-wrap gap-2">
+              <button type="button" className={PRIMARY_BTN} onClick={() => detail && openEditFromDetail(detail)}>
+                Edit
+              </button>
+              <button
+                type="button"
+                className="rounded-[10px] border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-pulse-navy hover:bg-slate-50"
+                onClick={() => setDetailPanel(detailPanel === "assign" ? "none" : "assign")}
+              >
+                Assign
+              </button>
+              <button
+                type="button"
+                className="rounded-[10px] border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-pulse-navy hover:bg-slate-50"
+                onClick={() => setDetailPanel(detailPanel === "move" ? "none" : "move")}
+              >
+                Move
+              </button>
+              <button
+                type="button"
+                className="rounded-[10px] border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-pulse-navy hover:bg-slate-50"
+                onClick={() => setDetailPanel(detailPanel === "use" ? "none" : "use")}
+              >
+                Use in WR
+              </button>
+            </div>
+          ) : null
+        }
+      >
+        {detailLoading || !detail ? (
+          <div className="flex items-center gap-2 text-pulse-muted">
+            <Loader2 className="h-5 w-5 animate-spin" />
+            Loading…
+          </div>
+        ) : (
+          <div className="space-y-5">
+            {detailPanel === "assign" ? (
+              <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                <p className={LABEL}>Assign to worker</p>
+                <select
+                  className={FIELD}
+                  value={assignUserId}
+                  onChange={(e) => setAssignUserId(e.target.value)}
+                >
+                  <option value="">Unassigned / return</option>
+                  {workers.map((w) => (
+                    <option key={w.id} value={w.id}>
+                      {w.full_name || w.email}
+                    </option>
+                  ))}
+                </select>
+                <button type="button" className={`${PRIMARY_BTN} mt-3 w-full`} disabled={actionBusy} onClick={runAssignFromDetail}>
+                  Save assignment
+                </button>
+              </div>
+            ) : null}
+            {detailPanel === "move" ? (
+              <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                <p className={LABEL}>Location (zone)</p>
+                <select className={FIELD} value={moveZoneId} onChange={(e) => setMoveZoneId(e.target.value)}>
+                  <option value="">Unspecified</option>
+                  {zones.map((z) => (
+                    <option key={z.id} value={z.id}>
+                      {z.name}
+                    </option>
+                  ))}
+                </select>
+                <button type="button" className={`${PRIMARY_BTN} mt-3 w-full`} disabled={actionBusy} onClick={runMoveFromDetail}>
+                  Save move
+                </button>
+              </div>
+            ) : null}
+            {detailPanel === "use" ? (
+              <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                <p className={LABEL}>Work request</p>
+                <select className={FIELD} value={useWrId} onChange={(e) => setUseWrId(e.target.value)}>
+                  <option value="">Select…</option>
+                  {wrOptions.map((w) => (
+                    <option key={w.id} value={w.id}>
+                      {w.title}
+                    </option>
+                  ))}
+                </select>
+                <p className={`${LABEL} mt-3`}>Quantity</p>
+                <input
+                  className={FIELD}
+                  inputMode="decimal"
+                  value={useQty}
+                  onChange={(e) => setUseQty(e.target.value)}
+                />
+                <p className="mt-2 text-xs text-pulse-muted">
+                  Parts and consumables deduct stock. Tools log usage without quantity deduction.
+                </p>
+                <button type="button" className={`${PRIMARY_BTN} mt-3 w-full`} disabled={actionBusy} onClick={runUseFromDetail}>
+                  Record usage
+                </button>
+              </div>
+            ) : null}
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                <p className="text-xs font-bold uppercase text-pulse-muted">Status &amp; quantity</p>
+                <p className="mt-2 text-lg font-bold capitalize text-pulse-navy">{statusLabel(detail.inv_status)}</p>
+                <p className="text-sm text-pulse-muted">
+                  Qty: {detail.item_type === "tool" ? "1 (tracked)" : `${detail.quantity} ${detail.unit}`}
+                </p>
+                {detail.unit_cost != null ? (
+                  <p className="text-sm text-pulse-muted">Unit cost: ${detail.unit_cost}</p>
+                ) : null}
+              </div>
+              <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                <p className="text-xs font-bold uppercase text-pulse-muted">Assignment &amp; location</p>
+                <p className="mt-2 text-sm font-semibold text-pulse-navy">{detail.assignee_name ?? "Unassigned"}</p>
+                <p className="text-sm text-pulse-muted">{detail.location_name ?? "—"}</p>
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+              <p className="text-xs font-bold uppercase text-pulse-muted">Work requests</p>
+              <ul className="mt-2 space-y-1 text-sm text-[#2B4C7E]">
+                {detail.linked_work_requests.length === 0 ? (
+                  <li className="text-pulse-muted">No linked work requests yet.</li>
+                ) : (
+                  detail.linked_work_requests.map((w) => (
+                    <li key={w.id}>
+                      <span className="font-semibold">#{w.id.slice(0, 8)}</span> — {w.title}
+                    </li>
+                  ))
+                )}
+              </ul>
+            </div>
+
+            <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+              <p className="text-xs font-bold uppercase text-pulse-muted">Usage log</p>
+              <ul className="mt-2 max-h-48 space-y-2 overflow-y-auto text-sm">
+                {detail.usage.length === 0 ? (
+                  <li className="text-pulse-muted">No usage recorded.</li>
+                ) : (
+                  detail.usage.map((u) => (
+                    <li key={u.id} className="border-b border-slate-100 pb-2 last:border-0">
+                      <span className="font-semibold text-pulse-navy">{u.quantity}</span> in{" "}
+                      <span className="text-[#2B4C7E]">
+                        {u.work_request_title ?? `WR ${u.work_request_id.slice(0, 8)}`}
+                      </span>
+                      <span className="block text-xs text-pulse-muted">{formatTs(u.created_at)}</span>
+                    </li>
+                  ))
+                )}
+              </ul>
+            </div>
+
+            <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+              <p className="text-xs font-bold uppercase text-pulse-muted">Movement timeline</p>
+              <ul className="mt-3 space-y-3 text-sm">
+                {detail.movements.length === 0 ? (
+                  <li className="text-pulse-muted">No movements.</li>
+                ) : (
+                  detail.movements.map((m) => (
+                    <li key={m.id} className="flex gap-3 border-l-2 border-slate-200 pl-3">
+                      <div className="min-w-0 flex-1">
+                        <p className="font-semibold capitalize text-pulse-navy">
+                          {m.action.replace(/_/g, " ")}
+                          {m.work_request_label ? (
+                            <span className="ml-1 text-xs font-normal text-[#2B4C7E]">
+                              ({m.work_request_label})
+                            </span>
+                          ) : null}
+                        </p>
+                        <p className="text-xs text-pulse-muted">
+                          {m.performer_name ?? "System"} · {m.zone_name ?? "—"}
+                          {m.quantity != null ? ` · qty ${m.quantity}` : ""}
+                        </p>
+                        <p className="text-[11px] text-pulse-muted">{formatTs(m.created_at)}</p>
+                      </div>
+                    </li>
+                  ))
+                )}
+              </ul>
+            </div>
+          </div>
+        )}
+      </PulseDrawer>
+
+      <PulseDrawer
+        open={editOpen}
+        title={editMode === "create" ? "Register item" : "Edit item"}
+        subtitle="Tools are individually tracked; parts and consumables use quantity."
+        wide
+        onClose={() => {
+          setEditOpen(false);
+          setEditTargetId(null);
+        }}
+        footer={
+          <div className="flex justify-end gap-2">
+            <button
+              type="button"
+              className="rounded-[10px] border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-pulse-navy"
+              onClick={() => setEditOpen(false)}
+            >
+              Cancel
+            </button>
+            <button type="button" className={PRIMARY_BTN} disabled={actionBusy} onClick={() => void submitForm()}>
+              Save
+            </button>
+          </div>
+        }
+      >
+        {editFormLoading ? (
+          <div className="flex items-center gap-2 py-8 text-pulse-muted">
+            <Loader2 className="h-5 w-5 animate-spin" />
+            Loading item…
+          </div>
+        ) : null}
+        <div className={`grid gap-4 sm:grid-cols-2 ${editFormLoading ? "pointer-events-none opacity-50" : ""}`}>
+          <div className="sm:col-span-2">
+            <label className={LABEL}>Name</label>
+            <input className={FIELD} value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} />
+          </div>
+          <div>
+            <label className={LABEL}>SKU (optional)</label>
+            <input className={FIELD} value={form.sku} onChange={(e) => setForm((f) => ({ ...f, sku: e.target.value }))} />
+          </div>
+          <div>
+            <label className={LABEL}>Type</label>
+            <select
+              className={FIELD}
+              value={form.item_type}
+              onChange={(e) => setForm((f) => ({ ...f, item_type: e.target.value }))}
+            >
+              <option value="tool">Tool</option>
+              <option value="part">Part</option>
+              <option value="consumable">Consumable</option>
+            </select>
+          </div>
+          <div>
+            <label className={LABEL}>Category</label>
+            <select
+              className={FIELD}
+              value={form.category}
+              onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
+            >
+              <option value="">—</option>
+              {mergedSettings.categories.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className={LABEL}>Quantity</label>
+            <input
+              className={FIELD}
+              inputMode="decimal"
+              disabled={form.item_type === "tool"}
+              value={form.item_type === "tool" ? "1" : form.quantity}
+              onChange={(e) => setForm((f) => ({ ...f, quantity: e.target.value }))}
+            />
+          </div>
+          <div>
+            <label className={LABEL}>Unit</label>
+            <input className={FIELD} value={form.unit} onChange={(e) => setForm((f) => ({ ...f, unit: e.target.value }))} />
+          </div>
+          <div>
+            <label className={LABEL}>Min stock level</label>
+            <input
+              className={FIELD}
+              inputMode="decimal"
+              value={form.low_stock_threshold}
+              onChange={(e) => setForm((f) => ({ ...f, low_stock_threshold: e.target.value }))}
+            />
+          </div>
+          <div>
+            <label className={LABEL}>Condition</label>
+            <select
+              className={FIELD}
+              value={form.condition}
+              onChange={(e) => setForm((f) => ({ ...f, condition: e.target.value }))}
+            >
+              <option value="good">Good</option>
+              <option value="needs_maintenance">Needs maintenance</option>
+              <option value="critical">Critical / out of service</option>
+            </select>
+          </div>
+          <div>
+            <label className={LABEL}>Location</label>
+            <select
+              className={FIELD}
+              value={form.zone_id}
+              onChange={(e) => setForm((f) => ({ ...f, zone_id: e.target.value }))}
+            >
+              <option value="">—</option>
+              {zones.map((z) => (
+                <option key={z.id} value={z.id}>
+                  {z.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className={LABEL}>Assigned worker</label>
+            <select
+              className={FIELD}
+              value={form.assigned_user_id}
+              onChange={(e) => setForm((f) => ({ ...f, assigned_user_id: e.target.value }))}
+            >
+              <option value="">—</option>
+              {workers.map((w) => (
+                <option key={w.id} value={w.id}>
+                  {w.full_name || w.email}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="sm:col-span-2">
+            <label className={LABEL}>Linked asset</label>
+            <select
+              className={FIELD}
+              value={form.linked_tool_id}
+              onChange={(e) => setForm((f) => ({ ...f, linked_tool_id: e.target.value }))}
+            >
+              <option value="">—</option>
+              {assets.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.name}
+                  {a.tag_id ? ` (${a.tag_id})` : ""}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className={LABEL}>Unit cost (optional)</label>
+            <input
+              className={FIELD}
+              inputMode="decimal"
+              value={form.unit_cost}
+              onChange={(e) => setForm((f) => ({ ...f, unit_cost: e.target.value }))}
+            />
+          </div>
+          <div className="flex items-end">
+            <label className="flex cursor-pointer items-center gap-2 text-sm font-semibold text-pulse-navy">
+              <input
+                type="checkbox"
+                checked={form.reorder_flag}
+                onChange={(e) => setForm((f) => ({ ...f, reorder_flag: e.target.checked }))}
+              />
+              Flag for reorder
+            </label>
+          </div>
+        </div>
+      </PulseDrawer>
+
+      <PulseDrawer
+        open={settingsOpen}
+        wide
+        title="Inventory settings"
+        subtitle="Categories, thresholds, storage labels,and alert policies."
+        onClose={() => setSettingsOpen(false)}
+        footer={
+          <div className="flex justify-end gap-2">
+            <button
+              type="button"
+              className="rounded-[10px] border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-pulse-navy"
+              onClick={() => setSettingsOpen(false)}
+            >
+              Cancel
+            </button>
+            <button type="button" className={PRIMARY_BTN} disabled={actionBusy || settingsLoading} onClick={() => void saveSettings()}>
+              Save
+            </button>
+          </div>
+        }
+      >
+        {settingsLoading ? (
+          <p className="text-sm text-pulse-muted">Loading settings…</p>
+        ) : (
+          <div className="flex flex-col gap-4 sm:flex-row">
+            <div className="flex shrink-0 flex-wrap gap-2 sm:flex-col sm:border-r sm:border-slate-200 sm:pr-3">
+              {SETTINGS_TABS.map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => setSettingsTab(t)}
+                  className={`rounded-lg px-3 py-2 text-left text-sm font-semibold ${
+                    settingsTab === t ? "bg-[#ebf8ff] text-[#2B4C7E]" : "text-pulse-navy hover:bg-slate-50"
+                  }`}
+                >
+                  {t}
+                </button>
+              ))}
+            </div>
+            <div className="min-w-0 flex-1 space-y-4">
+              {settingsTab === "Categories" ? (
+                <div>
+                  <p className={LABEL}>Categories (one per line)</p>
+                  <textarea
+                    className={`${FIELD} min-h-[140px] font-mono text-xs`}
+                    value={settingsDraft.categories.join("\n")}
+                    onChange={(e) =>
+                      setSettingsDraft((d) => ({
+                        ...d,
+                        categories: e.target.value.split("\n").map((x) => x.trim()).filter(Boolean),
+                      }))
+                    }
+                  />
+                </div>
+              ) : null}
+              {settingsTab === "Status rules" ? (
+                <div className="space-y-2">
+                  <p className="text-sm text-pulse-muted">Toggle which statuses appear in default views.</p>
+                  {(["in_stock", "assigned", "low_stock", "missing", "maintenance"] as const).map((k) => (
+                    <label key={k} className="flex items-center gap-2 text-sm font-medium text-pulse-navy">
+                      <input
+                        type="checkbox"
+                        checked={settingsDraft.status_rules[k] !== false}
+                        onChange={(e) =>
+                          setSettingsDraft((d) => ({
+                            ...d,
+                            status_rules: { ...d.status_rules, [k]: e.target.checked },
+                          }))
+                        }
+                      />
+                      <span className="capitalize">{k.replace(/_/g, " ")}</span>
+                    </label>
+                  ))}
+                </div>
+              ) : null}
+              {settingsTab === "Thresholds" ? (
+                <div>
+                  <p className={LABEL}>Default minimum stock (new items)</p>
+                  <input
+                    className={FIELD}
+                    inputMode="numeric"
+                    value={String(settingsDraft.threshold_defaults.default_min ?? 5)}
+                    onChange={(e) =>
+                      setSettingsDraft((d) => ({
+                        ...d,
+                        threshold_defaults: {
+                          ...d.threshold_defaults,
+                          default_min: Number.parseInt(e.target.value, 10) || 0,
+                        },
+                      }))
+                    }
+                  />
+                </div>
+              ) : null}
+              {settingsTab === "Locations" ? (
+                <div>
+                  <p className={LABEL}>Storage zones / labels (one per line)</p>
+                  <textarea
+                    className={`${FIELD} min-h-[140px] font-mono text-xs`}
+                    value={(settingsDraft.locations ?? []).join("\n")}
+                    onChange={(e) =>
+                      setSettingsDraft((d) => ({
+                        ...d,
+                        locations: e.target.value.split("\n").map((x) => x.trim()).filter(Boolean),
+                      }))
+                    }
+                  />
+                  <p className="mt-2 text-xs text-pulse-muted">
+                    Informational labels for crews; physical zones still map to Pulse zone records when moving stock.
+                  </p>
+                </div>
+              ) : null}
+              {settingsTab === "Assignment" ? (
+                <label className="flex items-center gap-2 text-sm font-semibold text-pulse-navy">
+                  <input
+                    type="checkbox"
+                    checked={settingsDraft.assignment_rules.checkout_required !== false}
+                    onChange={(e) =>
+                      setSettingsDraft((d) => ({
+                        ...d,
+                        assignment_rules: { ...d.assignment_rules, checkout_required: e.target.checked },
+                      }))
+                    }
+                  />
+                  Require check-out / check-in tracking for tools
+                </label>
+              ) : null}
+              {settingsTab === "Alerts" ? (
+                <div className="space-y-2">
+                  <label className="flex items-center gap-2 text-sm font-semibold text-pulse-navy">
+                    <input
+                      type="checkbox"
+                      checked={settingsDraft.alerts.low_stock !== false}
+                      onChange={(e) =>
+                        setSettingsDraft((d) => ({
+                          ...d,
+                          alerts: { ...d.alerts, low_stock: e.target.checked },
+                        }))
+                      }
+                    />
+                    Low stock alerts
+                  </label>
+                  <label className="flex items-center gap-2 text-sm font-semibold text-pulse-navy">
+                    <input
+                      type="checkbox"
+                      checked={settingsDraft.alerts.missing !== false}
+                      onChange={(e) =>
+                        setSettingsDraft((d) => ({
+                          ...d,
+                          alerts: { ...d.alerts, missing: e.target.checked },
+                        }))
+                      }
+                    />
+                    Missing item alerts
+                  </label>
+                </div>
+              ) : null}
+            </div>
+          </div>
+        )}
+      </PulseDrawer>
+    </div>
+  );
+}

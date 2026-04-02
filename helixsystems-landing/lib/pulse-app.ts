@@ -33,7 +33,7 @@ export const pulseTenantNav = [
   { href: "/overview", label: "Overview" },
   { href: "/schedule", label: "Schedule" },
   { href: "/dashboard/work-requests", label: "Work orders" },
-  { href: "/pulse#inventory", label: "Inventory" },
+  { href: "/dashboard/inventory", label: "Inventory" },
 ] as const;
 
 /** System administration shell — center nav on `/system/*`. */
@@ -54,7 +54,8 @@ export const pulseTenantSidebarNav = [
   { href: "/dashboard/payments", label: "Payments", icon: "credit-card" as const },
   { href: "/schedule", label: "Schedule", icon: "calendar" as const },
   { href: "/dashboard/work-requests", label: "Issue tracking", icon: "clipboard" as const },
-  { href: "/pulse#inventory", label: "Inventory", icon: "package" as const },
+  { href: "/dashboard/workers", label: "Workers & roles", icon: "user-cog" as const },
+  { href: "/dashboard/inventory", label: "Inventory", icon: "package" as const },
   { href: "/pulse#tool-tracking", label: "Equipment", icon: "wrench" as const },
   { href: "/pulse#workforce-scheduling", label: "Workforce", icon: "users" as const },
   { href: "/pulse#equipment-setup", label: "Zones & devices", icon: "map-pin" as const },
@@ -66,6 +67,7 @@ export const pulseSystemSidebarNav = [
   { href: "/overview", label: "Operations", icon: "layout" as const },
   { href: "/dashboard/compliance", label: "Compliance", icon: "shield-check" as const },
   { href: "/dashboard/payments", label: "Payments", icon: "credit-card" as const },
+  { href: "/dashboard/workers", label: "Workers & roles", icon: "user-cog" as const },
   { href: "/system", label: "Admin home", icon: "shield" as const },
   { href: "/system/companies", label: "Companies", icon: "building" as const },
   { href: "/system/users", label: "Users", icon: "user-cog" as const },

@@ -769,7 +769,7 @@ function DashboardBody({
                     <p className="mt-1 text-xs text-pulse-muted">Schedule a cleanup?</p>
                     <div className="mt-3 flex flex-wrap gap-2">
                       <Link
-                        href={pulseTenantNav[3]?.href ?? "/pulse#inventory"}
+                        href={pulseTenantNav[3]?.href ?? "/dashboard/inventory"}
                         className="inline-flex rounded-lg bg-pulse-accent px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-pulse-accent-hover"
                       >
                         Review inventory
@@ -846,13 +846,13 @@ function DashboardBody({
                 </div>
                 <div className="mt-3 flex flex-wrap gap-2">
                   <Link
-                    href={pulseTenantNav[3]?.href ?? "/pulse#inventory"}
+                    href={pulseTenantNav[3]?.href ?? "/dashboard/inventory"}
                     className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-pulse-navy shadow-sm transition-colors hover:bg-slate-50"
                   >
                     View stock
                   </Link>
                   <Link
-                    href={pulseTenantNav[3]?.href ?? "/pulse#inventory"}
+                    href={pulseTenantNav[3]?.href ?? "/dashboard/inventory"}
                     className="rounded-lg bg-pulse-accent px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-pulse-accent-hover"
                   >
                     Order Now
