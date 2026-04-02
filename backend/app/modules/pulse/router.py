@@ -1,10 +1,10 @@
 """Pulse REST API — tenant-scoped CMMS, scheduling, inventory, beacons."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Annotated, Optional
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
-from sqlalchemy import delete, func, select
+from sqlalchemy import and_, delete, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -79,27 +79,36 @@ async def list_work_requests(
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
 ) -> WorkRequestListOut:
-    stmt = select(PulseWorkRequest).where(PulseWorkRequest.company_id == cid)
+    now = datetime.now(timezone.utc)
+    conds: list = [PulseWorkRequest.company_id == cid]
     if status_filter:
-        try:
-            st = PulseWorkRequestStatus(status_filter)
-            stmt = stmt.where(PulseWorkRequest.status == st)
-        except ValueError:
-            raise HTTPException(status_code=400, detail="Invalid status")
+        sf = status_filter.strip()
+        if sf == "complete":
+            sf = "completed"
+        if sf == "overdue":
+            conds.append(PulseWorkRequest.due_date.isnot(None))
+            conds.append(PulseWorkRequest.due_date < now)
+            conds.append(PulseWorkRequest.status != PulseWorkRequestStatus.completed)
+            conds.append(PulseWorkRequest.status != PulseWorkRequestStatus.cancelled)
+        else:
+            try:
+                st = PulseWorkRequestStatus(sf)
+                conds.append(PulseWorkRequest.status == st)
+            except ValueError:
+                raise HTTPException(status_code=400, detail="Invalid status")
     if q:
-        stmt = stmt.where(PulseWorkRequest.title.ilike(f"%{q}%"))
-    cstmt = select(func.count()).select_from(PulseWorkRequest).where(PulseWorkRequest.company_id == cid)
-    if status_filter:
-        try:
-            st = PulseWorkRequestStatus(status_filter)
-            cstmt = cstmt.where(PulseWorkRequest.status == st)
-        except ValueError:
-            raise HTTPException(status_code=400, detail="Invalid status")
-    if q:
-        cstmt = cstmt.where(PulseWorkRequest.title.ilike(f"%{q}%"))
-    total = int((await db.execute(cstmt)).scalar_one() or 0)
-
-    stmt = stmt.order_by(PulseWorkRequest.updated_at.desc()).offset(offset).limit(limit)
+        conds.append(PulseWorkRequest.title.ilike(f"%{q}%"))
+    where_clause = and_(*conds)
+    total = int(
+        (await db.execute(select(func.count()).select_from(PulseWorkRequest).where(where_clause))).scalar_one() or 0
+    )
+    stmt = (
+        select(PulseWorkRequest)
+        .where(where_clause)
+        .order_by(PulseWorkRequest.updated_at.desc())
+        .offset(offset)
+        .limit(limit)
+    )
     rows = (await db.execute(stmt)).scalars().all()
     return WorkRequestListOut(items=[WorkRequestOut.model_validate(r) for r in rows], total=total)
 
@@ -109,6 +118,7 @@ async def create_work_request(
     db: Db,
     cid: CompanyId,
     body: WorkRequestCreate,
+    user: User = Depends(require_tenant_user),
 ) -> WorkRequestOut:
     if body.tool_id and not await _tool_in_company(db, cid, body.tool_id):
         raise HTTPException(status_code=400, detail="Unknown asset for this organization")
@@ -117,14 +127,19 @@ async def create_work_request(
     if body.assigned_user_id and not await pulse_svc._user_in_company(db, cid, body.assigned_user_id):
         raise HTTPException(status_code=400, detail="Unknown assignee")
 
+    att = body.attachments if body.attachments is not None else []
     wr = PulseWorkRequest(
         company_id=cid,
         title=body.title,
         description=body.description,
         tool_id=body.tool_id,
         zone_id=body.zone_id,
+        category=body.category,
         priority=body.priority,
         assigned_user_id=body.assigned_user_id,
+        created_by_user_id=user.id,
+        due_date=body.due_date,
+        attachments=list(att),
     )
     db.add(wr)
     await db.commit()
@@ -160,6 +175,11 @@ async def patch_work_request(
             raise HTTPException(status_code=400, detail="Unknown assignee")
     for k, v in data.items():
         setattr(wr, k, v)
+    if "status" in data:
+        if data["status"] == PulseWorkRequestStatus.completed:
+            wr.completed_at = datetime.now(timezone.utc)
+        else:
+            wr.completed_at = None
     await db.commit()
     await db.refresh(wr)
     return WorkRequestOut.model_validate(wr)
@@ -438,6 +458,24 @@ async def patch_inventory(db: Db, cid: CompanyId, item_id: str, body: InventoryP
         item.quantity = float(data["quantity"])
     if "low_stock_threshold" in data:
         item.low_stock_threshold = float(data["low_stock_threshold"])
+    if "item_type" in data and data["item_type"] is not None:
+        item.item_type = str(data["item_type"])
+    if "category" in data:
+        item.category = data["category"]
+    if "inv_status" in data and data["inv_status"] is not None:
+        item.inv_status = str(data["inv_status"])
+    if "zone_id" in data:
+        item.zone_id = data["zone_id"]
+    if "assigned_user_id" in data:
+        item.assigned_user_id = data["assigned_user_id"]
+    if "linked_tool_id" in data:
+        item.linked_tool_id = data["linked_tool_id"]
+    if "item_condition" in data and data["item_condition"] is not None:
+        item.item_condition = str(data["item_condition"])
+    if "reorder_flag" in data and data["reorder_flag"] is not None:
+        item.reorder_flag = bool(data["reorder_flag"])
+    if "unit_cost" in data:
+        item.unit_cost = data["unit_cost"]
     await db.commit()
     await db.refresh(item)
     return InventoryItemOut.model_validate(item)

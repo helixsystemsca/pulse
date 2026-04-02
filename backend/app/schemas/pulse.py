@@ -1,11 +1,12 @@
 """Pydantic schemas for Pulse REST API."""
 
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any, Optional, Union
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
-from app.models.pulse_models import PulseWorkRequestStatus
+from app.models.pulse_models import PulseWorkRequestPriority, PulseWorkRequestStatus
+from app.modules.work_requests.helpers import priority_from_legacy_int
 
 
 class DashboardOut(BaseModel):
@@ -21,8 +22,22 @@ class WorkRequestCreate(BaseModel):
     description: Optional[str] = None
     tool_id: Optional[str] = None
     zone_id: Optional[str] = None
-    priority: int = 0
+    category: Optional[str] = Field(None, max_length=128)
+    priority: Union[int, str, PulseWorkRequestPriority] = PulseWorkRequestPriority.medium
     assigned_user_id: Optional[str] = None
+    due_date: Optional[datetime] = None
+    attachments: Optional[list[Any]] = None
+
+    @field_validator("priority", mode="before")
+    @classmethod
+    def _priority_coerce(cls, v: Any) -> PulseWorkRequestPriority:
+        if v is None:
+            return PulseWorkRequestPriority.medium
+        if isinstance(v, PulseWorkRequestPriority):
+            return v
+        if isinstance(v, int):
+            return priority_from_legacy_int(v)
+        return PulseWorkRequestPriority(str(v))
 
 
 class WorkRequestUpdate(BaseModel):
@@ -30,9 +45,23 @@ class WorkRequestUpdate(BaseModel):
     description: Optional[str] = None
     tool_id: Optional[str] = None
     zone_id: Optional[str] = None
-    priority: Optional[int] = None
+    category: Optional[str] = Field(None, max_length=128)
+    priority: Optional[Union[int, str, PulseWorkRequestPriority]] = None
     status: Optional[PulseWorkRequestStatus] = None
     assigned_user_id: Optional[str] = None
+    due_date: Optional[datetime] = None
+    attachments: Optional[list[Any]] = None
+
+    @field_validator("priority", mode="before")
+    @classmethod
+    def _priority_coerce_upd(cls, v: Any) -> Optional[PulseWorkRequestPriority]:
+        if v is None:
+            return None
+        if isinstance(v, PulseWorkRequestPriority):
+            return v
+        if isinstance(v, int):
+            return priority_from_legacy_int(v)
+        return PulseWorkRequestPriority(str(v))
 
 
 class WorkRequestOut(BaseModel):
@@ -42,13 +71,28 @@ class WorkRequestOut(BaseModel):
     description: Optional[str]
     tool_id: Optional[str]
     zone_id: Optional[str]
-    priority: int
+    category: Optional[str]
+    priority: str
     status: str
     assigned_user_id: Optional[str]
+    created_by_user_id: Optional[str] = None
+    due_date: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
+    attachments: list[Any] = []
     created_at: datetime
     updated_at: datetime
 
     model_config = {"from_attributes": True}
+
+    @field_validator("priority", "status", mode="before")
+    @classmethod
+    def _coerce_enum_str(cls, v: Any) -> str:
+        return v.value if hasattr(v, "value") else str(v)
+
+    @field_validator("attachments", mode="before")
+    @classmethod
+    def _attachments_default(cls, v: Any) -> list[Any]:
+        return [] if v is None else list(v)
 
 
 class WorkRequestListOut(BaseModel):
@@ -142,6 +186,17 @@ class InventoryItemOut(BaseModel):
     quantity: float
     unit: str
     low_stock_threshold: float
+    usage_count: int = 0
+    item_type: str = "part"
+    category: Optional[str] = None
+    inv_status: str = "in_stock"
+    zone_id: Optional[str] = None
+    assigned_user_id: Optional[str] = None
+    linked_tool_id: Optional[str] = None
+    item_condition: str = "good"
+    reorder_flag: bool = False
+    unit_cost: Optional[float] = None
+    last_movement_at: Optional[datetime] = None
 
     model_config = {"from_attributes": True}
 
@@ -149,6 +204,15 @@ class InventoryItemOut(BaseModel):
 class InventoryPatch(BaseModel):
     quantity: Optional[float] = None
     low_stock_threshold: Optional[float] = None
+    item_type: Optional[str] = None
+    category: Optional[str] = None
+    inv_status: Optional[str] = None
+    zone_id: Optional[str] = None
+    assigned_user_id: Optional[str] = None
+    linked_tool_id: Optional[str] = None
+    item_condition: Optional[str] = None
+    reorder_flag: Optional[bool] = None
+    unit_cost: Optional[float] = None
 
 
 class BeaconEquipmentCreate(BaseModel):

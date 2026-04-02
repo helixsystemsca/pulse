@@ -3,8 +3,8 @@ Operations Intelligence Platform — FastAPI entrypoint.
 
 Layers:
 - `app/core`: event bus, state, inference, feature flags, auth helpers
-- `app/modules/*`: optional product modules (feature-flagged per company)
-- `app/api`: public HTTP surface (admin, auth, realtime)
+- `app/modules/*`: optional product modules (feature-flagged per company), e.g. Pulse REST
+- `app/api`: HTTP surface — `/api/public`, `/api` (compliance), `/api/system`, `/api/v1` (auth, pulse, …)
 """
 
 import logging
@@ -19,11 +19,16 @@ from slowapi.middleware import SlowAPIMiddleware
 
 from app.api.admin_routes import router as admin_router
 from app.api.auth_routes import router as auth_router
+from app.api.compliance_routes import router as compliance_router
+from app.api.payments_routes import router as payments_router
 from app.api.core_routes import router as core_router
 from app.api.public_routes import router as public_router
 from app.api.realtime import router as realtime_router
 from app.api.system_routes import router as system_router
 from app.api.users_routes import router as users_router
+from app.api.work_requests_routes import router as work_requests_router
+from app.api.workers_routes import router as workers_router
+from app.api.inventory_portal_routes import router as inventory_portal_router
 from app.core.bootstrap import ensure_bootstrap_system_admin
 from app.core.config import get_settings
 from app.core.database import AsyncSessionLocal
@@ -78,18 +83,24 @@ app.add_middleware(
     enable_hsts=settings.enable_hsts,
 )
 app.add_middleware(FeatureGateMiddleware)
+if settings.trusted_host_list:
+    app.add_middleware(TrustedHostMiddleware, allowed_hosts=settings.trusted_host_list)
+# CORS must be outermost so responses from inner middleware (e.g. TrustedHost 400) still get ACAO on preflight/POST.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_cors_origins,
     allow_origin_regex=settings.cors_origin_regex_pattern,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allow_headers=["Authorization", "Content-Type", "Accept", "X-Requested-With"],
+    allow_headers=["*"],
 )
-if settings.trusted_host_list:
-    app.add_middleware(TrustedHostMiddleware, allowed_hosts=settings.trusted_host_list)
 
 app.include_router(public_router, prefix="/api/public")
+app.include_router(compliance_router, prefix="/api")
+app.include_router(work_requests_router, prefix="/api")
+app.include_router(workers_router, prefix="/api")
+app.include_router(inventory_portal_router, prefix="/api")
+app.include_router(payments_router, prefix="/api")
 app.include_router(auth_router, prefix="/api/v1")
 app.include_router(admin_router, prefix="/api/v1")
 app.include_router(system_router, prefix="/api/system")

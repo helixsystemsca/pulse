@@ -6,7 +6,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Annotated, Any, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import require_system_admin
 from app.core.audit.service import record_audit
@@ -130,6 +130,29 @@ async def create_company_and_invite(
     db: Annotated[AsyncSession, Depends(get_db)],
     admin: Annotated[User, Depends(require_system_admin)],
 ) -> dict[str, str]:
+    email_norm = body.admin_email.strip().lower()
+    now = datetime.now(timezone.utc)
+    reg = await db.execute(select(User.id).where(func.lower(User.email) == email_norm))
+    if reg.scalar_one_or_none():
+        raise HTTPException(status_code=400, detail="Email already registered")
+    pending_inv = await db.execute(
+        select(Invite.id)
+        .where(
+            func.lower(Invite.email) == email_norm,
+            Invite.used.is_(False),
+            Invite.expires_at > now,
+        )
+        .limit(1)
+    )
+    if pending_inv.scalar_one_or_none():
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                "A pending invite already exists for this email. Open Companies, find the tenant with that "
+                "invite, or purge an empty duplicate before trying again—retries were creating multiple tenants."
+            ),
+        )
+
     feats = normalize_enabled_features(body.enabled_features)
     company = Company(name=body.company_name.strip(), owner_admin_id=None, is_active=True)
     db.add(company)
@@ -154,14 +177,14 @@ async def create_company_and_invite(
         performed_by=admin.id,
         target_type="company",
         target_id=company.id,
-        metadata={"admin_email": body.admin_email},
+        metadata={"admin_email": email_norm},
     )
     await db.commit()
     link_path = _invite_path(raw)
     invite_url = _pulse_app_link(link_path)
     invite_email_sent = await send_company_admin_invite(
         settings,
-        to_email=body.admin_email,
+        to_email=email_norm,
         company_name=company.name,
         invite_url=invite_url,
     )
@@ -264,6 +287,89 @@ async def list_companies(
             )
         )
     return out
+
+
+async def _purge_empty_company_core(company_id: str, admin: User, db: AsyncSession) -> None:
+    """Hard-delete a tenant that has no users. Use to remove mistaken duplicate shells (after deactivate)."""
+    c = await db.get(Company, company_id)
+    if not c:
+        raise HTTPException(status_code=404, detail="Company not found")
+    uc = int(
+        (await db.execute(select(func.count()).select_from(User).where(User.company_id == company_id))).scalar_one()
+        or 0
+    )
+    if uc > 0:
+        raise HTTPException(
+            status_code=400,
+            detail="Cannot permanently delete a company that has users. Remove users first or keep the tenant deactivated.",
+        )
+    name = c.name
+    cid = c.id
+    await record_system_log(
+        db,
+        action="company.purged",
+        performed_by=admin.id,
+        target_type="company",
+        target_id=cid,
+        metadata={"name": name},
+    )
+    await db.execute(delete(Company).where(Company.id == cid))
+    await db.commit()
+
+
+@router.post("/companies/{company_id}/purge", status_code=status.HTTP_204_NO_CONTENT)
+async def purge_empty_company_post(
+    company_id: str,
+    admin: Annotated[User, Depends(require_system_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> None:
+    await _purge_empty_company_core(company_id, admin, db)
+
+
+@router.delete("/companies/{company_id}/purge", status_code=status.HTTP_204_NO_CONTENT)
+async def purge_empty_company_delete(
+    company_id: str,
+    admin: Annotated[User, Depends(require_system_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> None:
+    await _purge_empty_company_core(company_id, admin, db)
+
+
+@router.post("/company-empty-delete/{company_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def purge_empty_company_alt_post(
+    company_id: str,
+    admin: Annotated[User, Depends(require_system_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> None:
+    await _purge_empty_company_core(company_id, admin, db)
+
+
+@router.delete("/company-empty-delete/{company_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def purge_empty_company_alt_delete(
+    company_id: str,
+    admin: Annotated[User, Depends(require_system_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> None:
+    await _purge_empty_company_core(company_id, admin, db)
+
+
+@router.post("/tenant-hard-remove/{company_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def tenant_hard_remove_post(
+    company_id: str,
+    admin: Annotated[User, Depends(require_system_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> None:
+    """Hard-delete empty tenant — distinct path from `/companies/.../purge` for simpler routing."""
+    await _purge_empty_company_core(company_id, admin, db)
+
+
+@router.delete("/tenant-hard-remove/{company_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def tenant_hard_remove_delete(
+    company_id: str,
+    admin: Annotated[User, Depends(require_system_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> None:
+    await _purge_empty_company_core(company_id, admin, db)
 
 
 @router.get("/companies/{company_id}", response_model=SystemCompanyRow)

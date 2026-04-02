@@ -73,6 +73,16 @@ async def _user_in_company(db: AsyncSession, company_id: str, user_id: str) -> O
     return q.scalar_one_or_none()
 
 
+async def tool_in_company(db: AsyncSession, company_id: str, tool_id: str) -> bool:
+    q = await db.execute(select(Tool.id).where(Tool.id == tool_id, Tool.company_id == company_id))
+    return q.scalar_one_or_none() is not None
+
+
+async def zone_in_company(db: AsyncSession, company_id: str, zone_id: str) -> bool:
+    q = await db.execute(select(Zone.id).where(Zone.id == zone_id, Zone.company_id == company_id))
+    return q.scalar_one_or_none() is not None
+
+
 async def _shift_overlap_exists(
     db: AsyncSession,
     company_id: str,
@@ -164,9 +174,7 @@ async def dashboard_aggregate(db: AsyncSession, company_id: str) -> dict[str, An
         .select_from(PulseWorkRequest)
         .where(
             PulseWorkRequest.company_id == company_id,
-            PulseWorkRequest.status.in_(
-                (PulseWorkRequestStatus.open, PulseWorkRequestStatus.in_progress)
-            ),
+            PulseWorkRequest.status.in_((PulseWorkRequestStatus.open, PulseWorkRequestStatus.in_progress)),
         )
     )
     open_wr = int(open_wr_q.scalar_one() or 0)

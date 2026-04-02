@@ -1,12 +1,13 @@
 """Pulse product domain: CMMS work requests, scheduling, worker profiles, beacons."""
 
 import enum
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from typing import Any, Optional
 from uuid import uuid4
 
 from sqlalchemy import (
     Boolean,
+    Date,
     DateTime,
     Enum,
     ForeignKey,
@@ -29,8 +30,15 @@ def _uuid() -> str:
 class PulseWorkRequestStatus(str, enum.Enum):
     open = "open"
     in_progress = "in_progress"
-    complete = "complete"
+    completed = "completed"
     cancelled = "cancelled"
+
+
+class PulseWorkRequestPriority(str, enum.Enum):
+    low = "low"
+    medium = "medium"
+    high = "high"
+    critical = "critical"
 
 
 class PulseWorkRequest(Base):
@@ -48,7 +56,12 @@ class PulseWorkRequest(Base):
     zone_id: Mapped[Optional[str]] = mapped_column(
         UUID(as_uuid=False), ForeignKey("zones.id", ondelete="SET NULL"), nullable=True, index=True
     )
-    priority: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    category: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    priority: Mapped[PulseWorkRequestPriority] = mapped_column(
+        Enum(PulseWorkRequestPriority, values_callable=lambda x: [e.value for e in x], native_enum=False, length=16),
+        default=PulseWorkRequestPriority.medium,
+        nullable=False,
+    )
     status: Mapped[PulseWorkRequestStatus] = mapped_column(
         Enum(PulseWorkRequestStatus, values_callable=lambda x: [e.value for e in x], native_enum=False, length=32),
         default=PulseWorkRequestStatus.open,
@@ -58,9 +71,71 @@ class PulseWorkRequest(Base):
     assigned_user_id: Mapped[Optional[str]] = mapped_column(
         UUID(as_uuid=False), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
     )
+    created_by_user_id: Mapped[Optional[str]] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    due_date: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
+    completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    attachments: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, server_default=text("'[]'::jsonb"))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+
+class PulseWorkRequestComment(Base):
+    __tablename__ = "pulse_work_request_comments"
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    work_request_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("pulse_work_requests.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    user_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    message: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True
+    )
+
+
+class PulseWorkRequestActivity(Base):
+    __tablename__ = "pulse_work_request_activity"
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    work_request_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("pulse_work_requests.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    action: Mapped[str] = mapped_column(String(64), nullable=False)
+    performed_by: Mapped[Optional[str]] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    meta: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True
+    )
+
+
+class PulseWorkRequestSettings(Base):
+    """Per-tenant JSON config for work-request UX (statuses, SLA hours, toggles)."""
+
+    __tablename__ = "pulse_work_request_settings"
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    company_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, unique=True, index=True
+    )
+    settings: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
@@ -135,4 +210,99 @@ class PulseBeaconEquipment(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+
+
+class PulseWorkerHR(Base):
+    """HR / roster fields for tenant users (1:1 with `users`)."""
+
+    __tablename__ = "pulse_worker_hr"
+
+    user_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    )
+    company_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    phone: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    department: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    job_title: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    shift: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    supervisor_user_id: Mapped[Optional[str]] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    start_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    supervisor_notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+
+class PulseWorkerCertification(Base):
+    __tablename__ = "pulse_worker_certifications"
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    user_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    company_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    expiry_date: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+
+
+class PulseWorkerSkill(Base):
+    __tablename__ = "pulse_worker_skills"
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    user_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    company_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    name: Mapped[str] = mapped_column(String(128), nullable=False)
+    level: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+
+
+class PulseWorkerTraining(Base):
+    __tablename__ = "pulse_worker_training"
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    user_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    company_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    completed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+
+
+class PulseWorkersSettings(Base):
+    """Company-level workers module config (permission matrix, shifts, skill tags, rules)."""
+
+    __tablename__ = "pulse_workers_settings"
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    company_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, unique=True, index=True
+    )
+    settings: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
     )

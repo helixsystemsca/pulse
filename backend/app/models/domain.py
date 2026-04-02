@@ -2,6 +2,7 @@
 
 import enum
 from datetime import datetime, timezone
+from decimal import Decimal
 from typing import Any, Optional
 from uuid import uuid4
 
@@ -12,6 +13,7 @@ from sqlalchemy import (
     Float,
     ForeignKey,
     Integer,
+    Numeric,
     String,
     Text,
     UniqueConstraint,
@@ -53,6 +55,36 @@ class JobStatus(str, enum.Enum):
     active = "active"
     completed = "completed"
     cancelled = "cancelled"
+
+
+class ComplianceRecordStatus(str, enum.Enum):
+    """Stored lifecycle state; overdue is derived from pending + required_at."""
+
+    pending = "pending"
+    completed = "completed"
+
+
+class ComplianceCategory(str, enum.Enum):
+    procedures = "procedures"
+    inspections = "inspections"
+    training = "training"
+    competency = "competency"
+
+
+class PaymentMethodKind(str, enum.Enum):
+    card = "card"
+    bank = "bank"
+
+
+class PaymentRail(str, enum.Enum):
+    ach = "ach"
+    wire_swift = "wire_swift"
+
+
+class InvoiceStatus(str, enum.Enum):
+    paid = "paid"
+    pending = "pending"
+    failed = "failed"
 
 
 class Company(Base):
@@ -258,6 +290,87 @@ class InventoryItem(Base):
     unit: Mapped[str] = mapped_column(String(32), default="count")
     low_stock_threshold: Mapped[float] = mapped_column(Float, default=0)
     usage_count: Mapped[int] = mapped_column(Integer, default=0)
+    item_type: Mapped[str] = mapped_column(String(32), nullable=False, default="part")
+    category: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    inv_status: Mapped[str] = mapped_column(String(32), nullable=False, default="in_stock", index=True)
+    zone_id: Mapped[Optional[str]] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("zones.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    assigned_user_id: Mapped[Optional[str]] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    linked_tool_id: Mapped[Optional[str]] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("tools.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    item_condition: Mapped[str] = mapped_column(String(32), nullable=False, default="good")
+    reorder_flag: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    unit_cost: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    last_movement_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class InventoryMovement(Base):
+    """Assignment, moves, usage, returns for advanced inventory tracking."""
+
+    __tablename__ = "inventory_movements"
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    company_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    item_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("inventory_items.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    action: Mapped[str] = mapped_column(String(32), nullable=False)
+    performed_by: Mapped[Optional[str]] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    zone_id: Mapped[Optional[str]] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("zones.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    quantity: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    work_request_id: Mapped[Optional[str]] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("pulse_work_requests.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    meta: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True
+    )
+
+
+class InventoryUsage(Base):
+    """Parts/consumables consumed against a work request."""
+
+    __tablename__ = "inventory_usage"
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    company_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    item_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("inventory_items.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    work_request_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("pulse_work_requests.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    quantity: Mapped[float] = mapped_column(Float, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True
+    )
+
+
+class InventoryModuleSettings(Base):
+    __tablename__ = "inventory_module_settings"
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    company_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, unique=True, index=True
+    )
+    settings: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
 
 
 class Job(Base):
@@ -346,6 +459,118 @@ class NotificationRule(Base):
     target_role: Mapped[str] = mapped_column(String(32), default="company_admin")
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     config: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
+
+
+class ComplianceRule(Base):
+    """Which SOP acknowledgment is required for a tool, and within how many hours."""
+
+    __tablename__ = "compliance_rules"
+    __table_args__ = (UniqueConstraint("company_id", "tool_id", name="uq_compliance_rules_company_tool"),)
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    company_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    tool_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("tools.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    required_sop_id: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    sop_label: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    time_limit_hours: Mapped[int] = mapped_column(Integer, nullable=False, default=24)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+
+
+class ComplianceRecord(Base):
+    """Per-user SOP / tool acknowledgment tracking for compliance analytics."""
+
+    __tablename__ = "compliance_records"
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    company_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    user_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    tool_id: Mapped[Optional[str]] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("tools.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    sop_id: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    sop_label: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    category: Mapped[ComplianceCategory] = mapped_column(
+        Enum(ComplianceCategory, values_callable=lambda x: [e.value for e in x], native_enum=False, length=32),
+        nullable=False,
+        default=ComplianceCategory.procedures,
+    )
+    status: Mapped[ComplianceRecordStatus] = mapped_column(
+        Enum(ComplianceRecordStatus, values_callable=lambda x: [e.value for e in x], native_enum=False, length=32),
+        nullable=False,
+        default=ComplianceRecordStatus.pending,
+    )
+    ignored: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    flagged: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    required_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    reviewed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    reviewed_by_user_id: Mapped[Optional[str]] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True
+    )
+
+
+class PaymentMethod(Base):
+    """Stored billing instrument (card or bank) — mock storage only; no PCI processing."""
+
+    __tablename__ = "payment_methods"
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    company_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    method_type: Mapped[PaymentMethodKind] = mapped_column(
+        "type",
+        Enum(PaymentMethodKind, values_callable=lambda x: [e.value for e in x], native_enum=False, length=16),
+        nullable=False,
+    )
+    brand: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
+    bank_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    last4: Mapped[str] = mapped_column(String(4), nullable=False)
+    expiry_month: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    expiry_year: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    rail: Mapped[Optional[PaymentRail]] = mapped_column(
+        Enum(PaymentRail, values_callable=lambda x: [e.value for e in x], native_enum=False, length=16),
+        nullable=True,
+    )
+    holder_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    is_primary: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True
+    )
+
+
+class Invoice(Base):
+    """Billing invoice row for tenant billing history (not connected to a payment gateway)."""
+
+    __tablename__ = "invoices"
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    company_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
+    currency: Mapped[str] = mapped_column(String(8), nullable=False, default="USD")
+    status: Mapped[InvoiceStatus] = mapped_column(
+        Enum(InvoiceStatus, values_callable=lambda x: [e.value for e in x], native_enum=False, length=16),
+        nullable=False,
+        index=True,
+    )
+    issued_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
+    paid_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    reference_number: Mapped[str] = mapped_column(String(64), nullable=False)
 
 
 class SystemSecureTokenKind(str, enum.Enum):

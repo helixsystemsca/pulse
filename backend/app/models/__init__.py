@@ -1,19 +1,31 @@
-"""SQLAlchemy ORM models — normalized schema."""
+"""
+ORM model package: re-exports `Base`, core tenant/RBAC entities from `domain`, and Pulse CMMS tables from `pulse_models`.
+Import concrete classes from here in services and routers for a stable public shape.
+"""
 
 from app.models.base import Base
 from app.models.domain import (
     AuditLog,
     Company,
     CompanyFeature,
+    ComplianceCategory,
+    ComplianceRecord,
+    ComplianceRecordStatus,
+    ComplianceRule,
     DomainEventRow,
     Invite,
     InventoryItem,
+    Invoice,
+    InvoiceStatus,
     Job,
     JobInventoryLink,
     JobToolLink,
     MaintenanceLog,
     MaintenanceSchedule,
     NotificationRule,
+    PaymentMethod,
+    PaymentMethodKind,
+    PaymentRail,
     RolePermission,
     SystemLog,
     SystemSecureToken,
@@ -45,6 +57,15 @@ __all__ = [
     "MaintenanceSchedule",
     "MaintenanceLog",
     "NotificationRule",
+    "ComplianceRule",
+    "ComplianceRecord",
+    "ComplianceRecordStatus",
+    "ComplianceCategory",
+    "PaymentMethod",
+    "PaymentMethodKind",
+    "PaymentRail",
+    "Invoice",
+    "InvoiceStatus",
     "RolePermission",
     "SystemLog",
     "SystemSecureToken",
