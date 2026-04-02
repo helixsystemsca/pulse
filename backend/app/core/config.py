@@ -31,6 +31,12 @@ class Settings(BaseSettings):
         default="",
         validation_alias=AliasChoices("CORS_ORIGIN_REGEX", "cors_origin_regex"),
     )
+    #: Extra comma-separated Origins merged into CORS (e.g. a staging frontend URL) in addition to
+    #: `CORS_ORIGINS` and the origin derived from `PULSE_APP_PUBLIC_URL`.
+    cors_extra_origins: str = Field(
+        default="",
+        validation_alias=AliasChoices("CORS_EXTRA_ORIGINS", "cors_extra_origins"),
+    )
     inference_min_confidence: float = 0.45
     environment: str = "development"
     allow_public_registration: bool = False
@@ -90,6 +96,17 @@ class Settings(BaseSettings):
             if len(o) >= 2 and o[0] == o[-1] and o[0] in "\"'":
                 o = o[1:-1].strip()
             # Origins must match the browser's Origin header (no path, no trailing slash).
+            o = o.rstrip("/")
+            if not o:
+                continue
+            if o not in seen:
+                seen.add(o)
+                out.append(o)
+        extra = self.cors_extra_origins.replace(";", ",")
+        for part in extra.split(","):
+            o = part.strip()
+            if len(o) >= 2 and o[0] == o[-1] and o[0] in "\"'":
+                o = o[1:-1].strip()
             o = o.rstrip("/")
             if not o:
                 continue

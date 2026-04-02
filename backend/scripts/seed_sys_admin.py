@@ -1,11 +1,17 @@
 """
-Create or update the internal system admin (jc@helixpulse.com).
+Create or update the internal system admin (Helix Systems domain).
 
-Usage (from the `backend` directory):
+Usage — pick one:
+
+    cd backend
     python -m scripts.seed_sys_admin
 
-Loads `SYS_ADMIN_PASSWORD` and `DATABASE_URL` from `backend/.env` (same as the API).
-You can also `set SYS_ADMIN_PASSWORD=...` in the shell to override.
+From the repo root (`Helix_Systems`):
+
+    python backend/scripts/seed_sys_admin.py
+
+Loads `SYS_ADMIN_EMAIL` (default josh.collins@helixsystems.ca), `SYS_ADMIN_PASSWORD`, and `DATABASE_URL`
+from `backend/.env` (same as the API). Override via environment variables.
 """
 
 from __future__ import annotations
@@ -31,13 +37,16 @@ async def _main() -> None:
         print("ERROR: Set SYS_ADMIN_PASSWORD (minimum 8 characters).")
         raise SystemExit(1)
 
+    email = os.environ.get("SYS_ADMIN_EMAIL", "josh.collins@helixsystems.ca").strip().lower()
+    if not email or "@" not in email:
+        print("ERROR: Set SYS_ADMIN_EMAIL to a valid email address.")
+        raise SystemExit(1)
+
     from sqlalchemy import select
 
     from app.core.auth.security import hash_password
     from app.core.database import AsyncSessionLocal
     from app.models.domain import User, UserRole
-
-    email = "jc@helixpulse.com"
     async with AsyncSessionLocal() as db:
         q = await db.execute(select(User).where(User.email == email))
         u = q.scalar_one_or_none()
