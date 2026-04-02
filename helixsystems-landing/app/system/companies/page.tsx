@@ -38,7 +38,11 @@ export default function SystemCompaniesPage() {
       return next;
     });
   }, [catalogKey, catalog]);
-  const [inviteBanner, setInviteBanner] = useState<{ path: string; emailSent: boolean } | null>(null);
+  const [inviteBanner, setInviteBanner] = useState<{
+    path: string;
+    emailSent: boolean;
+    emailPending: boolean;
+  } | null>(null);
   const [bootstrapOk, setBootstrapOk] = useState<{ companyId: string; adminEmail: string } | null>(null);
   const [bootstrapFail, setBootstrapFail] = useState<{
     message: string;
@@ -150,7 +154,8 @@ export default function SystemCompaniesPage() {
       const res = await apiFetch<{
         company_id: string;
         invite_link_path: string;
-        invite_email_sent?: boolean;
+        invite_email_sent?: boolean | null;
+        invite_email_pending?: boolean;
       }>(
         "/api/system/companies/create-and-invite",
         {
@@ -164,7 +169,8 @@ export default function SystemCompaniesPage() {
       );
       setInviteBanner({
         path: res.invite_link_path,
-        emailSent: Boolean(res.invite_email_sent),
+        emailSent: res.invite_email_sent === true,
+        emailPending: Boolean(res.invite_email_pending),
       });
       setModal(null);
       setCompanyName("");
@@ -172,6 +178,7 @@ export default function SystemCompaniesPage() {
       void load();
     } catch (err: unknown) {
       setBootstrapFail(parseClientApiError(err));
+      void load();
     } finally {
       setInviteSubmitting(false);
     }
@@ -261,6 +268,12 @@ export default function SystemCompaniesPage() {
               <>
                 An email was sent to the new admin from <strong className="text-blue-100">{HELIX_NOREPLY_EMAIL}</strong>{" "}
                 (if SMTP is configured on the API).
+              </>
+            ) : inviteBanner.emailPending ? (
+              <>
+                SMTP is configured—the invite email is being sent in the background from{" "}
+                <strong className="text-blue-100">{HELIX_NOREPLY_EMAIL}</strong>. Check the admin inbox in a moment, or
+                share the link below now.
               </>
             ) : (
               <>

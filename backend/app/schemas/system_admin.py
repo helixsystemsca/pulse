@@ -65,6 +65,22 @@ class SystemUserRow(BaseModel):
     last_login: Optional[str]
 
 
+class SystemPendingInviteRow(BaseModel):
+    """Unused invite — no `users` row until the recipient completes /invite flow."""
+
+    invite_id: str
+    email: str
+    role: str
+    company_id: str
+    company_name: Optional[str]
+    expires_at: str
+
+
+class SystemUsersDirectoryOut(BaseModel):
+    users: list[SystemUserRow]
+    pending_invites: list[SystemPendingInviteRow]
+
+
 class SystemLogRow(BaseModel):
     id: str
     action: str

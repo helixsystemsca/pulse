@@ -2,16 +2,17 @@
 
 from __future__ import annotations
 
+import logging
 from datetime import datetime, timedelta, timezone
 from typing import Annotated, Any, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import require_system_admin
 from app.core.audit.service import record_audit
 from app.core.auth.security import create_access_token, hash_password as hash_pw
-from app.core.config import get_settings
+from app.core.config import Settings, get_settings
 from app.core.database import get_db
 from app.core.email_smtp import send_company_admin_invite, send_password_reset_email
 from app.core.company_features import list_enabled_names, sync_enabled_features
@@ -40,12 +41,36 @@ from app.schemas.system_admin import (
     SystemInviteCreate,
     SystemLogRow,
     SystemOverviewOut,
+    SystemPendingInviteRow,
     SystemUserRow,
+    SystemUsersDirectoryOut,
 )
 
 # Mounted in main.py at prefix `/api/system` — do not add another `/system` here or routes become `/api/system/system/...`.
 router = APIRouter(tags=["system"])
 settings = get_settings()
+_log = logging.getLogger(__name__)
+
+
+async def _bg_send_company_admin_invite(
+    cfg: Settings,
+    to_email: str,
+    company_name: str,
+    invite_url: str,
+) -> None:
+    try:
+        await send_company_admin_invite(
+            cfg,
+            to_email=to_email,
+            company_name=company_name,
+            invite_url=invite_url,
+        )
+    except Exception:
+        _log.exception(
+            "Background company admin invite email failed to=%s company=%s",
+            to_email,
+            company_name,
+        )
 
 
 def _invite_path(raw_token: str) -> str:
@@ -129,7 +154,8 @@ async def create_company_and_invite(
     body: SystemCompanyCreateAndInvite,
     db: Annotated[AsyncSession, Depends(get_db)],
     admin: Annotated[User, Depends(require_system_admin)],
-) -> dict[str, str]:
+    background_tasks: BackgroundTasks,
+) -> dict[str, Any]:
     email_norm = body.admin_email.strip().lower()
     now = datetime.now(timezone.utc)
     reg = await db.execute(select(User.id).where(func.lower(User.email) == email_norm))
@@ -182,17 +208,26 @@ async def create_company_and_invite(
     await db.commit()
     link_path = _invite_path(raw)
     invite_url = _pulse_app_link(link_path)
-    invite_email_sent = await send_company_admin_invite(
-        settings,
-        to_email=email_norm,
-        company_name=company.name,
-        invite_url=invite_url,
-    )
-    return {
+
+    cfg = get_settings()
+    payload: dict[str, Any] = {
         "company_id": company.id,
         "invite_link_path": link_path,
-        "invite_email_sent": invite_email_sent,
     }
+    if cfg.smtp_configured:
+        background_tasks.add_task(
+            _bg_send_company_admin_invite,
+            cfg,
+            email_norm,
+            company.name,
+            invite_url,
+        )
+        payload["invite_email_sent"] = None
+        payload["invite_email_pending"] = True
+    else:
+        payload["invite_email_sent"] = False
+        payload["invite_email_pending"] = False
+    return payload
 
 
 @router.post("/companies/bootstrap-legacy", status_code=status.HTTP_201_CREATED)
@@ -506,14 +541,14 @@ async def create_invite(
     return {"invite_link_path": link_path, "invite_email_sent": invite_email_sent}
 
 
-@router.get("/users", response_model=list[SystemUserRow])
+@router.get("/users", response_model=SystemUsersDirectoryOut)
 async def list_all_users(
     _: Annotated[User, Depends(require_system_admin)],
     db: Annotated[AsyncSession, Depends(get_db)],
     limit: int = Query(100, ge=1, le=500),
     offset: int = Query(0, ge=0),
     q: Optional[str] = Query(None),
-) -> list[SystemUserRow]:
+) -> SystemUsersDirectoryOut:
     stmt = select(User, Company.name).outerjoin(Company, User.company_id == Company.id)
     if q:
         like = f"%{q}%"
@@ -524,9 +559,9 @@ async def list_all_users(
         )
     stmt = stmt.order_by(User.created_at.desc()).offset(offset).limit(limit)
     rows = (await db.execute(stmt)).all()
-    out: list[SystemUserRow] = []
+    out_users: list[SystemUserRow] = []
     for u, company_name in rows:
-        out.append(
+        out_users.append(
             SystemUserRow(
                 id=u.id,
                 email=u.email,
@@ -535,10 +570,35 @@ async def list_all_users(
                 company_id=u.company_id,
                 company_name=company_name,
                 is_active=u.is_active,
-                last_active_at=u.last_active_at.isoformat() if u.last_active_at else None,
+                last_login=u.last_login.isoformat() if u.last_login else None,
             )
         )
-    return out
+
+    now = datetime.now(timezone.utc)
+    inv_stmt = (
+        select(Invite, Company.name)
+        .join(Company, Invite.company_id == Company.id)
+        .where(Invite.used.is_(False), Invite.expires_at > now)
+    )
+    if q:
+        like = f"%{q}%"
+        inv_stmt = inv_stmt.where((Invite.email.ilike(like)) | (Company.name.ilike(like)))
+    inv_stmt = inv_stmt.order_by(Invite.created_at.desc()).limit(limit)
+    inv_rows = (await db.execute(inv_stmt)).all()
+    out_inv: list[SystemPendingInviteRow] = []
+    for inv, co_name in inv_rows:
+        out_inv.append(
+            SystemPendingInviteRow(
+                invite_id=inv.id,
+                email=inv.email,
+                role=inv.role,
+                company_id=inv.company_id,
+                company_name=co_name,
+                expires_at=inv.expires_at.isoformat(),
+            )
+        )
+
+    return SystemUsersDirectoryOut(users=out_users, pending_invites=out_inv)
 
 
 @router.post("/users/{user_id}/impersonate", response_model=Token)

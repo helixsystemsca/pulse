@@ -29,9 +29,12 @@ export function parseClientApiError(err: unknown): {
   if (err instanceof Error && msg === "Request failed") {
     msg = err.message;
   }
-  if (err instanceof TypeError && /fetch/i.test(String(err.message))) {
+  if (
+    err instanceof TypeError &&
+    /fetch|failed to fetch|networkerror|load failed/i.test(String(err.message))
+  ) {
     msg =
-      "Could not reach the API (network or CORS). On the API host, set CORS_ORIGINS (and CORS_EXTRA_ORIGINS if needed) so this site’s origin is allowed—e.g. https://pulse.helixsystems.ca and https://www.helixsystems.ca—then redeploy.";
+      "The browser could not read the API response (timeout, connection drop, or CORS—not only CORS). The server may still have completed the action—refresh this page and check the list or inbox. If everything looks correct, ignore this. Otherwise confirm CORS_ORIGINS includes your exact origin (e.g. https://pulse.helixsystems.ca) and redeploy the API.";
   }
   return { message: msg, status, requestUrl };
 }
