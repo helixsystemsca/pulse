@@ -104,16 +104,30 @@ export default function SystemCompaniesPage() {
       return;
     }
     try {
-      await apiFetch(`/api/system/companies/${companyId}/purge`, { method: "DELETE" });
+      await apiFetch(`/api/system/companies/${companyId}/purge`, {
+        method: "POST",
+        json: {},
+      });
       void load();
     } catch (err: unknown) {
       const parsed = parseClientApiError(err);
       if (parsed.status === 404) {
-        setBootstrapFail({
-          ...parsed,
-          message:
-            "This API doesn’t expose permanent delete yet (404 on …/purge). Redeploy the Render service from the latest backend branch (Root Directory: backend, start: uvicorn app.main:app --host 0.0.0.0 --port $PORT). Until then, use Deactivate.",
-        });
+        const detail = parsed.message.trim();
+        if (detail === "Company not found") {
+          setBootstrapFail({
+            ...parsed,
+            message:
+              "That company id is not in the database (already purged, or stale list). Refresh the companies page and try again.",
+          });
+        } else if (detail === "Not Found" || /^not found$/i.test(detail)) {
+          setBootstrapFail({
+            ...parsed,
+            message:
+              "The server you are hitting does not expose POST/DELETE …/companies/{id}/purge (routing 404). Push the latest backend to the branch Render deploys, with root directory `backend` and start `alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port $PORT`. Quick check: GET /api/system/overview with no Authorization header should return 401, not 404. Until fixed, use Deactivate.",
+          });
+        } else {
+          setBootstrapFail(parsed);
+        }
       } else {
         setBootstrapFail(parsed);
       }
