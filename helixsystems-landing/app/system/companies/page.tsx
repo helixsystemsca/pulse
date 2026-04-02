@@ -104,7 +104,7 @@ export default function SystemCompaniesPage() {
       return;
     }
     try {
-      await apiFetch(`/api/system/companies/${companyId}/purge`, {
+      await apiFetch(`/api/system/tenant-hard-remove/${companyId}`, {
         method: "POST",
         json: {},
       });
@@ -123,7 +123,7 @@ export default function SystemCompaniesPage() {
           setBootstrapFail({
             ...parsed,
             message:
-              "The server you are hitting does not expose POST/DELETE …/companies/{id}/purge (routing 404). Push the latest backend to the branch Render deploys, with root directory `backend` and start `alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port $PORT`. Quick check: GET /api/system/overview with no Authorization header should return 401, not 404. Until fixed, use Deactivate.",
+              "Permanent delete returned a routing 404. Deploy latest backend + frontend together. The UI calls POST /api/system/tenant-hard-remove/{id}. If Render logs still show …/purge, the browser is using a cached/old bundle — hard-refresh or redeploy Vercel. GET /api/system/overview without Authorization should return 401, not 404. Until fixed, use Deactivate.",
           });
         } else {
           setBootstrapFail(parsed);
