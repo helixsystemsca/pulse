@@ -31,7 +31,7 @@ export function parseClientApiError(err: unknown): {
   }
   if (err instanceof TypeError && /fetch/i.test(String(err.message))) {
     msg =
-      "Could not reach the API (network or CORS). Confirm the backend allows this site’s origin (e.g. https://pulse.helixsystems.ca), redeploy the API, and try again.";
+      "Could not reach the API (network or CORS). On the API host, set CORS_ORIGINS (and CORS_EXTRA_ORIGINS if needed) so this site’s origin is allowed—e.g. https://pulse.helixsystems.ca and https://www.helixsystems.ca—then redeploy.";
   }
   return { message: msg, status, requestUrl };
 }

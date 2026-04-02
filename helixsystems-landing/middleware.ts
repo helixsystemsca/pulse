@@ -5,16 +5,7 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
-/** Default worker hostname(s) if `PULSE_APP_HOSTNAMES` is unset. */
-const DEFAULT_PULSE_APP_HOSTS = ["pulse.helixsystems.ca"];
-
-function pulseAppHostSet(): Set<string> {
-  const raw = process.env.PULSE_APP_HOSTNAMES?.trim();
-  const parts = raw
-    ? raw.split(",").map((h) => h.trim().toLowerCase())
-    : DEFAULT_PULSE_APP_HOSTS;
-  return new Set(parts.filter(Boolean));
-}
+import { getPulseAppHostnameSet } from "@/lib/pulse-host";
 
 function hostnameForRequest(request: NextRequest): string {
   const forwarded = request.headers.get("x-forwarded-host");
@@ -26,7 +17,7 @@ function hostnameForRequest(request: NextRequest): string {
 
 export function middleware(request: NextRequest) {
   const host = hostnameForRequest(request);
-  if (!pulseAppHostSet().has(host)) {
+  if (!getPulseAppHostnameSet().has(host)) {
     return NextResponse.next();
   }
 

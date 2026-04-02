@@ -25,7 +25,7 @@ This guide covers the **helixsystems-landing** Next.js Pulse UI with the **backe
 
 ## First system admin (seed)
 
-Set **`SYS_ADMIN_PASSWORD`** (8+ characters), then from `backend/` run **`python -m scripts.seed_sys_admin`**. That creates or updates **`jc@helixpulse.com`**. Use that email and password to sign in and reach **`/api/system`**; from there you can create companies and tenant users. See **Internal system admin API** at the end of this doc.
+Set **`SYS_ADMIN_PASSWORD`** (8+ characters), optionally **`SYS_ADMIN_EMAIL`** (default **`josh.collins@helixsystems.ca`**), then from `backend/` run **`python -m scripts.seed_sys_admin`**. That creates or updates that account. Use that email and password to sign in and reach **`/api/system`**; from there you can create companies and tenant users. See **Internal system admin API** at the end of this doc.
 
 ## 2. Backend (FastAPI)
 
@@ -116,7 +116,7 @@ Scheduling enforces **overlap** and **supervisor / ticketed** rules; **availabil
 
 System routes moved under **`/api/system`** (no `/api/v1` prefix). They require a JWT for a user with **`role=system_admin`** (and recommended **`is_system_admin=true`**).
 
-- **Seed** `jc@helixpulse.com`: set `SYS_ADMIN_PASSWORD` in the environment, then from `backend/`:  
+- **Seed** system admin: set `SYS_ADMIN_PASSWORD` (and optionally `SYS_ADMIN_EMAIL`, default `josh.collins@helixsystems.ca`), then from `backend/`:  
   `python -m scripts.seed_sys_admin`
 - **Next.js**: open **`/system`** (same app origin as Pulse). You must sign in with API mode so the session includes `is_system_admin` from **`GET /api/v1/auth/me`**.
 - **Invites / reset links** use paths **`/invite?token=…`** and **`/reset-password?token=…`** on the frontend (hashed, single-use tokens on the server).

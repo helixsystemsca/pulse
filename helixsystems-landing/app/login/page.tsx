@@ -1,6 +1,6 @@
 "use client";
 
-import { Eye, EyeOff, Loader2 } from "lucide-react";
+import { Activity, Eye, EyeOff, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { FormEvent, useEffect, useId, useState } from "react";
 import { isApiMode } from "@/lib/api";
@@ -115,10 +115,16 @@ export default function LoginPage() {
     <div className="min-h-screen bg-gradient-to-b from-slate-100 via-slate-50 to-slate-200/90 px-4 py-12 md:py-16">
       <div className="mx-auto flex w-full max-w-[400px] flex-col">
         <div className="rounded-2xl border border-pulse-border bg-white p-6 shadow-card sm:p-8">
-          <h1 className="text-center font-headline text-2xl font-bold tracking-tight text-pulse-navy">
-            Welcome to Pulse
-          </h1>
-          <p className="mt-2 text-center text-sm text-pulse-muted">Sign in to your operational dashboard</p>
+          <div className="flex flex-col items-center">
+            <div
+              className="flex h-14 w-14 items-center justify-center rounded-2xl border border-slate-200/80 bg-slate-50 text-pulse-accent shadow-sm"
+              role="img"
+              aria-label="Pulse"
+            >
+              <Activity className="h-7 w-7" strokeWidth={2} aria-hidden />
+            </div>
+            <p className="mt-4 text-center text-sm text-pulse-muted">Sign in to your operational dashboard</p>
+          </div>
 
           <form className="mt-8 space-y-5" onSubmit={onSubmit} noValidate>
             {formError ? (

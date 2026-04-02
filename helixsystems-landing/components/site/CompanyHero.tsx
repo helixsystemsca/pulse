@@ -3,8 +3,8 @@ import { ArrowRight, Radio } from "lucide-react";
 
 export function CompanyHero() {
   return (
-    <section className="overflow-x-clip bg-helix-bg py-20">
-      <div className="mx-auto grid max-w-7xl items-center gap-12 px-6 md:grid-cols-2 md:gap-12">
+    <section className="overflow-x-clip bg-helix-bg py-12">
+      <div className="mx-auto grid max-w-7xl items-center gap-7 px-6 md:grid-cols-2 md:gap-7">
         <div className="min-w-0">
           <div className="inline-flex items-center gap-2 rounded-full bg-[#d5e4f5] px-4 py-1.5">
             <span className="h-2 w-2 animate-pulse rounded-full bg-helix-primary" />
@@ -13,19 +13,19 @@ export function CompanyHero() {
             </span>
           </div>
 
-          <h1 className="mt-6 font-headline text-4xl font-extrabold leading-[1.08] tracking-tight text-helix-onSurface md:text-5xl lg:text-6xl">
+          <h1 className="mt-4 font-headline text-4xl font-extrabold leading-[1.08] tracking-tight text-helix-onSurface md:text-5xl lg:text-6xl">
             Industrial operations,
             <br />
             <span className="text-helix-primary">made clear.</span>
           </h1>
 
-          <p className="mt-6 max-w-xl text-lg leading-relaxed text-helix-onSurfaceVariant">
+          <p className="mt-4 max-w-xl text-lg leading-relaxed text-helix-onSurfaceVariant">
             We partner with operators who run complex sites—manufacturing, terminals, logistics, and
             infrastructure. Helix bridges the gap between what happens on the ground and what your
             leadership needs to see.
           </p>
 
-          <div className="mt-9 flex flex-wrap items-center gap-4">
+          <div className="mt-5 flex flex-wrap items-center gap-4">
             <Link
               href="/pulse"
               className="inline-flex items-center gap-2 rounded-xl bg-helix-primary px-8 py-4 font-headline text-base font-bold text-white shadow-helix transition-all hover:bg-helix-primary-dim no-underline"
@@ -44,8 +44,8 @@ export function CompanyHero() {
 
         <div className="relative mx-auto w-full max-w-xl md:mx-0 md:max-w-none">
           <div className="relative overflow-hidden rounded-2xl shadow-helix ring-1 ring-helix-outline/30">
-            <div className="aspect-[4/3] w-full bg-gradient-to-br from-[#d5e4f5] via-white to-helix-surfaceLow md:aspect-[5/4]">
-              <div className="flex h-full flex-col justify-between p-6 md:p-8">
+            <div className="aspect-[20/9] w-full bg-gradient-to-br from-[#d5e4f5] via-white to-helix-surfaceLow md:aspect-[25/12]">
+              <div className="flex h-full flex-col justify-between p-4 md:p-5">
                 <div className="grid grid-cols-3 gap-3">
                   {[65, 82, 74].map((v, i) => (
                     <div
@@ -70,8 +70,8 @@ export function CompanyHero() {
             </div>
           </div>
 
-          <div className="relative z-10 mt-6 w-full max-w-[min(100%,280px)] md:absolute md:-bottom-4 md:left-4 md:mt-0 md:max-w-[280px] lg:left-6 lg:max-w-[300px]">
-            <div className="rounded-2xl border border-helix-outline/25 bg-white/95 p-5 shadow-lg backdrop-blur-md">
+          <div className="relative z-10 mt-4 w-full max-w-[min(100%,280px)] md:absolute md:-bottom-3 md:left-4 md:mt-0 md:max-w-[280px] lg:left-6 lg:max-w-[300px]">
+            <div className="rounded-2xl border border-helix-outline/25 bg-white/95 p-4 shadow-lg backdrop-blur-md">
               <div className="flex items-center gap-2">
                 <span className="relative flex h-2.5 w-2.5">
                   <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" />
