@@ -195,6 +195,8 @@ class PulseProjectAutomationTrigger(str, enum.Enum):
     task_status_changed = "task_status_changed"
     task_completed = "task_completed"
     task_overdue = "task_overdue"
+    proximity_missed = "proximity_missed"
+    task_stale = "task_stale"
 
 
 class PulseProject(Base):
@@ -251,6 +253,8 @@ class PulseProjectTask(Base):
         index=True,
     )
     due_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True, index=True)
+    location_tag_id: Mapped[Optional[str]] = mapped_column(String(128), nullable=True, index=True)
+    sop_id: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
     calendar_shift_id: Mapped[Optional[str]] = mapped_column(
         UUID(as_uuid=False),
         ForeignKey("pulse_schedule_shifts.id", ondelete="SET NULL"),
@@ -289,6 +293,50 @@ class PulseTaskDependency(Base):
         nullable=False,
         index=True,
     )
+
+
+class PulseProximityEventLog(Base):
+    """Worker offered ready tasks at a location; tracks resolution or missed opportunity."""
+
+    __tablename__ = "pulse_proximity_events_log"
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    company_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    user_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    location_tag_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    detected_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    tasks_present: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, server_default=text("'[]'::jsonb"))
+    action_taken: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    action_task_id: Mapped[Optional[str]] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("pulse_project_tasks.id", ondelete="SET NULL"), nullable=True
+    )
+    resolved_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    is_missed: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    missed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class PulseUserPerformanceSnapshot(Base):
+    """Cached per-user performance metrics for a time window (dashboard / trends)."""
+
+    __tablename__ = "pulse_user_performance_snapshots"
+    __table_args__ = (
+        UniqueConstraint("user_id", "company_id", "time_window", name="uq_pulse_perf_snap_user_company_window"),
+    )
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    user_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    company_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    time_window: Mapped[str] = mapped_column(String(16), nullable=False)
+    metrics_json: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
+    computed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
 
 class PulseProjectAutomationRule(Base):

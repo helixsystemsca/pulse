@@ -29,7 +29,9 @@ function actionSummary(action: Record<string, unknown>): string {
 const TRIGGERS = [
   { value: "task_completed", label: "Task completed" },
   { value: "task_status_changed", label: "Task status changed" },
-  { value: "task_overdue", label: "Task overdue" },
+  { value: "task_overdue", label: "Task overdue (periodic scan)" },
+  { value: "task_stale", label: "Task stale — no update 24h (periodic scan)" },
+  { value: "proximity_missed", label: "Proximity missed (periodic scan)" },
 ] as const;
 
 export function ProjectAutomationPanel({ projectId }: { projectId: string }) {
@@ -88,7 +90,8 @@ export function ProjectAutomationPanel({ projectId }: { projectId: string }) {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-pulse-muted">
-          Rules run when tasks change. Example: when a task completes, move the next dependent task to Todo.
+          Task rules run after a save. Overdue, stale, and proximity-missed rules are evaluated when a supervisor opens the Operations
+          page (company scan).
         </p>
         <button type="button" className={PRIMARY_BTN} onClick={() => setDrawerOpen(true)}>
           <span className="inline-flex items-center gap-2">
@@ -153,7 +156,7 @@ export function ProjectAutomationPanel({ projectId }: { projectId: string }) {
       <PulseDrawer
         open={drawerOpen}
         title="New automation rule"
-        subtitle="Triggers run after a task is saved."
+        subtitle="Task triggers fire on save; scan triggers fire from Operations."
         onClose={() => setDrawerOpen(false)}
         labelledBy="automation-rule-title"
         footer={

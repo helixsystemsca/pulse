@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import { AppMain } from "./AppMain";
 import { AppNavbar } from "./AppNavbar";
 import { AppSideNav } from "./AppSideNav";
+import { ProximityPromptHost } from "./ProximityPromptHost";
 
 type AppLayoutProps = {
   children: ReactNode;
@@ -15,6 +16,7 @@ type AppLayoutProps = {
 export function AppLayout({ children, mainClassName = "" }: AppLayoutProps) {
   return (
     <div className="relative min-h-screen bg-white">
+      <ProximityPromptHost />
       <AppSideNav />
       <div className="flex min-h-screen min-w-0 flex-col">
         <AppNavbar />

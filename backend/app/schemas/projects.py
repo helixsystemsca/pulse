@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from typing import Any, Optional
 
 from pydantic import BaseModel, Field
@@ -46,6 +46,8 @@ class TaskCreate(BaseModel):
     priority: str = Field(default="medium")
     status: str = Field(default="todo")
     due_date: Optional[date] = None
+    location_tag_id: Optional[str] = Field(None, max_length=128)
+    sop_id: Optional[str] = Field(None, max_length=128)
 
 
 class TaskPatch(BaseModel):
@@ -55,6 +57,8 @@ class TaskPatch(BaseModel):
     priority: Optional[str] = None
     status: Optional[str] = None
     due_date: Optional[date] = None
+    location_tag_id: Optional[str] = Field(None, max_length=128)
+    sop_id: Optional[str] = Field(None, max_length=128)
 
 
 class TaskBlockingMini(BaseModel):
@@ -78,6 +82,11 @@ class TaskOut(BaseModel):
     created_at: datetime
     updated_at: datetime
     is_blocked: bool = False
+    is_ready: bool = False
+    is_overdue: bool = False
+    is_stale: bool = False
+    location_tag_id: Optional[str] = None
+    sop_id: Optional[str] = None
     blocking_tasks: list[TaskBlockingMini] = Field(default_factory=list)
     depends_on_task_ids: list[str] = Field(default_factory=list)
 
@@ -96,6 +105,19 @@ def task_orm_to_out(
     pr = t.priority.value if hasattr(t.priority, "value") else str(t.priority)
     st = t.status.value if hasattr(t.status, "value") else str(t.status)
     sid = str(t.calendar_shift_id) if t.calendar_shift_id else None
+    loc = getattr(t, "location_tag_id", None)
+    sop = getattr(t, "sop_id", None)
+    loc_s = str(loc).strip() if loc else None
+    sop_s = str(sop).strip() if sop else None
+    is_ready = st == "todo" and not is_blocked
+    _today = datetime.now(timezone.utc).date()
+    _ud = getattr(t, "updated_at", None)
+    is_overdue = bool(t.due_date and t.due_date < _today and st != "complete")
+    is_stale = bool(
+        st != "complete"
+        and _ud is not None
+        and (datetime.now(timezone.utc) - _ud).total_seconds() > 86400
+    )
     return TaskOut(
         id=str(t.id),
         company_id=str(t.company_id),
@@ -111,9 +133,67 @@ def task_orm_to_out(
         created_at=t.created_at,
         updated_at=t.updated_at,
         is_blocked=is_blocked,
+        is_ready=is_ready,
+        is_overdue=is_overdue,
+        is_stale=is_stale,
+        location_tag_id=loc_s,
+        sop_id=sop_s,
         blocking_tasks=list(blocking_tasks or []),
         depends_on_task_ids=list(depends_on_task_ids or []),
     )
+
+
+class ReadyTaskOut(BaseModel):
+    id: str
+    title: str
+    priority: str
+    assigned_to: Optional[str] = None
+    due_date: Optional[date] = None
+    project_id: str
+    location_tag_id: Optional[str] = None
+    sop_id: Optional[str] = None
+
+
+class ProximityEventIn(BaseModel):
+    user_id: str = Field(..., min_length=1)
+    location_tag_id: str = Field(..., min_length=1, max_length=128)
+    timestamp: Optional[str] = Field(None, description="ISO-8601 client or gateway time (informational)")
+
+
+class ProximityTaskOut(BaseModel):
+    id: str
+    title: str
+    priority: str
+    assigned_to: Optional[str] = None
+    due_date: Optional[date] = None
+    project_id: str
+    sop_id: Optional[str] = None
+
+
+class ProximityTasksResponse(BaseModel):
+    tasks: list[ProximityTaskOut]
+    equipment_label: str = ""
+    event_log_id: Optional[str] = None
+
+
+class TaskHealthItem(BaseModel):
+    id: str
+    project_id: str
+    project_name: str = ""
+    title: str
+    priority: str
+    status: str
+    due_date: Optional[date] = None
+    assigned_user_id: Optional[str] = None
+    is_blocked: bool = False
+    is_overdue: bool = False
+    is_stale: bool = False
+
+
+class TaskHealthReport(BaseModel):
+    overdue: list[TaskHealthItem] = Field(default_factory=list)
+    stale: list[TaskHealthItem] = Field(default_factory=list)
+    blocked: list[TaskHealthItem] = Field(default_factory=list)
 
 
 class TaskDependencyCreate(BaseModel):

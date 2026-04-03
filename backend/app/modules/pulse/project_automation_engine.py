@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import date, datetime, timezone
-from typing import Any, Optional
+from typing import Any, Optional, cast
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -188,6 +188,102 @@ async def run_rules_for_task_change(
             continue
         cond = rule.condition_json if isinstance(rule.condition_json, dict) else {}
         if not _match_condition(cond, task, old_status, new_status):
+            continue
+        action = rule.action_json if isinstance(rule.action_json, dict) else {}
+        if not action.get("type"):
+            continue
+        await _execute_action(db, company_id, str(task.project_id), task, action)
+
+
+async def run_proximity_missed_rules(
+    db: AsyncSession,
+    company_id: str,
+    project_id: str,
+    anchor: PulseProjectTask,
+    ctx: dict[str, Any],
+) -> None:
+    rq = await db.execute(
+        select(PulseProjectAutomationRule)
+        .where(
+            PulseProjectAutomationRule.project_id == project_id,
+            PulseProjectAutomationRule.is_active.is_(True),
+        )
+        .order_by(PulseProjectAutomationRule.created_at)
+    )
+    for rule in rq.scalars().all():
+        trig = rule.trigger_type
+        if hasattr(trig, "value"):
+            te = cast(PulseProjectAutomationTrigger, trig)
+        else:
+            try:
+                te = PulseProjectAutomationTrigger(str(trig))
+            except ValueError:
+                continue
+        if te != PulseProjectAutomationTrigger.proximity_missed:
+            continue
+        action = rule.action_json if isinstance(rule.action_json, dict) else {}
+        if not action.get("type"):
+            continue
+        if action.get("type") == "send_notification":
+            await event_engine.publish(
+                DomainEvent(
+                    event_type="pulse.proximity_missed",
+                    company_id=company_id,
+                    entity_id=str(ctx.get("proximity_event_id") or ""),
+                    source_module="pulse.accountability",
+                    metadata={
+                        "project_id": project_id,
+                        "task_id": str(anchor.id),
+                        "title": action.get("title") or "Missed proximity opportunity",
+                        "message": action.get("message") or action.get("body") or "",
+                        "user_id": action.get("user_id"),
+                        **ctx,
+                    },
+                )
+            )
+        else:
+            await _execute_action(db, company_id, project_id, anchor, action)
+
+
+async def run_accountability_scan_rules(db: AsyncSession, company_id: str, task: PulseProjectTask) -> None:
+    """Fire `task_overdue` / `task_stale` rules without a PATCH (supervisor scan)."""
+    today = datetime.now(timezone.utc).date()
+    now = datetime.now(timezone.utc)
+    new_status = task.status
+    overdue_now = bool(
+        task.due_date and task.due_date < today and task.status != PulseTaskStatus.complete
+    )
+    stale_now = bool(
+        task.status != PulseTaskStatus.complete
+        and (now - task.updated_at).total_seconds() > 86400
+    )
+    rq = await db.execute(
+        select(PulseProjectAutomationRule)
+        .where(
+            PulseProjectAutomationRule.project_id == task.project_id,
+            PulseProjectAutomationRule.is_active.is_(True),
+        )
+        .order_by(PulseProjectAutomationRule.created_at)
+    )
+    for rule in rq.scalars().all():
+        trig = rule.trigger_type
+        if hasattr(trig, "value"):
+            te = cast(PulseProjectAutomationTrigger, trig)
+        else:
+            try:
+                te = PulseProjectAutomationTrigger(str(trig))
+            except ValueError:
+                continue
+        if te == PulseProjectAutomationTrigger.task_overdue:
+            if not overdue_now:
+                continue
+        elif te == PulseProjectAutomationTrigger.task_stale:
+            if not stale_now:
+                continue
+        else:
+            continue
+        cond = rule.condition_json if isinstance(rule.condition_json, dict) else {}
+        if not _match_condition(cond, task, new_status, new_status):
             continue
         action = rule.action_json if isinstance(rule.action_json, dict) else {}
         if not action.get("type"):

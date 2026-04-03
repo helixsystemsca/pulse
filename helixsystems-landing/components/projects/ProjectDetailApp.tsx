@@ -54,6 +54,7 @@ export function ProjectDetailApp({ projectId }: { projectId: string }) {
   const [err, setErr] = useState<string | null>(null);
   const [blockHint, setBlockHint] = useState<string | null>(null);
   const [view, setView] = useState<"kanban" | "list" | "automation">("kanban");
+  const [readyOnly, setReadyOnly] = useState(false);
   const [taskOpen, setTaskOpen] = useState(false);
   const [editing, setEditing] = useState<TaskRow | null>(null);
 
@@ -90,6 +91,11 @@ export function ProjectDetailApp({ projectId }: { projectId: string }) {
   const workerById = useMemo(() => new Map(workers.map((w) => [w.id, w])), [workers]);
 
   const tasks = data?.tasks ?? [];
+
+  const visibleTasks = useMemo(
+    () => (readyOnly ? tasks.filter((t) => t.is_ready) : tasks),
+    [tasks, readyOnly],
+  );
 
   useEffect(() => {
     if (!blockHint) return;
@@ -137,19 +143,32 @@ export function ProjectDetailApp({ projectId }: { projectId: string }) {
             ) : null}
           </div>
         </div>
-        <button
-          type="button"
-          className={PRIMARY_BTN}
-          onClick={() => {
-            setEditing(null);
-            setTaskOpen(true);
-          }}
-        >
-          <span className="inline-flex items-center gap-2">
-            <Plus className="h-4 w-4" />
-            Add task
-          </span>
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            className={`inline-flex items-center rounded-xl border px-4 py-2.5 text-sm font-semibold shadow-sm transition-colors ${
+              readyOnly
+                ? "border-emerald-200/90 bg-emerald-50/90 text-emerald-950"
+                : "border-slate-200/90 bg-white text-pulse-navy hover:bg-slate-50"
+            }`}
+            onClick={() => setReadyOnly((v) => !v)}
+          >
+            Ready only
+          </button>
+          <button
+            type="button"
+            className={PRIMARY_BTN}
+            onClick={() => {
+              setEditing(null);
+              setTaskOpen(true);
+            }}
+          >
+            <span className="inline-flex items-center gap-2">
+              <Plus className="h-4 w-4" />
+              Add task
+            </span>
+          </button>
+        </div>
       </div>
 
       {err ? <p className="text-sm font-medium text-red-700">{err}</p> : null}
@@ -179,6 +198,16 @@ export function ProjectDetailApp({ projectId }: { projectId: string }) {
             <ProjectAutomationPanel projectId={projectId} />
           ) : null}
 
+          {view !== "automation" && readyOnly ? (
+            <p className="text-xs text-pulse-muted">Showing tasks that are Todo, unblocked, and actionable.</p>
+          ) : null}
+
+          {view !== "automation" && readyOnly && visibleTasks.length === 0 ? (
+            <Card padding="md">
+              <p className="text-sm text-pulse-muted">No ready tasks in this project.</p>
+            </Card>
+          ) : null}
+
           {view === "kanban" ? (
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
               {KANBAN_COLS.map((col) => (
@@ -200,7 +229,7 @@ export function ProjectDetailApp({ projectId }: { projectId: string }) {
                     {col.label}
                   </p>
                   <div className="mt-2 flex flex-1 flex-col gap-2">
-                    {tasks
+                    {visibleTasks
                       .filter((t) => t.status === col.key)
                       .map((t) => (
                         <div
@@ -217,7 +246,7 @@ export function ProjectDetailApp({ projectId }: { projectId: string }) {
                           }}
                           className={`cursor-grab rounded-xl border border-slate-200/90 bg-slate-50/90 px-3 py-2.5 text-left shadow-sm active:cursor-grabbing ${
                             t.is_blocked ? "opacity-75" : ""
-                          }`}
+                          } ${t.is_ready ? "ring-1 ring-emerald-200/70" : ""}`}
                         >
                           <div className="flex items-start gap-2">
                             <GripVertical className="mt-0.5 h-4 w-4 shrink-0 text-pulse-muted" aria-hidden />
@@ -242,6 +271,11 @@ export function ProjectDetailApp({ projectId }: { projectId: string }) {
                                 {t.is_blocked ? (
                                   <span className="inline-flex rounded-full bg-amber-50 px-1.5 py-0.5 text-[9px] font-bold uppercase text-amber-950 ring-1 ring-amber-200/80">
                                     Blocked
+                                  </span>
+                                ) : null}
+                                {t.is_ready ? (
+                                  <span className="inline-flex rounded-full bg-emerald-50 px-1.5 py-0.5 text-[9px] font-bold uppercase text-emerald-900 ring-1 ring-emerald-200/80">
+                                    Ready
                                   </span>
                                 ) : null}
                               </div>
@@ -279,19 +313,26 @@ export function ProjectDetailApp({ projectId }: { projectId: string }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {tasks.map((t) => (
+                  {visibleTasks.map((t) => (
                     <tr key={t.id} className="border-b border-slate-50 last:border-0 hover:bg-slate-50/60">
                       <td className="px-3 py-3">
-                        <button
-                          type="button"
-                          className="text-left font-medium text-pulse-navy hover:text-pulse-accent"
-                          onClick={() => {
-                            setEditing(t);
-                            setTaskOpen(true);
-                          }}
-                        >
-                          {t.title}
-                        </button>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <button
+                            type="button"
+                            className="text-left font-medium text-pulse-navy hover:text-pulse-accent"
+                            onClick={() => {
+                              setEditing(t);
+                              setTaskOpen(true);
+                            }}
+                          >
+                            {t.title}
+                          </button>
+                          {t.is_ready ? (
+                            <span className="inline-flex rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold uppercase text-emerald-900 ring-1 ring-emerald-200/80">
+                              Ready
+                            </span>
+                          ) : null}
+                        </div>
                       </td>
                       <td className="px-3 py-3 text-pulse-muted">
                         {t.assigned_user_id ? (workerMap.get(t.assigned_user_id) ?? "—") : "—"}
@@ -360,6 +401,8 @@ function ProjectTaskDrawer({
   const [priority, setPriority] = useState("medium");
   const [status, setStatus] = useState("todo");
   const [due, setDue] = useState("");
+  const [locTag, setLocTag] = useState("");
+  const [sopRef, setSopRef] = useState("");
   const [depSelected, setDepSelected] = useState<string[]>([]);
 
   const selectablePeers = peerTasks.filter((t) => !task || t.id !== task.id);
@@ -373,6 +416,8 @@ function ProjectTaskDrawer({
       setPriority(task.priority);
       setStatus(task.status);
       setDue(task.due_date ?? "");
+      setLocTag(task.location_tag_id ?? "");
+      setSopRef(task.sop_id ?? "");
       setDepSelected([...(task.depends_on_task_ids ?? [])]);
     } else {
       setTitle("");
@@ -381,6 +426,8 @@ function ProjectTaskDrawer({
       setPriority("medium");
       setStatus("todo");
       setDue("");
+      setLocTag("");
+      setSopRef("");
       setDepSelected([]);
     }
   }, [open, task, workers]);
@@ -401,6 +448,8 @@ function ProjectTaskDrawer({
           priority,
           status,
           due_date: due || null,
+          location_tag_id: locTag.trim() || null,
+          sop_id: sopRef.trim() || null,
         });
         await syncTaskDependencies(task.id, depSelected);
       } catch {
@@ -416,6 +465,8 @@ function ProjectTaskDrawer({
           priority,
           status,
           due_date: due || null,
+          location_tag_id: locTag.trim() || null,
+          sop_id: sopRef.trim() || null,
         });
         await syncTaskDependencies(created.id, depSelected);
       } catch {
@@ -527,6 +578,24 @@ function ProjectTaskDrawer({
             Due date
           </label>
           <input id="pt-due" type="date" className={FIELD} value={due} onChange={(e) => setDue(e.target.value)} />
+        </div>
+        <div>
+          <label className={LABEL} htmlFor="pt-loc">
+            Location tag (BLE / equipment id)
+          </label>
+          <input
+            id="pt-loc"
+            className={FIELD}
+            placeholder="Beacon id for proximity"
+            value={locTag}
+            onChange={(e) => setLocTag(e.target.value)}
+          />
+        </div>
+        <div>
+          <label className={LABEL} htmlFor="pt-sop">
+            SOP id (optional)
+          </label>
+          <input id="pt-sop" className={FIELD} placeholder="Opens /sop/… when starting from proximity" value={sopRef} onChange={(e) => setSopRef(e.target.value)} />
         </div>
         <div>
           <label className={LABEL} htmlFor="pt-deps">

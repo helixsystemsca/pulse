@@ -8,6 +8,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { LucideIcon } from "lucide-react";
 import {
+  Activity,
   Building2,
   CalendarDays,
   ChevronRight,
@@ -31,6 +32,7 @@ import { isPulseNavActive } from "@/lib/pulse-nav-active";
 
 const ICONS: Record<PulseSidebarIcon, LucideIcon> = {
   layout: LayoutDashboard,
+  activity: Activity,
   calendar: CalendarDays,
   "folder-kanban": FolderKanban,
   clipboard: ClipboardList,
@@ -68,7 +70,11 @@ export function AppSideNav() {
 
   const isSystemAdmin = Boolean(session?.is_system_admin || session?.role === "system_admin");
   /** Platform shell: always use the slim system rail (not tenant product links). Imp JWTs look like tenant users. */
-  const items = isSystemAdmin ? pulseSystemSidebarNav : pulseTenantSidebarNav;
+  const rawNav = isSystemAdmin ? pulseSystemSidebarNav : pulseTenantSidebarNav;
+  const items =
+    !isSystemAdmin && session?.role === "worker"
+      ? rawNav.filter((i) => i.href !== "/operations")
+      : rawNav;
   const dark = isSystemAdmin;
 
   return (

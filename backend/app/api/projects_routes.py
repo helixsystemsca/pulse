@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -19,7 +20,9 @@ from app.models.pulse_models import (
     PulseTaskDependency,
     PulseTaskStatus,
 )
+from app.modules.pulse import accountability_service as acc_svc
 from app.modules.pulse import project_automation_engine, project_service as proj_svc
+from app.modules.pulse.ready_proximity import task_priority_str
 from app.modules.pulse.task_dependencies import (
     compute_blocking_for_tasks,
     fetch_prerequisite_ids_for_tasks,
@@ -36,10 +39,13 @@ from app.schemas.projects import (
     ProjectOut,
     ProjectOutWithProgress,
     ProjectPatch,
+    ReadyTaskOut,
     TaskBlockingMini,
     TaskCreate,
     TaskDependencyCreate,
     TaskDependencyOut,
+    TaskHealthItem,
+    TaskHealthReport,
     TaskOut,
     TaskPatch,
     task_orm_to_out,
@@ -202,6 +208,101 @@ async def get_project(db: Db, cid: CompanyId, project_id: str) -> ProjectDetailO
     )
 
 
+@router.get("/projects/{project_id}/ready-tasks", response_model=list[ReadyTaskOut])
+async def list_ready_tasks(db: Db, cid: CompanyId, project_id: str) -> list[ReadyTaskOut]:
+    p = await db.get(PulseProject, project_id)
+    if not p or str(p.company_id) != cid:
+        raise HTTPException(status_code=404, detail="Not found")
+    tq = await db.execute(
+        select(PulseProjectTask)
+        .where(PulseProjectTask.project_id == project_id)
+        .order_by(PulseProjectTask.due_date.asc(), PulseProjectTask.created_at)
+    )
+    task_orms = list(tq.scalars().all())
+    ids = [str(x.id) for x in task_orms]
+    prereq_map = await fetch_prerequisite_ids_for_tasks(db, ids)
+    by_id = {str(t.id): t for t in task_orms}
+    block_map = compute_blocking_for_tasks(by_id, prereq_map)
+    out: list[ReadyTaskOut] = []
+    for t in task_orms:
+        st = t.status.value if hasattr(t.status, "value") else str(t.status)
+        if st != "todo":
+            continue
+        if block_map[str(t.id)][0]:
+            continue
+        loc = getattr(t, "location_tag_id", None)
+        sop = getattr(t, "sop_id", None)
+        out.append(
+            ReadyTaskOut(
+                id=str(t.id),
+                title=t.title,
+                priority=task_priority_str(t),
+                assigned_to=str(t.assigned_user_id) if t.assigned_user_id else None,
+                due_date=t.due_date,
+                project_id=str(t.project_id),
+                location_tag_id=str(loc).strip() if loc else None,
+                sop_id=str(sop).strip() if sop else None,
+            )
+        )
+    return out
+
+
+@router.get("/projects/{project_id}/task-health", response_model=TaskHealthReport)
+async def task_health(db: Db, cid: CompanyId, project_id: str) -> TaskHealthReport:
+    p = await db.get(PulseProject, project_id)
+    if not p or str(p.company_id) != cid:
+        raise HTTPException(status_code=404, detail="Not found")
+    tq = await db.execute(select(PulseProjectTask).where(PulseProjectTask.project_id == project_id))
+    task_orms = list(tq.scalars().all())
+    ids = [str(x.id) for x in task_orms]
+    prereq_map = await fetch_prerequisite_ids_for_tasks(db, ids)
+    needed: set[str] = set(ids)
+    for i in ids:
+        needed.update(prereq_map.get(i, []))
+    if needed != set(ids):
+        tq2 = await db.execute(select(PulseProjectTask).where(PulseProjectTask.id.in_(needed)))
+        extra = list(tq2.scalars().all())
+        by_id = {str(t.id): t for t in task_orms}
+        for t in extra:
+            by_id.setdefault(str(t.id), t)
+    else:
+        by_id = {str(t.id): t for t in task_orms}
+    block_map = compute_blocking_for_tasks(by_id, prereq_map)
+    today = datetime.now(timezone.utc).date()
+    now = datetime.now(timezone.utc)
+    overdue: list[TaskHealthItem] = []
+    stale: list[TaskHealthItem] = []
+    blocked: list[TaskHealthItem] = []
+    pname = p.name
+    for t in task_orms:
+        st = t.status.value if hasattr(t.status, "value") else str(t.status)
+        if st == "complete":
+            continue
+        is_bl = block_map[str(t.id)][0]
+        is_od = bool(t.due_date and t.due_date < today)
+        is_st = bool((now - t.updated_at).total_seconds() > 86400)
+        item = TaskHealthItem(
+            id=str(t.id),
+            project_id=str(t.project_id),
+            project_name=pname,
+            title=t.title,
+            priority=task_priority_str(t),
+            status=st,
+            due_date=t.due_date,
+            assigned_user_id=str(t.assigned_user_id) if t.assigned_user_id else None,
+            is_blocked=is_bl,
+            is_overdue=is_od,
+            is_stale=is_st,
+        )
+        if is_od:
+            overdue.append(item)
+        if is_st:
+            stale.append(item)
+        if is_bl:
+            blocked.append(item)
+    return TaskHealthReport(overdue=overdue, stale=stale, blocked=blocked)
+
+
 @router.patch("/projects/{project_id}", response_model=ProjectOut)
 async def patch_project(db: Db, cid: CompanyId, project_id: str, body: ProjectPatch) -> ProjectOut:
     p = await db.get(PulseProject, project_id)
@@ -332,6 +433,8 @@ async def create_task(db: Db, cid: CompanyId, body: TaskCreate) -> TaskOut:
         raise HTTPException(status_code=404, detail="Project not found")
     if body.assigned_user_id and not await proj_svc.user_in_company(db, cid, body.assigned_user_id):
         raise HTTPException(status_code=400, detail="Assigned user not in organization")
+    loc = (body.location_tag_id.strip() if body.location_tag_id else None) or None
+    sop = (body.sop_id.strip() if body.sop_id else None) or None
     t = PulseProjectTask(
         company_id=cid,
         project_id=body.project_id,
@@ -341,6 +444,8 @@ async def create_task(db: Db, cid: CompanyId, body: TaskCreate) -> TaskOut:
         priority=proj_svc.parse_task_priority(body.priority or "medium"),
         status=proj_svc.parse_task_status(body.status or "todo"),
         due_date=body.due_date,
+        location_tag_id=loc,
+        sop_id=sop,
     )
     db.add(t)
     await db.flush()
@@ -351,7 +456,13 @@ async def create_task(db: Db, cid: CompanyId, body: TaskCreate) -> TaskOut:
 
 
 @tasks_router.patch("/tasks/{task_id}", response_model=TaskOut)
-async def patch_task(db: Db, cid: CompanyId, task_id: str, body: TaskPatch) -> TaskOut:
+async def patch_task(
+    db: Db,
+    cid: CompanyId,
+    actor: Annotated[User, Depends(require_tenant_user)],
+    task_id: str,
+    body: TaskPatch,
+) -> TaskOut:
     t = await db.get(PulseProjectTask, task_id)
     if not t or str(t.company_id) != cid:
         raise HTTPException(status_code=404, detail="Not found")
@@ -375,12 +486,20 @@ async def patch_task(db: Db, cid: CompanyId, task_id: str, body: TaskPatch) -> T
                     detail="Task is blocked by incomplete dependencies",
                 )
         t.status = new_st
+        if new_st == PulseTaskStatus.in_progress and old_status != PulseTaskStatus.in_progress:
+            await acc_svc.resolve_proximity_for_task(db, cid, str(actor.id), task_id)
     if "title" in data and data["title"] is not None:
         t.title = data["title"].strip()
     if "description" in data:
         t.description = data["description"]
     if "due_date" in data:
         t.due_date = data["due_date"]
+    if "location_tag_id" in data:
+        v = data["location_tag_id"]
+        t.location_tag_id = (str(v).strip() or None) if v is not None else None
+    if "sop_id" in data:
+        v = data["sop_id"]
+        t.sop_id = (str(v).strip() or None) if v is not None else None
     await db.flush()
     await proj_svc.ensure_calendar_shift_for_task(db, cid, t)
     await project_automation_engine.run_rules_for_task_change(db, cid, t, old_status, old_due)
