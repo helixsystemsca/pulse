@@ -15,20 +15,19 @@ import {
   ClipboardList,
   CreditCard,
   FolderKanban,
-  Gauge,
   LayoutDashboard,
   MapPin,
   Package,
   ScrollText,
   ShieldCheck,
   UserCog,
-  Users,
   Wrench,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
 import { pulseSystemSidebarNav, pulseTenantSidebarNav, type PulseSidebarIcon } from "@/lib/pulse-app";
 import { isPulseNavActive } from "@/lib/pulse-nav-active";
+import { isTenantNavFeatureEnabled } from "@/lib/pulse-nav-features";
 
 const ICONS: Record<PulseSidebarIcon, LucideIcon> = {
   layout: LayoutDashboard,
@@ -38,9 +37,7 @@ const ICONS: Record<PulseSidebarIcon, LucideIcon> = {
   clipboard: ClipboardList,
   package: Package,
   wrench: Wrench,
-  users: Users,
   "map-pin": MapPin,
-  gauge: Gauge,
   "shield-check": ShieldCheck,
   "credit-card": CreditCard,
   building: Building2,
@@ -71,10 +68,13 @@ export function AppSideNav() {
   const isSystemAdmin = Boolean(session?.is_system_admin || session?.role === "system_admin");
   /** Platform shell: always use the slim system rail (not tenant product links). Imp JWTs look like tenant users. */
   const rawNav = isSystemAdmin ? pulseSystemSidebarNav : pulseTenantSidebarNav;
-  const items =
+  let items =
     !isSystemAdmin && session?.role === "worker"
       ? rawNav.filter((i) => i.href !== "/operations")
-      : rawNav;
+      : [...rawNav];
+  if (!isSystemAdmin && session) {
+    items = items.filter((i) => isTenantNavFeatureEnabled(i.href, session.enabled_features));
+  }
   const dark = isSystemAdmin;
 
   return (

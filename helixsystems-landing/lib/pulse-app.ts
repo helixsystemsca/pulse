@@ -64,9 +64,7 @@ export const pulseTenantSidebarNav = [
   { href: "/dashboard/workers", label: "Workers & roles", icon: "user-cog" as const },
   { href: "/dashboard/inventory", label: "Inventory", icon: "package" as const },
   { href: "/pulse#tool-tracking", label: "Equipment", icon: "wrench" as const },
-  { href: "/pulse#workforce-scheduling", label: "Workforce", icon: "users" as const },
   { href: "/dashboard/setup", label: "Zones & devices", icon: "map-pin" as const },
-  { href: "/pulse#admin-panel", label: "Control panel", icon: "gauge" as const },
 ] as const;
 
 /** System admin rail — platform tooling only; product modules live on the tenant rail. */

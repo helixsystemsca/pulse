@@ -13,7 +13,7 @@ from app.api.deps import get_current_user, require_system_admin
 from app.core.audit.service import record_audit
 from app.core.auth.security import create_access_token, decode_token, hash_password, verify_password
 from app.core.database import get_db
-from app.core.company_features import list_enabled_names
+from app.core.company_features import tenant_enabled_feature_names_with_legacy
 from app.core.features.service import MODULE_KEYS, FeatureFlagService
 from app.core.permissions.service import PermissionService
 from app.core.system_audit import record_system_log
@@ -141,7 +141,7 @@ async def me(
 
     feats: list[str] = []
     if user.company_id:
-        raw_feats = await list_enabled_names(db, user.company_id)
+        raw_feats = await tenant_enabled_feature_names_with_legacy(db, user.company_id)
         feats = sorted({f for f in raw_feats if f in MODULE_KEYS})
 
     return UserOut(

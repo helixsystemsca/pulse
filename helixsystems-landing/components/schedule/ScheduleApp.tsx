@@ -24,6 +24,7 @@ import { SchedulePersonnel } from "./SchedulePersonnel";
 import { ScheduleReports } from "./ScheduleReports";
 import { ScheduleSettingsModal } from "./ScheduleSettingsModal";
 import { ScheduleTrashDropZone } from "./ScheduleTrashDropZone";
+import { Card } from "@/components/pulse/Card";
 import { ScheduleWorkforceBar } from "./ScheduleWorkforceBar";
 import type { ShiftDraft } from "./ShiftEditModal";
 import { ShiftEditModal } from "./ShiftEditModal";
@@ -63,6 +64,7 @@ export function ScheduleApp() {
   const applyPulseScheduleSnapshot = useScheduleStore((s) => s.applyPulseScheduleSnapshot);
 
   const [hydrated, setHydrated] = useState(false);
+  const [scheduleModuleBlocked, setScheduleModuleBlocked] = useState(false);
   useEffect(() => {
     const unsub = useScheduleStore.persist.onFinishHydration(() => setHydrated(true));
     if (useScheduleStore.persist.hasHydrated()) {
@@ -81,13 +83,28 @@ export function ScheduleApp() {
     from.setHours(0, 0, 0, 0);
     const to = new Date(last);
     to.setHours(23, 59, 59, 999);
-    const [w, z, sh] = await Promise.all([
+    const [w, z] = await Promise.all([
       apiFetch<PulseWorkerApi[]>("/api/v1/pulse/workers"),
       apiFetch<PulseZoneApi[]>("/api/v1/pulse/zones"),
-      apiFetch<PulseShiftApi[]>(
-        `/api/v1/pulse/schedule/shifts?from=${encodeURIComponent(from.toISOString())}&to=${encodeURIComponent(to.toISOString())}`,
-      ),
     ]);
+    let sh: PulseShiftApi[] = [];
+    try {
+      sh = await apiFetch<PulseShiftApi[]>(
+        `/api/v1/pulse/schedule/shifts?from=${encodeURIComponent(from.toISOString())}&to=${encodeURIComponent(to.toISOString())}`,
+      );
+      setScheduleModuleBlocked(false);
+    } catch (err) {
+      const e = err as { status?: number; body?: unknown };
+      if (e.status === 403) {
+        const body = e.body as { detail?: string; feature?: string } | undefined;
+        if (body?.detail === "feature_disabled" && body?.feature === "schedule") {
+          setScheduleModuleBlocked(true);
+          return;
+        }
+        throw err;
+      }
+      throw err;
+    }
     const zonesMapped = pulseZonesToSchedule(z);
     const fallbackZ = zonesMapped[0]?.id ?? "";
     const workersMapped = pulseWorkersToSchedule(w);
@@ -269,6 +286,23 @@ export function ScheduleApp() {
     return (
       <div className="flex min-h-[40vh] items-center justify-center text-sm text-pulse-muted">
         Loading schedule…
+      </div>
+    );
+  }
+
+  if (scheduleModuleBlocked && isApiMode()) {
+    return (
+      <div className="flex min-h-[calc(100vh-4rem)] flex-col bg-pulse-bg">
+        <div className="mx-auto w-full max-w-2xl px-4 py-10 sm:px-6 lg:px-8">
+          <Card padding="md">
+            <h1 className="font-headline text-xl font-bold text-pulse-navy">Schedule</h1>
+            <p className="mt-2 text-sm text-pulse-muted">
+              The schedule module is not enabled for your organization. A system administrator can turn on the{" "}
+              <span className="font-semibold text-pulse-navy">schedule</span> feature for your company in System admin →
+              Companies.
+            </p>
+          </Card>
+        </div>
       </div>
     );
   }

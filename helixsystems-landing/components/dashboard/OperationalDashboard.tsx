@@ -946,16 +946,24 @@ export function OperationalDashboard({
     const to = end.toISOString();
 
     try {
-      const [dash, wrList, workers, shiftList, assetList, lowStock, zoneList, beaconList] = await Promise.all([
+      const [dash, wrList, workers, assetList, lowStock, zoneList, beaconList] = await Promise.all([
         apiFetch<DashboardPayload>("/api/v1/pulse/dashboard"),
         apiFetch<WorkRequestListOut>("/api/v1/pulse/work-requests?limit=40&offset=0"),
         apiFetch<WorkerOut[]>("/api/v1/pulse/workers"),
-        apiFetch<ShiftOut[]>(`/api/v1/pulse/schedule/shifts?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`),
         apiFetch<AssetOut[]>("/api/v1/pulse/assets"),
         apiFetch<InventoryItemOut[]>("/api/v1/pulse/inventory/low-stock"),
         apiFetch<ZoneOut[]>("/api/v1/pulse/zones"),
         apiFetch<BeaconEquipmentOut[]>("/api/v1/pulse/equipment"),
       ]);
+      let shiftList: ShiftOut[] = [];
+      try {
+        shiftList = await apiFetch<ShiftOut[]>(
+          `/api/v1/pulse/schedule/shifts?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`,
+        );
+      } catch (se) {
+        const st = (se as { status?: number })?.status;
+        if (st !== 403) throw se;
+      }
       const model = buildLiveModel(dash, wrList, workers, shiftList, assetList, lowStock, zoneList, beaconList);
       const auth = readSession();
       const welcome = welcomeFromSession(auth?.email, auth?.full_name);

@@ -5,7 +5,7 @@ from __future__ import annotations
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.company_features import list_enabled_names, sync_enabled_features
+from app.core.company_features import sync_enabled_features, tenant_enabled_feature_names_with_legacy
 from app.core.features.cache import get_cached, invalidate, set_cached
 from app.core.features.system_catalog import GLOBAL_SYSTEM_FEATURES
 from app.models.domain import Company, CompanyFeature
@@ -32,6 +32,8 @@ class FeatureFlagService:
 
     async def is_enabled(self, company_id: str, module_key: str) -> bool:
         enabled = await self._frozen_enabled(company_id)
+        if module_key == "equipment":
+            return "equipment" in enabled or "tool_tracking" in enabled
         return module_key in enabled
 
     async def _frozen_enabled(self, company_id: str) -> frozenset[str]:
@@ -41,7 +43,7 @@ class FeatureFlagService:
         company = await self._db.get(Company, company_id)
         if company is None:
             return frozenset()
-        names = await list_enabled_names(self._db, company_id)
+        names = await tenant_enabled_feature_names_with_legacy(self._db, company_id)
         normalized = frozenset(x for x in names if x in MODULE_KEYS)
         set_cached(company_id, normalized)
         return normalized
@@ -50,8 +52,7 @@ class FeatureFlagService:
         company = await self._db.get(Company, company_id)
         if company is None:
             raise ValueError("company not found")
-        current = await list_enabled_names(self._db, company_id)
-        have = set(current)
+        have = set(await tenant_enabled_feature_names_with_legacy(self._db, company_id))
         if enabled:
             have.add(module_key)
         else:
@@ -61,7 +62,7 @@ class FeatureFlagService:
         invalidate(company_id)
 
     async def list_for_company(self, company_id: str) -> dict[str, bool]:
-        have = set(await list_enabled_names(self._db, company_id))
+        have = await self._frozen_enabled(company_id)
         return {k: k in have for k in MODULE_KEYS}
 
     async def enabled_list(self, company_id: str) -> list[str]:

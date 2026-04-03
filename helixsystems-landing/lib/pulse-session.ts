@@ -18,6 +18,8 @@ export type PulseAuthSession = {
   company_id?: string | null;
   full_name?: string | null;
   is_system_admin?: boolean;
+  /** From `/auth/me`; when missing (legacy session), tenant nav shows all modules. */
+  enabled_features?: string[];
   iat: number;
   exp: number;
   remember: boolean;
@@ -131,6 +133,7 @@ export function writeApiSession(
     company_id: user.company_id ?? null,
     full_name: user.full_name ?? null,
     is_system_admin: user.is_system_admin,
+    enabled_features: user.enabled_features,
     iat: now,
     exp,
     remember,

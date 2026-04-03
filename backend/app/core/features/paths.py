@@ -1,8 +1,15 @@
-"""Map HTTP paths (under /api/v1) to canonical module feature keys for middleware gating."""
+"""Map HTTP paths to canonical module feature keys for middleware gating."""
 
 # Longest prefix first so `/api/v1/jobs-extra` would not match before we add such routes.
 _MODULE_PATH_PREFIXES: tuple[tuple[str, str], ...] = (
-    ("/api/v1/tool-tracking", "tool_tracking"),
+    ("/api/v1/pulse/schedule", "schedule"),
+    ("/api/v1/projects", "projects"),
+    ("/api/v1/tasks", "projects"),
+    ("/api/v1/proximity", "projects"),
+    ("/api/v1/operations", "projects"),
+    ("/api/compliance", "compliance"),
+    ("/api/v1/tool-tracking", "equipment"),
+    ("/api/inventory", "inventory"),
     ("/api/v1/inventory", "inventory"),
     ("/api/v1/maintenance", "maintenance"),
     ("/api/v1/notifications", "notifications"),

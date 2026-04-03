@@ -7,6 +7,11 @@ GLOBAL_SYSTEM_FEATURES: tuple[str, ...] = (
     "preventative_maintenance",
     "analytics",
     "alerts",
+    "projects",
+    "compliance",
+    "equipment",
+    "inventory",
+    "schedule",
 )
 
 

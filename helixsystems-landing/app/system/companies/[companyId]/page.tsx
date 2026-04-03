@@ -14,6 +14,19 @@ type CompanyRow = {
   owner_admin_id?: string | null;
 };
 
+const FEATURE_LABELS: Record<string, string> = {
+  rtls_tracking: "RTLS tracking",
+  work_orders: "Work orders",
+  preventative_maintenance: "Preventative maintenance",
+  analytics: "Analytics",
+  alerts: "Alerts",
+  projects: "Projects & operations",
+  compliance: "Compliance",
+  equipment: "Equipment (tool tracking)",
+  inventory: "Inventory",
+  schedule: "Schedule",
+};
+
 export default function SystemCompanyDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -189,6 +202,11 @@ export default function SystemCompanyDetailPage() {
       </section>
 
       <section className="rounded-lg border border-zinc-800 bg-zinc-950/50 p-5">
+        <p className="mb-3 text-xs text-zinc-500">
+          If this company has no saved feature rows yet, tenants still get the default product modules (projects, compliance,
+          equipment, inventory, schedule). Checking boxes and saving persists flags in{" "}
+          <span className="font-mono text-zinc-400">company_features</span>.
+        </p>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">Features</h2>
           <div className="flex flex-wrap gap-2">
@@ -225,7 +243,7 @@ export default function SystemCompanyDetailPage() {
                 disabled={!row.is_active}
                 onChange={(e) => void toggleCompanyFeature(row.enabled_features, f, e.target.checked)}
               />
-              {f}
+              {FEATURE_LABELS[f] ?? f}
             </label>
           ))}
         </div>
