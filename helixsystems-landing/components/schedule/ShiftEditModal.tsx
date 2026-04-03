@@ -129,6 +129,7 @@ export function ShiftEditModal({
       role: "worker",
       zoneId: zones[0]?.id ?? "",
       required_certifications: [],
+      accepts_any_certification: false,
       requires_supervisor: false,
       minimum_workers: undefined,
     }),
@@ -151,6 +152,7 @@ export function ShiftEditModal({
         role: shift.role,
         zoneId: shift.zoneId,
         required_certifications: shift.required_certifications ?? [],
+        accepts_any_certification: shift.accepts_any_certification === true,
         requires_supervisor: shift.requires_supervisor ?? false,
         minimum_workers: shift.minimum_workers,
         uiFlags: shift.uiFlags,
@@ -389,7 +391,8 @@ export function ShiftEditModal({
         <div className="rounded-[10px] border border-slate-200/40 bg-slate-50/50 p-4">
           <p className={LABEL}>Shift requirements (optional)</p>
           <p className="mt-1 text-xs text-pulse-muted">
-            Used for warning badges only — you can still save with conflicts.
+            Used for warning badges only — you can still save with conflicts. Built-in codes: RO, P1, P2, FA (custom
+            tags work too).
           </p>
           <div className="mt-3 space-y-3">
             <div>
@@ -400,19 +403,34 @@ export function ShiftEditModal({
                 id="shift-certs"
                 type="text"
                 className={FIELD}
-                placeholder="e.g. OSHA-10, Forklift"
+                placeholder="e.g. RO, P1, P2, FA, OSHA-10"
                 value={(draft.required_certifications ?? []).join(", ")}
                 onChange={(e) =>
-                  setDraft((d) => ({
-                    ...d,
-                    required_certifications: e.target.value
+                  setDraft((d) => {
+                    const required_certifications = e.target.value
                       .split(",")
                       .map((x) => x.trim())
-                      .filter(Boolean),
-                  }))
+                      .filter(Boolean);
+                    return {
+                      ...d,
+                      required_certifications,
+                      accepts_any_certification:
+                        required_certifications.length > 1 ? d.accepts_any_certification : false,
+                    };
+                  })
                 }
               />
             </div>
+            <label className="flex cursor-pointer items-center gap-2 text-sm text-pulse-navy">
+              <input
+                type="checkbox"
+                className="h-4 w-4 rounded border-slate-300 text-[#2B4C7E]"
+                checked={draft.accepts_any_certification === true}
+                disabled={!(draft.required_certifications && draft.required_certifications.length > 1)}
+                onChange={(e) => setDraft((d) => ({ ...d, accepts_any_certification: e.target.checked }))}
+              />
+              Worker may satisfy with any one of the listed certifications
+            </label>
             <label className="flex cursor-pointer items-center gap-2 text-sm text-pulse-navy">
               <input
                 type="checkbox"

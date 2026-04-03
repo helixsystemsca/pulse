@@ -11,9 +11,18 @@ type Props = {
   roles: ScheduleRoleDefinition[];
   year: number;
   monthIndex: number;
+  /** When a shift is being dragged on the calendar, ignore personnel table interactions. */
+  scheduleDragLocked?: boolean;
 };
 
-export function SchedulePersonnel({ workers, shifts, roles, year, monthIndex }: Props) {
+export function SchedulePersonnel({
+  workers,
+  shifts,
+  roles,
+  year,
+  monthIndex,
+  scheduleDragLocked = false,
+}: Props) {
   const roleMap = useMemo(() => new Map(roles.map((r) => [r.id, r.label])), [roles]);
 
   const rows = useMemo(() => {
@@ -27,7 +36,9 @@ export function SchedulePersonnel({ workers, shifts, roles, year, monthIndex }: 
   }, [workers, shifts, year, monthIndex]);
 
   return (
-    <div className="rounded-2xl border border-slate-200/90 bg-white shadow-sm">
+    <div
+      className={`rounded-2xl border border-slate-200/90 bg-white shadow-sm ${scheduleDragLocked ? "pointer-events-none" : ""}`}
+    >
       <div className="border-b border-slate-100 px-5 py-4">
         <h2 className="text-lg font-semibold text-pulse-navy">Personnel</h2>
         <p className="mt-1 text-sm text-pulse-muted">Workers and shift load for {monthLabel(year, monthIndex)}</p>

@@ -13,6 +13,7 @@ export const defaultZones: Zone[] = [
   { id: "z-pano-s", label: "Pano S" },
   { id: "z-garage", label: "Garage" },
   { id: "z-boiler", label: "Boiler Room" },
+  { id: "z-pool", label: "Aquatics / Pool Deck" },
 ];
 
 export const defaultRoles: ScheduleRoleDefinition[] = [
@@ -64,12 +65,18 @@ export const defaultSettings: ScheduleSettings = {
 };
 
 export const defaultWorkers: Worker[] = [
-  { id: "w1", name: "Jordan Lee", role: "lead", active: true, certifications: ["OSHA-10", "Forklift"] },
-  { id: "w2", name: "Sam Rivera", role: "supervisor", active: true },
-  { id: "w3", name: "Alex Chen", role: "worker", active: true, certifications: ["OSHA-10"] },
-  { id: "w4", name: "Riley Brooks", role: "worker", active: true },
-  { id: "w5", name: "Taylor Morgan", role: "worker", active: true },
-  { id: "w6", name: "Casey Ng", role: "supervisor", active: true },
+  {
+    id: "w1",
+    name: "Jordan Lee",
+    role: "lead",
+    active: true,
+    certifications: ["OSHA-10", "Forklift", "RO", "FA"],
+  },
+  { id: "w2", name: "Sam Rivera", role: "supervisor", active: true, certifications: ["FA", "P2"] },
+  { id: "w3", name: "Alex Chen", role: "worker", active: true, certifications: ["OSHA-10", "FA"] },
+  { id: "w4", name: "Riley Brooks", role: "worker", active: true, certifications: ["OSHA-10"] },
+  { id: "w5", name: "Taylor Morgan", role: "worker", active: true, certifications: ["P1", "FA"] },
+  { id: "w6", name: "Casey Ng", role: "supervisor", active: true, certifications: ["FA"] },
 ];
 
 function addDays(base: Date, delta: number): Date {
@@ -138,9 +145,38 @@ export function buildSeedShifts(now = new Date()): Shift[] {
       eventType: "work",
       role: "worker",
       zoneId: "z-pano-s",
-      // Demo: Riley has no “Forklift” cert — shows non-blocking red conflict dot in UI.
+      // Demo: Riley has no Forklift cert on these days — strict requirement conflict.
       required_certifications: offset % 9 === 0 ? ["Forklift"] : undefined,
     });
+    if (offset % 6 === 0) {
+      shifts.push({
+        id: mkId(),
+        workerId: "w4",
+        date: iso,
+        startTime: "10:00",
+        endTime: "18:00",
+        shiftType: "day",
+        eventType: "work",
+        role: "worker",
+        zoneId: "z-pool",
+        required_certifications: ["P1", "P2"],
+        accepts_any_certification: true,
+      });
+    }
+    if (offset % 11 === 0) {
+      shifts.push({
+        id: mkId(),
+        workerId: "w3",
+        date: iso,
+        startTime: "05:00",
+        endTime: "13:00",
+        shiftType: "day",
+        eventType: "work",
+        role: "worker",
+        zoneId: "z-boiler",
+        required_certifications: ["RO"],
+      });
+    }
     shifts.push({
       id: mkId(),
       workerId: offset % 7 === 0 ? null : "w5",

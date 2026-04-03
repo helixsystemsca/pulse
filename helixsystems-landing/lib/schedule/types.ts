@@ -14,7 +14,7 @@ export interface Worker {
   /** Primary job role for this person (used as default in forms). */
   role: ScheduleDutyRole;
   active: boolean;
-  /** Optional certs for conflict hints (e.g. ["OSHA-10"]). */
+  /** Optional certs for conflict hints (built-ins include RO, P1, P2, FA; free-text codes ok). */
   certifications?: string[];
 }
 
@@ -48,6 +48,8 @@ export interface Shift {
   zoneId: string;
   /** Optional staffing rules for this shift (conflict UI only; non-blocking). */
   required_certifications?: string[];
+  /** When true, assigned worker needs at least one cert from `required_certifications`; otherwise all are required. */
+  accepts_any_certification?: boolean;
   requires_supervisor?: boolean;
   minimum_workers?: number;
   uiFlags?: ShiftUiFlags;

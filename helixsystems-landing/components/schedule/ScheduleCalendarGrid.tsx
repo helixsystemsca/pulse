@@ -1,10 +1,11 @@
 "use client";
 
-import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import { Award, ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { useMemo, useState } from "react";
 import { monthGrid, monthLabel } from "@/lib/schedule/calendar";
+import { scheduleShiftHoverSummary, shiftHasCertificationFlag } from "@/lib/schedule/certifications";
 import { getShiftConflicts, worstConflictSeverity } from "@/lib/schedule/conflicts";
-import { readShiftDragPayload, setShiftDragData, SHIFT_DRAG_MIME } from "@/lib/schedule/drag";
+import { attachShiftDragPreview, readShiftDragPayload, setShiftDragData, SHIFT_DRAG_MIME } from "@/lib/schedule/drag";
 import { formatTimeRange } from "@/lib/schedule/time-format";
 import type {
   ScheduleRoleDefinition,
@@ -36,8 +37,14 @@ type Props = {
   onOpenDay?: (iso: string) => void;
   /** Optional per-day background tint for lightweight project overlay (Tailwind classes). */
   projectDayTint?: Record<string, string>;
-  onShiftDragStart: () => void;
-  onShiftDragEnd: () => void;
+  /** While true, chrome is non-interactive; only day cells (drops) and shift chips respond as configured. */
+  scheduleDragLock: boolean;
+  /** Active shift drag (for per-chip pointer-events / draggable). */
+  dragSession: { shiftId: string; duplicate: boolean } | null;
+  /** When true (e.g. trash hovered), day cells ignore drops. */
+  calendarDropsDisabled: boolean;
+  onShiftDragSessionStart: (payload: { shiftId: string; duplicate: boolean }) => void;
+  onShiftDragSessionEnd: () => void;
 };
 
 export function ScheduleCalendarGrid({
@@ -57,8 +64,11 @@ export function ScheduleCalendarGrid({
   onShiftMove,
   onOpenDay,
   projectDayTint,
-  onShiftDragStart,
-  onShiftDragEnd,
+  scheduleDragLock,
+  dragSession,
+  calendarDropsDisabled,
+  onShiftDragSessionStart,
+  onShiftDragSessionEnd,
 }: Props) {
   const cells = useMemo(() => monthGrid(year, monthIndex), [year, monthIndex]);
   const typeMap = useMemo(() => new Map(shiftTypes.map((t) => [t.key, t])), [shiftTypes]);
@@ -92,9 +102,19 @@ export function ScheduleCalendarGrid({
     return m;
   }, [shifts]);
 
+  const cellPointer = scheduleDragLock
+    ? calendarDropsDisabled
+      ? "pointer-events-none"
+      : "pointer-events-auto"
+    : "";
+
   return (
-    <div className="rounded-2xl border border-slate-200/90 bg-white shadow-sm">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-4 py-3 sm:px-5">
+    <div
+      className={`rounded-2xl border border-slate-200/90 bg-white shadow-sm ${scheduleDragLock ? "pointer-events-none" : ""}`}
+    >
+      <div
+        className={`flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-4 py-3 sm:px-5 ${scheduleDragLock ? "pointer-events-none" : ""}`}
+      >
         <h2 className="text-lg font-semibold text-pulse-navy">{monthLabel(year, monthIndex)}</h2>
         <div className="flex items-center gap-1">
           <button
@@ -115,11 +135,15 @@ export function ScheduleCalendarGrid({
           </button>
         </div>
       </div>
-      <p className="border-b border-slate-100 px-4 py-2 text-[11px] text-pulse-muted sm:px-5">
+      <p
+        className={`border-b border-slate-100 px-4 py-2 text-[11px] text-pulse-muted sm:px-5 ${scheduleDragLock ? "pointer-events-none" : ""}`}
+      >
         Drag a shift to another day to move it. Hold <kbd className="rounded bg-slate-100 px-1">Shift</kbd> while
-        dragging to duplicate. Drop on the trash strip below to delete.
+        dragging to duplicate. Drop on the trash target (bottom-right) to delete.
       </p>
-      <div className="grid grid-cols-7 gap-px border-b border-slate-100 bg-slate-200/80">
+      <div
+        className={`grid grid-cols-7 gap-px border-b border-slate-100 bg-slate-200/80 ${scheduleDragLock ? "pointer-events-none" : ""}`}
+      >
         {WEEK.map((d) => (
           <div
             key={d}
@@ -138,10 +162,11 @@ export function ScheduleCalendarGrid({
           return (
             <div
               key={c.date}
-              className={`relative flex min-h-[7.5rem] flex-col bg-white ${
+              className={`relative flex min-h-[7.5rem] flex-col bg-white ${cellPointer} ${
                 c.inMonth ? "" : "bg-slate-50/50 opacity-80"
-              } ${isOver ? "ring-2 ring-inset ring-pulse-accent/50" : ""}`}
+              } ${isOver && !calendarDropsDisabled ? "ring-2 ring-inset ring-pulse-accent/50" : ""}`}
               onDragOver={(e) => {
+                if (calendarDropsDisabled) return;
                 if (e.dataTransfer.types.includes(SHIFT_DRAG_MIME) || e.dataTransfer.types.includes("text/plain")) {
                   e.preventDefault();
                   e.dataTransfer.dropEffect = readShiftDragPayload(e.dataTransfer)?.duplicate ? "copy" : "move";
@@ -155,6 +180,7 @@ export function ScheduleCalendarGrid({
               onDrop={(e) => {
                 e.preventDefault();
                 setDragOverDate(null);
+                if (calendarDropsDisabled) return;
                 const p = readShiftDragPayload(e.dataTransfer);
                 if (p) {
                   onShiftMove(p.shiftId, c.date, p.duplicate ? "duplicate" : "move");
@@ -168,7 +194,9 @@ export function ScheduleCalendarGrid({
                   title="Project block"
                 />
               ) : null}
-              <div className="flex items-center justify-between gap-1 border-b border-transparent px-1.5 pt-1.5">
+              <div
+                className={`flex items-center justify-between gap-1 border-b border-transparent px-1.5 pt-1.5 ${scheduleDragLock ? "pointer-events-none" : ""}`}
+              >
                 {c.inMonth && onOpenDay ? (
                   <button
                     type="button"
@@ -212,29 +240,42 @@ export function ScheduleCalendarGrid({
                     ? `${st.bg} ${st.border} ${st.text} border`
                     : "border border-slate-200 bg-slate-50 text-pulse-navy";
                   const openCls = isOpen ? "ring-2 ring-dashed ring-pulse-accent/40 ring-offset-1" : "";
-                  const conflicts = getShiftConflicts(s, fullDay, workers, settings, timeOffBlocks);
+                  const conflicts = getShiftConflicts(s, fullDay, workers, settings, timeOffBlocks, zones);
                   const sev = worstConflictSeverity(conflicts);
-                  const tip = conflicts.map((x) => x.label).join(" · ");
+                  const tip = scheduleShiftHoverSummary(s, w, conflicts);
+                  const certFlag = shiftHasCertificationFlag(conflicts);
+
+                  const chipLocked =
+                    scheduleDragLock && dragSession !== null && dragSession.shiftId !== s.id;
+                  const canDrag = !scheduleDragLock || dragSession?.shiftId === s.id;
 
                   return (
                     <div
                       key={s.id}
                       role="button"
                       tabIndex={0}
-                      draggable
-                      className={`w-full cursor-grab rounded-lg px-1.5 py-1.5 text-left text-[11px] leading-snug shadow-sm transition-colors hover:brightness-[0.97] active:cursor-grabbing ${cls} ${openCls}`}
-                      onClick={() => onSelectShift(s)}
+                      draggable={canDrag}
+                      className={`w-full rounded-lg px-1.5 py-1.5 text-left text-[11px] leading-snug shadow-sm transition-colors hover:brightness-[0.97] ${
+                        canDrag ? "cursor-grab active:cursor-grabbing" : "cursor-default"
+                      } ${chipLocked ? "pointer-events-none" : ""} ${cls} ${openCls}`}
+                      onClick={() => {
+                        if (scheduleDragLock) return;
+                        onSelectShift(s);
+                      }}
                       onKeyDown={(e) => {
+                        if (scheduleDragLock) return;
                         if (e.key === "Enter" || e.key === " ") {
                           e.preventDefault();
                           onSelectShift(s);
                         }
                       }}
                       onDragStart={(e) => {
-                        setShiftDragData(e.dataTransfer, { shiftId: s.id, duplicate: e.shiftKey });
-                        onShiftDragStart();
+                        const dup = e.shiftKey;
+                        setShiftDragData(e.dataTransfer, { shiftId: s.id, duplicate: dup });
+                        attachShiftDragPreview(e, dup);
+                        onShiftDragSessionStart({ shiftId: s.id, duplicate: dup });
                       }}
-                      onDragEnd={onShiftDragEnd}
+                      onDragEnd={onShiftDragSessionEnd}
                     >
                       <div className="flex items-start justify-between gap-1">
                         <div className="min-w-0 flex-1">
@@ -260,15 +301,22 @@ export function ScheduleCalendarGrid({
                           {s.uiFlags?.isUpdated ? (
                             <span className="text-[8px] font-bold uppercase text-violet-700">Chg</span>
                           ) : null}
-                          {sev ? (
-                            <span
-                              title={tip}
-                              className={`mt-0.5 inline-block h-2 w-2 rounded-full ${
-                                sev === "critical" ? "bg-red-500" : "bg-amber-400"
-                              }`}
-                              aria-label={tip}
-                            />
-                          ) : null}
+                          <div className="flex items-center gap-0.5">
+                            {certFlag ? (
+                              <span title={tip} className="inline-flex">
+                                <Award className="h-3 w-3 shrink-0 text-slate-500" strokeWidth={2} aria-hidden />
+                              </span>
+                            ) : null}
+                            {sev ? (
+                              <span
+                                title={tip}
+                                className={`inline-block h-2 w-2 shrink-0 rounded-full ${
+                                  sev === "critical" ? "bg-red-500" : "bg-amber-400"
+                                }`}
+                                aria-label={tip}
+                              />
+                            ) : null}
+                          </div>
                         </div>
                       </div>
                     </div>

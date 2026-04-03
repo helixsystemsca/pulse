@@ -25,3 +25,17 @@ export function readShiftDragPayload(dt: DataTransfer): ShiftDragPayload | null 
     return null;
   }
 }
+
+/**
+ * Custom drag preview so users see “Move” vs duplicate (+) while dragging.
+ * Detaches after the current frame (browser captures snapshot for drag).
+ */
+export function attachShiftDragPreview(e: { dataTransfer: DataTransfer }, duplicate: boolean): void {
+  const el = document.createElement("div");
+  el.textContent = duplicate ? "+ Duplicate shift" : "Move shift";
+  el.style.cssText =
+    "position:fixed;left:0;top:0;padding:8px 12px;font-size:12px;font-weight:600;border-radius:10px;background:#fff;border:1px solid #e2e8f0;box-shadow:0 4px 14px rgba(15,23,42,.12);color:#0f172a;z-index:2147483647;pointer-events:none;";
+  document.body.appendChild(el);
+  e.dataTransfer.setDragImage(el, 12, 12);
+  requestAnimationFrame(() => el.remove());
+}

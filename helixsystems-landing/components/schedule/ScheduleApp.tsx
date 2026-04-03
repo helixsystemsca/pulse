@@ -29,7 +29,9 @@ export function ScheduleApp() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [timeOffOpen, setTimeOffOpen] = useState(false);
   const [dayViewDate, setDayViewDate] = useState<string | null>(null);
-  const [shiftDragActive, setShiftDragActive] = useState(false);
+  const [dragSession, setDragSession] = useState<{ shiftId: string; duplicate: boolean } | null>(null);
+  const [trashHovering, setTrashHovering] = useState(false);
+  const [deleteToast, setDeleteToast] = useState<string | null>(null);
   const [shiftModal, setShiftModal] = useState<{
     shift: Shift | null;
     defaultDate: string;
@@ -99,6 +101,8 @@ export function ScheduleApp() {
       role: draft.role,
       zoneId: draft.zoneId,
       required_certifications: certs.length ? certs : undefined,
+      accepts_any_certification:
+        certs.length > 0 && draft.accepts_any_certification === true ? true : undefined,
       requires_supervisor: !!draft.requires_supervisor,
       minimum_workers: draft.minimum_workers,
     };
@@ -164,6 +168,24 @@ export function ScheduleApp() {
     return shifts.filter((s) => s.date === dayViewDate);
   }, [shifts, dayViewDate]);
 
+  const scheduleDragLock = dragSession !== null;
+  const calendarDropsDisabled = trashHovering;
+
+  useEffect(() => {
+    if (scheduleDragLock) {
+      document.body.classList.add("schedule-shift-dragging");
+    } else {
+      document.body.classList.remove("schedule-shift-dragging");
+    }
+    return () => document.body.classList.remove("schedule-shift-dragging");
+  }, [scheduleDragLock]);
+
+  useEffect(() => {
+    if (!deleteToast) return;
+    const t = window.setTimeout(() => setDeleteToast(null), 2600);
+    return () => window.clearTimeout(t);
+  }, [deleteToast]);
+
   if (!hydrated) {
     return (
       <div className="flex min-h-[40vh] items-center justify-center text-sm text-pulse-muted">
@@ -175,7 +197,7 @@ export function ScheduleApp() {
   return (
     <div className="flex min-h-[calc(100vh-4rem)] flex-col bg-pulse-bg">
       <div className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:px-6 lg:px-8">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className={`flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between ${scheduleDragLock ? "pointer-events-none" : ""}`}>
           <div>
             <h1 className="font-headline text-2xl font-bold tracking-tight text-pulse-navy">Schedule</h1>
             <p className="mt-1 text-sm text-pulse-muted">Plan shifts, zones, and coverage across your operation.</p>
@@ -195,7 +217,10 @@ export function ScheduleApp() {
                 <button
                   key={key}
                   type="button"
-                  onClick={() => setView(key)}
+                  onClick={() => {
+                    setView(key);
+                    if (key !== "calendar") setDayViewDate(null);
+                  }}
                   className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${
                     view === key
                       ? "bg-slate-900 text-white shadow-sm"
@@ -226,32 +251,68 @@ export function ScheduleApp() {
           </div>
         </div>
 
-        <div className="mt-5">
+        <div className={`mt-5 ${scheduleDragLock ? "pointer-events-none" : ""}`}>
           <ScheduleAlertsBanner alerts={alerts} />
         </div>
 
-        <div className="mt-5">
-          {view === "calendar" ? (
-            <ScheduleCalendarGrid
-              year={cursor.y}
-              monthIndex={cursor.m}
-              onPrevMonth={prevMonth}
-              onNextMonth={nextMonth}
-              shifts={shifts}
-              workers={workers}
-              zones={zones}
-              roles={roles}
-              shiftTypes={shiftTypes}
-              settings={settings}
-              timeOffBlocks={timeOffBlocks}
-              onSelectShift={openEdit}
-              onAddForDate={openAdd}
-              onShiftMove={handleShiftMove}
-              onOpenDay={(iso) => setDayViewDate(iso)}
-              projectDayTint={projectDayTint}
-              onShiftDragStart={() => setShiftDragActive(true)}
-              onShiftDragEnd={() => setShiftDragActive(false)}
+        <div className="relative mt-5">
+          {scheduleDragLock ? (
+            <div
+              className="pointer-events-none fixed inset-0 z-[115] bg-slate-900/[0.06]"
+              aria-hidden
             />
+          ) : null}
+          {view === "calendar" ? (
+            dayViewDate ? (
+              <ScheduleDayView
+                date={dayViewDate}
+                onClose={() => setDayViewDate(null)}
+                shifts={dayViewShifts}
+                dayShiftsAll={dayViewShifts}
+                workers={workers}
+                zones={zones}
+                roles={roles}
+                shiftTypes={shiftTypes}
+                settings={settings}
+                timeOffBlocks={timeOffBlocks}
+                onSelectShift={openEdit}
+                onAddForDate={(iso) => openAdd(iso)}
+                scheduleDragLock={scheduleDragLock}
+                dragSession={dragSession}
+                onShiftDragSessionStart={setDragSession}
+                onShiftDragSessionEnd={() => {
+                  setDragSession(null);
+                  setTrashHovering(false);
+                }}
+              />
+            ) : (
+              <ScheduleCalendarGrid
+                year={cursor.y}
+                monthIndex={cursor.m}
+                onPrevMonth={prevMonth}
+                onNextMonth={nextMonth}
+                shifts={shifts}
+                workers={workers}
+                zones={zones}
+                roles={roles}
+                shiftTypes={shiftTypes}
+                settings={settings}
+                timeOffBlocks={timeOffBlocks}
+                onSelectShift={openEdit}
+                onAddForDate={openAdd}
+                onShiftMove={handleShiftMove}
+                onOpenDay={(iso) => setDayViewDate(iso)}
+                projectDayTint={projectDayTint}
+                scheduleDragLock={scheduleDragLock}
+                dragSession={dragSession}
+                calendarDropsDisabled={calendarDropsDisabled}
+                onShiftDragSessionStart={setDragSession}
+                onShiftDragSessionEnd={() => {
+                  setDragSession(null);
+                  setTrashHovering(false);
+                }}
+              />
+            )
           ) : null}
           {view === "personnel" ? (
             <SchedulePersonnel
@@ -260,13 +321,16 @@ export function ScheduleApp() {
               roles={roles}
               year={cursor.y}
               monthIndex={cursor.m}
+              scheduleDragLocked={scheduleDragLock}
             />
           ) : null}
           {view === "reports" ? <ScheduleReports /> : null}
         </div>
       </div>
 
-      <ScheduleWorkforceBar summary={summary} />
+      <div className={scheduleDragLock ? "pointer-events-none" : ""}>
+        <ScheduleWorkforceBar summary={summary} />
+      </div>
 
       <ShiftEditModal
         open={shiftModal !== null}
@@ -286,36 +350,25 @@ export function ScheduleApp() {
       <ScheduleSettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
 
       <ScheduleTrashDropZone
-        active={shiftDragActive}
+        active={scheduleDragLock}
+        isDuplicateDrag={!!dragSession?.duplicate}
+        onHoverChange={setTrashHovering}
         onDropTrash={(id) => {
           deleteShift(id);
-          setShiftDragActive(false);
+          setDragSession(null);
+          setTrashHovering(false);
+          setDeleteToast("Shift deleted");
         }}
       />
 
-      <ScheduleDayView
-        open={dayViewDate !== null}
-        date={dayViewDate ?? ""}
-        onClose={() => setDayViewDate(null)}
-        shifts={dayViewShifts}
-        dayShiftsAll={dayViewShifts}
-        workers={workers}
-        zones={zones}
-        roles={roles}
-        shiftTypes={shiftTypes}
-        settings={settings}
-        timeOffBlocks={timeOffBlocks}
-        onSelectShift={(s) => {
-          setDayViewDate(null);
-          openEdit(s);
-        }}
-        onAddForDate={(iso) => {
-          setDayViewDate(null);
-          openAdd(iso);
-        }}
-        onShiftDragStart={() => setShiftDragActive(true)}
-        onShiftDragEnd={() => setShiftDragActive(false)}
-      />
+      {deleteToast ? (
+        <div
+          className="pointer-events-none fixed bottom-24 left-1/2 z-[150] -translate-x-1/2 rounded-xl border border-slate-200 bg-slate-900 px-4 py-2.5 text-center text-sm font-medium text-white shadow-lg sm:bottom-28"
+          role="status"
+        >
+          {deleteToast}
+        </div>
+      ) : null}
 
       <TimeOffRequestModal
         open={timeOffOpen}
