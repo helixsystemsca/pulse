@@ -1,9 +1,9 @@
 "use client";
 
 /**
- * Equipment & device setup: gateways, BLE tags, equipment, zones, workers assignment, automation config.
+ * Infrastructure & RTLS: gateways, tags, zones, worker tag assignment, automation — equipment linking lives in Inventory.
  */
-import { ClipboardList, Loader2, MapPin, Radio, Settings2, Users } from "lucide-react";
+import { Loader2, MapPin, Radio, Settings2, Users } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { apiFetch } from "@/lib/api";
 import { readSession } from "@/lib/pulse-session";
@@ -13,7 +13,6 @@ import { normalizeMacKey } from "@/lib/macNormalize";
 import {
   assignBleDevice,
   createBleDevice,
-  createEquipment,
   createGateway,
   createZone,
   fetchBleDevices,
@@ -23,7 +22,6 @@ import {
   fetchGateways,
   fetchRecentActivity,
   fetchZones,
-  linkEquipmentBle,
   patchFeatureConfig,
   patchGateway,
   type BleDeviceOut,
@@ -35,19 +33,19 @@ import {
 import { AssignmentModal } from "@/components/setup/AssignmentModal";
 import { AssignmentsOverview } from "@/components/setup/AssignmentsOverview";
 import { ConfigPanel } from "@/components/setup/ConfigPanel";
+import { DeviceHealthPanel } from "@/components/setup/DeviceHealthPanel";
 import { DeviceCard } from "@/components/setup/DeviceCard";
-import { EquipmentCard } from "@/components/setup/EquipmentCard";
 import { LiveActivityFeed } from "@/components/setup/LiveActivityFeed";
 import { SetupProgress } from "@/components/setup/SetupProgress";
 import { ZoneCard } from "@/components/setup/ZoneCard";
+import { ZoneMapSection } from "@/components/setup/ZoneMapSection";
 
 type CompanyOption = { id: string; name: string };
 
-type TabId = "devices" | "equipment" | "workers" | "zones" | "automation";
+type TabId = "devices" | "workers" | "zones" | "automation";
 
 const TABS: { id: TabId; label: string; icon: typeof Radio }[] = [
-  { id: "devices", label: "Devices", icon: Radio },
-  { id: "equipment", label: "Equipment", icon: ClipboardList },
+  { id: "devices", label: "Gateways & sensors", icon: Radio },
   { id: "workers", label: "Workers", icon: Users },
   { id: "zones", label: "Zones", icon: MapPin },
   { id: "automation", label: "Automation", icon: Settings2 },
@@ -97,7 +95,6 @@ export function SetupApp() {
   const [features, setFeatures] = useState<Record<string, Record<string, unknown>>>({});
 
   const [assignBle, setAssignBle] = useState<BleDeviceOut | null>(null);
-  const [linkEquipment, setLinkEquipment] = useState<EquipmentOut | null>(null);
   const [zonePickGateway, setZonePickGateway] = useState<GatewayOut | null>(null);
   const [assignTargetId, setAssignTargetId] = useState("");
 
@@ -107,14 +104,10 @@ export function SetupApp() {
 
   const [bleName, setBleName] = useState("");
   const [bleMac, setBleMac] = useState("");
-  const [bleType, setBleType] = useState<"worker_tag" | "equipment_tag">("equipment_tag");
-
-  const [eqName, setEqName] = useState("");
+  const [bleType, setBleType] = useState<"worker_tag" | "equipment_tag">("worker_tag");
 
   const [zoneName, setZoneName] = useState("");
   const [zoneDesc, setZoneDesc] = useState("");
-
-  const [linkBlePick, setLinkBlePick] = useState("");
 
   const [detectionTarget, setDetectionTarget] = useState<DetectionTestTarget | null>(null);
   const [detectionSinceMs, setDetectionSinceMs] = useState<number | null>(null);
@@ -284,48 +277,38 @@ export function SetupApp() {
     void refresh();
   }, [refresh]);
 
-  const bleLinkedToEquipment = useMemo(() => {
-    const m = new Map<string, string>();
-    for (const b of bleDevices) {
-      if (b.type === "equipment_tag" && b.assigned_equipment_id) {
-        m.set(b.assigned_equipment_id, b.name);
-      }
-    }
-    return m;
-  }, [bleDevices]);
-
   const setupSteps = useMemo(() => {
     const gatewayAdded = gateways.length > 0;
-    const zoneAssigned = gateways.some((g) => Boolean(g.zone_id));
-    const bleAdded = bleDevices.length > 0;
-    const bleAssigned = bleDevices.some((b) => Boolean(b.assigned_worker_id || b.assigned_equipment_id));
-    const equipmentLinked = equipment.some((eq) => bleLinkedToEquipment.has(eq.id));
-    const proximityEnabled = Boolean(features.proximity_tracking?.enabled ?? true);
+    const zoneCreated = zones.length > 0;
+    const zoneAssignedToGateway = gateways.some((g) => Boolean(g.zone_id));
+    const tagRegistered = bleDevices.length > 0;
+    const tagAssigned = bleDevices.some((b) => Boolean(b.assigned_worker_id || b.assigned_equipment_id));
+    const trackingEnabled = Boolean(features.proximity_tracking?.enabled ?? true);
     return {
       gatewayAdded,
-      zoneAssigned,
-      bleAdded,
-      bleAssigned,
-      equipmentLinked,
-      proximityEnabled,
+      zoneCreated,
+      zoneAssignedToGateway,
+      tagRegistered,
+      tagAssigned,
+      trackingEnabled,
       all:
         gatewayAdded &&
-        zoneAssigned &&
-        bleAdded &&
-        bleAssigned &&
-        equipmentLinked &&
-        proximityEnabled,
+        zoneCreated &&
+        zoneAssignedToGateway &&
+        tagRegistered &&
+        tagAssigned &&
+        trackingEnabled,
     };
-  }, [gateways, bleDevices, features, equipment, bleLinkedToEquipment]);
+  }, [gateways, zones, bleDevices, features]);
 
   const progressItems = useMemo(
     () => [
       { id: "gw", label: "Gateway added", done: setupSteps.gatewayAdded },
-      { id: "zone", label: "Zone assigned to a gateway", done: setupSteps.zoneAssigned },
-      { id: "ble", label: "BLE device added", done: setupSteps.bleAdded },
-      { id: "assign", label: "BLE assigned to worker or equipment", done: setupSteps.bleAssigned },
-      { id: "eq", label: "Equipment linked to a tag", done: setupSteps.equipmentLinked },
-      { id: "prox", label: "Proximity tracking enabled", done: setupSteps.proximityEnabled },
+      { id: "zone-create", label: "Zone created", done: setupSteps.zoneCreated },
+      { id: "zone-gw", label: "Zone assigned to gateway", done: setupSteps.zoneAssignedToGateway },
+      { id: "tag-reg", label: "Tag registered", done: setupSteps.tagRegistered },
+      { id: "tag-assign", label: "Tag assigned (to worker or equipment)", done: setupSteps.tagAssigned },
+      { id: "track", label: "Tracking enabled", done: setupSteps.trackingEnabled },
     ],
     [setupSteps],
   );
@@ -335,18 +318,20 @@ export function SetupApp() {
       const tag = bleDevices.find((b) => b.type === "worker_tag" && b.assigned_worker_id === w.id);
       return { id: w.id, name: w.full_name || w.email, tag: tag ? tag.name : null };
     });
-    const equipMapped = equipment.map((eq) => ({
-      id: eq.id,
-      name: eq.name,
-      tag: bleLinkedToEquipment.get(eq.id) ?? null,
-    }));
+    const assignedCount = bleDevices.filter((b) => b.assigned_worker_id || b.assigned_equipment_id).length;
+    const unassignedCount = bleDevices.length - assignedCount;
+    const tagSummary = {
+      registered: bleDevices.length,
+      assigned: assignedCount,
+      unassigned: unassignedCount,
+    };
     const zoneMapped = zones.map((z) => ({
       id: z.id,
       name: z.name,
       gateways: gateways.filter((g) => g.zone_id === z.id).map((g) => g.name),
     }));
-    return { workersMapped, equipMapped, zoneMapped };
-  }, [workers, bleDevices, equipment, bleLinkedToEquipment, zones, gateways]);
+    return { workersMapped, tagSummary, zoneMapped };
+  }, [workers, bleDevices, zones, gateways]);
 
   const unassignedBle = useMemo(
     () => bleDevices.filter((b) => !b.assigned_worker_id && !b.assigned_equipment_id),
@@ -404,8 +389,11 @@ export function SetupApp() {
     }
   }, [gateways]);
 
-  const warnAssignTag = useCallback(() => {
-    const b = bleDevices.find((x) => !x.assigned_worker_id && !x.assigned_equipment_id);
+  const warnAssignWorkerTag = useCallback(() => {
+    const b = bleDevices.find(
+      (x) =>
+        x.type === "worker_tag" && !x.assigned_worker_id && !x.assigned_equipment_id,
+    );
     if (b) {
       setTab("devices");
       setAssignBle(b);
@@ -413,15 +401,9 @@ export function SetupApp() {
     }
   }, [bleDevices]);
 
-  const warnLinkTag = useCallback(() => {
-    const eq = equipment.find((e) => !bleLinkedToEquipment.has(e.id));
-    if (eq) {
-      setTab("equipment");
-      setLinkEquipment(eq);
-      const linked = bleDevices.find((bd) => bd.assigned_equipment_id === eq.id);
-      setLinkBlePick(linked?.id ?? "");
-    }
-  }, [equipment, bleLinkedToEquipment, bleDevices]);
+  const openInventoryForTags = useCallback(() => {
+    window.location.href = "/dashboard/inventory";
+  }, []);
 
   const setupWarnings = useMemo(() => {
     const w: { id: string; text: string; action?: { label: string; onClick: () => void } }[] = [];
@@ -432,24 +414,28 @@ export function SetupApp() {
         action: { label: "Assign zone", onClick: warnAssignZone },
       });
     }
-    const unassignedCount = bleDevices.filter((b) => !b.assigned_worker_id && !b.assigned_equipment_id).length;
-    if (unassignedCount > 0) {
+    const unassignedWorker = bleDevices.filter(
+      (b) => b.type === "worker_tag" && !b.assigned_worker_id && !b.assigned_equipment_id,
+    );
+    if (unassignedWorker.length > 0) {
       w.push({
-        id: "ble-unassigned",
-        text: `${unassignedCount} BLE tag(s) are unassigned — link them to workers or equipment.`,
-        action: { label: "Assign tag", onClick: warnAssignTag },
+        id: "ble-worker",
+        text: `${unassignedWorker.length} worker tag(s) are unassigned — assign them on this page.`,
+        action: { label: "Assign worker tag", onClick: warnAssignWorkerTag },
       });
     }
-    const bareEquip = equipment.filter((eq) => !bleLinkedToEquipment.has(eq.id)).length;
-    if (bareEquip > 0) {
+    const unassignedEquip = bleDevices.filter(
+      (b) => b.type === "equipment_tag" && !b.assigned_equipment_id && !b.assigned_worker_id,
+    );
+    if (unassignedEquip.length > 0) {
       w.push({
-        id: "eq-ble",
-        text: `${bareEquip} equipment record(s) have no linked BLE tag — pair tags for tracking.`,
-        action: { label: "Link tag", onClick: warnLinkTag },
+        id: "ble-equip",
+        text: `${unassignedEquip.length} equipment tag(s) are unassigned — link them in Inventory.`,
+        action: { label: "Open Inventory", onClick: openInventoryForTags },
       });
     }
     return w;
-  }, [gateways, bleDevices, equipment, bleLinkedToEquipment, warnAssignZone, warnAssignTag, warnLinkTag]);
+  }, [gateways, bleDevices, warnAssignZone, warnAssignWorkerTag, openInventoryForTags]);
 
   const startBleDetectionTest = useCallback((d: BleDeviceOut) => {
     testAlreadyMatchedRef.current = false;
@@ -496,18 +482,7 @@ export function SetupApp() {
       setBleMac("");
       await refresh();
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Could not add BLE device");
-    }
-  };
-
-  const onAddEquipment = async () => {
-    if (!eqName.trim()) return;
-    try {
-      await createEquipment(isSystemAdmin ? effectiveCompanyId : null, { name: eqName.trim() });
-      setEqName("");
-      await refresh();
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Could not add equipment");
+      setError(e instanceof Error ? e.message : "Could not register tag");
     }
   };
 
@@ -527,13 +502,12 @@ export function SetupApp() {
   };
 
   const submitAssignBle = async () => {
-    if (!assignBle || !assignTargetId) return;
-    const patch =
-      assignBle.type === "worker_tag"
-        ? { assigned_worker_id: assignTargetId, assigned_equipment_id: null as string | null }
-        : { assigned_equipment_id: assignTargetId, assigned_worker_id: null as string | null };
+    if (!assignBle || assignBle.type !== "worker_tag" || !assignTargetId) return;
     try {
-      await assignBleDevice(isSystemAdmin ? effectiveCompanyId : null, assignBle.id, patch);
+      await assignBleDevice(isSystemAdmin ? effectiveCompanyId : null, assignBle.id, {
+        assigned_worker_id: assignTargetId,
+        assigned_equipment_id: null,
+      });
       setAssignBle(null);
       setAssignTargetId("");
       await refresh();
@@ -553,20 +527,6 @@ export function SetupApp() {
       await refresh();
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Could not update gateway zone");
-    }
-  };
-
-  const submitLinkEquipment = async () => {
-    if (!linkEquipment || !linkBlePick) return;
-    const eqId = linkEquipment.id;
-    const bleId = linkBlePick;
-    try {
-      await linkEquipmentBle(isSystemAdmin ? effectiveCompanyId : null, eqId, bleId);
-      setLinkEquipment(null);
-      setLinkBlePick("");
-      await refresh();
-    } catch {
-      setError("Could not link BLE tag");
     }
   };
 
@@ -601,21 +561,12 @@ export function SetupApp() {
     return workers.map((w) => ({ id: w.id, label: w.full_name || w.email }));
   }, [assignBle, workers]);
 
-  const unassignEquipmentTargets = useMemo(() => {
-    if (!assignBle || assignBle.type !== "equipment_tag") return [];
-    return equipment.map((eq) => ({ id: eq.id, label: eq.name }));
-  }, [assignBle, equipment]);
-
-  const equipmentTagsForLink = useMemo(() => {
-    return bleDevices.filter((b) => b.type === "equipment_tag");
-  }, [bleDevices]);
-
   if (isSystemAdmin && !companyPick) {
     return (
       <div className="mx-auto max-w-3xl space-y-6 p-6">
         <header>
-          <h1 className="font-headline text-2xl font-bold text-pulse-navy">Equipment setup</h1>
-          <p className="mt-1 text-sm text-pulse-muted">Select a company to manage devices and zones.</p>
+          <h1 className="font-headline text-2xl font-bold text-pulse-navy">Zones &amp; devices</h1>
+          <p className="mt-1 text-sm text-pulse-muted">Select a company to manage gateways, tags, and zones.</p>
         </header>
         <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-card">
           <label className={LABEL}>Company</label>
@@ -640,10 +591,10 @@ export function SetupApp() {
     <div className="mx-auto max-w-6xl space-y-8 p-4 md:p-8">
       <header className="space-y-2">
         <p className="text-xs font-semibold uppercase tracking-widest text-[#2B4C7E]">Guided setup</p>
-        <h1 className="font-headline text-3xl font-bold text-pulse-navy md:text-4xl">Equipment & devices</h1>
+        <h1 className="font-headline text-3xl font-bold text-pulse-navy md:text-4xl">Zones &amp; devices</h1>
         <p className="max-w-2xl text-sm text-pulse-muted">
-          Register gateways and tags, place coverage in zones, link assets and people, then tune automation — without a
-          rule builder.
+          System view for gateways (ESP32), BLE tags, zones, and tracking health. Assign worker tags here; link equipment
+          tags in Inventory. Tune automation without a rule builder.
         </p>
         {isSystemAdmin ? (
           <div className="flex max-w-md flex-col gap-1 pt-2">
@@ -668,8 +619,8 @@ export function SetupApp() {
       {dataEnabled ? (
         <AssignmentsOverview
           workers={overviewData.workersMapped}
-          equipmentRows={overviewData.equipMapped}
           zoneRows={overviewData.zoneMapped}
+          tagSummary={overviewData.tagSummary}
         />
       ) : null}
 
@@ -720,6 +671,7 @@ export function SetupApp() {
                     gateway={g}
                     operationalStatus={online ? "online" : "offline"}
                     lastHeardAt={lastHeard}
+                    secondsSinceLastSeen={stRow?.seconds_since_last_seen ?? null}
                     zoneLabel={g.zone_id ? zoneNameById.get(g.zone_id) ?? g.zone_id : null}
                     onChangeZone={() => {
                       setZonePickGateway(g);
@@ -782,14 +734,14 @@ export function SetupApp() {
           </div>
 
           <div className="space-y-4">
-            <h2 className="text-lg font-semibold text-pulse-navy">BLE devices</h2>
+            <h2 className="text-lg font-semibold text-pulse-navy">Tags</h2>
             {unassignedBle.length > 0 ? (
               <div className="rounded-2xl border border-amber-200/90 bg-amber-50/50 p-4 ring-1 ring-amber-200/60 md:p-5">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
-                    <h3 className="text-sm font-semibold text-amber-950">Unassigned devices</h3>
+                    <h3 className="text-sm font-semibold text-amber-950">Unassigned tags</h3>
                     <p className="mt-0.5 text-xs text-amber-900/80">
-                      These tags are registered but not linked to a worker or asset yet. Assign them to finish onboarding.
+                      Worker tags: assign below. Equipment tags: link in Inventory — this page stays read-only for assets.
                     </p>
                   </div>
                   <span className="rounded-full bg-amber-200/90 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-amber-950">
@@ -801,6 +753,7 @@ export function SetupApp() {
                     const listening =
                       detectionTarget?.kind === "ble" && detectionTarget.deviceId === b.id;
                     const flash = detectionFlash?.kind === "ble" && detectionFlash.id === b.id;
+                    const isWorkerTag = b.type === "worker_tag";
                     return (
                       <DeviceCard
                         key={`unassigned-${b.id}`}
@@ -808,10 +761,20 @@ export function SetupApp() {
                         device={b}
                         assignedLabel={null}
                         emphasizeUnassigned
-                        onAssign={() => {
-                          setAssignBle(b);
-                          setAssignTargetId("");
-                        }}
+                        disableAssignment={!isWorkerTag}
+                        assignmentHint={
+                          isWorkerTag
+                            ? null
+                            : "Manage equipment links in Inventory (/dashboard/inventory)."
+                        }
+                        onAssign={
+                          isWorkerTag
+                            ? () => {
+                                setAssignBle(b);
+                                setAssignTargetId("");
+                              }
+                            : undefined
+                        }
                         testListening={listening}
                         testSuccessFlash={flash}
                         testMatchKind={
@@ -851,20 +814,22 @@ export function SetupApp() {
                 const listening =
                   detectionTarget?.kind === "ble" && detectionTarget.deviceId === b.id;
                 const flash = detectionFlash?.kind === "ble" && detectionFlash.id === b.id;
+                const isWorkerTag = b.type === "worker_tag";
                 return (
                   <DeviceCard
                     key={b.id}
                     variant="ble"
                     device={b}
                     assignedLabel={assignedLabel}
-                    onAssign={() => {
-                      setAssignBle(b);
-                      setAssignTargetId(
-                        b.type === "worker_tag"
-                          ? b.assigned_worker_id ?? ""
-                          : b.assigned_equipment_id ?? "",
-                      );
-                    }}
+                    disableAssignment={!isWorkerTag}
+                    onAssign={
+                      isWorkerTag
+                        ? () => {
+                            setAssignBle(b);
+                            setAssignTargetId(b.assigned_worker_id ?? "");
+                          }
+                        : undefined
+                    }
                     testListening={listening}
                     testSuccessFlash={flash}
                     testMatchKind={
@@ -894,18 +859,18 @@ export function SetupApp() {
               ) : null}
             </div>
             <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-card">
-              <h3 className="font-semibold text-pulse-navy">Add BLE device</h3>
+              <h3 className="font-semibold text-pulse-navy">Register tag</h3>
               <div className="mt-4 grid gap-3">
                 <div>
                   <label className={LABEL}>Name</label>
-                  <input className={FIELD} value={bleName} onChange={(e) => setBleName(e.target.value)} placeholder="Forklift #2 tag" />
+                  <input className={FIELD} value={bleName} onChange={(e) => setBleName(e.target.value)} placeholder="West dock tag" />
                 </div>
                 <div>
                   <label className={LABEL}>MAC address</label>
                   <input className={FIELD} value={bleMac} onChange={(e) => setBleMac(e.target.value)} placeholder="00:1A:7D:DA:71:13" />
                 </div>
                 <div>
-                  <label className={LABEL}>Type</label>
+                  <label className={LABEL}>Tag role</label>
                   <select
                     className={FIELD}
                     value={bleType}
@@ -917,61 +882,44 @@ export function SetupApp() {
                 </div>
               </div>
               <button type="button" className={`mt-4 ${BTN_PRIMARY}`} onClick={() => void onAddBle()}>
-                Add BLE device
+                Register tag
               </button>
             </div>
           </div>
         </div>
-        <LiveActivityFeed
-          companyId={effectiveCompanyId}
-          isSystemAdminBase={isSystemAdmin}
-          pollMs={8000}
-          fetchLimit={80}
-          maxBlocks={20}
-          resolveWorkerName={feedResolveWorker}
-          resolveEquipmentName={feedResolveEquipment}
-          pinOptions={activityPinOptions}
-        />
-        </div>
-      ) : null}
 
-      {tab === "equipment" && dataEnabled ? (
-        <div className="space-y-6">
-          <div className="grid gap-4 md:grid-cols-2">
-            {equipment.map((eq) => (
-              <EquipmentCard
-                key={eq.id}
-                equipment={eq}
-                linkedLabel={bleLinkedToEquipment.get(eq.id) ?? null}
-                onLinkBle={() => {
-                  setLinkEquipment(eq);
-                  const linked = bleDevices.find((b) => b.assigned_equipment_id === eq.id);
-                  setLinkBlePick(linked?.id ?? "");
-                }}
-              />
-            ))}
-          </div>
-          {equipment.length === 0 ? (
-            <p className="rounded-2xl border border-dashed border-slate-200 bg-white/60 p-6 text-sm text-pulse-muted">
-              No equipment records. Tools and assets appear here once added.
-            </p>
-          ) : null}
-          <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-card md:max-w-lg">
-            <h3 className="font-semibold text-pulse-navy">Add equipment</h3>
-            <label className={LABEL}>Display name</label>
-            <input className={FIELD} value={eqName} onChange={(e) => setEqName(e.target.value)} placeholder="Hydraulic lift" />
-            <button type="button" className={`mt-4 ${BTN_PRIMARY}`} onClick={() => void onAddEquipment()}>
-              Add equipment
-            </button>
-          </div>
+        <DeviceHealthPanel gateways={gateways} gatewayStatus={gwStatus} bleDevices={bleDevices} />
+
+        <div className="space-y-3">
+          <h2 className="text-lg font-semibold text-pulse-navy">Recent activity</h2>
+          <p className="text-sm text-pulse-muted">Live automation and detection events for this company.</p>
+          <LiveActivityFeed
+            companyId={effectiveCompanyId}
+            isSystemAdminBase={isSystemAdmin}
+            pollMs={8000}
+            fetchLimit={80}
+            maxBlocks={20}
+            resolveWorkerName={feedResolveWorker}
+            resolveEquipmentName={feedResolveEquipment}
+            pinOptions={activityPinOptions}
+          />
+        </div>
+
+        <ZoneMapSection
+          zones={zones}
+          gateways={gateways}
+          tagCount={bleDevices.length}
+          assignedTagCount={bleDevices.filter((b) => b.assigned_worker_id || b.assigned_equipment_id).length}
+        />
         </div>
       ) : null}
 
       {tab === "workers" && dataEnabled ? (
         <div className="space-y-4">
           <p className="text-sm text-pulse-muted">
-            Assign <strong className="text-pulse-navy">worker tags</strong> from the Devices tab, or use Assign on each BLE
-            card. Roster for reference:
+            Assign <strong className="text-pulse-navy">worker tags</strong> from the{" "}
+            <strong className="text-pulse-navy">Gateways &amp; sensors</strong> tab, or use Assign on each tag card. Roster
+            for reference:
           </p>
           <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-card">
             <table className="w-full text-left text-sm">
@@ -979,7 +927,7 @@ export function SetupApp() {
                 <tr>
                   <th className="px-4 py-3">Name</th>
                   <th className="px-4 py-3">Role</th>
-                  <th className="px-4 py-3">BLE tag</th>
+                  <th className="px-4 py-3">Worker tag</th>
                 </tr>
               </thead>
               <tbody>
@@ -1036,13 +984,9 @@ export function SetupApp() {
       ) : null}
 
       <AssignmentModal
-        open={Boolean(assignBle)}
+        open={Boolean(assignBle && assignBle.type === "worker_tag")}
         title={assignBle ? `Assign ${assignBle.name}` : ""}
-        description={
-          assignBle?.type === "worker_tag"
-            ? "Pick a worker to carry this tag."
-            : "Link this tag to a piece of equipment."
-        }
+        description="Pick a worker to carry this tag."
         onClose={() => {
           setAssignBle(null);
           setAssignTargetId("");
@@ -1054,22 +998,6 @@ export function SetupApp() {
             <select className={FIELD} value={assignTargetId} onChange={(e) => setAssignTargetId(e.target.value)}>
               <option value="">Select…</option>
               {unassignWorkerLabels.map((o) => (
-                <option key={o.id} value={o.id}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
-            <button type="button" className={`mt-4 w-full ${BTN_PRIMARY}`} onClick={() => void submitAssignBle()}>
-              Save assignment
-            </button>
-          </>
-        ) : null}
-        {assignBle?.type === "equipment_tag" ? (
-          <>
-            <label className={LABEL}>Equipment</label>
-            <select className={FIELD} value={assignTargetId} onChange={(e) => setAssignTargetId(e.target.value)}>
-              <option value="">Select…</option>
-              {unassignEquipmentTargets.map((o) => (
                 <option key={o.id} value={o.id}>
                   {o.label}
                 </option>
@@ -1102,30 +1030,6 @@ export function SetupApp() {
         </select>
         <button type="button" className={`mt-4 w-full ${BTN_PRIMARY}`} onClick={() => void submitGatewayZone()}>
           Update gateway
-        </button>
-      </AssignmentModal>
-
-      <AssignmentModal
-        open={Boolean(linkEquipment)}
-        title={linkEquipment ? `Link tag to ${linkEquipment.name}` : ""}
-        description="Choose an equipment tag. Existing links to this asset will move when you save."
-        onClose={() => {
-          setLinkEquipment(null);
-          setLinkBlePick("");
-        }}
-      >
-        <label className={LABEL}>Equipment tag</label>
-        <select className={FIELD} value={linkBlePick} onChange={(e) => setLinkBlePick(e.target.value)}>
-          <option value="">Select…</option>
-          {equipmentTagsForLink.map((b) => (
-            <option key={b.id} value={b.id}>
-              {b.name} ({b.mac_address})
-              {b.assigned_equipment_id && b.assigned_equipment_id !== linkEquipment?.id ? " — in use" : ""}
-            </option>
-          ))}
-        </select>
-        <button type="button" className={`mt-4 w-full ${BTN_PRIMARY}`} onClick={() => void submitLinkEquipment()}>
-          Link tag
         </button>
       </AssignmentModal>
     </div>

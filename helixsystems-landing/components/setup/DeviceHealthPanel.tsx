@@ -85,8 +85,8 @@ export function DeviceHealthPanel({
             <Radio className="h-4 w-4 text-amber-700" aria-hidden />
             <h3 className="text-sm font-semibold">Quiet tags</h3>
           </div>
-          <p className="mt-1 text-[11px] text-pulse-muted">No detection for {">"}
-            {STALE_TAG_SEC}s (or never).
+          <p className="mt-1 text-[11px] text-pulse-muted">
+            No detection for more than {STALE_TAG_SEC}s (or never).
           </p>
           <ul className={`mt-2 ${miniList} max-h-52 overflow-y-auto pr-1`}>
             {staleTags.length === 0 ? (

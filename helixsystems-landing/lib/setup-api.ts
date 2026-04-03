@@ -1,4 +1,4 @@
-/** Client helpers for `/api/v1` device hub + feature-config endpoints used by Equipment Setup. */
+/** Client helpers for `/api/v1` device hub + feature-config endpoints used by Zones & devices setup. */
 import { apiFetch } from "@/lib/api";
 
 export type GatewayOut = {
@@ -20,6 +20,8 @@ export type BleDeviceOut = {
   assigned_worker_id: string | null;
   assigned_equipment_id: string | null;
   last_seen_at?: string | null;
+  /** When the edge reports it; optional for API compatibility. */
+  battery_percent?: number | null;
 };
 
 export type EquipmentOut = {

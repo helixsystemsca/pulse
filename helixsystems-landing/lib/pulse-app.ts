@@ -38,7 +38,7 @@ export const pulseTenantNav = [
   { href: "/projects", label: "Projects" },
   { href: "/dashboard/work-requests", label: "Work orders" },
   { href: "/dashboard/inventory", label: "Inventory" },
-  { href: "/dashboard/setup", label: "Equipment setup" },
+  { href: "/dashboard/setup", label: "Zones & devices" },
 ] as const;
 
 /** System administration shell — center nav on `/system/*`. */

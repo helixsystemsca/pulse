@@ -16,6 +16,8 @@ type GatewayProps = {
   zoneLabel: string | null;
   /** Prefer operational API `last_seen_at`; falls back to model field. */
   lastHeardAt: string | null;
+  /** From `/gateways/status` when present — drives heartbeat / signal health copy. */
+  secondsSinceLastSeen?: number | null;
   onChangeZone?: () => void;
   testListening?: boolean;
   testSuccessFlash?: boolean;
@@ -61,6 +63,10 @@ type BleProps = {
   assignedLabel: string | null;
   /** Highlight for onboarding (unregistered assignment). */
   emphasizeUnassigned?: boolean;
+  /** Equipment-tag assignment is managed in Inventory; hide Assign/Reassign when true. */
+  disableAssignment?: boolean;
+  /** Shown when assignment is read-only or managed elsewhere. */
+  assignmentHint?: string | null;
   onAssign?: () => void;
   testListening?: boolean;
   testSuccessFlash?: boolean;
@@ -84,6 +90,20 @@ function statusPill(ok: boolean, onlineLabel: string, offlineLabel: string) {
       {ok ? onlineLabel : offlineLabel}
     </span>
   );
+}
+
+function tagTypeLabel(type: string): string {
+  if (type === "worker_tag") return "Worker tag";
+  if (type === "equipment_tag") return "Equipment tag";
+  return type.replace(/_/g, " ");
+}
+
+function gatewaySignalHealth(online: boolean, sec: number | null | undefined): string {
+  if (!online) return "Offline — no live heartbeat";
+  if (sec == null) return "Heartbeat age unknown";
+  if (sec < 30) return "Strong — heartbeat within 30s";
+  if (sec < 120) return "OK — last heartbeat within 2m";
+  return "Weak — heartbeat stale";
 }
 
 function activityRow(label: string, value: string) {
@@ -223,6 +243,7 @@ export function DeviceCard(props: DeviceCardProps) {
       operationalStatus,
       zoneLabel,
       lastHeardAt,
+      secondsSinceLastSeen,
       onChangeZone,
       testListening,
       testSuccessFlash,
@@ -234,7 +255,7 @@ export function DeviceCard(props: DeviceCardProps) {
     const online = operationalStatus === "online";
     const gatewayTestMsg =
       testMatchKind === "mac_only"
-        ? "Detected (unassigned tag) — assign to worker or equipment"
+        ? "Detected (unassigned tag) — assign worker tags here; equipment tags in Inventory"
         : "Detection received — traffic matched this gateway.";
     const gatewayMacOnly = testSuccessFlash && testMatchKind === "mac_only";
     const relative = formatRelativeTime(lastHeardAt);
@@ -256,7 +277,8 @@ export function DeviceCard(props: DeviceCardProps) {
           </div>
         </div>
         <div className="mt-4 space-y-2 border-t border-slate-100 pt-4">
-          {activityRow("Last heard from gateway", relative)}
+          {activityRow("Last heartbeat", relative)}
+          {activityRow("Signal health", gatewaySignalHealth(online, secondsSinceLastSeen ?? null))}
           {testSuccessFlash ? (
             <div
               className={
@@ -330,6 +352,8 @@ export function DeviceCard(props: DeviceCardProps) {
     device,
     assignedLabel,
     emphasizeUnassigned,
+    disableAssignment,
+    assignmentHint,
     onAssign,
     testListening,
     testSuccessFlash,
@@ -341,7 +365,7 @@ export function DeviceCard(props: DeviceCardProps) {
   } = props;
   const bleTestMsg =
     testMatchKind === "mac_only"
-      ? "Detected (unassigned tag) — assign to worker or equipment"
+      ? "Detected (unassigned tag) — worker tags: assign here; equipment tags: Inventory"
       : "Detection received — tag seen in live traffic.";
   const bleMacOnly = testSuccessFlash && testMatchKind === "mac_only";
   const [nowMs, setNowMs] = useState(() => Date.now());
@@ -351,6 +375,7 @@ export function DeviceCard(props: DeviceCardProps) {
   }, []);
 
   const assigned = Boolean(device.assigned_worker_id || device.assigned_equipment_id);
+  const batteryPct = device.battery_percent;
   const bleRelative = formatRelativeTime(device.last_seen_at ?? null);
   const signalTier = bleSignalTier(device.last_seen_at ?? null, nowMs);
   const trendCommittedRef = useRef<"up" | "flat" | "down">("flat");
@@ -389,7 +414,7 @@ export function DeviceCard(props: DeviceCardProps) {
             </div>
             <p className="mt-0.5 font-mono text-xs text-pulse-muted">{device.mac_address}</p>
             <p className="mt-1 text-[11px] font-medium uppercase tracking-wide text-pulse-muted">
-              {device.type.replace("_", " ")}
+              {tagTypeLabel(device.type)}
             </p>
           </div>
         </div>
@@ -402,7 +427,12 @@ export function DeviceCard(props: DeviceCardProps) {
         </div>
       </div>
       <div className="mt-4 space-y-2 border-t border-slate-100 pt-4 text-sm">
-        {activityRow("Last detection (via edge)", bleRelative)}
+        {activityRow("Last seen (via edge)", bleRelative)}
+        {batteryPct != null ? activityRow("Battery", `${batteryPct}%`) : null}
+        {activityRow(
+          "Movement / activity",
+          signalTier === "strong" ? "Active (recent)" : signalTier === "weak" ? "Intermittent" : "Quiet / stale",
+        )}
         {testSuccessFlash ? (
           <div
             className={
@@ -443,13 +473,21 @@ export function DeviceCard(props: DeviceCardProps) {
         ) : null}
         {assigned ? (
           <p className="text-pulse-muted">
-            <span className="font-medium text-pulse-navy">Linked to:</span> {assignedLabel}
+            <span className="font-medium text-pulse-navy">Assigned to:</span> {assignedLabel}
+            {device.type === "equipment_tag" ? (
+              <span className="mt-1 block text-[11px] text-pulse-muted">Read-only here — change in Inventory.</span>
+            ) : null}
           </p>
         ) : (
-          <p className="text-pulse-muted">Not linked to a worker or asset yet — assign to finish onboarding.</p>
+          <p className="text-pulse-muted">
+            {device.type === "equipment_tag"
+              ? "Unassigned equipment tag — register and link from Inventory."
+              : "Not assigned to a worker yet — assign to finish worker onboarding."}
+          </p>
         )}
+        {assignmentHint ? <p className="text-[11px] text-pulse-muted">{assignmentHint}</p> : null}
         <div className="flex flex-wrap gap-2">
-          {onAssign ? (
+          {onAssign && !disableAssignment ? (
             <button
               type="button"
               onClick={onAssign}
