@@ -34,6 +34,9 @@ _ONBOARDING_STEPS_DEFAULT_JSON = json.dumps(
         {"key": "add_device", "completed": False},
         {"key": "create_work_order", "completed": False},
         {"key": "view_operations", "completed": False},
+        {"key": "complete_work_order", "completed": False},
+        {"key": "view_schedule", "completed": False},
+        {"key": "log_issue", "completed": False},
     ]
 )
 
@@ -88,6 +91,7 @@ class Company(Base):
     id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     logo_url: Mapped[Optional[str]] = mapped_column(String(2048), nullable=True)
+    header_image_url: Mapped[Optional[str]] = mapped_column(String(2048), nullable=True)
     owner_admin_id: Mapped[Optional[str]] = mapped_column(
         UUID(as_uuid=False),
         ForeignKey("users.id", ondelete="SET NULL"),

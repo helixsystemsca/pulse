@@ -318,7 +318,10 @@ async def create_wr(
     db.add(wr)
     await db.flush()
     await _log(db, wr.id, "created", user.id, {"title": wr.title})
-    await try_mark_onboarding_step(db, user.id, "create_work_order")
+    if user.role == UserRole.worker:
+        await try_mark_onboarding_step(db, user.id, "log_issue")
+    else:
+        await try_mark_onboarding_step(db, user.id, "create_work_order")
     await db.commit()
     await db.refresh(wr)
     return await _detail(db, cid, wr.id, user.id)
@@ -408,6 +411,12 @@ async def patch_wr(
         wr.completed_at = None
     if "status" in data and data["status"] != old_status:
         await _log(db, wr_id, "status_changed", user.id, {"from": old_status.value, "to": wr.status.value})
+    if (
+        "status" in data
+        and data["status"] == PulseWorkRequestStatus.completed
+        and old_status != PulseWorkRequestStatus.completed
+    ):
+        await try_mark_onboarding_step(db, user.id, "complete_work_order")
     await db.commit()
     await db.refresh(wr)
     return await _detail(db, cid, wr_id)
@@ -477,6 +486,8 @@ async def post_status(
     else:
         wr.completed_at = None
     await _log(db, wr_id, "status_changed", user.id, {"from": old.value, "to": body.status.value})
+    if body.status == PulseWorkRequestStatus.completed and old != PulseWorkRequestStatus.completed:
+        await try_mark_onboarding_step(db, user.id, "complete_work_order")
     await db.commit()
     await db.refresh(wr)
     return await _detail(db, cid, wr_id)

@@ -93,8 +93,9 @@ async def upload_company_logo(
         raise HTTPException(status_code=404, detail="Company not found")
     co.logo_url = INTERNAL_LOGO_PATH
     await db.commit()
+    await db.refresh(co)
 
-    return CompanyLogoUploadOut(logo_url=INTERNAL_LOGO_PATH)
+    return CompanyLogoUploadOut(logo_url=INTERNAL_LOGO_PATH, header_image_url=co.header_image_url)
 
 
 @router.patch("/profile", response_model=CompanyLogoUploadOut)
@@ -114,6 +115,12 @@ async def patch_company_profile(
             co.logo_url = None
         else:
             co.logo_url = str(raw).strip() or None
+    if "header_image_url" in data:
+        raw = data["header_image_url"]
+        if raw is None:
+            co.header_image_url = None
+        else:
+            co.header_image_url = str(raw).strip() or None
     await db.commit()
     await db.refresh(co)
-    return CompanyLogoUploadOut(logo_url=co.logo_url or "")
+    return CompanyLogoUploadOut(logo_url=co.logo_url or "", header_image_url=co.header_image_url)

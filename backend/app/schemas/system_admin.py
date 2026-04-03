@@ -31,6 +31,7 @@ class SystemCompanyPatch(BaseModel):
     is_active: Optional[bool] = None
     name: Optional[str] = Field(None, min_length=1, max_length=255)
     logo_url: Optional[str] = Field(None, max_length=2048)
+    header_image_url: Optional[str] = Field(None, max_length=2048)
 
 
 class SystemInviteCreate(BaseModel):
@@ -50,6 +51,7 @@ class SystemCompanyRow(BaseModel):
     id: str
     name: str
     logo_url: Optional[str] = None
+    header_image_url: Optional[str] = None
     enabled_features: list[str]
     user_count: int
     is_active: bool

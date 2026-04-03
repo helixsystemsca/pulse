@@ -9,6 +9,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import require_tenant_user
+from app.services.onboarding_service import try_mark_onboarding_step
 from app.core.database import get_db
 from app.models.domain import InventoryItem, Tool, ToolStatus, User, UserRole, Zone
 from app.models.pulse_models import (
@@ -174,6 +175,11 @@ async def create_work_request(
         attachments=list(att),
     )
     db.add(wr)
+    await db.flush()
+    if user.role == UserRole.worker:
+        await try_mark_onboarding_step(db, user.id, "log_issue")
+    else:
+        await try_mark_onboarding_step(db, user.id, "create_work_order")
     await db.commit()
     await db.refresh(wr)
     return WorkRequestOut.model_validate(wr)
@@ -193,10 +199,12 @@ async def patch_work_request(
     cid: CompanyId,
     work_request_id: str,
     body: WorkRequestUpdate,
+    user: User = Depends(require_tenant_user),
 ) -> WorkRequestOut:
     wr = await db.get(PulseWorkRequest, work_request_id)
     if not wr or wr.company_id != cid:
         raise HTTPException(status_code=404, detail="Not found")
+    old_status = wr.status
     data = body.model_dump(exclude_unset=True)
     if "tool_id" in data and data["tool_id"] and not await _tool_in_company(db, cid, data["tool_id"]):
         raise HTTPException(status_code=400, detail="Unknown asset")
@@ -212,6 +220,12 @@ async def patch_work_request(
             wr.completed_at = datetime.now(timezone.utc)
         else:
             wr.completed_at = None
+    if (
+        "status" in data
+        and data["status"] == PulseWorkRequestStatus.completed
+        and old_status != PulseWorkRequestStatus.completed
+    ):
+        await try_mark_onboarding_step(db, user.id, "complete_work_order")
     await db.commit()
     await db.refresh(wr)
     return WorkRequestOut.model_validate(wr)

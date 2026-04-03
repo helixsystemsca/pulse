@@ -1,18 +1,24 @@
 from typing import Literal, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 OnboardingStepKey = Literal[
     "create_zone",
     "add_device",
     "create_work_order",
     "view_operations",
+    "complete_work_order",
+    "view_schedule",
+    "log_issue",
 ]
+
+OnboardingFlowOut = Literal["manager", "worker"]
 
 
 class OnboardingStepOut(BaseModel):
     key: str
     label: str
+    description: str = ""
     completed: bool
 
 
@@ -22,6 +28,7 @@ class OnboardingStateOut(BaseModel):
     steps: list[OnboardingStepOut]
     completed_count: int
     total_count: int
+    flow: OnboardingFlowOut
 
 
 class OnboardingPatchIn(BaseModel):

@@ -3,7 +3,6 @@
 import { AlertTriangle, Battery, MapPin, Radio } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { CompanyLogo } from "@/components/branding/CompanyLogo";
 import { apiFetch, isApiMode } from "@/lib/api";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
 import { pulseTenantNav } from "@/lib/pulse-app";
@@ -263,7 +262,6 @@ function buildLiveModel(
   lowStock: InventoryItemOut[],
   zones: ZoneOut[],
   beacons: BeaconEquipmentOut[],
-  companyDisplayName: string | null,
 ): DashboardViewModel {
   const zoneName = (id: string | null) => (id ? zones.find((z) => z.id === id)?.name ?? "Unknown zone" : "Unassigned");
 
@@ -403,9 +401,6 @@ function buildLiveModel(
     });
   }
 
-  const brand = process.env.NEXT_PUBLIC_PULSE_DASHBOARD_BRAND?.trim() || "Operations";
-  const titleCore = companyDisplayName?.trim() || brand;
-
   const invAlert =
     lowStock[0] != null
       ? {
@@ -415,7 +410,7 @@ function buildLiveModel(
       : null;
 
   return {
-    title: `${titleCore} Dashboard`,
+    title: "Operations Dashboard",
     welcomeName: "",
     alerts,
     workforce: {
@@ -491,20 +486,18 @@ function DashboardBody({
   hideHeaderWelcome,
   zonePromptDismissed,
   onDismissZonePrompt,
-  headerBrand,
+  headerImageUrl,
 }: {
   model: DashboardViewModel;
   workOrdersHref: string;
   hideHeaderWelcome?: boolean;
   zonePromptDismissed?: boolean;
   onDismissZonePrompt?: () => void;
-  /** Tenant logo + name; null uses title-derived fallback text only. */
-  headerBrand?: { name: string; logoUrl: string | null } | null;
+  /** Tenant banner for Operations header only; omit or null when unset — no placeholder. */
+  headerImageUrl?: string | null;
 }) {
   const userInitials = headerInitials(model.welcomeName);
-  const fallbackCompanyName =
-    headerBrand?.name ??
-    (model.title.replace(/\s+Dashboard\s*$/i, "").trim() || "Operations");
+  const trimmedHeaderImage = headerImageUrl?.trim() || null;
 
   return (
     <div className="overflow-hidden rounded-2xl border border-pulse-border bg-white shadow-lg ring-1 ring-slate-900/[0.05]">
@@ -512,12 +505,14 @@ function DashboardBody({
         <span className="min-w-0 text-base font-bold leading-tight tracking-tight text-pulse-navy sm:text-lg md:text-xl lg:text-2xl">
           {model.title}
         </span>
-        <div className="flex justify-center">
-          <CompanyLogo
-            logoUrl={headerBrand?.logoUrl ?? null}
-            companyName={fallbackCompanyName}
-            variant="light"
-          />
+        <div className="flex min-h-0 min-w-0 justify-center">
+          {trimmedHeaderImage ? (
+            <img
+              src={trimmedHeaderImage}
+              alt=""
+              className="max-h-12 max-w-[min(100%,280px)] object-contain object-center sm:max-h-14"
+            />
+          ) : null}
         </div>
         {!hideHeaderWelcome ? (
           <div className="flex min-w-0 items-center justify-end gap-2 sm:gap-3">
@@ -972,7 +967,6 @@ export function OperationalDashboard({
         if (st !== 403) throw se;
       }
       const auth = readSession();
-      const companyDisplayName = auth?.company?.name ?? null;
       const model = buildLiveModel(
         dash,
         wrList,
@@ -982,7 +976,6 @@ export function OperationalDashboard({
         lowStock,
         zoneList,
         beaconList,
-        companyDisplayName,
       );
       const welcome = welcomeFromSession(auth?.email, auth?.full_name);
       setLiveModel({ ...model, welcomeName: welcome });
@@ -1017,11 +1010,7 @@ export function OperationalDashboard({
 
   if (variant === "demo") {
     return (
-      <DashboardBody
-        model={demoModel()}
-        workOrdersHref={workOrdersHref}
-        headerBrand={{ name: "Demo", logoUrl: null }}
-      />
+      <DashboardBody model={demoModel()} workOrdersHref={workOrdersHref} />
     );
   }
 
@@ -1056,9 +1045,8 @@ export function OperationalDashboard({
     );
   }
 
-  const liveHeaderBrand = session?.company
-    ? { name: session.company.name, logoUrl: session.company.logo_url ?? null }
-    : null;
+  const liveHeaderImage =
+    session?.company?.header_image_url?.trim() || null;
 
   return (
     <DashboardBody
@@ -1067,7 +1055,7 @@ export function OperationalDashboard({
       hideHeaderWelcome
       zonePromptDismissed={zoneDismissed}
       onDismissZonePrompt={() => setZoneDismissed(true)}
-      headerBrand={liveHeaderBrand}
+      headerImageUrl={liveHeaderImage}
     />
   );
 }

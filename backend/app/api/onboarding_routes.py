@@ -12,10 +12,10 @@ from app.api.deps import get_current_user, get_db
 from app.models.domain import User, UserRole
 from app.schemas.onboarding import OnboardingPatchIn, OnboardingStateOut, OnboardingStepOut
 from app.services.onboarding_service import (
-    ONBOARDING_STEP_KEYS,
-    _all_complete,
+    ALL_ONBOARDING_STEP_KEYS,
     _normalize_steps,
     build_onboarding_state_out,
+    recompute_onboarding_completed,
 )
 
 router = APIRouter(prefix="/onboarding", tags=["onboarding"])
@@ -30,6 +30,17 @@ def _require_tenant_user(user: User) -> None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="onboarding_not_available")
 
 
+def _state_to_out(raw: dict) -> OnboardingStateOut:
+    return OnboardingStateOut(
+        onboarding_enabled=raw["onboarding_enabled"],
+        onboarding_completed=raw["onboarding_completed"],
+        steps=[OnboardingStepOut(**s) for s in raw["steps"]],
+        completed_count=raw["completed_count"],
+        total_count=raw["total_count"],
+        flow=raw["flow"],
+    )
+
+
 @router.get("", response_model=OnboardingStateOut)
 async def get_onboarding(
     db: Db,
@@ -37,13 +48,7 @@ async def get_onboarding(
 ) -> OnboardingStateOut:
     _require_tenant_user(user)
     raw = build_onboarding_state_out(user)
-    return OnboardingStateOut(
-        onboarding_enabled=raw["onboarding_enabled"],
-        onboarding_completed=raw["onboarding_completed"],
-        steps=[OnboardingStepOut(**s) for s in raw["steps"]],
-        completed_count=raw["completed_count"],
-        total_count=raw["total_count"],
-    )
+    return _state_to_out(raw)
 
 
 @router.patch("", response_model=OnboardingStateOut)
@@ -58,7 +63,7 @@ async def patch_onboarding(
         user.onboarding_enabled = body.onboarding_enabled
 
     if body.step is not None:
-        if body.step not in ONBOARDING_STEP_KEYS:
+        if body.step not in ALL_ONBOARDING_STEP_KEYS:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="invalid_step")
         want = True if body.completed is None else bool(body.completed)
         steps = _normalize_steps(user.onboarding_steps)
@@ -67,18 +72,11 @@ async def patch_onboarding(
                 s["completed"] = want
                 break
         user.onboarding_steps = copy.deepcopy(steps)
-        if _all_complete(steps):
-            user.onboarding_completed = True
-        elif not want:
-            user.onboarding_completed = False
+        recompute_onboarding_completed(user, steps)
+    elif body.onboarding_enabled is True:
+        recompute_onboarding_completed(user)
 
     await db.commit()
     await db.refresh(user)
     raw = build_onboarding_state_out(user)
-    return OnboardingStateOut(
-        onboarding_enabled=raw["onboarding_enabled"],
-        onboarding_completed=raw["onboarding_completed"],
-        steps=[OnboardingStepOut(**s) for s in raw["steps"]],
-        completed_count=raw["completed_count"],
-        total_count=raw["total_count"],
-    )
+    return _state_to_out(raw)

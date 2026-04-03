@@ -149,7 +149,12 @@ async def me(
     if user.company_id:
         co = await db.get(Company, user.company_id)
         if co:
-            company_summary = CompanySummaryOut(id=co.id, name=co.name, logo_url=co.logo_url)
+            company_summary = CompanySummaryOut(
+                id=co.id,
+                name=co.name,
+                logo_url=co.logo_url,
+                header_image_url=co.header_image_url,
+            )
 
     ob_enabled = user.onboarding_enabled
     ob_completed = user.onboarding_completed

@@ -20,17 +20,20 @@ export function OnboardingReminderBanner() {
 
   if (loading || !active || !state || dismissed) return null;
 
-  const { completed_count, total_count } = state;
+  const { completed_count, total_count, flow } = state;
+  const isWorker = flow === "worker";
 
   return (
-    <div className="pointer-events-auto fixed left-1/2 top-[4.25rem] z-[120] w-[min(92vw,42rem)] -translate-x-1/2 px-2 sm:top-16">
+    <div className="pointer-events-auto fixed left-1/2 top-[4.25rem] z-[120] w-[min(92vw,44rem)] -translate-x-1/2 px-2 sm:top-16">
       <div className="flex items-center gap-3 rounded-xl border border-sky-200/90 bg-sky-50/95 px-4 py-3 text-sm text-pulse-navy shadow-md backdrop-blur-sm">
-        <p className="min-w-0 flex-1">
-          <span className="font-semibold">Finish setup</span> to unlock full functionality —{" "}
-          <span className="tabular-nums font-medium">
-            {completed_count}/{total_count} complete
-          </span>
-          .
+        <p className="min-w-0 flex-1 leading-snug">
+          {isWorker ? (
+            <>
+              Complete your setup to start working efficiently ({completed_count}/{total_count} complete).
+            </>
+          ) : (
+            <>Finish setting up your facility ({completed_count}/{total_count} complete).</>
+          )}
         </p>
         <button
           type="button"
@@ -39,12 +42,21 @@ export function OnboardingReminderBanner() {
         >
           Open checklist
         </button>
-        <Link
-          href="/dashboard/setup"
-          className="hidden shrink-0 text-xs font-semibold text-[#2B4C7E] underline decoration-sky-300 underline-offset-2 sm:inline"
-        >
-          Setup
-        </Link>
+        {isWorker ? (
+          <Link
+            href="/dashboard/work-requests"
+            className="hidden shrink-0 text-xs font-semibold text-[#2B4C7E] underline decoration-sky-300 underline-offset-2 sm:inline"
+          >
+            Issues
+          </Link>
+        ) : (
+          <Link
+            href="/dashboard/setup"
+            className="hidden shrink-0 text-xs font-semibold text-[#2B4C7E] underline decoration-sky-300 underline-offset-2 sm:inline"
+          >
+            Setup
+          </Link>
+        )}
         <button
           type="button"
           className="shrink-0 rounded-lg p-1 text-pulse-muted hover:bg-sky-100 hover:text-pulse-navy"

@@ -21,6 +21,8 @@ export type CompanySummary = {
   id: string;
   name: string;
   logo_url?: string | null;
+  /** Operations dashboard banner only; not shown in global nav. */
+  header_image_url?: string | null;
 };
 
 export type PulseAuthSession = {

@@ -25,6 +25,7 @@ class CompanySummaryOut(BaseModel):
     id: str
     name: str
     logo_url: Optional[str] = None
+    header_image_url: Optional[str] = None
 
 
 class UserOut(BaseModel):

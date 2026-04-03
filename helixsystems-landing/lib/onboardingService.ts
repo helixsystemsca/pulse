@@ -1,8 +1,11 @@
 import { apiFetch } from "@/lib/api";
 
+export type OnboardingFlow = "manager" | "worker";
+
 export type OnboardingStepRow = {
   key: string;
   label: string;
+  description: string;
   completed: boolean;
 };
 
@@ -12,6 +15,7 @@ export type OnboardingState = {
   steps: OnboardingStepRow[];
   completed_count: number;
   total_count: number;
+  flow: OnboardingFlow;
 };
 
 export async function fetchOnboarding(): Promise<OnboardingState> {
@@ -31,10 +35,13 @@ export async function patchOnboarding(body: OnboardingPatchBody): Promise<Onboar
   });
 }
 
-/** Step keys must match backend `ONBOARDING_STEP_KEYS`. */
+/** Deep links for step keys (API returns only applicable steps). */
 export const ONBOARDING_STEP_HREF: Record<string, string> = {
   create_zone: "/dashboard/setup",
   add_device: "/dashboard/setup",
   create_work_order: "/dashboard/work-requests",
   view_operations: "/operations",
+  complete_work_order: "/dashboard/work-requests",
+  view_schedule: "/schedule",
+  log_issue: "/dashboard/work-requests",
 };

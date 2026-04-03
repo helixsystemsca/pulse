@@ -13,7 +13,9 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { apiFetch, isApiMode } from "@/lib/api";
+import { apiFetch, isApiMode, refreshPulseUserFromServer } from "@/lib/api";
+import { emitOnboardingMaybeUpdated } from "@/lib/onboarding-events";
+import { patchOnboarding } from "@/lib/onboardingService";
 import {
   addDaysToIso,
   formatLocalDate,
@@ -97,6 +99,23 @@ export function ScheduleApp() {
     }
     return unsub;
   }, []);
+
+  useEffect(() => {
+    if (!hydrated || !isApiMode()) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        await patchOnboarding({ step: "view_schedule", completed: true });
+        await refreshPulseUserFromServer();
+        if (!cancelled) emitOnboardingMaybeUpdated();
+      } catch {
+        /* offline / not in worker flow / 403 */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [hydrated]);
 
   const reloadPulseSchedule = useCallback(async () => {
     if (!isApiMode()) return;

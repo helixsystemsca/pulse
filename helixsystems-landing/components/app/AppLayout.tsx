@@ -19,17 +19,17 @@ type AppLayoutProps = {
 export function AppLayout({ children, mainClassName = "" }: AppLayoutProps) {
   return (
     <div className="relative min-h-screen bg-white">
-      <ProximityPromptHost />
-      <AppSideNav />
-      <div className="flex min-h-screen min-w-0 flex-col">
-        <AppNavbar />
-        <AppMain className={mainClassName}>
-          <OnboardingProvider>
+      <OnboardingProvider>
+        <ProximityPromptHost />
+        <AppSideNav />
+        <div className="flex min-h-screen min-w-0 flex-col">
+          <AppNavbar />
+          <AppMain className={mainClassName}>
             <MainContentWidth>{children}</MainContentWidth>
             <OnboardingChrome />
-          </OnboardingProvider>
-        </AppMain>
-      </div>
+          </AppMain>
+        </div>
+      </OnboardingProvider>
     </div>
   );
 }

@@ -15,8 +15,8 @@ export function OnboardingChecklist() {
 
   return (
     <div
-      className={`pointer-events-auto fixed bottom-4 right-4 z-[115] flex max-w-[min(100vw-2rem,20rem)] flex-col rounded-2xl border border-slate-200/90 bg-white/95 shadow-lg backdrop-blur-sm transition-all duration-200 ${
-        checklistExpanded ? "max-h-[min(70vh,28rem)]" : ""
+      className={`pointer-events-auto fixed bottom-4 right-4 z-[115] flex max-w-[min(100vw-2rem,22rem)] flex-col rounded-2xl border border-slate-200/90 bg-white/95 shadow-lg backdrop-blur-sm transition-all duration-200 ${
+        checklistExpanded ? "max-h-[min(72vh,32rem)]" : ""
       }`}
     >
       <button
@@ -50,7 +50,7 @@ export function OnboardingChecklist() {
       </button>
 
       {checklistExpanded ? (
-        <ul className="max-h-[min(52vh,22rem)] space-y-0.5 overflow-y-auto border-t border-slate-100 px-2 py-2">
+        <ul className="max-h-[min(56vh,24rem)] space-y-1 overflow-y-auto border-t border-slate-100 px-2 py-2">
           {steps.map((s) => {
             const href = ONBOARDING_STEP_HREF[s.key] ?? "/overview";
             return (
@@ -72,7 +72,14 @@ export function OnboardingChecklist() {
                   >
                     {s.completed ? <Check className="h-3 w-3" strokeWidth={3} /> : null}
                   </span>
-                  <span className={s.completed ? "line-through decoration-slate-300" : ""}>{s.label}</span>
+                  <span className="min-w-0 flex-1">
+                    <span className={s.completed ? "line-through decoration-slate-300" : "font-medium"}>
+                      {s.label}
+                    </span>
+                    {s.description ? (
+                      <span className="mt-0.5 block text-xs leading-snug text-pulse-muted">{s.description}</span>
+                    ) : null}
+                  </span>
                 </Link>
               </li>
             );

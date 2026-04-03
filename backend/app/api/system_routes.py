@@ -316,6 +316,7 @@ async def list_companies(
                 id=c.id,
                 name=c.name,
                 logo_url=c.logo_url,
+                header_image_url=c.header_image_url,
                 enabled_features=ef,
                 user_count=cnt,
                 is_active=c.is_active,
@@ -426,6 +427,7 @@ async def get_company(
         id=c.id,
         name=c.name,
         logo_url=c.logo_url,
+        header_image_url=c.header_image_url,
         enabled_features=ef,
         user_count=cnt,
         is_active=c.is_active,
@@ -458,6 +460,12 @@ async def patch_company(
             c.logo_url = None
         else:
             c.logo_url = str(raw).strip() or None
+    if "header_image_url" in data:
+        raw = data["header_image_url"]
+        if raw is None:
+            c.header_image_url = None
+        else:
+            c.header_image_url = str(raw).strip() or None
     await record_system_log(
         db,
         action="company.updated",
@@ -477,6 +485,7 @@ async def patch_company(
         id=c.id,
         name=c.name,
         logo_url=c.logo_url,
+        header_image_url=c.header_image_url,
         enabled_features=ef,
         user_count=cnt,
         is_active=c.is_active,

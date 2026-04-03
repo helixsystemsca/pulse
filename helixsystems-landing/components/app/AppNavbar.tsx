@@ -7,7 +7,7 @@ import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { Activity, ChevronDown, LogOut, Settings, User } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { CompanyLogo } from "@/components/branding/CompanyLogo";
+import { useOnboardingOptional } from "@/components/onboarding/OnboardingProvider";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
 import { navigateToPulseLogin, pulseApp, pulseRoutes } from "@/lib/pulse-app";
 import { clearSession } from "@/lib/pulse-session";
@@ -27,6 +27,7 @@ function initialsFrom(email: string, fullName: string | null | undefined): strin
 export function AppNavbar() {
   const pathname = usePathname();
   const { authed, session } = usePulseAuth();
+  const onboarding = useOnboardingOptional();
   const [userOpen, setUserOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
 
@@ -60,30 +61,26 @@ export function AppNavbar() {
             href={logoHref}
             className="flex min-w-0 items-center gap-2.5 font-headline text-lg font-bold tracking-tight text-pulse-navy no-underline hover:text-pulse-accent sm:text-xl"
           >
-            {authed && session?.company ? (
-              <>
-                <CompanyLogo
-                  logoUrl={session.company.logo_url}
-                  companyName={session.company.name}
-                  className="shrink-0"
-                  variant="light"
-                />
-                <span className="hidden min-w-0 truncate text-xs font-semibold uppercase tracking-wider text-pulse-muted sm:inline sm:max-w-[6rem] sm:text-[11px]">
-                  Pulse
-                </span>
-              </>
-            ) : (
-              <>
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-200/80 bg-slate-50 text-pulse-accent shadow-sm">
-                  <Activity className="h-4 w-4" strokeWidth={2} aria-hidden />
-                </span>
-                <span>Pulse</span>
-              </>
-            )}
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-200/80 bg-slate-50 text-pulse-accent shadow-sm">
+              <Activity className="h-4 w-4" strokeWidth={2} aria-hidden />
+            </span>
+            <span className="font-semibold">Pulse</span>
           </Link>
         </div>
 
-        <div className="flex items-center">
+        <div className="flex items-center gap-2">
+          {authed &&
+          onboarding?.state?.onboarding_enabled &&
+          !onboarding.state.onboarding_completed &&
+          !onboarding.loading ? (
+            <button
+              type="button"
+              onClick={() => onboarding.setChecklistExpanded(true)}
+              className="inline-flex max-w-[7rem] truncate rounded-lg border border-sky-200/80 bg-sky-50/90 px-2 py-1.5 text-[11px] font-semibold text-[#1e4a8a] shadow-sm hover:bg-sky-100/90 sm:max-w-none sm:px-2.5 sm:text-xs"
+            >
+              Resume setup
+            </button>
+          ) : null}
           {!authed ? (
             pathname !== "/login" ? (
               <Link
