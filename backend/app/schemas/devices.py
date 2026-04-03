@@ -61,6 +61,7 @@ class BleDeviceOut(BaseModel):
     type: str
     assigned_worker_id: Optional[str] = None
     assigned_equipment_id: Optional[str] = None
+    last_seen_at: Optional[datetime] = None
 
 
 # --- Equipment (Tool) ---
@@ -107,3 +108,4 @@ class ZoneOut(BaseModel):
     company_id: str
     name: str
     description: Optional[str] = None
+    meta: dict[str, Any] = Field(default_factory=dict)

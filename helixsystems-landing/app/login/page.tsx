@@ -15,7 +15,7 @@ import {
   writeApiSession,
   writeSession,
 } from "@/lib/pulse-session";
-import { helixMarketingHref, navigateAfterPulseLogin } from "@/lib/pulse-app";
+import { helixMarketingHref, navigateAfterPulseLogin, pulseRoutes } from "@/lib/pulse-app";
 import { mailtoInfo } from "@/lib/helix-emails";
 
 export default function LoginPage() {
@@ -116,13 +116,15 @@ export default function LoginPage() {
       <div className="mx-auto flex w-full max-w-[400px] flex-col">
         <div className="rounded-2xl border border-pulse-border bg-white p-6 shadow-card sm:p-8">
           <div className="flex flex-col items-center">
-            <div
-              className="flex h-14 w-14 items-center justify-center rounded-2xl border border-slate-200/80 bg-slate-50 text-pulse-accent shadow-sm"
-              role="img"
-              aria-label="Pulse"
+            <Link
+              href={pulseRoutes.pulseLanding}
+              className="flex items-center gap-2.5 font-headline text-lg font-bold tracking-tight text-pulse-navy no-underline hover:text-pulse-accent sm:text-xl"
             >
-              <Activity className="h-7 w-7" strokeWidth={2} aria-hidden />
-            </div>
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-200/80 bg-slate-50 text-pulse-accent shadow-sm">
+                <Activity className="h-4 w-4" strokeWidth={2} aria-hidden />
+              </span>
+              <span>Pulse</span>
+            </Link>
             <p className="mt-4 text-center text-sm text-pulse-muted">Sign in to your operational dashboard</p>
           </div>
 

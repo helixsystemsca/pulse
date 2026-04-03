@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.automation_engine import AutomationLog
 
 Severity = Literal["info", "warning", "error"]
-SourceModule = Literal["enrichment", "proximity", "ingest"]
+SourceModule = Literal["enrichment", "proximity", "ingest", "gateway_arbitration"]
 
 
 async def log_event(

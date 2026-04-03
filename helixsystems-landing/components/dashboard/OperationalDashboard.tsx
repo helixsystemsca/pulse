@@ -3,7 +3,7 @@
 import { AlertTriangle, Battery, MapPin, Radio } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { apiFetch, isApiMode } from "@/lib/api";
 import { pulseTenantNav } from "@/lib/pulse-app";
 import { canAccessPulseTenantApis, readSession } from "@/lib/pulse-session";
@@ -899,13 +899,27 @@ function DashboardBody({
 
 export type OperationalDashboardVariant = "demo" | "live";
 
-export function OperationalDashboard({ variant }: { variant: OperationalDashboardVariant }) {
+export function OperationalDashboard({
+  variant,
+  onReady,
+}: {
+  variant: OperationalDashboardVariant;
+  /** Fires once when the dashboard has finished its initial load (live fetch done or demo mounted). */
+  onReady?: () => void;
+}) {
   const [liveModel, setLiveModel] = useState<DashboardViewModel | null>(null);
   const [loading, setLoading] = useState(variant === "live");
   const [error, setError] = useState<string | null>(null);
   const [zoneDismissed, setZoneDismissed] = useState(false);
+  const readyNotifiedRef = useRef(false);
 
   const workOrdersHref = pulseTenantNav[2]?.href ?? "/pulse#work-requests";
+
+  const notifyReady = useCallback(() => {
+    if (readyNotifiedRef.current) return;
+    readyNotifiedRef.current = true;
+    onReady?.();
+  }, [onReady]);
 
   const fetchLive = useCallback(async () => {
     const sess = readSession();
@@ -917,6 +931,7 @@ export function OperationalDashboard({ variant }: { variant: OperationalDashboar
           : "Your account is not linked to an organization. Contact your administrator.",
       );
       setLiveModel(null);
+      notifyReady();
       return;
     }
 
@@ -956,15 +971,22 @@ export function OperationalDashboard({ variant }: { variant: OperationalDashboar
       setLiveModel(null);
     } finally {
       setLoading(false);
+      notifyReady();
     }
     // Intentionally omit session from deps: usePulseAuth hydrates after mount and would re-run this eight-way
     // fetch. Welcome uses readSession() inside the try block above.
-  }, [variant]);
+  }, [variant, notifyReady]);
 
   useEffect(() => {
     if (variant !== "live" || !isApiMode()) return;
     void fetchLive();
   }, [variant, fetchLive]);
+
+  useEffect(() => {
+    if (variant === "demo") {
+      notifyReady();
+    }
+  }, [variant, notifyReady]);
 
   if (variant === "demo") {
     return <DashboardBody model={demoModel()} workOrdersHref={workOrdersHref} />;

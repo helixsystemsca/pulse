@@ -104,6 +104,33 @@ async def list_gateways(
     return [GatewayOut.model_validate(r) for r in rows]
 
 
+@router.get("/ble-devices", response_model=list[BleDeviceOut])
+async def list_ble_devices(
+    db: Db,
+    company_id: CompanyId,
+) -> list[BleDeviceOut]:
+    rows = await _svc(db).list_ble_devices(company_id=company_id)
+    return [BleDeviceOut.model_validate(r) for r in rows]
+
+
+@router.get("/equipment", response_model=list[EquipmentOut])
+async def list_equipment(
+    db: Db,
+    company_id: CompanyId,
+) -> list[EquipmentOut]:
+    rows = await _svc(db).list_equipment(company_id=company_id)
+    return [EquipmentOut.model_validate(r) for r in rows]
+
+
+@router.get("/zones", response_model=list[ZoneOut])
+async def list_zones(
+    db: Db,
+    company_id: CompanyId,
+) -> list[ZoneOut]:
+    rows = await _svc(db).list_zones(company_id=company_id)
+    return [ZoneOut.model_validate(r) for r in rows]
+
+
 @router.get("/gateways/status", response_model=ApiSuccess[list[dict[str, Any]]])
 async def gateways_operational_status(
     db: Db,

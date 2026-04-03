@@ -51,6 +51,7 @@ class AutomationBleDevice(Base):
     assigned_equipment_id: Mapped[Optional[str]] = mapped_column(
         UUID(as_uuid=False), ForeignKey("tools.id", ondelete="SET NULL"), nullable=True, index=True
     )
+    last_seen_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class AutomationUnknownDevice(Base):

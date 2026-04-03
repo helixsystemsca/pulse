@@ -1,4 +1,37 @@
-"""Proximity: near + dwell (stationary) → movement, with cooldown and debounced far reset."""
+"""
+What this file does (simple explanation):
+
+This part of the system decides **what is going on** when a worker’s tag and a tool’s tag are
+reported together—chiefly whether someone has **stayed near equipment long enough**, then **moved
+away** in a way that should prompt a sign-out reminder (or similar action).
+
+In plain terms:
+Picture someone at a shared drill press: first we watch for “really there, holding still,” then
+we watch for “walking off.” Crossing those lines in order is what triggers a polite nudge. Random
+radio wobble should **not** spam the person.
+
+Why this exists:
+Business rules live here: how long “near” counts, how “far” clears the situation, and when to
+start or end a “session” record. This is separate from picking **which gateway** heard the tags
+(arbitration) and separate from turning addresses into people (enrichment).
+
+How the system works (step-by-step):
+
+1. Gateways hear Bluetooth tags and send proximity updates.
+2. Enrichment attaches worker, equipment, and zone from your records.
+3. Gateway arbitration ensures only the trusted gateway drives this logic for each pair.
+4. **This file** tracks distance bands (near / medium / far), movement hints, and timing.
+5. When rules fire, notifications or automation hooks can run and timeline events may be queued.
+
+What saved state represents (same worker + same equipment key):
+
+    last_distance / last_movement → last reported picture from the trusted gateway
+    near_count, weak_near_count, far_count → simple counters to avoid reacting to one flaky sample
+    first_seen_near → clock mark for “how long they have been genuinely near”
+    active_session, session_started_* → whether we think a work session is open and for how long
+    last_triggered_at → spacing so we do not nag repeatedly (cooldown)
+    zone_id → room/area we think they are in; changing zone clears messy state on purpose
+"""
 
 from __future__ import annotations
 
@@ -17,6 +50,7 @@ from app.services.automation.state_manager import load_state, save_state
 
 
 def _payload_ts(payload: dict[str, Any]) -> float:
+    """Prefer the event’s own timestamp; fall back to “now” if the gateway omitted it."""
     raw = payload.get("timestamp")
     if raw is None:
         return time.time()
@@ -24,6 +58,7 @@ def _payload_ts(payload: dict[str, Any]) -> float:
 
 
 def _entity_key(worker_id: str, equipment_id: str) -> str:
+    """One label for this worker+tool pair in saved state (not the same key as gateway arbitration)."""
     return f"worker:{worker_id}|equipment:{equipment_id}"
 
 
@@ -38,6 +73,16 @@ async def _emit_session_started(
     source_automation_event_id: str,
     ts: float,
 ) -> None:
+    """
+    What this does:
+        Schedules an internal “session started” automation event for timelines and reporting.
+
+    When this runs:
+        After we have decided a dwell+movement pattern qualified someone as starting a session.
+
+    Why this matters:
+        Downstream features can react without re-parsing raw radio history.
+    """
     from app.services.automation.internal_event_pipeline import ingest_internal_event
 
     await ingest_internal_event(
@@ -68,6 +113,16 @@ async def _emit_session_ended(
     reason: str,
     ts: float,
 ) -> None:
+    """
+    What this does:
+        Schedules an internal “session ended” event with duration and a plain-English reason code.
+
+    When this runs:
+        When distance says “far,” a timeout fires, or the zone changes in a way that resets state.
+
+    Why this matters:
+        Gives supervisors a human-readable trail without guessing from raw pings.
+    """
     from app.services.automation.internal_event_pipeline import ingest_internal_event
 
     await ingest_internal_event(
@@ -88,6 +143,17 @@ async def _emit_session_ended(
 
 
 async def handle(db: AsyncSession, event: AutomationEvent) -> None:
+    """
+    What this does:
+        Main “worker near equipment” brain: updates or clears saved progress, may start/end sessions,
+        and may queue a sign-out style notification when configured.
+
+    When this runs:
+        After enrichment and (for multi-gateway sites) only for messages from the winning gateway.
+
+    Why this matters:
+        This is where product behavior turns into actions people feel—without this, tags are just noise.
+    """
     payload = dict(event.payload or {})
     if payload.get("rate_limited"):
         return
@@ -153,9 +219,11 @@ async def handle(db: AsyncSession, event: AutomationEvent) -> None:
         st["session_started_wall"] = now_wall
 
     prev_last_ts = st.get("last_event_ts")
+    # Rule: ignore out-of-order timestamps so replay or clock quirks do not rewind state.
     if prev_last_ts is not None and ts < float(prev_last_ts):
         return
 
+    # Rule: if the area label changed, clear memory—same pair in a new room is treated as fresh.
     stored_zone = st.get("zone_id")
     if stored_zone is not None and str(stored_zone) != zone_id:
         await log_event(
@@ -210,6 +278,7 @@ async def handle(db: AsyncSession, event: AutomationEvent) -> None:
 
     prev_movement = str(st.get("last_movement", "")).lower()
 
+    # “Far” twice in a row = we believe they really left—ends sessions and clears counters.
     if distance == "far":
         far_count = int(st.get("far_count") or 0) + 1
         if far_count >= 2:
@@ -255,6 +324,7 @@ async def handle(db: AsyncSession, event: AutomationEvent) -> None:
 
     st["far_count"] = 0
 
+    # “Medium” is treated as weak proximity—we wait for clearer near/far, not prompts.
     if distance == "medium":
         st["weak_near_count"] = int(st.get("weak_near_count") or 0) + 1
         st.pop("first_seen_near", None)
@@ -267,6 +337,7 @@ async def handle(db: AsyncSession, event: AutomationEvent) -> None:
         await save_state(db, company_id, entity_key, st)
         return
 
+    # Any other distance label rolls into “not clearly near”—similar patience to medium.
     if distance != "near":
         st["weak_near_count"] = int(st.get("weak_near_count") or 0) + 1
         st.pop("first_seen_near", None)
@@ -294,6 +365,8 @@ async def handle(db: AsyncSession, event: AutomationEvent) -> None:
         if strong_ok or weak_ok:
             st["first_seen_near"] = ts
 
+    # Fire rule (plain language): only after someone was **stationary near** long enough,
+    # then shows **movement**, and we are not in cooldown—then we treat it as “probably walking off.”
     fire = False
     if (
         not session_active

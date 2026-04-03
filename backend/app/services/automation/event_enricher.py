@@ -1,4 +1,29 @@
-"""Persist-time enrichment: normalize identifiers, resolve gateway + BLE, heartbeats, unknown-MAC tracking."""
+"""
+What this file does (simple explanation):
+
+This part of the system **fills in the blanks** on raw radio reports so downstream logic knows
+**who**, **what**, and **where** in your business records.
+
+In plain terms:
+Gateways send “I heard this tag address at this signal strength.” Enrichment turns that into
+“Jamie, near drill press #4, through Gateway 7,” plus flags if something is unknown or looks off.
+
+Why this exists:
+The hardware only knows radio addresses. People and tools live in your database. This step is the
+bridge—without it, automation would be guessing.
+
+How the system works (step-by-step):
+
+1. A gateway posts an event (often “proximity_update”).
+2. **This file** fills company ID, resolves the gateway, maps worker and equipment tag addresses
+   to real IDs, and may attach the zone (area) for the gateway.
+3. Optional light throttling avoids flooding the server when signals chatter.
+4. The event processor then routes the enriched message (proximity, timeline, etc.).
+
+What stored “rate limit” keys represent (short version):
+    Small saved timestamps keyed by gateway and/or tag pair—like sticky notes saying “we just
+    processed something very similar milliseconds ago,” so we can skip duplicate work calmly.
+"""
 
 from __future__ import annotations
 
@@ -59,10 +84,19 @@ def _within_enrich_window(last_ts: float, now: float) -> bool:
 
 async def _enrich_rate_allowed(db: AsyncSession, *, company_id: str, payload: dict[str, Any]) -> bool:
     """
-    Two-axis debounce: skip only when **both** gateway and (worker+equipment MAC) axes are hot.
+    What this does:
+        Asks “are we seeing the same gateway **and** the same two tags knocking too quickly?”
+        Only when **both** are hot do we slow things down.
 
-    If either axis is absent (no id in payload), that axis does not contribute — bursts from another
-    tag on the same gateway are not suppressed.
+    When this runs:
+        At the very beginning of enrichment, before heavy database lookups.
+
+    Why this matters:
+        Radio traffic can spike; this avoids pointless duplicate enrichment **without** hiding a
+        different tag on the same gateway.
+
+    (Technical note preserved for maintainers):
+        Two-axis debounce; absent axis does not force suppression.
     """
     now = time.time()
     gk = _rate_gateway_track_key(company_id, payload)
@@ -94,6 +128,7 @@ async def _enrich_rate_allowed(db: AsyncSession, *, company_id: str, payload: di
 
 
 async def _touch_unknown_mac(db: AsyncSession, *, company_id: str, mac: str) -> None:
+    """Record that we heard a tag address not yet registered—helps installers spot typos or gaps."""
     now = datetime.now(timezone.utc)
     q = await db.execute(
         select(AutomationUnknownDevice).where(
@@ -120,9 +155,16 @@ async def _touch_unknown_mac(db: AsyncSession, *, company_id: str, mac: str) -> 
 
 async def enrich_event(db: AsyncSession, event: AutomationEvent) -> EnrichResult:
     """
-    Mutate `event.payload` in place after the row is flushed (has `id`).
+    What this does:
+        Reads the raw payload, updates it in place with resolved IDs and helpful warnings, and says
+        whether the rest of the pipeline should continue.
 
-    Returns whether downstream ``process_event`` should run (False when rate-limited).
+    When this runs:
+        Right after the automation event row exists in the database (so it has an ID to reference).
+
+    Why this matters:
+        Downstream modules assume enrichment already translated hardware speak into business speak.
+        Skipping after rate-limit prevents half-processed storms.
     """
     payload_in = dict(event.payload or {})
     company_id = str(event.company_id or payload_in.get("company_id") or "").strip()
@@ -163,6 +205,7 @@ async def enrich_event(db: AsyncSession, event: AutomationEvent) -> EnrichResult
     warnings: list[str] = []
     svc = DeviceService(db)
 
+    # Match the self-reported gateway string to a real installed gateway record; mark it online.
     gateway_id_raw = payload_in.get("gateway_id")
     if gateway_id_raw:
         gw = await svc.get_gateway(company_id=company_id, gateway_id=str(gateway_id_raw))
@@ -190,6 +233,7 @@ async def enrich_event(db: AsyncSession, event: AutomationEvent) -> EnrichResult
                 event.id,
             )
 
+    # Non-proximity events skip tag-to-person/tool mapping; they may still need gateway checks above.
     if event.event_type != PROXIMITY_EVENT:
         if warnings:
             payload_in["enrichment_warnings"] = warnings
@@ -208,6 +252,7 @@ async def enrich_event(db: AsyncSession, event: AutomationEvent) -> EnrichResult
 
     unknown_for_audit: list[dict[str, str]] = []
 
+    # Worker tag address → database tag → assigned worker (person) ID, when everything lines up.
     wid_mac = payload_in.get("worker_tag_mac")
     if wid_mac:
         try:
@@ -222,6 +267,8 @@ async def enrich_event(db: AsyncSession, event: AutomationEvent) -> EnrichResult
             mac_w = ""
         if mac_w:
             tag = await svc.get_ble_by_mac(company_id=company_id, mac=mac_w)
+            if tag:
+                tag.last_seen_at = datetime.now(timezone.utc)
             if not tag:
                 warnings.append("worker_tag_not_found")
                 logger.warning(
@@ -260,6 +307,7 @@ async def enrich_event(db: AsyncSession, event: AutomationEvent) -> EnrichResult
             else:
                 payload_in["worker_id"] = tag.assigned_worker_id
 
+    # Equipment tag address → database tag → assigned tool/equipment ID, when everything lines up.
     eid_mac = payload_in.get("equipment_tag_mac")
     if eid_mac:
         try:
@@ -274,6 +322,8 @@ async def enrich_event(db: AsyncSession, event: AutomationEvent) -> EnrichResult
             mac_e = ""
         if mac_e:
             tag = await svc.get_ble_by_mac(company_id=company_id, mac=mac_e)
+            if tag:
+                tag.last_seen_at = datetime.now(timezone.utc)
             if not tag:
                 warnings.append("equipment_tag_not_found")
                 logger.warning(

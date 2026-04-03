@@ -131,6 +131,26 @@ class DeviceService:
         await self._db.flush()
         return row
 
+    async def list_ble_devices(self, *, company_id: str) -> list[AutomationBleDevice]:
+        q = await self._db.execute(
+            select(AutomationBleDevice)
+            .where(AutomationBleDevice.company_id == company_id)
+            .order_by(AutomationBleDevice.name)
+        )
+        return list(q.scalars().all())
+
+    async def list_equipment(self, *, company_id: str) -> list[Tool]:
+        q = await self._db.execute(
+            select(Tool).where(Tool.company_id == company_id).order_by(Tool.name)
+        )
+        return list(q.scalars().all())
+
+    async def list_zones(self, *, company_id: str) -> list[Zone]:
+        q = await self._db.execute(
+            select(Zone).where(Zone.company_id == company_id).order_by(Zone.name)
+        )
+        return list(q.scalars().all())
+
     async def get_ble_device(self, *, company_id: str, ble_id: str) -> Optional[AutomationBleDevice]:
         q = await self._db.execute(
             select(AutomationBleDevice).where(

@@ -34,6 +34,7 @@ export const pulseTenantNav = [
   { href: "/schedule", label: "Schedule" },
   { href: "/dashboard/work-requests", label: "Work orders" },
   { href: "/dashboard/inventory", label: "Inventory" },
+  { href: "/dashboard/setup", label: "Equipment setup" },
 ] as const;
 
 /** System administration shell — center nav on `/system/*`. */
@@ -58,7 +59,7 @@ export const pulseTenantSidebarNav = [
   { href: "/dashboard/inventory", label: "Inventory", icon: "package" as const },
   { href: "/pulse#tool-tracking", label: "Equipment", icon: "wrench" as const },
   { href: "/pulse#workforce-scheduling", label: "Workforce", icon: "users" as const },
-  { href: "/pulse#equipment-setup", label: "Zones & devices", icon: "map-pin" as const },
+  { href: "/dashboard/setup", label: "Zones & devices", icon: "map-pin" as const },
   { href: "/pulse#admin-panel", label: "Control panel", icon: "gauge" as const },
 ] as const;
 
