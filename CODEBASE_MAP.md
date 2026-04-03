@@ -17,7 +17,6 @@ Feature modules group routes, UI, and client libs that work together. Shared she
 | **Work requests** | `/dashboard/work-requests` | `app/dashboard/work-requests/*`, `components/work-requests/WorkRequestsApp.tsx`, `lib/workRequestsService.ts` | Issue tracking; `/api/work-requests` (managers+; `company_id` for system admins) |
 | **Workers & roles** | `/dashboard/workers` | `app/dashboard/workers/*`, `components/workers/WorkersApp.tsx`, `lib/workersService.ts` | Roster, HR, permission matrix; `/api/workers` |
 | **Inventory** | `/dashboard/inventory` | `app/dashboard/inventory/*`, `components/inventory/InventoryApp.tsx`, `lib/inventoryService.ts` | Items, movements, WR usage; `/api/inventory` (managers+; `company_id` for system admins) |
-| **Payments / billing** | `/dashboard/payments` | `app/dashboard/payments/*`, `components/payments/PaymentsApp.tsx`, `lib/paymentsService.ts`, `hooks/usePayments.ts` | Cards, banks, invoices (mock); `/api/payments` |
 | **Dashboard shell** | `/dashboard/*` | `app/dashboard/layout.tsx` | Shared layout for dashboard sub-routes |
 | **System administration** | `/system`, `/system/companies`, `/system/users`, `/system/logs`, `/system/companies/[id]` | `app/system/*`, `components/system/*` (if any), companies detail | System admin APIs `/api/system/*`; tenant picker patterns on some dashboards |
 | **Pulse marketing (in-app)** | `/pulse` | `app/pulse/*`, `components/pulse/*` | Product story, feature sections, links with hash anchors (issue tracking, inventory, etc.) |
@@ -44,15 +43,15 @@ Single FastAPI service under **`backend/`** (not the removed standalone `mainten
 | **HTTP — public** | `app/api/public_routes.py`, `schemas/contact.py` | Public/contact endpoints |
 | **HTTP — v1** | `app/api/auth_routes.py`, `admin_routes.py`, `users_routes.py`, `core_routes.py`, `realtime.py` | Auth, admin, users, core, realtime (`/api/v1/...`) |
 | **HTTP — system** | `app/api/system_routes.py`, `schemas/system_admin.py` | Companies, impersonation, logs, invites, feature catalog (`/api/system/...`) |
-| **HTTP — top-level API** | `app/api/compliance_routes.py`, `app/api/payments_routes.py`, `app/api/work_requests_routes.py`, `app/api/workers_routes.py` | Compliance, payments, work requests, workers (`/api/compliance`, `/api/payments`, `/api/work-requests`, `/api/workers`) |
+| **HTTP — top-level API** | `app/api/compliance_routes.py`, `app/api/work_requests_routes.py`, `app/api/workers_routes.py` | Compliance, work requests, workers (`/api/compliance`, `/api/work-requests`, `/api/workers`) |
 | **Deps & security** | `app/api/deps.py`, `app/core/auth/*` | JWT, `require_*` guards, DB session |
 | **Config & DB** | `app/core/config.py`, `database.py`, `bootstrap.py` | Settings, async SQLAlchemy, bootstrap system admin |
-| **Domain models** | `app/models/domain.py`, `pulse_models.py`, `models/__init__.py` | Tenants, users, RBAC, tools, jobs, inventory, **compliance**, **payments/invoices**, Pulse CMMS tables |
+| **Domain models** | `app/models/domain.py`, `pulse_models.py`, `models/__init__.py` | Tenants, users, RBAC, tools, jobs, inventory, compliance, Pulse CMMS tables |
 | **Pulse product** | `app/modules/pulse/router.py`, `service.py`, `schemas/pulse.py` | Dashboard aggregate, work requests, schedule, assets, inventory, equipment (`/api/v1/pulse/...`) |
 | **Compliance logic** | `app/modules/compliance/service.py` | Aggregations, effective status, repeat offenders |
 | **Other modules** | `modules/inventory`, `maintenance`, `analytics`, `notifications`, `tool_tracking`, `jobs` | Feature-flagged / auxiliary routers (see `registry.py`) |
 | **Platform** | `app/core/events`, `inference`, `state`, `permissions`, `features`, `middleware/*` | Event bus, rules engine, RBAC templates, feature gates |
-| **Migrations** | `backend/alembic/versions/` | Schema history (`0001` … `0009` payments, etc.) |
+| **Migrations** | `backend/alembic/versions/` | Schema history (`0001` … latest; `0026` drops legacy `payment_methods` / `invoices` if present) |
 
 ---
 
@@ -87,7 +86,7 @@ Supporting pieces: `components/site/*`, shared `app/layout.tsx`, `globals.css`, 
 |------|------------|
 | `components/app/index.ts` | Barrel exists; codebase mostly imports paths like `@/components/app/AppLayout`. Either use the barrel consistently or remove it to avoid two styles. |
 | `parseClientApiError` | Already centralized in `lib/parse-client-api-error.ts`. |
-| API path split | `/api` (compliance, payments) vs `/api/v1` (auth, pulse) is intentional; merging is a later refactor if you want one version prefix. |
+| API path split | `/api` (compliance, work requests, workers, …) vs `/api/v1` (auth, pulse) is intentional; merging is a later refactor if you want one version prefix. |
 
 ---
 

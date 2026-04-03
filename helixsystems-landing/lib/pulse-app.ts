@@ -56,7 +56,6 @@ export const pulseSystemNav = [
 export const pulseTenantSidebarNav = [
   { href: "/overview", label: "Dashboard", icon: "layout" as const },
   { href: "/dashboard/compliance", label: "Compliance", icon: "shield-check" as const },
-  { href: "/dashboard/payments", label: "Payments", icon: "credit-card" as const },
   { href: "/schedule", label: "Schedule", icon: "calendar" as const },
   { href: "/operations", label: "Operations", icon: "activity" as const },
   { href: "/projects", label: "Projects", icon: "folder-kanban" as const },
@@ -70,7 +69,6 @@ export const pulseTenantSidebarNav = [
 /** System admin rail — platform tooling only; product modules live on the tenant rail. */
 export const pulseSystemSidebarNav = [
   { href: "/system", label: "Dashboard", icon: "layout" as const },
-  { href: "/dashboard/payments", label: "Payments", icon: "credit-card" as const },
   { href: "/system/companies", label: "Companies", icon: "building" as const },
   { href: "/system/users", label: "Users", icon: "user-cog" as const },
   { href: "/system/logs", label: "System logs", icon: "scroll-text" as const },

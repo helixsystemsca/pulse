@@ -2,7 +2,6 @@
 
 import enum
 from datetime import datetime, timezone
-from decimal import Decimal
 from typing import Any, Optional
 from uuid import uuid4
 
@@ -13,7 +12,6 @@ from sqlalchemy import (
     Float,
     ForeignKey,
     Integer,
-    Numeric,
     String,
     Text,
     UniqueConstraint,
@@ -69,22 +67,6 @@ class ComplianceCategory(str, enum.Enum):
     inspections = "inspections"
     training = "training"
     competency = "competency"
-
-
-class PaymentMethodKind(str, enum.Enum):
-    card = "card"
-    bank = "bank"
-
-
-class PaymentRail(str, enum.Enum):
-    ach = "ach"
-    wire_swift = "wire_swift"
-
-
-class InvoiceStatus(str, enum.Enum):
-    paid = "paid"
-    pending = "pending"
-    failed = "failed"
 
 
 class Company(Base):
@@ -521,57 +503,6 @@ class ComplianceRecord(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True
     )
-
-
-class PaymentMethod(Base):
-    """Stored billing instrument (card or bank) — mock storage only; no PCI processing."""
-
-    __tablename__ = "payment_methods"
-
-    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
-    company_id: Mapped[str] = mapped_column(
-        UUID(as_uuid=False), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True
-    )
-    method_type: Mapped[PaymentMethodKind] = mapped_column(
-        "type",
-        Enum(PaymentMethodKind, values_callable=lambda x: [e.value for e in x], native_enum=False, length=16),
-        nullable=False,
-    )
-    brand: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
-    bank_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
-    last4: Mapped[str] = mapped_column(String(4), nullable=False)
-    expiry_month: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
-    expiry_year: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
-    rail: Mapped[Optional[PaymentRail]] = mapped_column(
-        Enum(PaymentRail, values_callable=lambda x: [e.value for e in x], native_enum=False, length=16),
-        nullable=True,
-    )
-    holder_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
-    is_primary: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True
-    )
-
-
-class Invoice(Base):
-    """Billing invoice row for tenant billing history (not connected to a payment gateway)."""
-
-    __tablename__ = "invoices"
-
-    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
-    company_id: Mapped[str] = mapped_column(
-        UUID(as_uuid=False), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True
-    )
-    amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
-    currency: Mapped[str] = mapped_column(String(8), nullable=False, default="USD")
-    status: Mapped[InvoiceStatus] = mapped_column(
-        Enum(InvoiceStatus, values_callable=lambda x: [e.value for e in x], native_enum=False, length=16),
-        nullable=False,
-        index=True,
-    )
-    issued_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
-    paid_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
-    reference_number: Mapped[str] = mapped_column(String(64), nullable=False)
 
 
 class SystemSecureTokenKind(str, enum.Enum):

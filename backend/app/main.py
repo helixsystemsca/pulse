@@ -25,7 +25,6 @@ from app.api.devices_routes import router as devices_router
 from app.api.notifications_routes import router as notifications_router
 from app.api.auth_routes import router as auth_router
 from app.api.compliance_routes import router as compliance_router
-from app.api.payments_routes import router as payments_router
 from app.api.projects_routes import router as projects_router
 from app.api.projects_routes import tasks_router as projects_tasks_router
 from app.api.monitoring_routes import router as monitoring_router
@@ -110,7 +109,6 @@ app.include_router(compliance_router, prefix="/api")
 app.include_router(work_requests_router, prefix="/api")
 app.include_router(workers_router, prefix="/api")
 app.include_router(inventory_portal_router, prefix="/api")
-app.include_router(payments_router, prefix="/api")
 app.include_router(auth_router, prefix="/api/v1")
 app.include_router(automation_events_router, prefix="/api/v1")
 app.include_router(automation_debug_router, prefix="/api/v1")
