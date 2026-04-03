@@ -10,6 +10,7 @@ export type DashboardNavItem = {
 export const ROUTE_TITLES: Record<string, string> = {
   "/admin": "Overview",
   "/work-requests": "Work Requests",
+  "/monitoring": "Monitoring",
   "/admin/tools": "Assets",
   "/admin/inventory": "Inventory",
   "/admin/jobs": "Workers",
@@ -24,6 +25,7 @@ export function buildDashboardNavItems(loaded: boolean, has: FeatureHasFn): Dash
   return [
     { href: "/admin", label: "Overview", show: true, icon: "◇" },
     { href: "/work-requests", label: "Work Requests", show: true, icon: "▸" },
+    { href: "/monitoring", label: "Monitoring", show: true, icon: "◈" },
     { href: "/admin/tools", label: "Assets", show: loaded && has("tool_tracking"), icon: "◆" },
     { href: "/admin/inventory", label: "Inventory", show: loaded && has("inventory"), icon: "▤" },
     { href: "/admin/jobs", label: "Workers", show: loaded && has("jobs"), icon: "◎" },
@@ -38,6 +40,7 @@ export function buildDashboardNavItems(loaded: boolean, has: FeatureHasFn): Dash
 export function dashboardPageTitle(pathname: string): string {
   const path = pathname.replace(/\/$/, "") || "/admin";
   if (path.startsWith("/work-requests")) return ROUTE_TITLES["/work-requests"];
+  if (path.startsWith("/monitoring")) return ROUTE_TITLES["/monitoring"];
   if (path in ROUTE_TITLES) return ROUTE_TITLES[path];
   const match = Object.keys(ROUTE_TITLES)
     .filter((k) => k !== "/admin")
