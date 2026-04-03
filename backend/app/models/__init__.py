@@ -12,6 +12,17 @@ from app.models.automation_engine import (
 )
 from app.models.device_hub import AutomationBleDevice, AutomationGateway, AutomationUnknownDevice
 from app.models.base import Base
+from app.models.monitoring_models import (
+    AlertSeverity,
+    AlertStatus,
+    MonitoredSystem,
+    MonitoringAlert,
+    MonitoringFacility,
+    MonitoringZone,
+    Sensor,
+    SensorReading,
+    SensorThreshold,
+)
 from app.models.domain import (
     AuditLog,
     Company,
@@ -55,6 +66,15 @@ from app.models.pulse_models import (
 )
 
 __all__ = [
+    "AlertSeverity",
+    "AlertStatus",
+    "MonitoredSystem",
+    "MonitoringAlert",
+    "MonitoringFacility",
+    "MonitoringZone",
+    "Sensor",
+    "SensorReading",
+    "SensorThreshold",
     "AutomationEvent",
     "AutomationFeatureConfig",
     "AutomationNotification",

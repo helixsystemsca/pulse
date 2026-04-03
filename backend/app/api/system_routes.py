@@ -690,17 +690,48 @@ async def request_password_reset(
     return {"reset_link_path": reset_path, "reset_email_sent": reset_email_sent}
 
 
+@router.get("/logs/actions", response_model=list[str])
+async def list_system_log_actions(
+    _: Annotated[User, Depends(require_system_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    limit: int = Query(300, ge=1, le=500),
+) -> list[str]:
+    q = await db.execute(
+        select(SystemLog.action).distinct().order_by(SystemLog.action.asc()).limit(limit)
+    )
+    return [str(r[0]) for r in q.all()]
+
+
 @router.get("/logs", response_model=list[SystemLogRow])
 async def list_system_logs(
     _: Annotated[User, Depends(require_system_admin)],
     db: Annotated[AsyncSession, Depends(get_db)],
     limit: int = Query(100, ge=1, le=1000),
     offset: int = Query(0, ge=0),
-    action: Optional[str] = Query(None),
+    action: Optional[str] = Query(None, description="Exact action match"),
+    search: Optional[str] = Query(None, description="Case-insensitive substring match on action"),
+    target_type: Optional[str] = Query(None),
+    target_id: Optional[str] = Query(None),
+    performed_by: Optional[str] = Query(None, description="Actor user id (UUID)"),
+    since: Optional[datetime] = Query(None, description="Inclusive lower bound on logged_at (ISO 8601)"),
+    until: Optional[datetime] = Query(None, description="Inclusive upper bound on logged_at (ISO 8601)"),
 ) -> list[SystemLogRow]:
-    stmt = select(SystemLog).order_by(SystemLog.logged_at.desc()).offset(offset).limit(limit)
+    stmt = select(SystemLog).order_by(SystemLog.logged_at.desc())
     if action:
         stmt = stmt.where(SystemLog.action == action)
+    if search and search.strip():
+        stmt = stmt.where(SystemLog.action.ilike(f"%{search.strip()}%"))
+    if target_type and target_type.strip():
+        stmt = stmt.where(SystemLog.target_type == target_type.strip())
+    if target_id and target_id.strip():
+        stmt = stmt.where(SystemLog.target_id == target_id.strip())
+    if performed_by and performed_by.strip():
+        stmt = stmt.where(SystemLog.performed_by == performed_by.strip())
+    if since is not None:
+        stmt = stmt.where(SystemLog.logged_at >= since)
+    if until is not None:
+        stmt = stmt.where(SystemLog.logged_at <= until)
+    stmt = stmt.offset(offset).limit(limit)
     rows = (await db.execute(stmt)).scalars().all()
     return [
         SystemLogRow(

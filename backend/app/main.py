@@ -28,6 +28,7 @@ from app.api.compliance_routes import router as compliance_router
 from app.api.payments_routes import router as payments_router
 from app.api.projects_routes import router as projects_router
 from app.api.projects_routes import tasks_router as projects_tasks_router
+from app.api.monitoring_routes import router as monitoring_router
 from app.api.operations_routes import router as operations_router
 from app.api.proximity_routes import router as proximity_router
 from app.api.core_routes import router as core_router
@@ -126,5 +127,6 @@ app.include_router(projects_router, prefix="/api/v1")
 app.include_router(projects_tasks_router, prefix="/api/v1")
 app.include_router(proximity_router, prefix="/api/v1")
 app.include_router(operations_router, prefix="/api/v1")
+app.include_router(monitoring_router, prefix="/api/v1")
 
 register_modules(app)
