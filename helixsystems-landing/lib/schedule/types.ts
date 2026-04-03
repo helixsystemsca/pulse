@@ -14,7 +14,24 @@ export interface Worker {
   /** Primary job role for this person (used as default in forms). */
   role: ScheduleDutyRole;
   active: boolean;
+  /** Optional certs for conflict hints (e.g. ["OSHA-10"]). */
+  certifications?: string[];
 }
+
+/** Approved (or mock) time-off: used only for conflict hints + future scheduling blocks. */
+export interface TimeOffBlock {
+  id: string;
+  workerId: string;
+  startDate: string;
+  endDate: string;
+  status: "approved" | "pending";
+}
+
+/** Optional UI hints for future notifications (no backend yet). */
+export type ShiftUiFlags = {
+  isNew?: boolean;
+  isUpdated?: boolean;
+};
 
 export interface Shift {
   id: string;
@@ -29,6 +46,11 @@ export interface Shift {
   eventType: ShiftEventType;
   role: ScheduleDutyRole;
   zoneId: string;
+  /** Optional staffing rules for this shift (conflict UI only; non-blocking). */
+  required_certifications?: string[];
+  requires_supervisor?: boolean;
+  minimum_workers?: number;
+  uiFlags?: ShiftUiFlags;
 }
 
 export interface Zone {

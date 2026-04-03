@@ -1,19 +1,22 @@
 "use client";
 
-import { BarChart2, CalendarDays, Settings, Users } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
-import { formatLocalDate } from "@/lib/schedule/calendar";
+import { BarChart2, CalendarDays, CalendarPlus, Settings, Users } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { formatLocalDate, monthGrid } from "@/lib/schedule/calendar";
 import { computeAlerts, computeWorkforceSummary } from "@/lib/schedule/selectors";
 import { useScheduleStore } from "@/lib/schedule/schedule-store";
 import type { Shift } from "@/lib/schedule/types";
 import { ScheduleAlertsBanner } from "./ScheduleAlertsBanner";
 import { ScheduleCalendarGrid } from "./ScheduleCalendarGrid";
+import { ScheduleDayView } from "./ScheduleDayView";
 import { SchedulePersonnel } from "./SchedulePersonnel";
 import { ScheduleReports } from "./ScheduleReports";
 import { ScheduleSettingsModal } from "./ScheduleSettingsModal";
+import { ScheduleTrashDropZone } from "./ScheduleTrashDropZone";
 import { ScheduleWorkforceBar } from "./ScheduleWorkforceBar";
 import type { ShiftDraft } from "./ShiftEditModal";
 import { ShiftEditModal } from "./ShiftEditModal";
+import { TimeOffRequestModal } from "./TimeOffRequestModal";
 
 type View = "calendar" | "personnel" | "reports";
 
@@ -24,6 +27,9 @@ export function ScheduleApp() {
   });
   const [view, setView] = useState<View>("calendar");
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [timeOffOpen, setTimeOffOpen] = useState(false);
+  const [dayViewDate, setDayViewDate] = useState<string | null>(null);
+  const [shiftDragActive, setShiftDragActive] = useState(false);
   const [shiftModal, setShiftModal] = useState<{
     shift: Shift | null;
     defaultDate: string;
@@ -36,9 +42,11 @@ export function ScheduleApp() {
   const shiftTypes = useScheduleStore((s) => s.shiftTypes);
   const settings = useScheduleStore((s) => s.settings);
   const pendingRequests = useScheduleStore((s) => s.pendingRequests);
+  const timeOffBlocks = useScheduleStore((s) => s.timeOffBlocks);
   const addShift = useScheduleStore((s) => s.addShift);
   const updateShift = useScheduleStore((s) => s.updateShift);
   const deleteShift = useScheduleStore((s) => s.deleteShift);
+  const addTimeOffBlock = useScheduleStore((s) => s.addTimeOffBlock);
 
   const [hydrated, setHydrated] = useState(false);
   useEffect(() => {
@@ -77,32 +85,57 @@ export function ScheduleApp() {
     setShiftModal({ shift: s, defaultDate: s.date });
   }
 
+  const certsOf = (d: ShiftDraft) => (d.required_certifications ?? []).filter(Boolean);
+
   function saveShift(draft: ShiftDraft) {
+    const certs = certsOf(draft);
+    const req = {
+      workerId: draft.workerId,
+      date: draft.date,
+      startTime: draft.startTime,
+      endTime: draft.endTime,
+      shiftType: draft.shiftType,
+      eventType: draft.eventType ?? "work",
+      role: draft.role,
+      zoneId: draft.zoneId,
+      required_certifications: certs.length ? certs : undefined,
+      requires_supervisor: !!draft.requires_supervisor,
+      minimum_workers: draft.minimum_workers,
+    };
     if (draft.id) {
       updateShift(draft.id, {
-        workerId: draft.workerId,
-        date: draft.date,
-        startTime: draft.startTime,
-        endTime: draft.endTime,
-        shiftType: draft.shiftType,
-        eventType: draft.eventType ?? "work",
-        role: draft.role,
-        zoneId: draft.zoneId,
+        ...req,
+        uiFlags: { isUpdated: true },
       });
     } else {
       addShift({
-        workerId: draft.workerId,
-        date: draft.date,
-        startTime: draft.startTime,
-        endTime: draft.endTime,
-        shiftType: draft.shiftType,
-        eventType: draft.eventType ?? "work",
-        role: draft.role,
-        zoneId: draft.zoneId,
+        ...req,
+        uiFlags: { isNew: true },
       });
     }
     setShiftModal(null);
   }
+
+  const handleShiftMove = useCallback(
+    (shiftId: string, targetDate: string, mode: "move" | "duplicate") => {
+      const sh = shifts.find((s) => s.id === shiftId);
+      if (!sh) return;
+      if (mode === "move") {
+        if (sh.date !== targetDate) {
+          updateShift(shiftId, { date: targetDate, uiFlags: { ...sh.uiFlags, isUpdated: true } });
+        }
+        return;
+      }
+      const { id: _id, ...rest } = sh;
+      void _id;
+      addShift({
+        ...rest,
+        date: targetDate,
+        uiFlags: { isNew: true },
+      });
+    },
+    [addShift, shifts, updateShift],
+  );
 
   function prevMonth() {
     setCursor((c) => {
@@ -117,6 +150,19 @@ export function ScheduleApp() {
       return { y: d.getFullYear(), m: d.getMonth() };
     });
   }
+
+  const projectDayTint = useMemo(() => {
+    const tint: Record<string, string> = {};
+    for (const c of monthGrid(cursor.y, cursor.m)) {
+      if (c.inMonth && c.dayOfMonth % 6 === 1) tint[c.date] = "bg-indigo-200/40";
+    }
+    return tint;
+  }, [cursor.y, cursor.m]);
+
+  const dayViewShifts = useMemo(() => {
+    if (!dayViewDate) return [];
+    return shifts.filter((s) => s.date === dayViewDate);
+  }, [shifts, dayViewDate]);
 
   if (!hydrated) {
     return (
@@ -163,6 +209,14 @@ export function ScheduleApp() {
             </nav>
             <button
               type="button"
+              onClick={() => setTimeOffOpen(true)}
+              className="inline-flex items-center gap-2 rounded-xl border border-slate-200/90 bg-white px-4 py-2 text-sm font-semibold text-pulse-navy shadow-sm hover:bg-slate-50"
+            >
+              <CalendarPlus className="h-4 w-4" />
+              Time off
+            </button>
+            <button
+              type="button"
               onClick={() => setSettingsOpen(true)}
               className="inline-flex items-center gap-2 rounded-xl border border-slate-200/90 bg-white px-4 py-2 text-sm font-semibold text-pulse-navy shadow-sm hover:bg-slate-50"
             >
@@ -189,8 +243,14 @@ export function ScheduleApp() {
               roles={roles}
               shiftTypes={shiftTypes}
               settings={settings}
+              timeOffBlocks={timeOffBlocks}
               onSelectShift={openEdit}
               onAddForDate={openAdd}
+              onShiftMove={handleShiftMove}
+              onOpenDay={(iso) => setDayViewDate(iso)}
+              projectDayTint={projectDayTint}
+              onShiftDragStart={() => setShiftDragActive(true)}
+              onShiftDragEnd={() => setShiftDragActive(false)}
             />
           ) : null}
           {view === "personnel" ? (
@@ -224,6 +284,45 @@ export function ScheduleApp() {
       />
 
       <ScheduleSettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+
+      <ScheduleTrashDropZone
+        active={shiftDragActive}
+        onDropTrash={(id) => {
+          deleteShift(id);
+          setShiftDragActive(false);
+        }}
+      />
+
+      <ScheduleDayView
+        open={dayViewDate !== null}
+        date={dayViewDate ?? ""}
+        onClose={() => setDayViewDate(null)}
+        shifts={dayViewShifts}
+        dayShiftsAll={dayViewShifts}
+        workers={workers}
+        zones={zones}
+        roles={roles}
+        shiftTypes={shiftTypes}
+        settings={settings}
+        timeOffBlocks={timeOffBlocks}
+        onSelectShift={(s) => {
+          setDayViewDate(null);
+          openEdit(s);
+        }}
+        onAddForDate={(iso) => {
+          setDayViewDate(null);
+          openAdd(iso);
+        }}
+        onShiftDragStart={() => setShiftDragActive(true)}
+        onShiftDragEnd={() => setShiftDragActive(false)}
+      />
+
+      <TimeOffRequestModal
+        open={timeOffOpen}
+        workers={workers}
+        onClose={() => setTimeOffOpen(false)}
+        onSubmit={(p) => addTimeOffBlock(p)}
+      />
     </div>
   );
 }

@@ -1,12 +1,20 @@
 "use client";
 
 import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { monthGrid, monthLabel } from "@/lib/schedule/calendar";
+import { getShiftConflicts, worstConflictSeverity } from "@/lib/schedule/conflicts";
+import { readShiftDragPayload, setShiftDragData, SHIFT_DRAG_MIME } from "@/lib/schedule/drag";
 import { formatTimeRange } from "@/lib/schedule/time-format";
-import type { Shift, ShiftTypeConfig, Worker, Zone } from "@/lib/schedule/types";
-import type { ScheduleSettings } from "@/lib/schedule/types";
-import type { ScheduleRoleDefinition } from "@/lib/schedule/types";
+import type {
+  ScheduleRoleDefinition,
+  ScheduleSettings,
+  Shift,
+  ShiftTypeConfig,
+  TimeOffBlock,
+  Worker,
+  Zone,
+} from "@/lib/schedule/types";
 
 const WEEK = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -21,8 +29,15 @@ type Props = {
   roles: ScheduleRoleDefinition[];
   shiftTypes: ShiftTypeConfig[];
   settings: ScheduleSettings;
+  timeOffBlocks: TimeOffBlock[];
   onSelectShift: (shift: Shift) => void;
   onAddForDate: (iso: string) => void;
+  onShiftMove: (shiftId: string, targetDate: string, mode: "move" | "duplicate") => void;
+  onOpenDay?: (iso: string) => void;
+  /** Optional per-day background tint for lightweight project overlay (Tailwind classes). */
+  projectDayTint?: Record<string, string>;
+  onShiftDragStart: () => void;
+  onShiftDragEnd: () => void;
 };
 
 export function ScheduleCalendarGrid({
@@ -36,14 +51,21 @@ export function ScheduleCalendarGrid({
   roles,
   shiftTypes,
   settings,
+  timeOffBlocks,
   onSelectShift,
   onAddForDate,
+  onShiftMove,
+  onOpenDay,
+  projectDayTint,
+  onShiftDragStart,
+  onShiftDragEnd,
 }: Props) {
   const cells = useMemo(() => monthGrid(year, monthIndex), [year, monthIndex]);
   const typeMap = useMemo(() => new Map(shiftTypes.map((t) => [t.key, t])), [shiftTypes]);
   const zoneMap = useMemo(() => new Map(zones.map((z) => [z.id, z.label])), [zones]);
   const roleMap = useMemo(() => new Map(roles.map((r) => [r.id, r.label])), [roles]);
   const workerMap = useMemo(() => new Map(workers.map((w) => [w.id, w])), [workers]);
+  const [dragOverDate, setDragOverDate] = useState<string | null>(null);
 
   const byDate = useMemo(() => {
     const m = new Map<string, Shift[]>();
@@ -59,6 +81,16 @@ export function ScheduleCalendarGrid({
     }
     return m;
   }, [shifts, year, monthIndex]);
+
+  const dayShiftsFullDay = useMemo(() => {
+    const m = new Map<string, Shift[]>();
+    for (const s of shifts) {
+      const list = m.get(s.date) ?? [];
+      list.push(s);
+      m.set(s.date, list);
+    }
+    return m;
+  }, [shifts]);
 
   return (
     <div className="rounded-2xl border border-slate-200/90 bg-white shadow-sm">
@@ -83,6 +115,10 @@ export function ScheduleCalendarGrid({
           </button>
         </div>
       </div>
+      <p className="border-b border-slate-100 px-4 py-2 text-[11px] text-pulse-muted sm:px-5">
+        Drag a shift to another day to move it. Hold <kbd className="rounded bg-slate-100 px-1">Shift</kbd> while
+        dragging to duplicate. Drop on the trash strip below to delete.
+      </p>
       <div className="grid grid-cols-7 gap-px border-b border-slate-100 bg-slate-200/80">
         {WEEK.map((d) => (
           <div
@@ -96,21 +132,63 @@ export function ScheduleCalendarGrid({
       <div className="grid grid-cols-7 gap-px bg-slate-200/80">
         {cells.map((c) => {
           const dayShifts = byDate.get(c.date) ?? [];
+          const fullDay = dayShiftsFullDay.get(c.date) ?? [];
+          const projectTint = projectDayTint?.[c.date];
+          const isOver = dragOverDate === c.date;
           return (
             <div
               key={c.date}
-              className={`flex min-h-[7.5rem] flex-col bg-white ${
+              className={`relative flex min-h-[7.5rem] flex-col bg-white ${
                 c.inMonth ? "" : "bg-slate-50/50 opacity-80"
-              }`}
+              } ${isOver ? "ring-2 ring-inset ring-pulse-accent/50" : ""}`}
+              onDragOver={(e) => {
+                if (e.dataTransfer.types.includes(SHIFT_DRAG_MIME) || e.dataTransfer.types.includes("text/plain")) {
+                  e.preventDefault();
+                  e.dataTransfer.dropEffect = readShiftDragPayload(e.dataTransfer)?.duplicate ? "copy" : "move";
+                  setDragOverDate(c.date);
+                }
+              }}
+              onDragLeave={(e) => {
+                if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+                setDragOverDate(null);
+              }}
+              onDrop={(e) => {
+                e.preventDefault();
+                setDragOverDate(null);
+                const p = readShiftDragPayload(e.dataTransfer);
+                if (p) {
+                  onShiftMove(p.shiftId, c.date, p.duplicate ? "duplicate" : "move");
+                }
+              }}
             >
+              {projectTint ? (
+                <div
+                  className={`pointer-events-none absolute inset-x-0 top-0 h-1.5 rounded-sm ${projectTint}`}
+                  aria-hidden
+                  title="Project block"
+                />
+              ) : null}
               <div className="flex items-center justify-between gap-1 border-b border-transparent px-1.5 pt-1.5">
-                <span
-                  className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold ${
-                    c.inMonth ? "text-pulse-navy" : "text-pulse-muted"
-                  }`}
-                >
-                  {c.dayOfMonth}
-                </span>
+                {c.inMonth && onOpenDay ? (
+                  <button
+                    type="button"
+                    className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold hover:bg-slate-100 ${
+                      c.inMonth ? "text-pulse-navy" : "text-pulse-muted"
+                    }`}
+                    onClick={() => onOpenDay(c.date)}
+                    aria-label={`Open day view for ${c.date}`}
+                  >
+                    {c.dayOfMonth}
+                  </button>
+                ) : (
+                  <span
+                    className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold ${
+                      c.inMonth ? "text-pulse-navy" : "text-pulse-muted"
+                    }`}
+                  >
+                    {c.dayOfMonth}
+                  </span>
+                )}
                 {c.inMonth ? (
                   <button
                     type="button"
@@ -122,31 +200,78 @@ export function ScheduleCalendarGrid({
                   </button>
                 ) : null}
               </div>
-              <div className="flex max-h-[11rem] flex-1 flex-col gap-1 overflow-y-auto px-1 pb-2 pt-1">
+              <div className="relative flex max-h-[11rem] flex-1 flex-col gap-1 overflow-y-auto px-1 pb-2 pt-1">
                 {dayShifts.map((s) => {
                   const st = typeMap.get(s.shiftType);
                   const w = s.workerId ? workerMap.get(s.workerId) : null;
+                  const isOpen = !s.workerId;
                   const name = w?.name ?? "Open";
                   const zone = zoneMap.get(s.zoneId) ?? "—";
                   const roleLb = roleMap.get(s.role) ?? s.role;
                   const cls = st
                     ? `${st.bg} ${st.border} ${st.text} border`
                     : "border border-slate-200 bg-slate-50 text-pulse-navy";
+                  const openCls = isOpen ? "ring-2 ring-dashed ring-pulse-accent/40 ring-offset-1" : "";
+                  const conflicts = getShiftConflicts(s, fullDay, workers, settings, timeOffBlocks);
+                  const sev = worstConflictSeverity(conflicts);
+                  const tip = conflicts.map((x) => x.label).join(" · ");
+
                   return (
-                    <button
+                    <div
                       key={s.id}
-                      type="button"
+                      role="button"
+                      tabIndex={0}
+                      draggable
+                      className={`w-full cursor-grab rounded-lg px-1.5 py-1.5 text-left text-[11px] leading-snug shadow-sm transition-colors hover:brightness-[0.97] active:cursor-grabbing ${cls} ${openCls}`}
                       onClick={() => onSelectShift(s)}
-                      className={`w-full rounded-lg px-1.5 py-1.5 text-left text-[11px] leading-snug shadow-sm transition-colors hover:brightness-[0.97] ${cls}`}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          onSelectShift(s);
+                        }
+                      }}
+                      onDragStart={(e) => {
+                        setShiftDragData(e.dataTransfer, { shiftId: s.id, duplicate: e.shiftKey });
+                        onShiftDragStart();
+                      }}
+                      onDragEnd={onShiftDragEnd}
                     >
-                      <p className="truncate font-semibold">{name}</p>
-                      <p className="truncate opacity-90">
-                        {formatTimeRange(s.startTime, s.endTime, settings.timeFormat)}
-                      </p>
-                      <p className="truncate text-[10px] opacity-90">
-                        {roleLb} · {zone}
-                      </p>
-                    </button>
+                      <div className="flex items-start justify-between gap-1">
+                        <div className="min-w-0 flex-1">
+                          <p className="flex items-center gap-1 truncate font-semibold">
+                            {isOpen ? (
+                              <span className="shrink-0 rounded bg-white/60 px-0.5 text-[9px] font-bold uppercase text-pulse-accent">
+                                Open
+                              </span>
+                            ) : null}
+                            <span className="truncate">{name}</span>
+                          </p>
+                          <p className="truncate opacity-90">
+                            {formatTimeRange(s.startTime, s.endTime, settings.timeFormat)}
+                          </p>
+                          <p className="truncate text-[10px] opacity-90">
+                            {roleLb} · {zone}
+                          </p>
+                        </div>
+                        <div className="flex shrink-0 flex-col items-end gap-0.5">
+                          {s.uiFlags?.isNew ? (
+                            <span className="text-[8px] font-bold uppercase text-blue-700">New</span>
+                          ) : null}
+                          {s.uiFlags?.isUpdated ? (
+                            <span className="text-[8px] font-bold uppercase text-violet-700">Chg</span>
+                          ) : null}
+                          {sev ? (
+                            <span
+                              title={tip}
+                              className={`mt-0.5 inline-block h-2 w-2 rounded-full ${
+                                sev === "critical" ? "bg-red-500" : "bg-amber-400"
+                              }`}
+                              aria-label={tip}
+                            />
+                          ) : null}
+                        </div>
+                      </div>
+                    </div>
                   );
                 })}
               </div>

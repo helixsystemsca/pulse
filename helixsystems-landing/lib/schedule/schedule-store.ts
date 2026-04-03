@@ -16,6 +16,7 @@ import type {
   Shift,
   ShiftEventType,
   ShiftTypeConfig,
+  TimeOffBlock,
   Worker,
   Zone,
 } from "./types";
@@ -35,11 +36,16 @@ type ScheduleState = {
   shiftTypes: ShiftTypeConfig[];
   settings: ScheduleSettings;
   pendingRequests: number;
+  /** Mock / future hook: approved time-off blocks scheduling availability hints only. */
+  timeOffBlocks: TimeOffBlock[];
 
   /** `eventType` defaults to `"work"` when omitted (backward-compatible). */
   addShift: (partial: Omit<Shift, "id" | "eventType"> & { eventType?: ShiftEventType }) => void;
   updateShift: (id: string, patch: Partial<Shift>) => void;
   deleteShift: (id: string) => void;
+
+  addTimeOffBlock: (partial: Omit<TimeOffBlock, "id">) => void;
+  removeTimeOffBlock: (id: string) => void;
 
   setWorkers: (workers: Worker[]) => void;
   setZones: (zones: Zone[]) => void;
@@ -69,6 +75,8 @@ function initialState(): Omit<
   | "addZone"
   | "updateZone"
   | "removeZone"
+  | "addTimeOffBlock"
+  | "removeTimeOffBlock"
   | "resetDemo"
 > {
   return {
@@ -79,6 +87,7 @@ function initialState(): Omit<
     shiftTypes: defaultShiftTypes,
     settings: { ...defaultSettings },
     pendingRequests: 3,
+    timeOffBlocks: [],
   };
 }
 
@@ -103,6 +112,16 @@ export const useScheduleStore = create<ScheduleState>()(
       deleteShift: (id) =>
         set((s) => ({
           shifts: s.shifts.filter((sh) => sh.id !== id),
+        })),
+
+      addTimeOffBlock: (partial) =>
+        set((s) => ({
+          timeOffBlocks: [...s.timeOffBlocks, { ...partial, id: newId("pto") }],
+        })),
+
+      removeTimeOffBlock: (id) =>
+        set((s) => ({
+          timeOffBlocks: s.timeOffBlocks.filter((b) => b.id !== id),
         })),
 
       setWorkers: (workers) => set({ workers }),
@@ -154,6 +173,7 @@ export const useScheduleStore = create<ScheduleState>()(
         shiftTypes: s.shiftTypes,
         settings: s.settings,
         pendingRequests: s.pendingRequests,
+        timeOffBlocks: s.timeOffBlocks,
       }),
       merge: (persisted, current) => {
         const p = persisted as Partial<ScheduleState> | undefined;
@@ -166,6 +186,8 @@ export const useScheduleStore = create<ScheduleState>()(
           ...current,
           ...p,
           shifts: mergedShifts,
+          timeOffBlocks: p.timeOffBlocks ?? current.timeOffBlocks,
+          workers: p.workers ?? current.workers,
         };
       },
     },

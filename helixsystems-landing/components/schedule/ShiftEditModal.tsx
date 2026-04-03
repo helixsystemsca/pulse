@@ -128,6 +128,9 @@ export function ShiftEditModal({
       eventType: "work",
       role: "worker",
       zoneId: zones[0]?.id ?? "",
+      required_certifications: [],
+      requires_supervisor: false,
+      minimum_workers: undefined,
     }),
     [defaultDate, zones],
   );
@@ -147,6 +150,10 @@ export function ShiftEditModal({
         eventType: shift.eventType ?? "work",
         role: shift.role,
         zoneId: shift.zoneId,
+        required_certifications: shift.required_certifications ?? [],
+        requires_supervisor: shift.requires_supervisor ?? false,
+        minimum_workers: shift.minimum_workers,
+        uiFlags: shift.uiFlags,
       });
     } else {
       setDraft(empty);
@@ -212,7 +219,13 @@ export function ShiftEditModal({
             <button
               type="button"
               className={PRIMARY_BTN}
-              onClick={() => onSave({ ...draft, eventType: draft.eventType ?? "work" })}
+              onClick={() =>
+                onSave({
+                  ...draft,
+                  eventType: draft.eventType ?? "work",
+                  required_certifications: (draft.required_certifications ?? []).filter(Boolean),
+                })
+              }
             >
               Confirm shift
             </button>
@@ -371,6 +384,65 @@ export function ShiftEditModal({
           <p className="mt-2 text-xs text-pulse-muted">
             Preview: <span className="font-medium text-pulse-navy">{preview}</span> ({tf})
           </p>
+        </div>
+
+        <div className="rounded-[10px] border border-slate-200/40 bg-slate-50/50 p-4">
+          <p className={LABEL}>Shift requirements (optional)</p>
+          <p className="mt-1 text-xs text-pulse-muted">
+            Used for warning badges only — you can still save with conflicts.
+          </p>
+          <div className="mt-3 space-y-3">
+            <div>
+              <label className={LABEL} htmlFor="shift-certs">
+                Required certifications (comma-separated)
+              </label>
+              <input
+                id="shift-certs"
+                type="text"
+                className={FIELD}
+                placeholder="e.g. OSHA-10, Forklift"
+                value={(draft.required_certifications ?? []).join(", ")}
+                onChange={(e) =>
+                  setDraft((d) => ({
+                    ...d,
+                    required_certifications: e.target.value
+                      .split(",")
+                      .map((x) => x.trim())
+                      .filter(Boolean),
+                  }))
+                }
+              />
+            </div>
+            <label className="flex cursor-pointer items-center gap-2 text-sm text-pulse-navy">
+              <input
+                type="checkbox"
+                className="h-4 w-4 rounded border-slate-300 text-[#2B4C7E]"
+                checked={draft.requires_supervisor === true}
+                onChange={(e) => setDraft((d) => ({ ...d, requires_supervisor: e.target.checked }))}
+              />
+              Require supervisor / lead in zone (stricter check for this shift)
+            </label>
+            <div>
+              <label className={LABEL} htmlFor="shift-min-workers">
+                Minimum workers in zone (empty = use org default)
+              </label>
+              <input
+                id="shift-min-workers"
+                type="number"
+                min={1}
+                className={FIELD}
+                placeholder={`Default: ${settings.staffing.minWorkersPerShift}`}
+                value={draft.minimum_workers ?? ""}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setDraft((d) => ({
+                    ...d,
+                    minimum_workers: v === "" ? undefined : Math.max(1, parseInt(v, 10) || 1),
+                  }));
+                }}
+              />
+            </div>
+          </div>
         </div>
 
         <div>

@@ -64,9 +64,9 @@ export const defaultSettings: ScheduleSettings = {
 };
 
 export const defaultWorkers: Worker[] = [
-  { id: "w1", name: "Jordan Lee", role: "lead", active: true },
+  { id: "w1", name: "Jordan Lee", role: "lead", active: true, certifications: ["OSHA-10", "Forklift"] },
   { id: "w2", name: "Sam Rivera", role: "supervisor", active: true },
-  { id: "w3", name: "Alex Chen", role: "worker", active: true },
+  { id: "w3", name: "Alex Chen", role: "worker", active: true, certifications: ["OSHA-10"] },
   { id: "w4", name: "Riley Brooks", role: "worker", active: true },
   { id: "w5", name: "Taylor Morgan", role: "worker", active: true },
   { id: "w6", name: "Casey Ng", role: "supervisor", active: true },
@@ -138,6 +138,8 @@ export function buildSeedShifts(now = new Date()): Shift[] {
       eventType: "work",
       role: "worker",
       zoneId: "z-pano-s",
+      // Demo: Riley has no “Forklift” cert — shows non-blocking red conflict dot in UI.
+      required_certifications: offset % 9 === 0 ? ["Forklift"] : undefined,
     });
     shifts.push({
       id: mkId(),
