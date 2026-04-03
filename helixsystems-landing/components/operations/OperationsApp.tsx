@@ -143,7 +143,9 @@ export function OperationsApp() {
         <Card padding="md" className="flex flex-col gap-1">
           <p className="text-[11px] font-semibold uppercase tracking-wider text-pulse-muted">Overdue tasks</p>
           <p className="font-headline text-2xl font-bold tabular-nums text-pulse-navy">{s.total_overdue_tasks}</p>
-          <p className="text-xs text-pulse-muted">Open work past due (current)</p>
+          <p className="text-xs text-pulse-muted">
+            Open work past due (current). Stale assignments (no update in 24h): {s.total_stale_tasks}
+          </p>
         </Card>
         <Card padding="md" className="flex flex-col gap-1">
           <p className="text-[11px] font-semibold uppercase tracking-wider text-pulse-muted">Avg responsiveness</p>

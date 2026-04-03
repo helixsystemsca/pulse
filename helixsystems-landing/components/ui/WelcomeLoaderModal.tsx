@@ -1,12 +1,11 @@
 "use client";
 
 /**
- * Full-screen welcome overlay after sign-in: greets the user, waits for app data, then fades away.
+ * Full-screen welcome overlay after sign-in: engine warm-up copy + loader, then personalized welcome.
  * Shown at most once per browser tab session (`sessionStorage`), so refreshes skip the animation.
  */
 
 import { AnimatePresence, motion } from "framer-motion";
-import { Check } from "lucide-react";
 import { useEffect, useState } from "react";
 import { PULSE_WELCOME_SESSION_KEY } from "@/lib/pulse-session";
 
@@ -21,9 +20,14 @@ export type WelcomeLoaderModalProps = {
   storageKey?: string;
 };
 
-const READY_DELAY_MS = 500;
-const READY_HOLD_MS = 800;
+const WELCOME_HOLD_MS = 4000;
 const EXIT_MS = 300;
+
+function firstNameOnly(displayName: string): string {
+  const t = displayName.trim();
+  if (!t) return "there";
+  return t.split(/\s+/)[0] ?? t;
+}
 
 export function WelcomeLoaderModal({
   userName,
@@ -50,27 +54,24 @@ export function WelcomeLoaderModal({
   useEffect(() => {
     if (!hydrated || skipEntirely || !isReady) return;
 
-    const t1 = setTimeout(() => setContent("ready"), READY_DELAY_MS);
-    const t2 = setTimeout(() => {
+    setContent("ready");
+    const t = setTimeout(() => {
       try {
         sessionStorage.setItem(storageKey, "true");
       } catch {
         /* ignore */
       }
       setOpen(false);
-    }, READY_DELAY_MS + READY_HOLD_MS);
+    }, WELCOME_HOLD_MS);
 
-    return () => {
-      clearTimeout(t1);
-      clearTimeout(t2);
-    };
+    return () => clearTimeout(t);
   }, [hydrated, isReady, skipEntirely, storageKey]);
 
   if (!hydrated || skipEntirely) {
     return null;
   }
 
-  const displayName = userName.trim() || "there";
+  const firstName = firstNameOnly(userName);
 
   return (
     <AnimatePresence>
@@ -87,7 +88,6 @@ export function WelcomeLoaderModal({
           exit={{ opacity: 0 }}
           transition={{ duration: EXIT_MS / 1000, ease: [0.4, 0, 0.2, 1] }}
         >
-          {/* Backdrop: light tint + blur; pointer-events none so the page stays scrollable/interactive underneath */}
           <div
             className="pointer-events-none absolute inset-0 bg-slate-900/25 backdrop-blur-[2px]"
             aria-hidden
@@ -120,9 +120,9 @@ export function WelcomeLoaderModal({
                     id="welcome-loader-title"
                     className="font-headline text-xl font-semibold tracking-tight text-pulse-navy sm:text-2xl"
                   >
-                    Welcome back, {displayName}
+                    Firing up the engine
                   </h2>
-                  <p className="mt-2 text-sm text-pulse-muted">Preparing your workspace...</p>
+                  <p className="mt-2 text-sm text-pulse-muted">Just a moment…</p>
 
                   <div className="mt-8 flex items-center gap-1.5" aria-hidden>
                     {[0, 1, 2].map((i) => (
@@ -149,16 +149,14 @@ export function WelcomeLoaderModal({
                   transition={{ duration: 0.28 }}
                   className="flex flex-col items-center text-center"
                 >
-                  <motion.div
-                    initial={{ scale: 0.85, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    transition={{ type: "spring", stiffness: 420, damping: 28 }}
-                    className="mb-5 flex h-12 w-12 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 ring-2 ring-emerald-500/25"
+                  <h2
+                    id="welcome-loader-title"
+                    className="font-headline text-xl font-semibold tracking-tight text-pulse-navy sm:text-2xl"
                   >
-                    <Check className="h-6 w-6" strokeWidth={2.5} aria-hidden />
-                  </motion.div>
-                  <p className="font-headline text-lg font-semibold text-pulse-navy sm:text-xl">
-                    You&apos;re all set — let&apos;s get to work
+                    Welcome, {firstName}
+                  </h2>
+                  <p className="mt-3 font-headline text-lg font-semibold text-pulse-navy sm:text-xl">
+                    Let&apos;s get to work
                   </p>
                 </motion.div>
               )}

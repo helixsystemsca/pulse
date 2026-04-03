@@ -16,7 +16,6 @@ from app.models.pulse_models import (
     PulseProject,
     PulseProjectTask,
     PulseProximityEventLog,
-    PulseTaskStatus,
     PulseUserPerformanceSnapshot,
 )
 from app.modules.pulse.accountability_service import equipment_label_for_tag
