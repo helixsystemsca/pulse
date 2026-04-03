@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { Activity, ChevronDown, LogOut, Settings, User } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { CompanyLogo } from "@/components/branding/CompanyLogo";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
 import { navigateToPulseLogin, pulseApp, pulseRoutes } from "@/lib/pulse-app";
 import { clearSession } from "@/lib/pulse-session";
@@ -57,12 +58,28 @@ export function AppNavbar() {
         <div className="flex min-w-0 items-center">
           <Link
             href={logoHref}
-            className="flex items-center gap-2.5 font-headline text-lg font-bold tracking-tight text-pulse-navy no-underline hover:text-pulse-accent sm:text-xl"
+            className="flex min-w-0 items-center gap-2.5 font-headline text-lg font-bold tracking-tight text-pulse-navy no-underline hover:text-pulse-accent sm:text-xl"
           >
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-200/80 bg-slate-50 text-pulse-accent shadow-sm">
-              <Activity className="h-4 w-4" strokeWidth={2} aria-hidden />
-            </span>
-            <span>Pulse</span>
+            {authed && session?.company ? (
+              <>
+                <CompanyLogo
+                  logoUrl={session.company.logo_url}
+                  companyName={session.company.name}
+                  className="shrink-0"
+                  variant="light"
+                />
+                <span className="hidden min-w-0 truncate text-xs font-semibold uppercase tracking-wider text-pulse-muted sm:inline sm:max-w-[6rem] sm:text-[11px]">
+                  Pulse
+                </span>
+              </>
+            ) : (
+              <>
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-200/80 bg-slate-50 text-pulse-accent shadow-sm">
+                  <Activity className="h-4 w-4" strokeWidth={2} aria-hidden />
+                </span>
+                <span>Pulse</span>
+              </>
+            )}
           </Link>
         </div>
 

@@ -102,10 +102,10 @@ export function ScheduleDayView({
             type="button"
             className="inline-flex w-fit items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-pulse-navy shadow-sm hover:bg-slate-50"
             onClick={onClose}
-            aria-label="Back to month view"
+            aria-label="Back to calendar"
           >
             <ArrowLeft className="h-4 w-4 shrink-0" />
-            Month view
+            Calendar
           </button>
           <div className="min-w-0">
             <p className="text-[11px] font-semibold uppercase tracking-wide text-pulse-muted">Day workspace</p>

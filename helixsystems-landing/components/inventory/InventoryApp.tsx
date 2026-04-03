@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { PulseDrawer } from "@/components/schedule/PulseDrawer";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { apiFetch } from "@/lib/api";
 import type {
   InventoryDetail,
@@ -683,49 +684,43 @@ export function InventoryApp() {
 
   if (!canManage) {
     return (
-      <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-        <p className="text-sm text-pulse-muted">Inventory is available to managers and administrators.</p>
-      </div>
+      <p className="text-sm text-pulse-muted">Inventory is available to managers and administrators.</p>
     );
   }
 
   const sum = summary;
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <div className="flex items-center gap-2 text-pulse-navy">
-            <Package className="h-7 w-7 text-[#2B4C7E]" strokeWidth={2} aria-hidden />
-            <h1 className="font-headline text-xl font-bold tracking-tight sm:text-2xl">Inventory</h1>
-          </div>
-          <p className="mt-1 text-sm text-pulse-muted">
-            Tools, spare parts, and consumables — locations, assignments, and work request usage.
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            className="inline-flex items-center gap-2 rounded-[10px] border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-pulse-navy shadow-sm hover:bg-slate-50 disabled:opacity-50"
-            onClick={() => exportCsv()}
-            disabled={rows.length === 0}
-          >
-            <Download className="h-4 w-4" aria-hidden />
-            Export CSV
-          </button>
-          <button
-            type="button"
-            className="inline-flex items-center gap-2 rounded-[10px] border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-pulse-navy shadow-sm hover:bg-slate-50"
-            onClick={() => setSettingsOpen(true)}
-          >
-            <Settings className="h-4 w-4" aria-hidden />
-            Settings
-          </button>
-          <button type="button" className={PRIMARY_BTN} onClick={() => openCreate()} disabled={!dataEnabled}>
-            + Register item
-          </button>
-        </div>
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        title="Inventory"
+        description="Tools, spare parts, and consumables — locations, assignments, and work request usage."
+        icon={Package}
+        actions={
+          <>
+            <button
+              type="button"
+              className="inline-flex items-center gap-2 rounded-[10px] border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-pulse-navy shadow-sm hover:bg-slate-50 disabled:opacity-50"
+              onClick={() => exportCsv()}
+              disabled={rows.length === 0}
+            >
+              <Download className="h-4 w-4" aria-hidden />
+              Export CSV
+            </button>
+            <button
+              type="button"
+              className="inline-flex items-center gap-2 rounded-[10px] border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-pulse-navy shadow-sm hover:bg-slate-50"
+              onClick={() => setSettingsOpen(true)}
+            >
+              <Settings className="h-4 w-4" aria-hidden />
+              Settings
+            </button>
+            <button type="button" className={PRIMARY_BTN} onClick={() => openCreate()} disabled={!dataEnabled}>
+              + Register item
+            </button>
+          </>
+        }
+      />
 
       {isSystemAdmin ? (
         <div className="mt-6 rounded-xl border border-pulse-border bg-white p-4 shadow-sm">

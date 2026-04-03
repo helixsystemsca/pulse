@@ -4,6 +4,7 @@ import Link from "next/link";
 import { FolderKanban } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Card } from "@/components/pulse/Card";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { apiFetch } from "@/lib/api";
 import { listProjects, type ProjectRow } from "@/lib/projectsService";
 import type { PulseWorkerApi } from "@/lib/schedule/pulse-bridge";
@@ -73,12 +74,11 @@ export function ProjectsApp() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="font-headline text-2xl font-bold tracking-tight text-pulse-navy">Projects</h1>
-          <p className="mt-1 text-sm text-pulse-muted">Track initiatives, tasks, and calendar-linked due dates.</p>
-        </div>
-      </div>
+      <PageHeader
+        title="Projects"
+        description="Track initiatives, tasks, and calendar-linked due dates."
+        icon={FolderKanban}
+      />
 
       {rows.length === 0 ? (
         <Card padding="md">

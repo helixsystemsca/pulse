@@ -30,6 +30,7 @@ import {
   type GatewayStatusRow,
   type ZoneOut,
 } from "@/lib/setup-api";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { AssignmentModal } from "@/components/setup/AssignmentModal";
 import { AssignmentsOverview } from "@/components/setup/AssignmentsOverview";
 import { ConfigPanel } from "@/components/setup/ConfigPanel";
@@ -563,11 +564,12 @@ export function SetupApp() {
 
   if (isSystemAdmin && !companyPick) {
     return (
-      <div className="mx-auto max-w-3xl space-y-6 p-6">
-        <header>
-          <h1 className="font-headline text-2xl font-bold text-pulse-navy">Zones &amp; devices</h1>
-          <p className="mt-1 text-sm text-pulse-muted">Select a company to manage gateways, tags, and zones.</p>
-        </header>
+      <div className="mx-auto max-w-3xl space-y-6">
+        <PageHeader
+          title="Zones & devices"
+          description="Select a company to manage gateways, tags, and zones."
+          icon={MapPin}
+        />
         <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-card">
           <label className={LABEL}>Company</label>
           <select
@@ -588,31 +590,28 @@ export function SetupApp() {
   }
 
   return (
-    <div className="mx-auto max-w-6xl space-y-8 p-4 md:p-8">
-      <header className="space-y-2">
-        <p className="text-xs font-semibold uppercase tracking-widest text-[#2B4C7E]">Guided setup</p>
-        <h1 className="font-headline text-3xl font-bold text-pulse-navy md:text-4xl">Zones &amp; devices</h1>
-        <p className="max-w-2xl text-sm text-pulse-muted">
-          System view for gateways (ESP32), BLE tags, zones, and tracking health. Assign worker tags here; link equipment
-          tags in Inventory. Tune automation without a rule builder.
-        </p>
-        {isSystemAdmin ? (
-          <div className="flex max-w-md flex-col gap-1 pt-2">
-            <label className={LABEL}>Company context</label>
-            <select
-              className={FIELD}
-              value={companyPick ?? ""}
-              onChange={(e) => setCompanyPick(e.target.value || null)}
-            >
-              {companies.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-          </div>
-        ) : null}
-      </header>
+    <div className="space-y-8">
+      <PageHeader
+        title="Zones & devices"
+        description="Guided setup — gateways (ESP32), BLE tags, zones, and tracking health. Assign worker tags here; link equipment tags in Inventory. Tune automation without a rule builder."
+        icon={MapPin}
+      />
+      {isSystemAdmin ? (
+        <div className="flex max-w-md flex-col gap-1">
+          <label className={LABEL}>Company context</label>
+          <select
+            className={FIELD}
+            value={companyPick ?? ""}
+            onChange={(e) => setCompanyPick(e.target.value || null)}
+          >
+            {companies.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      ) : null}
 
       {dataEnabled ? <SetupProgress items={progressItems} warnings={setupWarnings} /> : null}
 

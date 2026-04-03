@@ -10,6 +10,13 @@ export const PULSE_AUTH_STORAGE_KEY = "pulse_auth_v1";
 /** `sessionStorage` flag for the post-login welcome overlay; cleared when auth ends so the next sign-in can show it. */
 export const PULSE_WELCOME_SESSION_KEY = "welcome_shown";
 
+/** Populated from `/api/v1/auth/me` for tenant users. */
+export type CompanySummary = {
+  id: string;
+  name: string;
+  logo_url?: string | null;
+};
+
 export type PulseAuthSession = {
   access_token?: string;
   sub: string;
@@ -20,6 +27,8 @@ export type PulseAuthSession = {
   is_system_admin?: boolean;
   /** From `/auth/me`; when missing (legacy session), tenant nav shows all modules. */
   enabled_features?: string[];
+  /** Tenant branding; absent for system_admin or legacy sessions. */
+  company?: CompanySummary | null;
   iat: number;
   exp: number;
   remember: boolean;
@@ -34,6 +43,7 @@ export type UserOut = {
   enabled_features?: string[];
   is_impersonating?: boolean;
   is_system_admin?: boolean;
+  company?: CompanySummary | null;
 };
 
 function emitAuthChange() {
@@ -134,6 +144,7 @@ export function writeApiSession(
     full_name: user.full_name ?? null,
     is_system_admin: user.is_system_admin,
     enabled_features: user.enabled_features,
+    company: user.company ?? null,
     iat: now,
     exp,
     remember,

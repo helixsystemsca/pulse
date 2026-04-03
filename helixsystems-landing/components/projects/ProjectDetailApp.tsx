@@ -1,11 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft, GripVertical, Plus } from "lucide-react";
+import { ArrowLeft, FolderKanban, GripVertical, Plus } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { PulseDrawer } from "@/components/schedule/PulseDrawer";
 import { SegmentedControl } from "@/components/schedule/SegmentedControl";
 import { Card } from "@/components/pulse/Card";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { apiFetch } from "@/lib/api";
 import { ProjectAutomationPanel } from "@/components/projects/ProjectAutomationPanel";
 import {
@@ -123,53 +124,46 @@ export function ProjectDetailApp({ projectId }: { projectId: string }) {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <Link
-            href="/projects"
-            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-pulse-navy shadow-sm hover:bg-slate-50"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Projects
-          </Link>
-          <div>
-            <h1 className="font-headline text-2xl font-bold tracking-tight text-pulse-navy">
-              {data?.name ?? "…"}
-            </h1>
-            {data ? (
-              <p className="mt-1 text-sm text-pulse-muted">
-                {data.start_date} → {data.end_date}
-              </p>
-            ) : null}
-          </div>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            className={`inline-flex items-center rounded-xl border px-4 py-2.5 text-sm font-semibold shadow-sm transition-colors ${
-              readyOnly
-                ? "border-emerald-200/90 bg-emerald-50/90 text-emerald-950"
-                : "border-slate-200/90 bg-white text-pulse-navy hover:bg-slate-50"
-            }`}
-            onClick={() => setReadyOnly((v) => !v)}
-          >
-            Ready only
-          </button>
-          <button
-            type="button"
-            className={PRIMARY_BTN}
-            onClick={() => {
-              setEditing(null);
-              setTaskOpen(true);
-            }}
-          >
-            <span className="inline-flex items-center gap-2">
-              <Plus className="h-4 w-4" />
-              Add task
-            </span>
-          </button>
-        </div>
-      </div>
+      <PageHeader
+        title={data?.name ?? "Project"}
+        description={data ? `${data.start_date} → ${data.end_date}` : undefined}
+        icon={FolderKanban}
+        actions={
+          <>
+            <Link
+              href="/projects"
+              className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-pulse-navy shadow-sm hover:bg-slate-50"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Projects
+            </Link>
+            <button
+              type="button"
+              className={`inline-flex items-center rounded-xl border px-4 py-2.5 text-sm font-semibold shadow-sm transition-colors ${
+                readyOnly
+                  ? "border-emerald-200/90 bg-emerald-50/90 text-emerald-950"
+                  : "border-slate-200/90 bg-white text-pulse-navy hover:bg-slate-50"
+              }`}
+              onClick={() => setReadyOnly((v) => !v)}
+            >
+              Ready only
+            </button>
+            <button
+              type="button"
+              className={PRIMARY_BTN}
+              onClick={() => {
+                setEditing(null);
+                setTaskOpen(true);
+              }}
+            >
+              <span className="inline-flex items-center gap-2">
+                <Plus className="h-4 w-4" />
+                Add task
+              </span>
+            </button>
+          </>
+        }
+      />
 
       {err ? <p className="text-sm font-medium text-red-700">{err}</p> : null}
 

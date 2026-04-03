@@ -1,8 +1,10 @@
 "use client";
 
+import { BarChart3 } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { Card } from "@/components/pulse/Card";
+import { PageHeader } from "@/components/ui/PageHeader";
 import {
   getOperationsAccountability,
   getOperationsInsights,
@@ -83,7 +85,7 @@ export function OperationsApp() {
   if (err) {
     return (
       <div className="space-y-4">
-        <h1 className="font-headline text-2xl font-bold tracking-tight text-pulse-navy">Operations</h1>
+        <PageHeader title="Operations" description="Performance and accountability across your organization." icon={BarChart3} />
         <p className="text-sm font-medium text-red-700">{err}</p>
         <button type="button" className={PRIMARY_BTN} onClick={() => void load()}>
           Retry
@@ -95,7 +97,7 @@ export function OperationsApp() {
   if (!data || !insights) {
     return (
       <div className="space-y-4">
-        <h1 className="font-headline text-2xl font-bold tracking-tight text-pulse-navy">Operations</h1>
+        <PageHeader title="Operations" description="Performance and accountability across your organization." icon={BarChart3} />
         <p className="text-sm text-pulse-muted">Loading…</p>
       </div>
     );
@@ -106,15 +108,12 @@ export function OperationsApp() {
 
   return (
     <div className="space-y-8">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="font-headline text-2xl font-bold tracking-tight text-pulse-navy">Operations</h1>
-          <p className="mt-1 text-sm text-pulse-muted">
-            Performance, bottlenecks, and accountability across your organization. Insight metrics use the selected window (
-            {twLabel}).
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
+      <PageHeader
+        title="Operations"
+        description={`Performance, bottlenecks, and accountability across your organization. Insight metrics use the selected window (${twLabel}).`}
+        icon={BarChart3}
+        actions={
+          <>
           <label className="sr-only" htmlFor="ops-time-window">
             Time window
           </label>
@@ -131,8 +130,9 @@ export function OperationsApp() {
           <button type="button" className={PRIMARY_BTN} onClick={() => void load()}>
             Refresh
           </button>
-        </div>
-      </div>
+          </>
+        }
+      />
 
       <section className="grid gap-3 sm:grid-cols-3">
         <Card padding="md" className="flex flex-col gap-1">

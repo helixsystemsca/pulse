@@ -85,7 +85,7 @@ export function SystemAppLayout({ children }: { children: ReactNode }) {
           </button>
         </div>
       ) : null}
-      <div className="p-4 sm:p-6">{children}</div>
+      <div className="min-w-0">{children}</div>
     </div>
   );
 }

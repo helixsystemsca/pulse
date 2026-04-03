@@ -76,6 +76,7 @@ class Company(Base):
 
     id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
+    logo_url: Mapped[Optional[str]] = mapped_column(String(2048), nullable=True)
     owner_admin_id: Mapped[Optional[str]] = mapped_column(
         UUID(as_uuid=False),
         ForeignKey("users.id", ondelete="SET NULL"),

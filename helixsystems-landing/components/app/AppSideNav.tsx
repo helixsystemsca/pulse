@@ -23,6 +23,7 @@ import {
   Wrench,
 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { CompanyLogo } from "@/components/branding/CompanyLogo";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
 import { pulseSystemSidebarNav, pulseTenantSidebarNav, type PulseSidebarIcon } from "@/lib/pulse-app";
 import { isPulseNavActive } from "@/lib/pulse-nav-active";
@@ -92,6 +93,23 @@ export function AppSideNav() {
         } ${dark ? "border-zinc-800 bg-zinc-950" : "border-slate-200/90 bg-[#f4f5f7]"}`}
         aria-label="App"
       >
+        {!dark && session?.company ? (
+          <div className="border-b border-slate-200/80 px-2 py-2">
+            <Link
+              href="/overview"
+              title={session.company.name}
+              onClick={() => setNarrowExpanded(false)}
+              className="flex justify-center lg:justify-start"
+            >
+              <CompanyLogo
+                logoUrl={session.company.logo_url}
+                companyName={session.company.name}
+                showName={false}
+                variant="light"
+              />
+            </Link>
+          </div>
+        ) : null}
         <nav className="flex flex-col gap-1 px-2 py-3">
           {items.map((item) => {
             const active = isPulseNavActive(item.href, pathname);

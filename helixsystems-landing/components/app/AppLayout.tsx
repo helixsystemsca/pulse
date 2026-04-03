@@ -3,6 +3,7 @@
  */
 import type { ReactNode } from "react";
 import { AppMain } from "./AppMain";
+import { MainContentWidth } from "./MainContentWidth";
 import { AppNavbar } from "./AppNavbar";
 import { AppSideNav } from "./AppSideNav";
 import { ProximityPromptHost } from "./ProximityPromptHost";
@@ -20,7 +21,9 @@ export function AppLayout({ children, mainClassName = "" }: AppLayoutProps) {
       <AppSideNav />
       <div className="flex min-h-screen min-w-0 flex-col">
         <AppNavbar />
-        <AppMain className={mainClassName}>{children}</AppMain>
+        <AppMain className={mainClassName}>
+          <MainContentWidth>{children}</MainContentWidth>
+        </AppMain>
       </div>
     </div>
   );

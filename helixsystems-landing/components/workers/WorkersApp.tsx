@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { PulseDrawer } from "@/components/schedule/PulseDrawer";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { apiFetch } from "@/lib/api";
 import { readSession } from "@/lib/pulse-session";
 import type { WorkerDetail, WorkerRow, WorkersSettings } from "@/lib/workersService";
@@ -342,50 +343,44 @@ export function WorkersApp() {
 
   if (!canManage) {
     return (
-      <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-        <p className="text-sm text-pulse-muted">Workers & roles are available to managers and administrators.</p>
-      </div>
+      <p className="text-sm text-pulse-muted">Workers & roles are available to managers and administrators.</p>
     );
   }
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <div className="flex items-center gap-2 text-pulse-navy">
-            <Shield className="h-7 w-7 text-[#2B4C7E]" strokeWidth={2} aria-hidden />
-            <h1 className="font-headline text-xl font-bold tracking-tight sm:text-2xl">Workers &amp; Roles</h1>
-          </div>
-          <p className="mt-1 text-sm text-pulse-muted">
-            Manage personnel, roles, permissions, and operational readiness.
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            className="rounded-[10px] border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-pulse-navy shadow-sm hover:bg-slate-50"
-            onClick={() => {
-              setSettingsDraft({ ...fullSettings });
-              setCertRulesText(JSON.stringify(fullSettings.certification_rules ?? [], null, 2));
-              setSettingsOpen(true);
-            }}
-            disabled={!dataEnabled}
-          >
-            Edit roles
-          </button>
-          <button
-            type="button"
-            className={PRIMARY_BTN}
-            onClick={() => {
-              setCreateForm((f) => ({ ...f, role: actorIsManagerOnly ? "worker" : f.role }));
-              setCreateOpen(true);
-            }}
-            disabled={!dataEnabled}
-          >
-            + Create user
-          </button>
-        </div>
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        title="Workers & Roles"
+        description="Manage personnel, roles, permissions, and operational readiness."
+        icon={Shield}
+        actions={
+          <>
+            <button
+              type="button"
+              className="rounded-[10px] border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-pulse-navy shadow-sm hover:bg-slate-50"
+              onClick={() => {
+                setSettingsDraft({ ...fullSettings });
+                setCertRulesText(JSON.stringify(fullSettings.certification_rules ?? [], null, 2));
+                setSettingsOpen(true);
+              }}
+              disabled={!dataEnabled}
+            >
+              Edit roles
+            </button>
+            <button
+              type="button"
+              className={PRIMARY_BTN}
+              onClick={() => {
+                setCreateForm((f) => ({ ...f, role: actorIsManagerOnly ? "worker" : f.role }));
+                setCreateOpen(true);
+              }}
+              disabled={!dataEnabled}
+            >
+              + Create user
+            </button>
+          </>
+        }
+      />
 
       {isSystemAdmin ? (
         <div className="mt-6 rounded-xl border border-pulse-border bg-white p-4 shadow-sm">

@@ -21,6 +21,12 @@ class LoginRequest(BaseModel):
     password: str = Field(..., min_length=8, max_length=128)
 
 
+class CompanySummaryOut(BaseModel):
+    id: str
+    name: str
+    logo_url: Optional[str] = None
+
+
 class UserOut(BaseModel):
     id: str
     email: str
@@ -30,6 +36,7 @@ class UserOut(BaseModel):
     enabled_features: list[str] = []
     is_impersonating: bool = False
     is_system_admin: bool = False
+    company: Optional[CompanySummaryOut] = None
 
     model_config = {"from_attributes": True}
 

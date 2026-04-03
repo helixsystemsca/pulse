@@ -26,16 +26,8 @@ export default function ProjectDetailPage() {
   }
 
   if (!id) {
-    return (
-      <div className="mx-auto max-w-6xl px-4 py-6 text-sm text-pulse-muted sm:px-6 lg:px-8">
-        Invalid project.
-      </div>
-    );
+    return <p className="text-sm text-pulse-muted">Invalid project.</p>;
   }
 
-  return (
-    <div className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:px-6 lg:px-8">
-      <ProjectDetailApp projectId={id} />
-    </div>
-  );
+  return <ProjectDetailApp projectId={id} />;
 }

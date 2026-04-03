@@ -75,6 +75,41 @@ export function monthLabel(year: number, monthIndex: number): string {
   });
 }
 
+/** Move a local calendar date by `deltaDays` (can be negative). */
+export function addDaysToIso(iso: string, deltaDays: number): string {
+  const d = parseLocalDate(iso);
+  d.setDate(d.getDate() + deltaDays);
+  return formatLocalDate(d);
+}
+
+/** Sunday-first list of seven YYYY-MM-DD strings for the week containing `anchorIso`. */
+export function weekDatesFromSunday(anchorIso: string): string[] {
+  const d = parseLocalDate(anchorIso);
+  const sun = new Date(d);
+  sun.setDate(d.getDate() - d.getDay());
+  const dates: string[] = [];
+  for (let i = 0; i < 7; i++) {
+    const x = new Date(sun);
+    x.setDate(sun.getDate() + i);
+    dates.push(formatLocalDate(x));
+  }
+  return dates;
+}
+
+/** Short label for a week range, e.g. "Jan 5 – Jan 11, 2025". */
+export function weekRangeLabel(dates: string[]): string {
+  if (dates.length < 2) return "";
+  const a = parseLocalDate(dates[0]);
+  const b = parseLocalDate(dates[dates.length - 1]);
+  const y = a.getFullYear();
+  const sameYear = y === b.getFullYear();
+  const optA: Intl.DateTimeFormatOptions = { month: "short", day: "numeric" };
+  const optB: Intl.DateTimeFormatOptions = sameYear
+    ? { month: "short", day: "numeric" }
+    : { month: "short", day: "numeric", year: "numeric" };
+  return `${a.toLocaleDateString("en-US", optA)} – ${b.toLocaleDateString("en-US", optB)}, ${b.getFullYear()}`;
+}
+
 /** Minutes from midnight for HH:mm */
 export function parseTimeToMinutes(t: string): number {
   const [h, m] = t.split(":").map(Number);

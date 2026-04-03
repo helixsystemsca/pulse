@@ -21,6 +21,7 @@ from app.core.system_tokens import hash_system_token
 from app.limiter import limiter
 from app.models.domain import Company, Invite, SystemSecureToken, SystemSecureTokenKind, User, UserRole
 from app.schemas.auth import (
+    CompanySummaryOut,
     EffectivePermissionsOut,
     ImpersonateRequest,
     InviteAcceptBody,
@@ -144,6 +145,12 @@ async def me(
         raw_feats = await tenant_enabled_feature_names_with_legacy(db, user.company_id)
         feats = sorted({f for f in raw_feats if f in MODULE_KEYS})
 
+    company_summary: CompanySummaryOut | None = None
+    if user.company_id:
+        co = await db.get(Company, user.company_id)
+        if co:
+            company_summary = CompanySummaryOut(id=co.id, name=co.name, logo_url=co.logo_url)
+
     return UserOut(
         id=user.id,
         email=user.email,
@@ -153,6 +160,7 @@ async def me(
         enabled_features=feats,
         is_impersonating=is_imp,
         is_system_admin=bool(user.is_system_admin or user.role == UserRole.system_admin),
+        company=company_summary,
     )
 
 

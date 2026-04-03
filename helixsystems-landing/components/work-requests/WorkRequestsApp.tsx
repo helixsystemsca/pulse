@@ -20,6 +20,7 @@ import {
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { apiFetch } from "@/lib/api";
 import { PulseDrawer } from "@/components/schedule/PulseDrawer";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { readSession } from "@/lib/pulse-session";
 import type {
   WorkRequestDetail,
@@ -407,41 +408,37 @@ export function WorkRequestsApp() {
 
   if (!canManage) {
     return (
-      <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-        <p className="text-sm text-pulse-muted">Work requests are available to managers and administrators.</p>
-      </div>
+      <p className="text-sm text-pulse-muted">Work requests are available to managers and administrators.</p>
     );
   }
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <div className="flex items-center gap-2 text-pulse-navy">
-            <ClipboardList className="h-7 w-7 text-[#2B4C7E]" strokeWidth={2} aria-hidden />
-            <h1 className="font-headline text-xl font-bold tracking-tight sm:text-2xl">Work Requests</h1>
-          </div>
-          <p className="mt-1 text-sm text-pulse-muted">Manage and monitor maintenance tasks across all zones.</p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            className="inline-flex items-center gap-2 rounded-[10px] border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-pulse-navy shadow-sm hover:bg-slate-50"
-            onClick={() => setSettingsOpen(true)}
-          >
-            <Settings className="h-4 w-4" aria-hidden />
-            Settings
-          </button>
-          <button
-            type="button"
-            className={PRIMARY_BTN}
-            onClick={() => setCreateOpen(true)}
-            disabled={!dataEnabled}
-          >
-            + New Work Request
-          </button>
-        </div>
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        title="Work Requests"
+        description="Manage and monitor maintenance tasks across all zones."
+        icon={ClipboardList}
+        actions={
+          <>
+            <button
+              type="button"
+              className="inline-flex items-center gap-2 rounded-[10px] border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-pulse-navy shadow-sm hover:bg-slate-50"
+              onClick={() => setSettingsOpen(true)}
+            >
+              <Settings className="h-4 w-4" aria-hidden />
+              Settings
+            </button>
+            <button
+              type="button"
+              className={PRIMARY_BTN}
+              onClick={() => setCreateOpen(true)}
+              disabled={!dataEnabled}
+            >
+              + New Work Request
+            </button>
+          </>
+        }
+      />
 
       {isSystemAdmin ? (
         <div className="mt-6 rounded-xl border border-pulse-border bg-white p-4 shadow-sm">

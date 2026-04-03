@@ -10,6 +10,7 @@ import { parseClientApiError } from "@/lib/parse-client-api-error";
 type CompanyRow = {
   id: string;
   name: string;
+  logo_url?: string | null;
   enabled_features: string[];
   user_count: number;
   is_active: boolean;

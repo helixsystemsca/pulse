@@ -4,8 +4,8 @@ import type { WorkforceSummary } from "@/lib/schedule/types";
 
 export function ScheduleWorkforceBar({ summary }: { summary: WorkforceSummary }) {
   return (
-    <div className="sticky bottom-0 z-20 mt-4 border-t border-slate-200/90 bg-white/95 px-4 py-3 shadow-[0_-4px_24px_rgba(15,23,42,0.06)] backdrop-blur sm:px-6">
-      <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 text-sm">
+    <div className="sticky bottom-0 z-20 mt-4 border-t border-slate-200/90 bg-white/95 py-3 shadow-[0_-4px_24px_rgba(15,23,42,0.06)] backdrop-blur">
+      <div className="flex w-full flex-wrap items-center justify-between gap-4 text-sm">
         <div className="flex flex-wrap items-center gap-6">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-wide text-pulse-muted">Active workers</p>

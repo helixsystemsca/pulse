@@ -1,10 +1,11 @@
 "use client";
 
 import { AlertTriangle, Battery, MapPin, Radio } from "lucide-react";
-import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { CompanyLogo } from "@/components/branding/CompanyLogo";
 import { apiFetch, isApiMode } from "@/lib/api";
+import { usePulseAuth } from "@/hooks/usePulseAuth";
 import { pulseTenantNav } from "@/lib/pulse-app";
 import { canAccessPulseTenantApis, readSession } from "@/lib/pulse-session";
 
@@ -93,8 +94,8 @@ function welcomeFromSession(email: string | null | undefined, fullName: string |
 
 function demoModel(): DashboardViewModel {
   return {
-    title: "Panorama Dashboard",
-    welcomeName: "Liz Gregg",
+    title: "Operations Dashboard",
+    welcomeName: "Alex",
     alerts: [
       {
         severity: "critical",
@@ -262,6 +263,7 @@ function buildLiveModel(
   lowStock: InventoryItemOut[],
   zones: ZoneOut[],
   beacons: BeaconEquipmentOut[],
+  companyDisplayName: string | null,
 ): DashboardViewModel {
   const zoneName = (id: string | null) => (id ? zones.find((z) => z.id === id)?.name ?? "Unknown zone" : "Unassigned");
 
@@ -401,8 +403,8 @@ function buildLiveModel(
     });
   }
 
-  const brand =
-    process.env.NEXT_PUBLIC_PULSE_DASHBOARD_BRAND?.trim() || "Operations";
+  const brand = process.env.NEXT_PUBLIC_PULSE_DASHBOARD_BRAND?.trim() || "Operations";
+  const titleCore = companyDisplayName?.trim() || brand;
 
   const invAlert =
     lowStock[0] != null
@@ -413,7 +415,7 @@ function buildLiveModel(
       : null;
 
   return {
-    title: `${brand} Dashboard`,
+    title: `${titleCore} Dashboard`,
     welcomeName: "",
     alerts,
     workforce: {
@@ -489,14 +491,20 @@ function DashboardBody({
   hideHeaderWelcome,
   zonePromptDismissed,
   onDismissZonePrompt,
+  headerBrand,
 }: {
   model: DashboardViewModel;
   workOrdersHref: string;
   hideHeaderWelcome?: boolean;
   zonePromptDismissed?: boolean;
   onDismissZonePrompt?: () => void;
+  /** Tenant logo + name; null uses title-derived fallback text only. */
+  headerBrand?: { name: string; logoUrl: string | null } | null;
 }) {
   const userInitials = headerInitials(model.welcomeName);
+  const fallbackCompanyName =
+    headerBrand?.name ??
+    (model.title.replace(/\s+Dashboard\s*$/i, "").trim() || "Operations");
 
   return (
     <div className="overflow-hidden rounded-2xl border border-pulse-border bg-white shadow-lg ring-1 ring-slate-900/[0.05]">
@@ -505,12 +513,10 @@ function DashboardBody({
           {model.title}
         </span>
         <div className="flex justify-center">
-          <Image
-            src="/images/panologo.png"
-            alt=""
-            width={120}
-            height={32}
-            className="h-7 w-auto max-w-[min(100%,11rem)] object-contain object-center md:h-8"
+          <CompanyLogo
+            logoUrl={headerBrand?.logoUrl ?? null}
+            companyName={fallbackCompanyName}
+            variant="light"
           />
         </div>
         {!hideHeaderWelcome ? (
@@ -907,6 +913,7 @@ export function OperationalDashboard({
   /** Fires once when the dashboard has finished its initial load (live fetch done or demo mounted). */
   onReady?: () => void;
 }) {
+  const { session } = usePulseAuth();
   const [liveModel, setLiveModel] = useState<DashboardViewModel | null>(null);
   const [loading, setLoading] = useState(variant === "live");
   const [error, setError] = useState<string | null>(null);
@@ -964,8 +971,19 @@ export function OperationalDashboard({
         const st = (se as { status?: number })?.status;
         if (st !== 403) throw se;
       }
-      const model = buildLiveModel(dash, wrList, workers, shiftList, assetList, lowStock, zoneList, beaconList);
       const auth = readSession();
+      const companyDisplayName = auth?.company?.name ?? null;
+      const model = buildLiveModel(
+        dash,
+        wrList,
+        workers,
+        shiftList,
+        assetList,
+        lowStock,
+        zoneList,
+        beaconList,
+        companyDisplayName,
+      );
       const welcome = welcomeFromSession(auth?.email, auth?.full_name);
       setLiveModel({ ...model, welcomeName: welcome });
     } catch (err) {
@@ -998,7 +1016,13 @@ export function OperationalDashboard({
   }, [variant, notifyReady]);
 
   if (variant === "demo") {
-    return <DashboardBody model={demoModel()} workOrdersHref={workOrdersHref} />;
+    return (
+      <DashboardBody
+        model={demoModel()}
+        workOrdersHref={workOrdersHref}
+        headerBrand={{ name: "Demo", logoUrl: null }}
+      />
+    );
   }
 
   if (loading) {
@@ -1032,6 +1056,10 @@ export function OperationalDashboard({
     );
   }
 
+  const liveHeaderBrand = session?.company
+    ? { name: session.company.name, logoUrl: session.company.logo_url ?? null }
+    : null;
+
   return (
     <DashboardBody
       model={liveModel}
@@ -1039,6 +1067,7 @@ export function OperationalDashboard({
       hideHeaderWelcome
       zonePromptDismissed={zoneDismissed}
       onDismissZonePrompt={() => setZoneDismissed(true)}
+      headerBrand={liveHeaderBrand}
     />
   );
 }

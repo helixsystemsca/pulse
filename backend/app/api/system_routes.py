@@ -315,6 +315,7 @@ async def list_companies(
             SystemCompanyRow(
                 id=c.id,
                 name=c.name,
+                logo_url=c.logo_url,
                 enabled_features=ef,
                 user_count=cnt,
                 is_active=c.is_active,
@@ -424,6 +425,7 @@ async def get_company(
     return SystemCompanyRow(
         id=c.id,
         name=c.name,
+        logo_url=c.logo_url,
         enabled_features=ef,
         user_count=cnt,
         is_active=c.is_active,
@@ -450,6 +452,12 @@ async def patch_company(
         c.is_active = bool(data["is_active"])
     if "name" in data and data["name"]:
         c.name = data["name"].strip()
+    if "logo_url" in data:
+        raw = data["logo_url"]
+        if raw is None:
+            c.logo_url = None
+        else:
+            c.logo_url = str(raw).strip() or None
     await record_system_log(
         db,
         action="company.updated",
@@ -468,6 +476,7 @@ async def patch_company(
     return SystemCompanyRow(
         id=c.id,
         name=c.name,
+        logo_url=c.logo_url,
         enabled_features=ef,
         user_count=cnt,
         is_active=c.is_active,

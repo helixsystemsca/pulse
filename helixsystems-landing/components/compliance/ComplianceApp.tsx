@@ -23,6 +23,7 @@ import {
   type ComplianceRecordRow,
 } from "@/lib/complianceService";
 import { readSession } from "@/lib/pulse-session";
+import { PageHeader } from "@/components/ui/PageHeader";
 
 type AssetOption = { id: string; name: string };
 type CompanyOption = { id: string; name: string };
@@ -248,16 +249,12 @@ export function ComplianceApp() {
   const rateBadge = summaryHook.data ? rateHealthBadge(summaryHook.data.compliance_rate) : null;
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <div className="flex items-center gap-2 text-pulse-navy">
-            <ShieldCheck className="h-7 w-7 text-[#2B4C7E]" strokeWidth={2} aria-hidden />
-            <h1 className="font-headline text-xl font-bold tracking-tight sm:text-2xl">Compliance Analytics</h1>
-          </div>
-          <p className="mt-1 text-sm text-pulse-muted">SOP acknowledgments, risk signals, and repeat patterns</p>
-        </div>
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        title="Compliance Analytics"
+        description="SOP acknowledgments, risk signals, and repeat patterns."
+        icon={ShieldCheck}
+      />
 
       {isSystemAdmin ? (
         <div className="mt-6 rounded-xl border border-pulse-border bg-white p-4 shadow-sm">

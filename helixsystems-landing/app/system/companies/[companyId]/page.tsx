@@ -8,6 +8,7 @@ import { apiFetch } from "@/lib/api";
 type CompanyRow = {
   id: string;
   name: string;
+  logo_url?: string | null;
   enabled_features: string[];
   user_count: number;
   is_active: boolean;
@@ -38,6 +39,8 @@ export default function SystemCompanyDetailPage() {
   const [notFound, setNotFound] = useState(false);
   const [nameDraft, setNameDraft] = useState("");
   const [savingName, setSavingName] = useState(false);
+  const [logoDraft, setLogoDraft] = useState("");
+  const [savingLogo, setSavingLogo] = useState(false);
 
   const load = useCallback(async () => {
     if (!companyId) return;
@@ -50,6 +53,7 @@ export default function SystemCompanyDetailPage() {
       ]);
       setRow(co);
       setNameDraft(co.name);
+      setLogoDraft(co.logo_url ?? "");
       setCatalog(cat.features);
     } catch {
       setNotFound(true);
@@ -106,6 +110,24 @@ export default function SystemCompanyDetailPage() {
     }
   };
 
+  const saveLogoUrl = async () => {
+    if (!row) return;
+    const trimmed = logoDraft.trim();
+    const next = trimmed || null;
+    if (next === (row.logo_url ?? null)) return;
+    setSavingLogo(true);
+    try {
+      const updated = await apiFetch<CompanyRow>(`/api/system/companies/${row.id}`, {
+        method: "PATCH",
+        json: { logo_url: next },
+      });
+      setRow(updated);
+      setLogoDraft(updated.logo_url ?? "");
+    } finally {
+      setSavingLogo(false);
+    }
+  };
+
   const disableCompany = async () => {
     if (!row || !confirm("Soft-delete (deactivate) this company?")) return;
     await apiFetch(`/api/system/companies/${row.id}`, { method: "DELETE" });
@@ -142,6 +164,7 @@ export default function SystemCompanyDetailPage() {
   }
 
   const nameDirty = nameDraft.trim() !== row.name;
+  const logoDirty = (logoDraft.trim() || null) !== (row.logo_url ?? null);
 
   return (
     <div className="space-y-8">
@@ -185,6 +208,30 @@ export default function SystemCompanyDetailPage() {
                 className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-500 disabled:opacity-40"
               >
                 {savingName ? "Saving…" : "Save name"}
+              </button>
+            </div>
+          </div>
+          <div>
+            <label className="text-xs font-medium uppercase text-zinc-500">Logo URL (optional)</label>
+            <p className="mt-0.5 text-[11px] text-zinc-500">
+              Public https image URL, or leave empty. Company admins can upload a file from the tenant app (
+              <span className="font-mono text-zinc-400">POST /api/v1/company/logo</span>).
+            </p>
+            <div className="mt-1 flex flex-wrap items-center gap-2">
+              <input
+                value={logoDraft}
+                onChange={(e) => setLogoDraft(e.target.value)}
+                placeholder="https://…"
+                className="min-w-[12rem] flex-1 rounded-lg border border-zinc-600 bg-zinc-900 px-3 py-2 text-sm text-white placeholder:text-zinc-600 disabled:opacity-50"
+                disabled={!row.is_active}
+              />
+              <button
+                type="button"
+                disabled={!row.is_active || !logoDirty || savingLogo}
+                onClick={() => void saveLogoUrl()}
+                className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-500 disabled:opacity-40"
+              >
+                {savingLogo ? "Saving…" : "Save logo URL"}
               </button>
             </div>
           </div>

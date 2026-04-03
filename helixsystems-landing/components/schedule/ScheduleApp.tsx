@@ -1,9 +1,26 @@
 "use client";
 
-import { BarChart2, CalendarDays, CalendarPlus, Settings, Users } from "lucide-react";
+import {
+  BarChart2,
+  CalendarDays,
+  CalendarPlus,
+  CalendarRange,
+  ChevronLeft,
+  ChevronRight,
+  LayoutGrid,
+  Settings,
+  Users,
+} from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { apiFetch, isApiMode } from "@/lib/api";
-import { formatLocalDate, monthGrid } from "@/lib/schedule/calendar";
+import {
+  addDaysToIso,
+  formatLocalDate,
+  monthGrid,
+  parseLocalDate,
+  weekDatesFromSunday,
+} from "@/lib/schedule/calendar";
 import {
   isPulseApiShiftId,
   localDateTimeToIso,
@@ -20,17 +37,21 @@ import type { Shift } from "@/lib/schedule/types";
 import { ScheduleAlertsBanner } from "./ScheduleAlertsBanner";
 import { ScheduleCalendarGrid } from "./ScheduleCalendarGrid";
 import { ScheduleDayView } from "./ScheduleDayView";
+import { ScheduleLegendPanel } from "./ScheduleLegendPanel";
 import { SchedulePersonnel } from "./SchedulePersonnel";
 import { ScheduleReports } from "./ScheduleReports";
 import { ScheduleSettingsModal } from "./ScheduleSettingsModal";
 import { ScheduleTrashDropZone } from "./ScheduleTrashDropZone";
 import { Card } from "@/components/pulse/Card";
+import { ScheduleWeekView } from "./ScheduleWeekView";
 import { ScheduleWorkforceBar } from "./ScheduleWorkforceBar";
 import type { ShiftDraft } from "./ShiftEditModal";
 import { ShiftEditModal } from "./ShiftEditModal";
 import { TimeOffRequestModal } from "./TimeOffRequestModal";
 
 type View = "calendar" | "personnel" | "reports";
+type CalendarScale = "month" | "week" | "day";
+type ScheduleContentFilter = "workers" | "projects" | "combined";
 
 export function ScheduleApp() {
   const [cursor, setCursor] = useState(() => {
@@ -38,9 +59,11 @@ export function ScheduleApp() {
     return { y: n.getFullYear(), m: n.getMonth() };
   });
   const [view, setView] = useState<View>("calendar");
+  const [calendarScale, setCalendarScale] = useState<CalendarScale>("month");
+  const [focusDate, setFocusDate] = useState(() => formatLocalDate(new Date()));
+  const [contentFilter, setContentFilter] = useState<ScheduleContentFilter>("combined");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [timeOffOpen, setTimeOffOpen] = useState(false);
-  const [dayViewDate, setDayViewDate] = useState<string | null>(null);
   const [dragSession, setDragSession] = useState<{ shiftId: string; duplicate: boolean } | null>(null);
   const [trashHovering, setTrashHovering] = useState(false);
   const [deleteToast, setDeleteToast] = useState<string | null>(null);
@@ -77,12 +100,27 @@ export function ScheduleApp() {
 
   const reloadPulseSchedule = useCallback(async () => {
     if (!isApiMode()) return;
-    const first = new Date(cursor.y, cursor.m, 1);
-    const last = new Date(cursor.y, cursor.m + 1, 0);
-    const from = new Date(first);
-    from.setHours(0, 0, 0, 0);
-    const to = new Date(last);
-    to.setHours(23, 59, 59, 999);
+    let from: Date;
+    let to: Date;
+    if (calendarScale === "month") {
+      const first = new Date(cursor.y, cursor.m, 1);
+      const last = new Date(cursor.y, cursor.m + 1, 0);
+      from = new Date(first);
+      from.setHours(0, 0, 0, 0);
+      to = new Date(last);
+      to.setHours(23, 59, 59, 999);
+    } else if (calendarScale === "week") {
+      const dates = weekDatesFromSunday(focusDate);
+      from = parseLocalDate(dates[0]);
+      from.setHours(0, 0, 0, 0);
+      to = parseLocalDate(dates[6]);
+      to.setHours(23, 59, 59, 999);
+    } else {
+      from = parseLocalDate(focusDate);
+      from.setHours(0, 0, 0, 0);
+      to = new Date(from);
+      to.setHours(23, 59, 59, 999);
+    }
     const [w, z] = await Promise.all([
       apiFetch<PulseWorkerApi[]>("/api/v1/pulse/workers"),
       apiFetch<PulseZoneApi[]>("/api/v1/pulse/zones"),
@@ -110,29 +148,51 @@ export function ScheduleApp() {
     const workersMapped = pulseWorkersToSchedule(w);
     const shiftsMapped = pulseShiftsToSchedule(sh, fallbackZ);
     applyPulseScheduleSnapshot(workersMapped, zonesMapped, shiftsMapped);
-  }, [applyPulseScheduleSnapshot, cursor.m, cursor.y]);
+  }, [applyPulseScheduleSnapshot, calendarScale, cursor.m, cursor.y, focusDate]);
 
   useEffect(() => {
     if (!hydrated || !isApiMode()) return;
     void reloadPulseSchedule();
   }, [hydrated, reloadPulseSchedule]);
 
+  const displayShifts = useMemo(() => {
+    if (contentFilter === "workers") {
+      return shifts.filter((s) => s.shiftKind !== "project_task");
+    }
+    if (contentFilter === "projects") {
+      return shifts.filter((s) => s.shiftKind === "project_task");
+    }
+    return shifts;
+  }, [shifts, contentFilter]);
+
+  const weekDates = useMemo(() => weekDatesFromSunday(focusDate), [focusDate]);
+
+  const metricsMonth = useMemo(() => {
+    if (calendarScale === "month") {
+      return { y: cursor.y, m: cursor.m };
+    }
+    const d = parseLocalDate(focusDate);
+    return { y: d.getFullYear(), m: d.getMonth() };
+  }, [calendarScale, cursor.y, cursor.m, focusDate]);
+
   const defaultDate = useMemo(() => {
+    if (calendarScale === "day") return focusDate;
     const today = new Date();
     if (today.getFullYear() === cursor.y && today.getMonth() === cursor.m) {
       return formatLocalDate(today);
     }
     return formatLocalDate(new Date(cursor.y, cursor.m, 1));
-  }, [cursor.y, cursor.m]);
+  }, [calendarScale, focusDate, cursor.y, cursor.m]);
 
   const alerts = useMemo(
-    () => computeAlerts(shifts, cursor.y, cursor.m, settings),
-    [shifts, cursor.y, cursor.m, settings],
+    () => computeAlerts(shifts, metricsMonth.y, metricsMonth.m, settings),
+    [shifts, metricsMonth.y, metricsMonth.m, settings],
   );
 
   const summary = useMemo(
-    () => computeWorkforceSummary(workers, shifts, cursor.y, cursor.m, settings, pendingRequests),
-    [workers, shifts, cursor.y, cursor.m, settings, pendingRequests],
+    () =>
+      computeWorkforceSummary(workers, shifts, metricsMonth.y, metricsMonth.m, settings, pendingRequests),
+    [workers, shifts, metricsMonth.y, metricsMonth.m, settings, pendingRequests],
   );
 
   function openAdd(dateIso: string) {
@@ -251,18 +311,32 @@ export function ScheduleApp() {
     });
   }
 
+  function goToday() {
+    const td = new Date();
+    setFocusDate(formatLocalDate(td));
+    setCursor({ y: td.getFullYear(), m: td.getMonth() });
+  }
+
   const projectDayTint = useMemo(() => {
     const tint: Record<string, string> = {};
-    for (const c of monthGrid(cursor.y, cursor.m)) {
-      if (c.inMonth && c.dayOfMonth % 6 === 1) tint[c.date] = "bg-indigo-200/40";
+    if (calendarScale === "month") {
+      for (const c of monthGrid(cursor.y, cursor.m)) {
+        if (c.inMonth && c.dayOfMonth % 6 === 1) tint[c.date] = "bg-indigo-200/40";
+      }
+    } else if (calendarScale === "week") {
+      weekDates.forEach((date, i) => {
+        if (i % 2 === 0) tint[date] = "bg-indigo-200/40";
+      });
     }
     return tint;
-  }, [cursor.y, cursor.m]);
+  }, [calendarScale, cursor.y, cursor.m, weekDates]);
 
-  const dayViewShifts = useMemo(() => {
-    if (!dayViewDate) return [];
-    return shifts.filter((s) => s.date === dayViewDate);
-  }, [shifts, dayViewDate]);
+  const dayDisplayShifts = useMemo(
+    () => displayShifts.filter((s) => s.date === focusDate),
+    [displayShifts, focusDate],
+  );
+
+  const dayAllShifts = useMemo(() => shifts.filter((s) => s.date === focusDate), [shifts, focusDate]);
 
   const scheduleDragLock = dragSession !== null;
   const calendarDropsDisabled = trashHovering;
@@ -292,8 +366,8 @@ export function ScheduleApp() {
 
   if (scheduleModuleBlocked && isApiMode()) {
     return (
-      <div className="flex min-h-[calc(100vh-4rem)] flex-col bg-pulse-bg">
-        <div className="mx-auto w-full max-w-2xl px-4 py-10 sm:px-6 lg:px-8">
+      <div className="flex min-h-[calc(100vh-4rem)] flex-col bg-pulse-bg -mx-4 px-4 sm:-mx-5 sm:px-5">
+        <div className="mx-auto w-full max-w-2xl py-10">
           <Card padding="md">
             <h1 className="font-headline text-xl font-bold text-pulse-navy">Schedule</h1>
             <p className="mt-2 text-sm text-pulse-muted">
@@ -308,61 +382,130 @@ export function ScheduleApp() {
   }
 
   return (
-    <div className="flex min-h-[calc(100vh-4rem)] flex-col bg-pulse-bg">
-      <div className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:px-6 lg:px-8">
-        <div className={`flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between ${scheduleDragLock ? "pointer-events-none" : ""}`}>
-          <div>
-            <h1 className="font-headline text-2xl font-bold tracking-tight text-pulse-navy">Schedule</h1>
-            <p className="mt-1 text-sm text-pulse-muted">Plan shifts, zones, and coverage across your operation.</p>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <nav
-              className="flex rounded-xl border border-slate-200/90 bg-white p-1 shadow-sm"
-              aria-label="Schedule views"
-            >
-              {(
-                [
-                  ["calendar", "Calendar", CalendarDays],
-                  ["personnel", "Personnel", Users],
-                  ["reports", "Reports", BarChart2],
-                ] as const
-              ).map(([key, label, Icon]) => (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => {
-                    setView(key);
-                    if (key !== "calendar") setDayViewDate(null);
-                  }}
-                  className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${
-                    view === key
-                      ? "bg-slate-900 text-white shadow-sm"
-                      : "text-pulse-muted hover:bg-slate-50 hover:text-pulse-navy"
-                  }`}
+    <div className="flex min-h-[calc(100vh-4rem)] flex-col bg-pulse-bg -mx-4 px-4 sm:-mx-5 sm:px-5">
+      <div className="flex-1 pb-4">
+        <div className={scheduleDragLock ? "pointer-events-none" : ""}>
+          <PageHeader
+            title="Schedule"
+            description="Plan shifts, zones, and coverage across your operation."
+            icon={CalendarDays}
+            actions={
+              <>
+                <nav
+                  className="flex rounded-xl border border-slate-200/90 bg-white p-1 shadow-sm"
+                  aria-label="Schedule views"
                 >
-                  <Icon className="h-4 w-4 opacity-90" />
-                  {label}
+                  {(
+                    [
+                      ["calendar", "Calendar", CalendarDays],
+                      ["personnel", "Personnel", Users],
+                      ["reports", "Reports", BarChart2],
+                    ] as const
+                  ).map(([key, label, Icon]) => (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => {
+                        setView(key);
+                        if (key !== "calendar") setCalendarScale("month");
+                      }}
+                      className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${
+                        view === key
+                          ? "bg-slate-900 text-white shadow-sm"
+                          : "text-pulse-muted hover:bg-slate-50 hover:text-pulse-navy"
+                      }`}
+                    >
+                      <Icon className="h-4 w-4 opacity-90" />
+                      {label}
+                    </button>
+                  ))}
+                </nav>
+                <button
+                  type="button"
+                  onClick={() => setTimeOffOpen(true)}
+                  className="inline-flex items-center gap-2 rounded-xl border border-slate-200/90 bg-white px-4 py-2 text-sm font-semibold text-pulse-navy shadow-sm hover:bg-slate-50"
+                >
+                  <CalendarPlus className="h-4 w-4" />
+                  Time off
                 </button>
-              ))}
-            </nav>
-            <button
-              type="button"
-              onClick={() => setTimeOffOpen(true)}
-              className="inline-flex items-center gap-2 rounded-xl border border-slate-200/90 bg-white px-4 py-2 text-sm font-semibold text-pulse-navy shadow-sm hover:bg-slate-50"
-            >
-              <CalendarPlus className="h-4 w-4" />
-              Time off
-            </button>
-            <button
-              type="button"
-              onClick={() => setSettingsOpen(true)}
-              className="inline-flex items-center gap-2 rounded-xl border border-slate-200/90 bg-white px-4 py-2 text-sm font-semibold text-pulse-navy shadow-sm hover:bg-slate-50"
-            >
-              <Settings className="h-4 w-4" />
-              Settings
-            </button>
-          </div>
+                <button
+                  type="button"
+                  onClick={() => setSettingsOpen(true)}
+                  className="inline-flex items-center gap-2 rounded-xl border border-slate-200/90 bg-white px-4 py-2 text-sm font-semibold text-pulse-navy shadow-sm hover:bg-slate-50"
+                >
+                  <Settings className="h-4 w-4" />
+                  Settings
+                </button>
+              </>
+            }
+          />
         </div>
+
+        {view === "calendar" ? (
+          <div
+            className={`mt-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center ${scheduleDragLock ? "pointer-events-none" : ""}`}
+          >
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-[11px] font-bold uppercase tracking-wide text-pulse-muted">View</span>
+              <nav
+                className="flex rounded-xl border border-slate-200/90 bg-white p-1 shadow-sm"
+                aria-label="Calendar scale"
+              >
+                {(
+                  [
+                    ["month", "Month", LayoutGrid],
+                    ["week", "Week", CalendarRange],
+                    ["day", "Day", CalendarDays],
+                  ] as const
+                ).map(([key, label, Icon]) => (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => setCalendarScale(key)}
+                    className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${
+                      calendarScale === key
+                        ? "bg-slate-900 text-white shadow-sm"
+                        : "text-pulse-muted hover:bg-slate-50 hover:text-pulse-navy"
+                    }`}
+                  >
+                    <Icon className="h-4 w-4 opacity-90" />
+                    {label}
+                  </button>
+                ))}
+              </nav>
+            </div>
+            <div className="hidden h-6 w-px bg-slate-200 sm:block" aria-hidden />
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-[11px] font-bold uppercase tracking-wide text-pulse-muted">Show</span>
+              <nav
+                id="schedule-toggle"
+                className="flex rounded-xl border border-slate-200/90 bg-white p-1 shadow-sm"
+                aria-label="Schedule content filter"
+              >
+                {(
+                  [
+                    ["workers", "Workers"],
+                    ["projects", "Projects"],
+                    ["combined", "Combined"],
+                  ] as const
+                ).map(([key, label]) => (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => setContentFilter(key)}
+                    className={`rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${
+                      contentFilter === key
+                        ? "bg-slate-900 text-white shadow-sm"
+                        : "text-pulse-muted hover:bg-slate-50 hover:text-pulse-navy"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </nav>
+            </div>
+          </div>
+        ) : null}
 
         <div className={`mt-5 ${scheduleDragLock ? "pointer-events-none" : ""}`}>
           <ScheduleAlertsBanner alerts={alerts} />
@@ -376,64 +519,142 @@ export function ScheduleApp() {
             />
           ) : null}
           {view === "calendar" ? (
-            dayViewDate ? (
-              <ScheduleDayView
-                date={dayViewDate}
-                onClose={() => setDayViewDate(null)}
-                shifts={dayViewShifts}
-                dayShiftsAll={dayViewShifts}
-                workers={workers}
-                zones={zones}
-                roles={roles}
-                shiftTypes={shiftTypes}
-                settings={settings}
-                timeOffBlocks={timeOffBlocks}
-                onSelectShift={openEdit}
-                onAddForDate={(iso) => openAdd(iso)}
-                scheduleDragLock={scheduleDragLock}
-                dragSession={dragSession}
-                onShiftDragSessionStart={setDragSession}
-                onShiftDragSessionEnd={() => {
-                  setDragSession(null);
-                  setTrashHovering(false);
-                }}
-              />
-            ) : (
-              <ScheduleCalendarGrid
-                year={cursor.y}
-                monthIndex={cursor.m}
-                onPrevMonth={prevMonth}
-                onNextMonth={nextMonth}
-                shifts={shifts}
-                workers={workers}
-                zones={zones}
-                roles={roles}
-                shiftTypes={shiftTypes}
-                settings={settings}
-                timeOffBlocks={timeOffBlocks}
-                onSelectShift={openEdit}
-                onAddForDate={openAdd}
-                onShiftMove={handleShiftMove}
-                onOpenDay={(iso) => setDayViewDate(iso)}
-                projectDayTint={projectDayTint}
-                scheduleDragLock={scheduleDragLock}
-                dragSession={dragSession}
-                calendarDropsDisabled={calendarDropsDisabled}
-                onShiftDragSessionStart={setDragSession}
-                onShiftDragSessionEnd={() => {
-                  setDragSession(null);
-                  setTrashHovering(false);
-                }}
-              />
-            )
+            <div className="flex flex-col gap-6 xl:flex-row xl:items-start">
+              <div className="min-w-0 flex-1 space-y-4">
+                {calendarScale === "day" ? (
+                  <div className="space-y-3">
+                    <div
+                      className={`flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-200/90 bg-white px-3 py-2 shadow-sm ${scheduleDragLock ? "pointer-events-none" : ""}`}
+                    >
+                      <div className="flex flex-wrap items-center gap-1">
+                        <button
+                          type="button"
+                          className="rounded-lg border border-slate-200 bg-white p-2 text-pulse-navy shadow-sm hover:bg-slate-50"
+                          onClick={() => setFocusDate((p) => addDaysToIso(p, -1))}
+                          aria-label="Previous day"
+                        >
+                          <ChevronLeft className="h-4 w-4" />
+                        </button>
+                        <button
+                          type="button"
+                          className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-pulse-navy shadow-sm hover:bg-slate-50"
+                          onClick={goToday}
+                        >
+                          Today
+                        </button>
+                        <button
+                          type="button"
+                          className="rounded-lg border border-slate-200 bg-white p-2 text-pulse-navy shadow-sm hover:bg-slate-50"
+                          onClick={() => setFocusDate((p) => addDaysToIso(p, 1))}
+                          aria-label="Next day"
+                        >
+                          <ChevronRight className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+                    <ScheduleDayView
+                      date={focusDate}
+                      onClose={() => setCalendarScale("month")}
+                      shifts={dayDisplayShifts}
+                      dayShiftsAll={dayAllShifts}
+                      workers={workers}
+                      zones={zones}
+                      roles={roles}
+                      shiftTypes={shiftTypes}
+                      settings={settings}
+                      timeOffBlocks={timeOffBlocks}
+                      onSelectShift={openEdit}
+                      onAddForDate={(iso) => openAdd(iso)}
+                      scheduleDragLock={scheduleDragLock}
+                      dragSession={dragSession}
+                      onShiftDragSessionStart={setDragSession}
+                      onShiftDragSessionEnd={() => {
+                        setDragSession(null);
+                        setTrashHovering(false);
+                      }}
+                    />
+                  </div>
+                ) : null}
+                {calendarScale === "week" ? (
+                  <ScheduleWeekView
+                    weekDates={weekDates}
+                    onPrevWeek={() => setFocusDate((p) => addDaysToIso(p, -7))}
+                    onNextWeek={() => setFocusDate((p) => addDaysToIso(p, 7))}
+                    onToday={goToday}
+                    shifts={displayShifts}
+                    workers={workers}
+                    zones={zones}
+                    roles={roles}
+                    shiftTypes={shiftTypes}
+                    settings={settings}
+                    timeOffBlocks={timeOffBlocks}
+                    onSelectShift={openEdit}
+                    onAddForDate={openAdd}
+                    onShiftMove={handleShiftMove}
+                    onOpenDay={(iso) => {
+                      setFocusDate(iso);
+                      setCalendarScale("day");
+                    }}
+                    projectDayTint={projectDayTint}
+                    scheduleDragLock={scheduleDragLock}
+                    dragSession={dragSession}
+                    calendarDropsDisabled={calendarDropsDisabled}
+                    onShiftDragSessionStart={setDragSession}
+                    onShiftDragSessionEnd={() => {
+                      setDragSession(null);
+                      setTrashHovering(false);
+                    }}
+                  />
+                ) : null}
+                {calendarScale === "month" ? (
+                  <ScheduleCalendarGrid
+                    year={cursor.y}
+                    monthIndex={cursor.m}
+                    onPrevMonth={prevMonth}
+                    onNextMonth={nextMonth}
+                    shifts={displayShifts}
+                    workers={workers}
+                    zones={zones}
+                    roles={roles}
+                    shiftTypes={shiftTypes}
+                    settings={settings}
+                    timeOffBlocks={timeOffBlocks}
+                    onSelectShift={openEdit}
+                    onAddForDate={openAdd}
+                    onShiftMove={handleShiftMove}
+                    onOpenDay={(iso) => {
+                      setFocusDate(iso);
+                      setCalendarScale("day");
+                    }}
+                    projectDayTint={projectDayTint}
+                    scheduleDragLock={scheduleDragLock}
+                    dragSession={dragSession}
+                    calendarDropsDisabled={calendarDropsDisabled}
+                    onShiftDragSessionStart={setDragSession}
+                    onShiftDragSessionEnd={() => {
+                      setDragSession(null);
+                      setTrashHovering(false);
+                    }}
+                  />
+                ) : null}
+              </div>
+              <div className="w-full shrink-0 xl:w-72">
+                <ScheduleLegendPanel
+                  shiftTypes={shiftTypes}
+                  workers={workers}
+                  shifts={displayShifts}
+                  contentFilter={contentFilter}
+                />
+              </div>
+            </div>
           ) : null}
           {view === "personnel" ? (
             <SchedulePersonnel
               workers={workers}
               shifts={shifts}
               roles={roles}
-              year={cursor.y}
-              monthIndex={cursor.m}
+              year={metricsMonth.y}
+              monthIndex={metricsMonth.m}
               scheduleDragLocked={scheduleDragLock}
             />
           ) : null}
