@@ -548,8 +548,18 @@ async def list_all_users(
     limit: int = Query(100, ge=1, le=500),
     offset: int = Query(0, ge=0),
     q: Optional[str] = Query(None),
+    role: Optional[str] = Query(None, description="Filter by role enum value, e.g. system_admin, company_admin"),
 ) -> SystemUsersDirectoryOut:
     stmt = select(User, Company.name).outerjoin(Company, User.company_id == Company.id)
+    if role and role.strip():
+        try:
+            role_enum = UserRole(role.strip())
+        except ValueError as e:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid role filter",
+            ) from e
+        stmt = stmt.where(User.role == role_enum)
     if q:
         like = f"%{q}%"
         stmt = stmt.where(
@@ -688,6 +698,48 @@ async def request_password_reset(
         reset_url=reset_url,
     )
     return {"reset_link_path": reset_path, "reset_email_sent": reset_email_sent}
+
+
+@router.delete("/users/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def system_delete_user(
+    user_id: str,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    admin: Annotated[User, Depends(require_system_admin)],
+) -> None:
+    if admin.id == user_id:
+        raise HTTPException(status_code=400, detail="Cannot delete your own account")
+
+    u = await db.get(User, user_id)
+    if not u:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    if u.role == UserRole.system_admin:
+        cnt = await db.execute(
+            select(func.count())
+            .select_from(User)
+            .where(
+                User.role == UserRole.system_admin,
+                User.id != user_id,
+                User.is_active.is_(True),
+            )
+        )
+        other_admins = int(cnt.scalar_one() or 0)
+        if other_admins < 1:
+            raise HTTPException(
+                status_code=400,
+                detail="Cannot delete the last active system administrator",
+            )
+
+    await db.execute(delete(User).where(User.id == user_id))
+    await record_system_log(
+        db,
+        action="user.deleted",
+        performed_by=admin.id,
+        target_type="user",
+        target_id=user_id,
+        metadata={"email": u.email, "role": u.role.value},
+    )
+    await db.commit()
 
 
 @router.get("/logs/actions", response_model=list[str])

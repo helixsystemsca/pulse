@@ -76,6 +76,18 @@ class PaymentSummaryOut(BaseModel):
     encryption_note: str = "Industrial grade protection applies to stored billing metadata (mock environment)."
 
 
+class InvoiceCreate(BaseModel):
+    """Create a pending invoice (bill a tenant for services)."""
+
+    amount: Decimal = Field(..., gt=0)
+    currency: str = Field(default="USD", min_length=3, max_length=8)
+    reference_number: Optional[str] = Field(
+        None,
+        max_length=64,
+        description="Invoice # / PO / short service label; auto-generated if omitted",
+    )
+
+
 class InvoiceListOut(BaseModel):
     items: list[InvoiceOut]
     total: int

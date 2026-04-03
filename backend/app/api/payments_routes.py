@@ -27,6 +27,7 @@ from app.models.domain import (
     UserRole,
 )
 from app.schemas.payments import (
+    InvoiceCreate,
     InvoiceListOut,
     InvoiceOut,
     PaymentMethodCreate,
@@ -207,6 +208,72 @@ async def set_primary(db: Db, user: AdminUser, cid: CompanyId, method_id: str) -
     await db.commit()
     await db.refresh(pm)
     return _pm_to_out(pm)
+
+
+@router.post("/invoices", response_model=InvoiceOut, status_code=status.HTTP_201_CREATED)
+async def create_invoice(
+    db: Db,
+    user: AdminUser,
+    cid: CompanyId,
+    body: InvoiceCreate,
+) -> InvoiceOut:
+    _ = user
+    ref = (body.reference_number or "").strip() or f"INV-{uuid4().hex[:8].upper()}"
+    if len(ref) > 64:
+        ref = ref[:64]
+    now = datetime.now(timezone.utc)
+    inv = Invoice(
+        id=str(uuid4()),
+        company_id=cid,
+        amount=body.amount,
+        currency=(body.currency or "USD").strip().upper()[:8],
+        status=InvoiceStatus.pending,
+        issued_at=now,
+        paid_at=None,
+        reference_number=ref,
+    )
+    db.add(inv)
+    await db.commit()
+    await db.refresh(inv)
+    return InvoiceOut(
+        id=inv.id,
+        company_id=inv.company_id,
+        amount=Decimal(str(inv.amount)),
+        currency=inv.currency,
+        status=inv.status.value,
+        issued_at=inv.issued_at,
+        paid_at=inv.paid_at,
+        reference_number=inv.reference_number,
+    )
+
+
+@router.post("/invoices/{invoice_id}/record-payment", response_model=InvoiceOut)
+async def record_invoice_payment(
+    invoice_id: str,
+    db: Db,
+    user: AdminUser,
+    cid: CompanyId,
+) -> InvoiceOut:
+    _ = user
+    inv = await db.get(Invoice, invoice_id)
+    if not inv or inv.company_id != cid:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+    if inv.status != InvoiceStatus.pending:
+        raise HTTPException(status_code=400, detail="Only pending invoices can be marked paid")
+    inv.status = InvoiceStatus.paid
+    inv.paid_at = datetime.now(timezone.utc)
+    await db.commit()
+    await db.refresh(inv)
+    return InvoiceOut(
+        id=inv.id,
+        company_id=inv.company_id,
+        amount=Decimal(str(inv.amount)),
+        currency=inv.currency,
+        status=inv.status.value,
+        issued_at=inv.issued_at,
+        paid_at=inv.paid_at,
+        reference_number=inv.reference_number,
+    )
 
 
 @router.get("/invoices", response_model=InvoiceListOut)

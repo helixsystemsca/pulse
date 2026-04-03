@@ -91,6 +91,27 @@ export async function fetchInvoices(
   );
 }
 
+export async function createInvoice(
+  body: { amount: number | string; currency?: string; reference_number?: string | null },
+  companyId?: string | null,
+): Promise<InvoiceRow> {
+  return apiFetch<InvoiceRow>(`/api/payments/invoices${qsv({ company_id: companyId ?? undefined })}`, {
+    method: "POST",
+    json: {
+      amount: typeof body.amount === "string" ? Number(body.amount) : body.amount,
+      currency: body.currency ?? "USD",
+      reference_number: body.reference_number?.trim() || null,
+    },
+  });
+}
+
+export async function recordInvoicePayment(invoiceId: string, companyId?: string | null): Promise<InvoiceRow> {
+  return apiFetch<InvoiceRow>(
+    `/api/payments/invoices/${invoiceId}/record-payment${qsv({ company_id: companyId ?? undefined })}`,
+    { method: "POST" },
+  );
+}
+
 export async function fetchPaymentSummary(companyId?: string | null): Promise<PaymentSummary> {
   return apiFetch<PaymentSummary>(`/api/payments/summary${qsv({ company_id: companyId ?? undefined })}`);
 }

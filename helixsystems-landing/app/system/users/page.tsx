@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { apiFetch, refreshSessionWithToken } from "@/lib/api";
 import { parseClientApiError } from "@/lib/parse-client-api-error";
@@ -31,22 +31,65 @@ type UsersDirectory = {
   pending_invites: PendingInviteRow[];
 };
 
+const ROLE_OPTIONS: { value: string; label: string }[] = [
+  { value: "", label: "All roles" },
+  { value: "system_admin", label: "System admin" },
+  { value: "company_admin", label: "Company admin" },
+  { value: "manager", label: "Manager" },
+  { value: "worker", label: "Worker" },
+];
+
+const INPUT =
+  "w-full rounded-lg border border-zinc-600 bg-zinc-900 px-3 py-2 text-sm text-white placeholder:text-zinc-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500";
+const BTN_PRIMARY = "rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500";
+const BTN_SECONDARY = "rounded-lg border border-zinc-600 bg-zinc-900 px-4 py-2 text-sm font-semibold text-zinc-200 hover:bg-zinc-800";
+
 export default function SystemUsersPage() {
   const router = useRouter();
+  const session = readSession();
+  const myUserId = session?.sub ?? "";
+
   const [rows, setRows] = useState<UserRow[]>([]);
   const [pendingInvites, setPendingInvites] = useState<PendingInviteRow[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [q, setQ] = useState("");
   const [resetLink, setResetLink] = useState<string | null>(null);
+
+  const [appliedQ, setAppliedQ] = useState("");
+  const [appliedRole, setAppliedRole] = useState("");
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [draftQ, setDraftQ] = useState("");
+  const [draftRole, setDraftRole] = useState("");
+
+  const openFilters = () => {
+    setDraftQ(appliedQ);
+    setDraftRole(appliedRole);
+    setFilterOpen(true);
+  };
+
+  const applyFilters = () => {
+    setAppliedQ(draftQ);
+    setAppliedRole(draftRole);
+    setFilterOpen(false);
+  };
+
+  const clearFilters = () => {
+    setDraftQ("");
+    setDraftRole("");
+    setAppliedQ("");
+    setAppliedRole("");
+    setFilterOpen(false);
+  };
 
   const load = useCallback(async () => {
     setLoading(true);
     setLoadError(null);
     try {
-      const data = await apiFetch<UsersDirectory>(
-        `/api/system/users?limit=200&q=${encodeURIComponent(q)}`,
-      );
+      const sp = new URLSearchParams();
+      sp.set("limit", "200");
+      if (appliedQ.trim()) sp.set("q", appliedQ.trim());
+      if (appliedRole.trim()) sp.set("role", appliedRole.trim());
+      const data = await apiFetch<UsersDirectory>(`/api/system/users?${sp.toString()}`);
       setRows(data.users ?? []);
       setPendingInvites(data.pending_invites ?? []);
     } catch (e: unknown) {
@@ -56,11 +99,18 @@ export default function SystemUsersPage() {
     } finally {
       setLoading(false);
     }
-  }, [q]);
+  }, [appliedQ, appliedRole]);
 
   useEffect(() => {
     void load();
   }, [load]);
+
+  const filterBadge = useMemo(() => {
+    let n = 0;
+    if (appliedQ.trim()) n += 1;
+    if (appliedRole.trim()) n += 1;
+    return n;
+  }, [appliedQ, appliedRole]);
 
   const impersonate = async (userId: string) => {
     const res = await apiFetch<{ access_token: string }>(`/api/system/users/${userId}/impersonate`, {
@@ -79,36 +129,111 @@ export default function SystemUsersPage() {
     setResetLink(res.reset_link_path);
   };
 
+  const deleteUser = async (userId: string, email: string) => {
+    if (!confirm(`Permanently delete user ${email}? This cannot be undone.`)) return;
+    try {
+      await apiFetch(`/api/system/users/${userId}`, { method: "DELETE" });
+      await load();
+    } catch (e: unknown) {
+      setLoadError(parseClientApiError(e).message);
+    }
+  };
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-semibold text-white">Users</h1>
-        <p className="mt-1 text-sm text-zinc-500">
-          Tenant accounts (impersonate company admins and others) and pending invites that have not finished signup yet.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-semibold text-white">Users</h1>
+          <p className="mt-1 text-sm text-zinc-500">
+            Tenant accounts and pending invites. Use impersonation to open Pulse as a company user.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={openFilters}
+          className="inline-flex items-center gap-2 rounded-lg border border-zinc-600 bg-zinc-900 px-4 py-2 text-sm font-semibold text-zinc-100 hover:bg-zinc-800"
+        >
+          Filters
+          {filterBadge > 0 ? (
+            <span className="rounded-full bg-blue-600 px-2 py-0.5 text-[11px] font-bold text-white">{filterBadge}</span>
+          ) : null}
+        </button>
       </div>
+
+      {filterOpen ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+          onClick={() => setFilterOpen(false)}
+          role="presentation"
+        >
+          <div
+            className="w-full max-w-md rounded-2xl border border-zinc-700 bg-zinc-950 p-6 shadow-2xl"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="users-filter-title"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-zinc-800 pb-4">
+              <h2 id="users-filter-title" className="text-lg font-semibold text-white">
+                Filter users
+              </h2>
+              <button
+                type="button"
+                className="rounded-lg px-2 py-1 text-zinc-400 hover:bg-zinc-800 hover:text-white"
+                onClick={() => setFilterOpen(false)}
+                aria-label="Close"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="mt-5 space-y-4">
+              <div>
+                <label className="text-xs font-medium text-zinc-400" htmlFor="users-q">
+                  Search
+                </label>
+                <input
+                  id="users-q"
+                  value={draftQ}
+                  onChange={(e) => setDraftQ(e.target.value)}
+                  placeholder="Email, name, company…"
+                  className={`mt-1 ${INPUT}`}
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-zinc-400" htmlFor="users-role">
+                  Role
+                </label>
+                <select
+                  id="users-role"
+                  value={draftRole}
+                  onChange={(e) => setDraftRole(e.target.value)}
+                  className={`mt-1 ${INPUT}`}
+                >
+                  {ROLE_OPTIONS.map((o) => (
+                    <option key={o.value || "all"} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div className="mt-6 flex flex-wrap justify-end gap-2">
+              <button type="button" className={BTN_SECONDARY} onClick={() => void clearFilters()}>
+                Clear
+              </button>
+              <button type="button" className={BTN_PRIMARY} onClick={applyFilters}>
+                Apply
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {loadError ? (
         <div className="rounded-lg border border-red-900 bg-red-950/50 px-4 py-3 text-sm text-red-200">
           <p className="font-medium">{loadError}</p>
         </div>
       ) : null}
-
-      <div className="flex flex-wrap gap-2">
-        <input
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder="Search email, name, company…"
-          className="w-full max-w-md rounded-lg border border-zinc-700 bg-zinc-600/30 px-3 py-2 text-sm text-white placeholder:text-zinc-500"
-        />
-        <button
-          type="button"
-          onClick={() => void load()}
-          className="rounded-lg border border-zinc-600 px-3 py-2 text-sm text-zinc-300 hover:bg-zinc-800"
-        >
-          Search
-        </button>
-      </div>
 
       {resetLink ? (
         <div className="rounded-lg border border-amber-800 bg-amber-950/30 px-4 py-3 text-sm text-amber-200">
@@ -122,13 +247,13 @@ export default function SystemUsersPage() {
       ) : (
         <div className="space-y-10">
           <div>
-            <h2 className="text-sm font-semibold text-zinc-300">Tenant users</h2>
+            <h2 className="text-sm font-semibold text-zinc-300">Directory</h2>
             <p className="mt-1 text-xs text-zinc-500">
-              Only people who have completed signup appear here. Use <strong className="text-zinc-400">Impersonate</strong> to
-              open Pulse as a company admin or other tenant user.
+              Completed signups only. <strong className="text-zinc-400">Delete</strong> removes the account (not allowed for
+              yourself or the last system admin).
             </p>
             {rows.length === 0 ? (
-              <p className="mt-3 text-sm text-zinc-500">No tenant user accounts yet.</p>
+              <p className="mt-3 text-sm text-zinc-500">No users match these filters.</p>
             ) : (
               <div className="mt-3 overflow-x-auto rounded-lg border border-zinc-800">
                 <table className="min-w-full divide-y divide-zinc-800 text-left text-sm">
@@ -168,6 +293,15 @@ export default function SystemUsersPage() {
                           >
                             Reset link
                           </button>
+                          {r.id !== myUserId ? (
+                            <button
+                              type="button"
+                              onClick={() => void deleteUser(r.id, r.email)}
+                              className="text-xs text-red-400 hover:underline"
+                            >
+                              Delete
+                            </button>
+                          ) : null}
                         </td>
                       </tr>
                     ))}
@@ -180,8 +314,7 @@ export default function SystemUsersPage() {
           <div>
             <h2 className="text-sm font-semibold text-zinc-300">Pending invites</h2>
             <p className="mt-1 text-xs text-zinc-500">
-              These emails have an open invite but have not created a login yet—there is no account to impersonate until they
-              complete the link in their email (or you use quick-create with password on Companies).
+              Open invites that have not finished signup—no account to impersonate yet.
             </p>
             {pendingInvites.length === 0 ? (
               <p className="mt-3 text-sm text-zinc-500">No unused, non-expired invites.</p>
