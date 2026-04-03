@@ -37,6 +37,8 @@ class UserOut(BaseModel):
     is_impersonating: bool = False
     is_system_admin: bool = False
     company: Optional[CompanySummaryOut] = None
+    onboarding_enabled: bool = True
+    onboarding_completed: bool = False
 
     model_config = {"from_attributes": True}
 

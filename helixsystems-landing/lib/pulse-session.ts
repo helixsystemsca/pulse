@@ -10,6 +10,12 @@ export const PULSE_AUTH_STORAGE_KEY = "pulse_auth_v1";
 /** `sessionStorage` flag for the post-login welcome overlay; cleared when auth ends so the next sign-in can show it. */
 export const PULSE_WELCOME_SESSION_KEY = "welcome_shown";
 
+/** Skip onboarding intro modal until next session (Start Setup / Skip for Now). */
+export const PULSE_ONBOARDING_INTRO_SESSION_KEY = "pulse_onboarding_intro_dismissed";
+
+/** Hide the incomplete-setup reminder banner until next session. */
+export const PULSE_ONBOARDING_BANNER_SESSION_KEY = "pulse_onboarding_banner_dismissed";
+
 /** Populated from `/api/v1/auth/me` for tenant users. */
 export type CompanySummary = {
   id: string;
@@ -29,6 +35,9 @@ export type PulseAuthSession = {
   enabled_features?: string[];
   /** Tenant branding; absent for system_admin or legacy sessions. */
   company?: CompanySummary | null;
+  /** From `/auth/me`; guides onboarding UI for tenant users. */
+  onboarding_enabled?: boolean;
+  onboarding_completed?: boolean;
   iat: number;
   exp: number;
   remember: boolean;
@@ -44,6 +53,8 @@ export type UserOut = {
   is_impersonating?: boolean;
   is_system_admin?: boolean;
   company?: CompanySummary | null;
+  onboarding_enabled?: boolean;
+  onboarding_completed?: boolean;
 };
 
 function emitAuthChange() {
@@ -87,6 +98,8 @@ function clearSessionQuiet() {
   document.cookie = "pulse_session=; path=/; max-age=0; SameSite=Lax";
   try {
     sessionStorage.removeItem(PULSE_WELCOME_SESSION_KEY);
+    sessionStorage.removeItem(PULSE_ONBOARDING_INTRO_SESSION_KEY);
+    sessionStorage.removeItem(PULSE_ONBOARDING_BANNER_SESSION_KEY);
   } catch {
     /* ignore */
   }
@@ -145,6 +158,8 @@ export function writeApiSession(
     is_system_admin: user.is_system_admin,
     enabled_features: user.enabled_features,
     company: user.company ?? null,
+    onboarding_enabled: user.onboarding_enabled,
+    onboarding_completed: user.onboarding_completed,
     iat: now,
     exp,
     remember,

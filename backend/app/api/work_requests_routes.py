@@ -15,6 +15,7 @@ from sqlalchemy import and_, delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user, get_db, require_manager_or_above
+from app.services.onboarding_service import try_mark_onboarding_step
 from app.models.domain import Tool, User, UserRole, Zone
 from app.models.pulse_models import (
     PulseWorkRequest,
@@ -317,6 +318,7 @@ async def create_wr(
     db.add(wr)
     await db.flush()
     await _log(db, wr.id, "created", user.id, {"title": wr.title})
+    await try_mark_onboarding_step(db, user.id, "create_work_order")
     await db.commit()
     await db.refresh(wr)
     return await _detail(db, cid, wr.id, user.id)

@@ -71,3 +71,17 @@ export async function refreshSessionWithToken(token: string, remember: boolean):
   const user = (await meRes.json()) as UserOut;
   writeApiSession(token, user, remember);
 }
+
+/** Re-fetch `/auth/me` and update stored session (e.g. after onboarding PATCH). */
+export async function refreshPulseUserFromServer(): Promise<void> {
+  const base = getApiBaseUrl();
+  if (!base) return;
+  const s = readSession();
+  if (!s?.access_token) return;
+  const meRes = await fetch(`${base}/api/v1/auth/me`, {
+    headers: { Authorization: `Bearer ${s.access_token}` },
+  });
+  if (!meRes.ok) return;
+  const user = (await meRes.json()) as UserOut;
+  writeApiSession(s.access_token, user, s.remember);
+}

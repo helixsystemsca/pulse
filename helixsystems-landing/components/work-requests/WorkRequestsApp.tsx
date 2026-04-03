@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { apiFetch } from "@/lib/api";
+import { emitOnboardingMaybeUpdated } from "@/lib/onboarding-events";
 import { PulseDrawer } from "@/components/schedule/PulseDrawer";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { readSession } from "@/lib/pulse-session";
@@ -344,6 +345,7 @@ export function WorkRequestsApp() {
         attachmentsNotes: "",
       });
       await loadList();
+      emitOnboardingMaybeUpdated();
     } finally {
       setActionBusy(false);
     }

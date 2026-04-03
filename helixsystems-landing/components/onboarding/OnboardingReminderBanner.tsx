@@ -1,0 +1,66 @@
+"use client";
+
+import { X } from "lucide-react";
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { PULSE_ONBOARDING_BANNER_SESSION_KEY } from "@/lib/pulse-session";
+import { useOnboarding } from "./OnboardingProvider";
+
+export function OnboardingReminderBanner() {
+  const { state, loading, active, setChecklistExpanded } = useOnboarding();
+  const [dismissed, setDismissed] = useState(false);
+
+  useEffect(() => {
+    try {
+      setDismissed(sessionStorage.getItem(PULSE_ONBOARDING_BANNER_SESSION_KEY) === "1");
+    } catch {
+      setDismissed(false);
+    }
+  }, []);
+
+  if (loading || !active || !state || dismissed) return null;
+
+  const { completed_count, total_count } = state;
+
+  return (
+    <div className="pointer-events-auto fixed left-1/2 top-[4.25rem] z-[120] w-[min(92vw,42rem)] -translate-x-1/2 px-2 sm:top-16">
+      <div className="flex items-center gap-3 rounded-xl border border-sky-200/90 bg-sky-50/95 px-4 py-3 text-sm text-pulse-navy shadow-md backdrop-blur-sm">
+        <p className="min-w-0 flex-1">
+          <span className="font-semibold">Finish setup</span> to unlock full functionality —{" "}
+          <span className="tabular-nums font-medium">
+            {completed_count}/{total_count} complete
+          </span>
+          .
+        </p>
+        <button
+          type="button"
+          className="shrink-0 rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-pulse-navy shadow-sm ring-1 ring-slate-200/80 hover:bg-slate-50"
+          onClick={() => setChecklistExpanded(true)}
+        >
+          Open checklist
+        </button>
+        <Link
+          href="/dashboard/setup"
+          className="hidden shrink-0 text-xs font-semibold text-[#2B4C7E] underline decoration-sky-300 underline-offset-2 sm:inline"
+        >
+          Setup
+        </Link>
+        <button
+          type="button"
+          className="shrink-0 rounded-lg p-1 text-pulse-muted hover:bg-sky-100 hover:text-pulse-navy"
+          aria-label="Dismiss reminder"
+          onClick={() => {
+            try {
+              sessionStorage.setItem(PULSE_ONBOARDING_BANNER_SESSION_KEY, "1");
+            } catch {
+              /* ignore */
+            }
+            setDismissed(true);
+          }}
+        >
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+    </div>
+  );
+}

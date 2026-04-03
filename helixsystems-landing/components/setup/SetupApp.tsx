@@ -9,6 +9,7 @@ import { apiFetch } from "@/lib/api";
 import { readSession } from "@/lib/pulse-session";
 import type { WorkerRow } from "@/lib/workersService";
 import { activityRowMatchesTest, type DetectionMatchType, type DetectionTestTarget } from "@/lib/detectionTest";
+import { emitOnboardingMaybeUpdated } from "@/lib/onboarding-events";
 import { normalizeMacKey } from "@/lib/macNormalize";
 import {
   assignBleDevice,
@@ -466,6 +467,7 @@ export function SetupApp() {
       setGwIdent("");
       setGwZoneId("");
       await refresh();
+      emitOnboardingMaybeUpdated();
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Could not add gateway");
     }
@@ -482,6 +484,7 @@ export function SetupApp() {
       setBleName("");
       setBleMac("");
       await refresh();
+      emitOnboardingMaybeUpdated();
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Could not register tag");
     }
@@ -497,6 +500,7 @@ export function SetupApp() {
       setZoneName("");
       setZoneDesc("");
       await refresh();
+      emitOnboardingMaybeUpdated();
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Could not create zone");
     }

@@ -6,6 +6,8 @@ import { AppMain } from "./AppMain";
 import { MainContentWidth } from "./MainContentWidth";
 import { AppNavbar } from "./AppNavbar";
 import { AppSideNav } from "./AppSideNav";
+import { OnboardingChrome } from "@/components/onboarding/OnboardingChrome";
+import { OnboardingProvider } from "@/components/onboarding/OnboardingProvider";
 import { ProximityPromptHost } from "./ProximityPromptHost";
 
 type AppLayoutProps = {
@@ -22,7 +24,10 @@ export function AppLayout({ children, mainClassName = "" }: AppLayoutProps) {
       <div className="flex min-h-screen min-w-0 flex-col">
         <AppNavbar />
         <AppMain className={mainClassName}>
-          <MainContentWidth>{children}</MainContentWidth>
+          <OnboardingProvider>
+            <MainContentWidth>{children}</MainContentWidth>
+            <OnboardingChrome />
+          </OnboardingProvider>
         </AppMain>
       </div>
     </div>

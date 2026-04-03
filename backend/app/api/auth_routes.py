@@ -151,6 +151,12 @@ async def me(
         if co:
             company_summary = CompanySummaryOut(id=co.id, name=co.name, logo_url=co.logo_url)
 
+    ob_enabled = user.onboarding_enabled
+    ob_completed = user.onboarding_completed
+    if user.company_id is None or user.role == UserRole.system_admin or user.is_system_admin:
+        ob_enabled = False
+        ob_completed = True
+
     return UserOut(
         id=user.id,
         email=user.email,
@@ -161,6 +167,8 @@ async def me(
         is_impersonating=is_imp,
         is_system_admin=bool(user.is_system_admin or user.role == UserRole.system_admin),
         company=company_summary,
+        onboarding_enabled=ob_enabled,
+        onboarding_completed=ob_completed,
     )
 
 

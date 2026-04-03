@@ -1,6 +1,7 @@
 """Core domain entities: companies, users, RBAC, tools, jobs, etc."""
 
 import enum
+import json
 from datetime import datetime, timezone
 from typing import Any, Optional
 from uuid import uuid4
@@ -25,6 +26,16 @@ from app.models.base import Base
 
 def _uuid() -> str:
     return str(uuid4())
+
+
+_ONBOARDING_STEPS_DEFAULT_JSON = json.dumps(
+    [
+        {"key": "create_zone", "completed": False},
+        {"key": "add_device", "completed": False},
+        {"key": "create_work_order", "completed": False},
+        {"key": "view_operations", "completed": False},
+    ]
+)
 
 
 class UserRole(str, enum.Enum):
@@ -153,6 +164,13 @@ class User(Base):
         JSONB,
         nullable=False,
         server_default=text("'[]'::jsonb"),
+    )
+    onboarding_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
+    onboarding_completed: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
+    onboarding_steps: Mapped[list[Any]] = mapped_column(
+        JSONB,
+        nullable=False,
+        server_default=text(f"'{_ONBOARDING_STEPS_DEFAULT_JSON}'::jsonb"),
     )
 
     company: Mapped[Optional[Company]] = relationship(
