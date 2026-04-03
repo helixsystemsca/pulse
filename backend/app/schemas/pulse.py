@@ -147,6 +147,12 @@ class ShiftOut(BaseModel):
     requires_supervisor: bool
     requires_ticketed: bool
     created_at: datetime
+    shift_kind: str = "workforce"
+    display_label: Optional[str] = None
+    project_task_id: Optional[str] = None
+    project_id: Optional[str] = None
+    project_name: Optional[str] = None
+    task_priority: Optional[str] = None
 
     model_config = {"from_attributes": True}
 

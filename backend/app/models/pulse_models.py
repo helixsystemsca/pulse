@@ -7,6 +7,7 @@ from uuid import uuid4
 
 from sqlalchemy import (
     Boolean,
+    CheckConstraint,
     Date,
     DateTime,
     Enum,
@@ -170,6 +171,160 @@ class PulseWorkerProfile(Base):
     )
 
 
+class PulseProjectStatus(str, enum.Enum):
+    active = "active"
+    completed = "completed"
+    on_hold = "on_hold"
+
+
+class PulseTaskPriority(str, enum.Enum):
+    low = "low"
+    medium = "medium"
+    high = "high"
+    critical = "critical"
+
+
+class PulseTaskStatus(str, enum.Enum):
+    todo = "todo"
+    in_progress = "in_progress"
+    blocked = "blocked"
+    complete = "complete"
+
+
+class PulseProjectAutomationTrigger(str, enum.Enum):
+    task_status_changed = "task_status_changed"
+    task_completed = "task_completed"
+    task_overdue = "task_overdue"
+
+
+class PulseProject(Base):
+    __tablename__ = "pulse_projects"
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    company_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    start_date: Mapped[date] = mapped_column(Date, nullable=False)
+    end_date: Mapped[date] = mapped_column(Date, nullable=False)
+    status: Mapped[PulseProjectStatus] = mapped_column(
+        Enum(PulseProjectStatus, values_callable=lambda x: [e.value for e in x], native_enum=False, length=32),
+        default=PulseProjectStatus.active,
+        nullable=False,
+        index=True,
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+
+class PulseProjectTask(Base):
+    __tablename__ = "pulse_project_tasks"
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    company_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    project_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("pulse_projects.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    title: Mapped[str] = mapped_column(String(512), nullable=False)
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    assigned_user_id: Mapped[Optional[str]] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    priority: Mapped[PulseTaskPriority] = mapped_column(
+        Enum(PulseTaskPriority, values_callable=lambda x: [e.value for e in x], native_enum=False, length=16),
+        default=PulseTaskPriority.medium,
+        nullable=False,
+    )
+    status: Mapped[PulseTaskStatus] = mapped_column(
+        Enum(PulseTaskStatus, values_callable=lambda x: [e.value for e in x], native_enum=False, length=32),
+        default=PulseTaskStatus.todo,
+        nullable=False,
+        index=True,
+    )
+    due_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True, index=True)
+    calendar_shift_id: Mapped[Optional[str]] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("pulse_schedule_shifts.id", ondelete="SET NULL"),
+        nullable=True,
+        unique=True,
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+
+class PulseTaskDependency(Base):
+    """Task T is blocked until prerequisite P is complete: task_id=T, depends_on_task_id=P."""
+
+    __tablename__ = "pulse_task_dependencies"
+    __table_args__ = (
+        UniqueConstraint("task_id", "depends_on_task_id", name="uq_pulse_task_dep_pair"),
+        CheckConstraint("task_id <> depends_on_task_id", name="ck_pulse_task_dep_no_self"),
+    )
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    task_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("pulse_project_tasks.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    depends_on_task_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("pulse_project_tasks.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+
+
+class PulseProjectAutomationRule(Base):
+    """Lightweight per-project automation (triggers + JSON condition/action)."""
+
+    __tablename__ = "pulse_project_automation_rules"
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    project_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("pulse_projects.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    trigger_type: Mapped[PulseProjectAutomationTrigger] = mapped_column(
+        Enum(
+            PulseProjectAutomationTrigger,
+            values_callable=lambda x: [e.value for e in x],
+            native_enum=False,
+            length=32,
+        ),
+        nullable=False,
+    )
+    condition_json: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
+    action_json: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+
 class PulseScheduleShift(Base):
     __tablename__ = "pulse_schedule_shifts"
 
@@ -188,6 +343,8 @@ class PulseScheduleShift(Base):
     shift_type: Mapped[str] = mapped_column(String(64), default="shift", nullable=False)
     requires_supervisor: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     requires_ticketed: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    shift_kind: Mapped[str] = mapped_column(String(32), default="workforce", nullable=False)
+    display_label: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )

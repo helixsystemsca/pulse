@@ -1,7 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { WelcomeLoaderModal } from "@/components/ui/WelcomeLoaderModal";
 import { apiFetch } from "@/lib/api";
+import { readSession } from "@/lib/pulse-session";
+import { useEffect, useMemo, useState } from "react";
+
+function welcomeFromSession(email: string | null | undefined, fullName: string | null | undefined): string {
+  if (fullName?.trim()) return fullName.trim();
+  if (email) return email.split("@")[0] ?? email;
+  return "there";
+}
 
 type Overview = {
   total_companies: number;
@@ -13,6 +21,12 @@ type Overview = {
 export default function SystemOverviewPage() {
   const [data, setData] = useState<Overview | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [pageReady, setPageReady] = useState(false);
+
+  const userName = useMemo(() => {
+    const s = readSession();
+    return welcomeFromSession(s?.email, s?.full_name);
+  }, []);
 
   useEffect(() => {
     (async () => {
@@ -21,15 +35,29 @@ export default function SystemOverviewPage() {
         setData(o);
       } catch {
         setErr("Failed to load overview.");
+      } finally {
+        setPageReady(true);
       }
     })();
   }, []);
 
-  if (err) return <p className="text-red-400">{err}</p>;
-  if (!data) return <p className="text-zinc-500">Loading…</p>;
+  if (err)
+    return (
+      <div className="relative">
+        <p className="text-red-400">{err}</p>
+        <WelcomeLoaderModal userName={userName} isReady={pageReady} />
+      </div>
+    );
+  if (!data)
+    return (
+      <div className="relative">
+        <p className="text-zinc-500">Loading…</p>
+        <WelcomeLoaderModal userName={userName} isReady={pageReady} />
+      </div>
+    );
 
   return (
-    <div className="space-y-6">
+    <div className="relative space-y-6">
       <div>
         <h1 className="text-xl font-semibold text-white">Global overview</h1>
         <p className="mt-1 text-sm text-zinc-500">Internal platform metrics.</p>
@@ -55,6 +83,7 @@ export default function SystemOverviewPage() {
           </ul>
         </div>
       </div>
+      <WelcomeLoaderModal userName={userName} isReady={pageReady} />
     </div>
   );
 }

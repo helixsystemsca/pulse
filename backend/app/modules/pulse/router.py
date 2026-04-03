@@ -13,11 +13,14 @@ from app.core.database import get_db
 from app.models.domain import InventoryItem, Tool, ToolStatus, User, UserRole, Zone
 from app.models.pulse_models import (
     PulseBeaconEquipment,
+    PulseProject,
+    PulseProjectTask,
     PulseScheduleShift,
     PulseWorkRequest,
     PulseWorkRequestStatus,
     PulseWorkerProfile,
 )
+from app.modules.pulse import project_service as proj_task_svc
 from app.modules.pulse import service as pulse_svc
 from app.schemas.pulse import (
     AssetOut,
@@ -43,6 +46,35 @@ from app.schemas.pulse import (
 )
 
 router = APIRouter(prefix="/pulse", tags=["pulse"])
+
+
+def _shift_to_out(
+    sh: PulseScheduleShift,
+    task: Optional[PulseProjectTask] = None,
+    project: Optional[PulseProject] = None,
+) -> ShiftOut:
+    sk = getattr(sh, "shift_kind", None) or "workforce"
+    tp: Optional[str] = None
+    if task is not None and task.priority is not None:
+        tp = task.priority.value if hasattr(task.priority, "value") else str(task.priority)
+    return ShiftOut(
+        id=str(sh.id),
+        company_id=str(sh.company_id),
+        assigned_user_id=str(sh.assigned_user_id),
+        zone_id=str(sh.zone_id) if sh.zone_id else None,
+        starts_at=sh.starts_at,
+        ends_at=sh.ends_at,
+        shift_type=sh.shift_type,
+        requires_supervisor=sh.requires_supervisor,
+        requires_ticketed=sh.requires_ticketed,
+        created_at=sh.created_at,
+        shift_kind=sk,
+        display_label=getattr(sh, "display_label", None),
+        project_task_id=str(task.id) if task else None,
+        project_id=str(project.id) if project else None,
+        project_name=project.name if project else None,
+        task_priority=tp,
+    )
 
 
 async def _company_id(user: User = Depends(require_tenant_user)) -> str:
@@ -291,7 +323,28 @@ async def list_shifts(
         stmt = stmt.where(PulseScheduleShift.starts_at < to_ts)
     stmt = stmt.order_by(PulseScheduleShift.starts_at)
     rows = (await db.execute(stmt)).scalars().all()
-    return [ShiftOut.model_validate(r) for r in rows]
+    shift_ids = [str(r.id) for r in rows if (getattr(r, "shift_kind", None) or "workforce") == "project_task"]
+    tasks_by_shift: dict[str, PulseProjectTask] = {}
+    if shift_ids:
+        tq = await db.execute(
+            select(PulseProjectTask).where(PulseProjectTask.calendar_shift_id.in_(shift_ids))
+        )
+        for t in tq.scalars().all():
+            if t.calendar_shift_id:
+                tasks_by_shift[str(t.calendar_shift_id)] = t
+    proj_ids = {str(t.project_id) for t in tasks_by_shift.values()}
+    projects_by_id: dict[str, PulseProject] = {}
+    if proj_ids:
+        pq = await db.execute(select(PulseProject).where(PulseProject.id.in_(proj_ids)))
+        for p in pq.scalars().all():
+            projects_by_id[str(p.id)] = p
+    out: list[ShiftOut] = []
+    for r in rows:
+        sid = str(r.id)
+        t = tasks_by_shift.get(sid)
+        proj = projects_by_id.get(str(t.project_id)) if t else None
+        out.append(_shift_to_out(r, t, proj))
+    return out
 
 
 @router.post("/schedule/shifts", response_model=ShiftCreateResult)
@@ -320,11 +373,13 @@ async def create_shift(db: Db, cid: CompanyId, body: ShiftCreate) -> ShiftCreate
         shift_type=body.shift_type,
         requires_supervisor=body.requires_supervisor,
         requires_ticketed=body.requires_ticketed,
+        shift_kind="workforce",
+        display_label=None,
     )
     db.add(sh)
     await db.commit()
     await db.refresh(sh)
-    return ShiftCreateResult(shift=ShiftOut.model_validate(sh), warnings=warnings)
+    return ShiftCreateResult(shift=_shift_to_out(sh), warnings=warnings)
 
 
 @router.patch("/schedule/shifts/{shift_id}", response_model=ShiftCreateResult)
@@ -356,9 +411,14 @@ async def patch_shift(db: Db, cid: CompanyId, shift_id: str, body: ShiftUpdate) 
 
     for k, v in data.items():
         setattr(sh, k, v)
+    await db.flush()
+    await proj_task_svc.sync_task_from_linked_shift(db, sh)
     await db.commit()
     await db.refresh(sh)
-    return ShiftCreateResult(shift=ShiftOut.model_validate(sh), warnings=warnings)
+    tq = await db.execute(select(PulseProjectTask).where(PulseProjectTask.calendar_shift_id == sh.id))
+    task = tq.scalar_one_or_none()
+    proj = await db.get(PulseProject, task.project_id) if task else None
+    return ShiftCreateResult(shift=_shift_to_out(sh, task, proj), warnings=warnings)
 
 
 @router.delete("/schedule/shifts/{shift_id}", status_code=status.HTTP_204_NO_CONTENT)

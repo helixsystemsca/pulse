@@ -33,6 +33,10 @@ export type ShiftUiFlags = {
   isUpdated?: boolean;
 };
 
+export type ShiftKind = "workforce" | "project_task";
+
+export type TaskPriority = "low" | "medium" | "high" | "critical";
+
 export interface Shift {
   id: string;
   workerId: string | null;
@@ -46,6 +50,14 @@ export interface Shift {
   eventType: ShiftEventType;
   role: ScheduleDutyRole;
   zoneId: string;
+  /** Pulse API: workforce vs linked project task (calendar line). */
+  shiftKind?: ShiftKind;
+  projectTaskId?: string;
+  projectId?: string;
+  projectName?: string;
+  /** Primary line on calendar chip when `shiftKind === "project_task"`. */
+  taskTitle?: string;
+  taskPriority?: TaskPriority;
   /** Optional staffing rules for this shift (conflict UI only; non-blocking). */
   required_certifications?: string[];
   /** When true, assigned worker needs at least one cert from `required_certifications`; otherwise all are required. */

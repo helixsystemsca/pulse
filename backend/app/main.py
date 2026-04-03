@@ -26,6 +26,8 @@ from app.api.notifications_routes import router as notifications_router
 from app.api.auth_routes import router as auth_router
 from app.api.compliance_routes import router as compliance_router
 from app.api.payments_routes import router as payments_router
+from app.api.projects_routes import router as projects_router
+from app.api.projects_routes import tasks_router as projects_tasks_router
 from app.api.core_routes import router as core_router
 from app.api.public_routes import router as public_router
 from app.api.realtime import router as realtime_router
@@ -118,5 +120,7 @@ app.include_router(users_router, prefix="/api/v1")
 app.include_router(core_router, prefix="/api/v1")
 app.include_router(realtime_router, prefix="/api/v1")
 app.include_router(pulse_router, prefix="/api/v1")
+app.include_router(projects_router, prefix="/api/v1")
+app.include_router(projects_tasks_router, prefix="/api/v1")
 
 register_modules(app)

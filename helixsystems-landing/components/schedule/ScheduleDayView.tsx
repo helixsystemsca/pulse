@@ -139,7 +139,8 @@ export function ScheduleDayView({
                 const st = typeMap.get(s.shiftType);
                 const w = s.workerId ? workerMap.get(s.workerId) : null;
                 const isOpen = !s.workerId;
-                const name = w?.name ?? "Open shift";
+                const name =
+                  s.shiftKind === "project_task" && s.taskTitle ? s.taskTitle : (w?.name ?? "Open shift");
                 const zone = zoneMap.get(s.zoneId) ?? "—";
                 const roleLb = roleMap.get(s.role) ?? s.role;
                 const conflicts = getShiftConflicts(s, dayShiftsAll, workers, settings, timeOffBlocks, zones);
@@ -202,7 +203,9 @@ export function ScheduleDayView({
                           {formatTimeRange(s.startTime, s.endTime, settings.timeFormat)}
                         </p>
                         <p className="text-xs opacity-90">
-                          {roleLb} · {zone}
+                          {s.shiftKind === "project_task" && s.projectName
+                            ? `${s.projectName} · ${zone}`
+                            : `${roleLb} · ${zone}`}
                         </p>
                         {req.length ? (
                           <p className="mt-1.5 text-xs leading-snug">

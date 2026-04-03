@@ -8,8 +8,10 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { Check } from "lucide-react";
 import { useEffect, useState } from "react";
+import { PULSE_WELCOME_SESSION_KEY } from "@/lib/pulse-session";
 
-export const WELCOME_SESSION_STORAGE_KEY = "welcome_shown";
+/** @deprecated Use `PULSE_WELCOME_SESSION_KEY` from `@/lib/pulse-session`. */
+export const WELCOME_SESSION_STORAGE_KEY = PULSE_WELCOME_SESSION_KEY;
 
 export type WelcomeLoaderModalProps = {
   userName: string;
@@ -26,7 +28,7 @@ const EXIT_MS = 300;
 export function WelcomeLoaderModal({
   userName,
   isReady,
-  storageKey = WELCOME_SESSION_STORAGE_KEY,
+  storageKey = PULSE_WELCOME_SESSION_KEY,
 }: WelcomeLoaderModalProps) {
   const [hydrated, setHydrated] = useState(false);
   const [skipEntirely, setSkipEntirely] = useState(false);

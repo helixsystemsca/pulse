@@ -13,6 +13,7 @@ import {
   ChevronRight,
   ClipboardList,
   CreditCard,
+  FolderKanban,
   Gauge,
   LayoutDashboard,
   MapPin,
@@ -31,6 +32,7 @@ import { isPulseNavActive } from "@/lib/pulse-nav-active";
 const ICONS: Record<PulseSidebarIcon, LucideIcon> = {
   layout: LayoutDashboard,
   calendar: CalendarDays,
+  "folder-kanban": FolderKanban,
   clipboard: ClipboardList,
   package: Package,
   wrench: Wrench,

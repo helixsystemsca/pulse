@@ -15,6 +15,7 @@ export function isPulseNavActive(href: string, pathname: string): boolean {
   if (href === "/dashboard/inventory") return pathname === "/dashboard/inventory";
   if (href.startsWith("/dashboard")) return pathname === href || pathname.startsWith(`${href}/`);
   if (href === "/schedule") return pathname === "/schedule" || pathname.startsWith("/schedule/");
+  if (href === "/projects") return pathname === "/projects" || pathname.startsWith("/projects/");
   if (href === "/system") return pathname === "/system" || pathname.startsWith("/system/");
   return pathname === href || pathname.startsWith(`${href}/`);
 }

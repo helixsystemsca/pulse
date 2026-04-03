@@ -59,6 +59,9 @@ type ScheduleState = {
   removeZone: (id: string) => void;
 
   resetDemo: () => void;
+
+  /** Replace roster + grid from Pulse API (live schedule). */
+  applyPulseScheduleSnapshot: (workers: Worker[], zones: Zone[], shifts: Shift[]) => void;
 };
 
 function initialState(): Omit<
@@ -78,6 +81,7 @@ function initialState(): Omit<
   | "addTimeOffBlock"
   | "removeTimeOffBlock"
   | "resetDemo"
+  | "applyPulseScheduleSnapshot"
 > {
   return {
     workers: defaultWorkers,
@@ -161,6 +165,13 @@ export const useScheduleStore = create<ScheduleState>()(
         }),
 
       resetDemo: () => set(initialState()),
+
+      applyPulseScheduleSnapshot: (workers, zones, newShifts) =>
+        set({
+          workers,
+          zones,
+          shifts: newShifts,
+        }),
     }),
     {
       name: "pulse_schedule_v1",

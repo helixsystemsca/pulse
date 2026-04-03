@@ -6,7 +6,7 @@ import { isApiMode } from "@/lib/api";
 import { navigateToPulseLogin, pulsePostLoginPath } from "@/lib/pulse-app";
 import { readSession } from "@/lib/pulse-session";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 function welcomeFromSession(email: string | null | undefined, fullName: string | null | undefined): string {
   if (fullName?.trim()) return fullName.trim();
@@ -24,6 +24,7 @@ export default function OverviewPage() {
   const router = useRouter();
   const [ready, setReady] = useState(false);
   const [dashboardDataReady, setDashboardDataReady] = useState(false);
+  const onDashboardReady = useCallback(() => setDashboardDataReady(true), []);
 
   useEffect(() => {
     const s = readSession();
@@ -55,7 +56,7 @@ export default function OverviewPage() {
     <div className="relative mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
       <OperationalDashboard
         variant={isApiMode() ? "live" : "demo"}
-        onReady={() => setDashboardDataReady(true)}
+        onReady={onDashboardReady}
       />
       <WelcomeLoaderModal userName={userName} isReady={dashboardDataReady} />
     </div>

@@ -43,7 +43,11 @@ from app.models.domain import (
 )
 from app.models.pulse_models import (
     PulseBeaconEquipment,
+    PulseProject,
+    PulseProjectAutomationRule,
+    PulseProjectTask,
     PulseScheduleShift,
+    PulseTaskDependency,
     PulseWorkRequest,
     PulseWorkerProfile,
 )
@@ -87,6 +91,10 @@ __all__ = [
     "SystemSecureToken",
     "PulseWorkRequest",
     "PulseWorkerProfile",
+    "PulseProject",
+    "PulseProjectAutomationRule",
+    "PulseProjectTask",
     "PulseScheduleShift",
+    "PulseTaskDependency",
     "PulseBeaconEquipment",
 ]

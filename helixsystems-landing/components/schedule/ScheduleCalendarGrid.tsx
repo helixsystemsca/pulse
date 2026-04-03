@@ -233,7 +233,10 @@ export function ScheduleCalendarGrid({
                   const st = typeMap.get(s.shiftType);
                   const w = s.workerId ? workerMap.get(s.workerId) : null;
                   const isOpen = !s.workerId;
-                  const name = w?.name ?? "Open";
+                  const name =
+                    s.shiftKind === "project_task" && s.taskTitle
+                      ? s.taskTitle
+                      : (w?.name ?? "Open");
                   const zone = zoneMap.get(s.zoneId) ?? "—";
                   const roleLb = roleMap.get(s.role) ?? s.role;
                   const cls = st
@@ -291,7 +294,9 @@ export function ScheduleCalendarGrid({
                             {formatTimeRange(s.startTime, s.endTime, settings.timeFormat)}
                           </p>
                           <p className="truncate text-[10px] opacity-90">
-                            {roleLb} · {zone}
+                            {s.shiftKind === "project_task" && s.projectName
+                              ? `${s.projectName} · ${zone}`
+                              : `${roleLb} · ${zone}`}
                           </p>
                         </div>
                         <div className="flex shrink-0 flex-col items-end gap-0.5">

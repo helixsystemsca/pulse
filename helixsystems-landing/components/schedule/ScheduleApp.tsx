@@ -2,7 +2,18 @@
 
 import { BarChart2, CalendarDays, CalendarPlus, Settings, Users } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { apiFetch, isApiMode } from "@/lib/api";
 import { formatLocalDate, monthGrid } from "@/lib/schedule/calendar";
+import {
+  isPulseApiShiftId,
+  localDateTimeToIso,
+  pulseShiftsToSchedule,
+  pulseWorkersToSchedule,
+  pulseZonesToSchedule,
+  type PulseShiftApi,
+  type PulseWorkerApi,
+  type PulseZoneApi,
+} from "@/lib/schedule/pulse-bridge";
 import { computeAlerts, computeWorkforceSummary } from "@/lib/schedule/selectors";
 import { useScheduleStore } from "@/lib/schedule/schedule-store";
 import type { Shift } from "@/lib/schedule/types";
@@ -49,6 +60,7 @@ export function ScheduleApp() {
   const updateShift = useScheduleStore((s) => s.updateShift);
   const deleteShift = useScheduleStore((s) => s.deleteShift);
   const addTimeOffBlock = useScheduleStore((s) => s.addTimeOffBlock);
+  const applyPulseScheduleSnapshot = useScheduleStore((s) => s.applyPulseScheduleSnapshot);
 
   const [hydrated, setHydrated] = useState(false);
   useEffect(() => {
@@ -60,6 +72,33 @@ export function ScheduleApp() {
     }
     return unsub;
   }, []);
+
+  const reloadPulseSchedule = useCallback(async () => {
+    if (!isApiMode()) return;
+    const first = new Date(cursor.y, cursor.m, 1);
+    const last = new Date(cursor.y, cursor.m + 1, 0);
+    const from = new Date(first);
+    from.setHours(0, 0, 0, 0);
+    const to = new Date(last);
+    to.setHours(23, 59, 59, 999);
+    const [w, z, sh] = await Promise.all([
+      apiFetch<PulseWorkerApi[]>("/api/v1/pulse/workers"),
+      apiFetch<PulseZoneApi[]>("/api/v1/pulse/zones"),
+      apiFetch<PulseShiftApi[]>(
+        `/api/v1/pulse/schedule/shifts?from=${encodeURIComponent(from.toISOString())}&to=${encodeURIComponent(to.toISOString())}`,
+      ),
+    ]);
+    const zonesMapped = pulseZonesToSchedule(z);
+    const fallbackZ = zonesMapped[0]?.id ?? "";
+    const workersMapped = pulseWorkersToSchedule(w);
+    const shiftsMapped = pulseShiftsToSchedule(sh, fallbackZ);
+    applyPulseScheduleSnapshot(workersMapped, zonesMapped, shiftsMapped);
+  }, [applyPulseScheduleSnapshot, cursor.m, cursor.y]);
+
+  useEffect(() => {
+    if (!hydrated || !isApiMode()) return;
+    void reloadPulseSchedule();
+  }, [hydrated, reloadPulseSchedule]);
 
   const defaultDate = useMemo(() => {
     const today = new Date();
@@ -89,7 +128,7 @@ export function ScheduleApp() {
 
   const certsOf = (d: ShiftDraft) => (d.required_certifications ?? []).filter(Boolean);
 
-  function saveShift(draft: ShiftDraft) {
+  async function saveShift(draft: ShiftDraft) {
     const certs = certsOf(draft);
     const req = {
       workerId: draft.workerId,
@@ -106,6 +145,27 @@ export function ScheduleApp() {
       requires_supervisor: !!draft.requires_supervisor,
       minimum_workers: draft.minimum_workers,
     };
+    if (isApiMode() && draft.id && isPulseApiShiftId(draft.id) && draft.workerId) {
+      try {
+        await apiFetch(`/api/v1/pulse/schedule/shifts/${draft.id}`, {
+          method: "PATCH",
+          json: {
+            assigned_user_id: draft.workerId,
+            starts_at: localDateTimeToIso(draft.date, draft.startTime),
+            ends_at: localDateTimeToIso(draft.date, draft.endTime),
+            zone_id: draft.zoneId || null,
+            shift_type: draft.shiftType,
+            requires_supervisor: !!draft.requires_supervisor,
+            requires_ticketed: false,
+          },
+        });
+        await reloadPulseSchedule();
+      } catch {
+        /* keep local fallthrough */
+      }
+      setShiftModal(null);
+      return;
+    }
     if (draft.id) {
       updateShift(draft.id, {
         ...req,
@@ -121,9 +181,28 @@ export function ScheduleApp() {
   }
 
   const handleShiftMove = useCallback(
-    (shiftId: string, targetDate: string, mode: "move" | "duplicate") => {
+    async (shiftId: string, targetDate: string, mode: "move" | "duplicate") => {
       const sh = shifts.find((s) => s.id === shiftId);
       if (!sh) return;
+      if (mode === "duplicate" && sh.shiftKind === "project_task") {
+        return;
+      }
+      if (isApiMode() && isPulseApiShiftId(shiftId) && sh.workerId && mode === "move") {
+        if (sh.date === targetDate) return;
+        try {
+          await apiFetch(`/api/v1/pulse/schedule/shifts/${shiftId}`, {
+            method: "PATCH",
+            json: {
+              starts_at: localDateTimeToIso(targetDate, sh.startTime),
+              ends_at: localDateTimeToIso(targetDate, sh.endTime),
+            },
+          });
+          await reloadPulseSchedule();
+        } catch {
+          updateShift(shiftId, { date: targetDate, uiFlags: { ...sh.uiFlags, isUpdated: true } });
+        }
+        return;
+      }
       if (mode === "move") {
         if (sh.date !== targetDate) {
           updateShift(shiftId, { date: targetDate, uiFlags: { ...sh.uiFlags, isUpdated: true } });
@@ -138,7 +217,7 @@ export function ScheduleApp() {
         uiFlags: { isNew: true },
       });
     },
-    [addShift, shifts, updateShift],
+    [addShift, reloadPulseSchedule, shifts, updateShift],
   );
 
   function prevMonth() {
@@ -344,7 +423,23 @@ export function ScheduleApp() {
         allShifts={shifts}
         onClose={() => setShiftModal(null)}
         onSave={saveShift}
-        onDelete={shiftModal?.shift ? (id) => deleteShift(id) : undefined}
+        onDelete={
+          shiftModal?.shift
+            ? async (id) => {
+                if (isApiMode() && isPulseApiShiftId(id)) {
+                  try {
+                    await apiFetch(`/api/v1/pulse/schedule/shifts/${id}`, { method: "DELETE" });
+                    await reloadPulseSchedule();
+                  } catch {
+                    deleteShift(id);
+                  }
+                } else {
+                  deleteShift(id);
+                }
+                setShiftModal(null);
+              }
+            : undefined
+        }
       />
 
       <ScheduleSettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
@@ -353,8 +448,17 @@ export function ScheduleApp() {
         active={scheduleDragLock}
         isDuplicateDrag={!!dragSession?.duplicate}
         onHoverChange={setTrashHovering}
-        onDropTrash={(id) => {
-          deleteShift(id);
+        onDropTrash={async (id) => {
+          if (isApiMode() && isPulseApiShiftId(id)) {
+            try {
+              await apiFetch(`/api/v1/pulse/schedule/shifts/${id}`, { method: "DELETE" });
+              await reloadPulseSchedule();
+            } catch {
+              deleteShift(id);
+            }
+          } else {
+            deleteShift(id);
+          }
           setDragSession(null);
           setTrashHovering(false);
           setDeleteToast("Shift deleted");

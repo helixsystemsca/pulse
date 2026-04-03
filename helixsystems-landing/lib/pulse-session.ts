@@ -7,6 +7,9 @@ import { normalizeApiBaseUrl } from "@/lib/api-base-url";
 
 export const PULSE_AUTH_STORAGE_KEY = "pulse_auth_v1";
 
+/** `sessionStorage` flag for the post-login welcome overlay; cleared when auth ends so the next sign-in can show it. */
+export const PULSE_WELCOME_SESSION_KEY = "welcome_shown";
+
 export type PulseAuthSession = {
   access_token?: string;
   sub: string;
@@ -70,6 +73,11 @@ function clearSessionQuiet() {
   if (typeof window === "undefined") return;
   localStorage.removeItem(PULSE_AUTH_STORAGE_KEY);
   document.cookie = "pulse_session=; path=/; max-age=0; SameSite=Lax";
+  try {
+    sessionStorage.removeItem(PULSE_WELCOME_SESSION_KEY);
+  } catch {
+    /* ignore */
+  }
 }
 
 export function clearSession() {
