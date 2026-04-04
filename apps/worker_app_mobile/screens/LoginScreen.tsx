@@ -36,7 +36,7 @@ export function LoginScreen() {
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
       <View style={styles.inner}>
-        <Text style={styles.brand}>Ops Intel</Text>
+        <Text style={styles.brand}>Helix Field</Text>
         <Text style={styles.tag}>Worker</Text>
 
         <TextInput

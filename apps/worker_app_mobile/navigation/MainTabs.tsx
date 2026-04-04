@@ -1,20 +1,18 @@
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { StreamBridge } from "@/components/StreamBridge";
-import { AlertsScreen } from "@/screens/AlertsScreen";
-import { HomeScreen } from "@/screens/HomeScreen";
-import { ProfileScreen } from "@/screens/ProfileScreen";
-import { ToolsScreen } from "@/screens/ToolsScreen";
+import { AlertsStack, DashboardStack, FormsStack, IssuesStack, ToolboxStack } from "@/navigation/AppStacks";
 import { colors, layout } from "@/utils/designTokens";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const Tab = createBottomTabNavigator();
 
 const ICONS: Record<string, keyof typeof MaterialCommunityIcons.glyphMap> = {
-  Home: "home-outline",
-  Tools: "toolbox-outline",
+  Dashboard: "view-dashboard-outline",
+  Issues: "clipboard-list-outline",
+  Toolbox: "hammer-wrench",
+  Forms: "file-document-edit-outline",
   Alerts: "bell-outline",
-  Profile: "account-outline",
 };
 
 export function MainTabs() {
@@ -36,7 +34,7 @@ export function MainTabs() {
             paddingBottom: Math.max(insets.bottom, 8),
           },
           tabBarLabelStyle: {
-            fontSize: 11,
+            fontSize: 10,
             fontWeight: "700",
           },
           tabBarIcon: ({ color }) => (
@@ -48,10 +46,11 @@ export function MainTabs() {
           ),
         })}
       >
-        <Tab.Screen name="Home" component={HomeScreen} options={{ title: "Home" }} />
-        <Tab.Screen name="Tools" component={ToolsScreen} options={{ title: "Tools" }} />
-        <Tab.Screen name="Alerts" component={AlertsScreen} options={{ title: "Alerts" }} />
-        <Tab.Screen name="Profile" component={ProfileScreen} options={{ title: "Profile" }} />
+        <Tab.Screen name="Dashboard" component={DashboardStack} options={{ title: "Dashboard" }} />
+        <Tab.Screen name="Issues" component={IssuesStack} options={{ title: "Issues" }} />
+        <Tab.Screen name="Toolbox" component={ToolboxStack} options={{ title: "Toolbox" }} />
+        <Tab.Screen name="Forms" component={FormsStack} options={{ title: "Forms" }} />
+        <Tab.Screen name="Alerts" component={AlertsStack} options={{ title: "Alerts" }} />
       </Tab.Navigator>
     </>
   );

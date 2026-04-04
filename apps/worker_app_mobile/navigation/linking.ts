@@ -8,8 +8,14 @@ export const linking = {
     screens: {
       Login: "login",
       Main: {
+        path: "app",
         screens: {
-          Dashboard: "dashboard",
+          Dashboard: {
+            path: "dashboard",
+            screens: {
+              DashboardHome: "",
+            },
+          },
           Issues: {
             path: "issues",
             screens: {
@@ -36,7 +42,12 @@ export const linking = {
               FormFill: "form/:formId",
             },
           },
-          Alerts: "alerts",
+          Alerts: {
+            path: "alerts",
+            screens: {
+              AlertsHome: "",
+            },
+          },
         },
       },
     },

@@ -1,13 +1,27 @@
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { ActionButton } from "@/components/ActionButton";
 import { colors, layout, radius, shadows, space, typography } from "@/utils/designTokens";
-import { mockProfile } from "@/utils/mockData";
 import { useAppStore } from "@/store/useAppStore";
+
+function initialsFrom(name: string | null | undefined, email: string): string {
+  if (name?.trim()) {
+    const p = name.trim().split(/\s+/);
+    const a = p[0]?.[0] ?? "";
+    const b = p.length > 1 ? p[p.length - 1][0] ?? "" : "";
+    return (a + b).toUpperCase() || email.slice(0, 2).toUpperCase();
+  }
+  return email.slice(0, 2).toUpperCase();
+}
 
 export function ProfileScreen() {
   const logout = useAppStore((s) => s.logout);
+  const user = useAppStore((s) => s.user);
+
+  const email = user?.email ?? "";
+  const displayName = user?.full_name?.trim() || email || "Worker";
+  const role = user?.role ?? "—";
+  const company = user?.company?.name;
 
   return (
     <SafeAreaView style={styles.safe} edges={["top", "left", "right"]}>
@@ -15,28 +29,18 @@ export function ProfileScreen() {
         <Text style={styles.eyebrow}>Account</Text>
 
         <View style={styles.avatar}>
-          <Text style={styles.initials}>{mockProfile.initials}</Text>
+          <Text style={styles.initials}>{initialsFrom(user?.full_name, email)}</Text>
         </View>
-        <Text style={styles.name}>{mockProfile.name}</Text>
-        <Text style={styles.role}>{mockProfile.role}</Text>
-        <Text style={styles.email}>{mockProfile.email}</Text>
+        <Text style={styles.name}>{displayName}</Text>
+        <Text style={styles.role}>{role}</Text>
+        <Text style={styles.email}>{email}</Text>
+        {company ? <Text style={styles.company}>{company}</Text> : null}
 
         <View style={[styles.card, shadows.card]}>
-          {mockProfile.menuRows.map((row, i) => (
-            <TouchableOpacity
-              key={row.id}
-              accessibilityRole="button"
-              activeOpacity={0.88}
-              onPress={() => undefined}
-              style={[styles.row, i > 0 && styles.rowBorder]}
-            >
-              <Text style={styles.rowLabel}>{row.label}</Text>
-              <View style={styles.rowRight}>
-                {row.hint ? <Text style={styles.rowHint}>{row.hint}</Text> : null}
-                <MaterialCommunityIcons name="chevron-right" size={22} color={colors.textTertiary} />
-              </View>
-            </TouchableOpacity>
-          ))}
+          <View style={styles.row}>
+            <Text style={styles.rowLabel}>Pulse features</Text>
+            <Text style={styles.rowHint}>{(user?.enabled_features ?? []).join(", ") || "Default"}</Text>
+          </View>
         </View>
 
         <View style={styles.signOut}>
@@ -95,6 +99,12 @@ const styles = StyleSheet.create({
     color: colors.textTertiary,
     marginTop: space.xs,
     textAlign: "center",
+  },
+  company: {
+    ...typography.bodySm,
+    color: colors.textSecondary,
+    marginTop: space.xs,
+    textAlign: "center",
     marginBottom: space.xl,
   },
   card: {
@@ -106,18 +116,15 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   row: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
+    flexDirection: "column",
+    alignItems: "flex-start",
+    gap: space.xs,
     minHeight: layout.minTap,
     paddingHorizontal: space.md,
-  },
-  rowBorder: {
-    borderTopWidth: 1,
-    borderTopColor: colors.borderSubtle,
+    paddingVertical: space.md,
+    justifyContent: "center",
   },
   rowLabel: { ...typography.body, fontWeight: "600", color: colors.textPrimary },
-  rowRight: { flexDirection: "row", alignItems: "center", gap: space.xs },
   rowHint: { ...typography.caption, color: colors.textTertiary },
   signOut: { alignSelf: "stretch", marginTop: space.xl },
 });

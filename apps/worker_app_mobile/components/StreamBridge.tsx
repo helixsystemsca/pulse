@@ -1,9 +1,9 @@
 import { useEffect, useRef } from "react";
 import { Vibration } from "react-native";
-import { presentLocalMissingToolAlert, requestLocalNotificationPermissions } from "@/services/push";
+import { dispatchTieredFieldAlert, requestLocalNotificationPermissions } from "@/services/push";
 import { useAppStore } from "@/store/useAppStore";
 import { getWsBaseUrl } from "@/utils/config";
-import { isWorkerAlertEventType, streamEventTitleBody } from "@/utils/stream";
+import { inferAlertTier, isWorkerAlertEventType, streamEventTitleBody } from "@/utils/stream";
 
 const LOCAL_NOTIFY_MIN_MS = 2500;
 
@@ -46,12 +46,21 @@ export function StreamBridge() {
           } catch {
             /* no vibrator */
           }
+          const tier = inferAlertTier(data);
           const now = Date.now();
-          if (now - lastLocalNotifyAt.current >= LOCAL_NOTIFY_MIN_MS) {
+          const minMs = tier === "critical" ? 800 : LOCAL_NOTIFY_MIN_MS;
+          if (now - lastLocalNotifyAt.current >= minMs) {
             lastLocalNotifyAt.current = now;
             void (async () => {
               const { title, body } = streamEventTitleBody(data);
-              await presentLocalMissingToolAlert(title, body);
+              const meta = (data.metadata ?? data.payload ?? {}) as Record<string, unknown>;
+              const issueId =
+                typeof meta.work_request_id === "string"
+                  ? meta.work_request_id
+                  : typeof meta.issue_id === "string"
+                    ? meta.issue_id
+                    : undefined;
+              await dispatchTieredFieldAlert(tier, title, body, issueId ? { issueId } : undefined);
             })();
           }
         }

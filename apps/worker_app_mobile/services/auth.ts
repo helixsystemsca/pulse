@@ -3,10 +3,12 @@ import { api } from "@/services/api";
 export type UserMe = {
   id: string;
   email: string;
-  tenant_id: string;
+  company_id: string | null;
   role: string;
   full_name: string | null;
   enabled_features: string[];
+  is_system_admin?: boolean;
+  company?: { id: string; name: string } | null;
 };
 
 export type LoginResponse = {
