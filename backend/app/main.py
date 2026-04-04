@@ -21,6 +21,7 @@ from app.api.admin_routes import router as admin_router
 from app.api.automation_debug_routes import router as automation_debug_router
 from app.api.automation_events_routes import router as automation_events_router
 from app.api.automation_config_routes import router as automation_config_router
+from app.api.device_ingest_routes import router as device_ingest_router
 from app.api.devices_routes import router as devices_router
 from app.api.equipment_routes import router as equipment_router
 from app.api.notifications_routes import router as notifications_router
@@ -46,6 +47,7 @@ from app.core.config import get_settings
 from app.core.database import AsyncSessionLocal
 from app.limiter import limiter
 from app.middleware.feature_gate import FeatureGateMiddleware
+from app.middleware.require_https import RequireHttpsMiddleware
 from app.middleware.security_headers import SecurityHeadersMiddleware
 from app.modules.pulse.router import router as pulse_router
 from app.modules.registry import register_modules
@@ -106,6 +108,7 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
+app.add_middleware(RequireHttpsMiddleware, enabled=settings.require_https)
 
 app.include_router(public_router, prefix="/api/public")
 app.include_router(compliance_router, prefix="/api")
@@ -119,6 +122,7 @@ app.include_router(automation_events_router, prefix="/api/v1")
 app.include_router(automation_debug_router, prefix="/api/v1")
 app.include_router(notifications_router, prefix="/api/v1")
 app.include_router(devices_router, prefix="/api/v1")
+app.include_router(device_ingest_router, prefix="/api/v1")
 app.include_router(equipment_router, prefix="/api/v1")
 app.include_router(automation_config_router, prefix="/api/v1")
 app.include_router(admin_router, prefix="/api/v1")

@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import re
-from typing import Any, Optional
+import secrets
+from typing import Any, Optional, Tuple
 from uuid import uuid4
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.auth.security import hash_password
 from app.models.device_hub import AutomationBleDevice, AutomationGateway
 from app.models.domain import Tool, ToolStatus, User, Zone
 
@@ -69,6 +71,20 @@ class DeviceService:
             )
         )
         return q.scalar_one_or_none()
+
+    async def get_gateway_by_id_only(self, gateway_id: str) -> Optional[AutomationGateway]:
+        """Resolve gateway by primary key (globally unique) — device ingest only."""
+        q = await self._db.execute(select(AutomationGateway).where(AutomationGateway.id == gateway_id))
+        return q.scalar_one_or_none()
+
+    async def rotate_gateway_ingest_secret(self, *, company_id: str, gateway_id: str) -> Tuple[AutomationGateway, str]:
+        gw = await self.get_gateway(company_id=company_id, gateway_id=gateway_id)
+        if not gw:
+            raise LookupError("gateway_not_found")
+        plain = secrets.token_urlsafe(32)
+        gw.ingest_secret_hash = hash_password(plain)
+        await self._db.flush()
+        return gw, plain
 
     async def list_gateways(self, *, company_id: str) -> list[AutomationGateway]:
         q = await self._db.execute(

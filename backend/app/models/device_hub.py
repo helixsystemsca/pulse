@@ -32,6 +32,12 @@ class AutomationGateway(Base):
     zone_id: Mapped[Optional[str]] = mapped_column(
         UUID(as_uuid=False), ForeignKey("zones.id", ondelete="SET NULL"), nullable=True, index=True
     )
+    #: Bcrypt hash of a one-time device ingest secret; ESP32 uses gateway UUID + secret on POST /api/v1/device/events.
+    ingest_secret_hash: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+
+    @property
+    def ingest_enabled(self) -> bool:
+        return bool(self.ingest_secret_hash)
 
 
 class AutomationBleDevice(Base):

@@ -1,16 +1,19 @@
 "use client";
 
-import { ArrowLeft, Camera, ClipboardList, Loader2, Wrench } from "lucide-react";
+import { ArrowLeft, Camera, ClipboardList, History, Loader2, Wrench } from "lucide-react";
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { EquipmentPartsPanel } from "@/components/equipment/EquipmentPartsPanel";
 import { Card } from "@/components/pulse/Card";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
 import {
   fetchEquipment,
+  fetchEquipmentParts,
   resolveEquipmentAssetUrl,
   uploadEquipmentImage,
+  type EquipmentLinkedWorkOrder,
+  type EquipmentPartRow,
   type FacilityEquipmentDetail,
 } from "@/lib/equipmentService";
 
@@ -54,6 +57,102 @@ function managerOrAbove(role: string | undefined, isSys: boolean | undefined): b
   return role === "manager" || role === "company_admin";
 }
 
+function MaintenanceHistorySection({
+  equipmentId,
+  workOrders,
+  revision = 0,
+}: {
+  equipmentId: string;
+  workOrders: EquipmentLinkedWorkOrder[];
+  /** Increment when parts change so the timeline refetches. */
+  revision?: number;
+}) {
+  const [parts, setParts] = useState<EquipmentPartRow[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      setLoading(true);
+      try {
+        const rows = await fetchEquipmentParts(equipmentId);
+        if (!cancelled) setParts(rows);
+      } catch {
+        if (!cancelled) setParts([]);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [equipmentId, revision]);
+
+  type Entry = { ts: number; dateLabel: string; primary: string; secondary: string };
+  const entries = useMemo(() => {
+    const out: Entry[] = [];
+    for (const p of parts) {
+      if (p.last_replaced_date) {
+        const t = new Date(`${p.last_replaced_date}T12:00:00`).getTime();
+        if (!Number.isNaN(t)) {
+          out.push({
+            ts: t,
+            dateLabel: formatDate(p.last_replaced_date),
+            primary: "Part replacement recorded",
+            secondary: p.name,
+          });
+        }
+      }
+    }
+    for (const wo of workOrders) {
+      const t = new Date(wo.updated_at).getTime();
+      if (!Number.isNaN(t)) {
+        out.push({
+          ts: t,
+          dateLabel: formatDate(wo.updated_at),
+          primary: `Work order: ${wo.title}`,
+          secondary: `Status: ${wo.status.replace(/_/g, " ")}`,
+        });
+      }
+    }
+    out.sort((a, b) => b.ts - a.ts);
+    return out;
+  }, [parts, workOrders]);
+
+  return (
+    <section className="space-y-2">
+      <h2 className={`${LABEL} inline-flex items-center gap-2`}>
+        <History className="h-3.5 w-3.5" aria-hidden />
+        Maintenance history
+      </h2>
+      <Card padding="md">
+        {loading ? (
+          <p className="text-sm text-pulse-muted">Loading…</p>
+        ) : entries.length === 0 ? (
+          <p className="text-sm text-pulse-muted">
+            No history entries yet. Record part replacements or link work orders to this equipment to build a timeline.
+          </p>
+        ) : (
+          <ul className="space-y-4 border-l-2 border-slate-200 pl-4">
+            {entries.map((e, i) => (
+              <li key={`${e.ts}-${i}`} className="relative text-sm">
+                <span className="absolute -left-[21px] top-1.5 h-2 w-2 rounded-full bg-[#2B4C7E] ring-2 ring-white" />
+                <p className="text-xs font-semibold uppercase tracking-wide text-pulse-muted">{e.dateLabel}</p>
+                <p className="mt-0.5 font-medium text-pulse-navy">{e.primary}</p>
+                <p className="text-xs text-pulse-muted">{e.secondary}</p>
+              </li>
+            ))}
+          </ul>
+        )}
+        <p className="mt-4 text-xs text-pulse-muted">
+          Combines last replacement dates from parts and linked work orders (by last update). Detailed event logging may be
+          added in a future release.
+        </p>
+      </Card>
+    </section>
+  );
+}
+
 export function EquipmentDetailApp({ equipmentId }: Props) {
   const { session } = usePulseAuth();
   const canMutate = managerOrAbove(session?.role, session?.is_system_admin);
@@ -62,6 +161,7 @@ export function EquipmentDetailApp({ equipmentId }: Props) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [maintenanceHistoryRevision, setMaintenanceHistoryRevision] = useState(0);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -110,6 +210,9 @@ export function EquipmentDetailApp({ equipmentId }: Props) {
 
   const subtitle = [data.type, data.zone_name ?? "Unassigned zone"].filter(Boolean).join(" · ");
   const equipImg = resolveEquipmentAssetUrl(data.image_url);
+  const partsOverdue = (data.parts_overdue_count ?? 0) > 0;
+  const partsDueSoonOnly = !partsOverdue && (data.parts_due_soon_count ?? 0) > 0;
+  const showPartsBanner = partsOverdue || partsDueSoonOnly || Boolean(data.parts_needs_maintenance);
 
   return (
     <div className="space-y-6">
@@ -124,13 +227,31 @@ export function EquipmentDetailApp({ equipmentId }: Props) {
         </Link>
       </div>
 
-      {data.parts_needs_maintenance ? (
+      {showPartsBanner && partsOverdue ? (
+        <div
+          className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-950 shadow-sm"
+          role="alert"
+        >
+          <strong className="font-semibold">This equipment requires immediate maintenance.</strong> At least one part is
+          overdue for replacement. Review the parts list, mark replacements when done, or open a work order.
+        </div>
+      ) : null}
+      {showPartsBanner && partsDueSoonOnly ? (
         <div
           className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950 shadow-sm"
           role="status"
         >
-          <strong className="font-semibold">Parts require attention.</strong> This equipment has parts that are due soon or
-          overdue. Review the parts list and open a work request when ready.
+          <strong className="font-semibold">This equipment has upcoming maintenance.</strong> One or more parts are due
+          soon. Plan replacement or create a work request before they become overdue.
+        </div>
+      ) : null}
+      {showPartsBanner && !partsOverdue && !partsDueSoonOnly && data.parts_needs_maintenance ? (
+        <div
+          className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950 shadow-sm"
+          role="status"
+        >
+          <strong className="font-semibold">Parts require attention.</strong> Review the parts list and open a work request
+          when ready.
         </div>
       ) : null}
 
@@ -252,7 +373,16 @@ export function EquipmentDetailApp({ equipmentId }: Props) {
         equipmentId={equipmentId}
         equipmentName={data.name}
         canMutate={canMutate}
-        onPartsChanged={() => void load()}
+        onPartsChanged={() => {
+          setMaintenanceHistoryRevision((n) => n + 1);
+          void load();
+        }}
+      />
+
+      <MaintenanceHistorySection
+        equipmentId={equipmentId}
+        workOrders={data.related_work_orders}
+        revision={maintenanceHistoryRevision}
       />
 
       <section className="space-y-2">

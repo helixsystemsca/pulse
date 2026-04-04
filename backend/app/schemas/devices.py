@@ -33,6 +33,14 @@ class GatewayOut(BaseModel):
     status: str
     zone_id: Optional[str] = None
     last_seen_at: Optional[datetime] = None
+    ingest_enabled: bool = False
+
+
+class GatewayIngestSecretRotateOut(BaseModel):
+    """Returned once when rotating; store only on the gateway device (ESP32), never re-displayed."""
+
+    gateway_id: str
+    ingest_secret: str
 
 
 # --- BLE ---

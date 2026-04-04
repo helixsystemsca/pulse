@@ -14,7 +14,13 @@ export function isPulseNavActive(href: string, pathname: string): boolean {
   if (href === "/dashboard/inventory") return pathname === "/dashboard/inventory";
   if (href.startsWith("/dashboard")) return pathname === href || pathname.startsWith(`${href}/`);
   if (href === "/schedule") return pathname === "/schedule" || pathname.startsWith("/schedule/");
-  if (href === "/operations") return pathname === "/operations" || pathname.startsWith("/operations/");
+  if (href === "/monitoring")
+    return (
+      pathname === "/monitoring" ||
+      pathname.startsWith("/monitoring/") ||
+      pathname === "/operations" ||
+      pathname.startsWith("/operations/")
+    );
   if (href === "/equipment") return pathname === "/equipment" || pathname.startsWith("/equipment/");
   if (href === "/projects") return pathname === "/projects" || pathname.startsWith("/projects/");
   if (href === "/system") return pathname === "/system" || pathname.startsWith("/system/");

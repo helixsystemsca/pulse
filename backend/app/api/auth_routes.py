@@ -72,8 +72,22 @@ async def login(
     q = await db.execute(select(User).where(func.lower(User.email) == email_norm))
     user = q.scalar_one_or_none()
     if not user or not user.is_active:
+        await record_audit(
+            db,
+            action="auth.login_failed",
+            metadata={"email": email_norm, "reason": "unknown_or_inactive_user"},
+        )
+        await db.commit()
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
     if not verify_password(body.password, user.hashed_password):
+        await record_audit(
+            db,
+            action="auth.login_failed",
+            actor_user_id=user.id,
+            company_id=user.company_id,
+            metadata={"email": email_norm, "reason": "bad_password"},
+        )
+        await db.commit()
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
 
     user.last_login = datetime.now(timezone.utc)

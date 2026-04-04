@@ -45,6 +45,12 @@ class Settings(BaseSettings):
     bootstrap_system_admin_email: str = ""
     bootstrap_system_admin_password: str = ""
     enable_hsts: bool = False
+    #: When true, reject requests whose effective scheme is HTTP (checks X-Forwarded-Proto behind TLS terminators).
+    #: Set REQUIRE_HTTPS=true in production behind HTTPS-only load balancers.
+    require_https: bool = Field(
+        default=False,
+        validation_alias=AliasChoices("REQUIRE_HTTPS", "require_https"),
+    )
     trusted_hosts: str = ""
     # Local folder for Pulse beacon photos (MVP); swap for S3/R2 keys later.
     pulse_uploads_dir: str = "var/uploads"

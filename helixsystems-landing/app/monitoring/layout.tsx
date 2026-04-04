@@ -3,9 +3,9 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: { absolute: "Monitoring | Pulse" },
-  description: "Redirects to Monitoring — real-time people and systems visibility.",
+  description: "Real-time visibility into people and facility systems.",
 };
 
-export default function OperationsLayout({ children }: { children: React.ReactNode }) {
+export default function MonitoringLayout({ children }: { children: React.ReactNode }) {
   return <AppLayout mainClassName="bg-pulse-bg">{children}</AppLayout>;
 }

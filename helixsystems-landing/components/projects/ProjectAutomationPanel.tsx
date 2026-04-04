@@ -90,7 +90,7 @@ export function ProjectAutomationPanel({ projectId }: { projectId: string }) {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-pulse-muted">
-          Task rules run after a save. Overdue, stale, and proximity-missed rules are evaluated when a supervisor opens the Operations
+          Task rules run after a save. Overdue, stale, and proximity-missed rules are evaluated when a supervisor opens the Monitoring
           page (company scan).
         </p>
         <button type="button" className={PRIMARY_BTN} onClick={() => setDrawerOpen(true)}>
@@ -156,7 +156,7 @@ export function ProjectAutomationPanel({ projectId }: { projectId: string }) {
       <PulseDrawer
         open={drawerOpen}
         title="New automation rule"
-        subtitle="Task triggers fire on save; scan triggers fire from Operations."
+        subtitle="Task triggers fire on save; scan triggers fire from Monitoring."
         onClose={() => setDrawerOpen(false)}
         labelledBy="automation-rule-title"
         footer={

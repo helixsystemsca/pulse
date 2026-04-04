@@ -22,7 +22,19 @@ module.exports = {
       package: "com.opsintel.worker",
       usesCleartextTraffic: true,
     },
-    plugins: ["expo-asset", "expo-font", "expo-notifications"],
+    scheme: "helix-worker",
+    plugins: [
+      "expo-asset",
+      "expo-font",
+      "expo-notifications",
+      [
+        "expo-image-picker",
+        {
+          photosPermission: "Allow access to photos to attach images to issues and forms.",
+          cameraPermission: "Allow camera for issue and form documentation.",
+        },
+      ],
+    ],
     extra: {
       apiUrl: process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:8000",
       eas: {

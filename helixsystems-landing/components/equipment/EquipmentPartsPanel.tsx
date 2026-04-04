@@ -2,8 +2,17 @@
 
 import { AlertTriangle, Camera, Loader2, Pencil, Plus, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Card } from "@/components/pulse/Card";
+import {
+  addDaysToDateString,
+  comparePartsByPriorityThenName,
+  localDateString,
+  normalizePartStatus,
+  partPriorityFromStatus,
+  priorityLabel,
+  statusSeverity,
+} from "@/lib/equipmentPartUi";
 import {
   createEquipmentPart,
   deleteEquipmentPart,
@@ -35,6 +44,12 @@ function statusUi(status: string): { label: string; className: string } {
   return { label: "OK", className: "bg-emerald-50 text-emerald-900 ring-1 ring-emerald-200/80" };
 }
 
+function priorityUi(priority: ReturnType<typeof partPriorityFromStatus>): { label: string; className: string } {
+  if (priority === "high") return { label: "High", className: "bg-rose-50 text-rose-900 ring-1 ring-rose-200/75" };
+  if (priority === "medium") return { label: "Medium", className: "bg-sky-50 text-[#1e4a8a] ring-1 ring-sky-200/70" };
+  return { label: "Low", className: "bg-slate-50 text-slate-600 ring-1 ring-slate-200/80" };
+}
+
 type Props = {
   equipmentId: string;
   equipmentName: string;
@@ -47,6 +62,9 @@ export function EquipmentPartsPanel({ equipmentId, equipmentName, canMutate, onP
   const [parts, setParts] = useState<EquipmentPartRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+  const prevStatusByPartId = useRef<Map<string, string>>(new Map());
+  const didInitStatusRef = useRef(false);
   const [showAdd, setShowAdd] = useState(false);
   const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -81,6 +99,47 @@ export function EquipmentPartsPanel({ equipmentId, equipmentName, canMutate, onP
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    didInitStatusRef.current = false;
+    prevStatusByPartId.current = new Map();
+  }, [equipmentId]);
+
+  const sortedParts = useMemo(() => [...parts].sort(comparePartsByPriorityThenName), [parts]);
+
+  useEffect(() => {
+    if (!toast) return;
+    const t = window.setTimeout(() => setToast(null), 4500);
+    return () => window.clearTimeout(t);
+  }, [toast]);
+
+  /** After load: detect status worsening (ok → due_soon/overdue, due_soon → overdue) and notify. */
+  useEffect(() => {
+    if (loading) return;
+    const map = new Map(parts.map((p) => [p.id, p.maintenance_status]));
+    if (!didInitStatusRef.current) {
+      prevStatusByPartId.current = map;
+      didInitStatusRef.current = true;
+      return;
+    }
+    const messages: string[] = [];
+    for (const p of parts) {
+      const prevRaw = prevStatusByPartId.current.get(p.id);
+      if (prevRaw === undefined) continue;
+      const prev = normalizePartStatus(prevRaw);
+      const next = normalizePartStatus(p.maintenance_status);
+      if (statusSeverity(next) <= statusSeverity(prev)) continue;
+      if (next === "overdue") {
+        messages.push(`${p.name} is overdue for replacement`);
+      } else if (next === "due_soon") {
+        messages.push(`${p.name} is due for replacement`);
+      }
+    }
+    prevStatusByPartId.current = map;
+    if (messages.length > 0) {
+      setToast(messages.slice(0, 3).join(" · ") + (messages.length > 3 ? " …" : ""));
+    }
+  }, [loading, parts]);
 
   const notify = () => {
     onPartsChanged?.();
@@ -187,6 +246,31 @@ export function EquipmentPartsPanel({ equipmentId, equipmentName, canMutate, onP
     );
   };
 
+  const markAsReplaced = async (p: EquipmentPartRow) => {
+    if (!canMutate) return;
+    const interval = p.replacement_interval_days;
+    if (interval == null || interval < 1) {
+      setToast("Set a replacement interval (days) before using Mark as replaced.");
+      return;
+    }
+    setSaving(true);
+    try {
+      const today = localDateString();
+      const next = addDaysToDateString(today, interval);
+      await patchEquipmentPart(p.id, {
+        last_replaced_date: today,
+        next_replacement_date: next,
+      });
+      setToast("Part marked as replaced");
+      await load();
+      notify();
+    } catch {
+      setError("Could not update replacement date.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <section className="space-y-2">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -198,6 +282,15 @@ export function EquipmentPartsPanel({ equipmentId, equipmentName, canMutate, onP
           </button>
         ) : null}
       </div>
+
+      {toast ? (
+        <div
+          className="fixed bottom-6 left-1/2 z-[60] max-w-lg -translate-x-1/2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-pulse-navy shadow-lg"
+          role="status"
+        >
+          {toast}
+        </div>
+      ) : null}
 
       {error ? <p className="text-sm text-red-700">{error}</p> : null}
 
@@ -282,7 +375,7 @@ export function EquipmentPartsPanel({ equipmentId, equipmentName, canMutate, onP
         ) : parts.length === 0 ? (
           <p className="p-6 text-sm text-pulse-muted">No parts recorded. Add components to track replacement cycles.</p>
         ) : (
-          <table className="min-w-[720px] w-full text-left text-sm">
+          <table className="min-w-[840px] w-full text-left text-sm">
             <thead>
               <tr className="border-b border-slate-200 bg-slate-50/80">
                 <th className="px-4 py-3 font-semibold text-pulse-navy">Part</th>
@@ -290,14 +383,19 @@ export function EquipmentPartsPanel({ equipmentId, equipmentName, canMutate, onP
                 <th className="px-4 py-3 font-semibold text-pulse-navy">Last replaced</th>
                 <th className="px-4 py-3 font-semibold text-pulse-navy">Next</th>
                 <th className="px-4 py-3 font-semibold text-pulse-navy">Status</th>
+                <th className="px-4 py-3 font-semibold text-pulse-navy">Priority</th>
                 <th className="px-4 py-3 font-semibold text-pulse-navy">Actions</th>
               </tr>
             </thead>
             <tbody>
-              {parts.map((p) => {
+              {sortedParts.map((p) => {
                 const su = statusUi(p.maintenance_status);
+                const pr = partPriorityFromStatus(normalizePartStatus(p.maintenance_status));
+                const pu = priorityUi(pr);
                 const needsAttention = p.maintenance_status === "overdue" || p.maintenance_status === "due_soon";
                 const imgSrc = resolveEquipmentAssetUrl(p.image_url);
+                const canMarkReplaced =
+                  canMutate && p.replacement_interval_days != null && p.replacement_interval_days >= 1 && editingId !== p.id;
                 return (
                   <tr key={p.id} className="border-b border-slate-100 align-top">
                     <td className="px-4 py-3">
@@ -345,6 +443,14 @@ export function EquipmentPartsPanel({ equipmentId, equipmentName, canMutate, onP
                       <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${su.className}`}>{su.label}</span>
                     </td>
                     <td className="px-4 py-3">
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-xs font-semibold ${pu.className}`}
+                        title={`Severity: ${priorityLabel(pr)}`}
+                      >
+                        {pu.label}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
                       {editingId === p.id ? (
                         <div className="flex flex-col gap-2">
                           <div>
@@ -366,6 +472,17 @@ export function EquipmentPartsPanel({ equipmentId, equipmentName, canMutate, onP
                         </div>
                       ) : (
                         <div className="flex flex-col gap-2">
+                          {canMarkReplaced ? (
+                            <button
+                              type="button"
+                              className="rounded-[10px] bg-emerald-700 px-3 py-2 text-xs font-semibold text-white shadow-sm hover:bg-emerald-800 disabled:opacity-50"
+                              disabled={saving}
+                              title="Sets last replaced to today and next date from interval"
+                              onClick={() => void markAsReplaced(p)}
+                            >
+                              Mark as replaced
+                            </button>
+                          ) : null}
                           {needsAttention ? (
                             <button type="button" className={PRIMARY_BTN} onClick={() => openWorkRequest(p)}>
                               Create work request

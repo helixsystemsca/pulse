@@ -40,7 +40,7 @@ export const ONBOARDING_STEP_HREF: Record<string, string> = {
   create_zone: "/dashboard/setup",
   add_device: "/dashboard/setup",
   create_work_order: "/dashboard/work-requests",
-  view_operations: "/operations",
+  view_operations: "/monitoring",
   complete_work_order: "/dashboard/work-requests",
   view_schedule: "/schedule",
   log_issue: "/dashboard/work-requests",

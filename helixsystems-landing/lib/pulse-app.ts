@@ -25,7 +25,9 @@ export const pulseRoutes = {
   overview: "/overview",
   schedule: "/schedule",
   projects: "/projects",
-  operations: "/operations",
+  monitoring: "/monitoring",
+  /** @deprecated Use `monitoring`; kept for bookmarks and deep links. */
+  operations: "/monitoring",
   equipment: "/equipment",
   /** Pulse product / marketing page (facility map, features, etc.). */
   pulseLanding: "/pulse",
@@ -35,7 +37,7 @@ export const pulseRoutes = {
 export const pulseTenantNav = [
   { href: "/overview", label: "Overview" },
   { href: "/schedule", label: "Schedule" },
-  { href: "/operations", label: "Operations" },
+  { href: "/monitoring", label: "Monitoring" },
   { href: "/projects", label: "Projects" },
   { href: "/dashboard/work-requests", label: "Work orders" },
   { href: "/dashboard/inventory", label: "Inventory" },
@@ -59,7 +61,7 @@ export const pulseTenantSidebarNav = [
   { href: "/overview", label: "Dashboard", icon: "layout" as const },
   { href: "/dashboard/compliance", label: "Compliance", icon: "shield-check" as const },
   { href: "/schedule", label: "Schedule", icon: "calendar" as const },
-  { href: "/operations", label: "Operations", icon: "activity" as const },
+  { href: "/monitoring", label: "Monitoring", icon: "activity" as const },
   { href: "/projects", label: "Projects", icon: "folder-kanban" as const },
   { href: "/dashboard/work-requests", label: "Issue tracking", icon: "clipboard" as const },
   { href: "/dashboard/workers", label: "Workers & roles", icon: "user-cog" as const },

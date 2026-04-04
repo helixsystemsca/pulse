@@ -69,7 +69,7 @@ export function AppSideNav() {
   const rawNav = isSystemAdmin ? pulseSystemSidebarNav : pulseTenantSidebarNav;
   let items =
     !isSystemAdmin && session?.role === "worker"
-      ? rawNav.filter((i) => i.href !== "/operations")
+      ? rawNav.filter((i) => i.href !== "/monitoring")
       : [...rawNav];
   if (!isSystemAdmin && session) {
     items = items.filter((i) => isTenantNavFeatureEnabled(i.href, session.enabled_features));

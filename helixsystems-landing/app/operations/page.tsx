@@ -1,28 +1,31 @@
 "use client";
 
-import { OperationsApp } from "@/components/operations/OperationsApp";
+import { isApiMode } from "@/lib/api";
 import { navigateToPulseLogin } from "@/lib/pulse-app";
 import { readSession } from "@/lib/pulse-session";
-import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 
-export default function OperationsPage() {
-  const [ready, setReady] = useState(false);
+/** Legacy `/operations` URL; tenant nav now uses `/monitoring`. */
+export default function OperationsRedirectPage() {
+  const router = useRouter();
 
   useEffect(() => {
-    if (!readSession()) {
+    const s = readSession();
+    if (!s) {
       navigateToPulseLogin();
       return;
     }
-    setReady(true);
-  }, []);
+    if (isApiMode() && !s.access_token) {
+      navigateToPulseLogin();
+      return;
+    }
+    router.replace("/monitoring");
+  }, [router]);
 
-  if (!ready) {
-    return (
-      <div className="flex min-h-[40vh] items-center justify-center text-sm text-pulse-muted">
-        Loading…
-      </div>
-    );
-  }
-
-  return <OperationsApp />;
+  return (
+    <div className="flex min-h-[40vh] items-center justify-center">
+      <p className="text-sm text-pulse-muted">Loading…</p>
+    </div>
+  );
 }

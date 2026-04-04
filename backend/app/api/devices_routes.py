@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_db, require_manager_or_above
+from app.core.audit.service import record_audit
 from app.services.onboarding_service import try_mark_onboarding_step
 from app.models.domain import ToolStatus, User, UserRole
 from app.schemas.api_common import ApiSuccess
@@ -19,6 +20,7 @@ from app.schemas.devices import (
     EquipmentLinkBleIn,
     EquipmentOut,
     GatewayCreateIn,
+    GatewayIngestSecretRotateOut,
     GatewayOut,
     GatewayPatchIn,
     ZoneCreateIn,
@@ -76,6 +78,30 @@ async def create_gateway(
     except ValueError as e:
         await db.rollback()
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
+
+
+@router.post("/gateways/{gateway_id}/ingest-secret/rotate", response_model=GatewayIngestSecretRotateOut)
+async def rotate_gateway_ingest_secret(
+    gateway_id: str,
+    db: Db,
+    company_id: CompanyId,
+    actor: Actor,
+) -> GatewayIngestSecretRotateOut:
+    try:
+        gw, plain = await _svc(db).rotate_gateway_ingest_secret(company_id=company_id, gateway_id=gateway_id)
+        await record_audit(
+            db,
+            action="device.gateway_ingest_secret_rotated",
+            actor_user_id=actor.id,
+            company_id=company_id,
+            metadata={"gateway_id": gateway_id},
+        )
+        await db.commit()
+        await db.refresh(gw)
+        return GatewayIngestSecretRotateOut(gateway_id=gw.id, ingest_secret=plain)
+    except LookupError:
+        await db.rollback()
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="gateway not found") from None
 
 
 @router.patch("/gateways/{gateway_id}", response_model=GatewayOut)

@@ -70,6 +70,32 @@ Db = Annotated[AsyncSession, Depends(get_db)]
 MgrUser = Annotated[User, Depends(require_manager_or_above)]
 
 
+async def _require_wr_reader(user: Annotated[User, Depends(get_current_user)]) -> User:
+    """Workers, managers, company admins, and system admins (with company context) may read/list issues."""
+    if user.role == UserRole.system_admin or user.is_system_admin:
+        return user
+    if user.company_id is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not a tenant user")
+    if user.role not in (UserRole.worker, UserRole.manager, UserRole.company_admin):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Issue tracking not available for this role")
+    return user
+
+
+WrReader = Annotated[User, Depends(_require_wr_reader)]
+
+
+def _assert_worker_may_touch_wr(user: User, wr: PulseWorkRequest) -> None:
+    """Field workers may update issues assigned to them or still unassigned."""
+    if user.role != UserRole.worker:
+        return
+    if wr.assigned_user_id is None or wr.assigned_user_id == user.id:
+        return
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="This issue is assigned to another user",
+    )
+
+
 async def _tool_zone_maps(
     db: AsyncSession, cid: str
 ) -> tuple[dict[str, Tool], dict[str, Zone]]:
@@ -224,12 +250,16 @@ async def patch_settings(
 @router.get("", response_model=WorkRequestListOut)
 async def list_work_requests(
     db: Db,
-    _: MgrUser,
+    _: WrReader,
     cid: CompanyId,
     q: Optional[str] = Query(None, description="Search title/description/category"),
     status_filter: Optional[str] = Query(None, alias="status"),
     priority: Optional[str] = Query(None),
     zone_id: Optional[str] = Query(None),
+    assigned_user_id: Optional[str] = Query(
+        None,
+        description="Filter by assignee (use current user id for “assigned to me”)",
+    ),
     date_from: Optional[datetime] = Query(None),
     date_to: Optional[datetime] = Query(None),
     due_after: Optional[datetime] = Query(None, description="Filter by due_date >= (UTC)"),
@@ -257,6 +287,8 @@ async def list_work_requests(
             raise HTTPException(status_code=400, detail="Invalid priority")
     if zone_id:
         conds.append(PulseWorkRequest.zone_id == zone_id)
+    if assigned_user_id:
+        conds.append(PulseWorkRequest.assigned_user_id == assigned_user_id)
     if date_from:
         conds.append(PulseWorkRequest.created_at >= date_from)
     if date_to:
@@ -319,7 +351,7 @@ async def list_work_requests(
 @router.post("", response_model=WorkRequestDetailOut, status_code=status.HTTP_201_CREATED)
 async def create_wr(
     db: Db,
-    user: MgrUser,
+    user: WrReader,
     cid: CompanyId,
     body: WorkRequestCreateIn,
 ) -> WorkRequestDetailOut:
@@ -424,20 +456,37 @@ async def _detail(db: AsyncSession, cid: str, wr_id: str, _: Optional[str] = Non
 
 
 @router.get("/{wr_id}", response_model=WorkRequestDetailOut)
-async def get_wr(db: Db, _: MgrUser, cid: CompanyId, wr_id: str) -> WorkRequestDetailOut:
+async def get_wr(db: Db, _: WrReader, cid: CompanyId, wr_id: str) -> WorkRequestDetailOut:
     return await _detail(db, cid, wr_id)
 
 
 @router.patch("/{wr_id}", response_model=WorkRequestDetailOut)
 async def patch_wr(
     db: Db,
-    user: MgrUser,
+    user: Annotated[User, Depends(get_current_user)],
     cid: CompanyId,
     wr_id: str,
     body: WorkRequestPatchIn,
 ) -> WorkRequestDetailOut:
     wr = await _get_wr(db, cid, wr_id)
     data = body.model_dump(exclude_unset=True)
+
+    if user.role == UserRole.worker:
+        _assert_worker_may_touch_wr(user, wr)
+        extra = set(data.keys()) - {"attachments"}
+        if extra:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Workers may only update attachments on this endpoint",
+            )
+        if "attachments" in data:
+            wr.attachments = list(data["attachments"] or [])
+        await db.commit()
+        await db.refresh(wr)
+        return await _detail(db, cid, wr_id)
+
+    if user.role not in (UserRole.system_admin, UserRole.company_admin, UserRole.manager) and not user.is_system_admin:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="manager or above required")
     if "tool_id" in data and data["tool_id"] and not await pulse_svc.tool_in_company(db, cid, data["tool_id"]):
         raise HTTPException(status_code=400, detail="Unknown asset")
     if "equipment_id" in data and data["equipment_id"]:
@@ -487,12 +536,13 @@ async def delete_wr(db: Db, _: MgrUser, cid: CompanyId, wr_id: str) -> None:
 @router.post("/{wr_id}/comment", response_model=WorkRequestDetailOut)
 async def post_comment(
     db: Db,
-    user: MgrUser,
+    user: WrReader,
     cid: CompanyId,
     wr_id: str,
     body: WorkRequestCommentIn,
 ) -> WorkRequestDetailOut:
-    await _get_wr(db, cid, wr_id)
+    wr = await _get_wr(db, cid, wr_id)
+    _assert_worker_may_touch_wr(user, wr)
     db.add(
         PulseWorkRequestComment(
             id=str(uuid4()),
@@ -528,12 +578,13 @@ async def post_assign(
 @router.post("/{wr_id}/status", response_model=WorkRequestDetailOut)
 async def post_status(
     db: Db,
-    user: MgrUser,
+    user: WrReader,
     cid: CompanyId,
     wr_id: str,
     body: WorkRequestStatusIn,
 ) -> WorkRequestDetailOut:
     wr = await _get_wr(db, cid, wr_id)
+    _assert_worker_may_touch_wr(user, wr)
     old = wr.status
     wr.status = body.status
     if body.status == PulseWorkRequestStatus.completed:

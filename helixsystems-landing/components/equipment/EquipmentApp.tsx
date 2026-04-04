@@ -2,7 +2,7 @@
 
 /**
  * Facility equipment registry: overview, sortable/filterable list, add/edit/view form.
- * Matches Operations / Inventory shell styling.
+ * Matches Monitoring / Inventory shell styling.
  */
 import {
   AlertTriangle,
