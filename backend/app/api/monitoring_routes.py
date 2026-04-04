@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Annotated
+from typing import Annotated, Optional
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -15,10 +15,18 @@ from sqlalchemy.orm import selectinload
 from app.api.deps import require_tenant_user
 from app.core.database import get_db
 from app.models.domain import User
-from app.models.monitoring_models import MonitoredSystem, Sensor, SensorReading
+from app.models.monitoring_models import (
+    AlertStatus,
+    MonitoredSystem,
+    MonitoringAlert,
+    MonitoringFacility,
+    Sensor,
+    SensorReading,
+)
 from app.modules.monitoring.freshness import sensor_freshness
 from app.modules.monitoring.thresholds import evaluate_thresholds_for_reading
 from app.schemas.monitoring import (
+    MonitoringAlertOut,
     ReadingBatchIn,
     ReadingBatchOut,
     SensorDetailOut,
@@ -36,6 +44,33 @@ async def _company_id(user: User = Depends(require_tenant_user)) -> str:
 
 CompanyId = Annotated[str, Depends(_company_id)]
 Db = Annotated[AsyncSession, Depends(get_db)]
+
+
+@router.get("/alerts", response_model=list[MonitoringAlertOut])
+async def list_monitoring_alerts(
+    db: Db,
+    company_id: CompanyId,
+    status_filter: Optional[str] = Query(None, alias="status"),
+    limit: int = Query(100, ge=1, le=500),
+) -> list[MonitoringAlertOut]:
+    """Tenant-scoped monitoring alerts (threshold violations)."""
+    stmt = (
+        select(MonitoringAlert)
+        .join(Sensor, MonitoringAlert.sensor_id == Sensor.id)
+        .join(MonitoredSystem, Sensor.monitored_system_id == MonitoredSystem.id)
+        .join(MonitoringFacility, MonitoredSystem.facility_id == MonitoringFacility.id)
+        .where(MonitoringFacility.company_id == company_id)
+    )
+    if status_filter is not None and status_filter != "":
+        try:
+            st = AlertStatus(status_filter)
+        except ValueError as e:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid status") from e
+        stmt = stmt.where(MonitoringAlert.status == st)
+    stmt = stmt.order_by(MonitoringAlert.updated_at.desc()).limit(limit)
+    rq = await db.execute(stmt)
+    rows = list(rq.scalars().all())
+    return [MonitoringAlertOut.model_validate(r) for r in rows]
 
 
 async def _sensor_for_company(db: AsyncSession, sensor_id: str, company_id: str) -> Sensor:

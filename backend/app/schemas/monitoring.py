@@ -76,6 +76,7 @@ class SensorThresholdOut(BaseModel):
     max_value: Optional[Decimal]
     expected_bool: Optional[bool]
     is_active: bool
+    alert_severity: AlertSeverity
 
     model_config = {"from_attributes": True}
 

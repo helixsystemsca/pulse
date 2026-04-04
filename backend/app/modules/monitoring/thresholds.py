@@ -44,12 +44,11 @@ def _threshold_triggered(t: SensorThreshold, reading: SensorReading) -> bool:
 
 def _alert_copy_for_threshold(t: SensorThreshold, reading: SensorReading) -> tuple[str, str, AlertSeverity]:
     label = t.name or "Threshold"
+    sev = t.alert_severity
     if reading.value_num is not None:
         msg = f"{label}: value {reading.value_num} outside allowed range."
-        sev = AlertSeverity.warning
     elif reading.value_bool is not None:
         msg = f"{label}: boolean value {reading.value_bool} does not match expected {t.expected_bool}."
-        sev = AlertSeverity.warning
     else:
         msg = f"{label}: threshold violated."
         sev = AlertSeverity.info

@@ -11,3 +11,5 @@ npm-debug.*
 web-build/
 .env
 .env.local
+.vercel
+.env*.local

@@ -215,6 +215,12 @@ class SensorThreshold(Base):
     max_value: Mapped[Optional[Decimal]] = mapped_column(Numeric(24, 8), nullable=True)
     expected_bool: Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    #: When this threshold fires, the opened/updated `MonitoringAlert` uses this severity.
+    alert_severity: Mapped[AlertSeverity] = mapped_column(
+        Enum(AlertSeverity, native_enum=False, length=32),
+        default=AlertSeverity.warning,
+        nullable=False,
+    )
 
     sensor: Mapped["Sensor"] = relationship(back_populates="thresholds")
     alerts: Mapped[list["MonitoringAlert"]] = relationship(back_populates="threshold")
