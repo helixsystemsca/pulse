@@ -8,6 +8,7 @@ _MODULE_PATH_PREFIXES: tuple[tuple[str, str], ...] = (
     ("/api/v1/proximity", "projects"),
     ("/api/v1/operations", "projects"),
     ("/api/compliance", "compliance"),
+    ("/api/v1/equipment", "equipment"),
     ("/api/v1/tool-tracking", "equipment"),
     ("/api/inventory", "inventory"),
     ("/api/v1/inventory", "inventory"),

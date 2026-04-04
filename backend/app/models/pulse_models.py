@@ -54,6 +54,12 @@ class PulseWorkRequest(Base):
     tool_id: Mapped[Optional[str]] = mapped_column(
         UUID(as_uuid=False), ForeignKey("tools.id", ondelete="SET NULL"), nullable=True, index=True
     )
+    equipment_id: Mapped[Optional[str]] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("facility_equipment.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    part_id: Mapped[Optional[str]] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("equipment_parts.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     zone_id: Mapped[Optional[str]] = mapped_column(
         UUID(as_uuid=False), ForeignKey("zones.id", ondelete="SET NULL"), nullable=True, index=True
     )

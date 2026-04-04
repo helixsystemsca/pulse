@@ -4,6 +4,7 @@
  */
 
 import { normalizeApiBaseUrl } from "@/lib/api-base-url";
+import { applyServerTimeFromUserOut } from "@/lib/serverTime";
 
 export const PULSE_AUTH_STORAGE_KEY = "pulse_auth_v1";
 
@@ -61,6 +62,8 @@ export type UserOut = {
   company?: CompanySummary | null;
   onboarding_enabled?: boolean;
   onboarding_completed?: boolean;
+  /** UTC ISO timestamp from `GET /auth/me` for client clock sync. */
+  server_time?: string;
 };
 
 function emitAuthChange() {
@@ -257,5 +260,6 @@ export async function loginWithBackend(
     return { ok: false, reason: "invalid_credentials" };
   }
   const user = (await meRes.json()) as UserOut;
+  applyServerTimeFromUserOut(user);
   return { ok: true, token, user };
 }

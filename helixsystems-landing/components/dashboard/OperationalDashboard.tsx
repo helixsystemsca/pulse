@@ -7,6 +7,7 @@ import { apiFetch, isApiMode } from "@/lib/api";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
 import { pulseTenantNav } from "@/lib/pulse-app";
 import { canAccessPulseTenantApis, readSession } from "@/lib/pulse-session";
+import { getServerDate, getServerNow } from "@/lib/serverTime";
 
 type AlertItem = { severity: "critical" | "warning"; title: string; subtitle?: string };
 
@@ -113,7 +114,7 @@ function demoModel(): DashboardViewModel {
       },
     ],
     workforce: {
-      dateLabel: new Date().toLocaleDateString("en-US", {
+      dateLabel: getServerDate().toLocaleDateString("en-US", {
         weekday: "long",
         month: "long",
         day: "numeric",
@@ -247,7 +248,7 @@ function workRequestTag(w: WorkRequestOut): WorkTag {
   if (st === "completed") return { kind: "progress", label: "Completed" };
   if (st === "cancelled") return { kind: "progress", label: "Cancelled" };
   const due = w.due_date ? new Date(w.due_date).getTime() : null;
-  if (due != null && due < Date.now()) return { kind: "overdue", label: "Overdue" };
+  if (due != null && due < getServerNow()) return { kind: "overdue", label: "Overdue" };
   if (st === "in_progress") return { kind: "progress", label: "In progress" };
   if (pr >= 3) return { kind: "urgent", label: "Urgent" };
   return { kind: "progress", label: st.replace(/_/g, " ") };
@@ -265,8 +266,8 @@ function buildLiveModel(
 ): DashboardViewModel {
   const zoneName = (id: string | null) => (id ? zones.find((z) => z.id === id)?.name ?? "Unknown zone" : "Unassigned");
 
-  const now = Date.now();
-  const dayStart = new Date();
+  const now = getServerNow();
+  const dayStart = new Date(now);
   dayStart.setUTCHours(0, 0, 0, 0);
   const dayEnd = new Date(dayStart);
   dayEnd.setUTCDate(dayEnd.getUTCDate() + 1);
@@ -414,7 +415,7 @@ function buildLiveModel(
     welcomeName: "",
     alerts,
     workforce: {
-      dateLabel: new Date().toLocaleDateString("en-US", {
+      dateLabel: getServerDate().toLocaleDateString("en-US", {
         weekday: "long",
         month: "long",
         day: "numeric",
@@ -940,7 +941,7 @@ export function OperationalDashboard({
 
     setLoading(true);
     setError(null);
-    const now = new Date();
+    const now = new Date(getServerNow());
     const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
     const end = new Date(start);
     end.setUTCDate(end.getUTCDate() + 1);

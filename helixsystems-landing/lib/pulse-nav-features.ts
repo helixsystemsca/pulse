@@ -11,6 +11,7 @@ export function featureKeyForTenantNavHref(href: string): string | undefined {
   if (href === "/schedule") return "schedule";
   if (href === "/operations" || href === "/projects" || href.startsWith("/projects/")) return PROJECTS_FEATURE;
   if (href === "/dashboard/inventory") return "inventory";
+  if (href === "/equipment") return "equipment";
   if (href.includes("tool-tracking")) return "equipment";
   return undefined;
 }

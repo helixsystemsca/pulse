@@ -16,7 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user, get_db, require_manager_or_above
 from app.services.onboarding_service import try_mark_onboarding_step
-from app.models.domain import Tool, User, UserRole, Zone
+from app.models.domain import EquipmentPart, FacilityEquipment, Tool, User, UserRole, Zone
 from app.models.pulse_models import (
     PulseWorkRequest,
     PulseWorkRequestActivity,
@@ -80,11 +80,34 @@ async def _tool_zone_maps(
     return tools, zones
 
 
+async def _equipment_map(db: AsyncSession, cid: str) -> dict[str, FacilityEquipment]:
+    q = await db.execute(select(FacilityEquipment).where(FacilityEquipment.company_id == cid))
+    return {e.id: e for e in q.scalars().all()}
+
+
+async def _equipment_parts_map(db: AsyncSession, cid: str) -> dict[str, EquipmentPart]:
+    q = await db.execute(select(EquipmentPart).where(EquipmentPart.company_id == cid))
+    return {p.id: p for p in q.scalars().all()}
+
+
 async def _users_map(db: AsyncSession, cid: str) -> dict[str, User]:
     uq = await db.execute(
         select(User).where(User.company_id == cid, User.is_active.is_(True))
     )
     return {u.id: u for u in uq.scalars().all()}
+
+
+async def _resolve_wr_part_equipment_ids(
+    db: AsyncSession, cid: str, part_id: Optional[str], equipment_id: Optional[str]
+) -> tuple[Optional[str], Optional[str]]:
+    if not part_id:
+        return None, equipment_id
+    part = await pulse_svc.equipment_part_for_company(db, cid, part_id)
+    if not part:
+        raise HTTPException(status_code=400, detail="Unknown part")
+    if equipment_id and equipment_id != part.equipment_id:
+        raise HTTPException(status_code=400, detail="Part does not belong to selected equipment")
+    return part_id, equipment_id or part.equipment_id
 
 
 async def _get_settings_row(db: AsyncSession, cid: str) -> Optional[PulseWorkRequestSettings]:
@@ -103,10 +126,14 @@ def _row_out(
     users: dict[str, User],
     tools: dict[str, Tool],
     zones: dict[str, Zone],
+    equipment: dict[str, FacilityEquipment],
+    parts: dict[str, EquipmentPart],
     now: datetime,
 ) -> WorkRequestRowOut:
     t = tools.get(wr.tool_id) if wr.tool_id else None
     z = zones.get(wr.zone_id) if wr.zone_id else None
+    eq = equipment.get(wr.equipment_id) if wr.equipment_id else None
+    pr = parts.get(wr.part_id) if wr.part_id else None
     au = users.get(wr.assigned_user_id) if wr.assigned_user_id else None
     disp = display_status(wr, now)
     overdue = disp == "overdue"
@@ -118,6 +145,10 @@ def _row_out(
         tool_id=wr.tool_id,
         asset_name=t.name if t else None,
         asset_tag=t.tag_id if t else None,
+        equipment_id=wr.equipment_id,
+        equipment_name=eq.name if eq else None,
+        part_id=wr.part_id,
+        part_name=pr.name if pr else None,
         zone_id=wr.zone_id,
         location_name=z.name if z else None,
         category=wr.category,
@@ -266,7 +297,11 @@ async def list_work_requests(
 
     users = await _users_map(db, cid)
     tools, zones = await _tool_zone_maps(db, cid)
-    items = [_row_out(wr, users=users, tools=tools, zones=zones, now=now) for wr in rows]
+    equipment = await _equipment_map(db, cid)
+    parts = await _equipment_parts_map(db, cid)
+    items = [
+        _row_out(wr, users=users, tools=tools, zones=zones, equipment=equipment, parts=parts, now=now) for wr in rows
+    ]
 
     occ_stmt = select(func.count()).select_from(PulseWorkRequest).where(
         PulseWorkRequest.company_id == cid,
@@ -290,6 +325,11 @@ async def create_wr(
 ) -> WorkRequestDetailOut:
     if body.tool_id and not await pulse_svc.tool_in_company(db, cid, body.tool_id):
         raise HTTPException(status_code=400, detail="Unknown asset")
+    resolved_part_id, resolved_equipment_id = await _resolve_wr_part_equipment_ids(
+        db, cid, body.part_id, body.equipment_id
+    )
+    if resolved_equipment_id and not await pulse_svc.facility_equipment_in_company(db, cid, resolved_equipment_id):
+        raise HTTPException(status_code=400, detail="Unknown equipment")
     if body.zone_id and not await pulse_svc.zone_in_company(db, cid, body.zone_id):
         raise HTTPException(status_code=400, detail="Unknown zone")
     if body.assigned_user_id and not await pulse_svc._user_in_company(db, cid, body.assigned_user_id):
@@ -307,6 +347,8 @@ async def create_wr(
         title=body.title.strip(),
         description=body.description,
         tool_id=body.tool_id,
+        equipment_id=resolved_equipment_id,
+        part_id=resolved_part_id,
         zone_id=body.zone_id,
         category=body.category,
         priority=body.priority,
@@ -332,7 +374,9 @@ async def _detail(db: AsyncSession, cid: str, wr_id: str, _: Optional[str] = Non
     now = datetime.now(timezone.utc)
     users = await _users_map(db, cid)
     tools, zones = await _tool_zone_maps(db, cid)
-    base = _row_out(wr, users=users, tools=tools, zones=zones, now=now)
+    equipment = await _equipment_map(db, cid)
+    parts = await _equipment_parts_map(db, cid)
+    base = _row_out(wr, users=users, tools=tools, zones=zones, equipment=equipment, parts=parts, now=now)
 
     cq = await db.execute(
         select(PulseWorkRequestComment)
@@ -396,6 +440,9 @@ async def patch_wr(
     data = body.model_dump(exclude_unset=True)
     if "tool_id" in data and data["tool_id"] and not await pulse_svc.tool_in_company(db, cid, data["tool_id"]):
         raise HTTPException(status_code=400, detail="Unknown asset")
+    if "equipment_id" in data and data["equipment_id"]:
+        if not await pulse_svc.facility_equipment_in_company(db, cid, data["equipment_id"]):
+            raise HTTPException(status_code=400, detail="Unknown equipment")
     if "zone_id" in data and data["zone_id"] and not await pulse_svc.zone_in_company(db, cid, data["zone_id"]):
         raise HTTPException(status_code=400, detail="Unknown zone")
     if "assigned_user_id" in data and data["assigned_user_id"]:
@@ -405,6 +452,14 @@ async def patch_wr(
     old_status = wr.status
     for k, v in data.items():
         setattr(wr, k, v)
+    if wr.part_id:
+        part = await pulse_svc.equipment_part_for_company(db, cid, wr.part_id)
+        if not part:
+            raise HTTPException(status_code=400, detail="Unknown part")
+        if wr.equipment_id is None:
+            wr.equipment_id = part.equipment_id
+        elif wr.equipment_id != part.equipment_id:
+            raise HTTPException(status_code=400, detail="Part does not belong to equipment")
     if "status" in data and data["status"] == PulseWorkRequestStatus.completed:
         wr.completed_at = datetime.now(timezone.utc)
     if "status" in data and data["status"] != PulseWorkRequestStatus.completed:

@@ -49,6 +49,19 @@ from app.schemas.pulse import (
 router = APIRouter(prefix="/pulse", tags=["pulse"])
 
 
+async def _resolve_pulse_wr_part_equipment(
+    db: AsyncSession, cid: str, part_id: Optional[str], equipment_id: Optional[str]
+) -> tuple[Optional[str], Optional[str]]:
+    if not part_id:
+        return None, equipment_id
+    part = await pulse_svc.equipment_part_for_company(db, cid, part_id)
+    if not part:
+        raise HTTPException(status_code=400, detail="Unknown part for this organization")
+    if equipment_id and equipment_id != part.equipment_id:
+        raise HTTPException(status_code=400, detail="Part does not belong to selected equipment")
+    return part_id, equipment_id or part.equipment_id
+
+
 def _shift_to_out(
     sh: PulseScheduleShift,
     task: Optional[PulseProjectTask] = None,
@@ -155,6 +168,11 @@ async def create_work_request(
 ) -> WorkRequestOut:
     if body.tool_id and not await _tool_in_company(db, cid, body.tool_id):
         raise HTTPException(status_code=400, detail="Unknown asset for this organization")
+    resolved_part_id, resolved_equipment_id = await _resolve_pulse_wr_part_equipment(
+        db, cid, body.part_id, body.equipment_id
+    )
+    if resolved_equipment_id and not await pulse_svc.facility_equipment_in_company(db, cid, resolved_equipment_id):
+        raise HTTPException(status_code=400, detail="Unknown equipment for this organization")
     if body.zone_id and not await _zone_in_company(db, cid, body.zone_id):
         raise HTTPException(status_code=400, detail="Unknown zone")
     if body.assigned_user_id and not await pulse_svc._user_in_company(db, cid, body.assigned_user_id):
@@ -166,6 +184,8 @@ async def create_work_request(
         title=body.title,
         description=body.description,
         tool_id=body.tool_id,
+        equipment_id=resolved_equipment_id,
+        part_id=resolved_part_id,
         zone_id=body.zone_id,
         category=body.category,
         priority=body.priority,
@@ -208,6 +228,9 @@ async def patch_work_request(
     data = body.model_dump(exclude_unset=True)
     if "tool_id" in data and data["tool_id"] and not await _tool_in_company(db, cid, data["tool_id"]):
         raise HTTPException(status_code=400, detail="Unknown asset")
+    if "equipment_id" in data and data["equipment_id"]:
+        if not await pulse_svc.facility_equipment_in_company(db, cid, data["equipment_id"]):
+            raise HTTPException(status_code=400, detail="Unknown equipment")
     if "zone_id" in data and data["zone_id"] and not await _zone_in_company(db, cid, data["zone_id"]):
         raise HTTPException(status_code=400, detail="Unknown zone")
     if "assigned_user_id" in data and data["assigned_user_id"]:
@@ -215,6 +238,14 @@ async def patch_work_request(
             raise HTTPException(status_code=400, detail="Unknown assignee")
     for k, v in data.items():
         setattr(wr, k, v)
+    if wr.part_id:
+        part = await pulse_svc.equipment_part_for_company(db, cid, wr.part_id)
+        if not part:
+            raise HTTPException(status_code=400, detail="Unknown part")
+        if wr.equipment_id is None:
+            wr.equipment_id = part.equipment_id
+        elif wr.equipment_id != part.equipment_id:
+            raise HTTPException(status_code=400, detail="Part does not belong to equipment")
     if "status" in data:
         if data["status"] == PulseWorkRequestStatus.completed:
             wr.completed_at = datetime.now(timezone.utc)

@@ -17,8 +17,11 @@ import {
   Search,
   Settings,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { apiFetch } from "@/lib/api";
+import { fetchEquipmentList, fetchEquipmentParts } from "@/lib/equipmentService";
 import { emitOnboardingMaybeUpdated } from "@/lib/onboarding-events";
 import { PulseDrawer } from "@/components/schedule/PulseDrawer";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -33,6 +36,7 @@ import {
   fetchWorkRequestDetail,
   fetchWorkRequestList,
   fetchWorkRequestSettings,
+  patchWorkRequest,
   patchWorkRequestSettings,
   postWorkRequestComment,
   postWorkRequestStatus,
@@ -41,6 +45,8 @@ import {
 type CompanyOption = { id: string; name: string };
 type ZoneOpt = { id: string; name: string };
 type AssetOpt = { id: string; name: string; tag_id?: string | null; zone_id?: string | null };
+type EquipmentOpt = { id: string; name: string };
+type WrPartOpt = { id: string; name: string };
 type WorkerOpt = { id: string; email: string; full_name: string | null; role: string };
 
 const PRIMARY_BTN =
@@ -115,6 +121,9 @@ const SETTINGS_TABS = ["Statuses", "Priorities & SLA", "Assignment", "Notificati
 type SettingsTab = (typeof SETTINGS_TABS)[number];
 
 export function WorkRequestsApp() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const session = readSession();
   const isSystemAdmin = Boolean(session?.is_system_admin || session?.role === "system_admin");
   const sessionCompanyId = session?.company_id ?? null;
@@ -137,6 +146,8 @@ export function WorkRequestsApp() {
 
   const [zones, setZones] = useState<ZoneOpt[]>([]);
   const [assets, setAssets] = useState<AssetOpt[]>([]);
+  const [equipmentOptions, setEquipmentOptions] = useState<EquipmentOpt[]>([]);
+  const [wrPartOptions, setWrPartOptions] = useState<WrPartOpt[]>([]);
   const [workers, setWorkers] = useState<WorkerOpt[]>([]);
 
   const [listLoading, setListLoading] = useState(false);
@@ -162,6 +173,8 @@ export function WorkRequestsApp() {
     title: "",
     description: "",
     tool_id: "",
+    equipment_id: "",
+    part_id: "",
     zone_id: "",
     category: "",
     priority: "medium",
@@ -169,6 +182,9 @@ export function WorkRequestsApp() {
     due_date: "",
     attachmentsNotes: "",
   });
+
+  const [detailEquipmentDraft, setDetailEquipmentDraft] = useState("");
+  const lastCreateQuerySig = useRef<string | null>(null);
 
   useEffect(() => {
     const t = window.setTimeout(() => setQDebounced(q.trim()), 300);
@@ -191,26 +207,82 @@ export function WorkRequestsApp() {
     if (!dataEnabled || !session?.access_token) {
       setZones([]);
       setAssets([]);
+      setEquipmentOptions([]);
       setWorkers([]);
       return;
     }
     void (async () => {
       try {
-        const [z, a, w] = await Promise.all([
+        const [z, a, w, eq] = await Promise.all([
           apiFetch<ZoneOpt[]>(`/api/v1/pulse/zones`),
           apiFetch<AssetOpt[]>(`/api/v1/pulse/assets`),
           apiFetch<WorkerOpt[]>(`/api/v1/pulse/workers`),
+          fetchEquipmentList({}).catch(() => []),
         ]);
         setZones(z);
         setAssets(a);
+        setEquipmentOptions(eq.map((r) => ({ id: r.id, name: r.name })));
         setWorkers(w);
       } catch {
         setZones([]);
         setAssets([]);
+        setEquipmentOptions([]);
         setWorkers([]);
       }
     })();
   }, [dataEnabled, session?.access_token]);
+
+  const wrFromUrl = searchParams.get("wr");
+
+  useEffect(() => {
+    if (!dataEnabled || !wrFromUrl?.trim()) return;
+    setDetailId(wrFromUrl.trim());
+  }, [dataEnabled, wrFromUrl]);
+
+  useEffect(() => {
+    if (!dataEnabled || searchParams.get("create") !== "1") return;
+    const sig = searchParams.toString();
+    if (lastCreateQuerySig.current === sig) return;
+    lastCreateQuerySig.current = sig;
+    const eq = searchParams.get("equipment_id") ?? "";
+    const pt = searchParams.get("part_id") ?? "";
+    const wt = searchParams.get("wr_title");
+    setCreateOpen(true);
+    setCreateForm((f) => ({
+      ...f,
+      equipment_id: eq || f.equipment_id,
+      part_id: pt || f.part_id,
+      title: wt ? decodeURIComponent(wt.replace(/\+/g, " ")) : f.title,
+    }));
+    const sp = new URLSearchParams(searchParams.toString());
+    sp.delete("create");
+    sp.delete("equipment_id");
+    sp.delete("part_id");
+    sp.delete("wr_title");
+    const nq = sp.toString();
+    router.replace(nq ? `${pathname}?${nq}` : pathname, { scroll: false });
+  }, [dataEnabled, searchParams, pathname, router]);
+
+  useEffect(() => {
+    if (!createOpen || !createForm.equipment_id) {
+      setWrPartOptions([]);
+      return;
+    }
+    void (async () => {
+      try {
+        const parts = await fetchEquipmentParts(createForm.equipment_id);
+        const opts = parts.map((p) => ({ id: p.id, name: p.name }));
+        setWrPartOptions(opts);
+        setCreateForm((f) => {
+          if (!f.part_id) return f;
+          if (!opts.some((x) => x.id === f.part_id)) return { ...f, part_id: "" };
+          return f;
+        });
+      } catch {
+        setWrPartOptions([]);
+      }
+    })();
+  }, [createOpen, createForm.equipment_id]);
 
   const loadList = useCallback(async () => {
     if (!dataEnabled || !effectiveCompanyId) return;
@@ -276,6 +348,25 @@ export function WorkRequestsApp() {
   }, [detailId, loadDetail]);
 
   useEffect(() => {
+    if (detail) {
+      setDetailEquipmentDraft(detail.equipment_id ?? "");
+    } else {
+      setDetailEquipmentDraft("");
+    }
+  }, [detail]);
+
+  const closeDetail = useCallback(() => {
+    setDetailId(null);
+    const wr = searchParams.get("wr");
+    if (wr) {
+      const sp = new URLSearchParams(searchParams.toString());
+      sp.delete("wr");
+      const next = sp.toString();
+      router.replace(next ? `${pathname}?${next}` : pathname, { scroll: false });
+    }
+  }, [pathname, router, searchParams]);
+
+  useEffect(() => {
     if (!settingsOpen || !effectiveCompanyId) return;
     setSettingsLoading(true);
     void (async () => {
@@ -325,6 +416,8 @@ export function WorkRequestsApp() {
         title: createForm.title.trim(),
         description: createForm.description.trim() || null,
         tool_id: createForm.tool_id || null,
+        equipment_id: createForm.equipment_id || null,
+        part_id: createForm.part_id || null,
         zone_id: createForm.zone_id || null,
         category: createForm.category.trim() || null,
         priority: createForm.priority,
@@ -337,6 +430,8 @@ export function WorkRequestsApp() {
         title: "",
         description: "",
         tool_id: "",
+        equipment_id: "",
+        part_id: "",
         zone_id: "",
         category: "",
         priority: "medium",
@@ -357,6 +452,20 @@ export function WorkRequestsApp() {
     try {
       await postWorkRequestComment(isSystemAdmin ? effectiveCompanyId : null, detailId, commentText.trim());
       setCommentText("");
+      await loadDetail();
+      await loadList();
+    } finally {
+      setActionBusy(false);
+    }
+  }
+
+  async function saveDetailEquipment() {
+    if (!detailId || !effectiveCompanyId || !canManage) return;
+    setActionBusy(true);
+    try {
+      await patchWorkRequest(isSystemAdmin ? effectiveCompanyId : null, detailId, {
+        equipment_id: detailEquipmentDraft || null,
+      });
       await loadDetail();
       await loadList();
     } finally {
@@ -610,6 +719,17 @@ export function WorkRequestsApp() {
                           <td className="px-4 py-3 align-top">
                             <p className="font-semibold text-pulse-navy">{row.asset_name ?? "—"}</p>
                             <p className="text-xs text-pulse-muted">{row.asset_tag ?? row.tool_id ?? ""}</p>
+                            {row.equipment_name ? (
+                              <p className="mt-0.5 text-xs text-pulse-muted">
+                                Equipment:{" "}
+                                <span className="font-medium text-pulse-navy">{row.equipment_name}</span>
+                              </p>
+                            ) : null}
+                            {row.part_name ? (
+                              <p className="mt-0.5 text-xs text-pulse-muted">
+                                Part: <span className="font-medium text-pulse-navy">{row.part_name}</span>
+                              </p>
+                            ) : null}
                           </td>
                           <td className="px-4 py-3 align-top text-pulse-navy">{row.location_name ?? "—"}</td>
                           <td className="px-4 py-3 align-top text-pulse-navy">{row.category ?? "—"}</td>
@@ -801,6 +921,39 @@ export function WorkRequestsApp() {
               </select>
             </div>
             <div>
+              <label className={LABEL}>Equipment</label>
+              <select
+                className={FIELD}
+                value={createForm.equipment_id}
+                onChange={(e) =>
+                  setCreateForm((f) => ({ ...f, equipment_id: e.target.value, part_id: "" }))
+                }
+              >
+                <option value="">None</option>
+                {equipmentOptions.map((eq) => (
+                  <option key={eq.id} value={eq.id}>
+                    {eq.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className={LABEL}>Part (optional)</label>
+              <select
+                className={FIELD}
+                value={createForm.part_id}
+                disabled={!createForm.equipment_id || wrPartOptions.length === 0}
+                onChange={(e) => setCreateForm((f) => ({ ...f, part_id: e.target.value }))}
+              >
+                <option value="">None</option>
+                {wrPartOptions.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
               <label className={LABEL}>Location</label>
               <select
                 className={FIELD}
@@ -881,7 +1034,7 @@ export function WorkRequestsApp() {
         open={Boolean(detailId)}
         title={detail?.title ?? "Work request"}
         subtitle={detail ? `Updated ${new Date(detail.updated_at).toLocaleString()}` : undefined}
-        onClose={() => setDetailId(null)}
+        onClose={closeDetail}
         wide
         labelledBy="wr-detail-title"
       >
@@ -934,6 +1087,57 @@ export function WorkRequestsApp() {
               <div>
                 <h3 className={LABEL}>Location</h3>
                 <p className="mt-1.5 text-sm text-pulse-navy">{detail.location_name ?? "—"}</p>
+              </div>
+              <div className="sm:col-span-2">
+                <h3 className={LABEL}>Linked equipment</h3>
+                {detail.equipment_id && detail.equipment_name ? (
+                  <p className="mt-1.5 text-sm font-medium text-pulse-navy">
+                    <Link
+                      href={`/equipment/${encodeURIComponent(detail.equipment_id)}`}
+                      className="text-[#2B4C7E] underline-offset-2 hover:underline"
+                    >
+                      {detail.equipment_name}
+                    </Link>
+                  </p>
+                ) : (
+                  <p className="mt-1.5 text-sm text-pulse-muted">None</p>
+                )}
+                {canManage ? (
+                  <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-end">
+                    <div className="min-w-0 flex-1">
+                      <label className={LABEL} htmlFor="wr-detail-equipment">
+                        Change link
+                      </label>
+                      <select
+                        id="wr-detail-equipment"
+                        className={FIELD}
+                        value={detailEquipmentDraft}
+                        onChange={(e) => setDetailEquipmentDraft(e.target.value)}
+                      >
+                        <option value="">None</option>
+                        {equipmentOptions.map((eq) => (
+                          <option key={eq.id} value={eq.id}>
+                            {eq.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <button
+                      type="button"
+                      className={PRIMARY_BTN}
+                      disabled={
+                        actionBusy || (detailEquipmentDraft || "") === (detail.equipment_id ?? "")
+                      }
+                      onClick={() => void saveDetailEquipment()}
+                    >
+                      Save link
+                    </button>
+                  </div>
+                ) : null}
+              </div>
+              <div className="sm:col-span-2">
+                <h3 className={LABEL}>Linked part</h3>
+                <p className="mt-1.5 text-sm text-pulse-navy">{detail.part_name ?? "—"}</p>
               </div>
             </div>
 

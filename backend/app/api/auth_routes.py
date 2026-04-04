@@ -174,6 +174,7 @@ async def me(
         company=company_summary,
         onboarding_enabled=ob_enabled,
         onboarding_completed=ob_completed,
+        server_time=datetime.now(timezone.utc).isoformat(),
     )
 
 

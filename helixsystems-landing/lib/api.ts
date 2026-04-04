@@ -4,6 +4,7 @@
  */
 import { normalizeApiBaseUrl } from "@/lib/api-base-url";
 import { readSession, writeApiSession, type UserOut } from "@/lib/pulse-session";
+import { applyServerTimeFromUserOut } from "@/lib/serverTime";
 
 export function getApiBaseUrl(): string {
   return normalizeApiBaseUrl(process.env.NEXT_PUBLIC_API_URL);
@@ -69,6 +70,7 @@ export async function refreshSessionWithToken(token: string, remember: boolean):
   });
   if (!meRes.ok) throw new Error("Session refresh failed");
   const user = (await meRes.json()) as UserOut;
+  applyServerTimeFromUserOut(user);
   writeApiSession(token, user, remember);
 }
 
@@ -83,5 +85,6 @@ export async function refreshPulseUserFromServer(): Promise<void> {
   });
   if (!meRes.ok) return;
   const user = (await meRes.json()) as UserOut;
+  applyServerTimeFromUserOut(user);
   writeApiSession(s.access_token, user, s.remember);
 }

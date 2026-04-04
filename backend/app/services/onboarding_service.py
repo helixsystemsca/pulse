@@ -14,6 +14,7 @@ from app.models.domain import User, UserRole
 ALL_ONBOARDING_STEP_KEYS: tuple[str, ...] = (
     "create_zone",
     "add_device",
+    "add_equipment",
     "create_work_order",
     "view_operations",
     "complete_work_order",
@@ -27,6 +28,7 @@ ONBOARDING_STEP_KEYS: tuple[str, ...] = ALL_ONBOARDING_STEP_KEYS
 MANAGER_ONBOARDING_KEYS: tuple[str, ...] = (
     "create_zone",
     "add_device",
+    "add_equipment",
     "create_work_order",
     "view_operations",
 )
@@ -41,6 +43,7 @@ WORKER_ONBOARDING_KEYS: tuple[str, ...] = (
 STEP_LABELS: dict[str, str] = {
     "create_zone": "Create your first zone",
     "add_device": "Add a device",
+    "add_equipment": "Add facility equipment",
     "create_work_order": "Create a work order",
     "view_operations": "View operations dashboard",
     "complete_work_order": "Complete a work order",
@@ -51,6 +54,7 @@ STEP_LABELS: dict[str, str] = {
 STEP_DESCRIPTIONS: dict[str, str] = {
     "create_zone": "Organize your facility into manageable areas.",
     "add_device": "Register a gateway, tag, or equipment record.",
+    "add_equipment": "Record a fixed asset in the equipment registry for maintenance tracking.",
     "create_work_order": "Open a tracked maintenance or facility task.",
     "view_operations": "See performance, accountability, and bottlenecks.",
     "complete_work_order": "Mark an assigned or open work order as done.",

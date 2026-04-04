@@ -2,12 +2,13 @@
 
 import enum
 import json
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from typing import Any, Optional
 from uuid import uuid4
 
 from sqlalchemy import (
     Boolean,
+    Date,
     DateTime,
     Enum,
     Float,
@@ -32,6 +33,7 @@ _ONBOARDING_STEPS_DEFAULT_JSON = json.dumps(
     [
         {"key": "create_zone", "completed": False},
         {"key": "add_device", "completed": False},
+        {"key": "add_equipment", "completed": False},
         {"key": "create_work_order", "completed": False},
         {"key": "view_operations", "completed": False},
         {"key": "complete_work_order", "completed": False},
@@ -53,6 +55,14 @@ class RolePermissionTarget(str, enum.Enum):
 
     manager = "manager"
     worker = "worker"
+
+
+class FacilityEquipmentStatus(str, enum.Enum):
+    """Facility equipment registry (distinct from tracked tools / BLE tags)."""
+
+    active = "active"
+    maintenance = "maintenance"
+    offline = "offline"
 
 
 class ToolStatus(str, enum.Enum):
@@ -245,6 +255,77 @@ class Zone(Base):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     meta: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
+
+
+class FacilityEquipment(Base):
+    """Tenant-scoped facility equipment records (HVAC, pumps, fixed assets, etc.)."""
+
+    __tablename__ = "facility_equipment"
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    company_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    type: Mapped[str] = mapped_column(String(128), nullable=False, default="General")
+    zone_id: Mapped[Optional[str]] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("zones.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    status: Mapped[FacilityEquipmentStatus] = mapped_column(
+        Enum(FacilityEquipmentStatus, native_enum=False, length=32),
+        nullable=False,
+        default=FacilityEquipmentStatus.active,
+        index=True,
+    )
+    manufacturer: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    model: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    serial_number: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    installation_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    last_service_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    next_service_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    service_interval_days: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+    image_url: Mapped[Optional[str]] = mapped_column(String(2048), nullable=True)
+
+
+class EquipmentPart(Base):
+    """Consumable / replaceable components tied to facility equipment (tenant-scoped)."""
+
+    __tablename__ = "equipment_parts"
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    company_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    equipment_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("facility_equipment.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    quantity: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    replacement_interval_days: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    last_replaced_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    next_replacement_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    image_url: Mapped[Optional[str]] = mapped_column(String(2048), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
 
 
 class Tool(Base):

@@ -11,7 +11,7 @@ from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
-from app.models.domain import InventoryItem, Tool, ToolStatus, User, UserRole, Zone
+from app.models.domain import EquipmentPart, InventoryItem, Tool, ToolStatus, User, UserRole, Zone
 from app.models.pulse_models import (
     PulseBeaconEquipment,
     PulseScheduleShift,
@@ -76,6 +76,30 @@ async def _user_in_company(db: AsyncSession, company_id: str, user_id: str) -> O
 async def tool_in_company(db: AsyncSession, company_id: str, tool_id: str) -> bool:
     q = await db.execute(select(Tool.id).where(Tool.id == tool_id, Tool.company_id == company_id))
     return q.scalar_one_or_none() is not None
+
+
+async def facility_equipment_in_company(db: AsyncSession, company_id: str, equipment_id: str) -> bool:
+    from app.models.domain import FacilityEquipment
+
+    q = await db.execute(
+        select(FacilityEquipment.id).where(
+            FacilityEquipment.id == equipment_id,
+            FacilityEquipment.company_id == company_id,
+        )
+    )
+    return q.scalar_one_or_none() is not None
+
+
+async def equipment_part_for_company(
+    db: AsyncSession, company_id: str, part_id: str
+) -> Optional[EquipmentPart]:
+    q = await db.execute(
+        select(EquipmentPart).where(
+            EquipmentPart.id == part_id,
+            EquipmentPart.company_id == company_id,
+        )
+    )
+    return q.scalar_one_or_none()
 
 
 async def zone_in_company(db: AsyncSession, company_id: str, zone_id: str) -> bool:

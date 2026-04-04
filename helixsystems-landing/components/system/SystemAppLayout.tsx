@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { apiFetch, getApiBaseUrl, refreshSessionWithToken } from "@/lib/api";
 import { navigateToPulseLogin, pulsePostLoginPath } from "@/lib/pulse-app";
 import { clearSession, readSession, type UserOut } from "@/lib/pulse-session";
+import { applyServerTimeFromUserOut } from "@/lib/serverTime";
 
 export function SystemAppLayout({ children }: { children: ReactNode }) {
   const router = useRouter();
@@ -27,6 +28,7 @@ export function SystemAppLayout({ children }: { children: ReactNode }) {
     }
     try {
       const u = await apiFetch<UserOut>("/api/v1/auth/me");
+      applyServerTimeFromUserOut(u);
       if (pulsePostLoginPath(u) !== "/system") {
         bounceTenantToOverview();
         return;

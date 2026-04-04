@@ -4,6 +4,7 @@
 import type { ReactNode } from "react";
 import { AppMain } from "./AppMain";
 import { InactivitySessionGuard } from "./InactivitySessionGuard";
+import { ServerTimeSync } from "./ServerTimeSync";
 import { MainContentWidth } from "./MainContentWidth";
 import { AppNavbar } from "./AppNavbar";
 import { AppSideNav } from "./AppSideNav";
@@ -22,6 +23,7 @@ export function AppLayout({ children, mainClassName = "" }: AppLayoutProps) {
     <div className="relative min-h-screen bg-white">
       <OnboardingProvider>
         <InactivitySessionGuard />
+        <ServerTimeSync />
         <ProximityPromptHost />
         <AppSideNav />
         <div className="flex min-h-screen min-w-0 flex-col">

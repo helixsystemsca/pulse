@@ -21,6 +21,8 @@ class WorkRequestCreate(BaseModel):
     title: str = Field(..., min_length=1, max_length=255)
     description: Optional[str] = None
     tool_id: Optional[str] = None
+    equipment_id: Optional[str] = None
+    part_id: Optional[str] = None
     zone_id: Optional[str] = None
     category: Optional[str] = Field(None, max_length=128)
     priority: Union[int, str, PulseWorkRequestPriority] = PulseWorkRequestPriority.medium
@@ -44,6 +46,8 @@ class WorkRequestUpdate(BaseModel):
     title: Optional[str] = Field(None, min_length=1, max_length=255)
     description: Optional[str] = None
     tool_id: Optional[str] = None
+    equipment_id: Optional[str] = None
+    part_id: Optional[str] = None
     zone_id: Optional[str] = None
     category: Optional[str] = Field(None, max_length=128)
     priority: Optional[Union[int, str, PulseWorkRequestPriority]] = None
@@ -70,6 +74,8 @@ class WorkRequestOut(BaseModel):
     title: str
     description: Optional[str]
     tool_id: Optional[str]
+    equipment_id: Optional[str] = None
+    part_id: Optional[str] = None
     zone_id: Optional[str]
     category: Optional[str]
     priority: str

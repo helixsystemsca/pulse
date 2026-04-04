@@ -11,6 +11,10 @@ export type WorkRequestRow = {
   tool_id: string | null;
   asset_name: string | null;
   asset_tag?: string | null;
+  equipment_id?: string | null;
+  equipment_name?: string | null;
+  part_id?: string | null;
+  part_name?: string | null;
   zone_id: string | null;
   location_name: string | null;
   category: string | null;
@@ -115,6 +119,8 @@ export async function createWorkRequest(
     title: string;
     description?: string | null;
     tool_id?: string | null;
+    equipment_id?: string | null;
+    part_id?: string | null;
     zone_id?: string | null;
     category?: string | null;
     priority?: string;

@@ -40,6 +40,8 @@ class UserOut(BaseModel):
     company: Optional[CompanySummaryOut] = None
     onboarding_enabled: bool = True
     onboarding_completed: bool = False
+    #: Current server time (UTC ISO-8601) for client clock sync; not persisted on the user row.
+    server_time: str
 
     model_config = {"from_attributes": True}
 

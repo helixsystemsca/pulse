@@ -22,6 +22,7 @@ from app.api.automation_debug_routes import router as automation_debug_router
 from app.api.automation_events_routes import router as automation_events_router
 from app.api.automation_config_routes import router as automation_config_router
 from app.api.devices_routes import router as devices_router
+from app.api.equipment_routes import router as equipment_router
 from app.api.notifications_routes import router as notifications_router
 from app.api.onboarding_routes import router as onboarding_router
 from app.api.auth_routes import router as auth_router
@@ -118,6 +119,7 @@ app.include_router(automation_events_router, prefix="/api/v1")
 app.include_router(automation_debug_router, prefix="/api/v1")
 app.include_router(notifications_router, prefix="/api/v1")
 app.include_router(devices_router, prefix="/api/v1")
+app.include_router(equipment_router, prefix="/api/v1")
 app.include_router(automation_config_router, prefix="/api/v1")
 app.include_router(admin_router, prefix="/api/v1")
 app.include_router(system_router, prefix="/api/system")

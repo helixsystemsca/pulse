@@ -2,6 +2,7 @@
 
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
+import { getServerNow } from "@/lib/serverTime";
 import {
   buildSeedShifts,
   defaultRoles,
@@ -85,7 +86,7 @@ function initialState(): Omit<
 > {
   return {
     workers: defaultWorkers,
-    shifts: buildSeedShifts(),
+    shifts: buildSeedShifts(new Date(getServerNow())),
     zones: defaultZones,
     roles: defaultRoles,
     shiftTypes: defaultShiftTypes,

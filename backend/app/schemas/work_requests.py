@@ -35,6 +35,10 @@ class WorkRequestRowOut(BaseModel):
     tool_id: Optional[str]
     asset_name: Optional[str]
     asset_tag: Optional[str] = None
+    equipment_id: Optional[str] = None
+    equipment_name: Optional[str] = None
+    part_id: Optional[str] = None
+    part_name: Optional[str] = None
     zone_id: Optional[str]
     location_name: Optional[str]
     category: Optional[str]
@@ -68,6 +72,8 @@ class WorkRequestCreateIn(BaseModel):
     title: str = Field(..., min_length=1, max_length=255)
     description: Optional[str] = None
     tool_id: Optional[str] = None
+    equipment_id: Optional[str] = None
+    part_id: Optional[str] = None
     zone_id: Optional[str] = None
     category: Optional[str] = Field(None, max_length=128)
     priority: PulseWorkRequestPriority = PulseWorkRequestPriority.medium
@@ -80,6 +86,8 @@ class WorkRequestPatchIn(BaseModel):
     title: Optional[str] = Field(None, min_length=1, max_length=255)
     description: Optional[str] = None
     tool_id: Optional[str] = None
+    equipment_id: Optional[str] = None
+    part_id: Optional[str] = None
     zone_id: Optional[str] = None
     category: Optional[str] = Field(None, max_length=128)
     priority: Optional[PulseWorkRequestPriority] = None

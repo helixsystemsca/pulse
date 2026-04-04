@@ -6,6 +6,7 @@ import { getApiBaseUrl } from "@/lib/api";
 import { navigateAfterPulseLogin, pulseApp } from "@/lib/pulse-app";
 import { writeApiSession } from "@/lib/pulse-session";
 import type { UserOut } from "@/lib/pulse-session";
+import { applyServerTimeFromUserOut } from "@/lib/serverTime";
 
 function ResetForm() {
   const search = useSearchParams();
@@ -36,6 +37,7 @@ function ResetForm() {
         headers: { Authorization: `Bearer ${access_token}` },
       });
       const user = (await meRes.json()) as UserOut;
+      applyServerTimeFromUserOut(user);
       writeApiSession(access_token, user, false);
       navigateAfterPulseLogin(user);
     } finally {

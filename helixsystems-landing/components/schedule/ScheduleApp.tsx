@@ -14,6 +14,7 @@ import {
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { apiFetch, isApiMode, refreshPulseUserFromServer } from "@/lib/api";
+import { getServerDate } from "@/lib/serverTime";
 import { emitOnboardingMaybeUpdated } from "@/lib/onboarding-events";
 import { patchOnboarding } from "@/lib/onboardingService";
 import {
@@ -57,12 +58,12 @@ type ScheduleContentFilter = "workers" | "projects" | "combined";
 
 export function ScheduleApp() {
   const [cursor, setCursor] = useState(() => {
-    const n = new Date();
+    const n = getServerDate();
     return { y: n.getFullYear(), m: n.getMonth() };
   });
   const [view, setView] = useState<View>("calendar");
   const [calendarScale, setCalendarScale] = useState<CalendarScale>("month");
-  const [focusDate, setFocusDate] = useState(() => formatLocalDate(new Date()));
+  const [focusDate, setFocusDate] = useState(() => formatLocalDate(getServerDate()));
   const [contentFilter, setContentFilter] = useState<ScheduleContentFilter>("combined");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [timeOffOpen, setTimeOffOpen] = useState(false);
@@ -196,7 +197,7 @@ export function ScheduleApp() {
 
   const defaultDate = useMemo(() => {
     if (calendarScale === "day") return focusDate;
-    const today = new Date();
+    const today = getServerDate();
     if (today.getFullYear() === cursor.y && today.getMonth() === cursor.m) {
       return formatLocalDate(today);
     }
@@ -331,7 +332,7 @@ export function ScheduleApp() {
   }
 
   function goToday() {
-    const td = new Date();
+    const td = getServerDate();
     setFocusDate(formatLocalDate(td));
     setCursor({ y: td.getFullYear(), m: td.getMonth() });
   }

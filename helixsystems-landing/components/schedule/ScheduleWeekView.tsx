@@ -3,6 +3,7 @@
 import { Award, ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { useMemo, useState } from "react";
 import { formatLocalDate, parseLocalDate, weekRangeLabel } from "@/lib/schedule/calendar";
+import { getServerDate } from "@/lib/serverTime";
 import { scheduleShiftHoverSummary, shiftHasCertificationFlag } from "@/lib/schedule/certifications";
 import { getShiftConflicts, worstConflictSeverity } from "@/lib/schedule/conflicts";
 import { attachShiftDragPreview, readShiftDragPayload, setShiftDragData, SHIFT_DRAG_MIME } from "@/lib/schedule/drag";
@@ -148,7 +149,7 @@ export function ScheduleWeekView({
         {weekDates.map((date, idx) => {
           const dow = WEEK[idx];
           const d = parseLocalDate(date);
-          const isToday = formatLocalDate(new Date()) === date;
+          const isToday = formatLocalDate(getServerDate()) === date;
           return (
             <div
               key={date}

@@ -26,6 +26,7 @@ export const pulseRoutes = {
   schedule: "/schedule",
   projects: "/projects",
   operations: "/operations",
+  equipment: "/equipment",
   /** Pulse product / marketing page (facility map, features, etc.). */
   pulseLanding: "/pulse",
 } as const;
@@ -38,6 +39,7 @@ export const pulseTenantNav = [
   { href: "/projects", label: "Projects" },
   { href: "/dashboard/work-requests", label: "Work orders" },
   { href: "/dashboard/inventory", label: "Inventory" },
+  { href: "/equipment", label: "Equipment" },
   { href: "/dashboard/setup", label: "Zones & devices" },
 ] as const;
 
@@ -62,7 +64,7 @@ export const pulseTenantSidebarNav = [
   { href: "/dashboard/work-requests", label: "Issue tracking", icon: "clipboard" as const },
   { href: "/dashboard/workers", label: "Workers & roles", icon: "user-cog" as const },
   { href: "/dashboard/inventory", label: "Inventory", icon: "package" as const },
-  { href: "/pulse#tool-tracking", label: "Equipment", icon: "wrench" as const },
+  { href: "/equipment", label: "Equipment", icon: "wrench" as const },
   { href: "/dashboard/setup", label: "Zones & devices", icon: "map-pin" as const },
 ] as const;
 
