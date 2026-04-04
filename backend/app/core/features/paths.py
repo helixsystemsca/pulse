@@ -2,6 +2,7 @@
 
 # Longest prefix first so `/api/v1/jobs-extra` would not match before we add such routes.
 _MODULE_PATH_PREFIXES: tuple[tuple[str, str], ...] = (
+    ("/api/blueprints", "maintenance"),
     ("/api/v1/pulse/schedule", "schedule"),
     ("/api/v1/projects", "projects"),
     ("/api/v1/tasks", "projects"),

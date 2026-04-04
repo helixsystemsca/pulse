@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
 
-export default function AdminZonesPage() {
+export default function ZonesDevicesPage() {
   redirect("/zones-devices/zones");
 }

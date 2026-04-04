@@ -1,0 +1,70 @@
+"""Tenant-scoped floorplan blueprints (`blueprints`, `blueprint_elements`)."""
+
+from __future__ import annotations
+
+from datetime import datetime, timezone
+from typing import Optional
+from uuid import uuid4
+
+from sqlalchemy import DateTime, Float, ForeignKey, String
+from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from app.models.base import Base
+
+
+def _uuid() -> str:
+    return str(uuid4())
+
+
+class Blueprint(Base):
+    __tablename__ = "blueprints"
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    company_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+
+    elements: Mapped[list["BlueprintElement"]] = relationship(
+        back_populates="blueprint",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+
+
+class BlueprintElement(Base):
+    __tablename__ = "blueprint_elements"
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    blueprint_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("blueprints.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    element_type: Mapped[str] = mapped_column("element_type", String(16), nullable=False)
+    x: Mapped[float] = mapped_column(Float, nullable=False)
+    y: Mapped[float] = mapped_column(Float, nullable=False)
+    width: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    height: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    rotation: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    linked_device_id: Mapped[Optional[str]] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("facility_equipment.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    assigned_zone_id: Mapped[Optional[str]] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("zones.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    device_kind: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
+
+    blueprint: Mapped["Blueprint"] = relationship(back_populates="elements")

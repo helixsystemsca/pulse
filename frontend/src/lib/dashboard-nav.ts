@@ -15,7 +15,8 @@ export const ROUTE_TITLES: Record<string, string> = {
   "/admin/inventory": "Inventory",
   "/admin/jobs": "Workers",
   "/admin/maintenance": "Maintenance",
-  "/admin/zones": "Zones",
+  "/zones-devices/zones": "Zones & Devices",
+  "/zones-devices/blueprint": "Blueprint",
   "/admin/alerts": "Alerts",
   "/admin/reports": "Analytics",
   "/admin/settings": "Settings",
@@ -29,7 +30,7 @@ export function buildDashboardNavItems(loaded: boolean, has: FeatureHasFn): Dash
     { href: "/admin/tools", label: "Assets", show: loaded && has("tool_tracking"), icon: "◆" },
     { href: "/admin/inventory", label: "Inventory", show: loaded && has("inventory"), icon: "▤" },
     { href: "/admin/jobs", label: "Workers", show: loaded && has("jobs"), icon: "◎" },
-    { href: "/admin/zones", label: "Zones", show: loaded && has("maintenance"), icon: "▢" },
+    { href: "/zones-devices/zones", label: "Zones & Devices", show: loaded && has("maintenance"), icon: "▢" },
     { href: "/admin/maintenance", label: "Maintenance", show: loaded && has("maintenance"), icon: "◐" },
     { href: "/admin/alerts", label: "Alerts", show: true, icon: "⚑" },
     { href: "/admin/reports", label: "Reports", show: loaded && has("analytics"), icon: "◧" },
@@ -41,6 +42,8 @@ export function dashboardPageTitle(pathname: string): string {
   const path = pathname.replace(/\/$/, "") || "/admin";
   if (path.startsWith("/work-requests")) return ROUTE_TITLES["/work-requests"];
   if (path.startsWith("/monitoring")) return ROUTE_TITLES["/monitoring"];
+  if (path.startsWith("/zones-devices/blueprint")) return ROUTE_TITLES["/zones-devices/blueprint"];
+  if (path.startsWith("/zones-devices")) return ROUTE_TITLES["/zones-devices/zones"];
   if (path in ROUTE_TITLES) return ROUTE_TITLES[path];
   const match = Object.keys(ROUTE_TITLES)
     .filter((k) => k !== "/admin")
@@ -52,6 +55,9 @@ export function dashboardPageTitle(pathname: string): string {
 export function isNavActive(pathname: string, href: string): boolean {
   if (href === "/admin") {
     return pathname === "/admin" || pathname === "/admin/";
+  }
+  if (href === "/zones-devices/zones") {
+    return pathname.startsWith("/zones-devices");
   }
   return pathname === href || pathname.startsWith(`${href}/`);
 }

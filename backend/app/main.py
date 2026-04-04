@@ -27,6 +27,7 @@ from app.api.equipment_routes import router as equipment_router
 from app.api.notifications_routes import router as notifications_router
 from app.api.onboarding_routes import router as onboarding_router
 from app.api.auth_routes import router as auth_router
+from app.api.blueprint_routes import router as blueprint_router
 from app.api.company_routes import router as company_router
 from app.api.compliance_routes import router as compliance_router
 from app.api.projects_routes import router as projects_router
@@ -111,6 +112,7 @@ app.add_middleware(
 app.add_middleware(RequireHttpsMiddleware, enabled=settings.require_https)
 
 app.include_router(public_router, prefix="/api/public")
+app.include_router(blueprint_router, prefix="/api")
 app.include_router(compliance_router, prefix="/api")
 app.include_router(work_requests_router, prefix="/api")
 app.include_router(workers_router, prefix="/api")

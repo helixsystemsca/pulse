@@ -12,6 +12,7 @@ from app.models.automation_engine import (
 )
 from app.models.device_hub import AutomationBleDevice, AutomationGateway, AutomationUnknownDevice
 from app.models.base import Base
+from app.models.blueprint_models import Blueprint, BlueprintElement
 from app.models.monitoring_models import (
     AlertSeverity,
     AlertStatus,
@@ -82,6 +83,8 @@ __all__ = [
     "AutomationGateway",
     "AutomationUnknownDevice",
     "Base",
+    "Blueprint",
+    "BlueprintElement",
     "AuditLog",
     "Company",
     "CompanyFeature",
