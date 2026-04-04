@@ -21,11 +21,9 @@ import { mailtoInfo } from "@/lib/helix-emails";
 export default function LoginPage() {
   const emailFieldId = useId();
   const passwordFieldId = useId();
-  const rememberId = useId();
 
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
-  const [remember, setRemember] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -86,7 +84,7 @@ export default function LoginPage() {
           }
           return;
         }
-        writeApiSession(result.token, result.user, remember);
+        writeApiSession(result.token, result.user, false);
         navigateAfterPulseLogin(result.user);
         return;
       }
@@ -104,7 +102,7 @@ export default function LoginPage() {
         return;
       }
 
-      writeSession(identifier.trim(), remember);
+      writeSession(identifier.trim(), false);
       navigateAfterPulseLogin(readSession()!);
     } finally {
       setSubmitting(false);
@@ -194,19 +192,7 @@ export default function LoginPage() {
               ) : null}
             </div>
 
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <label className="flex cursor-pointer items-center gap-2 text-sm text-pulse-navy">
-                <input
-                  id={rememberId}
-                  name="remember"
-                  type="checkbox"
-                  checked={remember}
-                  onChange={(e) => setRemember(e.target.checked)}
-                  disabled={submitting}
-                  className="h-4 w-4 rounded border-pulse-border text-pulse-accent focus:ring-pulse-accent"
-                />
-                <span>Keep me signed in</span>
-              </label>
+            <div className="flex flex-wrap items-center justify-end gap-3">
               <a
                 href={mailtoInfo("Pulse — password help")}
                 className="text-sm font-semibold text-pulse-accent underline-offset-2 transition-colors hover:text-pulse-accent-hover hover:underline"

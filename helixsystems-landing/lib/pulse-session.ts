@@ -7,6 +7,9 @@ import { normalizeApiBaseUrl } from "@/lib/api-base-url";
 
 export const PULSE_AUTH_STORAGE_KEY = "pulse_auth_v1";
 
+/** Wall-clock session cap when JWT `exp` is missing (seconds). Matches default backend `ACCESS_TOKEN_EXPIRE_MINUTES`. */
+const SESSION_FALLBACK_TTL_SEC = 12 * 60;
+
 /** `sessionStorage` flag for the post-login welcome overlay; cleared when auth ends so the next sign-in can show it. */
 export const PULSE_WELCOME_SESSION_KEY = "welcome_shown";
 
@@ -42,6 +45,7 @@ export type PulseAuthSession = {
   onboarding_completed?: boolean;
   iat: number;
   exp: number;
+  /** Legacy: was tied to removed “Keep me signed in”; new sessions always use `false`. */
   remember: boolean;
 };
 
@@ -127,7 +131,7 @@ export function canAccessPulseTenantApis(session: PulseAuthSession | null): bool
 export function writeSession(email: string, remember: boolean) {
   if (typeof window === "undefined") return;
   const now = Math.floor(Date.now() / 1000);
-  const ttlSec = remember ? 60 * 60 * 24 * 14 : 60 * 60 * 8;
+  const ttlSec = SESSION_FALLBACK_TTL_SEC;
   const payload: PulseAuthSession = {
     sub: "mock_user",
     email,
@@ -148,8 +152,7 @@ export function writeApiSession(
   if (typeof window === "undefined") return;
   const jwtExp = decodeJwtExp(accessToken);
   const now = Math.floor(Date.now() / 1000);
-  const fallbackTtl = remember ? 60 * 60 * 24 * 14 : 60 * 60 * 8;
-  const exp = jwtExp ?? now + fallbackTtl;
+  const exp = jwtExp ?? now + SESSION_FALLBACK_TTL_SEC;
   const payload: PulseAuthSession = {
     access_token: accessToken,
     sub: user.id,

@@ -117,7 +117,7 @@ export default function SystemUsersPage() {
       method: "POST",
     });
     const s = readSession();
-    await refreshSessionWithToken(res.access_token, s?.remember ?? true);
+    await refreshSessionWithToken(res.access_token, s?.remember ?? false);
     router.push("/overview");
   };
 

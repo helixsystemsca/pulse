@@ -37,7 +37,7 @@ function InviteForm() {
         headers: { Authorization: `Bearer ${access_token}` },
       });
       const user = (await meRes.json()) as UserOut;
-      writeApiSession(access_token, user, true);
+      writeApiSession(access_token, user, false);
       navigateAfterPulseLogin(user);
     } finally {
       setBusy(false);
