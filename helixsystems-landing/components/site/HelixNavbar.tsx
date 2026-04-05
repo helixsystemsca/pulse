@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { HelixMarketingLogo } from "@/components/branding/HelixMarketingLogo";
 import { pulseApp } from "@/lib/pulse-app";
 
 const navLinkBase =
@@ -31,9 +32,9 @@ export function HelixNavbar() {
       <nav className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-6 py-4">
         <Link
           href="/"
-          className="font-headline text-xl font-extrabold tracking-tight text-helix-primary no-underline transition-colors duration-200 hover:text-helix-primary-dim"
+          className="inline-flex shrink-0 items-center no-underline opacity-95 transition-opacity duration-200 hover:opacity-100"
         >
-          Helix Systems
+          <HelixMarketingLogo variant="header" priority />
         </Link>
 
         <div className="hidden flex-1 items-center justify-center gap-10 md:flex">
