@@ -11,6 +11,7 @@ import { useOnboardingOptional } from "@/components/onboarding/OnboardingProvide
 import { usePulseAuth } from "@/hooks/usePulseAuth";
 import { navigateToPulseLogin, pulseApp, pulseRoutes } from "@/lib/pulse-app";
 import { clearSession } from "@/lib/pulse-session";
+import { ThemeToggle } from "@/components/theme/ThemeToggle";
 
 function initialsFrom(email: string, fullName: string | null | undefined): string {
   if (fullName?.trim()) {
@@ -51,7 +52,7 @@ export function AppNavbar() {
   }, []);
 
   return (
-    <header className="sticky top-0 z-50 h-16 shrink-0 border-b border-slate-200/80 bg-white shadow-[0_1px_3px_rgba(15,23,42,0.04)]">
+    <header className="sticky top-0 z-50 h-16 shrink-0 border-b border-slate-200/80 bg-white shadow-[0_1px_3px_rgba(15,23,42,0.04)] dark:border-slate-800 dark:bg-slate-900/95 dark:shadow-[0_1px_3px_rgba(0,0,0,0.25)]">
       <nav
         className="flex h-full w-full items-center justify-between gap-4 px-3 sm:px-5 lg:px-8"
         aria-label="Main"
@@ -59,7 +60,7 @@ export function AppNavbar() {
         <div className="flex min-w-0 items-center">
           <Link
             href={logoHref}
-            className="flex min-w-0 items-center gap-2.5 font-headline text-lg font-bold tracking-tight text-pulse-navy no-underline hover:text-pulse-accent sm:text-xl"
+            className="flex min-w-0 items-center gap-2.5 font-headline text-lg font-bold tracking-tight text-pulse-navy no-underline hover:text-pulse-accent sm:text-xl dark:text-slate-100 dark:hover:text-sky-400"
           >
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-200/80 bg-slate-50 text-pulse-accent shadow-sm">
               <Activity className="h-4 w-4" strokeWidth={2} aria-hidden />
@@ -69,6 +70,7 @@ export function AppNavbar() {
         </div>
 
         <div className="flex items-center gap-2">
+          {authed ? <ThemeToggle /> : null}
           {authed &&
           onboarding?.state?.onboarding_enabled &&
           !onboarding.state.onboarding_completed &&
@@ -85,7 +87,7 @@ export function AppNavbar() {
             pathname !== "/login" ? (
               <Link
                 href={pulseApp.login()}
-                className="rounded-lg px-2 py-2 text-sm font-semibold text-pulse-navy hover:bg-slate-50 sm:px-3"
+                className="rounded-lg px-2 py-2 text-sm font-semibold text-pulse-navy hover:bg-slate-50 dark:text-slate-100 dark:hover:bg-slate-800 sm:px-3"
               >
                 Login
               </Link>
@@ -95,29 +97,29 @@ export function AppNavbar() {
               <button
                 type="button"
                 onClick={() => setUserOpen((o) => !o)}
-                className="flex items-center gap-2 rounded-xl border border-slate-200/90 bg-white py-1 pl-1.5 pr-1.5 shadow-sm hover:bg-slate-50 sm:py-1.5 sm:pl-2 sm:pr-2.5"
+                className="flex items-center gap-2 rounded-xl border border-slate-200/90 bg-white py-1 pl-1.5 pr-1.5 shadow-sm hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:hover:bg-slate-700 sm:py-1.5 sm:pl-2 sm:pr-2.5"
                 aria-expanded={userOpen}
                 aria-haspopup="menu"
               >
                 <span
-                  className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-pulse-navy ring-1 ring-slate-200/60"
+                  className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-pulse-navy ring-1 ring-slate-200/60 dark:bg-slate-700 dark:text-slate-100 dark:ring-slate-600"
                   title={session?.email}
                 >
                   {session ? initialsFrom(session.email, session.full_name) : "?"}
                 </span>
-                <span className="hidden max-w-[11rem] truncate text-sm font-medium text-pulse-navy md:block">
+                <span className="hidden max-w-[11rem] truncate text-sm font-medium text-pulse-navy dark:text-slate-200 md:block">
                   {session?.email}
                 </span>
                 <ChevronDown className="h-4 w-4 shrink-0 text-pulse-muted" aria-hidden />
               </button>
               {userOpen ? (
                 <div
-                  className="absolute right-0 mt-1 w-52 rounded-lg border border-slate-200 bg-white py-1 shadow-lg"
+                  className="absolute right-0 mt-1 w-52 rounded-lg border border-slate-200 bg-white py-1 shadow-lg dark:border-slate-600 dark:bg-slate-900"
                   role="menu"
                 >
                   <Link
                     href={pulseApp.to(pulseRoutes.overview)}
-                    className="flex items-center gap-2 px-3 py-2 text-sm text-pulse-navy hover:bg-slate-50"
+                    className="flex items-center gap-2 px-3 py-2 text-sm text-pulse-navy hover:bg-slate-50 dark:text-slate-100 dark:hover:bg-slate-800"
                     onClick={() => setUserOpen(false)}
                     role="menuitem"
                   >
@@ -126,7 +128,7 @@ export function AppNavbar() {
                   </Link>
                   <Link
                     href={pulseApp.to(pulseRoutes.overview)}
-                    className="flex items-center gap-2 px-3 py-2 text-sm text-pulse-navy hover:bg-slate-50"
+                    className="flex items-center gap-2 px-3 py-2 text-sm text-pulse-navy hover:bg-slate-50 dark:text-slate-100 dark:hover:bg-slate-800"
                     onClick={() => setUserOpen(false)}
                     role="menuitem"
                   >
@@ -136,7 +138,7 @@ export function AppNavbar() {
                   <button
                     type="button"
                     onClick={signOut}
-                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-pulse-navy hover:bg-slate-50"
+                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-pulse-navy hover:bg-slate-50 dark:text-slate-100 dark:hover:bg-slate-800"
                     role="menuitem"
                   >
                     <LogOut className="h-4 w-4 text-pulse-muted" strokeWidth={2} aria-hidden />

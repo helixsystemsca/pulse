@@ -7,6 +7,12 @@ html {
   scroll-padding-top: 4.5rem;
 }
 
+@layer utilities {
+  .dark .bg-pulse-bg {
+    background-color: rgb(15 23 42);
+  }
+}
+
 @layer base {
   button:not(:disabled),
   [type="button"]:not(:disabled),

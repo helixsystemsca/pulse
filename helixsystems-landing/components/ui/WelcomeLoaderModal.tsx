@@ -29,6 +29,14 @@ function firstNameOnly(displayName: string): string {
   return t.split(/\s+/)[0] ?? t;
 }
 
+/** Local time-of-day line for the welcome overlay (not UTC). */
+export function timeOfDayGreeting(date = new Date()): string {
+  const h = date.getHours();
+  if (h < 12) return "Good morning";
+  if (h < 17) return "Good afternoon";
+  return "Good evening";
+}
+
 export function WelcomeLoaderModal({
   userName,
   isReady,
@@ -72,6 +80,7 @@ export function WelcomeLoaderModal({
   }
 
   const firstName = firstNameOnly(userName);
+  const greeting = timeOfDayGreeting();
 
   return (
     <AnimatePresence>
@@ -151,11 +160,11 @@ export function WelcomeLoaderModal({
                 >
                   <h2
                     id="welcome-loader-title"
-                    className="font-headline text-xl font-semibold tracking-tight text-pulse-navy sm:text-2xl"
+                    className="font-headline text-xl font-semibold tracking-tight text-pulse-navy sm:text-2xl dark:text-slate-100"
                   >
-                    Welcome, {firstName}
+                    {greeting}, {firstName}
                   </h2>
-                  <p className="mt-3 font-headline text-lg font-semibold text-pulse-navy sm:text-xl">
+                  <p className="mt-3 font-headline text-lg font-semibold text-pulse-navy sm:text-xl dark:text-slate-200">
                     Let&apos;s get to work
                   </p>
                 </motion.div>

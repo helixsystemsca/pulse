@@ -30,6 +30,7 @@ export const PRODUCT_PATH_PREFIXES = [
   "/dashboard",
   "/system",
   "/sop",
+  "/zones-devices",
 ] as const;
 
 function normalizePathname(pathname: string): string {

@@ -14,6 +14,7 @@ import {
   ChevronRight,
   ClipboardList,
   FolderKanban,
+  Layers,
   LayoutDashboard,
   MapPin,
   Package,
@@ -38,6 +39,7 @@ const ICONS: Record<PulseSidebarIcon, LucideIcon> = {
   package: Package,
   wrench: Wrench,
   "map-pin": MapPin,
+  layers: Layers,
   "shield-check": ShieldCheck,
   building: Building2,
   "user-cog": UserCog,
@@ -90,7 +92,11 @@ export function AppSideNav() {
       <aside
         className={`group/sidebar fixed left-3 top-1/2 z-[40] flex max-h-[min(85vh,52rem)] w-[4.25rem] -translate-y-1/2 flex-col overflow-hidden overflow-y-auto rounded-2xl border shadow-xl shadow-slate-900/10 transition-[width,box-shadow] duration-200 ease-out lg:hover:w-56 lg:hover:shadow-2xl lg:hover:shadow-slate-900/18 ${
           narrowExpanded ? "max-lg:w-56 max-lg:shadow-2xl max-lg:shadow-slate-900/18" : ""
-        } ${dark ? "border-zinc-800 bg-zinc-950" : "border-slate-200/90 bg-[#f4f5f7]"}`}
+        } ${
+          dark
+            ? "border-zinc-800 bg-zinc-950"
+            : "border-slate-200/90 bg-[#f4f5f7] dark:border-slate-700 dark:bg-slate-900"
+        }`}
         aria-label="App"
       >
         {!dark && session?.company ? (
