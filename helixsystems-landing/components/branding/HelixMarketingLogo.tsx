@@ -7,23 +7,20 @@ type Variant = "header" | "footer" | "compact";
  * scales from height first (avoids wide/letterboxed PNGs shrinking to a tiny mark when
  * max-width also caps the box).
  *
- * Sizes roughly match previous text marks:
- * - header: was `text-xl font-extrabold` (~1.25rem / ~1.75rem line) — use ~36px frame
- * - footer (marketing): was `text-lg font-bold`
- * - compact (app dashboard footer): was `text-xs` powered-by line
+ * Display height = wrapper frame; marketing header + site footer use 64px; compact stays smaller.
  */
 const frameClass: Record<Variant, string> = {
-  /** ~`text-xl`/`text-2xl` bold line box; width follows aspect ratio (no max-w shrink) */
-  header: "inline-flex h-9 items-center sm:h-10",
-  /** ~`text-lg font-bold` footer brand */
-  footer: "inline-flex h-8 items-center sm:h-9",
+  /** 64px (`h-16`); image uses `h-full` so rendered height matches */
+  header: "inline-flex h-16 items-center",
+  /** Same frame as header for HelixFooter wordmark */
+  footer: "inline-flex h-16 items-center",
   /** ~`text-xs` powered-by strip */
   compact: "inline-flex h-4 items-center",
 };
 
 const sizesAttr: Record<Variant, string> = {
-  header: "(max-width: 640px) 90vw, 280px",
-  footer: "(max-width: 768px) 75vw, 220px",
+  header: "(max-width: 640px) 85vw, 400px",
+  footer: "(max-width: 768px) 85vw, 400px",
   compact: "180px",
 };
 
