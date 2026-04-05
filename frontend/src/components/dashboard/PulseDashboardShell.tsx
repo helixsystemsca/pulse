@@ -11,6 +11,7 @@ import {
   isNavActive,
 } from "@/lib/dashboard-nav";
 import { getToken } from "@/lib/api";
+import { ThemeToggle } from "@/components/theme/ThemeToggle";
 
 type PulseDashboardShellProps = {
   children: React.ReactNode;
@@ -103,9 +104,12 @@ export function PulseDashboardShell({ children, contentClassName = "" }: PulseDa
             </button>
             <h1 className="admin-topbar-title">{title}</h1>
           </div>
-          <div className="admin-live-pill" title="WebSocket event stream to this tenant">
-            <span className={`admin-live-dot ${live ? "is-live" : ""} ${err ? "is-error" : ""}`} />
-            {status === "connecting" ? "Connecting…" : live ? "Live" : err ? "Stream error" : "Offline"}
+          <div className="admin-topbar-actions">
+            <div className="admin-live-pill" title="WebSocket event stream to this tenant">
+              <span className={`admin-live-dot ${live ? "is-live" : ""} ${err ? "is-error" : ""}`} />
+              {status === "connecting" ? "Connecting…" : live ? "Live" : err ? "Stream error" : "Offline"}
+            </div>
+            <ThemeToggle />
           </div>
         </header>
         <main className={`admin-content ${contentClassName}`.trim()}>{children}</main>
