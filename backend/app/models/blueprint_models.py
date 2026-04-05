@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from typing import Optional
 from uuid import uuid4
 
-from sqlalchemy import DateTime, Float, ForeignKey, String
+from sqlalchemy import DateTime, Float, ForeignKey, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -66,5 +66,12 @@ class BlueprintElement(Base):
         UUID(as_uuid=False), ForeignKey("zones.id", ondelete="SET NULL"), nullable=True, index=True
     )
     device_kind: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
+    # Door: "{zone_element_uuid}:{edge}:{t}" edge 0–3 (top,right,bottom,left local), t ∈ [0,1] along edge
+    wall_attachment: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    # JSON array of flat x,y world coords for closed `path` elements
+    path_points: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    symbol_type: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
+    symbol_tags: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    symbol_notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
     blueprint: Mapped["Blueprint"] = relationship(back_populates="elements")

@@ -295,6 +295,117 @@
   margin: 0;
 }
 
+/* —— Publish / presentation mode —— */
+.bp-shell--publish {
+  box-shadow: 0 0 0 1px rgba(148, 163, 184, 0.08);
+}
+
+.bp-sidebar--disabled {
+  pointer-events: none;
+  opacity: 0.52;
+  filter: saturate(0.85);
+}
+
+.bp-canvas-wrap--publish {
+  border-color: rgba(148, 163, 184, 0.16);
+}
+
+.bp-stage-host--publish {
+  cursor: default;
+}
+
+.bp-stage-host--publish.is-panning {
+  cursor: grab;
+}
+
+.bp-stage-host--publish.is-panning:active {
+  cursor: grabbing;
+}
+
+.bp-publish-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--bp-space-1) var(--bp-space-2);
+  word-break: break-word;
+  padding: 10px var(--bp-space-2);
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.92) 0%, rgba(15, 23, 42, 0.78) 100%);
+  border-bottom: 1px solid rgba(148, 163, 184, 0.14);
+}
+
+.bp-publish-bar__lead {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.bp-publish-bar__label {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(148, 197, 255, 0.85);
+}
+
+.bp-publish-bar__title {
+  font-size: 0.98rem;
+  font-weight: 600;
+  color: #f1f5f9;
+  letter-spacing: 0.02em;
+}
+
+.bp-publish-bar__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--bp-space-1);
+  margin-left: auto;
+}
+
+.bp-publish-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  width: 100%;
+  margin-top: 2px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(148, 163, 184, 0.1);
+}
+
+.bp-publish-legend__title {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--bp-muted);
+  margin-right: 4px;
+}
+
+.bp-publish-legend__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  color: #e2e8f0;
+  text-transform: capitalize;
+}
+
+.bp-publish-legend__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: rgba(56, 189, 248, 0.55);
+  box-shadow: 0 0 0 2px rgba(15, 23, 42, 0.9);
+}
+
+.bp-props--publish {
+  pointer-events: none;
+  opacity: 0.55;
+  filter: saturate(0.88);
+}
+
 @media (max-width: 1100px) {
   .bp-shell {
     flex-direction: column;
