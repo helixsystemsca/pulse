@@ -31,7 +31,7 @@ export function HelixFooter({ classNames }: { classNames?: HelixFooterClassNames
         <div className={`text-center md:text-left ${cn.brandBlock ?? ""}`.trim()}>
           <Link
             href="/"
-            className={`inline-flex items-center no-underline ${cn.brand ?? ""}`.trim()}
+            className={`flex items-center justify-center no-underline md:justify-start ${cn.brand ?? ""}`.trim()}
           >
             <HelixMarketingLogo variant="footer" />
           </Link>

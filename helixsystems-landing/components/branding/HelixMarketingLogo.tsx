@@ -3,19 +3,20 @@ import Image from "next/image";
 type Variant = "header" | "footer" | "compact";
 
 /**
- * Frame height drives display size; the image uses h-full w-auto so `object-contain`
- * scales from height first (avoids wide/letterboxed PNGs shrinking to a tiny mark when
- * max-width also caps the box).
+ * Frame height drives display size. The wrapper is `block` (not `inline-flex items-center`)
+ * so the `<img>` is not a flex item with `align-self: center` / intrinsic min-size quirks;
+ * `h-full w-auto` + `object-contain` then reliably fills the frame height (letterboxing only
+ * inside the bitmap).
  *
  * Display height = wrapper frame; marketing header + site footer use 64px; compact stays smaller.
  */
 const frameClass: Record<Variant, string> = {
-  /** 64px (`h-16`); image uses `h-full` so rendered height matches */
-  header: "inline-flex h-16 items-center",
+  /** 64px (`h-16`); block wrapper so `%` height on the image resolves to full frame */
+  header: "block h-16 w-max min-h-0 shrink-0",
   /** Same frame as header for HelixFooter wordmark */
-  footer: "inline-flex h-16 items-center",
+  footer: "block h-16 w-max min-h-0 shrink-0",
   /** ~`text-xs` powered-by strip */
-  compact: "inline-flex h-4 items-center",
+  compact: "block h-4 w-max min-h-0 shrink-0",
 };
 
 const sizesAttr: Record<Variant, string> = {
@@ -47,7 +48,8 @@ export function HelixMarketingLogo({
         height={640}
         priority={priority}
         sizes={sizesAttr[variant]}
-        className="h-full w-auto max-w-none object-contain object-left"
+        className="h-full w-auto object-contain object-center"
+        style={{ height: "100%", width: "auto" }}
       />
     </span>
   );

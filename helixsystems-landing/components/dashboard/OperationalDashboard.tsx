@@ -895,7 +895,9 @@ function DashboardBody({
 
       <footer className="flex flex-col items-center justify-center gap-2 border-t border-pulse-border bg-slate-50/60 px-6 py-3 text-center">
         <span className="sr-only">Powered by Helix Systems</span>
-        <HelixMarketingLogo variant="compact" className="opacity-85" />
+        <div className="flex items-center justify-center">
+          <HelixMarketingLogo variant="compact" className="opacity-85" />
+        </div>
       </footer>
     </div>
   );

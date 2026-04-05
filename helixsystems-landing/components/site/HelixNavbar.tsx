@@ -32,7 +32,7 @@ export function HelixNavbar() {
       <nav className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-6 py-4">
         <Link
           href="/"
-          className="inline-flex shrink-0 items-center no-underline opacity-95 transition-opacity duration-200 hover:opacity-100"
+          className="flex shrink-0 items-center no-underline opacity-95 transition-opacity duration-200 hover:opacity-100"
         >
           <HelixMarketingLogo variant="header" priority />
         </Link>
