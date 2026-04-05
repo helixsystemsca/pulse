@@ -1,20 +1,14 @@
 "use client";
 
-import { AnimatePresence, motion } from "framer-motion";
+import { motion } from "framer-motion";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AdminRealtimeProvider } from "@/components/admin/AdminRealtimeProvider";
 import { FeatureAccessProvider } from "@/components/FeatureAccess";
 import { PulseDashboardShell } from "@/components/dashboard/PulseDashboardShell";
-import { bpEase, bpDuration, bpTransition } from "@/lib/motion-presets";
+import { bpTransition } from "@/lib/motion-presets";
 import "@/app/admin/admin.css";
 import "./zones-devices.css";
-
-const pageVariants = {
-  initial: { opacity: 0, y: 8 },
-  animate: { opacity: 1, y: 0 },
-  exit: { opacity: 0, y: -6 },
-};
 
 export default function ZonesDevicesLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -26,12 +20,11 @@ export default function ZonesDevicesLayout({ children }: { children: React.React
       <AdminRealtimeProvider>
         <PulseDashboardShell contentClassName="admin-content--cmms-wide">
           <div className="zd-wrap">
+            <p className="zd-section-kicker">Zones &amp; Devices</p>
             <motion.nav
               className="zd-tabs"
               aria-label="Zones and devices"
-              initial={{ opacity: 0, y: -6 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: bpDuration.med, ease: bpEase }}
+              initial={false}
             >
               <motion.span
                 className="zd-tab-anim"
@@ -43,6 +36,7 @@ export default function ZonesDevicesLayout({ children }: { children: React.React
                   href="/zones-devices/zones"
                   className={`zd-tab ${isZones ? "is-active" : ""}`}
                   prefetch={false}
+                  aria-current={isZones ? "page" : undefined}
                 >
                   Zones
                 </Link>
@@ -57,24 +51,21 @@ export default function ZonesDevicesLayout({ children }: { children: React.React
                   href="/zones-devices/blueprint"
                   className={`zd-tab ${isBlueprint ? "is-active" : ""}`}
                   prefetch={false}
+                  aria-current={isBlueprint ? "page" : undefined}
                 >
-                  Blueprint
+                  Blueprint designer
                 </Link>
               </motion.span>
             </motion.nav>
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={pathname}
-                variants={pageVariants}
-                initial="initial"
-                animate="animate"
-                exit="exit"
-                transition={bpTransition.med}
-                style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}
-              >
-                {children}
-              </motion.div>
-            </AnimatePresence>
+            <motion.div
+              key={pathname}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={bpTransition.med}
+              style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}
+            >
+              {children}
+            </motion.div>
           </div>
         </PulseDashboardShell>
       </AdminRealtimeProvider>

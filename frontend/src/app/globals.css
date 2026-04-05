@@ -1,6 +1,8 @@
 :root {
   --bg: #0f1419;
   --surface: #1a2332;
+  /** Alias used by Zones & Devices tab strip and other panels */
+  --card: #1a2332;
   --surface-hover: #232f42;
   --border: #2d3a4f;
   --text: #e8ecf1;

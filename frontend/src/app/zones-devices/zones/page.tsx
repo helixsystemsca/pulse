@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
+import Link from "next/link";
 import { bpEase, bpDuration } from "@/lib/motion-presets";
 
 export default function ZonesDevicesZonesPage() {
@@ -13,9 +14,20 @@ export default function ZonesDevicesZonesPage() {
         transition={{ duration: bpDuration.med, ease: bpEase }}
       >
         Map physical areas to digital context for routing, proximity, and compliance. Zone geometry and anchors
-        are managed alongside maintenance plans. Use the <strong>Blueprint</strong> tab to draw facility layouts
+        are managed alongside maintenance plans. Open the{" "}
+        <strong style={{ color: "var(--text)" }}>Blueprint designer</strong> (tab above) to draw facility layouts
         and place devices.
       </motion.p>
+      <motion.div
+        style={{ marginBottom: "1rem" }}
+        initial={{ opacity: 0, y: 6 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: bpDuration.med, ease: bpEase, delay: 0.02 }}
+      >
+        <Link href="/zones-devices/blueprint" className="zd-blueprint-cta" prefetch={false}>
+          Open Blueprint designer →
+        </Link>
+      </motion.div>
       <motion.div
         className="card"
         initial={{ opacity: 0, y: 10 }}
