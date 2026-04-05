@@ -2,11 +2,11 @@ import Image from "next/image";
 
 type Variant = "header" | "footer" | "compact";
 
-/** Footer wordmark: 5× previous `h-7` (~140px tall) so it reads at marketing footer scale */
-const heightClass: Record<Variant, string> = {
-  header: "h-9",
-  footer: "h-[8.75rem] max-w-full",
-  compact: "h-5",
+/** Per-variant sizing: header is 4× previous `h-9` (~144px); footer remains large wordmark */
+const variantClass: Record<Variant, string> = {
+  header: "h-36 w-auto max-w-[min(100%,48rem)] object-contain object-left",
+  footer: "h-[8.75rem] w-auto max-w-full object-contain object-left",
+  compact: "h-5 w-auto max-w-[min(100%,15rem)] object-contain object-left",
 };
 
 /**
@@ -25,10 +25,10 @@ export function HelixMarketingLogo({
     <Image
       src="/images/helix.png"
       alt="Helix Systems"
-      width={480}
-      height={160}
+      width={960}
+      height={320}
       priority={priority}
-      className={`w-auto object-contain object-left ${variant === "footer" ? "" : "max-w-[min(100%,15rem)]"} ${heightClass[variant]} ${className}`.trim()}
+      className={`${variantClass[variant]} ${className}`.trim()}
     />
   );
 }
