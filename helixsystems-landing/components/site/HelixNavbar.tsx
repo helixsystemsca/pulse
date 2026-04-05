@@ -29,7 +29,7 @@ export function HelixNavbar() {
 
   return (
     <header className="sticky top-0 z-50 border-b border-helix-outline/20 bg-white/85 backdrop-blur-md">
-      <nav className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-6 py-5 md:py-6">
+      <nav className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-6 py-4">
         <Link
           href="/"
           className="inline-flex shrink-0 items-center no-underline opacity-95 transition-opacity duration-200 hover:opacity-100"
