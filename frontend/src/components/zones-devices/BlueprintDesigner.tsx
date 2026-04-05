@@ -1,9 +1,11 @@
 "use client";
 
+import { animate, AnimatePresence, motion } from "framer-motion";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import type Konva from "konva";
 import { Circle, Group, Layer, Line, Rect, Stage, Text, Transformer } from "react-konva";
 import { apiFetch } from "@/lib/api";
+import { bpDuration, bpEase, bpTransition } from "@/lib/motion-presets";
 import "./blueprint-designer.css";
 
 /** Frontend blueprint element (API uses the same shape; optional fields match OpenAPI). */
@@ -191,6 +193,49 @@ function DeviceGlyph({ kind, statusKey }: { kind: string; statusKey: string }) {
   }
 }
 
+/** Soft status glow behind device — Framer Motion loop; triggers one layer batch per frame (few devices). */
+function DevicePulseHalo({
+  cx,
+  cy,
+  mode,
+  onFrame,
+}: {
+  cx: number;
+  cy: number;
+  mode: "alarm" | "warning";
+  onFrame: () => void;
+}) {
+  const circleRef = useRef<Konva.Circle | null>(null);
+  useEffect(() => {
+    const c = circleRef.current;
+    if (!c) return;
+    const low = mode === "alarm" ? 0.07 : 0.04;
+    const high = mode === "alarm" ? 0.26 : 0.19;
+    const dur = mode === "alarm" ? 1.4 : 2.12;
+    const ctrl = animate(low, high, {
+      duration: dur,
+      repeat: Infinity,
+      repeatType: "reverse",
+      ease: "easeInOut",
+      onUpdate: (v) => {
+        c.opacity(v);
+        onFrame();
+      },
+    });
+    return () => ctrl.stop();
+  }, [mode, onFrame]);
+  return (
+    <Circle
+      ref={circleRef}
+      x={cx}
+      y={cy}
+      radius={mode === "alarm" ? 30 : 28}
+      fill={mode === "alarm" ? "rgba(239, 68, 68, 0.18)" : "rgba(250, 204, 21, 0.14)"}
+      listening={false}
+    />
+  );
+}
+
 export function BlueprintDesigner() {
   const [elements, setElements] = useState<BlueprintElement[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -218,6 +263,34 @@ export function BlueprintDesigner() {
   const drawDraftRef = useRef<{ x: number; y: number; w: number; h: number } | null>(null);
   const panLastRef = useRef<{ x: number; y: number } | null>(null);
   const hostRef = useRef<HTMLDivElement | null>(null);
+  const layerRef = useRef<Konva.Layer | null>(null);
+  const dragAnimRef = useRef<ReturnType<typeof animate> | null>(null);
+  const [hoverZoneId, setHoverZoneId] = useState<string | null>(null);
+  const [hoverDeviceId, setHoverDeviceId] = useState<string | null>(null);
+
+  const batchLayer = useCallback(() => {
+    layerRef.current?.batchDraw();
+  }, []);
+
+  useEffect(() => {
+    setHoverZoneId(null);
+    setHoverDeviceId(null);
+  }, [tool]);
+
+  const runDragScale = useCallback((node: Konva.Node, to: number) => {
+    dragAnimRef.current?.stop();
+    const from = node.scaleX();
+    if (Math.abs(from - to) < 0.002) return;
+    dragAnimRef.current = animate(from, to, {
+      duration: bpDuration.med,
+      ease: bpEase,
+      onUpdate: (v) => {
+        node.scaleX(v);
+        node.scaleY(v);
+        layerRef.current?.batchDraw();
+      },
+    });
+  }, []);
 
   const selected = elements.find((e) => e.id === selectedId) ?? null;
 
@@ -571,55 +644,83 @@ export function BlueprintDesigner() {
 
   return (
     <div className="bp-shell">
-      <aside className="bp-sidebar" aria-label="Tools">
+      <motion.aside
+        className="bp-sidebar"
+        aria-label="Tools"
+        initial={{ opacity: 0, x: -12 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={bpTransition.med}
+      >
         <div>
           <h3>Tools</h3>
           <div className="bp-tool-grid">
-            <button
+            <motion.button
               type="button"
               className={`bp-tool ${tool === "select" ? "is-active" : ""}`}
               onClick={() => setTool("select")}
+              whileHover={{ scale: 1.02, boxShadow: "0 8px 22px rgba(0, 0, 0, 0.16)" }}
+              whileTap={{ scale: 0.985 }}
+              transition={bpTransition.fast}
             >
               Select
-            </button>
-            <button
+            </motion.button>
+            <motion.button
               type="button"
               className={`bp-tool ${tool === "draw-room" ? "is-active" : ""}`}
               onClick={() => setTool("draw-room")}
+              whileHover={{ scale: 1.02, boxShadow: "0 8px 22px rgba(0, 0, 0, 0.16)" }}
+              whileTap={{ scale: 0.985 }}
+              transition={bpTransition.fast}
             >
               Draw room
-            </button>
-            <button
+            </motion.button>
+            <motion.button
               type="button"
               className={`bp-tool ${tool === "place-device" ? "is-active" : ""}`}
               onClick={() => setTool("place-device")}
+              whileHover={{ scale: 1.02, boxShadow: "0 8px 22px rgba(0, 0, 0, 0.16)" }}
+              whileTap={{ scale: 0.985 }}
+              transition={bpTransition.fast}
             >
               Place device
-            </button>
+            </motion.button>
           </div>
         </div>
         <div>
           <h3>Device palette</h3>
           <div className="bp-palette">
             {(["pump", "tank", "sensor", "generic"] as DeviceKind[]).map((k) => (
-              <button
+              <motion.button
                 key={k}
                 type="button"
                 className={`bp-chip ${placeKind === k ? "is-active" : ""}`}
                 onClick={() => setPlaceKind(k)}
+                whileHover={{ scale: 1.02, y: -1, boxShadow: "0 6px 18px rgba(0, 0, 0, 0.12)" }}
+                whileTap={{ scale: 0.98 }}
+                transition={bpTransition.fast}
               >
                 {k}
-              </button>
+              </motion.button>
             ))}
           </div>
         </div>
         <p className="bp-hint">
           Scroll to zoom (cursor-centered). Hold Space and drag or right-drag to pan. Draw rooms on empty grid.
         </p>
-      </aside>
+      </motion.aside>
 
-      <div className="bp-canvas-wrap">
-        <div className="bp-toolbar">
+      <motion.div
+        className="bp-canvas-wrap"
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ ...bpTransition.med, delay: 0.02 }}
+      >
+        <motion.div
+          className="bp-toolbar"
+          initial={{ opacity: 0, y: -6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ ...bpTransition.fast, delay: 0.05 }}
+        >
           <span>
             <label htmlFor="bp-pick">Blueprint</label>
             <select
@@ -648,18 +749,43 @@ export function BlueprintDesigner() {
               onChange={(e) => setBlueprintName(e.target.value)}
             />
           </span>
-          <button type="button" className="bp-btn bp-btn--ghost" onClick={newBlueprint}>
+          <motion.button
+            type="button"
+            className="bp-btn bp-btn--ghost"
+            onClick={newBlueprint}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.985 }}
+            transition={bpTransition.fast}
+          >
             New
-          </button>
-          <button type="button" className="bp-btn" disabled={saving} onClick={() => void saveBlueprint()}>
+          </motion.button>
+          <motion.button
+            type="button"
+            className="bp-btn"
+            disabled={saving}
+            onClick={() => void saveBlueprint()}
+            whileHover={saving ? undefined : { scale: 1.02, boxShadow: "0 8px 24px rgba(59, 130, 246, 0.2)" }}
+            whileTap={saving ? undefined : { scale: 0.985 }}
+            transition={bpTransition.fast}
+          >
             {saving ? "Saving…" : "Save"}
-          </button>
-        </div>
-        {error ? (
-          <p className="bp-error" style={{ margin: "0.5rem 0.75rem" }}>
-            {error}
-          </p>
-        ) : null}
+          </motion.button>
+        </motion.div>
+        <AnimatePresence>
+          {error ? (
+            <motion.p
+              key={error}
+              className="bp-error"
+              style={{ margin: "0.5rem 0.75rem" }}
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -6 }}
+              transition={bpTransition.med}
+            >
+              {error}
+            </motion.p>
+          ) : null}
+        </AnimatePresence>
         <div
           ref={hostRef}
           className={`bp-stage-host ${spaceDown || isPanning ? "is-panning" : ""}`}
@@ -678,7 +804,7 @@ export function BlueprintDesigner() {
             onMouseMove={onStageMouseMove}
             onMouseUp={onStageMouseUp}
           >
-            <Layer>
+            <Layer ref={layerRef}>
               {gridLines}
               <Rect
                 x={-8000}
@@ -708,6 +834,7 @@ export function BlueprintDesigner() {
                   const sw = Math.max(0.75, 1.22 / stageScale);
                   const ins = Math.max(0.6, 1.05 / stageScale);
                   const labelSize = Math.min(11, Math.max(9, Math.min(w, h) / 7));
+                  const zGlow = tool === "select" && !sel && hoverZoneId === el.id;
                   return (
                     <Group key={el.id}>
                       {/* Elevation mass — offset duplicate (under room face) */}
@@ -770,27 +897,36 @@ export function BlueprintDesigner() {
                         fill={ZONE_FACE_FILL}
                         stroke={ZONE_OUTLINE}
                         strokeWidth={sw}
-                        shadowColor={sel ? "rgba(59, 130, 246, 0.4)" : "rgba(0, 0, 0, 0.2)"}
-                        shadowBlur={sel ? 16 : 6}
-                        shadowOpacity={sel ? 0.32 : 0.12}
+                        shadowColor={
+                          sel ? "rgba(59, 130, 246, 0.42)" : zGlow ? "rgba(96, 165, 250, 0.32)" : "rgba(0, 0, 0, 0.2)"
+                        }
+                        shadowBlur={sel ? 18 : zGlow ? 12 : 6}
+                        shadowOpacity={sel ? 0.34 : zGlow ? 0.18 : 0.12}
                         shadowOffset={{ x: 0, y: sel ? 0 : 2 }}
                         listening={tool === "select"}
                         draggable={tool === "select"}
                         onMouseEnter={(e) => {
+                          if (tool === "select" && !sel) setHoverZoneId(el.id);
                           const t = e.target as unknown as { getClassName?: () => string; stroke?: (s: string) => void };
                           if (tool === "select" && !sel && t.getClassName?.() === "Rect") t.stroke?.(ZONE_OUTLINE_HOVER);
                         }}
                         onMouseLeave={(e) => {
+                          setHoverZoneId((z) => (z === el.id ? null : z));
                           const t = e.target as unknown as { getClassName?: () => string; stroke?: (s: string) => void };
                           if (t.getClassName?.() === "Rect") t.stroke?.(ZONE_OUTLINE);
                         }}
                         onClick={() => setSelectedId(el.id)}
                         onTap={() => setSelectedId(el.id)}
+                        onDragStart={(e) => {
+                          if (tool === "select") runDragScale(e.target, 1.02);
+                        }}
                         onDragEnd={(e) => {
+                          const node = e.target;
+                          const nx = node.x();
+                          const ny = node.y();
+                          runDragScale(node, 1);
                           setElements((prev) =>
-                            prev.map((x) =>
-                              x.id === el.id ? { ...x, x: e.target.x(), y: e.target.y() } : x,
-                            ),
+                            prev.map((x) => (x.id === el.id ? { ...x, x: nx, y: ny } : x)),
                           );
                         }}
                         onTransformEnd={(e) => syncTransformToState(el.id, e.target)}
@@ -826,6 +962,8 @@ export function BlueprintDesigner() {
                   const st = mockLinkStatus(el.linked_device_id);
                   const sel = el.id === selectedId;
                   const dStroke = Math.max(0.65, 0.92 / stageScale);
+                  const dGlow = tool === "select" && !sel && hoverDeviceId === el.id;
+                  const pulse = st === "alarm" || st === "warning";
                   return (
                     <Group
                       key={el.id}
@@ -837,37 +975,62 @@ export function BlueprintDesigner() {
                       rotation={el.rotation ?? 0}
                       listening={tool === "select"}
                       draggable={tool === "select"}
-                      shadowColor={sel ? "rgba(59, 130, 246, 0.4)" : "rgba(0, 0, 0, 0.55)"}
-                      shadowBlur={sel ? 17 : 11}
+                      shadowColor={
+                        sel ? "rgba(59, 130, 246, 0.42)" : dGlow ? "rgba(96, 165, 250, 0.3)" : "rgba(0, 0, 0, 0.55)"
+                      }
+                      shadowBlur={sel ? 19 : dGlow ? 14 : 11}
                       shadowOpacity={0.24}
                       shadowOffset={{ x: 0, y: 5 }}
                       onClick={() => setSelectedId(el.id)}
                       onTap={() => setSelectedId(el.id)}
+                      onDragStart={(e) => {
+                        if (tool === "select") runDragScale(e.target, 1.02);
+                      }}
                       onDragEnd={(e) => {
+                        const node = e.target;
+                        const nx = node.x();
+                        const ny = node.y();
+                        runDragScale(node, 1);
                         setElements((prev) =>
-                          prev.map((x) => (x.id === el.id ? { ...x, x: e.target.x(), y: e.target.y() } : x)),
+                          prev.map((x) => (x.id === el.id ? { ...x, x: nx, y: ny } : x)),
                         );
                       }}
                       onTransformEnd={(e) => syncTransformToState(el.id, e.target)}
                       onMouseEnter={(e) => {
+                        if (tool === "select" && !sel) setHoverDeviceId(el.id);
                         if (tool !== "select" || sel) return;
                         e.currentTarget.opacity(1);
                       }}
                       onMouseLeave={(e) => {
+                        setHoverDeviceId((z) => (z === el.id ? null : z));
                         e.currentTarget.opacity(sel ? 1 : 0.97);
                       }}
                       opacity={0.97}
                     >
+                      {pulse ? (
+                        <DevicePulseHalo
+                          cx={w / 2}
+                          cy={h / 2}
+                          mode={st === "alarm" ? "alarm" : "warning"}
+                          onFrame={batchLayer}
+                        />
+                      ) : null}
                       <Rect
                         width={w}
                         height={h}
                         cornerRadius={10}
                         fill="rgba(15, 23, 42, 0.18)"
-                        stroke={sel ? "rgba(96, 165, 250, 0.45)" : "rgba(203, 213, 245, 0.16)"}
+                        stroke={
+                          sel
+                            ? "rgba(96, 165, 250, 0.45)"
+                            : dGlow
+                              ? "rgba(203, 213, 245, 0.28)"
+                              : "rgba(203, 213, 245, 0.16)"
+                        }
                         strokeWidth={dStroke}
                         listening={false}
                       />
-                      <Group x={w / 2} y={h / 2} listening={false}>
+                      <Group opacity={dGlow ? 1 : 0.94} x={w / 2} y={h / 2} listening={false}>
                         <DeviceGlyph kind={kind} statusKey={st} />
                       </Group>
                       <Text
@@ -929,106 +1092,130 @@ export function BlueprintDesigner() {
             </Layer>
           </Stage>
         </div>
-      </div>
+      </motion.div>
 
-      <aside className="bp-props" aria-label="Properties">
+      <motion.aside
+        className="bp-props"
+        aria-label="Properties"
+        initial={{ opacity: 0, x: 14 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ ...bpTransition.med, delay: 0.04 }}
+      >
         <h3 style={{ margin: 0, fontSize: "0.65rem", letterSpacing: "0.12em", color: "var(--bp-muted)" }}>
           Properties
         </h3>
-        {!selected ? (
-          <p className="bp-hint">Select a room or device, or use tools on the canvas.</p>
-        ) : (
-          <>
-            <div className="bp-field">
-              <label htmlFor="p-name">Name</label>
-              <input
-                id="p-name"
-                value={selected.name ?? ""}
-                onChange={(e) => updateSelectedField({ name: e.target.value })}
-              />
-            </div>
-            <div className="bp-field">
-              <label htmlFor="p-type">Type</label>
-              <input id="p-type" readOnly value={selected.type === "zone" ? "Zone" : selected.device_kind ?? "device"} />
-            </div>
-            <div className="bp-field">
-              <label>Position</label>
-              <div style={{ display: "flex", gap: "0.35rem" }}>
+        <AnimatePresence mode="wait">
+          {!selected ? (
+            <motion.p
+              key="props-empty"
+              className="bp-hint"
+              initial={{ opacity: 0, x: 10 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -8 }}
+              transition={bpTransition.med}
+            >
+              Select a room or device, or use tools on the canvas.
+            </motion.p>
+          ) : (
+            <motion.div
+              key={selected.id}
+              initial={{ opacity: 0, x: 12 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -10 }}
+              transition={bpTransition.med}
+              style={{ display: "flex", flexDirection: "column", gap: "0.65rem" }}
+            >
+              <div className="bp-field">
+                <label htmlFor="p-name">Name</label>
                 <input
-                  type="number"
-                  value={Math.round(selected.x)}
-                  onChange={(e) => updateSelectedField({ x: Number(e.target.value) || 0 })}
-                />
-                <input
-                  type="number"
-                  value={Math.round(selected.y)}
-                  onChange={(e) => updateSelectedField({ y: Number(e.target.value) || 0 })}
-                />
-              </div>
-            </div>
-            <div className="bp-field">
-              <label>Size</label>
-              <div style={{ display: "flex", gap: "0.35rem" }}>
-                <input
-                  type="number"
-                  value={Math.round(selected.width ?? 0)}
-                  onChange={(e) => updateSelectedField({ width: Math.max(8, Number(e.target.value) || 0) })}
-                />
-                <input
-                  type="number"
-                  value={Math.round(selected.height ?? 0)}
-                  onChange={(e) => updateSelectedField({ height: Math.max(8, Number(e.target.value) || 0) })}
+                  id="p-name"
+                  value={selected.name ?? ""}
+                  onChange={(e) => updateSelectedField({ name: e.target.value })}
                 />
               </div>
-            </div>
-            {selected.type === "device" ? (
-              <>
-                <div className="bp-field">
-                  <label htmlFor="p-link">Linked device</label>
-                  <select
-                    id="p-link"
-                    value={selected.linked_device_id ?? ""}
-                    onChange={(e) =>
-                      updateSelectedField({
-                        linked_device_id: e.target.value || undefined,
-                      })
-                    }
-                  >
-                    <option value="">— None —</option>
-                    {equipmentApi.map((eq) => (
-                      <option key={eq.id} value={eq.id}>
-                        {eq.name}
-                      </option>
-                    ))}
-                  </select>
+              <div className="bp-field">
+                <label htmlFor="p-type">Type</label>
+                <input id="p-type" readOnly value={selected.type === "zone" ? "Zone" : selected.device_kind ?? "device"} />
+              </div>
+              <div className="bp-field">
+                <label>Position</label>
+                <div style={{ display: "flex", gap: "0.35rem" }}>
+                  <input
+                    type="number"
+                    value={Math.round(selected.x)}
+                    onChange={(e) => updateSelectedField({ x: Number(e.target.value) || 0 })}
+                  />
+                  <input
+                    type="number"
+                    value={Math.round(selected.y)}
+                    onChange={(e) => updateSelectedField({ y: Number(e.target.value) || 0 })}
+                  />
                 </div>
-                <div className="bp-field">
-                  <label htmlFor="p-zone">Zone assignment</label>
-                  <select
-                    id="p-zone"
-                    value={selected.assigned_zone_id ?? ""}
-                    onChange={(e) =>
-                      updateSelectedField({
-                        assigned_zone_id: e.target.value || undefined,
-                      })
-                    }
-                  >
-                    <option value="">— None —</option>
-                    {zonesApi.map((z) => (
-                      <option key={z.id} value={z.id}>
-                        {z.name}
-                      </option>
-                    ))}
-                  </select>
+              </div>
+              <div className="bp-field">
+                <label>Size</label>
+                <div style={{ display: "flex", gap: "0.35rem" }}>
+                  <input
+                    type="number"
+                    value={Math.round(selected.width ?? 0)}
+                    onChange={(e) => updateSelectedField({ width: Math.max(8, Number(e.target.value) || 0) })}
+                  />
+                  <input
+                    type="number"
+                    value={Math.round(selected.height ?? 0)}
+                    onChange={(e) => updateSelectedField({ height: Math.max(8, Number(e.target.value) || 0) })}
+                  />
                 </div>
-                <p className="bp-hint">
-                  Status tint (mock): linked devices cycle neutral / normal / warning / alarm by id hash.
-                </p>
-              </>
-            ) : null}
-          </>
-        )}
-      </aside>
+              </div>
+              {selected.type === "device" ? (
+                <>
+                  <div className="bp-field">
+                    <label htmlFor="p-link">Linked device</label>
+                    <select
+                      id="p-link"
+                      value={selected.linked_device_id ?? ""}
+                      onChange={(e) =>
+                        updateSelectedField({
+                          linked_device_id: e.target.value || undefined,
+                        })
+                      }
+                    >
+                      <option value="">— None —</option>
+                      {equipmentApi.map((eq) => (
+                        <option key={eq.id} value={eq.id}>
+                          {eq.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="bp-field">
+                    <label htmlFor="p-zone">Zone assignment</label>
+                    <select
+                      id="p-zone"
+                      value={selected.assigned_zone_id ?? ""}
+                      onChange={(e) =>
+                        updateSelectedField({
+                          assigned_zone_id: e.target.value || undefined,
+                        })
+                      }
+                    >
+                      <option value="">— None —</option>
+                      {zonesApi.map((z) => (
+                        <option key={z.id} value={z.id}>
+                          {z.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <p className="bp-hint">
+                    Status tint (mock): linked devices cycle neutral / normal / warning / alarm by id hash.
+                  </p>
+                </>
+              ) : null}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </motion.aside>
     </div>
   );
 }

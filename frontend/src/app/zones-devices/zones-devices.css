@@ -6,6 +6,12 @@
   min-height: 0;
 }
 
+.zd-tab-anim {
+  display: inline-block;
+  border-radius: 9px;
+  vertical-align: middle;
+}
+
 .zd-tabs {
   display: flex;
   gap: 0.35rem;

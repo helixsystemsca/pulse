@@ -1,6 +1,8 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import { motion } from "framer-motion";
+import { bpEase, bpDuration } from "@/lib/motion-presets";
 
 const BlueprintDesigner = dynamic(
   () =>
@@ -10,9 +12,15 @@ const BlueprintDesigner = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="bp-shell bp-shell--loading">
+      <motion.div
+        className="bp-shell bp-shell--loading"
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -6 }}
+        transition={{ duration: bpDuration.med, ease: bpEase }}
+      >
         <p className="bp-muted">Loading blueprint editor…</p>
-      </div>
+      </motion.div>
     ),
   },
 );
