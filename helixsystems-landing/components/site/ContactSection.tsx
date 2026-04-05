@@ -14,7 +14,20 @@ type FormState = {
 
 type Errors = Partial<Record<keyof FormState, string>>;
 
-export function ContactSection({ id }: { id?: string }) {
+export type ContactSectionClassNames = {
+  section?: string;
+  kicker?: string;
+  heading?: string;
+  lead?: string;
+  mailtoLink?: string;
+  form?: string;
+  label?: string;
+  input?: string;
+  textarea?: string;
+  submit?: string;
+};
+
+export function ContactSection({ id, classNames }: { id?: string; classNames?: ContactSectionClassNames }) {
   const [form, setForm] = useState<FormState>({
     name: "",
     email: "",
@@ -84,17 +97,29 @@ export function ContactSection({ id }: { id?: string }) {
     setSubmitted(true);
   }
 
+  const cn = classNames ?? {};
+
   return (
-    <section id={id} className="scroll-mt-24 bg-helix-surface py-20">
+    <section
+      id={id}
+      className={`scroll-mt-24 bg-helix-surface py-20 ${cn.section ?? ""}`.trim()}
+    >
       <div className="mx-auto max-w-7xl px-6">
-        <p className="text-xs font-bold uppercase tracking-[0.15em] text-helix-primary">Contact</p>
-        <h2 className="mt-3 font-headline text-3xl font-extrabold tracking-tight text-helix-onSurface md:text-4xl">
+        <p className={`text-xs font-bold uppercase tracking-[0.15em] text-helix-primary ${cn.kicker ?? ""}`.trim()}>
+          Contact
+        </p>
+        <h2
+          className={`mt-3 font-headline text-3xl font-extrabold tracking-tight text-helix-onSurface md:text-4xl ${cn.heading ?? ""}`.trim()}
+        >
           Talk with our team
         </h2>
-        <p className="mt-4 max-w-2xl text-lg text-helix-onSurfaceVariant">
+        <p className={`mt-4 max-w-2xl text-lg text-helix-onSurfaceVariant ${cn.lead ?? ""}`.trim()}>
           Share your site context and we’ll follow up for a discovery conversation—no spam, no cold
           lists. You can also reach us at{" "}
-          <a className="font-semibold text-helix-primary underline-offset-2 hover:underline" href={`mailto:${HELIX_INFO_EMAIL}`}>
+          <a
+            className={`font-semibold text-helix-primary underline-offset-2 hover:underline ${cn.mailtoLink ?? ""}`.trim()}
+            href={`mailto:${HELIX_INFO_EMAIL}`}
+          >
             {HELIX_INFO_EMAIL}
           </a>
           .
@@ -102,12 +127,15 @@ export function ContactSection({ id }: { id?: string }) {
 
         <form
           onSubmit={handleSubmit}
-          className="mx-auto mt-12 max-w-2xl space-y-5 rounded-2xl border border-helix-outline/20 bg-white p-6 shadow-md md:p-8"
+          className={`mx-auto mt-12 max-w-2xl space-y-5 rounded-2xl border border-helix-outline/20 bg-white p-6 shadow-md md:p-8 ${cn.form ?? ""}`.trim()}
           noValidate
         >
           <div className="grid gap-5 sm:grid-cols-2">
             <div>
-              <label htmlFor="contact-name" className="block text-sm font-semibold text-helix-onSurface">
+              <label
+                htmlFor="contact-name"
+                className={`block text-sm font-semibold text-helix-onSurface ${cn.label ?? ""}`.trim()}
+              >
                 Name
               </label>
               <input
@@ -116,12 +144,15 @@ export function ContactSection({ id }: { id?: string }) {
                 autoComplete="name"
                 value={form.name}
                 onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                className="mt-2 h-12 w-full rounded-xl border border-helix-outline/40 bg-helix-bg px-4 text-helix-onSurface outline-none transition-shadow focus:border-helix-primary focus:ring-2 focus:ring-helix-primary/20"
+                className={`mt-2 h-12 w-full rounded-xl border border-helix-outline/40 bg-helix-bg px-4 text-helix-onSurface outline-none transition-shadow focus:border-helix-primary focus:ring-2 focus:ring-helix-primary/20 ${cn.input ?? ""}`.trim()}
               />
               {errors.name ? <p className="mt-1 text-sm text-red-600">{errors.name}</p> : null}
             </div>
             <div>
-              <label htmlFor="contact-email" className="block text-sm font-semibold text-helix-onSurface">
+              <label
+                htmlFor="contact-email"
+                className={`block text-sm font-semibold text-helix-onSurface ${cn.label ?? ""}`.trim()}
+              >
                 Work email
               </label>
               <input
@@ -131,13 +162,16 @@ export function ContactSection({ id }: { id?: string }) {
                 autoComplete="email"
                 value={form.email}
                 onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
-                className="mt-2 h-12 w-full rounded-xl border border-helix-outline/40 bg-helix-bg px-4 text-helix-onSurface outline-none transition-shadow focus:border-helix-primary focus:ring-2 focus:ring-helix-primary/20"
+                className={`mt-2 h-12 w-full rounded-xl border border-helix-outline/40 bg-helix-bg px-4 text-helix-onSurface outline-none transition-shadow focus:border-helix-primary focus:ring-2 focus:ring-helix-primary/20 ${cn.input ?? ""}`.trim()}
               />
               {errors.email ? <p className="mt-1 text-sm text-red-600">{errors.email}</p> : null}
             </div>
           </div>
           <div>
-            <label htmlFor="contact-company" className="block text-sm font-semibold text-helix-onSurface">
+            <label
+              htmlFor="contact-company"
+              className={`block text-sm font-semibold text-helix-onSurface ${cn.label ?? ""}`.trim()}
+            >
               Company / site
             </label>
             <input
@@ -146,11 +180,14 @@ export function ContactSection({ id }: { id?: string }) {
               autoComplete="organization"
               value={form.company}
               onChange={(e) => setForm((f) => ({ ...f, company: e.target.value }))}
-              className="mt-2 h-12 w-full rounded-xl border border-helix-outline/40 bg-helix-bg px-4 text-helix-onSurface outline-none transition-shadow focus:border-helix-primary focus:ring-2 focus:ring-helix-primary/20"
+              className={`mt-2 h-12 w-full rounded-xl border border-helix-outline/40 bg-helix-bg px-4 text-helix-onSurface outline-none transition-shadow focus:border-helix-primary focus:ring-2 focus:ring-helix-primary/20 ${cn.input ?? ""}`.trim()}
             />
           </div>
           <div>
-            <label htmlFor="contact-message" className="block text-sm font-semibold text-helix-onSurface">
+            <label
+              htmlFor="contact-message"
+              className={`block text-sm font-semibold text-helix-onSurface ${cn.label ?? ""}`.trim()}
+            >
               How can we help?
             </label>
             <textarea
@@ -159,7 +196,7 @@ export function ContactSection({ id }: { id?: string }) {
               rows={5}
               value={form.message}
               onChange={(e) => setForm((f) => ({ ...f, message: e.target.value }))}
-              className="mt-2 w-full resize-y rounded-xl border border-helix-outline/40 bg-helix-bg px-4 py-3 text-helix-onSurface outline-none transition-shadow focus:border-helix-primary focus:ring-2 focus:ring-helix-primary/20"
+              className={`mt-2 w-full resize-y rounded-xl border border-helix-outline/40 bg-helix-bg px-4 py-3 text-helix-onSurface outline-none transition-shadow focus:border-helix-primary focus:ring-2 focus:ring-helix-primary/20 ${cn.textarea ?? ""}`.trim()}
             />
             {errors.message ? <p className="mt-1 text-sm text-red-600">{errors.message}</p> : null}
           </div>
@@ -167,7 +204,7 @@ export function ContactSection({ id }: { id?: string }) {
             <button
               type="submit"
               disabled={sending}
-              className="h-12 rounded-full bg-helix-primary px-8 font-semibold text-white shadow-md transition-colors hover:bg-helix-primary-dim disabled:opacity-60"
+              className={`h-12 rounded-full bg-helix-primary px-8 font-semibold text-white shadow-md transition-colors hover:bg-helix-primary-dim disabled:opacity-60 ${cn.submit ?? ""}`.trim()}
             >
               {sending ? "Sending…" : "Submit"}
             </button>

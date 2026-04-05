@@ -60,12 +60,32 @@ function mockLinkStatus(linkedId: string | undefined): "neutral" | "normal" | "w
   return "alarm";
 }
 
-const STATUS_FILL: Record<string, string> = {
-  neutral: "#64748b",
-  normal: "#22c55e",
-  warning: "#eab308",
-  alarm: "#ef4444",
+/** Subtle status accents (wireframe + soft fill) — not neon */
+const STATUS_STROKE: Record<string, string> = {
+  neutral: "rgba(203, 213, 245, 0.62)",
+  normal: "rgba(34, 197, 94, 0.7)",
+  warning: "rgba(250, 204, 21, 0.72)",
+  alarm: "rgba(239, 68, 68, 0.68)",
 };
+
+const STATUS_SOFT_FILL: Record<string, string> = {
+  neutral: "rgba(203, 213, 245, 0.05)",
+  normal: "rgba(34, 197, 94, 0.07)",
+  warning: "rgba(250, 204, 21, 0.08)",
+  alarm: "rgba(239, 68, 68, 0.07)",
+};
+
+const ZONE_FACE_FILL = "rgba(248, 250, 252, 0.038)";
+const ZONE_OUTLINE = "rgba(229, 231, 235, 0.9)";
+const ZONE_OUTLINE_HOVER = "rgba(248, 250, 252, 0.98)";
+const ZONE_RADIUS = 5;
+
+function wallDropOffset(deg: number) {
+  const rad = (deg * Math.PI) / 180;
+  const dx = 2.6 * Math.cos(rad) - 3.8 * Math.sin(rad);
+  const dy = 2.6 * Math.sin(rad) + 3.8 * Math.cos(rad);
+  return { dx, dy };
+}
 
 function getWorldFromStage(stage: Konva.Stage | null): { x: number; y: number } | null {
   if (!stage) return null;
@@ -115,37 +135,59 @@ function nextRoomLabel(elements: BlueprintElement[]): string {
   return `Room ${n}`;
 }
 
-function DeviceGlyph({ kind, fill }: { kind: string; fill: string }) {
-  const r = 16;
+/** Minimal monochrome blueprint-style glyphs (stroke-forward). */
+function DeviceGlyph({ kind, statusKey }: { kind: string; statusKey: string }) {
+  const stroke = STATUS_STROKE[statusKey] ?? STATUS_STROKE.neutral;
+  const soft = STATUS_SOFT_FILL[statusKey] ?? STATUS_SOFT_FILL.neutral;
+  const swm = 1.35;
+  const r = 14;
+
   switch (kind) {
     case "pump":
       return (
-        <Group>
-          <Circle radius={r} fill={fill} stroke="rgba(15,23,42,0.85)" strokeWidth={1.2} />
-          <Rect x={-3} y={-r - 6} width={6} height={8} cornerRadius={1} fill="rgba(226,232,240,0.9)" />
+        <Group listening={false}>
+          <Circle radius={r} fill={soft} stroke={stroke} strokeWidth={swm} />
+          <Rect
+            x={-2.5}
+            y={-r - 7}
+            width={5}
+            height={7}
+            cornerRadius={1}
+            fill="transparent"
+            stroke={stroke}
+            strokeWidth={swm * 0.9}
+          />
+          <Line points={[-5, r * 0.35, 5, r * 0.35]} stroke={stroke} strokeWidth={swm * 0.85} listening={false} />
         </Group>
       );
     case "tank":
       return (
         <Rect
           x={-r}
-          y={-r + 2}
+          y={-r + 1}
           width={r * 2}
-          height={r * 2 - 4}
-          cornerRadius={6}
-          fill={fill}
-          stroke="rgba(15,23,42,0.85)"
-          strokeWidth={1.2}
+          height={r * 2 - 2}
+          cornerRadius={5}
+          fill={soft}
+          stroke={stroke}
+          strokeWidth={swm}
+          listening={false}
         />
       );
     case "sensor":
       return (
-        <Group>
-          <Line points={[0, -r, r, r, -r, r, 0, -r]} closed fill={fill} stroke="rgba(15,23,42,0.85)" strokeWidth={1.2} />
-        </Group>
+        <Line
+          points={[0, -r, r * 0.92, r * 0.55, -r * 0.92, r * 0.55]}
+          closed
+          fill={soft}
+          stroke={stroke}
+          strokeWidth={swm}
+          lineJoin="round"
+          listening={false}
+        />
       );
     default:
-      return <Circle radius={r} fill={fill} stroke="rgba(15,23,42,0.85)" strokeWidth={1.2} />;
+      return <Circle radius={r} fill={soft} stroke={stroke} strokeWidth={swm} listening={false} />;
   }
 }
 
@@ -494,7 +536,7 @@ export function BlueprintDesigner() {
     const maxWY = (h - stagePos.y) / stageScale;
     const pad = GRID * 3;
     const lines: React.ReactNode[] = [];
-    const stroke = "rgba(148, 163, 184, 0.09)";
+    const stroke = "rgba(148, 163, 184, 0.042)";
     const sw = 1 / stageScale;
     let k = 0;
     for (let x = Math.floor((minWX - pad) / GRID) * GRID; x <= maxWX + pad; x += GRID) {
@@ -661,8 +703,60 @@ export function BlueprintDesigner() {
                   const w = el.width ?? 120;
                   const h = el.height ?? 80;
                   const sel = el.id === selectedId;
+                  const rot = el.rotation ?? 0;
+                  const { dx, dy } = wallDropOffset(rot);
+                  const sw = Math.max(0.75, 1.22 / stageScale);
+                  const ins = Math.max(0.6, 1.05 / stageScale);
+                  const labelSize = Math.min(11, Math.max(9, Math.min(w, h) / 7));
                   return (
                     <Group key={el.id}>
+                      {/* Elevation mass — offset duplicate (under room face) */}
+                      <Rect
+                        x={el.x + dx}
+                        y={el.y + dy}
+                        width={w}
+                        height={h}
+                        rotation={rot}
+                        cornerRadius={ZONE_RADIUS}
+                        fill="rgba(3, 7, 18, 0.62)"
+                        listening={false}
+                        opacity={0.85}
+                        shadowColor="rgba(0, 0, 0, 0.55)"
+                        shadowBlur={10}
+                        shadowOpacity={0.22}
+                        shadowOffset={{ x: 0, y: 1 }}
+                      />
+                      {/* Top / left highlight & bottom / right shade (architectural bevel) */}
+                      <Group x={el.x} y={el.y} rotation={rot} listening={false}>
+                        <Line
+                          points={[ins, ins, w - ins, ins]}
+                          stroke="rgba(248, 250, 252, 0.34)"
+                          strokeWidth={sw * 0.88}
+                          lineCap="round"
+                          listening={false}
+                        />
+                        <Line
+                          points={[ins, ins, ins, h - ins]}
+                          stroke="rgba(248, 250, 252, 0.28)"
+                          strokeWidth={sw * 0.88}
+                          lineCap="round"
+                          listening={false}
+                        />
+                        <Line
+                          points={[ins, h - ins, w - ins, h - ins]}
+                          stroke="rgba(2, 6, 18, 0.45)"
+                          strokeWidth={sw}
+                          lineCap="round"
+                          listening={false}
+                        />
+                        <Line
+                          points={[w - ins, ins, w - ins, h - ins]}
+                          stroke="rgba(2, 6, 18, 0.48)"
+                          strokeWidth={sw}
+                          lineCap="round"
+                          listening={false}
+                        />
+                      </Group>
                       <Rect
                         ref={(node) => {
                           if (sel && tool === "select") selectedNodeRef.current = node;
@@ -671,25 +765,24 @@ export function BlueprintDesigner() {
                         y={el.y}
                         width={w}
                         height={h}
-                        rotation={el.rotation ?? 0}
-                        cornerRadius={6}
-                        fill="rgba(148, 163, 184, 0.07)"
-                        stroke="rgba(226, 232, 240, 0.42)"
-                        strokeWidth={1.2 / stageScale}
-                        shadowColor={sel ? "rgba(59, 130, 246, 0.45)" : "rgba(0,0,0,0.5)"}
-                        shadowBlur={sel ? 18 : 10}
-                        shadowOpacity={0.35}
-                        shadowOffset={{ x: 0, y: 4 }}
+                        rotation={rot}
+                        cornerRadius={ZONE_RADIUS}
+                        fill={ZONE_FACE_FILL}
+                        stroke={ZONE_OUTLINE}
+                        strokeWidth={sw}
+                        shadowColor={sel ? "rgba(59, 130, 246, 0.4)" : "rgba(0, 0, 0, 0.2)"}
+                        shadowBlur={sel ? 16 : 6}
+                        shadowOpacity={sel ? 0.32 : 0.12}
+                        shadowOffset={{ x: 0, y: sel ? 0 : 2 }}
                         listening={tool === "select"}
                         draggable={tool === "select"}
                         onMouseEnter={(e) => {
                           const t = e.target as unknown as { getClassName?: () => string; stroke?: (s: string) => void };
-                          if (tool === "select" && !sel && t.getClassName?.() === "Rect")
-                            t.stroke?.("rgba(226, 232, 240, 0.65)");
+                          if (tool === "select" && !sel && t.getClassName?.() === "Rect") t.stroke?.(ZONE_OUTLINE_HOVER);
                         }}
                         onMouseLeave={(e) => {
                           const t = e.target as unknown as { getClassName?: () => string; stroke?: (s: string) => void };
-                          if (t.getClassName?.() === "Rect") t.stroke?.("rgba(226, 232, 240, 0.42)");
+                          if (t.getClassName?.() === "Rect") t.stroke?.(ZONE_OUTLINE);
                         }}
                         onClick={() => setSelectedId(el.id)}
                         onTap={() => setSelectedId(el.id)}
@@ -704,14 +797,22 @@ export function BlueprintDesigner() {
                       />
                       <Text
                         text={(el.name ?? "ROOM").toUpperCase()}
-                        x={el.x + 8}
-                        y={el.y + 8}
-                        fill="rgba(226, 232, 240, 0.82)"
-                        fontSize={11}
-                        fontFamily="ui-sans-serif, system-ui, sans-serif"
-                        fontStyle="bold"
-                        letterSpacing={1.2}
+                        x={el.x}
+                        y={el.y}
+                        width={w}
+                        height={h}
+                        rotation={rot}
+                        align="center"
+                        verticalAlign="middle"
+                        fill="#cbd5f5"
+                        opacity={0.94}
+                        fontSize={labelSize}
+                        fontFamily='ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif'
+                        fontStyle="normal"
+                        letterSpacing={2}
                         listening={false}
+                        wrap="none"
+                        ellipsis
                       />
                     </Group>
                   );
@@ -723,8 +824,8 @@ export function BlueprintDesigner() {
                   const h = el.height ?? DEVICE_DEFAULT;
                   const kind = el.device_kind ?? "generic";
                   const st = mockLinkStatus(el.linked_device_id);
-                  const fill = STATUS_FILL[st];
                   const sel = el.id === selectedId;
+                  const dStroke = Math.max(0.65, 0.92 / stageScale);
                   return (
                     <Group
                       key={el.id}
@@ -736,6 +837,10 @@ export function BlueprintDesigner() {
                       rotation={el.rotation ?? 0}
                       listening={tool === "select"}
                       draggable={tool === "select"}
+                      shadowColor={sel ? "rgba(59, 130, 246, 0.4)" : "rgba(0, 0, 0, 0.55)"}
+                      shadowBlur={sel ? 17 : 11}
+                      shadowOpacity={0.24}
+                      shadowOffset={{ x: 0, y: 5 }}
                       onClick={() => setSelectedId(el.id)}
                       onTap={() => setSelectedId(el.id)}
                       onDragEnd={(e) => {
@@ -744,32 +849,41 @@ export function BlueprintDesigner() {
                         );
                       }}
                       onTransformEnd={(e) => syncTransformToState(el.id, e.target)}
+                      onMouseEnter={(e) => {
+                        if (tool !== "select" || sel) return;
+                        e.currentTarget.opacity(1);
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.opacity(sel ? 1 : 0.97);
+                      }}
+                      opacity={0.97}
                     >
                       <Rect
                         width={w}
                         height={h}
                         cornerRadius={10}
-                        fill="rgba(30, 41, 59, 0.55)"
-                        stroke="rgba(226, 232, 240, 0.2)"
-                        strokeWidth={1 / stageScale}
-                        shadowColor={sel ? "rgba(59, 130, 246, 0.5)" : "rgba(0,0,0,0.55)"}
-                        shadowBlur={sel ? 16 : 8}
-                        shadowOpacity={0.4}
-                        shadowOffset={{ x: 0, y: 3 }}
+                        fill="rgba(15, 23, 42, 0.18)"
+                        stroke={sel ? "rgba(96, 165, 250, 0.45)" : "rgba(203, 213, 245, 0.16)"}
+                        strokeWidth={dStroke}
+                        listening={false}
                       />
                       <Group x={w / 2} y={h / 2} listening={false}>
-                        <DeviceGlyph kind={kind} fill={fill} />
+                        <DeviceGlyph kind={kind} statusKey={st} />
                       </Group>
                       <Text
                         text={(el.name ?? kind).toUpperCase()}
                         x={4}
-                        y={h - 14}
-                        fill="rgba(226, 232, 240, 0.75)"
+                        y={h - 13}
+                        width={w - 8}
+                        align="center"
+                        fill="#cbd5f5"
+                        opacity={0.88}
                         fontSize={9}
-                        fontFamily="ui-sans-serif, system-ui, sans-serif"
-                        fontStyle="bold"
-                        letterSpacing={0.8}
+                        fontFamily='ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif'
+                        fontStyle="normal"
+                        letterSpacing={1.4}
                         listening={false}
+                        ellipsis
                       />
                     </Group>
                   );
@@ -780,9 +894,10 @@ export function BlueprintDesigner() {
                   y={drawDraft.y}
                   width={drawDraft.w}
                   height={drawDraft.h}
-                  stroke="rgba(59, 130, 246, 0.65)"
-                  strokeWidth={1.2 / stageScale}
-                  fill="rgba(59, 130, 246, 0.08)"
+                  cornerRadius={ZONE_RADIUS}
+                  stroke="rgba(96, 165, 250, 0.55)"
+                  strokeWidth={Math.max(0.85, 1.1 / stageScale)}
+                  fill="rgba(148, 197, 255, 0.05)"
                   listening={false}
                 />
               ) : null}
@@ -800,11 +915,12 @@ export function BlueprintDesigner() {
               <Transformer
                 ref={transformerRef}
                 rotateEnabled
-                borderStroke="rgba(59, 130, 246, 0.65)"
-                anchorStroke="rgba(148, 163, 184, 0.9)"
-                anchorFill="#1e293b"
-                anchorSize={8}
-                padding={4}
+                borderStroke="rgba(96, 165, 250, 0.55)"
+                borderDash={[5, 4]}
+                anchorStroke="rgba(203, 213, 245, 0.55)"
+                anchorFill="rgba(15, 23, 42, 0.95)"
+                anchorSize={9}
+                padding={5}
                 boundBoxFunc={(oldBox, newBox) => {
                   if (newBox.width < MIN_ZONE || newBox.height < MIN_ZONE) return oldBox;
                   return newBox;
