@@ -517,6 +517,27 @@ function bboxFromPathPoints(flat: number[]) {
   return { minX, minY, w: Math.max(1, maxX - minX), h: Math.max(1, maxY - minY) };
 }
 
+/** Rotate flat path x,y pairs 90° clockwise around (cx, cy); Y-down canvas coords (matches Konva rotation sense). */
+function rotatePathFlat90Cw(flat: number[], cx: number, cy: number): number[] {
+  const out: number[] = [];
+  for (let i = 0; i + 1 < flat.length; i += 2) {
+    const x = flat[i]!;
+    const y = flat[i + 1]!;
+    const xr = cx + (y - cy);
+    const yr = cy + (x - cx);
+    out.push(xr, yr);
+  }
+  return out;
+}
+
+function isTypingKeyboardTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  if (target.isContentEditable) return true;
+  const tag = target.tagName;
+  if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return true;
+  return target.closest("input, textarea, select, [contenteditable='true']") != null;
+}
+
 function processFreehandPath(raw: number[]): number[] | null {
   if (raw.length < 6) return null;
   let ring = closeRingFlat(raw, PATH_CLOSE_SNAP);
@@ -1312,12 +1333,15 @@ export function BlueprintDesigner() {
   useEffect(() => {
     const kd = (e: KeyboardEvent) => {
       if (e.code === "Space" && !e.repeat) {
+        if (isTypingKeyboardTarget(e.target)) return;
         e.preventDefault();
         setSpaceDown(true);
       }
     };
     const ku = (e: KeyboardEvent) => {
-      if (e.code === "Space") setSpaceDown(false);
+      if (e.code !== "Space") return;
+      if (isTypingKeyboardTarget(e.target)) return;
+      setSpaceDown(false);
     };
     window.addEventListener("keydown", kd);
     window.addEventListener("keyup", ku);
@@ -1994,6 +2018,44 @@ export function BlueprintDesigner() {
     if (!selectedSingleId) return;
     commitElements((prev) => prev.map((el) => (el.id === selectedSingleId ? { ...el, ...patch } : el)));
   };
+
+  const rotateSelection90Clockwise = useCallback(() => {
+    if (!selectedSingleId) return;
+    checkpointBlueprint();
+    commitElements((prev) => {
+      const row = prev.find((x) => x.id === selectedSingleId);
+      if (!row || row.type === "door") return prev;
+      if (row.type === "path" && row.path_points && row.path_points.length >= 6) {
+        const flat = [...row.path_points];
+        let sx = 0;
+        let sy = 0;
+        const n = flat.length / 2;
+        for (let i = 0; i < flat.length; i += 2) {
+          sx += flat[i]!;
+          sy += flat[i + 1]!;
+        }
+        const cx = sx / n;
+        const cy = sy / n;
+        const rotated = rotatePathFlat90Cw(flat, cx, cy);
+        const bb = bboxFromPathPoints(rotated);
+        return relayoutAllDoors(
+          prev.map((x) =>
+            x.id === selectedSingleId
+              ? { ...x, path_points: rotated, x: bb.minX, y: bb.minY, width: bb.w, height: bb.h }
+              : x,
+          ),
+        );
+      }
+      if (row.type === "path") return prev;
+      const r = (row.rotation ?? 0) + 90;
+      const norm = ((r % 360) + 360) % 360;
+      let next = prev.map((x) => (x.id === selectedSingleId ? { ...x, rotation: norm } : x));
+      if (row.type === "zone") next = relayoutAttachedDoors(next, selectedSingleId);
+      return relayoutAllDoors(next);
+    });
+    transformUndoPrimedRef.current = false;
+    batchLayer();
+  }, [selectedSingleId, commitElements, checkpointBlueprint, batchLayer]);
 
   return (
     <div className={`bp-shell${isPublish ? " bp-shell--publish" : ""}`}>
@@ -3256,6 +3318,36 @@ export function BlueprintDesigner() {
                       }
                     }}
                   />
+                </div>
+              </div>
+              <div className="bp-field">
+                <label>Rotation</label>
+                <div className="bp-field-row bp-field-row--rotation">
+                  <span
+                    className="bp-rotate-readout"
+                    title={
+                      selected.type === "path"
+                        ? "Freehand shapes rotate in 90° steps around their centroid (not the rotation field)."
+                        : undefined
+                    }
+                  >
+                    {selected.type === "path"
+                      ? "—"
+                      : `${(((selected.rotation ?? 0) % 360) + 360) % 360}°`}
+                  </span>
+                  <button
+                    type="button"
+                    className="bp-rotate-btn"
+                    disabled={!canEdit || selected.type === "door"}
+                    title={
+                      selected.type === "door"
+                        ? "Doors follow walls; rotate the room or adjust the wall attachment instead."
+                        : "Rotate 90° clockwise"
+                    }
+                    onClick={rotateSelection90Clockwise}
+                  >
+                    Rotate 90°
+                  </button>
                 </div>
               </div>
               {selected.type === "device" ? (
