@@ -20,9 +20,11 @@ function initials(name: string | null | undefined, email: string): string {
 }
 
 function statusStyle(st: string): string {
-  if (st === "completed") return "bg-emerald-50 text-emerald-900 ring-1 ring-emerald-200/80";
-  if (st === "on_hold") return "bg-amber-50 text-amber-950 ring-1 ring-amber-200/80";
-  return "bg-sky-50 text-[#2B4C7E] ring-1 ring-sky-200/80";
+  if (st === "completed")
+    return "bg-emerald-50 text-emerald-900 ring-1 ring-emerald-200/80 dark:bg-emerald-600 dark:text-white dark:ring-emerald-500/40";
+  if (st === "on_hold")
+    return "bg-amber-50 text-amber-950 ring-1 ring-amber-200/80 dark:bg-amber-600 dark:text-white dark:ring-amber-400/40";
+  return "bg-sky-50 text-[#2B4C7E] ring-1 ring-sky-200/80 dark:bg-sky-600 dark:text-white dark:ring-sky-400/40";
 }
 
 function statusLabel(st: string): string {

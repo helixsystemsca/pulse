@@ -52,7 +52,7 @@ type WorkerOpt = { id: string; email: string; full_name: string | null };
 const PRIMARY_BTN =
   "rounded-[10px] bg-[#2B4C7E] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#234066] disabled:opacity-50";
 const FIELD =
-  "mt-1.5 w-full rounded-[10px] border border-slate-200/90 bg-white px-3 py-2.5 text-sm text-pulse-navy shadow-sm focus:border-[#2B4C7E]/35 focus:outline-none focus:ring-1 focus:ring-[#2B4C7E]/25";
+  "mt-1.5 w-full rounded-[10px] border border-slate-200/90 bg-white px-3 py-2.5 text-sm text-pulse-navy shadow-sm focus:border-[#2B4C7E]/35 focus:outline-none focus:ring-1 focus:ring-[#2B4C7E]/25 dark:border-[#374151] dark:bg-[#0F172A] dark:text-gray-100 dark:placeholder:text-gray-500";
 const LABEL = "text-[11px] font-semibold uppercase tracking-wider text-pulse-muted";
 
 const DEFAULT_SETTINGS: Required<
@@ -113,16 +113,16 @@ function formatTs(iso: string | null | undefined): string {
 function statusBadge(status: string): string {
   switch (status) {
     case "assigned":
-      return "bg-[#ebf8ff] text-[#3182ce] ring-1 ring-blue-200/80";
+      return "bg-[#ebf8ff] text-[#3182ce] ring-1 ring-blue-200/80 dark:bg-blue-600 dark:text-white dark:ring-blue-500/40";
     case "low_stock":
-      return "bg-amber-50 text-amber-900 ring-1 ring-amber-200/80";
+      return "bg-amber-50 text-amber-900 ring-1 ring-amber-200/80 dark:bg-amber-600 dark:text-white dark:ring-amber-400/40";
     case "missing":
-      return "bg-[#fff5eb] text-[#c05621] ring-1 ring-orange-200/80";
+      return "bg-[#fff5eb] text-[#c05621] ring-1 ring-orange-200/80 dark:bg-orange-600 dark:text-white dark:ring-orange-400/40";
     case "maintenance":
-      return "bg-violet-50 text-violet-900 ring-1 ring-violet-200/75";
+      return "bg-violet-50 text-violet-900 ring-1 ring-violet-200/75 dark:bg-violet-600 dark:text-white dark:ring-violet-400/45";
     case "in_stock":
     default:
-      return "bg-sky-50/90 text-[#2B4C7E] ring-1 ring-sky-200/70";
+      return "bg-sky-50/90 text-[#2B4C7E] ring-1 ring-sky-200/70 dark:bg-emerald-600 dark:text-white dark:ring-emerald-500/40";
   }
 }
 
@@ -137,9 +137,9 @@ function conditionLabel(c: string): string {
 }
 
 function conditionBadge(c: string): string {
-  if (c === "critical") return "bg-rose-50 text-rose-800 ring-1 ring-rose-200/75";
-  if (c === "needs_maintenance") return "bg-amber-50 text-amber-900 ring-1 ring-amber-200/75";
-  return "bg-emerald-50 text-emerald-900 ring-1 ring-emerald-200/70";
+  if (c === "critical") return "bg-rose-50 text-rose-800 ring-1 ring-rose-200/75 dark:bg-red-600 dark:text-white dark:ring-red-500/45";
+  if (c === "needs_maintenance") return "bg-amber-50 text-amber-900 ring-1 ring-amber-200/75 dark:bg-amber-600 dark:text-white dark:ring-amber-400/40";
+  return "bg-emerald-50 text-emerald-900 ring-1 ring-emerald-200/70 dark:bg-emerald-600 dark:text-white dark:ring-emerald-500/40";
 }
 
 function typeIcon(t: string) {
@@ -700,7 +700,7 @@ export function InventoryApp() {
           <>
             <button
               type="button"
-              className="inline-flex items-center gap-2 rounded-[10px] border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-pulse-navy shadow-sm hover:bg-slate-50 disabled:opacity-50"
+              className="app-btn-secondary inline-flex items-center gap-2 px-4 py-2.5 disabled:opacity-50"
               onClick={() => exportCsv()}
               disabled={rows.length === 0}
             >
@@ -709,7 +709,7 @@ export function InventoryApp() {
             </button>
             <button
               type="button"
-              className="inline-flex items-center gap-2 rounded-[10px] border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-pulse-navy shadow-sm hover:bg-slate-50"
+              className="app-btn-secondary inline-flex items-center gap-2 px-4 py-2.5"
               onClick={() => setSettingsOpen(true)}
             >
               <Settings className="h-4 w-4" aria-hidden />
@@ -723,10 +723,10 @@ export function InventoryApp() {
       />
 
       {isSystemAdmin ? (
-        <div className="mt-6 rounded-xl border border-pulse-border bg-white p-4 shadow-sm">
+        <div className="mt-6 rounded-xl border border-pulse-border bg-white p-4 shadow-sm dark:border-[#1F2937] dark:bg-[#111827] dark:shadow-[0_2px_8px_rgba(0,0,0,0.35)]">
           <label className="block text-xs font-semibold uppercase tracking-wide text-pulse-muted">Company</label>
           <select
-            className="mt-1.5 w-full max-w-md rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2 text-sm font-medium text-pulse-navy outline-none focus:border-pulse-accent focus:ring-2 focus:ring-pulse-accent/25 md:w-auto"
+            className="mt-1.5 w-full max-w-md rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2 text-sm font-medium text-pulse-navy outline-none focus:border-pulse-accent focus:ring-2 focus:ring-pulse-accent/25 dark:border-[#374151] dark:bg-[#0F172A] dark:text-gray-100 md:w-auto"
             value={companyPick ?? ""}
             onChange={(e) => {
               setCompanyPick(e.target.value || null);
@@ -799,15 +799,17 @@ export function InventoryApp() {
               ].map((card) => (
                 <div
                   key={card.label}
-                  className={`rounded-xl border bg-white p-4 shadow-sm ring-1 ${
-                    "alert" in card && card.alert ? "border-amber-200 ring-amber-100/90" : "border-pulse-border ring-slate-100/80"
+                  className={`rounded-xl border bg-white p-4 shadow-sm ring-1 dark:bg-[#111827] dark:shadow-[0_2px_8px_rgba(0,0,0,0.35)] ${
+                    "alert" in card && card.alert
+                      ? "border-amber-200 ring-amber-100/90 dark:border-amber-500/35 dark:ring-amber-500/20"
+                      : "border-pulse-border ring-slate-100/80 dark:border-[#1F2937] dark:ring-white/[0.06]"
                   }`}
                 >
                   <div className="flex items-start justify-between gap-2">
                     <p className="text-xs font-bold uppercase tracking-wide text-pulse-muted">{card.label}</p>
                     <card.icon className={`h-5 w-5 shrink-0 opacity-80 ${card.tone}`} aria-hidden />
                   </div>
-                  <p className="mt-2 text-2xl font-bold tracking-tight text-pulse-navy">{card.value}</p>
+                  <p className="mt-2 text-2xl font-bold tracking-tight text-pulse-navy dark:text-gray-100">{card.value}</p>
                   {card.sub ? (
                     <p
                       className={`mt-0.5 text-xs font-semibold ${
@@ -840,8 +842,8 @@ export function InventoryApp() {
                 }}
                 className={`rounded-full px-3.5 py-1.5 text-xs font-bold transition-colors ${
                   statusFilter === t.id
-                    ? "bg-[#2B4C7E] text-white shadow-sm"
-                    : "bg-slate-100 text-pulse-navy hover:bg-slate-200/90"
+                    ? "bg-[#2B4C7E] text-white shadow-sm dark:bg-[#3B82F6]"
+                    : "bg-slate-100 text-pulse-navy hover:bg-slate-200/90 dark:bg-[#374151] dark:text-white dark:hover:bg-[#4B5563]"
                 }`}
               >
                 {t.label}
@@ -861,11 +863,11 @@ export function InventoryApp() {
                     setQ(e.target.value);
                     setPage(0);
                   }}
-                  className="w-full rounded-lg border border-slate-200 bg-slate-50/80 py-2 pl-9 pr-3 text-sm text-pulse-navy placeholder:text-slate-400 outline-none focus:border-pulse-accent focus:ring-2 focus:ring-pulse-accent/25"
+                  className="w-full rounded-lg border border-slate-200 bg-slate-50/80 py-2 pl-9 pr-3 text-sm text-pulse-navy placeholder:text-slate-400 outline-none focus:border-pulse-accent focus:ring-2 focus:ring-pulse-accent/25 dark:border-[#374151] dark:bg-[#0F172A] dark:text-gray-100 dark:placeholder:text-gray-500"
                 />
               </div>
               <select
-                className="rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2 text-sm font-medium text-pulse-navy outline-none focus:border-pulse-accent focus:ring-2 focus:ring-pulse-accent/25"
+                className="rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2 text-sm font-medium text-pulse-navy outline-none focus:border-pulse-accent focus:ring-2 focus:ring-pulse-accent/25 dark:border-[#374151] dark:bg-[#0F172A] dark:text-gray-100"
                 value={typeFilter}
                 onChange={(e) => {
                   setTypeFilter(e.target.value);
@@ -878,7 +880,7 @@ export function InventoryApp() {
                 <option value="consumable">Consumable</option>
               </select>
               <select
-                className="rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2 text-sm font-medium text-pulse-navy outline-none focus:border-pulse-accent focus:ring-2 focus:ring-pulse-accent/25"
+                className="rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2 text-sm font-medium text-pulse-navy outline-none focus:border-pulse-accent focus:ring-2 focus:ring-pulse-accent/25 dark:border-[#374151] dark:bg-[#0F172A] dark:text-gray-100"
                 value={categoryFilter}
                 onChange={(e) => {
                   setCategoryFilter(e.target.value);
@@ -893,7 +895,7 @@ export function InventoryApp() {
                 ))}
               </select>
               <select
-                className="rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2 text-sm font-medium text-pulse-navy outline-none focus:border-pulse-accent focus:ring-2 focus:ring-pulse-accent/25"
+                className="rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2 text-sm font-medium text-pulse-navy outline-none focus:border-pulse-accent focus:ring-2 focus:ring-pulse-accent/25 dark:border-[#374151] dark:bg-[#0F172A] dark:text-gray-100"
                 value={zoneFilter}
                 onChange={(e) => {
                   setZoneFilter(e.target.value);
@@ -908,7 +910,7 @@ export function InventoryApp() {
                 ))}
               </select>
               <select
-                className="rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2 text-sm font-medium text-pulse-navy outline-none focus:border-pulse-accent focus:ring-2 focus:ring-pulse-accent/25"
+                className="rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2 text-sm font-medium text-pulse-navy outline-none focus:border-pulse-accent focus:ring-2 focus:ring-pulse-accent/25 dark:border-[#374151] dark:bg-[#0F172A] dark:text-gray-100"
                 value={workerFilter}
                 onChange={(e) => {
                   setWorkerFilter(e.target.value);
@@ -929,7 +931,7 @@ export function InventoryApp() {
                   setDateFrom(e.target.value);
                   setPage(0);
                 }}
-                className="rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2 text-sm text-pulse-navy outline-none focus:border-pulse-accent focus:ring-2 focus:ring-pulse-accent/25"
+                className="rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2 text-sm text-pulse-navy outline-none focus:border-pulse-accent focus:ring-2 focus:ring-pulse-accent/25 dark:border-[#374151] dark:bg-[#0F172A] dark:text-gray-100"
               />
               <input
                 type="date"
@@ -938,7 +940,7 @@ export function InventoryApp() {
                   setDateTo(e.target.value);
                   setPage(0);
                 }}
-                className="rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2 text-sm text-pulse-navy outline-none focus:border-pulse-accent focus:ring-2 focus:ring-pulse-accent/25"
+                className="rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2 text-sm text-pulse-navy outline-none focus:border-pulse-accent focus:ring-2 focus:ring-pulse-accent/25 dark:border-[#374151] dark:bg-[#0F172A] dark:text-gray-100"
               />
             </div>
             <button type="button" className="text-sm font-semibold text-[#2B4C7E] hover:underline" onClick={clearFilters}>
@@ -946,7 +948,7 @@ export function InventoryApp() {
             </button>
           </div>
 
-          <div className="mt-4 overflow-hidden rounded-xl border border-pulse-border bg-white shadow-sm ring-1 ring-slate-100/80">
+          <div className="app-data-shell mt-4">
             {listLoading ? (
               <div className="flex items-center justify-center gap-2 py-16 text-pulse-muted">
                 <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
@@ -958,7 +960,7 @@ export function InventoryApp() {
               <div className="overflow-x-auto">
                 <table className="min-w-[1200px] w-full border-collapse text-left text-sm">
                   <thead>
-                    <tr className="border-b border-pulse-border bg-slate-50/80 text-xs font-bold uppercase tracking-wide text-pulse-muted">
+                    <tr className="app-table-head-row border-pulse-border">
                       <th className="px-4 py-3">Item</th>
                       <th className="px-4 py-3">Category / type</th>
                       <th className="px-4 py-3">Status</th>
@@ -978,7 +980,7 @@ export function InventoryApp() {
                       return (
                         <tr
                           key={row.id}
-                          className="cursor-pointer border-b border-slate-100 last:border-0 hover:bg-slate-50/60"
+                          className="cursor-pointer border-b border-slate-100 last:border-0 hover:bg-slate-50/60 dark:border-[#1F2937] dark:hover:bg-[#0F172A]/90"
                           onClick={() => {
                             setDetailPanel("none");
                             setDetailId(row.id);
@@ -986,7 +988,7 @@ export function InventoryApp() {
                         >
                           <td className="px-4 py-3 align-top">
                             <div className="flex items-start gap-2">
-                              <span className="mt-0.5 flex h-8 w-8 items-center justify-center rounded-lg bg-[#ebf8ff] text-[#2B4C7E]">
+                              <span className="mt-0.5 flex h-8 w-8 items-center justify-center rounded-lg bg-[#ebf8ff] text-[#2B4C7E] dark:bg-[#1e3a5f] dark:text-sky-300">
                                 <Icon className="h-4 w-4" aria-hidden />
                               </span>
                               <div>
@@ -1073,7 +1075,7 @@ export function InventoryApp() {
                               <MoreVertical className="h-4 w-4" />
                             </button>
                             {menuFor === row.id ? (
-                              <div className="absolute right-3 z-10 mt-1 w-52 rounded-xl border border-slate-200 bg-white py-1 text-left shadow-lg">
+                              <div className="absolute right-3 z-10 mt-1 w-52 rounded-xl border border-slate-200 bg-white py-1 text-left shadow-lg dark:border-[#374151] dark:bg-[#1F2937]">
                                 <button
                                   type="button"
                                   className="block w-full px-3 py-2 text-left text-sm hover:bg-slate-50"
@@ -1142,7 +1144,7 @@ export function InventoryApp() {
             <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
-                className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-semibold text-pulse-navy disabled:opacity-40"
+                className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-semibold text-pulse-navy disabled:opacity-40 dark:border-[#374151] dark:bg-[#1F2937] dark:text-gray-100 dark:hover:bg-[#374151]"
                 disabled={page <= 0}
                 onClick={() => setPage((p) => Math.max(0, p - 1))}
               >
@@ -1153,7 +1155,7 @@ export function InventoryApp() {
               </span>
               <button
                 type="button"
-                className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-semibold text-pulse-navy disabled:opacity-40"
+                className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-semibold text-pulse-navy disabled:opacity-40 dark:border-[#374151] dark:bg-[#1F2937] dark:text-gray-100 dark:hover:bg-[#374151]"
                 disabled={page + 1 >= totalPages}
                 onClick={() => setPage((p) => p + 1)}
               >
@@ -1181,21 +1183,21 @@ export function InventoryApp() {
               </button>
               <button
                 type="button"
-                className="rounded-[10px] border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-pulse-navy hover:bg-slate-50"
+                className="rounded-[10px] border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-pulse-navy hover:bg-slate-50 dark:border-[#374151] dark:bg-[#1F2937] dark:text-gray-100 dark:hover:bg-[#374151]"
                 onClick={() => setDetailPanel(detailPanel === "assign" ? "none" : "assign")}
               >
                 Assign
               </button>
               <button
                 type="button"
-                className="rounded-[10px] border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-pulse-navy hover:bg-slate-50"
+                className="rounded-[10px] border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-pulse-navy hover:bg-slate-50 dark:border-[#374151] dark:bg-[#1F2937] dark:text-gray-100 dark:hover:bg-[#374151]"
                 onClick={() => setDetailPanel(detailPanel === "move" ? "none" : "move")}
               >
                 Move
               </button>
               <button
                 type="button"
-                className="rounded-[10px] border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-pulse-navy hover:bg-slate-50"
+                className="rounded-[10px] border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-pulse-navy hover:bg-slate-50 dark:border-[#374151] dark:bg-[#1F2937] dark:text-gray-100 dark:hover:bg-[#374151]"
                 onClick={() => setDetailPanel(detailPanel === "use" ? "none" : "use")}
               >
                 Use in WR
@@ -1212,7 +1214,7 @@ export function InventoryApp() {
         ) : (
           <div className="space-y-5">
             {detailPanel === "assign" ? (
-              <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+              <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-[#1F2937] dark:bg-[#111827] dark:shadow-[0_2px_8px_rgba(0,0,0,0.35)]">
                 <p className={LABEL}>Assign to worker</p>
                 <select
                   className={FIELD}
@@ -1232,7 +1234,7 @@ export function InventoryApp() {
               </div>
             ) : null}
             {detailPanel === "move" ? (
-              <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+              <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-[#1F2937] dark:bg-[#111827] dark:shadow-[0_2px_8px_rgba(0,0,0,0.35)]">
                 <p className={LABEL}>Location (zone)</p>
                 <select className={FIELD} value={moveZoneId} onChange={(e) => setMoveZoneId(e.target.value)}>
                   <option value="">Unspecified</option>
@@ -1248,7 +1250,7 @@ export function InventoryApp() {
               </div>
             ) : null}
             {detailPanel === "use" ? (
-              <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+              <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-[#1F2937] dark:bg-[#111827] dark:shadow-[0_2px_8px_rgba(0,0,0,0.35)]">
                 <p className={LABEL}>Work request</p>
                 <select className={FIELD} value={useWrId} onChange={(e) => setUseWrId(e.target.value)}>
                   <option value="">Select…</option>
@@ -1275,7 +1277,7 @@ export function InventoryApp() {
             ) : null}
 
             <div className="grid gap-3 sm:grid-cols-2">
-              <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+              <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-[#1F2937] dark:bg-[#111827] dark:shadow-[0_2px_8px_rgba(0,0,0,0.35)]">
                 <p className="text-xs font-bold uppercase text-pulse-muted">Status &amp; quantity</p>
                 <p className="mt-2 text-lg font-bold capitalize text-pulse-navy">{statusLabel(detail.inv_status)}</p>
                 <p className="text-sm text-pulse-muted">
@@ -1285,14 +1287,14 @@ export function InventoryApp() {
                   <p className="text-sm text-pulse-muted">Unit cost: ${detail.unit_cost}</p>
                 ) : null}
               </div>
-              <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+              <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-[#1F2937] dark:bg-[#111827] dark:shadow-[0_2px_8px_rgba(0,0,0,0.35)]">
                 <p className="text-xs font-bold uppercase text-pulse-muted">Assignment &amp; location</p>
                 <p className="mt-2 text-sm font-semibold text-pulse-navy">{detail.assignee_name ?? "Unassigned"}</p>
                 <p className="text-sm text-pulse-muted">{detail.location_name ?? "—"}</p>
               </div>
             </div>
 
-            <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-[#1F2937] dark:bg-[#111827] dark:shadow-[0_2px_8px_rgba(0,0,0,0.35)]">
               <p className="text-xs font-bold uppercase text-pulse-muted">Work requests</p>
               <ul className="mt-2 space-y-1 text-sm text-[#2B4C7E]">
                 {detail.linked_work_requests.length === 0 ? (
@@ -1307,7 +1309,7 @@ export function InventoryApp() {
               </ul>
             </div>
 
-            <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-[#1F2937] dark:bg-[#111827] dark:shadow-[0_2px_8px_rgba(0,0,0,0.35)]">
               <p className="text-xs font-bold uppercase text-pulse-muted">Usage log</p>
               <ul className="mt-2 max-h-48 space-y-2 overflow-y-auto text-sm">
                 {detail.usage.length === 0 ? (
@@ -1326,7 +1328,7 @@ export function InventoryApp() {
               </ul>
             </div>
 
-            <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-[#1F2937] dark:bg-[#111827] dark:shadow-[0_2px_8px_rgba(0,0,0,0.35)]">
               <p className="text-xs font-bold uppercase text-pulse-muted">Movement timeline</p>
               <ul className="mt-3 space-y-3 text-sm">
                 {detail.movements.length === 0 ? (
@@ -1371,7 +1373,7 @@ export function InventoryApp() {
           <div className="flex justify-end gap-2">
             <button
               type="button"
-              className="rounded-[10px] border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-pulse-navy"
+              className="rounded-[10px] border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-pulse-navy dark:border-[#374151] dark:bg-[#1F2937] dark:text-gray-100"
               onClick={() => setEditOpen(false)}
             >
               Cancel
@@ -1537,7 +1539,7 @@ export function InventoryApp() {
           <div className="flex justify-end gap-2">
             <button
               type="button"
-              className="rounded-[10px] border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-pulse-navy"
+              className="rounded-[10px] border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-pulse-navy dark:border-[#374151] dark:bg-[#1F2937] dark:text-gray-100"
               onClick={() => setSettingsOpen(false)}
             >
               Cancel

@@ -467,21 +467,21 @@ function buildLiveModel(
 function TagPill({ tag }: { tag: WorkTag }) {
   if (tag.kind === "progress") {
     return (
-      <span className="shrink-0 rounded-full bg-blue-50 dark:bg-blue-500/15 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-blue-600 dark:text-blue-400 ring-1 ring-blue-300 dark:ring-blue-500/30">
+      <span className="app-badge-blue shrink-0 rounded-full px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide">
         {tag.label}
       </span>
     );
   }
   if (tag.kind === "overdue") {
     return (
-      <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-amber-100/90 dark:bg-amber-500/12 px-2 py-0.5 text-[11px] font-bold text-amber-700 dark:text-amber-400 ring-1 ring-amber-300 dark:ring-amber-500/35">
-        <span className="h-1.5 w-1.5 rounded-full bg-amber-500 dark:bg-amber-500" />
+      <span className="app-badge-amber shrink-0 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold">
+        <span className="h-1.5 w-1.5 rounded-full bg-current opacity-90" />
         {tag.label}
       </span>
     );
   }
   return (
-    <span className="shrink-0 self-start rounded-md bg-red-100/90 dark:bg-red-500/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-red-700 dark:text-red-400 ring-1 ring-red-300 dark:ring-red-500/40">
+    <span className="app-badge-red shrink-0 self-start rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide">
       {tag.label}
     </span>
   );
@@ -565,10 +565,10 @@ function DashboardBody({
             {model.alerts.map((a, idx) => (
               <li
                 key={`${a.title}-${idx}`}
-                className={`flex gap-3 rounded-xl border border-gray-200 dark:border-[#1F2937] p-4 ${
+                className={`flex gap-3 rounded-xl border border-gray-200 p-4 dark:border-[#1F2937] ${
                   a.severity === "critical"
-                    ? "border-l-2 border-l-red-500 dark:border-l-red-400 bg-red-100/60 dark:bg-red-500/10"
-                    : "border-l-2 border-l-amber-500 dark:border-l-amber-400 bg-amber-100/60 dark:bg-amber-500/10"
+                    ? "border-l-2 border-l-red-500 bg-red-100/60 dark:border-l-red-400 dark:bg-red-950/50 dark:ring-1 dark:ring-red-500/25"
+                    : "border-l-2 border-l-amber-500 bg-amber-100/60 dark:border-l-amber-400 dark:bg-amber-950/55 dark:ring-1 dark:ring-amber-500/25"
                 }`}
               >
                 <span
@@ -577,17 +577,27 @@ function DashboardBody({
                   }`}
                 />
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-bold text-gray-900 dark:text-gray-100">{a.title}</p>
+                  <p
+                    className={`text-sm font-bold text-gray-900 ${
+                      a.severity === "critical" ? "dark:text-red-50" : "dark:text-amber-50"
+                    }`}
+                  >
+                    {a.title}
+                  </p>
                   {a.subtitle ? (
-                    <p className="mt-1 whitespace-pre-line text-xs leading-relaxed text-gray-500 dark:text-gray-400">
+                    <p
+                      className={`mt-1 whitespace-pre-line text-xs leading-relaxed text-gray-500 ${
+                        a.severity === "critical" ? "dark:text-red-100/90" : "dark:text-amber-100/85"
+                      }`}
+                    >
                       {a.subtitle}
                     </p>
                   ) : null}
                 </div>
                 {a.severity === "critical" ? (
-                  <AlertTriangle className="h-5 w-5 shrink-0 text-red-700 dark:text-red-400" aria-hidden />
+                  <AlertTriangle className="h-5 w-5 shrink-0 text-red-700 dark:text-red-200" aria-hidden />
                 ) : (
-                  <Radio className="h-5 w-5 shrink-0 text-amber-700 dark:text-amber-400" aria-hidden />
+                  <Radio className="h-5 w-5 shrink-0 text-amber-700 dark:text-amber-200" aria-hidden />
                 )}
               </li>
             ))}
@@ -666,16 +676,16 @@ function DashboardBody({
           </div>
 
           <div className="mt-4 flex flex-wrap gap-2 border-t border-gray-200 dark:border-[#1F2937] pt-4">
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100/90 dark:bg-emerald-500/15 px-2.5 py-1 text-[11px] font-semibold text-emerald-700 dark:text-emerald-400 ring-1 ring-emerald-300 dark:ring-emerald-500/25">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400" />
+            <span className="app-badge-emerald inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold">
+              <span className="h-1.5 w-1.5 rounded-full bg-current opacity-90" />
               On-site · {model.workforce.counts.onsite}
             </span>
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-100/90 dark:bg-amber-500/12 px-2.5 py-1 text-[11px] font-semibold text-amber-700 dark:text-amber-400 ring-1 ring-amber-300 dark:ring-amber-500/25">
-              <span className="h-1.5 w-1.5 rounded-full bg-amber-500 dark:bg-amber-500" />
+            <span className="app-badge-amber inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold">
+              <span className="h-1.5 w-1.5 rounded-full bg-current opacity-90" />
               Off-site · {model.workforce.counts.offsite}
             </span>
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-red-100/85 dark:bg-red-500/12 px-2.5 py-1 text-[11px] font-semibold text-red-700 dark:text-red-400 ring-1 ring-red-300 dark:ring-red-500/30">
-              <span className="h-1.5 w-1.5 rounded-full bg-red-600 dark:bg-red-500" />
+            <span className="app-badge-red inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold">
+              <span className="h-1.5 w-1.5 rounded-full bg-current opacity-90" />
               Absent · {model.workforce.counts.absent}
             </span>
           </div>
@@ -687,7 +697,7 @@ function DashboardBody({
         >
           <div className="flex flex-wrap items-start justify-between gap-3">
             <h3 className="text-base font-bold text-gray-900 dark:text-gray-100">Work Requests</h3>
-            <span className="inline-flex items-center rounded-full bg-amber-100/90 dark:bg-amber-500/12 px-3 py-1 text-xs font-bold tracking-tight text-amber-700 dark:text-amber-400 ring-1 ring-amber-300 dark:ring-amber-500/25">
+            <span className="app-badge-amber inline-flex items-center rounded-full px-3 py-1 text-xs font-bold tracking-tight">
               {model.workRequests.awaitingCount} requests awaiting assignment
             </span>
           </div>
@@ -752,7 +762,7 @@ function DashboardBody({
                         <p className="text-sm font-bold text-gray-900 dark:text-gray-100">{row.title}</p>
                         <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">{row.subtitle}</p>
                       </div>
-                      <span className="shrink-0 self-start rounded-md bg-red-100/90 dark:bg-red-500/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-red-700 dark:text-red-400 ring-1 ring-red-300 dark:ring-red-500/40">
+                      <span className="app-badge-red shrink-0 self-start rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide">
                         Urgent
                       </span>
                     </li>
@@ -772,12 +782,12 @@ function DashboardBody({
             {model.equipment.activeCount} Active Tools
           </p>
           <div className="mt-3 flex flex-wrap gap-2">
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-100/90 dark:bg-amber-500/12 px-3 py-1 text-xs font-semibold text-amber-700 dark:text-amber-400 ring-1 ring-amber-300 dark:ring-amber-500/25">
-              <span className="h-1.5 w-1.5 rounded-full bg-amber-500 dark:bg-amber-500" />
+            <span className="app-badge-amber inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold">
+              <span className="h-1.5 w-1.5 rounded-full bg-current opacity-90" />
               {model.equipment.missingCount} Missing
             </span>
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-red-100/85 dark:bg-red-500/12 px-3 py-1 text-xs font-semibold text-red-700 dark:text-red-400 ring-1 ring-red-300 dark:ring-red-500/30">
-              <span className="h-1.5 w-1.5 rounded-full bg-red-600 dark:bg-red-500" />
+            <span className="app-badge-red inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold">
+              <span className="h-1.5 w-1.5 rounded-full bg-current opacity-90" />
               {model.equipment.outOfServiceCount} Out of Service
             </span>
           </div>
@@ -843,10 +853,8 @@ function DashboardBody({
                 </p>
               </div>
               <span
-                className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 ${
-                  model.inventory.consumablesOk
-                    ? "bg-emerald-100/90 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 ring-emerald-300 dark:ring-emerald-500/30"
-                    : "bg-amber-100/90 dark:bg-amber-500/12 text-amber-700 dark:text-amber-400 ring-amber-300 dark:ring-amber-500/25"
+                className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                  model.inventory.consumablesOk ? "app-badge-emerald" : "app-badge-amber"
                 }`}
               >
                 {model.inventory.consumablesOk ? "OK" : "Review"}
@@ -866,7 +874,7 @@ function DashboardBody({
                       {model.inventory.alert.message}
                     </p>
                   </div>
-                  <span className="shrink-0 rounded-full bg-amber-100/90 dark:bg-amber-500/12 px-2 py-0.5 text-[11px] font-semibold text-amber-700 dark:text-amber-400 ring-1 ring-amber-300 dark:ring-amber-500/25">
+                      <span className="app-badge-amber shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold">
                     Soon
                   </span>
                 </div>

@@ -34,7 +34,7 @@ type CompanyOption = { id: string; name: string };
 const PRIMARY_BTN =
   "rounded-[10px] bg-[#2B4C7E] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#234066] disabled:opacity-50";
 const FIELD =
-  "mt-1.5 w-full rounded-[10px] border border-slate-200/90 bg-white px-3 py-2.5 text-sm text-pulse-navy shadow-sm focus:border-[#2B4C7E]/35 focus:outline-none focus:ring-1 focus:ring-[#2B4C7E]/25";
+  "mt-1.5 w-full rounded-[10px] border border-slate-200/90 bg-white px-3 py-2.5 text-sm text-pulse-navy shadow-sm focus:border-[#2B4C7E]/35 focus:outline-none focus:ring-1 focus:ring-[#2B4C7E]/25 dark:border-[#374151] dark:bg-[#0F172A] dark:text-gray-100 dark:placeholder:text-gray-500";
 const LABEL = "text-[11px] font-semibold uppercase tracking-wider text-pulse-muted";
 
 const MATRIX_ITEMS = [
@@ -43,35 +43,35 @@ const MATRIX_ITEMS = [
     label: "View Tools",
     description: "Asset visibility across zones.",
     icon: Wrench,
-    tone: "bg-amber-100 text-amber-800",
+    tone: "bg-amber-100 text-amber-800 dark:bg-amber-600 dark:text-white",
   },
   {
     key: "assign_jobs",
     label: "Assign Jobs",
     description: "Dispatcher-level authority.",
     icon: ClipboardList,
-    tone: "bg-sky-100 text-[#2B4C7E]",
+    tone: "bg-sky-100 text-[#2B4C7E] dark:bg-sky-600 dark:text-white",
   },
   {
     key: "manage_inventory",
     label: "Manage Inventory",
     description: "Modify stock and logistics.",
     icon: Box,
-    tone: "bg-slate-100 text-slate-700",
+    tone: "bg-slate-100 text-slate-700 dark:bg-slate-600 dark:text-white",
   },
   {
     key: "manage_work_requests",
     label: "Manage Work Requests",
     description: "Create and triage maintenance requests.",
     icon: Briefcase,
-    tone: "bg-indigo-50 text-indigo-800",
+    tone: "bg-indigo-50 text-indigo-800 dark:bg-indigo-600 dark:text-white",
   },
   {
     key: "view_reports",
     label: "View Reports",
     description: "Operational and compliance reports.",
     icon: Shield,
-    tone: "bg-emerald-50 text-emerald-900",
+    tone: "bg-emerald-50 text-emerald-900 dark:bg-emerald-600 dark:text-white",
   },
 ] as const;
 
@@ -93,9 +93,9 @@ function initials(name: string | null | undefined, email: string): string {
 }
 
 function roleBadge(role: string): string {
-  if (role === "company_admin") return "bg-sky-50 text-[#1e4a8a] ring-1 ring-sky-200/80";
-  if (role === "manager") return "bg-[#ebf8ff] text-[#2B4C7E] ring-1 ring-blue-200/80";
-  return "bg-slate-100 text-slate-700 ring-1 ring-slate-200/80";
+  if (role === "company_admin") return "app-badge-sky";
+  if (role === "manager") return "app-badge-blue";
+  return "app-badge-slate";
 }
 
 function roleGroupTitle(role: string): string {
@@ -105,9 +105,9 @@ function roleGroupTitle(role: string): string {
 }
 
 function certBadge(status: string): string {
-  if (status === "expired") return "bg-rose-50 text-rose-800 ring-1 ring-rose-200/70";
-  if (status === "valid") return "bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200/70";
-  return "bg-slate-100 text-slate-600 ring-1 ring-slate-200/80";
+  if (status === "expired") return "app-badge-red";
+  if (status === "valid") return "app-badge-emerald";
+  return "app-badge-slate";
 }
 
 const DEFAULT_MATRIX: Record<string, boolean> = {
@@ -359,7 +359,7 @@ export function WorkersApp() {
           <>
             <button
               type="button"
-              className="rounded-[10px] border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-pulse-navy shadow-sm hover:bg-slate-50"
+              className="app-btn-secondary px-4 py-2.5"
               onClick={() => {
                 setSettingsDraft({ ...fullSettings });
                 setCertRulesText(JSON.stringify(fullSettings.certification_rules ?? [], null, 2));
@@ -385,10 +385,10 @@ export function WorkersApp() {
       />
 
       {isSystemAdmin ? (
-        <div className="mt-6 rounded-xl border border-pulse-border bg-white p-4 shadow-sm">
+        <div className="mt-6 rounded-xl border border-pulse-border bg-white p-4 shadow-sm dark:border-[#1F2937] dark:bg-[#111827] dark:shadow-[0_2px_8px_rgba(0,0,0,0.35)]">
           <label className="block text-xs font-semibold uppercase tracking-wide text-pulse-muted">Company</label>
           <select
-            className="mt-1.5 w-full max-w-md rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2 text-sm font-medium text-pulse-navy outline-none focus:border-pulse-accent focus:ring-2 focus:ring-pulse-accent/25 md:w-auto"
+            className="mt-1.5 w-full max-w-md rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2 text-sm font-medium text-pulse-navy outline-none focus:border-pulse-accent focus:ring-2 focus:ring-pulse-accent/25 dark:border-[#374151] dark:bg-[#0F172A] dark:text-gray-100 md:w-auto"
             value={companyPick ?? ""}
             onChange={(e) => setCompanyPick(e.target.value || null)}
           >
@@ -409,7 +409,7 @@ export function WorkersApp() {
       ) : (
         <div className="mt-6 grid gap-6 lg:grid-cols-12">
           <div className="lg:col-span-4 xl:col-span-3">
-            <div className="rounded-xl border border-pulse-border bg-white p-5 shadow-sm ring-1 ring-slate-100/80">
+            <div className="rounded-xl border border-pulse-border bg-white p-5 shadow-sm ring-1 ring-slate-100/80 dark:border-[#1F2937] dark:bg-[#111827] dark:ring-white/[0.06] dark:shadow-[0_2px_8px_rgba(0,0,0,0.35)]">
               <div className="flex items-center gap-2 text-pulse-navy">
                 <Shield className="h-5 w-5 text-[#2B4C7E]" aria-hidden />
                 <h2 className="text-sm font-bold tracking-tight">Permissions matrix</h2>
@@ -422,7 +422,7 @@ export function WorkersApp() {
                   return (
                     <div
                       key={item.key}
-                      className="flex items-start justify-between gap-3 rounded-xl border border-slate-100 bg-slate-50/50 px-3 py-3"
+                      className="flex items-start justify-between gap-3 rounded-xl border border-slate-100 bg-slate-50/50 px-3 py-3 dark:border-[#374151] dark:bg-[#0F172A]/70"
                     >
                       <div className="flex min-w-0 gap-3">
                         <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${item.tone}`}>
@@ -443,7 +443,7 @@ export function WorkersApp() {
                         }`}
                       >
                         <span
-                          className={`absolute top-0.5 left-0.5 h-6 w-6 rounded-full bg-white shadow transition-transform ${
+                          className={`absolute top-0.5 left-0.5 h-6 w-6 rounded-full bg-white shadow transition-transform dark:bg-gray-200 ${
                             on ? "translate-x-5" : "translate-x-0"
                           }`}
                         />
@@ -460,7 +460,7 @@ export function WorkersApp() {
               >
                 {matrixSaving ? "Saving…" : "Save permissions"}
               </button>
-              <div className="mt-4 rounded-lg border border-amber-200/80 bg-amber-50/80 px-3 py-2 text-xs text-amber-950">
+              <div className="mt-4 rounded-lg border border-amber-200/80 bg-amber-50/80 px-3 py-2 text-xs text-amber-950 dark:border-amber-500/30 dark:bg-amber-950/45 dark:text-amber-100">
                 Permission changes apply immediately to all users in this role.
               </div>
             </div>
@@ -474,7 +474,7 @@ export function WorkersApp() {
                 placeholder="Search workers or roles…"
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
-                className="w-full rounded-lg border border-slate-200 bg-slate-50/80 py-2 pl-9 pr-3 text-sm text-pulse-navy placeholder:text-slate-400 outline-none focus:border-pulse-accent focus:ring-2 focus:ring-pulse-accent/25"
+                className="w-full rounded-lg border border-slate-200 bg-slate-50/80 py-2 pl-9 pr-3 text-sm text-pulse-navy placeholder:text-slate-400 outline-none focus:border-pulse-accent focus:ring-2 focus:ring-pulse-accent/25 dark:border-[#374151] dark:bg-[#0F172A] dark:text-gray-100 dark:placeholder:text-gray-500"
               />
             </div>
 
@@ -491,9 +491,9 @@ export function WorkersApp() {
                   items.length === 0 ? null : (
                     <div
                       key={role}
-                      className="overflow-hidden rounded-xl border border-pulse-border bg-white shadow-sm ring-1 ring-slate-100/80"
+                      className="overflow-hidden rounded-xl border border-pulse-border bg-white shadow-sm ring-1 ring-slate-100/80 dark:border-[#1F2937] dark:bg-[#111827] dark:ring-white/[0.06]"
                     >
-                      <div className="border-b border-slate-100 bg-slate-50/80 px-4 py-2.5">
+                      <div className="app-table-head-row px-4 py-2.5">
                         <p className="text-xs font-bold uppercase tracking-wide text-pulse-muted">
                           {roleGroupTitle(role)} ({items.length})
                         </p>
@@ -512,7 +512,7 @@ export function WorkersApp() {
                             {items.map((row) => (
                               <tr
                                 key={row.id}
-                                className="cursor-pointer border-b border-slate-50 last:border-0 hover:bg-slate-50/60"
+                                className="cursor-pointer border-b border-slate-50 last:border-0 hover:bg-slate-50/60 dark:border-[#1F2937] dark:hover:bg-[#0F172A]/90"
                                 onClick={() => setProfileId(row.id)}
                               >
                                 <td className="px-4 py-3">
@@ -546,17 +546,17 @@ export function WorkersApp() {
                                 <td className="relative px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
                                   <button
                                     type="button"
-                                    className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-pulse-navy hover:bg-slate-50"
+                                    className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-pulse-navy hover:bg-slate-50 dark:border-[#374151] dark:bg-[#1F2937] dark:text-gray-100 dark:hover:bg-[#374151]"
                                     aria-label="Actions"
                                     onClick={() => setMenuFor((m) => (m === row.id ? null : row.id))}
                                   >
                                     <MoreVertical className="h-4 w-4" />
                                   </button>
                                   {menuFor === row.id ? (
-                                    <div className="absolute right-4 z-30 mt-1 w-44 rounded-lg border border-slate-200 bg-white py-1 text-left shadow-lg">
+                                    <div className="absolute right-4 z-30 mt-1 w-44 rounded-lg border border-slate-200 bg-white py-1 text-left shadow-lg dark:border-[#374151] dark:bg-[#1F2937]">
                                       <button
                                         type="button"
-                                        className="block w-full px-3 py-2 text-left text-sm text-pulse-navy hover:bg-slate-50"
+                                        className="block w-full px-3 py-2 text-left text-sm text-pulse-navy hover:bg-slate-50 dark:text-gray-100 dark:hover:bg-[#374151]"
                                         onClick={() => {
                                           setMenuFor(null);
                                           setProfileId(row.id);
@@ -807,7 +807,7 @@ export function WorkersApp() {
                   profile.certifications.map((c) => (
                     <li
                       key={c.id}
-                      className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-100 bg-white px-3 py-2"
+                      className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-100 bg-white px-3 py-2 dark:border-[#374151] dark:bg-[#0F172A]"
                     >
                       <span className="font-medium text-pulse-navy">{c.name}</span>
                       <span className="text-xs text-pulse-muted">
@@ -857,7 +857,7 @@ export function WorkersApp() {
 
             <section>
               <h3 className={LABEL}>Compliance summary</h3>
-              <div className="mt-2 grid gap-2 rounded-xl border border-slate-100 bg-slate-50/80 p-4 text-sm sm:grid-cols-2">
+              <div className="mt-2 grid gap-2 rounded-xl border border-slate-100 bg-slate-50/80 p-4 text-sm sm:grid-cols-2 dark:border-[#374151] dark:bg-[#0F172A]/90 dark:text-gray-200">
                 <p>
                   Compliance rate:{" "}
                   <span className="font-bold text-pulse-navy">{profile.compliance_summary.compliance_rate_pct}%</span>
@@ -951,8 +951,8 @@ export function WorkersApp() {
                   onClick={() => setSettingsTab(t)}
                   className={`rounded-lg px-2.5 py-2 text-center text-xs font-semibold transition-colors sm:text-sm ${
                     settingsTab === t
-                      ? "bg-white text-[#2B4C7E] shadow-sm ring-1 ring-slate-200/90"
-                      : "text-pulse-muted hover:bg-white/70"
+                      ? "bg-white text-[#2B4C7E] shadow-sm ring-1 ring-slate-200/90 dark:bg-[#1e3a5f] dark:text-sky-100 dark:ring-sky-500/35"
+                      : "text-pulse-muted hover:bg-white/70 dark:text-gray-400 dark:hover:bg-[#1F2937]"
                   }`}
                 >
                   {t}

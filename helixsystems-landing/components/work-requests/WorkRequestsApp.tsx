@@ -52,7 +52,7 @@ type WorkerOpt = { id: string; email: string; full_name: string | null; role: st
 const PRIMARY_BTN =
   "rounded-[10px] bg-[#2B4C7E] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#234066] disabled:opacity-50";
 const FIELD =
-  "mt-1.5 w-full rounded-[10px] border border-slate-200/90 bg-white px-3 py-2.5 text-sm text-pulse-navy shadow-sm focus:border-[#2B4C7E]/35 focus:outline-none focus:ring-1 focus:ring-[#2B4C7E]/25";
+  "mt-1.5 w-full rounded-[10px] border border-slate-200/90 bg-white px-3 py-2.5 text-sm text-pulse-navy shadow-sm focus:border-[#2B4C7E]/35 focus:outline-none focus:ring-1 focus:ring-[#2B4C7E]/25 dark:border-[#374151] dark:bg-[#0F172A] dark:text-gray-100 dark:placeholder:text-gray-500";
 const LABEL = "text-[11px] font-semibold uppercase tracking-wider text-pulse-muted";
 
 function managerOrAbove(role: string | undefined, isSys: boolean | undefined): boolean {
@@ -78,28 +78,28 @@ function formatDue(iso: string | null): string {
 function statusBadgeClass(display: string): string {
   switch (display) {
     case "overdue":
-      return "bg-[#fdebeb] text-[#c53030] ring-1 ring-red-200/80";
+      return "bg-[#fdebeb] text-[#c53030] ring-1 ring-red-200/80 dark:bg-red-600 dark:text-white dark:ring-red-500/45";
     case "in_progress":
-      return "bg-[#ebf8ff] text-[#3182ce] ring-1 ring-blue-200/80";
+      return "bg-[#ebf8ff] text-[#3182ce] ring-1 ring-blue-200/80 dark:bg-blue-600 dark:text-white dark:ring-blue-500/40";
     case "completed":
-      return "bg-[#e6fffa] text-[#38a169] ring-1 ring-emerald-200/70";
+      return "bg-[#e6fffa] text-[#38a169] ring-1 ring-emerald-200/70 dark:bg-emerald-600 dark:text-white dark:ring-emerald-500/40";
     case "cancelled":
-      return "bg-slate-100 text-slate-600 ring-1 ring-slate-200/80";
+      return "bg-slate-100 text-slate-600 ring-1 ring-slate-200/80 dark:bg-slate-600 dark:text-white dark:ring-slate-500/40";
     default:
-      return "bg-sky-50/90 text-[#2B4C7E] ring-1 ring-sky-200/70";
+      return "bg-sky-50/90 text-[#2B4C7E] ring-1 ring-sky-200/70 dark:bg-sky-600 dark:text-white dark:ring-sky-400/40";
   }
 }
 
 function priorityBadgeClass(p: string): string {
   switch (p) {
     case "critical":
-      return "bg-rose-50 text-rose-800 ring-1 ring-rose-200/80";
+      return "bg-rose-50 text-rose-800 ring-1 ring-rose-200/80 dark:bg-red-600 dark:text-white dark:ring-red-500/45";
     case "high":
-      return "bg-orange-50 text-orange-800 ring-1 ring-orange-200/70";
+      return "bg-orange-50 text-orange-800 ring-1 ring-orange-200/70 dark:bg-orange-600 dark:text-white dark:ring-orange-400/40";
     case "medium":
-      return "bg-sky-50 text-[#3182ce] ring-1 ring-sky-200/70";
+      return "bg-sky-50 text-[#3182ce] ring-1 ring-sky-200/70 dark:bg-sky-600 dark:text-white dark:ring-sky-400/40";
     default:
-      return "bg-slate-100 text-slate-600 ring-1 ring-slate-200/75";
+      return "bg-slate-100 text-slate-600 ring-1 ring-slate-200/75 dark:bg-slate-600 dark:text-white dark:ring-slate-500/40";
   }
 }
 
@@ -533,7 +533,7 @@ export function WorkRequestsApp() {
           <>
             <button
               type="button"
-              className="inline-flex items-center gap-2 rounded-[10px] border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-pulse-navy shadow-sm hover:bg-slate-50"
+              className="app-btn-secondary inline-flex items-center gap-2 px-4 py-2.5"
               onClick={() => setSettingsOpen(true)}
             >
               <Settings className="h-4 w-4" aria-hidden />
@@ -552,10 +552,10 @@ export function WorkRequestsApp() {
       />
 
       {isSystemAdmin ? (
-        <div className="mt-6 rounded-xl border border-pulse-border bg-white p-4 shadow-sm">
+        <div className="mt-6 rounded-xl border border-pulse-border bg-white p-4 shadow-sm dark:border-[#1F2937] dark:bg-[#111827] dark:shadow-[0_2px_8px_rgba(0,0,0,0.35)]">
           <label className="block text-xs font-semibold uppercase tracking-wide text-pulse-muted">Company</label>
           <select
-            className="mt-1.5 w-full max-w-md rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2 text-sm font-medium text-pulse-navy outline-none focus:border-pulse-accent focus:ring-2 focus:ring-pulse-accent/25 md:w-auto"
+            className="mt-1.5 w-full max-w-md rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2 text-sm font-medium text-pulse-navy outline-none focus:border-pulse-accent focus:ring-2 focus:ring-pulse-accent/25 dark:border-[#374151] dark:bg-[#0F172A] dark:text-gray-100 md:w-auto"
             value={companyPick ?? ""}
             onChange={(e) => {
               setCompanyPick(e.target.value || null);
@@ -590,11 +590,11 @@ export function WorkRequestsApp() {
                     setQ(e.target.value);
                     setPage(0);
                   }}
-                  className="w-full rounded-lg border border-slate-200 bg-slate-50/80 py-2 pl-9 pr-3 text-sm text-pulse-navy placeholder:text-slate-400 outline-none focus:border-pulse-accent focus:ring-2 focus:ring-pulse-accent/25"
+                  className="w-full rounded-lg border border-slate-200 bg-slate-50/80 py-2 pl-9 pr-3 text-sm text-pulse-navy placeholder:text-slate-400 outline-none focus:border-pulse-accent focus:ring-2 focus:ring-pulse-accent/25 dark:border-[#374151] dark:bg-[#0F172A] dark:text-gray-100 dark:placeholder:text-gray-500"
                 />
               </div>
               <select
-                className="rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2 text-sm font-medium text-pulse-navy outline-none focus:border-pulse-accent focus:ring-2 focus:ring-pulse-accent/25"
+                className="rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2 text-sm font-medium text-pulse-navy outline-none focus:border-pulse-accent focus:ring-2 focus:ring-pulse-accent/25 dark:border-[#374151] dark:bg-[#0F172A] dark:text-gray-100"
                 value={statusFilter}
                 onChange={(e) => {
                   setStatusFilter(e.target.value);
@@ -609,7 +609,7 @@ export function WorkRequestsApp() {
                 <option value="overdue">Overdue</option>
               </select>
               <select
-                className="rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2 text-sm font-medium text-pulse-navy outline-none focus:border-pulse-accent focus:ring-2 focus:ring-pulse-accent/25"
+                className="rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2 text-sm font-medium text-pulse-navy outline-none focus:border-pulse-accent focus:ring-2 focus:ring-pulse-accent/25 dark:border-[#374151] dark:bg-[#0F172A] dark:text-gray-100"
                 value={priorityFilter}
                 onChange={(e) => {
                   setPriorityFilter(e.target.value);
@@ -623,7 +623,7 @@ export function WorkRequestsApp() {
                 <option value="critical">Critical</option>
               </select>
               <select
-                className="rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2 text-sm font-medium text-pulse-navy outline-none focus:border-pulse-accent focus:ring-2 focus:ring-pulse-accent/25"
+                className="rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2 text-sm font-medium text-pulse-navy outline-none focus:border-pulse-accent focus:ring-2 focus:ring-pulse-accent/25 dark:border-[#374151] dark:bg-[#0F172A] dark:text-gray-100"
                 value={zoneFilter}
                 onChange={(e) => {
                   setZoneFilter(e.target.value);
@@ -644,7 +644,7 @@ export function WorkRequestsApp() {
                   setDateFrom(e.target.value);
                   setPage(0);
                 }}
-                className="rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2 text-sm text-pulse-navy outline-none focus:border-pulse-accent focus:ring-2 focus:ring-pulse-accent/25"
+                className="rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2 text-sm text-pulse-navy outline-none focus:border-pulse-accent focus:ring-2 focus:ring-pulse-accent/25 dark:border-[#374151] dark:bg-[#0F172A] dark:text-gray-100"
               />
               <input
                 type="date"
@@ -653,7 +653,7 @@ export function WorkRequestsApp() {
                   setDateTo(e.target.value);
                   setPage(0);
                 }}
-                className="rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2 text-sm text-pulse-navy outline-none focus:border-pulse-accent focus:ring-2 focus:ring-pulse-accent/25"
+                className="rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2 text-sm text-pulse-navy outline-none focus:border-pulse-accent focus:ring-2 focus:ring-pulse-accent/25 dark:border-[#374151] dark:bg-[#0F172A] dark:text-gray-100"
               />
             </div>
             <button
@@ -665,7 +665,7 @@ export function WorkRequestsApp() {
             </button>
           </div>
 
-          <div className="mt-4 overflow-hidden rounded-xl border border-pulse-border bg-white shadow-sm ring-1 ring-slate-100/80">
+          <div className="app-data-shell mt-4">
             {listLoading ? (
               <div className="flex items-center justify-center gap-2 py-16 text-pulse-muted">
                 <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
@@ -677,7 +677,7 @@ export function WorkRequestsApp() {
               <div className="overflow-x-auto">
                 <table className="min-w-[1100px] w-full border-collapse text-left text-sm">
                   <thead>
-                    <tr className="border-b border-pulse-border bg-slate-50/80 text-xs font-bold uppercase tracking-wide text-pulse-muted">
+                    <tr className="app-table-head-row border-pulse-border">
                       <th className="px-4 py-3">Status</th>
                       <th className="px-4 py-3">Priority</th>
                       <th className="px-4 py-3">Asset &amp; ID</th>
@@ -697,7 +697,7 @@ export function WorkRequestsApp() {
                       return (
                         <tr
                           key={row.id}
-                          className="cursor-pointer border-b border-slate-100 last:border-0 hover:bg-slate-50/60"
+                          className="cursor-pointer border-b border-slate-100 last:border-0 hover:bg-slate-50/60 dark:border-[#1F2937] dark:hover:bg-[#0F172A]/90"
                           onClick={() => setDetailId(row.id)}
                         >
                           <td className="px-4 py-3 align-top">
@@ -752,17 +752,17 @@ export function WorkRequestsApp() {
                           <td className="relative px-4 py-3 text-right align-top" onClick={(e) => e.stopPropagation()}>
                             <button
                               type="button"
-                              className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-pulse-navy hover:bg-slate-50"
+                              className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-pulse-navy hover:bg-slate-50 dark:border-[#374151] dark:bg-[#1F2937] dark:text-gray-100 dark:hover:bg-[#374151]"
                               aria-label="Row actions"
                               onClick={() => setMenuFor((m) => (m === row.id ? null : row.id))}
                             >
                               <MoreVertical className="h-4 w-4" />
                             </button>
                             {menuFor === row.id ? (
-                              <div className="absolute right-4 z-30 mt-1 w-48 rounded-lg border border-slate-200 bg-white py-1 text-left shadow-lg">
+                              <div className="absolute right-4 z-30 mt-1 w-48 rounded-lg border border-slate-200 bg-white py-1 text-left shadow-lg dark:border-[#374151] dark:bg-[#1F2937]">
                                 <button
                                   type="button"
-                                  className="block w-full px-3 py-2 text-left text-sm text-pulse-navy hover:bg-slate-50"
+                                  className="block w-full px-3 py-2 text-left text-sm text-pulse-navy hover:bg-slate-50 dark:text-gray-100 dark:hover:bg-[#374151]"
                                   onClick={() => {
                                     setMenuFor(null);
                                     setDetailId(row.id);
@@ -772,14 +772,14 @@ export function WorkRequestsApp() {
                                 </button>
                                 <button
                                   type="button"
-                                  className="block w-full px-3 py-2 text-left text-sm text-pulse-navy hover:bg-slate-50"
+                                  className="block w-full px-3 py-2 text-left text-sm text-pulse-navy hover:bg-slate-50 dark:text-gray-100 dark:hover:bg-[#374151]"
                                   onClick={() => void quickStatus(row.id, "in_progress")}
                                 >
                                   Mark in progress
                                 </button>
                                 <button
                                   type="button"
-                                  className="block w-full px-3 py-2 text-left text-sm text-pulse-navy hover:bg-slate-50"
+                                  className="block w-full px-3 py-2 text-left text-sm text-pulse-navy hover:bg-slate-50 dark:text-gray-100 dark:hover:bg-[#374151]"
                                   onClick={() => void quickStatus(row.id, "completed")}
                                 >
                                   Mark completed
@@ -794,7 +794,7 @@ export function WorkRequestsApp() {
                 </table>
               </div>
             )}
-            <div className="flex flex-col gap-2 border-t border-pulse-border px-4 py-3 text-sm text-pulse-muted sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-col gap-2 border-t border-pulse-border px-4 py-3 text-sm text-pulse-muted dark:border-[#1F2937] sm:flex-row sm:items-center sm:justify-between">
               <p>
                 Showing {start}–{end} of {total} requests
               </p>
@@ -803,7 +803,7 @@ export function WorkRequestsApp() {
                   type="button"
                   disabled={page <= 0}
                   onClick={() => setPage((p) => Math.max(0, p - 1))}
-                  className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-bold text-pulse-navy disabled:opacity-40"
+                  className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-bold text-pulse-navy disabled:opacity-40 dark:border-[#374151] dark:bg-[#1F2937] dark:text-gray-100 dark:hover:bg-[#374151]"
                 >
                   Prev
                 </button>
@@ -814,7 +814,7 @@ export function WorkRequestsApp() {
                   type="button"
                   disabled={page + 1 >= totalPages}
                   onClick={() => setPage((p) => p + 1)}
-                  className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-bold text-pulse-navy disabled:opacity-40"
+                  className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-bold text-pulse-navy disabled:opacity-40 dark:border-[#374151] dark:bg-[#1F2937] dark:text-gray-100 dark:hover:bg-[#374151]"
                 >
                   Next
                 </button>
@@ -823,14 +823,14 @@ export function WorkRequestsApp() {
           </div>
 
           <div className="mt-6 grid gap-4 lg:grid-cols-3">
-            <div className="rounded-xl border border-rose-200/80 bg-[#fff5f5] p-5 shadow-sm lg:col-span-2">
+            <div className="rounded-xl border border-rose-200/80 bg-[#fff5f5] p-5 shadow-sm dark:border-red-500/35 dark:bg-red-950/45 lg:col-span-2">
               <div className="flex items-start gap-3">
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#c53030] text-white">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#c53030] text-white dark:bg-red-600">
                   <AlertTriangle className="h-5 w-5" aria-hidden />
                 </span>
                 <div className="min-w-0">
-                  <h2 className="text-base font-bold text-rose-900">Overdue Critical Tasks</h2>
-                  <p className="mt-1 text-sm text-rose-900/85">
+                  <h2 className="text-base font-bold text-rose-900 dark:text-red-100">Overdue Critical Tasks</h2>
+                  <p className="mt-1 text-sm text-rose-900/85 dark:text-red-100/90">
                     There {overdueCritical === 1 ? "is" : "are"} {overdueCritical} critical work{" "}
                     {overdueCritical === 1 ? "request" : "requests"} past due that need immediate attention.
                   </p>
@@ -844,9 +844,9 @@ export function WorkRequestsApp() {
                 </div>
               </div>
             </div>
-            <div className="rounded-xl border border-pulse-border bg-white p-5 shadow-sm ring-1 ring-slate-100/80 border-l-4 border-l-[#2B4C7E]">
-              <span className="text-xs font-semibold uppercase tracking-wide text-pulse-muted">Total requests</span>
-              <p className="mt-3 text-3xl font-bold tabular-nums text-pulse-navy">{total}</p>
+            <div className="rounded-xl border border-pulse-border bg-white p-5 shadow-sm ring-1 ring-slate-100/80 border-l-4 border-l-[#2B4C7E] dark:border-[#1F2937] dark:bg-[#111827] dark:ring-white/[0.06] dark:border-l-[#3B82F6]">
+              <span className="text-xs font-semibold uppercase tracking-wide text-pulse-muted dark:text-gray-400">Total requests</span>
+              <p className="mt-3 text-3xl font-bold tabular-nums text-pulse-navy dark:text-gray-100">{total}</p>
               <p className="mt-1 text-sm text-pulse-muted">In current filter scope</p>
             </div>
           </div>
@@ -1177,7 +1177,7 @@ export function WorkRequestsApp() {
               <h3 className={LABEL}>Comments</h3>
               <div className="mt-2 space-y-3">
                 {detail.comments.map((c) => (
-                  <div key={c.id} className="rounded-lg border border-slate-200/90 bg-white p-3">
+                  <div key={c.id} className="rounded-lg border border-slate-200/90 bg-white p-3 dark:border-[#374151] dark:bg-[#0F172A]">
                     <p className="text-xs text-pulse-muted">
                       {c.user_name ?? c.user_id} · {new Date(c.created_at).toLocaleString()}
                     </p>
@@ -1246,8 +1246,8 @@ export function WorkRequestsApp() {
                     onClick={() => setSettingsTab(t)}
                     className={`rounded-lg px-2.5 py-2 text-center text-xs font-semibold transition-colors sm:text-sm ${
                       settingsTab === t
-                        ? "bg-white text-[#2B4C7E] shadow-sm ring-1 ring-slate-200/90"
-                        : "text-pulse-muted hover:bg-white/70 hover:text-pulse-navy"
+                        ? "bg-white text-[#2B4C7E] shadow-sm ring-1 ring-slate-200/90 dark:bg-[#1e3a5f] dark:text-sky-100 dark:ring-sky-500/35"
+                        : "text-pulse-muted hover:bg-white/70 hover:text-pulse-navy dark:text-gray-400 dark:hover:bg-[#1F2937]"
                     }`}
                   >
                     {t}
@@ -1259,7 +1259,7 @@ export function WorkRequestsApp() {
             {settingsTab === "Statuses" ? (
               <div className="space-y-3">
                 {(["open", "in_progress", "completed", "cancelled"] as const).map((k) => (
-                  <label key={k} className="flex items-center justify-between gap-3 rounded-lg border border-slate-200/80 bg-white px-3 py-2">
+                  <label key={k} className="flex items-center justify-between gap-3 rounded-lg border border-slate-200/80 bg-white px-3 py-2 dark:border-[#374151] dark:bg-[#0F172A]">
                     <span className="text-sm font-medium capitalize text-pulse-navy">{k.replace(/_/g, " ")}</span>
                     <input
                       type="checkbox"
@@ -1340,7 +1340,7 @@ export function WorkRequestsApp() {
             {settingsTab === "Notifications" ? (
               <div className="space-y-3">
                 {(["new_request", "assignment", "overdue"] as const).map((k) => (
-                  <label key={k} className="flex items-center justify-between gap-3 rounded-lg border border-slate-200/80 bg-white px-3 py-2">
+                  <label key={k} className="flex items-center justify-between gap-3 rounded-lg border border-slate-200/80 bg-white px-3 py-2 dark:border-[#374151] dark:bg-[#0F172A]">
                     <span className="text-sm font-medium text-pulse-navy capitalize">{k.replace(/_/g, " ")}</span>
                     <input
                       type="checkbox"

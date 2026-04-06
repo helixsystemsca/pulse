@@ -38,6 +38,56 @@ html {
   .app-shadow-card {
     @apply shadow-sm dark:shadow-[0_2px_8px_rgba(0,0,0,0.4)];
   }
+
+  /**
+   * Outline / secondary actions (Settings, Export, etc.) — same on all feature pages.
+   */
+  .app-btn-secondary {
+    @apply rounded-[10px] border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-pulse-navy shadow-sm transition-colors hover:bg-slate-50 disabled:opacity-50 dark:border-[#374151] dark:bg-[#1F2937] dark:text-gray-100 dark:hover:bg-[#374151];
+  }
+
+  /** Form fields — shared light/dark */
+  .app-field {
+    @apply w-full rounded-[10px] border border-slate-200/90 bg-white px-3 py-2.5 text-sm text-pulse-navy shadow-sm placeholder:text-slate-400 focus:border-[#2B4C7E]/35 focus:outline-none focus:ring-1 focus:ring-[#2B4C7E]/25 dark:border-[#374151] dark:bg-[#0F172A] dark:text-gray-100 dark:placeholder:text-gray-500;
+  }
+
+  /** Tables: header row band */
+  .app-table-head-row {
+    @apply border-b border-pulse-border bg-slate-50/80 text-xs font-bold uppercase tracking-wide text-pulse-muted dark:border-[#1F2937] dark:bg-[#0F172A] dark:text-gray-400;
+  }
+
+  /** Data table wrapper (inventory, work requests, workers list) */
+  .app-data-shell {
+    @apply overflow-hidden rounded-xl border border-pulse-border bg-white shadow-sm ring-1 ring-slate-100/80 dark:border-[#1F2937] dark:bg-[#111827] dark:ring-white/[0.06] dark:shadow-[0_2px_8px_rgba(0,0,0,0.35)];
+  }
+
+  /**
+   * Status chips — light: soft fills · dark: saturated + white label (readable).
+   */
+  .app-badge-emerald {
+    @apply bg-emerald-100 text-emerald-900 ring-1 ring-emerald-200/80 dark:bg-emerald-600 dark:text-white dark:ring-emerald-500/45;
+  }
+  .app-badge-amber {
+    @apply bg-amber-100 text-amber-950 ring-1 ring-amber-200/80 dark:bg-amber-600 dark:text-white dark:ring-amber-400/40;
+  }
+  .app-badge-red {
+    @apply bg-red-100 text-red-800 ring-1 ring-red-200/80 dark:bg-red-600 dark:text-white dark:ring-red-500/45;
+  }
+  .app-badge-blue {
+    @apply bg-blue-100 text-blue-900 ring-1 ring-blue-200/80 dark:bg-blue-600 dark:text-white dark:ring-blue-400/45;
+  }
+  .app-badge-slate {
+    @apply bg-slate-100 text-slate-800 ring-1 ring-slate-200/80 dark:bg-slate-600 dark:text-white dark:ring-slate-500/40;
+  }
+  .app-badge-violet {
+    @apply bg-violet-100 text-violet-900 ring-1 ring-violet-200/75 dark:bg-violet-600 dark:text-white dark:ring-violet-400/45;
+  }
+  .app-badge-orange {
+    @apply bg-orange-100 text-orange-900 ring-1 ring-orange-200/80 dark:bg-orange-600 dark:text-white dark:ring-orange-400/40;
+  }
+  .app-badge-sky {
+    @apply bg-sky-100 text-[#1e4a8a] ring-1 ring-sky-200/75 dark:bg-sky-600 dark:text-white dark:ring-sky-400/40;
+  }
 }
 
 @layer base {
