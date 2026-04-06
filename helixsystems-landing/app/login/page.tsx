@@ -129,14 +129,20 @@ export default function LoginPage() {
             backgroundSize: "32px 32px",
           }}
         />
-        <div className="absolute -right-[18%] top-[-22%] h-[96%] w-[min(78vw,760px)] rounded-[48%] bg-gradient-to-b from-[#30568b]/[0.14] via-[#4a6fa5]/[0.08] to-transparent blur-3xl dark:from-[#4a6fa5]/[0.12] dark:via-[#30568b]/[0.06]" />
-        <div className="absolute right-0 top-[12%] h-[68%] w-[min(52vw,520px)] rotate-[10deg] rounded-[42%] bg-gradient-to-l from-[#30568b]/10 via-transparent to-transparent opacity-80 blur-2xl dark:from-[#4a6fa5]/12" />
-        <div className="absolute right-[8%] bottom-[-8%] h-[48%] w-[min(40vw,400px)] -rotate-[8deg] rounded-[50%] bg-gradient-to-tl from-[#4a6fa5]/8 to-transparent blur-3xl dark:from-[#30568b]/10" />
+        {/* Soft depth: blue (top-left) + indigo (bottom-right), low opacity */}
+        <div
+          className="absolute inset-0 bg-[radial-gradient(ellipse_85%_65%_at_0%_0%,rgba(37,99,235,0.11),transparent_58%)] dark:bg-[radial-gradient(ellipse_85%_65%_at_0%_0%,rgba(59,130,246,0.14),transparent_55%)]"
+          aria-hidden
+        />
+        <div
+          className="absolute inset-0 bg-[radial-gradient(ellipse_75%_60%_at_100%_100%,rgba(79,70,229,0.09),transparent_52%)] dark:bg-[radial-gradient(ellipse_75%_60%_at_100%_100%,rgba(99,102,241,0.12),transparent_52%)]"
+          aria-hidden
+        />
       </div>
 
       <div className="relative flex min-h-0 flex-1 flex-col justify-center py-10 md:py-14">
         <div className="mx-auto flex w-full max-w-[400px] flex-col">
-          <div className="rounded-[2rem] border border-[#c3c6d1]/35 bg-white/95 p-6 shadow-[0_25px_65px_-16px_rgba(48,86,139,0.14),0_10px_28px_-10px_rgba(15,23,42,0.08)] backdrop-blur-[2px] dark:border-[#374151] dark:bg-[#111827]/95 dark:shadow-[0_25px_65px_-16px_rgba(0,0,0,0.45)] sm:p-8">
+          <div className="rounded-[2rem] border border-white/30 bg-white/80 p-6 shadow-xl backdrop-blur-md dark:border-white/15 dark:bg-slate-900/80 dark:shadow-xl dark:shadow-black/40 sm:p-8">
             <div className="flex flex-col items-center">
               <Link
                 href={pulseRoutes.pulseLanding}
@@ -174,7 +180,7 @@ export default function LoginPage() {
                   onChange={(e) => setIdentifier(e.target.value)}
                   disabled={submitting}
                   aria-invalid={Boolean(fieldErrors.identifier)}
-                  className={`mt-1.5 w-full rounded-lg border bg-slate-50/80 px-3 py-2.5 text-sm text-pulse-navy outline-none ring-pulse-accent/30 transition-all duration-200 placeholder:text-slate-400 focus:border-pulse-accent focus:bg-white focus:ring-2 disabled:opacity-60 ${
+                  className={`mt-1.5 w-full rounded-lg border bg-slate-50/80 px-3 py-2.5 text-sm text-pulse-navy outline-none transition-all duration-200 placeholder:text-slate-400 focus:border-blue-500/40 focus:bg-white focus:ring-2 focus:ring-blue-500/50 disabled:opacity-60 dark:focus:bg-slate-950/80 ${
                     fieldErrors.identifier ? "border-red-400" : "border-pulse-border"
                   }`}
                 />
@@ -197,7 +203,7 @@ export default function LoginPage() {
                     onChange={(e) => setPassword(e.target.value)}
                     disabled={submitting}
                     aria-invalid={Boolean(fieldErrors.password)}
-                    className={`w-full rounded-lg border bg-slate-50/80 py-2.5 pl-3 pr-11 text-sm text-pulse-navy outline-none ring-pulse-accent/30 transition-all duration-200 focus:border-pulse-accent focus:bg-white focus:ring-2 disabled:opacity-60 ${
+                    className={`w-full rounded-lg border bg-slate-50/80 py-2.5 pl-3 pr-11 text-sm text-pulse-navy outline-none transition-all duration-200 focus:border-blue-500/40 focus:bg-white focus:ring-2 focus:ring-blue-500/50 disabled:opacity-60 dark:focus:bg-slate-950/80 ${
                       fieldErrors.password ? "border-red-400" : "border-pulse-border"
                     }`}
                   />
@@ -228,7 +234,7 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={submitting}
-                className="flex w-full items-center justify-center gap-2 rounded-xl bg-pulse-accent py-3 text-sm font-semibold text-white shadow-md shadow-blue-600/20 transition-all duration-200 ease-in-out hover:-translate-y-0.5 hover:bg-pulse-accent-hover hover:shadow-lg hover:shadow-blue-600/25 disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-70"
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 py-3 text-sm font-semibold text-white shadow-md shadow-blue-900/15 transition-all duration-200 ease-in-out hover:from-blue-600 hover:to-indigo-600 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-indigo-600/25 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-70 disabled:shadow-md"
               >
                 {submitting ? (
                   <>
