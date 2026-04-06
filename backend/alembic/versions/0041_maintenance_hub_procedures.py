@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import sqlalchemy as sa
 from alembic import op
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 
 revision = "0041"
 down_revision = "0040"
@@ -15,8 +15,8 @@ depends_on = None
 def upgrade() -> None:
     op.create_table(
         "pulse_procedures",
-        sa.Column("id", sa.String(length=36), nullable=False),
-        sa.Column("company_id", sa.String(length=36), nullable=False),
+        sa.Column("id", UUID(as_uuid=False), nullable=False),
+        sa.Column("company_id", UUID(as_uuid=False), nullable=False),
         sa.Column("title", sa.String(length=255), nullable=False),
         sa.Column("steps", JSONB(), nullable=False, server_default=sa.text("'[]'::jsonb")),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
@@ -28,11 +28,11 @@ def upgrade() -> None:
 
     op.create_table(
         "pulse_preventative_rules",
-        sa.Column("id", sa.String(length=36), nullable=False),
-        sa.Column("company_id", sa.String(length=36), nullable=False),
-        sa.Column("equipment_id", sa.String(length=36), nullable=False),
+        sa.Column("id", UUID(as_uuid=False), nullable=False),
+        sa.Column("company_id", UUID(as_uuid=False), nullable=False),
+        sa.Column("equipment_id", UUID(as_uuid=False), nullable=False),
         sa.Column("frequency", sa.String(length=128), nullable=False),
-        sa.Column("procedure_id", sa.String(length=36), nullable=True),
+        sa.Column("procedure_id", UUID(as_uuid=False), nullable=True),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
         sa.ForeignKeyConstraint(["company_id"], ["companies.id"], ondelete="CASCADE"),
@@ -56,7 +56,7 @@ def upgrade() -> None:
     )
     op.add_column(
         "pulse_work_requests",
-        sa.Column("procedure_id", sa.String(length=36), nullable=True),
+        sa.Column("procedure_id", UUID(as_uuid=False), nullable=True),
     )
     op.create_index("ix_pulse_work_requests_work_order_type", "pulse_work_requests", ["work_order_type"])
     op.create_index("ix_pulse_work_requests_procedure_id", "pulse_work_requests", ["procedure_id"])
