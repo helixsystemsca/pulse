@@ -59,7 +59,7 @@ export const pulseSystemNav = [
  */
 export const pulseTenantSidebarNav = [
   { href: "/overview", label: "Dashboard", icon: "layout" as const },
-  { href: "/dashboard/compliance", label: "Compliance", icon: "shield-check" as const },
+  { href: "/dashboard/compliance", label: "Inspections & Logs", icon: "scroll-text" as const },
   { href: "/schedule", label: "Schedule", icon: "calendar" as const },
   { href: "/monitoring", label: "Monitoring", icon: "activity" as const },
   { href: "/projects", label: "Projects", icon: "folder-kanban" as const },

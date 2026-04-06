@@ -1,5 +1,5 @@
 /**
- * Route group for in-app dashboards (e.g. compliance analytics under `/dashboard/compliance`).
+ * Route group for in-app dashboards (e.g. Inspections & Logs under `/dashboard/compliance`).
  */
 import { AppLayout } from "@/components/app/AppLayout";
 import type { Metadata } from "next";

@@ -19,7 +19,6 @@ import {
   MapPin,
   Package,
   ScrollText,
-  ShieldCheck,
   UserCog,
   Wrench,
 } from "lucide-react";
@@ -40,7 +39,6 @@ const ICONS: Record<PulseSidebarIcon, LucideIcon> = {
   wrench: Wrench,
   "map-pin": MapPin,
   layers: Layers,
-  "shield-check": ShieldCheck,
   building: Building2,
   "user-cog": UserCog,
   "scroll-text": ScrollText,

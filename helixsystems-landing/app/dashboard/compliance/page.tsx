@@ -1,9 +1,9 @@
 "use client";
 
 /**
- * Compliance analytics page: requires API session; renders `ComplianceApp` for managers+.
+ * Inspections & Logs — templates and records (client-persisted). Route: `/dashboard/compliance`.
  */
-import { ComplianceApp } from "@/components/compliance/ComplianceApp";
+import { InspectionsLogsApp } from "@/components/inspections-logs/InspectionsLogsApp";
 import { isApiMode } from "@/lib/api";
 import { navigateToPulseLogin } from "@/lib/pulse-app";
 import { readSession } from "@/lib/pulse-session";
@@ -33,5 +33,5 @@ export default function ComplianceDashboardPage() {
     );
   }
 
-  return <ComplianceApp />;
+  return <InspectionsLogsApp />;
 }

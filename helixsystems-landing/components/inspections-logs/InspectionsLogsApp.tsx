@@ -1,0 +1,651 @@
+"use client";
+
+import { ClipboardList, Eye, Pencil, Plus, Trash2 } from "lucide-react";
+import type { ReactNode } from "react";
+import { useCallback, useMemo, useState } from "react";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { useInspectionsLogsStore } from "@/hooks/useInspectionsLogsStore";
+import type { EntryRecord, InspectionTemplate, LogFieldDef, LogTemplate } from "@/lib/inspectionsLogsTypes";
+import { readSession } from "@/lib/pulse-session";
+import { CreateDropdown } from "./CreateDropdown";
+import { InspectionBuilder } from "./InspectionBuilder";
+import { LogBuilder } from "./LogBuilder";
+
+const TABLE_WRAP = "mt-6 overflow-hidden rounded-2xl border border-stealth-border bg-stealth-card shadow-stealth-card";
+const TH = "px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-stealth-muted";
+const TD = "px-4 py-3 text-sm text-stealth-primary";
+const ROW = "border-t border-stealth-border transition-colors hover:bg-stealth-main/35";
+const LINKISH =
+  "text-xs font-semibold text-stealth-accent hover:text-stealth-accent/80 disabled:opacity-40";
+const TAB_ACTIVE = "border-b-2 border-stealth-accent text-stealth-primary";
+const TAB_IDLE = "border-b-2 border-transparent text-stealth-muted hover:text-stealth-secondary";
+
+function formatWhen(iso: string | null): string {
+  if (!iso) return "—";
+  return new Date(iso).toLocaleString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function BtnRow({ children }: { children: ReactNode }) {
+  return <div className="flex flex-wrap items-center gap-2">{children}</div>;
+}
+
+export function InspectionsLogsApp() {
+  const store = useInspectionsLogsStore();
+  const session = readSession();
+  const userId = session?.email ?? session?.sub ?? null;
+
+  const [tab, setTab] = useState<"inspections" | "logs">("inspections");
+  const [builder, setBuilder] = useState<null | { kind: "inspection" | "log"; editId: string | null }>(
+    null,
+  );
+
+  const [inspectFill, setInspectFill] = useState<InspectionTemplate | null>(null);
+  const [logFill, setLogFill] = useState<LogTemplate | null>(null);
+  const [viewEntry, setViewEntry] = useState<EntryRecord | null>(null);
+
+  const inspectionEntries = useMemo(
+    () => store.entries.filter((e) => e.template_type === "inspection"),
+    [store.entries],
+  );
+  const logEntries = useMemo(() => store.entries.filter((e) => e.template_type === "log"), [store.entries]);
+
+  const openNewInspection = useCallback(() => {
+    setTab("inspections");
+    setBuilder({ kind: "inspection", editId: null });
+  }, []);
+
+  const openNewLog = useCallback(() => {
+    setTab("logs");
+    setBuilder({ kind: "log", editId: null });
+  }, []);
+
+  const saveInspectionTemplate = (t: InspectionTemplate) => {
+    const existing = store.templates.find((x) => x.id === t.id);
+    if (existing) store.updateTemplate(t);
+    else store.addTemplate(t);
+    setBuilder(null);
+  };
+
+  const saveLogTemplate = (t: LogTemplate) => {
+    const existing = store.templates.find((x) => x.id === t.id);
+    if (existing) store.updateTemplate(t);
+    else store.addTemplate(t);
+    setBuilder(null);
+  };
+
+  return (
+    <div className="space-y-8">
+      <PageHeader
+        title="Inspections & Logs"
+        description="Create checklists and log forms, then record completions in one place."
+        icon={ClipboardList}
+        variant="dark"
+        actions={<CreateDropdown onNewInspection={openNewInspection} onNewLog={openNewLog} />}
+      />
+
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-stealth-border">
+        <nav className="flex gap-6" aria-label="Module tabs">
+          <button
+            type="button"
+            className={tab === "inspections" ? TAB_ACTIVE : TAB_IDLE}
+            onClick={() => {
+              setTab("inspections");
+              setBuilder(null);
+            }}
+          >
+            Inspections
+          </button>
+          <button
+            type="button"
+            className={tab === "logs" ? TAB_ACTIVE : TAB_IDLE}
+            onClick={() => {
+              setTab("logs");
+              setBuilder(null);
+            }}
+          >
+            Logs
+          </button>
+        </nav>
+        {tab === "inspections" ? (
+          <button
+            type="button"
+            className="mb-2 inline-flex items-center gap-1.5 rounded-xl border border-stealth-border bg-stealth-card px-3 py-2 text-xs font-semibold text-stealth-primary shadow-stealth-card hover:bg-stealth-border/25"
+            onClick={openNewInspection}
+          >
+            <Plus className="h-3.5 w-3.5 text-stealth-accent" aria-hidden />
+            New Inspection
+          </button>
+        ) : (
+          <button
+            type="button"
+            className="mb-2 inline-flex items-center gap-1.5 rounded-xl border border-stealth-border bg-stealth-card px-3 py-2 text-xs font-semibold text-stealth-primary shadow-stealth-card hover:bg-stealth-border/25"
+            onClick={openNewLog}
+          >
+            <Plus className="h-3.5 w-3.5 text-stealth-accent" aria-hidden />
+            New Log
+          </button>
+        )}
+      </div>
+
+      {builder?.kind === "inspection" ? (
+        <InspectionBuilder
+          initial={
+            builder.editId ? (store.inspectionTemplates.find((t) => t.id === builder.editId) ?? null) : null
+          }
+          onSave={saveInspectionTemplate}
+          onCancel={() => setBuilder(null)}
+        />
+      ) : null}
+
+      {builder?.kind === "log" ? (
+        <LogBuilder
+          initial={builder.editId ? (store.logTemplates.find((t) => t.id === builder.editId) ?? null) : null}
+          onSave={saveLogTemplate}
+          onCancel={() => setBuilder(null)}
+        />
+      ) : null}
+
+      {!builder && tab === "inspections" ? (
+        <>
+          <section>
+            <h2 className="text-sm font-semibold text-stealth-secondary">Inspection templates</h2>
+            <div className={TABLE_WRAP}>
+              <table className="w-full border-collapse text-left">
+                <thead>
+                  <tr className="bg-stealth-main/40">
+                    <th className={TH}>Name</th>
+                    <th className={TH}>Last completed</th>
+                    <th className={TH}>Frequency</th>
+                    <th className={`${TH} text-right`}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {store.inspectionTemplates.length === 0 ? (
+                    <tr>
+                      <td className={`${TD} text-stealth-muted`} colSpan={4}>
+                        No inspection templates yet. Create one to get started.
+                      </td>
+                    </tr>
+                  ) : (
+                    store.inspectionTemplates.map((tpl) => (
+                      <tr key={tpl.id} className={ROW}>
+                        <td className={TD}>
+                          <span className="font-medium">{tpl.name}</span>
+                          {tpl.description ? (
+                            <p className="mt-0.5 text-xs text-stealth-muted">{tpl.description}</p>
+                          ) : null}
+                        </td>
+                        <td className={`${TD} text-stealth-secondary`}>{formatWhen(store.lastAt(tpl.id))}</td>
+                        <td className={`${TD} text-stealth-secondary`}>{tpl.frequency?.trim() || "—"}</td>
+                        <td className={`${TD} text-right`}>
+                          <BtnRow>
+                            <button
+                              type="button"
+                              className={LINKISH}
+                              onClick={() => setInspectFill(tpl)}
+                              disabled={tpl.checklist_items.length === 0}
+                            >
+                              Submit run
+                            </button>
+                            <button
+                              type="button"
+                              className={LINKISH}
+                              onClick={() => setBuilder({ kind: "inspection", editId: tpl.id })}
+                            >
+                              <Pencil className="mr-0.5 inline h-3.5 w-3.5" aria-hidden />
+                              Edit
+                            </button>
+                            <button
+                              type="button"
+                              className="text-xs font-semibold text-stealth-danger/90 hover:underline"
+                              onClick={() => {
+                                if (confirm(`Delete template “${tpl.name}”?`)) store.removeTemplate(tpl.id);
+                              }}
+                            >
+                              <Trash2 className="mr-0.5 inline h-3.5 w-3.5" aria-hidden />
+                              Delete
+                            </button>
+                          </BtnRow>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section>
+            <h2 className="text-sm font-semibold text-stealth-secondary">Completed inspections</h2>
+            <div className={TABLE_WRAP}>
+              <table className="w-full border-collapse text-left">
+                <thead>
+                  <tr className="bg-stealth-main/40">
+                    <th className={TH}>Template</th>
+                    <th className={TH}>Completed</th>
+                    <th className={TH}>By</th>
+                    <th className={`${TH} text-right`}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {inspectionEntries.length === 0 ? (
+                    <tr>
+                      <td className={`${TD} text-stealth-muted`} colSpan={4}>
+                        No completed inspections yet.
+                      </td>
+                    </tr>
+                  ) : (
+                    [...inspectionEntries]
+                      .sort(
+                        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+                      )
+                      .map((entry) => {
+                        const tpl = store.inspectionTemplates.find((t) => t.id === entry.template_id);
+                        return (
+                          <tr key={entry.id} className={ROW}>
+                            <td className={TD}>{tpl?.name ?? entry.template_id}</td>
+                            <td className={`${TD} text-stealth-secondary`}>{formatWhen(entry.created_at)}</td>
+                            <td className={`${TD} text-stealth-secondary`}>{entry.user_id ?? "—"}</td>
+                            <td className={`${TD} text-right`}>
+                              <button type="button" className={LINKISH} onClick={() => setViewEntry(entry)}>
+                                <Eye className="mr-0.5 inline h-3.5 w-3.5" aria-hidden />
+                                View
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </>
+      ) : null}
+
+      {!builder && tab === "logs" ? (
+        <>
+          <section>
+            <h2 className="text-sm font-semibold text-stealth-secondary">Log templates</h2>
+            <div className={TABLE_WRAP}>
+              <table className="w-full border-collapse text-left">
+                <thead>
+                  <tr className="bg-stealth-main/40">
+                    <th className={TH}>Name</th>
+                    <th className={TH}>Last entry</th>
+                    <th className={TH}>Entries</th>
+                    <th className={`${TH} text-right`}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {store.logTemplates.length === 0 ? (
+                    <tr>
+                      <td className={`${TD} text-stealth-muted`} colSpan={4}>
+                        No log templates yet.
+                      </td>
+                    </tr>
+                  ) : (
+                    store.logTemplates.map((tpl) => (
+                      <tr key={tpl.id} className={ROW}>
+                        <td className={TD}>
+                          <span className="font-medium">{tpl.name}</span>
+                          {tpl.description ? (
+                            <p className="mt-0.5 text-xs text-stealth-muted">{tpl.description}</p>
+                          ) : null}
+                        </td>
+                        <td className={`${TD} text-stealth-secondary`}>{formatWhen(store.lastAt(tpl.id))}</td>
+                        <td className={TD}>{store.entryCount(tpl.id)}</td>
+                        <td className={`${TD} text-right`}>
+                          <BtnRow>
+                            <button
+                              type="button"
+                              className={LINKISH}
+                              onClick={() => setLogFill(tpl)}
+                              disabled={tpl.fields.length === 0}
+                            >
+                              New entry
+                            </button>
+                            <button
+                              type="button"
+                              className={LINKISH}
+                              onClick={() => setBuilder({ kind: "log", editId: tpl.id })}
+                            >
+                              <Pencil className="mr-0.5 inline h-3.5 w-3.5" aria-hidden />
+                              Edit
+                            </button>
+                            <button
+                              type="button"
+                              className="text-xs font-semibold text-stealth-danger/90 hover:underline"
+                              onClick={() => {
+                                if (confirm(`Delete template “${tpl.name}”?`)) store.removeTemplate(tpl.id);
+                              }}
+                            >
+                              <Trash2 className="mr-0.5 inline h-3.5 w-3.5" aria-hidden />
+                              Delete
+                            </button>
+                          </BtnRow>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section>
+            <h2 className="text-sm font-semibold text-stealth-secondary">Submitted log entries</h2>
+            <div className={TABLE_WRAP}>
+              <table className="w-full border-collapse text-left">
+                <thead>
+                  <tr className="bg-stealth-main/40">
+                    <th className={TH}>Template</th>
+                    <th className={TH}>Submitted</th>
+                    <th className={TH}>By</th>
+                    <th className={`${TH} text-right`}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {logEntries.length === 0 ? (
+                    <tr>
+                      <td className={`${TD} text-stealth-muted`} colSpan={4}>
+                        No log entries yet.
+                      </td>
+                    </tr>
+                  ) : (
+                    [...logEntries]
+                      .sort(
+                        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+                      )
+                      .map((entry) => {
+                        const tpl = store.logTemplates.find((t) => t.id === entry.template_id);
+                        return (
+                          <tr key={entry.id} className={ROW}>
+                            <td className={TD}>{tpl?.name ?? entry.template_id}</td>
+                            <td className={`${TD} text-stealth-secondary`}>{formatWhen(entry.created_at)}</td>
+                            <td className={`${TD} text-stealth-secondary`}>{entry.user_id ?? "—"}</td>
+                            <td className={`${TD} text-right`}>
+                              <button type="button" className={LINKISH} onClick={() => setViewEntry(entry)}>
+                                <Eye className="mr-0.5 inline h-3.5 w-3.5" aria-hidden />
+                                View
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </>
+      ) : null}
+
+      {inspectFill ? (
+        <InspectionFillModal
+          template={inspectFill}
+          onClose={() => setInspectFill(null)}
+          onSubmit={(values) => {
+            store.addEntry({
+              template_id: inspectFill.id,
+              template_type: "inspection",
+              values,
+              created_at: new Date().toISOString(),
+              user_id: userId,
+            });
+            setInspectFill(null);
+          }}
+        />
+      ) : null}
+
+      {logFill ? (
+        <LogFillModal
+          template={logFill}
+          onClose={() => setLogFill(null)}
+          onSubmit={(values) => {
+            store.addEntry({
+              template_id: logFill.id,
+              template_type: "log",
+              values,
+              created_at: new Date().toISOString(),
+              user_id: userId,
+            });
+            setLogFill(null);
+          }}
+        />
+      ) : null}
+
+      {viewEntry ? (
+        <EntryViewModal entry={viewEntry} templates={store.templates} onClose={() => setViewEntry(null)} />
+      ) : null}
+    </div>
+  );
+}
+
+function InspectionFillModal({
+  template,
+  onClose,
+  onSubmit,
+}: {
+  template: InspectionTemplate;
+  onClose: () => void;
+  onSubmit: (values: Record<string, unknown>) => void;
+}) {
+  const [checks, setChecks] = useState<Record<string, boolean>>(() => {
+    const o: Record<string, boolean> = {};
+    template.checklist_items.forEach((i) => {
+      o[i.id] = false;
+    });
+    return o;
+  });
+
+  return (
+    <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
+      <button
+        type="button"
+        className="absolute inset-0 bg-slate-950/50 backdrop-blur-[2px]"
+        aria-label="Close"
+        onClick={onClose}
+      />
+      <div className="relative max-h-[90vh] w-full max-w-lg overflow-auto rounded-2xl border border-stealth-border bg-stealth-card p-6 shadow-stealth-card">
+        <h3 className="text-lg font-semibold text-stealth-primary">Submit inspection — {template.name}</h3>
+        <p className="mt-1 text-xs text-stealth-muted">Check each item as verified.</p>
+        <ul className="mt-4 space-y-3">
+          {template.checklist_items
+            .slice()
+            .sort((a, b) => a.order - b.order)
+            .map((item) => (
+              <li key={item.id} className="flex items-start gap-3">
+                <input
+                  type="checkbox"
+                  id={item.id}
+                  className="mt-1 h-4 w-4 rounded border-stealth-border text-stealth-accent focus:ring-stealth-accent/40"
+                  checked={checks[item.id] ?? false}
+                  onChange={(e) => setChecks((c) => ({ ...c, [item.id]: e.target.checked }))}
+                />
+                <label htmlFor={item.id} className="text-sm text-stealth-primary">
+                  {item.label}
+                </label>
+              </li>
+            ))}
+        </ul>
+        <div className="mt-6 flex justify-end gap-2">
+          <button
+            type="button"
+            className="rounded-xl border border-stealth-border bg-stealth-main/50 px-4 py-2 text-sm font-semibold text-stealth-primary"
+            onClick={onClose}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            className="rounded-xl bg-stealth-accent px-4 py-2 text-sm font-semibold text-stealth-primary hover:brightness-110"
+            onClick={() => onSubmit(checks)}
+          >
+            Save completion
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function LogFillModal({
+  template,
+  onClose,
+  onSubmit,
+}: {
+  template: LogTemplate;
+  onClose: () => void;
+  onSubmit: (values: Record<string, unknown>) => void;
+}) {
+  const sorted = useMemo(
+    () => [...template.fields].sort((a, b) => a.order - b.order),
+    [template.fields],
+  );
+  const [vals, setVals] = useState<Record<string, string>>(() => {
+    const o: Record<string, string> = {};
+    sorted.forEach((f) => {
+      o[f.id] = "";
+    });
+    return o;
+  });
+
+  const setField = (id: string, v: string) => setVals((s) => ({ ...s, [id]: v }));
+
+  return (
+    <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
+      <button
+        type="button"
+        className="absolute inset-0 bg-slate-950/50 backdrop-blur-[2px]"
+        aria-label="Close"
+        onClick={onClose}
+      />
+      <div className="relative max-h-[90vh] w-full max-w-lg overflow-auto rounded-2xl border border-stealth-border bg-stealth-card p-6 shadow-stealth-card">
+        <h3 className="text-lg font-semibold text-stealth-primary">New log entry — {template.name}</h3>
+        <p className="mt-1 text-xs text-stealth-muted">Timestamp is saved automatically when you submit.</p>
+        <div className="mt-4 space-y-4">
+          {sorted.map((field: LogFieldDef) => (
+            <div key={field.id}>
+              <label className="text-[11px] font-semibold uppercase tracking-wider text-stealth-muted">
+                {field.label || "Field"}
+              </label>
+              {field.type === "notes" ? (
+                <textarea
+                  className="mt-1.5 w-full rounded-xl border border-stealth-border bg-stealth-main/40 px-3 py-2 text-sm text-stealth-primary"
+                  rows={3}
+                  value={vals[field.id] ?? ""}
+                  onChange={(e) => setField(field.id, e.target.value)}
+                />
+              ) : (
+                <input
+                  type={field.type === "number" ? "number" : "text"}
+                  className="mt-1.5 w-full rounded-xl border border-stealth-border bg-stealth-main/40 px-3 py-2 text-sm text-stealth-primary"
+                  value={vals[field.id] ?? ""}
+                  onChange={(e) => setField(field.id, e.target.value)}
+                />
+              )}
+            </div>
+          ))}
+        </div>
+        <div className="mt-6 flex justify-end gap-2">
+          <button
+            type="button"
+            className="rounded-xl border border-stealth-border bg-stealth-main/50 px-4 py-2 text-sm font-semibold text-stealth-primary"
+            onClick={onClose}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            className="rounded-xl bg-stealth-accent px-4 py-2 text-sm font-semibold text-stealth-primary hover:brightness-110"
+            onClick={() => {
+              const out: Record<string, unknown> = { ...vals };
+              sorted.forEach((f) => {
+                if (f.type === "number" && out[f.id] !== undefined && out[f.id] !== "") {
+                  const n = Number(out[f.id]);
+                  out[f.id] = Number.isFinite(n) ? n : out[f.id];
+                }
+              });
+              onSubmit(out);
+            }}
+          >
+            Submit entry
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function EntryViewModal({
+  entry,
+  templates,
+  onClose,
+}: {
+  entry: EntryRecord;
+  templates: import("@/lib/inspectionsLogsTypes").TemplateUnion[];
+  onClose: () => void;
+}) {
+  const tpl = templates.find((t) => t.id === entry.template_id);
+
+  return (
+    <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
+      <button
+        type="button"
+        className="absolute inset-0 bg-slate-950/50 backdrop-blur-[2px]"
+        aria-label="Close"
+        onClick={onClose}
+      />
+      <div className="relative max-h-[90vh] w-full max-w-lg overflow-auto rounded-2xl border border-stealth-border bg-stealth-card p-6 shadow-stealth-card">
+        <h3 className="text-lg font-semibold text-stealth-primary">Record detail</h3>
+        <p className="mt-1 text-xs text-stealth-muted">
+          {tpl?.name ?? "Template"} · {formatWhen(entry.created_at)}
+        </p>
+        <dl className="mt-4 space-y-3 text-sm">
+          {entry.template_type === "inspection" && tpl && tpl.type === "inspection"
+            ? tpl.checklist_items
+                .slice()
+                .sort((a, b) => a.order - b.order)
+                .map((item) => (
+                  <div key={item.id} className="flex justify-between gap-4 border-b border-stealth-border/60 pb-2">
+                    <dt className="text-stealth-secondary">{item.label}</dt>
+                    <dd className="font-medium text-stealth-primary">
+                      {entry.values[item.id] === true ? "✓" : "—"}
+                    </dd>
+                  </div>
+                ))
+            : null}
+          {entry.template_type === "log" && tpl && tpl.type === "log"
+            ? tpl.fields
+                .slice()
+                .sort((a, b) => a.order - b.order)
+                .map((f) => (
+                  <div key={f.id} className="border-b border-stealth-border/60 pb-2">
+                    <dt className="text-stealth-secondary">{f.label}</dt>
+                    <dd className="mt-1 text-stealth-primary">
+                      {String(entry.values[f.id] ?? "—")}
+                    </dd>
+                  </div>
+                ))
+            : null}
+        </dl>
+        <div className="mt-6 flex justify-end">
+          <button
+            type="button"
+            className="rounded-xl border border-stealth-border bg-stealth-main/50 px-4 py-2 text-sm font-semibold text-stealth-primary"
+            onClick={onClose}
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
