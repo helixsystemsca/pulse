@@ -14,6 +14,7 @@ from app.core.database import get_db
 from app.models.domain import InventoryItem, Tool, ToolStatus, User, UserRole, Zone
 from app.models.pulse_models import (
     PulseBeaconEquipment,
+    PulseProcedure,
     PulseProject,
     PulseProjectTask,
     PulseScheduleShift,
@@ -121,12 +122,22 @@ async def list_work_requests(
     db: Db,
     cid: CompanyId,
     status_filter: Optional[str] = Query(None, alias="status"),
+    order_type: Optional[str] = Query(
+        None, description="Filter by work_order_type: issue | preventative | request"
+    ),
     q: Optional[str] = Query(None, description="Search title"),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
 ) -> WorkRequestListOut:
+    from app.models.pulse_models import PulseWorkOrderType
+
     now = datetime.now(timezone.utc)
     conds: list = [PulseWorkRequest.company_id == cid]
+    if order_type:
+        try:
+            conds.append(PulseWorkRequest.work_order_type == PulseWorkOrderType(order_type))
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid order_type") from None
     if status_filter:
         sf = status_filter.strip()
         if sf == "complete":
@@ -177,6 +188,10 @@ async def create_work_request(
         raise HTTPException(status_code=400, detail="Unknown zone")
     if body.assigned_user_id and not await pulse_svc._user_in_company(db, cid, body.assigned_user_id):
         raise HTTPException(status_code=400, detail="Unknown assignee")
+    if body.procedure_id:
+        pr = await db.get(PulseProcedure, body.procedure_id)
+        if not pr or pr.company_id != cid:
+            raise HTTPException(status_code=400, detail="Unknown procedure")
 
     att = body.attachments if body.attachments is not None else []
     wr = PulseWorkRequest(
@@ -188,6 +203,8 @@ async def create_work_request(
         part_id=resolved_part_id,
         zone_id=body.zone_id,
         category=body.category,
+        work_order_type=body.work_order_type,
+        procedure_id=body.procedure_id,
         priority=body.priority,
         assigned_user_id=body.assigned_user_id,
         created_by_user_id=user.id,
@@ -236,6 +253,10 @@ async def patch_work_request(
     if "assigned_user_id" in data and data["assigned_user_id"]:
         if not await pulse_svc._user_in_company(db, cid, data["assigned_user_id"]):
             raise HTTPException(status_code=400, detail="Unknown assignee")
+    if "procedure_id" in data and data["procedure_id"]:
+        pr = await db.get(PulseProcedure, data["procedure_id"])
+        if not pr or pr.company_id != cid:
+            raise HTTPException(status_code=400, detail="Unknown procedure")
     for k, v in data.items():
         setattr(wr, k, v)
     if wr.part_id:

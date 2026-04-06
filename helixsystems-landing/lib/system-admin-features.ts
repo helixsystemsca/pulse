@@ -19,7 +19,7 @@ export const SYSTEM_ADMIN_FEATURE_LABELS: Record<string, string> = {
   schedule: "Schedule",
   monitoring: "Monitoring",
   projects: "Projects",
-  work_orders: "Issue tracking",
+  work_orders: "Maintenance",
   workers: "Workers & roles",
   inventory: "Inventory",
   equipment: "Equipment & tracking",

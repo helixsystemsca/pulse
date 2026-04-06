@@ -44,7 +44,7 @@ export function OnboardingReminderBanner() {
         </button>
         {isWorker ? (
           <Link
-            href="/dashboard/work-requests"
+            href="/dashboard/maintenance/work-requests"
             className="hidden shrink-0 text-xs font-semibold text-[#2B4C7E] underline decoration-sky-300 underline-offset-2 sm:inline"
           >
             Issues

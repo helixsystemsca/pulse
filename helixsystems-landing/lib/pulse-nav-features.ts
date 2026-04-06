@@ -10,6 +10,7 @@ export function featureKeyForTenantNavHref(href: string): string | undefined {
   if (href === "/monitoring") return "monitoring";
   if (href === "/projects" || href.startsWith("/projects/")) return "projects";
   if (href === "/dashboard/work-requests" || href.startsWith("/dashboard/work-requests")) return "work_orders";
+  if (href === "/dashboard/maintenance" || href.startsWith("/dashboard/maintenance/")) return "work_orders";
   if (href === "/dashboard/workers" || href.startsWith("/dashboard/workers")) return "workers";
   if (href === "/dashboard/inventory") return "inventory";
   if (href === "/equipment") return "equipment";

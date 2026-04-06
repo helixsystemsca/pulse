@@ -57,9 +57,9 @@ export async function patchOnboarding(body: OnboardingPatchBody): Promise<Onboar
 export const ONBOARDING_STEP_HREF: Record<string, string> = {
   create_zone: "/dashboard/setup",
   add_device: "/dashboard/setup",
-  create_work_order: "/dashboard/work-requests",
+  create_work_order: "/dashboard/maintenance/work-orders",
   view_operations: "/monitoring",
-  complete_work_order: "/dashboard/work-requests",
+  complete_work_order: "/dashboard/maintenance/work-orders",
   view_schedule: "/schedule",
-  log_issue: "/dashboard/work-requests",
+  log_issue: "/dashboard/maintenance/work-requests",
 };

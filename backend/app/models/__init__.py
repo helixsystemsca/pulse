@@ -53,6 +53,8 @@ from app.models.domain import (
 )
 from app.models.pulse_models import (
     PulseBeaconEquipment,
+    PulsePreventativeRule,
+    PulseProcedure,
     PulseProject,
     PulseProjectAutomationRule,
     PulseProjectTask,
@@ -60,6 +62,7 @@ from app.models.pulse_models import (
     PulseUserPerformanceSnapshot,
     PulseScheduleShift,
     PulseTaskDependency,
+    PulseWorkOrderType,
     PulseWorkRequest,
     PulseWorkerProfile,
 )
@@ -110,6 +113,9 @@ __all__ = [
     "RolePermission",
     "SystemLog",
     "SystemSecureToken",
+    "PulsePreventativeRule",
+    "PulseProcedure",
+    "PulseWorkOrderType",
     "PulseWorkRequest",
     "PulseWorkerProfile",
     "PulseProject",

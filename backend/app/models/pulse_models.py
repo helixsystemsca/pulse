@@ -35,11 +35,69 @@ class PulseWorkRequestStatus(str, enum.Enum):
     cancelled = "cancelled"
 
 
+class PulseWorkOrderType(str, enum.Enum):
+    """Unified maintenance work order classification (legacy rows default to issue)."""
+
+    issue = "issue"
+    preventative = "preventative"
+    request = "request"
+
+
 class PulseWorkRequestPriority(str, enum.Enum):
     low = "low"
     medium = "medium"
     high = "high"
     critical = "critical"
+
+
+class PulseProcedure(Base):
+    """Reusable step-by-step instructions for work orders and preventative rules."""
+
+    __tablename__ = "pulse_procedures"
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    company_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    steps: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, server_default=text("'[]'::jsonb"))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+
+class PulsePreventativeRule(Base):
+    """Preventative maintenance rule: asset + frequency + optional procedure (no auto-scheduling yet)."""
+
+    __tablename__ = "pulse_preventative_rules"
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    company_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    equipment_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("facility_equipment.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    frequency: Mapped[str] = mapped_column(String(128), nullable=False)
+    procedure_id: Mapped[Optional[str]] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("pulse_procedures.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
 
 
 class PulseWorkRequest(Base):
@@ -83,6 +141,18 @@ class PulseWorkRequest(Base):
     )
     due_date: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
     completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    work_order_type: Mapped[PulseWorkOrderType] = mapped_column(
+        Enum(PulseWorkOrderType, values_callable=lambda x: [e.value for e in x], native_enum=False, length=16),
+        default=PulseWorkOrderType.issue,
+        nullable=False,
+        index=True,
+    )
+    procedure_id: Mapped[Optional[str]] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("pulse_procedures.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     attachments: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, server_default=text("'[]'::jsonb"))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)

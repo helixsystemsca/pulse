@@ -242,7 +242,7 @@ export function EquipmentPartsPanel({ equipmentId, equipmentName, canMutate, onP
   const openWorkRequest = (p: EquipmentPartRow) => {
     const title = encodeURIComponent(`Replace / service: ${p.name} (${equipmentName})`);
     router.push(
-      `/dashboard/work-requests?create=1&equipment_id=${encodeURIComponent(equipmentId)}&part_id=${encodeURIComponent(p.id)}&wr_title=${title}`,
+      `/dashboard/maintenance/work-requests?create=1&equipment_id=${encodeURIComponent(equipmentId)}&part_id=${encodeURIComponent(p.id)}&wr_title=${title}`,
     );
   };
 

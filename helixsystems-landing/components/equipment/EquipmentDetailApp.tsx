@@ -398,7 +398,7 @@ export function EquipmentDetailApp({ equipmentId }: Props) {
               {data.related_work_orders.map((wo) => (
                 <li key={wo.id} className="px-4 py-3">
                   <Link
-                    href={`/dashboard/work-requests?wr=${encodeURIComponent(wo.id)}`}
+                    href={`/dashboard/maintenance/work-requests?wr=${encodeURIComponent(wo.id)}`}
                     className="group block hover:bg-slate-50/80"
                   >
                     <div className="flex flex-wrap items-center justify-between gap-2">

@@ -5,7 +5,7 @@ from typing import Any, Optional, Union
 
 from pydantic import BaseModel, Field, field_validator
 
-from app.models.pulse_models import PulseWorkRequestPriority, PulseWorkRequestStatus
+from app.models.pulse_models import PulseWorkOrderType, PulseWorkRequestPriority, PulseWorkRequestStatus
 from app.modules.work_requests.helpers import priority_from_legacy_int
 
 
@@ -20,6 +20,8 @@ class DashboardOut(BaseModel):
 class WorkRequestCreate(BaseModel):
     title: str = Field(..., min_length=1, max_length=255)
     description: Optional[str] = None
+    work_order_type: Union[str, PulseWorkOrderType] = PulseWorkOrderType.issue
+    procedure_id: Optional[str] = None
     tool_id: Optional[str] = None
     equipment_id: Optional[str] = None
     part_id: Optional[str] = None
@@ -29,6 +31,15 @@ class WorkRequestCreate(BaseModel):
     assigned_user_id: Optional[str] = None
     due_date: Optional[datetime] = None
     attachments: Optional[list[Any]] = None
+
+    @field_validator("work_order_type", mode="before")
+    @classmethod
+    def _wot_coerce(cls, v: Any) -> PulseWorkOrderType:
+        if v is None:
+            return PulseWorkOrderType.issue
+        if isinstance(v, PulseWorkOrderType):
+            return v
+        return PulseWorkOrderType(str(v))
 
     @field_validator("priority", mode="before")
     @classmethod
@@ -45,6 +56,8 @@ class WorkRequestCreate(BaseModel):
 class WorkRequestUpdate(BaseModel):
     title: Optional[str] = Field(None, min_length=1, max_length=255)
     description: Optional[str] = None
+    work_order_type: Optional[Union[str, PulseWorkOrderType]] = None
+    procedure_id: Optional[str] = None
     tool_id: Optional[str] = None
     equipment_id: Optional[str] = None
     part_id: Optional[str] = None
@@ -55,6 +68,15 @@ class WorkRequestUpdate(BaseModel):
     assigned_user_id: Optional[str] = None
     due_date: Optional[datetime] = None
     attachments: Optional[list[Any]] = None
+
+    @field_validator("work_order_type", mode="before")
+    @classmethod
+    def _wot_coerce_upd(cls, v: Any) -> Optional[PulseWorkOrderType]:
+        if v is None:
+            return None
+        if isinstance(v, PulseWorkOrderType):
+            return v
+        return PulseWorkOrderType(str(v))
 
     @field_validator("priority", mode="before")
     @classmethod
@@ -78,6 +100,8 @@ class WorkRequestOut(BaseModel):
     part_id: Optional[str] = None
     zone_id: Optional[str]
     category: Optional[str]
+    work_order_type: str = "issue"
+    procedure_id: Optional[str] = None
     priority: str
     status: str
     assigned_user_id: Optional[str]
@@ -90,7 +114,7 @@ class WorkRequestOut(BaseModel):
 
     model_config = {"from_attributes": True}
 
-    @field_validator("priority", "status", mode="before")
+    @field_validator("priority", "status", "work_order_type", mode="before")
     @classmethod
     def _coerce_enum_str(cls, v: Any) -> str:
         return v.value if hasattr(v, "value") else str(v)
