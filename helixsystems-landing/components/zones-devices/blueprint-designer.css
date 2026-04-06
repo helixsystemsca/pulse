@@ -12,9 +12,12 @@
   --bp-space-1: 8px;
   --bp-space-2: 16px;
 
+  box-sizing: border-box;
   display: flex;
   gap: var(--bp-space-2);
-  min-height: min(78vh, 820px);
+  min-width: 0;
+  min-height: 360px;
+  height: min(78vh, 820px, calc(100vh - 8rem));
   max-height: calc(100vh - 8rem);
   font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
@@ -22,6 +25,9 @@
 .bp-shell--loading {
   align-items: center;
   justify-content: center;
+  height: auto;
+  min-height: 200px;
+  max-height: none;
   background: radial-gradient(120% 100% at 50% 0%, var(--bp-bg-mid) 0%, var(--bp-bg) 62%, #0a0f1c 100%);
   border-radius: var(--bp-radius);
   border: 1px solid var(--bp-panel-border);
@@ -34,8 +40,15 @@
 }
 
 .bp-sidebar {
+  box-sizing: border-box;
   width: 200px;
+  max-width: 100%;
   flex-shrink: 0;
+  min-width: 0;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   background: var(--bp-panel);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
@@ -68,6 +81,7 @@
   display: flex;
   align-items: center;
   gap: var(--bp-space-1);
+  min-width: 0;
   padding: 10px var(--bp-space-1);
   border-radius: 10px;
   border: 1px solid transparent;
@@ -90,10 +104,12 @@
 }
 
 .bp-tool.is-active {
-  background: rgba(59, 130, 246, 0.14);
-  border-color: rgba(59, 130, 246, 0.32);
+  background: rgba(59, 130, 246, 0.16);
+  border-color: rgba(96, 165, 250, 0.45);
   color: #fff;
-  box-shadow: 0 0 20px rgba(59, 130, 246, 0.12);
+  box-shadow:
+    0 0 0 1px rgba(59, 130, 246, 0.2),
+    0 0 24px rgba(59, 130, 246, 0.14);
 }
 
 .bp-palette {
@@ -103,6 +119,7 @@
 }
 
 .bp-chip {
+  min-width: 0;
   padding: 10px var(--bp-space-1);
   border-radius: 10px;
   border: 1px solid var(--bp-panel-border);
@@ -132,8 +149,10 @@
 }
 
 .bp-canvas-wrap {
+  box-sizing: border-box;
   flex: 1;
   min-width: 0;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   border-radius: var(--bp-radius);
@@ -144,15 +163,26 @@
 }
 
 .bp-toolbar {
+  box-sizing: border-box;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: var(--bp-space-1);
   padding: var(--bp-space-1) var(--bp-space-2);
+  min-width: 0;
   background: rgba(15, 23, 42, 0.65);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   border-bottom: 1px solid var(--bp-panel-border);
+}
+
+.bp-toolbar > span {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .bp-toolbar label {
@@ -165,6 +195,7 @@
 
 .bp-toolbar select,
 .bp-toolbar input[type="text"] {
+  box-sizing: border-box;
   background: rgba(15, 23, 42, 0.9);
   border: 1px solid var(--bp-panel-border);
   border-radius: 10px;
@@ -172,6 +203,7 @@
   padding: 6px 10px;
   font-size: 0.85rem;
   min-width: 0;
+  max-width: 100%;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
@@ -183,7 +215,8 @@
 }
 
 .bp-toolbar input[type="text"] {
-  width: 10rem;
+  width: 100%;
+  max-width: 10rem;
 }
 
 .bp-btn {
@@ -221,10 +254,33 @@
 
 /* Canvas — deep navy with soft radial lift (shows through gap) */
 .bp-stage-host {
+  box-sizing: border-box;
   flex: 1;
-  min-height: 420px;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
   background: radial-gradient(ellipse 90% 85% at 50% 38%, #141f36 0%, #0f172a 45%, #0c121f 100%);
   cursor: crosshair;
+}
+
+/* Tool cursors (edit mode) — Figma-like affordances */
+.bp-stage-host.bp-stage-host--tool-select:not(.is-panning):not(.bp-stage-host--publish) {
+  cursor: grab;
+}
+
+.bp-stage-host.bp-stage-host--tool-select.is-dragging-selection:not(.is-panning) {
+  cursor: grabbing;
+}
+
+.bp-stage-host.bp-stage-host--tool-draw-room:not(.is-panning):not(.bp-stage-host--publish),
+.bp-stage-host.bp-stage-host--tool-free-draw:not(.is-panning):not(.bp-stage-host--publish) {
+  cursor: crosshair;
+}
+
+.bp-stage-host.bp-stage-host--tool-place-device:not(.is-panning):not(.bp-stage-host--publish),
+.bp-stage-host.bp-stage-host--tool-place-door:not(.is-panning):not(.bp-stage-host--publish),
+.bp-stage-host.bp-stage-host--tool-place-symbol:not(.is-panning):not(.bp-stage-host--publish) {
+  cursor: copy;
 }
 
 .bp-stage-host.is-panning {
@@ -236,8 +292,15 @@
 }
 
 .bp-props {
+  box-sizing: border-box;
   width: 240px;
+  max-width: 100%;
   flex-shrink: 0;
+  min-width: 0;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   background: var(--bp-panel);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
@@ -250,10 +313,29 @@
   box-shadow: 0 8px 40px rgba(0, 0, 0, 0.35), 0 1px 0 rgba(255, 255, 255, 0.04) inset;
 }
 
+.bp-props-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  min-width: 0;
+}
+
 .bp-field {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  min-width: 0;
+}
+
+.bp-field-row {
+  display: flex;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.bp-field-row input {
+  flex: 1;
+  min-width: 0;
 }
 
 .bp-field label {
@@ -265,7 +347,12 @@
 }
 
 .bp-field input,
-.bp-field select {
+.bp-field select,
+.bp-field textarea {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
   background: rgba(15, 23, 42, 0.85);
   border: 1px solid var(--bp-panel-border);
   border-radius: 10px;
@@ -275,8 +362,20 @@
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
+.bp-field textarea {
+  resize: vertical;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.bp-field input[readonly] {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
 .bp-field input:focus,
-.bp-field select:focus {
+.bp-field select:focus,
+.bp-field textarea:focus {
   outline: none;
   border-color: rgba(59, 130, 246, 0.5);
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
@@ -287,6 +386,9 @@
   color: var(--bp-muted);
   line-height: 1.35;
   margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .bp-error {
@@ -409,12 +511,23 @@
 @media (max-width: 1100px) {
   .bp-shell {
     flex-direction: column;
+    height: auto;
     max-height: none;
+    min-height: min(78vh, 820px);
   }
 
   .bp-sidebar,
   .bp-props {
     width: 100%;
+    max-width: 100%;
+  }
+
+  .bp-sidebar {
+    max-height: min(60vh, 520px);
+  }
+
+  .bp-props {
+    max-height: min(55vh, 480px);
   }
 
   .bp-tool-grid {
