@@ -96,6 +96,10 @@ function mapApiTasks(raw: ApiTask[] | undefined | null): TaskOverlay[] {
 const GRID = 32;
 const DEVICE_DEFAULT = 44;
 const SYMBOL_DEFAULT = 40;
+/** Space reserved under the glyph for the label (font line + gap below icon). */
+const SYMBOL_LABEL_BAND_GAP = 6;
+/** Slight upward shift so glyph clears the label band without changing glyph geometry. */
+const SYMBOL_ICON_Y_NUDGE = 3;
 const MIN_ZONE = 24;
 /** Zone edge snap distance (world px) */
 const SNAP_PX = 8;
@@ -2126,8 +2130,13 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
     for (const id of ids) {
       const o = currentElements.find((x) => x.id === id);
       if (!o || o.type === "door") continue;
-      starts.set(id, { x: o.x, y: o.y });
-      if (o.type === "path" && o.path_points && o.path_points.length >= 6) pathFlats.set(id, [...o.path_points]);
+      if (o.type === "path" && o.path_points && o.path_points.length >= 6) {
+        /** Free-draw paths render as a `Line` at origin with absolute `points` — match Konva node for multi-drag. */
+        starts.set(id, { x: 0, y: 0 });
+        pathFlats.set(id, [...o.path_points]);
+      } else {
+        starts.set(id, { x: o.x, y: o.y });
+      }
     }
     const prim = currentElements.find((x) => x.id === primaryId);
     if (prim && prim.type === "zone" && zonePolygonFlat(prim) && ids.length > 1) {
@@ -2250,6 +2259,9 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
       }
       return next;
     });
+    if (node.getClassName() === "Line") {
+      node.position({ x: 0, y: 0 });
+    }
     batchLayer();
   };
 
@@ -2782,6 +2794,24 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
           >
             Publish
           </motion.button>
+          {canEdit ? (
+            <div className="bp-toolbar__symbols" aria-label="Symbol palette">
+              <span className="bp-toolbar__symbols-label">Symbols</span>
+              {SYMBOL_LIBRARY.map((k) => (
+                <button
+                  key={k}
+                  type="button"
+                  className={`bp-chip bp-toolbar__symbol-chip ${placeSymbolKind === k ? "is-active" : ""}`}
+                  onClick={() => {
+                    setPlaceSymbolKind(k);
+                    setTool("place-symbol");
+                  }}
+                >
+                  {k}
+                </button>
+              ))}
+            </div>
+          ) : null}
         </motion.div>
         <AnimatePresence>
           {error ? (
@@ -3215,6 +3245,8 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
                   const sGlow = canEdit && tool === "select" && !sel && hoverSymbolId === el.id;
                   const stg = taskGlowIds.has(el.id);
                   const symLabelFs = pubFs(Math.min(9, w / 5));
+                  const labelBand = Math.ceil(symLabelFs + SYMBOL_LABEL_BAND_GAP);
+                  const iconSlotH = Math.max(4, h - labelBand);
                   return (
                     <Group
                       key={el.id}
@@ -3302,20 +3334,29 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
                         strokeWidth={stg ? sStroke * 1.35 : sStroke}
                         listening={false}
                       />
-                      <Group x={w / 2} y={h / 2} scaleX={symScale} scaleY={symScale} listening={false}>
+                      <Group
+                        x={w / 2}
+                        y={iconSlotH / 2 - SYMBOL_ICON_Y_NUDGE}
+                        scaleX={symScale}
+                        scaleY={symScale}
+                        listening={false}
+                      >
                         <SymbolGlyph symbolType={st} />
                       </Group>
                       <Text
                         text={(el.name ?? st).toUpperCase()}
-                        x={2}
-                        y={h - 12}
-                        width={w - 4}
+                        x={0}
+                        y={iconSlotH}
+                        width={w}
+                        height={labelBand}
                         align="center"
+                        verticalAlign="middle"
                         fill={isPublish ? "#f1f5f9" : "#cbd5f5"}
                         opacity={isPublish ? 0.95 : 0.82}
                         fontSize={symLabelFs}
                         fontFamily='ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif'
                         listening={false}
+                        wrap="none"
                         ellipsis
                       />
                     </Group>
@@ -3500,6 +3541,7 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
                       shadowBlur={ptg ? 12 : 0}
                       shadowOpacity={ptg ? 1 : 0}
                       listening={canEdit && tool === "select"}
+                      draggable={canEdit && tool === "select"}
                       hitStrokeWidth={Math.max(16, 14 / stageScale)}
                       onMouseEnter={() => {
                         if (canEdit && tool === "select") setCanvasHoverElementId(el.id);
@@ -3507,6 +3549,54 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
                       onMouseLeave={() => setCanvasHoverElementId((z) => (z === el.id ? null : z))}
                       onClick={(e) => canEdit && handleSelectElementClick(e, el.id)}
                       onTap={(e) => canEdit && handleSelectElementClick(e, el.id)}
+                      onDragStart={(e) => {
+                        if (canEdit && tool === "select") {
+                          setIsDraggingSelection(true);
+                          checkpointBlueprint();
+                        }
+                        initMultiDragIfNeeded(el.id);
+                        if (canEdit && tool === "select") runDragScale(e.target, 1.02);
+                      }}
+                      onDragMove={(e) => {
+                        if (!canEdit || tool !== "select") return;
+                        const node = e.target;
+                        if (groupDragRef.current && groupDragRef.current.primaryId === el.id && selectedIds.length > 1) {
+                          flushMultiDragMove(el.id, node);
+                        }
+                      }}
+                      onDragEnd={(e) => {
+                        setIsDraggingSelection(false);
+                        const g = groupDragRef.current;
+                        const wasMulti = g && g.primaryId === el.id;
+                        if (wasMulti) groupDragRef.current = null;
+                        const node = e.target as Konva.Line;
+                        runDragScale(node, 1);
+                        if (wasMulti) {
+                          node.position({ x: 0, y: 0 });
+                          replaceElements((prev) => relayoutAllDoors(prev));
+                          return;
+                        }
+                        const ox = node.x();
+                        const oy = node.y();
+                        node.position({ x: 0, y: 0 });
+                        replaceElements((prev) =>
+                          prev.map((row) => {
+                            if (row.id !== el.id || row.type !== "path" || !row.path_points || row.path_points.length < 6) {
+                              return row;
+                            }
+                            const flat = row.path_points.map((v, i) => (i % 2 === 0 ? v + ox : v + oy));
+                            const bb = bboxFromPathPoints(flat);
+                            return {
+                              ...row,
+                              path_points: flat,
+                              x: bb.minX,
+                              y: bb.minY,
+                              width: bb.w,
+                              height: bb.h,
+                            };
+                          }),
+                        );
+                      }}
                     />
                   );
                 })}

@@ -146,14 +146,16 @@ export default function LoginPage() {
             <div className="flex flex-col items-center">
               <Link
                 href={pulseRoutes.pulseLanding}
-                className="flex items-center gap-2.5 font-headline text-lg font-bold tracking-tight text-pulse-navy no-underline hover:text-pulse-accent sm:text-xl"
+                className="flex items-center gap-2.5 font-headline text-lg font-bold tracking-tight text-pulse-navy no-underline hover:text-pulse-accent sm:text-xl dark:text-white dark:hover:text-sky-200"
               >
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-200/80 bg-slate-50 text-pulse-accent shadow-sm">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-200/80 bg-slate-50 text-pulse-accent shadow-sm dark:border-slate-600 dark:bg-slate-800/90 dark:text-sky-400">
                   <Activity className="h-4 w-4" strokeWidth={2} aria-hidden />
                 </span>
                 <span>Pulse</span>
               </Link>
-              <p className="mt-4 text-center text-sm text-pulse-muted">Sign in to your operational dashboard</p>
+              <p className="mt-4 text-center text-sm text-pulse-muted dark:text-slate-300">
+                Sign in to your operational dashboard
+              </p>
             </div>
 
             <form className="mt-8 space-y-5" onSubmit={onSubmit} noValidate>

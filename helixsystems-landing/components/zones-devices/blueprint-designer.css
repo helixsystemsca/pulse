@@ -219,6 +219,30 @@
   max-width: 10rem;
 }
 
+.bp-toolbar__symbols {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  padding-left: var(--bp-space-2);
+  margin-left: 2px;
+  border-left: 1px solid var(--bp-panel-border);
+}
+
+.bp-toolbar__symbols-label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--bp-muted);
+  margin-right: 2px;
+}
+
+.bp-toolbar__symbol-chip {
+  padding: 6px 9px;
+  font-size: 0.7rem;
+}
+
 .bp-btn {
   padding: 8px 14px;
   border-radius: 10px;

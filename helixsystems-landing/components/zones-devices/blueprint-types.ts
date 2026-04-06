@@ -1,4 +1,7 @@
-/** Frontend blueprint element (API uses the same shape; optional fields match OpenAPI). */
+/**
+ * Frontend blueprint element (API uses the same shape; optional fields match OpenAPI).
+ * Design-tool mental model: `zone` ≈ room, `path` ≈ closed free-hand shape (free draw), `symbol` = placed icon.
+ */
 export type BlueprintElement = {
   id: string;
   type: "zone" | "device" | "door" | "path" | "symbol";
