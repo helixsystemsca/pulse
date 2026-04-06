@@ -1471,7 +1471,7 @@ function SchedulingCalendarMock() {
 
 export function WorkforceSchedulingSection() {
   return (
-    <SectionWrapper id="workforce-scheduling" className="scroll-mt-24 bg-pulse-bg/80" showMobileSeparator>
+    <SectionWrapper id="workforce-scheduling" className="scroll-mt-24 bg-pulse-section" showMobileSeparator>
       <div className="grid items-center gap-8 md:gap-10 lg:grid-cols-[minmax(0,3.5fr)_minmax(0,8.5fr)] lg:gap-8 xl:gap-10">
         <div className="order-1 mx-auto max-w-xl text-center lg:mx-0 lg:max-w-none lg:text-left">
           <p className="text-xs font-semibold uppercase tracking-wider text-pulse-muted">Workforce</p>

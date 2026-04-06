@@ -24,7 +24,7 @@ export function FeatureCard({
       }`}
     >
       <div
-        className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-pulse-bg ${
+        className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-slate-100/85 dark:bg-slate-800/50 ${
           variant === "alert" ? "text-red-500" : ""
         } ${iconClassName}`}
       >

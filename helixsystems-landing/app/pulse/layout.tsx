@@ -1,4 +1,5 @@
 import { AppNavbar } from "@/components/app/AppNavbar";
+import { PulseThemedBackground } from "@/components/app/PulseThemedBackground";
 import { isPulseAppHost, requestHostnameFromHeaders } from "@/lib/pulse-host";
 import type { Metadata } from "next";
 import { headers } from "next/headers";
@@ -16,10 +17,16 @@ export default function PulseProductLayout({ children }: { children: React.React
   const h = headers();
   const host = requestHostnameFromHeaders((name) => h.get(name));
   if (isPulseAppHost(host)) {
-    return <>{children}</>;
+    return (
+      <>
+        <PulseThemedBackground />
+        {children}
+      </>
+    );
   }
   return (
     <>
+      <PulseThemedBackground />
       <AppNavbar />
       {children}
     </>

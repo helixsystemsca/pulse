@@ -12,6 +12,7 @@ import { OnboardingChrome } from "@/components/onboarding/OnboardingChrome";
 import { OnboardingProvider } from "@/components/onboarding/OnboardingProvider";
 import { ProximityPromptHost } from "./ProximityPromptHost";
 import { AppPoweredByFooter } from "./AppPoweredByFooter";
+import { PulseThemedBackground } from "./PulseThemedBackground";
 
 type AppLayoutProps = {
   children: ReactNode;
@@ -23,7 +24,8 @@ type AppLayoutProps = {
 
 export function AppLayout({ children, mainClassName = "", mainContentClassName = "" }: AppLayoutProps) {
   return (
-    <div className="relative min-h-screen bg-gray-50 dark:bg-[#0B0F14]">
+    <div className="relative min-h-screen">
+      <PulseThemedBackground />
       <OnboardingProvider>
         <InactivitySessionGuard />
         <ServerTimeSync />

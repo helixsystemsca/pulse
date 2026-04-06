@@ -37,7 +37,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${plusJakarta.variable} ${beVietnam.variable}`} suppressHydrationWarning>
-      <body className="font-body text-helix-onSurface antialiased dark:bg-slate-950 dark:text-slate-100">
+      <body className="font-body text-helix-onSurface antialiased dark:bg-[#0c1424] dark:text-slate-100">
         <Script id="pulse-theme-init" strategy="beforeInteractive">
           {themeInitScript}
         </Script>

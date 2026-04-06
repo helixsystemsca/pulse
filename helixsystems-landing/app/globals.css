@@ -17,16 +17,20 @@ html {
   }
 
   /**
-   * App canvas (main content / feature backgrounds).
-   * Light: gray-50 · Dark: matches dashboard token #0B0F14
+   * App canvas: transparent so {@link PulseThemedBackground} shows through (matches login).
    */
   .bg-pulse-bg {
-    @apply bg-gray-50 dark:bg-[#0B0F14];
+    @apply bg-transparent;
   }
 
   /** Primary surfaces */
   .app-canvas {
-    @apply bg-gray-50 dark:bg-[#0B0F14];
+    @apply bg-transparent;
+  }
+
+  /** Marketing / alternating bands — light wash over themed gradient */
+  .bg-pulse-section {
+    @apply bg-slate-50/45 dark:bg-slate-950/28;
   }
   .app-card {
     @apply bg-white dark:bg-[#111827];
