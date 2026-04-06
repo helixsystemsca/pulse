@@ -6,7 +6,7 @@ import logging
 from datetime import datetime, timedelta, timezone
 from typing import Annotated, Any, Optional
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
+from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Query, UploadFile, status
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import require_system_admin
@@ -22,6 +22,12 @@ from app.core.features.system_catalog import (
     GLOBAL_SYSTEM_FEATURES,
     canonicalize_enabled_features_for_admin_ui,
     normalize_enabled_features,
+)
+from app.core.company_logo_upload import (
+    INTERNAL_LOGO_PATH,
+    normalize_logo_content_type,
+    validate_logo_bytes,
+    write_company_logo_file,
 )
 from app.core.system_audit import record_system_log
 from app.core.system_tokens import generate_raw_token, hash_system_token as hash_opaque_token
@@ -483,6 +489,55 @@ async def patch_company(
     )
     await db.commit()
     await db.refresh(c)
+    uc = await db.execute(
+        select(func.count()).select_from(User).where(User.company_id == c.id, User.is_active.is_(True))
+    )
+    cnt = int(uc.scalar_one() or 0)
+    ef = canonicalize_enabled_features_for_admin_ui(await list_enabled_names(db, c.id))
+    return SystemCompanyRow(
+        id=c.id,
+        name=c.name,
+        logo_url=c.logo_url,
+        header_image_url=c.header_image_url,
+        enabled_features=ef,
+        user_count=cnt,
+        is_active=c.is_active,
+        owner_admin_id=c.owner_admin_id,
+    )
+
+
+@router.post("/companies/{company_id}/logo", response_model=SystemCompanyRow)
+async def upload_company_logo_as_system_admin(
+    company_id: str,
+    admin: Annotated[User, Depends(require_system_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    file: UploadFile = File(...),
+) -> SystemCompanyRow:
+    """Store logo file for any tenant (same disk layout as POST /api/v1/company/logo)."""
+    c = await db.get(Company, company_id)
+    if not c:
+        raise HTTPException(status_code=404, detail="Company not found")
+
+    ct = normalize_logo_content_type(file.content_type)
+    raw = await file.read()
+    try:
+        ext = validate_logo_bytes(ct, raw)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
+
+    write_company_logo_file(company_id, ext, raw)
+    c.logo_url = INTERNAL_LOGO_PATH
+    await record_system_log(
+        db,
+        action="company.logo_uploaded",
+        performed_by=admin.id,
+        target_type="company",
+        target_id=c.id,
+        metadata={},
+    )
+    await db.commit()
+    await db.refresh(c)
+
     uc = await db.execute(
         select(func.count()).select_from(User).where(User.company_id == c.id, User.is_active.is_(True))
     )

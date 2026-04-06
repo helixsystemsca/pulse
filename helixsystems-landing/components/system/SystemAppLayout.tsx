@@ -66,7 +66,9 @@ export function SystemAppLayout({ children }: { children: ReactNode }) {
 
   if (!ready || !me) {
     return (
-      <div className="flex min-h-[40vh] items-center justify-center text-zinc-400">Checking access…</div>
+      <div className="flex min-h-[40vh] items-center justify-center text-gray-500 dark:text-zinc-400">
+        Checking access…
+      </div>
     );
   }
 

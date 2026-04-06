@@ -17,6 +17,7 @@ import {
   Layers,
   LayoutDashboard,
   MapPin,
+  Image as ImageIcon,
   Package,
   ScrollText,
   UserCog,
@@ -43,6 +44,7 @@ const ICONS: Record<PulseSidebarIcon, LucideIcon> = {
   building: Building2,
   "user-cog": UserCog,
   "scroll-text": ScrollText,
+  image: ImageIcon,
 };
 
 export function AppSideNav() {
@@ -74,7 +76,10 @@ export function AppSideNav() {
       ? rawNav.filter((i) => i.href !== "/monitoring")
       : [...rawNav];
   if (!isSystemAdmin && session) {
-    items = items.filter((i) => isTenantNavFeatureEnabled(i.href, session.enabled_features));
+    items = items.filter((i) => {
+      if (i.href === "/dashboard/organization") return session.role === "company_admin";
+      return isTenantNavFeatureEnabled(i.href, session.enabled_features);
+    });
   }
   const systemRail = isSystemAdmin;
 
@@ -96,11 +101,7 @@ export function AppSideNav() {
       ) : null}
 
       <aside
-        className={`group/sidebar fixed left-3 top-1/2 z-[40] flex max-h-[min(85vh,52rem)] w-[4.25rem] -translate-y-1/2 flex-col overflow-hidden overflow-y-auto rounded-2xl border transition-[width,box-shadow] duration-200 ease-out lg:hover:w-56 ${
-          systemRail
-            ? "border-zinc-800 bg-zinc-950 shadow-xl"
-            : `${tenantShell} ${narrowExpanded ? tenantShellMobilePop : ""}`
-        }`}
+        className={`group/sidebar fixed left-3 top-1/2 z-[40] flex max-h-[min(85vh,52rem)] w-[4.25rem] -translate-y-1/2 flex-col overflow-hidden overflow-y-auto rounded-2xl border transition-[width,box-shadow] duration-200 ease-out lg:hover:w-56 ${tenantShell} ${narrowExpanded ? tenantShellMobilePop : ""}`}
         aria-label="App"
       >
         {!systemRail && session?.company ? (
@@ -131,24 +132,16 @@ export function AppSideNav() {
                 title={item.label}
                 onClick={() => setNarrowExpanded(false)}
                 className={`relative flex min-h-[2.75rem] items-center gap-3 rounded-xl py-2 pl-2 pr-3 text-sm font-semibold transition-[color,background-color,box-shadow] ${
-                  systemRail
-                    ? active
-                      ? "bg-zinc-900 text-white"
-                      : "text-zinc-400 hover:bg-zinc-900/80 hover:text-zinc-100"
-                    : active
-                      ? "bg-sky-50/95 text-[#1e4a8a] shadow-sm ring-2 ring-[#2B4C7E]/20 dark:bg-[#0F172A] dark:text-gray-100 dark:ring-[#1F2937]"
-                      : "text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-gray-100"
+                  active
+                    ? "bg-sky-50/95 text-[#1e4a8a] shadow-sm ring-2 ring-[#2B4C7E]/20 dark:bg-[#0F172A] dark:text-gray-100 dark:ring-[#1F2937]"
+                    : "text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-gray-100"
                 }`}
               >
                 <span
                   className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${
-                    systemRail
-                      ? active
-                        ? "bg-zinc-800 text-white"
-                        : "bg-zinc-900 text-zinc-400"
-                      : active
-                        ? "bg-white text-[#2B4C7E] shadow-sm ring-1 ring-sky-200/60 dark:bg-[#111827] dark:text-blue-300 dark:ring-[#1F2937]"
-                        : "bg-gray-100 text-gray-500 dark:bg-[#0F172A] dark:text-gray-400"
+                    active
+                      ? "bg-white text-[#2B4C7E] shadow-sm ring-1 ring-sky-200/60 dark:bg-[#111827] dark:text-blue-300 dark:ring-[#1F2937]"
+                      : "bg-gray-100 text-gray-500 dark:bg-[#0F172A] dark:text-gray-400"
                   }`}
                 >
                   <Icon className="h-[1.125rem] w-[1.125rem]" strokeWidth={2} aria-hidden />
@@ -167,17 +160,13 @@ export function AppSideNav() {
 
         <button
           type="button"
-          className={`flex shrink-0 items-center justify-center border-t py-2 lg:hidden ${
-            systemRail ? "border-zinc-800" : "border-gray-200 dark:border-[#1F2937]"
-          }`}
+          className="flex shrink-0 items-center justify-center border-t border-gray-200 py-2 dark:border-[#1F2937] lg:hidden"
           onClick={() => setNarrowExpanded((o) => !o)}
           aria-expanded={narrowExpanded}
           aria-label={narrowExpanded ? "Collapse navigation" : "Expand navigation"}
         >
           <ChevronRight
-            className={`h-4 w-4 transition-transform ${
-              systemRail ? "text-zinc-400" : "text-gray-500 dark:text-gray-400"
-            } ${narrowExpanded ? "rotate-180" : ""}`}
+            className={`h-4 w-4 transition-transform text-gray-500 dark:text-gray-400 ${narrowExpanded ? "rotate-180" : ""}`}
             strokeWidth={2}
             aria-hidden
           />

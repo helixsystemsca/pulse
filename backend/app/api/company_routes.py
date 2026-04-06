@@ -10,20 +10,17 @@ from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_company_user, get_db, require_company_admin_scoped
+from app.core.company_logo_upload import (
+    INTERNAL_LOGO_PATH,
+    normalize_logo_content_type,
+    validate_logo_bytes,
+    write_company_logo_file,
+)
 from app.core.config import get_settings
 from app.models.domain import Company, User
 from app.schemas.company import CompanyLogoUploadOut, CompanyProfilePatch
 
 router = APIRouter(prefix="/company", tags=["company"])
-
-INTERNAL_LOGO_PATH = "/api/v1/company/logo"
-_MAX_BYTES = 2 * 1024 * 1024
-_CT_EXT = {
-    "image/jpeg": ".jpg",
-    "image/png": ".png",
-    "image/webp": ".webp",
-    "image/gif": ".gif",
-}
 
 
 def _logo_disk_path(company_id: str) -> Path:
@@ -65,28 +62,15 @@ async def upload_company_logo(
     db: Annotated[AsyncSession, Depends(get_db)],
     file: UploadFile = File(...),
 ) -> CompanyLogoUploadOut:
-    ct = (file.content_type or "").split(";")[0].strip().lower()
-    if ct not in _CT_EXT:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Upload an image (JPEG, PNG, WebP, or GIF)",
-        )
+    ct = normalize_logo_content_type(file.content_type)
     raw = await file.read()
-    if len(raw) > _MAX_BYTES:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Image too large (max 2MB)")
+    try:
+        ext = validate_logo_bytes(ct, raw)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
 
     cid = str(user.company_id)
-    root = Path(get_settings().pulse_uploads_dir) / "company_logos"
-    root.mkdir(parents=True, exist_ok=True)
-    ext = _CT_EXT[ct]
-    path = root / f"{cid}{ext}"
-    for old in root.glob(f"{cid}.*"):
-        if old != path:
-            try:
-                old.unlink()
-            except OSError:
-                pass
-    path.write_bytes(raw)
+    write_company_logo_file(cid, ext, raw)
 
     co = await db.get(Company, cid)
     if not co:

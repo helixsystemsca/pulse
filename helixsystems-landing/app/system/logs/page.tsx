@@ -36,11 +36,12 @@ const EMPTY_FILTERS: Omit<FilterPayload, "limit" | "offset"> = {
 };
 
 const INPUT =
-  "rounded-lg border border-zinc-600 bg-zinc-900 px-3 py-2 text-sm text-white placeholder:text-zinc-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500";
+  "rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 dark:border-zinc-600 dark:bg-zinc-900 dark:text-white dark:placeholder:text-zinc-500";
 const BTN_SECONDARY =
-  "rounded-lg border border-zinc-600 bg-zinc-900 px-4 py-2 text-sm font-semibold text-zinc-200 hover:bg-zinc-800";
+  "rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-800 hover:bg-gray-50 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800";
 const BTN_PRIMARY = "rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500";
-const BTN_GHOST = "rounded-lg px-3 py-2 text-sm font-medium text-zinc-400 hover:bg-zinc-800 hover:text-white";
+const BTN_GHOST =
+  "rounded-lg px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white";
 
 function buildQuery(p: FilterPayload): string {
   const q = new URLSearchParams();
@@ -181,21 +182,21 @@ export default function SystemLogsPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-xl font-semibold text-white">System logs</h1>
-          <p className="mt-1 text-sm text-zinc-500">Sensitive actions from the internal admin surface.</p>
+          <h1 className="text-xl font-semibold text-gray-900 dark:text-white">System logs</h1>
+          <p className="mt-1 text-sm text-gray-500 dark:text-zinc-500">Sensitive actions from the internal admin surface.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
             onClick={() => setFilterOpen(true)}
-            className="inline-flex items-center gap-2 rounded-lg border border-zinc-600 bg-zinc-900 px-4 py-2 text-sm font-semibold text-zinc-100 shadow-sm hover:bg-zinc-800"
+            className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-900 shadow-sm hover:bg-gray-50 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800"
           >
             Filters
             {activeCount > 0 ? (
               <span className="rounded-full bg-blue-600 px-2 py-0.5 text-[11px] font-bold text-white">{activeCount}</span>
             ) : null}
           </button>
-          <span className="text-xs text-zinc-500">
+          <span className="text-xs text-gray-500 dark:text-zinc-500">
             Up to 200 rows · {loading ? "…" : `${rows.length} loaded`}
           </span>
         </div>
@@ -208,18 +209,18 @@ export default function SystemLogsPage() {
           onClick={() => setFilterOpen(false)}
         >
           <div
-            className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl border border-zinc-700 bg-zinc-950 p-6 shadow-2xl"
+            className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl border border-gray-200 bg-white p-6 shadow-2xl dark:border-zinc-700 dark:bg-zinc-950"
             role="dialog"
             aria-modal="true"
             aria-labelledby="log-filter-title"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-start justify-between gap-4 border-b border-zinc-800 pb-4">
+            <div className="flex items-start justify-between gap-4 border-b border-gray-200 pb-4 dark:border-zinc-800">
               <div>
-                <h2 id="log-filter-title" className="text-lg font-semibold text-white">
+                <h2 id="log-filter-title" className="text-lg font-semibold text-gray-900 dark:text-white">
                   Filter logs
                 </h2>
-                <p className="mt-1 text-sm text-zinc-500">Narrow by action, actor, target, or time range.</p>
+                <p className="mt-1 text-sm text-gray-500 dark:text-zinc-500">Narrow by action, actor, target, or time range.</p>
               </div>
               <button type="button" className={BTN_GHOST} onClick={() => setFilterOpen(false)} aria-label="Close">
                 ✕
@@ -228,7 +229,7 @@ export default function SystemLogsPage() {
 
             <div className="mt-6 grid gap-5 sm:grid-cols-2">
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-zinc-400" htmlFor="log-action-exact">
+                <label className="text-xs font-medium text-gray-600 dark:text-zinc-400" htmlFor="log-action-exact">
                   Action (exact)
                 </label>
                 <select
@@ -246,7 +247,7 @@ export default function SystemLogsPage() {
                 </select>
               </div>
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-zinc-400" htmlFor="log-search">
+                <label className="text-xs font-medium text-gray-600 dark:text-zinc-400" htmlFor="log-search">
                   Action search
                 </label>
                 <input
@@ -258,7 +259,7 @@ export default function SystemLogsPage() {
                 />
               </div>
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-zinc-400" htmlFor="log-target-type">
+                <label className="text-xs font-medium text-gray-600 dark:text-zinc-400" htmlFor="log-target-type">
                   Target type
                 </label>
                 <input
@@ -270,7 +271,7 @@ export default function SystemLogsPage() {
                 />
               </div>
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-zinc-400" htmlFor="log-target-id">
+                <label className="text-xs font-medium text-gray-600 dark:text-zinc-400" htmlFor="log-target-id">
                   Target id
                 </label>
                 <input
@@ -282,7 +283,7 @@ export default function SystemLogsPage() {
                 />
               </div>
               <div className="space-y-1.5 sm:col-span-2">
-                <label className="text-xs font-medium text-zinc-400" htmlFor="log-actor">
+                <label className="text-xs font-medium text-gray-600 dark:text-zinc-400" htmlFor="log-actor">
                   Actor (user id)
                 </label>
                 <input
@@ -294,7 +295,7 @@ export default function SystemLogsPage() {
                 />
               </div>
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-zinc-400" htmlFor="log-since">
+                <label className="text-xs font-medium text-gray-600 dark:text-zinc-400" htmlFor="log-since">
                   From (local)
                 </label>
                 <input
@@ -306,7 +307,7 @@ export default function SystemLogsPage() {
                 />
               </div>
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-zinc-400" htmlFor="log-until">
+                <label className="text-xs font-medium text-gray-600 dark:text-zinc-400" htmlFor="log-until">
                   To (local)
                 </label>
                 <input
@@ -319,7 +320,7 @@ export default function SystemLogsPage() {
               </div>
             </div>
 
-            <div className="mt-8 flex flex-wrap items-center justify-end gap-2 border-t border-zinc-800 pt-5">
+            <div className="mt-8 flex flex-wrap items-center justify-end gap-2 border-t border-gray-200 pt-5 dark:border-zinc-800">
               <button type="button" className={BTN_SECONDARY} onClick={() => void clearFilters()}>
                 Clear all
               </button>
@@ -331,14 +332,14 @@ export default function SystemLogsPage() {
         </div>
       ) : null}
 
-      {error ? <p className="text-red-400">{error}</p> : null}
+      {error ? <p className="text-red-600 dark:text-red-400">{error}</p> : null}
 
       {loading ? (
-        <p className="text-zinc-500">Loading…</p>
+        <p className="text-gray-500 dark:text-zinc-500">Loading…</p>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-zinc-800">
-          <table className="min-w-full divide-y divide-zinc-800 text-left text-sm">
-            <thead className="bg-zinc-900/80 text-xs uppercase text-zinc-500">
+        <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-zinc-800">
+          <table className="min-w-full divide-y divide-gray-200 text-left text-sm dark:divide-zinc-800">
+            <thead className="bg-gray-50 text-xs uppercase text-gray-500 dark:bg-zinc-900/80 dark:text-zinc-500">
               <tr>
                 <th className="px-4 py-3">Time</th>
                 <th className="px-4 py-3">Action</th>
@@ -347,23 +348,27 @@ export default function SystemLogsPage() {
                 <th className="px-4 py-3">Meta</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-zinc-800 bg-zinc-950/50">
+            <tbody className="divide-y divide-gray-200 bg-white/80 dark:divide-zinc-800 dark:bg-zinc-950/50">
               {rows.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-4 py-8 text-center text-zinc-500">
+                  <td colSpan={5} className="px-4 py-8 text-center text-gray-500 dark:text-zinc-500">
                     No log entries match these filters.
                   </td>
                 </tr>
               ) : (
                 rows.map((r) => (
                   <tr key={r.id}>
-                    <td className="whitespace-nowrap px-4 py-3 text-xs text-zinc-500">{formatLogTime(r.logged_at)}</td>
-                    <td className="px-4 py-3 text-zinc-200">{r.action}</td>
-                    <td className="px-4 py-3 text-xs text-zinc-500">{r.performed_by || "—"}</td>
-                    <td className="px-4 py-3 text-xs text-zinc-500">
+                    <td className="whitespace-nowrap px-4 py-3 text-xs text-gray-500 dark:text-zinc-500">
+                      {formatLogTime(r.logged_at)}
+                    </td>
+                    <td className="px-4 py-3 text-gray-900 dark:text-zinc-200">{r.action}</td>
+                    <td className="px-4 py-3 text-xs text-gray-500 dark:text-zinc-500">{r.performed_by || "—"}</td>
+                    <td className="px-4 py-3 text-xs text-gray-500 dark:text-zinc-500">
                       {r.target_type || "—"}:{r.target_id || "—"}
                     </td>
-                    <td className="max-w-xs truncate px-4 py-3 text-xs text-zinc-500">{JSON.stringify(r.metadata)}</td>
+                    <td className="max-w-xs truncate px-4 py-3 text-xs text-gray-500 dark:text-zinc-500">
+                      {JSON.stringify(r.metadata)}
+                    </td>
                   </tr>
                 ))
               )}

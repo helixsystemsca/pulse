@@ -40,9 +40,10 @@ const ROLE_OPTIONS: { value: string; label: string }[] = [
 ];
 
 const INPUT =
-  "w-full rounded-lg border border-zinc-600 bg-zinc-900 px-3 py-2 text-sm text-white placeholder:text-zinc-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500";
+  "w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 dark:border-zinc-600 dark:bg-zinc-900 dark:text-white dark:placeholder:text-zinc-500";
 const BTN_PRIMARY = "rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500";
-const BTN_SECONDARY = "rounded-lg border border-zinc-600 bg-zinc-900 px-4 py-2 text-sm font-semibold text-zinc-200 hover:bg-zinc-800";
+const BTN_SECONDARY =
+  "rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-800 hover:bg-gray-50 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800";
 
 export default function SystemUsersPage() {
   const router = useRouter();
@@ -143,15 +144,15 @@ export default function SystemUsersPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-xl font-semibold text-white">Users</h1>
-          <p className="mt-1 text-sm text-zinc-500">
+          <h1 className="text-xl font-semibold text-gray-900 dark:text-white">Users</h1>
+          <p className="mt-1 text-sm text-gray-500 dark:text-zinc-500">
             Tenant accounts and pending invites. Use impersonation to open Pulse as a company user.
           </p>
         </div>
         <button
           type="button"
           onClick={openFilters}
-          className="inline-flex items-center gap-2 rounded-lg border border-zinc-600 bg-zinc-900 px-4 py-2 text-sm font-semibold text-zinc-100 hover:bg-zinc-800"
+          className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-900 hover:bg-gray-50 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800"
         >
           Filters
           {filterBadge > 0 ? (
@@ -167,19 +168,19 @@ export default function SystemUsersPage() {
           role="presentation"
         >
           <div
-            className="w-full max-w-md rounded-2xl border border-zinc-700 bg-zinc-950 p-6 shadow-2xl"
+            className="w-full max-w-md rounded-2xl border border-gray-200 bg-white p-6 shadow-2xl dark:border-zinc-700 dark:bg-zinc-950"
             role="dialog"
             aria-modal="true"
             aria-labelledby="users-filter-title"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between border-b border-zinc-800 pb-4">
-              <h2 id="users-filter-title" className="text-lg font-semibold text-white">
+            <div className="flex items-center justify-between border-b border-gray-200 pb-4 dark:border-zinc-800">
+              <h2 id="users-filter-title" className="text-lg font-semibold text-gray-900 dark:text-white">
                 Filter users
               </h2>
               <button
                 type="button"
-                className="rounded-lg px-2 py-1 text-zinc-400 hover:bg-zinc-800 hover:text-white"
+                className="rounded-lg px-2 py-1 text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white"
                 onClick={() => setFilterOpen(false)}
                 aria-label="Close"
               >
@@ -188,7 +189,7 @@ export default function SystemUsersPage() {
             </div>
             <div className="mt-5 space-y-4">
               <div>
-                <label className="text-xs font-medium text-zinc-400" htmlFor="users-q">
+                <label className="text-xs font-medium text-gray-600 dark:text-zinc-400" htmlFor="users-q">
                   Search
                 </label>
                 <input
@@ -200,7 +201,7 @@ export default function SystemUsersPage() {
                 />
               </div>
               <div>
-                <label className="text-xs font-medium text-zinc-400" htmlFor="users-role">
+                <label className="text-xs font-medium text-gray-600 dark:text-zinc-400" htmlFor="users-role">
                   Role
                 </label>
                 <select
@@ -243,21 +244,22 @@ export default function SystemUsersPage() {
       ) : null}
 
       {loading ? (
-        <p className="text-zinc-500">Loading…</p>
+        <p className="text-gray-500 dark:text-zinc-500">Loading…</p>
       ) : (
         <div className="space-y-10">
           <div>
-            <h2 className="text-sm font-semibold text-zinc-300">Directory</h2>
-            <p className="mt-1 text-xs text-zinc-500">
-              Completed signups only. <strong className="text-zinc-400">Delete</strong> removes the account (not allowed for
+            <h2 className="text-sm font-semibold text-gray-800 dark:text-zinc-300">Directory</h2>
+            <p className="mt-1 text-xs text-gray-500 dark:text-zinc-500">
+              Completed signups only. <strong className="text-gray-700 dark:text-zinc-400">Delete</strong> removes the
+              account (not allowed for
               yourself or the last system admin).
             </p>
             {rows.length === 0 ? (
-              <p className="mt-3 text-sm text-zinc-500">No users match these filters.</p>
+              <p className="mt-3 text-sm text-gray-500 dark:text-zinc-500">No users match these filters.</p>
             ) : (
-              <div className="mt-3 overflow-x-auto rounded-lg border border-zinc-800">
-                <table className="min-w-full divide-y divide-zinc-800 text-left text-sm">
-                  <thead className="bg-zinc-900/80 text-xs uppercase text-zinc-500">
+              <div className="mt-3 overflow-x-auto rounded-lg border border-gray-200 dark:border-zinc-800">
+                <table className="min-w-full divide-y divide-gray-200 text-left text-sm dark:divide-zinc-800">
+                  <thead className="bg-gray-50 text-xs uppercase text-gray-500 dark:bg-zinc-900/80 dark:text-zinc-500">
                     <tr>
                       <th className="px-4 py-3">User</th>
                       <th className="px-4 py-3">Role</th>
@@ -266,16 +268,16 @@ export default function SystemUsersPage() {
                       <th className="px-4 py-3">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-zinc-800 bg-zinc-950/50">
+                  <tbody className="divide-y divide-gray-200 bg-white/80 dark:divide-zinc-800 dark:bg-zinc-950/50">
                     {rows.map((r) => (
                       <tr key={r.id} className={r.is_active ? "" : "opacity-50"}>
                         <td className="px-4 py-3">
-                          <div className="font-medium text-white">{r.full_name || "—"}</div>
-                          <div className="text-xs text-zinc-500">{r.email}</div>
+                          <div className="font-medium text-gray-900 dark:text-white">{r.full_name || "—"}</div>
+                          <div className="text-xs text-gray-500 dark:text-zinc-500">{r.email}</div>
                         </td>
-                        <td className="px-4 py-3 text-zinc-400">{r.role}</td>
-                        <td className="px-4 py-3 text-zinc-400">{r.company_name || "—"}</td>
-                        <td className="px-4 py-3 text-xs text-zinc-500">{r.last_login || "—"}</td>
+                        <td className="px-4 py-3 text-gray-600 dark:text-zinc-400">{r.role}</td>
+                        <td className="px-4 py-3 text-gray-600 dark:text-zinc-400">{r.company_name || "—"}</td>
+                        <td className="px-4 py-3 text-xs text-gray-500 dark:text-zinc-500">{r.last_login || "—"}</td>
                         <td className="space-x-2 px-4 py-3">
                           {r.role !== "system_admin" && r.company_id ? (
                             <button
@@ -289,7 +291,7 @@ export default function SystemUsersPage() {
                           <button
                             type="button"
                             onClick={() => void requestReset(r.id)}
-                            className="text-xs text-zinc-400 hover:underline"
+                            className="text-xs text-gray-600 hover:underline dark:text-zinc-400"
                           >
                             Reset link
                           </button>
@@ -312,16 +314,16 @@ export default function SystemUsersPage() {
           </div>
 
           <div>
-            <h2 className="text-sm font-semibold text-zinc-300">Pending invites</h2>
-            <p className="mt-1 text-xs text-zinc-500">
+            <h2 className="text-sm font-semibold text-gray-800 dark:text-zinc-300">Pending invites</h2>
+            <p className="mt-1 text-xs text-gray-500 dark:text-zinc-500">
               Open invites that have not finished signup—no account to impersonate yet.
             </p>
             {pendingInvites.length === 0 ? (
-              <p className="mt-3 text-sm text-zinc-500">No unused, non-expired invites.</p>
+              <p className="mt-3 text-sm text-gray-500 dark:text-zinc-500">No unused, non-expired invites.</p>
             ) : (
-              <div className="mt-3 overflow-x-auto rounded-lg border border-zinc-800">
-                <table className="min-w-full divide-y divide-zinc-800 text-left text-sm">
-                  <thead className="bg-zinc-900/80 text-xs uppercase text-zinc-500">
+              <div className="mt-3 overflow-x-auto rounded-lg border border-gray-200 dark:border-zinc-800">
+                <table className="min-w-full divide-y divide-gray-200 text-left text-sm dark:divide-zinc-800">
+                  <thead className="bg-gray-50 text-xs uppercase text-gray-500 dark:bg-zinc-900/80 dark:text-zinc-500">
                     <tr>
                       <th className="px-4 py-3">Email</th>
                       <th className="px-4 py-3">Role</th>
@@ -329,13 +331,13 @@ export default function SystemUsersPage() {
                       <th className="px-4 py-3">Expires</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-zinc-800 bg-zinc-950/50">
+                  <tbody className="divide-y divide-gray-200 bg-white/80 dark:divide-zinc-800 dark:bg-zinc-950/50">
                     {pendingInvites.map((r) => (
                       <tr key={r.invite_id}>
-                        <td className="px-4 py-3 text-white">{r.email}</td>
-                        <td className="px-4 py-3 text-zinc-400">{r.role}</td>
-                        <td className="px-4 py-3 text-zinc-400">{r.company_name || r.company_id}</td>
-                        <td className="px-4 py-3 text-xs text-zinc-500">{r.expires_at}</td>
+                        <td className="px-4 py-3 text-gray-900 dark:text-white">{r.email}</td>
+                        <td className="px-4 py-3 text-gray-600 dark:text-zinc-400">{r.role}</td>
+                        <td className="px-4 py-3 text-gray-600 dark:text-zinc-400">{r.company_name || r.company_id}</td>
+                        <td className="px-4 py-3 text-xs text-gray-500 dark:text-zinc-500">{r.expires_at}</td>
                       </tr>
                     ))}
                   </tbody>

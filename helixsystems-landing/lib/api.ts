@@ -62,6 +62,42 @@ export async function apiFetch<T>(
   return data as T;
 }
 
+/** POST `multipart/form-data` (e.g. file upload). Do not set `Content-Type` manually — browser sets boundary. */
+export async function apiPostFormData<T>(path: string, formData: FormData): Promise<T> {
+  const base = getApiBaseUrl();
+  if (!base) {
+    throw new Error("NEXT_PUBLIC_API_URL is not configured");
+  }
+  const url = path.startsWith("http") ? path : `${base}${path.startsWith("/") ? "" : "/"}${path}`;
+  const headers = new Headers();
+  const session = readSession();
+  if (session?.access_token && !headers.has("Authorization")) {
+    headers.set("Authorization", `Bearer ${session.access_token}`);
+  }
+  const res = await fetch(url, {
+    method: "POST",
+    headers,
+    body: formData,
+  });
+  const text = await res.text();
+  let data: unknown = null;
+  if (text) {
+    try {
+      data = JSON.parse(text);
+    } catch {
+      data = text;
+    }
+  }
+  if (!res.ok) {
+    const err = new Error(`API ${res.status}`) as Error & { status: number; body: unknown; requestUrl: string };
+    err.status = res.status;
+    err.body = data;
+    err.requestUrl = url;
+    throw err;
+  }
+  return data as T;
+}
+
 export async function refreshSessionWithToken(token: string, remember: boolean): Promise<void> {
   const base = getApiBaseUrl();
   if (!base) throw new Error("NEXT_PUBLIC_API_URL is not configured");

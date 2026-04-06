@@ -229,8 +229,8 @@ export default function SystemCompaniesPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-xl font-semibold text-white">Companies</h1>
-          <p className="mt-1 text-sm text-zinc-500">Create tenants, features, and invites.</p>
+          <h1 className="text-xl font-semibold text-gray-900 dark:text-white">Companies</h1>
+          <p className="mt-1 text-sm text-gray-500 dark:text-zinc-500">Create tenants, features, and invites.</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <button
@@ -255,12 +255,12 @@ export default function SystemCompaniesPage() {
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="Filter by name…"
-          className="w-full max-w-xs rounded-lg border border-zinc-700 bg-zinc-600/30 px-3 py-2 text-sm text-white placeholder:text-zinc-500"
+          className="w-full max-w-xs rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-blue-500/50 dark:border-zinc-600 dark:bg-zinc-900 dark:text-white dark:placeholder:text-zinc-500"
         />
         <button
           type="button"
           onClick={() => void load()}
-          className="rounded-lg border border-zinc-600 px-3 py-2 text-sm text-zinc-300 hover:bg-zinc-800"
+          className="rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
         >
           Search
         </button>
@@ -345,11 +345,11 @@ export default function SystemCompaniesPage() {
       ) : null}
 
       {loading ? (
-        <p className="text-zinc-500">Loading…</p>
+        <p className="text-gray-500 dark:text-zinc-500">Loading…</p>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-zinc-800">
-          <table className="min-w-full divide-y divide-zinc-800 text-left text-sm">
-            <thead className="bg-zinc-900/80 text-xs uppercase text-zinc-500">
+        <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-zinc-800">
+          <table className="min-w-full divide-y divide-gray-200 text-left text-sm dark:divide-zinc-800">
+            <thead className="bg-gray-50 text-xs uppercase text-gray-500 dark:bg-zinc-900/80 dark:text-zinc-500">
               <tr>
                 <th className="px-4 py-3">Company</th>
                 <th className="px-4 py-3">Users</th>
@@ -358,7 +358,7 @@ export default function SystemCompaniesPage() {
                 <th className="px-4 py-3 w-44 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-zinc-800 bg-zinc-950/50">
+            <tbody className="divide-y divide-gray-200 bg-white/80 dark:divide-zinc-800 dark:bg-zinc-950/50">
               {rows.map((r) => (
                 <tr
                   key={r.id}
@@ -371,23 +371,26 @@ export default function SystemCompaniesPage() {
                       router.push(`/system/companies/${r.id}`);
                     }
                   }}
-                  className={`cursor-pointer transition-colors hover:bg-zinc-900/70 ${
+                  className={`cursor-pointer transition-colors hover:bg-gray-50 dark:hover:bg-zinc-900/70 ${
                     r.is_active ? "" : "opacity-60"
                   }`}
                 >
-                  <td className="px-4 py-3 font-medium text-white">
-                    <span className="text-blue-300">{r.name}</span>
-                    <div className="text-xs font-normal text-zinc-500">{r.id}</div>
-                    <p className="mt-0.5 text-[11px] text-zinc-600">Click for features &amp; settings</p>
+                  <td className="px-4 py-3 font-medium text-gray-900 dark:text-white">
+                    <span className="text-blue-600 dark:text-blue-300">{r.name}</span>
+                    <div className="text-xs font-normal text-gray-500 dark:text-zinc-500">{r.id}</div>
+                    <p className="mt-0.5 text-[11px] text-gray-500 dark:text-zinc-600">Click for features &amp; settings</p>
                   </td>
-                  <td className="px-4 py-3 text-zinc-400">{r.user_count}</td>
+                  <td className="px-4 py-3 text-gray-600 dark:text-zinc-400">{r.user_count}</td>
                   <td className="px-4 py-3">
                     {r.enabled_features.length === 0 ? (
-                      <span className="text-xs text-zinc-600">None</span>
+                      <span className="text-xs text-gray-500 dark:text-zinc-600">None</span>
                     ) : (
                       <div className="flex max-w-md flex-wrap gap-1">
                         {r.enabled_features.map((f) => (
-                          <span key={f} className="rounded bg-zinc-800 px-1.5 py-0.5 text-xs text-zinc-300">
+                          <span
+                            key={f}
+                            className="rounded bg-gray-100 px-1.5 py-0.5 text-xs text-gray-800 dark:bg-zinc-800 dark:text-zinc-300"
+                          >
                             {f}
                           </span>
                         ))}
