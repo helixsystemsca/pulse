@@ -1,11 +1,12 @@
 "use client";
 
 /**
- * Full-screen welcome overlay after sign-in: engine warm-up copy + loader, then personalized welcome.
+ * Full-screen welcome overlay after sign-in: glass system-widget style with calm progress + status.
  * Shown at most once per browser tab session (`sessionStorage`), so refreshes skip the animation.
  */
 
 import { AnimatePresence, motion } from "framer-motion";
+import { Activity, AlertCircle, AlertTriangle, Check } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { PULSE_WELCOME_SESSION_KEY } from "@/lib/pulse-session";
 
@@ -69,6 +70,51 @@ function pickContextGreeting(criticalCount: number, warningCount: number): strin
   return timeOfDayGreeting();
 }
 
+function MiniDotLoader() {
+  return (
+    <div className="flex shrink-0 items-center gap-1 pt-0.5" aria-hidden>
+      {[0, 1, 2].map((i) => (
+        <motion.span
+          key={i}
+          className="h-1.5 w-1.5 rounded-full bg-slate-600/70 dark:bg-white/45"
+          animate={{ opacity: [0.25, 0.95, 0.25], scale: [0.92, 1, 0.92] }}
+          transition={{
+            duration: 1.4,
+            repeat: Infinity,
+            delay: i * 0.2,
+            ease: "easeInOut",
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
+type StatusKind = "ok" | "warning" | "critical" | "loading";
+
+function statusForPhase(
+  phase: "loading" | "ready",
+  criticalCount: number,
+  warningCount: number,
+): { kind: StatusKind; message: string } {
+  if (phase === "loading") {
+    return { kind: "loading", message: "Connecting to your workspace…" };
+  }
+  if (criticalCount >= CRITICAL_GREETING_THRESHOLD) {
+    return {
+      kind: "critical",
+      message: "Some items need attention before you dive in",
+    };
+  }
+  if (warningCount >= WARNING_GREETING_THRESHOLD) {
+    return {
+      kind: "warning",
+      message: "A few alerts are worth a quick look",
+    };
+  }
+  return { kind: "ok", message: "All systems running smoothly" };
+}
+
 export function WelcomeLoaderModal({
   userName,
   isReady,
@@ -122,6 +168,17 @@ export function WelcomeLoaderModal({
 
   const firstName = firstNameOnly(userName);
   const greeting = headlineGreeting || timeOfDayGreeting();
+  const phase = content;
+  const status = statusForPhase(phase, criticalCount, warningCount);
+
+  const statusRowClass =
+    status.kind === "critical"
+      ? "text-red-400/95"
+      : status.kind === "warning"
+        ? "text-amber-300/95"
+        : status.kind === "loading"
+          ? "text-slate-500 dark:text-white/45"
+          : "text-emerald-400/90";
 
   return (
     <AnimatePresence>
@@ -138,79 +195,133 @@ export function WelcomeLoaderModal({
           exit={{ opacity: 0 }}
           transition={{ duration: EXIT_MS / 1000, ease: [0.4, 0, 0.2, 1] }}
         >
+          {/* Dimmed canvas — gradient, not solid black */}
           <div
-            className="pointer-events-none absolute inset-0 bg-slate-900/25 backdrop-blur-[2px]"
+            className="pointer-events-none absolute inset-0 bg-gradient-to-br from-slate-900/50 via-slate-800/35 to-slate-950/45 backdrop-blur-[3px] dark:from-slate-950/45 dark:via-slate-900/40 dark:to-slate-950/50"
             aria-hidden
           />
 
           <motion.div
             layout
-            className="pointer-events-none relative w-full max-w-md rounded-2xl border border-pulse-border bg-white px-8 py-10 shadow-card-lg"
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.98 }}
-            transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+            className="pointer-events-none relative w-full max-w-md rounded-[24px] border border-white/[0.15] bg-white/[0.08] px-7 py-7 shadow-[0_10px_40px_rgba(0,0,0,0.25)] backdrop-blur-xl dark:bg-[rgba(18,24,33,0.7)] dark:backdrop-blur-2xl sm:px-8 sm:py-8"
+            initial={{ opacity: 0, scale: 0.96, y: 8 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.98, y: 4 }}
+            transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
           >
             <div
-              className="pointer-events-none absolute left-0 top-0 h-1 w-full rounded-t-2xl bg-gradient-to-r from-pulse-accent/80 via-pulse-accent to-helix-primary/70"
+              className="pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-white/25 to-transparent dark:via-white/15"
               aria-hidden
             />
 
-            <AnimatePresence mode="wait" initial={false}>
-              {content === "loading" ? (
-                <motion.div
-                  key="loading"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.25 }}
-                  className="flex flex-col items-center text-center"
-                >
-                  <h2
-                    id="welcome-loader-title"
-                    className="font-headline text-xl font-semibold tracking-tight text-pulse-navy sm:text-2xl"
-                  >
-                    Firing up the engine
-                  </h2>
-                  <p className="mt-2 text-sm text-pulse-muted">Just a moment…</p>
+            <div className="flex gap-4">
+              <div
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-white/15 bg-white/[0.06] dark:bg-white/[0.05]"
+                aria-hidden
+              >
+                <Activity
+                  className="h-5 w-5 text-slate-700/90 dark:text-white/80"
+                  strokeWidth={1.75}
+                />
+              </div>
 
-                  <div className="mt-8 flex items-center gap-1.5" aria-hidden>
-                    {[0, 1, 2].map((i) => (
-                      <motion.span
-                        key={i}
-                        className="h-2 w-2 rounded-full bg-pulse-accent"
-                        animate={{ opacity: [0.35, 1, 0.35], y: [0, -4, 0] }}
-                        transition={{
-                          duration: 0.9,
-                          repeat: Infinity,
-                          delay: i * 0.18,
-                          ease: "easeInOut",
-                        }}
-                      />
-                    ))}
-                  </div>
-                </motion.div>
-              ) : (
+              <div className="min-w-0 flex-1 text-left">
+                <AnimatePresence mode="wait" initial={false}>
+                  {content === "loading" ? (
+                    <motion.div
+                      key="loading-copy"
+                      initial={{ opacity: 0, y: 4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -3 }}
+                      transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+                    >
+                      <p
+                        id="welcome-loader-title"
+                        className="font-headline text-[15px] font-semibold leading-snug tracking-tight text-slate-800/95 dark:text-white/[0.92] sm:text-base"
+                      >
+                        Preparing your workspace…
+                      </p>
+                      <p className="mt-1 text-xs font-normal leading-relaxed text-slate-600/90 dark:text-white/50">
+                        Gathering the latest from your operation
+                      </p>
+                    </motion.div>
+                  ) : (
+                    <motion.div
+                      key="ready-copy"
+                      initial={{ opacity: 0, y: 4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -3 }}
+                      transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
+                    >
+                      <h2
+                        id="welcome-loader-title"
+                        className="font-headline text-[17px] font-semibold leading-snug tracking-tight text-slate-800/95 dark:text-white/[0.92] sm:text-lg"
+                      >
+                        {greeting}, {firstName}
+                      </h2>
+                      <p className="mt-1.5 font-headline text-sm font-medium text-slate-700/90 dark:text-white/70">
+                        Let&apos;s get to work!
+                      </p>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+
+              <MiniDotLoader />
+            </div>
+
+            <div className="mt-6">
+              <p className="mb-2 text-[11px] font-medium uppercase tracking-wider text-slate-500/80 dark:text-white/40">
+                {content === "loading" ? "Loading" : "Ready"}
+              </p>
+              <div className="h-1 overflow-hidden rounded-full bg-black/[0.08] dark:bg-white/10">
                 <motion.div
-                  key="ready"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.28 }}
-                  className="flex flex-col items-center text-center"
-                >
-                  <h2
-                    id="welcome-loader-title"
-                    className="font-headline text-xl font-semibold tracking-tight text-pulse-navy sm:text-2xl dark:text-slate-100"
-                  >
-                    {greeting}, {firstName}
-                  </h2>
-                  <p className="mt-3 font-headline text-lg font-semibold text-pulse-navy sm:text-xl dark:text-slate-200">
-                    Let&apos;s get to work
-                  </p>
-                </motion.div>
+                  className="h-full rounded-full bg-gradient-to-r from-cyan-400/55 via-teal-500/45 to-teal-400/50 dark:from-cyan-400/50 dark:via-teal-500/40 dark:to-cyan-500/45"
+                  initial={false}
+                  animate={
+                    content === "loading"
+                      ? { width: ["30%", "68%", "38%", "62%", "30%"] }
+                      : { width: "100%" }
+                  }
+                  transition={
+                    content === "loading"
+                      ? {
+                          duration: 4.2,
+                          repeat: Infinity,
+                          ease: [0.45, 0, 0.55, 1],
+                        }
+                      : {
+                          duration: 0.9,
+                          ease: [0.22, 1, 0.36, 1],
+                        }
+                  }
+                  style={{ originX: 0 }}
+                />
+              </div>
+            </div>
+
+            <motion.div
+              className={`mt-5 flex items-start gap-2 text-left text-xs font-medium leading-relaxed ${statusRowClass}`}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.12, duration: 0.35 }}
+            >
+              {status.kind === "critical" ? (
+                <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 opacity-90" strokeWidth={2} aria-hidden />
+              ) : status.kind === "warning" ? (
+                <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 opacity-90" strokeWidth={2} aria-hidden />
+              ) : status.kind === "loading" ? (
+                <motion.span
+                  className="mt-0.5 block h-3.5 w-3.5 shrink-0 rounded-full border-2 border-slate-400/45 border-t-slate-700/80 dark:border-white/25 dark:border-t-white/70"
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 1.8, repeat: Infinity, ease: "linear" }}
+                  aria-hidden
+                />
+              ) : (
+                <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 opacity-90" strokeWidth={2.5} aria-hidden />
               )}
-            </AnimatePresence>
+              <span>{status.message}</span>
+            </motion.div>
           </motion.div>
         </motion.div>
       ) : null}
