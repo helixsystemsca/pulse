@@ -30,7 +30,10 @@ html {
 
   /** Marketing / alternating bands — light wash over themed gradient */
   .bg-pulse-section {
-    @apply bg-slate-50/45 dark:bg-slate-950/28;
+    background-color: rgb(248 250 252 / 0.45);
+  }
+  .dark .bg-pulse-section {
+    background-color: rgb(2 6 23 / 0.28);
   }
   .app-card {
     @apply bg-white dark:bg-[#111827];
