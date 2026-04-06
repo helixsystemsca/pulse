@@ -131,19 +131,20 @@ export default function LoginPage() {
         />
         {/* Organic wavy lines — full-bleed, subtle */}
         <svg
-          className="absolute inset-0 h-full w-full text-blue-600/[0.2] dark:text-sky-400/[0.22]"
+          className="absolute inset-0 h-full w-full text-blue-600/[0.09] dark:text-sky-400/[0.1]"
           viewBox="0 0 100 100"
           preserveAspectRatio="none"
         >
           <g fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
-            <path vectorEffect="nonScalingStroke" strokeWidth={1.1} opacity={0.85} d="M -8 12 C 12 4, 22 22, 42 14 S 72 8, 108 18" />
-            <path vectorEffect="nonScalingStroke" strokeWidth={0.95} opacity={0.75} d="M -6 28 C 8 38, 28 20, 48 30 S 78 24, 106 34" />
-            <path vectorEffect="nonScalingStroke" strokeWidth={1} opacity={0.7} d="M -10 48 C 14 40, 34 56, 52 44 S 88 52, 110 42" />
-            <path vectorEffect="nonScalingStroke" strokeWidth={0.85} opacity={0.65} d="M -4 62 C 18 72, 38 52, 58 64 S 92 58, 108 68" />
-            <path vectorEffect="nonScalingStroke" strokeWidth={1.05} opacity={0.55} d="M -12 78 C 10 68, 30 88, 52 76 S 84 82, 112 74" />
-            <path vectorEffect="nonScalingStroke" strokeWidth={0.75} opacity={0.5} d="M -8 92 C 16 98, 36 82, 60 94 S 96 88, 108 96" />
-            <path vectorEffect="nonScalingStroke" strokeWidth={0.7} opacity={0.45} d="M 8 -4 C 18 12, 32 -2, 52 8 S 82 4, 98 14" />
-            <path vectorEffect="nonScalingStroke" strokeWidth={0.65} opacity={0.4} d="M 22 100 C 38 88, 52 100, 72 92 S 98 96, 104 88" />
+            <path vectorEffect="nonScalingStroke" strokeWidth={0.52} opacity={0.45} d="M -8 12 C 12 4, 22 22, 42 14 S 72 8, 108 18" />
+            <path vectorEffect="nonScalingStroke" strokeWidth={1.18} opacity={0.38} d="M -6 28 C 8 38, 28 20, 48 30 S 78 24, 106 34" />
+            <path vectorEffect="nonScalingStroke" strokeWidth={0.68} opacity={0.42} d="M -10 48 C 14 40, 34 56, 52 44 S 88 52, 110 42" />
+            <path vectorEffect="nonScalingStroke" strokeWidth={1.05} opacity={0.33} d="M -4 62 C 18 72, 38 52, 58 64 S 92 58, 108 68" />
+            <path vectorEffect="nonScalingStroke" strokeWidth={0.44} opacity={0.36} d="M -12 78 C 10 68, 30 88, 52 76 S 84 82, 112 74" />
+            <path vectorEffect="nonScalingStroke" strokeWidth={0.92} opacity={0.4} d="M -8 92 C 16 98, 36 82, 60 94 S 96 88, 108 96" />
+            <path vectorEffect="nonScalingStroke" strokeWidth={0.58} opacity={0.34} d="M 8 -4 C 18 12, 32 -2, 52 8 S 82 4, 98 14" />
+            <path vectorEffect="nonScalingStroke" strokeWidth={1.12} opacity={0.3} d="M 22 100 C 38 88, 52 100, 72 92 S 98 96, 104 88" />
+            <path vectorEffect="nonScalingStroke" strokeWidth={0.78} opacity={0.32} d="M -14 36 C 24 52, 44 28, 72 40 S 98 32, 114 48" />
           </g>
         </svg>
         {/* Soft depth: blue (top-left) + indigo (bottom-right) */}
@@ -158,9 +159,18 @@ export default function LoginPage() {
       </div>
 
       <div className="relative flex min-h-0 flex-1 flex-col justify-center py-10 md:py-14">
-        <div className="mx-auto flex w-full max-w-[400px] flex-col">
-          <div className="rounded-[2rem] border border-white/30 bg-white/80 p-6 shadow-xl backdrop-blur-md dark:border-white/15 dark:bg-slate-900/80 dark:shadow-xl dark:shadow-black/40 sm:p-8">
-            <div className="flex flex-col items-center">
+        <div className="relative mx-auto flex w-full max-w-[400px] flex-col">
+          <div
+            className="pointer-events-none absolute left-1/2 top-1/2 -z-10 h-[min(520px,88vh)] w-[min(460px,92vw)] -translate-x-1/2 -translate-y-1/2 rounded-[2.75rem] bg-blue-500/[0.14] blur-3xl dark:bg-sky-500/[0.12]"
+            aria-hidden
+          />
+          <div className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-white/[0.72] shadow-[0_8px_32px_rgba(0,0,0,0.35)] backdrop-blur-lg dark:bg-white/[0.08] dark:shadow-[0_8px_36px_rgba(0,0,0,0.45)]">
+            <div
+              className="pointer-events-none absolute inset-0 rounded-[inherit] bg-gradient-to-b from-white/[0.12] to-transparent dark:from-white/10"
+              aria-hidden
+            />
+            <div className="relative z-10 p-6 sm:p-8">
+              <div className="flex flex-col items-center">
               <Link
                 href={pulseRoutes.pulseLanding}
                 className="flex items-center gap-2.5 font-headline text-lg font-bold tracking-tight text-pulse-navy no-underline hover:text-pulse-accent sm:text-xl dark:text-white dark:hover:text-sky-200"
@@ -173,109 +183,116 @@ export default function LoginPage() {
               <p className="mt-4 text-center text-sm text-pulse-muted dark:text-slate-300">
                 Sign in to your operational dashboard
               </p>
-            </div>
-
-            <form className="mt-8 space-y-5" onSubmit={onSubmit} noValidate>
-              {formError ? (
-                <p
-                  className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-center text-sm font-medium text-red-800"
-                  role="alert"
-                >
-                  {formError}
-                </p>
-              ) : null}
-
-              <div>
-                <label htmlFor={emailFieldId} className="block text-sm font-semibold text-pulse-navy">
-                  Email or Username
-                </label>
-                <input
-                  id={emailFieldId}
-                  name="identifier"
-                  type="text"
-                  autoComplete="username"
-                  placeholder="name@company.com"
-                  value={identifier}
-                  onChange={(e) => setIdentifier(e.target.value)}
-                  disabled={submitting}
-                  aria-invalid={Boolean(fieldErrors.identifier)}
-                  className={`mt-1.5 w-full rounded-lg border bg-slate-50/80 px-3 py-2.5 text-sm text-pulse-navy outline-none transition-all duration-200 placeholder:text-slate-400 focus:border-blue-500/40 focus:bg-white focus:ring-2 focus:ring-blue-500/50 disabled:opacity-60 dark:focus:bg-slate-950/80 ${
-                    fieldErrors.identifier ? "border-red-400" : "border-pulse-border"
-                  }`}
-                />
-                {fieldErrors.identifier ? (
-                  <p className="mt-1 text-xs font-medium text-red-700">{fieldErrors.identifier}</p>
-                ) : null}
               </div>
 
-              <div>
-                <label htmlFor={passwordFieldId} className="block text-sm font-semibold text-pulse-navy">
-                  Password
-                </label>
-                <div className="relative mt-1.5">
+              <form className="mt-8 space-y-5" onSubmit={onSubmit} noValidate>
+                {formError ? (
+                  <p
+                    className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-center text-sm font-medium text-red-800 dark:border-red-500/30 dark:bg-red-950/35 dark:text-red-200"
+                    role="alert"
+                  >
+                    {formError}
+                  </p>
+                ) : null}
+
+                <div>
+                  <label
+                    htmlFor={emailFieldId}
+                    className="block text-sm font-semibold text-pulse-navy dark:text-slate-100"
+                  >
+                    Email or Username
+                  </label>
                   <input
-                    id={passwordFieldId}
-                    name="password"
-                    type={showPassword ? "text" : "password"}
-                    autoComplete="current-password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    id={emailFieldId}
+                    name="identifier"
+                    type="text"
+                    autoComplete="username"
+                    placeholder="name@company.com"
+                    value={identifier}
+                    onChange={(e) => setIdentifier(e.target.value)}
                     disabled={submitting}
-                    aria-invalid={Boolean(fieldErrors.password)}
-                    className={`w-full rounded-lg border bg-slate-50/80 py-2.5 pl-3 pr-11 text-sm text-pulse-navy outline-none transition-all duration-200 focus:border-blue-500/40 focus:bg-white focus:ring-2 focus:ring-blue-500/50 disabled:opacity-60 dark:focus:bg-slate-950/80 ${
-                      fieldErrors.password ? "border-red-400" : "border-pulse-border"
+                    aria-invalid={Boolean(fieldErrors.identifier)}
+                    className={`mt-1.5 w-full rounded-lg border bg-slate-50/80 px-3 py-2.5 text-sm text-pulse-navy outline-none transition-all duration-200 placeholder:text-slate-400 focus:border-blue-500/40 focus:bg-white focus:ring-2 focus:ring-blue-500/30 disabled:opacity-60 dark:border-white/20 dark:bg-white/10 dark:text-white dark:placeholder:text-slate-400 dark:focus:border-blue-500/40 dark:focus:bg-white/[0.12] dark:focus:ring-blue-500/30 ${
+                      fieldErrors.identifier ? "border-red-400 dark:border-red-400/70" : "border-pulse-border dark:border-white/20"
                     }`}
                   />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword((s) => !s)}
-                    className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-md text-pulse-muted transition-colors hover:bg-slate-100 hover:text-pulse-navy"
-                    aria-label={showPassword ? "Hide password" : "Show password"}
-                    disabled={submitting}
-                  >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
+                  {fieldErrors.identifier ? (
+                    <p className="mt-1 text-xs font-medium text-red-700 dark:text-red-300">{fieldErrors.identifier}</p>
+                  ) : null}
                 </div>
-                {fieldErrors.password ? (
-                  <p className="mt-1 text-xs font-medium text-red-700">{fieldErrors.password}</p>
-                ) : null}
-              </div>
 
-              <div className="flex flex-wrap items-center justify-end gap-3">
-                <a
-                  href={mailtoInfo("Pulse — password help")}
-                  className="text-sm font-semibold text-pulse-accent underline-offset-2 transition-colors hover:text-pulse-accent-hover hover:underline"
+                <div>
+                  <label
+                    htmlFor={passwordFieldId}
+                    className="block text-sm font-semibold text-pulse-navy dark:text-slate-100"
+                  >
+                    Password
+                  </label>
+                  <div className="relative mt-1.5">
+                    <input
+                      id={passwordFieldId}
+                      name="password"
+                      type={showPassword ? "text" : "password"}
+                      autoComplete="current-password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      disabled={submitting}
+                      aria-invalid={Boolean(fieldErrors.password)}
+                      className={`w-full rounded-lg border bg-slate-50/80 py-2.5 pl-3 pr-11 text-sm text-pulse-navy outline-none transition-all duration-200 focus:border-blue-500/40 focus:bg-white focus:ring-2 focus:ring-blue-500/30 disabled:opacity-60 dark:border-white/20 dark:bg-white/10 dark:text-white dark:focus:border-blue-500/40 dark:focus:bg-white/[0.12] dark:focus:ring-blue-500/30 ${
+                        fieldErrors.password ? "border-red-400 dark:border-red-400/70" : "border-pulse-border dark:border-white/20"
+                      }`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((s) => !s)}
+                      className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-md text-pulse-muted transition-colors hover:bg-slate-100 hover:text-pulse-navy dark:text-slate-300 dark:hover:bg-white/10 dark:hover:text-white"
+                      aria-label={showPassword ? "Hide password" : "Show password"}
+                      disabled={submitting}
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                  {fieldErrors.password ? (
+                    <p className="mt-1 text-xs font-medium text-red-700 dark:text-red-300">{fieldErrors.password}</p>
+                  ) : null}
+                </div>
+
+                <div className="flex flex-wrap items-center justify-end gap-3">
+                  <a
+                    href={mailtoInfo("Pulse — password help")}
+                    className="text-sm font-semibold text-pulse-accent underline-offset-2 transition-colors hover:text-pulse-accent-hover hover:underline"
+                  >
+                    Forgot password?
+                  </a>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 py-3 text-sm font-semibold text-white shadow-[0_8px_28px_rgba(37,99,235,0.42)] outline-none transition-all duration-300 ease-out hover:brightness-[1.08] hover:shadow-[0_12px_36px_rgba(67,56,202,0.45)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-70 disabled:shadow-md disabled:hover:brightness-100"
                 >
-                  Forgot password?
-                </a>
+                  {submitting ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                      Signing in…
+                    </>
+                  ) : (
+                    "Sign In"
+                  )}
+                </button>
+              </form>
+
+              <div className="mt-8 border-t border-pulse-border pt-6 dark:border-white/10">
+                <p className="text-center text-xs text-pulse-muted dark:text-slate-400">Need help?</p>
+                <p className="mt-1 text-center text-xs text-pulse-muted dark:text-slate-400">
+                  <Link
+                    href={helixMarketingHref("/#contact")}
+                    className="font-medium text-pulse-accent hover:underline"
+                  >
+                    Contact support
+                  </Link>
+                </p>
               </div>
-
-              <button
-                type="submit"
-                disabled={submitting}
-                className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 py-3 text-sm font-semibold text-white shadow-md shadow-blue-900/15 transition-all duration-200 ease-in-out hover:from-blue-600 hover:to-indigo-600 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-indigo-600/25 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-70 disabled:shadow-md"
-              >
-                {submitting ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-                    Signing in…
-                  </>
-                ) : (
-                  "Sign In"
-                )}
-              </button>
-            </form>
-
-            <div className="mt-8 border-t border-pulse-border pt-6">
-              <p className="text-center text-xs text-pulse-muted">Need help?</p>
-              <p className="mt-1 text-center text-xs text-pulse-muted">
-                <Link
-                  href={helixMarketingHref("/#contact")}
-                  className="font-medium text-pulse-accent hover:underline"
-                >
-                  Contact support
-                </Link>
-              </p>
             </div>
           </div>
 
