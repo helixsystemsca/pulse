@@ -6,6 +6,11 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { apiFetch } from "@/lib/api";
 import { HELIX_NOREPLY_EMAIL } from "@/lib/helix-emails";
 import { parseClientApiError } from "@/lib/parse-client-api-error";
+import {
+  SYSTEM_ADMIN_FEATURE_LABELS,
+  sortCatalogFeatures,
+  systemAdminFeatureLabel,
+} from "@/lib/system-admin-features";
 
 type CompanyRow = {
   id: string;
@@ -502,7 +507,7 @@ export default function SystemCompaniesPage() {
               <div>
                 <p className="text-xs font-medium uppercase text-zinc-500">Initial features</p>
                 <div className="mt-2 flex flex-wrap gap-2">
-                  {catalog.map((f) => (
+                  {sortCatalogFeatures(catalog).map((f) => (
                     <label
                       key={f}
                       className={`flex items-center gap-1 text-xs text-zinc-400 ${inviteSubmitting ? "pointer-events-none opacity-50" : ""}`}
@@ -513,7 +518,7 @@ export default function SystemCompaniesPage() {
                         onChange={(e) => setSelectedFeat((s) => ({ ...s, [f]: e.target.checked }))}
                         disabled={inviteSubmitting}
                       />
-                      {f}
+                      {systemAdminFeatureLabel(f)}
                     </label>
                   ))}
                 </div>
@@ -633,7 +638,7 @@ export default function SystemCompaniesPage() {
               <div>
                 <p className="text-xs font-medium uppercase text-zinc-500">Initial features</p>
                 <div className="mt-2 flex flex-wrap gap-2">
-                  {catalog.map((f) => (
+                  {sortCatalogFeatures(catalog).map((f) => (
                     <label
                       key={f}
                       className={`flex items-center gap-1 text-xs text-zinc-400 ${passwordSubmitting ? "pointer-events-none opacity-50" : ""}`}
@@ -644,7 +649,7 @@ export default function SystemCompaniesPage() {
                         onChange={(e) => setSelectedFeat((s) => ({ ...s, [f]: e.target.checked }))}
                         disabled={passwordSubmitting}
                       />
-                      {f}
+                      {systemAdminFeatureLabel(f)}
                     </label>
                   ))}
                 </div>

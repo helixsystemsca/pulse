@@ -3,6 +3,7 @@
 import { WelcomeLoaderModal } from "@/components/ui/WelcomeLoaderModal";
 import { apiFetch } from "@/lib/api";
 import { readSession } from "@/lib/pulse-session";
+import { sortFeatureUsageKeys, systemAdminFeatureLabel } from "@/lib/system-admin-features";
 import { useEffect, useMemo, useState } from "react";
 
 function welcomeFromSession(email: string | null | undefined, fullName: string | null | undefined): string {
@@ -75,9 +76,11 @@ export default function SystemOverviewPage() {
         <div className="rounded-lg border border-zinc-800 bg-zinc-900/50 p-4">
           <p className="text-xs font-medium uppercase text-zinc-500">Feature adoption</p>
           <ul className="mt-2 space-y-1 text-xs text-zinc-400">
-            {Object.entries(data.feature_usage).map(([k, v]) => (
+            {sortFeatureUsageKeys(Object.keys(data.feature_usage)).map((k) => (
               <li key={k}>
-                <span className="text-zinc-300">{k}</span>: {v} companies
+                <span className="font-medium text-zinc-200">{systemAdminFeatureLabel(k)}</span>
+                <span className="text-zinc-400">: </span>
+                <span className="text-zinc-400">{data.feature_usage[k]} companies</span>
               </li>
             ))}
           </ul>

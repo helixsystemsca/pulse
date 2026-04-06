@@ -10,11 +10,15 @@ from app.models.domain import CompanyFeature
 
 # When a company has no rows yet, treat product modules as on (pre‑gates behavior).
 _LEGACY_DEFAULT_PRODUCT_FEATURES: tuple[str, ...] = (
-    "projects",
     "compliance",
-    "equipment",
-    "inventory",
     "schedule",
+    "monitoring",
+    "projects",
+    "work_orders",
+    "workers",
+    "inventory",
+    "equipment",
+    "floor_plan",
 )
 
 

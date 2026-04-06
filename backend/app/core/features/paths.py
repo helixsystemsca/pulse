@@ -14,7 +14,6 @@ _MODULE_PATH_PREFIXES: tuple[tuple[str, str], ...] = (
     ("/api/v1/inventory", "inventory"),
     ("/api/v1/maintenance", "maintenance"),
     ("/api/v1/notifications", "notifications"),
-    ("/api/v1/analytics", "analytics"),
     ("/api/v1/jobs", "jobs"),
 )
 

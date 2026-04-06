@@ -18,7 +18,11 @@ from app.core.email_smtp import send_company_admin_invite, send_password_reset_e
 from app.core.company_features import list_enabled_names, sync_enabled_features
 from app.core.features.cache import invalidate
 from app.core.features.service import MODULE_KEYS
-from app.core.features.system_catalog import GLOBAL_SYSTEM_FEATURES, normalize_enabled_features
+from app.core.features.system_catalog import (
+    GLOBAL_SYSTEM_FEATURES,
+    canonicalize_enabled_features_for_admin_ui,
+    normalize_enabled_features,
+)
 from app.core.system_audit import record_system_log
 from app.core.system_tokens import generate_raw_token, hash_system_token as hash_opaque_token
 from app.models.domain import (
@@ -110,8 +114,11 @@ async def system_overview(
         .group_by(CompanyFeature.feature_name)
     )
     for fname, cnt in fq.all():
-        if fname in feature_usage:
-            feature_usage[fname] = int(cnt)
+        key = fname
+        if fname == "rtls_tracking":
+            key = "equipment"
+        if key in feature_usage:
+            feature_usage[key] += int(cnt)
 
     return SystemOverviewOut(
         total_companies=all_cos,
@@ -310,7 +317,7 @@ async def list_companies(
             .where(User.company_id == c.id, User.is_active.is_(True))
         )
         cnt = int(uc.scalar_one() or 0)
-        ef = await list_enabled_names(db, c.id)
+        ef = canonicalize_enabled_features_for_admin_ui(await list_enabled_names(db, c.id))
         out.append(
             SystemCompanyRow(
                 id=c.id,
@@ -422,7 +429,7 @@ async def get_company(
         select(func.count()).select_from(User).where(User.company_id == c.id, User.is_active.is_(True))
     )
     cnt = int(uc.scalar_one() or 0)
-    ef = await list_enabled_names(db, c.id)
+    ef = canonicalize_enabled_features_for_admin_ui(await list_enabled_names(db, c.id))
     return SystemCompanyRow(
         id=c.id,
         name=c.name,
@@ -480,7 +487,7 @@ async def patch_company(
         select(func.count()).select_from(User).where(User.company_id == c.id, User.is_active.is_(True))
     )
     cnt = int(uc.scalar_one() or 0)
-    ef = await list_enabled_names(db, c.id)
+    ef = canonicalize_enabled_features_for_admin_ui(await list_enabled_names(db, c.id))
     return SystemCompanyRow(
         id=c.id,
         name=c.name,

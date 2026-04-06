@@ -4,6 +4,10 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { apiFetch } from "@/lib/api";
+import {
+  SYSTEM_ADMIN_FEATURE_LABELS,
+  sortCatalogFeatures,
+} from "@/lib/system-admin-features";
 
 type CompanyRow = {
   id: string;
@@ -13,19 +17,6 @@ type CompanyRow = {
   user_count: number;
   is_active: boolean;
   owner_admin_id?: string | null;
-};
-
-const FEATURE_LABELS: Record<string, string> = {
-  rtls_tracking: "RTLS tracking",
-  work_orders: "Work orders",
-  preventative_maintenance: "Preventative maintenance",
-  analytics: "Analytics",
-  alerts: "Alerts",
-  projects: "Projects & operations",
-  compliance: "Compliance",
-  equipment: "Equipment (tool tracking)",
-  inventory: "Inventory",
-  schedule: "Schedule",
 };
 
 export default function SystemCompanyDetailPage() {
@@ -276,23 +267,23 @@ export default function SystemCompanyDetailPage() {
           </div>
         </div>
         <div className="mt-4 flex max-w-2xl flex-wrap gap-3">
-          {catalog.map((f) => (
-            <label
-              key={f}
-              className={`flex items-center gap-2 rounded-lg border border-zinc-700 bg-zinc-900/80 px-3 py-2 text-sm text-zinc-300 ${
-                !row.is_active ? "cursor-not-allowed opacity-50" : "cursor-pointer"
-              }`}
-            >
-              <input
-                type="checkbox"
-                className="rounded border-zinc-600"
-                checked={row.enabled_features.includes(f)}
-                disabled={!row.is_active}
-                onChange={(e) => void toggleCompanyFeature(row.enabled_features, f, e.target.checked)}
-              />
-              {FEATURE_LABELS[f] ?? f}
-            </label>
-          ))}
+          {sortCatalogFeatures(catalog).map((f) => (
+              <label
+                key={f}
+                className={`flex items-center gap-2 rounded-lg border border-zinc-700 bg-zinc-900/80 px-3 py-2 text-sm text-zinc-300 ${
+                  !row.is_active ? "cursor-not-allowed opacity-50" : "cursor-pointer"
+                }`}
+              >
+                <input
+                  type="checkbox"
+                  className="rounded border-zinc-600"
+                  checked={row.enabled_features.includes(f)}
+                  disabled={!row.is_active}
+                  onChange={(e) => void toggleCompanyFeature(row.enabled_features, f, e.target.checked)}
+                />
+                {SYSTEM_ADMIN_FEATURE_LABELS[f] ?? f}
+              </label>
+            ))}
         </div>
       </section>
 

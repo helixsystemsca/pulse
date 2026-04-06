@@ -11,6 +11,7 @@ from app.core.features.system_catalog import GLOBAL_SYSTEM_FEATURES
 from app.models.domain import Company, CompanyFeature
 
 # Canonical module keys (must match /modules, path map, and frontend).
+# `rtls_tracking` is legacy DB-only; treated as equipment for access checks. Analytics is not a tenant toggle (dashboard).
 MODULE_KEYS = list(
     dict.fromkeys(
         [
@@ -19,7 +20,7 @@ MODULE_KEYS = list(
             "maintenance",
             "jobs",
             "notifications",
-            "analytics",
+            "rtls_tracking",
             *list(GLOBAL_SYSTEM_FEATURES),
         ]
     )
@@ -33,7 +34,11 @@ class FeatureFlagService:
     async def is_enabled(self, company_id: str, module_key: str) -> bool:
         enabled = await self._frozen_enabled(company_id)
         if module_key == "equipment":
-            return "equipment" in enabled or "tool_tracking" in enabled
+            return (
+                "equipment" in enabled
+                or "tool_tracking" in enabled
+                or "rtls_tracking" in enabled
+            )
         return module_key in enabled
 
     async def _frozen_enabled(self, company_id: str) -> frozenset[str]:
