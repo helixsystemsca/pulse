@@ -1,1 +1,5 @@
-export { OperationalDashboard, type OperationalDashboardVariant } from "./OperationalDashboard";
+export {
+  OperationalDashboard,
+  type OperationalDashboardReadyPayload,
+  type OperationalDashboardVariant,
+} from "./OperationalDashboard";

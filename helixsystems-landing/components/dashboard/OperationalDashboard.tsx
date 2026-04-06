@@ -12,6 +12,20 @@ import { getServerDate, getServerNow } from "@/lib/serverTime";
 
 type AlertItem = { severity: "critical" | "warning"; title: string; subtitle?: string };
 
+/** Passed to `OperationalDashboard` `onReady` for welcome modal / other consumers. */
+export type OperationalDashboardReadyPayload = {
+  criticalCount: number;
+  warningCount: number;
+};
+
+function alertCountsFromAlerts(alerts: AlertItem[]): OperationalDashboardReadyPayload {
+  const real = alerts.filter((a) => a.title !== "No active alerts");
+  return {
+    criticalCount: real.filter((a) => a.severity === "critical").length,
+    warningCount: real.filter((a) => a.severity === "warning").length,
+  };
+}
+
 type WorkforceBubble = {
   id: string;
   initials: string;
@@ -55,24 +69,24 @@ type DashboardViewModel = {
 };
 
 const roleBadgeBase =
-  "pointer-events-none absolute -bottom-0.5 -right-0.5 z-10 flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-bold leading-none text-white shadow-sm ring-2 ring-white";
+  "pointer-events-none absolute -bottom-0.5 -right-0.5 z-10 flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-bold leading-none text-white shadow-sm ring-2 ring-stealth-card";
 
 function onsiteAvatarClass(badge?: "L" | "S") {
   const isLead = badge === "L";
   const shared =
-    "relative shrink-0 items-center justify-center rounded-full bg-emerald-100 font-bold text-emerald-900 shadow-md ring-2 ring-emerald-500/55 ring-offset-2 ring-offset-white transition-transform";
+    "relative shrink-0 items-center justify-center rounded-full bg-stealth-success/15 font-bold text-stealth-success shadow-md ring-1 ring-stealth-success/35 ring-offset-2 ring-offset-stealth-card transition-transform";
   if (isLead) {
-    return `z-[1] flex h-14 w-14 text-base shadow-lg ring-[3px] ring-emerald-600 md:h-16 md:w-16 md:text-lg ${shared}`;
+    return `z-[1] flex h-14 w-14 text-base shadow-stealth-card ring-2 ring-stealth-success/45 md:h-16 md:w-16 md:text-lg ${shared}`;
   }
   return `flex h-11 w-11 text-xs shadow-sm md:h-12 md:w-12 md:text-sm ${shared}`;
 }
 
 function offsiteAvatarClass() {
-  return "flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-amber-100 text-xs font-bold text-amber-950 shadow-sm ring-2 ring-amber-500/45 ring-offset-2 ring-offset-white md:h-12 md:w-12 md:text-sm";
+  return "flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-stealth-warning/12 text-xs font-bold text-stealth-warning shadow-sm ring-1 ring-stealth-warning/35 ring-offset-2 ring-offset-stealth-card md:h-12 md:w-12 md:text-sm";
 }
 
 function absentAvatarClass() {
-  return "relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-50 text-xs font-bold text-red-800 opacity-[0.88] shadow-sm ring-2 ring-red-400/65 ring-offset-2 ring-offset-white after:absolute after:bottom-0 after:right-0 after:z-10 after:h-2.5 after:w-2.5 after:rounded-full after:bg-red-500 after:ring-2 after:ring-white md:h-11 md:w-11 md:text-sm";
+  return "relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-stealth-danger/10 text-xs font-bold text-stealth-danger opacity-[0.92] shadow-sm ring-1 ring-stealth-danger/35 ring-offset-2 ring-offset-stealth-card after:absolute after:bottom-0 after:right-0 after:z-10 after:h-2.5 after:w-2.5 after:rounded-full after:bg-stealth-danger after:ring-2 after:ring-stealth-card md:h-11 md:w-11 md:text-sm";
 }
 
 function initialsFromUser(email: string, fullName: string | null | undefined): string {
@@ -452,21 +466,21 @@ function buildLiveModel(
 function TagPill({ tag }: { tag: WorkTag }) {
   if (tag.kind === "progress") {
     return (
-      <span className="shrink-0 rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-pulse-accent ring-1 ring-blue-100">
+      <span className="shrink-0 rounded-full bg-stealth-accent/10 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-stealth-accent ring-1 ring-stealth-accent/25">
         {tag.label}
       </span>
     );
   }
   if (tag.kind === "overdue") {
     return (
-      <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-bold text-amber-900 ring-1 ring-amber-200">
-        <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+      <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-stealth-warning/10 px-2 py-0.5 text-[11px] font-bold text-stealth-warning ring-1 ring-stealth-warning/30">
+        <span className="h-1.5 w-1.5 rounded-full bg-stealth-warning" />
         {tag.label}
       </span>
     );
   }
   return (
-    <span className="shrink-0 self-start rounded bg-red-600 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
+    <span className="shrink-0 self-start rounded-md bg-stealth-danger/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-stealth-danger ring-1 ring-stealth-danger/35">
       {tag.label}
     </span>
   );
@@ -502,9 +516,9 @@ function DashboardBody({
   const trimmedHeaderImage = headerImageUrl?.trim() || null;
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-pulse-border bg-white shadow-lg ring-1 ring-slate-900/[0.05]">
-      <header className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 border-b border-pulse-border bg-slate-50/80 px-4 py-4 sm:px-6">
-        <span className="min-w-0 text-base font-bold leading-tight tracking-tight text-pulse-navy sm:text-lg md:text-xl lg:text-2xl">
+    <div className="overflow-hidden rounded-2xl border border-stealth-border bg-stealth-main shadow-stealth-card">
+      <header className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 border-b border-stealth-border bg-stealth-card px-4 py-4 sm:px-6">
+        <span className="min-w-0 text-base font-bold leading-tight tracking-tight text-stealth-primary sm:text-lg md:text-xl lg:text-2xl">
           {model.title}
         </span>
         <div className="flex min-h-0 min-w-0 justify-center">
@@ -518,14 +532,14 @@ function DashboardBody({
         </div>
         {!hideHeaderWelcome ? (
           <div className="flex min-w-0 items-center justify-end gap-2 sm:gap-3">
-            <p className="min-w-0 truncate text-xs text-pulse-muted sm:text-sm">
+            <p className="min-w-0 truncate text-xs text-stealth-secondary sm:text-sm">
               Welcome,{" "}
-              <span className="font-semibold text-pulse-navy">{model.welcomeName}</span>
+              <span className="font-semibold text-stealth-primary">{model.welcomeName}</span>
             </p>
-            <span className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-100 text-xs font-bold text-pulse-accent ring-2 ring-white">
+            <span className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-stealth-accent/15 text-xs font-bold text-stealth-accent ring-2 ring-stealth-border">
               {userInitials.slice(0, 2)}
               <span
-                className="pointer-events-none absolute -right-0.5 -top-0.5 z-10 flex h-[18px] w-[18px] items-center justify-center rounded-full bg-pulse-accent text-[9px] font-bold leading-none text-white shadow-sm ring-2 ring-white"
+                className="pointer-events-none absolute -right-0.5 -top-0.5 z-10 flex h-[18px] w-[18px] items-center justify-center rounded-full bg-stealth-accent text-[9px] font-bold leading-none text-stealth-primary shadow-stealth-card ring-2 ring-stealth-card"
                 aria-hidden
               >
                 M
@@ -537,39 +551,39 @@ function DashboardBody({
         )}
       </header>
 
-      <div className="grid gap-4 bg-gradient-to-br from-white to-slate-50/90 p-5 lg:grid-cols-12 lg:p-6">
+      <div className="grid gap-4 bg-stealth-main p-5 lg:grid-cols-12 lg:p-6">
         <section
-          className="flex flex-col rounded-2xl border border-pulse-border bg-white p-5 shadow-sm lg:col-span-12 lg:p-6"
+          className="flex flex-col rounded-2xl border border-stealth-border bg-stealth-card p-5 shadow-stealth-card lg:col-span-12 lg:p-6"
           data-dashboard-tile="alerts"
         >
-          <h3 className="text-base font-bold text-pulse-navy">Active Alerts</h3>
+          <h3 className="text-base font-bold text-stealth-primary">Active Alerts</h3>
           <ul className="mt-4 flex flex-1 flex-col gap-3">
             {model.alerts.map((a, idx) => (
               <li
                 key={`${a.title}-${idx}`}
-                className={`flex gap-3 rounded-xl p-4 ${
+                className={`flex gap-3 rounded-xl border border-stealth-border p-4 ${
                   a.severity === "critical"
-                    ? "border border-red-100 bg-red-50/50"
-                    : "border border-amber-100 bg-amber-50/40"
+                    ? "border-l-2 border-l-stealth-danger bg-stealth-danger/[0.06]"
+                    : "border-l-2 border-l-stealth-warning bg-stealth-warning/[0.06]"
                 }`}
               >
                 <span
                   className={`mt-0.5 flex h-9 w-1 shrink-0 rounded-full ${
-                    a.severity === "critical" ? "bg-red-500" : "bg-amber-500"
+                    a.severity === "critical" ? "bg-stealth-danger/80" : "bg-stealth-warning/80"
                   }`}
                 />
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-bold text-pulse-navy">{a.title}</p>
+                  <p className="text-sm font-bold text-stealth-primary">{a.title}</p>
                   {a.subtitle ? (
-                    <p className="mt-1 whitespace-pre-line text-xs leading-relaxed text-pulse-muted">
+                    <p className="mt-1 whitespace-pre-line text-xs leading-relaxed text-stealth-secondary">
                       {a.subtitle}
                     </p>
                   ) : null}
                 </div>
                 {a.severity === "critical" ? (
-                  <AlertTriangle className="h-5 w-5 shrink-0 text-red-600" aria-hidden />
+                  <AlertTriangle className="h-5 w-5 shrink-0 text-stealth-danger/90" aria-hidden />
                 ) : (
-                  <Radio className="h-5 w-5 shrink-0 text-amber-600" aria-hidden />
+                  <Radio className="h-5 w-5 shrink-0 text-stealth-warning/90" aria-hidden />
                 )}
               </li>
             ))}
@@ -577,24 +591,24 @@ function DashboardBody({
         </section>
 
         <section
-          className="flex flex-col rounded-2xl border border-pulse-border bg-white p-5 shadow-sm lg:col-span-5 lg:min-h-[280px] lg:p-6"
+          className="flex flex-col rounded-2xl border border-stealth-border bg-stealth-card p-5 shadow-stealth-card lg:col-span-5 lg:min-h-[280px] lg:p-6"
           data-dashboard-tile="workforce"
         >
-          <h3 className="text-base font-bold text-pulse-navy">Workforce</h3>
-          <p className="mt-2 text-sm font-semibold text-pulse-navy">
+          <h3 className="text-base font-bold text-stealth-primary">Workforce</h3>
+          <p className="mt-2 text-sm font-semibold text-stealth-primary">
             Today – {model.workforce.dateLabel}
           </p>
-          <p className="mt-2 text-xs text-pulse-muted">{model.workforce.summaryLine}</p>
+          <p className="mt-2 text-xs text-stealth-muted">{model.workforce.summaryLine}</p>
 
           <div className="mt-4 flex min-w-0 flex-col gap-4 sm:flex-row sm:items-start sm:gap-4">
             <div className="min-w-0 flex-1 space-y-4">
               <div className="space-y-3">
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-emerald-800/90">
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-stealth-success">
                   On-site
                 </p>
                 <div className="flex flex-wrap gap-3">
                   {model.workforce.onsite.length === 0 ? (
-                    <p className="text-sm text-pulse-muted">No one on shift right now.</p>
+                    <p className="text-sm text-stealth-muted">No one on shift right now.</p>
                   ) : (
                     model.workforce.onsite.map((b) => (
                       <span
@@ -607,7 +621,7 @@ function DashboardBody({
                           <span className={`${roleBadgeBase} bg-emerald-700`}>L</span>
                         ) : null}
                         {b.badge === "S" ? (
-                          <span className={`${roleBadgeBase} bg-pulse-accent`}>S</span>
+                          <span className={`${roleBadgeBase} bg-stealth-accent`}>S</span>
                         ) : null}
                       </span>
                     ))
@@ -615,12 +629,12 @@ function DashboardBody({
                 </div>
               </div>
               <div className="space-y-3">
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-amber-900/90">
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-stealth-warning">
                   Off-site
                 </p>
                 <div className="flex flex-wrap gap-3">
                   {model.workforce.offsite.length === 0 ? (
-                    <p className="text-sm text-pulse-muted">—</p>
+                    <p className="text-sm text-stealth-muted">—</p>
                   ) : (
                     model.workforce.offsite.map((b) => (
                       <span key={b.id} title={b.title} className={offsiteAvatarClass()}>
@@ -631,11 +645,11 @@ function DashboardBody({
                 </div>
               </div>
             </div>
-            <div className="shrink-0 border-t border-pulse-border pt-4 sm:border-l sm:border-t-0 sm:pl-4 sm:pt-0">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-red-700">Absent</p>
+            <div className="shrink-0 border-t border-stealth-border pt-4 sm:border-l sm:border-t-0 sm:pl-4 sm:pt-0">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-stealth-danger">Absent</p>
               <div className="mt-3 flex flex-wrap gap-3">
                 {model.workforce.absent.length === 0 ? (
-                  <p className="text-sm text-pulse-muted">—</p>
+                  <p className="text-sm text-stealth-muted">—</p>
                 ) : (
                   model.workforce.absent.map((b) => (
                     <span key={b.id} title={b.title} className={absentAvatarClass()}>
@@ -647,63 +661,68 @@ function DashboardBody({
             </div>
           </div>
 
-          <div className="mt-4 flex flex-wrap gap-2 border-t border-pulse-border pt-4">
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-800 ring-1 ring-emerald-200/80">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+          <div className="mt-4 flex flex-wrap gap-2 border-t border-stealth-border pt-4">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-stealth-success/10 px-2.5 py-1 text-[11px] font-semibold text-stealth-success ring-1 ring-stealth-success/20">
+              <span className="h-1.5 w-1.5 rounded-full bg-stealth-success" />
               On-site · {model.workforce.counts.onsite}
             </span>
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-amber-900 ring-1 ring-amber-200/80">
-              <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-stealth-warning/10 px-2.5 py-1 text-[11px] font-semibold text-stealth-warning ring-1 ring-stealth-warning/25">
+              <span className="h-1.5 w-1.5 rounded-full bg-stealth-warning" />
               Off-site · {model.workforce.counts.offsite}
             </span>
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-red-50 px-2.5 py-1 text-[11px] font-semibold text-red-800 ring-1 ring-red-200/80">
-              <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-stealth-danger/10 px-2.5 py-1 text-[11px] font-semibold text-stealth-danger ring-1 ring-stealth-danger/25">
+              <span className="h-1.5 w-1.5 rounded-full bg-stealth-danger" />
               Absent · {model.workforce.counts.absent}
             </span>
           </div>
         </section>
 
         <section
-          className="rounded-2xl border border-pulse-border bg-white p-5 shadow-sm lg:col-span-7 lg:p-6"
+          className="rounded-2xl border border-stealth-border bg-stealth-card p-5 shadow-stealth-card lg:col-span-7 lg:p-6"
           data-dashboard-tile="work-requests"
         >
           <div className="flex flex-wrap items-start justify-between gap-3">
-            <h3 className="text-base font-bold text-pulse-navy">Work Requests</h3>
-            <span className="inline-flex items-center rounded-full bg-amber-100 px-3 py-1 text-xs font-bold tracking-tight text-amber-950 ring-1 ring-amber-200/80">
+            <h3 className="text-base font-bold text-stealth-primary">Work Requests</h3>
+            <span className="inline-flex items-center rounded-full bg-stealth-warning/10 px-3 py-1 text-xs font-bold tracking-tight text-stealth-warning ring-1 ring-stealth-warning/25">
               {model.workRequests.awaitingCount} requests awaiting assignment
             </span>
           </div>
           <p className="mt-2 text-xs">
-            <Link href={workOrdersHref} className="font-medium text-pulse-accent hover:underline">
+            <Link
+              href={workOrdersHref}
+              className="font-medium text-stealth-accent hover:text-stealth-accent/80 hover:underline"
+            >
               Open work orders view →
             </Link>
           </p>
           <div className="mt-4 flex flex-col gap-4">
             {model.workRequests.newest ? (
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-pulse-muted">Newest</p>
-                <div className="mt-2 rounded-xl border border-pulse-border bg-slate-50/50 p-4">
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-stealth-muted">
+                  Newest
+                </p>
+                <div className="mt-2 rounded-xl border border-stealth-border bg-stealth-main/60 p-4">
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <p className="text-sm font-semibold text-pulse-navy">{model.workRequests.newest.title}</p>
-                      <p className="mt-1 text-xs text-pulse-muted">{model.workRequests.newest.subtitle}</p>
+                      <p className="text-sm font-semibold text-stealth-primary">{model.workRequests.newest.title}</p>
+                      <p className="mt-1 text-xs text-stealth-secondary">{model.workRequests.newest.subtitle}</p>
                     </div>
                     <TagPill tag={model.workRequests.newest.tag} />
                   </div>
                 </div>
               </div>
             ) : (
-              <p className="text-sm text-pulse-muted">No open work requests in the live feed.</p>
+              <p className="text-sm text-stealth-muted">No open work requests in the live feed.</p>
             )}
 
             {model.workRequests.oldest ? (
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-pulse-muted">Oldest</p>
-                <div className="mt-2 rounded-xl border border-pulse-border bg-white p-4">
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-stealth-muted">Oldest</p>
+                <div className="mt-2 rounded-xl border border-stealth-border bg-stealth-main/40 p-4">
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <p className="text-sm font-semibold text-pulse-navy">{model.workRequests.oldest.title}</p>
-                      <p className="mt-1 text-xs text-pulse-muted">{model.workRequests.oldest.subtitle}</p>
+                      <p className="text-sm font-semibold text-stealth-primary">{model.workRequests.oldest.title}</p>
+                      <p className="mt-1 text-xs text-stealth-secondary">{model.workRequests.oldest.subtitle}</p>
                     </div>
                     <TagPill tag={model.workRequests.oldest.tag} />
                   </div>
@@ -712,24 +731,24 @@ function DashboardBody({
             ) : null}
 
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-red-700/90">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-stealth-danger/90">
                 High priority / Critical
               </p>
               {model.workRequests.critical.length === 0 ? (
-                <p className="mt-2 text-sm text-pulse-muted">No high-priority items right now.</p>
+                <p className="mt-2 text-sm text-stealth-muted">No high-priority items right now.</p>
               ) : (
                 <ul className="mt-2 flex flex-col gap-3">
                   {model.workRequests.critical.map((row) => (
                     <li
                       key={row.title}
-                      className="flex gap-3 rounded-xl border border-red-100 bg-red-50/35 p-3 ring-1 ring-red-100/60"
+                      className="flex gap-3 rounded-xl border border-stealth-border border-l-2 border-l-stealth-danger bg-stealth-danger/[0.06] p-3"
                     >
-                      <span className="mt-0.5 h-8 w-1 shrink-0 rounded-full bg-red-500" aria-hidden />
+                      <span className="mt-0.5 h-8 w-1 shrink-0 rounded-full bg-stealth-danger/80" aria-hidden />
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-bold text-pulse-navy">{row.title}</p>
-                        <p className="mt-0.5 text-xs text-pulse-muted">{row.subtitle}</p>
+                        <p className="text-sm font-bold text-stealth-primary">{row.title}</p>
+                        <p className="mt-0.5 text-xs text-stealth-secondary">{row.subtitle}</p>
                       </div>
-                      <span className="shrink-0 self-start rounded bg-red-600 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
+                      <span className="shrink-0 self-start rounded-md bg-stealth-danger/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-stealth-danger ring-1 ring-stealth-danger/35">
                         Urgent
                       </span>
                     </li>
@@ -741,46 +760,46 @@ function DashboardBody({
         </section>
 
         <section
-          className="flex flex-col rounded-2xl border border-pulse-border bg-white p-5 shadow-sm lg:col-span-6"
+          className="flex flex-col rounded-2xl border border-stealth-border bg-stealth-card p-5 shadow-stealth-card lg:col-span-6"
           data-dashboard-tile="equipment"
         >
-          <p className="text-xs font-semibold uppercase tracking-wide text-pulse-muted">Equipment Update</p>
-          <p className="mt-2 text-2xl font-bold tabular-nums text-pulse-navy md:text-3xl">
+          <p className="text-xs font-semibold uppercase tracking-wide text-stealth-muted">Equipment Update</p>
+          <p className="mt-2 text-2xl font-bold tabular-nums text-stealth-primary md:text-3xl">
             {model.equipment.activeCount} Active Tools
           </p>
           <div className="mt-3 flex flex-wrap gap-2">
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-900 ring-1 ring-amber-200/80">
-              <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-stealth-warning/10 px-3 py-1 text-xs font-semibold text-stealth-warning ring-1 ring-stealth-warning/25">
+              <span className="h-1.5 w-1.5 rounded-full bg-stealth-warning" />
               {model.equipment.missingCount} Missing
             </span>
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-red-50 px-3 py-1 text-xs font-semibold text-red-800 ring-1 ring-red-200/80">
-              <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-stealth-danger/10 px-3 py-1 text-xs font-semibold text-stealth-danger ring-1 ring-stealth-danger/25">
+              <span className="h-1.5 w-1.5 rounded-full bg-stealth-danger" />
               {model.equipment.outOfServiceCount} Out of Service
             </span>
           </div>
-          <div className="mt-4 flex flex-1 flex-col gap-4 border-t border-pulse-border pt-4">
+          <div className="mt-4 flex flex-1 flex-col gap-4 border-t border-stealth-border pt-4">
             {model.equipment.showZonePrompt && !zonePromptDismissed ? (
-              <div className="rounded-xl border border-amber-200/90 bg-amber-50/50 p-4 shadow-sm">
+              <div className="rounded-xl border border-stealth-border border-l-2 border-l-stealth-warning bg-stealth-warning/[0.06] p-4 shadow-stealth-card">
                 <div className="flex gap-3">
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-700">
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-stealth-warning/10 text-stealth-warning ring-1 ring-stealth-warning/20">
                     <MapPin className="h-4 w-4" aria-hidden />
                   </span>
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold leading-snug text-pulse-navy">
+                    <p className="text-sm font-semibold leading-snug text-stealth-primary">
                       Several tools are accounted for, but may need zone checks.
                     </p>
-                    <p className="mt-1 text-xs text-pulse-muted">Schedule a cleanup?</p>
+                    <p className="mt-1 text-xs text-stealth-muted">Schedule a cleanup?</p>
                     <div className="mt-3 flex flex-wrap gap-2">
                       <Link
                         href={pulseTenantNav.find((n) => n.href === "/dashboard/inventory")?.href ?? "/dashboard/inventory"}
-                        className="inline-flex rounded-lg bg-pulse-accent px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-pulse-accent-hover"
+                        className="inline-flex rounded-lg bg-stealth-accent px-3 py-1.5 text-xs font-semibold text-stealth-primary shadow-stealth-card transition-[filter] hover:brightness-110"
                       >
                         Review inventory
                       </Link>
                       <button
                         type="button"
                         onClick={onDismissZonePrompt}
-                        className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-pulse-navy shadow-sm transition-colors hover:bg-slate-50"
+                        className="rounded-lg border border-stealth-border bg-stealth-main/50 px-3 py-1.5 text-xs font-semibold text-stealth-primary shadow-stealth-card transition-colors hover:bg-stealth-border/40"
                       >
                         Dismiss
                       </button>
@@ -790,12 +809,12 @@ function DashboardBody({
               </div>
             ) : null}
             {model.equipment.showBatteryNote ? (
-              <div className="rounded-xl border border-slate-100 bg-slate-50/70 p-4 text-slate-700 shadow-sm">
+              <div className="rounded-xl border border-stealth-border bg-stealth-main/50 p-4 text-stealth-secondary shadow-stealth-card">
                 <div className="flex gap-3">
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white text-slate-500 ring-1 ring-slate-200/80">
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-stealth-card text-stealth-muted ring-1 ring-stealth-border">
                     <Battery className="h-4 w-4" aria-hidden />
                   </span>
-                  <p className="min-w-0 flex-1 text-sm leading-relaxed text-pulse-navy">
+                  <p className="min-w-0 flex-1 text-sm leading-relaxed text-stealth-primary">
                     Beacon equipment registered — confirm batteries and swaps on the floor before the next shift.
                   </p>
                 </div>
@@ -805,25 +824,25 @@ function DashboardBody({
         </section>
 
         <section
-          className="flex flex-col rounded-2xl border border-pulse-border bg-white p-5 shadow-sm lg:col-span-6"
+          className="flex flex-col rounded-2xl border border-stealth-border bg-stealth-card p-5 shadow-stealth-card lg:col-span-6"
           data-dashboard-tile="inventory"
         >
-          <h3 className="text-base font-bold text-pulse-navy">Inventory Status</h3>
+          <h3 className="text-base font-bold text-stealth-primary">Inventory Status</h3>
           <div className="mt-4 flex flex-1 flex-col gap-4">
-            <div className="flex items-start justify-between gap-4 rounded-xl border border-pulse-border bg-slate-50/50 p-4">
+            <div className="flex items-start justify-between gap-4 rounded-xl border border-stealth-border bg-stealth-main/50 p-4">
               <div>
-                <p className="text-sm font-semibold text-pulse-navy">Consumables</p>
-                <p className="mt-1 text-xs text-pulse-muted">
+                <p className="text-sm font-semibold text-stealth-primary">Consumables</p>
+                <p className="mt-1 text-xs text-stealth-muted">
                   {model.inventory.consumablesOk
                     ? "Stock within target range"
                     : "One or more items need attention"}
                 </p>
               </div>
               <span
-                className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 ${
                   model.inventory.consumablesOk
-                    ? "bg-emerald-50 text-emerald-800"
-                    : "bg-amber-50 text-amber-900"
+                    ? "bg-stealth-success/10 text-stealth-success ring-stealth-success/25"
+                    : "bg-stealth-warning/10 text-stealth-warning ring-stealth-warning/25"
                 }`}
               >
                 {model.inventory.consumablesOk ? "OK" : "Review"}
@@ -831,56 +850,56 @@ function DashboardBody({
             </div>
 
             {model.inventory.alert ? (
-              <div className="rounded-xl border border-pulse-border bg-white p-4 shadow-sm">
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-pulse-muted">
+              <div className="rounded-xl border border-stealth-border bg-stealth-main/30 p-4 shadow-stealth-card">
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-stealth-muted">
                   Inventory Alert
                 </p>
-                <div className="mt-3 flex items-start justify-between gap-4 rounded-xl border border-amber-200 bg-amber-50/30 p-4">
+                <div className="mt-3 flex items-start justify-between gap-4 rounded-xl border border-stealth-border border-l-2 border-l-stealth-warning bg-stealth-warning/[0.06] p-4">
                   <div className="min-w-0">
-                    <p className="text-sm font-semibold text-pulse-navy">{model.inventory.alert.category}</p>
-                    <p className="mt-2 flex items-center gap-2 text-xs font-medium text-amber-900">
-                      <span className="h-2 w-2 shrink-0 rounded-full bg-amber-500" />
+                    <p className="text-sm font-semibold text-stealth-primary">{model.inventory.alert.category}</p>
+                    <p className="mt-2 flex items-center gap-2 text-xs font-medium text-stealth-warning">
+                      <span className="h-2 w-2 shrink-0 rounded-full bg-stealth-warning" />
                       {model.inventory.alert.message}
                     </p>
                   </div>
-                  <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-900 ring-1 ring-amber-200">
+                  <span className="shrink-0 rounded-full bg-stealth-warning/10 px-2 py-0.5 text-[11px] font-semibold text-stealth-warning ring-1 ring-stealth-warning/25">
                     Soon
                   </span>
                 </div>
                 <div className="mt-3 flex flex-wrap gap-2">
                   <Link
                     href={pulseTenantNav.find((n) => n.href === "/dashboard/inventory")?.href ?? "/dashboard/inventory"}
-                    className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-pulse-navy shadow-sm transition-colors hover:bg-slate-50"
+                    className="rounded-lg border border-stealth-border bg-stealth-main/50 px-3 py-1.5 text-xs font-semibold text-stealth-primary shadow-stealth-card transition-colors hover:bg-stealth-border/40"
                   >
                     View stock
                   </Link>
                   <Link
                     href={pulseTenantNav.find((n) => n.href === "/dashboard/inventory")?.href ?? "/dashboard/inventory"}
-                    className="rounded-lg bg-pulse-accent px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-pulse-accent-hover"
+                    className="rounded-lg bg-stealth-accent px-3 py-1.5 text-xs font-semibold text-stealth-primary shadow-stealth-card transition-[filter] hover:brightness-110"
                   >
                     Order Now
                   </Link>
                 </div>
               </div>
             ) : (
-              <p className="text-sm text-pulse-muted">No low-stock alerts.</p>
+              <p className="text-sm text-stealth-muted">No low-stock alerts.</p>
             )}
 
-            <div className="border-t border-pulse-border pt-4">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-pulse-muted">
+            <div className="border-t border-stealth-border pt-4">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-stealth-muted">
                 Shopping List
               </p>
               {model.inventory.shoppingList.length === 0 ? (
-                <p className="mt-3 text-sm text-pulse-muted">Add items from low-stock alerts.</p>
+                <p className="mt-3 text-sm text-stealth-muted">Add items from low-stock alerts.</p>
               ) : (
                 <ul className="mt-3 space-y-2">
                   {model.inventory.shoppingList.map((item) => (
                     <li
                       key={item}
-                      className="flex items-center gap-2 rounded-lg border border-slate-100 bg-slate-50/50 px-3 py-2 text-sm text-pulse-navy"
+                      className="flex items-center gap-2 rounded-lg border border-stealth-border bg-stealth-main/40 px-3 py-2 text-sm text-stealth-primary transition-colors hover:bg-stealth-border/25"
                     >
                       <span
-                        className="flex h-4 w-4 shrink-0 rounded border border-slate-300 bg-white"
+                        className="flex h-4 w-4 shrink-0 rounded border border-stealth-border bg-stealth-card"
                         aria-hidden
                       />
                       {item}
@@ -893,10 +912,10 @@ function DashboardBody({
         </section>
       </div>
 
-      <footer className="flex flex-col items-center justify-center gap-2 border-t border-pulse-border bg-slate-50/60 px-6 py-3 text-center">
+      <footer className="flex flex-col items-center justify-center gap-2 border-t border-stealth-border bg-stealth-card/40 px-6 py-3 text-center">
         <span className="sr-only">Powered by Helix Systems</span>
-        <div className="flex items-center justify-center">
-          <HelixMarketingLogo variant="compact" className="opacity-85" />
+        <div className="flex items-center justify-center opacity-60">
+          <HelixMarketingLogo variant="compact" className="" />
         </div>
       </footer>
     </div>
@@ -911,7 +930,7 @@ export function OperationalDashboard({
 }: {
   variant: OperationalDashboardVariant;
   /** Fires once when the dashboard has finished its initial load (live fetch done or demo mounted). */
-  onReady?: () => void;
+  onReady?: (payload?: OperationalDashboardReadyPayload) => void;
 }) {
   const { session } = usePulseAuth();
   const [liveModel, setLiveModel] = useState<DashboardViewModel | null>(null);
@@ -923,11 +942,14 @@ export function OperationalDashboard({
   const workOrdersHref =
     pulseTenantNav.find((n) => n.href === "/dashboard/work-requests")?.href ?? "/pulse#work-requests";
 
-  const notifyReady = useCallback(() => {
-    if (readyNotifiedRef.current) return;
-    readyNotifiedRef.current = true;
-    onReady?.();
-  }, [onReady]);
+  const notifyReady = useCallback(
+    (payload?: OperationalDashboardReadyPayload) => {
+      if (readyNotifiedRef.current) return;
+      readyNotifiedRef.current = true;
+      onReady?.(payload ?? { criticalCount: 0, warningCount: 0 });
+    },
+    [onReady],
+  );
 
   const fetchLive = useCallback(async () => {
     const sess = readSession();
@@ -942,6 +964,8 @@ export function OperationalDashboard({
       notifyReady();
       return;
     }
+
+    let readyPayload: OperationalDashboardReadyPayload = { criticalCount: 0, warningCount: 0 };
 
     setLoading(true);
     setError(null);
@@ -983,7 +1007,9 @@ export function OperationalDashboard({
         beaconList,
       );
       const welcome = welcomeFromSession(auth?.email, auth?.full_name);
-      setLiveModel({ ...model, welcomeName: welcome });
+      const withWelcome: DashboardViewModel = { ...model, welcomeName: welcome };
+      readyPayload = alertCountsFromAlerts(withWelcome.alerts);
+      setLiveModel(withWelcome);
     } catch (err) {
       const e = err as Error & { status?: number; body?: unknown };
       if (e.status === 403) {
@@ -996,7 +1022,7 @@ export function OperationalDashboard({
       setLiveModel(null);
     } finally {
       setLoading(false);
-      notifyReady();
+      notifyReady(readyPayload);
     }
     // Intentionally omit session from deps: usePulseAuth hydrates after mount and would re-run this eight-way
     // fetch. Welcome uses readSession() inside the try block above.
@@ -1009,7 +1035,7 @@ export function OperationalDashboard({
 
   useEffect(() => {
     if (variant === "demo") {
-      notifyReady();
+      notifyReady(alertCountsFromAlerts(demoModel().alerts));
     }
   }, [variant, notifyReady]);
 
@@ -1021,22 +1047,22 @@ export function OperationalDashboard({
 
   if (loading) {
     return (
-      <div className="rounded-2xl border border-pulse-border bg-white p-12 text-center shadow-card">
-        <p className="text-sm text-pulse-muted">Loading live dashboard…</p>
+      <div className="rounded-2xl border border-stealth-border bg-stealth-card p-12 text-center shadow-stealth-card">
+        <p className="text-sm text-stealth-muted">Loading live dashboard…</p>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="rounded-2xl border border-amber-200 bg-amber-50/60 p-6 shadow-sm">
-        <p className="text-sm text-amber-950" role="status">
+      <div className="rounded-2xl border border-stealth-border border-l-2 border-l-stealth-warning bg-stealth-warning/[0.06] p-6 shadow-stealth-card">
+        <p className="text-sm text-stealth-warning" role="status">
           {error}
         </p>
         <button
           type="button"
           onClick={() => void fetchLive()}
-          className="mt-4 rounded-xl bg-pulse-accent px-4 py-2 text-sm font-semibold text-white hover:bg-pulse-accent-hover"
+          className="mt-4 rounded-xl bg-stealth-accent px-4 py-2 text-sm font-semibold text-stealth-primary transition-[filter] hover:brightness-110"
         >
           Retry
         </button>
@@ -1046,7 +1072,7 @@ export function OperationalDashboard({
 
   if (!liveModel) {
     return (
-      <p className="text-sm text-pulse-muted">No dashboard data available.</p>
+      <p className="text-sm text-stealth-muted">No dashboard data available.</p>
     );
   }
 

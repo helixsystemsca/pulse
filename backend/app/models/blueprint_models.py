@@ -34,6 +34,8 @@ class Blueprint(Base):
         onupdate=lambda: datetime.now(timezone.utc),
         nullable=False,
     )
+    # JSON array of task overlays (id, title, mode, content, linked_element_ids)
+    tasks_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
     elements: Mapped[list["BlueprintElement"]] = relationship(
         back_populates="blueprint",

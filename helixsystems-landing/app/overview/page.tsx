@@ -1,6 +1,9 @@
 "use client";
 
-import { OperationalDashboard } from "@/components/dashboard/OperationalDashboard";
+import {
+  OperationalDashboard,
+  type OperationalDashboardReadyPayload,
+} from "@/components/dashboard/OperationalDashboard";
 import { WelcomeLoaderModal } from "@/components/ui/WelcomeLoaderModal";
 import { isApiMode } from "@/lib/api";
 import { navigateToPulseLogin, pulsePostLoginPath } from "@/lib/pulse-app";
@@ -24,7 +27,14 @@ export default function OverviewPage() {
   const router = useRouter();
   const [ready, setReady] = useState(false);
   const [dashboardDataReady, setDashboardDataReady] = useState(false);
-  const onDashboardReady = useCallback(() => setDashboardDataReady(true), []);
+  const [welcomeAlertContext, setWelcomeAlertContext] = useState<OperationalDashboardReadyPayload>({
+    criticalCount: 0,
+    warningCount: 0,
+  });
+  const onDashboardReady = useCallback((payload?: OperationalDashboardReadyPayload) => {
+    setWelcomeAlertContext(payload ?? { criticalCount: 0, warningCount: 0 });
+    setDashboardDataReady(true);
+  }, []);
 
   useEffect(() => {
     const s = readSession();
@@ -47,7 +57,7 @@ export default function OverviewPage() {
   if (!ready) {
     return (
       <div className="flex min-h-[40vh] items-center justify-center">
-        <p className="text-sm text-pulse-muted">Loading…</p>
+        <p className="text-sm text-stealth-muted">Loading…</p>
       </div>
     );
   }
@@ -58,7 +68,12 @@ export default function OverviewPage() {
         variant={isApiMode() ? "live" : "demo"}
         onReady={onDashboardReady}
       />
-      <WelcomeLoaderModal userName={userName} isReady={dashboardDataReady} />
+      <WelcomeLoaderModal
+        userName={userName}
+        isReady={dashboardDataReady}
+        criticalCount={welcomeAlertContext.criticalCount}
+        warningCount={welcomeAlertContext.warningCount}
+      />
     </div>
   );
 }

@@ -1,11 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { BlueprintElement, BlueprintState } from "./blueprint-types";
+import type { BlueprintElement, BlueprintState, TaskOverlay } from "./blueprint-types";
 
 const DEFAULT_MAX = 50;
 
-/** Shallow snapshot for history stacks (copy array-valued fields). */
+/** Shallow snapshot of blueprint elements for undo stacks (copy array-valued fields). */
 function cloneElementsForHistory(elements: BlueprintElement[]): BlueprintElement[] {
   return elements.map((el) => ({
     ...el,
@@ -14,8 +14,23 @@ function cloneElementsForHistory(elements: BlueprintElement[]): BlueprintElement
   }));
 }
 
+function cloneTasksForHistory(tasks: TaskOverlay[]): TaskOverlay[] {
+  return tasks.map((t) => ({
+    ...t,
+    linked_element_ids: [...t.linked_element_ids],
+    content: t.mode === "steps" ? [...(t.content as string[])] : (t.content as string),
+  }));
+}
+
 function cloneBlueprintState(s: BlueprintState): BlueprintState {
-  return { elements: cloneElementsForHistory(s.elements) };
+  return {
+    elements: cloneElementsForHistory(s.elements),
+    tasks: cloneTasksForHistory(s.tasks),
+  };
+}
+
+function blueprintDataUnchanged(prev: BlueprintState, next: BlueprintState): boolean {
+  return prev.elements === next.elements && prev.tasks === next.tasks;
 }
 
 export type UseBlueprintHistoryOptions = {
@@ -30,7 +45,9 @@ export type UseBlueprintHistoryOptions = {
  */
 export function useBlueprintHistory(options?: UseBlueprintHistoryOptions) {
   const max = options?.maxDepth ?? DEFAULT_MAX;
-  const [present, setPresent] = useState<BlueprintState>(() => options?.initial ?? { elements: [] });
+  const [present, setPresent] = useState<BlueprintState>(
+    () => options?.initial ?? { elements: [], tasks: [] },
+  );
 
   const pastRef = useRef<BlueprintState[]>([]);
   const futureRef = useRef<BlueprintState[]>([]);
@@ -44,7 +61,7 @@ export function useBlueprintHistory(options?: UseBlueprintHistoryOptions) {
     (next: BlueprintState | ((prev: BlueprintState) => BlueprintState)) => {
       setPresent((prev) => {
         const resolved = typeof next === "function" ? next(prev) : next;
-        if (resolved.elements === prev.elements) return prev;
+        if (blueprintDataUnchanged(prev, resolved)) return prev;
         pastRef.current = [...pastRef.current, cloneBlueprintState(prev)].slice(-max);
         futureRef.current = [];
         return resolved;
@@ -57,7 +74,7 @@ export function useBlueprintHistory(options?: UseBlueprintHistoryOptions) {
   const replaceBlueprint = useCallback((next: BlueprintState | ((prev: BlueprintState) => BlueprintState)) => {
     setPresent((prev) => {
       const resolved = typeof next === "function" ? next(prev) : next;
-      if (resolved.elements === prev.elements) return prev;
+      if (blueprintDataUnchanged(prev, resolved)) return prev;
       return resolved;
     });
   }, []);

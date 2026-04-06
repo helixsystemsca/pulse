@@ -6,8 +6,9 @@ import type Konva from "konva";
 import { Circle, Group, Layer, Line, Rect, Stage, Text, Transformer } from "react-konva";
 import { apiFetch } from "@/lib/api";
 import { bpDuration, bpEase, bpTransition } from "@/lib/motion-presets";
-import type { BlueprintElement } from "./blueprint-types";
-export type { BlueprintElement, BlueprintState, BlueprintHistoryState } from "./blueprint-types";
+import type { BlueprintElement, TaskOverlay } from "./blueprint-types";
+export type { BlueprintElement, BlueprintState, BlueprintHistoryState, TaskOverlay } from "./blueprint-types";
+import { BlueprintTasksPanel } from "./BlueprintTasksPanel";
 import { useBlueprintHistory } from "./useBlueprintHistory";
 import "./blueprint-designer.css";
 
@@ -44,13 +45,49 @@ type ApiElement = {
   symbol_notes?: string | null;
 };
 
+type ApiTask = {
+  id: string;
+  title: string;
+  mode: "steps" | "paragraph";
+  content: unknown;
+  linked_element_ids?: string[] | null;
+};
+
 type BlueprintDetail = {
   id: string;
   name: string;
   created_at: string;
   updated_at: string;
   elements: ApiElement[];
+  tasks?: ApiTask[] | null;
 };
+
+function mapApiTasks(raw: ApiTask[] | undefined | null): TaskOverlay[] {
+  if (!raw || !Array.isArray(raw)) return [];
+  const out: TaskOverlay[] = [];
+  for (const t of raw) {
+    if (!t || typeof t !== "object") continue;
+    const id = String(t.id ?? "");
+    if (!id) continue;
+    const mode = t.mode === "paragraph" ? "paragraph" : "steps";
+    let content: string | string[];
+    if (mode === "paragraph") {
+      content = Array.isArray(t.content) ? t.content.map(String).join("\n") : String(t.content ?? "");
+    } else {
+      const c = t.content;
+      content = Array.isArray(c) ? c.map(String) : [String(c ?? "")];
+    }
+    const links = Array.isArray(t.linked_element_ids) ? t.linked_element_ids.map(String) : [];
+    out.push({
+      id,
+      title: String(t.title ?? "Task"),
+      mode,
+      content,
+      linked_element_ids: links,
+    });
+  }
+  return out;
+}
 
 const GRID = 32;
 const DEVICE_DEFAULT = 44;
@@ -883,6 +920,7 @@ export function BlueprintDesigner() {
     resetBlueprint,
   } = useBlueprintHistory({ maxDepth: UNDO_HISTORY_MAX });
   const elements = blueprint.elements;
+  const tasks = blueprint.tasks;
 
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [marqueeBox, setMarqueeBox] = useState<{ L: number; R: number; T: number; B: number } | null>(null);
@@ -905,6 +943,14 @@ export function BlueprintDesigner() {
 
   const [zonesApi, setZonesApi] = useState<{ id: string; name: string }[]>([]);
   const [equipmentApi, setEquipmentApi] = useState<{ id: string; name: string }[]>([]);
+
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [linkingForTaskId, setLinkingForTaskId] = useState<string | null>(null);
+  const [taskStepHighlight, setTaskStepHighlight] = useState<{ taskId: string; stepIndex: number } | null>(
+    null,
+  );
+  const [taskStepPin, setTaskStepPin] = useState<{ taskId: string; stepIndex: number } | null>(null);
+  const [canvasHoverElementId, setCanvasHoverElementId] = useState<string | null>(null);
 
   const stageRef = useRef<Konva.Stage | null>(null);
   const transformerRef = useRef<Konva.Transformer | null>(null);
@@ -931,13 +977,40 @@ export function BlueprintDesigner() {
   type GroupDragState = { primaryId: string; starts: Map<string, { x: number; y: number }>; pathFlats: Map<string, number[]> };
   const groupDragRef = useRef<GroupDragState | null>(null);
   const transformUndoPrimedRef = useRef(false);
+  const linkingForTaskIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    linkingForTaskIdRef.current = linkingForTaskId;
+  }, [linkingForTaskId]);
+
+  const taskGlowIds = useMemo(() => {
+    const h = taskStepHighlight ?? taskStepPin;
+    if (!h) return new Set<string>();
+    const t = tasks.find((x) => x.id === h.taskId);
+    if (!t) return new Set<string>();
+    return new Set(t.linked_element_ids);
+  }, [taskStepHighlight, taskStepPin, tasks]);
+
+  const emphasizedTaskIds = useMemo(() => {
+    if (!canvasHoverElementId) return new Set<string>();
+    const s = new Set<string>();
+    for (const t of tasks) {
+      if (t.linked_element_ids.includes(canvasHoverElementId)) s.add(t.id);
+    }
+    return s;
+  }, [canvasHoverElementId, tasks]);
 
   /** Commits blueprint changes: previous present → past, new state → present, clears future. */
   const commitElements = useCallback(
     (updater: BlueprintElement[] | ((p: BlueprintElement[]) => BlueprintElement[])) => {
       updateBlueprint((bp) => {
         const next = typeof updater === "function" ? updater(bp.elements) : updater;
-        return { elements: next };
+        const idSet = new Set(next.map((e) => e.id));
+        const nextTasks = bp.tasks.map((t) => ({
+          ...t,
+          linked_element_ids: t.linked_element_ids.filter((id) => idSet.has(id)),
+        }));
+        return { ...bp, elements: next, tasks: nextTasks };
       });
     },
     [updateBlueprint],
@@ -947,10 +1020,21 @@ export function BlueprintDesigner() {
     (updater: BlueprintElement[] | ((p: BlueprintElement[]) => BlueprintElement[])) => {
       replaceBlueprint((bp) => {
         const next = typeof updater === "function" ? updater(bp.elements) : updater;
-        return { elements: next };
+        if (next === bp.elements) return bp;
+        return { ...bp, elements: next };
       });
     },
     [replaceBlueprint],
+  );
+
+  const patchTask = useCallback(
+    (id: string, patch: Partial<TaskOverlay>) => {
+      updateBlueprint((bp) => ({
+        ...bp,
+        tasks: bp.tasks.map((t) => (t.id === id ? { ...t, ...patch } : t)),
+      }));
+    },
+    [updateBlueprint],
   );
 
   const undo = useCallback(() => {
@@ -1040,6 +1124,9 @@ export function BlueprintDesigner() {
     freeDrawWinCleanupRef.current = null;
     freeDrawAccumRef.current = [];
     setFreeDrawPreview(null);
+    setLinkingForTaskId(null);
+    setTaskStepHighlight(null);
+    setTaskStepPin(null);
   }, [tool]);
 
   useEffect(() => () => zoomAnimRef.current?.stop(), []);
@@ -1061,6 +1148,14 @@ export function BlueprintDesigner() {
 
   const isPublish = designerMode === "publish";
   const canEdit = !isPublish;
+
+  useEffect(() => {
+    if (!isPublish) return;
+    setLinkingForTaskId(null);
+    setSelectedTaskId(null);
+    setTaskStepHighlight(null);
+    setTaskStepPin(null);
+  }, [isPublish]);
   const selectedSingleId = selectedIds.length === 1 ? selectedIds[0] : null;
   const selected = selectedSingleId ? elements.find((e) => e.id === selectedSingleId) ?? null : null;
 
@@ -1105,6 +1200,9 @@ export function BlueprintDesigner() {
         e.preventDefault();
         setSelectedIds([]);
         setSnapGuides([]);
+        setLinkingForTaskId(null);
+        setTaskStepHighlight(null);
+        setTaskStepPin(null);
         return;
       }
       if (e.key === "Delete" || e.key === "Backspace") {
@@ -1255,7 +1353,10 @@ export function BlueprintDesigner() {
       const d = await apiFetch<BlueprintDetail>(`/api/blueprints/${id}`);
       setBlueprintId(d.id);
       setBlueprintName(d.name);
-      resetBlueprint({ elements: relayoutAllDoors(d.elements.map(mapApiElement)) });
+      resetBlueprint({
+        elements: relayoutAllDoors(d.elements.map(mapApiElement)),
+        tasks: mapApiTasks(d.tasks),
+      });
       setSelectedIds([]);
       setError(null);
     } catch (e) {
@@ -1267,17 +1368,33 @@ export function BlueprintDesigner() {
     setSaving(true);
     setError(null);
     try {
-      const payload = { name: blueprintName.trim() || "Untitled blueprint", elements: toApiPayload(elements) };
+      const payload = {
+        name: blueprintName.trim() || "Untitled blueprint",
+        elements: toApiPayload(elements),
+        tasks: tasks.map((t) => ({
+          id: t.id,
+          title: t.title,
+          mode: t.mode,
+          content: t.content,
+          linked_element_ids: t.linked_element_ids,
+        })),
+      };
       if (blueprintId) {
         const d = await apiFetch<BlueprintDetail>(`/api/blueprints/${blueprintId}`, {
           method: "PUT",
           json: payload,
         });
-        resetBlueprint({ elements: relayoutAllDoors(d.elements.map(mapApiElement)) });
+        resetBlueprint({
+          elements: relayoutAllDoors(d.elements.map(mapApiElement)),
+          tasks: mapApiTasks(d.tasks),
+        });
       } else {
         const d = await apiFetch<BlueprintDetail>("/api/blueprints", { method: "POST", json: payload });
         setBlueprintId(d.id);
-        resetBlueprint({ elements: relayoutAllDoors(d.elements.map(mapApiElement)) });
+        resetBlueprint({
+          elements: relayoutAllDoors(d.elements.map(mapApiElement)),
+          tasks: mapApiTasks(d.tasks),
+        });
       }
       await refreshList();
     } catch (e) {
@@ -1290,7 +1407,7 @@ export function BlueprintDesigner() {
   const newBlueprint = () => {
     setBlueprintId(null);
     setBlueprintName("Untitled blueprint");
-    resetBlueprint({ elements: [] });
+    resetBlueprint({ elements: [], tasks: [] });
     setSelectedIds([]);
     setTool("select");
   };
@@ -1600,18 +1717,41 @@ export function BlueprintDesigner() {
     groupDragRef.current = { primaryId, starts, pathFlats };
   }, []);
 
-  const handleSelectElementClick = useCallback((e: Konva.KonvaEventObject<Event>, id: string) => {
-    if (!canEditRef.current) return;
-    const ne = e.evt as MouseEvent | TouchEvent;
-    const shift = "shiftKey" in ne ? ne.shiftKey : false;
-    if (shift) {
-      setSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
-    } else {
-      setSelectedIds([id]);
-    }
-  }, []);
+  const handleSelectElementClick = useCallback(
+    (e: Konva.KonvaEventObject<Event>, id: string) => {
+      if (!canEditRef.current) return;
+      const lid = linkingForTaskIdRef.current;
+      if (lid) {
+        e.cancelBubble = true;
+        updateBlueprint((bp) => ({
+          ...bp,
+          tasks: bp.tasks.map((t) =>
+            t.id !== lid
+              ? t
+              : {
+                  ...t,
+                  linked_element_ids: t.linked_element_ids.includes(id)
+                    ? t.linked_element_ids.filter((x) => x !== id)
+                    : [...t.linked_element_ids, id],
+                },
+          ),
+        }));
+        return;
+      }
+      const ne = e.evt as MouseEvent | TouchEvent;
+      const shift = "shiftKey" in ne ? ne.shiftKey : false;
+      if (shift) {
+        setSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+      } else {
+        setSelectedIds([id]);
+      }
+      setTaskStepPin(null);
+    },
+    [updateBlueprint],
+  );
 
   const beginMarqueeSelect = (e: Konva.KonvaEventObject<MouseEvent>) => {
+    if (linkingForTaskId) return;
     if (!canEdit || tool !== "select" || e.evt.button !== 0 || spaceDown) return;
     e.cancelBubble = true;
     const st = e.target.getStage();
@@ -1740,6 +1880,11 @@ export function BlueprintDesigner() {
       tr.getLayer()?.batchDraw();
       return;
     }
+    if (linkingForTaskId) {
+      tr.nodes([]);
+      tr.getLayer()?.batchDraw();
+      return;
+    }
     const n = selectedNodeRef.current;
     if (n && selectedSingleId && tool === "select") {
       tr.nodes([n]);
@@ -1747,7 +1892,7 @@ export function BlueprintDesigner() {
       tr.nodes([]);
     }
     tr.getLayer()?.batchDraw();
-  }, [selectedSingleId, elements, tool, stageSize.w, stageSize.h, designerMode]);
+  }, [selectedSingleId, elements, tool, stageSize.w, stageSize.h, designerMode, linkingForTaskId]);
 
   const gridLines = (() => {
     const { w, h } = stageSize;
@@ -1961,6 +2106,44 @@ export function BlueprintDesigner() {
             ))}
           </div>
         </div>
+        <BlueprintTasksPanel
+          tasks={tasks}
+          disabled={isPublish}
+          selectedTaskId={selectedTaskId}
+          onSelectTaskId={setSelectedTaskId}
+          linkingForTaskId={linkingForTaskId}
+          onLinkingForTaskId={setLinkingForTaskId}
+          highlightStep={taskStepHighlight}
+          onHighlightStep={setTaskStepHighlight}
+          pinnedStep={taskStepPin}
+          onPinnedStep={setTaskStepPin}
+          emphasizedTaskIds={emphasizedTaskIds}
+          onPatchTask={patchTask}
+          onAddTask={() => {
+            const id = crypto.randomUUID();
+            updateBlueprint((bp) => ({
+              ...bp,
+              tasks: [
+                ...bp.tasks,
+                {
+                  id,
+                  title: "New task",
+                  mode: "steps",
+                  content: ["Step 1"],
+                  linked_element_ids: [],
+                },
+              ],
+            }));
+            setSelectedTaskId(id);
+          }}
+          onDeleteTask={(id) => {
+            updateBlueprint((bp) => ({ ...bp, tasks: bp.tasks.filter((t) => t.id !== id) }));
+            setSelectedTaskId((cur) => (cur === id ? null : cur));
+            setLinkingForTaskId((cur) => (cur === id ? null : cur));
+            setTaskStepHighlight((h) => (h?.taskId === id ? null : h));
+            setTaskStepPin((h) => (h?.taskId === id ? null : h));
+          }}
+        />
         <p className="bp-hint">
           Scroll to zoom (cursor-centered). Hold Space and drag or right-drag to pan. Esc clears selection; arrow keys
           nudge selection (Shift for larger steps). Draw rooms on the grid. Door: click within {WALL_SNAP_PX}px of a room
@@ -2104,6 +2287,14 @@ export function BlueprintDesigner() {
             </motion.p>
           ) : null}
         </AnimatePresence>
+        {linkingForTaskId && canEdit ? (
+          <div className="bp-task-link-banner" role="status">
+            <span>Link mode: tap or click elements on the canvas to attach or detach. Press Esc or Done when finished.</span>
+            <button type="button" className="bp-btn bp-btn--ghost" onClick={() => setLinkingForTaskId(null)}>
+              Done
+            </button>
+          </div>
+        ) : null}
         <div
           ref={hostRef}
           className={`bp-stage-host ${spaceDown || isPanning ? "is-panning" : ""}${isPublish ? " bp-stage-host--publish" : ""}${canEdit && !isPublish ? ` bp-stage-host--tool-${tool}` : ""}${isDraggingSelection && canEdit && !isPublish ? " is-dragging-selection" : ""}`}
@@ -2167,6 +2358,7 @@ export function BlueprintDesigner() {
                   const ins = Math.max(0.6, pubLine(1.05 / stageScale));
                   const labelSize = pubFs(Math.min(11, Math.max(9, Math.min(w, h) / 7)));
                   const zGlow = canEdit && tool === "select" && !sel && hoverZoneId === el.id;
+                  const tg = taskGlowIds.has(el.id);
                   const zoneFill = isPublish ? "rgba(248, 250, 252, 0.085)" : ZONE_FACE_FILL;
                   const zoneStroke = isPublish ? "rgba(241, 245, 249, 0.94)" : ZONE_OUTLINE;
                   return (
@@ -2231,22 +2423,30 @@ export function BlueprintDesigner() {
                         rotation={rot}
                         cornerRadius={ZONE_RADIUS}
                         fill={zoneFill}
-                        stroke={zoneStroke}
-                        strokeWidth={sw}
+                        stroke={tg ? "rgba(56, 189, 248, 0.75)" : zoneStroke}
                         shadowColor={
-                          sel ? "rgba(59, 130, 246, 0.48)" : zGlow ? "rgba(96, 165, 250, 0.4)" : "rgba(0, 0, 0, 0.2)"
+                          tg
+                            ? "rgba(56, 189, 248, 0.55)"
+                            : sel
+                              ? "rgba(59, 130, 246, 0.48)"
+                              : zGlow
+                                ? "rgba(96, 165, 250, 0.4)"
+                                : "rgba(0, 0, 0, 0.2)"
                         }
-                        shadowBlur={sel ? 20 : zGlow ? 16 : 6}
-                        shadowOpacity={sel ? 0.38 : zGlow ? 0.24 : 0.12}
+                        shadowBlur={tg ? 24 : sel ? 20 : zGlow ? 16 : 6}
+                        shadowOpacity={tg ? 0.45 : sel ? 0.38 : zGlow ? 0.24 : 0.12}
+                        strokeWidth={tg ? sw * 1.35 : sw}
                         shadowOffset={{ x: 0, y: sel ? 0 : 2 }}
                         listening={canEdit && tool === "select"}
                         draggable={canEdit && tool === "select"}
                         onMouseEnter={(e) => {
+                          if (canEdit && tool === "select") setCanvasHoverElementId(el.id);
                           if (canEdit && tool === "select" && !sel) setHoverZoneId(el.id);
                           const t = e.target as unknown as { getClassName?: () => string; stroke?: (s: string) => void };
                           if (canEdit && tool === "select" && !sel && t.getClassName?.() === "Rect") t.stroke?.(ZONE_OUTLINE_HOVER);
                         }}
                         onMouseLeave={(e) => {
+                          setCanvasHoverElementId((z) => (z === el.id ? null : z));
                           setHoverZoneId((z) => (z === el.id ? null : z));
                           const t = e.target as unknown as { getClassName?: () => string; stroke?: (s: string) => void };
                           if (t.getClassName?.() === "Rect") t.stroke?.(zoneStroke);
@@ -2337,13 +2537,20 @@ export function BlueprintDesigner() {
                       ? "rgba(226, 232, 240, 0.9)"
                       : "rgba(148, 163, 184, 0.45)";
                   const doorFill = isPublish ? "rgba(15, 23, 42, 0.32)" : "rgba(15, 23, 42, 0.2)";
+                  const tg = taskGlowIds.has(el.id);
                   return (
                     <Group
                       key={el.id}
                       x={el.x}
                       y={el.y}
                       rotation={rot}
+                      scaleX={tg ? 1.08 : 1}
+                      scaleY={tg ? 1.08 : 1}
                       listening={canEdit && tool === "select"}
+                      onMouseEnter={() => {
+                        if (canEdit && tool === "select") setCanvasHoverElementId(el.id);
+                      }}
+                      onMouseLeave={() => setCanvasHoverElementId((z) => (z === el.id ? null : z))}
                       onClick={(e) => canEdit && handleSelectElementClick(e, el.id)}
                       onTap={(e) => canEdit && handleSelectElementClick(e, el.id)}
                     >
@@ -2363,8 +2570,11 @@ export function BlueprintDesigner() {
                         height={depth}
                         cornerRadius={2}
                         fill={doorFill}
-                        stroke={doorStroke}
-                        strokeWidth={sw}
+                        stroke={tg ? "rgba(56, 189, 248, 0.85)" : doorStroke}
+                        strokeWidth={tg ? sw * 1.4 : sw}
+                        shadowColor={tg ? "rgba(56, 189, 248, 0.45)" : undefined}
+                        shadowBlur={tg ? 14 : 0}
+                        shadowOpacity={tg ? 0.9 : 0}
                         listening={false}
                       />
                     </Group>
@@ -2379,6 +2589,7 @@ export function BlueprintDesigner() {
                   const sel = selectedIds.includes(el.id);
                   const sStroke = pubLine(Math.max(0.65, 0.9 / stageScale));
                   const sGlow = canEdit && tool === "select" && !sel && hoverSymbolId === el.id;
+                  const stg = taskGlowIds.has(el.id);
                   const symLabelFs = pubFs(Math.min(9, w / 5));
                   return (
                     <Group
@@ -2386,18 +2597,22 @@ export function BlueprintDesigner() {
                       x={el.x}
                       y={el.y}
                       rotation={el.rotation ?? 0}
+                      scaleX={stg ? 1.06 : 1}
+                      scaleY={stg ? 1.06 : 1}
                       listening={canEdit && tool === "select"}
                       draggable={canEdit && tool === "select"}
                       shadowColor={
                         isPublish
                           ? "rgba(0, 0, 0, 0.25)"
-                          : sel
-                            ? "rgba(59, 130, 246, 0.35)"
-                            : sGlow
-                              ? "rgba(96, 165, 250, 0.38)"
-                              : "rgba(0, 0, 0, 0.45)"
+                          : stg
+                            ? "rgba(56, 189, 248, 0.5)"
+                            : sel
+                              ? "rgba(59, 130, 246, 0.35)"
+                              : sGlow
+                                ? "rgba(96, 165, 250, 0.38)"
+                                : "rgba(0, 0, 0, 0.45)"
                       }
-                      shadowBlur={isPublish ? 6 : sel ? 16 : sGlow ? 14 : 8}
+                      shadowBlur={isPublish ? 6 : stg ? 20 : sel ? 16 : sGlow ? 14 : 8}
                       shadowOpacity={isPublish ? 0.18 : 0.28}
                       shadowOffset={{ x: 0, y: 3 }}
                       onClick={(e) => canEdit && handleSelectElementClick(e, el.id)}
@@ -2435,9 +2650,13 @@ export function BlueprintDesigner() {
                         );
                       }}
                       onMouseEnter={() => {
+                        if (canEdit && tool === "select") setCanvasHoverElementId(el.id);
                         if (canEdit && tool === "select" && !sel) setHoverSymbolId(el.id);
                       }}
-                      onMouseLeave={() => setHoverSymbolId((z) => (z === el.id ? null : z))}
+                      onMouseLeave={() => {
+                        setCanvasHoverElementId((z) => (z === el.id ? null : z));
+                        setHoverSymbolId((z) => (z === el.id ? null : z));
+                      }}
                       opacity={0.98}
                     >
                       <Rect
@@ -2446,15 +2665,17 @@ export function BlueprintDesigner() {
                         cornerRadius={8}
                         fill={isPublish ? "rgba(248, 250, 252, 0.1)" : "rgba(15, 23, 42, 0.14)"}
                         stroke={
-                          sel
-                            ? "rgba(96, 165, 250, 0.55)"
-                            : sGlow
-                              ? "rgba(203, 213, 245, 0.32)"
-                              : isPublish
-                                ? "rgba(226, 232, 240, 0.42)"
-                                : "rgba(203, 213, 245, 0.12)"
+                          stg
+                            ? "rgba(56, 189, 248, 0.75)"
+                            : sel
+                              ? "rgba(96, 165, 250, 0.55)"
+                              : sGlow
+                                ? "rgba(203, 213, 245, 0.32)"
+                                : isPublish
+                                  ? "rgba(226, 232, 240, 0.42)"
+                                  : "rgba(203, 213, 245, 0.12)"
                         }
-                        strokeWidth={sStroke}
+                        strokeWidth={stg ? sStroke * 1.35 : sStroke}
                         listening={false}
                       />
                       <Group x={w / 2} y={h / 2} scaleX={symScale} scaleY={symScale} listening={false}>
@@ -2486,6 +2707,7 @@ export function BlueprintDesigner() {
                   const sel = selectedIds.includes(el.id);
                   const dStroke = pubLine(Math.max(0.65, 0.92 / stageScale));
                   const dGlow = canEdit && tool === "select" && !sel && hoverDeviceId === el.id;
+                  const dtg = taskGlowIds.has(el.id);
                   const pulse = !isPublish && (st === "alarm" || st === "warning");
                   return (
                     <Group
@@ -2503,18 +2725,22 @@ export function BlueprintDesigner() {
                       x={el.x}
                       y={el.y}
                       rotation={el.rotation ?? 0}
+                      scaleX={dtg ? 1.06 : 1}
+                      scaleY={dtg ? 1.06 : 1}
                       listening={canEdit && tool === "select"}
                       draggable={canEdit && tool === "select"}
                       shadowColor={
                         isPublish
                           ? "rgba(0, 0, 0, 0.35)"
-                          : sel
-                            ? "rgba(59, 130, 246, 0.42)"
-                            : dGlow
-                              ? "rgba(96, 165, 250, 0.4)"
-                              : "rgba(0, 0, 0, 0.55)"
+                          : dtg
+                            ? "rgba(56, 189, 248, 0.52)"
+                            : sel
+                              ? "rgba(59, 130, 246, 0.42)"
+                              : dGlow
+                                ? "rgba(96, 165, 250, 0.4)"
+                                : "rgba(0, 0, 0, 0.55)"
                       }
-                      shadowBlur={isPublish ? 8 : sel ? 21 : dGlow ? 16 : 11}
+                      shadowBlur={isPublish ? 8 : dtg ? 24 : sel ? 21 : dGlow ? 16 : 11}
                       shadowOpacity={isPublish ? 0.16 : 0.24}
                       shadowOffset={{ x: 0, y: 5 }}
                       onClick={(e) => canEdit && handleSelectElementClick(e, el.id)}
@@ -2553,11 +2779,13 @@ export function BlueprintDesigner() {
                       }}
                       onTransformEnd={(e) => syncTransformToState(el.id, e.target)}
                       onMouseEnter={(e) => {
+                        if (canEdit && tool === "select") setCanvasHoverElementId(el.id);
                         if (canEdit && tool === "select" && !sel) setHoverDeviceId(el.id);
                         if (!canEdit || tool !== "select" || sel) return;
                         e.currentTarget.opacity(1);
                       }}
                       onMouseLeave={(e) => {
+                        setCanvasHoverElementId((z) => (z === el.id ? null : z));
                         setHoverDeviceId((z) => (z === el.id ? null : z));
                         e.currentTarget.opacity(sel ? 1 : isPublish ? 1 : 0.97);
                       }}
@@ -2577,15 +2805,17 @@ export function BlueprintDesigner() {
                         cornerRadius={10}
                         fill={isPublish ? "rgba(248, 250, 252, 0.12)" : "rgba(15, 23, 42, 0.18)"}
                         stroke={
-                          sel
-                            ? "rgba(96, 165, 250, 0.45)"
-                            : dGlow
-                              ? "rgba(203, 213, 245, 0.28)"
-                              : isPublish
-                                ? "rgba(226, 232, 240, 0.38)"
-                                : "rgba(203, 213, 245, 0.16)"
+                          dtg
+                            ? "rgba(56, 189, 248, 0.82)"
+                            : sel
+                              ? "rgba(96, 165, 250, 0.45)"
+                              : dGlow
+                                ? "rgba(203, 213, 245, 0.28)"
+                                : isPublish
+                                  ? "rgba(226, 232, 240, 0.38)"
+                                  : "rgba(203, 213, 245, 0.16)"
                         }
-                        strokeWidth={dStroke}
+                        strokeWidth={dtg ? dStroke * 1.35 : dStroke}
                         listening={false}
                       />
                       <Group
@@ -2623,11 +2853,14 @@ export function BlueprintDesigner() {
                   const sel = selectedIds.includes(el.id);
                   const sw = pubLine(Math.max(0.65, 1 / stageScale));
                   const pathFill = isPublish ? "rgba(56, 189, 248, 0.14)" : "rgba(56, 189, 248, 0.08)";
-                  const pathStroke = sel
-                    ? "rgba(96, 165, 250, 0.78)"
-                    : isPublish
-                      ? "rgba(186, 230, 253, 0.72)"
-                      : "rgba(148, 197, 255, 0.52)";
+                  const ptg = taskGlowIds.has(el.id);
+                  const pathStroke = ptg
+                    ? "rgba(56, 189, 248, 0.92)"
+                    : sel
+                      ? "rgba(96, 165, 250, 0.78)"
+                      : isPublish
+                        ? "rgba(186, 230, 253, 0.72)"
+                        : "rgba(148, 197, 255, 0.52)";
                   return (
                     <Line
                       key={el.id}
@@ -2636,11 +2869,18 @@ export function BlueprintDesigner() {
                       tension={PATH_LINE_TENSION}
                       fill={pathFill}
                       stroke={pathStroke}
-                      strokeWidth={sw}
+                      strokeWidth={ptg ? sw * 1.45 : sw}
                       lineCap="round"
                       lineJoin="round"
+                      shadowColor={ptg ? "rgba(56, 189, 248, 0.45)" : undefined}
+                      shadowBlur={ptg ? 12 : 0}
+                      shadowOpacity={ptg ? 1 : 0}
                       listening={canEdit && tool === "select"}
                       hitStrokeWidth={Math.max(16, 14 / stageScale)}
+                      onMouseEnter={() => {
+                        if (canEdit && tool === "select") setCanvasHoverElementId(el.id);
+                      }}
+                      onMouseLeave={() => setCanvasHoverElementId((z) => (z === el.id ? null : z))}
                       onClick={(e) => canEdit && handleSelectElementClick(e, el.id)}
                       onTap={(e) => canEdit && handleSelectElementClick(e, el.id)}
                     />

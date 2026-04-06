@@ -21,9 +21,20 @@ export type BlueprintElement = {
   symbol_notes?: string;
 };
 
-/** Undoable document slice: geometry and element metadata only. */
+/** Instruction overlay linked to canvas elements (maintenance / SOP-style). */
+export type TaskOverlay = {
+  id: string;
+  title: string;
+  mode: "steps" | "paragraph";
+  /** `paragraph`: single string; `steps`: ordered lines */
+  content: string | string[];
+  linked_element_ids: string[];
+};
+
+/** Undoable document slice: geometry, element metadata, and task overlays. */
 export type BlueprintState = {
   elements: BlueprintElement[];
+  tasks: TaskOverlay[];
 };
 
 /**

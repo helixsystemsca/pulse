@@ -19,7 +19,9 @@ from app.schemas.blueprint import (
     BlueprintSummaryOut,
     BlueprintUpdateIn,
     element_in_to_orm_kwargs,
+    parse_tasks_json,
     row_to_element_out,
+    tasks_model_to_json,
 )
 
 router = APIRouter(prefix="/blueprints", tags=["blueprints"])
@@ -57,6 +59,7 @@ async def create_blueprint(body: BlueprintCreateIn, db: Db, user: TenantUser) ->
         except ValueError as e:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
         db.add(BlueprintElement(**kwargs))
+    bp.tasks_json = tasks_model_to_json(body.tasks)
     await db.commit()
     await db.refresh(bp)
     return await _detail_out(db, bp)
@@ -88,6 +91,7 @@ async def update_blueprint(
         except ValueError as e:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
         db.add(BlueprintElement(**kwargs))
+    bp.tasks_json = tasks_model_to_json(body.tasks)
     await db.commit()
     await db.refresh(bp)
     return await _detail_out(db, bp)
@@ -105,4 +109,5 @@ async def _detail_out(db: AsyncSession, bp: Blueprint) -> BlueprintDetailOut:
         created_at=bp.created_at,
         updated_at=bp.updated_at,
         elements=elements,
+        tasks=parse_tasks_json(getattr(bp, "tasks_json", None)),
     )

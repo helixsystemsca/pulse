@@ -6,7 +6,7 @@
  */
 
 import { AnimatePresence, motion } from "framer-motion";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { PULSE_WELCOME_SESSION_KEY } from "@/lib/pulse-session";
 
 /** @deprecated Use `PULSE_WELCOME_SESSION_KEY` from `@/lib/pulse-session`. */
@@ -16,12 +16,34 @@ export type WelcomeLoaderModalProps = {
   userName: string;
   /** Flip to true when critical dashboard / route data has finished loading. */
   isReady: boolean;
+  /** High-severity alert count from ops context (e.g. dashboard). */
+  criticalCount?: number;
+  /** Medium-severity alert count from ops context. */
+  warningCount?: number;
   /** Override session key if needed (default matches product brief). */
   storageKey?: string;
 };
 
 const WELCOME_HOLD_MS = 4000;
 const EXIT_MS = 300;
+
+/** Minimum counts to swap the time-of-day line for alert-aware copy. */
+const CRITICAL_GREETING_THRESHOLD = 1;
+const WARNING_GREETING_THRESHOLD = 1;
+
+const criticalMessages = [
+  "A few things need you sooner than later",
+  "Operations pinged — worth a quick sweep",
+  "We’ve got some red on the board — let’s triage",
+  "Heads up: a couple of urgent items are waving",
+];
+
+const warningMessages = [
+  "Nothing scary — just a few yellow flags up",
+  "Mostly calm, with a little nudge from alerts",
+  "A gentle tap from ops — worth a peek",
+  "Light housekeeping on the board today",
+];
 
 function firstNameOnly(displayName: string): string {
   const t = displayName.trim();
@@ -37,15 +59,29 @@ export function timeOfDayGreeting(date = new Date()): string {
   return "Good evening";
 }
 
+function pickContextGreeting(criticalCount: number, warningCount: number): string {
+  if (criticalCount >= CRITICAL_GREETING_THRESHOLD) {
+    return criticalMessages[Math.floor(Math.random() * criticalMessages.length)] ?? timeOfDayGreeting();
+  }
+  if (warningCount >= WARNING_GREETING_THRESHOLD) {
+    return warningMessages[Math.floor(Math.random() * warningMessages.length)] ?? timeOfDayGreeting();
+  }
+  return timeOfDayGreeting();
+}
+
 export function WelcomeLoaderModal({
   userName,
   isReady,
+  criticalCount = 0,
+  warningCount = 0,
   storageKey = PULSE_WELCOME_SESSION_KEY,
 }: WelcomeLoaderModalProps) {
   const [hydrated, setHydrated] = useState(false);
   const [skipEntirely, setSkipEntirely] = useState(false);
   const [open, setOpen] = useState(true);
   const [content, setContent] = useState<"loading" | "ready">("loading");
+  const [headlineGreeting, setHeadlineGreeting] = useState("");
+  const greetingPickedRef = useRef(false);
 
   useEffect(() => {
     setHydrated(true);
@@ -62,6 +98,11 @@ export function WelcomeLoaderModal({
   useEffect(() => {
     if (!hydrated || skipEntirely || !isReady) return;
 
+    if (!greetingPickedRef.current) {
+      greetingPickedRef.current = true;
+      setHeadlineGreeting(pickContextGreeting(criticalCount, warningCount));
+    }
+
     setContent("ready");
     const t = setTimeout(() => {
       try {
@@ -73,14 +114,14 @@ export function WelcomeLoaderModal({
     }, WELCOME_HOLD_MS);
 
     return () => clearTimeout(t);
-  }, [hydrated, isReady, skipEntirely, storageKey]);
+  }, [hydrated, isReady, skipEntirely, storageKey, criticalCount, warningCount]);
 
   if (!hydrated || skipEntirely) {
     return null;
   }
 
   const firstName = firstNameOnly(userName);
-  const greeting = timeOfDayGreeting();
+  const greeting = headlineGreeting || timeOfDayGreeting();
 
   return (
     <AnimatePresence>

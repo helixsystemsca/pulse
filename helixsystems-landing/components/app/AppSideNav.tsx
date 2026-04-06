@@ -77,6 +77,9 @@ export function AppSideNav() {
     items = items.filter((i) => isTenantNavFeatureEnabled(i.href, session.enabled_features));
   }
   const dark = isSystemAdmin;
+  const stealthTenantChrome =
+    !isSystemAdmin &&
+    Boolean(pathname && (pathname === "/overview" || pathname.startsWith("/dashboard")));
 
   return (
     <>
@@ -90,17 +93,29 @@ export function AppSideNav() {
       ) : null}
 
       <aside
-        className={`group/sidebar fixed left-3 top-1/2 z-[40] flex max-h-[min(85vh,52rem)] w-[4.25rem] -translate-y-1/2 flex-col overflow-hidden overflow-y-auto rounded-2xl border shadow-xl shadow-slate-900/10 transition-[width,box-shadow] duration-200 ease-out lg:hover:w-56 lg:hover:shadow-2xl lg:hover:shadow-slate-900/18 ${
-          narrowExpanded ? "max-lg:w-56 max-lg:shadow-2xl max-lg:shadow-slate-900/18" : ""
+        className={`group/sidebar fixed left-3 top-1/2 z-[40] flex max-h-[min(85vh,52rem)] w-[4.25rem] -translate-y-1/2 flex-col overflow-hidden overflow-y-auto rounded-2xl border transition-[width,box-shadow] duration-200 ease-out lg:hover:w-56 ${
+          stealthTenantChrome
+            ? "shadow-stealth-card lg:hover:shadow-[0_3px_12px_rgba(0,0,0,0.45)]"
+            : "shadow-xl shadow-slate-900/10 lg:hover:shadow-2xl lg:hover:shadow-slate-900/18"
+        } ${
+          narrowExpanded
+            ? stealthTenantChrome
+              ? "max-lg:shadow-[0_3px_12px_rgba(0,0,0,0.45)]"
+              : "max-lg:shadow-2xl max-lg:shadow-slate-900/18"
+            : ""
         } ${
           dark
             ? "border-zinc-800 bg-zinc-950"
-            : "border-slate-200/90 bg-[#f4f5f7] dark:border-slate-700 dark:bg-slate-900"
+            : stealthTenantChrome
+              ? "border-stealth-border bg-stealth-main"
+              : "border-slate-200/90 bg-[#f4f5f7] dark:border-slate-700 dark:bg-slate-900"
         }`}
         aria-label="App"
       >
         {!dark && session?.company ? (
-          <div className="border-b border-slate-200/80 px-2 py-2">
+          <div
+            className={`border-b px-2 py-2 ${stealthTenantChrome ? "border-stealth-border" : "border-slate-200/80"}`}
+          >
             <Link
               href="/overview"
               title={session.company.name}
@@ -111,7 +126,7 @@ export function AppSideNav() {
                 logoUrl={session.company.logo_url}
                 companyName={session.company.name}
                 showName={false}
-                variant="light"
+                variant={stealthTenantChrome ? "dark" : "light"}
               />
             </Link>
           </div>
@@ -126,15 +141,21 @@ export function AppSideNav() {
                 href={item.href}
                 title={item.label}
                 onClick={() => setNarrowExpanded(false)}
-                className={`relative flex min-h-[2.75rem] items-center gap-3 rounded-xl py-2 pl-2 pr-3 text-sm font-semibold transition-colors ${
+                className={`relative flex min-h-[2.75rem] items-center gap-3 rounded-xl py-2 pl-2 pr-3 text-sm font-semibold transition-[color,background-color,box-shadow] ${
                   dark
                     ? active
                       ? "bg-zinc-900 text-white"
                       : "text-zinc-400 hover:bg-zinc-900/80 hover:text-zinc-100"
-                    : active
-                      ? "bg-sky-50/95 text-[#1e4a8a]"
-                      : "text-slate-600 hover:bg-white/60 hover:text-pulse-navy"
-                } ${active ? "ring-2 ring-[#2B4C7E]/25" : ""}`}
+                    : stealthTenantChrome
+                      ? active
+                        ? "bg-stealth-card text-stealth-primary shadow-stealth-card"
+                        : "text-stealth-muted hover:bg-stealth-card/60 hover:text-stealth-primary"
+                      : active
+                        ? "bg-sky-50/95 text-[#1e4a8a]"
+                        : "text-slate-600 hover:bg-white/60 hover:text-pulse-navy"
+                } ${active && !stealthTenantChrome ? "ring-2 ring-[#2B4C7E]/25" : ""} ${
+                  active && stealthTenantChrome ? "ring-1 ring-stealth-border" : ""
+                }`}
               >
                 <span
                   className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${
@@ -142,9 +163,13 @@ export function AppSideNav() {
                       ? active
                         ? "bg-zinc-800 text-white"
                         : "bg-zinc-900 text-zinc-400"
-                      : active
-                        ? "bg-white text-[#2B4C7E] shadow-sm ring-1 ring-sky-200/60"
-                        : "bg-white/50 text-slate-500"
+                      : stealthTenantChrome
+                        ? active
+                          ? "bg-stealth-main text-stealth-accent"
+                          : "bg-stealth-card/80 text-stealth-muted"
+                        : active
+                          ? "bg-white text-[#2B4C7E] shadow-sm ring-1 ring-sky-200/60"
+                          : "bg-white/50 text-slate-500"
                   }`}
                 >
                   <Icon className="h-[1.125rem] w-[1.125rem]" strokeWidth={2} aria-hidden />
@@ -163,13 +188,17 @@ export function AppSideNav() {
 
         <button
           type="button"
-          className="flex shrink-0 items-center justify-center border-t border-slate-200/80 py-2 lg:hidden dark:border-zinc-800"
+          className={`flex shrink-0 items-center justify-center border-t py-2 lg:hidden dark:border-zinc-800 ${
+            stealthTenantChrome ? "border-stealth-border" : "border-slate-200/80"
+          }`}
           onClick={() => setNarrowExpanded((o) => !o)}
           aria-expanded={narrowExpanded}
           aria-label={narrowExpanded ? "Collapse navigation" : "Expand navigation"}
         >
           <ChevronRight
-            className={`h-4 w-4 text-pulse-muted transition-transform dark:text-zinc-400 ${narrowExpanded ? "rotate-180" : ""}`}
+            className={`h-4 w-4 transition-transform dark:text-zinc-400 ${
+              stealthTenantChrome ? "text-stealth-muted" : "text-pulse-muted"
+            } ${narrowExpanded ? "rotate-180" : ""}`}
             strokeWidth={2}
             aria-hidden
           />

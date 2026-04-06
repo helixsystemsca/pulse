@@ -7,7 +7,40 @@ from datetime import datetime
 from typing import Literal, Optional
 from uuid import UUID, uuid4
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
+
+
+class TaskOverlayBase(BaseModel):
+    id: str = Field(..., min_length=1, max_length=64)
+    title: str = Field(..., min_length=1, max_length=400)
+    mode: Literal["steps", "paragraph"]
+    content: str | list[str]
+    linked_element_ids: list[str] = Field(default_factory=list, max_length=500)
+
+    @model_validator(mode="after")
+    def content_shape(self) -> "TaskOverlayBase":
+        if self.mode == "paragraph":
+            if isinstance(self.content, list):
+                raise ValueError("paragraph tasks require string content")
+            if len(str(self.content)) > 12000:
+                raise ValueError("paragraph content too long")
+        else:
+            if not isinstance(self.content, list):
+                raise ValueError("steps tasks require a list of strings")
+            if len(self.content) > 250:
+                raise ValueError("too many steps")
+            for i, line in enumerate(self.content):
+                if len(str(line)) > 4000:
+                    raise ValueError(f"step {i} is too long")
+        return self
+
+
+class TaskOverlayIn(TaskOverlayBase):
+    pass
+
+
+class TaskOverlayOut(TaskOverlayBase):
+    pass
 
 
 class BlueprintElementBase(BaseModel):
@@ -52,11 +85,13 @@ class BlueprintSummaryOut(BaseModel):
 class BlueprintDetailOut(BlueprintSummaryOut):
     updated_at: datetime
     elements: list[BlueprintElementOut]
+    tasks: list[TaskOverlayOut] = []
 
 
 class BlueprintCreateIn(BaseModel):
     name: str = Field(..., min_length=1, max_length=255)
     elements: list[BlueprintElementIn] = []
+    tasks: list[TaskOverlayIn] = []
 
     @field_validator("elements")
     @classmethod
@@ -65,16 +100,31 @@ class BlueprintCreateIn(BaseModel):
             raise ValueError("Too many elements (max 2000)")
         return v
 
+    @field_validator("tasks")
+    @classmethod
+    def max_tasks(cls, v: list) -> list:
+        if len(v) > 500:
+            raise ValueError("Too many tasks (max 500)")
+        return v
+
 
 class BlueprintUpdateIn(BaseModel):
     name: str = Field(..., min_length=1, max_length=255)
     elements: list[BlueprintElementIn] = []
+    tasks: list[TaskOverlayIn] = []
 
     @field_validator("elements")
     @classmethod
     def max_elements(cls, v: list) -> list:
         if len(v) > 2000:
             raise ValueError("Too many elements (max 2000)")
+        return v
+
+    @field_validator("tasks")
+    @classmethod
+    def max_tasks(cls, v: list) -> list:
+        if len(v) > 500:
+            raise ValueError("Too many tasks (max 500)")
         return v
 
 
@@ -179,3 +229,29 @@ def row_to_element_out(row) -> BlueprintElementOut:
         symbol_tags=stags,
         symbol_notes=getattr(row, "symbol_notes", None),
     )
+
+
+def tasks_model_to_json(tasks: list[TaskOverlayIn]) -> Optional[str]:
+    if not tasks:
+        return None
+    return json.dumps([t.model_dump(mode="json") for t in tasks])
+
+
+def parse_tasks_json(raw: Optional[str]) -> list[TaskOverlayOut]:
+    if not raw or not str(raw).strip():
+        return []
+    try:
+        data = json.loads(raw)
+    except (json.JSONDecodeError, TypeError):
+        return []
+    if not isinstance(data, list):
+        return []
+    out: list[TaskOverlayOut] = []
+    for item in data:
+        if not isinstance(item, dict):
+            continue
+        try:
+            out.append(TaskOverlayOut.model_validate(item))
+        except ValueError:
+            continue
+    return out
