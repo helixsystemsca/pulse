@@ -203,24 +203,24 @@ export function WelcomeLoaderModal({
 
           <motion.div
             layout
-            className="pointer-events-none relative w-full max-w-md rounded-[24px] border border-white/[0.15] bg-white/[0.08] px-7 py-7 shadow-[0_10px_40px_rgba(0,0,0,0.25)] backdrop-blur-xl dark:bg-[rgba(18,24,33,0.7)] dark:backdrop-blur-2xl sm:px-8 sm:py-8"
+            className="pointer-events-none relative w-full max-w-md rounded-[24px] border border-gray-200/80 bg-white/80 px-7 py-7 text-gray-900 shadow-[0_10px_40px_rgba(0,0,0,0.12)] backdrop-blur-xl dark:border-[#1F2937]/90 dark:bg-[#121821]/90 dark:text-gray-100 dark:shadow-[0_10px_40px_rgba(0,0,0,0.45)] dark:backdrop-blur-2xl sm:px-8 sm:py-8"
             initial={{ opacity: 0, scale: 0.96, y: 8 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.98, y: 4 }}
             transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
           >
             <div
-              className="pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-white/25 to-transparent dark:via-white/15"
+              className="pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-gray-300/60 to-transparent dark:via-white/12"
               aria-hidden
             />
 
             <div className="flex gap-4">
               <div
-                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-white/15 bg-white/[0.06] dark:bg-white/[0.05]"
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-gray-200/90 bg-gray-50/90 dark:border-[#1F2937] dark:bg-[#0F172A]/80"
                 aria-hidden
               >
                 <Activity
-                  className="h-5 w-5 text-slate-700/90 dark:text-white/80"
+                  className="h-5 w-5 text-gray-800 dark:text-gray-200"
                   strokeWidth={1.75}
                 />
               </div>
@@ -237,11 +237,11 @@ export function WelcomeLoaderModal({
                     >
                       <p
                         id="welcome-loader-title"
-                        className="font-headline text-[15px] font-semibold leading-snug tracking-tight text-slate-800/95 dark:text-white/[0.92] sm:text-base"
+                        className="font-headline text-[15px] font-semibold leading-snug tracking-tight text-gray-900 dark:text-white sm:text-base"
                       >
                         Preparing your workspace…
                       </p>
-                      <p className="mt-1 text-xs font-normal leading-relaxed text-slate-600/90 dark:text-white/50">
+                      <p className="mt-1 text-xs font-normal leading-relaxed text-gray-600 dark:text-gray-300">
                         Gathering the latest from your operation
                       </p>
                     </motion.div>
@@ -255,11 +255,11 @@ export function WelcomeLoaderModal({
                     >
                       <h2
                         id="welcome-loader-title"
-                        className="font-headline text-[17px] font-semibold leading-snug tracking-tight text-slate-800/95 dark:text-white/[0.92] sm:text-lg"
+                        className="font-headline text-[17px] font-semibold leading-snug tracking-tight text-gray-900 dark:text-white sm:text-lg"
                       >
                         {greeting}, {firstName}
                       </h2>
-                      <p className="mt-1.5 font-headline text-sm font-medium text-slate-700/90 dark:text-white/70">
+                      <p className="mt-1.5 font-headline text-sm font-medium text-gray-600 dark:text-gray-300">
                         Let&apos;s get to work!
                       </p>
                     </motion.div>

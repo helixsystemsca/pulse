@@ -341,11 +341,11 @@ export function ScheduleApp() {
     const tint: Record<string, string> = {};
     if (calendarScale === "month") {
       for (const c of monthGrid(cursor.y, cursor.m)) {
-        if (c.inMonth && c.dayOfMonth % 6 === 1) tint[c.date] = "bg-indigo-200/40";
+        if (c.inMonth && c.dayOfMonth % 6 === 1) tint[c.date] = "bg-indigo-200/40 dark:bg-indigo-500/20";
       }
     } else if (calendarScale === "week") {
       weekDates.forEach((date, i) => {
-        if (i % 2 === 0) tint[date] = "bg-indigo-200/40";
+        if (i % 2 === 0) tint[date] = "bg-indigo-200/40 dark:bg-indigo-500/20";
       });
     }
     return tint;
@@ -378,7 +378,7 @@ export function ScheduleApp() {
 
   if (!hydrated) {
     return (
-      <div className="flex min-h-[40vh] items-center justify-center text-sm text-pulse-muted">
+      <div className="flex min-h-[40vh] items-center justify-center text-sm text-gray-500 dark:text-gray-400">
         Loading schedule…
       </div>
     );
@@ -389,10 +389,10 @@ export function ScheduleApp() {
       <div className="flex min-h-[calc(100vh-4rem)] flex-col bg-pulse-bg -mx-4 px-4 sm:-mx-5 sm:px-5">
         <div className="mx-auto w-full max-w-2xl py-10">
           <Card padding="md">
-            <h1 className="font-headline text-xl font-bold text-pulse-navy">Schedule</h1>
-            <p className="mt-2 text-sm text-pulse-muted">
+            <h1 className="font-headline text-xl font-bold text-gray-900 dark:text-white">Schedule</h1>
+            <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
               The schedule module is not enabled for your organization. A system administrator can turn on the{" "}
-              <span className="font-semibold text-pulse-navy">schedule</span> feature for your company in System admin →
+              <span className="font-semibold text-gray-900 dark:text-gray-100">schedule</span> feature for your company in System admin →
               Companies.
             </p>
           </Card>
@@ -412,7 +412,7 @@ export function ScheduleApp() {
             actions={
               <>
                 <nav
-                  className="flex rounded-xl border border-slate-200/90 bg-white p-1 shadow-sm"
+                  className="flex rounded-xl border border-gray-200 bg-white p-1 shadow-sm dark:border-[#1F2937] dark:bg-[#111827]"
                   aria-label="Schedule views"
                 >
                   {(
@@ -431,8 +431,8 @@ export function ScheduleApp() {
                       }}
                       className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${
                         view === key
-                          ? "bg-slate-900 text-white shadow-sm"
-                          : "text-pulse-muted hover:bg-slate-50 hover:text-pulse-navy"
+                          ? "bg-gray-900 text-white shadow-sm dark:bg-gray-100 dark:text-gray-900"
+                          : "text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-gray-100"
                       }`}
                     >
                       <Icon className="h-4 w-4 opacity-90" />
@@ -443,7 +443,7 @@ export function ScheduleApp() {
                 <button
                   type="button"
                   onClick={() => setTimeOffOpen(true)}
-                  className="inline-flex items-center gap-2 rounded-xl border border-slate-200/90 bg-white px-4 py-2 text-sm font-semibold text-pulse-navy shadow-sm hover:bg-slate-50"
+                  className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-900 shadow-sm hover:bg-gray-50 dark:border-[#1F2937] dark:bg-[#111827] dark:text-gray-100 dark:hover:bg-[#0F172A]"
                 >
                   <CalendarPlus className="h-4 w-4" />
                   Time off
@@ -451,7 +451,7 @@ export function ScheduleApp() {
                 <button
                   type="button"
                   onClick={() => setSettingsOpen(true)}
-                  className="inline-flex items-center gap-2 rounded-xl border border-slate-200/90 bg-white px-4 py-2 text-sm font-semibold text-pulse-navy shadow-sm hover:bg-slate-50"
+                  className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-900 shadow-sm hover:bg-gray-50 dark:border-[#1F2937] dark:bg-[#111827] dark:text-gray-100 dark:hover:bg-[#0F172A]"
                 >
                   <Settings className="h-4 w-4" />
                   Settings
@@ -466,9 +466,9 @@ export function ScheduleApp() {
             className={`mt-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center ${scheduleDragLock ? "pointer-events-none" : ""}`}
           >
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-[11px] font-bold uppercase tracking-wide text-pulse-muted">View</span>
+              <span className="text-[11px] font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400">View</span>
               <nav
-                className="flex rounded-xl border border-slate-200/90 bg-white p-1 shadow-sm"
+                className="flex rounded-xl border border-gray-200 bg-white p-1 shadow-sm dark:border-[#1F2937] dark:bg-[#111827]"
                 aria-label="Calendar scale"
               >
                 {(
@@ -484,8 +484,8 @@ export function ScheduleApp() {
                     onClick={() => setCalendarScale(key)}
                     className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${
                       calendarScale === key
-                        ? "bg-slate-900 text-white shadow-sm"
-                        : "text-pulse-muted hover:bg-slate-50 hover:text-pulse-navy"
+                        ? "bg-gray-900 text-white shadow-sm dark:bg-gray-100 dark:text-gray-900"
+                        : "text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-gray-100"
                     }`}
                   >
                     <Icon className="h-4 w-4 opacity-90" />
@@ -494,12 +494,12 @@ export function ScheduleApp() {
                 ))}
               </nav>
             </div>
-            <div className="hidden h-6 w-px bg-slate-200 sm:block" aria-hidden />
+            <div className="hidden h-6 w-px bg-gray-200 dark:bg-[#1F2937] sm:block" aria-hidden />
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-[11px] font-bold uppercase tracking-wide text-pulse-muted">Show</span>
+              <span className="text-[11px] font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400">Show</span>
               <nav
                 id="schedule-toggle"
-                className="flex rounded-xl border border-slate-200/90 bg-white p-1 shadow-sm"
+                className="flex rounded-xl border border-gray-200 bg-white p-1 shadow-sm dark:border-[#1F2937] dark:bg-[#111827]"
                 aria-label="Schedule content filter"
               >
                 {(
@@ -515,8 +515,8 @@ export function ScheduleApp() {
                     onClick={() => setContentFilter(key)}
                     className={`rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${
                       contentFilter === key
-                        ? "bg-slate-900 text-white shadow-sm"
-                        : "text-pulse-muted hover:bg-slate-50 hover:text-pulse-navy"
+                        ? "bg-gray-900 text-white shadow-sm dark:bg-gray-100 dark:text-gray-900"
+                        : "text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-gray-100"
                     }`}
                   >
                     {label}
@@ -534,7 +534,7 @@ export function ScheduleApp() {
         <div className="relative mt-5">
           {scheduleDragLock ? (
             <div
-              className="pointer-events-none fixed inset-0 z-[115] bg-slate-900/[0.06]"
+              className="pointer-events-none fixed inset-0 z-[115] bg-slate-900/[0.06] dark:bg-black/25"
               aria-hidden
             />
           ) : null}
@@ -544,12 +544,12 @@ export function ScheduleApp() {
                 {calendarScale === "day" ? (
                   <div className="space-y-3">
                     <div
-                      className={`flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-200/90 bg-white px-3 py-2 shadow-sm ${scheduleDragLock ? "pointer-events-none" : ""}`}
+                      className={`flex flex-wrap items-center justify-between gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2 shadow-sm dark:border-[#1F2937] dark:bg-[#111827] ${scheduleDragLock ? "pointer-events-none" : ""}`}
                     >
                       <div className="flex flex-wrap items-center gap-1">
                         <button
                           type="button"
-                          className="rounded-lg border border-slate-200 bg-white p-2 text-pulse-navy shadow-sm hover:bg-slate-50"
+                          className="rounded-lg border border-gray-200 bg-white p-2 text-gray-900 shadow-sm hover:bg-gray-50 dark:border-[#1F2937] dark:bg-[#0F172A] dark:text-gray-100 dark:hover:bg-[#111827]"
                           onClick={() => setFocusDate((p) => addDaysToIso(p, -1))}
                           aria-label="Previous day"
                         >
@@ -557,14 +557,14 @@ export function ScheduleApp() {
                         </button>
                         <button
                           type="button"
-                          className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-pulse-navy shadow-sm hover:bg-slate-50"
+                          className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-gray-900 shadow-sm hover:bg-gray-50 dark:border-[#1F2937] dark:bg-[#0F172A] dark:text-gray-100 dark:hover:bg-[#111827]"
                           onClick={goToday}
                         >
                           Today
                         </button>
                         <button
                           type="button"
-                          className="rounded-lg border border-slate-200 bg-white p-2 text-pulse-navy shadow-sm hover:bg-slate-50"
+                          className="rounded-lg border border-gray-200 bg-white p-2 text-gray-900 shadow-sm hover:bg-gray-50 dark:border-[#1F2937] dark:bg-[#0F172A] dark:text-gray-100 dark:hover:bg-[#111827]"
                           onClick={() => setFocusDate((p) => addDaysToIso(p, 1))}
                           aria-label="Next day"
                         >
@@ -742,7 +742,7 @@ export function ScheduleApp() {
 
       {deleteToast ? (
         <div
-          className="pointer-events-none fixed bottom-24 left-1/2 z-[150] -translate-x-1/2 rounded-xl border border-slate-200 bg-slate-900 px-4 py-2.5 text-center text-sm font-medium text-white shadow-lg sm:bottom-28"
+          className="pointer-events-none fixed bottom-24 left-1/2 z-[150] -translate-x-1/2 rounded-xl border border-gray-700 bg-gray-900 px-4 py-2.5 text-center text-sm font-medium text-white shadow-lg dark:border-[#1F2937] dark:bg-[#111827] sm:bottom-28"
           role="status"
         >
           {deleteToast}

@@ -32,7 +32,7 @@ export function PageHeader({
           className={
             dark
               ? "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-zinc-700 bg-zinc-900 text-zinc-200 shadow-sm"
-              : "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-slate-200/80 bg-white text-[#2B4C7E] shadow-sm"
+              : "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-gray-200 bg-white text-[#2B4C7E] shadow-sm dark:border-[#1F2937] dark:bg-[#111827] dark:text-blue-400"
           }
           aria-hidden
         >
@@ -41,13 +41,17 @@ export function PageHeader({
         <div className="min-w-0">
           <h1
             className={`font-headline text-2xl font-bold tracking-tight md:text-3xl ${
-              dark ? "text-white" : "text-pulse-navy"
+              dark ? "text-white" : "text-gray-900 dark:text-white"
             }`}
           >
             {title}
           </h1>
           {description ? (
-            <p className={`mt-1 text-sm leading-relaxed ${dark ? "text-zinc-400" : "text-pulse-muted"}`}>
+            <p
+              className={`mt-1 text-sm leading-relaxed ${
+                dark ? "text-zinc-400" : "text-gray-500 dark:text-gray-400"
+              }`}
+            >
               {description}
             </p>
           ) : null}

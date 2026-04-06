@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { CompanyLogo } from "@/components/branding/CompanyLogo";
+import { useTheme } from "@/components/theme/ThemeProvider";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
 import { pulseSystemSidebarNav, pulseTenantSidebarNav, type PulseSidebarIcon } from "@/lib/pulse-app";
 import { isPulseNavActive } from "@/lib/pulse-nav-active";
@@ -47,6 +48,7 @@ const ICONS: Record<PulseSidebarIcon, LucideIcon> = {
 export function AppSideNav() {
   const pathname = usePathname();
   const { authed, session } = usePulseAuth();
+  const { theme } = useTheme();
   const [narrowExpanded, setNarrowExpanded] = useState(false);
 
   useEffect(() => {
@@ -74,17 +76,20 @@ export function AppSideNav() {
   if (!isSystemAdmin && session) {
     items = items.filter((i) => isTenantNavFeatureEnabled(i.href, session.enabled_features));
   }
-  const dark = isSystemAdmin;
-  const stealthTenantChrome =
-    !isSystemAdmin &&
-    Boolean(pathname && (pathname === "/overview" || pathname.startsWith("/dashboard")));
+  const systemRail = isSystemAdmin;
+
+  const tenantShell =
+    "border-gray-200 bg-white shadow-xl shadow-slate-900/10 lg:hover:shadow-2xl lg:hover:shadow-slate-900/15 dark:border-[#1F2937] dark:bg-[#111827] dark:shadow-[0_4px_24px_rgba(0,0,0,0.45)] dark:lg:hover:shadow-[0_6px_28px_rgba(0,0,0,0.55)]";
+
+  const tenantShellMobilePop =
+    "max-lg:shadow-2xl max-lg:shadow-slate-900/18 dark:max-lg:shadow-[0_8px_28px_rgba(0,0,0,0.55)]";
 
   return (
     <>
       {narrowExpanded ? (
         <button
           type="button"
-          className="fixed inset-0 z-[35] bg-slate-900/25 backdrop-blur-[1px] lg:hidden"
+          className="fixed inset-0 z-[35] bg-slate-900/25 backdrop-blur-[1px] dark:bg-black/40"
           aria-label="Close menu"
           onClick={() => setNarrowExpanded(false)}
         />
@@ -92,28 +97,14 @@ export function AppSideNav() {
 
       <aside
         className={`group/sidebar fixed left-3 top-1/2 z-[40] flex max-h-[min(85vh,52rem)] w-[4.25rem] -translate-y-1/2 flex-col overflow-hidden overflow-y-auto rounded-2xl border transition-[width,box-shadow] duration-200 ease-out lg:hover:w-56 ${
-          stealthTenantChrome
-            ? "shadow-stealth-card lg:hover:shadow-[0_3px_12px_rgba(0,0,0,0.45)]"
-            : "shadow-xl shadow-slate-900/10 lg:hover:shadow-2xl lg:hover:shadow-slate-900/18"
-        } ${
-          narrowExpanded
-            ? stealthTenantChrome
-              ? "max-lg:shadow-[0_3px_12px_rgba(0,0,0,0.45)]"
-              : "max-lg:shadow-2xl max-lg:shadow-slate-900/18"
-            : ""
-        } ${
-          dark
-            ? "border-zinc-800 bg-zinc-950"
-            : stealthTenantChrome
-              ? "border-stealth-border bg-stealth-main"
-              : "border-slate-200/90 bg-[#f4f5f7] dark:border-slate-700 dark:bg-slate-900"
+          systemRail
+            ? "border-zinc-800 bg-zinc-950 shadow-xl"
+            : `${tenantShell} ${narrowExpanded ? tenantShellMobilePop : ""}`
         }`}
         aria-label="App"
       >
-        {!dark && session?.company ? (
-          <div
-            className={`border-b px-2 py-2 ${stealthTenantChrome ? "border-stealth-border" : "border-slate-200/80"}`}
-          >
+        {!systemRail && session?.company ? (
+          <div className="border-b border-gray-200 px-2 py-2 dark:border-[#1F2937]">
             <Link
               href="/overview"
               title={session.company.name}
@@ -124,7 +115,7 @@ export function AppSideNav() {
                 logoUrl={session.company.logo_url}
                 companyName={session.company.name}
                 showName={false}
-                variant={stealthTenantChrome ? "dark" : "light"}
+                variant={theme === "dark" ? "dark" : "light"}
               />
             </Link>
           </div>
@@ -140,34 +131,24 @@ export function AppSideNav() {
                 title={item.label}
                 onClick={() => setNarrowExpanded(false)}
                 className={`relative flex min-h-[2.75rem] items-center gap-3 rounded-xl py-2 pl-2 pr-3 text-sm font-semibold transition-[color,background-color,box-shadow] ${
-                  dark
+                  systemRail
                     ? active
                       ? "bg-zinc-900 text-white"
                       : "text-zinc-400 hover:bg-zinc-900/80 hover:text-zinc-100"
-                    : stealthTenantChrome
-                      ? active
-                        ? "bg-stealth-card text-stealth-primary shadow-stealth-card"
-                        : "text-stealth-muted hover:bg-stealth-card/60 hover:text-stealth-primary"
-                      : active
-                        ? "bg-sky-50/95 text-[#1e4a8a]"
-                        : "text-slate-600 hover:bg-white/60 hover:text-pulse-navy"
-                } ${active && !stealthTenantChrome ? "ring-2 ring-[#2B4C7E]/25" : ""} ${
-                  active && stealthTenantChrome ? "ring-1 ring-stealth-border" : ""
+                    : active
+                      ? "bg-sky-50/95 text-[#1e4a8a] shadow-sm ring-2 ring-[#2B4C7E]/20 dark:bg-[#0F172A] dark:text-gray-100 dark:ring-[#1F2937]"
+                      : "text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-gray-100"
                 }`}
               >
                 <span
                   className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${
-                    dark
+                    systemRail
                       ? active
                         ? "bg-zinc-800 text-white"
                         : "bg-zinc-900 text-zinc-400"
-                      : stealthTenantChrome
-                        ? active
-                          ? "bg-stealth-main text-stealth-accent"
-                          : "bg-stealth-card/80 text-stealth-muted"
-                        : active
-                          ? "bg-white text-[#2B4C7E] shadow-sm ring-1 ring-sky-200/60"
-                          : "bg-white/50 text-slate-500"
+                      : active
+                        ? "bg-white text-[#2B4C7E] shadow-sm ring-1 ring-sky-200/60 dark:bg-[#111827] dark:text-blue-300 dark:ring-[#1F2937]"
+                        : "bg-gray-100 text-gray-500 dark:bg-[#0F172A] dark:text-gray-400"
                   }`}
                 >
                   <Icon className="h-[1.125rem] w-[1.125rem]" strokeWidth={2} aria-hidden />
@@ -186,16 +167,16 @@ export function AppSideNav() {
 
         <button
           type="button"
-          className={`flex shrink-0 items-center justify-center border-t py-2 lg:hidden dark:border-zinc-800 ${
-            stealthTenantChrome ? "border-stealth-border" : "border-slate-200/80"
+          className={`flex shrink-0 items-center justify-center border-t py-2 lg:hidden ${
+            systemRail ? "border-zinc-800" : "border-gray-200 dark:border-[#1F2937]"
           }`}
           onClick={() => setNarrowExpanded((o) => !o)}
           aria-expanded={narrowExpanded}
           aria-label={narrowExpanded ? "Collapse navigation" : "Expand navigation"}
         >
           <ChevronRight
-            className={`h-4 w-4 transition-transform dark:text-zinc-400 ${
-              stealthTenantChrome ? "text-stealth-muted" : "text-pulse-muted"
+            className={`h-4 w-4 transition-transform ${
+              systemRail ? "text-zinc-400" : "text-gray-500 dark:text-gray-400"
             } ${narrowExpanded ? "rotate-180" : ""}`}
             strokeWidth={2}
             aria-hidden

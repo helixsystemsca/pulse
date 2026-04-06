@@ -62,20 +62,24 @@ export function ScheduleTrashDropZone({ active, isDuplicateDrag, onDropTrash, on
         className={`flex min-h-[4.5rem] min-w-[13rem] select-none items-center justify-center gap-3 rounded-2xl border-2 px-6 py-4 shadow-lg transition-all duration-150 ${
           over
             ? "scale-110 border-red-500 bg-red-50 text-red-950 shadow-red-200/50 ring-4 ring-red-400/35"
-            : "border-slate-200/90 bg-white/95 text-pulse-muted backdrop-blur-sm"
+            : "border-gray-200 bg-white/95 text-gray-500 backdrop-blur-sm dark:border-[#1F2937] dark:bg-[#111827]/95 dark:text-gray-400"
         }`}
       >
         <Trash2
-          className={`h-6 w-6 shrink-0 transition-transform ${over ? "scale-110 text-red-600" : ""}`}
+          className={`h-6 w-6 shrink-0 transition-transform ${over ? "scale-110 text-red-600" : "text-gray-400 dark:text-gray-500"}`}
           strokeWidth={2}
           aria-hidden
         />
         <div className="min-w-0 text-left">
-          <p className={`text-sm font-bold ${over ? "text-red-800" : "text-pulse-navy"}`}>Drop to delete</p>
+          <p className={`text-sm font-bold ${over ? "text-red-800 dark:text-red-300" : "text-gray-900 dark:text-gray-100"}`}>
+            Drop to delete
+          </p>
           {isDuplicateDrag ? (
-            <p className="mt-0.5 text-[11px] font-medium text-amber-700">Release here to remove (not duplicate)</p>
+            <p className="mt-0.5 text-[11px] font-medium text-amber-700 dark:text-amber-300">
+              Release here to remove (not duplicate)
+            </p>
           ) : (
-            <p className="mt-0.5 text-[11px] text-pulse-muted">Release to remove shift</p>
+            <p className="mt-0.5 text-[11px] text-gray-500 dark:text-gray-400">Release to remove shift</p>
           )}
         </div>
       </div>

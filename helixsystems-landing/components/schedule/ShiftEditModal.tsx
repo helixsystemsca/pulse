@@ -23,9 +23,10 @@ const PRIMARY_BTN =
   "rounded-[10px] bg-[#2B4C7E] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#234066] disabled:opacity-50";
 
 const FIELD =
-  "mt-1.5 w-full rounded-[10px] border border-slate-200/90 bg-white px-3 py-2.5 text-sm text-pulse-navy shadow-sm focus:border-[#2B4C7E]/35 focus:outline-none focus:ring-1 focus:ring-[#2B4C7E]/25";
+  "mt-1.5 w-full rounded-[10px] border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 shadow-sm focus:border-[#2B4C7E]/35 focus:outline-none focus:ring-1 focus:ring-[#2B4C7E]/25 dark:border-[#1F2937] dark:bg-[#0F172A] dark:text-gray-100 dark:focus:border-blue-400/40 dark:focus:ring-blue-400/25";
 
-const LABEL = "text-[11px] font-semibold uppercase tracking-wider text-pulse-muted";
+const LABEL =
+  "text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400";
 
 const QUICK_RANGES = [
   { label: "07:00–15:00", start: "07:00", end: "15:00" },
@@ -62,7 +63,8 @@ function workerBadge(
   if (!workerId) {
     return {
       text: "Open slot",
-      className: "bg-slate-100 text-pulse-muted ring-1 ring-slate-200/80",
+      className:
+        "bg-gray-100 text-gray-500 ring-1 ring-gray-200/80 dark:bg-[#0F172A] dark:text-gray-400 dark:ring-[#1F2937]",
     };
   }
   const other = shifts.filter(
@@ -71,12 +73,12 @@ function workerBadge(
   if (other.length === 0) {
     return {
       text: "Available",
-      className: "bg-sky-50 text-[#2B4C7E] ring-1 ring-sky-200/80",
+      className: "bg-sky-50 text-[#2B4C7E] ring-1 ring-sky-200/80 dark:bg-sky-950/40 dark:text-sky-200 dark:ring-sky-500/25",
     };
   }
   return {
     text: "Scheduled",
-    className: "bg-amber-50 text-amber-950 ring-1 ring-amber-200/80",
+    className: "bg-amber-50 text-amber-950 ring-1 ring-amber-200/80 dark:bg-amber-950/35 dark:text-amber-200 dark:ring-amber-500/25",
   };
 }
 
@@ -215,7 +217,7 @@ export function ShiftEditModal({
             ) : null}
           </div>
           <div className="flex flex-wrap items-center gap-4">
-            <button type="button" className="text-sm font-semibold text-pulse-muted hover:text-pulse-navy" onClick={onClose}>
+            <button type="button" className="text-sm font-semibold text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100" onClick={onClose}>
               Cancel
             </button>
             <button
@@ -247,7 +249,7 @@ export function ShiftEditModal({
           </div>
           <div className="relative mt-1.5">
             <User
-              className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-pulse-muted"
+              className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500 dark:text-gray-400"
               strokeWidth={2}
               aria-hidden
             />
@@ -298,7 +300,7 @@ export function ShiftEditModal({
             </label>
             <div className="relative mt-1.5">
               <CalendarDays
-                className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-pulse-muted"
+                className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500 dark:text-gray-400"
                 strokeWidth={2}
                 aria-hidden
               />
@@ -310,7 +312,7 @@ export function ShiftEditModal({
                 onChange={(e) => setDraft((d) => ({ ...d, date: e.target.value }))}
               />
             </div>
-            <p className="mt-1 text-xs text-pulse-muted">{formatDateLong(draft.date)}</p>
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{formatDateLong(draft.date)}</p>
           </div>
         </div>
 
@@ -345,7 +347,7 @@ export function ShiftEditModal({
                 key={`${p.label}-${i}`}
                 type="button"
                 onClick={() => setDraft((d) => ({ ...d, startTime: p.start, endTime: p.end }))}
-                className="rounded-lg border border-slate-200/90 bg-white px-2.5 py-1.5 text-xs font-semibold text-[#2B4C7E] shadow-sm hover:bg-slate-50"
+                className="rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-[#2B4C7E] shadow-sm hover:bg-gray-50 dark:border-[#1F2937] dark:bg-[#111827] dark:text-blue-300 dark:hover:bg-[#0F172A]"
               >
                 {p.label}
               </button>
@@ -357,7 +359,7 @@ export function ShiftEditModal({
                 Start
               </label>
               <div className="relative mt-1.5">
-                <Clock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-pulse-muted" />
+                <Clock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500 dark:text-gray-400" />
                 <input
                   id="shift-start"
                   type="time"
@@ -372,7 +374,7 @@ export function ShiftEditModal({
                 End
               </label>
               <div className="relative mt-1.5">
-                <Clock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-pulse-muted" />
+                <Clock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500 dark:text-gray-400" />
                 <input
                   id="shift-end"
                   type="time"
@@ -383,14 +385,14 @@ export function ShiftEditModal({
               </div>
             </div>
           </div>
-          <p className="mt-2 text-xs text-pulse-muted">
-            Preview: <span className="font-medium text-pulse-navy">{preview}</span> ({tf})
+          <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+            Preview: <span className="font-medium text-gray-900 dark:text-gray-100">{preview}</span> ({tf})
           </p>
         </div>
 
-        <div className="rounded-[10px] border border-slate-200/40 bg-slate-50/50 p-4">
+        <div className="rounded-[10px] border border-gray-200/60 dark:border-[#1F2937]/60 bg-gray-50/50 dark:bg-[#0F172A]/50 p-4">
           <p className={LABEL}>Shift requirements (optional)</p>
-          <p className="mt-1 text-xs text-pulse-muted">
+          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
             Used for warning badges only — you can still save with conflicts. Built-in codes: RO, P1, P2, FA (custom
             tags work too).
           </p>
@@ -421,20 +423,20 @@ export function ShiftEditModal({
                 }
               />
             </div>
-            <label className="flex cursor-pointer items-center gap-2 text-sm text-pulse-navy">
+            <label className="flex cursor-pointer items-center gap-2 text-sm text-gray-900 dark:text-gray-100">
               <input
                 type="checkbox"
-                className="h-4 w-4 rounded border-slate-300 text-[#2B4C7E]"
+                className="h-4 w-4 rounded border-gray-300 dark:border-[#1F2937] text-[#2B4C7E]"
                 checked={draft.accepts_any_certification === true}
                 disabled={!(draft.required_certifications && draft.required_certifications.length > 1)}
                 onChange={(e) => setDraft((d) => ({ ...d, accepts_any_certification: e.target.checked }))}
               />
               Worker may satisfy with any one of the listed certifications
             </label>
-            <label className="flex cursor-pointer items-center gap-2 text-sm text-pulse-navy">
+            <label className="flex cursor-pointer items-center gap-2 text-sm text-gray-900 dark:text-gray-100">
               <input
                 type="checkbox"
-                className="h-4 w-4 rounded border-slate-300 text-[#2B4C7E]"
+                className="h-4 w-4 rounded border-gray-300 dark:border-[#1F2937] text-[#2B4C7E]"
                 checked={draft.requires_supervisor === true}
                 onChange={(e) => setDraft((d) => ({ ...d, requires_supervisor: e.target.checked }))}
               />
@@ -467,16 +469,16 @@ export function ShiftEditModal({
           <label className={LABEL} htmlFor="shift-zone">
             Location
           </label>
-          <div className="mt-1.5 rounded-[10px] border border-slate-200/90 bg-white p-4 shadow-sm">
+          <div className="mt-1.5 rounded-[10px] border border-gray-200 bg-white p-4 shadow-sm dark:border-[#1F2937] dark:bg-[#111827]">
             <div className="flex gap-3">
-              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-pulse-muted">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gray-100 dark:bg-[#0F172A] text-gray-500 dark:text-gray-400">
                 <MapPin className="h-4 w-4" strokeWidth={2} />
               </span>
               <div className="min-w-0 flex-1">
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-pulse-muted">Selected location</p>
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Selected location</p>
                 <select
                   id="shift-zone"
-                  className="mt-1 w-full border-0 bg-transparent p-0 text-base font-semibold text-pulse-navy focus:ring-0"
+                  className="mt-1 w-full border-0 bg-transparent p-0 text-base font-semibold text-gray-900 dark:text-gray-100 focus:ring-0"
                   value={draft.zoneId}
                   onChange={(e) => setDraft((d) => ({ ...d, zoneId: e.target.value }))}
                 >

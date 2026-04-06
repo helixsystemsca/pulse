@@ -41,26 +41,26 @@ export function ScheduleLegendPanel({ shiftTypes, workers, shifts, contentFilter
 
   return (
     <aside
-      className="rounded-2xl border border-slate-200/90 bg-white shadow-sm lg:sticky lg:top-24 lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto"
+      className="rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-[#1F2937] dark:bg-[#111827] dark:shadow-[0_2px_8px_rgba(0,0,0,0.4)] lg:sticky lg:top-24 lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto"
       aria-label="Schedule legend"
     >
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="flex w-full items-center justify-between gap-2 border-b border-slate-100 px-4 py-3 text-left lg:cursor-default lg:border-0"
+        className="flex w-full items-center justify-between gap-2 border-b border-gray-200 px-4 py-3 text-left dark:border-[#1F2937] lg:cursor-default lg:border-0"
         aria-expanded={open}
       >
-        <span className="text-sm font-semibold text-pulse-navy">Legend</span>
-        <span className="text-pulse-muted lg:hidden">
+        <span className="text-sm font-semibold text-gray-900 dark:text-white">Legend</span>
+        <span className="text-gray-500 dark:text-gray-400 lg:hidden">
           {open ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
         </span>
       </button>
       <div className={`space-y-5 px-4 pb-4 pt-2 ${open ? "" : "hidden lg:block"}`}>
         <section>
-          <h3 className="text-[11px] font-bold uppercase tracking-wide text-pulse-muted">Shift types</h3>
+          <h3 className="text-[11px] font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400">Shift types</h3>
           <ul className="mt-2 space-y-2">
             {shiftTypes.map((t) => (
-              <li key={t.key} className="flex items-center gap-2 text-xs text-pulse-navy">
+              <li key={t.key} className="flex items-center gap-2 text-xs text-gray-900 dark:text-gray-100">
                 <span className={`h-3 w-3 shrink-0 rounded-sm border ${t.bg} ${t.border}`} aria-hidden />
                 <span className="font-medium capitalize">{t.label}</span>
               </li>
@@ -70,12 +70,12 @@ export function ScheduleLegendPanel({ shiftTypes, workers, shifts, contentFilter
 
         {(contentFilter === "workers" || contentFilter === "combined") && activeWorkers.length > 0 ? (
           <section>
-            <h3 className="text-[11px] font-bold uppercase tracking-wide text-pulse-muted">Workers</h3>
+            <h3 className="text-[11px] font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400">Workers</h3>
             <ul className="mt-2 max-h-40 space-y-1.5 overflow-y-auto pr-1">
               {activeWorkers.map((w) => {
                 const c = colorFromKey(w.id);
                 return (
-                  <li key={w.id} className="flex items-center gap-2 text-xs text-pulse-navy">
+                  <li key={w.id} className="flex items-center gap-2 text-xs text-gray-900 dark:text-gray-100">
                     <span
                       className="h-3 w-3 shrink-0 rounded-full border"
                       style={{ backgroundColor: c.bg, borderColor: c.border }}
@@ -91,12 +91,12 @@ export function ScheduleLegendPanel({ shiftTypes, workers, shifts, contentFilter
 
         {(contentFilter === "projects" || contentFilter === "combined") && projects.length > 0 ? (
           <section>
-            <h3 className="text-[11px] font-bold uppercase tracking-wide text-pulse-muted">Projects</h3>
+            <h3 className="text-[11px] font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400">Projects</h3>
             <ul className="mt-2 max-h-36 space-y-1.5 overflow-y-auto pr-1">
               {projects.map((p) => {
                 const c = colorFromKey(p);
                 return (
-                  <li key={p} className="flex items-center gap-2 text-xs text-pulse-navy">
+                  <li key={p} className="flex items-center gap-2 text-xs text-gray-900 dark:text-gray-100">
                     <span
                       className="h-3 w-3 shrink-0 rounded-sm border"
                       style={{ backgroundColor: c.bg, borderColor: c.border }}
@@ -111,8 +111,8 @@ export function ScheduleLegendPanel({ shiftTypes, workers, shifts, contentFilter
         ) : null}
 
         <section>
-          <h3 className="text-[11px] font-bold uppercase tracking-wide text-pulse-muted">Status</h3>
-          <ul className="mt-2 space-y-1.5 text-[11px] text-pulse-muted">
+          <h3 className="text-[11px] font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400">Status</h3>
+          <ul className="mt-2 space-y-1.5 text-[11px] text-gray-500 dark:text-gray-400">
             <li className="flex items-center gap-2">
               <span className="h-2 w-2 shrink-0 rounded-full bg-red-500" aria-hidden />
               Conflict / critical
@@ -122,7 +122,7 @@ export function ScheduleLegendPanel({ shiftTypes, workers, shifts, contentFilter
               Warning
             </li>
             <li className="flex items-center gap-2">
-              <span className="inline-flex rounded border border-dashed border-pulse-accent/50 px-1 text-[9px] font-bold text-pulse-accent">
+              <span className="inline-flex rounded border border-dashed border-blue-500/50 px-1 text-[9px] font-bold text-blue-600 dark:border-blue-400/45 dark:text-blue-400">
                 Open
               </span>
               Unassigned shift

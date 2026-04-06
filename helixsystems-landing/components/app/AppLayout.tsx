@@ -20,7 +20,7 @@ type AppLayoutProps = {
 
 export function AppLayout({ children, mainClassName = "" }: AppLayoutProps) {
   return (
-    <div className="relative min-h-screen bg-white dark:bg-slate-950">
+    <div className="relative min-h-screen bg-gray-50 dark:bg-[#0B0F14]">
       <OnboardingProvider>
         <InactivitySessionGuard />
         <ServerTimeSync />

@@ -10,5 +10,5 @@ export const metadata: Metadata = {
 };
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  return <AppLayout mainClassName="bg-stealth-main">{children}</AppLayout>;
+  return <AppLayout mainClassName="bg-pulse-bg">{children}</AppLayout>;
 }

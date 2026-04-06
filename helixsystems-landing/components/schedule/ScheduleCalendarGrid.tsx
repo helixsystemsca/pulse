@@ -110,16 +110,16 @@ export function ScheduleCalendarGrid({
 
   return (
     <div
-      className={`rounded-2xl border border-slate-200/90 bg-white shadow-sm ${scheduleDragLock ? "pointer-events-none" : ""}`}
+      className={`rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-[#1F2937] dark:bg-[#111827] dark:shadow-[0_2px_8px_rgba(0,0,0,0.4)] ${scheduleDragLock ? "pointer-events-none" : ""}`}
     >
       <div
-        className={`flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-4 py-3 sm:px-5 ${scheduleDragLock ? "pointer-events-none" : ""}`}
+        className={`flex flex-wrap items-center justify-between gap-3 border-b border-gray-200 px-4 py-3 dark:border-[#1F2937] sm:px-5 ${scheduleDragLock ? "pointer-events-none" : ""}`}
       >
-        <h2 className="text-lg font-semibold text-pulse-navy">{monthLabel(year, monthIndex)}</h2>
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{monthLabel(year, monthIndex)}</h2>
         <div className="flex items-center gap-1">
           <button
             type="button"
-            className="rounded-lg border border-slate-200 bg-white p-2 text-pulse-navy shadow-sm hover:bg-slate-50"
+            className="rounded-lg border border-gray-200 bg-white p-2 text-gray-900 shadow-sm hover:bg-gray-50 dark:border-[#1F2937] dark:bg-[#0F172A] dark:text-gray-100 dark:hover:bg-[#111827]"
             onClick={onPrevMonth}
             aria-label="Previous month"
           >
@@ -127,7 +127,7 @@ export function ScheduleCalendarGrid({
           </button>
           <button
             type="button"
-            className="rounded-lg border border-slate-200 bg-white p-2 text-pulse-navy shadow-sm hover:bg-slate-50"
+            className="rounded-lg border border-gray-200 bg-white p-2 text-gray-900 shadow-sm hover:bg-gray-50 dark:border-[#1F2937] dark:bg-[#0F172A] dark:text-gray-100 dark:hover:bg-[#111827]"
             onClick={onNextMonth}
             aria-label="Next month"
           >
@@ -136,24 +136,25 @@ export function ScheduleCalendarGrid({
         </div>
       </div>
       <p
-        className={`border-b border-slate-100 px-4 py-2 text-[11px] text-pulse-muted sm:px-5 ${scheduleDragLock ? "pointer-events-none" : ""}`}
+        className={`border-b border-gray-200 px-4 py-2 text-[11px] text-gray-500 dark:border-[#1F2937] dark:text-gray-400 sm:px-5 ${scheduleDragLock ? "pointer-events-none" : ""}`}
       >
-        Drag a shift to another day to move it. Hold <kbd className="rounded bg-slate-100 px-1">Shift</kbd> while
-        dragging to duplicate. Drop on the trash target (bottom-right) to delete.
+        Drag a shift to another day to move it. Hold{" "}
+        <kbd className="rounded bg-gray-100 px-1 dark:bg-[#0F172A]">Shift</kbd> while dragging to duplicate. Drop on the
+        trash target (bottom-right) to delete.
       </p>
       <div
-        className={`grid grid-cols-7 gap-px border-b border-slate-100 bg-slate-200/80 ${scheduleDragLock ? "pointer-events-none" : ""}`}
+        className={`grid grid-cols-7 gap-px border-b border-gray-200 bg-gray-200/80 dark:border-[#1F2937] dark:bg-[#1F2937] ${scheduleDragLock ? "pointer-events-none" : ""}`}
       >
         {WEEK.map((d) => (
           <div
             key={d}
-            className="bg-slate-50/90 px-1 py-2 text-center text-[11px] font-semibold uppercase tracking-wide text-pulse-muted"
+            className="bg-gray-50/90 px-1 py-2 text-center text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:bg-[#0F172A] dark:text-gray-400"
           >
             {d}
           </div>
         ))}
       </div>
-      <div className="grid grid-cols-7 gap-px bg-slate-200/80">
+      <div className="grid grid-cols-7 gap-px bg-gray-200/80 dark:bg-[#1F2937]">
         {cells.map((c) => {
           const dayShifts = byDate.get(c.date) ?? [];
           const fullDay = dayShiftsFullDay.get(c.date) ?? [];
@@ -163,8 +164,8 @@ export function ScheduleCalendarGrid({
             <div
               key={c.date}
               className={`relative flex min-h-[7.5rem] flex-col bg-white ${cellPointer} ${
-                c.inMonth ? "" : "bg-slate-50/50 opacity-80"
-              } ${isOver && !calendarDropsDisabled ? "ring-2 ring-inset ring-pulse-accent/50" : ""}`}
+                c.inMonth ? "" : "bg-gray-50/50 opacity-80 dark:bg-[#0B0F14]/40"
+              } ${isOver && !calendarDropsDisabled ? "ring-2 ring-inset ring-blue-500/40 dark:ring-blue-400/45" : ""}`}
               onDragOver={(e) => {
                 if (calendarDropsDisabled) return;
                 if (e.dataTransfer.types.includes(SHIFT_DRAG_MIME) || e.dataTransfer.types.includes("text/plain")) {
@@ -200,8 +201,8 @@ export function ScheduleCalendarGrid({
                 {c.inMonth && onOpenDay ? (
                   <button
                     type="button"
-                    className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold hover:bg-slate-100 ${
-                      c.inMonth ? "text-pulse-navy" : "text-pulse-muted"
+                    className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold hover:bg-gray-100 dark:hover:bg-[#0F172A] ${
+                      c.inMonth ? "text-gray-900 dark:text-gray-100" : "text-gray-500 dark:text-gray-400"
                     }`}
                     onClick={() => onOpenDay(c.date)}
                     aria-label={`Open day view for ${c.date}`}
@@ -211,7 +212,7 @@ export function ScheduleCalendarGrid({
                 ) : (
                   <span
                     className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold ${
-                      c.inMonth ? "text-pulse-navy" : "text-pulse-muted"
+                      c.inMonth ? "text-gray-900 dark:text-gray-100" : "text-gray-500 dark:text-gray-400"
                     }`}
                   >
                     {c.dayOfMonth}
@@ -220,7 +221,7 @@ export function ScheduleCalendarGrid({
                 {c.inMonth ? (
                   <button
                     type="button"
-                    className="rounded-md p-1 text-pulse-muted hover:bg-slate-100 hover:text-pulse-accent"
+                    className="rounded-md p-1 text-gray-500 hover:bg-gray-100 hover:text-blue-600 dark:text-gray-400 dark:hover:bg-[#0F172A] dark:hover:text-blue-400"
                     aria-label={`Add shift on ${c.date}`}
                     onClick={() => onAddForDate(c.date)}
                   >
@@ -241,8 +242,10 @@ export function ScheduleCalendarGrid({
                   const roleLb = roleMap.get(s.role) ?? s.role;
                   const cls = st
                     ? `${st.bg} ${st.border} ${st.text} border`
-                    : "border border-slate-200 bg-slate-50 text-pulse-navy";
-                  const openCls = isOpen ? "ring-2 ring-dashed ring-pulse-accent/40 ring-offset-1" : "";
+                    : "border border-gray-200 bg-gray-50 text-gray-900 dark:border-[#1F2937] dark:bg-[#0F172A] dark:text-gray-100";
+                  const openCls = isOpen
+                    ? "ring-2 ring-dashed ring-blue-500/40 ring-offset-1 ring-offset-white dark:ring-blue-400/45 dark:ring-offset-[#111827]"
+                    : "";
                   const conflicts = getShiftConflicts(s, fullDay, workers, settings, timeOffBlocks, zones);
                   const sev = worstConflictSeverity(conflicts);
                   const tip = scheduleShiftHoverSummary(s, w, conflicts);
@@ -284,7 +287,7 @@ export function ScheduleCalendarGrid({
                         <div className="min-w-0 flex-1">
                           <p className="flex items-center gap-1 truncate font-semibold">
                             {isOpen ? (
-                              <span className="shrink-0 rounded bg-white/60 px-0.5 text-[9px] font-bold uppercase text-pulse-accent">
+                              <span className="shrink-0 rounded bg-white/60 px-0.5 text-[9px] font-bold uppercase text-blue-600 dark:bg-white/10 dark:text-blue-400">
                                 Open
                               </span>
                             ) : null}
@@ -309,7 +312,7 @@ export function ScheduleCalendarGrid({
                           <div className="flex items-center gap-0.5">
                             {certFlag ? (
                               <span title={tip} className="inline-flex">
-                                <Award className="h-3 w-3 shrink-0 text-slate-500" strokeWidth={2} aria-hidden />
+                                <Award className="h-3 w-3 shrink-0 text-gray-500 dark:text-gray-400" strokeWidth={2} aria-hidden />
                               </span>
                             ) : null}
                             {sev ? (

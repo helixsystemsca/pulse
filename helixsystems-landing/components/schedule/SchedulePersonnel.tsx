@@ -37,16 +37,16 @@ export function SchedulePersonnel({
 
   return (
     <div
-      className={`rounded-2xl border border-slate-200/90 bg-white shadow-sm ${scheduleDragLocked ? "pointer-events-none" : ""}`}
+      className={`rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-[#1F2937] dark:bg-[#111827] dark:shadow-[0_2px_8px_rgba(0,0,0,0.4)] ${scheduleDragLocked ? "pointer-events-none" : ""}`}
     >
-      <div className="border-b border-slate-100 px-5 py-4">
-        <h2 className="text-lg font-semibold text-pulse-navy">Personnel</h2>
-        <p className="mt-1 text-sm text-pulse-muted">Workers and shift load for {monthLabel(year, monthIndex)}</p>
+      <div className="border-b border-gray-200 px-5 py-4 dark:border-[#1F2937]">
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Personnel</h2>
+        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Workers and shift load for {monthLabel(year, monthIndex)}</p>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full min-w-[32rem] text-left text-sm">
           <thead>
-            <tr className="border-b border-slate-100 text-[11px] font-semibold uppercase tracking-wide text-pulse-muted">
+            <tr className="border-b border-gray-200 text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:border-[#1F2937] dark:text-gray-400">
               <th className="px-5 py-3">Name</th>
               <th className="px-5 py-3">Job role</th>
               <th className="px-5 py-3">Status</th>
@@ -55,19 +55,24 @@ export function SchedulePersonnel({
           </thead>
           <tbody>
             {rows.map(({ w, count }) => (
-              <tr key={w.id} className="border-b border-slate-50 last:border-0 hover:bg-slate-50/60">
-                <td className="px-5 py-3 font-medium text-pulse-navy">{w.name}</td>
-                <td className="px-5 py-3 text-pulse-muted">{roleMap.get(w.role) ?? w.role}</td>
+              <tr
+                key={w.id}
+                className="border-b border-gray-100 last:border-0 hover:bg-gray-50/80 dark:border-[#1F2937]/80 dark:hover:bg-[#0F172A]/50"
+              >
+                <td className="px-5 py-3 font-medium text-gray-900 dark:text-gray-100">{w.name}</td>
+                <td className="px-5 py-3 text-gray-500 dark:text-gray-400">{roleMap.get(w.role) ?? w.role}</td>
                 <td className="px-5 py-3">
                   <span
                     className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${
-                      w.active ? "bg-emerald-50 text-emerald-900 ring-1 ring-emerald-200/80" : "bg-slate-100 text-pulse-muted"
+                      w.active
+                        ? "bg-emerald-50 text-emerald-900 ring-1 ring-emerald-200/80 dark:bg-emerald-950/40 dark:text-emerald-200 dark:ring-emerald-500/25"
+                        : "bg-gray-100 text-gray-500 dark:bg-[#0F172A] dark:text-gray-400"
                     }`}
                   >
                     {w.active ? "Active" : "Inactive"}
                   </span>
                 </td>
-                <td className="px-5 py-3 text-right tabular-nums text-pulse-navy">{count}</td>
+                <td className="px-5 py-3 text-right tabular-nums text-gray-900 dark:text-gray-100">{count}</td>
               </tr>
             ))}
           </tbody>

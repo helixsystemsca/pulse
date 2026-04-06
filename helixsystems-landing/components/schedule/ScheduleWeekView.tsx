@@ -106,23 +106,23 @@ export function ScheduleWeekView({
 
   return (
     <div
-      className={`rounded-2xl border border-slate-200/90 bg-white shadow-sm ${scheduleDragLock ? "pointer-events-none" : ""}`}
+      className={`rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-[#1F2937] dark:bg-[#111827] dark:shadow-[0_2px_8px_rgba(0,0,0,0.4)] ${scheduleDragLock ? "pointer-events-none" : ""}`}
     >
       <div
-        className={`flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-4 py-3 sm:px-5 ${scheduleDragLock ? "pointer-events-none" : ""}`}
+        className={`flex flex-wrap items-center justify-between gap-3 border-b border-gray-200 px-4 py-3 dark:border-[#1F2937] sm:px-5 ${scheduleDragLock ? "pointer-events-none" : ""}`}
       >
-        <h2 className="text-lg font-semibold text-pulse-navy">{label}</h2>
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{label}</h2>
         <div className="flex flex-wrap items-center gap-1">
           <button
             type="button"
-            className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs font-semibold text-pulse-navy shadow-sm hover:bg-slate-50"
+            className="rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-xs font-semibold text-gray-900 shadow-sm hover:bg-gray-50 dark:border-[#1F2937] dark:bg-[#0F172A] dark:text-gray-100 dark:hover:bg-[#111827]"
             onClick={onToday}
           >
             Today
           </button>
           <button
             type="button"
-            className="rounded-lg border border-slate-200 bg-white p-2 text-pulse-navy shadow-sm hover:bg-slate-50"
+            className="rounded-lg border border-gray-200 bg-white p-2 text-gray-900 shadow-sm hover:bg-gray-50 dark:border-[#1F2937] dark:bg-[#0F172A] dark:text-gray-100 dark:hover:bg-[#111827]"
             onClick={onPrevWeek}
             aria-label="Previous week"
           >
@@ -130,7 +130,7 @@ export function ScheduleWeekView({
           </button>
           <button
             type="button"
-            className="rounded-lg border border-slate-200 bg-white p-2 text-pulse-navy shadow-sm hover:bg-slate-50"
+            className="rounded-lg border border-gray-200 bg-white p-2 text-gray-900 shadow-sm hover:bg-gray-50 dark:border-[#1F2937] dark:bg-[#0F172A] dark:text-gray-100 dark:hover:bg-[#111827]"
             onClick={onNextWeek}
             aria-label="Next week"
           >
@@ -139,12 +139,12 @@ export function ScheduleWeekView({
         </div>
       </div>
       <p
-        className={`border-b border-slate-100 px-4 py-2 text-[11px] text-pulse-muted sm:px-5 ${scheduleDragLock ? "pointer-events-none" : ""}`}
+        className={`border-b border-gray-200 px-4 py-2 text-[11px] text-gray-500 dark:border-[#1F2937] dark:text-gray-400 sm:px-5 ${scheduleDragLock ? "pointer-events-none" : ""}`}
       >
         Week view — same drag, drop, and shift actions as the month grid.
       </p>
       <div
-        className={`grid grid-cols-7 gap-px overflow-x-auto border-b border-slate-100 bg-slate-200/80 ${scheduleDragLock ? "pointer-events-none" : ""}`}
+        className={`grid grid-cols-7 gap-px overflow-x-auto border-b border-gray-200 bg-gray-200/80 dark:border-[#1F2937] dark:bg-[#1F2937] ${scheduleDragLock ? "pointer-events-none" : ""}`}
       >
         {weekDates.map((date, idx) => {
           const dow = WEEK[idx];
@@ -153,17 +153,19 @@ export function ScheduleWeekView({
           return (
             <div
               key={date}
-              className={`bg-slate-50/90 px-1 py-2 text-center text-[11px] font-semibold uppercase tracking-wide ${
-                isToday ? "text-pulse-accent" : "text-pulse-muted"
+              className={`bg-gray-50/90 px-1 py-2 text-center text-[11px] font-semibold uppercase tracking-wide dark:bg-[#0F172A] ${
+                isToday ? "text-blue-600 dark:text-blue-400" : "text-gray-500 dark:text-gray-400"
               }`}
             >
               <div>{dow}</div>
-              <div className="mt-0.5 tabular-nums text-pulse-navy">{d.getMonth() + 1}/{d.getDate()}</div>
+              <div className="mt-0.5 tabular-nums text-gray-900 dark:text-gray-100">
+                {d.getMonth() + 1}/{d.getDate()}
+              </div>
             </div>
           );
         })}
       </div>
-      <div className="grid min-w-[640px] grid-cols-7 gap-px bg-slate-200/80">
+      <div className="grid min-w-[640px] grid-cols-7 gap-px bg-gray-200/80 dark:bg-[#1F2937]">
         {weekDates.map((date) => {
           const dayShifts = byDate.get(date) ?? [];
           const fullDay = dayShiftsFullDay.get(date) ?? [];
@@ -174,7 +176,9 @@ export function ScheduleWeekView({
             <div
               key={date}
               className={`relative flex min-h-[14rem] flex-col bg-white ${cellPointer} ${
-                isOver && !calendarDropsDisabled ? "ring-2 ring-inset ring-pulse-accent/50" : ""
+                isOver && !calendarDropsDisabled
+                  ? "ring-2 ring-inset ring-blue-500/40 dark:ring-blue-400/45"
+                  : ""
               }`}
               onDragOver={(e) => {
                 if (calendarDropsDisabled) return;
@@ -208,20 +212,20 @@ export function ScheduleWeekView({
                 {onOpenDay ? (
                   <button
                     type="button"
-                    className="flex h-7 min-w-[1.75rem] items-center justify-center rounded-full text-xs font-semibold text-pulse-navy hover:bg-slate-100"
+                    className="flex h-7 min-w-[1.75rem] items-center justify-center rounded-full text-xs font-semibold text-gray-900 hover:bg-gray-100 dark:text-gray-100 dark:hover:bg-[#0F172A]"
                     onClick={() => onOpenDay(date)}
                     aria-label={`Open day view for ${date}`}
                   >
                     {d.getDate()}
                   </button>
                 ) : (
-                  <span className="flex h-7 w-7 items-center justify-center text-xs font-semibold text-pulse-navy">
+                  <span className="flex h-7 w-7 items-center justify-center text-xs font-semibold text-gray-900 dark:text-gray-100">
                     {d.getDate()}
                   </span>
                 )}
                 <button
                   type="button"
-                  className="rounded-md p-1 text-pulse-muted hover:bg-slate-100 hover:text-pulse-accent"
+                  className="rounded-md p-1 text-gray-500 hover:bg-gray-100 hover:text-blue-600 dark:text-gray-400 dark:hover:bg-[#0F172A] dark:hover:text-blue-400"
                   aria-label={`Add shift on ${date}`}
                   onClick={() => onAddForDate(date)}
                 >
@@ -239,8 +243,10 @@ export function ScheduleWeekView({
                   const roleLb = roleMap.get(s.role) ?? s.role;
                   const cls = st
                     ? `${st.bg} ${st.border} ${st.text} border`
-                    : "border border-slate-200 bg-slate-50 text-pulse-navy";
-                  const openCls = isOpen ? "ring-2 ring-dashed ring-pulse-accent/40 ring-offset-1" : "";
+                    : "border border-gray-200 bg-gray-50 text-gray-900 dark:border-[#1F2937] dark:bg-[#0F172A] dark:text-gray-100";
+                  const openCls = isOpen
+                    ? "ring-2 ring-dashed ring-blue-500/40 ring-offset-1 ring-offset-white dark:ring-blue-400/45 dark:ring-offset-[#111827]"
+                    : "";
                   const conflicts = getShiftConflicts(s, fullDay, workers, settings, timeOffBlocks, zones);
                   const sev = worstConflictSeverity(conflicts);
                   const tip = scheduleShiftHoverSummary(s, w, conflicts);
@@ -280,7 +286,7 @@ export function ScheduleWeekView({
                         <div className="min-w-0 flex-1">
                           <p className="flex items-center gap-1 truncate font-semibold">
                             {isOpen ? (
-                              <span className="shrink-0 rounded bg-white/60 px-0.5 text-[9px] font-bold uppercase text-pulse-accent">
+                              <span className="shrink-0 rounded bg-white/60 px-0.5 text-[9px] font-bold uppercase text-blue-600 dark:bg-white/10 dark:text-blue-400">
                                 Open
                               </span>
                             ) : null}
@@ -299,7 +305,7 @@ export function ScheduleWeekView({
                           <div className="flex items-center gap-0.5">
                             {certFlag ? (
                               <span title={tip} className="inline-flex">
-                                <Award className="h-3 w-3 shrink-0 text-slate-500" strokeWidth={2} aria-hidden />
+                                <Award className="h-3 w-3 shrink-0 text-gray-500 dark:text-gray-400" strokeWidth={2} aria-hidden />
                               </span>
                             ) : null}
                             {sev ? (

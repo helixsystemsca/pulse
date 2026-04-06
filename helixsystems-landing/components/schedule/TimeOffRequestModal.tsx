@@ -31,7 +31,7 @@ export function TimeOffRequestModal({ open, workers, onClose, onSubmit }: Props)
         <div className="flex justify-end gap-3">
           <button
             type="button"
-            className="text-sm font-semibold text-pulse-muted hover:text-pulse-navy"
+            className="text-sm font-semibold text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
             onClick={onClose}
           >
             Cancel
@@ -60,7 +60,7 @@ export function TimeOffRequestModal({ open, workers, onClose, onSubmit }: Props)
           </label>
           <select
             id="pto-worker"
-            className="mt-1.5 w-full rounded-[10px] border border-slate-200/90 px-3 py-2.5 text-sm"
+            className="mt-1.5 w-full rounded-[10px] border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 dark:border-[#1F2937] dark:bg-[#0F172A] dark:text-gray-100"
             value={workerId}
             onChange={(e) => setWorkerId(e.target.value)}
           >
@@ -76,37 +76,37 @@ export function TimeOffRequestModal({ open, workers, onClose, onSubmit }: Props)
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="text-[11px] font-semibold uppercase tracking-wider text-pulse-muted" htmlFor="pto-start">
+            <label className="text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400" htmlFor="pto-start">
               Start
             </label>
             <input
               id="pto-start"
               type="date"
-              className="mt-1.5 w-full rounded-[10px] border border-slate-200/90 px-3 py-2.5 text-sm"
+              className="mt-1.5 w-full rounded-[10px] border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 dark:border-[#1F2937] dark:bg-[#0F172A] dark:text-gray-100"
               value={start}
               onChange={(e) => setStart(e.target.value)}
             />
           </div>
           <div>
-            <label className="text-[11px] font-semibold uppercase tracking-wider text-pulse-muted" htmlFor="pto-end">
+            <label className="text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400" htmlFor="pto-end">
               End
             </label>
             <input
               id="pto-end"
               type="date"
-              className="mt-1.5 w-full rounded-[10px] border border-slate-200/90 px-3 py-2.5 text-sm"
+              className="mt-1.5 w-full rounded-[10px] border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 dark:border-[#1F2937] dark:bg-[#0F172A] dark:text-gray-100"
               value={end}
               onChange={(e) => setEnd(e.target.value)}
             />
           </div>
         </div>
         <div>
-          <label className="text-[11px] font-semibold uppercase tracking-wider text-pulse-muted" htmlFor="pto-status">
+          <label className="text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400" htmlFor="pto-status">
             Status (mock)
           </label>
           <select
             id="pto-status"
-            className="mt-1.5 w-full rounded-[10px] border border-slate-200/90 px-3 py-2.5 text-sm"
+            className="mt-1.5 w-full rounded-[10px] border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 dark:border-[#1F2937] dark:bg-[#0F172A] dark:text-gray-100"
             value={status}
             onChange={(e) => setStatus(e.target.value as "approved" | "pending")}
           >
