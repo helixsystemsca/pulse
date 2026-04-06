@@ -42,7 +42,7 @@ export function HelixMarketingLogo({
   return (
     <span className={`${frameClass[variant]} ${className}`.trim()}>
       <Image
-        src="/images/helix.png"
+        src="/images/helix_cropped_tight.png"
         alt="Helix Systems"
         width={1920}
         height={640}
