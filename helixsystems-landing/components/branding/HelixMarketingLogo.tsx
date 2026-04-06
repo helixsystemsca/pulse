@@ -23,7 +23,7 @@ const sizesAttr: Record<Variant, string> = {
 };
 
 /**
- * Wordmark from `public/images/helix.png`.
+ * Wordmark from `public/images/helix_cropped_tight.png`.
  * For sharpest results on retina, use a PNG with at least ~2× the frame’s CSS pixels
  * of non-transparent pixels, or replace with SVG.
  */

@@ -62,6 +62,9 @@ describe("route-split-buckets", () => {
 
     expect(isMarketingPath("/landing-variants/a")).toBe(true);
 
+    expect(isMarketingPath("/blueprint")).toBe(true);
+    expect(isProductPath("/blueprint")).toBe(false);
+
     expect(isProductPath("/login")).toBe(true);
     expect(isMarketingPath("/login")).toBe(false);
 

@@ -6,6 +6,7 @@ import type Konva from "konva";
 import { Circle, Group, Layer, Line, Rect, Stage, Text, Transformer } from "react-konva";
 import { apiFetch, isApiMode } from "@/lib/api";
 import { parseClientApiError } from "@/lib/parse-client-api-error";
+import { pulseApp } from "@/lib/pulse-app";
 import { canAccessPulseTenantApis, readSession } from "@/lib/pulse-session";
 import { emitOnboardingMaybeUpdated } from "@/lib/onboarding-events";
 import { bpDuration, bpEase, bpTransition } from "@/lib/motion-presets";
@@ -1244,7 +1245,15 @@ function blueprintApiUserMessage(err: unknown): string {
   return message;
 }
 
-export function BlueprintDesigner() {
+export type BlueprintDesignerProps = {
+  /**
+   * Marketing-site mode: no tenant API list/save/load or zone/equipment hooks.
+   * Editor, publish preview, PNG/PDF export, and local undo still work.
+   */
+  standalone?: boolean;
+};
+
+export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps) {
   const {
     blueprint,
     updateBlueprint,
@@ -1639,6 +1648,10 @@ export function BlueprintDesigner() {
   }, [drawDraft]);
 
   const refreshList = useCallback(async () => {
+    if (standalone) {
+      setList([]);
+      return;
+    }
     try {
       const rows = await apiFetch<BlueprintSummary[]>("/api/blueprints");
       setList(rows);
@@ -1646,13 +1659,18 @@ export function BlueprintDesigner() {
     } catch (e) {
       setError(blueprintApiUserMessage(e));
     }
-  }, []);
+  }, [standalone]);
 
   useEffect(() => {
     void refreshList();
   }, [refreshList]);
 
   useEffect(() => {
+    if (standalone) {
+      setZonesApi([]);
+      setEquipmentApi([]);
+      return;
+    }
     const loadRefs = async () => {
       try {
         const [zones, equip] = await Promise.all([
@@ -1666,7 +1684,7 @@ export function BlueprintDesigner() {
       }
     };
     void loadRefs();
-  }, []);
+  }, [standalone]);
 
   useEffect(() => {
     const el = hostRef.current;
@@ -1745,6 +1763,13 @@ export function BlueprintDesigner() {
   const saveBlueprint = async () => {
     setSaving(true);
     setError(null);
+    if (standalone) {
+      setError(
+        "This public demo does not save to the cloud. Use Publish → Download PNG/PDF, or sign in on Pulse under Zones → Blueprint designer.",
+      );
+      setSaving(false);
+      return;
+    }
     if (isApiMode()) {
       const s = readSession();
       if (!s?.access_token) {
@@ -2477,6 +2502,16 @@ export function BlueprintDesigner() {
         animate={{ opacity: 1, x: 0 }}
         transition={bpTransition.med}
       >
+        {standalone ? (
+          <p className="bp-hint" style={{ marginBottom: 12 }}>
+            Public playground: same editor as Pulse. <strong>Publish</strong> to export PNG/PDF. Saving to your org
+            requires signing in on the{" "}
+            <a href={pulseApp.login()} className="text-sky-600 underline dark:text-sky-400">
+              Pulse app
+            </a>
+            .
+          </p>
+        ) : null}
         <div>
           <h3>Tools</h3>
           <div className="bp-tool-grid">
@@ -2683,7 +2718,7 @@ export function BlueprintDesigner() {
             <select
               id="bp-pick"
               value={blueprintId ?? ""}
-              disabled={isPublish}
+              disabled={isPublish || standalone}
               onChange={(e) => {
                 const v = e.target.value;
                 if (!v) newBlueprint();
@@ -2722,7 +2757,8 @@ export function BlueprintDesigner() {
           <motion.button
             type="button"
             className="bp-btn"
-            disabled={saving || isPublish}
+            disabled={saving || isPublish || standalone}
+            title={standalone ? "Sign in on Pulse to save blueprints to your organization" : undefined}
             onClick={() => void saveBlueprint()}
             whileHover={saving ? undefined : { scale: 1.02, boxShadow: "0 8px 24px rgba(59, 130, 246, 0.2)" }}
             whileTap={saving ? undefined : { scale: 0.985 }}

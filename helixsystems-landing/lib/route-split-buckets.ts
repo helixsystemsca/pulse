@@ -11,6 +11,8 @@ export const MARKETING_PATH_PREFIXES = [
   "/", // only exact match in helpers below
   "/pulse",
   "/landing-variants",
+  /** Public blueprint playground (same editor as Pulse; no tenant persistence unless API configured + signed in). */
+  "/blueprint",
 ] as const;
 
 /**
