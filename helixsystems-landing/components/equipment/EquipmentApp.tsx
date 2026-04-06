@@ -20,8 +20,10 @@ import {
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Card } from "@/components/pulse/Card";
+import { ModuleOnboardingHint } from "@/components/onboarding/ModuleOnboardingHint";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { apiFetch } from "@/lib/api";
+import { emitOnboardingMaybeUpdated } from "@/lib/onboarding-events";
 import {
   createEquipment,
   deleteEquipment,
@@ -309,6 +311,7 @@ export function EquipmentApp() {
       setTab("list");
       await loadList();
       await loadStats();
+      emitOnboardingMaybeUpdated();
     } catch {
       setFormError("Save failed. Check your connection and permissions.");
     } finally {
@@ -323,6 +326,7 @@ export function EquipmentApp() {
       setToast("Equipment deleted.");
       await loadList();
       await loadStats();
+      emitOnboardingMaybeUpdated();
       if (formId === id) {
         resetForm();
         setTab("list");
@@ -433,6 +437,14 @@ export function EquipmentApp() {
         {tabBtn("list", "Equipment List", List)}
         {tabBtn("form", formMode === "edit" ? "Edit Equipment" : formMode === "view" ? "Details" : "Add Equipment", Plus)}
       </nav>
+
+      {!loading && statsItems.length === 0 && !error ? (
+        <ModuleOnboardingHint>
+          <strong className="font-semibold text-pulse-navy dark:text-slate-100">Build your equipment layer.</strong>{" "}
+          Register assets here so you can track location, maintenance rhythm, and monitoring context alongside work
+          in the field.
+        </ModuleOnboardingHint>
+      ) : null}
 
       {error ? <p className="text-sm font-medium text-red-700">{error}</p> : null}
 

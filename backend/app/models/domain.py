@@ -186,6 +186,8 @@ class User(Base):
         nullable=False,
         server_default=text(f"'{_ONBOARDING_STEPS_DEFAULT_JSON}'::jsonb"),
     )
+    #: First-login product intro modal dismissed or skipped; independent of checklist completion.
+    onboarding_seen: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
 
     company: Mapped[Optional[Company]] = relationship(
         back_populates="users",

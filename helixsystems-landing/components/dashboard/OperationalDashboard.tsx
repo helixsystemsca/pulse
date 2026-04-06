@@ -2,8 +2,9 @@
 
 import { AlertTriangle, Battery, MapPin, Radio } from "lucide-react";
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { HelixMarketingLogo } from "@/components/branding/HelixMarketingLogo";
+import { FacilitySetupChecklist } from "@/components/onboarding/FacilitySetupChecklist";
 import { apiFetch, isApiMode } from "@/lib/api";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
 import { pulseTenantNav } from "@/lib/pulse-app";
@@ -503,6 +504,7 @@ function DashboardBody({
   zonePromptDismissed,
   onDismissZonePrompt,
   headerImageUrl,
+  facilitySetupChecklist,
 }: {
   model: DashboardViewModel;
   workOrdersHref: string;
@@ -511,6 +513,7 @@ function DashboardBody({
   onDismissZonePrompt?: () => void;
   /** Tenant banner for Operations header only; omit or null when unset — no placeholder. */
   headerImageUrl?: string | null;
+  facilitySetupChecklist?: ReactNode;
 }) {
   const userInitials = headerInitials(model.welcomeName);
   const trimmedHeaderImage = headerImageUrl?.trim() || null;
@@ -552,6 +555,7 @@ function DashboardBody({
       </header>
 
       <div className="grid gap-4 bg-gray-50 dark:bg-[#0B0F14] p-5 lg:grid-cols-12 lg:p-6">
+        {facilitySetupChecklist}
         <section
           className="flex flex-col rounded-2xl border border-gray-200 dark:border-[#1F2937] bg-white dark:bg-[#111827] p-5 shadow-sm dark:shadow-[0_2px_8px_rgba(0,0,0,0.4)] lg:col-span-12 lg:p-6"
           data-dashboard-tile="alerts"
@@ -1039,9 +1043,12 @@ export function OperationalDashboard({
     }
   }, [variant, notifyReady]);
 
+  const facilitySetupSlot =
+    variant === "live" && session && canAccessPulseTenantApis(session) ? <FacilitySetupChecklist /> : null;
+
   if (variant === "demo") {
     return (
-      <DashboardBody model={demoModel()} workOrdersHref={workOrdersHref} />
+      <DashboardBody model={demoModel()} workOrdersHref={workOrdersHref} facilitySetupChecklist={null} />
     );
   }
 
@@ -1087,6 +1094,7 @@ export function OperationalDashboard({
       zonePromptDismissed={zoneDismissed}
       onDismissZonePrompt={() => setZoneDismissed(true)}
       headerImageUrl={liveHeaderImage}
+      facilitySetupChecklist={facilitySetupSlot}
     />
   );
 }

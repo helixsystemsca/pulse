@@ -4,6 +4,7 @@
  * Infrastructure & RTLS: gateways, tags, zones, worker tag assignment, automation — equipment linking lives in Inventory.
  */
 import { Loader2, MapPin, Radio, Settings2, Users } from "lucide-react";
+import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { apiFetch } from "@/lib/api";
 import { readSession } from "@/lib/pulse-session";
@@ -74,6 +75,7 @@ function withCompany(path: string, companyId: string | null): string {
 }
 
 export function SetupApp() {
+  const searchParams = useSearchParams();
   const session = readSession();
   const isSystemAdmin = Boolean(session?.is_system_admin || session?.role === "system_admin");
   const sessionCompanyId = session?.company_id ?? null;
@@ -84,6 +86,13 @@ export function SetupApp() {
   const dataEnabled = Boolean(effectiveCompanyId);
 
   const [tab, setTab] = useState<TabId>("devices");
+
+  useEffect(() => {
+    const t = searchParams.get("tab");
+    if (t === "devices" || t === "workers" || t === "zones" || t === "automation") {
+      setTab(t);
+    }
+  }, [searchParams]);
   const [loading, setLoading] = useState(false);
   const [savingConfig, setSavingConfig] = useState(false);
   const [error, setError] = useState<string | null>(null);

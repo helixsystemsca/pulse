@@ -22,10 +22,28 @@ export async function fetchOnboarding(): Promise<OnboardingState> {
   return apiFetch<OnboardingState>("/api/v1/onboarding");
 }
 
+export type SetupProgressState = {
+  blueprint_count: number;
+  zone_count: number;
+  equipment_count: number;
+  worker_user_count: number;
+  procedure_task_count: number;
+  facility_layout_done: boolean;
+  zones_done: boolean;
+  equipment_done: boolean;
+  workers_done: boolean;
+  procedures_done: boolean;
+};
+
+export async function fetchSetupProgress(): Promise<SetupProgressState> {
+  return apiFetch<SetupProgressState>("/api/v1/setup-progress");
+}
+
 export type OnboardingPatchBody = {
   step?: string;
   completed?: boolean;
   onboarding_enabled?: boolean;
+  onboarding_seen?: boolean;
 };
 
 export async function patchOnboarding(body: OnboardingPatchBody): Promise<OnboardingState> {

@@ -2,11 +2,59 @@
 
 import { motion } from "framer-motion";
 import Link from "next/link";
+import { useEffect, useState } from "react";
+import { ModuleOnboardingHint } from "@/components/onboarding/ModuleOnboardingHint";
+import { isApiMode } from "@/lib/api";
+import { usePulseAuth } from "@/hooks/usePulseAuth";
+import { fetchSetupProgress } from "@/lib/onboardingService";
+import { canAccessPulseTenantApis } from "@/lib/pulse-session";
 import { bpEase, bpDuration } from "@/lib/motion-presets";
 
 export default function ZonesDevicesZonesPage() {
+  const { session } = usePulseAuth();
+  const [showEmptyHint, setShowEmptyHint] = useState(false);
+
+  useEffect(() => {
+    if (!isApiMode() || !session?.access_token || !canAccessPulseTenantApis(session)) {
+      setShowEmptyHint(false);
+      return;
+    }
+    let cancel = false;
+    (async () => {
+      try {
+        const p = await fetchSetupProgress();
+        if (!cancel) setShowEmptyHint(p.zone_count === 0 && p.blueprint_count === 0);
+      } catch {
+        if (!cancel) setShowEmptyHint(false);
+      }
+    })();
+    return () => {
+      cancel = true;
+    };
+  }, [session?.sub, session?.company_id]);
+
   return (
     <>
+      {showEmptyHint ? (
+        <motion.div
+          className="mb-4"
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: bpDuration.med, ease: bpEase }}
+        >
+          <ModuleOnboardingHint>
+            <strong className="font-semibold text-pulse-navy dark:text-slate-100">Zones and floor plans.</strong> Use the{" "}
+            <Link href="/zones-devices/blueprint" className="font-semibold text-pulse-accent hover:underline">
+              Blueprint designer
+            </Link>{" "}
+            to draw your layout, or define areas manually under{" "}
+            <Link href="/dashboard/setup?tab=zones" className="font-semibold text-pulse-accent hover:underline">
+              Setup → Zones
+            </Link>
+            .
+          </ModuleOnboardingHint>
+        </motion.div>
+      ) : null}
       <motion.p
         className="mb-4 max-w-2xl text-sm text-pulse-muted"
         initial={{ opacity: 0, y: 6 }}

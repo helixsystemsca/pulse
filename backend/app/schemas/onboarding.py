@@ -37,3 +37,4 @@ class OnboardingPatchIn(BaseModel):
     step: Optional[OnboardingStepKey] = None
     completed: Optional[bool] = None
     onboarding_enabled: Optional[bool] = None
+    onboarding_seen: Optional[bool] = None

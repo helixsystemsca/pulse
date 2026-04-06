@@ -8,6 +8,7 @@ import { SegmentedControl } from "@/components/schedule/SegmentedControl";
 import { Card } from "@/components/pulse/Card";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { apiFetch } from "@/lib/api";
+import { emitOnboardingMaybeUpdated } from "@/lib/onboarding-events";
 import { ProjectAutomationPanel } from "@/components/projects/ProjectAutomationPanel";
 import {
   createTask,
@@ -463,6 +464,7 @@ function ProjectTaskDrawer({
           sop_id: sopRef.trim() || null,
         });
         await syncTaskDependencies(created.id, depSelected);
+        emitOnboardingMaybeUpdated();
       } catch {
         return;
       }

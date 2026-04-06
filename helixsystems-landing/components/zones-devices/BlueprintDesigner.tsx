@@ -5,6 +5,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import type Konva from "konva";
 import { Circle, Group, Layer, Line, Rect, Stage, Text, Transformer } from "react-konva";
 import { apiFetch } from "@/lib/api";
+import { emitOnboardingMaybeUpdated } from "@/lib/onboarding-events";
 import { bpDuration, bpEase, bpTransition } from "@/lib/motion-presets";
 import type { BlueprintElement, TaskOverlay } from "./blueprint-types";
 export type { BlueprintElement, BlueprintState, BlueprintHistoryState, TaskOverlay } from "./blueprint-types";
@@ -1397,6 +1398,7 @@ export function BlueprintDesigner() {
         });
       }
       await refreshList();
+      emitOnboardingMaybeUpdated();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Save failed");
     } finally {

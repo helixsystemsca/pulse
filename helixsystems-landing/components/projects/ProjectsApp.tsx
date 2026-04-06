@@ -4,6 +4,7 @@ import Link from "next/link";
 import { FolderKanban } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Card } from "@/components/pulse/Card";
+import { ModuleOnboardingHint } from "@/components/onboarding/ModuleOnboardingHint";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { apiFetch } from "@/lib/api";
 import { listProjects, type ProjectRow } from "@/lib/projectsService";
@@ -81,7 +82,11 @@ export function ProjectsApp() {
       />
 
       {rows.length === 0 ? (
-        <Card padding="md">
+        <Card padding="md" className="space-y-3">
+          <ModuleOnboardingHint>
+            <strong className="font-semibold text-pulse-navy dark:text-slate-100">Procedures live in projects.</strong>{" "}
+            Create a project, then add tasks for guided work, assignments, and due dates that sync to the schedule.
+          </ModuleOnboardingHint>
           <p className="text-sm text-pulse-muted">No projects yet.</p>
         </Card>
       ) : (

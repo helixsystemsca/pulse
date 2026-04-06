@@ -18,6 +18,7 @@ import { PulseDrawer } from "@/components/schedule/PulseDrawer";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { apiFetch } from "@/lib/api";
 import { readSession } from "@/lib/pulse-session";
+import { emitOnboardingMaybeUpdated } from "@/lib/onboarding-events";
 import type { WorkerDetail, WorkerRow, WorkersSettings } from "@/lib/workersService";
 import {
   createWorker,
@@ -336,6 +337,7 @@ export function WorkersApp() {
         supervisor_id: "",
       });
       await loadList();
+      emitOnboardingMaybeUpdated();
     } finally {
       setProfileBusy(false);
     }

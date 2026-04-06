@@ -172,9 +172,11 @@ async def me(
 
     ob_enabled = user.onboarding_enabled
     ob_completed = user.onboarding_completed
+    ob_seen = bool(user.onboarding_seen)
     if user.company_id is None or user.role == UserRole.system_admin or user.is_system_admin:
         ob_enabled = False
         ob_completed = True
+        ob_seen = True
 
     return UserOut(
         id=user.id,
@@ -188,6 +190,7 @@ async def me(
         company=company_summary,
         onboarding_enabled=ob_enabled,
         onboarding_completed=ob_completed,
+        onboarding_seen=ob_seen,
         server_time=datetime.now(timezone.utc).isoformat(),
     )
 

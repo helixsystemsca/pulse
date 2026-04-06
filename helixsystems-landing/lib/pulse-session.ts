@@ -44,6 +44,8 @@ export type PulseAuthSession = {
   /** From `/auth/me`; guides onboarding UI for tenant users. */
   onboarding_enabled?: boolean;
   onboarding_completed?: boolean;
+  /** From `/auth/me`; false until first-login intro is dismissed (server-backed). */
+  onboarding_seen?: boolean;
   iat: number;
   exp: number;
   /** Legacy: was tied to removed “Keep me signed in”; new sessions always use `false`. */
@@ -62,6 +64,7 @@ export type UserOut = {
   company?: CompanySummary | null;
   onboarding_enabled?: boolean;
   onboarding_completed?: boolean;
+  onboarding_seen?: boolean;
   /** UTC ISO timestamp from `GET /auth/me` for client clock sync. */
   server_time?: string;
 };
@@ -168,6 +171,7 @@ export function writeApiSession(
     company: user.company ?? null,
     onboarding_enabled: user.onboarding_enabled,
     onboarding_completed: user.onboarding_completed,
+    onboarding_seen: user.onboarding_seen,
     iat: now,
     exp,
     remember,

@@ -62,6 +62,9 @@ async def patch_onboarding(
     if body.onboarding_enabled is not None:
         user.onboarding_enabled = body.onboarding_enabled
 
+    if body.onboarding_seen is not None:
+        user.onboarding_seen = bool(body.onboarding_seen)
+
     if body.step is not None:
         if body.step not in ALL_ONBOARDING_STEP_KEYS:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="invalid_step")
