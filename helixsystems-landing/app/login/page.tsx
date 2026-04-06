@@ -113,7 +113,7 @@ export default function LoginPage() {
     <>
       <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden" aria-hidden>
         <div
-          className="absolute inset-0 bg-gradient-to-br from-[#edf2fb] via-[#f5f2f9] to-[#e6eef9] dark:from-[#0f172a] dark:via-[#111827] dark:to-[#0b1220]"
+          className="absolute inset-0 bg-gradient-to-br from-[#dbe5f8] via-[#ebe2f4] to-[#d8e6f5] dark:from-[#0c1424] dark:via-[#0e1629] dark:to-[#080f18]"
         />
         <div
           className="absolute inset-0 dark:hidden"
@@ -129,13 +129,30 @@ export default function LoginPage() {
             backgroundSize: "32px 32px",
           }}
         />
-        {/* Soft depth: blue (top-left) + indigo (bottom-right), low opacity */}
+        {/* Organic wavy lines — full-bleed, subtle */}
+        <svg
+          className="absolute inset-0 h-full w-full text-blue-600/[0.2] dark:text-sky-400/[0.22]"
+          viewBox="0 0 100 100"
+          preserveAspectRatio="none"
+        >
+          <g fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
+            <path vectorEffect="nonScalingStroke" strokeWidth={1.1} opacity={0.85} d="M -8 12 C 12 4, 22 22, 42 14 S 72 8, 108 18" />
+            <path vectorEffect="nonScalingStroke" strokeWidth={0.95} opacity={0.75} d="M -6 28 C 8 38, 28 20, 48 30 S 78 24, 106 34" />
+            <path vectorEffect="nonScalingStroke" strokeWidth={1} opacity={0.7} d="M -10 48 C 14 40, 34 56, 52 44 S 88 52, 110 42" />
+            <path vectorEffect="nonScalingStroke" strokeWidth={0.85} opacity={0.65} d="M -4 62 C 18 72, 38 52, 58 64 S 92 58, 108 68" />
+            <path vectorEffect="nonScalingStroke" strokeWidth={1.05} opacity={0.55} d="M -12 78 C 10 68, 30 88, 52 76 S 84 82, 112 74" />
+            <path vectorEffect="nonScalingStroke" strokeWidth={0.75} opacity={0.5} d="M -8 92 C 16 98, 36 82, 60 94 S 96 88, 108 96" />
+            <path vectorEffect="nonScalingStroke" strokeWidth={0.7} opacity={0.45} d="M 8 -4 C 18 12, 32 -2, 52 8 S 82 4, 98 14" />
+            <path vectorEffect="nonScalingStroke" strokeWidth={0.65} opacity={0.4} d="M 22 100 C 38 88, 52 100, 72 92 S 98 96, 104 88" />
+          </g>
+        </svg>
+        {/* Soft depth: blue (top-left) + indigo (bottom-right) */}
         <div
-          className="absolute inset-0 bg-[radial-gradient(ellipse_85%_65%_at_0%_0%,rgba(37,99,235,0.11),transparent_58%)] dark:bg-[radial-gradient(ellipse_85%_65%_at_0%_0%,rgba(59,130,246,0.14),transparent_55%)]"
+          className="absolute inset-0 bg-[radial-gradient(ellipse_85%_65%_at_0%_0%,rgba(37,99,235,0.18),transparent_55%)] dark:bg-[radial-gradient(ellipse_85%_65%_at_0%_0%,rgba(59,130,246,0.22),transparent_52%)]"
           aria-hidden
         />
         <div
-          className="absolute inset-0 bg-[radial-gradient(ellipse_75%_60%_at_100%_100%,rgba(79,70,229,0.09),transparent_52%)] dark:bg-[radial-gradient(ellipse_75%_60%_at_100%_100%,rgba(99,102,241,0.12),transparent_52%)]"
+          className="absolute inset-0 bg-[radial-gradient(ellipse_75%_60%_at_100%_100%,rgba(79,70,229,0.15),transparent_48%)] dark:bg-[radial-gradient(ellipse_75%_60%_at_100%_100%,rgba(99,102,241,0.18),transparent_48%)]"
           aria-hidden
         />
       </div>
