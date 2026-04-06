@@ -90,8 +90,8 @@ export default function ZonesDevicesZonesPage() {
           <Link href="/dashboard/setup" className="font-semibold text-pulse-accent hover:underline">
             Zones &amp; devices
           </Link>{" "}
-          under <strong>Setup</strong>. Blueprints stored here sync with the tenant API when the maintenance
-          module is enabled.
+          under <strong>Setup</strong>. Blueprints sync to the server when you are signed in with a company
+          account (API mode).
         </p>
       </motion.div>
     </>

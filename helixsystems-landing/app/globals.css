@@ -8,6 +8,14 @@ html {
 }
 
 @layer utilities {
+  /** Sign-in: full viewport vs under marketing navbar (h-16) */
+  .login-shell--full {
+    min-height: 100dvh;
+  }
+  .login-shell--embedded {
+    min-height: calc(100dvh - 4rem);
+  }
+
   /**
    * App canvas (main content / feature backgrounds).
    * Light: gray-50 · Dark: matches dashboard token #0B0F14

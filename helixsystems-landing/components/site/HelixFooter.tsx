@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { HelixMarketingLogo } from "@/components/branding/HelixMarketingLogo";
 import { mailtoSupport } from "@/lib/helix-emails";
 
 const links = [
@@ -33,7 +32,7 @@ export function HelixFooter({ classNames }: { classNames?: HelixFooterClassNames
             href="/"
             className={`flex items-center justify-center no-underline md:justify-start ${cn.brand ?? ""}`.trim()}
           >
-            <HelixMarketingLogo variant="footer" />
+            <span className="text-xl font-semibold tracking-tight text-helix-primary">Helix Systems</span>
           </Link>
           <p className={`mt-2 text-sm font-medium tracking-wide text-helix-onSurfaceVariant ${cn.tagline ?? ""}`.trim()}>
             Industrial software &amp; field intelligence

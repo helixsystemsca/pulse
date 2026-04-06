@@ -1,6 +1,6 @@
 import Image from "next/image";
 
-type Variant = "header" | "footer" | "compact";
+type Variant = "header" | "compact";
 
 /**
  * Frame height drives display size. The wrapper is `block` (not `inline-flex items-center`)
@@ -8,20 +8,17 @@ type Variant = "header" | "footer" | "compact";
  * `h-full w-auto` + `object-contain` then reliably fills the frame height (letterboxing only
  * inside the bitmap).
  *
- * Display height = wrapper frame; marketing header + site footer use 64px; compact stays smaller.
+ * Display height = wrapper frame; marketing header uses ~44px; compact is for app “Powered by” strips.
  */
 const frameClass: Record<Variant, string> = {
-  /** 64px (`h-16`); block wrapper so `%` height on the image resolves to full frame */
-  header: "block h-16 w-max min-h-0 shrink-0",
-  /** Same frame as header for HelixFooter wordmark */
-  footer: "block h-16 w-max min-h-0 shrink-0",
+  /** ~44px; block wrapper so `%` height on the image resolves to full frame */
+  header: "block h-11 w-max min-h-0 shrink-0",
   /** ~`text-xs` powered-by strip */
   compact: "block h-4 w-max min-h-0 shrink-0",
 };
 
 const sizesAttr: Record<Variant, string> = {
   header: "(max-width: 640px) 85vw, 400px",
-  footer: "(max-width: 768px) 85vw, 400px",
   compact: "180px",
 };
 

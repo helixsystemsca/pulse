@@ -3,7 +3,6 @@
 import { AlertTriangle, Battery, MapPin, Radio } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
-import { HelixMarketingLogo } from "@/components/branding/HelixMarketingLogo";
 import { FacilitySetupChecklist } from "@/components/onboarding/FacilitySetupChecklist";
 import { apiFetch, isApiMode } from "@/lib/api";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
@@ -923,13 +922,6 @@ function DashboardBody({
           </div>
         </section>
       </div>
-
-      <footer className="flex flex-col items-center justify-center gap-2 border-t border-gray-200 dark:border-[#1F2937] bg-white/80 dark:bg-[#111827]/50 px-6 py-3 text-center">
-        <span className="sr-only">Powered by Helix Systems</span>
-        <div className="flex items-center justify-center opacity-60">
-          <HelixMarketingLogo variant="compact" className="" />
-        </div>
-      </footer>
     </div>
   );
 }

@@ -13,7 +13,14 @@ export default function LoginLayout({ children }: { children: React.ReactNode })
   const h = headers();
   const host = requestHostnameFromHeaders((name) => h.get(name));
   if (isPulseAppHost(host)) {
-    return <>{children}</>;
+    return <div className="login-shell login-shell--full flex flex-col">{children}</div>;
   }
-  return <AppLayout mainClassName="bg-pulse-bg">{children}</AppLayout>;
+  return (
+    <AppLayout
+      mainClassName="relative flex min-h-0 flex-1 flex-col bg-transparent dark:bg-[#0B0F14]"
+      mainContentClassName="flex min-h-0 w-full max-w-none flex-1 flex-col px-4 py-0 sm:px-5"
+    >
+      <div className="login-shell login-shell--embedded flex min-h-0 min-w-0 flex-1 flex-col">{children}</div>
+    </AppLayout>
+  );
 }

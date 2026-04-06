@@ -11,14 +11,17 @@ import { AppSideNav } from "./AppSideNav";
 import { OnboardingChrome } from "@/components/onboarding/OnboardingChrome";
 import { OnboardingProvider } from "@/components/onboarding/OnboardingProvider";
 import { ProximityPromptHost } from "./ProximityPromptHost";
+import { AppPoweredByFooter } from "./AppPoweredByFooter";
 
 type AppLayoutProps = {
   children: ReactNode;
   /** Applied to the main content region below the navbar. */
   mainClassName?: string;
+  /** Applied to the inner `MainContentWidth` wrapper (width, padding, flex). */
+  mainContentClassName?: string;
 };
 
-export function AppLayout({ children, mainClassName = "" }: AppLayoutProps) {
+export function AppLayout({ children, mainClassName = "", mainContentClassName = "" }: AppLayoutProps) {
   return (
     <div className="relative min-h-screen bg-gray-50 dark:bg-[#0B0F14]">
       <OnboardingProvider>
@@ -29,9 +32,10 @@ export function AppLayout({ children, mainClassName = "" }: AppLayoutProps) {
         <div className="flex min-h-screen min-w-0 flex-col">
           <AppNavbar />
           <AppMain className={mainClassName}>
-            <MainContentWidth>{children}</MainContentWidth>
+            <MainContentWidth className={mainContentClassName}>{children}</MainContentWidth>
             <OnboardingChrome />
           </AppMain>
+          <AppPoweredByFooter />
         </div>
       </OnboardingProvider>
     </div>

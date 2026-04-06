@@ -4,7 +4,9 @@ import { animate, AnimatePresence, motion } from "framer-motion";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type Konva from "konva";
 import { Circle, Group, Layer, Line, Rect, Stage, Text, Transformer } from "react-konva";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, isApiMode } from "@/lib/api";
+import { parseClientApiError } from "@/lib/parse-client-api-error";
+import { canAccessPulseTenantApis, readSession } from "@/lib/pulse-session";
 import { emitOnboardingMaybeUpdated } from "@/lib/onboarding-events";
 import { bpDuration, bpEase, bpTransition } from "@/lib/motion-presets";
 import type { BlueprintElement, TaskOverlay } from "./blueprint-types";
@@ -98,6 +100,12 @@ const MIN_ZONE = 24;
 const SNAP_PX = 8;
 const DOOR_ALONG_DEFAULT = 32;
 const DOOR_DEPTH_DEFAULT = 10;
+const MIN_DOOR_ALONG = 14;
+const MAX_DOOR_ALONG = 280;
+/** Larger = transformer activates before touching the stroke. */
+const ZONE_EDGE_HIT_PX = 22;
+const TRANSFORMER_ANCHOR_PX = 14;
+const TRANSFORMER_PADDING_PX = 12;
 /** Max distance from click to zone edge to place a door (world px) */
 const WALL_SNAP_PX = 26;
 /** Match blueprint canvas background (--bp-bg) for wall “cut” overlay */
@@ -116,10 +124,36 @@ const PATH_LINE_TENSION = 0.42;
 
 type WallEdgeIdx = 0 | 1 | 2 | 3;
 
+/** Wall placement for doors: rectangle zone edge or polygon edge index. */
+type WallAttach =
+  | { kind: "rect"; zoneId: string; edge: WallEdgeIdx; t: number }
+  | { kind: "poly"; zoneId: string; edgeIdx: number; t: number };
+
 type ZoneAabb = { L: number; R: number; T: number; B: number };
 
-/** World-space axis-aligned bounds for a zone (Konva Rect: position top-left, rotation about top-left). */
+function zonePolygonFlat(el: BlueprintElement): number[] | null {
+  if (el.type !== "zone" || !el.path_points || el.path_points.length < 6) return null;
+  return el.path_points;
+}
+
+/** World-space axis-aligned bounds for a zone (rect, rotated rect, or polygon outline). */
 function zoneAabb(el: BlueprintElement): ZoneAabb {
+  const poly = zonePolygonFlat(el);
+  if (poly) {
+    let L = Infinity;
+    let R = -Infinity;
+    let T = Infinity;
+    let B = -Infinity;
+    for (let i = 0; i + 1 < poly.length; i += 2) {
+      const x = poly[i]!;
+      const y = poly[i + 1]!;
+      L = Math.min(L, x);
+      R = Math.max(R, x);
+      T = Math.min(T, y);
+      B = Math.max(B, y);
+    }
+    return { L, R, T, B };
+  }
   const w = el.width ?? 120;
   const h = el.height ?? 80;
   const rad = ((el.rotation ?? 0) * Math.PI) / 180;
@@ -341,34 +375,95 @@ function nearestWallHit(
   px: number,
   py: number,
   elements: BlueprintElement[],
-): { zoneId: string; edge: WallEdgeIdx; t: number } | null {
-  let best: { zoneId: string; edge: WallEdgeIdx; t: number; d: number } | null = null;
+): WallAttach | null {
+  let best: { att: WallAttach; d: number } | null = null;
   for (const z of elements) {
     if (z.type !== "zone") continue;
+    const poly = zonePolygonFlat(z);
+    if (poly) {
+      const n = poly.length / 2;
+      for (let e = 0; e < n; e++) {
+        const { x1, y1, x2, y2 } = polygonEdgeXY(poly, e);
+        const { t, d } = closestOnSegment(px, py, x1, y1, x2, y2);
+        const att: WallAttach = { kind: "poly", zoneId: z.id, edgeIdx: e, t };
+        if (d <= WALL_SNAP_PX && (!best || d < best.d)) best = { att, d };
+      }
+      continue;
+    }
     for (let e = 0; e < 4; e++) {
       const edge = e as WallEdgeIdx;
       const { x1, y1, x2, y2 } = worldEdgeSegment(z, edge);
       const { t, d } = closestOnSegment(px, py, x1, y1, x2, y2);
-      if (d <= WALL_SNAP_PX && (!best || d < best.d)) best = { zoneId: z.id, edge, t, d };
+      const att: WallAttach = { kind: "rect", zoneId: z.id, edge, t };
+      if (d <= WALL_SNAP_PX && (!best || d < best.d)) best = { att, d };
     }
   }
-  if (!best) return null;
-  return { zoneId: best.zoneId, edge: best.edge, t: best.t };
+  return best?.att ?? null;
 }
 
-function formatWallAttachment(zoneId: string, edge: WallEdgeIdx, t: number) {
-  return `${zoneId}:${edge}:${t.toFixed(4)}`;
+function serializeWallAttach(a: WallAttach): string {
+  if (a.kind === "rect") return `${a.zoneId}:${a.edge}:${a.t.toFixed(4)}`;
+  return `${a.zoneId}:poly:${a.edgeIdx}:${a.t.toFixed(4)}`;
 }
 
-function parseWallAttachment(s: string | undefined): { zoneId: string; edge: WallEdgeIdx; t: number } | null {
+function parseWallAttach(s: string | undefined): WallAttach | null {
   if (!s) return null;
   const parts = s.split(":");
+  if (parts.length === 4 && parts[1] === "poly") {
+    const zoneId = parts[0]!;
+    const edgeIdx = Number(parts[2]);
+    const t = Number(parts[3]);
+    if (!/^[0-9a-f-]{36}$/i.test(zoneId) || !Number.isFinite(edgeIdx) || edgeIdx < 0 || !Number.isFinite(t)) return null;
+    return { kind: "poly", zoneId, edgeIdx: Math.floor(edgeIdx), t: Math.max(0, Math.min(1, t)) };
+  }
   if (parts.length !== 3) return null;
   const [zoneId, eStr, tStr] = parts;
   const edge = Number(eStr) as WallEdgeIdx;
   const t = Number(tStr);
   if (!/^[0-9a-f-]{36}$/i.test(zoneId) || ![0, 1, 2, 3].includes(edge) || !Number.isFinite(t)) return null;
-  return { zoneId, edge, t: Math.max(0, Math.min(1, t)) };
+  return { kind: "rect", zoneId, edge, t: Math.max(0, Math.min(1, t)) };
+}
+
+function polygonCentroidFlat(flat: number[]) {
+  let sx = 0;
+  let sy = 0;
+  const n = flat.length / 2;
+  for (let i = 0; i < flat.length; i += 2) {
+    sx += flat[i]!;
+    sy += flat[i + 1]!;
+  }
+  return { cx: sx / n, cy: sy / n };
+}
+
+function polygonEdgeXY(flat: number[], edgeIdx: number): { x1: number; y1: number; x2: number; y2: number } {
+  const n = flat.length / 2;
+  const i1 = ((edgeIdx % n) + n) % n;
+  const i2 = (i1 + 1) % n;
+  return {
+    x1: flat[i1 * 2]!,
+    y1: flat[i1 * 2 + 1]!,
+    x2: flat[i2 * 2]!,
+    y2: flat[i2 * 2 + 1]!,
+  };
+}
+
+/** Inward unit normal for polygon edge (toward centroid). */
+function inwardNormalPolygonEdge(flat: number[], edgeIdx: number) {
+  const { x1, y1, x2, y2 } = polygonEdgeXY(flat, edgeIdx);
+  const mx = (x1 + x2) / 2;
+  const my = (y1 + y2) / 2;
+  const { cx, cy } = polygonCentroidFlat(flat);
+  let nx = -(y2 - y1);
+  let ny = x2 - x1;
+  const len = Math.hypot(nx, ny) || 1;
+  nx /= len;
+  ny /= len;
+  const dot = (cx - mx) * nx + (cy - my) * ny;
+  if (dot < 0) {
+    nx = -nx;
+    ny = -ny;
+  }
+  return { nx, ny };
 }
 
 function doorLayoutOnWall(
@@ -391,21 +486,54 @@ function doorLayoutOnWall(
   return { cx, cy, rot, along, depth };
 }
 
+function doorLayoutOnPolygonWall(zone: BlueprintElement, edgeIdx: number, t: number, along: number, depth: number) {
+  const flat = zonePolygonFlat(zone);
+  if (!flat) return doorLayoutOnWall(zone, 0, t, along, depth);
+  const { x1, y1, x2, y2 } = polygonEdgeXY(flat, edgeIdx);
+  const wx = x1 + t * (x2 - x1);
+  const wy = y1 + t * (y2 - y1);
+  const { nx, ny } = inwardNormalPolygonEdge(flat, edgeIdx);
+  const cx = wx + nx * (depth / 2);
+  const cy = wy + ny * (depth / 2);
+  const rot = (Math.atan2(y2 - y1, x2 - x1) * 180) / Math.PI;
+  return { cx, cy, rot, along, depth };
+}
+
+function doorLayoutFromAttach(zone: BlueprintElement, att: WallAttach, along: number, depth: number) {
+  if (att.kind === "rect") return doorLayoutOnWall(zone, att.edge, att.t, along, depth);
+  return doorLayoutOnPolygonWall(zone, att.edgeIdx, att.t, along, depth);
+}
+
+function doorAlongUpperBound(zone: BlueprintElement, att: WallAttach): number {
+  if (att.kind === "rect") {
+    const { x1, y1, x2, y2 } = worldEdgeSegment(zone, att.edge);
+    const len = Math.hypot(x2 - x1, y2 - y1);
+    return Math.max(MIN_DOOR_ALONG, 2 * Math.min(att.t, 1 - att.t) * len - 0.5);
+  }
+  const flat = zonePolygonFlat(zone);
+  if (!flat) return MAX_DOOR_ALONG;
+  const { x1, y1, x2, y2 } = polygonEdgeXY(flat, att.edgeIdx);
+  const len = Math.hypot(x2 - x1, y2 - y1);
+  return Math.max(MIN_DOOR_ALONG, 2 * Math.min(att.t, 1 - att.t) * len - 0.5);
+}
+
 function doorElementFromAttachment(door: BlueprintElement, elements: BlueprintElement[]): BlueprintElement | null {
-  const p = parseWallAttachment(door.wall_attachment);
+  const p = parseWallAttach(door.wall_attachment);
   if (!p) return null;
   const zone = elements.find((z) => z.id === p.zoneId && z.type === "zone");
   if (!zone) return null;
-  const along = door.width ?? DOOR_ALONG_DEFAULT;
+  let along = door.width ?? DOOR_ALONG_DEFAULT;
+  const maxAlong = doorAlongUpperBound(zone, p);
+  along = Math.min(Math.max(along, MIN_DOOR_ALONG), Math.min(MAX_DOOR_ALONG, maxAlong));
   const depth = door.height ?? DOOR_DEPTH_DEFAULT;
-  const { cx, cy, rot } = doorLayoutOnWall(zone, p.edge, p.t, along, depth);
+  const { cx, cy, rot } = doorLayoutFromAttach(zone, p, along, depth);
   return { ...door, x: cx, y: cy, rotation: rot, width: along, height: depth };
 }
 
 function relayoutAttachedDoors(elements: BlueprintElement[], zoneId: string): BlueprintElement[] {
   return elements.map((e) => {
     if (e.type !== "door") return e;
-    const p = parseWallAttachment(e.wall_attachment);
+    const p = parseWallAttach(e.wall_attachment);
     if (!p || p.zoneId !== zoneId) return e;
     return doorElementFromAttachment(e, elements) ?? e;
   });
@@ -530,12 +658,169 @@ function rotatePathFlat90Cw(flat: number[], cx: number, cy: number): number[] {
   return out;
 }
 
+function ptKeyMerge(x: number, y: number) {
+  return `${Math.round(x * 1e4)}:${Math.round(y * 1e4)}`;
+}
+
+function undirectedEdgeKeyMerge(a: [number, number], b: [number, number]): string {
+  const ka = ptKeyMerge(a[0], a[1]);
+  const kb = ptKeyMerge(b[0], b[1]);
+  return ka < kb ? `${ka}|${kb}` : `${kb}|${ka}`;
+}
+
+function polygonSignedAreaFlat(flat: number[]): number {
+  let s = 0;
+  const n = flat.length / 2;
+  for (let i = 0; i < n; i++) {
+    const j = (i + 1) % n;
+    s += flat[i * 2]! * flat[j * 2 + 1]! - flat[j * 2]! * flat[i * 2 + 1]!;
+  }
+  return s / 2;
+}
+
+function fuseDirectedBoundaryToRing(boundary: Array<[[number, number], [number, number]]>): number[] | null {
+  const adj = new Map<string, [number, number][]>();
+  const kf = (p: [number, number]) => ptKeyMerge(p[0], p[1]);
+  const add = (a: [number, number], b: [number, number]) => {
+    const ka = kf(a);
+    if (!adj.has(ka)) adj.set(ka, []);
+    adj.get(ka)!.push(b);
+  };
+  for (const [a, b] of boundary) {
+    add(a, b);
+    add(b, a);
+  }
+  let start: [number, number] | null = null;
+  for (const k of adj.keys()) {
+    const [sx, sy] = k.split(":").map(Number) as [number, number];
+    if (!start || sx < start[0] || (sx === start[0] && sy < start[1])) start = [sx, sy];
+  }
+  if (!start) return null;
+  const flat: number[] = [];
+  let cur = start;
+  let prev: [number, number] | null = null;
+  for (let step = 0; step < boundary.length * 4 + 12; step++) {
+    flat.push(cur[0], cur[1]);
+    const neigh = adj.get(kf(cur)) ?? [];
+    const candidates = neigh.filter((nb) => !prev || nb[0] !== prev[0] || nb[1] !== prev[1]);
+    let next: [number, number] | null = null;
+    if (candidates.length === 1) next = candidates[0]!;
+    else if (candidates.length === 2 && !prev) {
+      next = candidates[0]![0] < candidates[1]![0] || (candidates[0]![0] === candidates[1]![0] && candidates[0]![1] <= candidates[1]![1]) ? candidates[0]! : candidates[1]!;
+    } else break;
+    if (step >= 2 && next[0] === start[0] && next[1] === start[1]) break;
+    prev = cur;
+    cur = next;
+  }
+  return flat.length >= 6 ? flat : null;
+}
+
+function rectLtrbFromAxisZone(z: BlueprintElement): { L: number; R: number; T: number; B: number } | null {
+  if (z.type !== "zone" || zonePolygonFlat(z) || (z.rotation ?? 0) !== 0) return null;
+  const w = z.width ?? 120;
+  const h = z.height ?? 80;
+  return { L: z.x, R: z.x + w, T: z.y, B: z.y + h };
+}
+
+function mergeAxisAlignedRectsToZoneElement(
+  keepId: string,
+  name: string,
+  r1: { L: number; R: number; T: number; B: number },
+  r2: { L: number; R: number; T: number; B: number },
+): BlueprintElement | null {
+  const eps = 1e-4;
+  const overlapX = Math.min(r1.R, r2.R) - Math.max(r1.L, r2.L);
+  const overlapY = Math.min(r1.B, r2.B) - Math.max(r1.T, r2.T);
+  if (overlapX > eps && overlapY > eps) return null;
+  if (overlapX < -1e-2 || overlapY < -1e-2) return null;
+
+  const xs = [...new Set([r1.L, r1.R, r2.L, r2.R])].sort((a, b) => a - b);
+  const ys = [...new Set([r1.T, r1.B, r2.T, r2.B])].sort((a, b) => a - b);
+  const grid: boolean[][] = [];
+  for (let j = 0; j < ys.length - 1; j++) {
+    const row: boolean[] = [];
+    for (let i = 0; i < xs.length - 1; i++) {
+      const cx = (xs[i]! + xs[i + 1]!) / 2;
+      const cy = (ys[j]! + ys[j + 1]!) / 2;
+      const in1 = cx >= r1.L - eps && cx <= r1.R + eps && cy >= r1.T - eps && cy <= r1.B + eps;
+      const in2 = cx >= r2.L - eps && cx <= r2.R + eps && cy >= r2.T - eps && cy <= r2.B + eps;
+      row.push(in1 || in2);
+    }
+    grid.push(row);
+  }
+
+  const rows = grid.length;
+  const cols = grid[0]?.length ?? 0;
+  if (!rows || !cols) return null;
+
+  const directed: Array<[[number, number], [number, number]]> = [];
+  for (let j = 0; j < rows; j++) {
+    for (let i = 0; i < cols; i++) {
+      if (!grid[j]![i]) continue;
+      const L = xs[i]!;
+      const R = xs[i + 1]!;
+      const T = ys[j]!;
+      const B = ys[j + 1]!;
+      if (j === 0 || !grid[j - 1]![i]) directed.push([[L, T], [R, T]]);
+      if (j === rows - 1 || !grid[j + 1]![i]) directed.push([[R, B], [L, B]]);
+      if (i === 0 || !grid[j]![i - 1]) directed.push([[L, B], [L, T]]);
+      if (i === cols - 1 || !grid[j]![i + 1]) directed.push([[R, T], [R, B]]);
+    }
+  }
+
+  const ec = new Map<string, { dir: [[number, number], [number, number]]; n: number }>();
+  for (const seg of directed) {
+    const [a, b] = seg;
+    const k = undirectedEdgeKeyMerge(a, b);
+    const ex = ec.get(k);
+    if (!ex) ec.set(k, { dir: seg, n: 1 });
+    else ex.n += 1;
+  }
+  const boundary: Array<[[number, number], [number, number]]> = [];
+  for (const { dir, n } of ec.values()) {
+    if (n % 2 === 1) boundary.push(dir);
+  }
+  const ring = fuseDirectedBoundaryToRing(boundary);
+  if (!ring) return null;
+
+  const areaExpect = (r1.R - r1.L) * (r1.B - r1.T) + (r2.R - r2.L) * (r2.B - r2.T);
+  const areaGot = Math.abs(polygonSignedAreaFlat(ring));
+  if (Math.abs(areaGot - areaExpect) > 2) return null;
+
+  const bb = bboxFromPathPoints(ring);
+  const isAxisRect = Math.abs(areaGot - bb.w * bb.h) < 1.5;
+  if (isAxisRect) {
+    return {
+      id: keepId,
+      type: "zone",
+      x: bb.minX,
+      y: bb.minY,
+      width: bb.w,
+      height: bb.h,
+      rotation: 0,
+      name,
+    };
+  }
+  return {
+    id: keepId,
+    type: "zone",
+    x: bb.minX,
+    y: bb.minY,
+    width: bb.w,
+    height: bb.h,
+    rotation: 0,
+    name,
+    path_points: ring,
+  };
+}
+
 function isTypingKeyboardTarget(target: EventTarget | null): boolean {
-  if (!(target instanceof HTMLElement)) return false;
-  if (target.isContentEditable) return true;
-  const tag = target.tagName;
+  if (!target || !(target instanceof Element)) return false;
+  const el = target as HTMLElement;
+  if (el.isContentEditable) return true;
+  const tag = el.tagName;
   if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return true;
-  return target.closest("input, textarea, select, [contenteditable='true']") != null;
+  return Boolean(el.closest("input, textarea, select, [contenteditable='true']"));
 }
 
 function processFreehandPath(raw: number[]): number[] | null {
@@ -931,6 +1216,34 @@ function DevicePulseHalo({
   );
 }
 
+function blueprintApiUserMessage(err: unknown): string {
+  const { message, status } = parseClientApiError(err);
+  if (status === 401) {
+    if (message === "company_context_required_impersonate") {
+      return "Sign in with a company user account to save blueprints. System admins: use Impersonate, then try again.";
+    }
+    if (message === "not_authenticated" || message === "invalid_token") {
+      return "Your session is missing or no longer valid. Sign out, sign in again, then save.";
+    }
+    if (message === "Not authenticated" || message === "Invalid token") {
+      return "Your session is missing or no longer valid. Sign out, sign in again, then save.";
+    }
+    return "Could not authorize this request (401). Sign out and sign in again, or confirm this site uses the same API URL as your account (NEXT_PUBLIC_API_URL).";
+  }
+  if (status === 403 && message === "feature_disabled") {
+    return "This action is not enabled for your organization (403). Ask an admin to enable the required module.";
+  }
+  if (status === 403) {
+    if (message === "This resource requires a company user account") {
+      return "Blueprints are saved per organization. System admins: use Impersonate, then try again.";
+    }
+    return message !== "Request failed" && !String(message).startsWith("API ")
+      ? message
+      : "You do not have permission for this blueprint action (403).";
+  }
+  return message;
+}
+
 export function BlueprintDesigner() {
   const {
     blueprint,
@@ -977,6 +1290,7 @@ export function BlueprintDesigner() {
   const stageRef = useRef<Konva.Stage | null>(null);
   const transformerRef = useRef<Konva.Transformer | null>(null);
   const selectedNodeRef = useRef<Konva.Node | null>(null);
+  const doorInnerRefMap = useRef<Map<string, Konva.Rect>>(new Map());
   const drawOriginRef = useRef<{ x: number; y: number } | null>(null);
   const drawDraftRef = useRef<{ x: number; y: number; w: number; h: number } | null>(null);
   const panLastRef = useRef<{ x: number; y: number } | null>(null);
@@ -1200,6 +1514,40 @@ export function BlueprintDesigner() {
   const selectionBounds =
     selectedIds.length > 1 ? unionSelectionAabb(new Set(selectedIds), elements) : null;
 
+  const mergePair = useMemo(() => {
+    if (selectedIds.length !== 2) return null;
+    const a = elements.find((e) => e.id === selectedIds[0]);
+    const b = elements.find((e) => e.id === selectedIds[1]);
+    if (!a || !b || a.type !== "zone" || b.type !== "zone") return null;
+    const r1 = rectLtrbFromAxisZone(a);
+    const r2 = rectLtrbFromAxisZone(b);
+    if (!r1 || !r2) return null;
+    if (!mergeAxisAlignedRectsToZoneElement(a.id, "", r1, r2)) return null;
+    return { a, b, r1, r2 };
+  }, [selectedIds, elements]);
+
+  const mergeSelectedRooms = useCallback(() => {
+    if (!mergePair || selectedIds.length !== 2) return;
+    const { a, b, r1, r2 } = mergePair;
+    const keepId = selectedIds[0]!;
+    const name = [a.name, b.name].filter(Boolean).join(" · ").slice(0, 120) || "Merged room";
+    checkpointBlueprint();
+    commitElements((prev) => {
+      const touchesMergedRoom = (e: BlueprintElement) => {
+        if (e.type !== "door") return false;
+        const p = parseWallAttach(e.wall_attachment);
+        return Boolean(p && (p.zoneId === a.id || p.zoneId === b.id));
+      };
+      const filtered = prev.filter((e) => !touchesMergedRoom(e));
+      const merged = mergeAxisAlignedRectsToZoneElement(keepId, name, r1, r2);
+      if (!merged) return prev;
+      const rest = filtered.filter((e) => e.id !== a.id && e.id !== b.id);
+      return relayoutAllDoors([...rest, merged]);
+    });
+    setSelectedIds([keepId]);
+    setSnapGuides([]);
+  }, [mergePair, selectedIds, commitElements, checkpointBlueprint]);
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const t = e.target;
@@ -1257,6 +1605,11 @@ export function BlueprintDesigner() {
             const bb = bboxFromPathPoints(flat);
             return { ...el, path_points: flat, x: bb.minX, y: bb.minY, width: bb.w, height: bb.h };
           }
+          if (el.type === "zone" && el.path_points && el.path_points.length >= 6) {
+            const flat = el.path_points.map((v, i) => (i % 2 === 0 ? v + dx : v + dy));
+            const bb = bboxFromPathPoints(flat);
+            return { ...el, path_points: flat, x: bb.minX, y: bb.minY, width: bb.w, height: bb.h };
+          }
           return { ...el, x: el.x + dx, y: el.y + dy };
         });
         let out = next;
@@ -1291,7 +1644,7 @@ export function BlueprintDesigner() {
       setList(rows);
       setError(null);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to list blueprints");
+      setError(blueprintApiUserMessage(e));
     }
   }, []);
 
@@ -1385,13 +1738,28 @@ export function BlueprintDesigner() {
       setSelectedIds([]);
       setError(null);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to load blueprint");
+      setError(blueprintApiUserMessage(e));
     }
   };
 
   const saveBlueprint = async () => {
     setSaving(true);
     setError(null);
+    if (isApiMode()) {
+      const s = readSession();
+      if (!s?.access_token) {
+        setError("Sign in to save blueprints. If you were signed in, your session may have expired.");
+        setSaving(false);
+        return;
+      }
+      if (!canAccessPulseTenantApis(s)) {
+        setError(
+          "Blueprints are saved per organization. System administrators: use Impersonate on a company user, then save again.",
+        );
+        setSaving(false);
+        return;
+      }
+    }
     try {
       const payload = {
         name: blueprintName.trim() || "Untitled blueprint",
@@ -1424,7 +1792,7 @@ export function BlueprintDesigner() {
       await refreshList();
       emitOnboardingMaybeUpdated();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Save failed");
+      setError(blueprintApiUserMessage(e));
     } finally {
       setSaving(false);
     }
@@ -1573,8 +1941,8 @@ export function BlueprintDesigner() {
       const id = crypto.randomUUID();
       const along = DOOR_ALONG_DEFAULT;
       const depth = DOOR_DEPTH_DEFAULT;
-      const wall_attachment = formatWallAttachment(hit.zoneId, hit.edge, hit.t);
-      const { cx, cy, rot } = doorLayoutOnWall(zone, hit.edge, hit.t, along, depth);
+      const wall_attachment = serializeWallAttach(hit);
+      const { cx, cy, rot } = doorLayoutFromAttach(zone, hit, along, depth);
       createdId = id;
       return [
         ...prev,
@@ -1736,6 +2104,11 @@ export function BlueprintDesigner() {
       starts.set(id, { x: o.x, y: o.y });
       if (o.type === "path" && o.path_points && o.path_points.length >= 6) pathFlats.set(id, [...o.path_points]);
     }
+    const prim = currentElements.find((x) => x.id === primaryId);
+    if (prim && prim.type === "zone" && zonePolygonFlat(prim) && ids.length > 1) {
+      groupDragRef.current = null;
+      return;
+    }
     if (!starts.has(primaryId)) {
       groupDragRef.current = null;
       return;
@@ -1856,6 +2229,27 @@ export function BlueprintDesigner() {
   };
 
   const syncTransformToState = (id: string, node: Konva.Node) => {
+    if (node.getClassName() === "Rect") {
+      const maybeDoor = elements.find((e) => e.id === id);
+      if (maybeDoor?.type === "door") {
+        const r = node as Konva.Rect;
+        const scaleX = r.scaleX();
+        r.scaleX(1);
+        r.scaleY(1);
+        replaceElements((prev) => {
+          const d = prev.find((e) => e.id === id);
+          if (!d || d.type !== "door") return prev;
+          let newAlong = Math.max(MIN_DOOR_ALONG, r.width() * scaleX);
+          const p = parseWallAttach(d.wall_attachment);
+          const zone = p ? prev.find((z) => z.id === p.zoneId && z.type === "zone") : null;
+          if (p && zone) newAlong = Math.min(newAlong, doorAlongUpperBound(zone, p), MAX_DOOR_ALONG);
+          return relayoutAllDoors(prev.map((e) => (e.id === id ? { ...e, width: newAlong } : e)));
+        });
+        transformUndoPrimedRef.current = false;
+        return;
+      }
+    }
+
     const scaleX = node.scaleX();
     const scaleY = node.scaleY();
     node.scaleX(1);
@@ -1875,17 +2269,17 @@ export function BlueprintDesigner() {
       height = Math.max(20, g.height() * scaleY);
     }
     replaceElements((prev) => {
-      let next = prev.map((el) =>
-        el.id === id
+      let next = prev.map((e) =>
+        e.id === id
           ? {
-              ...el,
+              ...e,
               x,
               y,
               width,
               height,
               rotation,
             }
-          : el,
+          : e,
       );
       const updated = next.find((e) => e.id === id);
       if (updated?.type === "zone") next = relayoutAttachedDoors(next, id);
@@ -1911,14 +2305,18 @@ export function BlueprintDesigner() {
       tr.getLayer()?.batchDraw();
       return;
     }
-    const n = selectedNodeRef.current;
+    const sel = selectedSingleId ? elements.find((e) => e.id === selectedSingleId) : null;
+    let n: Konva.Node | null = null;
+    if (sel?.type === "door") n = doorInnerRefMap.current.get(selectedSingleId!) ?? null;
+    else if (sel?.type === "zone" && !zonePolygonFlat(sel)) n = selectedNodeRef.current;
     if (n && selectedSingleId && tool === "select") {
       tr.nodes([n]);
+      tr.getLayer()?.batchDraw();
     } else {
       tr.nodes([]);
+      tr.getLayer()?.batchDraw();
     }
-    tr.getLayer()?.batchDraw();
-  }, [selectedSingleId, elements, tool, stageSize.w, stageSize.h, designerMode, linkingForTaskId]);
+  }, [selectedSingleId, elements, tool, stageSize.w, stageSize.h, designerMode, linkingForTaskId, stageScale]);
 
   const gridLines = (() => {
     const { w, h } = stageSize;
@@ -2010,7 +2408,7 @@ export function BlueprintDesigner() {
             listening={false}
           />
         </Group>
-      ),
+      )
     );
   })();
 
@@ -2047,6 +2445,19 @@ export function BlueprintDesigner() {
         );
       }
       if (row.type === "path") return prev;
+      if (row.type === "zone" && row.path_points && row.path_points.length >= 6) {
+        const flat = [...row.path_points];
+        const { cx, cy } = polygonCentroidFlat(flat);
+        const rotated = rotatePathFlat90Cw(flat, cx, cy);
+        const bb = bboxFromPathPoints(rotated);
+        return relayoutAllDoors(
+          prev.map((x) =>
+            x.id === selectedSingleId
+              ? { ...x, path_points: rotated, x: bb.minX, y: bb.minY, width: bb.w, height: bb.h, rotation: 0 }
+              : x,
+          ),
+        );
+      }
       const r = (row.rotation ?? 0) + 90;
       const norm = ((r % 360) + 360) % 360;
       let next = prev.map((x) => (x.id === selectedSingleId ? { ...x, rotation: norm } : x));
@@ -2413,18 +2824,116 @@ export function BlueprintDesigner() {
               {elements
                 .filter((el) => el.type === "zone")
                 .map((el) => {
-                  const w = el.width ?? 120;
-                  const h = el.height ?? 80;
+                  const polyPts = zonePolygonFlat(el);
                   const sel = selectedIds.includes(el.id);
-                  const rot = el.rotation ?? 0;
-                  const { dx, dy } = wallDropOffset(rot);
-                  const sw = pubLine(Math.max(0.75, 1.22 / stageScale));
-                  const ins = Math.max(0.6, pubLine(1.05 / stageScale));
-                  const labelSize = pubFs(Math.min(11, Math.max(9, Math.min(w, h) / 7)));
                   const zGlow = canEdit && tool === "select" && !sel && hoverZoneId === el.id;
                   const tg = taskGlowIds.has(el.id);
                   const zoneFill = isPublish ? "rgba(248, 250, 252, 0.085)" : ZONE_FACE_FILL;
                   const zoneStroke = isPublish ? "rgba(241, 245, 249, 0.94)" : ZONE_OUTLINE;
+                  const sw = pubLine(Math.max(0.75, 1.22 / stageScale));
+                  if (polyPts) {
+                    const bb = bboxFromPathPoints(polyPts);
+                    const labelSize = pubFs(Math.min(11, Math.max(9, Math.min(bb.w, bb.h) / 7)));
+                    return (
+                      <Group key={el.id}>
+                        <Line
+                          points={polyPts}
+                          closed
+                          tension={0}
+                          fill={zoneFill}
+                          stroke={tg ? "rgba(56, 189, 248, 0.75)" : mergePair && (mergePair.a.id === el.id || mergePair.b.id === el.id) ? "rgba(250, 204, 21, 0.75)" : zoneStroke}
+                          strokeWidth={tg ? sw * 1.35 : sw}
+                          lineJoin="round"
+                          shadowColor={
+                            tg
+                              ? "rgba(56, 189, 248, 0.55)"
+                              : sel
+                                ? "rgba(59, 130, 246, 0.48)"
+                                : zGlow
+                                  ? "rgba(96, 165, 250, 0.4)"
+                                  : "rgba(0, 0, 0, 0.2)"
+                          }
+                          shadowBlur={tg ? 24 : sel ? 20 : zGlow ? 16 : 6}
+                          shadowOpacity={tg ? 0.45 : sel ? 0.38 : zGlow ? 0.24 : 0.12}
+                          hitStrokeWidth={ZONE_EDGE_HIT_PX / Math.max(0.35, stageScale)}
+                          listening={canEdit && tool === "select"}
+                          draggable={canEdit && tool === "select"}
+                          onMouseEnter={() => {
+                            if (canEdit && tool === "select") setCanvasHoverElementId(el.id);
+                            if (canEdit && tool === "select" && !sel) setHoverZoneId(el.id);
+                          }}
+                          onMouseLeave={() => {
+                            setCanvasHoverElementId((z) => (z === el.id ? null : z));
+                            setHoverZoneId((z) => (z === el.id ? null : z));
+                          }}
+                          onClick={(e) => canEdit && handleSelectElementClick(e, el.id)}
+                          onTap={(e) => canEdit && handleSelectElementClick(e, el.id)}
+                          onDragStart={(e) => {
+                            if (canEdit && tool === "select") {
+                              setIsDraggingSelection(true);
+                              checkpointBlueprint();
+                            }
+                            initMultiDragIfNeeded(el.id);
+                            if (canEdit && tool === "select") runDragScale(e.target, 1.02);
+                          }}
+                          onDragMove={() => batchLayer()}
+                          onDragEnd={(e) => {
+                            setIsDraggingSelection(false);
+                            const g = groupDragRef.current;
+                            const wasMulti = g && g.primaryId === el.id;
+                            if (wasMulti) groupDragRef.current = null;
+                            const node = e.target as Konva.Line;
+                            runDragScale(node, 1);
+                            if (wasMulti) {
+                              replaceElements((prev) => relayoutAllDoors(prev));
+                              return;
+                            }
+                            const ox = node.x();
+                            const oy = node.y();
+                            if (ox === 0 && oy === 0) return;
+                            node.x(0);
+                            node.y(0);
+                            const flat = polyPts.map((v, i) => (i % 2 === 0 ? v + ox : v + oy));
+                            const nbb = bboxFromPathPoints(flat);
+                            replaceElements((prev) =>
+                              relayoutAttachedDoors(
+                                prev.map((row) =>
+                                  row.id === el.id
+                                    ? { ...row, path_points: flat, x: nbb.minX, y: nbb.minY, width: nbb.w, height: nbb.h }
+                                    : row,
+                                ),
+                                el.id,
+                              ),
+                            );
+                          }}
+                        />
+                        <Text
+                          text={(el.name ?? "ROOM").toUpperCase()}
+                          x={bb.minX}
+                          y={bb.minY}
+                          width={bb.w}
+                          height={bb.h}
+                          align="center"
+                          verticalAlign="middle"
+                          fill={isPublish ? "#f1f5f9" : "#cbd5f5"}
+                          opacity={isPublish ? 0.98 : 0.94}
+                          fontSize={labelSize}
+                          fontFamily='ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif'
+                          fontStyle="normal"
+                          letterSpacing={2}
+                          listening={false}
+                          wrap="none"
+                          ellipsis
+                        />
+                      </Group>
+                    );
+                  }
+                  const w = el.width ?? 120;
+                  const h = el.height ?? 80;
+                  const rot = el.rotation ?? 0;
+                  const { dx, dy } = wallDropOffset(rot);
+                  const ins = Math.max(0.6, pubLine(1.05 / stageScale));
+                  const labelSize = pubFs(Math.min(11, Math.max(9, Math.min(w, h) / 7)));
                   return (
                     <Group key={el.id}>
                       {/* Elevation mass — offset duplicate (under room face) */}
@@ -2476,7 +2985,13 @@ export function BlueprintDesigner() {
                       </Group>
                       <Rect
                         ref={(node) => {
-                          if (el.id === selectedSingleId && tool === "select" && canEdit && selected?.type === "zone") {
+                          if (
+                            el.id === selectedSingleId &&
+                            tool === "select" &&
+                            canEdit &&
+                            selected?.type === "zone" &&
+                            !zonePolygonFlat(el)
+                          ) {
                             selectedNodeRef.current = node;
                           }
                         }}
@@ -2501,6 +3016,7 @@ export function BlueprintDesigner() {
                         shadowOpacity={tg ? 0.45 : sel ? 0.38 : zGlow ? 0.24 : 0.12}
                         strokeWidth={tg ? sw * 1.35 : sw}
                         shadowOffset={{ x: 0, y: sel ? 0 : 2 }}
+                        hitStrokeWidth={ZONE_EDGE_HIT_PX / Math.max(0.35, stageScale)}
                         listening={canEdit && tool === "select"}
                         draggable={canEdit && tool === "select"}
                         onMouseEnter={(e) => {
@@ -2628,6 +3144,10 @@ export function BlueprintDesigner() {
                         listening={false}
                       />
                       <Rect
+                        ref={(node) => {
+                          if (node) doorInnerRefMap.current.set(el.id, node);
+                          else doorInnerRefMap.current.delete(el.id);
+                        }}
                         x={-along / 2}
                         y={-depth / 2}
                         width={along}
@@ -2639,7 +3159,11 @@ export function BlueprintDesigner() {
                         shadowColor={tg ? "rgba(56, 189, 248, 0.45)" : undefined}
                         shadowBlur={tg ? 14 : 0}
                         shadowOpacity={tg ? 0.9 : 0}
-                        listening={false}
+                        listening={canEdit && tool === "select"}
+                        onTransformEnd={(e) => {
+                          setSnapGuides([]);
+                          syncTransformToState(el.id, e.target);
+                        }}
                       />
                     </Group>
                   );
@@ -3041,21 +3565,36 @@ export function BlueprintDesigner() {
               ) : null}
               <Transformer
                 ref={transformerRef}
-                rotateEnabled
+                rotateEnabled={selected?.type !== "door"}
+                enabledAnchors={selected?.type === "door" ? ["middle-left", "middle-right"] : undefined}
                 borderStroke={
                   snapGuides.length > 0 ? "rgba(147, 197, 253, 0.88)" : "rgba(96, 165, 250, 0.58)"
                 }
                 borderDash={[5, 4]}
                 anchorStroke="rgba(203, 213, 245, 0.55)"
                 anchorFill="rgba(15, 23, 42, 0.95)"
-                anchorSize={9}
-                padding={5}
+                anchorSize={TRANSFORMER_ANCHOR_PX}
+                padding={TRANSFORMER_PADDING_PX}
                 boundBoxFunc={(oldBox, newBox) => {
-                  if (newBox.width < MIN_ZONE || newBox.height < MIN_ZONE) return oldBox;
                   if (tool !== "select") return newBox;
                   const sid = selectedSingleId;
                   if (!sid) return newBox;
                   const sel = elements.find((u) => u.id === sid);
+                  if (sel?.type === "door") {
+                    const p = parseWallAttach(sel.wall_attachment);
+                    const z = p ? elements.find((u) => u.id === p.zoneId && u.type === "zone") : null;
+                    const maxW = p && z ? Math.min(MAX_DOOR_ALONG, doorAlongUpperBound(z, p)) : MAX_DOOR_ALONG;
+                    const w = Math.max(MIN_DOOR_ALONG, Math.min(maxW, newBox.width));
+                    return {
+                      ...newBox,
+                      width: w,
+                      height: oldBox.height,
+                      x: oldBox.x,
+                      y: oldBox.y,
+                      rotation: oldBox.rotation ?? 0,
+                    };
+                  }
+                  if (newBox.width < MIN_ZONE || newBox.height < MIN_ZONE) return oldBox;
                   if (!sel || sel.type !== "zone") return newBox;
                   const snapped = snapAxisAlignedBox(
                     {
@@ -3140,18 +3679,33 @@ export function BlueprintDesigner() {
         </h3>
         <AnimatePresence mode="wait">
           {selectedIds.length > 1 ? (
-            <motion.p
+            <motion.div
               key="props-multi"
-              className="bp-hint"
+              className="bp-props-body"
               initial={{ opacity: 0, x: 10 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -8 }}
               transition={bpTransition.med}
             >
-              {selectedIds.length} elements selected. Drag one of the highlighted items to move the group together.
-              Shift+click or drag a box on the canvas to add to the selection. Delete / Backspace removes all; arrow keys
-              nudge; Esc clears.
-            </motion.p>
+              <p className="bp-hint">
+                {selectedIds.length} elements selected. Drag one of the highlighted items to move the group together.
+                Shift+click or drag a box on the canvas to add to the selection. Delete / Backspace removes all; arrow
+                keys nudge; Esc clears.
+              </p>
+              {mergePair && canEdit ? (
+                <div className="bp-field">
+                  <button type="button" className="bp-btn" onClick={mergeSelectedRooms}>
+                    Merge rooms (remove shared wall)
+                  </button>
+                  <p className="bp-hint" style={{ marginTop: 8 }}>
+                    Combines two axis-aligned rectangles into one room (L-shapes supported). Doors on either room are
+                    removed; re-place after merging.
+                  </p>
+                </div>
+              ) : selectedIds.length === 2 && canEdit ? (
+                <p className="bp-hint">Select two plain (non-polygon) unrotated rooms that share an edge to merge.</p>
+              ) : null}
+            </motion.div>
           ) : !selected ? (
             <motion.p
               key="props-empty"

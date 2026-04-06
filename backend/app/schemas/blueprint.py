@@ -58,7 +58,9 @@ class BlueprintElementBase(BaseModel):
         None,
         description='Door on zone wall: "{zone_element_id}:{edge}:{t}" edge 0–3, t in [0,1]',
     )
-    path_points: Optional[list[float]] = Field(None, description="Flat x,y pairs, closed polygon (path type)")
+    path_points: Optional[list[float]] = Field(
+        None, description="Flat x,y pairs, closed polygon (path type or zone with arbitrary outline)"
+    )
     symbol_type: Optional[str] = Field(
         None,
         description="symbol discriminator, e.g. tree | bush | sprinkler | valve | pump | motor | filter",
@@ -133,9 +135,25 @@ def element_in_to_orm_kwargs(el: BlueprintElementIn, *, blueprint_id: str) -> di
     symbol_tags_json: Optional[str] = None
     out_x, out_y = el.x, el.y
     if el.type == "zone":
-        if el.width is None or el.height is None or el.width < 1 or el.height < 1:
-            raise ValueError("Zone requires positive width and height")
-        w, h = el.width, el.height
+        pts = el.path_points or []
+        if pts:
+            if len(pts) < 6 or len(pts) % 2 != 0:
+                raise ValueError("zone path_points requires at least 3 vertices (flat x,y list)")
+            xs = pts[0::2]
+            ys = pts[1::2]
+            min_x, max_x = min(xs), max(xs)
+            min_y, max_y = min(ys), max(ys)
+            bx = min_x
+            by = min_y
+            w = max(max_x - min_x, 1.0) if max_x > min_x else 1.0
+            h = max(max_y - min_y, 1.0) if max_y > min_y else 1.0
+            path_points_json = json.dumps(pts)
+            out_x, out_y = bx, by
+        else:
+            if el.width is None or el.height is None or el.width < 1 or el.height < 1:
+                raise ValueError("Zone requires positive width and height")
+            w, h = el.width, el.height
+            path_points_json = None
     elif el.type == "door":
         w = el.width if el.width is not None else 32.0
         h = el.height if el.height is not None else 10.0
@@ -185,7 +203,7 @@ def element_in_to_orm_kwargs(el: BlueprintElementIn, *, blueprint_id: str) -> di
         "assigned_zone_id": el.assigned_zone_id,
         "device_kind": el.device_kind,
         "wall_attachment": el.wall_attachment,
-        "path_points": path_points_json if el.type == "path" else None,
+        "path_points": path_points_json,
         "symbol_type": el.symbol_type.strip()[:32] if el.type == "symbol" and el.symbol_type else None,
         "symbol_tags": symbol_tags_json if el.type == "symbol" else None,
         "symbol_notes": el.symbol_notes if el.type == "symbol" else None,
