@@ -1,20 +1,16 @@
 "use client";
 
 /**
- * Workers & Roles: permission matrix, roster by role, profile drawer, create user, settings.
+ * Workers & Roles: role permissions, roster by role, profile drawer, create user, settings.
  */
 import {
-  Box,
-  Briefcase,
   Check,
   CheckCircle2,
-  ClipboardList,
   Copy,
   Loader2,
   MoreVertical,
   Search,
   Shield,
-  Wrench,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { PulseDrawer } from "@/components/schedule/PulseDrawer";
@@ -50,44 +46,6 @@ const PRIMARY_BTN =
 const FIELD =
   "mt-1.5 w-full rounded-[10px] border border-slate-200/90 bg-white px-3 py-2.5 text-sm text-pulse-navy shadow-sm focus:border-[#2B4C7E]/35 focus:outline-none focus:ring-1 focus:ring-[#2B4C7E]/25 dark:border-[#374151] dark:bg-[#0F172A] dark:text-gray-100 dark:placeholder:text-gray-500";
 const LABEL = "text-[11px] font-semibold uppercase tracking-wider text-pulse-muted";
-
-const MATRIX_ITEMS = [
-  {
-    key: "view_tools",
-    label: "View Tools",
-    description: "Asset visibility across zones.",
-    icon: Wrench,
-    tone: "bg-amber-100 text-amber-800 dark:bg-amber-600 dark:text-white",
-  },
-  {
-    key: "assign_jobs",
-    label: "Assign Jobs",
-    description: "Dispatcher-level authority.",
-    icon: ClipboardList,
-    tone: "bg-sky-100 text-[#2B4C7E] dark:bg-sky-600 dark:text-white",
-  },
-  {
-    key: "manage_inventory",
-    label: "Manage Inventory",
-    description: "Modify stock and logistics.",
-    icon: Box,
-    tone: "bg-slate-100 text-slate-700 dark:bg-slate-600 dark:text-white",
-  },
-  {
-    key: "manage_work_requests",
-    label: "Manage Work Requests",
-    description: "Create and triage maintenance requests.",
-    icon: Briefcase,
-    tone: "bg-indigo-50 text-indigo-800 dark:bg-indigo-600 dark:text-white",
-  },
-  {
-    key: "view_reports",
-    label: "View Reports",
-    description: "Operational and compliance reports.",
-    icon: Shield,
-    tone: "bg-emerald-50 text-emerald-900 dark:bg-emerald-600 dark:text-white",
-  },
-] as const;
 
 /** Keys must match `GLOBAL_SYSTEM_FEATURES` / tenant contract (system admin catalog). */
 const TENANT_PRODUCT_MODULES = [
@@ -180,13 +138,8 @@ function certBadge(status: string): string {
   return "app-badge-slate";
 }
 
-const DEFAULT_MATRIX: Record<string, boolean> = {
-  view_tools: true,
-  assign_jobs: true,
-  manage_inventory: false,
-  manage_work_requests: true,
-  view_reports: true,
-};
+const PERMISSION_ROLE_OPTIONS = ["manager", "supervisor", "lead", "worker"] as const;
+type PermissionRole = (typeof PERMISSION_ROLE_OPTIONS)[number];
 
 export function WorkersApp() {
   const { session, refresh } = usePulseAuth();
@@ -220,8 +173,6 @@ export function WorkersApp() {
   const [listError, setListError] = useState<string | null>(null);
 
   const [fullSettings, setFullSettings] = useState<WorkersSettings>({});
-  const [matrix, setMatrix] = useState<Record<string, boolean>>({ ...DEFAULT_MATRIX });
-  const [matrixSaving, setMatrixSaving] = useState(false);
 
   const [profileId, setProfileId] = useState<string | null>(null);
   const [profile, setProfile] = useState<WorkerDetail | null>(null);
@@ -246,6 +197,7 @@ export function WorkersApp() {
   });
   const [roleFeatureAccessDraft, setRoleFeatureAccessDraft] = useState<Record<string, string[]>>({});
   const [accessPolicySaving, setAccessPolicySaving] = useState(false);
+  const [permissionsRole, setPermissionsRole] = useState<PermissionRole>("manager");
   const [extraModulesDraft, setExtraModulesDraft] = useState<string[]>([]);
 
   const [inviteNotice, setInviteNotice] = useState<InviteLinkBanner | null>(null);
@@ -306,8 +258,6 @@ export function WorkersApp() {
         nextDraft[role] = rfa[role]?.length ? [...rfa[role]] : [...cat];
       }
       setRoleFeatureAccessDraft(nextDraft);
-      const m = st.settings.permission_matrix ?? {};
-      setMatrix({ ...DEFAULT_MATRIX, ...m });
       setSettingsDraft(st.settings);
     } catch (e: unknown) {
       setListError(e instanceof Error ? e.message : "Failed to load");
@@ -424,20 +374,6 @@ export function WorkersApp() {
     }
   }
 
-  async function saveMatrix() {
-    if (!effectiveCompanyId || !isCompanyAdmin) return;
-    setMatrixSaving(true);
-    try {
-      const next = { ...fullSettings, permission_matrix: { ...matrix } };
-      const r = await patchWorkerSettings(apiCompany, next);
-      setContractFeatureNamesFromApi(r.contract_feature_names ?? []);
-      setFullSettings(r.settings);
-      setMatrix({ ...DEFAULT_MATRIX, ...(r.settings.permission_matrix ?? {}) });
-    } finally {
-      setMatrixSaving(false);
-    }
-  }
-
   async function saveProfileNotes() {
     if (!profileId || !profile) return;
     setProfileBusy(true);
@@ -498,7 +434,6 @@ export function WorkersApp() {
       setContractFeatureNamesFromApi(r.contract_feature_names ?? []);
       setFullSettings(r.settings);
       setSettingsDraft(r.settings);
-      setMatrix({ ...DEFAULT_MATRIX, ...(r.settings.permission_matrix ?? {}) });
       setSettingsOpen(false);
     } finally {
       setSettingsBusy(false);
@@ -739,35 +674,53 @@ export function WorkersApp() {
 
             {isCompanyAdmin && contractCatalog.length > 0 ? (
               <div className="rounded-md border border-pulse-border bg-white p-5 shadow-sm ring-1 ring-slate-100/80 dark:border-[#1F2937] dark:bg-[#111827] dark:ring-white/[0.06] dark:shadow-[0_2px_8px_rgba(0,0,0,0.35)]">
-                <h2 className="text-sm font-bold tracking-tight text-pulse-navy">Module access by role</h2>
+                <h2 className="text-sm font-bold tracking-tight text-pulse-navy">Permissions</h2>
                 <p className="mt-1 text-xs text-pulse-muted">
-                  Limits Pulse areas for each role to a subset of your organization&apos;s contract. Omitted roles default
-                  to the full contract.
+                  Your organization&apos;s Pulse modules come from the contract (set by the system admin). Pick a role,
+                  then turn contract modules on or off for people in that role.
                 </p>
-                <div className="mt-4 max-h-[min(50vh,22rem)] space-y-4 overflow-y-auto pr-1">
-                  {(["manager", "supervisor", "lead", "worker"] as const).map((role) => (
-                    <div key={role}>
-                      <p className="text-[11px] font-bold uppercase tracking-wider text-pulse-muted">
-                        {humanizeRole(role)}
-                      </p>
-                      <div className="mt-2 flex flex-col gap-1.5">
-                        {TENANT_PRODUCT_MODULES.filter((m) => contractCatalog.includes(m)).map((mod) => (
-                          <label
-                            key={`${role}-${mod}`}
-                            className="flex cursor-pointer items-center gap-2 text-xs text-pulse-navy"
-                          >
-                            <input
-                              type="checkbox"
-                              className="h-3.5 w-3.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500/50"
-                              checked={(roleFeatureAccessDraft[role] ?? []).includes(mod)}
-                              onChange={() => toggleRoleModule(role, mod)}
-                            />
-                            {MODULE_LABEL[mod] ?? mod}
-                          </label>
-                        ))}
-                      </div>
-                    </div>
+                <label className={`${LABEL} mt-4 block`}>Role</label>
+                <select
+                  className={FIELD}
+                  value={permissionsRole}
+                  onChange={(e) => setPermissionsRole(e.target.value as PermissionRole)}
+                >
+                  {PERMISSION_ROLE_OPTIONS.map((role) => (
+                    <option key={role} value={role}>
+                      {humanizeRole(role)}
+                    </option>
                   ))}
+                </select>
+                <div className="mt-4 space-y-3">
+                  {TENANT_PRODUCT_MODULES.filter((m) => contractCatalog.includes(m)).map((mod) => {
+                    const on = (roleFeatureAccessDraft[permissionsRole] ?? []).includes(mod);
+                    return (
+                      <div
+                        key={`${permissionsRole}-${mod}`}
+                        className="flex items-center justify-between gap-3 rounded-md border border-slate-100 bg-slate-50/50 px-3 py-3 dark:border-[#374151] dark:bg-[#0F172A]/70"
+                      >
+                        <p className="min-w-0 text-sm font-semibold text-pulse-navy">{MODULE_LABEL[mod] ?? mod}</p>
+                        <button
+                          type="button"
+                          role="switch"
+                          aria-checked={on}
+                          disabled={!isCompanyAdmin}
+                          onClick={() =>
+                            isCompanyAdmin ? toggleRoleModule(permissionsRole, mod) : undefined
+                          }
+                          className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${
+                            on ? "bg-[#2B4C7E]" : "bg-slate-200 dark:bg-slate-600"
+                          } disabled:opacity-45`}
+                        >
+                          <span
+                            className={`absolute top-0.5 left-0.5 h-6 w-6 rounded-full bg-white shadow transition-transform dark:bg-gray-200 ${
+                              on ? "translate-x-5" : "translate-x-0"
+                            }`}
+                          />
+                        </button>
+                      </div>
+                    );
+                  })}
                 </div>
                 <button
                   type="button"
@@ -775,8 +728,11 @@ export function WorkersApp() {
                   disabled={accessPolicySaving}
                   onClick={() => void saveAccessPolicy()}
                 >
-                  {accessPolicySaving ? "Saving…" : "Save access policy"}
+                  {accessPolicySaving ? "Saving…" : "Save permissions"}
                 </button>
+                <div className="mt-4 rounded-lg border border-slate-200/90 bg-slate-50/80 px-3 py-2 text-xs text-pulse-muted dark:border-[#374151] dark:bg-[#0F172A]/80 dark:text-slate-300">
+                  Changes apply to all users with the {humanizeRole(permissionsRole)} role after you save.
+                </div>
               </div>
             ) : null}
 
@@ -785,67 +741,6 @@ export function WorkersApp() {
                 Workers settings and contract-scoped module access are managed by a company administrator.
               </p>
             )}
-
-            <div className="rounded-md border border-pulse-border bg-white p-5 shadow-sm ring-1 ring-slate-100/80 dark:border-[#1F2937] dark:bg-[#111827] dark:ring-white/[0.06] dark:shadow-[0_2px_8px_rgba(0,0,0,0.35)]">
-              <div className="flex items-center gap-2 text-pulse-navy">
-                <Shield className="h-5 w-5 text-[#2B4C7E]" aria-hidden />
-                <h2 className="text-sm font-bold tracking-tight">Permissions matrix</h2>
-              </div>
-              <p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-pulse-muted">Global policies</p>
-              <div className="mt-4 space-y-3">
-                {MATRIX_ITEMS.map((item) => {
-                  const Icon = item.icon;
-                  const on = matrix[item.key] !== false;
-                  return (
-                    <div
-                      key={item.key}
-                      className="flex items-start justify-between gap-3 rounded-md border border-slate-100 bg-slate-50/50 px-3 py-3 dark:border-[#374151] dark:bg-[#0F172A]/70"
-                    >
-                      <div className="flex min-w-0 gap-3">
-                        <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${item.tone}`}>
-                          <Icon className="h-4 w-4" aria-hidden />
-                        </span>
-                        <div className="min-w-0">
-                          <p className="text-sm font-semibold text-pulse-navy">{item.label}</p>
-                          <p className="mt-0.5 text-xs text-pulse-muted">{item.description}</p>
-                        </div>
-                      </div>
-                      <button
-                        type="button"
-                        role="switch"
-                        aria-checked={on}
-                        disabled={!isCompanyAdmin}
-                        onClick={() =>
-                          isCompanyAdmin ? setMatrix((m) => ({ ...m, [item.key]: !on })) : undefined
-                        }
-                        className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${
-                          on ? "bg-[#2B4C7E]" : "bg-slate-200"
-                        } disabled:opacity-45`}
-                      >
-                        <span
-                          className={`absolute top-0.5 left-0.5 h-6 w-6 rounded-full bg-white shadow transition-transform dark:bg-gray-200 ${
-                            on ? "translate-x-5" : "translate-x-0"
-                          }`}
-                        />
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-              <button
-                type="button"
-                className={`${PRIMARY_BTN} mt-4 w-full`}
-                disabled={matrixSaving || !isCompanyAdmin}
-                onClick={() => void saveMatrix()}
-              >
-                {matrixSaving ? "Saving…" : "Save permissions"}
-              </button>
-              <div className="mt-4 rounded-lg border border-amber-200/80 bg-amber-50/80 px-3 py-2 text-xs text-amber-950 dark:border-amber-500/30 dark:bg-amber-950/45 dark:text-amber-100">
-                {isCompanyAdmin
-                  ? "Permission changes apply immediately to all users in this role."
-                  : "Only company administrators can edit these toggles."}
-              </div>
-            </div>
           </div>
 
           <div className="lg:col-span-8 xl:col-span-9">
