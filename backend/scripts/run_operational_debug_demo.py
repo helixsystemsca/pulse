@@ -25,6 +25,9 @@ import httpx
 from dotenv import load_dotenv
 from httpx import ASGITransport
 from sqlalchemy import delete, desc, select
+from sqlalchemy.dialects.postgresql import array as pg_array
+
+from app.core.user_roles import user_has_any_role
 from sqlalchemy.exc import IntegrityError
 
 _ROOT = Path(__file__).resolve().parents[1]
@@ -108,7 +111,7 @@ async def main() -> None:
             qm = await db.execute(
                 select(User).where(
                     User.company_id == company_id,
-                    User.role.in_((UserRole.manager, UserRole.company_admin)),
+                    User.roles.overlap(pg_array(UserRole.manager.value, UserRole.company_admin.value)),
                     User.is_active.is_(True),
                 )
             )
@@ -185,7 +188,7 @@ async def main() -> None:
     async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
         r_act = await client.get(
             "/api/v1/automation/debug/recent-activity",
-            params={"company_id": company_id} if api_user.role == UserRole.system_admin else {},
+            params={"company_id": company_id} if user_has_any_role(api_user, UserRole.system_admin) else {},
         )
         if r_act.status_code != 200:
             print("recent-activity", r_act.status_code, r_act.text)

@@ -5,10 +5,12 @@ from typing import Annotated, Optional
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 from sqlalchemy import and_, delete, func, select
+from sqlalchemy.dialects.postgresql import array as pg_array
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import require_tenant_user
+from app.core.user_roles import is_field_worker_like, primary_jwt_role
 from app.services.onboarding_service import try_mark_onboarding_step
 from app.core.database import get_db
 from app.models.domain import InventoryItem, Tool, ToolStatus, User, UserAccountStatus, UserRole, Zone
@@ -213,7 +215,7 @@ async def create_work_request(
     )
     db.add(wr)
     await db.flush()
-    if user.role in (UserRole.worker, UserRole.lead):
+    if is_field_worker_like(user):
         await try_mark_onboarding_step(db, user.id, "log_issue")
     else:
         await try_mark_onboarding_step(db, user.id, "create_work_order")
@@ -299,13 +301,13 @@ async def list_workers(db: Db, cid: CompanyId) -> list[WorkerOut]:
             User.company_id == cid,
             User.is_active.is_(True),
             User.account_status == UserAccountStatus.active,
-            User.role.in_(
-                (
-                    UserRole.worker,
-                    UserRole.lead,
-                    UserRole.supervisor,
-                    UserRole.manager,
-                    UserRole.company_admin,
+            User.roles.overlap(
+                pg_array(
+                    UserRole.worker.value,
+                    UserRole.lead.value,
+                    UserRole.supervisor.value,
+                    UserRole.manager.value,
+                    UserRole.company_admin.value,
                 )
             ),
         )
@@ -328,7 +330,8 @@ async def list_workers(db: Db, cid: CompanyId) -> list[WorkerOut]:
                 id=u.id,
                 email=u.email,
                 full_name=u.full_name,
-                role=u.role.value,
+                role=primary_jwt_role(u).value,
+                roles=list(u.roles),
                 certifications=certs,
                 notes=notes,
                 availability=avail,
@@ -371,7 +374,8 @@ async def patch_worker_profile(
         id=u2.id,
         email=u2.email,
         full_name=u2.full_name,
-        role=u2.role.value,
+        role=primary_jwt_role(u2).value,
+        roles=list(u2.roles),
         certifications=list(prof.certifications or []),
         notes=prof.notes,
         availability=dict(prof.availability or {}),

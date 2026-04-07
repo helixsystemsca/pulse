@@ -15,6 +15,7 @@ from sqlalchemy import and_, delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user, get_db, require_manager_or_above
+from app.core.user_roles import is_field_worker_like, user_has_any_role
 from app.services.onboarding_service import try_mark_onboarding_step
 from app.models.domain import EquipmentPart, FacilityEquipment, Tool, User, UserRole, Zone
 from app.models.pulse_models import (
@@ -53,7 +54,7 @@ async def resolve_wr_company_id(
     user: Annotated[User, Depends(get_current_user)],
     company_id: Optional[str] = Query(None, description="Required for system administrators"),
 ) -> str:
-    if user.role == UserRole.system_admin or user.is_system_admin:
+    if user_has_any_role(user, UserRole.system_admin) or user.is_system_admin:
         if not company_id:
             raise HTTPException(status_code=400, detail="company_id is required for system administrators")
         return company_id
@@ -72,11 +73,12 @@ MgrUser = Annotated[User, Depends(require_manager_or_above)]
 
 async def _require_wr_reader(user: Annotated[User, Depends(get_current_user)]) -> User:
     """Workers, managers, company admins, and system admins (with company context) may read/list issues."""
-    if user.role == UserRole.system_admin or user.is_system_admin:
+    if user_has_any_role(user, UserRole.system_admin) or user.is_system_admin:
         return user
     if user.company_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not a tenant user")
-    if user.role not in (
+    if not user_has_any_role(
+        user,
         UserRole.worker,
         UserRole.lead,
         UserRole.supervisor,
@@ -92,7 +94,7 @@ WrReader = Annotated[User, Depends(_require_wr_reader)]
 
 def _assert_worker_may_touch_wr(user: User, wr: PulseWorkRequest) -> None:
     """Field workers and leads may update issues assigned to them or still unassigned."""
-    if user.role not in (UserRole.worker, UserRole.lead):
+    if not is_field_worker_like(user):
         return
     if wr.assigned_user_id is None or wr.assigned_user_id == user.id:
         return
@@ -398,7 +400,7 @@ async def create_wr(
     db.add(wr)
     await db.flush()
     await _log(db, wr.id, "created", user.id, {"title": wr.title})
-    if user.role in (UserRole.worker, UserRole.lead):
+    if is_field_worker_like(user):
         await try_mark_onboarding_step(db, user.id, "log_issue")
     else:
         await try_mark_onboarding_step(db, user.id, "create_work_order")
@@ -477,7 +479,7 @@ async def patch_wr(
     wr = await _get_wr(db, cid, wr_id)
     data = body.model_dump(exclude_unset=True)
 
-    if user.role in (UserRole.worker, UserRole.lead):
+    if is_field_worker_like(user):
         _assert_worker_may_touch_wr(user, wr)
         extra = set(data.keys()) - {"attachments"}
         if extra:
@@ -491,10 +493,13 @@ async def patch_wr(
         await db.refresh(wr)
         return await _detail(db, cid, wr_id)
 
-    if (
-        user.role not in (UserRole.system_admin, UserRole.company_admin, UserRole.manager, UserRole.supervisor)
-        and not user.is_system_admin
-    ):
+    if not user_has_any_role(
+        user,
+        UserRole.system_admin,
+        UserRole.company_admin,
+        UserRole.manager,
+        UserRole.supervisor,
+    ) and not user.is_system_admin:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="manager or above required")
     if "tool_id" in data and data["tool_id"] and not await pulse_svc.tool_in_company(db, cid, data["tool_id"]):
         raise HTTPException(status_code=400, detail="Unknown asset")

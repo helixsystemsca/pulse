@@ -15,6 +15,7 @@ from sqlalchemy import and_, exists, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user, get_db, require_manager_or_above
+from app.core.user_roles import primary_jwt_role, user_has_any_role
 from app.models.domain import ComplianceRecord, ComplianceRule, Tool, User, UserRole
 from app.modules.compliance import service as compliance_svc
 from app.modules.compliance.service import effective_status
@@ -32,7 +33,7 @@ async def resolve_compliance_company_id(
     user: Annotated[User, Depends(get_current_user)],
     company_id: Optional[str] = Query(None, description="Required for system administrators"),
 ) -> str:
-    if user.role == UserRole.system_admin or user.is_system_admin:
+    if user_has_any_role(user, UserRole.system_admin) or user.is_system_admin:
         if not company_id:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -157,7 +158,7 @@ async def list_compliance(
                 company_id=r.company_id,
                 user_id=r.user_id,
                 user_name=u.full_name if u else None,
-                user_role=u.role.value if u else None,
+                user_role=primary_jwt_role(u).value if u else None,
                 tool_id=r.tool_id,
                 tool_name=t.name if t else None,
                 sop_id=r.sop_id,

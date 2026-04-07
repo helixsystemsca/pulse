@@ -19,7 +19,7 @@ from sqlalchemy import (
     UniqueConstraint,
     text,
 )
-from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base
@@ -165,10 +165,10 @@ class User(Base):
     email: Mapped[str] = mapped_column(String(320), nullable=False)
     hashed_password: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     full_name: Mapped[Optional[str]] = mapped_column(String(255))
-    role: Mapped[UserRole] = mapped_column(
-        Enum(UserRole, values_callable=lambda x: [e.value for e in x], native_enum=False, length=32),
+    roles: Mapped[list[str]] = mapped_column(
+        ARRAY(String(32)),
         nullable=False,
-        default=UserRole.worker,
+        server_default=text("ARRAY['worker']::varchar(32)[]"),
     )
     account_status: Mapped[UserAccountStatus] = mapped_column(
         Enum(UserAccountStatus, values_callable=lambda x: [e.value for e in x], native_enum=False, length=16),

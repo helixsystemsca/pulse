@@ -63,6 +63,7 @@ class SystemUserRow(BaseModel):
     email: str
     full_name: Optional[str]
     role: str
+    roles: list[str] = []
     company_id: Optional[str]
     company_name: Optional[str]
     is_active: bool

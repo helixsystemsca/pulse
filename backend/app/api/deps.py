@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth.security import decode_token
 from app.core.database import get_db
+from app.core.user_roles import primary_jwt_role, roles_match_token, user_has_any_role
 from app.core.events.engine import event_engine
 from app.core.features.service import FeatureFlagService
 from app.core.inference.engine import InferenceEngine
@@ -35,6 +36,7 @@ async def get_current_user(
                 "sub": payload_raw["sub"],
                 "company_id": payload_raw.get("company_id"),
                 "role": payload_raw["role"],
+                "roles": payload_raw.get("roles"),
                 "is_impersonating": payload_raw.get("is_impersonating", False),
                 "impersonator_sub": payload_raw.get("impersonator_sub"),
             }
@@ -47,13 +49,16 @@ async def get_current_user(
     if not user or not user.is_active:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User inactive or missing")
 
-    if user.role.value != payload.role:
+    if payload.roles is None:
+        if primary_jwt_role(user).value != payload.role:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+    elif not roles_match_token(list(user.roles), payload.roles, payload.role):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
 
     if user.account_status != UserAccountStatus.active:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Account not activated")
 
-    if user.role == UserRole.system_admin:
+    if user_has_any_role(user, UserRole.system_admin):
         if payload.company_id is not None or user.company_id is not None:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
     else:
@@ -69,10 +74,8 @@ require_auth = get_current_user
 
 
 def require_role(*roles: UserRole) -> Callable[..., Awaitable[User]]:
-    allowed = frozenset(roles)
-
     async def _dep(user: User = Depends(get_current_user)) -> User:
-        if user.role not in allowed:
+        if not user_has_any_role(user, *roles):
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient role")
         return user
 
@@ -81,7 +84,7 @@ def require_role(*roles: UserRole) -> Callable[..., Awaitable[User]]:
 
 async def get_current_company_user(user: Annotated[User, Depends(get_current_user)]) -> User:
     """Tenant-only principal: system admins must impersonate to access company-scoped APIs."""
-    if user.role == UserRole.system_admin:
+    if user_has_any_role(user, UserRole.system_admin):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="This resource requires a company user account",
@@ -102,26 +105,27 @@ async def require_tenant_user(
 
 
 async def require_system_admin(user: Annotated[User, Depends(get_current_user)]) -> User:
-    if not (user.is_system_admin or user.role == UserRole.system_admin):
+    if not (user.is_system_admin or user_has_any_role(user, UserRole.system_admin)):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="system_admin only")
     return user
 
 
 async def require_company_admin(user: Annotated[User, Depends(get_current_user)]) -> User:
-    if user.role not in (UserRole.system_admin, UserRole.company_admin):
+    if not user_has_any_role(user, UserRole.system_admin, UserRole.company_admin):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="company_admin only")
     return user
 
 
 async def require_company_admin_scoped(user: Annotated[User, Depends(get_current_user)]) -> User:
     """Company admin within their org (not system_admin)."""
-    if user.role != UserRole.company_admin:
+    if UserRole.company_admin.value not in user.roles:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="company_admin only")
     return user
 
 
 async def require_manager_or_above(user: Annotated[User, Depends(get_current_user)]) -> User:
-    if user.role not in (
+    if not user_has_any_role(
+        user,
         UserRole.system_admin,
         UserRole.company_admin,
         UserRole.manager,
@@ -133,7 +137,7 @@ async def require_manager_or_above(user: Annotated[User, Depends(get_current_use
 
 def require_company_access(company_id: str) -> Callable[..., Awaitable[User]]:
     async def _inner(user: User = Depends(get_current_user)) -> User:
-        if user.role == UserRole.system_admin:
+        if user_has_any_role(user, UserRole.system_admin):
             return user
         if user.company_id is None or str(user.company_id) != str(company_id):
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Company access denied")
@@ -147,7 +151,7 @@ def require_permission(permission: str) -> Callable[..., Awaitable[User]]:
         user: User = Depends(get_current_user),
         db: AsyncSession = Depends(get_db),
     ) -> User:
-        if user.role in (UserRole.system_admin, UserRole.company_admin):
+        if user_has_any_role(user, UserRole.system_admin, UserRole.company_admin):
             return user
         svc = PermissionService(db)
         if not await svc.user_has(user, permission):

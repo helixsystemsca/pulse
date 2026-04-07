@@ -25,6 +25,7 @@ import { fetchEquipmentList, fetchEquipmentParts } from "@/lib/equipmentService"
 import { emitOnboardingMaybeUpdated } from "@/lib/onboarding-events";
 import { PulseDrawer } from "@/components/schedule/PulseDrawer";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { managerOrAbove } from "@/lib/pulse-roles";
 import { readSession } from "@/lib/pulse-session";
 import type {
   WorkRequestDetail,
@@ -54,11 +55,6 @@ const PRIMARY_BTN =
 const FIELD =
   "mt-1.5 w-full rounded-[10px] border border-slate-200/90 bg-white px-3 py-2.5 text-sm text-pulse-navy shadow-sm focus:border-[#2B4C7E]/35 focus:outline-none focus:ring-1 focus:ring-[#2B4C7E]/25 dark:border-[#374151] dark:bg-[#0F172A] dark:text-gray-100 dark:placeholder:text-gray-500";
 const LABEL = "text-[11px] font-semibold uppercase tracking-wider text-pulse-muted";
-
-function managerOrAbove(role: string | undefined, isSys: boolean | undefined): boolean {
-  if (isSys || role === "system_admin") return true;
-  return role === "manager" || role === "company_admin";
-}
 
 function initials(name: string | null | undefined, email: string | null | undefined): string {
   if (name?.trim()) {
@@ -127,7 +123,7 @@ export function WorkRequestsApp() {
   const session = readSession();
   const isSystemAdmin = Boolean(session?.is_system_admin || session?.role === "system_admin");
   const sessionCompanyId = session?.company_id ?? null;
-  const canManage = managerOrAbove(session?.role, session?.is_system_admin);
+  const canManage = managerOrAbove(session);
 
   const [companyPick, setCompanyPick] = useState<string | null>(null);
   const [companies, setCompanies] = useState<CompanyOption[]>([]);

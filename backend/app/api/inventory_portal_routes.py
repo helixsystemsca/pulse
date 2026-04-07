@@ -16,6 +16,7 @@ from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user, get_db, require_manager_or_above
+from app.core.user_roles import user_has_any_role
 from app.models.domain import (
     InventoryItem,
     InventoryModuleSettings,
@@ -74,7 +75,7 @@ async def resolve_inv_company_id(
     user: Annotated[User, Depends(get_current_user)],
     company_id: Optional[str] = Query(None, description="Required for system administrators"),
 ) -> str:
-    if user.role == UserRole.system_admin or user.is_system_admin:
+    if user_has_any_role(user, UserRole.system_admin) or user.is_system_admin:
         if not company_id:
             raise HTTPException(status_code=400, detail="company_id is required for system administrators")
         return company_id

@@ -14,6 +14,7 @@ from app.core.auth.security import decode_token
 from app.core.database import AsyncSessionLocal
 from app.core.events.engine import event_engine
 from app.core.events.types import DomainEvent
+from app.core.user_roles import primary_jwt_role, roles_match_token, user_has_any_role
 from app.models.domain import User, UserRole
 
 logger = logging.getLogger(__name__)
@@ -78,13 +79,23 @@ async def websocket_endpoint(websocket: WebSocket, token: str | None = None) -> 
         if not user or not user.is_active:
             await websocket.close(code=4401)
             return
-        if user.role == UserRole.system_admin:
+        if user_has_any_role(user, UserRole.system_admin):
             await websocket.close(code=4403)
             return
         if token_company is None or str(user.company_id) != str(token_company):
             await websocket.close(code=4401)
             return
-        if user.role.value != str(data.get("role", "")):
+        tok_roles = data.get("roles")
+        tok_primary = str(data.get("role", ""))
+        if tok_roles is None:
+            if primary_jwt_role(user).value != tok_primary:
+                await websocket.close(code=4401)
+                return
+        elif not roles_match_token(
+            list(user.roles),
+            tok_roles if isinstance(tok_roles, list) else None,
+            tok_primary,
+        ):
             await websocket.close(code=4401)
             return
         company_id = str(user.company_id)

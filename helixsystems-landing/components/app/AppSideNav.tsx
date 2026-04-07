@@ -27,6 +27,7 @@ import { usePulseAuth } from "@/hooks/usePulseAuth";
 import { pulseSystemSidebarNav, pulseTenantSidebarNav, type PulseSidebarIcon } from "@/lib/pulse-app";
 import { isPulseNavActive } from "@/lib/pulse-nav-active";
 import { isTenantNavFeatureEnabled } from "@/lib/pulse-nav-features";
+import { sessionPrimaryRole } from "@/lib/pulse-roles";
 
 /** First word on line 1, remaining words on line 2 — fits narrow expanded rail. */
 function splitNavLabel(label: string): { line1: string; line2: string | null } {
@@ -74,7 +75,7 @@ export function AppSideNav() {
   /** Platform shell: always use the slim system rail (not tenant product links). Imp JWTs look like tenant users. */
   const rawNav = isSystemAdmin ? pulseSystemSidebarNav : pulseTenantSidebarNav;
   let items =
-    !isSystemAdmin && session?.role === "worker"
+    !isSystemAdmin && sessionPrimaryRole(session) === "worker"
       ? rawNav.filter((i) => i.href !== "/monitoring")
       : [...rawNav];
   if (!isSystemAdmin && session) {
@@ -100,10 +101,10 @@ export function AppSideNav() {
       ) : null}
 
       <aside
-        className={`group/sidebar fixed left-3 top-1/2 z-[40] flex max-h-[min(85vh,52rem)] w-[4.25rem] -translate-y-1/2 flex-col overflow-hidden overflow-y-auto rounded-md border transition-[width,box-shadow] duration-200 ease-out lg:hover:w-[11rem] ${tenantShell} ${narrowExpanded ? tenantShellMobilePop : ""}`}
+        className={`group/sidebar fixed left-3 top-1/2 z-[40] flex max-h-[min(85vh,52rem)] w-[4.25rem] -translate-y-1/2 flex-col overflow-hidden overflow-y-auto rounded-md border transition-[width,box-shadow] duration-200 ease-out lg:hover:w-[11.5rem] ${tenantShell} ${narrowExpanded ? tenantShellMobilePop : ""}`}
         aria-label="App"
       >
-        <nav className="flex flex-col gap-0.5 px-1.5 py-2">
+        <nav className="flex flex-col gap-0.5 px-1 py-2">
           {items.map((item) => {
             const active = isPulseNavActive(item.href, pathname);
             const Icon = ICONS[item.icon];
@@ -114,7 +115,7 @@ export function AppSideNav() {
                 href={item.href}
                 title={item.label}
                 onClick={() => setNarrowExpanded(false)}
-                className={`relative flex min-h-[2.25rem] items-center gap-1.5 rounded-lg py-1 pl-1 pr-1.5 text-[11px] font-semibold leading-tight transition-[color,background-color,box-shadow] ${
+                className={`relative flex min-h-[2.375rem] items-center gap-2 rounded-lg py-1 pl-0.5 pr-1 text-xs font-semibold leading-tight transition-[color,background-color,box-shadow] ${
                   active
                     ? "bg-sky-50/95 text-[#1e4a8a] shadow-sm ring-2 ring-[#2B4C7E]/20 dark:bg-[#0F172A] dark:text-gray-100 dark:ring-[#1F2937]"
                     : "text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-gray-100"
@@ -130,8 +131,8 @@ export function AppSideNav() {
                   <Icon className="h-4 w-4" strokeWidth={2} aria-hidden />
                 </span>
                 <span
-                  className={`min-w-0 flex-1 overflow-hidden text-left transition-[max-width,opacity] duration-200 ease-out lg:max-w-0 lg:opacity-0 lg:group-hover/sidebar:max-w-[8.75rem] lg:group-hover/sidebar:opacity-100 ${
-                    narrowExpanded ? "max-w-[8.75rem] opacity-100" : "max-w-0 opacity-0"
+                  className={`min-w-0 flex-1 overflow-hidden text-left transition-[max-width,opacity] duration-200 ease-out lg:max-w-0 lg:opacity-0 lg:group-hover/sidebar:max-w-[9.25rem] lg:group-hover/sidebar:opacity-100 ${
+                    narrowExpanded ? "max-w-[9.25rem] opacity-100" : "max-w-0 opacity-0"
                   }`}
                 >
                   <span className="block truncate">{line1}</span>

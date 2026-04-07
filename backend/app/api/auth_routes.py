@@ -19,6 +19,7 @@ from app.core.permissions.service import PermissionService
 from app.core.system_audit import record_system_log
 from app.core.system_tokens import hash_system_token
 from app.limiter import limiter
+from app.core.user_roles import primary_jwt_role, user_has_any_role
 from app.models.domain import (
     Company,
     Invite,
@@ -58,11 +59,13 @@ def _token_for_user(
     is_impersonating: bool = False,
     impersonator_sub: str | None = None,
 ) -> Token:
+    prim = primary_jwt_role(user)
     token = create_access_token(
         subject=user.id,
         extra_claims={
             "company_id": user.company_id,
-            "role": user.role.value,
+            "role": prim.value,
+            "roles": list(user.roles),
             "is_impersonating": is_impersonating,
             "impersonator_sub": impersonator_sub,
         },
@@ -133,7 +136,7 @@ async def impersonate(
     target = q.scalar_one_or_none()
     if not target or not target.is_active:
         raise HTTPException(status_code=404, detail="User not found")
-    if target.role == UserRole.system_admin:
+    if user_has_any_role(target, UserRole.system_admin):
         raise HTTPException(status_code=400, detail="Cannot impersonate system_admin")
 
     await record_audit(
@@ -192,20 +195,22 @@ async def me(
     ob_enabled = user.onboarding_enabled
     ob_completed = user.onboarding_completed
     ob_seen = bool(user.onboarding_seen)
-    if user.company_id is None or user.role == UserRole.system_admin or user.is_system_admin:
+    if user.company_id is None or user_has_any_role(user, UserRole.system_admin) or user.is_system_admin:
         ob_enabled = False
         ob_completed = True
         ob_seen = True
 
+    prim = primary_jwt_role(user)
     return UserOut(
         id=user.id,
         email=user.email,
         company_id=user.company_id,
-        role=user.role.value,
+        role=prim.value,
+        roles=list(user.roles),
         full_name=user.full_name,
         enabled_features=feats,
         is_impersonating=is_imp,
-        is_system_admin=bool(user.is_system_admin or user.role == UserRole.system_admin),
+        is_system_admin=bool(user.is_system_admin or user_has_any_role(user, UserRole.system_admin)),
         company=company_summary,
         onboarding_enabled=ob_enabled,
         onboarding_completed=ob_completed,
@@ -235,7 +240,7 @@ async def exit_impersonation(
     admin = q.scalar_one_or_none()
     if not admin or not admin.is_active:
         raise HTTPException(status_code=401, detail="Impersonator no longer valid")
-    if not (admin.is_system_admin or admin.role == UserRole.system_admin):
+    if not (admin.is_system_admin or user_has_any_role(admin, UserRole.system_admin)):
         raise HTTPException(status_code=403, detail="Impersonator is not system admin")
 
     await record_audit(
@@ -283,12 +288,13 @@ async def accept_invite(
     if exists.scalar_one_or_none():
         raise HTTPException(status_code=409, detail="Email already registered")
 
+    invited = _invite_role(row.role)
     new_user = User(
         company_id=company.id,
         email=row.email or "",
         hashed_password=hash_password(body.password),
         full_name=body.full_name,
-        role=_invite_role(row.role),
+        roles=[invited.value],
         created_by=row.created_by_user_id,
     )
     db.add(new_user)

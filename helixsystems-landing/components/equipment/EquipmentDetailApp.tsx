@@ -7,6 +7,7 @@ import { EquipmentPartsPanel } from "@/components/equipment/EquipmentPartsPanel"
 import { Card } from "@/components/pulse/Card";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
+import { managerOrAbove } from "@/lib/pulse-roles";
 import {
   fetchEquipment,
   fetchEquipmentParts,
@@ -51,11 +52,6 @@ function woStatusBadge(status: string): string {
 }
 
 type Props = { equipmentId: string };
-
-function managerOrAbove(role: string | undefined, isSys: boolean | undefined): boolean {
-  if (isSys || role === "system_admin") return true;
-  return role === "manager" || role === "company_admin";
-}
 
 function MaintenanceHistorySection({
   equipmentId,
@@ -155,7 +151,7 @@ function MaintenanceHistorySection({
 
 export function EquipmentDetailApp({ equipmentId }: Props) {
   const { session } = usePulseAuth();
-  const canMutate = managerOrAbove(session?.role, session?.is_system_admin);
+  const canMutate = managerOrAbove(session);
 
   const [data, setData] = useState<FacilityEquipmentDetail | null>(null);
   const [loading, setLoading] = useState(true);

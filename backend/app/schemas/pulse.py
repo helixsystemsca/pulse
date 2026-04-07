@@ -135,6 +135,7 @@ class WorkerOut(BaseModel):
     email: str
     full_name: Optional[str]
     role: str
+    roles: list[str] = []
     certifications: list[str]
     notes: Optional[str]
     availability: dict[str, Any]

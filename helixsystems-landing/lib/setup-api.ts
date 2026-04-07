@@ -1,4 +1,4 @@
-/** Client helpers for `/api/v1` device hub + feature-config endpoints used by Zones & devices setup. */
+/** Client helpers for `/api/v1` device hub + feature-config endpoints used by Zones & Devices setup. */
 import { apiFetch } from "@/lib/api";
 
 export type GatewayOut = {

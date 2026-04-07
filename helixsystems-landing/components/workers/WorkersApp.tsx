@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Workers & roles: permission matrix, roster by role, profile drawer, create user, settings.
+ * Workers & Roles: permission matrix, roster by role, profile drawer, create user, settings.
  */
 import {
   Box,
@@ -19,6 +19,15 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { apiFetch } from "@/lib/api";
 import { readSession } from "@/lib/pulse-session";
 import { emitOnboardingMaybeUpdated } from "@/lib/onboarding-events";
+import {
+  humanizeRole,
+  isCreateRoleLimitedSession,
+  managerOrAbove,
+  principalHasAnyRole,
+  primaryWorkerGroupKey,
+  sessionHasAnyRole,
+  sortRolesForDisplay,
+} from "@/lib/pulse-roles";
 import type { WorkerDetail, WorkerRow, WorkersSettings } from "@/lib/workersService";
 import {
   createWorker,
@@ -79,10 +88,7 @@ const MATRIX_ITEMS = [
 const SETTINGS_TABS = ["Roles", "Shifts", "Skill categories", "Certification rules"] as const;
 type SettingsTab = (typeof SETTINGS_TABS)[number];
 
-function managerOrAbove(role: string | undefined, isSys: boolean | undefined): boolean {
-  if (isSys || role === "system_admin") return true;
-  return role === "manager" || role === "company_admin" || role === "supervisor";
-}
+const PROFILE_ROLE_OPTIONS = ["worker", "lead", "supervisor", "manager"] as const;
 
 function initials(name: string | null | undefined, email: string): string {
   if (name?.trim()) {
@@ -127,8 +133,9 @@ export function WorkersApp() {
   const session = readSession();
   const isSystemAdmin = Boolean(session?.is_system_admin || session?.role === "system_admin");
   const sessionCompanyId = session?.company_id ?? null;
-  const canManage = managerOrAbove(session?.role, session?.is_system_admin);
-  const createRoleLimited = session?.role === "manager" || session?.role === "supervisor";
+  const canManage = managerOrAbove(session);
+  const createRoleLimited = isCreateRoleLimitedSession(session);
+  const isCompanyAdmin = sessionHasAnyRole(session, "company_admin");
 
   const [companyPick, setCompanyPick] = useState<string | null>(null);
   const [companies, setCompanies] = useState<CompanyOption[]>([]);
@@ -151,6 +158,7 @@ export function WorkersApp() {
   const [noteDraft, setNoteDraft] = useState("");
   const [supervisorNoteDraft, setSupervisorNoteDraft] = useState("");
   const [profileBusy, setProfileBusy] = useState(false);
+  const [profileRolesDraft, setProfileRolesDraft] = useState<string[]>([]);
 
   const [menuFor, setMenuFor] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
@@ -233,12 +241,21 @@ export function WorkersApp() {
     else setProfile(null);
   }, [profileId, loadProfile]);
 
+  useEffect(() => {
+    if (!profile) {
+      setProfileRolesDraft([]);
+      return;
+    }
+    const base = profile.roles?.length ? [...profile.roles] : profile.role ? [profile.role] : ["worker"];
+    setProfileRolesDraft(sortRolesForDisplay([...new Set(base)]));
+  }, [profile]);
+
   const grouped = useMemo(() => {
     const order = ["company_admin", "manager", "supervisor", "lead", "worker"] as const;
     const m = new Map<string, WorkerRow[]>();
     for (const r of order) m.set(r, []);
     for (const w of list) {
-      const k = w.role as (typeof order)[number];
+      const k = primaryWorkerGroupKey(w);
       if (m.has(k)) m.get(k)!.push(w);
       else m.get("worker")!.push(w);
     }
@@ -249,7 +266,7 @@ export function WorkersApp() {
     () =>
       list.filter(
         (u) =>
-          (u.role === "supervisor" || u.role === "manager") &&
+          principalHasAnyRole(u, "supervisor", "manager") &&
           u.is_active &&
           (u.account_status ?? "active") === "active",
       ),
@@ -277,6 +294,32 @@ export function WorkersApp() {
         profile_notes: noteDraft || null,
         supervisor_notes: supervisorNoteDraft || null,
       });
+      await loadProfile();
+      await loadList();
+    } finally {
+      setProfileBusy(false);
+    }
+  }
+
+  function toggleProfileRole(key: string, on: boolean) {
+    setProfileRolesDraft((prev) => {
+      const set = new Set(prev);
+      if (on) set.add(key);
+      else set.delete(key);
+      const next = sortRolesForDisplay([...set]);
+      if (next.length < 1) return prev;
+      return next;
+    });
+  }
+
+  async function saveProfileRoles() {
+    if (!profileId || !profile || !isCompanyAdmin) return;
+    if (principalHasAnyRole(profile, "company_admin")) return;
+    const uniq = [...new Set(profileRolesDraft.map((r) => r.trim()).filter(Boolean))];
+    if (uniq.length < 1) return;
+    setProfileBusy(true);
+    try {
+      await patchWorker(apiCompany, profileId, { roles: uniq });
       await loadProfile();
       await loadList();
     } finally {
@@ -366,7 +409,7 @@ export function WorkersApp() {
 
   if (!canManage) {
     return (
-      <p className="text-sm text-pulse-muted">Workers & roles are available to managers and administrators.</p>
+      <p className="text-sm text-pulse-muted">Workers & Roles are available to managers and administrators.</p>
     );
   }
 
@@ -563,11 +606,18 @@ export function WorkersApp() {
                                   </div>
                                 </td>
                                 <td className="px-4 py-3">
-                                  <span
-                                    className={`inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-bold uppercase ${roleBadge(row.role)}`}
-                                  >
-                                    {row.role.replace(/_/g, " ")}
-                                  </span>
+                                  <div className="flex flex-wrap gap-1">
+                                    {sortRolesForDisplay(
+                                      row.roles?.length ? [...row.roles] : [row.role],
+                                    ).map((r) => (
+                                      <span
+                                        key={r}
+                                        className={`inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-bold uppercase ${roleBadge(r)}`}
+                                      >
+                                        {humanizeRole(r)}
+                                      </span>
+                                    ))}
+                                  </div>
                                 </td>
                                 <td className="px-4 py-3">
                                   <span className="inline-flex items-center gap-1.5 text-sm text-pulse-navy">
@@ -732,7 +782,10 @@ export function WorkersApp() {
               <option value="">—</option>
               {supervisors.map((s) => (
                 <option key={s.id} value={s.id}>
-                  {(s.full_name ?? s.email) + ` (${s.role.replace(/_/g, " ")})`}
+                  {(s.full_name ?? s.email) +
+                    ` (${sortRolesForDisplay(s.roles?.length ? s.roles : [s.role])
+                      .map((x) => humanizeRole(x))
+                      .join(", ")})`}
                 </option>
               ))}
             </select>
@@ -819,9 +872,18 @@ export function WorkersApp() {
             <section>
               <h3 className={LABEL}>Basic info</h3>
               <div className="mt-2 grid gap-2 text-sm sm:grid-cols-2">
-                <p>
-                  <span className="text-pulse-muted">Role: </span>
-                  <span className="font-medium capitalize text-pulse-navy">{profile.role.replace(/_/g, " ")}</span>
+                <p className="sm:col-span-2">
+                  <span className="text-pulse-muted">Roles: </span>
+                  <span className="ms-1 inline-flex flex-wrap gap-1 align-middle">
+                    {sortRolesForDisplay(profile.roles?.length ? profile.roles : [profile.role]).map((r) => (
+                      <span
+                        key={r}
+                        className={`inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-bold uppercase ${roleBadge(r)}`}
+                      >
+                        {humanizeRole(r)}
+                      </span>
+                    ))}
+                  </span>
                 </p>
                 <p>
                   <span className="text-pulse-muted">Status: </span>
@@ -841,6 +903,37 @@ export function WorkersApp() {
                 </p>
               </div>
             </section>
+
+            {isCompanyAdmin && !principalHasAnyRole(profile, "company_admin") ? (
+              <section>
+                <h3 className={LABEL}>Edit roles</h3>
+                <p className="mt-1 text-xs text-pulse-muted">
+                  Select every role this person should have for scheduling, supervision, and permissions. At least one
+                  role is required.
+                </p>
+                <div className="mt-3 space-y-2 rounded-lg border border-slate-100 bg-white p-3 dark:border-[#374151] dark:bg-[#0F172A]/80">
+                  {PROFILE_ROLE_OPTIONS.map((key) => (
+                    <label key={key} className="flex cursor-pointer items-center gap-2 text-sm text-pulse-navy">
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500/50"
+                        checked={profileRolesDraft.includes(key)}
+                        onChange={(e) => toggleProfileRole(key, e.target.checked)}
+                      />
+                      {humanizeRole(key)}
+                    </label>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  className="app-btn-secondary mt-3 px-4 py-2 text-sm font-semibold"
+                  disabled={profileBusy}
+                  onClick={() => void saveProfileRoles()}
+                >
+                  {profileBusy ? "Saving…" : "Save roles"}
+                </button>
+              </section>
+            ) : null}
 
             <section>
               <h3 className={LABEL}>Position &amp; shift</h3>

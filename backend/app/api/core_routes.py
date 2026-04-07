@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from app.api.deps import get_current_user
 from app.core.events.engine import event_engine
 from app.core.events.types import DomainEvent
+from app.core.user_roles import user_has_any_role
 from app.models.domain import User, UserRole
 from app.schemas.common import EventIngest
 
@@ -23,7 +24,7 @@ async def ingest_event(
     body: EventIngest,
     user: Annotated[User, Depends(get_current_user)],
 ) -> dict[str, Any]:
-    if user.role == UserRole.system_admin or user.company_id is None:
+    if user_has_any_role(user, UserRole.system_admin) or user.company_id is None:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Ingest requires a company-scoped user",

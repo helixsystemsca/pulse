@@ -6,6 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.permissions import keys
+from app.core.user_roles import user_has_any_role
 from app.models.domain import RolePermission, RolePermissionTarget, User, UserRole
 
 
@@ -14,13 +15,13 @@ class PermissionService:
         self._db = db
 
     async def effective_allow_set(self, user: User) -> set[str]:
-        if user.role in (UserRole.system_admin, UserRole.company_admin):
+        if user_has_any_role(user, UserRole.system_admin, UserRole.company_admin) or user.is_system_admin:
             return {"*"}
         if user.company_id is None:
             return set()
         target = (
             RolePermissionTarget.manager
-            if user.role in (UserRole.manager, UserRole.supervisor)
+            if user_has_any_role(user, UserRole.manager, UserRole.supervisor)
             else RolePermissionTarget.worker
         )
         q = await self._db.execute(
@@ -35,7 +36,7 @@ class PermissionService:
         if not allow:
             allow = set(
                 keys.DEFAULT_MANAGER_ALLOWS
-                if user.role in (UserRole.manager, UserRole.supervisor)
+                if user_has_any_role(user, UserRole.manager, UserRole.supervisor)
                 else keys.DEFAULT_WORKER_ALLOWS
             )
         deny = set(user.permission_deny or [])

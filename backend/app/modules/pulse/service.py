@@ -8,9 +8,11 @@ from pathlib import Path
 from typing import Any, Optional
 
 from sqlalchemy import and_, func, or_, select
+from sqlalchemy.dialects.postgresql import array as pg_array
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
+from app.core.user_roles import user_has_any_role
 from app.models.domain import EquipmentPart, InventoryItem, Tool, ToolStatus, User, UserRole, Zone
 from app.models.pulse_models import (
     PulseBeaconEquipment,
@@ -158,7 +160,8 @@ async def validate_shift_assignment(
     ):
         errors.append("This worker already has a shift that overlaps this interval.")
 
-    if requires_supervisor and user.role not in (
+    if requires_supervisor and not user_has_any_role(
+        user,
         UserRole.manager,
         UserRole.company_admin,
         UserRole.supervisor,
@@ -192,7 +195,14 @@ async def dashboard_aggregate(db: AsyncSession, company_id: str) -> dict[str, An
         .where(
             User.company_id == company_id,
             User.is_active.is_(True),
-            User.role.in_((UserRole.worker, UserRole.lead, UserRole.supervisor, UserRole.manager)),
+            User.roles.overlap(
+                pg_array(
+                    UserRole.worker.value,
+                    UserRole.lead.value,
+                    UserRole.supervisor.value,
+                    UserRole.manager.value,
+                )
+            ),
         )
     )
     active_workers = int(active_workers_q.scalar_one() or 0)

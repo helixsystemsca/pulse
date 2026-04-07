@@ -52,7 +52,7 @@ async def _main() -> None:
         u = q.scalar_one_or_none()
         if u:
             u.hashed_password = hash_password(pwd)
-            u.role = UserRole.system_admin
+            u.roles = [UserRole.system_admin.value]
             u.company_id = None
             u.is_system_admin = True
             u.is_active = True
@@ -63,7 +63,7 @@ async def _main() -> None:
                     email=email,
                     hashed_password=hash_password(pwd),
                     full_name="System Admin",
-                    role=UserRole.system_admin,
+                    roles=[UserRole.system_admin.value],
                     company_id=None,
                     is_system_admin=True,
                     is_active=True,

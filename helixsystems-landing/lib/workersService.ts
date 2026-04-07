@@ -6,6 +6,7 @@ export type WorkerRow = {
   email: string;
   full_name: string | null;
   role: string;
+  roles?: string[];
   is_active: boolean;
   account_status?: string;
   phone: string | null;
@@ -42,6 +43,7 @@ export type WorkerDetail = {
   email: string;
   full_name: string | null;
   role: string;
+  roles?: string[];
   is_active: boolean;
   account_status?: string;
   phone: string | null;

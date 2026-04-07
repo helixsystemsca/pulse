@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user, get_db
+from app.core.user_roles import user_has_any_role
 from app.models.domain import User, UserRole
 from app.schemas.automation_engine import AutomationEventAccepted, AutomationEventIn
 from app.services.automation.ingest_pipeline import ingest_automation_event
@@ -16,7 +17,7 @@ router = APIRouter(prefix="/events", tags=["automation-events"])
 
 
 def _resolve_company_id(user: User, body_company: Optional[str]) -> str:
-    if user.role == UserRole.system_admin:
+    if user_has_any_role(user, UserRole.system_admin):
         if not body_company:
             raise HTTPException(
                 status_code=400,

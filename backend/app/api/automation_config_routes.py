@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_db, require_manager_or_above
+from app.core.user_roles import user_has_any_role
 from app.models.domain import User, UserRole
 from app.schemas.automation_config import FeatureConfigPatchIn, FeatureConfigsOut
 from app.services.automation.config_service import list_merged_all_configs, upsert_patch_feature_config
@@ -19,7 +20,7 @@ async def resolve_feature_config_company_id(
     user: Annotated[User, Depends(require_manager_or_above)],
     company_id: Optional[str] = Query(None, description="Required for system administrators"),
 ) -> str:
-    if user.role == UserRole.system_admin or user.is_system_admin:
+    if user_has_any_role(user, UserRole.system_admin) or user.is_system_admin:
         if not company_id:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,

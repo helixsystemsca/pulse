@@ -34,6 +34,7 @@ import {
   patchEquipment,
 } from "@/lib/equipmentService";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
+import { managerOrAbove } from "@/lib/pulse-roles";
 
 type ZoneOpt = { id: string; name: string };
 
@@ -54,11 +55,6 @@ const STATUS_OPTS = [
 
 type Tab = "overview" | "list" | "form";
 type FormMode = "create" | "edit" | "view";
-
-function managerOrAbove(role: string | undefined, isSys: boolean | undefined): boolean {
-  if (isSys || role === "system_admin") return true;
-  return role === "manager" || role === "company_admin";
-}
 
 function formatDate(iso: string | null | undefined): string {
   if (!iso) return "—";
@@ -81,7 +77,7 @@ function statusBadge(status: string): string {
 export function EquipmentApp() {
   const router = useRouter();
   const { session } = usePulseAuth();
-  const canMutate = managerOrAbove(session?.role, session?.is_system_admin);
+  const canMutate = managerOrAbove(session);
 
   const [tab, setTab] = useState<Tab>("overview");
   const [formMode, setFormMode] = useState<FormMode>("create");

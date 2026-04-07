@@ -1,6 +1,6 @@
 from typing import Optional
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, model_validator
 
 
 class CompanyUserCreate(BaseModel):
@@ -10,7 +10,16 @@ class CompanyUserCreate(BaseModel):
 
 
 class AssignRoleBody(BaseModel):
-    role: str = Field(..., pattern="^(manager|worker|lead|supervisor)$")
+    role: Optional[str] = Field(None, pattern="^(manager|worker|lead|supervisor)$")
+    roles: Optional[list[str]] = None
+
+    @model_validator(mode="after")
+    def _require_one(self) -> "AssignRoleBody":
+        if self.roles is not None and len(self.roles) > 0:
+            return self
+        if self.role is not None:
+            return self
+        raise ValueError("Provide role (single) or roles (list)")
 
 
 class RolePermissionsPut(BaseModel):

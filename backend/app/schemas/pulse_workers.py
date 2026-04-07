@@ -63,6 +63,7 @@ class WorkerRowOut(BaseModel):
     email: str
     full_name: Optional[str] = None
     role: str
+    roles: list[str] = []
     is_active: bool
     account_status: str = "active"
     phone: Optional[str] = None
@@ -80,6 +81,7 @@ class WorkerDetailOut(BaseModel):
     email: str
     full_name: Optional[str] = None
     role: str
+    roles: list[str] = []
     is_active: bool
     account_status: str = "active"
     phone: Optional[str] = None
@@ -120,6 +122,7 @@ class WorkerPatchIn(BaseModel):
     full_name: Optional[str] = Field(None, max_length=255)
     is_active: Optional[bool] = None
     role: Optional[str] = None
+    roles: Optional[list[str]] = None
     phone: Optional[str] = Field(None, max_length=64)
     department: Optional[str] = Field(None, max_length=128)
     job_title: Optional[str] = Field(None, max_length=255)

@@ -34,6 +34,8 @@ export type PulseAuthSession = {
   sub: string;
   email: string;
   role?: string;
+  /** All assigned roles (tenant); `role` remains highest-precedence for legacy checks. */
+  roles?: string[];
   company_id?: string | null;
   full_name?: string | null;
   is_system_admin?: boolean;
@@ -57,6 +59,7 @@ export type UserOut = {
   email: string;
   company_id?: string | null;
   role: string;
+  roles?: string[];
   full_name?: string | null;
   enabled_features?: string[];
   is_impersonating?: boolean;
@@ -164,6 +167,7 @@ export function writeApiSession(
     sub: user.id,
     email: user.email,
     role: user.role,
+    roles: user.roles?.length ? user.roles : user.role ? [user.role] : undefined,
     company_id: user.company_id ?? null,
     full_name: user.full_name ?? null,
     is_system_admin: user.is_system_admin,

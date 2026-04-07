@@ -12,6 +12,7 @@ import { usePulseAuth } from "@/hooks/usePulseAuth";
 import { navigateToPulseLogin, pulseApp, pulseRoutes } from "@/lib/pulse-app";
 import { clearSession } from "@/lib/pulse-session";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
+import { sessionHasAnyRole } from "@/lib/pulse-roles";
 
 function initialsFrom(email: string, fullName: string | null | undefined): string {
   if (fullName?.trim()) {
@@ -130,7 +131,7 @@ export function AppNavbar() {
                     <User className="h-4 w-4 text-gray-500 dark:text-gray-400" strokeWidth={2} aria-hidden />
                     Profile
                   </Link>
-                  {session?.role === "company_admin" ? (
+                  {session && sessionHasAnyRole(session, "company_admin") ? (
                     <Link
                       href={pulseApp.to("/dashboard/organization")}
                       className="flex items-center gap-2 px-3 py-2 text-sm text-gray-900 hover:bg-gray-50 dark:text-gray-100 dark:hover:bg-[#0F172A]"

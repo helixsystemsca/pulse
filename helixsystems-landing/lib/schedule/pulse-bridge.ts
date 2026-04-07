@@ -3,6 +3,7 @@
  */
 
 import { formatLocalDate } from "@/lib/schedule/calendar";
+import { sessionPrimaryRole } from "@/lib/pulse-roles";
 import type { Shift, ShiftTypeKey, Worker, Zone } from "@/lib/schedule/types";
 
 export type PulseShiftApi = {
@@ -28,7 +29,9 @@ export type PulseWorkerApi = {
   id: string;
   email: string;
   full_name: string | null;
+  /** Primary role for JWT/display; use `roles` when present for multi-role. */
   role: string;
+  roles?: string[];
 };
 
 export type PulseZoneApi = { id: string; name: string };
@@ -46,7 +49,7 @@ export function pulseWorkersToSchedule(workers: PulseWorkerApi[]): Worker[] {
   return workers.map((w) => ({
     id: w.id,
     name: (w.full_name || w.email || "User").trim(),
-    role: w.role || "worker",
+    role: sessionPrimaryRole({ roles: w.roles, role: w.role }) || "worker",
     active: true,
   }));
 }

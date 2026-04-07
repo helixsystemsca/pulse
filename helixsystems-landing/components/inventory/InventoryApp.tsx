@@ -41,6 +41,7 @@ import {
   postInventoryMove,
   postInventoryUse,
 } from "@/lib/inventoryService";
+import { managerOrAbove } from "@/lib/pulse-roles";
 import { readSession } from "@/lib/pulse-session";
 import { fetchWorkRequestList } from "@/lib/workRequestsService";
 
@@ -84,11 +85,6 @@ const SETTINGS_TABS = [
   "Alerts",
 ] as const;
 type SettingsTab = (typeof SETTINGS_TABS)[number];
-
-function managerOrAbove(role: string | undefined, isSys: boolean | undefined): boolean {
-  if (isSys || role === "system_admin") return true;
-  return role === "manager" || role === "company_admin";
-}
 
 function initials(name: string | null | undefined, email: string | null | undefined): string {
   if (name?.trim()) {
@@ -152,7 +148,7 @@ export function InventoryApp() {
   const session = readSession();
   const isSystemAdmin = Boolean(session?.is_system_admin || session?.role === "system_admin");
   const sessionCompanyId = session?.company_id ?? null;
-  const canManage = managerOrAbove(session?.role, session?.is_system_admin);
+  const canManage = managerOrAbove(session);
 
   const [companyPick, setCompanyPick] = useState<string | null>(null);
   const [companies, setCompanies] = useState<CompanyOption[]>([]);

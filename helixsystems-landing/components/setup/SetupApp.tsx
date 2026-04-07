@@ -579,7 +579,7 @@ export function SetupApp() {
     return (
       <div className="mx-auto max-w-3xl space-y-6">
         <PageHeader
-          title="Zones & devices"
+          title="Zones & Devices"
           description="Select a company to manage gateways, tags, and zones."
           icon={MapPin}
         />
@@ -605,7 +605,7 @@ export function SetupApp() {
   return (
     <div className="space-y-8">
       <PageHeader
-        title="Zones & devices"
+        title="Zones & Devices"
         description="Guided setup — gateways (ESP32), BLE tags, zones, and tracking health. Assign worker tags here; link equipment tags in Inventory. Tune automation without a rule builder."
         icon={MapPin}
       />

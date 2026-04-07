@@ -14,9 +14,16 @@ from uuid import uuid4
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
 from sqlalchemy import delete, func, or_, select
+from sqlalchemy.dialects.postgresql import array as pg_array
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user, get_db, require_manager_or_above
+from app.core.user_roles import (
+    primary_jwt_role,
+    user_has_any_role,
+    user_roles_subset_of,
+    validate_tenant_roles_non_empty,
+)
 from app.core.config import get_settings
 from app.core.email_smtp import send_employee_invite
 from app.core.system_tokens import generate_raw_token, hash_system_token
@@ -101,7 +108,7 @@ async def resolve_workers_company_id(
     user: Annotated[User, Depends(get_current_user)],
     company_id: Optional[str] = Query(None, description="Required for system administrators"),
 ) -> str:
-    if user.role == UserRole.system_admin or user.is_system_admin:
+    if user_has_any_role(user, UserRole.system_admin) or user.is_system_admin:
         if not company_id:
             raise HTTPException(status_code=400, detail="company_id is required for system administrators")
         return company_id
@@ -143,7 +150,7 @@ async def _assert_valid_supervisor(db: AsyncSession, cid: str, supervisor_id: Op
         raise HTTPException(status_code=400, detail="Unknown supervisor")
     if u.account_status != UserAccountStatus.active or not u.is_active:
         raise HTTPException(status_code=400, detail="Supervisor must be an active user")
-    if u.role not in (UserRole.supervisor, UserRole.manager):
+    if not user_has_any_role(u, UserRole.supervisor, UserRole.manager):
         raise HTTPException(status_code=400, detail="Supervisor must have role supervisor or manager")
 
 
@@ -157,7 +164,7 @@ async def _users_by_company(db: AsyncSession, cid: str) -> dict[str, User]:
     q = await db.execute(
         select(User).where(
             User.company_id == cid,
-            User.role.in_(_ROSTER_ROLES),
+            User.roles.overlap(pg_array(*[r.value for r in _ROSTER_ROLES])),
         )
     )
     return {u.id: u for u in q.scalars().all()}
@@ -325,12 +332,12 @@ async def _sync_training(db: AsyncSession, cid: str, user_id: str, items: list[A
 
 
 def _patch_actor_can_touch_target(actor: User, target: User) -> None:
-    if actor.role == UserRole.system_admin or actor.is_system_admin:
+    if user_has_any_role(actor, UserRole.system_admin) or actor.is_system_admin:
         return
-    if actor.role == UserRole.company_admin:
+    if user_has_any_role(actor, UserRole.company_admin):
         return
-    if actor.role in (UserRole.manager, UserRole.supervisor):
-        if target.role not in (UserRole.worker, UserRole.lead):
+    if user_has_any_role(actor, UserRole.manager, UserRole.supervisor):
+        if not user_roles_subset_of(target, (UserRole.worker, UserRole.lead)):
             raise HTTPException(status_code=403, detail="Managers and supervisors may only edit workers or leads")
         return
     raise HTTPException(status_code=403, detail="Not allowed")
@@ -413,7 +420,8 @@ async def _build_detail(db: AsyncSession, cid: str, u: User, users_map: dict[str
         company_id=str(u.company_id) if u.company_id else cid,
         email=u.email,
         full_name=u.full_name,
-        role=u.role.value,
+        role=primary_jwt_role(u).value,
+        roles=list(u.roles),
         is_active=u.is_active,
         account_status=u.account_status.value,
         phone=hr.phone if hr else None,
@@ -479,9 +487,10 @@ async def list_workers(
     q: Optional[str] = Query(None),
     include_inactive: bool = Query(True),
 ) -> WorkerListOut:
+    roster_vals = [r.value for r in _ROSTER_ROLES]
     stmt = select(User).where(
         User.company_id == cid,
-        User.role.in_(_ROSTER_ROLES),
+        User.roles.overlap(pg_array(*roster_vals)),
     )
     if not include_inactive:
         stmt = stmt.where(User.is_active.is_(True))
@@ -490,7 +499,11 @@ async def list_workers(
         stmt = stmt.where(or_(User.email.ilike(like), User.full_name.ilike(like)))
     users = list((await db.execute(stmt)).scalars().all())
     rank = {"company_admin": 0, "manager": 1, "supervisor": 2, "lead": 3, "worker": 4}
-    users.sort(key=lambda u: (rank.get(u.role.value, 9), (u.full_name or u.email or "").lower()))
+
+    def _list_rank(u: User) -> int:
+        return min((rank.get(r, 9) for r in u.roles), default=9)
+
+    users.sort(key=lambda u: (_list_rank(u), (u.full_name or u.email or "").lower()))
     hr_map: dict[str, PulseWorkerHR] = {}
     if users:
         hid = [u.id for u in users]
@@ -505,7 +518,8 @@ async def list_workers(
                 id=u.id,
                 email=u.email,
                 full_name=u.full_name,
-                role=u.role.value,
+                role=primary_jwt_role(u).value,
+                roles=list(u.roles),
                 is_active=u.is_active,
                 account_status=u.account_status.value,
                 phone=h.phone if h else None,
@@ -535,7 +549,8 @@ async def worker_work_summary(db: Db, _: MgrUser, cid: CompanyId, user_id: str) 
 @router.get("/{user_id}", response_model=WorkerDetailOut)
 async def get_worker(db: Db, _: MgrUser, cid: CompanyId, user_id: str) -> WorkerDetailOut:
     u = await pulse_svc._user_in_company(db, cid, user_id)
-    if not u or u.role not in _ROSTER_ROLES:
+    roster_set = {r.value for r in _ROSTER_ROLES}
+    if not u or not set(u.roles) & roster_set:
         raise HTTPException(status_code=404, detail="User not found")
     users_map = await _users_by_company(db, cid)
     return await _build_detail(db, cid, u, users_map)
@@ -595,20 +610,20 @@ async def create_worker(
     body: WorkerCreateIn,
     background_tasks: BackgroundTasks,
 ) -> WorkerCreateResultOut:
-    if actor.role == UserRole.system_admin or actor.is_system_admin:
+    if user_has_any_role(actor, UserRole.system_admin) or actor.is_system_admin:
         pass
-    elif actor.role == UserRole.manager:
-        if body.role not in _manager_creatable_roles():
-            raise HTTPException(status_code=403, detail="Managers may only invite workers or leads")
-    elif actor.role == UserRole.supervisor:
-        if body.role not in _manager_creatable_roles():
-            raise HTTPException(status_code=403, detail="Supervisors may only invite workers or leads")
-    elif actor.role == UserRole.company_admin:
+    elif user_has_any_role(actor, UserRole.company_admin):
         if body.role not in _company_admin_creatable_roles():
             raise HTTPException(
                 status_code=403,
                 detail="company_admin may only invite workers, leads, supervisors, or managers",
             )
+    elif user_has_any_role(actor, UserRole.manager):
+        if body.role not in _manager_creatable_roles():
+            raise HTTPException(status_code=403, detail="Managers may only invite workers or leads")
+    elif user_has_any_role(actor, UserRole.supervisor):
+        if body.role not in _manager_creatable_roles():
+            raise HTTPException(status_code=403, detail="Supervisors may only invite workers or leads")
     else:
         raise HTTPException(status_code=403, detail="Not allowed to create users")
 
@@ -630,7 +645,7 @@ async def create_worker(
         if existing.account_status == UserAccountStatus.active:
             raise HTTPException(status_code=400, detail="Email already in use")
         user = existing
-        user.role = role_enum
+        user.roles = [role_enum.value]
         user.full_name = body.full_name
         user.account_status = UserAccountStatus.invited
         user.hashed_password = None
@@ -644,7 +659,7 @@ async def create_worker(
             email=email_norm,
             hashed_password=None,
             full_name=body.full_name,
-            role=role_enum,
+            roles=[role_enum.value],
             created_by=actor.id,
             account_status=UserAccountStatus.invited,
             invite_token_hash=token_hash,
@@ -702,7 +717,8 @@ async def resend_worker_invite(
     background_tasks: BackgroundTasks,
 ) -> dict[str, Any]:
     target = await pulse_svc._user_in_company(db, cid, user_id)
-    if not target or target.role not in _ROSTER_ROLES:
+    rsr = {r.value for r in _ROSTER_ROLES}
+    if not target or not set(target.roles) & rsr:
         raise HTTPException(status_code=404, detail="User not found")
     _patch_actor_can_touch_target(actor, target)
     if target.account_status != UserAccountStatus.invited:
@@ -747,36 +763,49 @@ async def patch_worker(
     body: WorkerPatchIn,
 ) -> WorkerDetailOut:
     target = await pulse_svc._user_in_company(db, cid, user_id)
-    if not target or target.role not in _ROSTER_ROLES:
+    rset2 = {r.value for r in _ROSTER_ROLES}
+    if not target or not set(target.roles) & rset2:
         raise HTTPException(status_code=404, detail="User not found")
 
     _patch_actor_can_touch_target(actor, target)
 
-    if actor.role == UserRole.manager and user_id != actor.id:
+    if user_has_any_role(actor, UserRole.manager) and user_id != actor.id:
         pass
 
-    if target.role == UserRole.company_admin and actor.id != target.id:
-        if body.role is not None or body.is_active is not None:
+    if user_has_any_role(target, UserRole.company_admin) and actor.id != target.id:
+        if body.role is not None or body.roles is not None or body.is_active is not None:
             raise HTTPException(status_code=403, detail="Cannot change another company admin role or status here")
 
     data = body.model_dump(exclude_unset=True)
 
-    if "role" in data and data["role"]:
-        if actor.role != UserRole.company_admin:
+    if body.roles is not None:
+        if not user_has_any_role(actor, UserRole.company_admin):
+            raise HTTPException(status_code=403, detail="Only company_admin can change roles")
+        if user_has_any_role(target, UserRole.company_admin):
+            raise HTTPException(status_code=400, detail="Cannot reassign company_admin role here")
+        try:
+            new_roles = validate_tenant_roles_non_empty([str(x) for x in body.roles])
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e)) from e
+        if UserRole.company_admin.value in new_roles:
+            raise HTTPException(status_code=400, detail="Cannot promote to company_admin via this endpoint")
+        target.roles = new_roles
+    elif "role" in data and data["role"]:
+        if not user_has_any_role(actor, UserRole.company_admin):
             raise HTTPException(status_code=403, detail="Only company_admin can change roles")
         new_r = UserRole(data["role"])
-        if target.role == UserRole.company_admin:
+        if user_has_any_role(target, UserRole.company_admin):
             raise HTTPException(status_code=400, detail="Cannot reassign company_admin role here")
         if new_r == UserRole.company_admin:
             raise HTTPException(status_code=400, detail="Cannot promote to company_admin via this endpoint")
         if new_r not in (UserRole.manager, UserRole.supervisor, UserRole.lead, UserRole.worker):
             raise HTTPException(status_code=400, detail="Invalid role")
-        target.role = new_r
+        target.roles = [new_r.value]
 
     if "is_active" in data and data["is_active"] is not None:
-        if actor.role in (UserRole.manager, UserRole.supervisor) and target.role not in (
-            UserRole.worker,
-            UserRole.lead,
+        if user_has_any_role(actor, UserRole.manager, UserRole.supervisor) and not user_roles_subset_of(
+            target,
+            (UserRole.worker, UserRole.lead),
         ):
             raise HTTPException(status_code=403, detail="Not allowed")
         target.is_active = bool(data["is_active"])

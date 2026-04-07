@@ -12,6 +12,7 @@ class TokenPayload(BaseModel):
     sub: str
     company_id: Optional[str] = None
     role: str
+    roles: Optional[list[str]] = None
     is_impersonating: bool = False
     impersonator_sub: Optional[str] = None
 
@@ -33,6 +34,7 @@ class UserOut(BaseModel):
     email: str
     company_id: Optional[str] = None
     role: str
+    roles: list[str] = []
     full_name: Optional[str]
     enabled_features: list[str] = []
     is_impersonating: bool = False

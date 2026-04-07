@@ -147,7 +147,7 @@ async def seeded_tenant(db_session: AsyncSession) -> TenantSeed:
         email=worker_email,
         hashed_password=hash_password(password),
         full_name="Pytest Worker",
-        role=UserRole.worker,
+        roles=[UserRole.worker.value],
         is_active=True,
         is_system_admin=False,
     )
@@ -157,7 +157,7 @@ async def seeded_tenant(db_session: AsyncSession) -> TenantSeed:
         email=manager_email,
         hashed_password=hash_password(password),
         full_name="Pytest Manager",
-        role=UserRole.manager,
+        roles=[UserRole.manager.value],
         is_active=True,
         is_system_admin=False,
     )

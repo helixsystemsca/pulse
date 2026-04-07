@@ -15,15 +15,15 @@ export const SYSTEM_ADMIN_FEATURE_ORDER = [
 ] as const;
 
 export const SYSTEM_ADMIN_FEATURE_LABELS: Record<string, string> = {
-  compliance: "Inspections & logs",
+  compliance: "Inspections & Logs",
   schedule: "Schedule",
   monitoring: "Monitoring",
   projects: "Projects",
   work_orders: "Maintenance",
-  workers: "Workers & roles",
+  workers: "Workers & Roles",
   inventory: "Inventory",
-  equipment: "Equipment & tracking",
-  floor_plan: "Floor plans",
+  equipment: "Equipment & Tracking",
+  floor_plan: "Floor Plans",
 };
 
 export function systemAdminFeatureLabel(key: string): string {

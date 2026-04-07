@@ -6,6 +6,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends
 from sqlalchemy import func, select
+from sqlalchemy.dialects.postgresql import array as pg_array
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_company_user, get_db
@@ -39,7 +40,7 @@ async def get_setup_progress(db: Db, user: Annotated[User, Depends(get_current_c
             .select_from(User)
             .where(
                 User.company_id == cid,
-                User.role == UserRole.worker,
+                User.roles.overlap(pg_array(UserRole.worker.value)),
                 User.is_active.is_(True),
             )
         )

@@ -42,7 +42,7 @@ export const pulseTenantNav = [
   { href: "/dashboard/maintenance/work-orders", label: "Maintenance" },
   { href: "/dashboard/inventory", label: "Inventory" },
   { href: "/equipment", label: "Equipment" },
-  { href: "/dashboard/setup", label: "Zones & devices" },
+  { href: "/dashboard/setup", label: "Zones & Devices" },
 ] as const;
 
 /** System administration shell — center nav on `/system/*`. */
@@ -50,7 +50,7 @@ export const pulseSystemNav = [
   { href: "/system", label: "Overview" },
   { href: "/system/companies", label: "Companies" },
   { href: "/system/users", label: "Users" },
-  { href: "/system/logs", label: "System logs" },
+  { href: "/system/logs", label: "System Logs" },
 ] as const;
 
 /**
@@ -64,11 +64,11 @@ export const pulseTenantSidebarNav = [
   { href: "/monitoring", label: "Monitoring", icon: "activity" as const },
   { href: "/projects", label: "Projects", icon: "folder-kanban" as const },
   { href: "/dashboard/maintenance/work-orders", label: "Maintenance", icon: "clipboard" as const },
-  { href: "/dashboard/workers", label: "Workers & roles", icon: "user-cog" as const },
+  { href: "/dashboard/workers", label: "Workers & Roles", icon: "user-cog" as const },
   { href: "/dashboard/inventory", label: "Inventory", icon: "package" as const },
   { href: "/equipment", label: "Equipment", icon: "wrench" as const },
-  { href: "/zones-devices/zones", label: "Floor plans", icon: "layers" as const },
-  { href: "/dashboard/setup", label: "Zones & devices", icon: "map-pin" as const },
+  { href: "/zones-devices/zones", label: "Floor Plans", icon: "layers" as const },
+  { href: "/dashboard/setup", label: "Zones & Devices", icon: "map-pin" as const },
 ] as const;
 
 /** System admin rail — platform tooling only; product modules live on the tenant rail. */
@@ -76,7 +76,7 @@ export const pulseSystemSidebarNav = [
   { href: "/system", label: "Dashboard", icon: "layout" as const },
   { href: "/system/companies", label: "Companies", icon: "building" as const },
   { href: "/system/users", label: "Users", icon: "user-cog" as const },
-  { href: "/system/logs", label: "System logs", icon: "scroll-text" as const },
+  { href: "/system/logs", label: "System Logs", icon: "scroll-text" as const },
 ] as const;
 
 export type PulseSidebarIcon =

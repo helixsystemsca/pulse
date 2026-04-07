@@ -1,0 +1,118 @@
+"""Multi-role helpers for tenant users (`users.roles` PostgreSQL array)."""
+
+from __future__ import annotations
+
+from typing import Iterable, Sequence
+
+from app.models.domain import User, UserRole
+
+# Highest precedence first (used for JWT `role` claim and primary display).
+_ROLE_PRECEDENCE: tuple[UserRole, ...] = (
+    UserRole.system_admin,
+    UserRole.company_admin,
+    UserRole.manager,
+    UserRole.supervisor,
+    UserRole.lead,
+    UserRole.worker,
+)
+
+_PRECEDENCE_INDEX = {r: i for i, r in enumerate(_ROLE_PRECEDENCE)}
+
+# Tenant roles that may appear together on one user (system_admin is separate / platform).
+TENANT_ROLE_VALUES: frozenset[str] = frozenset(
+    {
+        UserRole.company_admin.value,
+        UserRole.manager.value,
+        UserRole.supervisor.value,
+        UserRole.lead.value,
+        UserRole.worker.value,
+    }
+)
+
+def normalize_role_strings(raw: Sequence[str]) -> list[str]:
+    """Trim, validate against UserRole, dedupe while preserving precedence order."""
+    seen: set[str] = set()
+    out: list[str] = []
+    for s in raw:
+        v = str(s).strip()
+        if not v or v in seen:
+            continue
+        UserRole(v)  # validate
+        seen.add(v)
+        out.append(v)
+    return out
+
+
+def validate_tenant_roles_non_empty(roles: list[str]) -> list[str]:
+    r = normalize_role_strings(roles)
+    if not r:
+        raise ValueError("roles must include at least one role")
+    extra = set(r) - TENANT_ROLE_VALUES
+    if extra:
+        raise ValueError(f"invalid tenant role(s): {', '.join(sorted(extra))}")
+    return r
+
+
+def user_roles_enum(user: User) -> list[UserRole]:
+    return [UserRole(r) for r in user.roles]
+
+
+def user_has_any_role(user: User, *roles: UserRole) -> bool:
+    want = {r.value for r in roles}
+    return bool(want.intersection(user.roles))
+
+
+def user_roles_subset_of(user: User, allowed: Iterable[UserRole]) -> bool:
+    allow = {r.value for r in allowed}
+    return set(user.roles).issubset(allow)
+
+
+def primary_jwt_role(user: User) -> UserRole:
+    """Single claim for backward-compatible JWT + sorting."""
+    best: UserRole | None = None
+    best_i = 10**9
+    for r in user_roles_enum(user):
+        i = _PRECEDENCE_INDEX.get(r, 999)
+        if i < best_i:
+            best_i = i
+            best = r
+    return best if best is not None else UserRole.worker
+
+
+def roles_match_token(db_roles: list[str], token_roles: list[str] | None, token_primary: str) -> bool:
+    """Validate JWT against DB (sorted compare). Legacy tokens carry only `role`."""
+    left = sorted(str(r) for r in db_roles)
+    if token_roles is None:
+        right = sorted([token_primary])
+    else:
+        right = sorted(str(r) for r in token_roles)
+    return left == right
+
+
+# Alias for readability
+def user_roles_values(user: User) -> list[str]:
+    return list(user.roles)
+
+
+def is_elevated_tenant_staff(user: User) -> bool:
+    """Managers, supervisors, company admins, and platform/system admins."""
+    if user.is_system_admin:
+        return True
+    return user_has_any_role(
+        user,
+        UserRole.system_admin,
+        UserRole.company_admin,
+        UserRole.manager,
+        UserRole.supervisor,
+    )
+
+
+def is_field_worker_like(user: User) -> bool:
+    """
+    Workers/leads without manager+ privileges (worker+manager uses manager workflows,
+    not field-worker-only restrictions).
+    """
+    if not user_has_any_role(user, UserRole.worker, UserRole.lead):
+        return False
+    return not is_elevated_tenant_staff(user)
+

@@ -9,6 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user, get_db
+from app.core.user_roles import is_elevated_tenant_staff, user_has_any_role
 from app.models.automation_engine import AutomationNotification
 from app.models.domain import User, UserRole
 from app.schemas.api_common import ApiSuccess
@@ -25,7 +26,7 @@ async def acknowledge_automation_notification(
     db: Db,
     user: Annotated[User, Depends(get_current_user)],
 ) -> ApiSuccess[dict]:
-    if user.role == UserRole.system_admin:
+    if user_has_any_role(user, UserRole.system_admin) or user.is_system_admin:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Company user JWT required for notification acknowledgement",
@@ -43,7 +44,7 @@ async def acknowledge_automation_notification(
     row = q.scalar_one_or_none()
     if row is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="notification not found")
-    if user.role == UserRole.worker and str(row.user_id) != str(user.id):
+    if not is_elevated_tenant_staff(user) and str(row.user_id) != str(user.id):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not your notification")
 
     result = await acknowledge_notification(

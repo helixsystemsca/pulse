@@ -4,6 +4,7 @@ from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func, select
+from sqlalchemy.dialects.postgresql import array as pg_array
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import require_company_admin_scoped
@@ -26,7 +27,12 @@ async def overview(
     tools_c = await db.scalar(select(func.count()).select_from(Tool).where(Tool.company_id == cid))
     inv_c = await db.scalar(select(func.count()).select_from(InventoryItem).where(InventoryItem.company_id == cid))
     workers_c = await db.scalar(
-        select(func.count()).select_from(User).where(User.company_id == cid, User.role == UserRole.worker)
+        select(func.count())
+        .select_from(User)
+        .where(
+            User.company_id == cid,
+            User.roles.overlap(pg_array(UserRole.worker.value)),
+        )
     )
     return {
         "company_id": cid,

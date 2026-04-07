@@ -8,8 +8,10 @@ from typing import Annotated, Any, Optional
 
 from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Query, UploadFile, status
 from sqlalchemy import delete, func, select
+from sqlalchemy.dialects.postgresql import array as pg_array
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import require_system_admin
+from app.core.user_roles import primary_jwt_role, user_has_any_role
 from app.core.audit.service import record_audit
 from app.core.auth.security import create_access_token, hash_password as hash_pw
 from app.core.config import Settings, get_settings
@@ -270,7 +272,7 @@ async def bootstrap_company_with_password_admin(
         email=body.admin_email,
         hashed_password=hash_pw(body.admin_password),
         full_name=body.admin_full_name,
-        role=UserRole.company_admin,
+        roles=[UserRole.company_admin.value],
         created_by=system.id,
     )
     db.add(admin_user)
@@ -639,7 +641,7 @@ async def list_all_users(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Invalid role filter",
             ) from e
-        stmt = stmt.where(User.role == role_enum)
+        stmt = stmt.where(User.roles.overlap(pg_array(role_enum.value)))
     if q:
         like = f"%{q}%"
         stmt = stmt.where(
@@ -656,7 +658,8 @@ async def list_all_users(
                 id=u.id,
                 email=u.email,
                 full_name=u.full_name,
-                role=u.role.value,
+                role=primary_jwt_role(u).value,
+                roles=list(u.roles),
                 company_id=u.company_id,
                 company_name=company_name,
                 is_active=u.is_active,
@@ -703,7 +706,7 @@ async def system_impersonate_user(
     target = q.scalar_one_or_none()
     if not target or not target.is_active:
         raise HTTPException(status_code=404, detail="User not found")
-    if target.role == UserRole.system_admin:
+    if user_has_any_role(target, UserRole.system_admin):
         raise HTTPException(status_code=400, detail="Cannot impersonate system_admin")
 
     await record_audit(
@@ -727,11 +730,13 @@ async def system_impersonate_user(
     )
     await db.commit()
 
+    prim = primary_jwt_role(target)
     token = create_access_token(
         subject=target.id,
         extra_claims={
             "company_id": target.company_id,
-            "role": target.role.value,
+            "role": prim.value,
+            "roles": list(target.roles),
             "is_impersonating": True,
             "impersonator_sub": admin.id,
         },
@@ -793,12 +798,12 @@ async def system_delete_user(
     if not u:
         raise HTTPException(status_code=404, detail="User not found")
 
-    if u.role == UserRole.system_admin:
+    if user_has_any_role(u, UserRole.system_admin):
         cnt = await db.execute(
             select(func.count())
             .select_from(User)
             .where(
-                User.role == UserRole.system_admin,
+                User.roles.overlap(pg_array(UserRole.system_admin.value)),
                 User.id != user_id,
                 User.is_active.is_(True),
             )
@@ -817,7 +822,7 @@ async def system_delete_user(
         performed_by=admin.id,
         target_type="user",
         target_id=user_id,
-        metadata={"email": u.email, "role": u.role.value},
+        metadata={"email": u.email, "roles": list(u.roles)},
     )
     await db.commit()
 

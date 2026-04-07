@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user, get_db
+from app.core.user_roles import user_has_any_role
 from app.models.domain import User, UserRole
 from app.schemas.onboarding import OnboardingPatchIn, OnboardingStateOut, OnboardingStepOut
 from app.services.onboarding_service import (
@@ -24,7 +25,7 @@ Db = Annotated[AsyncSession, Depends(get_db)]
 
 
 def _require_tenant_user(user: User) -> None:
-    if user.role == UserRole.system_admin or user.is_system_admin:
+    if user_has_any_role(user, UserRole.system_admin) or user.is_system_admin:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="onboarding_not_available")
     if user.company_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="onboarding_not_available")

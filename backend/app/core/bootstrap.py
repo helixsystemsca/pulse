@@ -1,6 +1,7 @@
 """Optional dev/bootstrap: first system_admin from env."""
 
 from sqlalchemy import select
+from sqlalchemy.dialects.postgresql import array as pg_array
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth.security import hash_password
@@ -12,7 +13,9 @@ async def ensure_bootstrap_system_admin(db: AsyncSession) -> None:
     settings = get_settings()
     if not settings.bootstrap_system_admin_email or not settings.bootstrap_system_admin_password:
         return
-    q = await db.execute(select(User).where(User.role == UserRole.system_admin).limit(1))
+    q = await db.execute(
+        select(User).where(User.roles.overlap(pg_array(UserRole.system_admin.value))).limit(1)
+    )
     if q.scalar_one_or_none():
         return
     exists = await db.execute(select(User).where(User.email == settings.bootstrap_system_admin_email))
@@ -23,7 +26,7 @@ async def ensure_bootstrap_system_admin(db: AsyncSession) -> None:
             email=settings.bootstrap_system_admin_email,
             hashed_password=hash_password(settings.bootstrap_system_admin_password),
             full_name="System Administrator",
-            role=UserRole.system_admin,
+            roles=[UserRole.system_admin.value],
             company_id=None,
             created_by=None,
             is_system_admin=True,
