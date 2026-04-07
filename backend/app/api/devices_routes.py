@@ -1,4 +1,4 @@
-"""Device hub: gateways (ESP32), BLE tags, equipment (`Tool`), zones — `/api/v1/*`."""
+"""Device hub: gateways (ESP32), BLE tags, tracked tools (`/api/v1/tools`), zones — `/api/v1/*`."""
 
 from __future__ import annotations
 
@@ -144,11 +144,12 @@ async def list_ble_devices(
     return [BleDeviceOut.model_validate(r) for r in rows]
 
 
-@router.get("/equipment", response_model=list[EquipmentOut])
-async def list_equipment(
+@router.get("/tools", response_model=list[EquipmentOut])
+async def list_tools(
     db: Db,
     company_id: CompanyId,
 ) -> list[EquipmentOut]:
+    """Tracked tools / BLE-tagged equipment (distinct from facility registry at `GET /api/v1/equipment`)."""
     rows = await _svc(db).list_equipment(company_id=company_id)
     return [EquipmentOut.model_validate(r) for r in rows]
 
@@ -256,8 +257,8 @@ async def assign_ble_device(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="BLE device not found") from e
 
 
-@router.post("/equipment", response_model=EquipmentOut, status_code=status.HTTP_201_CREATED)
-async def create_equipment(
+@router.post("/tools", response_model=EquipmentOut, status_code=status.HTTP_201_CREATED)
+async def create_tool(
     body: EquipmentCreateIn,
     db: Db,
     company_id: CompanyId,
@@ -297,8 +298,8 @@ async def create_equipment(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="BLE device not found") from None
 
 
-@router.post("/equipment/{equipment_id}/link-ble", response_model=BleDeviceOut)
-async def link_equipment_ble(
+@router.post("/tools/{equipment_id}/link-ble", response_model=BleDeviceOut)
+async def link_tool_ble(
     equipment_id: str,
     body: EquipmentLinkBleIn,
     db: Db,

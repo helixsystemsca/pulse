@@ -81,7 +81,7 @@ export async function fetchBleDevices(companyId: string | null): Promise<BleDevi
 }
 
 export async function fetchEquipmentList(companyId: string | null): Promise<EquipmentOut[]> {
-  return apiFetch<EquipmentOut[]>(withCompany("/api/v1/equipment", companyId));
+  return apiFetch<EquipmentOut[]>(withCompany("/api/v1/tools", companyId));
 }
 
 export async function fetchZones(companyId: string | null): Promise<ZoneOut[]> {
@@ -192,7 +192,7 @@ export async function createEquipment(
     link_ble_device_id?: string | null;
   },
 ): Promise<EquipmentOut> {
-  return apiFetch<EquipmentOut>(withCompany("/api/v1/equipment", companyId), {
+  return apiFetch<EquipmentOut>(withCompany("/api/v1/tools", companyId), {
     method: "POST",
     json: body,
   });
@@ -204,7 +204,7 @@ export async function linkEquipmentBle(
   bleDeviceId: string,
 ): Promise<BleDeviceOut> {
   return apiFetch<BleDeviceOut>(
-    withCompany(`/api/v1/equipment/${equipmentId}/link-ble`, companyId),
+    withCompany(`/api/v1/tools/${equipmentId}/link-ble`, companyId),
     {
       method: "POST",
       json: { ble_device_id: bleDeviceId },
