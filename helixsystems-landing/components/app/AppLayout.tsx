@@ -9,6 +9,7 @@ import { MainContentWidth } from "./MainContentWidth";
 import { PageShell } from "./PageShell";
 import { AppNavbar } from "./AppNavbar";
 import { AppSideNav } from "./AppSideNav";
+import { ImpersonationBanner } from "./ImpersonationBanner";
 import { OnboardingChrome } from "@/components/onboarding/OnboardingChrome";
 import { OnboardingProvider } from "@/components/onboarding/OnboardingProvider";
 import { ProximityPromptHost } from "./ProximityPromptHost";
@@ -41,6 +42,7 @@ export function AppLayout({
         <AppSideNav />
         <div className="flex min-h-screen min-w-0 flex-col">
           <AppNavbar />
+          <ImpersonationBanner />
           <AppMain className={mainClassName}>
             <MainContentWidth className={mainContentClassName}>
               {pageShell ? <PageShell>{children}</PageShell> : children}

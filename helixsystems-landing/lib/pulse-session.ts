@@ -53,6 +53,8 @@ export type PulseAuthSession = {
   contract_enabled_features?: string[] | null;
   /** From `/auth/me`; may open `/dashboard/workers`. */
   workers_roster_access?: boolean;
+  /** True when a system administrator is viewing the app as this tenant user (JWT + `/auth/me`). */
+  is_impersonating?: boolean;
   /** Tenant branding; absent for system_admin or legacy sessions. */
   company?: CompanySummary | null;
   /** From `/auth/me`; guides onboarding UI for tenant users. */
@@ -93,6 +95,19 @@ export type UserOut = {
 function emitAuthChange() {
   if (typeof window === "undefined") return;
   window.dispatchEvent(new Event("pulse-auth-change"));
+}
+
+function decodeJwtImpersonating(token: string | undefined): boolean | undefined {
+  if (!token) return undefined;
+  try {
+    const parts = token.split(".");
+    if (parts.length < 2) return undefined;
+    const b64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+    const payload = JSON.parse(atob(b64)) as { is_impersonating?: boolean };
+    return typeof payload.is_impersonating === "boolean" ? payload.is_impersonating : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 function decodeJwtExp(token: string): number | null {
@@ -196,6 +211,10 @@ export function writeApiSession(
     permissions: user.permissions ?? undefined,
     contract_enabled_features: user.contract_enabled_features ?? undefined,
     workers_roster_access: user.workers_roster_access,
+    is_impersonating:
+      user.is_impersonating === false
+        ? false
+        : user.is_impersonating === true || decodeJwtImpersonating(accessToken) === true,
     company: user.company ?? null,
     onboarding_enabled: user.onboarding_enabled,
     onboarding_completed: user.onboarding_completed,
