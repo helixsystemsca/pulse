@@ -151,8 +151,11 @@ async def _assert_valid_supervisor(db: AsyncSession, cid: str, supervisor_id: Op
         raise HTTPException(status_code=400, detail="Unknown supervisor")
     if u.account_status != UserAccountStatus.active or not u.is_active:
         raise HTTPException(status_code=400, detail="Supervisor must be an active user")
-    if not user_has_any_role(u, UserRole.supervisor, UserRole.manager):
-        raise HTTPException(status_code=400, detail="Supervisor must have role supervisor or manager")
+    if not user_has_any_role(u, UserRole.supervisor, UserRole.manager, UserRole.company_admin):
+        raise HTTPException(
+            status_code=400,
+            detail="Supervisor must be a manager, supervisor, or company admin",
+        )
 
 
 def _cert_status(expiry: Optional[datetime], now: datetime) -> str:

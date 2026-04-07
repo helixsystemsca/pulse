@@ -17,6 +17,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { PulseDrawer } from "@/components/schedule/PulseDrawer";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { apiFetch } from "@/lib/api";
+import { parseClientApiError } from "@/lib/parse-client-api-error";
 import { readSession } from "@/lib/pulse-session";
 import { emitOnboardingMaybeUpdated } from "@/lib/onboarding-events";
 import {
@@ -290,7 +291,7 @@ export function WorkersApp() {
     () =>
       list.filter(
         (u) =>
-          principalHasAnyRole(u, "supervisor", "manager") &&
+          principalHasAnyRole(u, "supervisor", "manager", "company_admin") &&
           u.is_active &&
           (u.account_status ?? "active") === "active",
       ),
@@ -398,7 +399,7 @@ export function WorkersApp() {
         department: createForm.department.trim() || null,
         shift: createForm.shift || null,
         start_date: createForm.start_date || null,
-        supervisor_id: createForm.supervisor_id || null,
+        supervisor_id: createForm.supervisor_id.trim() || null,
         skills: skills.length ? skills : undefined,
         certifications: certifications.length ? certifications : undefined,
       });
@@ -417,8 +418,12 @@ export function WorkersApp() {
       setCreateToast({ variant: "success", message: "Invite sent successfully" });
       await loadList();
       emitOnboardingMaybeUpdated();
-    } catch {
-      setCreateToast({ variant: "error", message: "Failed to send invite" });
+    } catch (e) {
+      const { message } = parseClientApiError(e);
+      setCreateToast({
+        variant: "error",
+        message: message && message !== "Request failed" ? message : "Failed to send invite",
+      });
     } finally {
       setCreateInviteBusy(false);
     }

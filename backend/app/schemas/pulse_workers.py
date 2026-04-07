@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import Any, Optional
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class WorkerCertificationIn(BaseModel):
@@ -117,6 +117,16 @@ class WorkerCreateIn(BaseModel):
     skills: Optional[list[WorkerSkillIn]] = None
     training: Optional[list[WorkerTrainingIn]] = None
 
+    @field_validator("supervisor_id", mode="before")
+    @classmethod
+    def _normalize_supervisor_id(cls, v: object) -> Optional[str]:
+        if v is None:
+            return None
+        if isinstance(v, str):
+            s = v.strip()
+            return s or None
+        return str(v).strip() or None
+
 
 class WorkerPatchIn(BaseModel):
     full_name: Optional[str] = Field(None, max_length=255)
@@ -134,6 +144,16 @@ class WorkerPatchIn(BaseModel):
     certifications: Optional[list[WorkerCertificationIn]] = None
     skills: Optional[list[WorkerSkillIn]] = None
     training: Optional[list[WorkerTrainingIn]] = None
+
+    @field_validator("supervisor_id", mode="before")
+    @classmethod
+    def _normalize_supervisor_id_patch(cls, v: object) -> Optional[str]:
+        if v is None:
+            return None
+        if isinstance(v, str):
+            s = v.strip()
+            return s or None
+        return str(v).strip() or None
 
 
 class WorkersSettingsOut(BaseModel):
