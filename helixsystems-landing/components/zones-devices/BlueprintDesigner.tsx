@@ -10,24 +10,18 @@ import { pulseApp } from "@/lib/pulse-app";
 import { canAccessPulseTenantApis, readSession } from "@/lib/pulse-session";
 import { emitOnboardingMaybeUpdated } from "@/lib/onboarding-events";
 import { bpDuration, bpEase, bpTransition } from "@/lib/motion-presets";
-import type { BlueprintElement, TaskOverlay } from "./blueprint-types";
+import type { BlueprintDesignerTool, BlueprintElement, TaskOverlay } from "./blueprint-types";
 export type { BlueprintElement, BlueprintState, BlueprintHistoryState, TaskOverlay } from "./blueprint-types";
+import { BlueprintSymbolPanel } from "./BlueprintSymbolPanel";
 import { BlueprintTasksPanel } from "./BlueprintTasksPanel";
+import { BlueprintToolRail } from "./BlueprintToolRail";
+import type { SymbolLibraryId } from "./blueprint-symbols-shared";
+export { SYMBOL_LIBRARY, type SymbolLibraryId } from "./blueprint-symbols-shared";
 import { useBlueprintHistory } from "./useBlueprintHistory";
 import "./blueprint-designer.css";
 
-type Tool =
-  | "select"
-  | "draw-room"
-  | "place-device"
-  | "place-door"
-  | "free-draw"
-  | "place-symbol";
+type Tool = BlueprintDesignerTool;
 type DeviceKind = "pump" | "tank" | "sensor" | "generic";
-
-/** Built-in symbols — extend this list + `SymbolGlyph` to add types. */
-export const SYMBOL_LIBRARY = ["tree", "bush", "sprinkler", "valve", "pump", "motor", "filter"] as const;
-export type SymbolLibraryId = (typeof SYMBOL_LIBRARY)[number];
 
 type BlueprintSummary = { id: string; name: string; created_at: string };
 type ApiElement = {
@@ -1275,6 +1269,7 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
   const [tool, setTool] = useState<Tool>("select");
   const [placeKind, setPlaceKind] = useState<DeviceKind>("generic");
   const [placeSymbolKind, setPlaceSymbolKind] = useState<SymbolLibraryId>("tree");
+  const [symbolPanelOpen, setSymbolPanelOpen] = useState(false);
   const [blueprintId, setBlueprintId] = useState<string | null>(null);
   const [blueprintName, setBlueprintName] = useState("Untitled blueprint");
   const [list, setList] = useState<BlueprintSummary[]>([]);
@@ -1499,6 +1494,10 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
   const canEdit = !isPublish;
 
   useEffect(() => {
+    if (!canEdit) setSymbolPanelOpen(false);
+  }, [canEdit]);
+
+  useEffect(() => {
     if (!isPublish) return;
     setLinkingForTaskId(null);
     setSelectedTaskId(null);
@@ -1581,6 +1580,7 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
 
       if (e.key === "Escape") {
         e.preventDefault();
+        setSymbolPanelOpen(false);
         setSelectedIds([]);
         setSnapGuides([]);
         setLinkingForTaskId(null);
@@ -2507,9 +2507,19 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
 
   return (
     <div className={`bp-shell${isPublish ? " bp-shell--publish" : ""}`}>
+      <BlueprintToolRail
+        tool={tool}
+        onToolChange={(t) => {
+          setTool(t);
+          if (t !== "place-symbol") setSymbolPanelOpen(false);
+        }}
+        symbolPanelOpen={symbolPanelOpen}
+        onToggleSymbolPanel={() => setSymbolPanelOpen((v) => !v)}
+        disabled={!canEdit}
+      />
       <motion.aside
         className={`bp-sidebar${isPublish ? " bp-sidebar--disabled" : ""}`}
-        aria-label="Tools"
+        aria-label="Blueprint sidebar"
         initial={{ opacity: 0, x: -12 }}
         animate={{ opacity: 1, x: 0 }}
         transition={bpTransition.med}
@@ -2524,92 +2534,6 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
             .
           </p>
         ) : null}
-        <div>
-          <h3>Tools</h3>
-          <div className="bp-tool-grid">
-            <motion.button
-              type="button"
-              className={`bp-tool ${tool === "select" ? "is-active" : ""}`}
-              onClick={() => setTool("select")}
-              whileHover={{ scale: 1.02, boxShadow: "0 8px 22px rgba(0, 0, 0, 0.16)" }}
-              whileTap={{ scale: 0.985 }}
-              transition={bpTransition.fast}
-            >
-              Select
-            </motion.button>
-            <motion.button
-              type="button"
-              className={`bp-tool ${tool === "draw-room" ? "is-active" : ""}`}
-              onClick={() => setTool("draw-room")}
-              whileHover={{ scale: 1.02, boxShadow: "0 8px 22px rgba(0, 0, 0, 0.16)" }}
-              whileTap={{ scale: 0.985 }}
-              transition={bpTransition.fast}
-            >
-              Draw room
-            </motion.button>
-            <motion.button
-              type="button"
-              className={`bp-tool ${tool === "place-device" ? "is-active" : ""}`}
-              onClick={() => setTool("place-device")}
-              whileHover={{ scale: 1.02, boxShadow: "0 8px 22px rgba(0, 0, 0, 0.16)" }}
-              whileTap={{ scale: 0.985 }}
-              transition={bpTransition.fast}
-            >
-              Place device
-            </motion.button>
-            <motion.button
-              type="button"
-              className={`bp-tool ${tool === "place-door" ? "is-active" : ""}`}
-              onClick={() => setTool("place-door")}
-              whileHover={{ scale: 1.02, boxShadow: "0 8px 22px rgba(0, 0, 0, 0.16)" }}
-              whileTap={{ scale: 0.985 }}
-              transition={bpTransition.fast}
-            >
-              Door
-            </motion.button>
-            <motion.button
-              type="button"
-              className={`bp-tool ${tool === "free-draw" ? "is-active" : ""}`}
-              onClick={() => setTool("free-draw")}
-              whileHover={{ scale: 1.02, boxShadow: "0 8px 22px rgba(0, 0, 0, 0.16)" }}
-              whileTap={{ scale: 0.985 }}
-              transition={bpTransition.fast}
-            >
-              Free draw
-            </motion.button>
-            <motion.button
-              type="button"
-              className={`bp-tool ${tool === "place-symbol" ? "is-active" : ""}`}
-              onClick={() => setTool("place-symbol")}
-              whileHover={{ scale: 1.02, boxShadow: "0 8px 22px rgba(0, 0, 0, 0.16)" }}
-              whileTap={{ scale: 0.985 }}
-              transition={bpTransition.fast}
-            >
-              Place symbol
-            </motion.button>
-          </div>
-        </div>
-        <div>
-          <h3>Symbol library</h3>
-          <div className="bp-palette">
-            {SYMBOL_LIBRARY.map((k) => (
-              <motion.button
-                key={k}
-                type="button"
-                className={`bp-chip ${placeSymbolKind === k ? "is-active" : ""}`}
-                onClick={() => {
-                  setPlaceSymbolKind(k);
-                  setTool("place-symbol");
-                }}
-                whileHover={{ scale: 1.02, y: -1, boxShadow: "0 6px 18px rgba(0, 0, 0, 0.12)" }}
-                whileTap={{ scale: 0.98 }}
-                transition={bpTransition.fast}
-              >
-                {k}
-              </motion.button>
-            ))}
-          </div>
-        </div>
         <div>
           <h3>Device palette</h3>
           <div className="bp-palette">
@@ -2667,13 +2591,14 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
           }}
         />
         <p className="bp-hint">
-          Scroll to zoom (cursor-centered). Hold Space and drag or right-drag to pan. Esc clears selection; arrow keys
-          nudge selection (Shift for larger steps). Draw rooms on the grid. Door: click within {WALL_SNAP_PX}px of a room
-          edge. Free draw: drag and release; stroke is simplified and smoothed into a closed shape. Place symbol: pick a
-          kind, then click the canvas (extensible via symbol_type).
+          Scroll to zoom (cursor-centered). Hold Space and drag or right-drag to pan. Esc clears selection and closes the
+          symbol panel; arrow keys nudge selection (Shift for larger steps). Draw rooms on the grid. Door: click within{" "}
+          {WALL_SNAP_PX}px of a room edge. Free draw: drag and release; stroke is simplified into a closed shape. Symbols:
+          open the Symbols panel from the tool rail, pick a tile, then click the canvas (extensible via symbol_type).
         </p>
       </motion.aside>
 
+      <div className="bp-workspace">
       <motion.div
         className={`bp-canvas-wrap${isPublish ? " bp-canvas-wrap--publish" : ""}`}
         initial={{ opacity: 0, y: 12 }}
@@ -2785,6 +2710,7 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
             onClick={() => {
               setDesignerMode("publish");
               setTool("select");
+              setSymbolPanelOpen(false);
               setSelectedIds([]);
               setSnapGuides([]);
             }}
@@ -2794,24 +2720,6 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
           >
             Publish
           </motion.button>
-          {canEdit ? (
-            <div className="bp-toolbar__symbols" aria-label="Symbol palette">
-              <span className="bp-toolbar__symbols-label">Symbols</span>
-              {SYMBOL_LIBRARY.map((k) => (
-                <button
-                  key={k}
-                  type="button"
-                  className={`bp-chip bp-toolbar__symbol-chip ${placeSymbolKind === k ? "is-active" : ""}`}
-                  onClick={() => {
-                    setPlaceSymbolKind(k);
-                    setTool("place-symbol");
-                  }}
-                >
-                  {k}
-                </button>
-              ))}
-            </div>
-          ) : null}
         </motion.div>
         <AnimatePresence>
           {error ? (
@@ -3792,6 +3700,17 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
           </Stage>
         </div>
       </motion.div>
+      <BlueprintSymbolPanel
+        open={symbolPanelOpen && canEdit}
+        onClose={() => setSymbolPanelOpen(false)}
+        activeSymbolId={placeSymbolKind}
+        onSelectSymbol={(id) => {
+          setPlaceSymbolKind(id);
+          setTool("place-symbol");
+        }}
+        disabled={!canEdit}
+      />
+      </div>
 
       <motion.aside
         className={`bp-props${isPublish ? " bp-props--publish" : ""}`}

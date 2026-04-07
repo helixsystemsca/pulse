@@ -49,3 +49,12 @@ export type BlueprintHistoryState = {
   present: BlueprintState;
   future: BlueprintState[];
 };
+
+/** Blueprint designer primary interaction modes (toolbar). */
+export type BlueprintDesignerTool =
+  | "select"
+  | "draw-room"
+  | "place-device"
+  | "place-door"
+  | "free-draw"
+  | "place-symbol";

@@ -28,6 +28,13 @@ import { pulseSystemSidebarNav, pulseTenantSidebarNav, type PulseSidebarIcon } f
 import { isPulseNavActive } from "@/lib/pulse-nav-active";
 import { isTenantNavFeatureEnabled } from "@/lib/pulse-nav-features";
 
+/** First word on line 1, remaining words on line 2 — fits narrow expanded rail. */
+function splitNavLabel(label: string): { line1: string; line2: string | null } {
+  const parts = label.trim().split(/\s+/).filter(Boolean);
+  if (parts.length <= 1) return { line1: label.trim(), line2: null };
+  return { line1: parts[0]!, line2: parts.slice(1).join(" ") };
+}
+
 const ICONS: Record<PulseSidebarIcon, LucideIcon> = {
   layout: LayoutDashboard,
   activity: Activity,
@@ -96,37 +103,39 @@ export function AppSideNav() {
         className={`group/sidebar fixed left-3 top-1/2 z-[40] flex max-h-[min(85vh,52rem)] w-[4.25rem] -translate-y-1/2 flex-col overflow-hidden overflow-y-auto rounded-2xl border transition-[width,box-shadow] duration-200 ease-out lg:hover:w-[11rem] ${tenantShell} ${narrowExpanded ? tenantShellMobilePop : ""}`}
         aria-label="App"
       >
-        <nav className="flex flex-col gap-1 px-2 py-3">
+        <nav className="flex flex-col gap-0.5 px-1.5 py-2">
           {items.map((item) => {
             const active = isPulseNavActive(item.href, pathname);
             const Icon = ICONS[item.icon];
+            const { line1, line2 } = splitNavLabel(item.label);
             return (
               <Link
                 key={`${item.href}-${item.label}`}
                 href={item.href}
                 title={item.label}
                 onClick={() => setNarrowExpanded(false)}
-                className={`relative flex min-h-[2.75rem] items-center gap-3 rounded-xl py-2 pl-2 pr-3 text-sm font-semibold transition-[color,background-color,box-shadow] ${
+                className={`relative flex min-h-[2.25rem] items-center gap-1.5 rounded-lg py-1 pl-1 pr-1.5 text-[11px] font-semibold leading-tight transition-[color,background-color,box-shadow] ${
                   active
                     ? "bg-sky-50/95 text-[#1e4a8a] shadow-sm ring-2 ring-[#2B4C7E]/20 dark:bg-[#0F172A] dark:text-gray-100 dark:ring-[#1F2937]"
                     : "text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-gray-100"
                 }`}
               >
                 <span
-                  className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${
+                  className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md ${
                     active
                       ? "bg-white text-[#2B4C7E] shadow-sm ring-1 ring-sky-200/60 dark:bg-[#111827] dark:text-blue-300 dark:ring-[#1F2937]"
                       : "bg-gray-100 text-gray-500 dark:bg-[#0F172A] dark:text-gray-400"
                   }`}
                 >
-                  <Icon className="h-[1.125rem] w-[1.125rem]" strokeWidth={2} aria-hidden />
+                  <Icon className="h-4 w-4" strokeWidth={2} aria-hidden />
                 </span>
                 <span
-                  className={`min-w-0 overflow-hidden text-ellipsis whitespace-nowrap transition-[max-width,opacity] duration-200 ease-out lg:max-w-0 lg:opacity-0 lg:group-hover/sidebar:max-w-[9.5rem] lg:group-hover/sidebar:opacity-100 ${
-                    narrowExpanded ? "max-w-[9.5rem] opacity-100" : "max-w-0 opacity-0"
+                  className={`min-w-0 flex-1 overflow-hidden text-left transition-[max-width,opacity] duration-200 ease-out lg:max-w-0 lg:opacity-0 lg:group-hover/sidebar:max-w-[8.75rem] lg:group-hover/sidebar:opacity-100 ${
+                    narrowExpanded ? "max-w-[8.75rem] opacity-100" : "max-w-0 opacity-0"
                   }`}
                 >
-                  {item.label}
+                  <span className="block truncate">{line1}</span>
+                  {line2 ? <span className="mt-0.5 block truncate opacity-90">{line2}</span> : null}
                 </span>
               </Link>
             );
@@ -135,7 +144,7 @@ export function AppSideNav() {
 
         <button
           type="button"
-          className="flex shrink-0 items-center justify-center border-t border-gray-200 py-2 dark:border-[#1F2937] lg:hidden"
+          className="flex shrink-0 items-center justify-center border-t border-gray-200 py-1.5 dark:border-[#1F2937] lg:hidden"
           onClick={() => setNarrowExpanded((o) => !o)}
           aria-expanded={narrowExpanded}
           aria-label={narrowExpanded ? "Collapse navigation" : "Expand navigation"}
