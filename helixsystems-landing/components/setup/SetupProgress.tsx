@@ -1,6 +1,12 @@
 "use client";
 
 import { AlertTriangle, Check, Circle } from "lucide-react";
+import { useEffect, useState } from "react";
+
+type Phase = "show" | "pulse" | "exit" | "gone";
+
+const PULSE_MS = 980;
+const EXIT_MS = 560;
 
 export function SetupProgress({
   items,
@@ -13,15 +19,55 @@ export function SetupProgress({
   const missing = items.filter((i) => !i.done).map((i) => i.label);
   const pct = items.length === 0 ? 0 : Math.round((items.filter((i) => i.done).length / items.length) * 100);
 
+  const allChecklistDone = items.length > 0 && items.every((i) => i.done);
+  const shouldCelebrate = allChecklistDone && warnings.length === 0;
+
+  const [phase, setPhase] = useState<Phase>("show");
+
+  useEffect(() => {
+    if (!shouldCelebrate) {
+      setPhase("show");
+      return;
+    }
+
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reduced) {
+      const t = window.setTimeout(() => setPhase("gone"), 450);
+      return () => clearTimeout(t);
+    }
+
+    setPhase("pulse");
+    const tExit = window.setTimeout(() => setPhase("exit"), PULSE_MS);
+    const tGone = window.setTimeout(() => setPhase("gone"), PULSE_MS + EXIT_MS);
+    return () => {
+      clearTimeout(tExit);
+      clearTimeout(tGone);
+    };
+  }, [shouldCelebrate]);
+
+  if (phase === "gone") {
+    return null;
+  }
+
+  const sectionClass =
+    phase === "exit"
+      ? "setup-progress-card-exit rounded-md border border-slate-200/80 bg-white/95 p-5 shadow-card dark:border-[#1F2937] dark:bg-[#111827] dark:shadow-[0_2px_8px_rgba(0,0,0,0.4)] md:p-6"
+      : "rounded-md border border-slate-200/80 bg-white/95 p-5 shadow-card dark:border-[#1F2937] dark:bg-[#111827] dark:shadow-[0_2px_8px_rgba(0,0,0,0.4)] md:p-6";
+
+  const pctClass =
+    phase === "pulse"
+      ? "setup-progress-pct-pulse text-2xl font-bold tabular-nums text-[#2B4C7E] dark:text-sky-400"
+      : "text-2xl font-bold tabular-nums text-[#2B4C7E] dark:text-sky-400";
+
   return (
-    <section className="rounded-md border border-slate-200/80 bg-white/95 p-5 shadow-card dark:border-[#1F2937] dark:bg-[#111827] dark:shadow-[0_2px_8px_rgba(0,0,0,0.4)] md:p-6">
+    <section className={sectionClass}>
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h2 className="text-sm font-semibold text-pulse-navy dark:text-gray-100">Setup progress</h2>
           <p className="mt-0.5 text-sm text-pulse-muted dark:text-gray-400">Track what is left before go-live.</p>
         </div>
         <div className="text-right">
-          <span className="text-2xl font-bold tabular-nums text-[#2B4C7E] dark:text-sky-400">{pct}%</span>
+          <span className={pctClass}>{pct}%</span>
           <span className="ml-1 text-xs text-pulse-muted dark:text-gray-500">complete</span>
         </div>
       </div>
