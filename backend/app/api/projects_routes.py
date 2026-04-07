@@ -65,6 +65,41 @@ CompanyId = Annotated[str, Depends(_company_id)]
 Db = Annotated[AsyncSession, Depends(get_db)]
 
 
+def _norm_task_skill_names(raw: list[str] | None) -> list[str]:
+    out: list[str] = []
+    if not raw:
+        return out
+    seen_lower: set[str] = set()
+    for x in raw:
+        s = str(x).strip()
+        if not s or len(s) > 128:
+            continue
+        low = s.lower()
+        if low in seen_lower:
+            continue
+        seen_lower.add(low)
+        out.append(s)
+        if len(out) >= 24:
+            break
+    return out
+
+
+def _project_out(p: PulseProject) -> ProjectOut:
+    st = p.status.value if hasattr(p.status, "value") else str(p.status)
+    return ProjectOut(
+        id=str(p.id),
+        company_id=str(p.company_id),
+        name=p.name,
+        description=p.description,
+        owner_user_id=str(p.owner_user_id) if getattr(p, "owner_user_id", None) else None,
+        start_date=p.start_date,
+        end_date=p.end_date,
+        status=st,
+        created_at=p.created_at,
+        updated_at=p.updated_at,
+    )
+
+
 def _parse_trigger(s: str) -> PulseProjectAutomationTrigger:
     try:
         return PulseProjectAutomationTrigger(s)
@@ -114,6 +149,7 @@ async def list_projects(db: Db, cid: CompanyId) -> list[ProjectOutWithProgress]:
                 company_id=str(p.company_id),
                 name=p.name,
                 description=p.description,
+                owner_user_id=str(p.owner_user_id) if getattr(p, "owner_user_id", None) else None,
                 start_date=p.start_date,
                 end_date=p.end_date,
                 status=st,
@@ -133,10 +169,14 @@ async def list_projects(db: Db, cid: CompanyId) -> list[ProjectOutWithProgress]:
 async def create_project(db: Db, cid: CompanyId, body: ProjectCreate) -> ProjectOut:
     if body.end_date < body.start_date:
         raise HTTPException(status_code=400, detail="end_date must be on or after start_date")
+    owner_id = (body.owner_user_id or "").strip() or None
+    if owner_id and not await proj_svc.user_in_company(db, cid, owner_id):
+        raise HTTPException(status_code=400, detail="Owner not in organization")
     p = PulseProject(
         company_id=cid,
         name=body.name.strip(),
         description=body.description,
+        owner_user_id=owner_id,
         start_date=body.start_date,
         end_date=body.end_date,
         status=proj_svc.parse_project_status(body.status or "active"),
@@ -144,18 +184,7 @@ async def create_project(db: Db, cid: CompanyId, body: ProjectCreate) -> Project
     db.add(p)
     await db.commit()
     await db.refresh(p)
-    st = p.status.value if hasattr(p.status, "value") else str(p.status)
-    return ProjectOut(
-        id=str(p.id),
-        company_id=str(p.company_id),
-        name=p.name,
-        description=p.description,
-        start_date=p.start_date,
-        end_date=p.end_date,
-        status=st,
-        created_at=p.created_at,
-        updated_at=p.updated_at,
-    )
+    return _project_out(p)
 
 
 @router.get("/projects/{project_id}", response_model=ProjectDetailOut)
@@ -200,6 +229,7 @@ async def get_project(db: Db, cid: CompanyId, project_id: str) -> ProjectDetailO
         company_id=str(p.company_id),
         name=p.name,
         description=p.description,
+        owner_user_id=str(p.owner_user_id) if getattr(p, "owner_user_id", None) else None,
         start_date=p.start_date,
         end_date=p.end_date,
         status=st,
@@ -313,6 +343,12 @@ async def patch_project(db: Db, cid: CompanyId, project_id: str, body: ProjectPa
     if "status" in data and data["status"] is not None:
         p.status = proj_svc.parse_project_status(str(data["status"]))
         del data["status"]
+    if "owner_user_id" in data:
+        uid = data.pop("owner_user_id")
+        owner_id = str(uid).strip() if uid else None
+        if owner_id and not await proj_svc.user_in_company(db, cid, owner_id):
+            raise HTTPException(status_code=400, detail="Owner not in organization")
+        p.owner_user_id = owner_id or None
     for k, v in data.items():
         if v is not None:
             setattr(p, k, v)
@@ -320,18 +356,7 @@ async def patch_project(db: Db, cid: CompanyId, project_id: str, body: ProjectPa
         raise HTTPException(status_code=400, detail="end_date must be on or after start_date")
     await db.commit()
     await db.refresh(p)
-    st = p.status.value if hasattr(p.status, "value") else str(p.status)
-    return ProjectOut(
-        id=str(p.id),
-        company_id=str(p.company_id),
-        name=p.name,
-        description=p.description,
-        start_date=p.start_date,
-        end_date=p.end_date,
-        status=st,
-        created_at=p.created_at,
-        updated_at=p.updated_at,
-    )
+    return _project_out(p)
 
 
 # —— Automation rules (project-scoped) ——
@@ -441,6 +466,7 @@ async def create_task(
         raise HTTPException(status_code=400, detail="Assigned user not in organization")
     loc = (body.location_tag_id.strip() if body.location_tag_id else None) or None
     sop = (body.sop_id.strip() if body.sop_id else None) or None
+    skills = _norm_task_skill_names(body.required_skill_names)
     t = PulseProjectTask(
         company_id=cid,
         project_id=body.project_id,
@@ -452,6 +478,7 @@ async def create_task(
         due_date=body.due_date,
         location_tag_id=loc,
         sop_id=sop,
+        required_skill_names=skills,
     )
     db.add(t)
     await db.flush()
@@ -507,6 +534,8 @@ async def patch_task(
     if "sop_id" in data:
         v = data["sop_id"]
         t.sop_id = (str(v).strip() or None) if v is not None else None
+    if "required_skill_names" in data and data["required_skill_names"] is not None:
+        t.required_skill_names = _norm_task_skill_names(list(data["required_skill_names"]))
     await db.flush()
     await proj_svc.ensure_calendar_shift_for_task(db, cid, t)
     await project_automation_engine.run_rules_for_task_change(db, cid, t, old_status, old_due)

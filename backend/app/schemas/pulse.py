@@ -130,6 +130,11 @@ class WorkRequestListOut(BaseModel):
     total: int
 
 
+class WorkerSkillMiniOut(BaseModel):
+    name: str
+    level: int = 1
+
+
 class WorkerOut(BaseModel):
     id: str
     email: str
@@ -137,6 +142,7 @@ class WorkerOut(BaseModel):
     role: str
     roles: list[str] = []
     certifications: list[str]
+    skills: list[WorkerSkillMiniOut] = []
     notes: Optional[str]
     availability: dict[str, Any]
 

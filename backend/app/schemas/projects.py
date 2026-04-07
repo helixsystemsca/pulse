@@ -14,6 +14,7 @@ class ProjectCreate(BaseModel):
     start_date: date
     end_date: date
     status: str = Field(default="active", description="active | completed | on_hold")
+    owner_user_id: Optional[str] = Field(None, description="User id within the tenant")
 
 
 class ProjectPatch(BaseModel):
@@ -22,6 +23,7 @@ class ProjectPatch(BaseModel):
     start_date: Optional[date] = None
     end_date: Optional[date] = None
     status: Optional[str] = None
+    owner_user_id: Optional[str] = None
 
 
 class ProjectOut(BaseModel):
@@ -29,6 +31,7 @@ class ProjectOut(BaseModel):
     company_id: str
     name: str
     description: Optional[str]
+    owner_user_id: Optional[str] = None
     start_date: date
     end_date: date
     status: str
@@ -48,6 +51,7 @@ class TaskCreate(BaseModel):
     due_date: Optional[date] = None
     location_tag_id: Optional[str] = Field(None, max_length=128)
     sop_id: Optional[str] = Field(None, max_length=128)
+    required_skill_names: list[str] = Field(default_factory=list)
 
 
 class TaskPatch(BaseModel):
@@ -59,6 +63,7 @@ class TaskPatch(BaseModel):
     due_date: Optional[date] = None
     location_tag_id: Optional[str] = Field(None, max_length=128)
     sop_id: Optional[str] = Field(None, max_length=128)
+    required_skill_names: Optional[list[str]] = None
 
 
 class TaskBlockingMini(BaseModel):
@@ -76,6 +81,7 @@ class TaskOut(BaseModel):
     assigned_user_id: Optional[str]
     priority: str
     status: str
+    required_skill_names: list[str] = Field(default_factory=list)
     due_date: Optional[date]
     calendar_shift_id: Optional[str] = None
     calendar_event_id: Optional[str] = None
@@ -109,6 +115,15 @@ def task_orm_to_out(
     sop = getattr(t, "sop_id", None)
     loc_s = str(loc).strip() if loc else None
     sop_s = str(sop).strip() if sop else None
+    raw_skills = getattr(t, "required_skill_names", None) or []
+    skill_list: list[str] = []
+    if isinstance(raw_skills, list):
+        for x in raw_skills:
+            s = str(x).strip()
+            if s and s not in skill_list:
+                skill_list.append(s)
+            if len(skill_list) >= 32:
+                break
     is_ready = st == "todo" and not is_blocked
     _today = datetime.now(timezone.utc).date()
     _ud = getattr(t, "updated_at", None)
@@ -127,6 +142,7 @@ def task_orm_to_out(
         assigned_user_id=str(t.assigned_user_id) if t.assigned_user_id else None,
         priority=pr,
         status=st,
+        required_skill_names=skill_list,
         due_date=t.due_date,
         calendar_shift_id=sid,
         calendar_event_id=sid,

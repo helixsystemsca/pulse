@@ -1,6 +1,7 @@
 """Pulse REST API — tenant-scoped CMMS, scheduling, inventory, beacons."""
 
 from datetime import datetime, timezone
+from collections import defaultdict
 from typing import Annotated, Optional
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
@@ -32,6 +33,7 @@ from app.models.pulse_models import (
     PulseWorkRequest,
     PulseWorkRequestStatus,
     PulseWorkerProfile,
+    PulseWorkerSkill,
 )
 from app.modules.pulse import project_service as proj_task_svc
 from app.modules.pulse import service as pulse_svc
@@ -55,6 +57,7 @@ from app.schemas.pulse import (
     WorkRequestUpdate,
     WorkerOut,
     WorkerProfilePatch,
+    WorkerSkillMiniOut,
     ZoneOut,
 )
 
@@ -326,6 +329,18 @@ async def list_workers(db: Db, cid: CompanyId) -> list[WorkerOut]:
         )
     )
     users = uq.scalars().all()
+    uids = [u.id for u in users]
+    skills_map: dict[str, list[WorkerSkillMiniOut]] = defaultdict(list)
+    if uids:
+        sq = await db.execute(
+            select(PulseWorkerSkill.user_id, PulseWorkerSkill.name, PulseWorkerSkill.level).where(
+                PulseWorkerSkill.company_id == cid,
+                PulseWorkerSkill.user_id.in_(uids),
+            )
+        )
+        for row in sq.all():
+            uid, name, level = row[0], row[1], row[2]
+            skills_map[str(uid)].append(WorkerSkillMiniOut(name=name, level=int(level or 1)))
     out: list[WorkerOut] = []
     for u in users:
         pq = await db.execute(
@@ -346,6 +361,7 @@ async def list_workers(db: Db, cid: CompanyId) -> list[WorkerOut]:
                 role=primary_jwt_role(u).value,
                 roles=list(u.roles),
                 certifications=certs,
+                skills=skills_map.get(str(u.id), []),
                 notes=notes,
                 availability=avail,
             )
@@ -383,6 +399,13 @@ async def patch_worker_profile(
     await db.commit()
     pq2 = await db.execute(select(User).where(User.id == user_id))
     u2 = pq2.scalar_one()
+    skq = await db.execute(
+        select(PulseWorkerSkill.name, PulseWorkerSkill.level).where(
+            PulseWorkerSkill.user_id == user_id,
+            PulseWorkerSkill.company_id == cid,
+        )
+    )
+    skills = [WorkerSkillMiniOut(name=r[0], level=int(r[1] or 1)) for r in skq.all()]
     return WorkerOut(
         id=u2.id,
         email=u2.email,
@@ -390,6 +413,7 @@ async def patch_worker_profile(
         role=primary_jwt_role(u2).value,
         roles=list(u2.roles),
         certifications=list(prof.certifications or []),
+        skills=skills,
         notes=prof.notes,
         availability=dict(prof.availability or {}),
     )

@@ -284,6 +284,9 @@ class PulseProject(Base):
     )
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    owner_user_id: Mapped[Optional[str]] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     start_date: Mapped[date] = mapped_column(Date, nullable=False)
     end_date: Mapped[date] = mapped_column(Date, nullable=False)
     status: Mapped[PulseProjectStatus] = mapped_column(
@@ -331,6 +334,9 @@ class PulseProjectTask(Base):
     due_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True, index=True)
     location_tag_id: Mapped[Optional[str]] = mapped_column(String(128), nullable=True, index=True)
     sop_id: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    required_skill_names: Mapped[list[Any]] = mapped_column(
+        JSONB, nullable=False, server_default=text("'[]'::jsonb")
+    )
     calendar_shift_id: Mapped[Optional[str]] = mapped_column(
         UUID(as_uuid=False),
         ForeignKey("pulse_schedule_shifts.id", ondelete="SET NULL"),

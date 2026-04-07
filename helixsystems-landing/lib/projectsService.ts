@@ -11,6 +11,7 @@ export type ProjectRow = {
   company_id: string;
   name: string;
   description: string | null;
+  owner_user_id?: string | null;
   start_date: string;
   end_date: string;
   status: string;
@@ -31,6 +32,7 @@ export type TaskRow = {
   assigned_user_id: string | null;
   priority: string;
   status: string;
+  required_skill_names?: string[];
   due_date: string | null;
   calendar_shift_id: string | null;
   calendar_event_id: string | null;
@@ -173,6 +175,27 @@ export async function listProjects(): Promise<ProjectRow[]> {
   return apiFetch<ProjectRow[]>("/api/v1/projects");
 }
 
+export async function createProject(body: {
+  name: string;
+  description?: string | null;
+  start_date: string;
+  end_date: string;
+  status?: string;
+  owner_user_id?: string | null;
+}): Promise<ProjectRow> {
+  const row = await apiFetch<Omit<ProjectRow, "task_total" | "task_completed" | "progress_pct" | "assignee_user_ids">>(
+    "/api/v1/projects",
+    { method: "POST", json: body },
+  );
+  return {
+    ...row,
+    task_total: 0,
+    task_completed: 0,
+    progress_pct: 0,
+    assignee_user_ids: [],
+  };
+}
+
 export async function getProject(id: string): Promise<ProjectDetail> {
   return apiFetch<ProjectDetail>(`/api/v1/projects/${id}`);
 }
@@ -199,6 +222,7 @@ export async function createTask(body: {
   due_date?: string | null;
   location_tag_id?: string | null;
   sop_id?: string | null;
+  required_skill_names?: string[];
 }): Promise<TaskRow> {
   return apiFetch<TaskRow>("/api/v1/tasks", { method: "POST", json: body });
 }
@@ -214,6 +238,7 @@ export async function patchTask(
     due_date: string | null;
     location_tag_id: string | null;
     sop_id: string | null;
+    required_skill_names: string[];
   }>,
 ): Promise<TaskRow> {
   return apiFetch<TaskRow>(`/api/v1/tasks/${id}`, { method: "PATCH", json: patch });
