@@ -19,10 +19,19 @@ from app.core.permissions.service import PermissionService
 from app.core.system_audit import record_system_log
 from app.core.system_tokens import hash_system_token
 from app.limiter import limiter
-from app.models.domain import Company, Invite, SystemSecureToken, SystemSecureTokenKind, User, UserRole
+from app.models.domain import (
+    Company,
+    Invite,
+    SystemSecureToken,
+    SystemSecureTokenKind,
+    User,
+    UserAccountStatus,
+    UserRole,
+)
 from app.schemas.auth import (
     CompanySummaryOut,
     EffectivePermissionsOut,
+    EmployeeInviteAcceptBody,
     ImpersonateRequest,
     InviteAcceptBody,
     LoginRequest,
@@ -76,6 +85,16 @@ async def login(
             db,
             action="auth.login_failed",
             metadata={"email": email_norm, "reason": "unknown_or_inactive_user"},
+        )
+        await db.commit()
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
+    if user.account_status != UserAccountStatus.active:
+        await record_audit(
+            db,
+            action="auth.login_failed",
+            actor_user_id=user.id,
+            company_id=user.company_id,
+            metadata={"email": email_norm, "reason": "account_not_active"},
         )
         await db.commit()
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
@@ -287,6 +306,50 @@ async def accept_invite(
     )
     await db.commit()
     return _token_for_user(new_user)
+
+
+@router.post("/employee-invite-accept", response_model=Token)
+@limiter.limit("15/minute")
+async def accept_employee_invite(
+    request: Request,
+    body: EmployeeInviteAcceptBody,
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> Token:
+    th = hash_system_token(body.token)
+    now = datetime.now(timezone.utc)
+    tq = await db.execute(
+        select(User).where(
+            User.invite_token_hash == th,
+            User.account_status == UserAccountStatus.invited,
+            User.invite_expires_at.isnot(None),
+            User.invite_expires_at > now,
+        )
+    )
+    user = tq.scalar_one_or_none()
+    if not user or not user.company_id:
+        raise HTTPException(status_code=400, detail="Invalid or expired invite")
+
+    co = await db.get(Company, user.company_id)
+    if not co or not co.is_active:
+        raise HTTPException(status_code=400, detail="Organization not available")
+
+    user.hashed_password = hash_password(body.password)
+    if body.full_name and body.full_name.strip():
+        user.full_name = body.full_name.strip()
+    user.account_status = UserAccountStatus.active
+    user.invite_token_hash = None
+    user.invite_expires_at = None
+    user.is_active = True
+
+    await record_audit(
+        db,
+        action="auth.employee_invite_accepted",
+        actor_user_id=user.id,
+        company_id=user.company_id,
+        metadata={"email": user.email},
+    )
+    await db.commit()
+    return _token_for_user(user)
 
 
 @router.post("/password-reset/confirm", response_model=Token)

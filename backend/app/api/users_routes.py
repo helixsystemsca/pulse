@@ -1,9 +1,11 @@
 """Hierarchical user provisioning and permission templates."""
 
+from datetime import datetime, timedelta, timezone
 from typing import Annotated, Any
+from urllib.parse import quote
 
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import (
@@ -12,11 +14,13 @@ from app.api.deps import (
     require_manager_or_above,
 )
 from app.core.audit.service import record_audit
-from app.core.auth.security import hash_password
+from app.core.config import get_settings
 from app.core.database import get_db
+from app.core.email_smtp import send_employee_invite
 from app.core.permissions import keys as perm_keys
 from app.core.permissions.service import PermissionService
-from app.models.domain import RolePermissionTarget, User, UserRole
+from app.core.system_tokens import generate_raw_token, hash_system_token
+from app.models.domain import Company, RolePermissionTarget, User, UserAccountStatus, UserRole
 from app.schemas.rbac import AssignRoleBody, CompanyUserCreate, RolePermissionsPut, WorkerDenyPatch
 
 router = APIRouter(prefix="/users", tags=["users"])
@@ -29,57 +33,108 @@ def _ensure_same_company(actor: User, target_company_id: str) -> None:
         raise HTTPException(status_code=403, detail="Company mismatch")
 
 
+def _join_path(raw_token: str) -> str:
+    return f"/join?token={quote(raw_token, safe='')}"
+
+
+def _public_link(path: str) -> str:
+    base = get_settings().pulse_app_public_origin.rstrip("/")
+    return f"{base}{path if path.startswith('/') else '/' + path}"
+
+
 @router.post("", status_code=status.HTTP_201_CREATED)
 async def create_company_user(
     body: CompanyUserCreate,
     db: Annotated[AsyncSession, Depends(get_db)],
     actor: Annotated[User, Depends(get_current_user)],
-) -> dict[str, str]:
-    """company_admin: manager | worker. manager: worker only."""
+    background_tasks: BackgroundTasks,
+) -> dict[str, Any]:
+    """company_admin: invite worker | lead | supervisor | manager. manager: worker | lead only."""
     if actor.role == UserRole.system_admin:
         raise HTTPException(
             status_code=403,
             detail="system_admin must use POST /api/system/companies to provision orgs",
         )
     if actor.role == UserRole.manager:
-        if body.role != "worker":
-            raise HTTPException(status_code=403, detail="Managers may only create workers")
+        if body.role not in ("worker", "lead"):
+            raise HTTPException(status_code=403, detail="Managers may only invite workers or leads")
+    elif actor.role == UserRole.supervisor:
+        if body.role not in ("worker", "lead"):
+            raise HTTPException(status_code=403, detail="Supervisors may only invite workers or leads")
     elif actor.role == UserRole.company_admin:
-        if body.role not in ("manager", "worker"):
-            raise HTTPException(status_code=403, detail="company_admin may only create managers or workers")
+        if body.role not in ("manager", "worker", "lead", "supervisor"):
+            raise HTTPException(
+                status_code=403,
+                detail="company_admin may only invite workers, leads, supervisors, or managers",
+            )
     else:
         raise HTTPException(status_code=403, detail="Not allowed to create users")
 
     if actor.company_id is None:
         raise HTTPException(status_code=400, detail="Actor has no company")
 
-    company_id = actor.company_id
+    company_id = str(actor.company_id)
+    email_norm = body.email.strip().lower()
+    settings = get_settings()
+    exp = datetime.now(timezone.utc) + timedelta(hours=settings.system_invite_expire_hours)
+    raw = generate_raw_token()
+    th = hash_system_token(raw)
 
-    exists = await db.execute(select(User).where(User.email == body.email))
-    if exists.scalar_one_or_none():
-        raise HTTPException(status_code=400, detail="Email already in use")
-
-    role_enum = UserRole(body.role)
-    user = User(
-        company_id=company_id,
-        email=body.email,
-        hashed_password=hash_password(body.password),
-        full_name=body.full_name,
-        role=role_enum,
-        created_by=actor.id,
-    )
-    db.add(user)
+    exq = await db.execute(select(User).where(func.lower(User.email) == email_norm))
+    ex = exq.scalar_one_or_none()
+    if ex:
+        if str(ex.company_id) != company_id:
+            raise HTTPException(status_code=400, detail="Email already in use")
+        if ex.account_status == UserAccountStatus.active:
+            raise HTTPException(status_code=400, detail="Email already in use")
+        user = ex
+        user.role = UserRole(body.role)
+        user.full_name = body.full_name
+        user.hashed_password = None
+        user.account_status = UserAccountStatus.invited
+        user.invite_token_hash = th
+        user.invite_expires_at = exp
+        user.is_active = True
+        user.created_by = actor.id
+    else:
+        role_enum = UserRole(body.role)
+        user = User(
+            company_id=company_id,
+            email=email_norm,
+            hashed_password=None,
+            full_name=body.full_name,
+            role=role_enum,
+            created_by=actor.id,
+            account_status=UserAccountStatus.invited,
+            invite_token_hash=th,
+            invite_expires_at=exp,
+            is_active=True,
+        )
+        db.add(user)
     await db.flush()
 
     await record_audit(
         db,
-        action="users.created",
+        action="users.invited",
         actor_user_id=actor.id,
         company_id=company_id,
         metadata={"new_user_id": user.id, "role": body.role},
     )
+
+    co = await db.get(Company, company_id)
+    co_name = co.name if co else "your organization"
+    link_path = _join_path(raw)
+    invite_url = _public_link(link_path)
+    if settings.smtp_configured:
+
+        async def _send() -> None:
+            cfg = get_settings()
+            await send_employee_invite(cfg, to_email=email_norm, company_name=co_name, invite_url=invite_url)
+
+        background_tasks.add_task(_send)
+
     await db.commit()
-    return {"id": user.id}
+    return {"id": user.id, "invite_link_path": link_path, "message": "Invite sent"}
 
 
 @router.patch("/{user_id}/role")
@@ -148,16 +203,14 @@ async def patch_worker_deny(
     target = q.scalar_one_or_none()
     if not target:
         raise HTTPException(status_code=404, detail="User not found")
-    if target.role != UserRole.worker:
-        raise HTTPException(status_code=400, detail="Deny overlay applies to workers only")
+    if target.role not in (UserRole.worker, UserRole.lead):
+        raise HTTPException(status_code=400, detail="Deny overlay applies to workers and leads only")
 
     _ensure_same_company(actor, str(target.company_id))
 
-    if actor.role == UserRole.manager:
+    if actor.role in (UserRole.manager, UserRole.supervisor):
         if not await PermissionService(db).user_has(actor, perm_keys.USERS_INVITE_WORKER):
             raise HTTPException(status_code=403, detail="Missing permission")
-        # Manager may only tighten workers in same company (already checked).
-        pass
 
     target.permission_deny = body.deny
     await db.flush()

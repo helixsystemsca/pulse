@@ -5,13 +5,12 @@ from pydantic import BaseModel, EmailStr, Field
 
 class CompanyUserCreate(BaseModel):
     email: EmailStr
-    password: str = Field(..., min_length=8, max_length=128)
     full_name: Optional[str] = Field(None, max_length=255)
-    role: str = Field(..., pattern="^(manager|worker)$")
+    role: str = Field(..., pattern="^(manager|worker|lead|supervisor)$")
 
 
 class AssignRoleBody(BaseModel):
-    role: str = Field(..., pattern="^(manager|worker)$")
+    role: str = Field(..., pattern="^(manager|worker|lead|supervisor)$")
 
 
 class RolePermissionsPut(BaseModel):

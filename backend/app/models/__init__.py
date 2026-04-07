@@ -49,6 +49,7 @@ from app.models.domain import (
     SystemSecureToken,
     Tool,
     User,
+    UserAccountStatus,
     Zone,
 )
 from app.models.pulse_models import (
@@ -93,6 +94,7 @@ __all__ = [
     "CompanyFeature",
     "Invite",
     "User",
+    "UserAccountStatus",
     "Zone",
     "Tool",
     "DomainEventRow",

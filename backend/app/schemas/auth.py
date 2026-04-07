@@ -54,6 +54,14 @@ class InviteAcceptBody(BaseModel):
     full_name: Optional[str] = Field(None, max_length=255)
 
 
+class EmployeeInviteAcceptBody(BaseModel):
+    """Accept an employee invite (user row already exists; set password and activate)."""
+
+    token: str = Field(..., min_length=16, max_length=512)
+    password: str = Field(..., min_length=8, max_length=128)
+    full_name: Optional[str] = Field(None, max_length=255)
+
+
 class PasswordResetConfirmBody(BaseModel):
     token: str = Field(..., min_length=16, max_length=512)
     new_password: str = Field(..., min_length=8, max_length=128)

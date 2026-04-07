@@ -153,6 +153,76 @@ async def send_company_admin_invite(
         return False
 
 
+async def send_employee_invite(
+    settings: Settings,
+    *,
+    to_email: str,
+    company_name: str,
+    invite_url: str,
+) -> bool:
+    """Invite an existing user row to set their password (tenant employee onboarding)."""
+    if not settings.smtp_configured:
+        return False
+
+    hours = settings.system_invite_expire_hours
+    display = settings.email_from_display.strip() or "Helix Systems"
+    noreply = settings.email_from_noreply.strip()
+
+    subject = f"Pulse — you’re invited to join {company_name}"
+    text = (
+        f"Hello,\n\n"
+        f"You’ve been invited to join “{company_name}” on Pulse ({display}).\n\n"
+        "Open the link below to choose your password and activate your account:\n\n"
+        f"{invite_url}\n\n"
+        f"This link expires in {hours} hour(s). Ask your administrator for a new invite if needed.\n\n"
+        f"Sent from {noreply}.\n"
+    )
+
+    safe_company = html.escape(company_name, quote=True)
+    safe_url = html.escape(invite_url, quote=True)
+    safe_display = html.escape(display, quote=True)
+    safe_noreply = html.escape(noreply, quote=True)
+
+    html_body = f"""<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8" /></head>
+<body style="margin:0;padding:0;background:#f4f6f8;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;line-height:1.5;color:#1e293b;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f4f6f8;padding:24px 12px;">
+    <tr><td align="center">
+      <table role="presentation" width="100%" style="max-width:560px;background:#ffffff;border-radius:12px;border:1px solid #e2e8f0;overflow:hidden;">
+        <tr><td style="padding:28px 28px 8px;font-size:18px;font-weight:700;color:#0f172a;">Join your team on Pulse</td></tr>
+        <tr><td style="padding:8px 28px 16px;font-size:15px;color:#334155;">
+          You’ve been invited to <strong>{safe_company}</strong> ({safe_display}).
+        </td></tr>
+        <tr><td style="padding:16px 28px 24px;">
+          <a href="{safe_url}" style="display:inline-block;background:#2563eb;color:#ffffff;text-decoration:none;font-weight:600;font-size:15px;padding:12px 22px;border-radius:10px;">Accept invitation</a>
+        </td></tr>
+        <tr><td style="padding:0 28px 20px;font-size:13px;color:#64748b;">
+          <p style="margin:0 0 8px;">This link expires in <strong>{hours}</strong> hour(s).</p>
+          <p style="margin:0;font-size:12px;word-break:break-all;"><a href="{safe_url}" style="color:#2563eb;">{safe_url}</a></p>
+        </td></tr>
+        <tr><td style="padding:16px 28px 24px;background:#f8fafc;font-size:12px;color:#64748b;">
+          Sent from {safe_noreply}.
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>"""
+    msg = _build_message(
+        subject=subject,
+        from_addr=settings.email_from_noreply,
+        from_display=settings.email_from_display,
+        to_addrs=[to_email],
+        text_body=text,
+        html_body=html_body,
+    )
+    try:
+        await send_smtp_message(settings, msg)
+        return True
+    except Exception:
+        _log.exception("SMTP employee invite failed to=%s", to_email)
+        return False
+
+
 async def send_password_reset_email(
     settings: Settings,
     *,

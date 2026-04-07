@@ -76,7 +76,13 @@ async def _require_wr_reader(user: Annotated[User, Depends(get_current_user)]) -
         return user
     if user.company_id is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not a tenant user")
-    if user.role not in (UserRole.worker, UserRole.manager, UserRole.company_admin):
+    if user.role not in (
+        UserRole.worker,
+        UserRole.lead,
+        UserRole.supervisor,
+        UserRole.manager,
+        UserRole.company_admin,
+    ):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Issue tracking not available for this role")
     return user
 
@@ -85,8 +91,8 @@ WrReader = Annotated[User, Depends(_require_wr_reader)]
 
 
 def _assert_worker_may_touch_wr(user: User, wr: PulseWorkRequest) -> None:
-    """Field workers may update issues assigned to them or still unassigned."""
-    if user.role != UserRole.worker:
+    """Field workers and leads may update issues assigned to them or still unassigned."""
+    if user.role not in (UserRole.worker, UserRole.lead):
         return
     if wr.assigned_user_id is None or wr.assigned_user_id == user.id:
         return
@@ -392,7 +398,7 @@ async def create_wr(
     db.add(wr)
     await db.flush()
     await _log(db, wr.id, "created", user.id, {"title": wr.title})
-    if user.role == UserRole.worker:
+    if user.role in (UserRole.worker, UserRole.lead):
         await try_mark_onboarding_step(db, user.id, "log_issue")
     else:
         await try_mark_onboarding_step(db, user.id, "create_work_order")
@@ -471,7 +477,7 @@ async def patch_wr(
     wr = await _get_wr(db, cid, wr_id)
     data = body.model_dump(exclude_unset=True)
 
-    if user.role == UserRole.worker:
+    if user.role in (UserRole.worker, UserRole.lead):
         _assert_worker_may_touch_wr(user, wr)
         extra = set(data.keys()) - {"attachments"}
         if extra:
@@ -485,7 +491,10 @@ async def patch_wr(
         await db.refresh(wr)
         return await _detail(db, cid, wr_id)
 
-    if user.role not in (UserRole.system_admin, UserRole.company_admin, UserRole.manager) and not user.is_system_admin:
+    if (
+        user.role not in (UserRole.system_admin, UserRole.company_admin, UserRole.manager, UserRole.supervisor)
+        and not user.is_system_admin
+    ):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="manager or above required")
     if "tool_id" in data and data["tool_id"] and not await pulse_svc.tool_in_company(db, cid, data["tool_id"]):
         raise HTTPException(status_code=400, detail="Unknown asset")

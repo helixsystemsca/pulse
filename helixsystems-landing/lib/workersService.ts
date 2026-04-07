@@ -7,6 +7,7 @@ export type WorkerRow = {
   full_name: string | null;
   role: string;
   is_active: boolean;
+  account_status?: string;
   phone: string | null;
   department: string | null;
   job_title: string | null;
@@ -42,6 +43,7 @@ export type WorkerDetail = {
   full_name: string | null;
   role: string;
   is_active: boolean;
+  account_status?: string;
   phone: string | null;
   department: string | null;
   job_title: string | null;
@@ -95,13 +97,29 @@ export async function fetchWorkerDetail(companyId: string | null, id: string): P
   return apiFetch<WorkerDetail>(withCompany(`/api/workers/${id}`, companyId));
 }
 
+export type WorkerCreateResult = {
+  worker: WorkerDetail;
+  invite_link_path: string;
+  invite_email_sent: boolean | null;
+  message: string;
+};
+
 export async function createWorker(
   companyId: string | null,
   body: Record<string, unknown>,
-): Promise<WorkerDetail> {
-  return apiFetch<WorkerDetail>(withCompany(`/api/workers`, companyId), {
+): Promise<WorkerCreateResult> {
+  return apiFetch<WorkerCreateResult>(withCompany(`/api/workers`, companyId), {
     method: "POST",
     json: body,
+  });
+}
+
+export async function resendWorkerInvite(
+  companyId: string | null,
+  userId: string,
+): Promise<{ invite_link_path: string; invite_email_sent: boolean | null; message: string }> {
+  return apiFetch(withCompany(`/api/workers/${userId}/resend-invite`, companyId), {
+    method: "POST",
   });
 }
 

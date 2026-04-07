@@ -15,7 +15,7 @@ from app.core.features.service import FeatureFlagService
 from app.core.inference.engine import InferenceEngine
 from app.core.permissions.service import PermissionService
 from app.core.state.manager import StateManager
-from app.models.domain import User, UserRole
+from app.models.domain import User, UserAccountStatus, UserRole
 from app.schemas.auth import TokenPayload
 from sqlalchemy import select
 
@@ -49,6 +49,9 @@ async def get_current_user(
 
     if user.role.value != payload.role:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+
+    if user.account_status != UserAccountStatus.active:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Account not activated")
 
     if user.role == UserRole.system_admin:
         if payload.company_id is not None or user.company_id is not None:
@@ -122,6 +125,7 @@ async def require_manager_or_above(user: Annotated[User, Depends(get_current_use
         UserRole.system_admin,
         UserRole.company_admin,
         UserRole.manager,
+        UserRole.supervisor,
     ):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="manager or above required")
     return user

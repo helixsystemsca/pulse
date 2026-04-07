@@ -64,6 +64,7 @@ class WorkerRowOut(BaseModel):
     full_name: Optional[str] = None
     role: str
     is_active: bool
+    account_status: str = "active"
     phone: Optional[str] = None
     department: Optional[str] = None
     job_title: Optional[str] = None
@@ -80,6 +81,7 @@ class WorkerDetailOut(BaseModel):
     full_name: Optional[str] = None
     role: str
     is_active: bool
+    account_status: str = "active"
     phone: Optional[str] = None
     department: Optional[str] = None
     job_title: Optional[str] = None
@@ -101,9 +103,8 @@ class WorkerDetailOut(BaseModel):
 
 class WorkerCreateIn(BaseModel):
     email: str = Field(..., min_length=3, max_length=320)
-    password: str = Field(..., min_length=8, max_length=128)
     full_name: Optional[str] = Field(None, max_length=255)
-    role: str = Field(..., description="manager | worker")
+    role: str = Field(..., description="worker | lead | supervisor | manager")
     phone: Optional[str] = Field(None, max_length=64)
     department: Optional[str] = Field(None, max_length=128)
     job_title: Optional[str] = Field(None, max_length=255)
@@ -138,3 +139,10 @@ class WorkersSettingsOut(BaseModel):
 
 class WorkersSettingsPatchIn(BaseModel):
     settings: dict[str, Any] = Field(default_factory=dict)
+
+
+class WorkerCreateResultOut(BaseModel):
+    worker: WorkerDetailOut
+    invite_link_path: str
+    invite_email_sent: Optional[bool] = None
+    message: str = "Invite sent"

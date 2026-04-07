@@ -27,6 +27,7 @@ import {
   fetchWorkerSettings,
   patchWorker,
   patchWorkerSettings,
+  resendWorkerInvite,
 } from "@/lib/workersService";
 
 type CompanyOption = { id: string; name: string };
@@ -80,7 +81,7 @@ type SettingsTab = (typeof SETTINGS_TABS)[number];
 
 function managerOrAbove(role: string | undefined, isSys: boolean | undefined): boolean {
   if (isSys || role === "system_admin") return true;
-  return role === "manager" || role === "company_admin";
+  return role === "manager" || role === "company_admin" || role === "supervisor";
 }
 
 function initials(name: string | null | undefined, email: string): string {
@@ -95,12 +96,16 @@ function initials(name: string | null | undefined, email: string): string {
 function roleBadge(role: string): string {
   if (role === "company_admin") return "app-badge-sky";
   if (role === "manager") return "app-badge-blue";
+  if (role === "supervisor") return "app-badge-blue";
+  if (role === "lead") return "app-badge-emerald";
   return "app-badge-slate";
 }
 
 function roleGroupTitle(role: string): string {
   if (role === "company_admin") return "Company Admin";
   if (role === "manager") return "Managers";
+  if (role === "supervisor") return "Supervisors";
+  if (role === "lead") return "Leads";
   return "Workers";
 }
 
@@ -123,7 +128,7 @@ export function WorkersApp() {
   const isSystemAdmin = Boolean(session?.is_system_admin || session?.role === "system_admin");
   const sessionCompanyId = session?.company_id ?? null;
   const canManage = managerOrAbove(session?.role, session?.is_system_admin);
-  const actorIsManagerOnly = session?.role === "manager";
+  const createRoleLimited = session?.role === "manager" || session?.role === "supervisor";
 
   const [companyPick, setCompanyPick] = useState<string | null>(null);
   const [companies, setCompanies] = useState<CompanyOption[]>([]);
@@ -155,10 +160,11 @@ export function WorkersApp() {
   const [certRulesText, setCertRulesText] = useState("[]");
   const [settingsBusy, setSettingsBusy] = useState(false);
 
+  const [inviteNotice, setInviteNotice] = useState<string | null>(null);
+
   const [createForm, setCreateForm] = useState({
     full_name: "",
     email: "",
-    password: "",
     role: "worker",
     department: "",
     shift: "",
@@ -228,7 +234,7 @@ export function WorkersApp() {
   }, [profileId, loadProfile]);
 
   const grouped = useMemo(() => {
-    const order = ["company_admin", "manager", "worker"] as const;
+    const order = ["company_admin", "manager", "supervisor", "lead", "worker"] as const;
     const m = new Map<string, WorkerRow[]>();
     for (const r of order) m.set(r, []);
     for (const w of list) {
@@ -240,7 +246,13 @@ export function WorkersApp() {
   }, [list]);
 
   const supervisors = useMemo(
-    () => list.filter((u) => u.role === "manager" || u.role === "company_admin"),
+    () =>
+      list.filter(
+        (u) =>
+          (u.role === "supervisor" || u.role === "manager") &&
+          u.is_active &&
+          (u.account_status ?? "active") === "active",
+      ),
     [list],
   );
 
@@ -298,7 +310,7 @@ export function WorkersApp() {
   }
 
   async function submitCreate() {
-    if (!createForm.email.trim() || createForm.password.length < 8) return;
+    if (!createForm.email.trim()) return;
     setProfileBusy(true);
     try {
       const skills = createForm.skills
@@ -311,9 +323,9 @@ export function WorkersApp() {
         const [name, exp] = line.split("|").map((x) => x.trim());
         return exp ? { name, expiry_date: `${exp}T12:00:00.000Z` } : { name };
       });
-      await createWorker(apiCompany, {
+      const origin = typeof window !== "undefined" ? window.location.origin : "";
+      const result = await createWorker(apiCompany, {
         email: createForm.email.trim(),
-        password: createForm.password,
         full_name: createForm.full_name.trim() || null,
         role: createForm.role,
         department: createForm.department.trim() || null,
@@ -323,11 +335,20 @@ export function WorkersApp() {
         skills: skills.length ? skills : undefined,
         certifications: certifications.length ? certifications : undefined,
       });
+      const absLink = `${origin}${result.invite_link_path}`;
+      if (result.invite_email_sent === false) {
+        setInviteNotice(`${result.message} Share this link with them: ${absLink}`);
+      } else {
+        setInviteNotice(
+          result.invite_email_sent === null
+            ? `${result.message} If outbound email is configured, they will receive it shortly. You can also share: ${absLink}`
+            : `${result.message}`,
+        );
+      }
       setCreateOpen(false);
       setCreateForm({
         full_name: "",
         email: "",
-        password: "",
         role: "worker",
         department: "",
         shift: "",
@@ -373,16 +394,29 @@ export function WorkersApp() {
               type="button"
               className={PRIMARY_BTN}
               onClick={() => {
-                setCreateForm((f) => ({ ...f, role: actorIsManagerOnly ? "worker" : f.role }));
+                setCreateForm((f) => ({ ...f, role: createRoleLimited ? "worker" : f.role }));
                 setCreateOpen(true);
               }}
               disabled={!dataEnabled}
             >
-              + Create user
+              + Create & send invite
             </button>
           </>
         }
       />
+
+      {inviteNotice ? (
+        <div className="rounded-md border border-emerald-500/30 bg-emerald-950/30 px-4 py-3 text-sm text-emerald-100">
+          <p>{inviteNotice}</p>
+          <button
+            type="button"
+            className="mt-2 text-xs font-semibold text-emerald-300 underline"
+            onClick={() => setInviteNotice(null)}
+          >
+            Dismiss
+          </button>
+        </div>
+      ) : null}
 
       {isSystemAdmin ? (
         <div className="mt-6 rounded-md border border-pulse-border bg-white p-4 shadow-sm dark:border-[#1F2937] dark:bg-[#111827] dark:shadow-[0_2px_8px_rgba(0,0,0,0.35)]">
@@ -538,9 +572,19 @@ export function WorkersApp() {
                                 <td className="px-4 py-3">
                                   <span className="inline-flex items-center gap-1.5 text-sm text-pulse-navy">
                                     <span
-                                      className={`h-2 w-2 rounded-full ${row.is_active ? "bg-emerald-500" : "bg-slate-300"}`}
+                                      className={`h-2 w-2 rounded-full ${
+                                        (row.account_status ?? "active") === "invited"
+                                          ? "bg-amber-400"
+                                          : row.is_active
+                                            ? "bg-emerald-500"
+                                            : "bg-slate-300"
+                                      }`}
                                     />
-                                    {row.is_active ? "Active" : "Inactive"}
+                                    {(row.account_status ?? "active") === "invited"
+                                      ? "Invited"
+                                      : row.is_active
+                                        ? "Active"
+                                        : "Inactive"}
                                   </span>
                                 </td>
                                 <td className="relative px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
@@ -592,8 +636,8 @@ export function WorkersApp() {
 
       <PulseDrawer
         open={createOpen}
-        title="Create user"
-        subtitle="Add a manager or worker to your organization"
+        title="Add an employee"
+        subtitle="Invite a team member to join your organization. They will choose their own password from the email link."
         onClose={() => setCreateOpen(false)}
         wide
         labelledBy="worker-create-title"
@@ -609,16 +653,16 @@ export function WorkersApp() {
             <button
               type="button"
               className={PRIMARY_BTN}
-              disabled={profileBusy || createForm.password.length < 8}
+              disabled={profileBusy || !createForm.email.trim()}
               onClick={() => void submitCreate()}
             >
-              Create
+              Create & send invite
             </button>
           </div>
         }
       >
         <p id="worker-create-title" className="sr-only">
-          Create user
+          Add an employee
         </p>
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="sm:col-span-2">
@@ -639,16 +683,6 @@ export function WorkersApp() {
             />
           </div>
           <div>
-            <label className={LABEL}>Password</label>
-            <input
-              type="password"
-              className={FIELD}
-              autoComplete="new-password"
-              value={createForm.password}
-              onChange={(e) => setCreateForm((f) => ({ ...f, password: e.target.value }))}
-            />
-          </div>
-          <div>
             <label className={LABEL}>Role</label>
             <select
               className={FIELD}
@@ -656,7 +690,13 @@ export function WorkersApp() {
               onChange={(e) => setCreateForm((f) => ({ ...f, role: e.target.value }))}
             >
               <option value="worker">Worker</option>
-              {actorIsManagerOnly ? null : <option value="manager">Manager</option>}
+              <option value="lead">Lead</option>
+              {createRoleLimited ? null : (
+                <>
+                  <option value="supervisor">Supervisor</option>
+                  <option value="manager">Manager</option>
+                </>
+              )}
             </select>
           </div>
           <div>
@@ -692,7 +732,7 @@ export function WorkersApp() {
               <option value="">—</option>
               {supervisors.map((s) => (
                 <option key={s.id} value={s.id}>
-                  {s.full_name ?? s.email}
+                  {(s.full_name ?? s.email) + ` (${s.role.replace(/_/g, " ")})`}
                 </option>
               ))}
             </select>
@@ -736,7 +776,33 @@ export function WorkersApp() {
         elevated
         labelledBy="worker-profile-title"
         footer={
-          <div className="flex flex-wrap justify-end gap-3">
+          <div className="flex flex-wrap items-center justify-end gap-3">
+            {(profile?.account_status ?? "active") === "invited" ? (
+              <button
+                type="button"
+                className="rounded-[10px] border border-slate-200/90 px-4 py-2.5 text-sm font-semibold text-pulse-navy shadow-sm hover:bg-slate-50 dark:border-[#374151] dark:text-gray-100 dark:hover:bg-[#1F2937]"
+                disabled={profileBusy}
+                onClick={() => {
+                  if (!profileId || !profile) return;
+                  void (async () => {
+                    setProfileBusy(true);
+                    try {
+                      const r = await resendWorkerInvite(apiCompany, profileId);
+                      const origin = typeof window !== "undefined" ? window.location.origin : "";
+                      setInviteNotice(
+                        r.invite_email_sent === false
+                          ? `${r.message} Link: ${origin}${r.invite_link_path}`
+                          : `${r.message} They can use: ${origin}${r.invite_link_path}`,
+                      );
+                    } finally {
+                      setProfileBusy(false);
+                    }
+                  })();
+                }}
+              >
+                Resend invite
+              </button>
+            ) : null}
             <button type="button" className={PRIMARY_BTN} disabled={profileBusy} onClick={() => void saveProfileNotes()}>
               {profileBusy ? "Saving…" : "Save notes"}
             </button>

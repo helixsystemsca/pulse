@@ -47,7 +47,16 @@ class UserRole(str, enum.Enum):
     system_admin = "system_admin"
     company_admin = "company_admin"
     manager = "manager"
+    supervisor = "supervisor"
+    lead = "lead"
     worker = "worker"
+
+
+class UserAccountStatus(str, enum.Enum):
+    """Tenant user lifecycle (system_admin has no company)."""
+
+    active = "active"
+    invited = "invited"
 
 
 class RolePermissionTarget(str, enum.Enum):
@@ -154,13 +163,20 @@ class User(Base):
         index=True,
     )
     email: Mapped[str] = mapped_column(String(320), nullable=False)
-    hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
+    hashed_password: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     full_name: Mapped[Optional[str]] = mapped_column(String(255))
     role: Mapped[UserRole] = mapped_column(
         Enum(UserRole, values_callable=lambda x: [e.value for e in x], native_enum=False, length=32),
         nullable=False,
         default=UserRole.worker,
     )
+    account_status: Mapped[UserAccountStatus] = mapped_column(
+        Enum(UserAccountStatus, values_callable=lambda x: [e.value for e in x], native_enum=False, length=16),
+        nullable=False,
+        default=UserAccountStatus.active,
+    )
+    invite_token_hash: Mapped[Optional[str]] = mapped_column(String(128), nullable=True, unique=True, index=True)
+    invite_expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     created_by: Mapped[Optional[str]] = mapped_column(
         UUID(as_uuid=False),
         ForeignKey("users.id", ondelete="SET NULL"),

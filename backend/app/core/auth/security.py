@@ -11,7 +11,9 @@ from app.core.config import get_settings
 settings = get_settings()
 
 
-def verify_password(plain: str, hashed: str) -> bool:
+def verify_password(plain: str, hashed: Optional[str]) -> bool:
+    if not hashed:
+        return False
     try:
         return bcrypt.checkpw(
             plain.encode("utf-8"),

@@ -158,8 +158,12 @@ async def validate_shift_assignment(
     ):
         errors.append("This worker already has a shift that overlaps this interval.")
 
-    if requires_supervisor and user.role not in (UserRole.manager, UserRole.company_admin):
-        errors.append("This shift requires a supervisor (manager or company admin).")
+    if requires_supervisor and user.role not in (
+        UserRole.manager,
+        UserRole.company_admin,
+        UserRole.supervisor,
+    ):
+        errors.append("This shift requires a supervisor (manager, supervisor, or company admin).")
 
     prof_q = await db.execute(
         select(PulseWorkerProfile).where(
@@ -188,7 +192,7 @@ async def dashboard_aggregate(db: AsyncSession, company_id: str) -> dict[str, An
         .where(
             User.company_id == company_id,
             User.is_active.is_(True),
-            User.role.in_((UserRole.worker, UserRole.manager)),
+            User.role.in_((UserRole.worker, UserRole.lead, UserRole.supervisor, UserRole.manager)),
         )
     )
     active_workers = int(active_workers_q.scalar_one() or 0)

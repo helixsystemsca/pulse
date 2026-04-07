@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import require_tenant_user
 from app.services.onboarding_service import try_mark_onboarding_step
 from app.core.database import get_db
-from app.models.domain import InventoryItem, Tool, ToolStatus, User, UserRole, Zone
+from app.models.domain import InventoryItem, Tool, ToolStatus, User, UserAccountStatus, UserRole, Zone
 from app.models.pulse_models import (
     PulseBeaconEquipment,
     PulseProcedure,
@@ -213,7 +213,7 @@ async def create_work_request(
     )
     db.add(wr)
     await db.flush()
-    if user.role == UserRole.worker:
+    if user.role in (UserRole.worker, UserRole.lead):
         await try_mark_onboarding_step(db, user.id, "log_issue")
     else:
         await try_mark_onboarding_step(db, user.id, "create_work_order")
@@ -298,9 +298,12 @@ async def list_workers(db: Db, cid: CompanyId) -> list[WorkerOut]:
         select(User).where(
             User.company_id == cid,
             User.is_active.is_(True),
+            User.account_status == UserAccountStatus.active,
             User.role.in_(
                 (
                     UserRole.worker,
+                    UserRole.lead,
+                    UserRole.supervisor,
                     UserRole.manager,
                     UserRole.company_admin,
                 )

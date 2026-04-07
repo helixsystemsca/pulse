@@ -20,7 +20,7 @@ class PermissionService:
             return set()
         target = (
             RolePermissionTarget.manager
-            if user.role == UserRole.manager
+            if user.role in (UserRole.manager, UserRole.supervisor)
             else RolePermissionTarget.worker
         )
         q = await self._db.execute(
@@ -34,7 +34,9 @@ class PermissionService:
         allow = set(raw.get("allow", []) if isinstance(raw.get("allow"), list) else [])
         if not allow:
             allow = set(
-                keys.DEFAULT_MANAGER_ALLOWS if user.role == UserRole.manager else keys.DEFAULT_WORKER_ALLOWS
+                keys.DEFAULT_MANAGER_ALLOWS
+                if user.role in (UserRole.manager, UserRole.supervisor)
+                else keys.DEFAULT_WORKER_ALLOWS
             )
         deny = set(user.permission_deny or [])
         return allow - deny

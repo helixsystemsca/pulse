@@ -66,7 +66,7 @@ OnboardingFlowLiteral = Literal["manager", "worker"]
 
 
 def _is_manager_flow(role: UserRole) -> bool:
-    return role in (UserRole.company_admin, UserRole.manager)
+    return role in (UserRole.company_admin, UserRole.manager, UserRole.supervisor)
 
 
 def step_keys_for_role(role: UserRole) -> tuple[str, ...]:

@@ -9,15 +9,25 @@ from __future__ import annotations
 import copy
 from datetime import datetime, timedelta, timezone
 from typing import Annotated, Any, Optional
+from urllib.parse import quote
 from uuid import uuid4
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
 from sqlalchemy import delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user, get_db, require_manager_or_above
-from app.core.auth.security import hash_password
-from app.models.domain import ComplianceRecord, ComplianceRecordStatus, User, UserRole
+from app.core.config import get_settings
+from app.core.email_smtp import send_employee_invite
+from app.core.system_tokens import generate_raw_token, hash_system_token
+from app.models.domain import (
+    Company,
+    ComplianceRecord,
+    ComplianceRecordStatus,
+    User,
+    UserAccountStatus,
+    UserRole,
+)
 from app.models.pulse_models import (
     PulseWorkerCertification,
     PulseWorkerHR,
@@ -34,6 +44,7 @@ from app.schemas.pulse_workers import (
     WorkerCertificationOut,
     WorkerComplianceSummaryOut,
     WorkerCreateIn,
+    WorkerCreateResultOut,
     WorkerDetailOut,
     WorkerListOut,
     WorkerPatchIn,
@@ -58,6 +69,8 @@ DEFAULT_WORKERS_SETTINGS: dict[str, Any] = {
     "roles": [
         {"key": "company_admin", "label": "Company Admin"},
         {"key": "manager", "label": "Manager"},
+        {"key": "supervisor", "label": "Supervisor"},
+        {"key": "lead", "label": "Lead"},
         {"key": "worker", "label": "Worker"},
     ],
     "shifts": [
@@ -104,6 +117,35 @@ CompanyId = Annotated[str, Depends(resolve_workers_company_id)]
 Db = Annotated[AsyncSession, Depends(get_db)]
 MgrUser = Annotated[User, Depends(require_manager_or_above)]
 
+_ROSTER_ROLES = (
+    UserRole.company_admin,
+    UserRole.manager,
+    UserRole.supervisor,
+    UserRole.lead,
+    UserRole.worker,
+)
+
+
+def _employee_join_path(raw_token: str) -> str:
+    return f"/join?token={quote(raw_token, safe='')}"
+
+
+def _pulse_public_link(path: str) -> str:
+    base = get_settings().pulse_app_public_origin.rstrip("/")
+    return f"{base}{path if path.startswith('/') else '/' + path}"
+
+
+async def _assert_valid_supervisor(db: AsyncSession, cid: str, supervisor_id: Optional[str]) -> None:
+    if not supervisor_id:
+        return
+    u = await pulse_svc._user_in_company(db, cid, supervisor_id)
+    if not u:
+        raise HTTPException(status_code=400, detail="Unknown supervisor")
+    if u.account_status != UserAccountStatus.active or not u.is_active:
+        raise HTTPException(status_code=400, detail="Supervisor must be an active user")
+    if u.role not in (UserRole.supervisor, UserRole.manager):
+        raise HTTPException(status_code=400, detail="Supervisor must have role supervisor or manager")
+
 
 def _cert_status(expiry: Optional[datetime], now: datetime) -> str:
     if expiry is None:
@@ -115,7 +157,7 @@ async def _users_by_company(db: AsyncSession, cid: str) -> dict[str, User]:
     q = await db.execute(
         select(User).where(
             User.company_id == cid,
-            User.role.in_((UserRole.company_admin, UserRole.manager, UserRole.worker)),
+            User.role.in_(_ROSTER_ROLES),
         )
     )
     return {u.id: u for u in q.scalars().all()}
@@ -287,9 +329,9 @@ def _patch_actor_can_touch_target(actor: User, target: User) -> None:
         return
     if actor.role == UserRole.company_admin:
         return
-    if actor.role == UserRole.manager:
-        if target.role != UserRole.worker:
-            raise HTTPException(status_code=403, detail="Managers may only edit workers")
+    if actor.role in (UserRole.manager, UserRole.supervisor):
+        if target.role not in (UserRole.worker, UserRole.lead):
+            raise HTTPException(status_code=403, detail="Managers and supervisors may only edit workers or leads")
         return
     raise HTTPException(status_code=403, detail="Not allowed")
 
@@ -373,6 +415,7 @@ async def _build_detail(db: AsyncSession, cid: str, u: User, users_map: dict[str
         full_name=u.full_name,
         role=u.role.value,
         is_active=u.is_active,
+        account_status=u.account_status.value,
         phone=hr.phone if hr else None,
         department=hr.department if hr else None,
         job_title=hr.job_title if hr else None,
@@ -438,7 +481,7 @@ async def list_workers(
 ) -> WorkerListOut:
     stmt = select(User).where(
         User.company_id == cid,
-        User.role.in_((UserRole.company_admin, UserRole.manager, UserRole.worker)),
+        User.role.in_(_ROSTER_ROLES),
     )
     if not include_inactive:
         stmt = stmt.where(User.is_active.is_(True))
@@ -446,7 +489,7 @@ async def list_workers(
         like = f"%{q.strip()}%"
         stmt = stmt.where(or_(User.email.ilike(like), User.full_name.ilike(like)))
     users = list((await db.execute(stmt)).scalars().all())
-    rank = {"company_admin": 0, "manager": 1, "worker": 2}
+    rank = {"company_admin": 0, "manager": 1, "supervisor": 2, "lead": 3, "worker": 4}
     users.sort(key=lambda u: (rank.get(u.role.value, 9), (u.full_name or u.email or "").lower()))
     hr_map: dict[str, PulseWorkerHR] = {}
     if users:
@@ -464,6 +507,7 @@ async def list_workers(
                 full_name=u.full_name,
                 role=u.role.value,
                 is_active=u.is_active,
+                account_status=u.account_status.value,
                 phone=h.phone if h else None,
                 department=h.department if h else None,
                 job_title=h.job_title if h else None,
@@ -491,63 +535,50 @@ async def worker_work_summary(db: Db, _: MgrUser, cid: CompanyId, user_id: str) 
 @router.get("/{user_id}", response_model=WorkerDetailOut)
 async def get_worker(db: Db, _: MgrUser, cid: CompanyId, user_id: str) -> WorkerDetailOut:
     u = await pulse_svc._user_in_company(db, cid, user_id)
-    if not u or u.role not in (UserRole.company_admin, UserRole.manager, UserRole.worker):
+    if not u or u.role not in _ROSTER_ROLES:
         raise HTTPException(status_code=404, detail="User not found")
     users_map = await _users_by_company(db, cid)
     return await _build_detail(db, cid, u, users_map)
 
 
-@router.post("", response_model=WorkerDetailOut, status_code=status.HTTP_201_CREATED)
-async def create_worker(
-    db: Db,
-    actor: MgrUser,
-    cid: CompanyId,
+def _company_admin_creatable_roles() -> frozenset[str]:
+    return frozenset({"worker", "lead", "supervisor", "manager"})
+
+
+def _manager_creatable_roles() -> frozenset[str]:
+    return frozenset({"worker", "lead"})
+
+
+async def _apply_worker_hr_and_extras(
+    db: AsyncSession,
+    cid: str,
+    user: User,
     body: WorkerCreateIn,
-) -> WorkerDetailOut:
-    if actor.role == UserRole.system_admin or actor.is_system_admin:
-        pass
-    elif actor.role == UserRole.manager:
-        if body.role != "worker":
-            raise HTTPException(status_code=403, detail="Managers may only create workers")
-    elif actor.role == UserRole.company_admin:
-        if body.role not in ("manager", "worker"):
-            raise HTTPException(status_code=403, detail="company_admin may only create managers or workers")
+    *,
+    hr_row: PulseWorkerHR | None,
+) -> None:
+    if hr_row:
+        hr_row.phone = body.phone
+        hr_row.department = body.department
+        hr_row.job_title = body.job_title
+        hr_row.shift = body.shift
+        hr_row.supervisor_user_id = body.supervisor_id
+        hr_row.start_date = body.start_date
     else:
-        raise HTTPException(status_code=403, detail="Not allowed to create users")
-
-    exists = await db.execute(select(User).where(User.email == body.email))
-    if exists.scalar_one_or_none():
-        raise HTTPException(status_code=400, detail="Email already in use")
-
-    if body.supervisor_id and not await pulse_svc._user_in_company(db, cid, body.supervisor_id):
-        raise HTTPException(status_code=400, detail="Unknown supervisor")
-
-    role_enum = UserRole(body.role)
-    user = User(
-        company_id=cid,
-        email=body.email.strip().lower(),
-        hashed_password=hash_password(body.password),
-        full_name=body.full_name,
-        role=role_enum,
-        created_by=actor.id,
-    )
-    db.add(user)
-    await db.flush()
-
-    hr = PulseWorkerHR(
-        user_id=user.id,
-        company_id=cid,
-        phone=body.phone,
-        department=body.department,
-        job_title=body.job_title,
-        shift=body.shift,
-        supervisor_user_id=body.supervisor_id,
-        start_date=body.start_date,
-    )
-    db.add(hr)
+        db.add(
+            PulseWorkerHR(
+                user_id=user.id,
+                company_id=cid,
+                phone=body.phone,
+                department=body.department,
+                job_title=body.job_title,
+                shift=body.shift,
+                supervisor_user_id=body.supervisor_id,
+                start_date=body.start_date,
+            )
+        )
     await _ensure_profile(db, cid, user.id)
     await db.flush()
-
     if body.certifications:
         await _sync_structured_certs(db, cid, user.id, body.certifications)
     if body.skills:
@@ -555,11 +586,156 @@ async def create_worker(
     if body.training:
         await _sync_training(db, cid, user.id, body.training)
 
+
+@router.post("", response_model=WorkerCreateResultOut, status_code=status.HTTP_201_CREATED)
+async def create_worker(
+    db: Db,
+    actor: MgrUser,
+    cid: CompanyId,
+    body: WorkerCreateIn,
+    background_tasks: BackgroundTasks,
+) -> WorkerCreateResultOut:
+    if actor.role == UserRole.system_admin or actor.is_system_admin:
+        pass
+    elif actor.role == UserRole.manager:
+        if body.role not in _manager_creatable_roles():
+            raise HTTPException(status_code=403, detail="Managers may only invite workers or leads")
+    elif actor.role == UserRole.supervisor:
+        if body.role not in _manager_creatable_roles():
+            raise HTTPException(status_code=403, detail="Supervisors may only invite workers or leads")
+    elif actor.role == UserRole.company_admin:
+        if body.role not in _company_admin_creatable_roles():
+            raise HTTPException(
+                status_code=403,
+                detail="company_admin may only invite workers, leads, supervisors, or managers",
+            )
+    else:
+        raise HTTPException(status_code=403, detail="Not allowed to create users")
+
+    email_norm = body.email.strip().lower()
+    await _assert_valid_supervisor(db, cid, body.supervisor_id)
+
+    role_enum = UserRole(body.role)
+    settings = get_settings()
+    exp = datetime.now(timezone.utc) + timedelta(hours=settings.system_invite_expire_hours)
+    raw = generate_raw_token()
+    token_hash = hash_system_token(raw)
+
+    existing_q = await db.execute(select(User).where(func.lower(User.email) == email_norm))
+    existing = existing_q.scalar_one_or_none()
+
+    if existing:
+        if str(existing.company_id) != cid:
+            raise HTTPException(status_code=400, detail="Email already in use")
+        if existing.account_status == UserAccountStatus.active:
+            raise HTTPException(status_code=400, detail="Email already in use")
+        user = existing
+        user.role = role_enum
+        user.full_name = body.full_name
+        user.account_status = UserAccountStatus.invited
+        user.hashed_password = None
+        user.invite_token_hash = token_hash
+        user.invite_expires_at = exp
+        user.is_active = True
+        user.created_by = actor.id
+    else:
+        user = User(
+            company_id=cid,
+            email=email_norm,
+            hashed_password=None,
+            full_name=body.full_name,
+            role=role_enum,
+            created_by=actor.id,
+            account_status=UserAccountStatus.invited,
+            invite_token_hash=token_hash,
+            invite_expires_at=exp,
+            is_active=True,
+        )
+        db.add(user)
+    await db.flush()
+
+    hr = await _get_hr(db, user.id)
+    await _apply_worker_hr_and_extras(db, cid, user, body, hr_row=hr)
+
+    company = await db.get(Company, cid)
+    co_name = company.name if company else "your organization"
+    link_path = _employee_join_path(raw)
+    invite_url = _pulse_public_link(link_path)
+
+    invite_email_sent: bool | None = None
+    if settings.smtp_configured:
+
+        async def _send() -> None:
+            cfg = get_settings()
+            await send_employee_invite(
+                cfg,
+                to_email=email_norm,
+                company_name=co_name,
+                invite_url=invite_url,
+            )
+
+        background_tasks.add_task(_send)
+        invite_email_sent = None
+    else:
+        invite_email_sent = False
+
     await db.commit()
+
     u2 = await pulse_svc._user_in_company(db, cid, user.id)
     assert u2
     users_map = await _users_by_company(db, cid)
-    return await _build_detail(db, cid, u2, users_map)
+    detail = await _build_detail(db, cid, u2, users_map)
+    return WorkerCreateResultOut(
+        worker=detail,
+        invite_link_path=link_path,
+        invite_email_sent=invite_email_sent,
+        message="Invite sent",
+    )
+
+
+@router.post("/{user_id}/resend-invite", status_code=status.HTTP_200_OK)
+async def resend_worker_invite(
+    db: Db,
+    actor: MgrUser,
+    cid: CompanyId,
+    user_id: str,
+    background_tasks: BackgroundTasks,
+) -> dict[str, Any]:
+    target = await pulse_svc._user_in_company(db, cid, user_id)
+    if not target or target.role not in _ROSTER_ROLES:
+        raise HTTPException(status_code=404, detail="User not found")
+    _patch_actor_can_touch_target(actor, target)
+    if target.account_status != UserAccountStatus.invited:
+        raise HTTPException(status_code=400, detail="User is not pending invite")
+    settings = get_settings()
+    raw = generate_raw_token()
+    target.invite_token_hash = hash_system_token(raw)
+    target.invite_expires_at = datetime.now(timezone.utc) + timedelta(hours=settings.system_invite_expire_hours)
+    await db.commit()
+
+    company = await db.get(Company, cid)
+    co_name = company.name if company else "your organization"
+    link_path = _employee_join_path(raw)
+    invite_url = _pulse_public_link(link_path)
+    invite_email_sent: bool | None = False
+    if settings.smtp_configured:
+
+        async def _send() -> None:
+            cfg = get_settings()
+            await send_employee_invite(
+                cfg,
+                to_email=target.email,
+                company_name=co_name,
+                invite_url=invite_url,
+            )
+
+        background_tasks.add_task(_send)
+        invite_email_sent = None
+    return {
+        "invite_link_path": link_path,
+        "invite_email_sent": invite_email_sent,
+        "message": "Invite resent",
+    }
 
 
 @router.patch("/{user_id}", response_model=WorkerDetailOut)
@@ -571,7 +747,7 @@ async def patch_worker(
     body: WorkerPatchIn,
 ) -> WorkerDetailOut:
     target = await pulse_svc._user_in_company(db, cid, user_id)
-    if not target or target.role not in (UserRole.company_admin, UserRole.manager, UserRole.worker):
+    if not target or target.role not in _ROSTER_ROLES:
         raise HTTPException(status_code=404, detail="User not found")
 
     _patch_actor_can_touch_target(actor, target)
@@ -593,12 +769,15 @@ async def patch_worker(
             raise HTTPException(status_code=400, detail="Cannot reassign company_admin role here")
         if new_r == UserRole.company_admin:
             raise HTTPException(status_code=400, detail="Cannot promote to company_admin via this endpoint")
-        if new_r not in (UserRole.manager, UserRole.worker):
+        if new_r not in (UserRole.manager, UserRole.supervisor, UserRole.lead, UserRole.worker):
             raise HTTPException(status_code=400, detail="Invalid role")
         target.role = new_r
 
     if "is_active" in data and data["is_active"] is not None:
-        if actor.role == UserRole.manager and target.role != UserRole.worker:
+        if actor.role in (UserRole.manager, UserRole.supervisor) and target.role not in (
+            UserRole.worker,
+            UserRole.lead,
+        ):
             raise HTTPException(status_code=403, detail="Not allowed")
         target.is_active = bool(data["is_active"])
 
@@ -632,9 +811,8 @@ async def patch_worker(
         if "shift" in data:
             hr.shift = data["shift"]
         if "supervisor_id" in data:
-            sid = data["supervisor_id"]
-            if sid and not await pulse_svc._user_in_company(db, cid, sid):
-                raise HTTPException(status_code=400, detail="Unknown supervisor")
+            sid = data["supervisor_id"] or None
+            await _assert_valid_supervisor(db, cid, sid)
             hr.supervisor_user_id = sid
         if "start_date" in data:
             hr.start_date = data["start_date"]
