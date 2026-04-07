@@ -8,6 +8,46 @@ html {
 }
 
 /**
+ * Pulse app shell — shared surfaces for schedule, header, and in-app chrome.
+ * Light mode keeps a transparent canvas so {@link PulseThemedBackground} shows through.
+ */
+:root {
+  --pulse-shell-canvas: transparent;
+  --pulse-shell-surface: #ffffff;
+  --pulse-shell-elevated: #f8fafc;
+  --pulse-shell-cell: #ffffff;
+  --pulse-shell-cell-muted: rgb(248 250 252 / 0.94);
+  --pulse-shell-header-row: rgb(248 250 252 / 0.96);
+  --pulse-shell-border: rgb(226 232 240 / 0.95);
+  --pulse-shell-grid: rgb(203 213 225 / 0.42);
+  --pulse-shell-shadow: 0 1px 3px rgb(15 23 42 / 0.06);
+  --pulse-shell-kbd: rgb(241 245 249 / 1);
+  --pulse-header-bg: rgb(255 255 255 / 0.95);
+  --pulse-header-border: rgb(226 232 240 / 0.9);
+  --pulse-header-shadow: 0 1px 3px rgb(15 23 42 / 0.06);
+  --pulse-segment-active-bg: #0f172a;
+  --pulse-segment-active-fg: #ffffff;
+}
+
+.dark {
+  --pulse-shell-canvas: #0c1424;
+  --pulse-shell-surface: #111827;
+  --pulse-shell-elevated: #172033;
+  --pulse-shell-cell: #151c2e;
+  --pulse-shell-cell-muted: rgb(15 23 42 / 0.58);
+  --pulse-shell-header-row: rgb(23 32 51 / 0.96);
+  --pulse-shell-border: rgb(55 65 81 / 0.55);
+  --pulse-shell-grid: rgb(148 163 184 / 0.11);
+  --pulse-shell-shadow: 0 4px 22px rgb(0 0 0 / 0.38);
+  --pulse-shell-kbd: rgb(17 24 39 / 0.95);
+  --pulse-header-bg: rgb(17 24 39 / 0.97);
+  --pulse-header-border: rgb(55 65 81 / 0.45);
+  --pulse-header-shadow: 0 4px 24px rgb(0 0 0 / 0.42);
+  --pulse-segment-active-bg: rgb(14 165 233 / 0.2);
+  --pulse-segment-active-fg: rgb(224 242 254);
+}
+
+/**
  * Glass / elevation — works over {@link PulseThemedBackground}.
  * Level 1: `app-surface-inset` · Level 2: `app-glass-card` · Level 3: `app-glass-elevated` (modals, emphasis).
  */
@@ -243,10 +283,13 @@ html {
   }
 
   /**
-   * App canvas: transparent so {@link PulseThemedBackground} shows through (matches login).
+   * App canvas: transparent in light (gradient shows); solid shell tint in dark for a flat blueprint base.
    */
   .bg-pulse-bg {
     @apply bg-transparent;
+  }
+  .dark .bg-pulse-bg {
+    background-color: var(--pulse-shell-canvas);
   }
 
   /** Primary surfaces */

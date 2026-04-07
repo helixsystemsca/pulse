@@ -25,13 +25,9 @@ function initialsFrom(email: string, fullName: string | null | undefined): strin
   return local.slice(0, 2).toUpperCase() || "—";
 }
 
-/**
- * Dark: match `AppSideNav` chrome (`#111827` / `#1F2937`) so header + rail feel unified over the canvas.
- * Light page content stays on `app-page-shell` (`#1e293b` in dark).
- * Avoid `supports-[backdrop-filter]:bg-white/…` — it can beat `dark:bg-*` depending on CSS order.
- */
+/** Shell tokens: `--pulse-header-*` in globals.css (light glass · dark blueprint bar). */
 const HEADER =
-  "sticky top-0 z-50 h-16 shrink-0 border-b border-gray-200/90 bg-white/95 shadow-[0_1px_3px_rgba(15,23,42,0.06)] backdrop-blur-md dark:border-[#1F2937] dark:bg-[#111827]/96 dark:shadow-[0_4px_24px_rgba(0,0,0,0.4)] dark:backdrop-blur-md";
+  "sticky top-0 z-50 h-16 shrink-0 border-b backdrop-blur-md border-[var(--pulse-header-border)] bg-[var(--pulse-header-bg)] shadow-[var(--pulse-header-shadow)]";
 
 export function AppNavbar() {
   const pathname = usePathname();
@@ -70,7 +66,7 @@ export function AppNavbar() {
             href={logoHref}
             className="flex min-w-0 items-center gap-2.5 font-headline text-lg font-bold tracking-tight text-gray-900 no-underline hover:text-blue-600 sm:text-xl dark:text-gray-100 dark:hover:text-blue-400"
           >
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-gray-200 bg-gray-50 text-blue-600 shadow-sm dark:border-[#1F2937] dark:bg-[#111827] dark:text-blue-400 dark:shadow-[0_2px_8px_rgba(0,0,0,0.35)]">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-pulseShell-border bg-pulseShell-elevated text-blue-600 shadow-[var(--pulse-shell-shadow)] dark:text-blue-400">
               <Activity className="h-4 w-4" strokeWidth={2} aria-hidden />
             </span>
             <span className="font-semibold">Pulse</span>

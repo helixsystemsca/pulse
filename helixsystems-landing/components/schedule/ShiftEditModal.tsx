@@ -23,7 +23,7 @@ const PRIMARY_BTN =
   "rounded-[10px] bg-[#2B4C7E] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#234066] disabled:opacity-50";
 
 const FIELD =
-  "mt-1.5 w-full rounded-[10px] border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 shadow-sm focus:border-[#2B4C7E]/35 focus:outline-none focus:ring-1 focus:ring-[#2B4C7E]/25 dark:border-[#1F2937] dark:bg-[#0F172A] dark:text-gray-100 dark:focus:border-blue-400/40 dark:focus:ring-blue-400/25";
+  "mt-1.5 w-full rounded-[10px] border border-pulseShell-border bg-pulseShell-surface px-3 py-2.5 text-sm text-gray-900 shadow-sm focus:border-[#2B4C7E]/35 focus:outline-none focus:ring-1 focus:ring-[#2B4C7E]/25 dark:text-gray-100 dark:focus:border-blue-400/40 dark:focus:ring-blue-400/25";
 
 const LABEL =
   "text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400";
@@ -64,7 +64,7 @@ function workerBadge(
     return {
       text: "Open slot",
       className:
-        "bg-gray-100 text-gray-500 ring-1 ring-gray-200/80 dark:bg-[#0F172A] dark:text-gray-400 dark:ring-[#1F2937]",
+        "bg-gray-100 text-gray-500 ring-1 ring-gray-200/80 dark:bg-pulseShell-elevated dark:text-slate-400 dark:ring-pulseShell-border",
     };
   }
   const other = shifts.filter(
@@ -347,7 +347,7 @@ export function ShiftEditModal({
                 key={`${p.label}-${i}`}
                 type="button"
                 onClick={() => setDraft((d) => ({ ...d, startTime: p.start, endTime: p.end }))}
-                className="rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-[#2B4C7E] shadow-sm hover:bg-gray-50 dark:border-[#1F2937] dark:bg-[#111827] dark:text-blue-300 dark:hover:bg-[#0F172A]"
+                className="rounded-lg border border-pulseShell-border bg-pulseShell-elevated px-2.5 py-1.5 text-xs font-semibold text-[#2B4C7E] shadow-sm hover:bg-pulseShell-surface dark:text-blue-300"
               >
                 {p.label}
               </button>
@@ -390,7 +390,7 @@ export function ShiftEditModal({
           </p>
         </div>
 
-        <div className="rounded-[10px] border border-gray-200/60 dark:border-[#1F2937]/60 bg-gray-50/50 dark:bg-[#0F172A]/50 p-4">
+        <div className="rounded-[10px] border border-pulseShell-border/70 bg-gray-50/50 p-4 dark:bg-pulseShell-elevated/40">
           <p className={LABEL}>Shift requirements (optional)</p>
           <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
             Used for warning badges only — you can still save with conflicts. Built-in codes: RO, P1, P2, FA (custom
@@ -426,7 +426,7 @@ export function ShiftEditModal({
             <label className="flex cursor-pointer items-center gap-2 text-sm text-gray-900 dark:text-gray-100">
               <input
                 type="checkbox"
-                className="h-4 w-4 rounded border-gray-300 dark:border-[#1F2937] text-[#2B4C7E]"
+                className="h-4 w-4 rounded border-pulseShell-border text-[#2B4C7E]"
                 checked={draft.accepts_any_certification === true}
                 disabled={!(draft.required_certifications && draft.required_certifications.length > 1)}
                 onChange={(e) => setDraft((d) => ({ ...d, accepts_any_certification: e.target.checked }))}
@@ -436,7 +436,7 @@ export function ShiftEditModal({
             <label className="flex cursor-pointer items-center gap-2 text-sm text-gray-900 dark:text-gray-100">
               <input
                 type="checkbox"
-                className="h-4 w-4 rounded border-gray-300 dark:border-[#1F2937] text-[#2B4C7E]"
+                className="h-4 w-4 rounded border-pulseShell-border text-[#2B4C7E]"
                 checked={draft.requires_supervisor === true}
                 onChange={(e) => setDraft((d) => ({ ...d, requires_supervisor: e.target.checked }))}
               />
@@ -469,9 +469,9 @@ export function ShiftEditModal({
           <label className={LABEL} htmlFor="shift-zone">
             Location
           </label>
-          <div className="mt-1.5 rounded-[10px] border border-gray-200 bg-white p-4 shadow-sm dark:border-[#1F2937] dark:bg-[#111827]">
+          <div className="mt-1.5 rounded-[10px] border border-pulseShell-border bg-pulseShell-surface p-4 shadow-[var(--pulse-shell-shadow)]">
             <div className="flex gap-3">
-              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gray-100 dark:bg-[#0F172A] text-gray-500 dark:text-gray-400">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gray-100 text-gray-500 dark:bg-pulseShell-elevated dark:text-slate-400">
                 <MapPin className="h-4 w-4" strokeWidth={2} />
               </span>
               <div className="min-w-0 flex-1">

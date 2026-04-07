@@ -41,13 +41,13 @@ export function ScheduleLegendPanel({ shiftTypes, workers, shifts, contentFilter
 
   return (
     <aside
-      className="rounded-md border border-gray-200 bg-white shadow-sm dark:border-[#1F2937] dark:bg-[#111827] dark:shadow-[0_2px_8px_rgba(0,0,0,0.4)] lg:sticky lg:top-24 lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto"
+      className="rounded-md border border-pulseShell-border bg-pulseShell-surface shadow-[var(--pulse-shell-shadow)] lg:sticky lg:top-24 lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto"
       aria-label="Schedule legend"
     >
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="flex w-full items-center justify-between gap-2 border-b border-gray-200 px-4 py-3 text-left dark:border-[#1F2937] lg:cursor-default lg:border-0"
+        className="flex w-full items-center justify-between gap-2 border-b border-pulseShell-border px-4 py-3 text-left lg:cursor-default lg:border-0"
         aria-expanded={open}
       >
         <span className="text-sm font-semibold text-gray-900 dark:text-white">Legend</span>

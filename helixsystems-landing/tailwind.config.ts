@@ -46,6 +46,21 @@ const config: Config = {
           warning: "#F59E0B",
           danger: "#EF4444",
         },
+        /** Schedule + app chrome — maps to CSS variables in globals.css */
+        pulseShell: {
+          canvas: "var(--pulse-shell-canvas)",
+          surface: "var(--pulse-shell-surface)",
+          elevated: "var(--pulse-shell-elevated)",
+          cell: "var(--pulse-shell-cell)",
+          "cell-muted": "var(--pulse-shell-cell-muted)",
+          "header-row": "var(--pulse-shell-header-row)",
+          border: "var(--pulse-shell-border)",
+          grid: "var(--pulse-shell-grid)",
+          kbd: "var(--pulse-shell-kbd)",
+        },
+      },
+      ringOffsetColor: {
+        "pulse-shell-cell": "var(--pulse-shell-cell)",
       },
       boxShadow: {
         card: "0 4px 6px -1px rgb(0 0 0 / 0.06), 0 10px 24px -4px rgb(0 0 0 / 0.08)",

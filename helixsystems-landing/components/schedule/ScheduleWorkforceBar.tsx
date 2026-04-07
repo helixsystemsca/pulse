@@ -4,7 +4,7 @@ import type { WorkforceSummary } from "@/lib/schedule/types";
 
 export function ScheduleWorkforceBar({ summary }: { summary: WorkforceSummary }) {
   return (
-    <div className="sticky bottom-0 z-20 mt-4 border-t border-gray-200 bg-white/95 py-3 shadow-[0_-4px_24px_rgba(15,23,42,0.06)] backdrop-blur dark:border-[#1F2937] dark:bg-[#111827]/95 dark:shadow-[0_-4px_24px_rgba(0,0,0,0.35)]">
+    <div className="sticky bottom-0 z-20 mt-4 border-t border-pulseShell-border bg-pulseShell-surface/95 py-3 shadow-[0_-4px_24px_rgba(15,23,42,0.06)] backdrop-blur-md dark:shadow-[0_-4px_24px_rgba(0,0,0,0.35)]">
       <div className="flex w-full flex-wrap items-center justify-between gap-4 text-sm">
         <div className="flex flex-wrap items-center gap-6">
           <div>
@@ -14,7 +14,7 @@ export function ScheduleWorkforceBar({ summary }: { summary: WorkforceSummary })
               <span className="font-normal text-gray-500 dark:text-gray-400"> / {summary.activeTarget}</span>
             </p>
           </div>
-          <div className="h-8 w-px bg-gray-200 dark:bg-[#1F2937]" aria-hidden />
+          <div className="h-8 w-px bg-pulseShell-border" aria-hidden />
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">OT risk</p>
             <p
@@ -29,12 +29,12 @@ export function ScheduleWorkforceBar({ summary }: { summary: WorkforceSummary })
               {summary.otRiskLabel}
             </p>
           </div>
-          <div className="h-8 w-px bg-gray-200 dark:bg-[#1F2937]" aria-hidden />
+          <div className="h-8 w-px bg-pulseShell-border" aria-hidden />
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Fill rate</p>
             <p className="mt-0.5 font-semibold tabular-nums text-gray-900 dark:text-gray-100">{summary.fillPercent}%</p>
           </div>
-          <div className="h-8 w-px bg-gray-200 dark:bg-[#1F2937]" aria-hidden />
+          <div className="h-8 w-px bg-pulseShell-border" aria-hidden />
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Requests</p>
             <p className="mt-0.5 font-semibold tabular-nums text-gray-900 dark:text-gray-100">{summary.pendingRequests} pending</p>

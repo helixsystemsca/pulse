@@ -1045,6 +1045,8 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
   const [isPanning, setIsPanning] = useState(false);
   const [isDraggingSelection, setIsDraggingSelection] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /** Shown after a successful cloud save (where the blueprint is stored). */
+  const [saveNotice, setSaveNotice] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [designerMode, setDesignerMode] = useState<"edit" | "publish">("edit");
 
@@ -1090,6 +1092,12 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
   useEffect(() => {
     linkingForTaskIdRef.current = linkingForTaskId;
   }, [linkingForTaskId]);
+
+  useEffect(() => {
+    if (!saveNotice) return;
+    const t = window.setTimeout(() => setSaveNotice(null), 14_000);
+    return () => window.clearTimeout(t);
+  }, [saveNotice]);
 
   const taskGlowIds = useMemo(() => {
     const h = taskStepHighlight ?? taskStepPin;
@@ -1532,6 +1540,7 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
       });
       setSelectedIds([]);
       setError(null);
+      setSaveNotice(null);
     } catch (e) {
       setError(blueprintApiUserMessage(e));
     }
@@ -1540,6 +1549,7 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
   const saveBlueprint = async () => {
     setSaving(true);
     setError(null);
+    setSaveNotice(null);
     if (standalone) {
       setError(
         "This public demo does not save to the cloud. Use Publish → Download PNG/PDF, or sign in on Pulse under Zones → Blueprint designer.",
@@ -1593,7 +1603,11 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
       }
       await refreshList();
       emitOnboardingMaybeUpdated();
+      setSaveNotice(
+        "Saved to your organization in Pulse. The blueprint is stored on the server (tenant database, with your company’s other data) and appears in the Blueprint menu above. Open Zones → Blueprint anytime to edit it again.",
+      );
     } catch (e) {
+      setSaveNotice(null);
       setError(blueprintApiUserMessage(e));
     } finally {
       setSaving(false);
@@ -1606,6 +1620,7 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
     resetBlueprint({ elements: [], tasks: [] });
     setSelectedIds([]);
     setTool("select");
+    setSaveNotice(null);
   };
 
   const handleWheel = (e: Konva.KonvaEventObject<WheelEvent>) => {
@@ -2479,6 +2494,7 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
               setSymbolPanelOpen(false);
               setSelectedIds([]);
               setSnapGuides([]);
+              setSaveNotice(null);
             }}
             whileHover={isPublish ? undefined : { scale: 1.02, boxShadow: "0 8px 24px rgba(16, 185, 129, 0.18)" }}
             whileTap={isPublish ? undefined : { scale: 0.985 }}
@@ -2500,6 +2516,24 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
             >
               {error}
             </motion.p>
+          ) : null}
+        </AnimatePresence>
+        <AnimatePresence>
+          {saveNotice && !error ? (
+            <motion.div
+              key="save-notice"
+              className="bp-save-notice"
+              role="status"
+              initial={{ opacity: 0, y: -6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -4 }}
+              transition={bpTransition.med}
+            >
+              <p className="bp-save-notice__text">{saveNotice}</p>
+              <button type="button" className="bp-save-notice__dismiss" onClick={() => setSaveNotice(null)}>
+                Dismiss
+              </button>
+            </motion.div>
           ) : null}
         </AnimatePresence>
         {linkingForTaskId && canEdit ? (

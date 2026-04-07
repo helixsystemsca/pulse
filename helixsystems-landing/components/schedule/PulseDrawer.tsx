@@ -40,14 +40,14 @@ export function PulseDrawer({
         onClick={onClose}
       />
       <aside
-        className={`absolute right-0 top-0 flex h-full w-full flex-col border-l border-gray-200 bg-white shadow-[0_0_40px_rgba(15,23,42,0.12)] transition-transform duration-200 ease-out dark:border-[#1F2937] dark:bg-[#111827] dark:shadow-[0_0_48px_rgba(0,0,0,0.5)] ${
+        className={`absolute right-0 top-0 flex h-full w-full flex-col border-l border-pulseShell-border bg-pulseShell-surface shadow-[0_0_40px_rgba(15,23,42,0.12)] transition-transform duration-200 ease-out dark:shadow-[0_0_48px_rgba(0,0,0,0.5)] ${
           wide ? "sm:max-w-2xl" : "sm:max-w-[440px]"
         }`}
         role="dialog"
         aria-modal="true"
         aria-labelledby={labelledBy}
       >
-        <header className="shrink-0 border-b border-gray-200 px-6 py-5 dark:border-[#1F2937]">
+        <header className="shrink-0 border-b border-pulseShell-border px-6 py-5">
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
               <h2 id={labelledBy} className="text-lg font-bold tracking-tight text-[#2B4C7E] dark:text-blue-300">
@@ -59,7 +59,7 @@ export function PulseDrawer({
             </div>
             <button
               type="button"
-              className="shrink-0 rounded-lg p-2 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-[#0F172A] dark:hover:text-gray-100"
+              className="shrink-0 rounded-lg p-2 text-gray-500 transition-colors hover:bg-pulseShell-elevated hover:text-gray-900 dark:text-slate-400 dark:hover:bg-pulseShell-elevated dark:hover:text-slate-100"
               onClick={onClose}
               aria-label="Close"
             >
@@ -67,9 +67,11 @@ export function PulseDrawer({
             </button>
           </div>
         </header>
-        <div className="min-h-0 flex-1 overflow-y-auto bg-[#fafbfc] px-6 py-5 dark:bg-[#0B0F14]">{children}</div>
+        <div className="min-h-0 flex-1 overflow-y-auto bg-pulseShell-header-row/80 px-6 py-5 dark:bg-pulseShell-canvas">
+          {children}
+        </div>
         {footer ? (
-          <footer className="shrink-0 border-t border-gray-200 bg-white px-6 py-4 dark:border-[#1F2937] dark:bg-[#111827]">
+          <footer className="shrink-0 border-t border-pulseShell-border bg-pulseShell-surface px-6 py-4">
             {footer}
           </footer>
         ) : null}

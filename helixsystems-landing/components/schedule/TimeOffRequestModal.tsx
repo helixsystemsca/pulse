@@ -60,7 +60,7 @@ export function TimeOffRequestModal({ open, workers, onClose, onSubmit }: Props)
           </label>
           <select
             id="pto-worker"
-            className="mt-1.5 w-full rounded-[10px] border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 dark:border-[#1F2937] dark:bg-[#0F172A] dark:text-gray-100"
+            className="mt-1.5 w-full rounded-[10px] border border-pulseShell-border bg-pulseShell-surface px-3 py-2.5 text-sm text-gray-900 dark:text-gray-100"
             value={workerId}
             onChange={(e) => setWorkerId(e.target.value)}
           >
@@ -82,7 +82,7 @@ export function TimeOffRequestModal({ open, workers, onClose, onSubmit }: Props)
             <input
               id="pto-start"
               type="date"
-              className="mt-1.5 w-full rounded-[10px] border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 dark:border-[#1F2937] dark:bg-[#0F172A] dark:text-gray-100"
+              className="mt-1.5 w-full rounded-[10px] border border-pulseShell-border bg-pulseShell-surface px-3 py-2.5 text-sm text-gray-900 dark:text-gray-100"
               value={start}
               onChange={(e) => setStart(e.target.value)}
             />
@@ -94,7 +94,7 @@ export function TimeOffRequestModal({ open, workers, onClose, onSubmit }: Props)
             <input
               id="pto-end"
               type="date"
-              className="mt-1.5 w-full rounded-[10px] border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 dark:border-[#1F2937] dark:bg-[#0F172A] dark:text-gray-100"
+              className="mt-1.5 w-full rounded-[10px] border border-pulseShell-border bg-pulseShell-surface px-3 py-2.5 text-sm text-gray-900 dark:text-gray-100"
               value={end}
               onChange={(e) => setEnd(e.target.value)}
             />
@@ -106,7 +106,7 @@ export function TimeOffRequestModal({ open, workers, onClose, onSubmit }: Props)
           </label>
           <select
             id="pto-status"
-            className="mt-1.5 w-full rounded-[10px] border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 dark:border-[#1F2937] dark:bg-[#0F172A] dark:text-gray-100"
+            className="mt-1.5 w-full rounded-[10px] border border-pulseShell-border bg-pulseShell-surface px-3 py-2.5 text-sm text-gray-900 dark:text-gray-100"
             value={status}
             onChange={(e) => setStatus(e.target.value as "approved" | "pending")}
           >

@@ -110,16 +110,16 @@ export function ScheduleCalendarGrid({
 
   return (
     <div
-      className={`rounded-md border border-gray-200 bg-white shadow-sm dark:border-[#1F2937] dark:bg-[#111827] dark:shadow-[0_2px_8px_rgba(0,0,0,0.4)] ${scheduleDragLock ? "pointer-events-none" : ""}`}
+      className={`rounded-md border border-pulseShell-border bg-pulseShell-surface shadow-[var(--pulse-shell-shadow)] ${scheduleDragLock ? "pointer-events-none" : ""}`}
     >
       <div
-        className={`flex flex-wrap items-center justify-between gap-3 border-b border-gray-200 px-4 py-3 dark:border-[#1F2937] sm:px-5 ${scheduleDragLock ? "pointer-events-none" : ""}`}
+        className={`flex flex-wrap items-center justify-between gap-3 border-b border-pulseShell-border px-4 py-3 sm:px-5 ${scheduleDragLock ? "pointer-events-none" : ""}`}
       >
         <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{monthLabel(year, monthIndex)}</h2>
         <div className="flex items-center gap-1">
           <button
             type="button"
-            className="rounded-lg border border-gray-200 bg-white p-2 text-gray-900 shadow-sm hover:bg-gray-50 dark:border-[#1F2937] dark:bg-[#0F172A] dark:text-gray-100 dark:hover:bg-[#111827]"
+            className="rounded-lg border border-pulseShell-border bg-pulseShell-elevated p-2 text-gray-900 shadow-sm hover:bg-pulseShell-surface dark:text-gray-100"
             onClick={onPrevMonth}
             aria-label="Previous month"
           >
@@ -127,7 +127,7 @@ export function ScheduleCalendarGrid({
           </button>
           <button
             type="button"
-            className="rounded-lg border border-gray-200 bg-white p-2 text-gray-900 shadow-sm hover:bg-gray-50 dark:border-[#1F2937] dark:bg-[#0F172A] dark:text-gray-100 dark:hover:bg-[#111827]"
+            className="rounded-lg border border-pulseShell-border bg-pulseShell-elevated p-2 text-gray-900 shadow-sm hover:bg-pulseShell-surface dark:text-gray-100"
             onClick={onNextMonth}
             aria-label="Next month"
           >
@@ -136,25 +136,25 @@ export function ScheduleCalendarGrid({
         </div>
       </div>
       <p
-        className={`border-b border-gray-200 px-4 py-2 text-[11px] text-gray-500 dark:border-[#1F2937] dark:text-gray-400 sm:px-5 ${scheduleDragLock ? "pointer-events-none" : ""}`}
+        className={`border-b border-pulseShell-border px-4 py-2 text-[11px] text-gray-500 dark:text-gray-400 sm:px-5 ${scheduleDragLock ? "pointer-events-none" : ""}`}
       >
         Drag a shift to another day to move it. Hold{" "}
-        <kbd className="rounded bg-gray-100 px-1 dark:bg-[#0F172A]">Shift</kbd> while dragging to duplicate. Drop on the
+        <kbd className="rounded border border-pulseShell-border bg-pulseShell-kbd px-1 dark:border-pulseShell-border">Shift</kbd> while dragging to duplicate. Drop on the
         trash target (bottom-right) to delete.
       </p>
       <div
-        className={`grid grid-cols-7 gap-px border-b border-gray-200 bg-gray-200/80 dark:border-[#1F2937] dark:bg-[#1F2937] ${scheduleDragLock ? "pointer-events-none" : ""}`}
+        className={`grid grid-cols-7 gap-px border-b border-pulseShell-border bg-pulseShell-grid ${scheduleDragLock ? "pointer-events-none" : ""}`}
       >
         {WEEK.map((d) => (
           <div
             key={d}
-            className="bg-gray-50/90 px-1 py-2 text-center text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:bg-[#0F172A] dark:text-gray-400"
+            className="bg-pulseShell-header-row px-1 py-2 text-center text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-slate-400"
           >
             {d}
           </div>
         ))}
       </div>
-      <div className="grid grid-cols-7 gap-px bg-gray-200/80 dark:bg-[#1F2937]">
+      <div className="grid grid-cols-7 gap-px bg-pulseShell-grid">
         {cells.map((c) => {
           const dayShifts = byDate.get(c.date) ?? [];
           const fullDay = dayShiftsFullDay.get(c.date) ?? [];
@@ -163,8 +163,8 @@ export function ScheduleCalendarGrid({
           return (
             <div
               key={c.date}
-              className={`relative flex min-h-[7.5rem] flex-col bg-white ${cellPointer} ${
-                c.inMonth ? "" : "bg-gray-50/50 opacity-80 dark:bg-[#0B0F14]/40"
+              className={`relative flex min-h-[7.5rem] flex-col bg-pulseShell-cell ${cellPointer} ${
+                c.inMonth ? "" : "bg-pulseShell-cell-muted opacity-80"
               } ${isOver && !calendarDropsDisabled ? "ring-2 ring-inset ring-blue-500/40 dark:ring-blue-400/45" : ""}`}
               onDragOver={(e) => {
                 if (calendarDropsDisabled) return;
@@ -201,7 +201,7 @@ export function ScheduleCalendarGrid({
                 {c.inMonth && onOpenDay ? (
                   <button
                     type="button"
-                    className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold hover:bg-gray-100 dark:hover:bg-[#0F172A] ${
+                    className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold hover:bg-pulseShell-elevated dark:hover:bg-pulseShell-surface/80 ${
                       c.inMonth ? "text-gray-900 dark:text-gray-100" : "text-gray-500 dark:text-gray-400"
                     }`}
                     onClick={() => onOpenDay(c.date)}
@@ -221,7 +221,7 @@ export function ScheduleCalendarGrid({
                 {c.inMonth ? (
                   <button
                     type="button"
-                    className="rounded-md p-1 text-gray-500 hover:bg-gray-100 hover:text-blue-600 dark:text-gray-400 dark:hover:bg-[#0F172A] dark:hover:text-blue-400"
+                    className="rounded-md p-1 text-gray-500 hover:bg-pulseShell-elevated hover:text-blue-600 dark:text-slate-400 dark:hover:bg-pulseShell-surface/80 dark:hover:text-blue-400"
                     aria-label={`Add shift on ${c.date}`}
                     onClick={() => onAddForDate(c.date)}
                   >
@@ -242,9 +242,9 @@ export function ScheduleCalendarGrid({
                   const roleLb = roleMap.get(s.role) ?? s.role;
                   const cls = st
                     ? `${st.bg} ${st.border} ${st.text} border`
-                    : "border border-gray-200 bg-gray-50 text-gray-900 dark:border-[#1F2937] dark:bg-[#0F172A] dark:text-gray-100";
+                    : "border border-pulseShell-border bg-pulseShell-elevated text-gray-900 dark:text-gray-100";
                   const openCls = isOpen
-                    ? "ring-2 ring-dashed ring-blue-500/40 ring-offset-1 ring-offset-white dark:ring-blue-400/45 dark:ring-offset-[#111827]"
+                    ? "ring-2 ring-dashed ring-blue-500/40 ring-offset-1 ring-offset-pulse-shell-cell dark:ring-blue-400/45 dark:ring-offset-pulse-shell-cell"
                     : "";
                   const conflicts = getShiftConflicts(s, fullDay, workers, settings, timeOffBlocks, zones);
                   const sev = worstConflictSeverity(conflicts);
@@ -287,7 +287,7 @@ export function ScheduleCalendarGrid({
                         <div className="min-w-0 flex-1">
                           <p className="flex items-center gap-1 truncate font-semibold">
                             {isOpen ? (
-                              <span className="shrink-0 rounded bg-white/60 px-0.5 text-[9px] font-bold uppercase text-blue-600 dark:bg-white/10 dark:text-blue-400">
+                              <span className="shrink-0 rounded bg-pulseShell-elevated/95 px-0.5 text-[9px] font-bold uppercase text-blue-600 dark:bg-sky-950/45 dark:text-blue-300">
                                 Open
                               </span>
                             ) : null}

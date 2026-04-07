@@ -412,7 +412,7 @@ export function ScheduleApp() {
             actions={
               <>
                 <nav
-                  className="flex rounded-md border border-gray-200 bg-white p-1 shadow-sm dark:border-[#1F2937] dark:bg-[#111827]"
+                  className="flex rounded-md border border-pulseShell-border bg-pulseShell-surface p-1 shadow-[var(--pulse-shell-shadow)]"
                   aria-label="Schedule views"
                 >
                   {(
@@ -431,8 +431,8 @@ export function ScheduleApp() {
                       }}
                       className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${
                         view === key
-                          ? "bg-gray-900 text-white shadow-sm dark:bg-gray-100 dark:text-gray-900"
-                          : "text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-gray-100"
+                          ? "bg-gray-900 text-white shadow-sm dark:bg-[var(--pulse-segment-active-bg)] dark:text-[var(--pulse-segment-active-fg)] dark:shadow-sm dark:ring-1 dark:ring-sky-400/30"
+                          : "text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:text-slate-400 dark:hover:bg-white/[0.06] dark:hover:text-slate-100"
                       }`}
                     >
                       <Icon className="h-4 w-4 opacity-90" />
@@ -443,7 +443,7 @@ export function ScheduleApp() {
                 <button
                   type="button"
                   onClick={() => setTimeOffOpen(true)}
-                  className="inline-flex items-center gap-2 rounded-md border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-900 shadow-sm hover:bg-gray-50 dark:border-[#1F2937] dark:bg-[#111827] dark:text-gray-100 dark:hover:bg-[#0F172A]"
+                  className="inline-flex items-center gap-2 rounded-md border border-pulseShell-border bg-pulseShell-surface px-4 py-2 text-sm font-semibold text-gray-900 shadow-sm hover:bg-pulseShell-elevated dark:text-gray-100"
                 >
                   <CalendarPlus className="h-4 w-4" />
                   Time off
@@ -451,7 +451,7 @@ export function ScheduleApp() {
                 <button
                   type="button"
                   onClick={() => setSettingsOpen(true)}
-                  className="inline-flex items-center gap-2 rounded-md border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-900 shadow-sm hover:bg-gray-50 dark:border-[#1F2937] dark:bg-[#111827] dark:text-gray-100 dark:hover:bg-[#0F172A]"
+                  className="inline-flex items-center gap-2 rounded-md border border-pulseShell-border bg-pulseShell-surface px-4 py-2 text-sm font-semibold text-gray-900 shadow-sm hover:bg-pulseShell-elevated dark:text-gray-100"
                 >
                   <Settings className="h-4 w-4" />
                   Settings
@@ -468,7 +468,7 @@ export function ScheduleApp() {
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-[11px] font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400">View</span>
               <nav
-                className="flex rounded-md border border-gray-200 bg-white p-1 shadow-sm dark:border-[#1F2937] dark:bg-[#111827]"
+                className="flex rounded-md border border-pulseShell-border bg-pulseShell-surface p-1 shadow-[var(--pulse-shell-shadow)]"
                 aria-label="Calendar scale"
               >
                 {(
@@ -484,8 +484,8 @@ export function ScheduleApp() {
                     onClick={() => setCalendarScale(key)}
                     className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${
                       calendarScale === key
-                        ? "bg-gray-900 text-white shadow-sm dark:bg-gray-100 dark:text-gray-900"
-                        : "text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-gray-100"
+                        ? "bg-gray-900 text-white shadow-sm dark:bg-[var(--pulse-segment-active-bg)] dark:text-[var(--pulse-segment-active-fg)] dark:shadow-sm dark:ring-1 dark:ring-sky-400/30"
+                        : "text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:text-slate-400 dark:hover:bg-white/[0.06] dark:hover:text-slate-100"
                     }`}
                   >
                     <Icon className="h-4 w-4 opacity-90" />
@@ -494,12 +494,12 @@ export function ScheduleApp() {
                 ))}
               </nav>
             </div>
-            <div className="hidden h-6 w-px bg-gray-200 dark:bg-[#1F2937] sm:block" aria-hidden />
+            <div className="hidden h-6 w-px bg-pulseShell-border sm:block" aria-hidden />
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-[11px] font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400">Show</span>
               <nav
                 id="schedule-toggle"
-                className="flex rounded-md border border-gray-200 bg-white p-1 shadow-sm dark:border-[#1F2937] dark:bg-[#111827]"
+                className="flex rounded-md border border-pulseShell-border bg-pulseShell-surface p-1 shadow-[var(--pulse-shell-shadow)]"
                 aria-label="Schedule content filter"
               >
                 {(
@@ -515,8 +515,8 @@ export function ScheduleApp() {
                     onClick={() => setContentFilter(key)}
                     className={`rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${
                       contentFilter === key
-                        ? "bg-gray-900 text-white shadow-sm dark:bg-gray-100 dark:text-gray-900"
-                        : "text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-gray-100"
+                        ? "bg-gray-900 text-white shadow-sm dark:bg-[var(--pulse-segment-active-bg)] dark:text-[var(--pulse-segment-active-fg)] dark:shadow-sm dark:ring-1 dark:ring-sky-400/30"
+                        : "text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:text-slate-400 dark:hover:bg-white/[0.06] dark:hover:text-slate-100"
                     }`}
                   >
                     {label}
@@ -544,12 +544,12 @@ export function ScheduleApp() {
                 {calendarScale === "day" ? (
                   <div className="space-y-3">
                     <div
-                      className={`flex flex-wrap items-center justify-between gap-2 rounded-md border border-gray-200 bg-white px-3 py-2 shadow-sm dark:border-[#1F2937] dark:bg-[#111827] ${scheduleDragLock ? "pointer-events-none" : ""}`}
+                      className={`flex flex-wrap items-center justify-between gap-2 rounded-md border border-pulseShell-border bg-pulseShell-surface px-3 py-2 shadow-[var(--pulse-shell-shadow)] ${scheduleDragLock ? "pointer-events-none" : ""}`}
                     >
                       <div className="flex flex-wrap items-center gap-1">
                         <button
                           type="button"
-                          className="rounded-lg border border-gray-200 bg-white p-2 text-gray-900 shadow-sm hover:bg-gray-50 dark:border-[#1F2937] dark:bg-[#0F172A] dark:text-gray-100 dark:hover:bg-[#111827]"
+                          className="rounded-lg border border-pulseShell-border bg-pulseShell-elevated p-2 text-gray-900 shadow-sm hover:bg-pulseShell-surface dark:text-gray-100"
                           onClick={() => setFocusDate((p) => addDaysToIso(p, -1))}
                           aria-label="Previous day"
                         >
@@ -557,14 +557,14 @@ export function ScheduleApp() {
                         </button>
                         <button
                           type="button"
-                          className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-gray-900 shadow-sm hover:bg-gray-50 dark:border-[#1F2937] dark:bg-[#0F172A] dark:text-gray-100 dark:hover:bg-[#111827]"
+                          className="rounded-lg border border-pulseShell-border bg-pulseShell-elevated px-3 py-2 text-xs font-semibold text-gray-900 shadow-sm hover:bg-pulseShell-surface dark:text-gray-100"
                           onClick={goToday}
                         >
                           Today
                         </button>
                         <button
                           type="button"
-                          className="rounded-lg border border-gray-200 bg-white p-2 text-gray-900 shadow-sm hover:bg-gray-50 dark:border-[#1F2937] dark:bg-[#0F172A] dark:text-gray-100 dark:hover:bg-[#111827]"
+                          className="rounded-lg border border-pulseShell-border bg-pulseShell-elevated p-2 text-gray-900 shadow-sm hover:bg-pulseShell-surface dark:text-gray-100"
                           onClick={() => setFocusDate((p) => addDaysToIso(p, 1))}
                           aria-label="Next day"
                         >
@@ -742,7 +742,7 @@ export function ScheduleApp() {
 
       {deleteToast ? (
         <div
-          className="pointer-events-none fixed bottom-24 left-1/2 z-[150] -translate-x-1/2 rounded-md border border-gray-700 bg-gray-900 px-4 py-2.5 text-center text-sm font-medium text-white shadow-lg dark:border-[#1F2937] dark:bg-[#111827] sm:bottom-28"
+          className="pointer-events-none fixed bottom-24 left-1/2 z-[150] -translate-x-1/2 rounded-md border border-pulseShell-border bg-slate-900 px-4 py-2.5 text-center text-sm font-medium text-slate-100 shadow-lg dark:bg-pulseShell-elevated dark:text-slate-100 sm:bottom-28"
           role="status"
         >
           {deleteToast}

@@ -106,23 +106,23 @@ export function ScheduleWeekView({
 
   return (
     <div
-      className={`rounded-md border border-gray-200 bg-white shadow-sm dark:border-[#1F2937] dark:bg-[#111827] dark:shadow-[0_2px_8px_rgba(0,0,0,0.4)] ${scheduleDragLock ? "pointer-events-none" : ""}`}
+      className={`rounded-md border border-pulseShell-border bg-pulseShell-surface shadow-[var(--pulse-shell-shadow)] ${scheduleDragLock ? "pointer-events-none" : ""}`}
     >
       <div
-        className={`flex flex-wrap items-center justify-between gap-3 border-b border-gray-200 px-4 py-3 dark:border-[#1F2937] sm:px-5 ${scheduleDragLock ? "pointer-events-none" : ""}`}
+        className={`flex flex-wrap items-center justify-between gap-3 border-b border-pulseShell-border px-4 py-3 sm:px-5 ${scheduleDragLock ? "pointer-events-none" : ""}`}
       >
         <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{label}</h2>
         <div className="flex flex-wrap items-center gap-1">
           <button
             type="button"
-            className="rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-xs font-semibold text-gray-900 shadow-sm hover:bg-gray-50 dark:border-[#1F2937] dark:bg-[#0F172A] dark:text-gray-100 dark:hover:bg-[#111827]"
+            className="rounded-lg border border-pulseShell-border bg-pulseShell-elevated px-2 py-1.5 text-xs font-semibold text-gray-900 shadow-sm hover:bg-pulseShell-surface dark:text-gray-100"
             onClick={onToday}
           >
             Today
           </button>
           <button
             type="button"
-            className="rounded-lg border border-gray-200 bg-white p-2 text-gray-900 shadow-sm hover:bg-gray-50 dark:border-[#1F2937] dark:bg-[#0F172A] dark:text-gray-100 dark:hover:bg-[#111827]"
+            className="rounded-lg border border-pulseShell-border bg-pulseShell-elevated p-2 text-gray-900 shadow-sm hover:bg-pulseShell-surface dark:text-gray-100"
             onClick={onPrevWeek}
             aria-label="Previous week"
           >
@@ -130,7 +130,7 @@ export function ScheduleWeekView({
           </button>
           <button
             type="button"
-            className="rounded-lg border border-gray-200 bg-white p-2 text-gray-900 shadow-sm hover:bg-gray-50 dark:border-[#1F2937] dark:bg-[#0F172A] dark:text-gray-100 dark:hover:bg-[#111827]"
+            className="rounded-lg border border-pulseShell-border bg-pulseShell-elevated p-2 text-gray-900 shadow-sm hover:bg-pulseShell-surface dark:text-gray-100"
             onClick={onNextWeek}
             aria-label="Next week"
           >
@@ -139,12 +139,12 @@ export function ScheduleWeekView({
         </div>
       </div>
       <p
-        className={`border-b border-gray-200 px-4 py-2 text-[11px] text-gray-500 dark:border-[#1F2937] dark:text-gray-400 sm:px-5 ${scheduleDragLock ? "pointer-events-none" : ""}`}
+        className={`border-b border-pulseShell-border px-4 py-2 text-[11px] text-gray-500 dark:text-gray-400 sm:px-5 ${scheduleDragLock ? "pointer-events-none" : ""}`}
       >
         Week view — same drag, drop, and shift actions as the month grid.
       </p>
       <div
-        className={`grid grid-cols-7 gap-px overflow-x-auto border-b border-gray-200 bg-gray-200/80 dark:border-[#1F2937] dark:bg-[#1F2937] ${scheduleDragLock ? "pointer-events-none" : ""}`}
+        className={`grid grid-cols-7 gap-px overflow-x-auto border-b border-pulseShell-border bg-pulseShell-grid ${scheduleDragLock ? "pointer-events-none" : ""}`}
       >
         {weekDates.map((date, idx) => {
           const dow = WEEK[idx];
@@ -153,8 +153,8 @@ export function ScheduleWeekView({
           return (
             <div
               key={date}
-              className={`bg-gray-50/90 px-1 py-2 text-center text-[11px] font-semibold uppercase tracking-wide dark:bg-[#0F172A] ${
-                isToday ? "text-blue-600 dark:text-blue-400" : "text-gray-500 dark:text-gray-400"
+              className={`bg-pulseShell-header-row px-1 py-2 text-center text-[11px] font-semibold uppercase tracking-wide ${
+                isToday ? "text-blue-600 dark:text-blue-400" : "text-gray-500 dark:text-slate-400"
               }`}
             >
               <div>{dow}</div>
@@ -165,7 +165,7 @@ export function ScheduleWeekView({
           );
         })}
       </div>
-      <div className="grid min-w-[640px] grid-cols-7 gap-px bg-gray-200/80 dark:bg-[#1F2937]">
+      <div className="grid min-w-[640px] grid-cols-7 gap-px bg-pulseShell-grid">
         {weekDates.map((date) => {
           const dayShifts = byDate.get(date) ?? [];
           const fullDay = dayShiftsFullDay.get(date) ?? [];
@@ -175,7 +175,7 @@ export function ScheduleWeekView({
           return (
             <div
               key={date}
-              className={`relative flex min-h-[14rem] flex-col bg-white ${cellPointer} ${
+              className={`relative flex min-h-[14rem] flex-col bg-pulseShell-cell ${cellPointer} ${
                 isOver && !calendarDropsDisabled
                   ? "ring-2 ring-inset ring-blue-500/40 dark:ring-blue-400/45"
                   : ""
@@ -212,7 +212,7 @@ export function ScheduleWeekView({
                 {onOpenDay ? (
                   <button
                     type="button"
-                    className="flex h-7 min-w-[1.75rem] items-center justify-center rounded-full text-xs font-semibold text-gray-900 hover:bg-gray-100 dark:text-gray-100 dark:hover:bg-[#0F172A]"
+                    className="flex h-7 min-w-[1.75rem] items-center justify-center rounded-full text-xs font-semibold text-gray-900 hover:bg-pulseShell-elevated dark:text-gray-100 dark:hover:bg-pulseShell-surface/80"
                     onClick={() => onOpenDay(date)}
                     aria-label={`Open day view for ${date}`}
                   >
@@ -225,7 +225,7 @@ export function ScheduleWeekView({
                 )}
                 <button
                   type="button"
-                  className="rounded-md p-1 text-gray-500 hover:bg-gray-100 hover:text-blue-600 dark:text-gray-400 dark:hover:bg-[#0F172A] dark:hover:text-blue-400"
+                  className="rounded-md p-1 text-gray-500 hover:bg-pulseShell-elevated hover:text-blue-600 dark:text-slate-400 dark:hover:bg-pulseShell-surface/80 dark:hover:text-blue-400"
                   aria-label={`Add shift on ${date}`}
                   onClick={() => onAddForDate(date)}
                 >
@@ -243,9 +243,9 @@ export function ScheduleWeekView({
                   const roleLb = roleMap.get(s.role) ?? s.role;
                   const cls = st
                     ? `${st.bg} ${st.border} ${st.text} border`
-                    : "border border-gray-200 bg-gray-50 text-gray-900 dark:border-[#1F2937] dark:bg-[#0F172A] dark:text-gray-100";
+                    : "border border-pulseShell-border bg-pulseShell-elevated text-gray-900 dark:text-gray-100";
                   const openCls = isOpen
-                    ? "ring-2 ring-dashed ring-blue-500/40 ring-offset-1 ring-offset-white dark:ring-blue-400/45 dark:ring-offset-[#111827]"
+                    ? "ring-2 ring-dashed ring-blue-500/40 ring-offset-1 ring-offset-pulse-shell-cell dark:ring-blue-400/45 dark:ring-offset-pulse-shell-cell"
                     : "";
                   const conflicts = getShiftConflicts(s, fullDay, workers, settings, timeOffBlocks, zones);
                   const sev = worstConflictSeverity(conflicts);
@@ -286,7 +286,7 @@ export function ScheduleWeekView({
                         <div className="min-w-0 flex-1">
                           <p className="flex items-center gap-1 truncate font-semibold">
                             {isOpen ? (
-                              <span className="shrink-0 rounded bg-white/60 px-0.5 text-[9px] font-bold uppercase text-blue-600 dark:bg-white/10 dark:text-blue-400">
+                              <span className="shrink-0 rounded bg-pulseShell-elevated/95 px-0.5 text-[9px] font-bold uppercase text-blue-600 dark:bg-sky-950/45 dark:text-blue-300">
                                 Open
                               </span>
                             ) : null}

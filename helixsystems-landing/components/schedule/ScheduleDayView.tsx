@@ -93,14 +93,14 @@ export function ScheduleDayView({
   }, [sorted, dayShiftsAll, workers, settings, timeOffBlocks, zones]);
 
   return (
-    <div className="overflow-hidden rounded-md border border-gray-200 bg-white shadow-sm dark:border-[#1F2937] dark:bg-[#111827] dark:shadow-[0_2px_8px_rgba(0,0,0,0.4)]">
+    <div className="overflow-hidden rounded-md border border-pulseShell-border bg-pulseShell-surface shadow-[var(--pulse-shell-shadow)]">
       <div
-        className={`flex flex-col gap-4 border-b border-gray-200 px-4 py-4 dark:border-[#1F2937] sm:flex-row sm:items-start sm:justify-between sm:px-5 sm:py-5 ${scheduleDragLock ? "pointer-events-none" : ""}`}
+        className={`flex flex-col gap-4 border-b border-pulseShell-border px-4 py-4 sm:flex-row sm:items-start sm:justify-between sm:px-5 sm:py-5 ${scheduleDragLock ? "pointer-events-none" : ""}`}
       >
         <div className="flex min-w-0 flex-1 flex-col gap-3 sm:flex-row sm:items-start sm:gap-4">
           <button
             type="button"
-            className="inline-flex w-fit items-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm hover:bg-gray-50 dark:border-[#1F2937] dark:bg-[#0F172A] dark:text-gray-100 dark:hover:bg-[#111827]"
+            className="inline-flex w-fit items-center gap-2 rounded-md border border-pulseShell-border bg-pulseShell-elevated px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm hover:bg-pulseShell-surface dark:text-gray-100"
             onClick={onClose}
             aria-label="Back to calendar"
           >
@@ -119,7 +119,7 @@ export function ScheduleDayView({
         <div className="flex shrink-0 flex-wrap items-center gap-2">
           <button
             type="button"
-            className="inline-flex items-center gap-2 rounded-md bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-gray-800 dark:bg-gray-100 dark:text-gray-900 dark:hover:bg-white"
+            className="inline-flex items-center gap-2 rounded-md bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-gray-800 dark:bg-sky-600 dark:text-white dark:hover:bg-sky-500"
             onClick={() => onAddForDate(date)}
             aria-label="Add shift"
           >
@@ -130,7 +130,7 @@ export function ScheduleDayView({
       </div>
 
       <div className="grid gap-0 lg:grid-cols-[minmax(0,1fr)_280px]">
-        <div className="min-h-[16rem] border-b border-gray-200 dark:border-[#1F2937] lg:border-b-0 lg:border-r">
+        <div className="min-h-[16rem] border-b border-pulseShell-border lg:border-b-0 lg:border-r">
           <div className="max-h-[min(70vh,640px)] space-y-2 overflow-y-auto px-4 py-4 sm:px-5">
             {sorted.length === 0 ? (
               <p className="py-12 text-center text-sm text-gray-500 dark:text-gray-400">No shifts this day.</p>
@@ -153,9 +153,9 @@ export function ScheduleDayView({
                 const acceptAny = s.accepts_any_certification === true;
                 const cls = st
                   ? `${st.bg} ${st.border} ${st.text} border`
-                  : "border border-gray-200 bg-gray-50 text-gray-900 dark:border-[#1F2937] dark:bg-[#0F172A] dark:text-gray-100";
+                  : "border border-pulseShell-border bg-pulseShell-elevated text-gray-900 dark:text-gray-100";
                 const openCls = isOpen
-                  ? "ring-2 ring-dashed ring-blue-500/45 ring-offset-2 ring-offset-white dark:ring-blue-400/45 dark:ring-offset-[#111827]"
+                  ? "ring-2 ring-dashed ring-blue-500/45 ring-offset-2 ring-offset-pulse-shell-cell dark:ring-blue-400/45 dark:ring-offset-pulse-shell-cell"
                   : "";
                 const chipLocked = scheduleDragLock && dragSession !== null && dragSession.shiftId !== s.id;
                 const canDrag = !scheduleDragLock || dragSession?.shiftId === s.id;
@@ -195,7 +195,7 @@ export function ScheduleDayView({
                       <div className="min-w-0 flex-1">
                         <p className="flex flex-wrap items-center gap-1.5 font-semibold">
                           {isOpen ? (
-                            <span className="rounded bg-white/70 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-blue-600 dark:bg-white/10 dark:text-blue-400">
+                            <span className="rounded bg-pulseShell-elevated px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-blue-600 dark:bg-sky-950/45 dark:text-blue-300">
                               Open
                             </span>
                           ) : null}
@@ -242,7 +242,7 @@ export function ScheduleDayView({
                           </p>
                         ))}
                         {otherRows.length ? (
-                          <div className="mt-2 border-t border-gray-200/80 pt-1.5 dark:border-[#1F2937]/80">
+                          <div className="mt-2 border-t border-pulseShell-border/80 pt-1.5">
                             {otherRows.map((c) => (
                               <p
                                 key={`${s.id}-${c.code}-${c.label}-o`}
@@ -290,17 +290,17 @@ export function ScheduleDayView({
               })
             )}
           </div>
-          <p className="border-t border-gray-200 px-4 py-3 text-[11px] text-gray-500 dark:border-[#1F2937] dark:text-gray-400 sm:px-5">
+          <p className="border-t border-pulseShell-border px-4 py-3 text-[11px] text-gray-500 dark:text-gray-400 sm:px-5">
             Drag to a day in the month view to move or reschedule. Hold{" "}
-            <kbd className="rounded bg-gray-100 px-1 dark:bg-[#0F172A]">Shift</kbd>{" "}
+            <kbd className="rounded border border-pulseShell-border bg-pulseShell-kbd px-1 dark:border-pulseShell-border">Shift</kbd>{" "}
             while dragging to duplicate. Drop on the bottom-right trash target to delete.
           </p>
         </div>
 
         <aside
-          className={`flex flex-col gap-3 bg-gray-50/80 px-4 py-4 dark:bg-[#0B0F14]/50 sm:px-5 lg:py-5 ${scheduleDragLock ? "pointer-events-none" : ""}`}
+          className={`flex flex-col gap-3 bg-pulseShell-header-row/90 px-4 py-4 dark:bg-pulseShell-elevated/20 sm:px-5 lg:py-5 ${scheduleDragLock ? "pointer-events-none" : ""}`}
         >
-          <div className="rounded-md border border-gray-200 bg-white p-4 shadow-sm dark:border-[#1F2937] dark:bg-[#111827]">
+          <div className="rounded-md border border-pulseShell-border bg-pulseShell-surface p-4 shadow-[var(--pulse-shell-shadow)]">
             <p className="flex items-center gap-2 font-headline text-sm font-bold text-gray-900 dark:text-white">
               <AlertTriangle className="h-4 w-4 text-amber-500" aria-hidden />
               Conflicts summary

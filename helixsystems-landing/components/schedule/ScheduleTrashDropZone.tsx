@@ -62,7 +62,7 @@ export function ScheduleTrashDropZone({ active, isDuplicateDrag, onDropTrash, on
         className={`flex min-h-[4.5rem] min-w-[13rem] select-none items-center justify-center gap-3 rounded-md border-2 px-6 py-4 shadow-lg transition-all duration-150 ${
           over
             ? "scale-110 border-red-500 bg-red-50 text-red-950 shadow-red-200/50 ring-4 ring-red-400/35"
-            : "border-gray-200 bg-white/95 text-gray-500 backdrop-blur-sm dark:border-[#1F2937] dark:bg-[#111827]/95 dark:text-gray-400"
+            : "border-pulseShell-border bg-pulseShell-surface/95 text-gray-500 backdrop-blur-sm dark:text-slate-400"
         }`}
       >
         <Trash2

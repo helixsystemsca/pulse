@@ -19,7 +19,7 @@ function newRoleId(): string {
 }
 
 const FIELD =
-  "mt-1.5 w-full rounded-[10px] border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 shadow-sm focus:border-[#2B4C7E]/35 focus:outline-none focus:ring-1 focus:ring-[#2B4C7E]/25 dark:border-[#1F2937] dark:bg-[#0F172A] dark:text-gray-100 dark:focus:border-blue-400/40 dark:focus:ring-blue-400/25";
+  "mt-1.5 w-full rounded-[10px] border border-pulseShell-border bg-pulseShell-surface px-3 py-2.5 text-sm text-gray-900 shadow-sm focus:border-[#2B4C7E]/35 focus:outline-none focus:ring-1 focus:ring-[#2B4C7E]/25 dark:text-gray-100 dark:focus:border-blue-400/40 dark:focus:ring-blue-400/25";
 const LABEL =
   "text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400";
 const PRIMARY_BTN =
@@ -102,7 +102,7 @@ export function ScheduleSettingsModal({ open, onClose }: Props) {
       <div className="mx-auto max-w-xl space-y-5">
         <div>
           <p className={LABEL}>Section</p>
-          <div className="mt-1.5 flex flex-wrap gap-1 rounded-[10px] border border-gray-200 bg-gray-100/85 p-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.65)] dark:border-[#1F2937] dark:bg-[#0F172A]/90 dark:shadow-none">
+          <div className="mt-1.5 flex flex-wrap gap-1 rounded-[10px] border border-pulseShell-border bg-gray-100/85 p-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.65)] dark:bg-pulseShell-elevated/75 dark:shadow-none">
             {TABS.map((t) => (
               <button
                 key={t}
@@ -113,8 +113,8 @@ export function ScheduleSettingsModal({ open, onClose }: Props) {
                 }}
                 className={`rounded-lg px-2.5 py-2 text-center text-xs font-semibold transition-colors sm:text-sm ${
                   tab === t
-                    ? "bg-white text-[#2B4C7E] shadow-sm ring-1 ring-gray-200/90 dark:bg-[#111827] dark:text-blue-300 dark:ring-[#1F2937]"
-                    : "text-gray-500 hover:bg-white/70 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-gray-100"
+                    ? "bg-white text-[#2B4C7E] shadow-sm ring-1 ring-gray-200/90 dark:bg-[var(--pulse-segment-active-bg)] dark:text-[var(--pulse-segment-active-fg)] dark:shadow-sm dark:ring-1 dark:ring-sky-400/28"
+                    : "text-gray-500 hover:bg-white/70 hover:text-gray-900 dark:text-slate-400 dark:hover:bg-white/[0.06] dark:hover:text-slate-100"
                 }`}
               >
                 {t}
@@ -137,7 +137,7 @@ export function ScheduleSettingsModal({ open, onClose }: Props) {
                   </label>
                   <input
                     type="time"
-                    className="mt-1 w-full rounded-lg border border-gray-200 dark:border-[#1F2937] px-3 py-2 text-sm"
+                    className="mt-1 w-full rounded-lg border border-pulseShell-border px-3 py-2 text-sm"
                     value={settings.workDayStart}
                     onChange={(e) => setSettings({ workDayStart: e.target.value })}
                   />
@@ -148,7 +148,7 @@ export function ScheduleSettingsModal({ open, onClose }: Props) {
                   </label>
                   <input
                     type="time"
-                    className="mt-1 w-full rounded-lg border border-gray-200 dark:border-[#1F2937] px-3 py-2 text-sm"
+                    className="mt-1 w-full rounded-lg border border-pulseShell-border px-3 py-2 text-sm"
                     value={settings.workDayEnd}
                     onChange={(e) => setSettings({ workDayEnd: e.target.value })}
                   />
@@ -157,7 +157,7 @@ export function ScheduleSettingsModal({ open, onClose }: Props) {
               <div>
                 <label className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Time format</label>
                 <select
-                  className="mt-1 w-full rounded-lg border border-gray-200 dark:border-[#1F2937] px-3 py-2 text-sm"
+                  className="mt-1 w-full rounded-lg border border-pulseShell-border px-3 py-2 text-sm"
                   value={settings.timeFormat}
                   onChange={(e) =>
                     setSettings({ timeFormat: e.target.value as "12h" | "24h" })
@@ -173,7 +173,7 @@ export function ScheduleSettingsModal({ open, onClose }: Props) {
                   {settings.shiftDurationPresets.map((p) => (
                     <li key={p.id} className="flex flex-wrap items-center gap-2">
                       <input
-                        className="flex-1 rounded-lg border border-gray-200 dark:border-[#1F2937] px-3 py-2 text-sm min-w-[6rem]"
+                        className="flex-1 rounded-lg border border-pulseShell-border px-3 py-2 text-sm min-w-[6rem]"
                         value={p.label}
                         onChange={(e) =>
                           setSettings({
@@ -187,7 +187,7 @@ export function ScheduleSettingsModal({ open, onClose }: Props) {
                         type="number"
                         min={1}
                         max={24}
-                        className="w-20 rounded-lg border border-gray-200 dark:border-[#1F2937] px-3 py-2 text-sm"
+                        className="w-20 rounded-lg border border-pulseShell-border px-3 py-2 text-sm"
                         value={p.hours}
                         onChange={(e) =>
                           setSettings({
@@ -209,12 +209,12 @@ export function ScheduleSettingsModal({ open, onClose }: Props) {
                 <input
                   type="number"
                   min={0}
-                  className="mt-1 w-full rounded-lg border border-gray-200 dark:border-[#1F2937] px-3 py-2 text-sm"
+                  className="mt-1 w-full rounded-lg border border-pulseShell-border px-3 py-2 text-sm"
                   value={pendingRequests}
                   onChange={(e) => setPendingRequests(Number(e.target.value) || 0)}
                 />
               </div>
-              <div className="border-t border-gray-200 dark:border-[#1F2937] pt-4">
+              <div className="border-t border-pulseShell-border pt-4">
                 <button
                   type="button"
                   className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-800 hover:bg-red-100"
@@ -237,11 +237,11 @@ export function ScheduleSettingsModal({ open, onClose }: Props) {
               </p>
               {roles.map((r) => (
                 <div key={r.id} className="flex items-center gap-2">
-                  <code className="w-28 shrink-0 truncate rounded bg-gray-100 dark:bg-[#0F172A] px-2 py-1 text-xs text-gray-500 dark:text-gray-400">
+                  <code className="w-28 shrink-0 truncate rounded bg-gray-100 px-2 py-1 text-xs text-gray-500 dark:bg-pulseShell-elevated dark:text-slate-400">
                     {r.id}
                   </code>
                   <input
-                    className="flex-1 rounded-lg border border-gray-200 dark:border-[#1F2937] px-3 py-2 text-sm"
+                    className="flex-1 rounded-lg border border-pulseShell-border px-3 py-2 text-sm"
                     value={r.label}
                     onChange={(e) => {
                       setRoleError(null);
@@ -261,7 +261,7 @@ export function ScheduleSettingsModal({ open, onClose }: Props) {
               <button
                 type="button"
                 onClick={addRole}
-                className="inline-flex items-center gap-1 rounded-lg border border-gray-200 dark:border-[#1F2937] bg-white px-3 py-2 text-sm font-semibold text-gray-900 dark:text-gray-100 shadow-sm hover:bg-gray-50 dark:hover:bg-[#111827]"
+                className="inline-flex items-center gap-1 rounded-lg border border-pulseShell-border bg-pulseShell-elevated px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm hover:bg-pulseShell-surface dark:text-gray-100"
               >
                 <Plus className="h-4 w-4" />
                 Add role
@@ -272,30 +272,30 @@ export function ScheduleSettingsModal({ open, onClose }: Props) {
           {tab === "Shift types" ? (
             <div className="space-y-4">
               {shiftTypes.map((t) => (
-                <div key={t.key} className="rounded-md border border-gray-200 dark:border-[#1F2937] p-3">
+                <div key={t.key} className="rounded-md border border-pulseShell-border p-3">
                   <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{t.key}</p>
                   <input
-                    className="mt-2 w-full rounded-lg border border-gray-200 dark:border-[#1F2937] px-3 py-2 text-sm"
+                    className="mt-2 w-full rounded-lg border border-pulseShell-border px-3 py-2 text-sm"
                     value={t.label}
                     onChange={(e) => updateShiftType(t.key, { label: e.target.value })}
                     placeholder="Label"
                   />
                   <div className="mt-2 grid gap-2 sm:grid-cols-3">
                     <input
-                      className="rounded-lg border border-gray-200 dark:border-[#1F2937] px-3 py-2 text-xs font-mono"
+                      className="rounded-lg border border-pulseShell-border px-3 py-2 text-xs font-mono"
                       value={t.bg}
                       onChange={(e) => updateShiftType(t.key, { bg: e.target.value })}
                       title="Tailwind bg class"
                       placeholder="bg-*"
                     />
                     <input
-                      className="rounded-lg border border-gray-200 dark:border-[#1F2937] px-3 py-2 text-xs font-mono"
+                      className="rounded-lg border border-pulseShell-border px-3 py-2 text-xs font-mono"
                       value={t.border}
                       onChange={(e) => updateShiftType(t.key, { border: e.target.value })}
                       placeholder="border-*"
                     />
                     <input
-                      className="rounded-lg border border-gray-200 dark:border-[#1F2937] px-3 py-2 text-xs font-mono"
+                      className="rounded-lg border border-pulseShell-border px-3 py-2 text-xs font-mono"
                       value={t.text}
                       onChange={(e) => updateShiftType(t.key, { text: e.target.value })}
                       placeholder="text-*"
@@ -314,7 +314,7 @@ export function ScheduleSettingsModal({ open, onClose }: Props) {
               {zones.map((z) => (
                 <div key={z.id} className="flex items-center gap-2">
                   <input
-                    className="flex-1 rounded-lg border border-gray-200 dark:border-[#1F2937] px-3 py-2 text-sm"
+                    className="flex-1 rounded-lg border border-pulseShell-border px-3 py-2 text-sm"
                     value={z.label}
                     onChange={(e) => updateZone(z.id, e.target.value)}
                   />
@@ -329,7 +329,7 @@ export function ScheduleSettingsModal({ open, onClose }: Props) {
               ))}
               <div className="flex gap-2">
                 <input
-                  className="flex-1 rounded-lg border border-gray-200 dark:border-[#1F2937] px-3 py-2 text-sm"
+                  className="flex-1 rounded-lg border border-pulseShell-border px-3 py-2 text-sm"
                   placeholder="New zone name"
                   value={zoneInput}
                   onChange={(e) => setZoneInput(e.target.value)}
@@ -358,7 +358,7 @@ export function ScheduleSettingsModal({ open, onClose }: Props) {
                 <input
                   type="number"
                   min={1}
-                  className="mt-1 w-full rounded-lg border border-gray-200 dark:border-[#1F2937] px-3 py-2 text-sm"
+                  className="mt-1 w-full rounded-lg border border-pulseShell-border px-3 py-2 text-sm"
                   value={settings.staffing.minWorkersPerShift}
                   onChange={(e) =>
                     setSettings({
@@ -370,7 +370,7 @@ export function ScheduleSettingsModal({ open, onClose }: Props) {
               <label className="flex items-center gap-2 text-sm text-gray-900 dark:text-gray-100">
                 <input
                   type="checkbox"
-                  className="rounded border-gray-300 dark:border-[#1F2937]"
+                  className="rounded border-pulseShell-border"
                   checked={settings.staffing.requireSupervisor}
                   onChange={(e) =>
                     setSettings({
@@ -387,7 +387,7 @@ export function ScheduleSettingsModal({ open, onClose }: Props) {
                 <input
                   type="number"
                   min={1}
-                  className="mt-1 w-full rounded-lg border border-gray-200 dark:border-[#1F2937] px-3 py-2 text-sm"
+                  className="mt-1 w-full rounded-lg border border-pulseShell-border px-3 py-2 text-sm"
                   value={settings.staffing.maxHoursPerWorkerPerWeek}
                   onChange={(e) =>
                     setSettings({
@@ -406,7 +406,7 @@ export function ScheduleSettingsModal({ open, onClose }: Props) {
                 <input
                   type="number"
                   min={1}
-                  className="mt-1 w-full rounded-lg border border-gray-200 dark:border-[#1F2937] px-3 py-2 text-sm"
+                  className="mt-1 w-full rounded-lg border border-pulseShell-border px-3 py-2 text-sm"
                   value={settings.requiredShiftsPerDay}
                   onChange={(e) => setSettings({ requiredShiftsPerDay: Number(e.target.value) || 1 })}
                 />
@@ -418,7 +418,7 @@ export function ScheduleSettingsModal({ open, onClose }: Props) {
                 <input
                   type="number"
                   min={1}
-                  className="mt-1 w-full rounded-lg border border-gray-200 dark:border-[#1F2937] px-3 py-2 text-sm"
+                  className="mt-1 w-full rounded-lg border border-pulseShell-border px-3 py-2 text-sm"
                   value={settings.activeWorkerTarget}
                   onChange={(e) => setSettings({ activeWorkerTarget: Number(e.target.value) || 1 })}
                 />
