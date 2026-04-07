@@ -40,7 +40,7 @@ async def get_setup_progress(db: Db, user: Annotated[User, Depends(get_current_c
             .select_from(User)
             .where(
                 User.company_id == cid,
-                User.roles.overlap(pg_array(UserRole.worker.value)),
+                User.roles.overlap(pg_array([UserRole.worker.value])),
                 User.is_active.is_(True),
             )
         )

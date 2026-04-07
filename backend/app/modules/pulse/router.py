@@ -303,11 +303,13 @@ async def list_workers(db: Db, cid: CompanyId) -> list[WorkerOut]:
             User.account_status == UserAccountStatus.active,
             User.roles.overlap(
                 pg_array(
-                    UserRole.worker.value,
-                    UserRole.lead.value,
-                    UserRole.supervisor.value,
-                    UserRole.manager.value,
-                    UserRole.company_admin.value,
+                    [
+                        UserRole.worker.value,
+                        UserRole.lead.value,
+                        UserRole.supervisor.value,
+                        UserRole.manager.value,
+                        UserRole.company_admin.value,
+                    ]
                 )
             ),
         )

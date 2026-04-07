@@ -31,7 +31,7 @@ async def overview(
         .select_from(User)
         .where(
             User.company_id == cid,
-            User.roles.overlap(pg_array(UserRole.worker.value)),
+            User.roles.overlap(pg_array([UserRole.worker.value])),
         )
     )
     return {

@@ -164,7 +164,7 @@ async def _users_by_company(db: AsyncSession, cid: str) -> dict[str, User]:
     q = await db.execute(
         select(User).where(
             User.company_id == cid,
-            User.roles.overlap(pg_array(*[r.value for r in _ROSTER_ROLES])),
+            User.roles.overlap(pg_array([r.value for r in _ROSTER_ROLES])),
         )
     )
     return {u.id: u for u in q.scalars().all()}
@@ -490,7 +490,7 @@ async def list_workers(
     roster_vals = [r.value for r in _ROSTER_ROLES]
     stmt = select(User).where(
         User.company_id == cid,
-        User.roles.overlap(pg_array(*roster_vals)),
+        User.roles.overlap(pg_array(roster_vals)),
     )
     if not include_inactive:
         stmt = stmt.where(User.is_active.is_(True))

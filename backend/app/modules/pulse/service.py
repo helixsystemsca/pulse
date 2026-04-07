@@ -197,10 +197,12 @@ async def dashboard_aggregate(db: AsyncSession, company_id: str) -> dict[str, An
             User.is_active.is_(True),
             User.roles.overlap(
                 pg_array(
-                    UserRole.worker.value,
-                    UserRole.lead.value,
-                    UserRole.supervisor.value,
-                    UserRole.manager.value,
+                    [
+                        UserRole.worker.value,
+                        UserRole.lead.value,
+                        UserRole.supervisor.value,
+                        UserRole.manager.value,
+                    ]
                 )
             ),
         )

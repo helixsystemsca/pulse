@@ -641,7 +641,7 @@ async def list_all_users(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Invalid role filter",
             ) from e
-        stmt = stmt.where(User.roles.overlap(pg_array(role_enum.value)))
+        stmt = stmt.where(User.roles.overlap(pg_array([role_enum.value])))
     if q:
         like = f"%{q}%"
         stmt = stmt.where(
@@ -803,7 +803,7 @@ async def system_delete_user(
             select(func.count())
             .select_from(User)
             .where(
-                User.roles.overlap(pg_array(UserRole.system_admin.value)),
+                User.roles.overlap(pg_array([UserRole.system_admin.value])),
                 User.id != user_id,
                 User.is_active.is_(True),
             )

@@ -14,7 +14,7 @@ async def ensure_bootstrap_system_admin(db: AsyncSession) -> None:
     if not settings.bootstrap_system_admin_email or not settings.bootstrap_system_admin_password:
         return
     q = await db.execute(
-        select(User).where(User.roles.overlap(pg_array(UserRole.system_admin.value))).limit(1)
+        select(User).where(User.roles.overlap(pg_array([UserRole.system_admin.value]))).limit(1)
     )
     if q.scalar_one_or_none():
         return

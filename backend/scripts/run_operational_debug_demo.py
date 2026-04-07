@@ -111,7 +111,9 @@ async def main() -> None:
             qm = await db.execute(
                 select(User).where(
                     User.company_id == company_id,
-                    User.roles.overlap(pg_array(UserRole.manager.value, UserRole.company_admin.value)),
+                    User.roles.overlap(
+                        pg_array([UserRole.manager.value, UserRole.company_admin.value])
+                    ),
                     User.is_active.is_(True),
                 )
             )
