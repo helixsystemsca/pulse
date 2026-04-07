@@ -90,6 +90,30 @@ type SettingsTab = (typeof SETTINGS_TABS)[number];
 
 const PROFILE_ROLE_OPTIONS = ["worker", "lead", "supervisor", "manager"] as const;
 
+type CreateFormState = {
+  full_name: string;
+  email: string;
+  role: string;
+  department: string;
+  shift: string;
+  start_date: string;
+  skills: string;
+  certifications: string;
+  supervisor_id: string;
+};
+
+const CREATE_FORM_EMPTY: CreateFormState = {
+  full_name: "",
+  email: "",
+  role: "worker",
+  department: "",
+  shift: "",
+  start_date: "",
+  skills: "",
+  certifications: "",
+  supervisor_id: "",
+};
+
 function initials(name: string | null | undefined, email: string): string {
   if (name?.trim()) {
     const p = name.trim().split(/\s+/).filter(Boolean);
@@ -169,18 +193,18 @@ export function WorkersApp() {
   const [settingsBusy, setSettingsBusy] = useState(false);
 
   const [inviteNotice, setInviteNotice] = useState<string | null>(null);
+  const [createInviteBusy, setCreateInviteBusy] = useState(false);
+  const [createToast, setCreateToast] = useState<{ message: string; variant: "success" | "error" } | null>(
+    null,
+  );
 
-  const [createForm, setCreateForm] = useState({
-    full_name: "",
-    email: "",
-    role: "worker",
-    department: "",
-    shift: "",
-    start_date: "",
-    skills: "",
-    certifications: "",
-    supervisor_id: "",
-  });
+  const [createForm, setCreateForm] = useState<CreateFormState>({ ...CREATE_FORM_EMPTY });
+
+  useEffect(() => {
+    if (!createToast) return;
+    const t = window.setTimeout(() => setCreateToast(null), 4000);
+    return () => window.clearTimeout(t);
+  }, [createToast]);
 
   useEffect(() => {
     if (!isSystemAdmin || !session?.access_token) return;
@@ -353,8 +377,8 @@ export function WorkersApp() {
   }
 
   async function submitCreate() {
-    if (!createForm.email.trim()) return;
-    setProfileBusy(true);
+    if (!createForm.email.trim() || createInviteBusy) return;
+    setCreateInviteBusy(true);
     try {
       const skills = createForm.skills
         .split(",")
@@ -381,29 +405,22 @@ export function WorkersApp() {
       const absLink = `${origin}${result.invite_link_path}`;
       if (result.invite_email_sent === false) {
         setInviteNotice(`${result.message} Share this link with them: ${absLink}`);
-      } else {
+      } else if (result.invite_email_sent === null) {
         setInviteNotice(
-          result.invite_email_sent === null
-            ? `${result.message} If outbound email is configured, they will receive it shortly. You can also share: ${absLink}`
-            : `${result.message}`,
+          `${result.message} If outbound email is configured, they will receive it shortly. You can also share: ${absLink}`,
         );
+      } else {
+        setInviteNotice(null);
       }
       setCreateOpen(false);
-      setCreateForm({
-        full_name: "",
-        email: "",
-        role: "worker",
-        department: "",
-        shift: "",
-        start_date: "",
-        skills: "",
-        certifications: "",
-        supervisor_id: "",
-      });
+      setCreateForm({ ...CREATE_FORM_EMPTY });
+      setCreateToast({ variant: "success", message: "Invite sent successfully" });
       await loadList();
       emitOnboardingMaybeUpdated();
+    } catch {
+      setCreateToast({ variant: "error", message: "Failed to send invite" });
     } finally {
-      setProfileBusy(false);
+      setCreateInviteBusy(false);
     }
   }
 
@@ -447,6 +464,19 @@ export function WorkersApp() {
           </>
         }
       />
+
+      {createToast ? (
+        <div
+          role="status"
+          className={`fixed bottom-6 left-1/2 z-[95] max-w-md -translate-x-1/2 rounded-md border px-4 py-3 text-sm font-medium shadow-lg ${
+            createToast.variant === "success"
+              ? "border-emerald-200 bg-emerald-50 text-emerald-900 dark:border-emerald-500/35 dark:bg-emerald-950/90 dark:text-emerald-100"
+              : "border-rose-200 bg-rose-50 text-rose-900 dark:border-rose-500/35 dark:bg-rose-950/90 dark:text-rose-100"
+          }`}
+        >
+          {createToast.message}
+        </div>
+      ) : null}
 
       {inviteNotice ? (
         <div className="rounded-md border border-emerald-500/30 bg-emerald-950/30 px-4 py-3 text-sm text-emerald-100">
@@ -688,25 +718,37 @@ export function WorkersApp() {
         open={createOpen}
         title="Add an employee"
         subtitle="Invite a team member to join your organization. They will choose their own password from the email link."
-        onClose={() => setCreateOpen(false)}
+        onClose={() => {
+          if (createInviteBusy) return;
+          setCreateOpen(false);
+        }}
+        belowAppHeader
         wide
         labelledBy="worker-create-title"
         footer={
           <div className="flex flex-wrap justify-end gap-3">
             <button
               type="button"
-              className="text-sm font-semibold text-pulse-muted hover:text-pulse-navy"
+              className="text-sm font-semibold text-pulse-muted hover:text-pulse-navy disabled:cursor-not-allowed disabled:opacity-50 dark:hover:text-slate-200"
+              disabled={createInviteBusy}
               onClick={() => setCreateOpen(false)}
             >
               Cancel
             </button>
             <button
               type="button"
-              className={PRIMARY_BTN}
-              disabled={profileBusy || !createForm.email.trim()}
+              className={`${PRIMARY_BTN} inline-flex items-center justify-center gap-2`}
+              disabled={createInviteBusy || !createForm.email.trim()}
               onClick={() => void submitCreate()}
             >
-              Create & send invite
+              {createInviteBusy ? (
+                <>
+                  <Loader2 className="h-4 w-4 shrink-0 animate-spin" aria-hidden />
+                  Sending...
+                </>
+              ) : (
+                "Create & send invite"
+              )}
             </button>
           </div>
         }

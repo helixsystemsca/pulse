@@ -19,6 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user, get_db, require_manager_or_above
 from app.core.user_roles import (
+    default_operational_role_for_invite_role,
     primary_jwt_role,
     user_has_any_role,
     user_roles_subset_of,
@@ -646,6 +647,7 @@ async def create_worker(
             raise HTTPException(status_code=400, detail="Email already in use")
         user = existing
         user.roles = [role_enum.value]
+        user.operational_role = default_operational_role_for_invite_role(role_enum)
         user.full_name = body.full_name
         user.account_status = UserAccountStatus.invited
         user.hashed_password = None
@@ -660,6 +662,7 @@ async def create_worker(
             hashed_password=None,
             full_name=body.full_name,
             roles=[role_enum.value],
+            operational_role=default_operational_role_for_invite_role(role_enum),
             created_by=actor.id,
             account_status=UserAccountStatus.invited,
             invite_token_hash=token_hash,

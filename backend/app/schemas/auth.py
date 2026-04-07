@@ -27,6 +27,8 @@ class CompanySummaryOut(BaseModel):
     name: str
     logo_url: Optional[str] = None
     header_image_url: Optional[str] = None
+    timezone: Optional[str] = None
+    industry: Optional[str] = None
 
 
 class UserOut(BaseModel):
@@ -36,6 +38,10 @@ class UserOut(BaseModel):
     role: str
     roles: list[str] = []
     full_name: Optional[str]
+    avatar_url: Optional[str] = None
+    job_title: Optional[str] = None
+    #: Workforce / scheduling / monitoring capacity (separate from permission roles).
+    operational_role: Optional[str] = None
     enabled_features: list[str] = []
     is_impersonating: bool = False
     is_system_admin: bool = False

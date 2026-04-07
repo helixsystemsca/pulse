@@ -15,6 +15,10 @@ type PulseDrawerProps = {
   labelledBy?: string;
   /** Stack above shift drawer when both could interact */
   elevated?: boolean;
+  /**
+   * When true, the panel spans from below the app navbar (`h-16`) to the bottom so it does not cover the shell header.
+   */
+  belowAppHeader?: boolean;
 };
 
 /** Right-side panel: reference layout (light shell, subtle border, soft shadow). */
@@ -28,8 +32,13 @@ export function PulseDrawer({
   wide,
   labelledBy = "pulse-drawer-title",
   elevated = false,
+  belowAppHeader = false,
 }: PulseDrawerProps) {
   if (!open) return null;
+
+  const panelLayout = belowAppHeader
+    ? "top-16 bottom-0 max-h-[calc(100dvh-4rem)] min-h-0"
+    : "top-0 h-full";
 
   return (
     <div className={`fixed inset-0 ${elevated ? "z-[90]" : "z-[80]"}`}>
@@ -40,7 +49,7 @@ export function PulseDrawer({
         onClick={onClose}
       />
       <aside
-        className={`absolute right-0 top-0 flex h-full w-full flex-col border-l border-pulseShell-border bg-pulseShell-surface shadow-[0_0_40px_rgba(15,23,42,0.12)] transition-transform duration-200 ease-out dark:shadow-[0_0_48px_rgba(0,0,0,0.5)] ${
+        className={`absolute right-0 flex w-full flex-col border-l border-pulseShell-border bg-pulseShell-surface shadow-[0_0_40px_rgba(15,23,42,0.12)] transition-transform duration-200 ease-out dark:shadow-[0_0_48px_rgba(0,0,0,0.5)] ${panelLayout} ${
           wide ? "sm:max-w-2xl" : "sm:max-w-[440px]"
         }`}
         role="dialog"

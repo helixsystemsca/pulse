@@ -27,6 +27,8 @@ export type CompanySummary = {
   logo_url?: string | null;
   /** Operations dashboard banner only; not shown in global nav. */
   header_image_url?: string | null;
+  timezone?: string | null;
+  industry?: string | null;
 };
 
 export type PulseAuthSession = {
@@ -38,6 +40,10 @@ export type PulseAuthSession = {
   roles?: string[];
   company_id?: string | null;
   full_name?: string | null;
+  avatar_url?: string | null;
+  job_title?: string | null;
+  /** Workforce / monitoring capacity (`worker` | `manager` | `supervisor`), separate from permission roles. */
+  operational_role?: string | null;
   is_system_admin?: boolean;
   /** From `/auth/me`; when missing (legacy session), tenant nav shows all modules. */
   enabled_features?: string[];
@@ -61,6 +67,9 @@ export type UserOut = {
   role: string;
   roles?: string[];
   full_name?: string | null;
+  avatar_url?: string | null;
+  job_title?: string | null;
+  operational_role?: string | null;
   enabled_features?: string[];
   is_impersonating?: boolean;
   is_system_admin?: boolean;
@@ -170,6 +179,9 @@ export function writeApiSession(
     roles: user.roles?.length ? user.roles : user.role ? [user.role] : undefined,
     company_id: user.company_id ?? null,
     full_name: user.full_name ?? null,
+    avatar_url: user.avatar_url ?? null,
+    job_title: user.job_title ?? null,
+    operational_role: user.operational_role ?? null,
     is_system_admin: user.is_system_admin,
     enabled_features: user.enabled_features,
     company: user.company ?? null,

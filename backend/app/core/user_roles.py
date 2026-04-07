@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Iterable, Sequence
 
-from app.models.domain import User, UserRole
+from app.models.domain import OperationalRole, User, UserRole
 
 # Highest precedence first (used for JWT `role` claim and primary display).
 _ROLE_PRECEDENCE: tuple[UserRole, ...] = (
@@ -105,6 +105,29 @@ def is_elevated_tenant_staff(user: User) -> bool:
         UserRole.manager,
         UserRole.supervisor,
     )
+
+
+def default_operational_role_for_invite_role(role: UserRole) -> str | None:
+    """Initial workforce enrollment when inviting/creating a user from a permission role."""
+    if role in (UserRole.worker, UserRole.lead):
+        return OperationalRole.worker.value
+    if role == UserRole.supervisor:
+        return OperationalRole.supervisor.value
+    if role in (UserRole.manager, UserRole.company_admin):
+        return OperationalRole.manager.value
+    return None
+
+
+def user_participates_in_workforce_operations(user: User) -> bool:
+    """True when the user is included in scheduling, pulse roster, and proximity workforce monitoring."""
+    v = (user.operational_role or "").strip()
+    if not v:
+        return False
+    try:
+        OperationalRole(v)
+    except ValueError:
+        return False
+    return True
 
 
 def is_field_worker_like(user: User) -> bool:

@@ -42,7 +42,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.automation_engine import AutomationEvent
-from app.models.domain import Tool, User, Zone
+from app.models.domain import OperationalRole, Tool, User, Zone
 from app.services.automation.actions import create_notification, emit_automation_triggered
 from app.services.automation.config_service import FEATURE_PROXIMITY_TRACKING, get_config
 from app.services.automation.logging_service import log_event
@@ -176,7 +176,13 @@ async def handle(db: AsyncSession, event: AutomationEvent) -> None:
 
     zone_id = str(zone_id).strip()
     u_ok = (
-        await db.execute(select(User.id).where(User.id == worker_id, User.company_id == company_id))
+        await db.execute(
+            select(User.id).where(
+                User.id == worker_id,
+                User.company_id == company_id,
+                User.operational_role.in_([e.value for e in OperationalRole]),
+            )
+        )
     ).scalar_one_or_none()
     t_ok = (
         await db.execute(select(Tool.id).where(Tool.id == equipment_id, Tool.company_id == company_id))

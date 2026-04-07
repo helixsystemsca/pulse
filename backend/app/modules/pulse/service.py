@@ -12,8 +12,8 @@ from sqlalchemy.dialects.postgresql import array as pg_array
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
-from app.core.user_roles import user_has_any_role
-from app.models.domain import EquipmentPart, InventoryItem, Tool, ToolStatus, User, UserRole, Zone
+from app.core.user_roles import user_has_any_role, user_participates_in_workforce_operations
+from app.models.domain import EquipmentPart, InventoryItem, OperationalRole, Tool, ToolStatus, User, UserRole, Zone
 from app.models.pulse_models import (
     PulseBeaconEquipment,
     PulseScheduleShift,
@@ -155,6 +155,10 @@ async def validate_shift_assignment(
         errors.append("Assigned user not found in this organization.")
         return errors, warnings
 
+    if not user_participates_in_workforce_operations(user):
+        errors.append("This person is not enrolled in workforce operations (enable it in Profile Settings).")
+        return errors, warnings
+
     if await _shift_overlap_exists(
         db, company_id, assigned_user_id, body_starts, body_ends, exclude_shift_id
     ):
@@ -195,6 +199,7 @@ async def dashboard_aggregate(db: AsyncSession, company_id: str) -> dict[str, An
         .where(
             User.company_id == company_id,
             User.is_active.is_(True),
+            User.operational_role.in_([e.value for e in OperationalRole]),
             User.roles.overlap(
                 pg_array(
                     [

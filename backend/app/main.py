@@ -30,6 +30,7 @@ from app.api.setup_progress_routes import router as setup_progress_router
 from app.api.auth_routes import router as auth_router
 from app.api.blueprint_routes import router as blueprint_router
 from app.api.company_routes import router as company_router
+from app.api.profile_routes import router as profile_router
 from app.api.compliance_routes import router as compliance_router
 from app.api.projects_routes import router as projects_router
 from app.api.projects_routes import tasks_router as projects_tasks_router
@@ -123,6 +124,7 @@ app.include_router(auth_router, prefix="/api/v1")
 app.include_router(onboarding_router, prefix="/api/v1")
 app.include_router(setup_progress_router, prefix="/api/v1")
 app.include_router(company_router, prefix="/api/v1")
+app.include_router(profile_router, prefix="/api/v1")
 app.include_router(automation_events_router, prefix="/api/v1")
 app.include_router(automation_debug_router, prefix="/api/v1")
 app.include_router(notifications_router, prefix="/api/v1")

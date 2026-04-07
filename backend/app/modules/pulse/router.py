@@ -13,7 +13,16 @@ from app.api.deps import require_tenant_user
 from app.core.user_roles import is_field_worker_like, primary_jwt_role
 from app.services.onboarding_service import try_mark_onboarding_step
 from app.core.database import get_db
-from app.models.domain import InventoryItem, Tool, ToolStatus, User, UserAccountStatus, UserRole, Zone
+from app.models.domain import (
+    InventoryItem,
+    OperationalRole,
+    Tool,
+    ToolStatus,
+    User,
+    UserAccountStatus,
+    UserRole,
+    Zone,
+)
 from app.models.pulse_models import (
     PulseBeaconEquipment,
     PulseProcedure,
@@ -301,6 +310,7 @@ async def list_workers(db: Db, cid: CompanyId) -> list[WorkerOut]:
             User.company_id == cid,
             User.is_active.is_(True),
             User.account_status == UserAccountStatus.active,
+            User.operational_role.in_([e.value for e in OperationalRole]),
             User.roles.overlap(
                 pg_array(
                     [

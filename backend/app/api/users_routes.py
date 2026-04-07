@@ -21,6 +21,7 @@ from app.core.permissions import keys as perm_keys
 from app.core.permissions.service import PermissionService
 from app.core.system_tokens import generate_raw_token, hash_system_token
 from app.core.user_roles import (
+    default_operational_role_for_invite_role,
     user_has_any_role,
     user_roles_subset_of,
     validate_tenant_roles_non_empty,
@@ -93,7 +94,9 @@ async def create_company_user(
         if ex.account_status == UserAccountStatus.active:
             raise HTTPException(status_code=400, detail="Email already in use")
         user = ex
-        user.roles = [UserRole(body.role).value]
+        re = UserRole(body.role)
+        user.roles = [re.value]
+        user.operational_role = default_operational_role_for_invite_role(re)
         user.full_name = body.full_name
         user.hashed_password = None
         user.account_status = UserAccountStatus.invited
@@ -109,6 +112,7 @@ async def create_company_user(
             hashed_password=None,
             full_name=body.full_name,
             roles=[role_enum.value],
+            operational_role=default_operational_role_for_invite_role(role_enum),
             created_by=actor.id,
             account_status=UserAccountStatus.invited,
             invite_token_hash=th,

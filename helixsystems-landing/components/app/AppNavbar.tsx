@@ -5,7 +5,7 @@
  */
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { Activity, ChevronDown, Image as ImageIcon, LogOut, User } from "lucide-react";
+import { Activity, ChevronDown, Image as ImageIcon, LogOut, Settings } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useOnboardingOptional } from "@/components/onboarding/OnboardingProvider";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
@@ -123,13 +123,13 @@ export function AppNavbar() {
                   role="menu"
                 >
                   <Link
-                    href={pulseApp.to(pulseRoutes.overview)}
+                    href={pulseApp.to("/dashboard/profile-settings")}
                     className="flex items-center gap-2 px-3 py-2 text-sm text-gray-900 hover:bg-gray-50 dark:text-gray-100 dark:hover:bg-[#0F172A]"
                     onClick={() => setUserOpen(false)}
                     role="menuitem"
                   >
-                    <User className="h-4 w-4 text-gray-500 dark:text-gray-400" strokeWidth={2} aria-hidden />
-                    Profile
+                    <Settings className="h-4 w-4 text-gray-500 dark:text-gray-400" strokeWidth={2} aria-hidden />
+                    Profile Settings
                   </Link>
                   {session && sessionHasAnyRole(session, "company_admin") ? (
                     <Link

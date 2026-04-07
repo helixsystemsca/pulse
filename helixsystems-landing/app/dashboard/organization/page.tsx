@@ -5,6 +5,7 @@ import { usePulseAuth } from "@/hooks/usePulseAuth";
 import { isApiMode } from "@/lib/api";
 import { navigateToPulseLogin } from "@/lib/pulse-app";
 import { readSession } from "@/lib/pulse-session";
+import { sessionHasAnyRole } from "@/lib/pulse-roles";
 import { useEffect, useState } from "react";
 
 export default function OrganizationBrandingPage() {
@@ -35,7 +36,7 @@ export default function OrganizationBrandingPage() {
     );
   }
 
-  if (effective.role !== "company_admin") {
+  if (!sessionHasAnyRole(effective, "company_admin")) {
     return (
       <div className="rounded-md border border-amber-200 bg-amber-50/90 p-4 text-sm text-amber-950 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-100">
         Only company administrators can change organization branding.

@@ -105,6 +105,16 @@ async def patch_company_profile(
             co.header_image_url = None
         else:
             co.header_image_url = str(raw).strip() or None
+    if "name" in data and data["name"] is not None:
+        n = str(data["name"]).strip()
+        if n:
+            co.name = n
+    if "timezone" in data:
+        tz = data["timezone"]
+        co.timezone = str(tz).strip() or None if tz is not None else None
+    if "industry" in data:
+        ind = data["industry"]
+        co.industry = str(ind).strip() or None if ind is not None else None
     await db.commit()
     await db.refresh(co)
     return CompanyLogoUploadOut(logo_url=co.logo_url or "", header_image_url=co.header_image_url)

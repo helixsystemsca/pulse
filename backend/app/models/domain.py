@@ -52,6 +52,14 @@ class UserRole(str, enum.Enum):
     worker = "worker"
 
 
+class OperationalRole(str, enum.Enum):
+    """Field / monitoring capacity — separate from permission `roles` (e.g. company_admin)."""
+
+    worker = "worker"
+    manager = "manager"
+    supervisor = "supervisor"
+
+
 class UserAccountStatus(str, enum.Enum):
     """Tenant user lifecycle (system_admin has no company)."""
 
@@ -111,6 +119,8 @@ class Company(Base):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     logo_url: Mapped[Optional[str]] = mapped_column(String(2048), nullable=True)
     header_image_url: Mapped[Optional[str]] = mapped_column(String(2048), nullable=True)
+    timezone: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    industry: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     owner_admin_id: Mapped[Optional[str]] = mapped_column(
         UUID(as_uuid=False),
         ForeignKey("users.id", ondelete="SET NULL"),
@@ -165,6 +175,9 @@ class User(Base):
     email: Mapped[str] = mapped_column(String(320), nullable=False)
     hashed_password: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     full_name: Mapped[Optional[str]] = mapped_column(String(255))
+    avatar_url: Mapped[Optional[str]] = mapped_column(String(2048), nullable=True)
+    job_title: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    operational_role: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
     roles: Mapped[list[str]] = mapped_column(
         ARRAY(String(32)),
         nullable=False,

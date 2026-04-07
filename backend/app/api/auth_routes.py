@@ -190,6 +190,8 @@ async def me(
                 name=co.name,
                 logo_url=co.logo_url,
                 header_image_url=co.header_image_url,
+                timezone=co.timezone,
+                industry=co.industry,
             )
 
     ob_enabled = user.onboarding_enabled
@@ -208,6 +210,9 @@ async def me(
         role=prim.value,
         roles=list(user.roles),
         full_name=user.full_name,
+        avatar_url=user.avatar_url,
+        job_title=user.job_title,
+        operational_role=(str(user.operational_role).strip() or None) if user.operational_role else None,
         enabled_features=feats,
         is_impersonating=is_imp,
         is_system_admin=bool(user.is_system_admin or user_has_any_role(user, UserRole.system_admin)),
