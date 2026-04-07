@@ -32,6 +32,7 @@ class ProjectOut(BaseModel):
     name: str
     description: Optional[str]
     owner_user_id: Optional[str] = None
+    created_by_user_id: Optional[str] = None
     start_date: date
     end_date: date
     status: str

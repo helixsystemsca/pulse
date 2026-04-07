@@ -287,6 +287,9 @@ class PulseProject(Base):
     owner_user_id: Mapped[Optional[str]] = mapped_column(
         UUID(as_uuid=False), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
     )
+    created_by_user_id: Mapped[Optional[str]] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     start_date: Mapped[date] = mapped_column(Date, nullable=False)
     end_date: Mapped[date] = mapped_column(Date, nullable=False)
     status: Mapped[PulseProjectStatus] = mapped_column(

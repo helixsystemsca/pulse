@@ -15,13 +15,16 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Card } from "@/components/pulse/Card";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { SegmentedControl } from "@/components/schedule/SegmentedControl";
+import { usePulseAuth } from "@/hooks/usePulseAuth";
 import { apiFetch } from "@/lib/api";
 import { emitOnboardingMaybeUpdated } from "@/lib/onboarding-events";
+import { parseClientApiError } from "@/lib/parse-client-api-error";
 import { ProjectAutomationPanel } from "@/components/projects/ProjectAutomationPanel";
 import {
   createTask,
   deleteTask,
   getProject,
+  patchProject,
   patchTask,
   syncTaskDependencies,
   type ProjectDetail,
@@ -82,6 +85,7 @@ const KANBAN_COLS = [
 ];
 
 export function ProjectDetailApp({ projectId }: { projectId: string }) {
+  const { session } = usePulseAuth();
   const [data, setData] = useState<ProjectDetail | null>(null);
   const [workers, setWorkers] = useState<PulseWorkerApi[]>([]);
   const [skillCategories, setSkillCategories] = useState<string[]>([]);
@@ -91,6 +95,7 @@ export function ProjectDetailApp({ projectId }: { projectId: string }) {
   const [taskModalOpen, setTaskModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<TaskRow | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const [projectCompleting, setProjectCompleting] = useState(false);
 
   const [matchTaskId, setMatchTaskId] = useState<string>("");
   const [workerFilter, setWorkerFilter] = useState<"all" | "matching">("all");
@@ -213,6 +218,32 @@ export function ProjectDetailApp({ projectId }: { projectId: string }) {
     }
   }
 
+  const canMarkProjectComplete = Boolean(
+    session?.sub &&
+      data?.created_by_user_id &&
+      data.created_by_user_id === session.sub &&
+      data.status !== "completed",
+  );
+
+  async function markProjectComplete() {
+    if (!data || !session?.sub || data.created_by_user_id !== session.sub || projectCompleting) return;
+    setProjectCompleting(true);
+    try {
+      const out = await patchProject(data.id, { status: "completed" });
+      setData({
+        ...data,
+        ...out,
+        tasks: data.tasks,
+      });
+      setToast("Project marked complete.");
+    } catch (e) {
+      const { message } = parseClientApiError(e);
+      setToast(message || "Could not update project.");
+    } finally {
+      setProjectCompleting(false);
+    }
+  }
+
   async function onDropOnColumn(status: TaskRow["status"], taskId: string) {
     const subject = tasks.find((x) => x.id === taskId);
     if (status === "complete" && subject?.is_blocked) {
@@ -254,6 +285,16 @@ export function ProjectDetailApp({ projectId }: { projectId: string }) {
               <ArrowLeft className="h-4 w-4" aria-hidden />
               Projects
             </Link>
+            {canMarkProjectComplete ? (
+              <button
+                type="button"
+                className={SECONDARY_BTN}
+                disabled={projectCompleting}
+                onClick={() => void markProjectComplete()}
+              >
+                {projectCompleting ? "Updating…" : "Mark complete"}
+              </button>
+            ) : null}
             <button
               type="button"
               className={PRIMARY_BTN}

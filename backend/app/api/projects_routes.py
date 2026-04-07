@@ -17,6 +17,7 @@ from app.models.pulse_models import (
     PulseProject,
     PulseProjectAutomationRule,
     PulseProjectAutomationTrigger,
+    PulseProjectStatus,
     PulseProjectTask,
     PulseTaskDependency,
     PulseTaskStatus,
@@ -92,6 +93,7 @@ def _project_out(p: PulseProject) -> ProjectOut:
         name=p.name,
         description=p.description,
         owner_user_id=str(p.owner_user_id) if getattr(p, "owner_user_id", None) else None,
+        created_by_user_id=str(p.created_by_user_id) if getattr(p, "created_by_user_id", None) else None,
         start_date=p.start_date,
         end_date=p.end_date,
         status=st,
@@ -150,6 +152,7 @@ async def list_projects(db: Db, cid: CompanyId) -> list[ProjectOutWithProgress]:
                 name=p.name,
                 description=p.description,
                 owner_user_id=str(p.owner_user_id) if getattr(p, "owner_user_id", None) else None,
+                created_by_user_id=str(p.created_by_user_id) if getattr(p, "created_by_user_id", None) else None,
                 start_date=p.start_date,
                 end_date=p.end_date,
                 status=st,
@@ -166,7 +169,12 @@ async def list_projects(db: Db, cid: CompanyId) -> list[ProjectOutWithProgress]:
 
 
 @router.post("/projects", response_model=ProjectOut, status_code=status.HTTP_201_CREATED)
-async def create_project(db: Db, cid: CompanyId, body: ProjectCreate) -> ProjectOut:
+async def create_project(
+    db: Db,
+    cid: CompanyId,
+    actor: Annotated[User, Depends(require_tenant_user)],
+    body: ProjectCreate,
+) -> ProjectOut:
     if body.end_date < body.start_date:
         raise HTTPException(status_code=400, detail="end_date must be on or after start_date")
     owner_id = (body.owner_user_id or "").strip() or None
@@ -177,6 +185,7 @@ async def create_project(db: Db, cid: CompanyId, body: ProjectCreate) -> Project
         name=body.name.strip(),
         description=body.description,
         owner_user_id=owner_id,
+        created_by_user_id=str(actor.id),
         start_date=body.start_date,
         end_date=body.end_date,
         status=proj_svc.parse_project_status(body.status or "active"),
@@ -230,6 +239,7 @@ async def get_project(db: Db, cid: CompanyId, project_id: str) -> ProjectDetailO
         name=p.name,
         description=p.description,
         owner_user_id=str(p.owner_user_id) if getattr(p, "owner_user_id", None) else None,
+        created_by_user_id=str(p.created_by_user_id) if getattr(p, "created_by_user_id", None) else None,
         start_date=p.start_date,
         end_date=p.end_date,
         status=st,
@@ -335,13 +345,27 @@ async def task_health(db: Db, cid: CompanyId, project_id: str) -> TaskHealthRepo
 
 
 @router.patch("/projects/{project_id}", response_model=ProjectOut)
-async def patch_project(db: Db, cid: CompanyId, project_id: str, body: ProjectPatch) -> ProjectOut:
+async def patch_project(
+    db: Db,
+    cid: CompanyId,
+    actor: Annotated[User, Depends(require_tenant_user)],
+    project_id: str,
+    body: ProjectPatch,
+) -> ProjectOut:
     p = await db.get(PulseProject, project_id)
     if not p or str(p.company_id) != cid:
         raise HTTPException(status_code=404, detail="Not found")
     data = body.model_dump(exclude_unset=True)
     if "status" in data and data["status"] is not None:
-        p.status = proj_svc.parse_project_status(str(data["status"]))
+        new_st = proj_svc.parse_project_status(str(data["status"]))
+        if new_st == PulseProjectStatus.completed:
+            creator_id = getattr(p, "created_by_user_id", None)
+            if not creator_id or str(creator_id) != str(actor.id):
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Only the project creator can mark this project complete",
+                )
+        p.status = new_st
         del data["status"]
     if "owner_user_id" in data:
         uid = data.pop("owner_user_id")

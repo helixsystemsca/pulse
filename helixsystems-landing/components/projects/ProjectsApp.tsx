@@ -7,27 +7,22 @@ import { Card } from "@/components/pulse/Card";
 import { ModuleOnboardingHint } from "@/components/onboarding/ModuleOnboardingHint";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { SegmentedControl } from "@/components/schedule/SegmentedControl";
+import { usePulseAuth } from "@/hooks/usePulseAuth";
 import { apiFetch } from "@/lib/api";
-import { createProject, listProjects, type ProjectRow } from "@/lib/projectsService";
+import { parseClientApiError } from "@/lib/parse-client-api-error";
+import { createProject, listProjects, patchProject, type ProjectRow } from "@/lib/projectsService";
 import type { PulseWorkerApi } from "@/lib/schedule/pulse-bridge";
 
 const PRIMARY_BTN =
   "rounded-[10px] bg-[#2B4C7E] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#234066] disabled:opacity-50";
+const SECONDARY_BTN =
+  "rounded-[10px] border border-slate-200/90 bg-white px-5 py-2.5 text-sm font-semibold text-pulse-navy shadow-sm transition-colors hover:bg-slate-50 disabled:opacity-50 dark:border-[#374151] dark:bg-[#1F2937] dark:text-slate-100 dark:hover:bg-[#374151]";
 const FIELD =
   "mt-1.5 w-full rounded-[10px] border border-slate-200/90 bg-white px-3 py-2.5 text-sm text-pulse-navy shadow-sm focus:border-[#2B4C7E]/35 focus:outline-none focus:ring-1 focus:ring-[#2B4C7E]/25 dark:border-[#374151] dark:bg-[#0F172A] dark:text-gray-100";
 const LABEL = "text-[11px] font-semibold uppercase tracking-wider text-pulse-muted";
 
 function displayName(w: PulseWorkerApi): string {
   return (w.full_name || w.email || "User").trim();
-}
-
-function initials(name: string | null | undefined, email: string): string {
-  if (name?.trim()) {
-    const p = name.trim().split(/\s+/).filter(Boolean);
-    if (p.length >= 2) return (p[0][0] + p[p.length - 1][0]).toUpperCase();
-    return p[0].slice(0, 2).toUpperCase();
-  }
-  return email.split("@")[0]?.slice(0, 2).toUpperCase() || "?";
 }
 
 function statusLabel(st: string): string {
@@ -37,6 +32,8 @@ function statusLabel(st: string): string {
 }
 
 export function ProjectsApp() {
+  const { session } = usePulseAuth();
+  const myUserId = session?.sub ?? null;
   const [rows, setRows] = useState<ProjectRow[] | null>(null);
   const [workers, setWorkers] = useState<PulseWorkerApi[]>([]);
   const [err, setErr] = useState<string | null>(null);
@@ -44,6 +41,7 @@ export function ProjectsApp() {
   const [createOpen, setCreateOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [completingId, setCompletingId] = useState<string | null>(null);
 
   const [formName, setFormName] = useState("");
   const [formStart, setFormStart] = useState("");
@@ -88,6 +86,34 @@ export function ProjectsApp() {
     if (!rows) return [];
     return rows.filter((p) => (filter === "completed" ? p.status === "completed" : p.status !== "completed"));
   }, [rows, filter]);
+
+  async function markProjectComplete(p: ProjectRow) {
+    if (!myUserId || p.created_by_user_id !== myUserId || completingId) return;
+    setCompletingId(p.id);
+    try {
+      const out = await patchProject(p.id, { status: "completed" });
+      setRows((prev) =>
+        prev?.map((r) =>
+          r.id === p.id
+            ? {
+                ...r,
+                ...out,
+                task_total: r.task_total,
+                task_completed: r.task_completed,
+                progress_pct: r.progress_pct,
+                assignee_user_ids: r.assignee_user_ids,
+              }
+            : r,
+        ) ?? null,
+      );
+      setToast("Project marked complete.");
+    } catch (e) {
+      const { message } = parseClientApiError(e);
+      setToast(message || "Could not update project.");
+    } finally {
+      setCompletingId(null);
+    }
+  }
 
   async function submitCreate() {
     if (!formName.trim() || !formStart || !formEnd || saving) return;
@@ -181,13 +207,16 @@ export function ProjectsApp() {
               ? "No projects yet. Create one to get started."
               : filter === "completed"
                 ? "No completed projects in this view."
-                : "No active projects. Mark a project completed from its detail page or switch to Completed."}
+                : "No active projects. Mark one complete with Mark complete (creator only) or switch to Completed."}
           </p>
         </Card>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {filtered.map((p) => {
             const owner = p.owner_user_id ? workerById.get(p.owner_user_id) : undefined;
+            const creatorCanComplete =
+              Boolean(myUserId && p.created_by_user_id && p.created_by_user_id === myUserId) &&
+              p.status !== "completed";
             return (
               <Card
                 key={p.id}
@@ -230,7 +259,17 @@ export function ProjectsApp() {
                         {p.task_completed} / {p.task_total} tasks complete
                       </p>
                     </div>
-                    <div className="mt-4">
+                    <div className="mt-4 flex flex-col gap-2">
+                      {creatorCanComplete ? (
+                        <button
+                          type="button"
+                          className={`${SECONDARY_BTN} w-full`}
+                          disabled={completingId === p.id}
+                          onClick={() => void markProjectComplete(p)}
+                        >
+                          {completingId === p.id ? "Updating…" : "Mark complete"}
+                        </button>
+                      ) : null}
                       <Link
                         href={`/projects/${p.id}`}
                         className={`${PRIMARY_BTN} inline-flex w-full items-center justify-center no-underline`}

@@ -12,6 +12,7 @@ export type ProjectRow = {
   name: string;
   description: string | null;
   owner_user_id?: string | null;
+  created_by_user_id?: string | null;
   start_date: string;
   end_date: string;
   status: string;
@@ -173,6 +174,20 @@ export type AutomationRuleRow = {
 
 export async function listProjects(): Promise<ProjectRow[]> {
   return apiFetch<ProjectRow[]>("/api/v1/projects");
+}
+
+export async function patchProject(
+  id: string,
+  patch: Partial<{
+    name: string;
+    description: string | null;
+    start_date: string;
+    end_date: string;
+    status: string;
+    owner_user_id: string | null;
+  }>,
+): Promise<ProjectRow> {
+  return apiFetch<ProjectRow>(`/api/v1/projects/${id}`, { method: "PATCH", json: patch });
 }
 
 export async function createProject(body: {
