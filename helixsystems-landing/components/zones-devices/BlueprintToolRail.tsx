@@ -25,16 +25,19 @@ export function BlueprintToolRail({
   symbolPanelOpen,
   onToggleSymbolPanel,
   disabled,
+  layout = "vertical",
 }: {
   tool: BlueprintDesignerTool;
   onToolChange: (t: BlueprintDesignerTool) => void;
   symbolPanelOpen: boolean;
   onToggleSymbolPanel: () => void;
   disabled?: boolean;
+  /** Horizontal strip for floating canvas toolbar. */
+  layout?: "vertical" | "horizontal";
 }) {
   return (
     <motion.nav
-      className={`bp-tool-rail${disabled ? " bp-tool-rail--disabled" : ""}`}
+      className={`bp-tool-rail bp-tool-rail--${layout}${disabled ? " bp-tool-rail--disabled" : ""}`}
       aria-label="Blueprint tools"
       initial={{ opacity: 0, x: -10 }}
       animate={{ opacity: 1, x: 0 }}

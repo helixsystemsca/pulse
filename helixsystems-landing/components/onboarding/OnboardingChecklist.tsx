@@ -73,7 +73,7 @@ export function OnboardingChecklist() {
                     {s.completed ? <Check className="h-3 w-3" strokeWidth={3} /> : null}
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className={s.completed ? "line-through decoration-slate-300" : "font-medium"}>
+                    <span className="font-medium">
                       {s.label}
                     </span>
                     {s.description ? (

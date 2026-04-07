@@ -25,9 +25,13 @@ function initialsFrom(email: string, fullName: string | null | undefined): strin
   return local.slice(0, 2).toUpperCase() || "—";
 }
 
-/** No `supports-[backdrop-filter]:bg-white/…` here: that utility can win over `dark:bg-*` in dark mode (equal specificity, order-dependent). */
+/**
+ * Dark: match `AppSideNav` chrome (`#111827` / `#1F2937`) so header + rail feel unified over the canvas.
+ * Light page content stays on `app-page-shell` (`#1e293b` in dark).
+ * Avoid `supports-[backdrop-filter]:bg-white/…` — it can beat `dark:bg-*` depending on CSS order.
+ */
 const HEADER =
-  "sticky top-0 z-50 h-16 shrink-0 border-b border-gray-200/90 bg-white/95 shadow-[0_1px_3px_rgba(15,23,42,0.06)] backdrop-blur-md dark:border-slate-600/35 dark:bg-[#1e293b]/98 dark:shadow-[0_1px_3px_rgba(0,0,0,0.45)] dark:backdrop-blur-md";
+  "sticky top-0 z-50 h-16 shrink-0 border-b border-gray-200/90 bg-white/95 shadow-[0_1px_3px_rgba(15,23,42,0.06)] backdrop-blur-md dark:border-[#1F2937] dark:bg-[#111827]/96 dark:shadow-[0_4px_24px_rgba(0,0,0,0.4)] dark:backdrop-blur-md";
 
 export function AppNavbar() {
   const pathname = usePathname();

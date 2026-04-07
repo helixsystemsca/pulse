@@ -9,7 +9,8 @@ import { parseClientApiError } from "@/lib/parse-client-api-error";
 import { pulseApp } from "@/lib/pulse-app";
 import { canAccessPulseTenantApis, readSession } from "@/lib/pulse-session";
 import { emitOnboardingMaybeUpdated } from "@/lib/onboarding-events";
-import { processFreehandPath } from "@/lib/blueprint-freehand-path";
+import { freehandOptionsFromSlider, processFreehandPath } from "@/lib/blueprint-freehand-path";
+import { mergeZonesUnion } from "@/lib/blueprint-zone-union";
 import { bpDuration, bpEase, bpTransition } from "@/lib/motion-presets";
 import type { BlueprintDesignerTool, BlueprintElement, TaskOverlay } from "./blueprint-types";
 export type { BlueprintElement, BlueprintState, BlueprintHistoryState, TaskOverlay } from "./blueprint-types";
@@ -101,7 +102,10 @@ const SNAP_PX = 8;
 const DOOR_ALONG_DEFAULT = 32;
 const DOOR_DEPTH_DEFAULT = 10;
 const MIN_DOOR_ALONG = 14;
-const MAX_DOOR_ALONG = 280;
+/** Wall segments can be long (garage / bay doors); still clamped per-wall in `doorAlongUpperBound`. */
+const MAX_DOOR_ALONG = 8000;
+/** Canvas units ≈ plan scale: 32 px per meter (grid-friendly). */
+const BP_PX_PER_M = 32;
 /** Larger = transformer activates before touching the stroke. */
 const ZONE_EDGE_HIT_PX = 22;
 const TRANSFORMER_ANCHOR_PX = 14;
@@ -113,7 +117,7 @@ const CANVAS_BG_CUT = "#0f172a";
 
 /** Free-draw: min distance between raw samples (world px) */
 const FREE_DRAW_SAMPLE_DIST = 1.1;
-/** Konva Line tension — 0 because `path_points` are pre-smoothed (simplify-js + quadratic Bézier sampling). */
+/** Konva Line tension — 0 because `path_points` are flattened polyline (simplify-js + Catmull–Rom → cubic Bézier). */
 const PATH_LINE_TENSION = 0;
 
 type WallEdgeIdx = 0 | 1 | 2 | 3;
@@ -580,162 +584,6 @@ function rotatePathFlat90Cw(flat: number[], cx: number, cy: number): number[] {
   return out;
 }
 
-function ptKeyMerge(x: number, y: number) {
-  return `${Math.round(x * 1e4)}:${Math.round(y * 1e4)}`;
-}
-
-function undirectedEdgeKeyMerge(a: [number, number], b: [number, number]): string {
-  const ka = ptKeyMerge(a[0], a[1]);
-  const kb = ptKeyMerge(b[0], b[1]);
-  return ka < kb ? `${ka}|${kb}` : `${kb}|${ka}`;
-}
-
-function polygonSignedAreaFlat(flat: number[]): number {
-  let s = 0;
-  const n = flat.length / 2;
-  for (let i = 0; i < n; i++) {
-    const j = (i + 1) % n;
-    s += flat[i * 2]! * flat[j * 2 + 1]! - flat[j * 2]! * flat[i * 2 + 1]!;
-  }
-  return s / 2;
-}
-
-function fuseDirectedBoundaryToRing(boundary: Array<[[number, number], [number, number]]>): number[] | null {
-  const adj = new Map<string, [number, number][]>();
-  const kf = (p: [number, number]) => ptKeyMerge(p[0], p[1]);
-  const add = (a: [number, number], b: [number, number]) => {
-    const ka = kf(a);
-    if (!adj.has(ka)) adj.set(ka, []);
-    adj.get(ka)!.push(b);
-  };
-  for (const [a, b] of boundary) {
-    add(a, b);
-    add(b, a);
-  }
-  let start: [number, number] | null = null;
-  for (const k of adj.keys()) {
-    const [sx, sy] = k.split(":").map(Number) as [number, number];
-    if (!start || sx < start[0] || (sx === start[0] && sy < start[1])) start = [sx, sy];
-  }
-  if (!start) return null;
-  const flat: number[] = [];
-  let cur = start;
-  let prev: [number, number] | null = null;
-  for (let step = 0; step < boundary.length * 4 + 12; step++) {
-    flat.push(cur[0], cur[1]);
-    const neigh = adj.get(kf(cur)) ?? [];
-    const candidates = neigh.filter((nb) => !prev || nb[0] !== prev[0] || nb[1] !== prev[1]);
-    let next: [number, number] | null = null;
-    if (candidates.length === 1) next = candidates[0]!;
-    else if (candidates.length === 2 && !prev) {
-      next = candidates[0]![0] < candidates[1]![0] || (candidates[0]![0] === candidates[1]![0] && candidates[0]![1] <= candidates[1]![1]) ? candidates[0]! : candidates[1]!;
-    } else break;
-    if (step >= 2 && next[0] === start[0] && next[1] === start[1]) break;
-    prev = cur;
-    cur = next;
-  }
-  return flat.length >= 6 ? flat : null;
-}
-
-function rectLtrbFromAxisZone(z: BlueprintElement): { L: number; R: number; T: number; B: number } | null {
-  if (z.type !== "zone" || zonePolygonFlat(z) || (z.rotation ?? 0) !== 0) return null;
-  const w = z.width ?? 120;
-  const h = z.height ?? 80;
-  return { L: z.x, R: z.x + w, T: z.y, B: z.y + h };
-}
-
-function mergeAxisAlignedRectsToZoneElement(
-  keepId: string,
-  name: string,
-  r1: { L: number; R: number; T: number; B: number },
-  r2: { L: number; R: number; T: number; B: number },
-): BlueprintElement | null {
-  const eps = 1e-4;
-  const overlapX = Math.min(r1.R, r2.R) - Math.max(r1.L, r2.L);
-  const overlapY = Math.min(r1.B, r2.B) - Math.max(r1.T, r2.T);
-  if (overlapX > eps && overlapY > eps) return null;
-  if (overlapX < -1e-2 || overlapY < -1e-2) return null;
-
-  const xs = [...new Set([r1.L, r1.R, r2.L, r2.R])].sort((a, b) => a - b);
-  const ys = [...new Set([r1.T, r1.B, r2.T, r2.B])].sort((a, b) => a - b);
-  const grid: boolean[][] = [];
-  for (let j = 0; j < ys.length - 1; j++) {
-    const row: boolean[] = [];
-    for (let i = 0; i < xs.length - 1; i++) {
-      const cx = (xs[i]! + xs[i + 1]!) / 2;
-      const cy = (ys[j]! + ys[j + 1]!) / 2;
-      const in1 = cx >= r1.L - eps && cx <= r1.R + eps && cy >= r1.T - eps && cy <= r1.B + eps;
-      const in2 = cx >= r2.L - eps && cx <= r2.R + eps && cy >= r2.T - eps && cy <= r2.B + eps;
-      row.push(in1 || in2);
-    }
-    grid.push(row);
-  }
-
-  const rows = grid.length;
-  const cols = grid[0]?.length ?? 0;
-  if (!rows || !cols) return null;
-
-  const directed: Array<[[number, number], [number, number]]> = [];
-  for (let j = 0; j < rows; j++) {
-    for (let i = 0; i < cols; i++) {
-      if (!grid[j]![i]) continue;
-      const L = xs[i]!;
-      const R = xs[i + 1]!;
-      const T = ys[j]!;
-      const B = ys[j + 1]!;
-      if (j === 0 || !grid[j - 1]![i]) directed.push([[L, T], [R, T]]);
-      if (j === rows - 1 || !grid[j + 1]![i]) directed.push([[R, B], [L, B]]);
-      if (i === 0 || !grid[j]![i - 1]) directed.push([[L, B], [L, T]]);
-      if (i === cols - 1 || !grid[j]![i + 1]) directed.push([[R, T], [R, B]]);
-    }
-  }
-
-  const ec = new Map<string, { dir: [[number, number], [number, number]]; n: number }>();
-  for (const seg of directed) {
-    const [a, b] = seg;
-    const k = undirectedEdgeKeyMerge(a, b);
-    const ex = ec.get(k);
-    if (!ex) ec.set(k, { dir: seg, n: 1 });
-    else ex.n += 1;
-  }
-  const boundary: Array<[[number, number], [number, number]]> = [];
-  for (const { dir, n } of ec.values()) {
-    if (n % 2 === 1) boundary.push(dir);
-  }
-  const ring = fuseDirectedBoundaryToRing(boundary);
-  if (!ring) return null;
-
-  const areaExpect = (r1.R - r1.L) * (r1.B - r1.T) + (r2.R - r2.L) * (r2.B - r2.T);
-  const areaGot = Math.abs(polygonSignedAreaFlat(ring));
-  if (Math.abs(areaGot - areaExpect) > 2) return null;
-
-  const bb = bboxFromPathPoints(ring);
-  const isAxisRect = Math.abs(areaGot - bb.w * bb.h) < 1.5;
-  if (isAxisRect) {
-    return {
-      id: keepId,
-      type: "zone",
-      x: bb.minX,
-      y: bb.minY,
-      width: bb.w,
-      height: bb.h,
-      rotation: 0,
-      name,
-    };
-  }
-  return {
-    id: keepId,
-    type: "zone",
-    x: bb.minX,
-    y: bb.minY,
-    width: bb.w,
-    height: bb.h,
-    rotation: 0,
-    name,
-    path_points: ring,
-  };
-}
-
 function isTypingKeyboardTarget(target: EventTarget | null): boolean {
   if (!target || !(target instanceof Element)) return false;
   const el = target as HTMLElement;
@@ -1182,6 +1030,10 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
   const [placeKind, setPlaceKind] = useState<DeviceKind>("generic");
   const [placeSymbolKind, setPlaceSymbolKind] = useState<SymbolLibraryId>("tree");
   const [symbolPanelOpen, setSymbolPanelOpen] = useState(false);
+  /** Raw stroke + element id for post-draw smoothness (slider 0–100). */
+  const [freehandTune, setFreehandTune] = useState<{ id: string; raw: number[] } | null>(null);
+  const [freehandSlider, setFreehandSlider] = useState(52);
+  const [doorWidthUnit, setDoorWidthUnit] = useState<"ft" | "m">("ft");
   const [blueprintId, setBlueprintId] = useState<string | null>(null);
   const [blueprintName, setBlueprintName] = useState("Untitled blueprint");
   const [list, setList] = useState<BlueprintSummary[]>([]);
@@ -1420,6 +1272,11 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
   const selected = selectedSingleId ? elements.find((e) => e.id === selectedSingleId) ?? null : null;
 
   useEffect(() => {
+    if (!freehandTune) return;
+    if (selectedSingleId !== freehandTune.id) setFreehandTune(null);
+  }, [selectedSingleId, freehandTune]);
+
+  useEffect(() => {
     elementsRef.current = elements;
   }, [elements]);
   useEffect(() => {
@@ -1438,39 +1295,42 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
   const selectionBounds =
     selectedIds.length > 1 ? unionSelectionAabb(new Set(selectedIds), elements) : null;
 
-  const mergePair = useMemo(() => {
-    if (selectedIds.length !== 2) return null;
-    const a = elements.find((e) => e.id === selectedIds[0]);
-    const b = elements.find((e) => e.id === selectedIds[1]);
-    if (!a || !b || a.type !== "zone" || b.type !== "zone") return null;
-    const r1 = rectLtrbFromAxisZone(a);
-    const r2 = rectLtrbFromAxisZone(b);
-    if (!r1 || !r2) return null;
-    if (!mergeAxisAlignedRectsToZoneElement(a.id, "", r1, r2)) return null;
-    return { a, b, r1, r2 };
+  const zonesInSelection = useMemo(() => {
+    return selectedIds
+      .map((id) => elements.find((e) => e.id === id))
+      .filter((e): e is BlueprintElement => Boolean(e && e.type === "zone"));
   }, [selectedIds, elements]);
 
+  const canMergeZones = zonesInSelection.length >= 2;
+
   const mergeSelectedRooms = useCallback(() => {
-    if (!mergePair || selectedIds.length !== 2) return;
-    const { a, b, r1, r2 } = mergePair;
-    const keepId = selectedIds[0]!;
-    const name = [a.name, b.name].filter(Boolean).join(" · ").slice(0, 120) || "Merged room";
+    if (zonesInSelection.length < 2) return;
+    const keepId = zonesInSelection[0]!.id;
+    const removeIds = new Set(zonesInSelection.map((z) => z.id));
+    const name =
+      zonesInSelection
+        .map((z) => z.name)
+        .filter(Boolean)
+        .join(" · ")
+        .slice(0, 120) || "Merged room";
     checkpointBlueprint();
     commitElements((prev) => {
       const touchesMergedRoom = (e: BlueprintElement) => {
         if (e.type !== "door") return false;
         const p = parseWallAttach(e.wall_attachment);
-        return Boolean(p && (p.zoneId === a.id || p.zoneId === b.id));
+        return Boolean(p && removeIds.has(p.zoneId));
       };
       const filtered = prev.filter((e) => !touchesMergedRoom(e));
-      const merged = mergeAxisAlignedRectsToZoneElement(keepId, name, r1, r2);
+      const zonesToMerge = zonesInSelection.map((z) => filtered.find((e) => e.id === z.id)).filter(Boolean) as BlueprintElement[];
+      if (zonesToMerge.length < 2) return prev;
+      const merged = mergeZonesUnion(keepId, name, zonesToMerge);
       if (!merged) return prev;
-      const rest = filtered.filter((e) => e.id !== a.id && e.id !== b.id);
+      const rest = filtered.filter((e) => !removeIds.has(e.id));
       return relayoutAllDoors([...rest, merged]);
     });
     setSelectedIds([keepId]);
     setSnapGuides([]);
-  }, [mergePair, selectedIds, commitElements, checkpointBlueprint]);
+  }, [zonesInSelection, commitElements, checkpointBlueprint]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -1493,6 +1353,7 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
       if (e.key === "Escape") {
         e.preventDefault();
         setSymbolPanelOpen(false);
+        setFreehandTune(null);
         setSelectedIds([]);
         setSnapGuides([]);
         setLinkingForTaskId(null);
@@ -1997,7 +1858,7 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
       const raw = freeDrawAccumRef.current;
       freeDrawAccumRef.current = [];
       setFreeDrawPreview(null);
-      const processed = processFreehandPath(raw);
+      const processed = processFreehandPath(raw, freehandOptionsFromSlider(freehandSlider));
       if (processed) {
         const id = crypto.randomUUID();
         const { minX, minY, w, h } = bboxFromPathPoints(processed);
@@ -2016,6 +1877,7 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
           },
         ]);
         setSelectedIds([id]);
+        setFreehandTune({ id, raw: [...raw] });
         setTool("select");
       }
     };
@@ -2258,6 +2120,7 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
     let n: Konva.Node | null = null;
     if (sel?.type === "door") n = doorInnerRefMap.current.get(selectedSingleId!) ?? null;
     else if (sel?.type === "zone" && !zonePolygonFlat(sel)) n = selectedNodeRef.current;
+    else if (sel?.type === "device" || sel?.type === "symbol") n = selectedNodeRef.current;
     if (n && selectedSingleId && tool === "select") {
       tr.nodes([n]);
       tr.getLayer()?.batchDraw();
@@ -2366,6 +2229,26 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
     commitElements((prev) => prev.map((el) => (el.id === selectedSingleId ? { ...el, ...patch } : el)));
   };
 
+  const refineFreehandStroke = useCallback(
+    (sliderVal: number) => {
+      const v = Math.max(0, Math.min(100, sliderVal));
+      setFreehandSlider(v);
+      if (!freehandTune) return;
+      const processed = processFreehandPath(freehandTune.raw, freehandOptionsFromSlider(v));
+      if (!processed) return;
+      replaceElements((prev) =>
+        prev.map((row) => {
+          if (row.id !== freehandTune.id || row.type !== "path") return row;
+          const bb = bboxFromPathPoints(processed);
+          return { ...row, path_points: processed, x: bb.minX, y: bb.minY, width: bb.w, height: bb.h };
+        }),
+      );
+      transformUndoPrimedRef.current = false;
+      batchLayer();
+    },
+    [freehandTune, replaceElements, batchLayer],
+  );
+
   const rotateSelection90Clockwise = useCallback(() => {
     if (!selectedSingleId) return;
     checkpointBlueprint();
@@ -2419,19 +2302,9 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
 
   return (
     <div className={`bp-shell${isPublish ? " bp-shell--publish" : ""}`}>
-      <BlueprintToolRail
-        tool={tool}
-        onToolChange={(t) => {
-          setTool(t);
-          if (t !== "place-symbol") setSymbolPanelOpen(false);
-        }}
-        symbolPanelOpen={symbolPanelOpen}
-        onToggleSymbolPanel={() => setSymbolPanelOpen((v) => !v)}
-        disabled={!canEdit}
-      />
       <motion.aside
         className={`bp-sidebar${isPublish ? " bp-sidebar--disabled" : ""}`}
-        aria-label="Blueprint sidebar"
+        aria-label="Blueprint tasks"
         initial={{ opacity: 0, x: -12 }}
         animate={{ opacity: 1, x: 0 }}
         transition={bpTransition.med}
@@ -2446,24 +2319,6 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
             .
           </p>
         ) : null}
-        <div>
-          <h3>Device palette</h3>
-          <div className="bp-palette">
-            {(["pump", "tank", "sensor", "generic"] as DeviceKind[]).map((k) => (
-              <motion.button
-                key={k}
-                type="button"
-                className={`bp-chip ${placeKind === k ? "is-active" : ""}`}
-                onClick={() => setPlaceKind(k)}
-                whileHover={{ scale: 1.02, y: -1, boxShadow: "0 6px 18px rgba(0, 0, 0, 0.12)" }}
-                whileTap={{ scale: 0.98 }}
-                transition={bpTransition.fast}
-              >
-                {k}
-              </motion.button>
-            ))}
-          </div>
-        </div>
         <BlueprintTasksPanel
           tasks={tasks}
           disabled={isPublish}
@@ -2503,16 +2358,15 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
           }}
         />
         <p className="bp-hint">
-          Scroll to zoom (cursor-centered). Hold Space and drag or right-drag to pan. Esc clears selection and closes the
-          symbol panel; arrow keys nudge selection (Shift for larger steps). Draw rooms on the grid. Door: click within{" "}
-          {WALL_SNAP_PX}px of a room edge. Free draw: drag and release; the stroke is simplified (simplify-js) and smoothed with quadratic curves into a closed shape. Symbols:
-          open the Symbols panel from the tool rail, pick a tile, then click the canvas (extensible via symbol_type).
+          Zoom: scroll wheel. Pan: Space+drag or right-drag. Tools and selection actions sit on the floating bar below the
+          canvas. Free draw uses simplify-js + Catmull–Rom smoothing (adjust right after drawing). Merge rooms: select
+          multiple zones (Shift or box) then Merge. Doors: use handles or type width (32 px ≈ 1 m).
         </p>
       </motion.aside>
 
       <div className="bp-workspace">
       <motion.div
-        className={`bp-canvas-wrap${isPublish ? " bp-canvas-wrap--publish" : ""}`}
+        className={`bp-canvas-wrap bp-canvas-wrap--with-float${isPublish ? " bp-canvas-wrap--publish" : ""}`}
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ ...bpTransition.med, delay: 0.02 }}
@@ -2727,7 +2581,13 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
                           closed
                           tension={0}
                           fill={zoneFill}
-                          stroke={tg ? "rgba(56, 189, 248, 0.75)" : mergePair && (mergePair.a.id === el.id || mergePair.b.id === el.id) ? "rgba(250, 204, 21, 0.75)" : zoneStroke}
+                          stroke={
+                          tg
+                            ? "rgba(56, 189, 248, 0.75)"
+                            : canMergeZones && zonesInSelection.some((z) => z.id === el.id)
+                              ? "rgba(250, 204, 21, 0.75)"
+                              : zoneStroke
+                        }
                           strokeWidth={tg ? sw * 1.35 : sw}
                           lineJoin="round"
                           shadowColor={
@@ -3061,7 +2921,6 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
                   const h = el.height ?? SYMBOL_DEFAULT;
                   const st = el.symbol_type ?? "generic";
                   const sel = selectedIds.includes(el.id);
-                  const sStroke = pubLine(Math.max(0.65, 0.9 / stageScale));
                   const sGlow = canEdit && tool === "select" && !sel && hoverSymbolId === el.id;
                   const stg = taskGlowIds.has(el.id);
                   const symLabelFs = pubFs(Math.min(9, w / 5));
@@ -3070,6 +2929,16 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
                   return (
                     <Group
                       key={el.id}
+                      ref={(node) => {
+                        if (
+                          el.id === selectedSingleId &&
+                          tool === "select" &&
+                          canEdit &&
+                          selected?.type === "symbol"
+                        ) {
+                          selectedNodeRef.current = node;
+                        }
+                      }}
                       x={el.x}
                       y={el.y}
                       rotation={el.rotation ?? 0}
@@ -3125,6 +2994,7 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
                           prev.map((x) => (x.id === el.id ? { ...x, x: nx, y: ny } : x)),
                         );
                       }}
+                      onTransformEnd={(e) => syncTransformToState(el.id, e.target)}
                       onMouseEnter={() => {
                         if (canEdit && tool === "select") setCanvasHoverElementId(el.id);
                         if (canEdit && tool === "select" && !sel) setHoverSymbolId(el.id);
@@ -3140,18 +3010,7 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
                         height={h}
                         cornerRadius={8}
                         fill={isPublish ? "rgba(248, 250, 252, 0.1)" : "rgba(15, 23, 42, 0.14)"}
-                        stroke={
-                          stg
-                            ? "rgba(56, 189, 248, 0.75)"
-                            : sel
-                              ? "rgba(96, 165, 250, 0.55)"
-                              : sGlow
-                                ? "rgba(203, 213, 245, 0.32)"
-                                : isPublish
-                                  ? "rgba(226, 232, 240, 0.42)"
-                                  : "rgba(203, 213, 245, 0.12)"
-                        }
-                        strokeWidth={stg ? sStroke * 1.35 : sStroke}
+                        strokeEnabled={false}
                         listening={false}
                       />
                       <Group
@@ -3611,305 +3470,248 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
             </Layer>
           </Stage>
         </div>
+        {canEdit && !isPublish ? (
+          <div className="bp-float-stack">
+            {freehandTune && selected?.type === "path" && selected.id === freehandTune.id ? (
+              <div className="bp-freehand-panel">
+                <span className="bp-freehand-panel__title">Stroke smoothness</span>
+                <label className="bp-freehand-panel__slider-label">
+                  <span className="bp-freehand-panel__hint">0 = tight · 100 = smooth</span>
+                  <input
+                    type="range"
+                    min={0}
+                    max={100}
+                    value={freehandSlider}
+                    onChange={(e) => refineFreehandStroke(Number(e.target.value))}
+                    aria-valuenow={freehandSlider}
+                  />
+                  <span className="bp-freehand-panel__value">{freehandSlider}</span>
+                </label>
+                <button type="button" className="bp-btn bp-btn--ghost" onClick={() => setFreehandTune(null)}>
+                  Done
+                </button>
+              </div>
+            ) : null}
+            {!linkingForTaskId &&
+            (selectedIds.length > 1 || selected || (tool === "place-device" && selectedIds.length === 0)) ? (
+              <div className="bp-float-context">
+                {tool === "place-device" && selectedIds.length === 0 ? (
+                  <>
+                    <span className="bp-float-context__meta">Place device</span>
+                    <div className="bp-float-context__chips">
+                      {(["pump", "tank", "sensor", "generic"] as DeviceKind[]).map((k) => (
+                        <button
+                          key={k}
+                          type="button"
+                          className={`bp-chip ${placeKind === k ? "is-active" : ""}`}
+                          onClick={() => setPlaceKind(k)}
+                        >
+                          {k}
+                        </button>
+                      ))}
+                    </div>
+                    <span className="bp-float-context__hint">Click canvas to drop</span>
+                  </>
+                ) : null}
+                {selectedIds.length > 1 ? (
+                  <>
+                    <span className="bp-float-context__meta">{selectedIds.length} selected</span>
+                    {canMergeZones ? (
+                      <button type="button" className="bp-btn" onClick={mergeSelectedRooms}>
+                        Merge rooms
+                      </button>
+                    ) : null}
+                    <span className="bp-float-context__hint">Shift+click / drag box · drag group to move</span>
+                  </>
+                ) : selected ? (
+                  <>
+                    <label className="bp-float-context__compact">
+                      <span>Name</span>
+                      <input
+                        type="text"
+                        value={selected.name ?? ""}
+                        onChange={(e) => updateSelectedField({ name: e.target.value })}
+                        aria-label="Name"
+                      />
+                    </label>
+                    {selected.type === "door" ? (
+                      <>
+                        <label className="bp-float-context__compact">
+                          <span>Door width</span>
+                          <input
+                            type="number"
+                            min={0.1}
+                            step={0.01}
+                            value={Number(
+                              (
+                                (selected.width ?? DOOR_ALONG_DEFAULT) /
+                                BP_PX_PER_M /
+                                (doorWidthUnit === "ft" ? 3.280839895 : 1)
+                              ).toFixed(3),
+                            )}
+                            onChange={(e) => {
+                              const v = Number(e.target.value);
+                              if (!Number.isFinite(v) || v <= 0 || !selectedSingleId) return;
+                              const pxRaw =
+                                doorWidthUnit === "ft" ? (v / 3.280839895) * BP_PX_PER_M : v * BP_PX_PER_M;
+                              commitElements((p) => {
+                                const d = p.find((x) => x.id === selectedSingleId);
+                                if (!d || d.type !== "door") return p;
+                                let px = Math.max(MIN_DOOR_ALONG, pxRaw);
+                                const att = parseWallAttach(d.wall_attachment);
+                                const z = att ? p.find((x) => x.id === att.zoneId && x.type === "zone") : null;
+                                if (att && z) px = Math.min(px, doorAlongUpperBound(z, att), MAX_DOOR_ALONG);
+                                else px = Math.min(px, MAX_DOOR_ALONG);
+                                const next = p.map((x) => (x.id === selectedSingleId ? { ...x, width: px } : x));
+                                return next.map((x) =>
+                                  x.id === selectedSingleId && x.type === "door"
+                                    ? doorElementFromAttachment(x, next) ?? x
+                                    : x,
+                                );
+                              });
+                              batchLayer();
+                            }}
+                            aria-label="Door width"
+                          />
+                        </label>
+                        <div className="bp-float-context__segmented" role="group" aria-label="Width unit">
+                          <button
+                            type="button"
+                            className={doorWidthUnit === "m" ? "is-active" : ""}
+                            onClick={() => setDoorWidthUnit("m")}
+                          >
+                            m
+                          </button>
+                          <button
+                            type="button"
+                            className={doorWidthUnit === "ft" ? "is-active" : ""}
+                            onClick={() => setDoorWidthUnit("ft")}
+                          >
+                            ft
+                          </button>
+                        </div>
+                        <span className="bp-float-context__hint" title={selected.wall_attachment}>
+                          Wall: {selected.wall_attachment?.slice(0, 28) ?? "—"}
+                          {(selected.wall_attachment?.length ?? 0) > 28 ? "…" : ""}
+                        </span>
+                      </>
+                    ) : null}
+                    {selected.type === "device" ? (
+                      <>
+                        <span className="bp-float-context__meta">Device</span>
+                        <div className="bp-float-context__chips">
+                          {(["pump", "tank", "sensor", "generic"] as DeviceKind[]).map((k) => (
+                            <button
+                              key={k}
+                              type="button"
+                              className={`bp-chip ${(selected.device_kind ?? "generic") === k ? "is-active" : ""}`}
+                              onClick={() => updateSelectedField({ device_kind: k })}
+                            >
+                              {k}
+                            </button>
+                          ))}
+                        </div>
+                        <select
+                          aria-label="Linked equipment"
+                          className="bp-float-context__select"
+                          value={selected.linked_device_id ?? ""}
+                          onChange={(e) =>
+                            updateSelectedField({ linked_device_id: e.target.value || undefined })
+                          }
+                        >
+                          <option value="">Equipment…</option>
+                          {equipmentApi.map((eq) => (
+                            <option key={eq.id} value={eq.id}>
+                              {eq.name}
+                            </option>
+                          ))}
+                        </select>
+                        <select
+                          aria-label="Zone"
+                          className="bp-float-context__select"
+                          value={selected.assigned_zone_id ?? ""}
+                          onChange={(e) =>
+                            updateSelectedField({ assigned_zone_id: e.target.value || undefined })
+                          }
+                        >
+                          <option value="">Zone…</option>
+                          {zonesApi.map((z) => (
+                            <option key={z.id} value={z.id}>
+                              {z.name}
+                            </option>
+                          ))}
+                        </select>
+                      </>
+                    ) : null}
+                    {selected.type === "symbol" ? (
+                      <>
+                        <span className="bp-float-context__meta">({selected.symbol_type ?? "symbol"})</span>
+                        <textarea
+                          className="bp-float-context__textarea"
+                          rows={2}
+                          placeholder="Tags"
+                          value={(selected.symbol_tags ?? []).join(", ")}
+                          onChange={(e) =>
+                            updateSelectedField({ symbol_tags: parseTagsFromInput(e.target.value) })
+                          }
+                          aria-label="Symbol tags"
+                        />
+                        <textarea
+                          className="bp-float-context__textarea"
+                          rows={2}
+                          placeholder="Notes"
+                          value={selected.symbol_notes ?? ""}
+                          onChange={(e) => updateSelectedField({ symbol_notes: e.target.value || undefined })}
+                          aria-label="Symbol notes"
+                        />
+                      </>
+                    ) : null}
+                    {selected.type === "path" && selected.path_points ? (
+                      <span className="bp-float-context__meta">
+                        {selected.path_points.length / 2} verts · bbox {Math.round(selected.width ?? 0)}×
+                        {Math.round(selected.height ?? 0)}
+                      </span>
+                    ) : null}
+                    {selected.type !== "door" && selected.type !== "path" ? (
+                      <button
+                        type="button"
+                        className="bp-btn bp-btn--ghost"
+                        disabled={!canEdit}
+                        onClick={rotateSelection90Clockwise}
+                      >
+                        Rotate 90°
+                      </button>
+                    ) : null}
+                  </>
+                ) : null}
+              </div>
+            ) : null}
+            <BlueprintToolRail
+              layout="horizontal"
+              tool={tool}
+              onToolChange={(t) => {
+                setTool(t);
+                if (t !== "place-symbol") setSymbolPanelOpen(false);
+              }}
+              symbolPanelOpen={symbolPanelOpen}
+              onToggleSymbolPanel={() => setSymbolPanelOpen((v) => !v)}
+              disabled={!canEdit}
+            />
+          </div>
+        ) : null}
+        <BlueprintSymbolPanel
+          variant="floating"
+          open={symbolPanelOpen && canEdit}
+          onClose={() => setSymbolPanelOpen(false)}
+          activeSymbolId={placeSymbolKind}
+          onSelectSymbol={(id) => {
+            setPlaceSymbolKind(id);
+            setTool("place-symbol");
+          }}
+          disabled={!canEdit}
+        />
       </motion.div>
-      <BlueprintSymbolPanel
-        open={symbolPanelOpen && canEdit}
-        onClose={() => setSymbolPanelOpen(false)}
-        activeSymbolId={placeSymbolKind}
-        onSelectSymbol={(id) => {
-          setPlaceSymbolKind(id);
-          setTool("place-symbol");
-        }}
-        disabled={!canEdit}
-      />
       </div>
-
-      <motion.aside
-        className={`bp-props${isPublish ? " bp-props--publish" : ""}`}
-        aria-label="Properties"
-        initial={{ opacity: 0, x: 14 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ ...bpTransition.med, delay: 0.04 }}
-      >
-        <h3 style={{ margin: 0, fontSize: "0.65rem", letterSpacing: "0.12em", color: "var(--bp-muted)" }}>
-          Properties
-        </h3>
-        <AnimatePresence mode="wait">
-          {selectedIds.length > 1 ? (
-            <motion.div
-              key="props-multi"
-              className="bp-props-body"
-              initial={{ opacity: 0, x: 10 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -8 }}
-              transition={bpTransition.med}
-            >
-              <p className="bp-hint">
-                {selectedIds.length} elements selected. Drag one of the highlighted items to move the group together.
-                Shift+click or drag a box on the canvas to add to the selection. Delete / Backspace removes all; arrow
-                keys nudge; Esc clears.
-              </p>
-              {mergePair && canEdit ? (
-                <div className="bp-field">
-                  <button type="button" className="bp-btn" onClick={mergeSelectedRooms}>
-                    Merge rooms (remove shared wall)
-                  </button>
-                  <p className="bp-hint" style={{ marginTop: 8 }}>
-                    Combines two axis-aligned rectangles into one room (L-shapes supported). Doors on either room are
-                    removed; re-place after merging.
-                  </p>
-                </div>
-              ) : selectedIds.length === 2 && canEdit ? (
-                <p className="bp-hint">Select two plain (non-polygon) unrotated rooms that share an edge to merge.</p>
-              ) : null}
-            </motion.div>
-          ) : !selected ? (
-            <motion.p
-              key="props-empty"
-              className="bp-hint"
-              initial={{ opacity: 0, x: 10 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -8 }}
-              transition={bpTransition.med}
-            >
-              Select a room, device, symbol, or shape, or use tools on the canvas. Shift+click for multi-select, or
-              drag on empty space to box-select.
-            </motion.p>
-          ) : (
-            <motion.div
-              key={selected.id}
-              className="bp-props-body"
-              initial={{ opacity: 0, x: 12 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -10 }}
-              transition={bpTransition.med}
-            >
-              <div className="bp-field">
-                <label htmlFor="p-name">Name</label>
-                <input
-                  id="p-name"
-                  value={selected.name ?? ""}
-                  onChange={(e) => updateSelectedField({ name: e.target.value })}
-                />
-              </div>
-              <div className="bp-field">
-                <label htmlFor="p-type">Type</label>
-                <input
-                  id="p-type"
-                  readOnly
-                  value={
-                    selected.type === "zone"
-                      ? "Zone"
-                      : selected.type === "door"
-                        ? "Door"
-                        : selected.type === "path"
-                          ? "Freehand shape"
-                          : selected.type === "symbol"
-                            ? `Symbol (${selected.symbol_type ?? "?"})`
-                            : selected.device_kind ?? "device"
-                  }
-                />
-              </div>
-              {selected.type === "door" && selected.wall_attachment ? (
-                <div className="bp-field">
-                  <label htmlFor="p-wall">Wall</label>
-                  <input id="p-wall" readOnly value={selected.wall_attachment} title="Zone element id : edge : position along edge" />
-                </div>
-              ) : null}
-              {selected.type === "path" && selected.path_points ? (
-                <div className="bp-field">
-                  <label htmlFor="p-verts">Vertices</label>
-                  <input id="p-verts" readOnly value={String(selected.path_points.length / 2)} />
-                </div>
-              ) : null}
-              {selected.type === "symbol" ? (
-                <>
-                  <div className="bp-field">
-                    <label htmlFor="p-sym-type">Symbol type</label>
-                    <input id="p-sym-type" readOnly value={selected.symbol_type ?? ""} title="Set when placed; extend SYMBOL_LIBRARY + SymbolGlyph for new icons" />
-                  </div>
-                  <div className="bp-field">
-                    <label htmlFor="p-tags">Tags</label>
-                    <textarea
-                      id="p-tags"
-                      rows={2}
-                      value={(selected.symbol_tags ?? []).join(", ")}
-                      placeholder="comma or newline separated"
-                      onChange={(e) =>
-                        updateSelectedField({ symbol_tags: parseTagsFromInput(e.target.value) })
-                      }
-                    />
-                  </div>
-                  <div className="bp-field">
-                    <label htmlFor="p-notes">Notes</label>
-                    <textarea
-                      id="p-notes"
-                      rows={3}
-                      value={selected.symbol_notes ?? ""}
-                      onChange={(e) => updateSelectedField({ symbol_notes: e.target.value || undefined })}
-                    />
-                  </div>
-                </>
-              ) : null}
-              <div className="bp-field">
-                <label>Position</label>
-                <div className="bp-field-row">
-                  <input
-                    type="number"
-                    value={Math.round(selected.x)}
-                    readOnly={selected.type === "door" || selected.type === "path"}
-                    title={
-                      selected.type === "door"
-                        ? "Derived from wall attachment"
-                        : selected.type === "path"
-                          ? "Bounding box min (shape is path_points)"
-                          : undefined
-                    }
-                    onChange={(e) => updateSelectedField({ x: Number(e.target.value) || 0 })}
-                  />
-                  <input
-                    type="number"
-                    value={Math.round(selected.y)}
-                    readOnly={selected.type === "door" || selected.type === "path"}
-                    title={
-                      selected.type === "door"
-                        ? "Derived from wall attachment"
-                        : selected.type === "path"
-                          ? "Bounding box min (shape is path_points)"
-                          : undefined
-                    }
-                    onChange={(e) => updateSelectedField({ y: Number(e.target.value) || 0 })}
-                  />
-                </div>
-              </div>
-              <div className="bp-field">
-                <label>Size</label>
-                <div className="bp-field-row">
-                  <input
-                    type="number"
-                    value={Math.round(selected.width ?? 0)}
-                    readOnly={selected.type === "path"}
-                    title={selected.type === "path" ? "BBox width (geometry is path_points)" : undefined}
-                    onChange={(e) => {
-                      const width = Math.max(12, Number(e.target.value) || 0);
-                      if (selected.type === "path") return;
-                      if (selected.type === "door") {
-                        commitElements((p) => {
-                          const next = p.map((x) => (x.id === selectedSingleId ? { ...x, width } : x));
-                          return next.map((x) =>
-                            x.id === selectedSingleId && x.type === "door"
-                              ? doorElementFromAttachment(x, next) ?? x
-                              : x,
-                          );
-                        });
-                      } else {
-                        updateSelectedField({ width });
-                      }
-                    }}
-                  />
-                  <input
-                    type="number"
-                    value={Math.round(selected.height ?? 0)}
-                    readOnly={selected.type === "path"}
-                    title={selected.type === "path" ? "BBox height (geometry is path_points)" : undefined}
-                    onChange={(e) => {
-                      const height = Math.max(6, Number(e.target.value) || 0);
-                      if (selected.type === "path") return;
-                      if (selected.type === "door") {
-                        commitElements((p) => {
-                          const next = p.map((x) => (x.id === selectedSingleId ? { ...x, height } : x));
-                          return next.map((x) =>
-                            x.id === selectedSingleId && x.type === "door"
-                              ? doorElementFromAttachment(x, next) ?? x
-                              : x,
-                          );
-                        });
-                      } else {
-                        updateSelectedField({ height });
-                      }
-                    }}
-                  />
-                </div>
-              </div>
-              <div className="bp-field">
-                <label>Rotation</label>
-                <div className="bp-field-row bp-field-row--rotation">
-                  <span
-                    className="bp-rotate-readout"
-                    title={
-                      selected.type === "path"
-                        ? "Freehand shapes rotate in 90° steps around their centroid (not the rotation field)."
-                        : undefined
-                    }
-                  >
-                    {selected.type === "path"
-                      ? "—"
-                      : `${(((selected.rotation ?? 0) % 360) + 360) % 360}°`}
-                  </span>
-                  <button
-                    type="button"
-                    className="bp-rotate-btn"
-                    disabled={!canEdit || selected.type === "door"}
-                    title={
-                      selected.type === "door"
-                        ? "Doors follow walls; rotate the room or adjust the wall attachment instead."
-                        : "Rotate 90° clockwise"
-                    }
-                    onClick={rotateSelection90Clockwise}
-                  >
-                    Rotate 90°
-                  </button>
-                </div>
-              </div>
-              {selected.type === "device" ? (
-                <>
-                  <div className="bp-field">
-                    <label htmlFor="p-link">Linked device</label>
-                    <select
-                      id="p-link"
-                      value={selected.linked_device_id ?? ""}
-                      onChange={(e) =>
-                        updateSelectedField({
-                          linked_device_id: e.target.value || undefined,
-                        })
-                      }
-                    >
-                      <option value="">— None —</option>
-                      {equipmentApi.map((eq) => (
-                        <option key={eq.id} value={eq.id}>
-                          {eq.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="bp-field">
-                    <label htmlFor="p-zone">Zone assignment</label>
-                    <select
-                      id="p-zone"
-                      value={selected.assigned_zone_id ?? ""}
-                      onChange={(e) =>
-                        updateSelectedField({
-                          assigned_zone_id: e.target.value || undefined,
-                        })
-                      }
-                    >
-                      <option value="">— None —</option>
-                      {zonesApi.map((z) => (
-                        <option key={z.id} value={z.id}>
-                          {z.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <p className="bp-hint">
-                    Status tint (mock): linked devices cycle neutral / normal / warning / alarm by id hash.
-                  </p>
-                </>
-              ) : null}
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </motion.aside>
     </div>
   );
 }

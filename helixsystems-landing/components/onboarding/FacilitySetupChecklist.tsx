@@ -150,7 +150,7 @@ export function FacilitySetupChecklist() {
                     <span className="h-4 w-4 rounded-full border-2 border-gray-300 dark:border-gray-600" />
                   )}
                 </span>
-                <span className={`min-w-0 flex-1 text-sm font-medium ${ok ? "line-through decoration-gray-300 dark:decoration-gray-600" : ""}`}>
+                <span className="min-w-0 flex-1 text-sm font-medium">
                   {r.label}
                 </span>
                 <span className="shrink-0 text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500">

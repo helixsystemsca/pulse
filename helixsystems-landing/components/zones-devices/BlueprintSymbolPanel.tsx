@@ -47,12 +47,15 @@ export function BlueprintSymbolPanel({
   activeSymbolId,
   onSelectSymbol,
   disabled,
+  variant = "dock",
 }: {
   open: boolean;
   onClose: () => void;
   activeSymbolId: SymbolLibraryId;
   onSelectSymbol: (id: SymbolLibraryId) => void;
   disabled?: boolean;
+  /** `floating`: popover over canvas; `dock`: legacy side column (unused in current layout). */
+  variant?: "dock" | "floating";
 }) {
   const [query, setQuery] = useState("");
   const [openCats, setOpenCats] = useState<Record<string, boolean>>(() =>
@@ -100,11 +103,13 @@ export function BlueprintSymbolPanel({
       {open ? (
         <motion.aside
           key="symbol-panel"
-          className={`bp-symbol-panel${disabled ? " bp-symbol-panel--disabled" : ""}`}
+          className={`bp-symbol-panel${variant === "floating" ? " bp-symbol-panel--floating" : ""}${
+            disabled ? " bp-symbol-panel--disabled" : ""
+          }`}
           aria-label="Symbol library"
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: 16 }}
+          initial={{ opacity: 0, y: variant === "floating" ? 12 : 0, x: variant === "floating" ? 0 : 20 }}
+          animate={{ opacity: 1, y: 0, x: 0 }}
+          exit={{ opacity: 0, y: variant === "floating" ? 10 : 0, x: variant === "floating" ? 0 : 16 }}
           transition={{ type: "spring", stiffness: 420, damping: 36 }}
         >
           <div className="bp-symbol-panel__head">

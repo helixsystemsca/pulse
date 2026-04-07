@@ -1,25 +1,34 @@
 import simplify from "simplify-js";
 
 export type FreehandPathOptions = {
-  /** Douglas–Peucker tolerance (world px); higher removes more detail. */
+  /** Douglas–Peucker tolerance (world px); higher removes more vertices. */
   simplifyTolerance: number;
-  /** Target samples per quadratic segment (scaled down for many vertices). */
+  /** Catmull–Rom → cubic strength: 0 = nearly straight segments, 1 = full tangents. */
+  curveIntensity: number;
+  /** Bézier samples per edge after simplification. */
   samplesPerEdge: number;
-  /**
-   * 0 = control points pulled toward chord mids (gentler curves).
-   * 1 = full vertex control (best for irregular / garden outlines).
-   */
-  smoothingStrength: number;
   /** Snap first/last vertex when this close (world px) to treat stroke as closed. */
   closeSnapDist: number;
 };
 
 export const DEFAULT_FREEHAND_PATH_OPTIONS: FreehandPathOptions = {
-  simplifyTolerance: 3.5,
-  samplesPerEdge: 8,
-  smoothingStrength: 0.96,
+  simplifyTolerance: 3.2,
+  curveIntensity: 0.72,
+  samplesPerEdge: 10,
   closeSnapDist: 18,
 };
+
+/** Map UI slider 0–100 → processing options (higher = more simplify + smoother curves). */
+export function freehandOptionsFromSlider(slider0to100: number): FreehandPathOptions {
+  const t = Math.max(0, Math.min(100, slider0to100)) / 100;
+  return {
+    ...DEFAULT_FREEHAND_PATH_OPTIONS,
+    simplifyTolerance: 0.35 + t * 13.5,
+    curveIntensity: t * 0.98,
+    samplesPerEdge: Math.round(4 + t * 12),
+    closeSnapDist: DEFAULT_FREEHAND_PATH_OPTIONS.closeSnapDist,
+  };
+}
 
 type XY = { x: number; y: number };
 
@@ -35,7 +44,6 @@ function closeRingFlat(flat: number[], snapDist: number): number[] {
   return [...flat, x0, y0];
 }
 
-/** Unique vertices; drop explicit closing duplicate if first ≈ last. */
 function flatToXYRing(flat: number[]): XY[] {
   const pts: XY[] = [];
   for (let i = 0; i + 1 < flat.length; i += 2) {
@@ -55,50 +63,49 @@ function xyToFlat(pts: XY[]): number[] {
   return out;
 }
 
-function lerpXY(a: XY, b: XY, t: number): XY {
-  return { x: a.x + t * (b.x - a.x), y: a.y + t * (b.y - a.y) };
-}
-
-function mid(a: XY, b: XY): XY {
-  return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
-}
-
-function quadPoint(A: XY, C: XY, B: XY, t: number): XY {
+function bezierCubic(p0: XY, p1: XY, p2: XY, p3: XY, t: number): XY {
   const u = 1 - t;
+  const u2 = u * u;
+  const u3 = u2 * u;
+  const t2 = t * t;
+  const t3 = t2 * t;
   return {
-    x: u * u * A.x + 2 * u * t * C.x + t * t * B.x,
-    y: u * u * A.y + 2 * u * t * C.y + t * t * B.y,
+    x: u3 * p0.x + 3 * u2 * t * p1.x + 3 * u * t2 * p2.x + t3 * p3.x,
+    y: u3 * p0.y + 3 * u2 * t * p1.y + 3 * u * t2 * p2.y + t3 * p3.y,
   };
 }
 
 /**
- * Closed quadratic smoothing: each original vertex is the control point of a quad
- * from mid(prev,vertex) to mid(vertex,next). Preserves topology of the simplified ring.
+ * Closed Catmull–Rom spline (uniform) expressed as cubic Bézier segments, flattened to a polyline.
+ * Control handles use the standard conversion from four consecutive points.
  */
-function quadBezierSmoothClosedRing(pts: XY[], samplesPerEdge: number, strength: number): number[] {
+function catmullRomClosedToFlat(pts: XY[], intensity: number, samplesPerEdge: number): number[] {
   const n = pts.length;
   if (n < 3) return xyToFlat(pts);
 
-  const σ = Math.max(0, Math.min(1, strength));
-  const M: XY[] = [];
-  for (let i = 0; i < n; i++) {
-    M.push(mid(pts[i]!, pts[(i + 1) % n]!));
-  }
-
-  const sp = Math.max(3, Math.min(14, Math.floor(samplesPerEdge)));
+  const σ = Math.max(0, Math.min(1, intensity));
+  const sp = Math.max(2, Math.min(24, Math.floor(samplesPerEdge)));
   const out: number[] = [];
+  const div = 6 / Math.max(0.08, σ || 0.08);
 
   for (let i = 0; i < n; i++) {
-    const A = M[(i - 1 + n) % n]!;
-    const P = pts[i]!;
-    const B = M[i]!;
-    const chordMid = mid(A, B);
-    const C = lerpXY(chordMid, P, σ);
+    const p0 = pts[(i - 1 + n) % n]!;
+    const p1 = pts[i]!;
+    const p2 = pts[(i + 1) % n]!;
+    const p3 = pts[(i + 2) % n]!;
+    const cp1: XY = {
+      x: p1.x + ((p2.x - p0.x) * σ) / div,
+      y: p1.y + ((p2.y - p0.y) * σ) / div,
+    };
+    const cp2: XY = {
+      x: p2.x - ((p3.x - p1.x) * σ) / div,
+      y: p2.y - ((p3.y - p1.y) * σ) / div,
+    };
 
     for (let s = 0; s < sp; s++) {
       if (i > 0 && s === 0) continue;
       const t = s / sp;
-      const q = quadPoint(A, C, B, t);
+      const q = bezierCubic(p1, cp1, cp2, p2, t);
       out.push(q.x, q.y);
     }
   }
@@ -106,14 +113,8 @@ function quadBezierSmoothClosedRing(pts: XY[], samplesPerEdge: number, strength:
   return out.length >= 6 ? out : xyToFlat(pts);
 }
 
-function adaptiveSamplesPerEdge(vertexCount: number, base: number): number {
-  if (vertexCount <= 0) return base;
-  const scaled = Math.round((72 / vertexCount) * (base / 8));
-  return Math.max(4, Math.min(14, scaled));
-}
-
 /**
- * Close freehand stroke → simplify-js (high-quality DP) → quadratic Bézier sampling → flat `path_points`.
+ * Close freehand stroke → simplify-js → Catmull–Rom (cubic Bézier) flattening.
  * Output is suitable for Konva `Line` with `closed` and `tension={0}`.
  */
 export function processFreehandPath(raw: number[], options: Partial<FreehandPathOptions> = {}): number[] | null {
@@ -137,7 +138,6 @@ export function processFreehandPath(raw: number[], options: Partial<FreehandPath
   }
   if (simplified.length < 3) return null;
 
-  const samples = adaptiveSamplesPerEdge(simplified.length, o.samplesPerEdge);
-  const flat = quadBezierSmoothClosedRing(simplified, samples, o.smoothingStrength);
+  const flat = catmullRomClosedToFlat(simplified as XY[], o.curveIntensity, o.samplesPerEdge);
   return flat.length >= 6 ? flat : null;
 }
