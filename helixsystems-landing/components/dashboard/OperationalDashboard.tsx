@@ -10,6 +10,7 @@ import { usePulseAuth } from "@/hooks/usePulseAuth";
 import { pulseTenantNav } from "@/lib/pulse-app";
 import { canAccessPulseTenantApis, readSession } from "@/lib/pulse-session";
 import { getServerDate, getServerNow } from "@/lib/serverTime";
+import { useResolvedAvatarSrc } from "@/lib/useResolvedAvatarSrc";
 
 type AlertItem = { severity: "critical" | "warning"; title: string; subtitle?: string };
 
@@ -33,6 +34,7 @@ type WorkforceBubble = {
   title: string;
   kind: "onsite" | "offsite" | "absent";
   badge?: "L" | "S";
+  avatar_url?: string | null;
 };
 
 type WorkTag = { kind: "progress" | "overdue" | "urgent"; label: string };
@@ -90,6 +92,17 @@ function offsiteAvatarClass() {
 
 function absentAvatarClass() {
   return "relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-100/85 dark:bg-red-500/12 text-xs font-bold text-red-700 dark:text-red-400 opacity-[0.92] shadow-sm ring-1 ring-red-300 dark:ring-red-500/40 ring-offset-2 ring-offset-white/70 dark:ring-offset-slate-900/50 after:absolute after:bottom-0 after:right-0 after:z-10 after:h-2.5 after:w-2.5 after:rounded-full after:bg-red-600 dark:bg-red-500 after:ring-2 after:ring-white dark:ring-[#111827] md:h-11 md:w-11 md:text-sm";
+}
+
+function WorkforceBubbleFace({ initials, avatarUrl }: { initials: string; avatarUrl?: string | null }) {
+  const src = useResolvedAvatarSrc(avatarUrl ?? null);
+  if (src) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img src={src} alt="" className="h-full w-full rounded-full object-cover" />
+    );
+  }
+  return <>{initials}</>;
 }
 
 function initialsFromUser(email: string, fullName: string | null | undefined): string {
@@ -218,6 +231,7 @@ type WorkerOut = {
   email: string;
   full_name: string | null;
   role: string;
+  avatar_url?: string | null;
 };
 
 type ShiftOut = {
@@ -324,7 +338,7 @@ function buildLiveModel(
       if (w.role === "company_admin") badge = "L";
       else if (w.role === "manager") badge = "S";
     }
-    return { id: w.id, initials, title, kind, badge };
+    return { id: w.id, initials, title, kind, badge, avatar_url: w.avatar_url };
   });
 
   const onsite = bubbles.filter((b) => b.kind === "onsite");
@@ -652,7 +666,7 @@ function DashboardBody({
                         title={b.title}
                         className={onsiteAvatarClass(b.badge)}
                       >
-                        {b.initials}
+                        <WorkforceBubbleFace initials={b.initials} avatarUrl={b.avatar_url} />
                         {b.badge === "L" ? (
                           <span className={`${roleBadgeBase} bg-emerald-700`}>L</span>
                         ) : null}
@@ -674,7 +688,7 @@ function DashboardBody({
                   ) : (
                     model.workforce.offsite.map((b) => (
                       <span key={b.id} title={b.title} className={offsiteAvatarClass()}>
-                        {b.initials}
+                        <WorkforceBubbleFace initials={b.initials} avatarUrl={b.avatar_url} />
                       </span>
                     ))
                   )}
@@ -689,7 +703,7 @@ function DashboardBody({
                 ) : (
                   model.workforce.absent.map((b) => (
                     <span key={b.id} title={b.title} className={absentAvatarClass()}>
-                      {b.initials}
+                      <WorkforceBubbleFace initials={b.initials} avatarUrl={b.avatar_url} />
                     </span>
                   ))
                 )}

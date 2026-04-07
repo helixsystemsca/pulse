@@ -31,6 +31,7 @@ import {
   type TaskRow,
 } from "@/lib/projectsService";
 import type { PulseWorkerApi } from "@/lib/schedule/pulse-bridge";
+import { useResolvedAvatarSrc } from "@/lib/useResolvedAvatarSrc";
 
 const PRIMARY_BTN =
   "rounded-[10px] bg-[#2B4C7E] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#234066] disabled:opacity-50";
@@ -51,6 +52,21 @@ function initials(name: string | null | undefined, email: string): string {
     return p[0].slice(0, 2).toUpperCase();
   }
   return email.split("@")[0]?.slice(0, 2).toUpperCase() || "?";
+}
+
+function ProjectWorkerMiniAvatar({ w }: { w: PulseWorkerApi }) {
+  const src = useResolvedAvatarSrc(w.avatar_url ?? null);
+  const ini = initials(w.full_name, w.email);
+  return (
+    <span className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-white text-[10px] font-bold text-pulse-navy ring-1 ring-slate-200 dark:bg-[#1F2937] dark:text-slate-100 dark:ring-[#374151]">
+      {src ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={src} alt="" className="h-full w-full object-cover" />
+      ) : (
+        ini
+      )}
+    </span>
+  );
 }
 
 function priorityBadgeClass(p: string): string {
@@ -454,9 +470,7 @@ export function ProjectDetailApp({ projectId }: { projectId: string }) {
                           className="flex items-center justify-between gap-3 rounded-lg border border-slate-100 bg-slate-50/60 px-3 py-2.5 transition-colors dark:border-[#374151] dark:bg-[#0F172A]/60"
                         >
                           <div className="flex min-w-0 items-center gap-2">
-                            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white text-[10px] font-bold text-pulse-navy ring-1 ring-slate-200 dark:bg-[#1F2937] dark:text-slate-100 dark:ring-[#374151]">
-                              {initials(w.full_name, w.email)}
-                            </span>
+                            <ProjectWorkerMiniAvatar w={w} />
                             <div className="min-w-0">
                               <p className="truncate text-sm font-semibold text-pulse-navy dark:text-slate-100">
                                 {displayName(w)}

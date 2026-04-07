@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
@@ -11,8 +10,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_company_user, get_db
 from app.core.company_logo_upload import normalize_logo_content_type
-from app.core.config import get_settings
-from app.core.user_avatar_upload import INTERNAL_AVATAR_PATH, validate_logo_bytes, write_user_avatar_file
+from app.core.user_avatar_upload import (
+    INTERNAL_AVATAR_PATH,
+    user_avatar_disk_path,
+    user_avatar_media_type,
+    validate_logo_bytes,
+    write_user_avatar_file,
+)
 from app.core.user_roles import user_has_any_role
 from app.models.domain import Company, User, UserRole
 from app.schemas.profile import ProfileAvatarUploadOut, ProfileSettingsPatch
@@ -20,36 +24,15 @@ from app.schemas.profile import ProfileAvatarUploadOut, ProfileSettingsPatch
 router = APIRouter(prefix="/profile", tags=["profile"])
 
 
-def _avatar_disk_path(user_id: str) -> Path:
-    root = Path(get_settings().pulse_uploads_dir) / "user_avatars"
-    root.mkdir(parents=True, exist_ok=True)
-    for ext in (".png", ".jpg", ".jpeg", ".webp", ".gif"):
-        p = root / f"{user_id}{ext}"
-        if p.is_file():
-            return p
-    return root / f"{user_id}.png"
-
-
-def _guess_media_type(path: Path) -> str:
-    suf = path.suffix.lower()
-    return {
-        ".png": "image/png",
-        ".jpg": "image/jpeg",
-        ".jpeg": "image/jpeg",
-        ".webp": "image/webp",
-        ".gif": "image/gif",
-    }.get(suf, "application/octet-stream")
-
-
 @router.get("/avatar")
 async def get_my_avatar_file(
     user: Annotated[User, Depends(get_current_company_user)],
 ) -> FileResponse:
     uid = str(user.id)
-    path = _avatar_disk_path(uid)
+    path = user_avatar_disk_path(uid)
     if not path.is_file():
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No uploaded avatar")
-    return FileResponse(path, media_type=_guess_media_type(path))
+    return FileResponse(path, media_type=user_avatar_media_type(path))
 
 
 @router.post("/avatar", response_model=ProfileAvatarUploadOut)

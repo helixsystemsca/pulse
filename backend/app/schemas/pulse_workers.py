@@ -69,6 +69,7 @@ class WorkerRowOut(BaseModel):
     phone: Optional[str] = None
     department: Optional[str] = None
     job_title: Optional[str] = None
+    avatar_url: Optional[str] = None
 
 
 class WorkerListOut(BaseModel):
@@ -82,6 +83,7 @@ class WorkerDetailOut(BaseModel):
     full_name: Optional[str] = None
     role: str
     roles: list[str] = []
+    avatar_url: Optional[str] = None
     #: Add-on product modules (tenant contract subset) from company admin.
     feature_allow_extra: list[str] = []
     is_active: bool

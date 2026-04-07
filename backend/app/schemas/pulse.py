@@ -145,6 +145,7 @@ class WorkerOut(BaseModel):
     skills: list[WorkerSkillMiniOut] = []
     notes: Optional[str]
     availability: dict[str, Any]
+    avatar_url: Optional[str] = None
 
 
 class WorkerProfilePatch(BaseModel):

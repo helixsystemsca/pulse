@@ -32,6 +32,7 @@ export type PulseWorkerApi = {
   /** Primary role for JWT/display; use `roles` when present for multi-role. */
   role: string;
   roles?: string[];
+  avatar_url?: string | null;
   /** From Workers & Roles profiles (`pulse_worker_skills`). */
   skills?: { name: string; level: number }[];
 };

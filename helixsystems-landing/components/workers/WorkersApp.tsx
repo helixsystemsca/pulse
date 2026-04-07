@@ -38,6 +38,8 @@ import {
   patchWorkerSettings,
   resendWorkerInvite,
 } from "@/lib/workersService";
+import { UserProfileAvatarPreview } from "@/components/profile/UserProfileAvatarPreview";
+import { useResolvedAvatarSrc } from "@/lib/useResolvedAvatarSrc";
 
 type CompanyOption = { id: string; name: string };
 
@@ -114,6 +116,29 @@ function initials(name: string | null | undefined, email: string): string {
     return p[0].slice(0, 2).toUpperCase();
   }
   return email.split("@")[0]?.slice(0, 2).toUpperCase() || "?";
+}
+
+function WorkerRosterFace({
+  avatarUrl,
+  fullName,
+  email,
+}: {
+  avatarUrl?: string | null;
+  fullName: string | null;
+  email: string;
+}) {
+  const src = useResolvedAvatarSrc(avatarUrl ?? null);
+  const ini = initials(fullName, email);
+  return (
+    <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-slate-100 text-xs font-bold text-pulse-navy ring-1 ring-slate-200/60">
+      {src ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={src} alt="" className="h-full w-full object-cover" />
+      ) : (
+        ini
+      )}
+    </span>
+  );
 }
 
 function roleBadge(role: string): string {
@@ -794,9 +819,11 @@ export function WorkersApp() {
                               >
                                 <td className="px-4 py-3">
                                   <div className="flex items-center gap-2.5">
-                                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-pulse-navy ring-1 ring-slate-200/60">
-                                      {initials(row.full_name, row.email)}
-                                    </span>
+                                    <WorkerRosterFace
+                                      avatarUrl={row.avatar_url}
+                                      fullName={row.full_name}
+                                      email={row.email}
+                                    />
                                     <div className="min-w-0">
                                       <p className="font-semibold text-pulse-navy">
                                         {row.full_name ?? row.email.split("@")[0]}
@@ -1083,6 +1110,14 @@ export function WorkersApp() {
           <div className="space-y-8" id="worker-profile-title">
             <section>
               <h3 className={LABEL}>Basic info</h3>
+              <div className="mt-3 flex items-center gap-3 sm:col-span-2">
+                <UserProfileAvatarPreview
+                  avatarUrl={profile.avatar_url}
+                  nameFallback={profile.full_name || profile.email}
+                  sizeClassName="h-16 w-16"
+                  fallback="initials"
+                />
+              </div>
               <div className="mt-2 grid gap-2 text-sm sm:grid-cols-2">
                 <p className="sm:col-span-2">
                   <span className="text-pulse-muted">Roles: </span>

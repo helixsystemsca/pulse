@@ -5,12 +5,14 @@ from collections import defaultdict
 from typing import Annotated, Optional
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
+from fastapi.responses import FileResponse
 from sqlalchemy import and_, delete, func, select
 from sqlalchemy.dialects.postgresql import array as pg_array
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import require_tenant_user
+from app.core.user_avatar_upload import co_worker_avatar_url, user_avatar_disk_path, user_avatar_media_type
 from app.core.user_roles import is_field_worker_like, primary_jwt_role
 from app.services.onboarding_service import try_mark_onboarding_step
 from app.core.database import get_db
@@ -353,20 +355,40 @@ async def list_workers(db: Db, cid: CompanyId) -> list[WorkerOut]:
         certs = list(prof.certifications or []) if prof else []
         notes = prof.notes if prof else None
         avail = dict(prof.availability or {}) if prof else {}
+        uid_s = str(u.id)
         out.append(
             WorkerOut(
-                id=u.id,
+                id=uid_s,
                 email=u.email,
                 full_name=u.full_name,
                 role=primary_jwt_role(u).value,
                 roles=list(u.roles),
                 certifications=certs,
-                skills=skills_map.get(str(u.id), []),
+                skills=skills_map.get(uid_s, []),
                 notes=notes,
                 availability=avail,
+                avatar_url=co_worker_avatar_url(uid_s, u.avatar_url),
             )
         )
     return out
+
+
+@router.get("/workers/{user_id}/avatar")
+async def get_worker_avatar_file(
+    db: Db,
+    cid: CompanyId,
+    user_id: str,
+) -> FileResponse:
+    u = await pulse_svc._user_in_company(db, cid, user_id)
+    if not u or not u.avatar_url:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No avatar")
+    raw = str(u.avatar_url).strip()
+    if raw.lower().startswith("http://") or raw.lower().startswith("https://"):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No uploaded avatar")
+    path = user_avatar_disk_path(user_id)
+    if not path.is_file():
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No uploaded avatar")
+    return FileResponse(path, media_type=user_avatar_media_type(path))
 
 
 @router.patch("/workers/{user_id}/profile", response_model=WorkerOut)
@@ -406,8 +428,9 @@ async def patch_worker_profile(
         )
     )
     skills = [WorkerSkillMiniOut(name=r[0], level=int(r[1] or 1)) for r in skq.all()]
+    uid_s = str(u2.id)
     return WorkerOut(
-        id=u2.id,
+        id=uid_s,
         email=u2.email,
         full_name=u2.full_name,
         role=primary_jwt_role(u2).value,
@@ -416,6 +439,7 @@ async def patch_worker_profile(
         skills=skills,
         notes=prof.notes,
         availability=dict(prof.availability or {}),
+        avatar_url=co_worker_avatar_url(uid_s, u2.avatar_url),
     )
 
 

@@ -11,20 +11,9 @@ import { useOnboardingOptional } from "@/components/onboarding/OnboardingProvide
 import { usePulseAuth } from "@/hooks/usePulseAuth";
 import { navigateToPulseLogin, pulseApp, pulseRoutes } from "@/lib/pulse-app";
 import { clearSession } from "@/lib/pulse-session";
+import { UserProfileAvatarPreview } from "@/components/profile/UserProfileAvatarPreview";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { sessionHasAnyRole } from "@/lib/pulse-roles";
-
-function initialsFrom(email: string, fullName: string | null | undefined): string {
-  if (fullName?.trim()) {
-    const parts = fullName.trim().split(/\s+/);
-    if (parts.length >= 2) {
-      return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-    }
-    return parts[0].slice(0, 2).toUpperCase();
-  }
-  const local = email.split("@")[0] ?? "";
-  return local.slice(0, 2).toUpperCase() || "—";
-}
 
 /** Shell tokens: `--pulse-header-*` in globals.css (light glass · dark blueprint bar). */
 const HEADER =
@@ -106,11 +95,20 @@ export function AppNavbar() {
                 aria-expanded={userOpen}
                 aria-haspopup="menu"
               >
-                <span
-                  className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 text-xs font-bold text-gray-900 ring-1 ring-gray-200 dark:bg-[#0F172A] dark:text-gray-100 dark:ring-[#1F2937]"
-                  title={session?.email}
-                >
-                  {session ? initialsFrom(session.email, session.full_name) : "?"}
+                <span title={session?.email} className="shrink-0">
+                  {session ? (
+                    <UserProfileAvatarPreview
+                      avatarUrl={session.avatar_url}
+                      nameFallback={session.full_name || session.email}
+                      sizeClassName="h-8 w-8"
+                      fallback="initials"
+                      className="!border-gray-200 !bg-gray-100 !text-gray-900 !ring-1 !ring-gray-200 dark:!border-[#1F2937] dark:!bg-[#0F172A] dark:!text-gray-100 dark:!ring-[#1F2937]"
+                    />
+                  ) : (
+                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 text-xs font-bold text-gray-900 ring-1 ring-gray-200 dark:bg-[#0F172A] dark:text-gray-100 dark:ring-[#1F2937]">
+                      ?
+                    </span>
+                  )}
                 </span>
                 <span className="hidden max-w-[11rem] truncate text-sm font-medium text-gray-500 dark:text-gray-400 md:block">
                   {session?.email}

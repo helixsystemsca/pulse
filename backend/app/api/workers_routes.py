@@ -26,6 +26,7 @@ from app.core.user_roles import (
 )
 from app.core.company_features import tenant_enabled_feature_names_with_legacy
 from app.core.config import get_settings
+from app.core.user_avatar_upload import co_worker_avatar_url
 from app.core.features.service import MODULE_KEYS
 from app.core.features.system_catalog import GLOBAL_SYSTEM_FEATURES
 from app.core.tenant_feature_access import load_merged_workers_settings, user_has_workers_roster_page_access
@@ -452,13 +453,15 @@ async def _build_detail(db: AsyncSession, cid: str, u: User, users_map: dict[str
 
     extras = list(u.feature_allow_extra) if isinstance(getattr(u, "feature_allow_extra", None), list) else []
 
+    uid_s = str(u.id)
     return WorkerDetailOut(
-        id=u.id,
+        id=uid_s,
         company_id=str(u.company_id) if u.company_id else cid,
         email=u.email,
         full_name=u.full_name,
         role=primary_jwt_role(u).value,
         roles=list(u.roles),
+        avatar_url=co_worker_avatar_url(uid_s, u.avatar_url),
         feature_allow_extra=[str(x) for x in extras if isinstance(x, str)],
         is_active=u.is_active,
         account_status=u.account_status.value,
@@ -557,9 +560,10 @@ async def list_workers(
     items: list[WorkerRowOut] = []
     for u in users:
         h = hr_map.get(u.id)
+        uid_s = str(u.id)
         items.append(
             WorkerRowOut(
-                id=u.id,
+                id=uid_s,
                 email=u.email,
                 full_name=u.full_name,
                 role=primary_jwt_role(u).value,
@@ -569,6 +573,7 @@ async def list_workers(
                 phone=h.phone if h else None,
                 department=h.department if h else None,
                 job_title=h.job_title if h else None,
+                avatar_url=co_worker_avatar_url(uid_s, u.avatar_url),
             )
         )
     return WorkerListOut(items=items)

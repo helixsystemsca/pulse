@@ -12,6 +12,7 @@ export type WorkerRow = {
   phone: string | null;
   department: string | null;
   job_title: string | null;
+  avatar_url?: string | null;
 };
 
 export type WorkerCert = {
@@ -44,6 +45,7 @@ export type WorkerDetail = {
   full_name: string | null;
   role: string;
   roles?: string[];
+  avatar_url?: string | null;
   /** Add-on modules from company admin (subset of tenant contract). */
   feature_allow_extra?: string[];
   is_active: boolean;
