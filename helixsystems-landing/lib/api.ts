@@ -32,6 +32,11 @@ function bearerTokenForRequest(url: string): string | undefined {
   return readSession()?.access_token;
 }
 
+/** Bearer for authenticated `fetch` to API URLs (e.g. loading protected images where `<img src>` cannot attach headers). */
+export function getApiBearerForUrl(url: string): string | undefined {
+  return bearerTokenForRequest(url);
+}
+
 export function getApiBaseUrl(): string {
   return normalizeApiBaseUrl(process.env.NEXT_PUBLIC_API_URL);
 }

@@ -11,12 +11,12 @@ import { managerOrAbove } from "@/lib/pulse-roles";
 import {
   fetchEquipment,
   fetchEquipmentParts,
-  resolveEquipmentAssetUrl,
   uploadEquipmentImage,
   type EquipmentLinkedWorkOrder,
   type EquipmentPartRow,
   type FacilityEquipmentDetail,
 } from "@/lib/equipmentService";
+import { useResolvedProtectedAssetSrc } from "@/lib/useResolvedProtectedAssetSrc";
 import { fetchBleDevices, fetchEquipmentList, type BleDeviceOut, type EquipmentOut } from "@/lib/setup-api";
 
 const LABEL = "text-[11px] font-semibold uppercase tracking-wider text-pulse-muted";
@@ -222,6 +222,9 @@ export function EquipmentDetailApp({ equipmentId }: Props) {
     return { linkedTags, nameMatchedTracked };
   }, [data, rtlsBleDevices, rtlsTrackedAssets]);
 
+  const equipPhoto = useResolvedProtectedAssetSrc(data?.image_url ?? null);
+  const hasPhotoPath = Boolean(data?.image_url?.trim());
+
   if (loading) {
     return (
       <div className="flex min-h-[40vh] items-center justify-center gap-2 text-pulse-muted">
@@ -250,7 +253,6 @@ export function EquipmentDetailApp({ equipmentId }: Props) {
   }
 
   const subtitle = [data.type, data.zone_name ?? "Unassigned zone"].filter(Boolean).join(" · ");
-  const equipImg = resolveEquipmentAssetUrl(data.image_url);
   const partsOverdue = (data.parts_overdue_count ?? 0) > 0;
   const partsDueSoonOnly = !partsOverdue && (data.parts_due_soon_count ?? 0) > 0;
   const showPartsBanner = partsOverdue || partsDueSoonOnly || Boolean(data.parts_needs_maintenance);
@@ -299,8 +301,17 @@ export function EquipmentDetailApp({ equipmentId }: Props) {
       <section className="space-y-2">
         <h2 className={LABEL}>Photo</h2>
         <Card padding="md" className="flex flex-wrap items-center gap-4">
-          {equipImg ? (
-            <img src={equipImg} alt="" className="h-32 w-32 rounded-md object-cover ring-1 ring-slate-200/80" />
+          {equipPhoto.src ? (
+            /* eslint-disable-next-line @next/next/no-img-element -- blob or absolute URL from hook */
+            <img src={equipPhoto.src} alt="" className="h-32 w-32 rounded-md object-cover ring-1 ring-slate-200/80" />
+          ) : hasPhotoPath && equipPhoto.loading ? (
+            <div className="flex h-32 w-32 items-center justify-center rounded-md border border-slate-200 bg-slate-50 text-xs text-pulse-muted">
+              Loading photo…
+            </div>
+          ) : hasPhotoPath && equipPhoto.failed ? (
+            <div className="flex h-32 w-32 items-center justify-center rounded-md border border-amber-100 bg-amber-50/80 px-2 text-center text-xs text-amber-900">
+              Could not load photo. Try uploading again.
+            </div>
           ) : (
             <div className="flex h-32 w-32 items-center justify-center rounded-md border border-dashed border-slate-200 bg-slate-50 text-xs text-pulse-muted">
               No photo

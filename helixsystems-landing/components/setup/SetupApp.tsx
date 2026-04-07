@@ -13,6 +13,10 @@ import { activityRowMatchesTest, type DetectionMatchType, type DetectionTestTarg
 import { emitOnboardingMaybeUpdated } from "@/lib/onboarding-events";
 import { normalizeMacKey } from "@/lib/macNormalize";
 import {
+  fetchEquipmentList as fetchFacilityEquipmentRows,
+  type FacilityEquipmentRow,
+} from "@/lib/equipmentService";
+import {
   assignBleDevice,
   createBleDevice,
   createEquipment,
@@ -75,6 +79,19 @@ function withCompany(path: string, companyId: string | null): string {
   return path.includes("?") ? `${path}&${qs}` : `${path}?${qs}`;
 }
 
+function normName(s: string): string {
+  return s.trim().toLowerCase();
+}
+
+/** Select value for RTLS tool rows vs facility registry rows (API requires tool id on assign). */
+function toolSelectValue(toolId: string): string {
+  return `t:${toolId}`;
+}
+
+function facilitySelectValue(facilityId: string): string {
+  return `f:${facilityId}`;
+}
+
 export function SetupApp() {
   const searchParams = useSearchParams();
   const session = readSession();
@@ -102,6 +119,7 @@ export function SetupApp() {
   const [gwStatus, setGwStatus] = useState<GatewayStatusRow[]>([]);
   const [bleDevices, setBleDevices] = useState<BleDeviceOut[]>([]);
   const [equipment, setEquipment] = useState<EquipmentOut[]>([]);
+  const [facilityEquipment, setFacilityEquipment] = useState<FacilityEquipmentRow[]>([]);
   const [zones, setZones] = useState<ZoneOut[]>([]);
   const [workers, setWorkers] = useState<WorkerRow[]>([]);
   const [features, setFeatures] = useState<Record<string, Record<string, unknown>>>({});
@@ -171,17 +189,19 @@ export function SetupApp() {
     setLoading(true);
     setError(null);
     try {
-      const [gw, st, ble, eq, zn, fc, wrRes] = await Promise.all([
+      const [gw, st, ble, eq, facEq, zn, fc, wrRes] = await Promise.all([
         fetchGateways(isSystemAdmin ? effectiveCompanyId : null),
         fetchGatewayStatus(isSystemAdmin ? effectiveCompanyId : null),
         fetchBleDevices(isSystemAdmin ? effectiveCompanyId : null),
         fetchEquipmentList(isSystemAdmin ? effectiveCompanyId : null),
+        fetchFacilityEquipmentRows(),
         fetchZones(isSystemAdmin ? effectiveCompanyId : null),
         fetchFeatureConfigs(isSystemAdmin ? effectiveCompanyId : null),
         apiFetch<{ items: WorkerRow[] }>(withCompany("/api/workers", isSystemAdmin ? effectiveCompanyId : null)),
       ]);
       applyLiveDeviceData(gw, st, ble);
       setEquipment(eq);
+      setFacilityEquipment(facEq);
       setZones(zn);
       setFeatures(fc.features ?? {});
       setWorkers(wrRes.items ?? []);
@@ -527,6 +547,22 @@ export function SetupApp() {
     }
   };
 
+  const resolveTrackedToolIdForAssign = async (raw: string): Promise<string | null> => {
+    if (!raw) return null;
+    if (raw.startsWith("t:")) return raw.slice(2);
+    if (raw.startsWith("f:")) {
+      const fid = raw.slice(2);
+      const fe = facilityEquipment.find((x) => x.id === fid);
+      if (!fe) return null;
+      const key = normName(fe.name);
+      const existing = equipment.find((t) => normName(t.name) === key);
+      if (existing) return existing.id;
+      const row = await createEquipment(isSystemAdmin ? effectiveCompanyId : null, { name: fe.name.trim() });
+      return row.id;
+    }
+    return raw;
+  };
+
   const submitAssignBle = async () => {
     if (!assignBle || !assignTargetId) return;
     if (assignBle.type !== "worker_tag" && assignBle.type !== "equipment_tag") return;
@@ -537,9 +573,14 @@ export function SetupApp() {
           assigned_equipment_id: null,
         });
       } else {
+        const toolId = await resolveTrackedToolIdForAssign(assignTargetId);
+        if (!toolId) {
+          setError("Could not resolve tracked asset for assignment.");
+          return;
+        }
         await assignBleDevice(isSystemAdmin ? effectiveCompanyId : null, assignBle.id, {
           assigned_worker_id: null,
-          assigned_equipment_id: assignTargetId,
+          assigned_equipment_id: toolId,
         });
       }
       setAssignBle(null);
@@ -561,7 +602,7 @@ export function SetupApp() {
       });
       setToolQuickCreateName("");
       await refresh();
-      setAssignTargetId(row.id);
+      setAssignTargetId(toolSelectValue(row.id));
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Could not create tracked asset");
     } finally {
@@ -615,10 +656,19 @@ export function SetupApp() {
   }, [assignBle, workers]);
 
   const trackedAssetOptions = useMemo(() => {
-    return [...equipment]
-      .sort((a, b) => a.name.localeCompare(b.name))
-      .map((t) => ({ id: t.id, label: t.name }));
-  }, [equipment]);
+    const toolNames = new Set(equipment.map((t) => normName(t.name)));
+    const fromTools = equipment.map((t) => ({
+      value: toolSelectValue(t.id),
+      label: t.name,
+    }));
+    const fromFacility = facilityEquipment
+      .filter((fe) => !toolNames.has(normName(fe.name)))
+      .map((fe) => ({
+        value: facilitySelectValue(fe.id),
+        label: `${fe.name} — facility equipment`,
+      }));
+    return [...fromTools, ...fromFacility].sort((a, b) => a.label.localeCompare(b.label));
+  }, [equipment, facilityEquipment]);
 
   if (isSystemAdmin && !companyPick) {
     return (
@@ -825,7 +875,11 @@ export function SetupApp() {
                         onAssign={() => {
                           setAssignBle(b);
                           setAssignTargetId(
-                            isWorkerTag ? "" : (b.assigned_equipment_id ?? ""),
+                            isWorkerTag
+                              ? ""
+                              : b.assigned_equipment_id
+                                ? toolSelectValue(b.assigned_equipment_id)
+                                : "",
                           );
                           setToolQuickCreateName("");
                         }}
@@ -879,7 +933,11 @@ export function SetupApp() {
                     onAssign={() => {
                       setAssignBle(b);
                       setAssignTargetId(
-                        isWorkerTag ? (b.assigned_worker_id ?? "") : (b.assigned_equipment_id ?? ""),
+                        isWorkerTag
+                          ? (b.assigned_worker_id ?? "")
+                          : b.assigned_equipment_id
+                            ? toolSelectValue(b.assigned_equipment_id)
+                            : "",
                       );
                       setToolQuickCreateName("");
                     }}
@@ -1069,7 +1127,7 @@ export function SetupApp() {
         title={assignBle ? `Assign ${assignBle.name}` : ""}
         description={
           assignBle?.type === "equipment_tag"
-            ? "Pick a tracked asset for RTLS (create one below if the list is empty). Names often match facility equipment."
+            ? "Tracked assets (RTLS) or facility equipment rows appear below. Choosing facility equipment creates a matching tracked asset if needed."
             : "Pick a worker to carry this tag."
         }
         onClose={() => {
@@ -1089,6 +1147,11 @@ export function SetupApp() {
                 </option>
               ))}
             </select>
+            {unassignWorkerLabels.length === 0 ? (
+              <p className="mt-2 text-xs text-pulse-muted">
+                No roster workers loaded. Add or invite people under Workforce, then refresh this page.
+              </p>
+            ) : null}
             <button type="button" className={`mt-4 w-full ${BTN_PRIMARY}`} onClick={() => void submitAssignBle()}>
               Save assignment
             </button>
@@ -1099,11 +1162,17 @@ export function SetupApp() {
             <select className={FIELD} value={assignTargetId} onChange={(e) => setAssignTargetId(e.target.value)}>
               <option value="">Select…</option>
               {trackedAssetOptions.map((o) => (
-                <option key={o.id} value={o.id}>
+                <option key={o.value} value={o.value}>
                   {o.label}
                 </option>
               ))}
             </select>
+            {trackedAssetOptions.length === 0 ? (
+              <p className="mt-2 text-xs text-pulse-muted">
+                No tracked assets or facility equipment yet. Use &quot;New tracked asset&quot; below or register items under
+                Equipment.
+              </p>
+            ) : null}
             <div className="mt-4 rounded-md border border-slate-200/90 bg-slate-50/80 p-3 dark:border-[#374151] dark:bg-[#111827]/80">
               <p className="text-xs font-semibold text-pulse-navy dark:text-gray-200">New tracked asset</p>
               <p className="mt-1 text-[11px] text-pulse-muted">

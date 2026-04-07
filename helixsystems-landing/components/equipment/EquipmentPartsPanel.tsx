@@ -18,10 +18,10 @@ import {
   deleteEquipmentPart,
   fetchEquipmentParts,
   patchEquipmentPart,
-  resolveEquipmentAssetUrl,
   uploadEquipmentPartImage,
   type EquipmentPartRow,
 } from "@/lib/equipmentService";
+import { useResolvedProtectedAssetSrc } from "@/lib/useResolvedProtectedAssetSrc";
 
 const PRIMARY_BTN =
   "rounded-[10px] bg-[#2B4C7E] px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#234066] disabled:opacity-50";
@@ -30,6 +30,21 @@ const SECONDARY_BTN =
 const FIELD =
   "mt-1.5 w-full rounded-[10px] border border-slate-200/90 bg-white px-3 py-2.5 text-sm text-pulse-navy shadow-sm focus:border-[#2B4C7E]/35 focus:outline-none focus:ring-1 focus:ring-[#2B4C7E]/25 disabled:opacity-60";
 const LABEL = "text-[11px] font-semibold uppercase tracking-wider text-pulse-muted";
+
+function EquipmentPartPhoto({ imageUrl }: { imageUrl: string | null | undefined }) {
+  const { src, loading } = useResolvedProtectedAssetSrc(imageUrl);
+  if (!imageUrl?.trim()) return null;
+  if (src) {
+    return (
+      /* eslint-disable-next-line @next/next/no-img-element -- blob or absolute URL */
+      <img src={src} alt="" className="h-10 w-10 shrink-0 rounded-lg object-cover ring-1 ring-slate-200" />
+    );
+  }
+  if (loading) {
+    return <div className="h-10 w-10 shrink-0 animate-pulse rounded-lg bg-slate-100" aria-hidden />;
+  }
+  return null;
+}
 
 function formatDate(iso: string | null | undefined): string {
   if (!iso) return "—";
@@ -393,7 +408,6 @@ export function EquipmentPartsPanel({ equipmentId, equipmentName, canMutate, onP
                 const pr = partPriorityFromStatus(normalizePartStatus(p.maintenance_status));
                 const pu = priorityUi(pr);
                 const needsAttention = p.maintenance_status === "overdue" || p.maintenance_status === "due_soon";
-                const imgSrc = resolveEquipmentAssetUrl(p.image_url);
                 const canMarkReplaced =
                   canMutate && p.replacement_interval_days != null && p.replacement_interval_days >= 1 && editingId !== p.id;
                 return (
@@ -403,9 +417,7 @@ export function EquipmentPartsPanel({ equipmentId, equipmentName, canMutate, onP
                         <input className={FIELD} value={editName} onChange={(e) => setEditName(e.target.value)} />
                       ) : (
                         <div className="flex items-start gap-2">
-                          {imgSrc ? (
-                            <img src={imgSrc} alt="" className="h-10 w-10 rounded-lg object-cover ring-1 ring-slate-200" />
-                          ) : null}
+                          <EquipmentPartPhoto imageUrl={p.image_url} />
                           <div>
                             <p className="font-medium text-pulse-navy">{p.name}</p>
                             {needsAttention ? (
