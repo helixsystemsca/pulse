@@ -518,7 +518,7 @@ function DashboardBody({
   const trimmedHeaderImage = headerImageUrl?.trim() || null;
 
   return (
-    <div className="flex flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-slate-50/50 dark:border-slate-700/45 dark:bg-slate-900/20">
+    <div className="flex flex-col overflow-hidden rounded-md border border-slate-200/80 bg-slate-50/50 dark:border-slate-700/45 dark:bg-slate-900/20">
       <header className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 border-b border-slate-200/80 bg-white/60 px-4 py-4 dark:border-slate-700/45 dark:bg-slate-900/35 sm:px-6">
         <span className="min-w-0 text-base font-bold leading-tight tracking-tight text-gray-900 dark:text-gray-100 sm:text-lg md:text-xl lg:text-2xl">
           {model.title}
@@ -564,7 +564,7 @@ function DashboardBody({
             {model.alerts.map((a, idx) => (
               <li
                 key={`${a.title}-${idx}`}
-                className={`flex gap-3 rounded-xl border border-gray-200 p-4 dark:border-[#1F2937] ${
+                className={`flex gap-3 rounded-md border border-gray-200 p-4 dark:border-[#1F2937] ${
                   a.severity === "critical"
                     ? "border-l-2 border-l-red-500 bg-red-100/60 dark:border-l-red-400 dark:bg-red-950/50 dark:ring-1 dark:ring-red-500/25"
                     : "border-l-2 border-l-amber-500 bg-amber-100/60 dark:border-l-amber-400 dark:bg-amber-950/55 dark:ring-1 dark:ring-amber-500/25"
@@ -714,7 +714,7 @@ function DashboardBody({
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
                   Newest
                 </p>
-                <div className="app-glass-inset-dense mt-2 rounded-xl p-4">
+                <div className="app-glass-inset-dense mt-2 rounded-md p-4">
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <div className="min-w-0">
                       <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{model.workRequests.newest.title}</p>
@@ -731,7 +731,7 @@ function DashboardBody({
             {model.workRequests.oldest ? (
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Oldest</p>
-                <div className="app-glass-inset-dense mt-2 rounded-xl p-4">
+                <div className="app-glass-inset-dense mt-2 rounded-md p-4">
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <div className="min-w-0">
                       <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{model.workRequests.oldest.title}</p>
@@ -754,7 +754,7 @@ function DashboardBody({
                   {model.workRequests.critical.map((row) => (
                     <li
                       key={row.title}
-                      className="flex gap-3 rounded-xl border border-gray-200 dark:border-[#1F2937] border-l-2 border-l-red-500 dark:border-l-red-400 bg-red-100/60 dark:bg-red-500/10 p-3"
+                      className="flex gap-3 rounded-md border border-gray-200 dark:border-[#1F2937] border-l-2 border-l-red-500 dark:border-l-red-400 bg-red-100/60 dark:bg-red-500/10 p-3"
                     >
                       <span className="mt-0.5 h-8 w-1 shrink-0 rounded-full bg-red-500 dark:bg-red-500/90" aria-hidden />
                       <div className="min-w-0 flex-1">
@@ -792,7 +792,7 @@ function DashboardBody({
           </div>
           <div className="mt-4 flex flex-1 flex-col gap-4 border-t border-gray-200 dark:border-[#1F2937] pt-4">
             {model.equipment.showZonePrompt && !zonePromptDismissed ? (
-              <div className="rounded-xl border border-gray-200 dark:border-[#1F2937] border-l-2 border-l-amber-500 dark:border-l-amber-400 bg-amber-100/60 dark:bg-amber-500/10 p-4 shadow-sm dark:shadow-[0_2px_8px_rgba(0,0,0,0.4)]">
+              <div className="rounded-md border border-gray-200 dark:border-[#1F2937] border-l-2 border-l-amber-500 dark:border-l-amber-400 bg-amber-100/60 dark:bg-amber-500/10 p-4 shadow-sm dark:shadow-[0_2px_8px_rgba(0,0,0,0.4)]">
                 <div className="flex gap-3">
                   <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-100/90 dark:bg-amber-500/12 text-amber-700 dark:text-amber-400 ring-1 ring-amber-200 dark:ring-amber-500/20">
                     <MapPin className="h-4 w-4" aria-hidden />
@@ -822,7 +822,7 @@ function DashboardBody({
               </div>
             ) : null}
             {model.equipment.showBatteryNote ? (
-              <div className="app-glass-inset-dense rounded-xl p-4 text-gray-500 dark:text-gray-400">
+              <div className="app-glass-inset-dense rounded-md p-4 text-gray-500 dark:text-gray-400">
                 <div className="flex gap-3">
                   <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/70 text-gray-500 ring-1 ring-white/30 backdrop-blur-sm dark:bg-slate-900/65 dark:text-gray-400 dark:ring-white/10">
                     <Battery className="h-4 w-4" aria-hidden />
@@ -842,7 +842,7 @@ function DashboardBody({
         >
           <h3 className="text-base font-bold text-gray-900 dark:text-gray-100">Inventory Status</h3>
           <div className="mt-4 flex flex-1 flex-col gap-4">
-            <div className="app-glass-inset-dense flex items-start justify-between gap-4 rounded-xl p-4">
+            <div className="app-glass-inset-dense flex items-start justify-between gap-4 rounded-md p-4">
               <div>
                 <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">Consumables</p>
                 <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
@@ -861,11 +861,11 @@ function DashboardBody({
             </div>
 
             {model.inventory.alert ? (
-              <div className="app-surface-inset rounded-xl p-4 shadow-sm dark:shadow-[0_2px_8px_rgba(0,0,0,0.25)]">
+              <div className="app-surface-inset rounded-md p-4 shadow-sm dark:shadow-[0_2px_8px_rgba(0,0,0,0.25)]">
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
                   Inventory Alert
                 </p>
-                <div className="mt-3 flex items-start justify-between gap-4 rounded-xl border border-gray-200 dark:border-[#1F2937] border-l-2 border-l-amber-500 dark:border-l-amber-400 bg-amber-100/60 dark:bg-amber-500/10 p-4">
+                <div className="mt-3 flex items-start justify-between gap-4 rounded-md border border-gray-200 dark:border-[#1F2937] border-l-2 border-l-amber-500 dark:border-l-amber-400 bg-amber-100/60 dark:bg-amber-500/10 p-4">
                   <div className="min-w-0">
                     <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{model.inventory.alert.category}</p>
                     <p className="mt-2 flex items-center gap-2 text-xs font-medium text-amber-700 dark:text-amber-400">
@@ -1055,7 +1055,7 @@ export function OperationalDashboard({
 
   if (loading) {
     return (
-      <div className="app-dashboard-tile rounded-2xl p-12 text-center">
+      <div className="app-dashboard-tile rounded-md p-12 text-center">
         <p className="text-sm text-gray-500 dark:text-gray-400">Loading live dashboard…</p>
       </div>
     );
@@ -1063,14 +1063,14 @@ export function OperationalDashboard({
 
   if (error) {
     return (
-      <div className="rounded-2xl border border-gray-200 dark:border-[#1F2937] border-l-2 border-l-amber-500 dark:border-l-amber-400 bg-amber-100/60 dark:bg-amber-500/10 p-6 shadow-sm dark:shadow-[0_2px_8px_rgba(0,0,0,0.4)]">
+      <div className="rounded-md border border-gray-200 dark:border-[#1F2937] border-l-2 border-l-amber-500 dark:border-l-amber-400 bg-amber-100/60 dark:bg-amber-500/10 p-6 shadow-sm dark:shadow-[0_2px_8px_rgba(0,0,0,0.4)]">
         <p className="text-sm text-amber-700 dark:text-amber-400" role="status">
           {error}
         </p>
         <button
           type="button"
           onClick={() => void fetchLive()}
-          className="mt-4 rounded-xl bg-blue-600 dark:bg-[#3B82F6] px-4 py-2 text-sm font-semibold text-white transition-[filter] hover:brightness-110"
+          className="mt-4 rounded-md bg-blue-600 dark:bg-[#3B82F6] px-4 py-2 text-sm font-semibold text-white transition-[filter] hover:brightness-110"
         >
           Retry
         </button>

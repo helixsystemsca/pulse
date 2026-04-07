@@ -424,7 +424,7 @@ export function EquipmentApp() {
 
       {toast ? (
         <div
-          className="fixed bottom-6 left-1/2 z-50 max-w-md -translate-x-1/2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-900 shadow-lg"
+          className="fixed bottom-6 left-1/2 z-50 max-w-md -translate-x-1/2 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-900 shadow-lg"
           role="status"
         >
           {toast}
@@ -432,7 +432,7 @@ export function EquipmentApp() {
       ) : null}
 
       <nav
-        className="flex flex-wrap gap-1 rounded-xl border border-slate-200/90 bg-white p-1 shadow-sm dark:border-[#374151] dark:bg-[#111827]"
+        className="flex flex-wrap gap-1 rounded-md border border-slate-200/90 bg-white p-1 shadow-sm dark:border-[#374151] dark:bg-[#111827]"
         aria-label="Equipment sections"
       >
         {tabBtn("overview", "Overview", LayoutGrid)}

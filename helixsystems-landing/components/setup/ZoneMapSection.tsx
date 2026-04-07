@@ -20,7 +20,7 @@ export function ZoneMapSection({
   assignedTagCount: number;
 }) {
   return (
-    <section className="rounded-2xl border border-slate-200/80 bg-white/90 p-5 shadow-card md:p-6">
+    <section className="rounded-md border border-slate-200/80 bg-white/90 p-5 shadow-card md:p-6">
       <div className="flex items-center gap-2">
         <MapPin className="h-5 w-5 text-[#2B4C7E]" aria-hidden />
         <div>
@@ -39,7 +39,7 @@ export function ZoneMapSection({
           <span className="text-right">Gateways</span>
         </div>
         {zones.length === 0 ? (
-          <p className="rounded-xl border border-dashed border-slate-200 bg-white/60 px-4 py-6 text-pulse-muted">
+          <p className="rounded-md border border-dashed border-slate-200 bg-white/60 px-4 py-6 text-pulse-muted">
             Create zones to see them on this map. Gateways you assign to a zone appear in the middle column.
           </p>
         ) : (
@@ -48,7 +48,7 @@ export function ZoneMapSection({
             return (
               <div
                 key={z.id}
-                className="grid gap-2 rounded-xl border border-slate-200/80 bg-slate-50/50 p-4 md:grid-cols-[1fr_1.2fr_auto] md:items-center md:gap-3"
+                className="grid gap-2 rounded-md border border-slate-200/80 bg-slate-50/50 p-4 md:grid-cols-[1fr_1.2fr_auto] md:items-center md:gap-3"
               >
                 <div>
                   <p className="font-semibold text-pulse-navy">{z.name}</p>

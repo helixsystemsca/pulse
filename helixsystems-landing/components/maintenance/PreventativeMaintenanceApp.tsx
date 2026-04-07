@@ -93,7 +93,7 @@ export function PreventativeMaintenanceApp() {
 
   return (
     <div className="space-y-6">
-      <section className="rounded-2xl border border-pulse-border bg-white p-4 shadow-card dark:border-slate-700 dark:bg-slate-900/50">
+      <section className="rounded-md border border-pulse-border bg-white p-4 shadow-card dark:border-slate-700 dark:bg-slate-900/50">
         <h2 className="text-sm font-semibold text-pulse-navy dark:text-slate-100">Add rule</h2>
         <p className="mt-1 text-xs text-pulse-muted">
           Tie a facility equipment id to a frequency string. Generation of work orders from rules is not automated yet.
@@ -135,7 +135,7 @@ export function PreventativeMaintenanceApp() {
 
       {err ? <p className="text-sm text-red-600 dark:text-red-400">{err}</p> : null}
 
-      <section className="rounded-2xl border border-pulse-border bg-white p-4 shadow-card dark:border-slate-700 dark:bg-slate-900/50">
+      <section className="rounded-md border border-pulse-border bg-white p-4 shadow-card dark:border-slate-700 dark:bg-slate-900/50">
         <h2 className="text-sm font-semibold text-pulse-navy dark:text-slate-100">Rules</h2>
         {loading ? (
           <p className="mt-2 text-sm text-pulse-muted">Loading…</p>
@@ -174,7 +174,7 @@ export function PreventativeMaintenanceApp() {
       </section>
 
       {editing ? (
-        <section className="rounded-2xl border border-amber-200 bg-amber-50/80 p-4 dark:border-amber-900/50 dark:bg-amber-950/30">
+        <section className="rounded-md border border-amber-200 bg-amber-50/80 p-4 dark:border-amber-900/50 dark:bg-amber-950/30">
           <h2 className="text-sm font-semibold text-pulse-navy dark:text-slate-100">Edit rule</h2>
           <div className="mt-3 flex flex-wrap gap-2">
             <input

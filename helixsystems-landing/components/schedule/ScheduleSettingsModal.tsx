@@ -272,7 +272,7 @@ export function ScheduleSettingsModal({ open, onClose }: Props) {
           {tab === "Shift types" ? (
             <div className="space-y-4">
               {shiftTypes.map((t) => (
-                <div key={t.key} className="rounded-xl border border-gray-200 dark:border-[#1F2937] p-3">
+                <div key={t.key} className="rounded-md border border-gray-200 dark:border-[#1F2937] p-3">
                   <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{t.key}</p>
                   <input
                     className="mt-2 w-full rounded-lg border border-gray-200 dark:border-[#1F2937] px-3 py-2 text-sm"

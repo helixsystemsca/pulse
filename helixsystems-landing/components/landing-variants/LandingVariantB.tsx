@@ -78,9 +78,9 @@ export function LandingVariantB({ homePath }: { homePath: string }) {
               {howWeWork.steps.map(({ Icon, title, body }, i) => (
                 <div
                   key={title}
-                  className="rounded-2xl border border-white/10 bg-white/5 p-8 shadow-[0_16px_50px_rgba(0,0,0,0.35)] backdrop-blur-xl transition-all duration-200 hover:scale-[1.02] hover:border-cyan-300/25 hover:shadow-[0_22px_70px_rgba(34,211,238,0.12)]"
+                  className="rounded-md border border-white/10 bg-white/5 p-8 shadow-[0_16px_50px_rgba(0,0,0,0.35)] backdrop-blur-xl transition-all duration-200 hover:scale-[1.02] hover:border-cyan-300/25 hover:shadow-[0_22px_70px_rgba(34,211,238,0.12)]"
                 >
-                  <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-cyan-400/15 text-cyan-200 ring-1 ring-cyan-300/20">
+                  <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-md bg-cyan-400/15 text-cyan-200 ring-1 ring-cyan-300/20">
                     <Icon className="h-6 w-6" strokeWidth={2} />
                   </div>
                   <p className="text-xs font-bold uppercase tracking-wide text-cyan-200/90">Step {i + 1}</p>
@@ -104,9 +104,9 @@ export function LandingVariantB({ homePath }: { homePath: string }) {
               {whatWeBuild.items.map(({ icon: Icon, title, description }) => (
                 <div
                   key={title}
-                  className="flex h-full flex-col rounded-2xl border border-white/10 bg-white/5 p-8 shadow-[0_14px_40px_rgba(0,0,0,0.35)] backdrop-blur-md transition-all duration-200 hover:scale-[1.02] hover:shadow-[0_20px_55px_rgba(0,0,0,0.45)]"
+                  className="flex h-full flex-col rounded-md border border-white/10 bg-white/5 p-8 shadow-[0_14px_40px_rgba(0,0,0,0.35)] backdrop-blur-md transition-all duration-200 hover:scale-[1.02] hover:shadow-[0_20px_55px_rgba(0,0,0,0.45)]"
                 >
-                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-950/40 text-cyan-200 ring-1 ring-white/10">
+                  <div className="flex h-14 w-14 items-center justify-center rounded-md bg-slate-950/40 text-cyan-200 ring-1 ring-white/10">
                     <Icon className="h-7 w-7" strokeWidth={1.75} />
                   </div>
                   <h3 className="mt-6 font-headline text-xl font-bold text-white">{title}</h3>

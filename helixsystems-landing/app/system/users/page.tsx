@@ -168,7 +168,7 @@ export default function SystemUsersPage() {
           role="presentation"
         >
           <div
-            className="w-full max-w-md rounded-2xl border border-gray-200 bg-white p-6 shadow-2xl dark:border-zinc-700 dark:bg-zinc-950"
+            className="w-full max-w-md rounded-md border border-gray-200 bg-white p-6 shadow-2xl dark:border-zinc-700 dark:bg-zinc-950"
             role="dialog"
             aria-modal="true"
             aria-labelledby="users-filter-title"

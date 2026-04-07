@@ -4,7 +4,7 @@ import { Link2, Wrench } from "lucide-react";
 import type { EquipmentOut } from "@/lib/setup-api";
 
 const cardBase =
-  "rounded-2xl border border-slate-200/80 bg-white p-5 shadow-card transition-shadow hover:shadow-card-lg";
+  "rounded-md border border-slate-200/80 bg-white p-5 shadow-card transition-shadow hover:shadow-card-lg";
 
 export function EquipmentCard({
   equipment,
@@ -19,7 +19,7 @@ export function EquipmentCard({
   return (
     <div className={cardBase}>
       <div className="flex items-start gap-3">
-        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-900">
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-amber-50 text-amber-900">
           <Wrench className="h-5 w-5" aria-hidden />
         </div>
         <div className="min-w-0 flex-1">

@@ -128,7 +128,7 @@ export default function LoginPage() {
                 href={pulseRoutes.pulseLanding}
                 className="flex items-center gap-2.5 font-headline text-lg font-bold tracking-tight text-pulse-navy no-underline hover:text-pulse-accent sm:text-xl dark:text-white dark:hover:text-sky-200"
               >
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-200/80 bg-slate-50 text-pulse-accent shadow-sm dark:border-slate-600 dark:bg-slate-800/90 dark:text-sky-400">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-slate-200/80 bg-slate-50 text-pulse-accent shadow-sm dark:border-slate-600 dark:bg-slate-800/90 dark:text-sky-400">
                   <Activity className="h-4 w-4" strokeWidth={2} aria-hidden />
                 </span>
                 <span>Pulse</span>
@@ -222,7 +222,7 @@ export default function LoginPage() {
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 py-3 text-sm font-semibold text-white shadow-[0_8px_28px_rgba(37,99,235,0.42)] outline-none transition-all duration-300 ease-out hover:brightness-[1.08] hover:shadow-[0_12px_36px_rgba(67,56,202,0.45)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-70 disabled:shadow-md disabled:hover:brightness-100"
+                  className="flex w-full items-center justify-center gap-2 rounded-md bg-gradient-to-r from-blue-600 to-indigo-600 py-3 text-sm font-semibold text-white shadow-[0_8px_28px_rgba(37,99,235,0.42)] outline-none transition-all duration-300 ease-out hover:brightness-[1.08] hover:shadow-[0_12px_36px_rgba(67,56,202,0.45)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-70 disabled:shadow-md disabled:hover:brightness-100"
                 >
                   {submitting ? (
                     <>

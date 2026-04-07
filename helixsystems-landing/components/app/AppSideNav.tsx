@@ -100,7 +100,7 @@ export function AppSideNav() {
       ) : null}
 
       <aside
-        className={`group/sidebar fixed left-3 top-1/2 z-[40] flex max-h-[min(85vh,52rem)] w-[4.25rem] -translate-y-1/2 flex-col overflow-hidden overflow-y-auto rounded-2xl border transition-[width,box-shadow] duration-200 ease-out lg:hover:w-[11rem] ${tenantShell} ${narrowExpanded ? tenantShellMobilePop : ""}`}
+        className={`group/sidebar fixed left-3 top-1/2 z-[40] flex max-h-[min(85vh,52rem)] w-[4.25rem] -translate-y-1/2 flex-col overflow-hidden overflow-y-auto rounded-md border transition-[width,box-shadow] duration-200 ease-out lg:hover:w-[11rem] ${tenantShell} ${narrowExpanded ? tenantShellMobilePop : ""}`}
         aria-label="App"
       >
         <nav className="flex flex-col gap-0.5 px-1.5 py-2">

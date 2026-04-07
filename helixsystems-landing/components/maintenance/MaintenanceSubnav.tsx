@@ -14,7 +14,7 @@ export function MaintenanceSubnav() {
   const pathname = usePathname();
   return (
     <nav
-      className="mb-6 flex flex-wrap gap-1 rounded-xl border border-pulse-border bg-white/80 p-1 shadow-sm dark:border-slate-700 dark:bg-slate-900/60"
+      className="mb-6 flex flex-wrap gap-1 rounded-md border border-pulse-border bg-white/80 p-1 shadow-sm dark:border-slate-700 dark:bg-slate-900/60"
       aria-label="Maintenance"
     >
       {tabs.map((t) => {

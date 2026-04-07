@@ -15,7 +15,7 @@ export function OnboardingChecklist() {
 
   return (
     <div
-      className={`pointer-events-auto fixed bottom-4 right-4 z-[115] flex max-w-[min(100vw-2rem,22rem)] flex-col rounded-2xl border border-slate-200/90 bg-white/95 shadow-lg backdrop-blur-sm transition-all duration-200 ${
+      className={`pointer-events-auto fixed bottom-4 right-4 z-[115] flex max-w-[min(100vw-2rem,22rem)] flex-col rounded-md border border-slate-200/90 bg-white/95 shadow-lg backdrop-blur-sm transition-all duration-200 ${
         checklistExpanded ? "max-h-[min(72vh,32rem)]" : ""
       }`}
     >
@@ -25,7 +25,7 @@ export function OnboardingChecklist() {
         className="flex w-full items-center gap-3 rounded-t-2xl px-4 py-3 text-left hover:bg-slate-50/80"
         aria-expanded={checklistExpanded}
       >
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-[#2B4C7E]">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-slate-200 bg-slate-50 text-[#2B4C7E]">
           <ListChecks className="h-4 w-4" strokeWidth={2} />
         </span>
         <div className="min-w-0 flex-1">

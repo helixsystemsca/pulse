@@ -20,14 +20,14 @@ export function HeroDemoPanel({
   const f = floatingTone === "dark";
   return (
     <div className={`relative mx-auto w-full max-w-xl md:mx-0 md:max-w-none ${frameClassName}`.trim()}>
-      <div className="relative overflow-hidden rounded-2xl shadow-helix ring-1 ring-helix-outline/30">
+      <div className="relative overflow-hidden rounded-md shadow-helix ring-1 ring-helix-outline/30">
         <div
           className={`aspect-[20/9] w-full bg-gradient-to-br from-[#d5e4f5] via-white to-helix-surfaceLow md:aspect-[25/12] ${gradientClassName}`.trim()}
         >
           <div className="flex h-full flex-col justify-between p-4 md:p-5">
             <div className="grid grid-cols-3 gap-3">
               {landingHero.zoneStats.map((z, i) => (
-                <div key={i} className="rounded-xl bg-white/90 p-3 shadow-sm backdrop-blur-sm">
+                <div key={i} className="rounded-md bg-white/90 p-3 shadow-sm backdrop-blur-sm">
                   <p className="text-[10px] font-bold uppercase tracking-wide text-helix-onSurfaceVariant">
                     Zone {String.fromCharCode(65 + i)}
                   </p>
@@ -36,7 +36,7 @@ export function HeroDemoPanel({
                 </div>
               ))}
             </div>
-            <div className="rounded-xl bg-white/80 p-4 backdrop-blur-sm">
+            <div className="rounded-md bg-white/80 p-4 backdrop-blur-sm">
               <p className="text-xs font-bold text-helix-onSurface">{landingHero.snapshotTitle}</p>
               <p className="mt-1 text-sm text-helix-onSurfaceVariant">{landingHero.snapshotBody}</p>
             </div>
@@ -48,7 +48,7 @@ export function HeroDemoPanel({
         className={`relative z-10 mt-4 w-full max-w-[min(100%,280px)] md:absolute md:-bottom-3 md:left-4 md:mt-0 md:max-w-[280px] lg:left-6 lg:max-w-[300px] ${floatingWrapClassName}`.trim()}
       >
         <div
-          className={`rounded-2xl border border-helix-outline/25 bg-white/95 p-4 shadow-lg backdrop-blur-md ${floatingCardClassName}`.trim()}
+          className={`rounded-md border border-helix-outline/25 bg-white/95 p-4 shadow-lg backdrop-blur-md ${floatingCardClassName}`.trim()}
         >
           <div className="flex items-center gap-2">
             <span className="relative flex h-2.5 w-2.5">

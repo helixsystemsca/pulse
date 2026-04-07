@@ -81,14 +81,14 @@ export function LandingVariantC({ homePath }: { homePath: string }) {
               <p className="mt-5 text-lg leading-relaxed text-slate-600">{howWeWork.lead}</p>
             </div>
 
-            <div className="mx-auto mt-14 max-w-5xl divide-y divide-slate-200/80 rounded-2xl border border-slate-200/70 bg-white">
+            <div className="mx-auto mt-14 max-w-5xl divide-y divide-slate-200/80 rounded-md border border-slate-200/70 bg-white">
               {howWeWork.steps.map(({ Icon, title, body }, i) => (
                 <div
                   key={title}
                   className="grid gap-8 px-6 py-10 transition-colors duration-200 hover:bg-slate-50/60 md:grid-cols-[88px_1fr_auto] md:items-center md:px-10"
                 >
                   <div className="flex items-center gap-4 md:block">
-                    <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 text-slate-900">
+                    <div className="flex h-14 w-14 items-center justify-center rounded-md border border-slate-200 bg-slate-50 text-slate-900">
                       <Icon className="h-6 w-6" strokeWidth={1.75} />
                     </div>
                     <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500 md:hidden">
@@ -127,7 +127,7 @@ export function LandingVariantC({ homePath }: { homePath: string }) {
               {whatWeBuild.items.map(({ icon: Icon, title, description }, idx) => (
                 <div
                   key={title}
-                  className={`grid gap-8 rounded-2xl border border-slate-200/70 bg-white md:grid-cols-2 md:gap-0 ${
+                  className={`grid gap-8 rounded-md border border-slate-200/70 bg-white md:grid-cols-2 md:gap-0 ${
                     idx % 2 === 1 ? "md:[&>*:first-child]:order-2" : ""
                   }`}
                 >
@@ -189,8 +189,8 @@ export function LandingVariantC({ homePath }: { homePath: string }) {
             mailtoLink: "text-slate-900 underline-offset-4 hover:underline",
             form: "rounded-[28px] border-slate-200/80 shadow-[0_18px_60px_rgba(15,23,42,0.06)]",
             label: "text-slate-800",
-            input: "rounded-2xl border-slate-200 bg-slate-50 focus:border-slate-900 focus:ring-slate-900/15",
-            textarea: "rounded-2xl border-slate-200 bg-slate-50 focus:border-slate-900 focus:ring-slate-900/15",
+            input: "rounded-md border-slate-200 bg-slate-50 focus:border-slate-900 focus:ring-slate-900/15",
+            textarea: "rounded-md border-slate-200 bg-slate-50 focus:border-slate-900 focus:ring-slate-900/15",
             submit:
               "rounded-full bg-slate-900 shadow-md hover:bg-slate-800 hover:scale-[1.02] transition-transform duration-200",
           }}

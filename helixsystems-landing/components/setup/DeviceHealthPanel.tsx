@@ -44,7 +44,7 @@ export function DeviceHealthPanel({
   const item = "rounded-lg border border-slate-200/80 bg-slate-50/80 px-3 py-2";
 
   return (
-    <section className="rounded-2xl border border-slate-200/80 bg-white/90 p-5 shadow-card md:p-6">
+    <section className="rounded-md border border-slate-200/80 bg-white/90 p-5 shadow-card md:p-6">
       <div className="flex items-center gap-2">
         <Activity className="h-5 w-5 text-[#2B4C7E]" aria-hidden />
         <div>

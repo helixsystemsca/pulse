@@ -453,10 +453,10 @@ export default function SystemCompaniesPage() {
 
       {modal === "invite" ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-          <div className="relative w-full max-w-md rounded-xl border border-zinc-700 bg-zinc-900 p-6 shadow-xl">
+          <div className="relative w-full max-w-md rounded-md border border-zinc-700 bg-zinc-900 p-6 shadow-xl">
             {inviteSubmitting ? (
               <div
-                className="absolute inset-0 z-20 flex flex-col items-center justify-center rounded-xl bg-zinc-950/90 px-6 backdrop-blur-sm"
+                className="absolute inset-0 z-20 flex flex-col items-center justify-center rounded-md bg-zinc-950/90 px-6 backdrop-blur-sm"
                 aria-busy="true"
                 aria-live="polite"
               >
@@ -557,10 +557,10 @@ export default function SystemCompaniesPage() {
 
       {modal === "password" ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-          <div className="relative w-full max-w-md rounded-xl border border-amber-900/60 bg-zinc-900 p-6 shadow-xl">
+          <div className="relative w-full max-w-md rounded-md border border-amber-900/60 bg-zinc-900 p-6 shadow-xl">
             {passwordSubmitting ? (
               <div
-                className="absolute inset-0 z-20 flex flex-col items-center justify-center rounded-xl bg-zinc-950/90 px-6 backdrop-blur-sm"
+                className="absolute inset-0 z-20 flex flex-col items-center justify-center rounded-md bg-zinc-950/90 px-6 backdrop-blur-sm"
                 aria-busy="true"
                 aria-live="polite"
               >

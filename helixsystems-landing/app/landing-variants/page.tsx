@@ -24,7 +24,7 @@ export default function LandingVariantsHubPage() {
             <li key={v.href}>
               <Link
                 href={v.href}
-                className="flex h-full flex-col rounded-2xl border border-helix-outline/25 bg-white p-6 shadow-md transition-all duration-200 hover:scale-[1.02] hover:shadow-lg no-underline"
+                className="flex h-full flex-col rounded-md border border-helix-outline/25 bg-white p-6 shadow-md transition-all duration-200 hover:scale-[1.02] hover:shadow-lg no-underline"
               >
                 <span className="font-headline text-lg font-bold text-helix-onSurface">{v.label}</span>
                 <span className="mt-2 text-sm text-helix-onSurfaceVariant">{v.hint}</span>

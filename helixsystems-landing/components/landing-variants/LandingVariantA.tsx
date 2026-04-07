@@ -71,9 +71,9 @@ export function LandingVariantA({ homePath }: { homePath: string }) {
               {howWeWork.steps.map(({ Icon, title, body }, i) => (
                 <div
                   key={title}
-                  className="group flex h-full flex-col rounded-2xl border border-stone-200/70 bg-[#f7f3eb]/40 p-8 shadow-[0_10px_40px_rgba(28,25,23,0.06)] transition-all duration-200 hover:scale-[1.02] hover:shadow-[0_16px_48px_rgba(28,25,23,0.1)]"
+                  className="group flex h-full flex-col rounded-md border border-stone-200/70 bg-[#f7f3eb]/40 p-8 shadow-[0_10px_40px_rgba(28,25,23,0.06)] transition-all duration-200 hover:scale-[1.02] hover:shadow-[0_16px_48px_rgba(28,25,23,0.1)]"
                 >
-                  <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-xl border border-stone-200 bg-white text-amber-800 transition-colors duration-200 group-hover:bg-stone-900 group-hover:text-[#f7f3eb]">
+                  <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-md border border-stone-200 bg-white text-amber-800 transition-colors duration-200 group-hover:bg-stone-900 group-hover:text-[#f7f3eb]">
                     <Icon className="h-6 w-6" strokeWidth={2} />
                   </div>
                   <p className="text-xs font-bold uppercase tracking-wide text-amber-800/90">Step {i + 1}</p>
@@ -97,11 +97,11 @@ export function LandingVariantA({ homePath }: { homePath: string }) {
               {whatWeBuild.items.map(({ icon: Icon, title, description }) => (
                 <article
                   key={title}
-                  className="flex h-full flex-col overflow-hidden rounded-2xl border border-stone-200/70 bg-white shadow-[0_12px_40px_rgba(28,25,23,0.07)] transition-all duration-200 hover:scale-[1.02] hover:shadow-[0_18px_50px_rgba(28,25,23,0.1)]"
+                  className="flex h-full flex-col overflow-hidden rounded-md border border-stone-200/70 bg-white shadow-[0_12px_40px_rgba(28,25,23,0.07)] transition-all duration-200 hover:scale-[1.02] hover:shadow-[0_18px_50px_rgba(28,25,23,0.1)]"
                 >
                   <div className="h-28 bg-gradient-to-br from-stone-200/60 via-white to-[#f7f3eb]" />
                   <div className="flex flex-1 flex-col px-7 pb-8 pt-6">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-stone-200 bg-[#f7f3eb] text-stone-900">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-md border border-stone-200 bg-[#f7f3eb] text-stone-900">
                       <Icon className="h-6 w-6" strokeWidth={1.75} />
                     </div>
                     <h3 className="mt-5 font-headline text-xl font-bold text-stone-900">{title}</h3>

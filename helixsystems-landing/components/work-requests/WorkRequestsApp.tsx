@@ -552,7 +552,7 @@ export function WorkRequestsApp() {
       />
 
       {isSystemAdmin ? (
-        <div className="mt-6 rounded-xl border border-pulse-border bg-white p-4 shadow-sm dark:border-[#1F2937] dark:bg-[#111827] dark:shadow-[0_2px_8px_rgba(0,0,0,0.35)]">
+        <div className="mt-6 rounded-md border border-pulse-border bg-white p-4 shadow-sm dark:border-[#1F2937] dark:bg-[#111827] dark:shadow-[0_2px_8px_rgba(0,0,0,0.35)]">
           <label className="block text-xs font-semibold uppercase tracking-wide text-pulse-muted">Company</label>
           <select
             className="mt-1.5 w-full max-w-md rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2 text-sm font-medium text-pulse-navy outline-none focus:border-pulse-accent focus:ring-2 focus:ring-pulse-accent/25 dark:border-[#374151] dark:bg-[#0F172A] dark:text-gray-100 md:w-auto"
@@ -823,7 +823,7 @@ export function WorkRequestsApp() {
           </div>
 
           <div className="mt-6 grid gap-4 lg:grid-cols-3">
-            <div className="rounded-xl border border-rose-200/80 bg-[#fff5f5] p-5 shadow-sm dark:border-red-500/35 dark:bg-red-950/45 lg:col-span-2">
+            <div className="rounded-md border border-rose-200/80 bg-[#fff5f5] p-5 shadow-sm dark:border-red-500/35 dark:bg-red-950/45 lg:col-span-2">
               <div className="flex items-start gap-3">
                 <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#c53030] text-white dark:bg-red-600">
                   <AlertTriangle className="h-5 w-5" aria-hidden />
@@ -844,7 +844,7 @@ export function WorkRequestsApp() {
                 </div>
               </div>
             </div>
-            <div className="rounded-xl border border-pulse-border bg-white p-5 shadow-sm ring-1 ring-slate-100/80 border-l-4 border-l-[#2B4C7E] dark:border-[#1F2937] dark:bg-[#111827] dark:ring-white/[0.06] dark:border-l-[#3B82F6]">
+            <div className="rounded-md border border-pulse-border bg-white p-5 shadow-sm ring-1 ring-slate-100/80 border-l-4 border-l-[#2B4C7E] dark:border-[#1F2937] dark:bg-[#111827] dark:ring-white/[0.06] dark:border-l-[#3B82F6]">
               <span className="text-xs font-semibold uppercase tracking-wide text-pulse-muted dark:text-gray-400">Total requests</span>
               <p className="mt-3 text-3xl font-bold tabular-nums text-pulse-navy dark:text-gray-100">{total}</p>
               <p className="mt-1 text-sm text-pulse-muted">In current filter scope</p>

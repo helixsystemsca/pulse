@@ -51,7 +51,7 @@ function InviteForm() {
   }
 
   return (
-    <form onSubmit={(e) => void onSubmit(e)} className="mx-auto mt-16 max-w-md space-y-4 rounded-xl border border-zinc-800 bg-zinc-900 p-6 text-zinc-100">
+    <form onSubmit={(e) => void onSubmit(e)} className="mx-auto mt-16 max-w-md space-y-4 rounded-md border border-zinc-800 bg-zinc-900 p-6 text-zinc-100">
       <h1 className="text-lg font-semibold">Accept invite</h1>
       <p className="text-sm text-zinc-500">Set your password to finish admin setup.</p>
       {err ? <p className="text-sm text-red-400">{err}</p> : null}

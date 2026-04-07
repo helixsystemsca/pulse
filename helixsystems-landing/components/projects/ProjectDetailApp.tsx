@@ -133,14 +133,14 @@ export function ProjectDetailApp({ projectId }: { projectId: string }) {
           <>
             <Link
               href="/projects"
-              className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-pulse-navy shadow-sm hover:bg-slate-50"
+              className="inline-flex items-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-pulse-navy shadow-sm hover:bg-slate-50"
             >
               <ArrowLeft className="h-4 w-4" />
               Projects
             </Link>
             <button
               type="button"
-              className={`inline-flex items-center rounded-xl border px-4 py-2.5 text-sm font-semibold shadow-sm transition-colors ${
+              className={`inline-flex items-center rounded-md border px-4 py-2.5 text-sm font-semibold shadow-sm transition-colors ${
                 readyOnly
                   ? "border-emerald-200/90 bg-emerald-50/90 text-emerald-950"
                   : "border-slate-200/90 bg-white text-pulse-navy hover:bg-slate-50"
@@ -173,7 +173,7 @@ export function ProjectDetailApp({ projectId }: { projectId: string }) {
       ) : (
         <>
           {blockHint ? (
-            <p className="rounded-xl border border-amber-200/90 bg-amber-50/90 px-4 py-2 text-sm font-medium text-amber-950">
+            <p className="rounded-md border border-amber-200/90 bg-amber-50/90 px-4 py-2 text-sm font-medium text-amber-950">
               {blockHint}
             </p>
           ) : null}
@@ -209,7 +209,7 @@ export function ProjectDetailApp({ projectId }: { projectId: string }) {
                 <div
                   key={col.key}
                   title={col.key === "complete" ? "Complete is disabled while dependencies are unfinished." : undefined}
-                  className="flex min-h-[12rem] flex-col rounded-2xl border border-slate-200/90 bg-white/90 p-3 shadow-sm"
+                  className="flex min-h-[12rem] flex-col rounded-md border border-slate-200/90 bg-white/90 p-3 shadow-sm"
                   onDragOver={(e) => {
                     e.preventDefault();
                     e.dataTransfer.dropEffect = "move";
@@ -239,7 +239,7 @@ export function ProjectDetailApp({ projectId }: { projectId: string }) {
                             e.dataTransfer.setData("text/task-id", t.id);
                             e.dataTransfer.effectAllowed = "move";
                           }}
-                          className={`cursor-grab rounded-xl border border-slate-200/90 bg-slate-50/90 px-3 py-2.5 text-left shadow-sm active:cursor-grabbing ${
+                          className={`cursor-grab rounded-md border border-slate-200/90 bg-slate-50/90 px-3 py-2.5 text-left shadow-sm active:cursor-grabbing ${
                             t.is_blocked ? "opacity-75" : ""
                           } ${t.is_ready ? "ring-1 ring-emerald-200/70" : ""}`}
                         >

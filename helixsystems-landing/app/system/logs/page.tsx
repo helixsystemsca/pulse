@@ -209,7 +209,7 @@ export default function SystemLogsPage() {
           onClick={() => setFilterOpen(false)}
         >
           <div
-            className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl border border-gray-200 bg-white p-6 shadow-2xl dark:border-zinc-700 dark:bg-zinc-950"
+            className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-md border border-gray-200 bg-white p-6 shadow-2xl dark:border-zinc-700 dark:bg-zinc-950"
             role="dialog"
             aria-modal="true"
             aria-labelledby="log-filter-title"

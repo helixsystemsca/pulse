@@ -285,7 +285,7 @@ export function EquipmentPartsPanel({ equipmentId, equipmentName, canMutate, onP
 
       {toast ? (
         <div
-          className="fixed bottom-6 left-1/2 z-[60] max-w-lg -translate-x-1/2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-pulse-navy shadow-lg"
+          className="fixed bottom-6 left-1/2 z-[60] max-w-lg -translate-x-1/2 rounded-md border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-pulse-navy shadow-lg"
           role="status"
         >
           {toast}

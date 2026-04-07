@@ -97,7 +97,7 @@ export function ProjectsApp() {
             <Link key={p.id} href={`/projects/${p.id}`} className="group block no-underline">
               <Card padding="md" className="h-full transition-colors group-hover:border-pulse-accent/40">
                 <div className="flex items-start gap-3">
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200/80 bg-slate-50 text-pulse-accent">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-slate-200/80 bg-slate-50 text-pulse-accent">
                     <FolderKanban className="h-5 w-5" aria-hidden />
                   </span>
                   <div className="min-w-0 flex-1">

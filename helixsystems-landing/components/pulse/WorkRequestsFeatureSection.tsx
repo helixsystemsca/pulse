@@ -16,7 +16,7 @@ import { SectionWrapper } from "./SectionWrapper";
 function CmmsDesktopChrome() {
   return (
     <div className="relative mx-auto w-full max-w-[1100px] lg:mx-0">
-      <div className="rounded-2xl bg-gradient-to-b from-slate-500 via-slate-700 to-slate-900 p-[3px] shadow-2xl shadow-slate-900/35 ring-1 ring-white/12">
+      <div className="rounded-md bg-gradient-to-b from-slate-500 via-slate-700 to-slate-900 p-[3px] shadow-2xl shadow-slate-900/35 ring-1 ring-white/12">
         <div className="relative flex min-h-[13.5rem] overflow-hidden rounded-[1.05rem] bg-slate-100 sm:min-h-[20rem] md:min-h-[26rem] lg:min-h-[28.5rem] xl:min-h-[31rem]">
           <div
             className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(148,163,184,0.11)_1px,transparent_1px)] [background-size:12px_12px]"
@@ -69,7 +69,7 @@ function CmmsDesktopChrome() {
 
             <div className="min-h-0 flex-1 overflow-hidden p-3 md:p-4">
               <div
-                className="mb-3 flex flex-wrap items-center gap-2 rounded-xl border border-red-100 bg-red-50/90 px-3 py-2 shadow-sm ring-1 ring-red-100/80"
+                className="mb-3 flex flex-wrap items-center gap-2 rounded-md border border-red-100 bg-red-50/90 px-3 py-2 shadow-sm ring-1 ring-red-100/80"
                 role="status"
               >
                 <AlertTriangle className="h-4 w-4 shrink-0 text-red-600" aria-hidden />
@@ -98,7 +98,7 @@ function CmmsDesktopChrome() {
                 </span>
               </div>
 
-              <div className="overflow-x-auto rounded-xl border border-slate-200/90 bg-white shadow-md shadow-slate-900/[0.06] ring-1 ring-slate-900/[0.04] [-ms-overflow-style:none] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-1.5">
+              <div className="overflow-x-auto rounded-md border border-slate-200/90 bg-white shadow-md shadow-slate-900/[0.06] ring-1 ring-slate-900/[0.04] [-ms-overflow-style:none] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-1.5">
                 <div className="min-w-[520px]">
                 <div className="grid grid-cols-[1fr_0.85fr_0.65fr_0.55fr] gap-2 border-b border-slate-100 bg-slate-50/90 px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-slate-500 md:gap-3 md:px-4 md:text-[11px]">
                   <span>Work order</span>

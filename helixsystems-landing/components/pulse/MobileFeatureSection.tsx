@@ -87,7 +87,7 @@ function PhoneChrome() {
                     <li>
                       <button
                         type="button"
-                        className="flex w-full items-center gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2 text-left transition-colors active:bg-slate-50"
+                        className="flex w-full items-center gap-3 rounded-md border border-slate-200 bg-white px-3 py-2 text-left transition-colors active:bg-slate-50"
                       >
                         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-pulse-accent">
                           <Disc3 className="h-3.5 w-3.5" aria-hidden />
@@ -102,7 +102,7 @@ function PhoneChrome() {
                     <li>
                       <button
                         type="button"
-                        className="flex w-full items-center gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2 text-left transition-colors active:bg-slate-50"
+                        className="flex w-full items-center gap-3 rounded-md border border-slate-200 bg-white px-3 py-2 text-left transition-colors active:bg-slate-50"
                       >
                         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-pulse-accent">
                           <Drill className="h-3.5 w-3.5" aria-hidden />
@@ -117,7 +117,7 @@ function PhoneChrome() {
                     <li>
                       <button
                         type="button"
-                        className="flex w-full items-center gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2 text-left transition-colors active:bg-slate-50"
+                        className="flex w-full items-center gap-3 rounded-md border border-slate-200 bg-white px-3 py-2 text-left transition-colors active:bg-slate-50"
                       >
                         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-pulse-accent">
                           <Battery className="h-3.5 w-3.5" aria-hidden />
@@ -140,7 +140,7 @@ function PhoneChrome() {
                   </ul>
                 </section>
 
-                <div className="rounded-xl border border-indigo-200/70 bg-gradient-to-br from-sky-50 via-blue-50/95 to-indigo-100/40 p-5 shadow-md shadow-indigo-900/10 ring-1 ring-indigo-100/80">
+                <div className="rounded-md border border-indigo-200/70 bg-gradient-to-br from-sky-50 via-blue-50/95 to-indigo-100/40 p-5 shadow-md shadow-indigo-900/10 ring-1 ring-indigo-100/80">
                   <p className="text-xs font-semibold leading-snug text-pulse-navy">
                     Tools you have are commonly associated with Carpentry.
                   </p>
@@ -149,7 +149,7 @@ function PhoneChrome() {
                   </p>
                   <button
                     type="button"
-                    className="mt-4 flex h-10 w-full items-center justify-center rounded-xl bg-pulse-accent text-sm font-semibold text-white shadow-md shadow-blue-600/20 transition-colors active:bg-pulse-accent-hover"
+                    className="mt-4 flex h-10 w-full items-center justify-center rounded-md bg-pulse-accent text-sm font-semibold text-white shadow-md shadow-blue-600/20 transition-colors active:bg-pulse-accent-hover"
                   >
                     Confirm
                   </button>

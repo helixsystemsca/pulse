@@ -37,7 +37,7 @@ export function SchedulePersonnel({
 
   return (
     <div
-      className={`rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-[#1F2937] dark:bg-[#111827] dark:shadow-[0_2px_8px_rgba(0,0,0,0.4)] ${scheduleDragLocked ? "pointer-events-none" : ""}`}
+      className={`rounded-md border border-gray-200 bg-white shadow-sm dark:border-[#1F2937] dark:bg-[#111827] dark:shadow-[0_2px_8px_rgba(0,0,0,0.4)] ${scheduleDragLocked ? "pointer-events-none" : ""}`}
     >
       <div className="border-b border-gray-200 px-5 py-4 dark:border-[#1F2937]">
         <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Personnel</h2>

@@ -9,12 +9,12 @@ import { parseClientApiError } from "@/lib/parse-client-api-error";
 import type { CompanySummary } from "@/lib/pulse-session";
 
 const FIELD =
-  "mt-1.5 w-full rounded-xl border border-slate-200/90 bg-white px-3 py-2.5 text-sm text-pulse-navy shadow-sm placeholder:text-slate-400 focus:border-[#2B4C7E]/35 focus:outline-none focus:ring-2 focus:ring-blue-500/50 dark:border-[#374151] dark:bg-[#0F172A] dark:text-gray-100 dark:placeholder:text-gray-500";
+  "mt-1.5 w-full rounded-md border border-slate-200/90 bg-white px-3 py-2.5 text-sm text-pulse-navy shadow-sm placeholder:text-slate-400 focus:border-[#2B4C7E]/35 focus:outline-none focus:ring-2 focus:ring-blue-500/50 dark:border-[#374151] dark:bg-[#0F172A] dark:text-gray-100 dark:placeholder:text-gray-500";
 const LABEL = "text-[11px] font-semibold uppercase tracking-wider text-pulse-muted dark:text-gray-500";
 const BTN =
-  "rounded-xl bg-[#2B4C7E] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#234066] disabled:opacity-50";
+  "rounded-md bg-[#2B4C7E] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#234066] disabled:opacity-50";
 const BTN_SEC =
-  "rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-pulse-navy shadow-sm hover:bg-slate-50 disabled:opacity-50 dark:border-[#374151] dark:bg-[#1F2937] dark:text-gray-100 dark:hover:bg-[#374151]";
+  "rounded-md border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-pulse-navy shadow-sm hover:bg-slate-50 disabled:opacity-50 dark:border-[#374151] dark:bg-[#1F2937] dark:text-gray-100 dark:hover:bg-[#374151]";
 
 type Props = {
   initialCompany: CompanySummary;
@@ -94,7 +94,7 @@ export function OrganizationBrandingPanel({ initialCompany, onCompanyUpdated }: 
   const urlDirty = (logoUrlDraft.trim() || null) !== (company.logo_url ?? null);
 
   return (
-    <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-[#374151] dark:bg-[#111827]/80">
+    <section className="rounded-md border border-gray-200 bg-white p-5 shadow-sm dark:border-[#374151] dark:bg-[#111827]/80">
       <h2 className="text-sm font-semibold uppercase tracking-wide text-pulse-muted dark:text-gray-400">
         Organization logo
       </h2>

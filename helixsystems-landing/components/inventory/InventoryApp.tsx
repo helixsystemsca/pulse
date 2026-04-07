@@ -723,7 +723,7 @@ export function InventoryApp() {
       />
 
       {isSystemAdmin ? (
-        <div className="mt-6 rounded-xl border border-pulse-border bg-white p-4 shadow-sm dark:border-[#1F2937] dark:bg-[#111827] dark:shadow-[0_2px_8px_rgba(0,0,0,0.35)]">
+        <div className="mt-6 rounded-md border border-pulse-border bg-white p-4 shadow-sm dark:border-[#1F2937] dark:bg-[#111827] dark:shadow-[0_2px_8px_rgba(0,0,0,0.35)]">
           <label className="block text-xs font-semibold uppercase tracking-wide text-pulse-muted">Company</label>
           <select
             className="mt-1.5 w-full max-w-md rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2 text-sm font-medium text-pulse-navy outline-none focus:border-pulse-accent focus:ring-2 focus:ring-pulse-accent/25 dark:border-[#374151] dark:bg-[#0F172A] dark:text-gray-100 md:w-auto"
@@ -799,7 +799,7 @@ export function InventoryApp() {
               ].map((card) => (
                 <div
                   key={card.label}
-                  className={`rounded-xl border bg-white p-4 shadow-sm ring-1 dark:bg-[#111827] dark:shadow-[0_2px_8px_rgba(0,0,0,0.35)] ${
+                  className={`rounded-md border bg-white p-4 shadow-sm ring-1 dark:bg-[#111827] dark:shadow-[0_2px_8px_rgba(0,0,0,0.35)] ${
                     "alert" in card && card.alert
                       ? "border-amber-200 ring-amber-100/90 dark:border-amber-500/35 dark:ring-amber-500/20"
                       : "border-pulse-border ring-slate-100/80 dark:border-[#1F2937] dark:ring-white/[0.06]"
@@ -1075,7 +1075,7 @@ export function InventoryApp() {
                               <MoreVertical className="h-4 w-4" />
                             </button>
                             {menuFor === row.id ? (
-                              <div className="absolute right-3 z-10 mt-1 w-52 rounded-xl border border-slate-200 bg-white py-1 text-left shadow-lg dark:border-[#374151] dark:bg-[#1F2937]">
+                              <div className="absolute right-3 z-10 mt-1 w-52 rounded-md border border-slate-200 bg-white py-1 text-left shadow-lg dark:border-[#374151] dark:bg-[#1F2937]">
                                 <button
                                   type="button"
                                   className="block w-full px-3 py-2 text-left text-sm hover:bg-slate-50"
@@ -1214,7 +1214,7 @@ export function InventoryApp() {
         ) : (
           <div className="space-y-5">
             {detailPanel === "assign" ? (
-              <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-[#1F2937] dark:bg-[#111827] dark:shadow-[0_2px_8px_rgba(0,0,0,0.35)]">
+              <div className="rounded-md border border-slate-200 bg-white p-4 shadow-sm dark:border-[#1F2937] dark:bg-[#111827] dark:shadow-[0_2px_8px_rgba(0,0,0,0.35)]">
                 <p className={LABEL}>Assign to worker</p>
                 <select
                   className={FIELD}
@@ -1234,7 +1234,7 @@ export function InventoryApp() {
               </div>
             ) : null}
             {detailPanel === "move" ? (
-              <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-[#1F2937] dark:bg-[#111827] dark:shadow-[0_2px_8px_rgba(0,0,0,0.35)]">
+              <div className="rounded-md border border-slate-200 bg-white p-4 shadow-sm dark:border-[#1F2937] dark:bg-[#111827] dark:shadow-[0_2px_8px_rgba(0,0,0,0.35)]">
                 <p className={LABEL}>Location (zone)</p>
                 <select className={FIELD} value={moveZoneId} onChange={(e) => setMoveZoneId(e.target.value)}>
                   <option value="">Unspecified</option>
@@ -1250,7 +1250,7 @@ export function InventoryApp() {
               </div>
             ) : null}
             {detailPanel === "use" ? (
-              <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-[#1F2937] dark:bg-[#111827] dark:shadow-[0_2px_8px_rgba(0,0,0,0.35)]">
+              <div className="rounded-md border border-slate-200 bg-white p-4 shadow-sm dark:border-[#1F2937] dark:bg-[#111827] dark:shadow-[0_2px_8px_rgba(0,0,0,0.35)]">
                 <p className={LABEL}>Work request</p>
                 <select className={FIELD} value={useWrId} onChange={(e) => setUseWrId(e.target.value)}>
                   <option value="">Select…</option>
@@ -1277,7 +1277,7 @@ export function InventoryApp() {
             ) : null}
 
             <div className="grid gap-3 sm:grid-cols-2">
-              <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-[#1F2937] dark:bg-[#111827] dark:shadow-[0_2px_8px_rgba(0,0,0,0.35)]">
+              <div className="rounded-md border border-slate-200 bg-white p-4 shadow-sm dark:border-[#1F2937] dark:bg-[#111827] dark:shadow-[0_2px_8px_rgba(0,0,0,0.35)]">
                 <p className="text-xs font-bold uppercase text-pulse-muted">Status &amp; quantity</p>
                 <p className="mt-2 text-lg font-bold capitalize text-pulse-navy">{statusLabel(detail.inv_status)}</p>
                 <p className="text-sm text-pulse-muted">
@@ -1287,14 +1287,14 @@ export function InventoryApp() {
                   <p className="text-sm text-pulse-muted">Unit cost: ${detail.unit_cost}</p>
                 ) : null}
               </div>
-              <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-[#1F2937] dark:bg-[#111827] dark:shadow-[0_2px_8px_rgba(0,0,0,0.35)]">
+              <div className="rounded-md border border-slate-200 bg-white p-4 shadow-sm dark:border-[#1F2937] dark:bg-[#111827] dark:shadow-[0_2px_8px_rgba(0,0,0,0.35)]">
                 <p className="text-xs font-bold uppercase text-pulse-muted">Assignment &amp; location</p>
                 <p className="mt-2 text-sm font-semibold text-pulse-navy">{detail.assignee_name ?? "Unassigned"}</p>
                 <p className="text-sm text-pulse-muted">{detail.location_name ?? "—"}</p>
               </div>
             </div>
 
-            <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-[#1F2937] dark:bg-[#111827] dark:shadow-[0_2px_8px_rgba(0,0,0,0.35)]">
+            <div className="rounded-md border border-slate-200 bg-white p-4 shadow-sm dark:border-[#1F2937] dark:bg-[#111827] dark:shadow-[0_2px_8px_rgba(0,0,0,0.35)]">
               <p className="text-xs font-bold uppercase text-pulse-muted">Work requests</p>
               <ul className="mt-2 space-y-1 text-sm text-[#2B4C7E]">
                 {detail.linked_work_requests.length === 0 ? (
@@ -1309,7 +1309,7 @@ export function InventoryApp() {
               </ul>
             </div>
 
-            <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-[#1F2937] dark:bg-[#111827] dark:shadow-[0_2px_8px_rgba(0,0,0,0.35)]">
+            <div className="rounded-md border border-slate-200 bg-white p-4 shadow-sm dark:border-[#1F2937] dark:bg-[#111827] dark:shadow-[0_2px_8px_rgba(0,0,0,0.35)]">
               <p className="text-xs font-bold uppercase text-pulse-muted">Usage log</p>
               <ul className="mt-2 max-h-48 space-y-2 overflow-y-auto text-sm">
                 {detail.usage.length === 0 ? (
@@ -1328,7 +1328,7 @@ export function InventoryApp() {
               </ul>
             </div>
 
-            <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-[#1F2937] dark:bg-[#111827] dark:shadow-[0_2px_8px_rgba(0,0,0,0.35)]">
+            <div className="rounded-md border border-slate-200 bg-white p-4 shadow-sm dark:border-[#1F2937] dark:bg-[#111827] dark:shadow-[0_2px_8px_rgba(0,0,0,0.35)]">
               <p className="text-xs font-bold uppercase text-pulse-muted">Movement timeline</p>
               <ul className="mt-3 space-y-3 text-sm">
                 {detail.movements.length === 0 ? (

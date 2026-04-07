@@ -61,7 +61,7 @@ export function MaintenanceSection() {
           </div>
 
           <div className="flex min-h-0 min-w-0">
-            <div className="flex h-full min-h-full w-full flex-col rounded-2xl border border-pulse-border bg-white p-6 shadow-lg md:p-8">
+            <div className="flex h-full min-h-full w-full flex-col rounded-md border border-pulse-border bg-white p-6 shadow-lg md:p-8">
               <div className="flex items-start justify-between border-b border-pulse-border pb-5">
                 <div>
                   <p className="text-sm font-semibold text-pulse-navy">Maintenance Hub</p>
@@ -97,11 +97,11 @@ export function MaintenanceSection() {
                     Upcoming Schedule
                   </p>
                   <ul className="mt-3 space-y-2">
-                    <li className="flex items-center justify-between gap-3 rounded-xl bg-slate-50 px-4 py-3 text-sm">
+                    <li className="flex items-center justify-between gap-3 rounded-md bg-slate-50 px-4 py-3 text-sm">
                       <span className="font-medium text-pulse-navy">Main Feed Pump Inspection</span>
                       <span className="shrink-0 text-xs text-pulse-muted">Tue</span>
                     </li>
-                    <li className="flex items-center justify-between gap-3 rounded-xl bg-slate-50 px-4 py-3 text-sm">
+                    <li className="flex items-center justify-between gap-3 rounded-md bg-slate-50 px-4 py-3 text-sm">
                       <span className="font-medium text-pulse-navy">Precision Alignment · Line 2</span>
                       <span className="shrink-0 text-xs text-pulse-muted">Thu</span>
                     </li>

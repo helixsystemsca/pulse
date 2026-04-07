@@ -65,14 +65,14 @@ function EquipmentSetupScreen() {
             <div className="flex gap-1.5">
               <button
                 type="button"
-                className="relative flex flex-1 items-center justify-center gap-1 rounded-xl bg-pulse-navy px-2 py-2 text-[10px] font-bold text-white shadow-md shadow-slate-900/25 ring-2 ring-white/25 ring-offset-1 ring-offset-slate-100"
+                className="relative flex flex-1 items-center justify-center gap-1 rounded-md bg-pulse-navy px-2 py-2 text-[10px] font-bold text-white shadow-md shadow-slate-900/25 ring-2 ring-white/25 ring-offset-1 ring-offset-slate-100"
               >
                 <QrCode className="h-3.5 w-3.5 shrink-0" strokeWidth={2} aria-hidden />
                 <span className="leading-tight">Scan QR / Barcode</span>
               </button>
               <button
                 type="button"
-                className="flex flex-1 items-center justify-center gap-1 rounded-xl border border-slate-200 bg-slate-200/80 px-2 py-2 text-[10px] font-bold text-pulse-navy"
+                className="flex flex-1 items-center justify-center gap-1 rounded-md border border-slate-200 bg-slate-200/80 px-2 py-2 text-[10px] font-bold text-pulse-navy"
               >
                 <Keyboard className="h-3.5 w-3.5 shrink-0" strokeWidth={2} aria-hidden />
                 Manual
@@ -85,7 +85,7 @@ function EquipmentSetupScreen() {
                 type="text"
                 readOnly
                 placeholder="e.g., Industrial Water Pump"
-                className="mt-0.5 w-full rounded-xl border border-slate-200 bg-white px-2 py-1.5 text-[11px] text-pulse-navy placeholder:text-slate-400"
+                className="mt-0.5 w-full rounded-md border border-slate-200 bg-white px-2 py-1.5 text-[11px] text-pulse-navy placeholder:text-slate-400"
               />
             </div>
             <div>
@@ -94,7 +94,7 @@ function EquipmentSetupScreen() {
                 type="text"
                 readOnly
                 placeholder="e.g., PUMP-PR-001"
-                className="mt-0.5 w-full rounded-xl border border-slate-200 bg-white px-2 py-1.5 text-[11px] text-pulse-navy placeholder:text-slate-400"
+                className="mt-0.5 w-full rounded-md border border-slate-200 bg-white px-2 py-1.5 text-[11px] text-pulse-navy placeholder:text-slate-400"
               />
             </div>
 
@@ -110,7 +110,7 @@ function EquipmentSetupScreen() {
                   <button
                     key={c.label}
                     type="button"
-                    className={`flex min-h-[2.75rem] flex-col items-center justify-center gap-0.5 rounded-xl border px-1 py-1.5 text-center shadow-sm ${
+                    className={`flex min-h-[2.75rem] flex-col items-center justify-center gap-0.5 rounded-md border px-1 py-1.5 text-center shadow-sm ${
                       c.on
                         ? "border-pulse-navy bg-pulse-navy text-white shadow-md shadow-slate-900/15"
                         : "border-slate-200 bg-white text-pulse-navy"
@@ -126,24 +126,24 @@ function EquipmentSetupScreen() {
 
           {/* Right column */}
           <div className="flex min-h-0 min-w-0 flex-col gap-2 overflow-y-auto overflow-x-hidden">
-            <section className="rounded-2xl border border-slate-200/80 bg-slate-200/40 p-2 shadow-sm">
+            <section className="rounded-md border border-slate-200/80 bg-slate-200/40 p-2 shadow-sm">
               <div className="flex items-center gap-1 text-xs font-bold text-pulse-navy">
                 <MapPin className="h-3.5 w-3.5 text-pulse-accent" strokeWidth={2} aria-hidden />
                 Location &amp; Access
               </div>
               <label className="mt-1.5 block text-[8px] font-bold uppercase tracking-wider text-slate-500">Site / facility</label>
-              <div className="mt-0.5 rounded-xl border border-slate-200 bg-white px-2 py-1.5 text-[11px] font-medium text-pulse-navy">
+              <div className="mt-0.5 rounded-md border border-slate-200 bg-white px-2 py-1.5 text-[11px] font-medium text-pulse-navy">
                 Panorama
               </div>
               <label className="mt-1.5 block text-[8px] font-bold uppercase tracking-wider text-slate-500">Designated area</label>
-              <div className="mt-0.5 rounded-xl border border-slate-200 bg-white px-2 py-1.5 text-[11px] font-medium text-pulse-navy">
+              <div className="mt-0.5 rounded-md border border-slate-200 bg-white px-2 py-1.5 text-[11px] font-medium text-pulse-navy">
                 Pool Pump Room
               </div>
             </section>
 
-            <section className="rounded-2xl border border-slate-200/80 bg-white p-2 shadow-sm">
+            <section className="rounded-md border border-slate-200/80 bg-white p-2 shadow-sm">
               <p className="text-[10px] font-bold text-pulse-navy">Photo</p>
-              <div className="relative mt-1 overflow-hidden rounded-xl bg-slate-900">
+              <div className="relative mt-1 overflow-hidden rounded-md bg-slate-900">
                 <div className="relative aspect-[16/10] w-full" aria-hidden>
                   <div
                     className="pointer-events-none absolute inset-0 z-0 scale-105 bg-cover bg-center blur-[1.5px]"
@@ -169,7 +169,7 @@ function EquipmentSetupScreen() {
               </button>
             </div>
             <div className="flex flex-col gap-1.5">
-              <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-2 py-1.5 shadow-sm">
+              <div className="flex items-center gap-2 rounded-md border border-slate-200 bg-white px-2 py-1.5 shadow-sm">
                 <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-200 text-[10px] font-bold text-pulse-navy">
                   DD
                 </span>
@@ -178,7 +178,7 @@ function EquipmentSetupScreen() {
                   <p className="text-[8px] font-bold uppercase tracking-wide text-pulse-muted">Lead technician</p>
                 </div>
               </div>
-              <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-2 py-1.5 shadow-sm">
+              <div className="flex items-center gap-2 rounded-md border border-slate-200 bg-white px-2 py-1.5 shadow-sm">
                 <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-200 text-[10px] font-bold text-pulse-navy">
                   MS
                 </span>
@@ -191,7 +191,7 @@ function EquipmentSetupScreen() {
 
             <button
               type="button"
-              className="relative mt-auto flex w-full shrink-0 items-center justify-center gap-1.5 rounded-xl bg-pulse-navy py-2.5 text-[11px] font-bold text-white shadow-lg shadow-slate-900/30 ring-2 ring-pulse-accent/35 ring-offset-2 ring-offset-slate-100"
+              className="relative mt-auto flex w-full shrink-0 items-center justify-center gap-1.5 rounded-md bg-pulse-navy py-2.5 text-[11px] font-bold text-white shadow-lg shadow-slate-900/30 ring-2 ring-pulse-accent/35 ring-offset-2 ring-offset-slate-100"
             >
               <Zap className="h-4 w-4 text-amber-200" strokeWidth={2} aria-hidden />
               Assign &amp; Activate
@@ -226,7 +226,7 @@ function RuggedTabletFrame({ children }: { children: ReactNode }) {
         />
 
         <div className="aspect-[4/3] w-full">
-          <div className="flex h-full flex-col rounded-2xl border border-slate-500/40 bg-slate-950 p-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
+          <div className="flex h-full flex-col rounded-md border border-slate-500/40 bg-slate-950 p-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
             {/* Front camera / sensor */}
             <div className="relative flex h-4 shrink-0 items-end justify-center pb-0.5">
               <span className="h-1.5 w-1.5 rounded-full bg-slate-700 ring-1 ring-slate-600/80" />

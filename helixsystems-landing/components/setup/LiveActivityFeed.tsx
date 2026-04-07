@@ -234,7 +234,7 @@ export function LiveActivityFeed({
 
   return (
     <section
-      className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-card md:p-6"
+      className="rounded-md border border-slate-200/80 bg-white p-5 shadow-card md:p-6"
       onPointerEnter={() => {
         pauseLiveUpdatesRef.current = true;
         if (catchUpTimerRef.current != null) window.clearTimeout(catchUpTimerRef.current);
@@ -277,7 +277,7 @@ export function LiveActivityFeed({
       </div>
 
       {pinOptions && (pinOptions.gateways.length > 0 || pinOptions.ble.length > 0) ? (
-        <div className="mt-3 flex flex-wrap items-end gap-2 rounded-xl bg-slate-50/80 p-3 ring-1 ring-slate-200/70">
+        <div className="mt-3 flex flex-wrap items-end gap-2 rounded-md bg-slate-50/80 p-3 ring-1 ring-slate-200/70">
           <div className="min-w-[140px]">
             <label className="text-[10px] font-semibold uppercase tracking-wide text-pulse-muted">Pin device</label>
             <select
@@ -340,7 +340,7 @@ export function LiveActivityFeed({
       {empty ? (
         <p className="mt-4 text-sm text-pulse-muted">No rows match this view. Adjust filters or pin.</p>
       ) : (
-        <ul className="mt-4 divide-y divide-slate-100 rounded-xl border border-slate-100 bg-slate-50/40">
+        <ul className="mt-4 divide-y divide-slate-100 rounded-md border border-slate-100 bg-slate-50/40">
           {visible.map((block) =>
             "kind" in block && block.kind === "session" ? (
               <SessionBlockView key={block.id} block={block} />

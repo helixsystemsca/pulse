@@ -37,7 +37,7 @@ export default function SopDetailPage() {
       <p className="mt-2 text-sm text-pulse-muted">
         Reference ID: <span className="font-mono text-pulse-navy">{sopId || "—"}</span>
       </p>
-      <div className="mt-6 rounded-2xl border border-slate-200/90 bg-white/90 p-5 shadow-sm">
+      <div className="mt-6 rounded-md border border-slate-200/90 bg-white/90 p-5 shadow-sm">
         <p className="text-sm text-pulse-muted">
           SOP content and checklists will plug in here. Task “Start” links to this page when a task has an SOP id.
         </p>

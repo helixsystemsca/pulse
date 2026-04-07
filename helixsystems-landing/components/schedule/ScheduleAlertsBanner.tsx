@@ -23,7 +23,7 @@ export function ScheduleAlertsBanner({ alerts }: { alerts: ScheduleAlerts }) {
 
   if (parts.length === 0) {
     return (
-      <div className="rounded-xl border border-emerald-200/80 bg-emerald-50/50 px-4 py-3 text-sm text-emerald-950 shadow-sm dark:border-emerald-500/25 dark:bg-emerald-950/30 dark:text-emerald-100">
+      <div className="rounded-md border border-emerald-200/80 bg-emerald-50/50 px-4 py-3 text-sm text-emerald-950 shadow-sm dark:border-emerald-500/25 dark:bg-emerald-950/30 dark:text-emerald-100">
         <span className="font-medium">Schedule health:</span> no staffing warnings for this month.
       </div>
     );
@@ -31,7 +31,7 @@ export function ScheduleAlertsBanner({ alerts }: { alerts: ScheduleAlerts }) {
 
   return (
     <div
-      className="flex flex-wrap items-start gap-2 rounded-xl border border-amber-200/90 bg-amber-50/60 px-4 py-3 text-sm text-amber-950 shadow-sm dark:border-amber-500/30 dark:bg-amber-950/35 dark:text-amber-100"
+      className="flex flex-wrap items-start gap-2 rounded-md border border-amber-200/90 bg-amber-50/60 px-4 py-3 text-sm text-amber-950 shadow-sm dark:border-amber-500/30 dark:bg-amber-950/35 dark:text-amber-100"
       role="status"
     >
       <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-700 dark:text-amber-400" strokeWidth={2} aria-hidden />

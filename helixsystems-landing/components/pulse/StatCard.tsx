@@ -17,7 +17,7 @@ export function StatBlock({ label, tone = "gray" }: StatBlockProps) {
 
   return (
     <div
-      className={`rounded-xl border px-3 py-2.5 text-center text-xs font-semibold leading-snug sm:text-sm ${tones[tone]}`}
+      className={`rounded-md border px-3 py-2.5 text-center text-xs font-semibold leading-snug sm:text-sm ${tones[tone]}`}
     >
       {label}
     </div>
@@ -36,7 +36,7 @@ export function StatCard({ icon: Icon, title, subtitle, children, className = ""
   return (
     <Card className={className} padding="lg">
       <div className="mb-5 flex items-start gap-3">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-pulse-accent">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-blue-50 text-pulse-accent">
           <Icon className="h-5 w-5" strokeWidth={2} />
         </div>
         <div className="min-w-0 pt-0.5">

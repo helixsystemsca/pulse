@@ -110,7 +110,7 @@ export function ScheduleCalendarGrid({
 
   return (
     <div
-      className={`rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-[#1F2937] dark:bg-[#111827] dark:shadow-[0_2px_8px_rgba(0,0,0,0.4)] ${scheduleDragLock ? "pointer-events-none" : ""}`}
+      className={`rounded-md border border-gray-200 bg-white shadow-sm dark:border-[#1F2937] dark:bg-[#111827] dark:shadow-[0_2px_8px_rgba(0,0,0,0.4)] ${scheduleDragLock ? "pointer-events-none" : ""}`}
     >
       <div
         className={`flex flex-wrap items-center justify-between gap-3 border-b border-gray-200 px-4 py-3 dark:border-[#1F2937] sm:px-5 ${scheduleDragLock ? "pointer-events-none" : ""}`}

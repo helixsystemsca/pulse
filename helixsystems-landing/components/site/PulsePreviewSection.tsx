@@ -5,7 +5,7 @@ export function PulsePreviewSection() {
   return (
     <section className="bg-white py-20">
       <div className="mx-auto max-w-7xl px-6">
-        <div className="mx-auto max-w-2xl rounded-2xl border border-helix-outline/20 bg-helix-bg p-8 text-center shadow-md md:p-10">
+        <div className="mx-auto max-w-2xl rounded-md border border-helix-outline/20 bg-helix-bg p-8 text-center shadow-md md:p-10">
           <p className="text-xs font-bold uppercase tracking-[0.2em] text-helix-primary">Product</p>
           <h2 className="mt-3 font-headline text-3xl font-extrabold tracking-tight text-helix-onSurface md:text-4xl">
             Pulse

@@ -85,7 +85,7 @@ export function MonitoringApp() {
       />
 
       <nav
-        className="flex flex-wrap gap-1 rounded-xl border border-slate-200/90 bg-white p-1 shadow-sm"
+        className="flex flex-wrap gap-1 rounded-md border border-slate-200/90 bg-white p-1 shadow-sm"
         aria-label="Monitoring sections"
       >
         {tabBtn("systems", "Systems", Server)}

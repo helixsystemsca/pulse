@@ -9,6 +9,7 @@ import { parseClientApiError } from "@/lib/parse-client-api-error";
 import { pulseApp } from "@/lib/pulse-app";
 import { canAccessPulseTenantApis, readSession } from "@/lib/pulse-session";
 import { emitOnboardingMaybeUpdated } from "@/lib/onboarding-events";
+import { processFreehandPath } from "@/lib/blueprint-freehand-path";
 import { bpDuration, bpEase, bpTransition } from "@/lib/motion-presets";
 import type { BlueprintDesignerTool, BlueprintElement, TaskOverlay } from "./blueprint-types";
 export type { BlueprintElement, BlueprintState, BlueprintHistoryState, TaskOverlay } from "./blueprint-types";
@@ -112,14 +113,8 @@ const CANVAS_BG_CUT = "#0f172a";
 
 /** Free-draw: min distance between raw samples (world px) */
 const FREE_DRAW_SAMPLE_DIST = 1.1;
-/** RDP simplify epsilon (world px) */
-const PATH_RDP_EPS = 3.5;
-/** Snap last point to first when closing stroke (world px) */
-const PATH_CLOSE_SNAP = 18;
-/** Chaikin corner-cutting iterations */
-const PATH_CHAIKIN_ITER = 2;
-/** Konva Line tension for organic edges */
-const PATH_LINE_TENSION = 0.42;
+/** Konva Line tension — 0 because `path_points` are pre-smoothed (simplify-js + quadratic Bézier sampling). */
+const PATH_LINE_TENSION = 0;
 
 type WallEdgeIdx = 0 | 1 | 2 | 3;
 
@@ -556,78 +551,6 @@ function pointsToFlat(pts: [number, number][]): number[] {
   return o;
 }
 
-function perpendicularDistance(p: [number, number], a: [number, number], b: [number, number]): number {
-  const [px, py] = p;
-  const [ax, ay] = a;
-  const [bx, by] = b;
-  const dx = bx - ax;
-  const dy = by - ay;
-  const len = Math.hypot(dx, dy);
-  if (len < 1e-12) return Math.hypot(px - ax, py - ay);
-  return Math.abs(dy * px - dx * py + bx * ay - by * ax) / len;
-}
-
-function rdpOpen(pts: [number, number][], eps: number): [number, number][] {
-  if (pts.length < 3) return pts.slice();
-  let idx = 0;
-  let dmax = 0;
-  for (let i = 1; i < pts.length - 1; i++) {
-    const d = perpendicularDistance(pts[i], pts[0], pts[pts.length - 1]);
-    if (d > dmax) {
-      dmax = d;
-      idx = i;
-    }
-  }
-  if (dmax > eps) {
-    const a = rdpOpen(pts.slice(0, idx + 1), eps);
-    const b = rdpOpen(pts.slice(idx), eps);
-    return [...a.slice(0, -1), ...b];
-  }
-  return [pts[0], pts[pts.length - 1]];
-}
-
-function rdpClosedFlat(flat: number[], eps: number): number[] {
-  const pts = flatToPoints(flat);
-  if (pts.length < 3) return flat.slice();
-  const open: [number, number][] = [...pts, pts[0]];
-  const simp = rdpOpen(open, eps);
-  if (simp.length < 2) return flat.slice();
-  const last = simp[simp.length - 1];
-  if (Math.hypot(last[0] - simp[0][0], last[1] - simp[0][1]) < 1e-6) {
-    return pointsToFlat(simp.slice(0, -1));
-  }
-  return pointsToFlat(simp.slice(0, -1));
-}
-
-function chaikinClosedFlat(flat: number[], iterations: number): number[] {
-  let pts = flatToPoints(flat);
-  if (pts.length < 3) return flat.slice();
-  for (let iter = 0; iter < iterations; iter++) {
-    const next: [number, number][] = [];
-    const n = pts.length;
-    for (let i = 0; i < n; i++) {
-      const p0 = pts[i];
-      const p1 = pts[(i + 1) % n];
-      next.push([p0[0] + 0.25 * (p1[0] - p0[0]), p0[1] + 0.25 * (p1[1] - p0[1])]);
-      next.push([p0[0] + 0.75 * (p1[0] - p0[0]), p0[1] + 0.75 * (p1[1] - p0[1])]);
-    }
-    pts = next;
-  }
-  return pointsToFlat(pts);
-}
-
-function closeRingFlat(flat: number[], snapDist: number): number[] {
-  if (flat.length < 4) return flat.slice();
-  const x0 = flat[0];
-  const y0 = flat[1];
-  const x1 = flat[flat.length - 2];
-  const y1 = flat[flat.length - 1];
-  if (Math.hypot(x1 - x0, y1 - y0) <= snapDist) {
-    return flat.slice(0, -2);
-  }
-  return [...flat, x0, y0];
-}
-
 function bboxFromPathPoints(flat: number[]) {
   let minX = Infinity;
   let minY = Infinity;
@@ -820,17 +743,6 @@ function isTypingKeyboardTarget(target: EventTarget | null): boolean {
   const tag = el.tagName;
   if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return true;
   return Boolean(el.closest("input, textarea, select, [contenteditable='true']"));
-}
-
-function processFreehandPath(raw: number[]): number[] | null {
-  if (raw.length < 6) return null;
-  let ring = closeRingFlat(raw, PATH_CLOSE_SNAP);
-  if (ring.length < 6) return null;
-  let simplified = rdpClosedFlat(ring, PATH_RDP_EPS);
-  if (simplified.length < 6) simplified = ring;
-  if (simplified.length < 6) return null;
-  const smoothed = chaikinClosedFlat(simplified, PATH_CHAIKIN_ITER);
-  return smoothed.length >= 6 ? smoothed : null;
 }
 
 function mockLinkStatus(linkedId: string | undefined): "neutral" | "normal" | "warning" | "alarm" {
@@ -2593,7 +2505,7 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
         <p className="bp-hint">
           Scroll to zoom (cursor-centered). Hold Space and drag or right-drag to pan. Esc clears selection and closes the
           symbol panel; arrow keys nudge selection (Shift for larger steps). Draw rooms on the grid. Door: click within{" "}
-          {WALL_SNAP_PX}px of a room edge. Free draw: drag and release; stroke is simplified into a closed shape. Symbols:
+          {WALL_SNAP_PX}px of a room edge. Free draw: drag and release; the stroke is simplified (simplify-js) and smoothed with quadratic curves into a closed shape. Symbols:
           open the Symbols panel from the tool rail, pick a tile, then click the canvas (extensible via symbol_type).
         </p>
       </motion.aside>

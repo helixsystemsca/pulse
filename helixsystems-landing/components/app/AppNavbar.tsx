@@ -25,8 +25,9 @@ function initialsFrom(email: string, fullName: string | null | undefined): strin
   return local.slice(0, 2).toUpperCase() || "—";
 }
 
+/** No `supports-[backdrop-filter]:bg-white/…` here: that utility can win over `dark:bg-*` in dark mode (equal specificity, order-dependent). */
 const HEADER =
-  "sticky top-0 z-50 h-16 shrink-0 border-b border-gray-200 bg-white/95 shadow-[0_1px_3px_rgba(15,23,42,0.06)] backdrop-blur-md supports-[backdrop-filter]:bg-white/92 dark:border-[#1F2937] dark:bg-[#0B0F14]/98 dark:shadow-[0_1px_3px_rgba(0,0,0,0.35)] supports-[backdrop-filter]:dark:bg-[#0B0F14]/96";
+  "sticky top-0 z-50 h-16 shrink-0 border-b border-gray-200/90 bg-white/95 shadow-[0_1px_3px_rgba(15,23,42,0.06)] backdrop-blur-md dark:border-slate-600/35 dark:bg-[#1e293b]/98 dark:shadow-[0_1px_3px_rgba(0,0,0,0.45)] dark:backdrop-blur-md";
 
 export function AppNavbar() {
   const pathname = usePathname();
@@ -65,7 +66,7 @@ export function AppNavbar() {
             href={logoHref}
             className="flex min-w-0 items-center gap-2.5 font-headline text-lg font-bold tracking-tight text-gray-900 no-underline hover:text-blue-600 sm:text-xl dark:text-gray-100 dark:hover:text-blue-400"
           >
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-gray-200 bg-gray-50 text-blue-600 shadow-sm dark:border-[#1F2937] dark:bg-[#111827] dark:text-blue-400 dark:shadow-[0_2px_8px_rgba(0,0,0,0.35)]">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-gray-200 bg-gray-50 text-blue-600 shadow-sm dark:border-[#1F2937] dark:bg-[#111827] dark:text-blue-400 dark:shadow-[0_2px_8px_rgba(0,0,0,0.35)]">
               <Activity className="h-4 w-4" strokeWidth={2} aria-hidden />
             </span>
             <span className="font-semibold">Pulse</span>
@@ -81,7 +82,7 @@ export function AppNavbar() {
             <button
               type="button"
               onClick={() => onboarding.setChecklistExpanded(true)}
-              className="inline-flex max-w-[7rem] truncate rounded-lg border border-sky-200/90 bg-sky-50 px-2 py-1.5 text-[11px] font-semibold text-[#1e4a8a] shadow-sm hover:bg-sky-100/90 dark:border-blue-500/30 dark:bg-blue-500/15 dark:text-blue-300 dark:hover:bg-blue-500/25 sm:max-w-none sm:px-2.5 sm:text-xs"
+              className="inline-flex max-w-[7rem] truncate rounded-md border border-sky-200/90 bg-sky-50 px-2 py-1.5 text-[11px] font-semibold text-[#1e4a8a] shadow-sm hover:bg-sky-100/90 dark:border-blue-500/30 dark:bg-blue-500/15 dark:text-blue-300 dark:hover:bg-blue-500/25 sm:max-w-none sm:px-2.5 sm:text-xs"
             >
               Resume setup
             </button>
@@ -100,7 +101,7 @@ export function AppNavbar() {
               <button
                 type="button"
                 onClick={() => setUserOpen((o) => !o)}
-                className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white py-1 pl-1.5 pr-1.5 shadow-sm hover:bg-gray-50 dark:border-[#1F2937] dark:bg-[#111827] dark:hover:bg-[#0F172A] sm:py-1.5 sm:pl-2 sm:pr-2.5"
+                className="flex items-center gap-2 rounded-md border border-gray-200 bg-white py-1 pl-1.5 pr-1.5 shadow-sm hover:bg-gray-50 dark:border-[#1F2937] dark:bg-[#111827] dark:hover:bg-[#0F172A] sm:py-1.5 sm:pl-2 sm:pr-2.5"
                 aria-expanded={userOpen}
                 aria-haspopup="menu"
               >
@@ -117,7 +118,7 @@ export function AppNavbar() {
               </button>
               {userOpen ? (
                 <div
-                  className="absolute right-0 mt-1 w-56 rounded-xl border border-gray-200 bg-white py-1 shadow-lg dark:border-[#1F2937] dark:bg-[#111827] dark:shadow-[0_8px_24px_rgba(0,0,0,0.45)]"
+                  className="absolute right-0 mt-1 w-56 rounded-md border border-gray-200 bg-white py-1 shadow-lg dark:border-[#1F2937] dark:bg-[#111827] dark:shadow-[0_8px_24px_rgba(0,0,0,0.45)]"
                   role="menu"
                 >
                   <Link

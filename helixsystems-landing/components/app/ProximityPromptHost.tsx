@@ -121,7 +121,7 @@ export function ProximityPromptHost() {
           className="fixed inset-x-0 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-[119] mx-auto max-w-lg px-4 sm:px-6"
           role="status"
         >
-          <p className="rounded-xl border border-amber-200/90 bg-amber-50/90 px-4 py-2 text-center text-sm font-medium text-amber-950 shadow-sm">
+          <p className="rounded-md border border-amber-200/90 bg-amber-50/90 px-4 py-2 text-center text-sm font-medium text-amber-950 shadow-sm">
             {proximityReminder}
           </p>
         </div>
@@ -152,7 +152,7 @@ export function ProximityPromptHost() {
           {tasks.map((t) => (
             <li
               key={t.id}
-              className="rounded-xl border border-slate-200/90 bg-[#fafbfc] px-3 py-3 shadow-sm"
+              className="rounded-md border border-slate-200/90 bg-[#fafbfc] px-3 py-3 shadow-sm"
             >
               <p className="text-sm font-semibold text-pulse-navy">{t.title}</p>
               <div className="mt-1.5 flex flex-wrap items-center gap-2">

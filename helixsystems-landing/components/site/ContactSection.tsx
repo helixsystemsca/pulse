@@ -127,7 +127,7 @@ export function ContactSection({ id, classNames }: { id?: string; classNames?: C
 
         <form
           onSubmit={handleSubmit}
-          className={`mx-auto mt-12 max-w-2xl space-y-5 rounded-2xl border border-helix-outline/20 bg-white p-6 shadow-md md:p-8 ${cn.form ?? ""}`.trim()}
+          className={`mx-auto mt-12 max-w-2xl space-y-5 rounded-md border border-helix-outline/20 bg-white p-6 shadow-md md:p-8 ${cn.form ?? ""}`.trim()}
           noValidate
         >
           <div className="grid gap-5 sm:grid-cols-2">
@@ -144,7 +144,7 @@ export function ContactSection({ id, classNames }: { id?: string; classNames?: C
                 autoComplete="name"
                 value={form.name}
                 onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                className={`mt-2 h-12 w-full rounded-xl border border-helix-outline/40 bg-helix-bg px-4 text-helix-onSurface outline-none transition-shadow focus:border-helix-primary focus:ring-2 focus:ring-helix-primary/20 ${cn.input ?? ""}`.trim()}
+                className={`mt-2 h-12 w-full rounded-md border border-helix-outline/40 bg-helix-bg px-4 text-helix-onSurface outline-none transition-shadow focus:border-helix-primary focus:ring-2 focus:ring-helix-primary/20 ${cn.input ?? ""}`.trim()}
               />
               {errors.name ? <p className="mt-1 text-sm text-red-600">{errors.name}</p> : null}
             </div>
@@ -162,7 +162,7 @@ export function ContactSection({ id, classNames }: { id?: string; classNames?: C
                 autoComplete="email"
                 value={form.email}
                 onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
-                className={`mt-2 h-12 w-full rounded-xl border border-helix-outline/40 bg-helix-bg px-4 text-helix-onSurface outline-none transition-shadow focus:border-helix-primary focus:ring-2 focus:ring-helix-primary/20 ${cn.input ?? ""}`.trim()}
+                className={`mt-2 h-12 w-full rounded-md border border-helix-outline/40 bg-helix-bg px-4 text-helix-onSurface outline-none transition-shadow focus:border-helix-primary focus:ring-2 focus:ring-helix-primary/20 ${cn.input ?? ""}`.trim()}
               />
               {errors.email ? <p className="mt-1 text-sm text-red-600">{errors.email}</p> : null}
             </div>
@@ -180,7 +180,7 @@ export function ContactSection({ id, classNames }: { id?: string; classNames?: C
               autoComplete="organization"
               value={form.company}
               onChange={(e) => setForm((f) => ({ ...f, company: e.target.value }))}
-              className={`mt-2 h-12 w-full rounded-xl border border-helix-outline/40 bg-helix-bg px-4 text-helix-onSurface outline-none transition-shadow focus:border-helix-primary focus:ring-2 focus:ring-helix-primary/20 ${cn.input ?? ""}`.trim()}
+              className={`mt-2 h-12 w-full rounded-md border border-helix-outline/40 bg-helix-bg px-4 text-helix-onSurface outline-none transition-shadow focus:border-helix-primary focus:ring-2 focus:ring-helix-primary/20 ${cn.input ?? ""}`.trim()}
             />
           </div>
           <div>
@@ -196,7 +196,7 @@ export function ContactSection({ id, classNames }: { id?: string; classNames?: C
               rows={5}
               value={form.message}
               onChange={(e) => setForm((f) => ({ ...f, message: e.target.value }))}
-              className={`mt-2 w-full resize-y rounded-xl border border-helix-outline/40 bg-helix-bg px-4 py-3 text-helix-onSurface outline-none transition-shadow focus:border-helix-primary focus:ring-2 focus:ring-helix-primary/20 ${cn.textarea ?? ""}`.trim()}
+              className={`mt-2 w-full resize-y rounded-md border border-helix-outline/40 bg-helix-bg px-4 py-3 text-helix-onSurface outline-none transition-shadow focus:border-helix-primary focus:ring-2 focus:ring-helix-primary/20 ${cn.textarea ?? ""}`.trim()}
             />
             {errors.message ? <p className="mt-1 text-sm text-red-600">{errors.message}</p> : null}
           </div>

@@ -105,7 +105,7 @@ export function FacilitySetupChecklist() {
     return (
       <section
         id="facility-setup-checklist"
-        className="flex flex-col rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-[#1F2937] dark:bg-[#111827] lg:col-span-12 lg:p-6 dark:shadow-[0_2px_8px_rgba(0,0,0,0.4)]"
+        className="flex flex-col rounded-md border border-gray-200 bg-white p-5 shadow-sm dark:border-[#1F2937] dark:bg-[#111827] lg:col-span-12 lg:p-6 dark:shadow-[0_2px_8px_rgba(0,0,0,0.4)]"
         aria-hidden
       >
         <p className="text-sm text-gray-500 dark:text-gray-400">Loading setup checklist…</p>
@@ -118,7 +118,7 @@ export function FacilitySetupChecklist() {
   return (
     <section
       id="facility-setup-checklist"
-      className="flex flex-col rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-[#1F2937] dark:bg-[#111827] lg:col-span-12 lg:p-6 dark:shadow-[0_2px_8px_rgba(0,0,0,0.4)]"
+      className="flex flex-col rounded-md border border-gray-200 bg-white p-5 shadow-sm dark:border-[#1F2937] dark:bg-[#111827] lg:col-span-12 lg:p-6 dark:shadow-[0_2px_8px_rgba(0,0,0,0.4)]"
       aria-labelledby="facility-setup-checklist-title"
     >
       <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -139,7 +139,7 @@ export function FacilitySetupChecklist() {
             <li key={r.id}>
               <Link
                 href={r.href}
-                className={`flex items-center gap-3 rounded-xl border border-transparent px-2 py-2.5 transition-colors hover:border-gray-200 hover:bg-gray-50 dark:hover:border-[#1F2937] dark:hover:bg-[#0B0F14] ${
+                className={`flex items-center gap-3 rounded-md border border-transparent px-2 py-2.5 transition-colors hover:border-gray-200 hover:bg-gray-50 dark:hover:border-[#1F2937] dark:hover:bg-[#0B0F14] ${
                   ok ? "text-gray-500 dark:text-gray-400" : "text-gray-900 dark:text-gray-100"
                 }`}
               >

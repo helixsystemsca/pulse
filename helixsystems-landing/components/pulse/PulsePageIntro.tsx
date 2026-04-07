@@ -60,13 +60,13 @@ export function PulsePageIntro() {
           <div className="mt-9 flex flex-col gap-3 sm:mt-10 sm:flex-row sm:flex-wrap sm:items-center">
             <Link
               href={pulseApp.login()}
-              className="inline-flex items-center justify-center rounded-xl bg-pulse-accent px-6 py-3 text-center text-sm font-semibold text-white shadow-md shadow-blue-900/25 transition-colors hover:bg-pulse-accent-hover"
+              className="inline-flex items-center justify-center rounded-md bg-pulse-accent px-6 py-3 text-center text-sm font-semibold text-white shadow-md shadow-blue-900/25 transition-colors hover:bg-pulse-accent-hover"
             >
               Buy Now
             </Link>
             <a
               href={mailtoInfo("Pulse — request a demo", "Hello,\n\nI'd like to request a demo of Pulse.\n\n")}
-              className="inline-flex items-center justify-center rounded-xl border border-slate-400/50 bg-[#152338]/80 px-6 py-3 text-center text-sm font-semibold text-white no-underline backdrop-blur-sm transition-colors hover:border-slate-300/60 hover:bg-[#1a2d45]/90"
+              className="inline-flex items-center justify-center rounded-md border border-slate-400/50 bg-[#152338]/80 px-6 py-3 text-center text-sm font-semibold text-white no-underline backdrop-blur-sm transition-colors hover:border-slate-300/60 hover:bg-[#1a2d45]/90"
             >
               Request Demo
             </a>

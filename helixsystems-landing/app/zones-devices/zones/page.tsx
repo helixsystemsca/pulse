@@ -73,14 +73,14 @@ export default function ZonesDevicesZonesPage() {
       >
         <Link
           href="/zones-devices/blueprint"
-          className="inline-flex items-center gap-1 rounded-xl border border-pulse-border bg-white px-4 py-2.5 text-sm font-semibold text-pulse-navy shadow-sm transition-colors hover:border-pulse-accent/40 hover:shadow-md dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:hover:border-slate-500"
+          className="inline-flex items-center gap-1 rounded-md border border-pulse-border bg-white px-4 py-2.5 text-sm font-semibold text-pulse-navy shadow-sm transition-colors hover:border-pulse-accent/40 hover:shadow-md dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:hover:border-slate-500"
           prefetch={false}
         >
           Open Blueprint designer →
         </Link>
       </motion.div>
       <motion.div
-        className="rounded-2xl border border-pulse-border bg-white p-5 shadow-card dark:border-slate-700 dark:bg-slate-800/80"
+        className="rounded-md border border-pulse-border bg-white p-5 shadow-card dark:border-slate-700 dark:bg-slate-800/80"
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: bpDuration.slow, ease: bpEase, delay: 0.04 }}

@@ -17,7 +17,7 @@ export function OnboardingChrome() {
       {active ? <OnboardingReminderBanner /> : null}
       {toastMessage ? (
         <div className="pointer-events-auto fixed bottom-24 left-1/2 z-[125] w-[min(92vw,24rem)] -translate-x-1/2 px-2 sm:bottom-28">
-          <div className="flex items-center gap-3 rounded-xl border border-slate-200/90 bg-slate-900 px-4 py-3 text-sm font-medium text-white shadow-lg">
+          <div className="flex items-center gap-3 rounded-md border border-slate-200/90 bg-slate-900 px-4 py-3 text-sm font-medium text-white shadow-lg">
             <p className="min-w-0 flex-1 leading-snug">{toastMessage}</p>
             <button
               type="button"

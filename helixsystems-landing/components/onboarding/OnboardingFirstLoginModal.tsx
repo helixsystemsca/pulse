@@ -59,7 +59,7 @@ export function OnboardingFirstLoginModal() {
         aria-label="Close"
         onClick={() => void markSeen()}
       />
-      <div className="relative w-full max-w-md rounded-2xl border border-slate-200/90 bg-white p-6 shadow-xl dark:border-slate-600 dark:bg-slate-900">
+      <div className="relative w-full max-w-md rounded-md border border-slate-200/90 bg-white p-6 shadow-xl dark:border-slate-600 dark:bg-slate-900">
         <h2 id="first-login-onboarding-title" className="font-headline text-xl font-bold text-pulse-navy dark:text-slate-100">
           Welcome to Helix Pulse
         </h2>
@@ -74,14 +74,14 @@ export function OnboardingFirstLoginModal() {
         <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
           <button
             type="button"
-            className="order-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-pulse-navy hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700/80"
+            className="order-2 rounded-md border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-pulse-navy hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700/80"
             onClick={() => void markSeen()}
           >
             Skip for now
           </button>
           <button
             type="button"
-            className="order-1 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-slate-800 dark:bg-[#3B82F6] dark:hover:brightness-110 sm:order-3"
+            className="order-1 rounded-md bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-slate-800 dark:bg-[#3B82F6] dark:hover:brightness-110 sm:order-3"
             onClick={onStartSetup}
           >
             Start Setup Guide

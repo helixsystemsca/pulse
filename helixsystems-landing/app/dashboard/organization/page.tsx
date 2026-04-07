@@ -37,7 +37,7 @@ export default function OrganizationBrandingPage() {
 
   if (effective.role !== "company_admin") {
     return (
-      <div className="rounded-xl border border-amber-200 bg-amber-50/90 p-4 text-sm text-amber-950 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-100">
+      <div className="rounded-md border border-amber-200 bg-amber-50/90 p-4 text-sm text-amber-950 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-100">
         Only company administrators can change organization branding.
       </div>
     );

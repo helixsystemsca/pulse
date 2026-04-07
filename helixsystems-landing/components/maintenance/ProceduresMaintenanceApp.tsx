@@ -95,7 +95,7 @@ export function ProceduresMaintenanceApp() {
 
   return (
     <div className="grid gap-6 lg:grid-cols-2">
-      <section className="rounded-2xl border border-pulse-border bg-white p-4 shadow-card dark:border-slate-700 dark:bg-slate-900/50">
+      <section className="rounded-md border border-pulse-border bg-white p-4 shadow-card dark:border-slate-700 dark:bg-slate-900/50">
         <h2 className="text-sm font-semibold text-pulse-navy dark:text-slate-100">New procedure</h2>
         <p className="mt-1 text-xs text-pulse-muted">Steps are one per line; they are stored as a reusable list.</p>
         <div className="mt-3 space-y-2">
@@ -125,7 +125,7 @@ export function ProceduresMaintenanceApp() {
       <div className="space-y-4">
         {err ? <p className="text-sm text-red-600 dark:text-red-400">{err}</p> : null}
 
-        <section className="rounded-2xl border border-pulse-border bg-white p-4 shadow-card dark:border-slate-700 dark:bg-slate-900/50">
+        <section className="rounded-md border border-pulse-border bg-white p-4 shadow-card dark:border-slate-700 dark:bg-slate-900/50">
           <h2 className="text-sm font-semibold text-pulse-navy dark:text-slate-100">Library</h2>
           {loading ? (
             <p className="mt-2 text-sm text-pulse-muted">Loading…</p>
@@ -154,7 +154,7 @@ export function ProceduresMaintenanceApp() {
         </section>
 
         {selected ? (
-          <section className="rounded-2xl border border-pulse-border bg-white p-4 shadow-card dark:border-slate-700 dark:bg-slate-900/50">
+          <section className="rounded-md border border-pulse-border bg-white p-4 shadow-card dark:border-slate-700 dark:bg-slate-900/50">
             <h2 className="text-sm font-semibold text-pulse-navy dark:text-slate-100">Edit</h2>
             <div className="mt-3 space-y-2">
               <input

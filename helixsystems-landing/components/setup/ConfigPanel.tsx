@@ -4,13 +4,13 @@ import { Loader2, SlidersHorizontal } from "lucide-react";
 import { type ReactNode, useEffect, useState } from "react";
 
 const panel =
-  "rounded-2xl border border-slate-200/80 bg-white p-6 shadow-card space-y-8";
+  "rounded-md border border-slate-200/80 bg-white p-6 shadow-card space-y-8";
 const titleLbl = "text-sm font-semibold text-pulse-navy";
 const hint = "mt-1 text-xs leading-relaxed text-pulse-muted";
 const field =
-  "mt-1.5 w-full rounded-xl border border-slate-200/90 bg-white px-3 py-2.5 text-sm text-pulse-navy shadow-sm focus:border-[#2B4C7E]/35 focus:outline-none focus:ring-1 focus:ring-[#2B4C7E]/25";
+  "mt-1.5 w-full rounded-md border border-slate-200/90 bg-white px-3 py-2.5 text-sm text-pulse-navy shadow-sm focus:border-[#2B4C7E]/35 focus:outline-none focus:ring-1 focus:ring-[#2B4C7E]/25";
 const saveBtn =
-  "rounded-xl bg-[#2B4C7E] px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#234066] disabled:opacity-50 inline-flex items-center gap-2";
+  "rounded-md bg-[#2B4C7E] px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#234066] disabled:opacity-50 inline-flex items-center gap-2";
 
 function FieldBlock({
   label,
@@ -77,7 +77,7 @@ export function ConfigPanel({
         Tune how the system reacts to presence and procedures. These are product parameters — not a custom rule builder.
       </p>
 
-      <section className="rounded-xl bg-slate-50/80 p-5 ring-1 ring-slate-200/60">
+      <section className="rounded-md bg-slate-50/80 p-5 ring-1 ring-slate-200/60">
         <h3 className="text-base font-semibold text-pulse-navy">Proximity tracking</h3>
         <p className="mt-1 text-sm text-pulse-muted">
           Controls how long someone must be near equipment before the session counts, and how often signals can repeat.
@@ -111,7 +111,7 @@ export function ConfigPanel({
             label="Require movement"
             description="When on, telemetry must show movement before a proximity session can advance — helps filter noisy static reads."
           >
-            <label className="mt-1.5 flex cursor-pointer items-center gap-2 rounded-xl border border-slate-200/90 bg-white px-3 py-3 text-sm text-pulse-navy shadow-sm">
+            <label className="mt-1.5 flex cursor-pointer items-center gap-2 rounded-md border border-slate-200/90 bg-white px-3 py-3 text-sm text-pulse-navy shadow-sm">
               <input
                 type="checkbox"
                 className="h-4 w-4 rounded border-slate-300"
@@ -155,7 +155,7 @@ export function ConfigPanel({
         </button>
       </section>
 
-      <section className="rounded-xl bg-slate-50/80 p-5 ring-1 ring-slate-200/60">
+      <section className="rounded-md bg-slate-50/80 p-5 ring-1 ring-slate-200/60">
         <h3 className="text-base font-semibold text-pulse-navy">SOP alerts</h3>
         <p className="mt-1 text-sm text-pulse-muted">
           Timing for standard operating procedure reminders and escalations.

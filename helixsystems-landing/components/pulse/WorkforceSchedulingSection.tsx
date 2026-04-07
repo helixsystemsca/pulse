@@ -1162,7 +1162,7 @@ function SchedulingCalendarMock() {
 
   return (
     <div className="relative w-full">
-      <div className="rounded-xl border border-slate-300/90 bg-slate-200/80 p-px shadow-md shadow-slate-900/10">
+      <div className="rounded-md border border-slate-300/90 bg-slate-200/80 p-px shadow-md shadow-slate-900/10">
         <div className="relative flex min-h-[30rem] flex-col overflow-hidden rounded-[11px] bg-slate-50 sm:min-h-[33.5rem] md:min-h-[35rem] lg:min-h-[36rem]">
           <header className="relative z-10 flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 bg-white px-2.5 py-2 sm:px-3 md:px-4">
             <div className="flex min-w-0 items-center gap-2">

@@ -80,10 +80,10 @@ export function LandingVariantD({ homePath }: { homePath: string }) {
               {howWeWork.steps.map(({ Icon, title, body }, i) => (
                 <div
                   key={title}
-                  className="relative overflow-hidden rounded-2xl border border-slate-200/80 bg-slate-50 p-6 shadow-[0_10px_30px_rgba(15,23,42,0.05)] transition-all duration-200 hover:scale-[1.02] hover:shadow-[0_16px_45px_rgba(15,23,42,0.1)] md:p-7"
+                  className="relative overflow-hidden rounded-md border border-slate-200/80 bg-slate-50 p-6 shadow-[0_10px_30px_rgba(15,23,42,0.05)] transition-all duration-200 hover:scale-[1.02] hover:shadow-[0_16px_45px_rgba(15,23,42,0.1)] md:p-7"
                 >
                   <p className="absolute right-4 top-3 text-4xl font-black text-slate-200/80">{String(i + 1).padStart(2, "0")}</p>
-                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white text-helix-primary shadow-sm ring-1 ring-slate-200/80">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-md bg-white text-helix-primary shadow-sm ring-1 ring-slate-200/80">
                     <Icon className="h-6 w-6" strokeWidth={2} />
                   </div>
                   <p className="mt-5 text-xs font-bold uppercase tracking-wide text-helix-primary">Step {i + 1}</p>
@@ -113,7 +113,7 @@ export function LandingVariantD({ homePath }: { homePath: string }) {
                   key={title}
                   className="rounded-[24px] border border-slate-200/80 bg-white p-7 shadow-[0_14px_40px_rgba(15,23,42,0.07)] transition-all duration-200 hover:scale-[1.01] hover:shadow-[0_20px_55px_rgba(15,23,42,0.1)] lg:col-span-4"
                 >
-                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-helix-bg text-helix-primary ring-1 ring-slate-200/60">
+                  <div className="flex h-14 w-14 items-center justify-center rounded-md bg-helix-bg text-helix-primary ring-1 ring-slate-200/60">
                     <Icon className="h-7 w-7" strokeWidth={1.75} />
                   </div>
                   <h3 className="mt-5 font-headline text-xl font-bold text-slate-900">{title}</h3>
@@ -150,8 +150,8 @@ export function LandingVariantD({ homePath }: { homePath: string }) {
           classNames={{
             section: "bg-white py-16 md:py-24",
             form: "rounded-[28px] border-slate-200/80 shadow-[0_18px_60px_rgba(15,23,42,0.08)]",
-            input: "rounded-xl",
-            textarea: "rounded-xl",
+            input: "rounded-md",
+            textarea: "rounded-md",
             submit: "rounded-full hover:scale-[1.02] transition-transform duration-200 shadow-md",
           }}
         />

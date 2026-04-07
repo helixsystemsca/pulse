@@ -8,7 +8,7 @@
   --bp-muted: #94a3b8;
   --bp-text: #e2e8f0;
   --bp-accent: #3b82f6;
-  --bp-radius: 16px;
+  --bp-radius: 6px;
   --bp-space-1: 8px;
   --bp-space-2: 16px;
   --bp-scroll-thumb: rgba(255, 255, 255, 0.15);
@@ -50,7 +50,7 @@
 .bp-symbol-panel__scroll::-webkit-scrollbar-track,
 .bp-tasks__list::-webkit-scrollbar-track {
   background: transparent;
-  border-radius: 10px;
+  border-radius: 6px;
 }
 
 .bp-scrollable::-webkit-scrollbar-thumb,
@@ -59,7 +59,7 @@
 .bp-symbol-panel__scroll::-webkit-scrollbar-thumb,
 .bp-tasks__list::-webkit-scrollbar-thumb {
   background: var(--bp-scroll-thumb);
-  border-radius: 10px;
+  border-radius: 6px;
   border: 2px solid transparent;
   background-clip: padding-box;
 }
@@ -98,7 +98,7 @@
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
   border: 1px solid var(--bp-panel-border);
-  border-radius: 14px;
+  border-radius: 6px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.28), 0 1px 0 rgba(255, 255, 255, 0.04) inset;
 }
 
@@ -124,7 +124,7 @@
   justify-content: center;
   margin: 0;
   padding: 0;
-  border-radius: 12px;
+  border-radius: 6px;
   border: 1px solid transparent;
   background: transparent;
   color: var(--bp-text);
@@ -211,7 +211,7 @@
   margin: 0;
   padding: 0;
   border: none;
-  border-radius: 10px;
+  border-radius: 6px;
   background: rgba(255, 255, 255, 0.05);
   color: var(--bp-muted);
   cursor: pointer;
@@ -229,7 +229,7 @@
   gap: 8px;
   margin: 0 12px 10px;
   padding: 0 10px;
-  border-radius: 12px;
+  border-radius: 6px;
   border: 1px solid var(--bp-panel-border);
   background: rgba(15, 23, 42, 0.55);
 }
@@ -296,7 +296,7 @@
   margin: 0 0 6px;
   padding: 8px 6px;
   border: none;
-  border-radius: 10px;
+  border-radius: 6px;
   background: transparent;
   color: var(--bp-text);
   font-size: 0.8rem;
@@ -343,7 +343,7 @@
   max-height: 108px;
   margin: 0;
   padding: 8px 6px 6px;
-  border-radius: 12px;
+  border-radius: 6px;
   border: 1px solid rgba(148, 163, 184, 0.14);
   background: rgba(15, 23, 42, 0.4);
   color: var(--bp-text);
@@ -450,7 +450,7 @@
   gap: var(--bp-space-1);
   min-width: 0;
   padding: 10px var(--bp-space-1);
-  border-radius: 10px;
+  border-radius: 6px;
   border: 1px solid transparent;
   background: transparent;
   color: var(--bp-text);
@@ -488,7 +488,7 @@
 .bp-chip {
   min-width: 0;
   padding: 10px var(--bp-space-1);
-  border-radius: 10px;
+  border-radius: 6px;
   border: 1px solid var(--bp-panel-border);
   background: rgba(15, 23, 42, 0.4);
   color: var(--bp-text);
@@ -573,7 +573,7 @@
   box-sizing: border-box;
   background: rgba(15, 23, 42, 0.9);
   border: 1px solid var(--bp-panel-border);
-  border-radius: 10px;
+  border-radius: 6px;
   color: var(--bp-text);
   padding: 6px 10px;
   font-size: 0.85rem;
@@ -596,7 +596,7 @@
 
 .bp-btn {
   padding: 8px 14px;
-  border-radius: 10px;
+  border-radius: 6px;
   border: 1px solid rgba(59, 130, 246, 0.42);
   background: rgba(59, 130, 246, 0.14);
   color: #dbeafe;
@@ -721,7 +721,7 @@
   flex: 0 0 auto;
   min-width: 2.5rem;
   padding: 8px 10px;
-  border-radius: 10px;
+  border-radius: 6px;
   border: 1px solid var(--bp-panel-border);
   background: rgba(15, 23, 42, 0.55);
   color: var(--bp-muted);
@@ -734,7 +734,7 @@
   min-width: 0;
   box-sizing: border-box;
   padding: 8px 12px;
-  border-radius: 10px;
+  border-radius: 6px;
   border: 1px solid rgba(96, 165, 250, 0.35);
   background: rgba(59, 130, 246, 0.14);
   color: var(--bp-text);
@@ -774,7 +774,7 @@
   min-width: 0;
   background: rgba(15, 23, 42, 0.85);
   border: 1px solid var(--bp-panel-border);
-  border-radius: 10px;
+  border-radius: 6px;
   color: var(--bp-text);
   padding: 8px 10px;
   font-size: 0.82rem;
@@ -968,7 +968,7 @@
 
 .bp-task-card {
   border: 1px solid var(--bp-panel-border);
-  border-radius: 10px;
+  border-radius: 6px;
   padding: 10px;
   background: rgba(15, 23, 42, 0.35);
   transition: box-shadow 0.2s ease, border-color 0.2s ease, background 0.2s ease;
@@ -1015,7 +1015,7 @@
   width: 28px;
   height: 28px;
   border: none;
-  border-radius: 8px;
+  border-radius: 6px;
   background: rgba(239, 68, 68, 0.12);
   color: #f87171;
   font-size: 1.1rem;
@@ -1068,7 +1068,7 @@
   resize: vertical;
   background: rgba(15, 23, 42, 0.85);
   border: 1px solid var(--bp-panel-border);
-  border-radius: 10px;
+  border-radius: 6px;
   color: var(--bp-text);
   padding: 8px 10px;
   font-size: 0.8rem;
@@ -1090,7 +1090,7 @@
 
 .bp-btn--link {
   padding: 6px 10px;
-  border-radius: 8px;
+  border-radius: 6px;
   border: 1px solid var(--bp-panel-border);
   background: rgba(15, 23, 42, 0.5);
   color: var(--bp-text);
@@ -1122,7 +1122,7 @@
   margin: 0;
   line-height: 1.45;
   cursor: pointer;
-  border-radius: 8px;
+  border-radius: 6px;
   padding: 2px 0;
 }
 
@@ -1145,7 +1145,7 @@
   font-size: 0.78rem;
   margin-bottom: 4px;
   padding: 5px 8px;
-  border-radius: 8px;
+  border-radius: 6px;
   cursor: pointer;
   color: var(--bp-text);
   line-height: 1.35;

@@ -55,10 +55,10 @@ const TABS: { id: TabId; label: string; icon: typeof Radio }[] = [
 ];
 
 const FIELD =
-  "mt-1.5 w-full rounded-xl border border-slate-200/90 bg-white px-3 py-2.5 text-sm text-pulse-navy shadow-sm focus:border-[#2B4C7E]/35 focus:outline-none focus:ring-1 focus:ring-[#2B4C7E]/25 dark:border-[#374151] dark:bg-[#0F172A] dark:text-gray-100 dark:placeholder:text-gray-500";
+  "mt-1.5 w-full rounded-md border border-slate-200/90 bg-white px-3 py-2.5 text-sm text-pulse-navy shadow-sm focus:border-[#2B4C7E]/35 focus:outline-none focus:ring-1 focus:ring-[#2B4C7E]/25 dark:border-[#374151] dark:bg-[#0F172A] dark:text-gray-100 dark:placeholder:text-gray-500";
 const LABEL = "text-[11px] font-semibold uppercase tracking-wider text-pulse-muted dark:text-gray-500";
 const BTN_PRIMARY =
-  "rounded-xl bg-[#2B4C7E] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#234066] disabled:opacity-50";
+  "rounded-md bg-[#2B4C7E] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#234066] disabled:opacity-50";
 const TAB_ACTIVE =
   "border-[#2B4C7E] bg-[#ebf2ff] text-[#2B4C7E] shadow-sm dark:border-sky-500/45 dark:bg-[#1e3a5f] dark:text-sky-100";
 const TAB_IDLE =
@@ -637,7 +637,7 @@ export function SetupApp() {
       ) : null}
 
       {error ? (
-        <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900 dark:border-red-500/35 dark:bg-red-950/55 dark:text-red-100">
+        <div className="rounded-md border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900 dark:border-red-500/35 dark:bg-red-950/55 dark:text-red-100">
           {error}
         </div>
       ) : null}
@@ -648,7 +648,7 @@ export function SetupApp() {
             key={id}
             type="button"
             onClick={() => setTab(id)}
-            className={`inline-flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-semibold transition-colors ${
+            className={`inline-flex items-center gap-2 rounded-md border px-4 py-2.5 text-sm font-semibold transition-colors ${
               tab === id ? TAB_ACTIVE : TAB_IDLE
             }`}
           >
@@ -713,12 +713,12 @@ export function SetupApp() {
                 );
               })}
               {gateways.length === 0 ? (
-                <p className="rounded-2xl border border-dashed border-slate-200 bg-white/60 p-6 text-sm text-pulse-muted dark:border-[#374151] dark:bg-[#0F172A]/80 dark:text-gray-500">
+                <p className="rounded-md border border-dashed border-slate-200 bg-white/60 p-6 text-sm text-pulse-muted dark:border-[#374151] dark:bg-[#0F172A]/80 dark:text-gray-500">
                   No gateways yet. Add your first ESP32 edge device below.
                 </p>
               ) : null}
             </div>
-            <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-card dark:border-[#1F2937] dark:bg-[#111827] dark:shadow-[0_2px_8px_rgba(0,0,0,0.4)]">
+            <div className="rounded-md border border-slate-200/80 bg-white p-5 shadow-card dark:border-[#1F2937] dark:bg-[#111827] dark:shadow-[0_2px_8px_rgba(0,0,0,0.4)]">
               <h3 className="font-semibold text-pulse-navy">Add gateway</h3>
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
                 <div className="sm:col-span-2">
@@ -750,7 +750,7 @@ export function SetupApp() {
           <div className="space-y-4">
             <h2 className="text-lg font-semibold text-pulse-navy">Tags</h2>
             {unassignedBle.length > 0 ? (
-              <div className="rounded-2xl border border-amber-200/90 bg-amber-50/50 p-4 ring-1 ring-amber-200/60 md:p-5">
+              <div className="rounded-md border border-amber-200/90 bg-amber-50/50 p-4 ring-1 ring-amber-200/60 md:p-5">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
                     <h3 className="text-sm font-semibold text-amber-950">Unassigned tags</h3>
@@ -867,12 +867,12 @@ export function SetupApp() {
                 );
               })}
               {bleDevices.length === 0 ? (
-                <p className="rounded-2xl border border-dashed border-slate-200 bg-white/60 p-6 text-sm text-pulse-muted dark:border-[#374151] dark:bg-[#0F172A]/80 dark:text-gray-500">
+                <p className="rounded-md border border-dashed border-slate-200 bg-white/60 p-6 text-sm text-pulse-muted dark:border-[#374151] dark:bg-[#0F172A]/80 dark:text-gray-500">
                   No BLE tags yet. Register worker or equipment tags below.
                 </p>
               ) : null}
             </div>
-            <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-card dark:border-[#1F2937] dark:bg-[#111827] dark:shadow-[0_2px_8px_rgba(0,0,0,0.4)]">
+            <div className="rounded-md border border-slate-200/80 bg-white p-5 shadow-card dark:border-[#1F2937] dark:bg-[#111827] dark:shadow-[0_2px_8px_rgba(0,0,0,0.4)]">
               <h3 className="font-semibold text-pulse-navy">Register tag</h3>
               <div className="mt-4 grid gap-3">
                 <div>
@@ -935,7 +935,7 @@ export function SetupApp() {
             <strong className="text-pulse-navy">Gateways &amp; sensors</strong> tab, or use Assign on each tag card. Roster
             for reference:
           </p>
-          <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-card dark:border-[#1F2937] dark:bg-[#111827] dark:shadow-[0_2px_8px_rgba(0,0,0,0.4)]">
+          <div className="overflow-hidden rounded-md border border-slate-200/80 bg-white shadow-card dark:border-[#1F2937] dark:bg-[#111827] dark:shadow-[0_2px_8px_rgba(0,0,0,0.4)]">
             <table className="w-full text-left text-sm">
               <thead className="bg-slate-50/90 text-[11px] font-semibold uppercase tracking-wider text-pulse-muted">
                 <tr>
@@ -970,11 +970,11 @@ export function SetupApp() {
             })}
           </div>
           {zones.length === 0 ? (
-            <p className="rounded-2xl border border-dashed border-slate-200 bg-white/60 p-6 text-sm text-pulse-muted dark:border-[#374151] dark:bg-[#0F172A]/80 dark:text-gray-500">
+            <p className="rounded-md border border-dashed border-slate-200 bg-white/60 p-6 text-sm text-pulse-muted dark:border-[#374151] dark:bg-[#0F172A]/80 dark:text-gray-500">
               No zones yet. Create regions of your facility, then assign gateways.
             </p>
           ) : null}
-          <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-card dark:border-[#1F2937] dark:bg-[#111827] dark:shadow-[0_2px_8px_rgba(0,0,0,0.4)] md:max-w-lg">
+          <div className="rounded-md border border-slate-200/80 bg-white p-5 shadow-card dark:border-[#1F2937] dark:bg-[#111827] dark:shadow-[0_2px_8px_rgba(0,0,0,0.4)] md:max-w-lg">
             <h3 className="font-semibold text-pulse-navy">Create zone</h3>
             <label className={LABEL}>Name</label>
             <input className={FIELD} value={zoneName} onChange={(e) => setZoneName(e.target.value)} placeholder="Receiving" />

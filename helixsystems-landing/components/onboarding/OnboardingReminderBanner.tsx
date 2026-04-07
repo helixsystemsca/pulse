@@ -25,7 +25,7 @@ export function OnboardingReminderBanner() {
 
   return (
     <div className="pointer-events-auto fixed left-1/2 top-[4.25rem] z-[120] w-[min(92vw,44rem)] -translate-x-1/2 px-2 sm:top-16">
-      <div className="flex items-center gap-3 rounded-xl border border-sky-200/90 bg-sky-50/95 px-4 py-3 text-sm text-pulse-navy shadow-md backdrop-blur-sm">
+      <div className="flex items-center gap-3 rounded-md border border-sky-200/90 bg-sky-50/95 px-4 py-3 text-sm text-pulse-navy shadow-md backdrop-blur-sm">
         <p className="min-w-0 flex-1 leading-snug">
           {isWorker ? (
             <>

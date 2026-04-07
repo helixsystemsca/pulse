@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from "react";
 type CreateAction = "inspection" | "log";
 
 const BTN =
-  "inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-900 shadow-sm transition-colors hover:bg-gray-200/80 dark:border-[#1F2937] dark:bg-[#111827] dark:text-gray-100 dark:shadow-[0_2px_8px_rgba(0,0,0,0.4)] dark:hover:bg-[#1F2937]/50";
+  "inline-flex items-center gap-2 rounded-md border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-900 shadow-sm transition-colors hover:bg-gray-200/80 dark:border-[#1F2937] dark:bg-[#111827] dark:text-gray-100 dark:shadow-[0_2px_8px_rgba(0,0,0,0.4)] dark:hover:bg-[#1F2937]/50";
 
 export function CreateDropdown({
   onNewInspection,
@@ -42,7 +42,7 @@ export function CreateDropdown({
       </button>
       {open ? (
         <div
-          className="absolute right-0 z-50 mt-1.5 min-w-[11rem] rounded-xl border border-gray-200 bg-white py-1 shadow-lg dark:border-[#1F2937] dark:bg-[#111827] dark:shadow-[0_8px_24px_rgba(0,0,0,0.45)]"
+          className="absolute right-0 z-50 mt-1.5 min-w-[11rem] rounded-md border border-gray-200 bg-white py-1 shadow-lg dark:border-[#1F2937] dark:bg-[#111827] dark:shadow-[0_8px_24px_rgba(0,0,0,0.45)]"
           role="menu"
         >
           <button

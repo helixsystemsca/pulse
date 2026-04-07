@@ -385,7 +385,7 @@ export function WorkersApp() {
       />
 
       {isSystemAdmin ? (
-        <div className="mt-6 rounded-xl border border-pulse-border bg-white p-4 shadow-sm dark:border-[#1F2937] dark:bg-[#111827] dark:shadow-[0_2px_8px_rgba(0,0,0,0.35)]">
+        <div className="mt-6 rounded-md border border-pulse-border bg-white p-4 shadow-sm dark:border-[#1F2937] dark:bg-[#111827] dark:shadow-[0_2px_8px_rgba(0,0,0,0.35)]">
           <label className="block text-xs font-semibold uppercase tracking-wide text-pulse-muted">Company</label>
           <select
             className="mt-1.5 w-full max-w-md rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2 text-sm font-medium text-pulse-navy outline-none focus:border-pulse-accent focus:ring-2 focus:ring-pulse-accent/25 dark:border-[#374151] dark:bg-[#0F172A] dark:text-gray-100 md:w-auto"
@@ -409,7 +409,7 @@ export function WorkersApp() {
       ) : (
         <div className="mt-6 grid gap-6 lg:grid-cols-12">
           <div className="lg:col-span-4 xl:col-span-3">
-            <div className="rounded-xl border border-pulse-border bg-white p-5 shadow-sm ring-1 ring-slate-100/80 dark:border-[#1F2937] dark:bg-[#111827] dark:ring-white/[0.06] dark:shadow-[0_2px_8px_rgba(0,0,0,0.35)]">
+            <div className="rounded-md border border-pulse-border bg-white p-5 shadow-sm ring-1 ring-slate-100/80 dark:border-[#1F2937] dark:bg-[#111827] dark:ring-white/[0.06] dark:shadow-[0_2px_8px_rgba(0,0,0,0.35)]">
               <div className="flex items-center gap-2 text-pulse-navy">
                 <Shield className="h-5 w-5 text-[#2B4C7E]" aria-hidden />
                 <h2 className="text-sm font-bold tracking-tight">Permissions matrix</h2>
@@ -422,7 +422,7 @@ export function WorkersApp() {
                   return (
                     <div
                       key={item.key}
-                      className="flex items-start justify-between gap-3 rounded-xl border border-slate-100 bg-slate-50/50 px-3 py-3 dark:border-[#374151] dark:bg-[#0F172A]/70"
+                      className="flex items-start justify-between gap-3 rounded-md border border-slate-100 bg-slate-50/50 px-3 py-3 dark:border-[#374151] dark:bg-[#0F172A]/70"
                     >
                       <div className="flex min-w-0 gap-3">
                         <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${item.tone}`}>
@@ -491,7 +491,7 @@ export function WorkersApp() {
                   items.length === 0 ? null : (
                     <div
                       key={role}
-                      className="overflow-hidden rounded-xl border border-pulse-border bg-white shadow-sm ring-1 ring-slate-100/80 dark:border-[#1F2937] dark:bg-[#111827] dark:ring-white/[0.06]"
+                      className="overflow-hidden rounded-md border border-pulse-border bg-white shadow-sm ring-1 ring-slate-100/80 dark:border-[#1F2937] dark:bg-[#111827] dark:ring-white/[0.06]"
                     >
                       <div className="app-table-head-row px-4 py-2.5">
                         <p className="text-xs font-bold uppercase tracking-wide text-pulse-muted">
@@ -857,7 +857,7 @@ export function WorkersApp() {
 
             <section>
               <h3 className={LABEL}>Compliance summary</h3>
-              <div className="mt-2 grid gap-2 rounded-xl border border-slate-100 bg-slate-50/80 p-4 text-sm sm:grid-cols-2 dark:border-[#374151] dark:bg-[#0F172A]/90 dark:text-gray-200">
+              <div className="mt-2 grid gap-2 rounded-md border border-slate-100 bg-slate-50/80 p-4 text-sm sm:grid-cols-2 dark:border-[#374151] dark:bg-[#0F172A]/90 dark:text-gray-200">
                 <p>
                   Compliance rate:{" "}
                   <span className="font-bold text-pulse-navy">{profile.compliance_summary.compliance_rate_pct}%</span>

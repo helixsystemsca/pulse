@@ -28,14 +28,14 @@ export function CompanyHero() {
           <div className="mt-5 flex flex-wrap items-center gap-4">
             <Link
               href="/pulse"
-              className="inline-flex items-center gap-2 rounded-xl bg-helix-primary px-8 py-4 font-headline text-base font-bold text-white shadow-helix transition-all hover:bg-helix-primary-dim no-underline"
+              className="inline-flex items-center gap-2 rounded-md bg-helix-primary px-8 py-4 font-headline text-base font-bold text-white shadow-helix transition-all hover:bg-helix-primary-dim no-underline"
             >
               Explore Pulse
               <ArrowRight className="h-5 w-5" />
             </Link>
             <a
               href="#products"
-              className="inline-flex items-center rounded-xl bg-helix-surfaceLow px-8 py-4 font-headline text-base font-bold text-helix-onSurface transition-colors hover:bg-helix-outline/30 no-underline"
+              className="inline-flex items-center rounded-md bg-helix-surfaceLow px-8 py-4 font-headline text-base font-bold text-helix-onSurface transition-colors hover:bg-helix-outline/30 no-underline"
             >
               What we build
             </a>
@@ -43,14 +43,14 @@ export function CompanyHero() {
         </div>
 
         <div className="relative mx-auto w-full max-w-xl md:mx-0 md:max-w-none">
-          <div className="relative overflow-hidden rounded-2xl shadow-helix ring-1 ring-helix-outline/30">
+          <div className="relative overflow-hidden rounded-md shadow-helix ring-1 ring-helix-outline/30">
             <div className="aspect-[20/9] w-full bg-gradient-to-br from-[#d5e4f5] via-white to-helix-surfaceLow md:aspect-[25/12]">
               <div className="flex h-full flex-col justify-between p-4 md:p-5">
                 <div className="grid grid-cols-3 gap-3">
                   {[65, 82, 74].map((v, i) => (
                     <div
                       key={i}
-                      className="rounded-xl bg-white/90 p-3 shadow-sm backdrop-blur-sm"
+                      className="rounded-md bg-white/90 p-3 shadow-sm backdrop-blur-sm"
                     >
                       <p className="text-[10px] font-bold uppercase tracking-wide text-helix-onSurfaceVariant">
                         Zone {String.fromCharCode(65 + i)}
@@ -60,7 +60,7 @@ export function CompanyHero() {
                     </div>
                   ))}
                 </div>
-                <div className="rounded-xl bg-white/80 p-4 backdrop-blur-sm">
+                <div className="rounded-md bg-white/80 p-4 backdrop-blur-sm">
                   <p className="text-xs font-bold text-helix-onSurface">Operations snapshot</p>
                   <p className="mt-1 text-sm text-helix-onSurfaceVariant">
                     Live roll-up across lines, bays, and shifts—without another spreadsheet export.
@@ -71,7 +71,7 @@ export function CompanyHero() {
           </div>
 
           <div className="relative z-10 mt-4 w-full max-w-[min(100%,280px)] md:absolute md:-bottom-3 md:left-4 md:mt-0 md:max-w-[280px] lg:left-6 lg:max-w-[300px]">
-            <div className="rounded-2xl border border-helix-outline/25 bg-white/95 p-4 shadow-lg backdrop-blur-md">
+            <div className="rounded-md border border-helix-outline/25 bg-white/95 p-4 shadow-lg backdrop-blur-md">
               <div className="flex items-center gap-2">
                 <span className="relative flex h-2.5 w-2.5">
                   <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" />

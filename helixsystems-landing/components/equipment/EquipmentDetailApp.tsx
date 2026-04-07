@@ -229,7 +229,7 @@ export function EquipmentDetailApp({ equipmentId }: Props) {
 
       {showPartsBanner && partsOverdue ? (
         <div
-          className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-950 shadow-sm"
+          className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-950 shadow-sm"
           role="alert"
         >
           <strong className="font-semibold">This equipment requires immediate maintenance.</strong> At least one part is
@@ -238,7 +238,7 @@ export function EquipmentDetailApp({ equipmentId }: Props) {
       ) : null}
       {showPartsBanner && partsDueSoonOnly ? (
         <div
-          className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950 shadow-sm"
+          className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950 shadow-sm"
           role="status"
         >
           <strong className="font-semibold">This equipment has upcoming maintenance.</strong> One or more parts are due
@@ -247,7 +247,7 @@ export function EquipmentDetailApp({ equipmentId }: Props) {
       ) : null}
       {showPartsBanner && !partsOverdue && !partsDueSoonOnly && data.parts_needs_maintenance ? (
         <div
-          className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950 shadow-sm"
+          className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950 shadow-sm"
           role="status"
         >
           <strong className="font-semibold">Parts require attention.</strong> Review the parts list and open a work request
@@ -259,9 +259,9 @@ export function EquipmentDetailApp({ equipmentId }: Props) {
         <h2 className={LABEL}>Photo</h2>
         <Card padding="md" className="flex flex-wrap items-center gap-4">
           {equipImg ? (
-            <img src={equipImg} alt="" className="h-32 w-32 rounded-xl object-cover ring-1 ring-slate-200/80" />
+            <img src={equipImg} alt="" className="h-32 w-32 rounded-md object-cover ring-1 ring-slate-200/80" />
           ) : (
-            <div className="flex h-32 w-32 items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50 text-xs text-pulse-muted">
+            <div className="flex h-32 w-32 items-center justify-center rounded-md border border-dashed border-slate-200 bg-slate-50 text-xs text-pulse-muted">
               No photo
             </div>
           )}

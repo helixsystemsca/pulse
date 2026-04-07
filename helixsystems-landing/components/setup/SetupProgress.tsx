@@ -14,7 +14,7 @@ export function SetupProgress({
   const pct = items.length === 0 ? 0 : Math.round((items.filter((i) => i.done).length / items.length) * 100);
 
   return (
-    <section className="rounded-2xl border border-slate-200/80 bg-white/95 p-5 shadow-card dark:border-[#1F2937] dark:bg-[#111827] dark:shadow-[0_2px_8px_rgba(0,0,0,0.4)] md:p-6">
+    <section className="rounded-md border border-slate-200/80 bg-white/95 p-5 shadow-card dark:border-[#1F2937] dark:bg-[#111827] dark:shadow-[0_2px_8px_rgba(0,0,0,0.4)] md:p-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h2 className="text-sm font-semibold text-pulse-navy dark:text-gray-100">Setup progress</h2>
@@ -32,7 +32,7 @@ export function SetupProgress({
         />
       </div>
       {warnings.length > 0 ? (
-        <div className="mt-4 rounded-xl border border-amber-300/90 bg-amber-50/90 px-4 py-3 dark:border-amber-500/35 dark:bg-amber-950/60">
+        <div className="mt-4 rounded-md border border-amber-300/90 bg-amber-50/90 px-4 py-3 dark:border-amber-500/35 dark:bg-amber-950/60">
           <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-amber-950 dark:text-amber-100">
             <AlertTriangle className="h-4 w-4 shrink-0" aria-hidden />
             Setup checks
@@ -62,7 +62,7 @@ export function SetupProgress({
         {items.map((row) => (
           <li
             key={row.id}
-            className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm ring-1 ${
+            className={`flex items-center gap-3 rounded-md px-3 py-2.5 text-sm ring-1 ${
               row.done
                 ? "bg-emerald-50/90 text-emerald-950 ring-emerald-200/70 dark:bg-emerald-950/55 dark:text-emerald-100 dark:ring-emerald-500/35"
                 : "bg-slate-50/90 text-pulse-navy ring-slate-200/70 dark:bg-[#0F172A] dark:text-gray-200 dark:ring-[#374151]"
@@ -78,7 +78,7 @@ export function SetupProgress({
         ))}
       </ul>
       {missing.length > 0 ? (
-        <div className="mt-4 rounded-xl border border-amber-200/80 bg-amber-50/80 px-4 py-3 text-sm text-amber-950 dark:border-amber-500/30 dark:bg-amber-950/50 dark:text-amber-50">
+        <div className="mt-4 rounded-md border border-amber-200/80 bg-amber-50/80 px-4 py-3 text-sm text-amber-950 dark:border-amber-500/30 dark:bg-amber-950/50 dark:text-amber-50">
           <span className="font-semibold">Still needed: </span>
           {missing.join("; ")}.
         </div>

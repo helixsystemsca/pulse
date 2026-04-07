@@ -216,7 +216,7 @@ export function WelcomeLoaderModal({
 
             <div className="flex gap-4">
               <div
-                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-gray-200/90 bg-gray-50/90 dark:border-[#1F2937] dark:bg-[#0F172A]/80"
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-gray-200/90 bg-gray-50/90 dark:border-[#1F2937] dark:bg-[#0F172A]/80"
                 aria-hidden
               >
                 <Activity

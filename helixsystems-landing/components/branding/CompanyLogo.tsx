@@ -104,7 +104,7 @@ export function CompanyLogo({
   if (logoUrl && logoUrl.startsWith("/api")) {
     return (
       <span
-        className={`inline-flex h-9 max-h-9 min-w-[2.25rem] items-center justify-center rounded-xl border px-2 ${ring} ${className}`}
+        className={`inline-flex h-9 max-h-9 min-w-[2.25rem] items-center justify-center rounded-md border px-2 ${ring} ${className}`}
         title="Loading logo…"
       >
         <Building2 className="h-4 w-4 shrink-0 opacity-50" aria-hidden />
@@ -115,7 +115,7 @@ export function CompanyLogo({
   if (!showName) {
     return (
       <span
-        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border ${ring} ${className}`}
+        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-md border ${ring} ${className}`}
         title={fallbackText}
       >
         <Building2 className="h-[1.125rem] w-[1.125rem] shrink-0 opacity-80" aria-hidden />
@@ -125,7 +125,7 @@ export function CompanyLogo({
 
   return (
     <span
-      className={`flex h-9 max-h-9 min-w-0 max-w-[14rem] items-center gap-2 rounded-xl border px-2.5 py-1 ${ring} ${className}`}
+      className={`flex h-9 max-h-9 min-w-0 max-w-[14rem] items-center gap-2 rounded-md border px-2.5 py-1 ${ring} ${className}`}
       title={fallbackText}
     >
       <Building2 className="h-4 w-4 shrink-0 opacity-80" aria-hidden />

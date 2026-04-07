@@ -104,7 +104,7 @@ export function InactivitySessionGuard() {
       aria-labelledby="inactivity-warning-title"
       aria-describedby="inactivity-warning-desc"
     >
-      <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl">
+      <div className="w-full max-w-md rounded-md border border-slate-200 bg-white p-6 shadow-xl">
         <h2 id="inactivity-warning-title" className="font-headline text-lg font-bold text-pulse-navy">
           Session expiring soon
         </h2>
@@ -115,14 +115,14 @@ export function InactivitySessionGuard() {
           <button
             type="button"
             onClick={stayLoggedIn}
-            className="rounded-xl bg-pulse-accent px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-pulse-accent-hover"
+            className="rounded-md bg-pulse-accent px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-pulse-accent-hover"
           >
             Stay signed in
           </button>
           <button
             type="button"
             onClick={performLogout}
-            className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-pulse-navy hover:bg-slate-50"
+            className="rounded-md border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-pulse-navy hover:bg-slate-50"
           >
             Sign out now
           </button>

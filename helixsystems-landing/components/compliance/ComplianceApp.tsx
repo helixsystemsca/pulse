@@ -257,7 +257,7 @@ export function ComplianceApp() {
       />
 
       {isSystemAdmin ? (
-        <div className="mt-6 rounded-xl border border-pulse-border bg-white p-4 shadow-sm">
+        <div className="mt-6 rounded-md border border-pulse-border bg-white p-4 shadow-sm">
           <label className="block text-xs font-semibold uppercase tracking-wide text-pulse-muted">Company</label>
           <select
             className="mt-1.5 w-full max-w-md rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2 text-sm font-medium text-pulse-navy outline-none focus:border-pulse-accent focus:ring-2 focus:ring-pulse-accent/25 md:w-auto"
@@ -287,7 +287,7 @@ export function ComplianceApp() {
         <p className="mt-6 text-sm text-rose-600">{summaryHook.error}</p>
       ) : (
         <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <div className="rounded-xl border border-pulse-border bg-white p-4 shadow-sm ring-1 ring-slate-100/80 border-l-4 border-l-[#2563eb]">
+          <div className="rounded-md border border-pulse-border bg-white p-4 shadow-sm ring-1 ring-slate-100/80 border-l-4 border-l-[#2563eb]">
             <div className="flex items-center justify-between gap-2">
               <span className="text-xs font-semibold uppercase tracking-wide text-pulse-muted">Compliance rate</span>
               {rateBadge ? (
@@ -312,7 +312,7 @@ export function ComplianceApp() {
           </div>
 
           <div
-            className={`rounded-xl border border-pulse-border bg-white p-4 shadow-sm ring-1 ring-slate-100/80 border-l-4 ${missedAccent(summaryHook.data?.missed_severity ?? "stable")}`}
+            className={`rounded-md border border-pulse-border bg-white p-4 shadow-sm ring-1 ring-slate-100/80 border-l-4 ${missedAccent(summaryHook.data?.missed_severity ?? "stable")}`}
           >
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold uppercase tracking-wide text-pulse-muted">
@@ -330,7 +330,7 @@ export function ComplianceApp() {
             </p>
           </div>
 
-          <div className="rounded-xl border border-pulse-border bg-white p-4 shadow-sm ring-1 ring-slate-100/80 border-l-4 border-l-amber-600/80">
+          <div className="rounded-md border border-pulse-border bg-white p-4 shadow-sm ring-1 ring-slate-100/80 border-l-4 border-l-amber-600/80">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold uppercase tracking-wide text-pulse-muted">
                 High-risk tool usage
@@ -343,7 +343,7 @@ export function ComplianceApp() {
             <p className="mt-1 text-sm text-pulse-muted">Monitored tool violations</p>
           </div>
 
-          <div className="rounded-xl border border-pulse-border bg-white p-4 shadow-sm ring-1 ring-slate-100/80 border-l-4 border-l-slate-400">
+          <div className="rounded-md border border-pulse-border bg-white p-4 shadow-sm ring-1 ring-slate-100/80 border-l-4 border-l-slate-400">
             <span className="text-xs font-semibold uppercase tracking-wide text-pulse-muted">Active monitors</span>
             <p className="mt-3 text-3xl font-bold tabular-nums text-pulse-navy">
               {summaryHook.loading ? "—" : summaryHook.data?.active_monitors ?? 0}
@@ -458,7 +458,7 @@ export function ComplianceApp() {
             </div>
           </div>
 
-          <div className="mt-4 overflow-hidden rounded-xl border border-pulse-border bg-white shadow-sm ring-1 ring-slate-100/80">
+          <div className="mt-4 overflow-hidden rounded-md border border-pulse-border bg-white shadow-sm ring-1 ring-slate-100/80">
             {listHook.loading ? (
               <div className="flex items-center justify-center gap-2 py-16 text-pulse-muted">
                 <Loader2 className="h-5 w-5 animate-spin" aria-hidden />

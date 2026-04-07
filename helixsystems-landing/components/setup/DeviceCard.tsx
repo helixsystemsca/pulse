@@ -7,7 +7,7 @@ import type { DetectionMatchType } from "@/lib/detectionTest";
 import type { BleDeviceOut, GatewayOut } from "@/lib/setup-api";
 
 const cardBase =
-  "rounded-2xl border border-slate-200/80 bg-white p-5 shadow-card transition-shadow hover:shadow-card-lg";
+  "rounded-md border border-slate-200/80 bg-white p-5 shadow-card transition-shadow hover:shadow-card-lg";
 
 type GatewayProps = {
   variant: "gateway";
@@ -263,7 +263,7 @@ export function DeviceCard(props: DeviceCardProps) {
       <div className={`${cardBase} ${testRing(testListening, testSuccessFlash, testMatchKind)}`}>
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#ebf2ff] text-[#2B4C7E]">
+            <div className="flex h-11 w-11 items-center justify-center rounded-md bg-[#ebf2ff] text-[#2B4C7E]">
               <Router className="h-5 w-5" aria-hidden />
             </div>
             <div>
@@ -400,7 +400,7 @@ export function DeviceCard(props: DeviceCardProps) {
     <div className={`${cardBase} ${accent} ${testRing(testListening, testSuccessFlash, testMatchKind)}`}>
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-sky-50 text-sky-800">
+          <div className="flex h-11 w-11 items-center justify-center rounded-md bg-sky-50 text-sky-800">
             <Bluetooth className="h-5 w-5" aria-hidden />
           </div>
           <div>

@@ -12,7 +12,7 @@ import { InspectionBuilder } from "./InspectionBuilder";
 import { LogBuilder } from "./LogBuilder";
 
 const TABLE_WRAP =
-  "mt-6 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-[#1F2937] dark:bg-[#111827] dark:shadow-[0_2px_8px_rgba(0,0,0,0.4)]";
+  "mt-6 overflow-hidden rounded-md border border-gray-200 bg-white shadow-sm dark:border-[#1F2937] dark:bg-[#111827] dark:shadow-[0_2px_8px_rgba(0,0,0,0.4)]";
 const TH =
   "px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400";
 const TD = "px-4 py-3 text-sm text-gray-900 dark:text-gray-100";
@@ -118,7 +118,7 @@ export function InspectionsLogsApp() {
         {tab === "inspections" ? (
           <button
             type="button"
-            className="mb-2 inline-flex items-center gap-1.5 rounded-xl border border-gray-200 dark:border-[#1F2937] bg-white dark:bg-[#111827] px-3 py-2 text-xs font-semibold text-gray-900 dark:text-gray-100 shadow-sm dark:shadow-[0_2px_8px_rgba(0,0,0,0.4)] hover:bg-gray-200/80 dark:hover:bg-[#1F2937]/50"
+            className="mb-2 inline-flex items-center gap-1.5 rounded-md border border-gray-200 dark:border-[#1F2937] bg-white dark:bg-[#111827] px-3 py-2 text-xs font-semibold text-gray-900 dark:text-gray-100 shadow-sm dark:shadow-[0_2px_8px_rgba(0,0,0,0.4)] hover:bg-gray-200/80 dark:hover:bg-[#1F2937]/50"
             onClick={openNewInspection}
           >
             <Plus className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" aria-hidden />
@@ -127,7 +127,7 @@ export function InspectionsLogsApp() {
         ) : (
           <button
             type="button"
-            className="mb-2 inline-flex items-center gap-1.5 rounded-xl border border-gray-200 dark:border-[#1F2937] bg-white dark:bg-[#111827] px-3 py-2 text-xs font-semibold text-gray-900 dark:text-gray-100 shadow-sm dark:shadow-[0_2px_8px_rgba(0,0,0,0.4)] hover:bg-gray-200/80 dark:hover:bg-[#1F2937]/50"
+            className="mb-2 inline-flex items-center gap-1.5 rounded-md border border-gray-200 dark:border-[#1F2937] bg-white dark:bg-[#111827] px-3 py-2 text-xs font-semibold text-gray-900 dark:text-gray-100 shadow-sm dark:shadow-[0_2px_8px_rgba(0,0,0,0.4)] hover:bg-gray-200/80 dark:hover:bg-[#1F2937]/50"
             onClick={openNewLog}
           >
             <Plus className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" aria-hidden />
@@ -456,7 +456,7 @@ function InspectionFillModal({
         aria-label="Close"
         onClick={onClose}
       />
-      <div className="app-glass-elevated relative max-h-[90vh] w-full max-w-lg overflow-auto rounded-2xl p-6">
+      <div className="app-glass-elevated relative max-h-[90vh] w-full max-w-lg overflow-auto rounded-md p-6">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Submit inspection — {template.name}</h3>
         <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Check each item as verified.</p>
         <ul className="mt-4 space-y-3">
@@ -481,14 +481,14 @@ function InspectionFillModal({
         <div className="mt-6 flex justify-end gap-2">
           <button
             type="button"
-            className="rounded-xl border border-gray-200 dark:border-[#1F2937] bg-gray-100 dark:bg-[#0F172A]/70 px-4 py-2 text-sm font-semibold text-gray-900 dark:text-gray-100"
+            className="rounded-md border border-gray-200 dark:border-[#1F2937] bg-gray-100 dark:bg-[#0F172A]/70 px-4 py-2 text-sm font-semibold text-gray-900 dark:text-gray-100"
             onClick={onClose}
           >
             Cancel
           </button>
           <button
             type="button"
-            className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:brightness-110 dark:bg-[#3B82F6]"
+            className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:brightness-110 dark:bg-[#3B82F6]"
             onClick={() => onSubmit(checks)}
           >
             Save completion
@@ -530,7 +530,7 @@ function LogFillModal({
         aria-label="Close"
         onClick={onClose}
       />
-      <div className="app-glass-elevated relative max-h-[90vh] w-full max-w-lg overflow-auto rounded-2xl p-6">
+      <div className="app-glass-elevated relative max-h-[90vh] w-full max-w-lg overflow-auto rounded-md p-6">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">New log entry — {template.name}</h3>
         <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Timestamp is saved automatically when you submit.</p>
         <div className="mt-4 space-y-4">
@@ -541,7 +541,7 @@ function LogFillModal({
               </label>
               {field.type === "notes" ? (
                 <textarea
-                  className="mt-1.5 w-full rounded-xl border border-gray-200 dark:border-[#1F2937] bg-gray-50 dark:bg-[#0B0F14]/40 px-3 py-2 text-sm text-gray-900 dark:text-gray-100"
+                  className="mt-1.5 w-full rounded-md border border-gray-200 dark:border-[#1F2937] bg-gray-50 dark:bg-[#0B0F14]/40 px-3 py-2 text-sm text-gray-900 dark:text-gray-100"
                   rows={3}
                   value={vals[field.id] ?? ""}
                   onChange={(e) => setField(field.id, e.target.value)}
@@ -549,7 +549,7 @@ function LogFillModal({
               ) : (
                 <input
                   type={field.type === "number" ? "number" : "text"}
-                  className="mt-1.5 w-full rounded-xl border border-gray-200 dark:border-[#1F2937] bg-gray-50 dark:bg-[#0B0F14]/40 px-3 py-2 text-sm text-gray-900 dark:text-gray-100"
+                  className="mt-1.5 w-full rounded-md border border-gray-200 dark:border-[#1F2937] bg-gray-50 dark:bg-[#0B0F14]/40 px-3 py-2 text-sm text-gray-900 dark:text-gray-100"
                   value={vals[field.id] ?? ""}
                   onChange={(e) => setField(field.id, e.target.value)}
                 />
@@ -560,14 +560,14 @@ function LogFillModal({
         <div className="mt-6 flex justify-end gap-2">
           <button
             type="button"
-            className="rounded-xl border border-gray-200 dark:border-[#1F2937] bg-gray-100 dark:bg-[#0F172A]/70 px-4 py-2 text-sm font-semibold text-gray-900 dark:text-gray-100"
+            className="rounded-md border border-gray-200 dark:border-[#1F2937] bg-gray-100 dark:bg-[#0F172A]/70 px-4 py-2 text-sm font-semibold text-gray-900 dark:text-gray-100"
             onClick={onClose}
           >
             Cancel
           </button>
           <button
             type="button"
-            className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:brightness-110 dark:bg-[#3B82F6]"
+            className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:brightness-110 dark:bg-[#3B82F6]"
             onClick={() => {
               const out: Record<string, unknown> = { ...vals };
               sorted.forEach((f) => {
@@ -606,7 +606,7 @@ function EntryViewModal({
         aria-label="Close"
         onClick={onClose}
       />
-      <div className="app-glass-elevated relative max-h-[90vh] w-full max-w-lg overflow-auto rounded-2xl p-6">
+      <div className="app-glass-elevated relative max-h-[90vh] w-full max-w-lg overflow-auto rounded-md p-6">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Record detail</h3>
         <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
           {tpl?.name ?? "Template"} · {formatWhen(entry.created_at)}
@@ -642,7 +642,7 @@ function EntryViewModal({
         <div className="mt-6 flex justify-end">
           <button
             type="button"
-            className="rounded-xl border border-gray-200 dark:border-[#1F2937] bg-gray-100 dark:bg-[#0F172A]/70 px-4 py-2 text-sm font-semibold text-gray-900 dark:text-gray-100"
+            className="rounded-md border border-gray-200 dark:border-[#1F2937] bg-gray-100 dark:bg-[#0F172A]/70 px-4 py-2 text-sm font-semibold text-gray-900 dark:text-gray-100"
             onClick={onClose}
           >
             Close

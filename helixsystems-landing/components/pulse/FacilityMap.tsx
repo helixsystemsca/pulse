@@ -91,7 +91,7 @@ export function FacilityMap({ className = "", compact = false }: FacilityMapProp
       aria-label="Facility floor plan: rooms, corridors, and equipment check-in locations"
     >
       <div
-        className={`rounded-xl border border-slate-200 bg-white/55 shadow-sm ring-1 ring-slate-200/60 dark:border-slate-700/80 dark:bg-slate-900/35 dark:ring-white/[0.06] ${pad}`}
+        className={`rounded-md border border-slate-200 bg-white/55 shadow-sm ring-1 ring-slate-200/60 dark:border-slate-700/80 dark:bg-slate-900/35 dark:ring-white/[0.06] ${pad}`}
       >
         <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-pulse-muted">
           Facility · Zone map
