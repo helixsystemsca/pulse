@@ -404,6 +404,7 @@ async def create_wr(
         await try_mark_onboarding_step(db, user.id, "log_issue")
     else:
         await try_mark_onboarding_step(db, user.id, "create_work_order")
+        await try_mark_onboarding_step(db, user.id, "first_maintenance")
     await db.commit()
     await db.refresh(wr)
     return await _detail(db, cid, wr.id, user.id)

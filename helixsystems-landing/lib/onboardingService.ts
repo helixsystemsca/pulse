@@ -7,6 +7,8 @@ export type OnboardingStepRow = {
   label: string;
   description: string;
   completed: boolean;
+  optional: boolean;
+  href: string;
 };
 
 export type OnboardingState = {
@@ -22,17 +24,29 @@ export async function fetchOnboarding(): Promise<OnboardingState> {
   return apiFetch<OnboardingState>("/api/v1/onboarding");
 }
 
+export async function postOnboardingDemoData(): Promise<OnboardingState> {
+  return apiFetch<OnboardingState>("/api/v1/onboarding/demo-data", {
+    method: "POST",
+  });
+}
+
 export type SetupProgressState = {
   blueprint_count: number;
   zone_count: number;
   equipment_count: number;
   worker_user_count: number;
   procedure_task_count: number;
+  gateway_count: number;
+  ble_device_count: number;
+  work_request_count: number;
+  onboarding_demo_sensors: boolean;
   facility_layout_done: boolean;
   zones_done: boolean;
   equipment_done: boolean;
   workers_done: boolean;
   procedures_done: boolean;
+  devices_done: boolean;
+  maintenance_started_done: boolean;
 };
 
 export async function fetchSetupProgress(): Promise<SetupProgressState> {
@@ -53,13 +67,16 @@ export async function patchOnboarding(body: OnboardingPatchBody): Promise<Onboar
   });
 }
 
-/** Deep links for step keys (API returns only applicable steps). */
+/** Fallback when API href is unavailable (older servers). */
 export const ONBOARDING_STEP_HREF: Record<string, string> = {
-  create_zone: "/dashboard/setup",
-  add_device: "/dashboard/setup",
+  create_zone: "/dashboard/setup?tab=zones",
+  add_device: "/dashboard/setup?tab=devices",
+  add_equipment: "/equipment",
   create_work_order: "/dashboard/maintenance/work-orders",
   view_operations: "/monitoring",
   complete_work_order: "/dashboard/maintenance/work-orders",
   view_schedule: "/schedule",
   log_issue: "/dashboard/maintenance/work-requests",
+  add_workers: "/dashboard/workers",
+  first_maintenance: "/dashboard/maintenance/work-orders",
 };

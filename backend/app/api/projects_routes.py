@@ -10,6 +10,7 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import require_tenant_user
+from app.services.onboarding_service import try_mark_onboarding_step
 from app.core.database import get_db
 from app.models.domain import User
 from app.models.pulse_models import (
@@ -427,7 +428,12 @@ async def delete_automation_rule(db: Db, cid: CompanyId, project_id: str, rule_i
 
 
 @tasks_router.post("/tasks", response_model=TaskOut, status_code=status.HTTP_201_CREATED)
-async def create_task(db: Db, cid: CompanyId, body: TaskCreate) -> TaskOut:
+async def create_task(
+    db: Db,
+    cid: CompanyId,
+    actor: Annotated[User, Depends(require_tenant_user)],
+    body: TaskCreate,
+) -> TaskOut:
     proj = await db.get(PulseProject, body.project_id)
     if not proj or str(proj.company_id) != cid:
         raise HTTPException(status_code=404, detail="Project not found")
@@ -450,6 +456,7 @@ async def create_task(db: Db, cid: CompanyId, body: TaskCreate) -> TaskOut:
     db.add(t)
     await db.flush()
     await proj_svc.ensure_calendar_shift_for_task(db, cid, t)
+    await try_mark_onboarding_step(db, str(actor.id), "first_maintenance")
     await db.commit()
     await db.refresh(t)
     return await task_to_out_enriched(db, t)

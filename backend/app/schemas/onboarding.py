@@ -1,16 +1,6 @@
 from typing import Literal, Optional
 
-from pydantic import BaseModel
-
-OnboardingStepKey = Literal[
-    "create_zone",
-    "add_device",
-    "create_work_order",
-    "view_operations",
-    "complete_work_order",
-    "view_schedule",
-    "log_issue",
-]
+from pydantic import BaseModel, Field
 
 OnboardingFlowOut = Literal["manager", "worker"]
 
@@ -20,6 +10,8 @@ class OnboardingStepOut(BaseModel):
     label: str
     description: str = ""
     completed: bool
+    optional: bool = False
+    href: str = Field(default="/overview", description="Tenant app path for this step")
 
 
 class OnboardingStateOut(BaseModel):
@@ -34,7 +26,7 @@ class OnboardingStateOut(BaseModel):
 class OnboardingPatchIn(BaseModel):
     """Mark a step complete and/or disable onboarding prompts entirely."""
 
-    step: Optional[OnboardingStepKey] = None
+    step: Optional[str] = None
     completed: Optional[bool] = None
     onboarding_enabled: Optional[bool] = None
     onboarding_seen: Optional[bool] = None

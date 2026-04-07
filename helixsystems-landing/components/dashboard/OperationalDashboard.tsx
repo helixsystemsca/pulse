@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { FacilitySetupChecklist } from "@/components/onboarding/FacilitySetupChecklist";
 import { apiFetch, isApiMode } from "@/lib/api";
+import { fetchSetupProgress } from "@/lib/onboardingService";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
 import { pulseTenantNav } from "@/lib/pulse-app";
 import { canAccessPulseTenantApis, readSession } from "@/lib/pulse-session";
@@ -39,6 +40,8 @@ type WorkTag = { kind: "progress" | "overdue" | "urgent"; label: string };
 type DashboardViewModel = {
   title: string;
   welcomeName: string;
+  /** Short banner when demo or guided telemetry is active for this tenant. */
+  bannerNote: string | null;
   alerts: AlertItem[];
   workforce: {
     dateLabel: string;
@@ -111,6 +114,7 @@ function demoModel(): DashboardViewModel {
   return {
     title: "Operations Dashboard",
     welcomeName: "Alex",
+    bannerNote: null,
     alerts: [
       {
         severity: "critical",
@@ -428,6 +432,7 @@ function buildLiveModel(
   return {
     title: "Operations Dashboard",
     welcomeName: "",
+    bannerNote: null,
     alerts,
     workforce: {
       dateLabel: getServerDate().toLocaleDateString("en-US", {
@@ -553,6 +558,18 @@ function DashboardBody({
         )}
       </header>
 
+      {model.bannerNote ? (
+        <div className="border-b border-slate-200/80 bg-slate-900 px-4 py-3 text-center text-sm font-medium text-white dark:border-slate-700/45 dark:bg-slate-800">
+          {model.bannerNote}{" "}
+          <Link
+            href="/monitoring"
+            className="font-semibold text-sky-200 underline decoration-sky-400/80 underline-offset-2 hover:text-white"
+          >
+            Open Monitoring →
+          </Link>
+        </div>
+      ) : null}
+
       <div className="grid gap-5 p-5 lg:grid-cols-12 lg:gap-6 lg:p-6">
         {facilitySetupChecklist}
         <section
@@ -621,7 +638,13 @@ function DashboardBody({
                 </p>
                 <div className="flex flex-wrap gap-3">
                   {model.workforce.onsite.length === 0 ? (
-                    <p className="text-sm text-gray-500 dark:text-gray-400">No one on shift right now.</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      No one on shift right now. Add shifts under{" "}
+                      <Link href="/schedule" className="font-medium text-blue-600 dark:text-blue-400 hover:underline">
+                        Schedule
+                      </Link>{" "}
+                      when your roster is ready.
+                    </p>
                   ) : (
                     model.workforce.onsite.map((b) => (
                       <span
@@ -725,7 +748,13 @@ function DashboardBody({
                 </div>
               </div>
             ) : (
-              <p className="text-sm text-gray-500 dark:text-gray-400">No open work requests in the live feed.</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                No open work requests yet.{" "}
+                <Link href={workOrdersHref} className="font-medium text-blue-600 dark:text-blue-400 hover:underline">
+                  Open work orders
+                </Link>{" "}
+                to create the first tracked item.
+              </p>
             )}
 
             {model.workRequests.oldest ? (
@@ -982,7 +1011,7 @@ export function OperationalDashboard({
     const to = end.toISOString();
 
     try {
-      const [dash, wrList, workers, assetList, lowStock, zoneList, beaconList] = await Promise.all([
+      const [dash, wrList, workers, assetList, lowStock, zoneList, beaconList, setupProgress] = await Promise.all([
         apiFetch<DashboardPayload>("/api/v1/pulse/dashboard"),
         apiFetch<WorkRequestListOut>("/api/v1/pulse/work-requests?limit=40&offset=0"),
         apiFetch<WorkerOut[]>("/api/v1/pulse/workers"),
@@ -990,6 +1019,7 @@ export function OperationalDashboard({
         apiFetch<InventoryItemOut[]>("/api/v1/pulse/inventory/low-stock"),
         apiFetch<ZoneOut[]>("/api/v1/pulse/zones"),
         apiFetch<BeaconEquipmentOut[]>("/api/v1/pulse/equipment"),
+        fetchSetupProgress().catch(() => null),
       ]);
       let shiftList: ShiftOut[] = [];
       try {
@@ -1012,7 +1042,11 @@ export function OperationalDashboard({
         beaconList,
       );
       const welcome = welcomeFromSession(auth?.email, auth?.full_name);
-      const withWelcome: DashboardViewModel = { ...model, welcomeName: welcome };
+      const bannerNote =
+        setupProgress?.onboarding_demo_sensors === true
+          ? "Demo monitoring data is active for your organization."
+          : null;
+      const withWelcome: DashboardViewModel = { ...model, welcomeName: welcome, bannerNote };
       readyPayload = alertCountsFromAlerts(withWelcome.alerts);
       setLiveModel(withWelcome);
     } catch (err) {

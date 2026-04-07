@@ -6,7 +6,10 @@
 import {
   Box,
   Briefcase,
+  Check,
+  CheckCircle2,
   ClipboardList,
+  Copy,
   Loader2,
   MoreVertical,
   Search,
@@ -88,6 +91,12 @@ const MATRIX_ITEMS = [
 
 const SETTINGS_TABS = ["Roles", "Shifts", "Skill categories", "Certification rules"] as const;
 type SettingsTab = (typeof SETTINGS_TABS)[number];
+
+/** Shown when the invite exists but email delivery is uncertain or disabled — share link manually. */
+type InviteLinkBanner = {
+  inviteUrl: string;
+  variant: "no_email" | "email_maybe";
+};
 
 const PROFILE_ROLE_OPTIONS = ["worker", "lead", "supervisor", "manager"] as const;
 
@@ -193,7 +202,12 @@ export function WorkersApp() {
   const [certRulesText, setCertRulesText] = useState("[]");
   const [settingsBusy, setSettingsBusy] = useState(false);
 
-  const [inviteNotice, setInviteNotice] = useState<string | null>(null);
+  const [inviteNotice, setInviteNotice] = useState<InviteLinkBanner | null>(null);
+  const [inviteLinkCopied, setInviteLinkCopied] = useState(false);
+
+  useEffect(() => {
+    setInviteLinkCopied(false);
+  }, [inviteNotice?.inviteUrl]);
   const [createInviteBusy, setCreateInviteBusy] = useState(false);
   const [createToast, setCreateToast] = useState<{ message: string; variant: "success" | "error" } | null>(
     null,
@@ -405,11 +419,9 @@ export function WorkersApp() {
       });
       const absLink = `${origin}${result.invite_link_path}`;
       if (result.invite_email_sent === false) {
-        setInviteNotice(`${result.message} Share this link with them: ${absLink}`);
+        setInviteNotice({ inviteUrl: absLink, variant: "no_email" });
       } else if (result.invite_email_sent === null) {
-        setInviteNotice(
-          `${result.message} If outbound email is configured, they will receive it shortly. You can also share: ${absLink}`,
-        );
+        setInviteNotice({ inviteUrl: absLink, variant: "email_maybe" });
       } else {
         setInviteNotice(null);
       }
@@ -484,15 +496,72 @@ export function WorkersApp() {
       ) : null}
 
       {inviteNotice ? (
-        <div className="rounded-md border border-emerald-500/30 bg-emerald-950/30 px-4 py-3 text-sm text-emerald-100">
-          <p>{inviteNotice}</p>
-          <button
-            type="button"
-            className="mt-2 text-xs font-semibold text-emerald-300 underline"
-            onClick={() => setInviteNotice(null)}
-          >
-            Dismiss
-          </button>
+        <div
+          className="overflow-hidden rounded-lg border border-slate-700/90 bg-slate-900 text-slate-100 shadow-lg ring-1 ring-slate-800 dark:border-slate-600/90 dark:bg-slate-950 dark:ring-slate-800/80"
+          role="status"
+        >
+          <div className="flex min-w-0 gap-0">
+            <div className="w-1 shrink-0 bg-emerald-500" aria-hidden />
+            <div className="flex min-w-0 flex-1 flex-col gap-3 px-4 py-4 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+              <div className="flex min-w-0 gap-3">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-500/15 text-emerald-400 ring-1 ring-emerald-500/30">
+                  <CheckCircle2 className="h-5 w-5" strokeWidth={2} aria-hidden />
+                </span>
+                <div className="min-w-0 space-y-2">
+                  <p className="text-base font-bold leading-snug tracking-tight text-white">
+                    {inviteNotice.variant === "no_email"
+                      ? "Invite created — email not sent from server"
+                      : "Invite queued"}
+                  </p>
+                  <p className="text-sm leading-relaxed text-slate-400">
+                    {inviteNotice.variant === "no_email"
+                      ? "Outbound email is not configured. Copy the join link below and send it to the person directly."
+                      : "If outbound email is configured, they should receive the invite shortly. You can still share the link below as a backup."}
+                  </p>
+                  <div className="pt-1">
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Join link</p>
+                    <p className="mt-1 break-all font-mono text-xs leading-relaxed text-slate-300 [word-break:break-word]">
+                      {inviteNotice.inviteUrl}
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <div className="flex shrink-0 flex-wrap items-center gap-2 sm:flex-col sm:items-stretch sm:pt-1">
+                <button
+                  type="button"
+                  className="inline-flex items-center justify-center gap-2 rounded-md bg-emerald-600/90 px-3 py-2 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-emerald-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900"
+                  onClick={() => {
+                    void navigator.clipboard.writeText(inviteNotice.inviteUrl).then(() => {
+                      setInviteLinkCopied(true);
+                      window.setTimeout(() => setInviteLinkCopied(false), 2000);
+                    });
+                  }}
+                >
+                  {inviteLinkCopied ? (
+                    <>
+                      <Check className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden />
+                      Copied
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
+                      Copy link
+                    </>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  className="rounded-md border border-slate-600/80 bg-slate-800/80 px-3 py-2 text-xs font-semibold text-slate-300 transition-colors hover:border-slate-500 hover:bg-slate-800 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900"
+                  onClick={() => {
+                    setInviteNotice(null);
+                    setInviteLinkCopied(false);
+                  }}
+                >
+                  Dismiss
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       ) : null}
 
@@ -889,11 +958,11 @@ export function WorkersApp() {
                     try {
                       const r = await resendWorkerInvite(apiCompany, profileId);
                       const origin = typeof window !== "undefined" ? window.location.origin : "";
-                      setInviteNotice(
-                        r.invite_email_sent === false
-                          ? `${r.message} Link: ${origin}${r.invite_link_path}`
-                          : `${r.message} They can use: ${origin}${r.invite_link_path}`,
-                      );
+                      const url = `${origin}${r.invite_link_path}`;
+                      setInviteNotice({
+                        inviteUrl: url,
+                        variant: r.invite_email_sent === false ? "no_email" : "email_maybe",
+                      });
                     } finally {
                       setProfileBusy(false);
                     }

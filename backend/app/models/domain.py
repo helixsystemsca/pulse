@@ -39,6 +39,8 @@ _ONBOARDING_STEPS_DEFAULT_JSON = json.dumps(
         {"key": "complete_work_order", "completed": False},
         {"key": "view_schedule", "completed": False},
         {"key": "log_issue", "completed": False},
+        {"key": "add_workers", "completed": False},
+        {"key": "first_maintenance", "completed": False},
     ]
 )
 
@@ -128,6 +130,7 @@ class Company(Base):
         index=True,
     )
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    onboarding_demo_sensors: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )

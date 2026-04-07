@@ -64,12 +64,13 @@ export function OnboardingFirstLoginModal() {
           Welcome to Helix Pulse
         </h2>
         <p className="mt-3 text-sm leading-relaxed text-pulse-muted dark:text-slate-400">
-          This workspace ties together your floor plan, zones, equipment, team, and procedures. You can explore
-          freely — nothing here is required before using the app.
+          Pulse connects zones, devices, monitoring, your team, and maintenance. Explore in any order — core steps are
+          suggestions, not gatekeepers.
         </p>
         <p className="mt-3 text-sm leading-relaxed text-pulse-muted dark:text-slate-400">
-          When you are ready, a practical order is: facility layout → zones → equipment → workers → first procedure.
-          Your dashboard includes a checklist that tracks progress and links straight into each area.
+          Fastest path to something meaningful: define zones → add or simulate devices → open Monitoring → optionally
+          invite workers → create a work order or procedure. Your checklist tracks progress with direct links (and you
+          can use demo sensor data if hardware is not ready yet).
         </p>
         <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
           <button

@@ -8,27 +8,22 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_user, get_db
-from app.core.user_roles import user_has_any_role
-from app.models.domain import User, UserRole
+from app.api.deps import get_current_company_user, get_db
+from app.models.domain import Company, User
 from app.schemas.onboarding import OnboardingPatchIn, OnboardingStateOut, OnboardingStepOut
+from app.services.onboarding_demo_seed import ensure_demo_monitoring_data
 from app.services.onboarding_service import (
-    ALL_ONBOARDING_STEP_KEYS,
+    ONBOARDING_STEP_KEYS,
     _normalize_steps,
     build_onboarding_state_out,
+    is_manager_onboarding_user,
     recompute_onboarding_completed,
+    sync_user_onboarding_from_reality,
 )
 
 router = APIRouter(prefix="/onboarding", tags=["onboarding"])
 
 Db = Annotated[AsyncSession, Depends(get_db)]
-
-
-def _require_tenant_user(user: User) -> None:
-    if user_has_any_role(user, UserRole.system_admin) or user.is_system_admin:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="onboarding_not_available")
-    if user.company_id is None:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="onboarding_not_available")
 
 
 def _state_to_out(raw: dict) -> OnboardingStateOut:
@@ -45,21 +40,43 @@ def _state_to_out(raw: dict) -> OnboardingStateOut:
 @router.get("", response_model=OnboardingStateOut)
 async def get_onboarding(
     db: Db,
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(get_current_company_user)],
 ) -> OnboardingStateOut:
-    _require_tenant_user(user)
+    await sync_user_onboarding_from_reality(db, user)
+    await db.commit()
+    await db.refresh(user)
     raw = build_onboarding_state_out(user)
     return _state_to_out(raw)
+
+
+@router.post("/demo-data", response_model=OnboardingStateOut)
+async def post_onboarding_demo_data(
+    db: Db,
+    user: Annotated[User, Depends(get_current_company_user)],
+) -> OnboardingStateOut:
+    if not is_manager_onboarding_user(user):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="demo_onboarding_requires_manager",
+        )
+    cid = str(user.company_id)
+    c = await db.get(Company, cid)
+    if c is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="company_not_found")
+    c.onboarding_demo_sensors = True
+    await ensure_demo_monitoring_data(db, cid)
+    await sync_user_onboarding_from_reality(db, user)
+    await db.commit()
+    await db.refresh(user)
+    return _state_to_out(build_onboarding_state_out(user))
 
 
 @router.patch("", response_model=OnboardingStateOut)
 async def patch_onboarding(
     body: OnboardingPatchIn,
     db: Db,
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(get_current_company_user)],
 ) -> OnboardingStateOut:
-    _require_tenant_user(user)
-
     if body.onboarding_enabled is not None:
         user.onboarding_enabled = body.onboarding_enabled
 
@@ -67,7 +84,7 @@ async def patch_onboarding(
         user.onboarding_seen = bool(body.onboarding_seen)
 
     if body.step is not None:
-        if body.step not in ALL_ONBOARDING_STEP_KEYS:
+        if body.step not in ONBOARDING_STEP_KEYS:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="invalid_step")
         want = True if body.completed is None else bool(body.completed)
         steps = _normalize_steps(user.onboarding_steps)
