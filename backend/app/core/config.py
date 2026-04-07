@@ -2,6 +2,7 @@
 
 from functools import lru_cache
 from typing import List, Optional, Set
+from urllib.parse import urlparse
 
 from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -87,7 +88,8 @@ class Settings(BaseSettings):
         default="info@helixsystems.ca",
         validation_alias=AliasChoices("EMAIL_TO_INFO", "email_to_info"),
     )
-    #: Base URL for links in emails (invite/reset). Must match the Pulse web app; no trailing slash.
+    #: Base URL for links in emails (invite/reset). Must be the **Pulse web app** (browser Origin), not the API host.
+    #: Paths are ignored when merging into CORS; only scheme + host are used.
     pulse_app_public_url: str = Field(
         default="https://pulse.helixsystems.ca",
         validation_alias=AliasChoices("PULSE_APP_PUBLIC_URL", "pulse_app_public_url"),
@@ -149,7 +151,15 @@ class Settings(BaseSettings):
 
     @property
     def pulse_app_public_origin(self) -> str:
-        return self.pulse_app_public_url.rstrip("/")
+        """Scheme + host only, matching the browser `Origin` header (no path, no trailing slash)."""
+        raw = self.pulse_app_public_url.strip()
+        if not raw:
+            return ""
+        to_parse = raw if "://" in raw else f"https://{raw}"
+        parsed = urlparse(to_parse)
+        if parsed.scheme and parsed.netloc:
+            return f"{parsed.scheme}://{parsed.netloc}".rstrip("/")
+        return raw.rstrip("/")
 
 
 @lru_cache

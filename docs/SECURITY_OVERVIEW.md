@@ -95,7 +95,7 @@ Secrets are stored as **bcrypt hashes** in `automation_gateways.ingest_secret_ha
 2. Set **`REQUIRE_HTTPS=true`** on the API.
 3. Set **`TRUSTED_HOSTS`** to your API hostnames.
 4. Set strong **`SECRET_KEY`** and database credentials via **secrets manager** or env injection — never commit `.env`.
-5. Restrict **`CORS_ORIGINS`** to known Pulse and marketing origins.
+5. Restrict **`CORS_ORIGINS`** to known Pulse and marketing origins (each hostname is a separate Origin). **`PULSE_APP_PUBLIC_URL`** must be the **Pulse web app** URL users open in the browser (for example `https://pulse.helixsystems.ca`), **not** the API hostname (`…onrender.com`). The API merges `scheme://host` from that setting into the CORS allow list; if it points at the API, browsers will report *“blocked by CORS… No `Access-Control-Allow-Origin`”* when the SPA calls the API.
 6. Run DB migrations through **`0033`** so gateway ingest hashes exist.
 7. Rotate gateway secrets after provisioning; disable decommissioned gateways in UI (future: explicit revoke flag).
 
