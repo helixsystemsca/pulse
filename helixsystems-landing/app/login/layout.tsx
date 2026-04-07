@@ -23,6 +23,7 @@ export default function LoginLayout({ children }: { children: React.ReactNode })
   }
   return (
     <AppLayout
+      pageShell={false}
       mainClassName="relative flex min-h-0 flex-1 flex-col bg-transparent"
       mainContentClassName="flex min-h-0 w-full max-w-none flex-1 flex-col px-4 py-0 sm:px-5"
     >

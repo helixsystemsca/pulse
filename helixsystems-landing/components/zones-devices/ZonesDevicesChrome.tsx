@@ -18,13 +18,13 @@ export function ZonesDevicesChrome({ children }: { children: React.ReactNode }) 
     }`;
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-4">
+    <div className="flex min-h-0 flex-1 flex-col gap-5">
       <div>
         <p className="m-0 text-[0.7rem] font-bold uppercase tracking-[0.14em] text-pulse-muted">
           Zones &amp; floor plans
         </p>
         <nav
-          className="mt-2 inline-flex gap-1 rounded-xl border border-pulse-border bg-white/70 p-1 shadow-sm dark:border-slate-700 dark:bg-slate-900/50"
+          className="app-page-inset mt-2 inline-flex gap-1 p-1 shadow-sm"
           aria-label="Zones and blueprints"
         >
           <Link

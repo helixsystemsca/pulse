@@ -13,7 +13,7 @@ export function MainContentWidth({
   return (
     <div
       id="layout-wrapper"
-      className={`mx-auto w-[90%] max-w-[1600px] px-4 py-6 sm:px-5 sm:py-8 ${className}`.trim()}
+      className={`mx-auto w-[min(100%,92vw)] max-w-[1360px] px-4 py-5 sm:px-5 sm:py-6 md:py-7 ${className}`.trim()}
       data-layout="main-content"
     >
       {children}

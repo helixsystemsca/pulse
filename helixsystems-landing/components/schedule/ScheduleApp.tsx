@@ -386,8 +386,8 @@ export function ScheduleApp() {
 
   if (scheduleModuleBlocked && isApiMode()) {
     return (
-      <div className="flex min-h-[calc(100vh-4rem)] flex-col bg-pulse-bg -mx-4 px-4 sm:-mx-5 sm:px-5">
-        <div className="mx-auto w-full max-w-2xl py-10">
+      <div className="flex min-h-[min(70vh,520px)] flex-col">
+        <div className="mx-auto w-full max-w-2xl py-6">
           <Card padding="md">
             <h1 className="font-headline text-xl font-bold text-gray-900 dark:text-white">Schedule</h1>
             <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
@@ -402,8 +402,8 @@ export function ScheduleApp() {
   }
 
   return (
-    <div className="flex min-h-[calc(100vh-4rem)] flex-col bg-pulse-bg -mx-4 px-4 sm:-mx-5 sm:px-5">
-      <div className="flex-1 pb-4">
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="flex-1 pb-2">
         <div className={scheduleDragLock ? "pointer-events-none" : ""}>
           <PageHeader
             title="Schedule"

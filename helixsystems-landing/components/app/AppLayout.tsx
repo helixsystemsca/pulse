@@ -6,6 +6,7 @@ import { AppMain } from "./AppMain";
 import { InactivitySessionGuard } from "./InactivitySessionGuard";
 import { ServerTimeSync } from "./ServerTimeSync";
 import { MainContentWidth } from "./MainContentWidth";
+import { PageShell } from "./PageShell";
 import { AppNavbar } from "./AppNavbar";
 import { AppSideNav } from "./AppSideNav";
 import { OnboardingChrome } from "@/components/onboarding/OnboardingChrome";
@@ -20,9 +21,16 @@ type AppLayoutProps = {
   mainClassName?: string;
   /** Applied to the inner `MainContentWidth` wrapper (width, padding, flex). */
   mainContentClassName?: string;
+  /** When false, children render without the unified page card (login, invite, etc.). */
+  pageShell?: boolean;
 };
 
-export function AppLayout({ children, mainClassName = "", mainContentClassName = "" }: AppLayoutProps) {
+export function AppLayout({
+  children,
+  mainClassName = "",
+  mainContentClassName = "",
+  pageShell = true,
+}: AppLayoutProps) {
   return (
     <div className="relative min-h-screen">
       <PulseThemedBackground />
@@ -34,7 +42,9 @@ export function AppLayout({ children, mainClassName = "", mainContentClassName =
         <div className="flex min-h-screen min-w-0 flex-col">
           <AppNavbar />
           <AppMain className={mainClassName}>
-            <MainContentWidth className={mainContentClassName}>{children}</MainContentWidth>
+            <MainContentWidth className={mainContentClassName}>
+              {pageShell ? <PageShell>{children}</PageShell> : children}
+            </MainContentWidth>
             <OnboardingChrome />
           </AppMain>
           <AppPoweredByFooter />

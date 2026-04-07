@@ -147,6 +147,90 @@ html {
     box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
   }
 
+  /**
+   * Unified authenticated page surface (one card per route).
+   * Sits above {@link PulseThemedBackground}; inner sections use flatter inset styles.
+   */
+  .app-page-shell {
+    position: relative;
+    isolation: isolate;
+    box-sizing: border-box;
+    width: 100%;
+    border-radius: 18px;
+    border: 1px solid rgb(15 23 42 / 0.07);
+    background-color: #ffffff;
+    box-shadow:
+      0 1px 2px rgb(15 23 42 / 0.04),
+      0 12px 40px rgb(48 86 139 / 0.07);
+    padding: 1.25rem;
+  }
+  @media (min-width: 640px) {
+    .app-page-shell {
+      padding: 1.5rem;
+    }
+  }
+  @media (min-width: 768px) {
+    .app-page-shell {
+      padding: 2rem;
+    }
+  }
+  .app-page-shell::before {
+    content: "";
+    pointer-events: none;
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    border-radius: inherit;
+    background: radial-gradient(
+      ellipse 85% 55% at 0% 0%,
+      rgb(59 130 246 / 0.07),
+      transparent 52%
+    );
+    opacity: 1;
+  }
+  .dark .app-page-shell {
+    border-color: rgb(148 163 184 / 0.14);
+    background-color: #1e293b;
+    box-shadow:
+      0 1px 0 rgb(255 255 255 / 0.05) inset,
+      0 16px 48px rgb(0 0 0 / 0.38);
+  }
+  .dark .app-page-shell::before {
+    background: radial-gradient(ellipse 85% 55% at 0% 0%, rgb(59 130 246 / 0.1), transparent 50%);
+  }
+
+  /** Overview dashboard tiles: inset panels inside {@link PageShell} (avoid stacked glass cards). */
+  .app-dashboard-tile {
+    border-radius: 0.875rem;
+    border: 1px solid rgb(226 232 240 / 0.95);
+    background-color: rgb(248 250 252 / 0.92);
+    box-shadow: none;
+  }
+  .dark .app-dashboard-tile {
+    border-color: rgb(51 65 85 / 0.55);
+    background-color: rgb(15 23 42 / 0.4);
+  }
+
+  /** Secondary blocks inside the page shell (forms, pickers) — flat, not a second floating card. */
+  .app-page-inset {
+    border-radius: 0.875rem;
+    border: 1px solid rgb(226 232 240 / 0.9);
+    background-color: rgb(241 245 249 / 0.65);
+  }
+  .dark .app-page-inset {
+    border-color: rgb(51 65 85 / 0.55);
+    background-color: rgb(15 23 42 / 0.35);
+  }
+
+  .app-page-divider {
+    margin: 0;
+    border: 0;
+    border-top: 1px solid rgb(226 232 240 / 0.85);
+  }
+  .dark .app-page-divider {
+    border-top-color: rgb(51 65 85 / 0.55);
+  }
+
 }
 
 @layer utilities {

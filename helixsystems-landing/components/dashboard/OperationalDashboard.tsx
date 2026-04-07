@@ -518,8 +518,8 @@ function DashboardBody({
   const trimmedHeaderImage = headerImageUrl?.trim() || null;
 
   return (
-    <div className="app-glass-frame overflow-hidden rounded-2xl">
-      <header className="app-glass-frame-header grid grid-cols-[1fr_auto_1fr] items-center gap-3 px-4 py-4 sm:px-6">
+    <div className="flex flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-slate-50/50 dark:border-slate-700/45 dark:bg-slate-900/20">
+      <header className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 border-b border-slate-200/80 bg-white/60 px-4 py-4 dark:border-slate-700/45 dark:bg-slate-900/35 sm:px-6">
         <span className="min-w-0 text-base font-bold leading-tight tracking-tight text-gray-900 dark:text-gray-100 sm:text-lg md:text-xl lg:text-2xl">
           {model.title}
         </span>
@@ -553,10 +553,10 @@ function DashboardBody({
         )}
       </header>
 
-      <div className="grid gap-4 bg-white/[0.03] p-5 dark:bg-transparent lg:grid-cols-12 lg:p-6">
+      <div className="grid gap-5 p-5 lg:grid-cols-12 lg:gap-6 lg:p-6">
         {facilitySetupChecklist}
         <section
-          className="app-glass-card flex flex-col rounded-2xl p-5 lg:col-span-12 lg:p-6"
+          className="app-dashboard-tile flex flex-col p-5 lg:col-span-12 lg:p-6"
           data-dashboard-tile="alerts"
         >
           <h3 className="text-base font-bold text-gray-900 dark:text-gray-100">Active Alerts</h3>
@@ -604,7 +604,7 @@ function DashboardBody({
         </section>
 
         <section
-          className="app-glass-card flex flex-col rounded-2xl p-5 lg:col-span-5 lg:min-h-[280px] lg:p-6"
+          className="app-dashboard-tile flex flex-col p-5 lg:col-span-5 lg:min-h-[280px] lg:p-6"
           data-dashboard-tile="workforce"
         >
           <h3 className="text-base font-bold text-gray-900 dark:text-gray-100">Workforce</h3>
@@ -691,7 +691,7 @@ function DashboardBody({
         </section>
 
         <section
-          className="app-glass-card rounded-2xl p-5 lg:col-span-7 lg:p-6"
+          className="app-dashboard-tile p-5 lg:col-span-7 lg:p-6"
           data-dashboard-tile="work-requests"
         >
           <div className="flex flex-wrap items-start justify-between gap-3">
@@ -773,7 +773,7 @@ function DashboardBody({
         </section>
 
         <section
-          className="app-glass-card flex flex-col rounded-2xl p-5 lg:col-span-6"
+          className="app-dashboard-tile flex flex-col p-5 lg:col-span-6"
           data-dashboard-tile="equipment"
         >
           <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Equipment Update</p>
@@ -837,7 +837,7 @@ function DashboardBody({
         </section>
 
         <section
-          className="app-glass-card flex flex-col rounded-2xl p-5 lg:col-span-6"
+          className="app-dashboard-tile flex flex-col p-5 lg:col-span-6"
           data-dashboard-tile="inventory"
         >
           <h3 className="text-base font-bold text-gray-900 dark:text-gray-100">Inventory Status</h3>
@@ -1055,7 +1055,7 @@ export function OperationalDashboard({
 
   if (loading) {
     return (
-      <div className="app-glass-card rounded-2xl p-12 text-center">
+      <div className="app-dashboard-tile rounded-2xl p-12 text-center">
         <p className="text-sm text-gray-500 dark:text-gray-400">Loading live dashboard…</p>
       </div>
     );

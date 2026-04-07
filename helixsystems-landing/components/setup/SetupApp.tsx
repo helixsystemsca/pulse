@@ -583,7 +583,7 @@ export function SetupApp() {
           description="Select a company to manage gateways, tags, and zones."
           icon={MapPin}
         />
-        <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-card dark:border-[#1F2937] dark:bg-[#111827] dark:shadow-[0_2px_8px_rgba(0,0,0,0.4)]">
+        <div className="app-page-inset p-6">
           <label className={LABEL}>Company</label>
           <select
             className={FIELD}

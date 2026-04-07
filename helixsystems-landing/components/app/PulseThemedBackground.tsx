@@ -5,7 +5,7 @@
 export function PulseThemedBackground() {
   return (
     <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden" aria-hidden>
-      <div className="absolute inset-0 bg-gradient-to-br from-[#dbe5f8] via-[#ebe2f4] to-[#d8e6f5] dark:from-[#0c1424] dark:via-[#0e1629] dark:to-[#080f18]" />
+      <div className="absolute inset-0 bg-gradient-to-br from-[#f1f5f9] via-[#e8edf7] to-[#dbe5f8] dark:from-[#0c1424] dark:via-[#0e1629] dark:to-[#080f18]" />
       <div
         className="absolute inset-0 dark:hidden"
         style={{

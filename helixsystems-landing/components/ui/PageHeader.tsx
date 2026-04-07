@@ -6,10 +6,11 @@ import type { ReactNode } from "react";
 export type PageHeaderProps = {
   title: string;
   description?: string;
-  /** Option A: icon on every feature header for visual consistency. */
+  /** Every feature page should pass a distinct icon for quick scanability. */
   icon: LucideIcon;
   actions?: ReactNode;
-  variant?: "light" | "dark";
+  /** When true, draws a subtle rule under the header block. */
+  divider?: boolean;
   className?: string;
 };
 
@@ -18,46 +19,33 @@ export function PageHeader({
   description,
   icon: Icon,
   actions,
-  variant = "light",
+  divider = true,
   className = "",
 }: PageHeaderProps) {
-  const dark = variant === "dark";
   return (
-    <div
-      id="page-header"
-      className={`flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between ${className}`.trim()}
-    >
-      <div className="flex min-w-0 gap-3">
-        <span
-          className={
-            dark
-              ? "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-zinc-700 bg-zinc-900 text-zinc-200 shadow-sm"
-              : "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-gray-200 bg-white text-[#2B4C7E] shadow-sm dark:border-[#1F2937] dark:bg-[#111827] dark:text-blue-400"
-          }
-          aria-hidden
-        >
-          <Icon className="h-5 w-5" strokeWidth={2} />
-        </span>
-        <div className="min-w-0">
-          <h1
-            className={`font-headline text-2xl font-bold tracking-tight md:text-3xl ${
-              dark ? "text-white" : "text-gray-900 dark:text-white"
-            }`}
+    <div id="page-header" className={`space-y-4 ${className}`.trim()}>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex min-w-0 gap-3 sm:gap-4">
+          <span
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-sky-200/70 bg-sky-50 text-[#2B4C7E] shadow-sm dark:border-sky-500/25 dark:bg-sky-500/10 dark:text-sky-300"
+            aria-hidden
           >
-            {title}
-          </h1>
-          {description ? (
-            <p
-              className={`mt-1 text-sm leading-relaxed ${
-                dark ? "text-zinc-400" : "text-gray-500 dark:text-gray-400"
-              }`}
-            >
-              {description}
-            </p>
-          ) : null}
+            <Icon className="h-5 w-5" strokeWidth={2} />
+          </span>
+          <div className="min-w-0">
+            <h1 className="font-headline text-xl font-bold tracking-tight text-slate-900 dark:text-white md:text-2xl">
+              {title}
+            </h1>
+            {description ? (
+              <p className="mt-1 max-w-3xl text-sm leading-relaxed text-pulse-muted dark:text-slate-400">
+                {description}
+              </p>
+            ) : null}
+          </div>
         </div>
+        {actions ? <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div> : null}
       </div>
-      {actions ? <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div> : null}
+      {divider ? <hr className="app-page-divider" /> : null}
     </div>
   );
 }

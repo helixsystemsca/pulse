@@ -89,7 +89,6 @@ export function InspectionsLogsApp() {
         title="Inspections & Logs"
         description="Create checklists and log forms, then record completions in one place."
         icon={ClipboardList}
-        variant="dark"
         actions={<CreateDropdown onNewInspection={openNewInspection} onNewLog={openNewLog} />}
       />
 

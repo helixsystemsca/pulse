@@ -377,19 +377,19 @@ export function EquipmentApp() {
 
   if (blocked) {
     return (
-      <div className="mx-auto w-full max-w-2xl py-10">
+      <div className="space-y-6">
         <PageHeader
           title="Equipment"
           description="Manage and monitor all facility equipment."
           icon={Wrench}
         />
-        <Card padding="md" className="mt-6">
-          <p className="text-sm text-pulse-muted">
+        <div className="app-page-inset p-5">
+          <p className="text-sm text-pulse-muted dark:text-slate-400">
             The equipment module is not enabled for your organization. A system administrator can turn on the{" "}
-            <span className="font-semibold text-pulse-navy">equipment</span> feature for your company in System admin →
-            Companies.
+            <span className="font-semibold text-pulse-navy dark:text-slate-100">equipment</span> feature for your company
+            in System admin → Companies.
           </p>
-        </Card>
+        </div>
       </div>
     );
   }
