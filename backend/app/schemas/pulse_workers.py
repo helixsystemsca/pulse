@@ -82,6 +82,8 @@ class WorkerDetailOut(BaseModel):
     full_name: Optional[str] = None
     role: str
     roles: list[str] = []
+    #: Add-on product modules (tenant contract subset) from company admin.
+    feature_allow_extra: list[str] = []
     is_active: bool
     account_status: str = "active"
     phone: Optional[str] = None
@@ -144,6 +146,7 @@ class WorkerPatchIn(BaseModel):
     certifications: Optional[list[WorkerCertificationIn]] = None
     skills: Optional[list[WorkerSkillIn]] = None
     training: Optional[list[WorkerTrainingIn]] = None
+    feature_allow_extra: Optional[list[str]] = None
 
     @field_validator("supervisor_id", mode="before")
     @classmethod
@@ -158,6 +161,8 @@ class WorkerPatchIn(BaseModel):
 
 class WorkersSettingsOut(BaseModel):
     settings: dict[str, Any]
+    #: Tenant contract module keys for this company (for Workers UI when session has no `contract_enabled_features`).
+    contract_feature_names: list[str] = []
 
 
 class WorkersSettingsPatchIn(BaseModel):

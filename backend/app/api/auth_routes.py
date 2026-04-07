@@ -13,9 +13,8 @@ from app.api.deps import get_current_user, require_system_admin
 from app.core.audit.service import record_audit
 from app.core.auth.security import create_access_token, decode_token, hash_password, verify_password
 from app.core.database import get_db
-from app.core.company_features import tenant_enabled_feature_names_with_legacy
-from app.core.features.service import MODULE_KEYS, FeatureFlagService
 from app.core.permissions.service import PermissionService
+from app.core.tenant_feature_access import contract_and_effective_features_for_me
 from app.core.system_audit import record_system_log
 from app.core.system_tokens import hash_system_token
 from app.limiter import limiter
@@ -176,10 +175,7 @@ async def me(
     except Exception:
         pass
 
-    feats: list[str] = []
-    if user.company_id:
-        raw_feats = await tenant_enabled_feature_names_with_legacy(db, user.company_id)
-        feats = sorted({f for f in raw_feats if f in MODULE_KEYS})
+    _, eff_feats, roster_access, contract_admin_catalog = await contract_and_effective_features_for_me(db, user)
 
     company_summary: CompanySummaryOut | None = None
     if user.company_id:
@@ -221,7 +217,9 @@ async def me(
         avatar_url=user.avatar_url,
         job_title=user.job_title,
         operational_role=(str(user.operational_role).strip() or None) if user.operational_role else None,
-        enabled_features=feats,
+        enabled_features=eff_feats,
+        contract_enabled_features=contract_admin_catalog if contract_admin_catalog else None,
+        workers_roster_access=roster_access,
         is_impersonating=is_imp,
         is_system_admin=bool(user.is_system_admin or user_has_any_role(user, UserRole.system_admin)),
         company=company_summary,

@@ -19,9 +19,9 @@ import {
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { PulseDrawer } from "@/components/schedule/PulseDrawer";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, refreshPulseUserFromServer } from "@/lib/api";
 import { parseClientApiError } from "@/lib/parse-client-api-error";
-import { readSession } from "@/lib/pulse-session";
+import { usePulseAuth } from "@/hooks/usePulseAuth";
 import { emitOnboardingMaybeUpdated } from "@/lib/onboarding-events";
 import {
   humanizeRole,
@@ -88,6 +88,31 @@ const MATRIX_ITEMS = [
     tone: "bg-emerald-50 text-emerald-900 dark:bg-emerald-600 dark:text-white",
   },
 ] as const;
+
+/** Keys must match `GLOBAL_SYSTEM_FEATURES` / tenant contract (system admin catalog). */
+const TENANT_PRODUCT_MODULES = [
+  "compliance",
+  "schedule",
+  "monitoring",
+  "projects",
+  "work_orders",
+  "workers",
+  "inventory",
+  "equipment",
+  "floor_plan",
+] as const;
+
+const MODULE_LABEL: Record<string, string> = {
+  compliance: "Inspections & compliance",
+  schedule: "Schedule",
+  monitoring: "Monitoring",
+  projects: "Projects",
+  work_orders: "Maintenance & work orders",
+  workers: "Workers & roles",
+  inventory: "Inventory",
+  equipment: "Equipment",
+  floor_plan: "Floor plans & zones",
+};
 
 const SETTINGS_TABS = ["Roles", "Shifts", "Skill categories", "Certification rules"] as const;
 type SettingsTab = (typeof SETTINGS_TABS)[number];
@@ -164,17 +189,29 @@ const DEFAULT_MATRIX: Record<string, boolean> = {
 };
 
 export function WorkersApp() {
-  const session = readSession();
+  const { session, refresh } = usePulseAuth();
   const isSystemAdmin = Boolean(session?.is_system_admin || session?.role === "system_admin");
   const sessionCompanyId = session?.company_id ?? null;
-  const canManage = managerOrAbove(session);
   const createRoleLimited = isCreateRoleLimitedSession(session);
   const isCompanyAdmin = sessionHasAnyRole(session, "company_admin");
+  const canOpenWorkers =
+    isSystemAdmin ||
+    (session?.workers_roster_access === false
+      ? false
+      : session?.workers_roster_access === true
+        ? true
+        : managerOrAbove(session ?? undefined));
+
+  const [contractFeatureNamesFromApi, setContractFeatureNamesFromApi] = useState<string[]>([]);
+  const contractCatalog = useMemo(
+    () => session?.contract_enabled_features ?? contractFeatureNamesFromApi,
+    [session?.contract_enabled_features, contractFeatureNamesFromApi],
+  );
 
   const [companyPick, setCompanyPick] = useState<string | null>(null);
   const [companies, setCompanies] = useState<CompanyOption[]>([]);
   const effectiveCompanyId = isSystemAdmin ? companyPick : sessionCompanyId;
-  const dataEnabled = Boolean(effectiveCompanyId) && canManage;
+  const dataEnabled = Boolean(effectiveCompanyId) && (isSystemAdmin ? Boolean(companyPick) : canOpenWorkers);
   const apiCompany = isSystemAdmin ? effectiveCompanyId : null;
 
   const [q, setQ] = useState("");
@@ -201,6 +238,15 @@ export function WorkersApp() {
   const [settingsDraft, setSettingsDraft] = useState<WorkersSettings>({});
   const [certRulesText, setCertRulesText] = useState("[]");
   const [settingsBusy, setSettingsBusy] = useState(false);
+
+  const [delegationDraft, setDelegationDraft] = useState({
+    manager: false,
+    supervisor: false,
+    lead: false,
+  });
+  const [roleFeatureAccessDraft, setRoleFeatureAccessDraft] = useState<Record<string, string[]>>({});
+  const [accessPolicySaving, setAccessPolicySaving] = useState(false);
+  const [extraModulesDraft, setExtraModulesDraft] = useState<string[]>([]);
 
   const [inviteNotice, setInviteNotice] = useState<InviteLinkBanner | null>(null);
   const [inviteLinkCopied, setInviteLinkCopied] = useState(false);
@@ -243,7 +289,23 @@ export function WorkersApp() {
         fetchWorkerSettings(apiCompany),
       ]);
       setList(wr.items);
+      setContractFeatureNamesFromApi(st.contract_feature_names ?? []);
       setFullSettings(st.settings);
+      const cat = session?.contract_enabled_features ?? [];
+      const wpd = st.settings.workers_page_delegation;
+      if (wpd && typeof wpd === "object") {
+        setDelegationDraft({
+          manager: Boolean(wpd.manager),
+          supervisor: Boolean(wpd.supervisor),
+          lead: Boolean(wpd.lead),
+        });
+      }
+      const rfa = (st.settings.role_feature_access ?? {}) as Record<string, string[]>;
+      const nextDraft: Record<string, string[]> = {};
+      for (const role of ["manager", "supervisor", "lead", "worker"] as const) {
+        nextDraft[role] = rfa[role]?.length ? [...rfa[role]] : [...cat];
+      }
+      setRoleFeatureAccessDraft(nextDraft);
       const m = st.settings.permission_matrix ?? {};
       setMatrix({ ...DEFAULT_MATRIX, ...m });
       setSettingsDraft(st.settings);
@@ -253,7 +315,7 @@ export function WorkersApp() {
     } finally {
       setListLoading(false);
     }
-  }, [dataEnabled, effectiveCompanyId, apiCompany, q]);
+  }, [dataEnabled, effectiveCompanyId, apiCompany, q, session?.contract_enabled_features]);
 
   useEffect(() => {
     const t = window.setTimeout(() => void loadList(), 280);
@@ -289,6 +351,14 @@ export function WorkersApp() {
     setProfileRolesDraft(sortRolesForDisplay([...new Set(base)]));
   }, [profile]);
 
+  useEffect(() => {
+    if (!profile) {
+      setExtraModulesDraft([]);
+      return;
+    }
+    setExtraModulesDraft([...(profile.feature_allow_extra ?? [])]);
+  }, [profile?.id, profile]);
+
   const grouped = useMemo(() => {
     const order = ["company_admin", "manager", "supervisor", "lead", "worker"] as const;
     const m = new Map<string, WorkerRow[]>();
@@ -312,12 +382,55 @@ export function WorkersApp() {
     [list],
   );
 
+  function toggleRoleModule(role: string, mod: string) {
+    setRoleFeatureAccessDraft((prev) => {
+      const cur = new Set(prev[role] ?? []);
+      if (cur.has(mod)) cur.delete(mod);
+      else cur.add(mod);
+      return { ...prev, [role]: [...cur].sort() };
+    });
+  }
+
+  async function saveAccessPolicy() {
+    if (!effectiveCompanyId || !isCompanyAdmin) return;
+    setAccessPolicySaving(true);
+    try {
+      const r = await patchWorkerSettings(apiCompany, {
+        ...fullSettings,
+        workers_page_delegation: delegationDraft,
+        role_feature_access: roleFeatureAccessDraft,
+      });
+      setContractFeatureNamesFromApi(r.contract_feature_names ?? []);
+      setFullSettings(r.settings);
+      setSettingsDraft(r.settings);
+      await refreshPulseUserFromServer();
+      refresh();
+    } finally {
+      setAccessPolicySaving(false);
+    }
+  }
+
+  async function saveExtraModules() {
+    if (!profileId || !profile || !isCompanyAdmin || principalHasAnyRole(profile, "company_admin")) return;
+    setProfileBusy(true);
+    try {
+      await patchWorker(apiCompany, profileId, { feature_allow_extra: extraModulesDraft });
+      await loadProfile();
+      await loadList();
+      await refreshPulseUserFromServer();
+      refresh();
+    } finally {
+      setProfileBusy(false);
+    }
+  }
+
   async function saveMatrix() {
-    if (!effectiveCompanyId) return;
+    if (!effectiveCompanyId || !isCompanyAdmin) return;
     setMatrixSaving(true);
     try {
       const next = { ...fullSettings, permission_matrix: { ...matrix } };
       const r = await patchWorkerSettings(apiCompany, next);
+      setContractFeatureNamesFromApi(r.contract_feature_names ?? []);
       setFullSettings(r.settings);
       setMatrix({ ...DEFAULT_MATRIX, ...(r.settings.permission_matrix ?? {}) });
     } finally {
@@ -367,7 +480,7 @@ export function WorkersApp() {
   }
 
   async function saveSettingsModal() {
-    if (!effectiveCompanyId) return;
+    if (!effectiveCompanyId || !isCompanyAdmin) return;
     setSettingsBusy(true);
     try {
       let rules: unknown = [];
@@ -382,6 +495,7 @@ export function WorkersApp() {
         ...settingsDraft,
         certification_rules: rules as WorkersSettings["certification_rules"],
       });
+      setContractFeatureNamesFromApi(r.contract_feature_names ?? []);
       setFullSettings(r.settings);
       setSettingsDraft(r.settings);
       setMatrix({ ...DEFAULT_MATRIX, ...(r.settings.permission_matrix ?? {}) });
@@ -441,9 +555,12 @@ export function WorkersApp() {
     }
   }
 
-  if (!canManage) {
+  if (!canOpenWorkers) {
     return (
-      <p className="text-sm text-pulse-muted">Workers & Roles are available to managers and administrators.</p>
+      <p className="text-sm text-pulse-muted">
+        You do not have access to Workers & Roles. Company administrators can open this page and, when needed, delegate
+        access to managers, supervisors, or leads.
+      </p>
     );
   }
 
@@ -463,7 +580,7 @@ export function WorkersApp() {
                 setCertRulesText(JSON.stringify(fullSettings.certification_rules ?? [], null, 2));
                 setSettingsOpen(true);
               }}
-              disabled={!dataEnabled}
+              disabled={!dataEnabled || !isCompanyAdmin}
             >
               Edit roles
             </button>
@@ -589,7 +706,86 @@ export function WorkersApp() {
         </p>
       ) : (
         <div className="mt-6 grid gap-6 lg:grid-cols-12">
-          <div className="lg:col-span-4 xl:col-span-3">
+          <div className="flex flex-col gap-6 lg:col-span-4 xl:col-span-3">
+            {isCompanyAdmin && contractCatalog.length > 0 ? (
+              <div className="rounded-md border border-pulse-border bg-white p-5 shadow-sm ring-1 ring-slate-100/80 dark:border-[#1F2937] dark:bg-[#111827] dark:ring-white/[0.06] dark:shadow-[0_2px_8px_rgba(0,0,0,0.35)]">
+                <h2 className="text-sm font-bold tracking-tight text-pulse-navy">Delegate Workers &amp; Roles page</h2>
+                <p className="mt-1 text-xs text-pulse-muted">
+                  By default only company admins use this page. Allow operational roles to manage roster and invites.
+                </p>
+                <div className="mt-4 space-y-2">
+                  {(
+                    [
+                      ["manager", "Managers"],
+                      ["supervisor", "Supervisors"],
+                      ["lead", "Leads"],
+                    ] as const
+                  ).map(([key, label]) => (
+                    <label key={key} className="flex cursor-pointer items-center gap-2 text-sm text-pulse-navy">
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500/50"
+                        checked={delegationDraft[key as keyof typeof delegationDraft]}
+                        onChange={(e) =>
+                          setDelegationDraft((d) => ({ ...d, [key]: e.target.checked }))
+                        }
+                      />
+                      {label}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+
+            {isCompanyAdmin && contractCatalog.length > 0 ? (
+              <div className="rounded-md border border-pulse-border bg-white p-5 shadow-sm ring-1 ring-slate-100/80 dark:border-[#1F2937] dark:bg-[#111827] dark:ring-white/[0.06] dark:shadow-[0_2px_8px_rgba(0,0,0,0.35)]">
+                <h2 className="text-sm font-bold tracking-tight text-pulse-navy">Module access by role</h2>
+                <p className="mt-1 text-xs text-pulse-muted">
+                  Limits Pulse areas for each role to a subset of your organization&apos;s contract. Omitted roles default
+                  to the full contract.
+                </p>
+                <div className="mt-4 max-h-[min(50vh,22rem)] space-y-4 overflow-y-auto pr-1">
+                  {(["manager", "supervisor", "lead", "worker"] as const).map((role) => (
+                    <div key={role}>
+                      <p className="text-[11px] font-bold uppercase tracking-wider text-pulse-muted">
+                        {humanizeRole(role)}
+                      </p>
+                      <div className="mt-2 flex flex-col gap-1.5">
+                        {TENANT_PRODUCT_MODULES.filter((m) => contractCatalog.includes(m)).map((mod) => (
+                          <label
+                            key={`${role}-${mod}`}
+                            className="flex cursor-pointer items-center gap-2 text-xs text-pulse-navy"
+                          >
+                            <input
+                              type="checkbox"
+                              className="h-3.5 w-3.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500/50"
+                              checked={(roleFeatureAccessDraft[role] ?? []).includes(mod)}
+                              onChange={() => toggleRoleModule(role, mod)}
+                            />
+                            {MODULE_LABEL[mod] ?? mod}
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  className={`${PRIMARY_BTN} mt-4 w-full`}
+                  disabled={accessPolicySaving}
+                  onClick={() => void saveAccessPolicy()}
+                >
+                  {accessPolicySaving ? "Saving…" : "Save access policy"}
+                </button>
+              </div>
+            ) : null}
+
+            {isCompanyAdmin ? null : (
+              <p className="rounded-md border border-slate-200/90 bg-slate-50/90 px-3 py-2 text-xs text-pulse-muted dark:border-[#374151] dark:bg-[#0F172A]/80">
+                Workers settings and contract-scoped module access are managed by a company administrator.
+              </p>
+            )}
+
             <div className="rounded-md border border-pulse-border bg-white p-5 shadow-sm ring-1 ring-slate-100/80 dark:border-[#1F2937] dark:bg-[#111827] dark:ring-white/[0.06] dark:shadow-[0_2px_8px_rgba(0,0,0,0.35)]">
               <div className="flex items-center gap-2 text-pulse-navy">
                 <Shield className="h-5 w-5 text-[#2B4C7E]" aria-hidden />
@@ -618,10 +814,13 @@ export function WorkersApp() {
                         type="button"
                         role="switch"
                         aria-checked={on}
-                        onClick={() => setMatrix((m) => ({ ...m, [item.key]: !on }))}
+                        disabled={!isCompanyAdmin}
+                        onClick={() =>
+                          isCompanyAdmin ? setMatrix((m) => ({ ...m, [item.key]: !on })) : undefined
+                        }
                         className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${
                           on ? "bg-[#2B4C7E]" : "bg-slate-200"
-                        }`}
+                        } disabled:opacity-45`}
                       >
                         <span
                           className={`absolute top-0.5 left-0.5 h-6 w-6 rounded-full bg-white shadow transition-transform dark:bg-gray-200 ${
@@ -636,13 +835,15 @@ export function WorkersApp() {
               <button
                 type="button"
                 className={`${PRIMARY_BTN} mt-4 w-full`}
-                disabled={matrixSaving}
+                disabled={matrixSaving || !isCompanyAdmin}
                 onClick={() => void saveMatrix()}
               >
                 {matrixSaving ? "Saving…" : "Save permissions"}
               </button>
               <div className="mt-4 rounded-lg border border-amber-200/80 bg-amber-50/80 px-3 py-2 text-xs text-amber-950 dark:border-amber-500/30 dark:bg-amber-950/45 dark:text-amber-100">
-                Permission changes apply immediately to all users in this role.
+                {isCompanyAdmin
+                  ? "Permission changes apply immediately to all users in this role."
+                  : "Only company administrators can edit these toggles."}
               </div>
             </div>
           </div>
@@ -1047,6 +1248,41 @@ export function WorkersApp() {
                   onClick={() => void saveProfileRoles()}
                 >
                   {profileBusy ? "Saving…" : "Save roles"}
+                </button>
+              </section>
+            ) : null}
+
+            {isCompanyAdmin && !principalHasAnyRole(profile, "company_admin") && contractCatalog.length > 0 ? (
+              <section>
+                <h3 className={LABEL}>Extra module access</h3>
+                <p className="mt-1 text-xs text-pulse-muted">
+                  Grant additional Pulse modules from your organization&apos;s contract (on top of this person&apos;s
+                  role defaults).
+                </p>
+                <div className="mt-3 flex flex-col gap-1.5 rounded-lg border border-slate-100 bg-white p-3 dark:border-[#374151] dark:bg-[#0F172A]/80">
+                  {TENANT_PRODUCT_MODULES.filter((m) => contractCatalog.includes(m)).map((mod) => (
+                    <label key={mod} className="flex cursor-pointer items-center gap-2 text-sm text-pulse-navy">
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500/50"
+                        checked={extraModulesDraft.includes(mod)}
+                        onChange={(e) => {
+                          setExtraModulesDraft((prev) =>
+                            e.target.checked ? [...new Set([...prev, mod])].sort() : prev.filter((x) => x !== mod),
+                          );
+                        }}
+                      />
+                      {MODULE_LABEL[mod] ?? mod}
+                    </label>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  className="app-btn-secondary mt-3 px-4 py-2 text-sm font-semibold"
+                  disabled={profileBusy}
+                  onClick={() => void saveExtraModules()}
+                >
+                  {profileBusy ? "Saving…" : "Save module access"}
                 </button>
               </section>
             ) : null}

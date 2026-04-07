@@ -43,6 +43,10 @@ class UserOut(BaseModel):
     #: Workforce / scheduling / monitoring capacity (separate from permission roles).
     operational_role: Optional[str] = None
     enabled_features: list[str] = []
+    #: Full tenant contract modules (system-admin grants). Populated for company_admin for the Workers UI matrix.
+    contract_enabled_features: Optional[list[str]] = None
+    #: True when this user may open the Workers & Roles page (admin or delegated).
+    workers_roster_access: bool = False
     is_impersonating: bool = False
     is_system_admin: bool = False
     company: Optional[CompanySummaryOut] = None

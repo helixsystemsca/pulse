@@ -6,7 +6,6 @@ HR tables + company settings; multi-tenant with optional `company_id` for system
 
 from __future__ import annotations
 
-import copy
 from datetime import datetime, timedelta, timezone
 from typing import Annotated, Any, Optional
 from urllib.parse import quote
@@ -25,7 +24,12 @@ from app.core.user_roles import (
     user_roles_subset_of,
     validate_tenant_roles_non_empty,
 )
+from app.core.company_features import tenant_enabled_feature_names_with_legacy
 from app.core.config import get_settings
+from app.core.features.service import MODULE_KEYS
+from app.core.features.system_catalog import GLOBAL_SYSTEM_FEATURES
+from app.core.tenant_feature_access import load_merged_workers_settings, user_has_workers_roster_page_access
+from app.core.workers_settings_merge import DEFAULT_WORKERS_SETTINGS, merge_workers_settings
 from app.core.email_smtp import send_employee_invite
 from app.core.system_tokens import generate_raw_token, hash_system_token
 from app.models.domain import (
@@ -66,45 +70,6 @@ from app.schemas.pulse_workers import (
 
 router = APIRouter(prefix="/workers", tags=["workers"])
 
-DEFAULT_WORKERS_SETTINGS: dict[str, Any] = {
-    "permission_matrix": {
-        "view_tools": True,
-        "assign_jobs": True,
-        "manage_inventory": False,
-        "manage_work_requests": True,
-        "view_reports": True,
-    },
-    "roles": [
-        {"key": "company_admin", "label": "Company Admin"},
-        {"key": "manager", "label": "Manager"},
-        {"key": "supervisor", "label": "Supervisor"},
-        {"key": "lead", "label": "Lead"},
-        {"key": "worker", "label": "Worker"},
-    ],
-    "shifts": [
-        {"key": "day", "label": "Day shift"},
-        {"key": "night", "label": "Night shift"},
-        {"key": "custom", "label": "Custom"},
-    ],
-    "skill_categories": ["Welding", "Electrical", "HVAC", "Safety"],
-    "certification_rules": [],
-}
-
-
-def merge_workers_settings(raw: Optional[dict[str, Any]]) -> dict[str, Any]:
-    out = copy.deepcopy(DEFAULT_WORKERS_SETTINGS)
-    if not raw:
-        return out
-    for k, v in raw.items():
-        if isinstance(v, dict) and isinstance(out.get(k), dict):
-            merged = dict(out[k])
-            merged.update(v)
-            out[k] = merged
-        else:
-            out[k] = v
-    return out
-
-
 async def resolve_workers_company_id(
     user: Annotated[User, Depends(get_current_user)],
     company_id: Optional[str] = Query(None, description="Required for system administrators"),
@@ -124,6 +89,68 @@ async def resolve_workers_company_id(
 CompanyId = Annotated[str, Depends(resolve_workers_company_id)]
 Db = Annotated[AsyncSession, Depends(get_db)]
 MgrUser = Annotated[User, Depends(require_manager_or_above)]
+
+
+async def require_workers_roster_page(
+    user: Annotated[User, Depends(require_manager_or_above)],
+    db: Db,
+    cid: CompanyId,
+) -> User:
+    merged = await load_merged_workers_settings(db, cid)
+    if not user_has_workers_roster_page_access(user, merged):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Workers & Roles is limited to company administrators unless access is delegated.",
+        )
+    return user
+
+
+async def require_company_admin_for_workers_settings(
+    user: Annotated[User, Depends(get_current_user)],
+) -> User:
+    if user_has_any_role(user, UserRole.system_admin) or user.is_system_admin:
+        return user
+    if UserRole.company_admin.value not in user.roles:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only company administrators can update workers settings.",
+        )
+    return user
+
+
+RosterPageUser = Annotated[User, Depends(require_workers_roster_page)]
+WorkersSettingsAdminUser = Annotated[User, Depends(require_company_admin_for_workers_settings)]
+
+
+def _sanitize_feature_key_list(v: object) -> list[str]:
+    cat = set(GLOBAL_SYSTEM_FEATURES)
+    if not isinstance(v, list):
+        return []
+    return sorted({str(x) for x in v if str(x) in cat})
+
+
+def _sanitize_workers_policy_keys(base: dict[str, Any]) -> None:
+    rfa = base.get("role_feature_access")
+    if isinstance(rfa, dict):
+        allowed_roles = frozenset({"manager", "supervisor", "lead", "worker"})
+        out: dict[str, list[str]] = {}
+        for k, v in rfa.items():
+            if str(k) in allowed_roles:
+                out[str(k)] = _sanitize_feature_key_list(v)
+        base["role_feature_access"] = out
+    wpd = base.get("workers_page_delegation")
+    if isinstance(wpd, dict):
+        base["workers_page_delegation"] = {
+            "manager": bool(wpd.get("manager")),
+            "supervisor": bool(wpd.get("supervisor")),
+            "lead": bool(wpd.get("lead")),
+        }
+
+async def _contract_feature_names_for_company(db: AsyncSession, cid: str) -> list[str]:
+    raw = await tenant_enabled_feature_names_with_legacy(db, cid)
+    cat = set(GLOBAL_SYSTEM_FEATURES)
+    return sorted({f for f in raw if f in MODULE_KEYS or f in cat})
+
 
 _ROSTER_ROLES = (
     UserRole.company_admin,
@@ -344,6 +371,10 @@ def _patch_actor_can_touch_target(actor: User, target: User) -> None:
         if not user_roles_subset_of(target, (UserRole.worker, UserRole.lead)):
             raise HTTPException(status_code=403, detail="Managers and supervisors may only edit workers or leads")
         return
+    if user_has_any_role(actor, UserRole.lead):
+        if not user_roles_subset_of(target, (UserRole.worker,)):
+            raise HTTPException(status_code=403, detail="Leads may only edit workers")
+        return
     raise HTTPException(status_code=403, detail="Not allowed")
 
 
@@ -419,6 +450,8 @@ async def _build_detail(db: AsyncSession, cid: str, u: User, users_map: dict[str
     co = await _compliance_summary(db, cid, u.id, now)
     wo = await _work_summary(db, cid, u.id, now)
 
+    extras = list(u.feature_allow_extra) if isinstance(getattr(u, "feature_allow_extra", None), list) else []
+
     return WorkerDetailOut(
         id=u.id,
         company_id=str(u.company_id) if u.company_id else cid,
@@ -426,6 +459,7 @@ async def _build_detail(db: AsyncSession, cid: str, u: User, users_map: dict[str
         full_name=u.full_name,
         role=primary_jwt_role(u).value,
         roles=list(u.roles),
+        feature_allow_extra=[str(x) for x in extras if isinstance(x, str)],
         is_active=u.is_active,
         account_status=u.account_status.value,
         phone=hr.phone if hr else None,
@@ -454,15 +488,19 @@ async def _get_settings_row(db: AsyncSession, cid: str) -> Optional[PulseWorkers
 
 
 @router.get("/settings", response_model=WorkersSettingsOut)
-async def get_workers_settings(db: Db, _: MgrUser, cid: CompanyId) -> WorkersSettingsOut:
+async def get_workers_settings(db: Db, _: RosterPageUser, cid: CompanyId) -> WorkersSettingsOut:
     row = await _get_settings_row(db, cid)
-    return WorkersSettingsOut(settings=merge_workers_settings(row.settings if row else None))
+    cfn = await _contract_feature_names_for_company(db, cid)
+    return WorkersSettingsOut(
+        settings=merge_workers_settings(row.settings if row else None),
+        contract_feature_names=cfn,
+    )
 
 
 @router.patch("/settings", response_model=WorkersSettingsOut)
 async def patch_workers_settings(
     db: Db,
-    _: MgrUser,
+    _: WorkersSettingsAdminUser,
     cid: CompanyId,
     body: WorkersSettingsPatchIn,
 ) -> WorkersSettingsOut:
@@ -475,12 +513,14 @@ async def patch_workers_settings(
             base[k] = m
         else:
             base[k] = v
+    _sanitize_workers_policy_keys(base)
     if row:
         row.settings = base
     else:
         db.add(PulseWorkersSettings(id=str(uuid4()), company_id=cid, settings=base))
     await db.commit()
-    return WorkersSettingsOut(settings=base)
+    cfn = await _contract_feature_names_for_company(db, cid)
+    return WorkersSettingsOut(settings=base, contract_feature_names=cfn)
 
 
 @router.get("", response_model=WorkerListOut)
@@ -535,7 +575,7 @@ async def list_workers(
 
 
 @router.get("/{user_id}/compliance-summary", response_model=WorkerComplianceSummaryOut)
-async def worker_compliance_summary(db: Db, _: MgrUser, cid: CompanyId, user_id: str) -> WorkerComplianceSummaryOut:
+async def worker_compliance_summary(db: Db, _: RosterPageUser, cid: CompanyId, user_id: str) -> WorkerComplianceSummaryOut:
     u = await pulse_svc._user_in_company(db, cid, user_id)
     if not u:
         raise HTTPException(status_code=404, detail="User not found")
@@ -543,7 +583,7 @@ async def worker_compliance_summary(db: Db, _: MgrUser, cid: CompanyId, user_id:
 
 
 @router.get("/{user_id}/work-summary", response_model=WorkerWorkSummaryOut)
-async def worker_work_summary(db: Db, _: MgrUser, cid: CompanyId, user_id: str) -> WorkerWorkSummaryOut:
+async def worker_work_summary(db: Db, _: RosterPageUser, cid: CompanyId, user_id: str) -> WorkerWorkSummaryOut:
     u = await pulse_svc._user_in_company(db, cid, user_id)
     if not u:
         raise HTTPException(status_code=404, detail="User not found")
@@ -551,7 +591,7 @@ async def worker_work_summary(db: Db, _: MgrUser, cid: CompanyId, user_id: str) 
 
 
 @router.get("/{user_id}", response_model=WorkerDetailOut)
-async def get_worker(db: Db, _: MgrUser, cid: CompanyId, user_id: str) -> WorkerDetailOut:
+async def get_worker(db: Db, _: RosterPageUser, cid: CompanyId, user_id: str) -> WorkerDetailOut:
     u = await pulse_svc._user_in_company(db, cid, user_id)
     roster_set = {r.value for r in _ROSTER_ROLES}
     if not u or not set(u.roles) & roster_set:
@@ -609,7 +649,7 @@ async def _apply_worker_hr_and_extras(
 @router.post("", response_model=WorkerCreateResultOut, status_code=status.HTTP_201_CREATED)
 async def create_worker(
     db: Db,
-    actor: MgrUser,
+    actor: RosterPageUser,
     cid: CompanyId,
     body: WorkerCreateIn,
 ) -> WorkerCreateResultOut:
@@ -627,6 +667,9 @@ async def create_worker(
     elif user_has_any_role(actor, UserRole.supervisor):
         if body.role not in _manager_creatable_roles():
             raise HTTPException(status_code=403, detail="Supervisors may only invite workers or leads")
+    elif user_has_any_role(actor, UserRole.lead):
+        if body.role != "worker":
+            raise HTTPException(status_code=403, detail="Leads may only invite workers")
     else:
         raise HTTPException(status_code=403, detail="Not allowed to create users")
 
@@ -715,7 +758,7 @@ async def create_worker(
 @router.post("/{user_id}/resend-invite", status_code=status.HTTP_200_OK)
 async def resend_worker_invite(
     db: Db,
-    actor: MgrUser,
+    actor: RosterPageUser,
     cid: CompanyId,
     user_id: str,
 ) -> dict[str, Any]:
@@ -762,7 +805,7 @@ async def resend_worker_invite(
 @router.patch("/{user_id}", response_model=WorkerDetailOut)
 async def patch_worker(
     db: Db,
-    actor: MgrUser,
+    actor: RosterPageUser,
     cid: CompanyId,
     user_id: str,
     body: WorkerPatchIn,
@@ -863,6 +906,16 @@ async def patch_worker(
         await _sync_skills(db, cid, user_id, body.skills)
     if body.training is not None:
         await _sync_training(db, cid, user_id, body.training)
+
+    if body.feature_allow_extra is not None:
+        if not user_has_any_role(actor, UserRole.company_admin) and not (
+            user_has_any_role(actor, UserRole.system_admin) or actor.is_system_admin
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Only company administrators can set extra module access",
+            )
+        target.feature_allow_extra = _sanitize_feature_key_list(body.feature_allow_extra)
 
     await db.commit()
     u2 = await pulse_svc._user_in_company(db, cid, user_id)

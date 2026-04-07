@@ -211,6 +211,12 @@ class User(Base):
         nullable=False,
         server_default=text("'[]'::jsonb"),
     )
+    #: Additive product-module keys (subset of tenant contract) granted by company admin for one-off access.
+    feature_allow_extra: Mapped[list[str]] = mapped_column(
+        JSONB,
+        nullable=False,
+        server_default=text("'[]'::jsonb"),
+    )
     onboarding_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
     onboarding_completed: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
     onboarding_steps: Mapped[list[Any]] = mapped_column(

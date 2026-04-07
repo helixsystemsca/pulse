@@ -28,7 +28,7 @@ import { pulseSystemSidebarNav, pulseTenantSidebarNav, type PulseSidebarIcon } f
 import { isPulseNavActive } from "@/lib/pulse-nav-active";
 import { isTenantNavFeatureEnabled } from "@/lib/pulse-nav-features";
 import { isTenantNavPermissionGranted } from "@/lib/pulse-nav-permissions";
-import { sessionPrimaryRole } from "@/lib/pulse-roles";
+import { managerOrAbove, sessionPrimaryRole } from "@/lib/pulse-roles";
 
 /** First word on line 1, remaining words on line 2 — fits narrow expanded rail. */
 function splitNavLabel(label: string): { line1: string; line2: string | null } {
@@ -81,7 +81,15 @@ export function AppSideNav() {
       : [...rawNav];
   if (!isSystemAdmin && session) {
     items = items.filter((i) => isTenantNavFeatureEnabled(i.href, session.enabled_features));
-    items = items.filter((i) => isTenantNavPermissionGranted(i.href, session.permissions));
+    items = items.filter((i) => {
+      if (i.href === "/dashboard/workers" || i.href.startsWith("/dashboard/workers")) {
+        if (session.workers_roster_access === false) return false;
+        if (!isTenantNavPermissionGranted(i.href, session.permissions)) return false;
+        if (session.workers_roster_access === true) return true;
+        return managerOrAbove(session);
+      }
+      return isTenantNavPermissionGranted(i.href, session.permissions);
+    });
   }
   const systemRail = isSystemAdmin;
 

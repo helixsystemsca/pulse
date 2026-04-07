@@ -44,6 +44,8 @@ export type WorkerDetail = {
   full_name: string | null;
   role: string;
   roles?: string[];
+  /** Add-on modules from company admin (subset of tenant contract). */
+  feature_allow_extra?: string[];
   is_active: boolean;
   account_status?: string;
   phone: string | null;
@@ -71,6 +73,8 @@ export type WorkersSettings = {
   shifts?: { key: string; label: string }[];
   skill_categories?: string[];
   certification_rules?: unknown[];
+  workers_page_delegation?: { manager?: boolean; supervisor?: boolean; lead?: boolean };
+  role_feature_access?: Record<string, string[]>;
 };
 
 function companyQs(companyId: string | null): string {
@@ -136,15 +140,20 @@ export async function patchWorker(
   });
 }
 
-export async function fetchWorkerSettings(companyId: string | null): Promise<{ settings: WorkersSettings }> {
-  return apiFetch<{ settings: WorkersSettings }>(withCompany(`/api/workers/settings`, companyId));
+export type WorkersSettingsResponse = {
+  settings: WorkersSettings;
+  contract_feature_names?: string[];
+};
+
+export async function fetchWorkerSettings(companyId: string | null): Promise<WorkersSettingsResponse> {
+  return apiFetch<WorkersSettingsResponse>(withCompany(`/api/workers/settings`, companyId));
 }
 
 export async function patchWorkerSettings(
   companyId: string | null,
   settings: WorkersSettings,
-): Promise<{ settings: WorkersSettings }> {
-  return apiFetch<{ settings: WorkersSettings }>(withCompany(`/api/workers/settings`, companyId), {
+): Promise<WorkersSettingsResponse> {
+  return apiFetch<WorkersSettingsResponse>(withCompany(`/api/workers/settings`, companyId), {
     method: "PATCH",
     json: { settings },
   });
