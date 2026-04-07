@@ -3,8 +3,34 @@
  * attaches the Pulse session bearer token, and throws structured errors for non-OK responses.
  */
 import { normalizeApiBaseUrl } from "@/lib/api-base-url";
+import { getImpersonationOverlayAccessToken, setImpersonationOverlayAccessToken } from "@/lib/impersonation-overlay-token";
 import { readSession, writeApiSession, type UserOut } from "@/lib/pulse-session";
 import { applyServerTimeFromUserOut } from "@/lib/serverTime";
+
+export { setImpersonationOverlayAccessToken };
+
+function pathOnlyFromUrl(url: string): string {
+  try {
+    return url.startsWith("http") ? new URL(url).pathname : url.split("?")[0];
+  } catch {
+    return url.split("?")[0];
+  }
+}
+
+/** System routes and `/auth/me` use the stored session; other routes use impersonation overlay when active. */
+function bearerTokenForRequest(url: string): string | undefined {
+  const path = pathOnlyFromUrl(url);
+  if (path.includes("/api/system")) {
+    return readSession()?.access_token;
+  }
+  // System shell and session helpers must read the admin principal, not the in-modal impersonation JWT.
+  if (path === "/api/v1/auth/me" || path.endsWith("/api/v1/auth/me")) {
+    return readSession()?.access_token;
+  }
+  const overlay = getImpersonationOverlayAccessToken();
+  if (overlay) return overlay;
+  return readSession()?.access_token;
+}
 
 export function getApiBaseUrl(): string {
   return normalizeApiBaseUrl(process.env.NEXT_PUBLIC_API_URL);
@@ -31,9 +57,9 @@ export async function apiFetch<T>(
   if (!headers.has("Content-Type") && init?.json !== undefined) {
     headers.set("Content-Type", "application/json");
   }
-  const session = readSession();
-  if (session?.access_token && !headers.has("Authorization")) {
-    headers.set("Authorization", `Bearer ${session.access_token}`);
+  const bearer = bearerTokenForRequest(url);
+  if (bearer && !headers.has("Authorization")) {
+    headers.set("Authorization", `Bearer ${bearer}`);
   }
   const res = await fetch(url, {
     ...init,
@@ -70,9 +96,9 @@ export async function apiPostFormData<T>(path: string, formData: FormData): Prom
   }
   const url = path.startsWith("http") ? path : `${base}${path.startsWith("/") ? "" : "/"}${path}`;
   const headers = new Headers();
-  const session = readSession();
-  if (session?.access_token && !headers.has("Authorization")) {
-    headers.set("Authorization", `Bearer ${session.access_token}`);
+  const bearer = bearerTokenForRequest(url);
+  if (bearer && !headers.has("Authorization")) {
+    headers.set("Authorization", `Bearer ${bearer}`);
   }
   const res = await fetch(url, {
     method: "POST",
@@ -112,6 +138,7 @@ export async function refreshSessionWithToken(token: string, remember: boolean):
 
 /** Re-fetch `/auth/me` and update stored session (e.g. after onboarding PATCH). */
 export async function refreshPulseUserFromServer(): Promise<void> {
+  if (getImpersonationOverlayAccessToken()) return;
   const base = getApiBaseUrl();
   if (!base) return;
   const s = readSession();

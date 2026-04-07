@@ -111,7 +111,6 @@ def _parse_trigger(s: str) -> PulseProjectAutomationTrigger:
 
 @router.get("/projects", response_model=list[ProjectOutWithProgress])
 async def list_projects(db: Db, cid: CompanyId) -> list[ProjectOutWithProgress]:
-    await proj_svc.seed_pool_shutdown_if_empty(db, cid)
     rows = (await db.execute(select(PulseProject).where(PulseProject.company_id == cid))).scalars().all()
     out: list[ProjectOutWithProgress] = []
     for p in rows:
@@ -198,7 +197,6 @@ async def create_project(
 
 @router.get("/projects/{project_id}", response_model=ProjectDetailOut)
 async def get_project(db: Db, cid: CompanyId, project_id: str) -> ProjectDetailOut:
-    await proj_svc.seed_pool_shutdown_if_empty(db, cid)
     await db.commit()
     p = await db.get(PulseProject, project_id)
     if not p or str(p.company_id) != cid:
@@ -381,6 +379,29 @@ async def patch_project(
     await db.commit()
     await db.refresh(p)
     return _project_out(p)
+
+
+@router.delete("/projects/{project_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_project(
+    db: Db,
+    cid: CompanyId,
+    actor: Annotated[User, Depends(require_tenant_user)],
+    project_id: str,
+) -> None:
+    p = await db.get(PulseProject, project_id)
+    if not p or str(p.company_id) != cid:
+        raise HTTPException(status_code=404, detail="Not found")
+    creator_id = getattr(p, "created_by_user_id", None)
+    if not creator_id or str(creator_id) != str(actor.id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only the project creator can delete this project",
+        )
+    tq = await db.execute(select(PulseProjectTask).where(PulseProjectTask.project_id == project_id))
+    for t in tq.scalars().all():
+        await proj_svc.delete_calendar_shift_for_task(db, t)
+    await db.execute(delete(PulseProject).where(PulseProject.id == project_id))
+    await db.commit()
 
 
 # —— Automation rules (project-scoped) ——

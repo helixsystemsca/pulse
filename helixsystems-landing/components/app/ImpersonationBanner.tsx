@@ -3,18 +3,28 @@
 /**
  * Persistent tenant-shell warning while a system administrator is impersonating a company user.
  * Exit restores the system-admin token and returns to `/system`.
+ * Hidden while the system-admin modal preview is active (in-memory overlay token).
  */
 import { UserRoundCog } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { getApiBaseUrl, refreshSessionWithToken } from "@/lib/api";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
+import { getImpersonationOverlayAccessToken } from "@/lib/impersonation-overlay-token";
 import { readSession } from "@/lib/pulse-session";
 
 export function ImpersonationBanner() {
   const { session, refresh } = usePulseAuth();
   const router = useRouter();
   const [busy, setBusy] = useState(false);
+  const [overlayPreview, setOverlayPreview] = useState(false);
+
+  useEffect(() => {
+    const sync = () => setOverlayPreview(Boolean(getImpersonationOverlayAccessToken()));
+    sync();
+    window.addEventListener("pulse-impersonation-overlay", sync);
+    return () => window.removeEventListener("pulse-impersonation-overlay", sync);
+  }, []);
 
   const exitImpersonation = useCallback(async () => {
     const s = readSession();
@@ -37,7 +47,7 @@ export function ImpersonationBanner() {
     }
   }, [refresh, router]);
 
-  if (!session?.is_impersonating) return null;
+  if (overlayPreview || !session?.is_impersonating) return null;
 
   const label = session.full_name?.trim() || session.email;
 

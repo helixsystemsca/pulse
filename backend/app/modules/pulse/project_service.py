@@ -3,14 +3,13 @@
 from __future__ import annotations
 
 from datetime import date, datetime, timedelta, timezone
-from typing import Any, Optional
+from typing import Optional
 
-from sqlalchemy import and_, delete, func, select
+from sqlalchemy import and_, delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.domain import User, Zone
 from app.models.pulse_models import (
-    PulseProject,
     PulseProjectStatus,
     PulseProjectTask,
     PulseScheduleShift,
@@ -167,65 +166,3 @@ async def sync_task_from_linked_shift(db: AsyncSession, shift: PulseScheduleShif
     await db.flush()
 
 
-async def seed_pool_shutdown_if_empty(db: AsyncSession, company_id: str) -> None:
-    """Idempotent demo dataset: 3-Week Pool Shutdown + 8 tasks (first company only)."""
-    n = await db.scalar(select(func.count()).select_from(PulseProject).where(PulseProject.company_id == company_id))
-    if n and int(n) > 0:
-        return
-
-    uq = await db.execute(
-        select(User.id, User.full_name)
-        .where(User.company_id == company_id, User.is_active.is_(True))
-        .order_by(User.created_at)
-        .limit(5)
-    )
-    users = uq.all()
-    if len(users) < 1:
-        return
-    uids = [str(r[0]) for r in users]
-
-    today = datetime.now(timezone.utc).date()
-    start = today
-    end = start + timedelta(weeks=3)
-
-    proj = PulseProject(
-        company_id=company_id,
-        name="3-Week Pool Shutdown",
-        description="Full pool maintenance and safety cycle (demo project).",
-        start_date=start,
-        end_date=end,
-        status=PulseProjectStatus.active,
-    )
-    db.add(proj)
-    await db.flush()
-
-    specs: list[dict[str, Any]] = [
-        {"title": "Drain pool", "priority": PulseTaskPriority.high, "status": PulseTaskStatus.complete, "d": 0},
-        {"title": "Inspect filtration system", "priority": PulseTaskPriority.critical, "status": PulseTaskStatus.in_progress, "d": 2},
-        {"title": "Clean and acid wash", "priority": PulseTaskPriority.medium, "status": PulseTaskStatus.in_progress, "d": 5},
-        {"title": "Repair cracks", "priority": PulseTaskPriority.high, "status": PulseTaskStatus.todo, "d": 8},
-        {"title": "Replace filters", "priority": PulseTaskPriority.medium, "status": PulseTaskStatus.todo, "d": 11},
-        {"title": "Refill pool", "priority": PulseTaskPriority.low, "status": PulseTaskStatus.blocked, "d": 14},
-        {"title": "Balance chemicals", "priority": PulseTaskPriority.medium, "status": PulseTaskStatus.todo, "d": 17},
-        {"title": "Safety inspection", "priority": PulseTaskPriority.critical, "status": PulseTaskStatus.todo, "d": 20},
-    ]
-
-    for i, sp in enumerate(specs):
-        uid = uids[i % len(uids)]
-        due = start + timedelta(days=int(sp["d"]))
-        t = PulseProjectTask(
-            company_id=company_id,
-            project_id=str(proj.id),
-            title=sp["title"],
-            description=None,
-            assigned_user_id=uid,
-            priority=sp["priority"],
-            status=sp["status"],
-            due_date=due,
-        )
-        db.add(t)
-    await db.flush()
-
-    tq = await db.execute(select(PulseProjectTask).where(PulseProjectTask.project_id == proj.id))
-    for t in tq.scalars().all():
-        await ensure_calendar_shift_for_task(db, company_id, t)

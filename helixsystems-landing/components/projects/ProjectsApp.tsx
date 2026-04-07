@@ -10,13 +10,15 @@ import { SegmentedControl } from "@/components/schedule/SegmentedControl";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
 import { apiFetch } from "@/lib/api";
 import { parseClientApiError } from "@/lib/parse-client-api-error";
-import { createProject, listProjects, patchProject, type ProjectRow } from "@/lib/projectsService";
+import { createProject, deleteProject, listProjects, patchProject, type ProjectRow } from "@/lib/projectsService";
 import type { PulseWorkerApi } from "@/lib/schedule/pulse-bridge";
 
 const PRIMARY_BTN =
   "rounded-[10px] bg-[#2B4C7E] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#234066] disabled:opacity-50";
 const SECONDARY_BTN =
   "rounded-[10px] border border-slate-200/90 bg-white px-5 py-2.5 text-sm font-semibold text-pulse-navy shadow-sm transition-colors hover:bg-slate-50 disabled:opacity-50 dark:border-[#374151] dark:bg-[#1F2937] dark:text-slate-100 dark:hover:bg-[#374151]";
+const DANGER_BTN =
+  "rounded-[10px] border border-red-200/90 bg-white px-5 py-2.5 text-sm font-semibold text-red-700 shadow-sm transition-colors hover:bg-red-50 disabled:opacity-50 dark:border-red-500/35 dark:bg-[#1F2937] dark:text-red-300 dark:hover:bg-red-950/50";
 const FIELD =
   "mt-1.5 w-full rounded-[10px] border border-slate-200/90 bg-white px-3 py-2.5 text-sm text-pulse-navy shadow-sm focus:border-[#2B4C7E]/35 focus:outline-none focus:ring-1 focus:ring-[#2B4C7E]/25 dark:border-[#374151] dark:bg-[#0F172A] dark:text-gray-100";
 const LABEL = "text-[11px] font-semibold uppercase tracking-wider text-pulse-muted";
@@ -42,6 +44,7 @@ export function ProjectsApp() {
   const [toast, setToast] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [completingId, setCompletingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const [formName, setFormName] = useState("");
   const [formStart, setFormStart] = useState("");
@@ -112,6 +115,28 @@ export function ProjectsApp() {
       setToast(message || "Could not update project.");
     } finally {
       setCompletingId(null);
+    }
+  }
+
+  async function removeProject(p: ProjectRow) {
+    if (!myUserId || p.created_by_user_id !== myUserId || deletingId) return;
+    if (
+      !confirm(
+        `Delete "${p.name}"? All tasks in this project will be removed. This cannot be undone.`,
+      )
+    ) {
+      return;
+    }
+    setDeletingId(p.id);
+    try {
+      await deleteProject(p.id);
+      setRows((prev) => prev?.filter((r) => r.id !== p.id) ?? null);
+      setToast("Project deleted.");
+    } catch (e) {
+      const { message } = parseClientApiError(e);
+      setToast(message || "Could not delete project.");
+    } finally {
+      setDeletingId(null);
     }
   }
 
@@ -207,16 +232,15 @@ export function ProjectsApp() {
               ? "No projects yet. Create one to get started."
               : filter === "completed"
                 ? "No completed projects in this view."
-                : "No active projects. Mark one complete with Mark complete (creator only) or switch to Completed."}
+                : "No active projects in this filter. Switch to Completed or create a project."}
           </p>
         </Card>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {filtered.map((p) => {
             const owner = p.owner_user_id ? workerById.get(p.owner_user_id) : undefined;
-            const creatorCanComplete =
-              Boolean(myUserId && p.created_by_user_id && p.created_by_user_id === myUserId) &&
-              p.status !== "completed";
+            const creatorIsYou = Boolean(myUserId && p.created_by_user_id && p.created_by_user_id === myUserId);
+            const creatorCanComplete = creatorIsYou && p.status !== "completed";
             return (
               <Card
                 key={p.id}
@@ -260,15 +284,27 @@ export function ProjectsApp() {
                       </p>
                     </div>
                     <div className="mt-4 flex flex-col gap-2">
-                      {creatorCanComplete ? (
-                        <button
-                          type="button"
-                          className={`${SECONDARY_BTN} w-full`}
-                          disabled={completingId === p.id}
-                          onClick={() => void markProjectComplete(p)}
-                        >
-                          {completingId === p.id ? "Updating…" : "Mark complete"}
-                        </button>
+                      {creatorIsYou ? (
+                        <div className="flex flex-col gap-2 sm:flex-row">
+                          {creatorCanComplete ? (
+                            <button
+                              type="button"
+                              className={`${SECONDARY_BTN} w-full sm:flex-1`}
+                              disabled={completingId === p.id || deletingId === p.id}
+                              onClick={() => void markProjectComplete(p)}
+                            >
+                              {completingId === p.id ? "Updating…" : "Mark complete"}
+                            </button>
+                          ) : null}
+                          <button
+                            type="button"
+                            className={`${DANGER_BTN} w-full ${creatorCanComplete ? "sm:flex-1" : ""}`}
+                            disabled={deletingId === p.id || completingId === p.id}
+                            onClick={() => void removeProject(p)}
+                          >
+                            {deletingId === p.id ? "Deleting…" : "Delete"}
+                          </button>
+                        </div>
                       ) : null}
                       <Link
                         href={`/projects/${p.id}`}

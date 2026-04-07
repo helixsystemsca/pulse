@@ -190,6 +190,10 @@ export async function patchProject(
   return apiFetch<ProjectRow>(`/api/v1/projects/${id}`, { method: "PATCH", json: patch });
 }
 
+export async function deleteProject(id: string): Promise<void> {
+  await apiFetch<undefined>(`/api/v1/projects/${id}`, { method: "DELETE" });
+}
+
 export async function createProject(body: {
   name: string;
   description?: string | null;

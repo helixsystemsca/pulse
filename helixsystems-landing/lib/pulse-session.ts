@@ -4,6 +4,7 @@
  */
 
 import { normalizeApiBaseUrl } from "@/lib/api-base-url";
+import { getImpersonationOverlayAccessToken } from "@/lib/impersonation-overlay-token";
 import { applyServerTimeFromUserOut } from "@/lib/serverTime";
 
 export const PULSE_AUTH_STORAGE_KEY = "pulse_auth_v1";
@@ -164,6 +165,7 @@ export function isLoggedIn(): boolean {
 
 /** True when this JWT session may call `/api/v1/pulse/*` (tenant users only; system admin must impersonate). */
 export function canAccessPulseTenantApis(session: PulseAuthSession | null): boolean {
+  if (getImpersonationOverlayAccessToken()) return true;
   if (!session?.access_token) return false;
   if (session.is_system_admin === true || session.role === "system_admin") return false;
   const cid = session.company_id;

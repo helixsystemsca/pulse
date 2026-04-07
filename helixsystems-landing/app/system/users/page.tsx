@@ -1,8 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
-import { apiFetch, refreshSessionWithToken } from "@/lib/api";
+import { ImpersonationTenantModal } from "@/components/system/ImpersonationTenantModal";
+import { apiFetch } from "@/lib/api";
+import { setImpersonationOverlayAccessToken } from "@/lib/impersonation-overlay-token";
 import { parseClientApiError } from "@/lib/parse-client-api-error";
 import { readSession } from "@/lib/pulse-session";
 
@@ -46,7 +47,6 @@ const BTN_SECONDARY =
   "rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-800 hover:bg-gray-50 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800";
 
 export default function SystemUsersPage() {
-  const router = useRouter();
   const session = readSession();
   const myUserId = session?.sub ?? "";
 
@@ -55,6 +55,11 @@ export default function SystemUsersPage() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [resetLink, setResetLink] = useState<string | null>(null);
+  const [impersonationModal, setImpersonationModal] = useState<{
+    token: string;
+    email: string;
+    full_name: string | null;
+  } | null>(null);
 
   const [appliedQ, setAppliedQ] = useState("");
   const [appliedRole, setAppliedRole] = useState("");
@@ -113,13 +118,16 @@ export default function SystemUsersPage() {
     return n;
   }, [appliedQ, appliedRole]);
 
-  const impersonate = async (userId: string) => {
+  const impersonate = async (userId: string, row: UserRow) => {
     const res = await apiFetch<{ access_token: string }>(`/api/system/users/${userId}/impersonate`, {
       method: "POST",
     });
-    const s = readSession();
-    await refreshSessionWithToken(res.access_token, s?.remember ?? false);
-    router.push("/overview");
+    setImpersonationOverlayAccessToken(res.access_token);
+    setImpersonationModal({
+      token: res.access_token,
+      email: row.email,
+      full_name: row.full_name,
+    });
   };
 
   const requestReset = async (userId: string) => {
@@ -146,7 +154,8 @@ export default function SystemUsersPage() {
         <div>
           <h1 className="text-xl font-semibold text-gray-900 dark:text-white">Users</h1>
           <p className="mt-1 text-sm text-gray-500 dark:text-zinc-500">
-            Tenant accounts and pending invites. Use impersonation to open Pulse as a company user.
+            Tenant accounts and pending invites. Impersonation opens a preview of the operations dashboard in a modal
+            (your admin session stays here; close the modal to exit).
           </p>
         </div>
         <button
@@ -282,7 +291,7 @@ export default function SystemUsersPage() {
                           {r.role !== "system_admin" && r.company_id ? (
                             <button
                               type="button"
-                              onClick={() => void impersonate(r.id)}
+                              onClick={() => void impersonate(r.id, r)}
                               className="text-xs text-blue-400 hover:underline"
                             >
                               Impersonate
@@ -347,6 +356,15 @@ export default function SystemUsersPage() {
           </div>
         </div>
       )}
+
+      {impersonationModal ? (
+        <ImpersonationTenantModal
+          accessToken={impersonationModal.token}
+          targetEmail={impersonationModal.email}
+          targetName={impersonationModal.full_name}
+          onClosed={() => setImpersonationModal(null)}
+        />
+      ) : null}
     </div>
   );
 }
