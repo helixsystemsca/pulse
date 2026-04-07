@@ -17,15 +17,12 @@ import {
   Layers,
   LayoutDashboard,
   MapPin,
-  Image as ImageIcon,
   Package,
   ScrollText,
   UserCog,
   Wrench,
 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { CompanyLogo } from "@/components/branding/CompanyLogo";
-import { useTheme } from "@/components/theme/ThemeProvider";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
 import { pulseSystemSidebarNav, pulseTenantSidebarNav, type PulseSidebarIcon } from "@/lib/pulse-app";
 import { isPulseNavActive } from "@/lib/pulse-nav-active";
@@ -44,13 +41,11 @@ const ICONS: Record<PulseSidebarIcon, LucideIcon> = {
   building: Building2,
   "user-cog": UserCog,
   "scroll-text": ScrollText,
-  image: ImageIcon,
 };
 
 export function AppSideNav() {
   const pathname = usePathname();
   const { authed, session } = usePulseAuth();
-  const { theme } = useTheme();
   const [narrowExpanded, setNarrowExpanded] = useState(false);
 
   useEffect(() => {
@@ -76,15 +71,12 @@ export function AppSideNav() {
       ? rawNav.filter((i) => i.href !== "/monitoring")
       : [...rawNav];
   if (!isSystemAdmin && session) {
-    items = items.filter((i) => {
-      if (i.href === "/dashboard/organization") return session.role === "company_admin";
-      return isTenantNavFeatureEnabled(i.href, session.enabled_features);
-    });
+    items = items.filter((i) => isTenantNavFeatureEnabled(i.href, session.enabled_features));
   }
   const systemRail = isSystemAdmin;
 
   const tenantShell =
-    "border border-white/30 bg-white/80 shadow-lg shadow-slate-900/10 backdrop-blur-lg lg:hover:shadow-xl dark:border-white/12 dark:bg-slate-900/78 dark:shadow-[0_8px_28px_rgba(0,0,0,0.45)] dark:lg:hover:shadow-[0_10px_32px_rgba(0,0,0,0.55)]";
+    "border border-gray-200 bg-white/90 shadow-lg shadow-slate-900/10 backdrop-blur-md lg:hover:shadow-xl dark:border-[#1F2937] dark:bg-[#111827] dark:shadow-[0_4px_24px_rgba(0,0,0,0.45)] dark:lg:hover:shadow-[0_6px_28px_rgba(0,0,0,0.55)]";
 
   const tenantShellMobilePop =
     "max-lg:shadow-2xl max-lg:shadow-slate-900/18 dark:max-lg:shadow-[0_8px_28px_rgba(0,0,0,0.55)]";
@@ -101,26 +93,9 @@ export function AppSideNav() {
       ) : null}
 
       <aside
-        className={`group/sidebar fixed left-3 top-1/2 z-[40] flex max-h-[min(85vh,52rem)] w-[4.25rem] -translate-y-1/2 flex-col overflow-hidden overflow-y-auto rounded-2xl border transition-[width,box-shadow] duration-200 ease-out lg:hover:w-56 ${tenantShell} ${narrowExpanded ? tenantShellMobilePop : ""}`}
+        className={`group/sidebar fixed left-3 top-1/2 z-[40] flex max-h-[min(85vh,52rem)] w-[4.25rem] -translate-y-1/2 flex-col overflow-hidden overflow-y-auto rounded-2xl border transition-[width,box-shadow] duration-200 ease-out lg:hover:w-[11rem] ${tenantShell} ${narrowExpanded ? tenantShellMobilePop : ""}`}
         aria-label="App"
       >
-        {!systemRail && session?.company ? (
-          <div className="border-b border-gray-200/60 px-2 py-2 dark:border-white/10">
-            <Link
-              href="/overview"
-              title={session.company.name}
-              onClick={() => setNarrowExpanded(false)}
-              className="flex justify-center lg:justify-start"
-            >
-              <CompanyLogo
-                logoUrl={session.company.logo_url}
-                companyName={session.company.name}
-                showName={false}
-                variant={theme === "dark" ? "dark" : "light"}
-              />
-            </Link>
-          </div>
-        ) : null}
         <nav className="flex flex-col gap-1 px-2 py-3">
           {items.map((item) => {
             const active = isPulseNavActive(item.href, pathname);
@@ -147,8 +122,8 @@ export function AppSideNav() {
                   <Icon className="h-[1.125rem] w-[1.125rem]" strokeWidth={2} aria-hidden />
                 </span>
                 <span
-                  className={`min-w-0 overflow-hidden text-ellipsis whitespace-nowrap transition-[max-width,opacity] duration-200 ease-out lg:max-w-0 lg:opacity-0 lg:group-hover/sidebar:max-w-[11rem] lg:group-hover/sidebar:opacity-100 ${
-                    narrowExpanded ? "max-w-[11rem] opacity-100" : "max-w-0 opacity-0"
+                  className={`min-w-0 overflow-hidden text-ellipsis whitespace-nowrap transition-[max-width,opacity] duration-200 ease-out lg:max-w-0 lg:opacity-0 lg:group-hover/sidebar:max-w-[9.5rem] lg:group-hover/sidebar:opacity-100 ${
+                    narrowExpanded ? "max-w-[9.5rem] opacity-100" : "max-w-0 opacity-0"
                   }`}
                 >
                   {item.label}
@@ -160,7 +135,7 @@ export function AppSideNav() {
 
         <button
           type="button"
-          className="flex shrink-0 items-center justify-center border-t border-gray-200/60 py-2 dark:border-white/10 lg:hidden"
+          className="flex shrink-0 items-center justify-center border-t border-gray-200 py-2 dark:border-[#1F2937] lg:hidden"
           onClick={() => setNarrowExpanded((o) => !o)}
           aria-expanded={narrowExpanded}
           aria-label={narrowExpanded ? "Collapse navigation" : "Expand navigation"}

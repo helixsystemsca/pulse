@@ -68,7 +68,6 @@ export const pulseTenantSidebarNav = [
   { href: "/dashboard/inventory", label: "Inventory", icon: "package" as const },
   { href: "/equipment", label: "Equipment", icon: "wrench" as const },
   { href: "/zones-devices/zones", label: "Floor plans", icon: "layers" as const },
-  { href: "/dashboard/organization", label: "Organization", icon: "image" as const },
   { href: "/dashboard/setup", label: "Zones & devices", icon: "map-pin" as const },
 ] as const;
 

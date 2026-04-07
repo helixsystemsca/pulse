@@ -5,7 +5,7 @@
  */
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { Activity, ChevronDown, LogOut, Settings, User } from "lucide-react";
+import { Activity, ChevronDown, Image as ImageIcon, LogOut, User } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useOnboardingOptional } from "@/components/onboarding/OnboardingProvider";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
@@ -26,7 +26,7 @@ function initialsFrom(email: string, fullName: string | null | undefined): strin
 }
 
 const HEADER =
-  "sticky top-0 z-50 h-16 shrink-0 border-b border-white/25 bg-white/82 shadow-[0_8px_24px_rgba(15,23,42,0.08)] backdrop-blur-lg supports-[backdrop-filter]:bg-white/78 dark:border-white/12 dark:bg-slate-900/78 dark:shadow-[0_8px_28px_rgba(0,0,0,0.35)] supports-[backdrop-filter]:dark:bg-slate-900/72";
+  "sticky top-0 z-50 h-16 shrink-0 border-b border-gray-200 bg-white/95 shadow-[0_1px_3px_rgba(15,23,42,0.06)] backdrop-blur-md supports-[backdrop-filter]:bg-white/92 dark:border-[#1F2937] dark:bg-[#0B0F14]/98 dark:shadow-[0_1px_3px_rgba(0,0,0,0.35)] supports-[backdrop-filter]:dark:bg-[#0B0F14]/96";
 
 export function AppNavbar() {
   const pathname = usePathname();
@@ -117,7 +117,7 @@ export function AppNavbar() {
               </button>
               {userOpen ? (
                 <div
-                  className="absolute right-0 mt-1 w-52 rounded-xl border border-white/25 bg-white/90 py-1 shadow-lg backdrop-blur-xl dark:border-white/12 dark:bg-slate-900/88 dark:shadow-[0_12px_36px_rgba(0,0,0,0.45)]"
+                  className="absolute right-0 mt-1 w-56 rounded-xl border border-gray-200 bg-white py-1 shadow-lg dark:border-[#1F2937] dark:bg-[#111827] dark:shadow-[0_8px_24px_rgba(0,0,0,0.45)]"
                   role="menu"
                 >
                   <Link
@@ -129,15 +129,17 @@ export function AppNavbar() {
                     <User className="h-4 w-4 text-gray-500 dark:text-gray-400" strokeWidth={2} aria-hidden />
                     Profile
                   </Link>
-                  <Link
-                    href={pulseApp.to(pulseRoutes.overview)}
-                    className="flex items-center gap-2 px-3 py-2 text-sm text-gray-900 hover:bg-gray-50 dark:text-gray-100 dark:hover:bg-[#0F172A]"
-                    onClick={() => setUserOpen(false)}
-                    role="menuitem"
-                  >
-                    <Settings className="h-4 w-4 text-gray-500 dark:text-gray-400" strokeWidth={2} aria-hidden />
-                    Settings
-                  </Link>
+                  {session?.role === "company_admin" ? (
+                    <Link
+                      href={pulseApp.to("/dashboard/organization")}
+                      className="flex items-center gap-2 px-3 py-2 text-sm text-gray-900 hover:bg-gray-50 dark:text-gray-100 dark:hover:bg-[#0F172A]"
+                      onClick={() => setUserOpen(false)}
+                      role="menuitem"
+                    >
+                      <ImageIcon className="h-4 w-4 text-gray-500 dark:text-gray-400" strokeWidth={2} aria-hidden />
+                      Organization & branding
+                    </Link>
+                  ) : null}
                   <button
                     type="button"
                     onClick={signOut}
