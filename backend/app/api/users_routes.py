@@ -4,7 +4,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Annotated, Any
 from urllib.parse import quote
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -53,7 +53,6 @@ async def create_company_user(
     body: CompanyUserCreate,
     db: Annotated[AsyncSession, Depends(get_db)],
     actor: Annotated[User, Depends(get_current_user)],
-    background_tasks: BackgroundTasks,
 ) -> dict[str, Any]:
     """company_admin: invite worker | lead | supervisor | manager. manager: worker | lead only."""
     if user_has_any_role(actor, UserRole.system_admin):
@@ -134,16 +133,29 @@ async def create_company_user(
     co_name = co.name if co else "your organization"
     link_path = _join_path(raw)
     invite_url = _public_link(link_path)
+    invite_email_sent = False
     if settings.smtp_configured:
-
-        async def _send() -> None:
-            cfg = get_settings()
-            await send_employee_invite(cfg, to_email=email_norm, company_name=co_name, invite_url=invite_url)
-
-        background_tasks.add_task(_send)
+        invite_email_sent = await send_employee_invite(
+            settings,
+            to_email=email_norm,
+            company_name=co_name,
+            invite_url=invite_url,
+        )
 
     await db.commit()
-    return {"id": user.id, "invite_link_path": link_path, "message": "Invite sent"}
+    if invite_email_sent:
+        msg = "Invite sent"
+    elif settings.smtp_configured:
+        msg = "Invite created — email failed to send; share the activation link"
+    else:
+        msg = "Invite created — SMTP not configured; share the activation link"
+
+    return {
+        "id": user.id,
+        "invite_link_path": link_path,
+        "invite_email_sent": invite_email_sent,
+        "message": msg,
+    }
 
 
 @router.patch("/{user_id}/role")

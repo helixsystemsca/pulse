@@ -12,7 +12,7 @@ from typing import Annotated, Any, Optional
 from urllib.parse import quote
 from uuid import uuid4
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import delete, func, or_, select
 from sqlalchemy.dialects.postgresql import array as pg_array
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -612,7 +612,6 @@ async def create_worker(
     actor: MgrUser,
     cid: CompanyId,
     body: WorkerCreateIn,
-    background_tasks: BackgroundTasks,
 ) -> WorkerCreateResultOut:
     if user_has_any_role(actor, UserRole.system_admin) or actor.is_system_admin:
         pass
@@ -683,22 +682,14 @@ async def create_worker(
     link_path = _employee_join_path(raw)
     invite_url = _pulse_public_link(link_path)
 
-    invite_email_sent: bool | None = None
+    invite_email_sent = False
     if settings.smtp_configured:
-
-        async def _send() -> None:
-            cfg = get_settings()
-            await send_employee_invite(
-                cfg,
-                to_email=email_norm,
-                company_name=co_name,
-                invite_url=invite_url,
-            )
-
-        background_tasks.add_task(_send)
-        invite_email_sent = None
-    else:
-        invite_email_sent = False
+        invite_email_sent = await send_employee_invite(
+            settings,
+            to_email=email_norm,
+            company_name=co_name,
+            invite_url=invite_url,
+        )
 
     await db.commit()
 
@@ -706,11 +697,18 @@ async def create_worker(
     assert u2
     users_map = await _users_by_company(db, cid)
     detail = await _build_detail(db, cid, u2, users_map)
+    if invite_email_sent:
+        create_msg = "Invite sent"
+    elif settings.smtp_configured:
+        create_msg = "Worker saved — email failed to send; share the activation link"
+    else:
+        create_msg = "Worker saved — SMTP not configured; share the activation link"
+
     return WorkerCreateResultOut(
         worker=detail,
         invite_link_path=link_path,
         invite_email_sent=invite_email_sent,
-        message="Invite sent",
+        message=create_msg,
     )
 
 
@@ -720,7 +718,6 @@ async def resend_worker_invite(
     actor: MgrUser,
     cid: CompanyId,
     user_id: str,
-    background_tasks: BackgroundTasks,
 ) -> dict[str, Any]:
     target = await pulse_svc._user_in_company(db, cid, user_id)
     rsr = {r.value for r in _ROSTER_ROLES}
@@ -739,24 +736,26 @@ async def resend_worker_invite(
     co_name = company.name if company else "your organization"
     link_path = _employee_join_path(raw)
     invite_url = _pulse_public_link(link_path)
-    invite_email_sent: bool | None = False
+    invite_email_sent = False
     if settings.smtp_configured:
+        invite_email_sent = await send_employee_invite(
+            settings,
+            to_email=target.email,
+            company_name=co_name,
+            invite_url=invite_url,
+        )
 
-        async def _send() -> None:
-            cfg = get_settings()
-            await send_employee_invite(
-                cfg,
-                to_email=target.email,
-                company_name=co_name,
-                invite_url=invite_url,
-            )
+    if invite_email_sent:
+        resend_msg = "Invite resent"
+    elif settings.smtp_configured:
+        resend_msg = "Token updated — email failed to send; share the activation link"
+    else:
+        resend_msg = "Token updated — SMTP not configured; share the activation link"
 
-        background_tasks.add_task(_send)
-        invite_email_sent = None
     return {
         "invite_link_path": link_path,
         "invite_email_sent": invite_email_sent,
-        "message": "Invite resent",
+        "message": resend_msg,
     }
 
 

@@ -47,6 +47,8 @@ export type PulseAuthSession = {
   is_system_admin?: boolean;
   /** From `/auth/me`; when missing (legacy session), tenant nav shows all modules. */
   enabled_features?: string[];
+  /** From `/auth/me`; RBAC allow list for sidebar (omit on legacy session → no permission gating). */
+  permissions?: string[] | null;
   /** Tenant branding; absent for system_admin or legacy sessions. */
   company?: CompanySummary | null;
   /** From `/auth/me`; guides onboarding UI for tenant users. */
@@ -71,6 +73,7 @@ export type UserOut = {
   job_title?: string | null;
   operational_role?: string | null;
   enabled_features?: string[];
+  permissions?: string[] | null;
   is_impersonating?: boolean;
   is_system_admin?: boolean;
   company?: CompanySummary | null;
@@ -184,6 +187,7 @@ export function writeApiSession(
     operational_role: user.operational_role ?? null,
     is_system_admin: user.is_system_admin,
     enabled_features: user.enabled_features,
+    permissions: user.permissions ?? undefined,
     company: user.company ?? null,
     onboarding_enabled: user.onboarding_enabled,
     onboarding_completed: user.onboarding_completed,

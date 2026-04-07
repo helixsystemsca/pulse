@@ -27,6 +27,7 @@ import { usePulseAuth } from "@/hooks/usePulseAuth";
 import { pulseSystemSidebarNav, pulseTenantSidebarNav, type PulseSidebarIcon } from "@/lib/pulse-app";
 import { isPulseNavActive } from "@/lib/pulse-nav-active";
 import { isTenantNavFeatureEnabled } from "@/lib/pulse-nav-features";
+import { isTenantNavPermissionGranted } from "@/lib/pulse-nav-permissions";
 import { sessionPrimaryRole } from "@/lib/pulse-roles";
 
 /** First word on line 1, remaining words on line 2 — fits narrow expanded rail. */
@@ -80,6 +81,7 @@ export function AppSideNav() {
       : [...rawNav];
   if (!isSystemAdmin && session) {
     items = items.filter((i) => isTenantNavFeatureEnabled(i.href, session.enabled_features));
+    items = items.filter((i) => isTenantNavPermissionGranted(i.href, session.permissions));
   }
   const systemRail = isSystemAdmin;
 

@@ -298,7 +298,7 @@ function buildLiveModel(
   });
 
   const rosterWorkers = workers.filter((w) =>
-    ["worker", "manager", "company_admin"].includes(w.role),
+    ["worker", "manager", "company_admin", "supervisor", "lead"].includes(w.role),
   );
 
   const bubbles: WorkforceBubble[] = rosterWorkers.map((w) => {

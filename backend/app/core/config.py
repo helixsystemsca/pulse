@@ -146,8 +146,8 @@ class Settings(BaseSettings):
 
     @property
     def smtp_configured(self) -> bool:
-        """Host + From address required; username required for most providers (password may be empty for some relays)."""
-        return bool(self.smtp_host.strip() and self.smtp_username.strip() and self.email_from_noreply.strip())
+        """Host + From required. Username/password optional (some relays authenticate by IP; login is skipped when username is empty)."""
+        return bool(self.smtp_host.strip() and self.email_from_noreply.strip())
 
     @property
     def pulse_app_public_origin(self) -> str:

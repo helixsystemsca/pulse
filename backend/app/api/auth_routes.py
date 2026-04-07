@@ -203,6 +203,14 @@ async def me(
         ob_seen = True
 
     prim = primary_jwt_role(user)
+    perm_out: list[str] | None = None
+    if user.company_id and not (
+        user.is_system_admin or user_has_any_role(user, UserRole.system_admin)
+    ):
+        psvc = PermissionService(db)
+        eff = await psvc.effective_allow_set(user)
+        perm_out = ["*"] if "*" in eff else sorted(eff)
+
     return UserOut(
         id=user.id,
         email=user.email,
@@ -220,6 +228,7 @@ async def me(
         onboarding_enabled=ob_enabled,
         onboarding_completed=ob_completed,
         onboarding_seen=ob_seen,
+        permissions=perm_out,
         server_time=datetime.now(timezone.utc).isoformat(),
     )
 

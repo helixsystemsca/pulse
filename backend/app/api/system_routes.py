@@ -6,7 +6,7 @@ import logging
 from datetime import datetime, timedelta, timezone
 from typing import Annotated, Any, Optional
 
-from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Query, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 from sqlalchemy import delete, func, select
 from sqlalchemy.dialects.postgresql import array as pg_array
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -62,27 +62,6 @@ from app.schemas.system_admin import (
 router = APIRouter(tags=["system"])
 settings = get_settings()
 _log = logging.getLogger(__name__)
-
-
-async def _bg_send_company_admin_invite(
-    cfg: Settings,
-    to_email: str,
-    company_name: str,
-    invite_url: str,
-) -> None:
-    try:
-        await send_company_admin_invite(
-            cfg,
-            to_email=to_email,
-            company_name=company_name,
-            invite_url=invite_url,
-        )
-    except Exception:
-        _log.exception(
-            "Background company admin invite email failed to=%s company=%s",
-            to_email,
-            company_name,
-        )
 
 
 def _invite_path(raw_token: str) -> str:
@@ -169,7 +148,6 @@ async def create_company_and_invite(
     body: SystemCompanyCreateAndInvite,
     db: Annotated[AsyncSession, Depends(get_db)],
     admin: Annotated[User, Depends(require_system_admin)],
-    background_tasks: BackgroundTasks,
 ) -> dict[str, Any]:
     email_norm = body.admin_email.strip().lower()
     now = datetime.now(timezone.utc)
@@ -225,24 +203,20 @@ async def create_company_and_invite(
     invite_url = _pulse_app_link(link_path)
 
     cfg = get_settings()
-    payload: dict[str, Any] = {
+    invite_email_sent = False
+    if cfg.smtp_configured:
+        invite_email_sent = await send_company_admin_invite(
+            cfg,
+            to_email=email_norm,
+            company_name=company.name,
+            invite_url=invite_url,
+        )
+    return {
         "company_id": company.id,
         "invite_link_path": link_path,
+        "invite_email_sent": invite_email_sent,
+        "invite_email_pending": False,
     }
-    if cfg.smtp_configured:
-        background_tasks.add_task(
-            _bg_send_company_admin_invite,
-            cfg,
-            email_norm,
-            company.name,
-            invite_url,
-        )
-        payload["invite_email_sent"] = None
-        payload["invite_email_pending"] = True
-    else:
-        payload["invite_email_sent"] = False
-        payload["invite_email_pending"] = False
-    return payload
 
 
 @router.post("/companies/bootstrap-legacy", status_code=status.HTTP_201_CREATED)
