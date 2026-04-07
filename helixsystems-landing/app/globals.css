@@ -7,6 +7,148 @@ html {
   scroll-padding-top: 4.5rem;
 }
 
+/**
+ * Glass / elevation — works over {@link PulseThemedBackground}.
+ * Level 1: `app-surface-inset` · Level 2: `app-glass-card` · Level 3: `app-glass-elevated` (modals, emphasis).
+ */
+@layer components {
+  .app-glass-frame {
+    border-radius: 1rem;
+    border: 1px solid rgb(255 255 255 / 0.14);
+    background-color: rgb(255 255 255 / 0.07);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.14);
+    backdrop-filter: blur(14px);
+  }
+  .dark .app-glass-frame {
+    border-color: rgb(255 255 255 / 0.1);
+    background-color: rgb(15 23 42 / 0.28);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.38);
+  }
+
+  .app-glass-frame-header {
+    border-bottom: 1px solid rgb(255 255 255 / 0.14);
+    background-color: rgb(255 255 255 / 0.52);
+    backdrop-filter: blur(20px);
+  }
+  .dark .app-glass-frame-header {
+    border-color: rgb(255 255 255 / 0.1);
+    background-color: rgb(15 23 42 / 0.62);
+  }
+
+  .app-glass-card,
+  .app-card {
+    position: relative;
+    overflow: hidden;
+    border-radius: 0.75rem;
+    border: 1px solid rgb(255 255 255 / 0.2);
+    background-color: rgb(255 255 255 / 0.75);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
+    backdrop-filter: blur(24px);
+  }
+  .dark .app-glass-card,
+  .dark .app-card {
+    border-color: rgb(255 255 255 / 0.12);
+    background-color: rgb(15 23 42 / 0.72);
+    box-shadow: 0 10px 36px rgba(0, 0, 0, 0.42);
+  }
+  .app-glass-card::before,
+  .app-card::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    z-index: 0;
+    background: linear-gradient(to bottom, rgb(255 255 255 / 0.2), transparent);
+    opacity: 0.45;
+  }
+  .dark .app-glass-card::before,
+  .dark .app-card::before {
+    background: linear-gradient(to bottom, rgb(255 255 255 / 0.09), transparent);
+    opacity: 0.4;
+  }
+  .app-glass-card > *,
+  .app-card > * {
+    position: relative;
+    z-index: 1;
+  }
+
+  .app-glass-elevated {
+    position: relative;
+    overflow: hidden;
+    border-radius: 0.75rem;
+    border: 1px solid rgb(255 255 255 / 0.22);
+    background-color: rgb(255 255 255 / 0.85);
+    box-shadow:
+      0 12px 40px rgba(0, 0, 0, 0.28),
+      0 2px 8px rgba(0, 0, 0, 0.06);
+    backdrop-filter: blur(18px);
+  }
+  .dark .app-glass-elevated {
+    border-color: rgb(255 255 255 / 0.14);
+    background-color: rgb(15 23 42 / 0.85);
+    box-shadow:
+      0 24px 48px rgba(0, 0, 0, 0.45),
+      0 2px 8px rgba(0, 0, 0, 0.2);
+  }
+  .app-glass-elevated::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    z-index: 0;
+    background: linear-gradient(to bottom, rgb(255 255 255 / 0.22), transparent);
+    opacity: 0.4;
+  }
+  .dark .app-glass-elevated::before {
+    background: linear-gradient(to bottom, rgb(255 255 255 / 0.1), transparent);
+  }
+  .app-glass-elevated > * {
+    position: relative;
+    z-index: 1;
+  }
+
+  .app-surface-inset,
+  .app-elevated {
+    border-radius: 0.75rem;
+    border: 1px solid rgb(255 255 255 / 0.12);
+    background-color: rgb(255 255 255 / 0.08);
+    backdrop-filter: blur(8px);
+  }
+  .dark .app-surface-inset,
+  .dark .app-elevated {
+    border-color: rgb(255 255 255 / 0.08);
+    background-color: rgb(0 0 0 / 0.18);
+  }
+
+  .app-glass-inset-dense {
+    border-radius: 0.75rem;
+    border: 1px solid rgb(255 255 255 / 0.18);
+    background-color: rgb(255 255 255 / 0.48);
+    backdrop-filter: blur(10px);
+  }
+  .dark .app-glass-inset-dense {
+    border-color: rgb(255 255 255 / 0.1);
+    background-color: rgb(15 23 42 / 0.55);
+  }
+
+  .app-data-shell {
+    overflow: hidden;
+    border-radius: 0.75rem;
+    border: 1px solid rgb(255 255 255 / 0.22);
+    background-color: rgb(255 255 255 / 0.88);
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.16);
+    backdrop-filter: blur(12px);
+  }
+  .dark .app-data-shell {
+    border-color: rgb(255 255 255 / 0.12);
+    background-color: rgb(15 23 42 / 0.9);
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
+  }
+
+}
+
 @layer utilities {
   /** Sign-in: full viewport vs under marketing navbar (h-16) */
   .login-shell--full {
@@ -35,9 +177,6 @@ html {
   .dark .bg-pulse-section {
     background-color: rgb(2 6 23 / 0.28);
   }
-  .app-card {
-    @apply bg-white dark:bg-[#111827];
-  }
   .app-border {
     @apply border-gray-200 dark:border-[#1F2937];
   }
@@ -47,33 +186,47 @@ html {
   .app-text-secondary {
     @apply text-gray-500 dark:text-gray-400;
   }
-  .app-elevated {
-    @apply bg-gray-100/95 dark:bg-[#0F172A];
-  }
   .app-shadow-card {
-    @apply shadow-sm dark:shadow-[0_2px_8px_rgba(0,0,0,0.4)];
+    @apply shadow-lg dark:shadow-[0_10px_32px_rgba(0,0,0,0.4)];
   }
 
   /**
    * Outline / secondary actions (Settings, Export, etc.) — same on all feature pages.
    */
   .app-btn-secondary {
-    @apply rounded-[10px] border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-pulse-navy shadow-sm transition-colors hover:bg-slate-50 disabled:opacity-50 dark:border-[#374151] dark:bg-[#1F2937] dark:text-gray-100 dark:hover:bg-[#374151];
+    @apply rounded-[10px] border px-4 py-2.5 text-sm font-semibold text-pulse-navy shadow-sm backdrop-blur-md transition-colors disabled:opacity-50;
+    border-color: rgb(255 255 255 / 0.25);
+    background-color: rgb(255 255 255 / 0.88);
+  }
+  .app-btn-secondary:hover {
+    background-color: rgb(255 255 255 / 0.96);
+  }
+  .dark .app-btn-secondary {
+    border-color: rgb(255 255 255 / 0.12);
+    background-color: rgb(30 41 59 / 0.85);
+    color: rgb(243 244 246);
+  }
+  .dark .app-btn-secondary:hover {
+    background-color: rgb(30 41 59 / 0.94);
   }
 
-  /** Form fields — shared light/dark */
+  /** Form fields — shared light/dark (higher opacity for readability) */
   .app-field {
-    @apply w-full rounded-[10px] border border-slate-200/90 bg-white px-3 py-2.5 text-sm text-pulse-navy shadow-sm placeholder:text-slate-400 focus:border-[#2B4C7E]/35 focus:outline-none focus:ring-1 focus:ring-[#2B4C7E]/25 dark:border-[#374151] dark:bg-[#0F172A] dark:text-gray-100 dark:placeholder:text-gray-500;
+    @apply w-full rounded-[10px] border border-slate-200/90 px-3 py-2.5 text-sm text-pulse-navy shadow-sm backdrop-blur-sm placeholder:text-slate-400 focus:border-[#2B4C7E]/35 focus:outline-none focus:ring-1 focus:ring-[#2B4C7E]/25 dark:border-[#374151] dark:text-gray-100 dark:placeholder:text-gray-500;
+    background-color: rgb(255 255 255 / 0.95);
+  }
+  .dark .app-field {
+    background-color: rgb(15 23 42 / 0.95);
   }
 
-  /** Tables: header row band */
+  /** Tables: header row band — glass-friendly, readable over gradient */
   .app-table-head-row {
-    @apply border-b border-pulse-border bg-slate-50/80 text-xs font-bold uppercase tracking-wide text-pulse-muted dark:border-[#1F2937] dark:bg-[#0F172A] dark:text-gray-400;
+    @apply border-b border-pulse-border text-xs font-bold uppercase tracking-wide text-pulse-muted dark:border-[#1F2937] dark:text-gray-400;
+    background-color: rgb(248 250 252 / 0.88);
+    backdrop-filter: blur(8px);
   }
-
-  /** Data table wrapper (inventory, work requests, workers list) */
-  .app-data-shell {
-    @apply overflow-hidden rounded-xl border border-pulse-border bg-white shadow-sm ring-1 ring-slate-100/80 dark:border-[#1F2937] dark:bg-[#111827] dark:ring-white/[0.06] dark:shadow-[0_2px_8px_rgba(0,0,0,0.35)];
+  .dark .app-table-head-row {
+    background-color: rgb(15 23 42 / 0.82);
   }
 
   /**

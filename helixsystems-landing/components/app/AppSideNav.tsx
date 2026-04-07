@@ -84,7 +84,7 @@ export function AppSideNav() {
   const systemRail = isSystemAdmin;
 
   const tenantShell =
-    "border-gray-200 bg-white shadow-xl shadow-slate-900/10 lg:hover:shadow-2xl lg:hover:shadow-slate-900/15 dark:border-[#1F2937] dark:bg-[#111827] dark:shadow-[0_4px_24px_rgba(0,0,0,0.45)] dark:lg:hover:shadow-[0_6px_28px_rgba(0,0,0,0.55)]";
+    "border border-white/30 bg-white/80 shadow-lg shadow-slate-900/10 backdrop-blur-lg lg:hover:shadow-xl dark:border-white/12 dark:bg-slate-900/78 dark:shadow-[0_8px_28px_rgba(0,0,0,0.45)] dark:lg:hover:shadow-[0_10px_32px_rgba(0,0,0,0.55)]";
 
   const tenantShellMobilePop =
     "max-lg:shadow-2xl max-lg:shadow-slate-900/18 dark:max-lg:shadow-[0_8px_28px_rgba(0,0,0,0.55)]";
@@ -105,7 +105,7 @@ export function AppSideNav() {
         aria-label="App"
       >
         {!systemRail && session?.company ? (
-          <div className="border-b border-gray-200 px-2 py-2 dark:border-[#1F2937]">
+          <div className="border-b border-gray-200/60 px-2 py-2 dark:border-white/10">
             <Link
               href="/overview"
               title={session.company.name}
@@ -160,7 +160,7 @@ export function AppSideNav() {
 
         <button
           type="button"
-          className="flex shrink-0 items-center justify-center border-t border-gray-200 py-2 dark:border-[#1F2937] lg:hidden"
+          className="flex shrink-0 items-center justify-center border-t border-gray-200/60 py-2 dark:border-white/10 lg:hidden"
           onClick={() => setNarrowExpanded((o) => !o)}
           aria-expanded={narrowExpanded}
           aria-label={narrowExpanded ? "Collapse navigation" : "Expand navigation"}

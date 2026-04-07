@@ -26,7 +26,7 @@ function initialsFrom(email: string, fullName: string | null | undefined): strin
 }
 
 const HEADER =
-  "sticky top-0 z-50 h-16 shrink-0 border-b border-gray-200 bg-white shadow-[0_1px_3px_rgba(15,23,42,0.04)] backdrop-blur-sm supports-[backdrop-filter]:bg-white/90 dark:border-[#1F2937] dark:bg-[#0B0F14]/95 dark:shadow-[0_1px_3px_rgba(0,0,0,0.25)] supports-[backdrop-filter]:dark:bg-[#0B0F14]/90";
+  "sticky top-0 z-50 h-16 shrink-0 border-b border-white/25 bg-white/82 shadow-[0_8px_24px_rgba(15,23,42,0.08)] backdrop-blur-lg supports-[backdrop-filter]:bg-white/78 dark:border-white/12 dark:bg-slate-900/78 dark:shadow-[0_8px_28px_rgba(0,0,0,0.35)] supports-[backdrop-filter]:dark:bg-slate-900/72";
 
 export function AppNavbar() {
   const pathname = usePathname();
@@ -117,7 +117,7 @@ export function AppNavbar() {
               </button>
               {userOpen ? (
                 <div
-                  className="absolute right-0 mt-1 w-52 rounded-lg border border-gray-200 bg-white py-1 shadow-lg dark:border-[#1F2937] dark:bg-[#111827] dark:shadow-[0_8px_24px_rgba(0,0,0,0.45)]"
+                  className="absolute right-0 mt-1 w-52 rounded-xl border border-white/25 bg-white/90 py-1 shadow-lg backdrop-blur-xl dark:border-white/12 dark:bg-slate-900/88 dark:shadow-[0_12px_36px_rgba(0,0,0,0.45)]"
                   role="menu"
                 >
                   <Link

@@ -15,7 +15,7 @@ const paddingClass = {
 export function Card({ children, className = "", padding = "lg" }: CardProps) {
   return (
     <div
-      className={`rounded-2xl border border-gray-200 bg-white text-gray-900 shadow-md ring-1 ring-slate-900/[0.04] transition-shadow duration-200 ease-in-out hover:shadow-lg dark:border-[#1F2937] dark:bg-[#111827] dark:text-gray-100 dark:ring-white/[0.06] dark:shadow-[0_2px_8px_rgba(0,0,0,0.35)] ${paddingClass[padding]} ${className}`}
+      className={`app-glass-card rounded-2xl text-gray-900 transition-shadow duration-200 ease-in-out hover:shadow-[0_12px_40px_rgba(0,0,0,0.28)] dark:text-gray-100 dark:hover:shadow-[0_14px_44px_rgba(0,0,0,0.48)] ${paddingClass[padding]} ${className}`}
     >
       {children}
     </div>

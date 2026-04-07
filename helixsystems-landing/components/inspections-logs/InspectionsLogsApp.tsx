@@ -457,7 +457,7 @@ function InspectionFillModal({
         aria-label="Close"
         onClick={onClose}
       />
-      <div className="relative max-h-[90vh] w-full max-w-lg overflow-auto rounded-2xl border border-gray-200 dark:border-[#1F2937] bg-white dark:bg-[#111827] p-6 shadow-sm dark:shadow-[0_2px_8px_rgba(0,0,0,0.4)]">
+      <div className="app-glass-elevated relative max-h-[90vh] w-full max-w-lg overflow-auto rounded-2xl p-6">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Submit inspection — {template.name}</h3>
         <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Check each item as verified.</p>
         <ul className="mt-4 space-y-3">
@@ -531,7 +531,7 @@ function LogFillModal({
         aria-label="Close"
         onClick={onClose}
       />
-      <div className="relative max-h-[90vh] w-full max-w-lg overflow-auto rounded-2xl border border-gray-200 dark:border-[#1F2937] bg-white dark:bg-[#111827] p-6 shadow-sm dark:shadow-[0_2px_8px_rgba(0,0,0,0.4)]">
+      <div className="app-glass-elevated relative max-h-[90vh] w-full max-w-lg overflow-auto rounded-2xl p-6">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">New log entry — {template.name}</h3>
         <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Timestamp is saved automatically when you submit.</p>
         <div className="mt-4 space-y-4">
@@ -607,7 +607,7 @@ function EntryViewModal({
         aria-label="Close"
         onClick={onClose}
       />
-      <div className="relative max-h-[90vh] w-full max-w-lg overflow-auto rounded-2xl border border-gray-200 dark:border-[#1F2937] bg-white dark:bg-[#111827] p-6 shadow-sm dark:shadow-[0_2px_8px_rgba(0,0,0,0.4)]">
+      <div className="app-glass-elevated relative max-h-[90vh] w-full max-w-lg overflow-auto rounded-2xl p-6">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Record detail</h3>
         <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
           {tpl?.name ?? "Template"} · {formatWhen(entry.created_at)}

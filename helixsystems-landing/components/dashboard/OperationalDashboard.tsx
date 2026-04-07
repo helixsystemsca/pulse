@@ -74,7 +74,7 @@ const roleBadgeBase =
 function onsiteAvatarClass(badge?: "L" | "S") {
   const isLead = badge === "L";
   const shared =
-    "relative shrink-0 items-center justify-center rounded-full bg-emerald-100/85 dark:bg-emerald-500/12 font-bold text-emerald-700 dark:text-emerald-400 shadow-md ring-1 ring-emerald-300 dark:ring-emerald-500/35 ring-offset-2 ring-offset-white dark:ring-offset-[#111827] transition-transform";
+    "relative shrink-0 items-center justify-center rounded-full bg-emerald-100/85 dark:bg-emerald-500/12 font-bold text-emerald-700 dark:text-emerald-400 shadow-md ring-1 ring-emerald-300 dark:ring-emerald-500/35 ring-offset-2 ring-offset-white/70 dark:ring-offset-slate-900/50 transition-transform";
   if (isLead) {
     return `z-[1] flex h-14 w-14 text-base shadow-sm dark:shadow-[0_2px_8px_rgba(0,0,0,0.4)] ring-2 ring-emerald-400 dark:ring-emerald-500/45 md:h-16 md:w-16 md:text-lg ${shared}`;
   }
@@ -82,11 +82,11 @@ function onsiteAvatarClass(badge?: "L" | "S") {
 }
 
 function offsiteAvatarClass() {
-  return "flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-amber-100/80 dark:bg-amber-500/12 text-xs font-bold text-amber-700 dark:text-amber-400 shadow-sm ring-1 ring-amber-300 dark:ring-amber-500/35 ring-offset-2 ring-offset-white dark:ring-offset-[#111827] md:h-12 md:w-12 md:text-sm";
+  return "flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-amber-100/80 dark:bg-amber-500/12 text-xs font-bold text-amber-700 dark:text-amber-400 shadow-sm ring-1 ring-amber-300 dark:ring-amber-500/35 ring-offset-2 ring-offset-white/70 dark:ring-offset-slate-900/50 md:h-12 md:w-12 md:text-sm";
 }
 
 function absentAvatarClass() {
-  return "relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-100/85 dark:bg-red-500/12 text-xs font-bold text-red-700 dark:text-red-400 opacity-[0.92] shadow-sm ring-1 ring-red-300 dark:ring-red-500/40 ring-offset-2 ring-offset-white dark:ring-offset-[#111827] after:absolute after:bottom-0 after:right-0 after:z-10 after:h-2.5 after:w-2.5 after:rounded-full after:bg-red-600 dark:bg-red-500 after:ring-2 after:ring-white dark:ring-[#111827] md:h-11 md:w-11 md:text-sm";
+  return "relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-100/85 dark:bg-red-500/12 text-xs font-bold text-red-700 dark:text-red-400 opacity-[0.92] shadow-sm ring-1 ring-red-300 dark:ring-red-500/40 ring-offset-2 ring-offset-white/70 dark:ring-offset-slate-900/50 after:absolute after:bottom-0 after:right-0 after:z-10 after:h-2.5 after:w-2.5 after:rounded-full after:bg-red-600 dark:bg-red-500 after:ring-2 after:ring-white dark:ring-[#111827] md:h-11 md:w-11 md:text-sm";
 }
 
 function initialsFromUser(email: string, fullName: string | null | undefined): string {
@@ -518,8 +518,8 @@ function DashboardBody({
   const trimmedHeaderImage = headerImageUrl?.trim() || null;
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-gray-200 dark:border-[#1F2937] bg-gray-50 dark:bg-[#0B0F14] shadow-sm dark:shadow-[0_2px_8px_rgba(0,0,0,0.4)]">
-      <header className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 border-b border-gray-200 dark:border-[#1F2937] bg-white dark:bg-[#111827] px-4 py-4 sm:px-6">
+    <div className="app-glass-frame overflow-hidden rounded-2xl">
+      <header className="app-glass-frame-header grid grid-cols-[1fr_auto_1fr] items-center gap-3 px-4 py-4 sm:px-6">
         <span className="min-w-0 text-base font-bold leading-tight tracking-tight text-gray-900 dark:text-gray-100 sm:text-lg md:text-xl lg:text-2xl">
           {model.title}
         </span>
@@ -553,10 +553,10 @@ function DashboardBody({
         )}
       </header>
 
-      <div className="grid gap-4 bg-gray-50 dark:bg-[#0B0F14] p-5 lg:grid-cols-12 lg:p-6">
+      <div className="grid gap-4 bg-white/[0.03] p-5 dark:bg-transparent lg:grid-cols-12 lg:p-6">
         {facilitySetupChecklist}
         <section
-          className="flex flex-col rounded-2xl border border-gray-200 dark:border-[#1F2937] bg-white dark:bg-[#111827] p-5 shadow-sm dark:shadow-[0_2px_8px_rgba(0,0,0,0.4)] lg:col-span-12 lg:p-6"
+          className="app-glass-card flex flex-col rounded-2xl p-5 lg:col-span-12 lg:p-6"
           data-dashboard-tile="alerts"
         >
           <h3 className="text-base font-bold text-gray-900 dark:text-gray-100">Active Alerts</h3>
@@ -604,7 +604,7 @@ function DashboardBody({
         </section>
 
         <section
-          className="flex flex-col rounded-2xl border border-gray-200 dark:border-[#1F2937] bg-white dark:bg-[#111827] p-5 shadow-sm dark:shadow-[0_2px_8px_rgba(0,0,0,0.4)] lg:col-span-5 lg:min-h-[280px] lg:p-6"
+          className="app-glass-card flex flex-col rounded-2xl p-5 lg:col-span-5 lg:min-h-[280px] lg:p-6"
           data-dashboard-tile="workforce"
         >
           <h3 className="text-base font-bold text-gray-900 dark:text-gray-100">Workforce</h3>
@@ -691,7 +691,7 @@ function DashboardBody({
         </section>
 
         <section
-          className="rounded-2xl border border-gray-200 dark:border-[#1F2937] bg-white dark:bg-[#111827] p-5 shadow-sm dark:shadow-[0_2px_8px_rgba(0,0,0,0.4)] lg:col-span-7 lg:p-6"
+          className="app-glass-card rounded-2xl p-5 lg:col-span-7 lg:p-6"
           data-dashboard-tile="work-requests"
         >
           <div className="flex flex-wrap items-start justify-between gap-3">
@@ -714,7 +714,7 @@ function DashboardBody({
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
                   Newest
                 </p>
-                <div className="mt-2 rounded-xl border border-gray-200 dark:border-[#1F2937] bg-gray-100/90 dark:bg-[#0B0F14]/60 p-4">
+                <div className="app-glass-inset-dense mt-2 rounded-xl p-4">
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <div className="min-w-0">
                       <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{model.workRequests.newest.title}</p>
@@ -731,7 +731,7 @@ function DashboardBody({
             {model.workRequests.oldest ? (
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Oldest</p>
-                <div className="mt-2 rounded-xl border border-gray-200 dark:border-[#1F2937] bg-gray-100/80 dark:bg-[#0B0F14]/45 p-4">
+                <div className="app-glass-inset-dense mt-2 rounded-xl p-4">
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <div className="min-w-0">
                       <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{model.workRequests.oldest.title}</p>
@@ -773,7 +773,7 @@ function DashboardBody({
         </section>
 
         <section
-          className="flex flex-col rounded-2xl border border-gray-200 dark:border-[#1F2937] bg-white dark:bg-[#111827] p-5 shadow-sm dark:shadow-[0_2px_8px_rgba(0,0,0,0.4)] lg:col-span-6"
+          className="app-glass-card flex flex-col rounded-2xl p-5 lg:col-span-6"
           data-dashboard-tile="equipment"
         >
           <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Equipment Update</p>
@@ -812,7 +812,7 @@ function DashboardBody({
                       <button
                         type="button"
                         onClick={onDismissZonePrompt}
-                        className="rounded-lg border border-gray-200 dark:border-[#1F2937] bg-gray-100 dark:bg-[#0F172A]/70 px-3 py-1.5 text-xs font-semibold text-gray-900 dark:text-gray-100 shadow-sm dark:shadow-[0_2px_8px_rgba(0,0,0,0.4)] transition-colors hover:bg-gray-200 dark:hover:bg-[#1F2937]/50"
+                        className="app-glass-inset-dense rounded-lg px-3 py-1.5 text-xs font-semibold text-gray-900 transition-colors hover:bg-white/60 dark:text-gray-100 dark:hover:bg-white/10"
                       >
                         Dismiss
                       </button>
@@ -822,9 +822,9 @@ function DashboardBody({
               </div>
             ) : null}
             {model.equipment.showBatteryNote ? (
-              <div className="rounded-xl border border-gray-200 dark:border-[#1F2937] bg-gray-100 dark:bg-[#0F172A]/70 p-4 text-gray-500 dark:text-gray-400 shadow-sm dark:shadow-[0_2px_8px_rgba(0,0,0,0.4)]">
+              <div className="app-glass-inset-dense rounded-xl p-4 text-gray-500 dark:text-gray-400">
                 <div className="flex gap-3">
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white dark:bg-[#111827] text-gray-500 dark:text-gray-400 ring-1 ring-gray-200 dark:ring-[#1F2937]">
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/70 text-gray-500 ring-1 ring-white/30 backdrop-blur-sm dark:bg-slate-900/65 dark:text-gray-400 dark:ring-white/10">
                     <Battery className="h-4 w-4" aria-hidden />
                   </span>
                   <p className="min-w-0 flex-1 text-sm leading-relaxed text-gray-900 dark:text-gray-100">
@@ -837,12 +837,12 @@ function DashboardBody({
         </section>
 
         <section
-          className="flex flex-col rounded-2xl border border-gray-200 dark:border-[#1F2937] bg-white dark:bg-[#111827] p-5 shadow-sm dark:shadow-[0_2px_8px_rgba(0,0,0,0.4)] lg:col-span-6"
+          className="app-glass-card flex flex-col rounded-2xl p-5 lg:col-span-6"
           data-dashboard-tile="inventory"
         >
           <h3 className="text-base font-bold text-gray-900 dark:text-gray-100">Inventory Status</h3>
           <div className="mt-4 flex flex-1 flex-col gap-4">
-            <div className="flex items-start justify-between gap-4 rounded-xl border border-gray-200 dark:border-[#1F2937] bg-gray-100 dark:bg-[#0F172A]/70 p-4">
+            <div className="app-glass-inset-dense flex items-start justify-between gap-4 rounded-xl p-4">
               <div>
                 <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">Consumables</p>
                 <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
@@ -861,7 +861,7 @@ function DashboardBody({
             </div>
 
             {model.inventory.alert ? (
-              <div className="rounded-xl border border-gray-200 dark:border-[#1F2937] bg-gray-50 dark:bg-[#0B0F14]/35 p-4 shadow-sm dark:shadow-[0_2px_8px_rgba(0,0,0,0.4)]">
+              <div className="app-surface-inset rounded-xl p-4 shadow-sm dark:shadow-[0_2px_8px_rgba(0,0,0,0.25)]">
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
                   Inventory Alert
                 </p>
@@ -880,7 +880,7 @@ function DashboardBody({
                 <div className="mt-3 flex flex-wrap gap-2">
                   <Link
                     href={pulseTenantNav.find((n) => n.href === "/dashboard/inventory")?.href ?? "/dashboard/inventory"}
-                    className="rounded-lg border border-gray-200 dark:border-[#1F2937] bg-gray-100 dark:bg-[#0F172A]/70 px-3 py-1.5 text-xs font-semibold text-gray-900 dark:text-gray-100 shadow-sm dark:shadow-[0_2px_8px_rgba(0,0,0,0.4)] transition-colors hover:bg-gray-200 dark:hover:bg-[#1F2937]/50"
+                    className="app-glass-inset-dense rounded-lg px-3 py-1.5 text-xs font-semibold text-gray-900 transition-colors hover:bg-white/60 dark:text-gray-100 dark:hover:bg-white/10"
                   >
                     View stock
                   </Link>
@@ -907,10 +907,10 @@ function DashboardBody({
                   {model.inventory.shoppingList.map((item) => (
                     <li
                       key={item}
-                      className="flex items-center gap-2 rounded-lg border border-gray-200 dark:border-[#1F2937] bg-gray-100/80 dark:bg-[#0B0F14]/45 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 transition-colors hover:bg-gray-200/90 dark:hover:bg-[#1F2937]/40"
+                      className="app-glass-inset-dense flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-gray-900 transition-colors hover:bg-white/55 dark:text-gray-100 dark:hover:bg-white/10"
                     >
                       <span
-                        className="flex h-4 w-4 shrink-0 rounded border border-gray-200 dark:border-[#1F2937] bg-white dark:bg-[#111827]"
+                        className="flex h-4 w-4 shrink-0 rounded border border-white/25 bg-white/80 dark:border-white/15 dark:bg-slate-900/50"
                         aria-hidden
                       />
                       {item}
@@ -1055,7 +1055,7 @@ export function OperationalDashboard({
 
   if (loading) {
     return (
-      <div className="rounded-2xl border border-gray-200 dark:border-[#1F2937] bg-white dark:bg-[#111827] p-12 text-center shadow-sm dark:shadow-[0_2px_8px_rgba(0,0,0,0.4)]">
+      <div className="app-glass-card rounded-2xl p-12 text-center">
         <p className="text-sm text-gray-500 dark:text-gray-400">Loading live dashboard…</p>
       </div>
     );
