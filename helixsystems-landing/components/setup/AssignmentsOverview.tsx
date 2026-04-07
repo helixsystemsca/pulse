@@ -66,8 +66,8 @@ export function AssignmentsOverview({
               </div>
             </div>
             <p className="text-xs text-pulse-muted dark:text-gray-500">
-              Worker tags are assigned here. Equipment tags are linked in{" "}
-              <span className="font-medium text-pulse-navy dark:text-gray-200">Inventory</span>.
+              Worker tags go to roster members; equipment tags attach to tracked assets on the{" "}
+              <span className="font-medium text-pulse-navy dark:text-gray-200">Gateways &amp; sensors</span> tab.
             </p>
           </div>
         </div>

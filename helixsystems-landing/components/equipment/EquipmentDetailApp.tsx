@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, Camera, ClipboardList, History, Loader2, Wrench } from "lucide-react";
+import { ArrowLeft, Bluetooth, Camera, ClipboardList, History, Loader2, Wrench } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { EquipmentPartsPanel } from "@/components/equipment/EquipmentPartsPanel";
@@ -17,6 +17,7 @@ import {
   type EquipmentPartRow,
   type FacilityEquipmentDetail,
 } from "@/lib/equipmentService";
+import { fetchBleDevices, fetchEquipmentList, type BleDeviceOut, type EquipmentOut } from "@/lib/setup-api";
 
 const LABEL = "text-[11px] font-semibold uppercase tracking-wider text-pulse-muted";
 
@@ -152,12 +153,16 @@ function MaintenanceHistorySection({
 export function EquipmentDetailApp({ equipmentId }: Props) {
   const { session } = usePulseAuth();
   const canMutate = managerOrAbove(session);
+  const isSystemAdmin = Boolean(session?.is_system_admin || session?.role === "system_admin");
 
   const [data, setData] = useState<FacilityEquipmentDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [maintenanceHistoryRevision, setMaintenanceHistoryRevision] = useState(0);
+  const [rtlsBleDevices, setRtlsBleDevices] = useState<BleDeviceOut[]>([]);
+  const [rtlsTrackedAssets, setRtlsTrackedAssets] = useState<EquipmentOut[]>([]);
+  const [rtlsLoading, setRtlsLoading] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -176,6 +181,46 @@ export function EquipmentDetailApp({ equipmentId }: Props) {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    if (!data) return;
+    let cancelled = false;
+    void (async () => {
+      setRtlsLoading(true);
+      try {
+        const companyId = isSystemAdmin ? data.company_id : null;
+        const [ble, tools] = await Promise.all([fetchBleDevices(companyId), fetchEquipmentList(companyId)]);
+        if (!cancelled) {
+          setRtlsBleDevices(ble);
+          setRtlsTrackedAssets(tools);
+        }
+      } catch {
+        if (!cancelled) {
+          setRtlsBleDevices([]);
+          setRtlsTrackedAssets([]);
+        }
+      } finally {
+        if (!cancelled) setRtlsLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [data, isSystemAdmin]);
+
+  const rtlsMatch = useMemo(() => {
+    if (!data) {
+      return { linkedTags: [] as BleDeviceOut[], nameMatchedTracked: null as EquipmentOut | null };
+    }
+    const key = data.name.trim().toLowerCase();
+    const matchingTools = rtlsTrackedAssets.filter((t) => t.name.trim().toLowerCase() === key);
+    const toolIds = new Set(matchingTools.map((t) => t.id));
+    const linkedTags = rtlsBleDevices.filter(
+      (b) => b.type === "equipment_tag" && b.assigned_equipment_id != null && toolIds.has(b.assigned_equipment_id),
+    );
+    const nameMatchedTracked = matchingTools[0] ?? null;
+    return { linkedTags, nameMatchedTracked };
+  }, [data, rtlsBleDevices, rtlsTrackedAssets]);
 
   if (loading) {
     return (
@@ -329,6 +374,55 @@ export function EquipmentDetailApp({ equipmentId }: Props) {
             <p className={LABEL}>Serial</p>
             <p className="mt-1 text-sm text-pulse-navy tabular-nums">{data.serial_number ?? "—"}</p>
           </div>
+        </Card>
+      </section>
+
+      <section className="space-y-2">
+        <h2 className={`${LABEL} inline-flex items-center gap-2`}>
+          <Bluetooth className="h-3.5 w-3.5" aria-hidden />
+          BLE tracking
+        </h2>
+        <Card padding="md" className="space-y-3">
+          <p className="text-sm text-pulse-muted">
+            Location tags are managed in{" "}
+            <Link href="/dashboard/setup?tab=devices" className="font-semibold text-[#2B4C7E] hover:underline">
+              Zones &amp; Devices
+            </Link>
+            . When a <span className="font-medium text-pulse-navy">tracked asset</span> uses the same name as this facility
+            item, linked equipment tags show below.
+          </p>
+          {rtlsLoading ? (
+            <p className="text-sm text-pulse-muted">Loading tag data…</p>
+          ) : rtlsMatch.linkedTags.length > 0 ? (
+            <ul className="space-y-2">
+              {rtlsMatch.linkedTags.map((b) => (
+                <li
+                  key={b.id}
+                  className="rounded-lg border border-slate-100 bg-slate-50/90 px-3 py-2 text-sm dark:border-[#374151] dark:bg-[#111827]/60"
+                >
+                  <span className="font-medium text-pulse-navy dark:text-gray-100">{b.name}</span>
+                  <span className="mt-0.5 block font-mono text-xs text-pulse-muted">{b.mac_address}</span>
+                  {rtlsMatch.nameMatchedTracked ? (
+                    <span className="mt-1 block text-xs text-pulse-muted">
+                      Tracked asset: {rtlsMatch.nameMatchedTracked.name}
+                    </span>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          ) : rtlsMatch.nameMatchedTracked ? (
+            <p className="text-sm text-pulse-muted">
+              Tracked asset{" "}
+              <span className="font-medium text-pulse-navy">{rtlsMatch.nameMatchedTracked.name}</span> exists, but no
+              equipment tag is assigned to it yet. Open Zones &amp; Devices to link a tag.
+            </p>
+          ) : (
+            <p className="text-sm text-pulse-muted">
+              No tracked asset found with the same name as this item. When you assign an equipment tag, create or pick a
+              tracked asset named <span className="font-medium text-pulse-navy">{data.name}</span> to align RTLS with this
+              record.
+            </p>
+          )}
         </Card>
       </section>
 

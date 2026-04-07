@@ -18,11 +18,7 @@ export function FeatureCard({
   variant = "default",
 }: FeatureCardProps) {
   return (
-    <Card
-      className={`flex gap-4 transition-shadow hover:shadow-lg ${
-        variant === "alert" ? "border-red-100/90" : ""
-      }`}
-    >
+    <Card className={`flex gap-4 ${variant === "alert" ? "border-red-100/90" : ""}`}>
       <div
         className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-slate-100/85 dark:bg-slate-800/50 ${
           variant === "alert" ? "text-red-500" : ""
@@ -46,7 +42,7 @@ type SmallFeatureCardProps = {
 
 export function SmallFeatureCard({ icon, title, description }: SmallFeatureCardProps) {
   return (
-    <Card className="flex items-start gap-3 p-5 shadow-sm hover:shadow-md md:p-6">
+    <Card className="flex items-start gap-3 p-5 shadow-sm md:p-6">
       <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-blue-50 text-pulse-accent">
         {icon}
       </div>

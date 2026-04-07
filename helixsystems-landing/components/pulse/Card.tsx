@@ -5,6 +5,8 @@ type CardProps = {
   className?: string;
   /** default: comfortable p-6 */
   padding?: "md" | "lg";
+  /** Whole card is a control (e.g. wraps a link). Default: static surface, no hover lift. */
+  interactive?: boolean;
 };
 
 const paddingClass = {
@@ -12,10 +14,18 @@ const paddingClass = {
   lg: "p-6",
 } as const;
 
-export function Card({ children, className = "", padding = "lg" }: CardProps) {
+const interactiveShadow =
+  "cursor-pointer transition-shadow duration-200 ease-out hover:shadow-[0_4px_18px_rgba(0,0,0,0.12),0_1px_3px_rgba(0,0,0,0.06)] dark:hover:shadow-[0_4px_20px_rgba(0,0,0,0.28),0_1px_4px_rgba(0,0,0,0.18)]";
+
+export function Card({
+  children,
+  className = "",
+  padding = "lg",
+  interactive = false,
+}: CardProps) {
   return (
     <div
-      className={`app-glass-card rounded-md text-gray-900 transition-shadow duration-200 ease-in-out hover:shadow-[0_12px_40px_rgba(0,0,0,0.28)] dark:text-gray-100 dark:hover:shadow-[0_14px_44px_rgba(0,0,0,0.48)] ${paddingClass[padding]} ${className}`}
+      className={`app-glass-card rounded-md text-gray-900 dark:text-gray-100 ${interactive ? interactiveShadow : ""} ${paddingClass[padding]} ${className}`}
     >
       {children}
     </div>

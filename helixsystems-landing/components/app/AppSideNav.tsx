@@ -94,10 +94,10 @@ export function AppSideNav() {
   const systemRail = isSystemAdmin;
 
   const tenantShell =
-    "border border-gray-200 bg-white/90 shadow-lg shadow-slate-900/10 backdrop-blur-md lg:hover:shadow-xl dark:border-[#1F2937] dark:bg-[#111827] dark:shadow-[0_4px_24px_rgba(0,0,0,0.45)] dark:lg:hover:shadow-[0_6px_28px_rgba(0,0,0,0.55)]";
+    "border border-gray-200 bg-white/90 shadow-md shadow-slate-900/6 backdrop-blur-md lg:hover:shadow-lg lg:hover:shadow-slate-900/8 dark:border-[#1F2937] dark:bg-[#111827] dark:shadow-[0_2px_14px_rgba(0,0,0,0.22)] dark:lg:hover:shadow-[0_3px_18px_rgba(0,0,0,0.28)]";
 
   const tenantShellMobilePop =
-    "max-lg:shadow-2xl max-lg:shadow-slate-900/18 dark:max-lg:shadow-[0_8px_28px_rgba(0,0,0,0.55)]";
+    "max-lg:shadow-lg max-lg:shadow-slate-900/10 dark:max-lg:shadow-[0_4px_22px_rgba(0,0,0,0.32)]";
 
   return (
     <>

@@ -49,7 +49,7 @@ export function PulseDrawer({
         onClick={onClose}
       />
       <aside
-        className={`absolute right-0 flex w-full flex-col border-l border-pulseShell-border bg-pulseShell-surface shadow-[0_0_40px_rgba(15,23,42,0.12)] transition-transform duration-200 ease-out dark:shadow-[0_0_48px_rgba(0,0,0,0.5)] ${panelLayout} ${
+        className={`absolute right-0 flex w-full flex-col border-l border-pulseShell-border bg-pulseShell-surface shadow-[0_0_28px_rgba(15,23,42,0.08)] transition-transform duration-200 ease-out dark:shadow-[0_0_36px_rgba(0,0,0,0.32)] ${panelLayout} ${
           wide ? "sm:max-w-2xl" : "sm:max-w-[440px]"
         }`}
         role="dialog"

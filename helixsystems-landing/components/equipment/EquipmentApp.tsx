@@ -17,6 +17,7 @@ import {
   Trash2,
   Wrench,
 } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Card } from "@/components/pulse/Card";
@@ -417,6 +418,13 @@ export function EquipmentApp() {
   return (
     <div className="space-y-6">
       <PageHeader title="Equipment" description="Manage and monitor all facility equipment." icon={Wrench} />
+      <p className="text-sm text-pulse-muted dark:text-gray-400">
+        BLE location tags pair with <span className="font-medium text-pulse-navy dark:text-gray-200">tracked assets</span> in{" "}
+        <Link href="/dashboard/setup?tab=devices" className="font-semibold text-[#2B4C7E] hover:underline dark:text-sky-400">
+          Zones &amp; Devices
+        </Link>
+        . Naming a tracked asset like a row here helps tie RTLS to this list.
+      </p>
 
       {toast ? (
         <div

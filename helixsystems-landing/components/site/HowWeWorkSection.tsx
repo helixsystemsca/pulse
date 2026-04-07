@@ -34,9 +34,9 @@ export function HowWeWorkSection() {
           {steps.map(({ Icon, title, body }, i) => (
             <div
               key={title}
-              className="group flex h-full flex-col rounded-md border border-helix-outline/20 bg-helix-bg p-6 shadow-md transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg"
+              className="flex h-full flex-col rounded-md border border-helix-outline/20 bg-helix-bg p-6 shadow-sm"
             >
-              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-md bg-[#d5e4f5] text-helix-primary transition-colors group-hover:bg-helix-primary group-hover:text-white">
+              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-md bg-[#d5e4f5] text-helix-primary">
                 <Icon className="h-6 w-6" strokeWidth={2} />
               </div>
               <p className="text-xs font-bold uppercase tracking-wide text-helix-primary/90">

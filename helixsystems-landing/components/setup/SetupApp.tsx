@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Infrastructure & RTLS: gateways, tags, zones, worker tag assignment, automation — equipment linking lives in Inventory.
+ * Infrastructure & RTLS: gateways, tags, zones, worker and equipment tag assignment, automation.
  */
 import { Loader2, MapPin, Radio, Settings2, Users } from "lucide-react";
 import { useSearchParams } from "next/navigation";
@@ -15,6 +15,7 @@ import { normalizeMacKey } from "@/lib/macNormalize";
 import {
   assignBleDevice,
   createBleDevice,
+  createEquipment,
   createGateway,
   createZone,
   fetchBleDevices,
@@ -108,6 +109,8 @@ export function SetupApp() {
   const [assignBle, setAssignBle] = useState<BleDeviceOut | null>(null);
   const [zonePickGateway, setZonePickGateway] = useState<GatewayOut | null>(null);
   const [assignTargetId, setAssignTargetId] = useState("");
+  const [toolQuickCreateName, setToolQuickCreateName] = useState("");
+  const [creatingTrackedAsset, setCreatingTrackedAsset] = useState(false);
 
   const [gwName, setGwName] = useState("");
   const [gwIdent, setGwIdent] = useState("");
@@ -412,9 +415,18 @@ export function SetupApp() {
     }
   }, [bleDevices]);
 
-  const openInventoryForTags = useCallback(() => {
-    window.location.href = "/dashboard/inventory";
-  }, []);
+  const warnAssignEquipmentTag = useCallback(() => {
+    const b = bleDevices.find(
+      (x) =>
+        x.type === "equipment_tag" && !x.assigned_equipment_id && !x.assigned_worker_id,
+    );
+    if (b) {
+      setTab("devices");
+      setAssignBle(b);
+      setAssignTargetId("");
+      setToolQuickCreateName("");
+    }
+  }, [bleDevices]);
 
   const setupWarnings = useMemo(() => {
     const w: { id: string; text: string; action?: { label: string; onClick: () => void } }[] = [];
@@ -441,12 +453,12 @@ export function SetupApp() {
     if (unassignedEquip.length > 0) {
       w.push({
         id: "ble-equip",
-        text: `${unassignedEquip.length} equipment tag(s) are unassigned — link them in Inventory.`,
-        action: { label: "Open Inventory", onClick: openInventoryForTags },
+        text: `${unassignedEquip.length} equipment tag(s) are unassigned — assign each to a tracked asset below.`,
+        action: { label: "Assign equipment tag", onClick: warnAssignEquipmentTag },
       });
     }
     return w;
-  }, [gateways, bleDevices, warnAssignZone, warnAssignWorkerTag, openInventoryForTags]);
+  }, [gateways, bleDevices, warnAssignZone, warnAssignWorkerTag, warnAssignEquipmentTag]);
 
   const startBleDetectionTest = useCallback((d: BleDeviceOut) => {
     testAlreadyMatchedRef.current = false;
@@ -516,17 +528,44 @@ export function SetupApp() {
   };
 
   const submitAssignBle = async () => {
-    if (!assignBle || assignBle.type !== "worker_tag" || !assignTargetId) return;
+    if (!assignBle || !assignTargetId) return;
+    if (assignBle.type !== "worker_tag" && assignBle.type !== "equipment_tag") return;
     try {
-      await assignBleDevice(isSystemAdmin ? effectiveCompanyId : null, assignBle.id, {
-        assigned_worker_id: assignTargetId,
-        assigned_equipment_id: null,
-      });
+      if (assignBle.type === "worker_tag") {
+        await assignBleDevice(isSystemAdmin ? effectiveCompanyId : null, assignBle.id, {
+          assigned_worker_id: assignTargetId,
+          assigned_equipment_id: null,
+        });
+      } else {
+        await assignBleDevice(isSystemAdmin ? effectiveCompanyId : null, assignBle.id, {
+          assigned_worker_id: null,
+          assigned_equipment_id: assignTargetId,
+        });
+      }
       setAssignBle(null);
       setAssignTargetId("");
+      setToolQuickCreateName("");
       await refresh();
     } catch {
       setError("Assignment failed");
+    }
+  };
+
+  const submitQuickCreateTrackedAsset = async () => {
+    if (!assignBle || assignBle.type !== "equipment_tag" || !toolQuickCreateName.trim()) return;
+    setCreatingTrackedAsset(true);
+    setError(null);
+    try {
+      const row = await createEquipment(isSystemAdmin ? effectiveCompanyId : null, {
+        name: toolQuickCreateName.trim(),
+      });
+      setToolQuickCreateName("");
+      await refresh();
+      setAssignTargetId(row.id);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Could not create tracked asset");
+    } finally {
+      setCreatingTrackedAsset(false);
     }
   };
 
@@ -575,6 +614,12 @@ export function SetupApp() {
     return workers.map((w) => ({ id: w.id, label: w.full_name || w.email }));
   }, [assignBle, workers]);
 
+  const trackedAssetOptions = useMemo(() => {
+    return [...equipment]
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .map((t) => ({ id: t.id, label: t.name }));
+  }, [equipment]);
+
   if (isSystemAdmin && !companyPick) {
     return (
       <div className="mx-auto max-w-3xl space-y-6">
@@ -606,7 +651,7 @@ export function SetupApp() {
     <div className="space-y-8">
       <PageHeader
         title="Zones & Devices"
-        description="Guided setup — gateways (ESP32), BLE tags, zones, and tracking health. Assign worker tags here; link equipment tags in Inventory. Tune automation without a rule builder."
+        description="Guided setup — gateways (ESP32), BLE tags, zones, and tracking health. Assign worker tags to people and equipment tags to tracked assets here. Tune automation without a rule builder."
         icon={MapPin}
       />
       {isSystemAdmin ? (
@@ -755,7 +800,7 @@ export function SetupApp() {
                   <div>
                     <h3 className="text-sm font-semibold text-amber-950">Unassigned tags</h3>
                     <p className="mt-0.5 text-xs text-amber-900/80">
-                      Worker tags: assign below. Equipment tags: link in Inventory — this page stays read-only for assets.
+                      Assign worker tags to roster members and equipment tags to tracked assets (same name as a facility item is a good default).
                     </p>
                   </div>
                   <span className="rounded-full bg-amber-200/90 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-amber-950">
@@ -775,20 +820,15 @@ export function SetupApp() {
                         device={b}
                         assignedLabel={null}
                         emphasizeUnassigned
-                        disableAssignment={!isWorkerTag}
-                        assignmentHint={
-                          isWorkerTag
-                            ? null
-                            : "Manage equipment links in Inventory (/dashboard/inventory)."
-                        }
-                        onAssign={
-                          isWorkerTag
-                            ? () => {
-                                setAssignBle(b);
-                                setAssignTargetId("");
-                              }
-                            : undefined
-                        }
+                        disableAssignment={false}
+                        assignmentHint={null}
+                        onAssign={() => {
+                          setAssignBle(b);
+                          setAssignTargetId(
+                            isWorkerTag ? "" : (b.assigned_equipment_id ?? ""),
+                          );
+                          setToolQuickCreateName("");
+                        }}
                         testListening={listening}
                         testSuccessFlash={flash}
                         testMatchKind={
@@ -835,15 +875,14 @@ export function SetupApp() {
                     variant="ble"
                     device={b}
                     assignedLabel={assignedLabel}
-                    disableAssignment={!isWorkerTag}
-                    onAssign={
-                      isWorkerTag
-                        ? () => {
-                            setAssignBle(b);
-                            setAssignTargetId(b.assigned_worker_id ?? "");
-                          }
-                        : undefined
-                    }
+                    disableAssignment={false}
+                    onAssign={() => {
+                      setAssignBle(b);
+                      setAssignTargetId(
+                        isWorkerTag ? (b.assigned_worker_id ?? "") : (b.assigned_equipment_id ?? ""),
+                      );
+                      setToolQuickCreateName("");
+                    }}
                     testListening={listening}
                     testSuccessFlash={flash}
                     testMatchKind={
@@ -942,6 +981,7 @@ export function SetupApp() {
                   <th className="px-4 py-3">Name</th>
                   <th className="px-4 py-3">Role</th>
                   <th className="px-4 py-3">Worker tag</th>
+                  <th className="px-4 py-3 text-right">Assign</th>
                 </tr>
               </thead>
               <tbody>
@@ -952,6 +992,33 @@ export function SetupApp() {
                       <td className="px-4 py-3 font-medium text-pulse-navy">{w.full_name || w.email}</td>
                       <td className="px-4 py-3 capitalize text-pulse-muted">{w.role.replace("_", " ")}</td>
                       <td className="px-4 py-3 text-pulse-muted">{tag ? tag.name : "—"}</td>
+                      <td className="px-4 py-3 text-right">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setTab("devices");
+                            setToolQuickCreateName("");
+                            if (tag) {
+                              setAssignBle(tag);
+                              setAssignTargetId(w.id);
+                              return;
+                            }
+                            const unassigned = bleDevices.find(
+                              (b) =>
+                                b.type === "worker_tag" &&
+                                !b.assigned_worker_id &&
+                                !b.assigned_equipment_id,
+                            );
+                            if (unassigned) {
+                              setAssignBle(unassigned);
+                              setAssignTargetId(w.id);
+                            }
+                          }}
+                          className="text-xs font-semibold text-[#2B4C7E] hover:underline"
+                        >
+                          {tag ? "Reassign" : "Assign tag"}
+                        </button>
+                      </td>
                     </tr>
                   );
                 })}
@@ -998,12 +1065,17 @@ export function SetupApp() {
       ) : null}
 
       <AssignmentModal
-        open={Boolean(assignBle && assignBle.type === "worker_tag")}
+        open={Boolean(assignBle && (assignBle.type === "worker_tag" || assignBle.type === "equipment_tag"))}
         title={assignBle ? `Assign ${assignBle.name}` : ""}
-        description="Pick a worker to carry this tag."
+        description={
+          assignBle?.type === "equipment_tag"
+            ? "Pick a tracked asset for RTLS (create one below if the list is empty). Names often match facility equipment."
+            : "Pick a worker to carry this tag."
+        }
         onClose={() => {
           setAssignBle(null);
           setAssignTargetId("");
+          setToolQuickCreateName("");
         }}
       >
         {assignBle?.type === "worker_tag" ? (
@@ -1018,6 +1090,49 @@ export function SetupApp() {
               ))}
             </select>
             <button type="button" className={`mt-4 w-full ${BTN_PRIMARY}`} onClick={() => void submitAssignBle()}>
+              Save assignment
+            </button>
+          </>
+        ) : assignBle?.type === "equipment_tag" ? (
+          <>
+            <label className={LABEL}>Tracked asset</label>
+            <select className={FIELD} value={assignTargetId} onChange={(e) => setAssignTargetId(e.target.value)}>
+              <option value="">Select…</option>
+              {trackedAssetOptions.map((o) => (
+                <option key={o.id} value={o.id}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+            <div className="mt-4 rounded-md border border-slate-200/90 bg-slate-50/80 p-3 dark:border-[#374151] dark:bg-[#111827]/80">
+              <p className="text-xs font-semibold text-pulse-navy dark:text-gray-200">New tracked asset</p>
+              <p className="mt-1 text-[11px] text-pulse-muted">
+                If nothing is listed yet, add a name and create — then save assignment.
+              </p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                <input
+                  className={FIELD}
+                  value={toolQuickCreateName}
+                  onChange={(e) => setToolQuickCreateName(e.target.value)}
+                  placeholder="e.g. CNC Mill 3"
+                  disabled={creatingTrackedAsset}
+                />
+                <button
+                  type="button"
+                  className={BTN_PRIMARY}
+                  disabled={creatingTrackedAsset || !toolQuickCreateName.trim()}
+                  onClick={() => void submitQuickCreateTrackedAsset()}
+                >
+                  {creatingTrackedAsset ? "Creating…" : "Create"}
+                </button>
+              </div>
+            </div>
+            <button
+              type="button"
+              className={`mt-4 w-full ${BTN_PRIMARY}`}
+              disabled={!assignTargetId}
+              onClick={() => void submitAssignBle()}
+            >
               Save assignment
             </button>
           </>

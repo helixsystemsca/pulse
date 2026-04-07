@@ -242,11 +242,7 @@ export function ProjectsApp() {
             const creatorIsYou = Boolean(myUserId && p.created_by_user_id && p.created_by_user_id === myUserId);
             const creatorCanComplete = creatorIsYou && p.status !== "completed";
             return (
-              <Card
-                key={p.id}
-                padding="md"
-                className="group h-full transition-all duration-200 hover:-translate-y-0.5 hover:border-pulse-accent/45 hover:shadow-md dark:hover:shadow-[0_8px_24px_rgba(0,0,0,0.35)]"
-              >
+              <Card key={p.id} padding="md" className="h-full">
                 <div className="flex items-start gap-3">
                   <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-slate-200/80 bg-slate-50 text-pulse-accent dark:border-[#374151] dark:bg-[#0F172A]">
                     <FolderKanban className="h-5 w-5" aria-hidden />

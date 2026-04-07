@@ -7,7 +7,7 @@ import type { DetectionMatchType } from "@/lib/detectionTest";
 import type { BleDeviceOut, GatewayOut } from "@/lib/setup-api";
 
 const cardBase =
-  "rounded-md border border-slate-200/80 bg-white p-5 shadow-card transition-shadow hover:shadow-card-lg";
+  "rounded-md border border-slate-200/80 bg-white p-5 shadow-card dark:border-[#374151] dark:bg-[#111827]";
 
 type GatewayProps = {
   variant: "gateway";
@@ -63,7 +63,7 @@ type BleProps = {
   assignedLabel: string | null;
   /** Highlight for onboarding (unregistered assignment). */
   emphasizeUnassigned?: boolean;
-  /** Equipment-tag assignment is managed in Inventory; hide Assign/Reassign when true. */
+  /** When true, hides Assign / Reassign (e.g. read-only contexts). */
   disableAssignment?: boolean;
   /** Shown when assignment is read-only or managed elsewhere. */
   assignmentHint?: string | null;
@@ -255,7 +255,7 @@ export function DeviceCard(props: DeviceCardProps) {
     const online = operationalStatus === "online";
     const gatewayTestMsg =
       testMatchKind === "mac_only"
-        ? "Detected (unassigned tag) — assign worker tags here; equipment tags in Inventory"
+        ? "Detected (unassigned tag) — assign worker and equipment tags on this page."
         : "Detection received — traffic matched this gateway.";
     const gatewayMacOnly = testSuccessFlash && testMatchKind === "mac_only";
     const relative = formatRelativeTime(lastHeardAt);
@@ -365,7 +365,7 @@ export function DeviceCard(props: DeviceCardProps) {
   } = props;
   const bleTestMsg =
     testMatchKind === "mac_only"
-      ? "Detected (unassigned tag) — worker tags: assign here; equipment tags: Inventory"
+      ? "Detected (unassigned tag) — assign this tag under Gateways & sensors."
       : "Detection received — tag seen in live traffic.";
   const bleMacOnly = testSuccessFlash && testMatchKind === "mac_only";
   const [nowMs, setNowMs] = useState(() => Date.now());
@@ -474,14 +474,11 @@ export function DeviceCard(props: DeviceCardProps) {
         {assigned ? (
           <p className="text-pulse-muted">
             <span className="font-medium text-pulse-navy">Assigned to:</span> {assignedLabel}
-            {device.type === "equipment_tag" ? (
-              <span className="mt-1 block text-[11px] text-pulse-muted">Read-only here — change in Inventory.</span>
-            ) : null}
           </p>
         ) : (
           <p className="text-pulse-muted">
             {device.type === "equipment_tag"
-              ? "Unassigned equipment tag — register and link from Inventory."
+              ? "Unassigned equipment tag — assign to a tracked asset with the button below."
               : "Not assigned to a worker yet — assign to finish worker onboarding."}
           </p>
         )}

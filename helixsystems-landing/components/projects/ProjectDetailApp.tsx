@@ -608,9 +608,7 @@ function TaskSection({
             <Card
               key={t.id}
               padding="md"
-              className={`transition-all duration-300 ease-out hover:-translate-y-0.5 hover:border-pulse-accent/35 hover:shadow-md dark:hover:shadow-[0_8px_24px_rgba(0,0,0,0.35)] ${
-                completedStyle ? "opacity-90" : ""
-              }`}
+              className={completedStyle ? "opacity-90" : ""}
             >
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
