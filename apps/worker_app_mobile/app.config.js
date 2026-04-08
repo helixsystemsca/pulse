@@ -5,8 +5,8 @@
  */
 module.exports = {
   expo: {
-    name: "Ops Intel Worker",
-    slug: "ops-intel-worker",
+    name: "Helix Field",
+    slug: "helix-field",
     version: "1.0.0",
     orientation: "portrait",
     userInterfaceStyle: "light",
@@ -22,7 +22,7 @@ module.exports = {
       package: "com.opsintel.worker",
       usesCleartextTraffic: true,
     },
-    scheme: "helix-worker",
+    scheme: "helix-field",
     plugins: [
       "expo-asset",
       "expo-font",
