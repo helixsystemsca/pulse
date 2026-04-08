@@ -1,6 +1,6 @@
 "use client";
 
-import { ClipboardList, Eye, Pencil, Plus, Trash2 } from "lucide-react";
+import { ClipboardList, Eye, Pencil, Trash2 } from "lucide-react";
 import type { ReactNode } from "react";
 import { useCallback, useMemo, useState } from "react";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -92,7 +92,7 @@ export function InspectionsLogsApp() {
         actions={<CreateDropdown onNewInspection={openNewInspection} onNewLog={openNewLog} />}
       />
 
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-200 dark:border-[#1F2937]">
+      <div className="border-b border-gray-200 dark:border-[#1F2937]">
         <nav className="flex gap-6" aria-label="Module tabs">
           <button
             type="button"
@@ -115,25 +115,6 @@ export function InspectionsLogsApp() {
             Logs
           </button>
         </nav>
-        {tab === "inspections" ? (
-          <button
-            type="button"
-            className="mb-2 inline-flex items-center gap-1.5 rounded-md border border-gray-200 dark:border-[#1F2937] bg-white dark:bg-[#111827] px-3 py-2 text-xs font-semibold text-gray-900 dark:text-gray-100 shadow-sm dark:shadow-[0_2px_8px_rgba(0,0,0,0.4)] hover:bg-gray-200/80 dark:hover:bg-[#1F2937]/50"
-            onClick={openNewInspection}
-          >
-            <Plus className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" aria-hidden />
-            New Inspection
-          </button>
-        ) : (
-          <button
-            type="button"
-            className="mb-2 inline-flex items-center gap-1.5 rounded-md border border-gray-200 dark:border-[#1F2937] bg-white dark:bg-[#111827] px-3 py-2 text-xs font-semibold text-gray-900 dark:text-gray-100 shadow-sm dark:shadow-[0_2px_8px_rgba(0,0,0,0.4)] hover:bg-gray-200/80 dark:hover:bg-[#1F2937]/50"
-            onClick={openNewLog}
-          >
-            <Plus className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" aria-hidden />
-            New Log
-          </button>
-        )}
       </div>
 
       {builder?.kind === "inspection" ? (

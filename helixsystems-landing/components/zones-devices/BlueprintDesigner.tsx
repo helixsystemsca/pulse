@@ -3,11 +3,13 @@
 import { animate, AnimatePresence, motion } from "framer-motion";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type Konva from "konva";
-import { Circle, Group, Layer, Line, Rect, Stage, Text, Transformer } from "react-konva";
+import { Circle, Ellipse, Group, Layer, Line, Rect, Stage, Text, Transformer } from "react-konva";
 import { apiFetch, isApiMode } from "@/lib/api";
 import { parseClientApiError } from "@/lib/parse-client-api-error";
 import { pulseApp } from "@/lib/pulse-app";
 import { canAccessPulseTenantApis, readSession } from "@/lib/pulse-session";
+import { useModuleSettings } from "@/providers/ModuleSettingsProvider";
+import { ModuleSettingsGear } from "@/components/module-settings/ModuleSettingsGear";
 import { emitOnboardingMaybeUpdated } from "@/lib/onboarding-events";
 import { freehandOptionsFromSlider, processFreehandPath } from "@/lib/blueprint-freehand-path";
 import { mergeZonesUnion } from "@/lib/blueprint-zone-union";
@@ -31,6 +33,7 @@ import {
   resolveBlueprintHitToSelectionId,
   syncBlueprintGroupBounds,
 } from "@/lib/blueprint-groups";
+import { unionBlueprintElementsBounds } from "@/lib/blueprint-layout";
 import { bpDuration, bpEase, bpTransition } from "@/lib/motion-presets";
 import type { BlueprintDesignerTool, BlueprintElement, ConnectionStyle, TaskOverlay } from "./blueprint-types";
 export type {
@@ -54,7 +57,7 @@ type DeviceKind = "pump" | "tank" | "sensor" | "generic";
 type BlueprintSummary = { id: string; name: string; created_at: string };
 type ApiElement = {
   id: string;
-  type: "zone" | "device" | "door" | "path" | "symbol" | "group" | "connection";
+  type: "zone" | "device" | "door" | "path" | "symbol" | "group" | "connection" | "rectangle" | "ellipse" | "polygon";
   x: number;
   y: number;
   width?: number | null;
@@ -74,6 +77,7 @@ type ApiElement = {
   connection_from?: string | null;
   connection_to?: string | null;
   connection_style?: string | null;
+  corner_radius?: number | null;
 };
 
 type ApiTask = {
@@ -211,7 +215,9 @@ function snapZoneDrag(
   nx: number,
   ny: number,
   all: BlueprintElement[],
+  enableSnap = true,
 ): { x: number; y: number; guides: SnapGuide[] } {
+  if (!enableSnap) return { x: nx, y: ny, guides: [] };
   const w = dragged.width ?? 120;
   const h = dragged.height ?? 80;
   const rot = dragged.rotation ?? 0;
@@ -271,7 +277,9 @@ function snapAxisAlignedBox(
   box: { x: number; y: number; width: number; height: number; rotation?: number },
   all: BlueprintElement[],
   excludeId: string,
+  enableSnap = true,
 ): { x: number; y: number; width: number; height: number } {
+  if (!enableSnap) return { x: box.x, y: box.y, width: box.width, height: box.height };
   if (Math.abs(box.rotation ?? 0) > 1e-5) return { x: box.x, y: box.y, width: box.width, height: box.height };
 
   let { x, y, width, height } = box;
@@ -316,7 +324,9 @@ function snapGuidesBetweenZones(
   box: { x: number; y: number; width: number; height: number },
   all: BlueprintElement[],
   excludeId: string,
+  enableSnap = true,
 ): SnapGuide[] {
+  if (!enableSnap) return [];
   const eps = 1;
   const L = box.x;
   const R = box.x + box.width;
@@ -687,6 +697,20 @@ const ZOOM_MAX = 3;
 const NUDGE_WORLD = 8;
 const UNDO_HISTORY_MAX = 50;
 
+const POLY_CLOSE_PX = 14;
+const POLY_HANDLE_R = 7;
+const ANNOT_RECT_FILL = "rgba(148, 197, 255, 0.06)";
+const ANNOT_RECT_STROKE = "rgba(148, 163, 184, 0.42)";
+const ANNOT_ELLIPSE_FILL = "rgba(56, 189, 248, 0.07)";
+const ANNOT_ELLIPSE_STROKE = "rgba(125, 211, 252, 0.45)";
+const ANNOT_POLY_FILL = "rgba(167, 139, 250, 0.08)";
+const ANNOT_POLY_STROKE = "rgba(196, 181, 253, 0.52)";
+
+function clampRectCornerRadius(w: number, h: number, r: number): number {
+  const m = Math.min(w, h) / 2;
+  return Math.max(0, Math.min(r, m));
+}
+
 /** World-space offset for Shift+drag duplicates so the copy is visible from the original. */
 const SHIFT_DUP_NUDGE = 10;
 
@@ -718,6 +742,21 @@ function elementWorldAabb(el: BlueprintElement): { L: number; R: number; T: numb
       R = Math.max(R, pts[i]);
       T = Math.min(T, pts[i + 1]);
       B = Math.max(B, pts[i + 1]);
+    }
+    if (!Number.isFinite(L)) return null;
+    return { L, R, T, B };
+  }
+  if (el.type === "polygon" && el.path_points && el.path_points.length >= 6) {
+    const pts = el.path_points;
+    let L = Infinity;
+    let R = -Infinity;
+    let T = Infinity;
+    let B = -Infinity;
+    for (let i = 0; i + 1 < pts.length; i += 2) {
+      L = Math.min(L, pts[i]!);
+      R = Math.max(R, pts[i]!);
+      T = Math.min(T, pts[i + 1]!);
+      B = Math.max(B, pts[i + 1]!);
     }
     if (!Number.isFinite(L)) return null;
     return { L, R, T, B };
@@ -823,6 +862,10 @@ function mapApiElement(e: ApiElement): BlueprintElement {
       e.type === "connection" && (e.connection_style === "electrical" || e.connection_style === "plumbing")
         ? e.connection_style
         : undefined,
+    cornerRadius:
+      e.type === "rectangle" && e.corner_radius != null && Number.isFinite(Number(e.corner_radius))
+        ? Number(e.corner_radius)
+        : undefined,
   };
 }
 
@@ -849,6 +892,7 @@ function toApiPayload(elements: BlueprintElement[]) {
     connection_from: el.type === "connection" ? el.connection_from ?? null : null,
     connection_to: el.type === "connection" ? el.connection_to ?? null : null,
     connection_style: el.type === "connection" ? el.connection_style ?? null : null,
+    corner_radius: el.type === "rectangle" ? (el.cornerRadius ?? null) : null,
   }));
 }
 
@@ -865,7 +909,7 @@ function cloneBlueprintElementForShiftDup(el: BlueprintElement, dx: number, dy: 
     path_points: el.path_points ? [...el.path_points] : undefined,
     symbol_tags: el.symbol_tags ? [...el.symbol_tags] : undefined,
   };
-  if ((el.type === "zone" || el.type === "path") && el.path_points && el.path_points.length >= 6) {
+  if ((el.type === "zone" || el.type === "path" || el.type === "polygon") && el.path_points && el.path_points.length >= 6) {
     const flat = el.path_points.map((v, i) => (i % 2 === 0 ? v + dx : v + dy));
     const bb = bboxFromPathPoints(flat);
     return { ...base, path_points: flat, x: bb.minX, y: bb.minY, width: bb.w, height: bb.h };
@@ -1135,6 +1179,10 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
   const [stageSize, setStageSize] = useState({ w: 800, h: 520 });
   const [stageScale, setStageScale] = useState(1);
   const [stagePos, setStagePos] = useState({ x: 0, y: 0 });
+  /** Bumped when switching blueprints / new file so the canvas refits without resetting on every edit. */
+  const [viewLayoutEpoch, setViewLayoutEpoch] = useState(0);
+  const userTouchedPanZoomRef = useRef(false);
+  const prevFitRef = useRef<{ epoch: number; w: number; h: number }>({ epoch: -1, w: 0, h: 0 });
   const [drawDraft, setDrawDraft] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
   const [spaceDown, setSpaceDown] = useState(false);
   const [isPanning, setIsPanning] = useState(false);
@@ -1162,6 +1210,11 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
   const doorInnerRefMap = useRef<Map<string, Konva.Rect>>(new Map());
   const drawOriginRef = useRef<{ x: number; y: number } | null>(null);
   const drawDraftRef = useRef<{ x: number; y: number; w: number; h: number } | null>(null);
+  const drawModeRef = useRef<"zone" | "rectangle" | "ellipse" | null>(null);
+  const shiftKeyHeldRef = useRef(false);
+  const polygonDraftRef = useRef<{ points: { x: number; y: number }[] } | null>(null);
+  const [polygonDraft, setPolygonDraft] = useState<{ points: { x: number; y: number }[] } | null>(null);
+  const [polygonHover, setPolygonHover] = useState<{ x: number; y: number } | null>(null);
   const panLastRef = useRef<{ x: number; y: number } | null>(null);
   const hostRef = useRef<HTMLDivElement | null>(null);
   const layerRef = useRef<Konva.Layer | null>(null);
@@ -1172,6 +1225,21 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
   const [hoverDeviceId, setHoverDeviceId] = useState<string | null>(null);
   const [hoverSymbolId, setHoverSymbolId] = useState<string | null>(null);
   const [snapGuides, setSnapGuides] = useState<SnapGuide[]>([]);
+  const blueprintMod = useModuleSettings("blueprint");
+  const bpFlags = blueprintMod.settings as {
+    showGrid?: boolean;
+    enableSnapping?: boolean;
+    enableAutoConnect?: boolean;
+  };
+  const blueprintSnapEnabledRef = useRef(bpFlags.enableSnapping !== false);
+  const blueprintConnectSnapRef = useRef(bpFlags.enableSnapping !== false);
+  const blueprintConnectAvoidRef = useRef(bpFlags.enableAutoConnect !== false);
+  useEffect(() => {
+    blueprintSnapEnabledRef.current = bpFlags.enableSnapping !== false;
+    blueprintConnectSnapRef.current = bpFlags.enableSnapping !== false;
+    blueprintConnectAvoidRef.current = bpFlags.enableAutoConnect !== false;
+  }, [bpFlags.enableAutoConnect, bpFlags.enableSnapping]);
+  const blueprintShowGrid = bpFlags.showGrid !== false;
   const [freeDrawPreview, setFreeDrawPreview] = useState<number[] | null>(null);
   const freeDrawAccumRef = useRef<number[]>([]);
   const freeDrawWinCleanupRef = useRef<(() => void) | null>(null);
@@ -1195,6 +1263,34 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
   useEffect(() => {
     linkingForTaskIdRef.current = linkingForTaskId;
   }, [linkingForTaskId]);
+
+  useEffect(() => {
+    const down = (e: KeyboardEvent) => {
+      if (e.key === "Shift") shiftKeyHeldRef.current = true;
+    };
+    const up = (e: KeyboardEvent) => {
+      if (e.key === "Shift") shiftKeyHeldRef.current = false;
+    };
+    window.addEventListener("keydown", down);
+    window.addEventListener("keyup", up);
+    return () => {
+      window.removeEventListener("keydown", down);
+      window.removeEventListener("keyup", up);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (tool !== "draw-polygon") {
+      polygonDraftRef.current = null;
+      setPolygonDraft(null);
+      setPolygonHover(null);
+    }
+    if (tool !== "draw-room" && tool !== "draw-rectangle" && tool !== "draw-ellipse") {
+      drawOriginRef.current = null;
+      drawModeRef.current = null;
+      setDrawDraft(null);
+    }
+  }, [tool]);
 
   useEffect(() => {
     if (!saveNotice) return;
@@ -1350,6 +1446,43 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
   }, [tool]);
 
   useEffect(() => () => zoomAnimRef.current?.stop(), []);
+
+  useLayoutEffect(() => {
+    const w = stageSize.w;
+    const h = stageSize.h;
+    const epoch = viewLayoutEpoch;
+    const prev = prevFitRef.current;
+    const epochChanged = prev.epoch !== epoch;
+    const sizeChanged = prev.w !== w || prev.h !== h;
+    prevFitRef.current = { epoch, w, h };
+
+    if (!epochChanged && sizeChanged && userTouchedPanZoomRef.current) {
+      return;
+    }
+
+    const laidOut = relayoutAllDoors(elements);
+    const b = unionBlueprintElementsBounds(laidOut);
+    const pad = 56;
+    let nextScale = 1;
+    let nextPos = { x: pad, y: pad };
+    if (b) {
+      const bw = Math.max(40, b.R - b.L);
+      const bh = Math.max(40, b.B - b.T);
+      const sx = (w - pad * 2) / bw;
+      const sy = (h - pad * 2) / bh;
+      const s = Math.min(sx, sy, ZOOM_MAX);
+      const clamped = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, s));
+      const cx = (b.L + b.R) / 2;
+      const cy = (b.T + b.B) / 2;
+      nextScale = clamped;
+      nextPos = { x: w / 2 - cx * clamped, y: h / 2 - cy * clamped };
+    }
+    stageScaleRef.current = nextScale;
+    stagePosRef.current = nextPos;
+    setStageScale(nextScale);
+    setStagePos(nextPos);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- refit only when epoch/stage size change; `elements` comes from that render
+  }, [viewLayoutEpoch, stageSize.w, stageSize.h]);
 
   const runDragScale = useCallback((node: Konva.Node, to: number) => {
     dragAnimRef.current?.stop();
@@ -1536,7 +1669,8 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
         elements: cur,
         fromId,
         toId,
-        snapToGrid: true,
+        snapToGrid: blueprintConnectSnapRef.current,
+        avoidObstacles: blueprintConnectAvoidRef.current,
       });
       if (!flat || flat.length < 4) continue;
       toAdd.push(
@@ -1589,6 +1723,12 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
         e.preventDefault();
         setSymbolPanelOpen(false);
         setFreehandTune(null);
+        polygonDraftRef.current = null;
+        setPolygonDraft(null);
+        setPolygonHover(null);
+        drawOriginRef.current = null;
+        drawModeRef.current = null;
+        setDrawDraft(null);
         setSelectedIds([]);
         setSnapGuides([]);
         setLinkingForTaskId(null);
@@ -1623,6 +1763,11 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
           if (isBlueprintElementEffectivelyLocked(prev, el)) return el;
           if (el.type === "door") return el;
           if (el.type === "path" && el.path_points && el.path_points.length >= 6) {
+            const flat = el.path_points.map((v, i) => (i % 2 === 0 ? v + dx : v + dy));
+            const bb = bboxFromPathPoints(flat);
+            return { ...el, path_points: flat, x: bb.minX, y: bb.minY, width: bb.w, height: bb.h };
+          }
+          if (el.type === "polygon" && el.path_points && el.path_points.length >= 6) {
             const flat = el.path_points.map((v, i) => (i % 2 === 0 ? v + dx : v + dy));
             const bb = bboxFromPathPoints(flat);
             return { ...el, path_points: flat, x: bb.minX, y: bb.minY, width: bb.w, height: bb.h };
@@ -1742,6 +1887,7 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
       if (!last) return;
       const dx = e.clientX - last.x;
       const dy = e.clientY - last.y;
+      if (dx !== 0 || dy !== 0) userTouchedPanZoomRef.current = true;
       panLastRef.current = { x: e.clientX, y: e.clientY };
       setStagePos((p) => ({ x: p.x + dx, y: p.y + dy }));
     };
@@ -1769,6 +1915,8 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
       setSelectedIds([]);
       setError(null);
       setSaveNotice(null);
+      userTouchedPanZoomRef.current = false;
+      setViewLayoutEpoch((n) => n + 1);
     } catch (e) {
       setError(blueprintApiUserMessage(e));
     }
@@ -1849,9 +1997,12 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
     setSelectedIds([]);
     setTool("select");
     setSaveNotice(null);
+    userTouchedPanZoomRef.current = false;
+    setViewLayoutEpoch((n) => n + 1);
   };
 
   const handleWheel = (e: Konva.KonvaEventObject<WheelEvent>) => {
+    userTouchedPanZoomRef.current = true;
     e.evt.preventDefault();
     const stage = stageRef.current;
     if (!stage) return;
@@ -1891,7 +2042,8 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
     });
   };
 
-  const startDraw = (x: number, y: number) => {
+  const beginBoxDraw = (mode: "zone" | "rectangle" | "ellipse", x: number, y: number) => {
+    drawModeRef.current = mode;
     drawOriginRef.current = { x, y };
     setDrawDraft({ x, y, w: 0, h: 0 });
   };
@@ -1899,34 +2051,134 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
   const updateDraw = (x: number, y: number) => {
     const o = drawOriginRef.current;
     if (!o) return;
-    const w = x - o.x;
-    const h = y - o.y;
-    setDrawDraft({ x: w < 0 ? x : o.x, y: h < 0 ? y : o.y, w: Math.abs(w), h: Math.abs(h) });
+    let w = x - o.x;
+    let h = y - o.y;
+    if (drawModeRef.current === "ellipse" && shiftKeyHeldRef.current) {
+      const ax = Math.abs(w);
+      const ay = Math.abs(h);
+      const s = Math.min(ax, ay);
+      w = w < 0 ? -s : s;
+      h = h < 0 ? -s : s;
+    }
+    setDrawDraft({ x: w < 0 ? o.x + w : o.x, y: h < 0 ? o.y + h : o.y, w: Math.abs(w), h: Math.abs(h) });
   };
 
   const finishDraw = () => {
+    const mode = drawModeRef.current;
     const o = drawOriginRef.current;
     const d = drawDraftRef.current;
     drawOriginRef.current = null;
+    drawModeRef.current = null;
     setDrawDraft(null);
     drawDraftRef.current = null;
     if (!o || !d || d.w < MIN_ZONE || d.h < MIN_ZONE) return;
     const id = crypto.randomUUID();
+    if (mode === "zone") {
+      commitElements((prev) => [
+        ...prev,
+        {
+          id,
+          type: "zone",
+          x: d.x,
+          y: d.y,
+          width: d.w,
+          height: d.h,
+          name: nextRoomLabel(prev),
+          rotation: 0,
+        },
+      ]);
+    } else if (mode === "rectangle") {
+      commitElements((prev) => [
+        ...prev,
+        {
+          id,
+          type: "rectangle",
+          x: d.x,
+          y: d.y,
+          width: d.w,
+          height: d.h,
+          rotation: 0,
+          name: "Rectangle",
+          cornerRadius: 0,
+        },
+      ]);
+    } else if (mode === "ellipse") {
+      commitElements((prev) => [
+        ...prev,
+        {
+          id,
+          type: "ellipse",
+          x: d.x,
+          y: d.y,
+          width: d.w,
+          height: d.h,
+          rotation: 0,
+          name: "Ellipse",
+        },
+      ]);
+    } else {
+      return;
+    }
+    setSelectedIds([id]);
+    setTool("select");
+  };
+
+  const commitPolygonFromPoints = (pts: { x: number; y: number }[]) => {
+    if (pts.length < 3) return;
+    const flat: number[] = [];
+    for (const p of pts) {
+      flat.push(p.x, p.y);
+    }
+    const id = crypto.randomUUID();
+    const { minX, minY, w, h } = bboxFromPathPoints(flat);
     commitElements((prev) => [
       ...prev,
       {
         id,
-        type: "zone",
-        x: d.x,
-        y: d.y,
-        width: d.w,
-        height: d.h,
-        name: nextRoomLabel(prev),
+        type: "polygon",
+        x: minX,
+        y: minY,
+        width: w,
+        height: h,
         rotation: 0,
+        name: "Polygon",
+        path_points: flat,
       },
     ]);
     setSelectedIds([id]);
+    polygonDraftRef.current = null;
+    setPolygonDraft(null);
+    setPolygonHover(null);
     setTool("select");
+  };
+
+  const onPolygonOverlayPointerDown = (e: Konva.KonvaEventObject<PointerEvent>) => {
+    if (tool !== "draw-polygon") return;
+    e.cancelBubble = true;
+    if (e.evt.button !== 0) return;
+    const st = e.target.getStage();
+    const w0 = getWorldFromStage(st);
+    if (!w0) return;
+    const wx = Math.round(w0.x / GRID) * GRID;
+    const wy = Math.round(w0.y / GRID) * GRID;
+    const w = { x: wx, y: wy };
+
+    const pts = polygonDraftRef.current?.points ?? [];
+    const detail = "detail" in e.evt ? (e.evt as MouseEvent).detail : 1;
+    if (detail >= 2) {
+      if (pts.length >= 3) commitPolygonFromPoints(pts);
+      return;
+    }
+    if (pts.length >= 3) {
+      const first = pts[0]!;
+      if (Math.hypot(w.x - first.x, w.y - first.y) <= POLY_CLOSE_PX) {
+        commitPolygonFromPoints(pts);
+        return;
+      }
+    }
+    const next = { points: [...pts, w] };
+    polygonDraftRef.current = next;
+    setPolygonDraft(next);
   };
 
   const placeDeviceAt = (x: number, y: number) => {
@@ -2028,14 +2280,31 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
     }
   };
 
-  const onStageMouseMove = () => {
-    if (tool !== "draw-room" || !drawOriginRef.current) return;
-    const w = getWorldFromStage(stageRef.current);
-    if (w) updateDraw(w.x, w.y);
+  const onStageMouseMove = (e: Konva.KonvaEventObject<MouseEvent>) => {
+    if (
+      (tool === "draw-room" || tool === "draw-rectangle" || tool === "draw-ellipse") &&
+      drawOriginRef.current
+    ) {
+      const w = getWorldFromStage(stageRef.current);
+      if (w) updateDraw(w.x, w.y);
+    }
+    if (tool === "draw-polygon" && polygonDraftRef.current) {
+      const w = getWorldFromStage(e.target.getStage());
+      if (w) {
+        setPolygonHover({
+          x: Math.round(w.x / GRID) * GRID,
+          y: Math.round(w.y / GRID) * GRID,
+        });
+      }
+    }
   };
 
   const onStageMouseUp = (e: Konva.KonvaEventObject<MouseEvent>) => {
-    if (tool === "draw-room" && e.evt.button === 0 && drawOriginRef.current) {
+    if (
+      (tool === "draw-room" || tool === "draw-rectangle" || tool === "draw-ellipse") &&
+      e.evt.button === 0 &&
+      drawOriginRef.current
+    ) {
       finishDraw();
     }
   };
@@ -2151,6 +2420,9 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
       if (!o || o.type === "door" || o.type === "connection") continue;
       if (isBlueprintElementEffectivelyLocked(currentElements, o)) continue;
       if (o.type === "path" && o.path_points && o.path_points.length >= 6) {
+        starts.set(id, { x: 0, y: 0 });
+        pathFlats.set(id, [...o.path_points]);
+      } else if (o.type === "polygon" && o.path_points && o.path_points.length >= 6) {
         starts.set(id, { x: 0, y: 0 });
         pathFlats.set(id, [...o.path_points]);
       } else if (o.type === "zone" && zonePolygonFlat(o) && o.path_points) {
@@ -2278,7 +2550,7 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
     replaceElements((prev) => {
       let next = prev.map((row) => {
         if (!g.starts.has(row.id)) return row;
-        if ((row.type === "path" || row.type === "zone") && g.pathFlats.has(row.id)) {
+        if ((row.type === "path" || row.type === "zone" || row.type === "polygon") && g.pathFlats.has(row.id)) {
           const flat = g.pathFlats.get(row.id)!;
           const nf = flat.map((v, i) => (i % 2 === 0 ? v + dx : v + dy));
           const bb = bboxFromPathPoints(nf);
@@ -2319,7 +2591,13 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
         const st0 = s.cloneStarts.get(s.primaryNew);
         if (st0 && st0.pathFlat === undefined) {
           const draft = { ...prim, x: st0.x + dx, y: st0.y + dy };
-          const sn = snapZoneDrag(draft, st0.x + dx, st0.y + dy, elementsRef.current);
+          const sn = snapZoneDrag(
+            draft,
+            st0.x + dx,
+            st0.y + dy,
+            elementsRef.current,
+            blueprintSnapEnabledRef.current,
+          );
           ndx = sn.x - st0.x;
           ndy = sn.y - st0.y;
           guides = sn.guides;
@@ -2334,6 +2612,7 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
             st.pathFlat &&
             (row.type === "path" ||
               row.type === "connection" ||
+              row.type === "polygon" ||
               (row.type === "zone" && row.path_points && row.path_points.length >= 6))
           ) {
             const flat = st.pathFlat.map((v, i) => (i % 2 === 0 ? v + ndx : v + ndy));
@@ -2435,7 +2714,7 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
       const cloneStarts = new Map<string, { x: number; y: number; pathFlat?: number[] }>();
       for (const c of clones) {
         if (c.type === "group") continue;
-        if ((c.type === "path" || c.type === "zone") && c.path_points && c.path_points.length >= 6) {
+        if ((c.type === "path" || c.type === "zone" || c.type === "polygon") && c.path_points && c.path_points.length >= 6) {
           cloneStarts.set(c.id, { x: 0, y: 0, pathFlat: [...c.path_points] });
         } else if (c.type === "connection" && c.path_points && c.path_points.length >= 4) {
           cloneStarts.set(c.id, { x: 0, y: 0, pathFlat: [...c.path_points] });
@@ -2514,18 +2793,17 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
       height = Math.max(20, g.height() * scaleY);
     }
     replaceElements((prev) => {
-      let next = prev.map((e) =>
-        e.id === id
-          ? {
-              ...e,
-              x,
-              y,
-              width,
-              height,
-              rotation,
-            }
-          : e,
-      );
+      let next = prev.map((e) => {
+        if (e.id !== id) return e;
+        const base = { ...e, x, y, width, height, rotation };
+        if (e.type === "rectangle") {
+          return {
+            ...base,
+            cornerRadius: clampRectCornerRadius(width, height, e.cornerRadius ?? 0),
+          };
+        }
+        return base;
+      });
       const updated = next.find((e) => e.id === id);
       if (updated?.type === "zone") next = relayoutAttachedDoors(next, id);
       return next;
@@ -2565,7 +2843,8 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
     }
     if (sel?.type === "door") n = doorInnerRefMap.current.get(selectedSingleId!) ?? null;
     else if (sel?.type === "zone" && !zonePolygonFlat(sel)) n = selectedNodeRef.current;
-    else if (sel?.type === "device" || sel?.type === "symbol") n = selectedNodeRef.current;
+    else if (sel?.type === "device" || sel?.type === "symbol" || sel?.type === "rectangle" || sel?.type === "ellipse")
+      n = selectedNodeRef.current;
     if (n && selectedSingleId && tool === "select") {
       tr.nodes([n]);
       tr.getLayer()?.batchDraw();
@@ -2576,6 +2855,7 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
   }, [selectedSingleId, elements, tool, stageSize.w, stageSize.h, designerMode, linkingForTaskId, stageScale]);
 
   const gridLines = (() => {
+    if (!blueprintShowGrid) return [];
     const { w, h } = stageSize;
     const minWX = (-stagePos.x) / stageScale;
     const maxWX = (w - stagePos.x) / stageScale;
@@ -2722,6 +3002,25 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
         );
       }
       if (row.type === "path") return prev;
+      if (row.type === "polygon" && row.path_points && row.path_points.length >= 6) {
+        const flat = [...row.path_points];
+        let sx = 0;
+        let sy = 0;
+        const n = flat.length / 2;
+        for (let i = 0; i < flat.length; i += 2) {
+          sx += flat[i]!;
+          sy += flat[i + 1]!;
+        }
+        const cx = sx / n;
+        const cy = sy / n;
+        const rotated = rotatePathFlat90Cw(flat, cx, cy);
+        const bb = bboxFromPathPoints(rotated);
+        return prev.map((x) =>
+          x.id === selectedSingleId
+            ? { ...x, path_points: rotated, x: bb.minX, y: bb.minY, width: bb.w, height: bb.h }
+            : x,
+        );
+      }
       if (row.type === "zone" && row.path_points && row.path_points.length >= 6) {
         const flat = [...row.path_points];
         const { cx, cy } = polygonCentroidFlat(flat);
@@ -2750,7 +3049,7 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
       <motion.aside
         className={`bp-sidebar${isPublish ? " bp-sidebar--disabled" : ""}`}
         aria-label="Blueprint tasks"
-        initial={{ opacity: 0, x: -12 }}
+        initial={false}
         animate={{ opacity: 1, x: 0 }}
         transition={bpTransition.med}
       >
@@ -2812,9 +3111,9 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
       <div className="bp-workspace">
       <motion.div
         className={`bp-canvas-wrap bp-canvas-wrap--with-float${isPublish ? " bp-canvas-wrap--publish" : ""}`}
-        initial={{ opacity: 0, y: 12 }}
+        initial={false}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ ...bpTransition.med, delay: 0.02 }}
+        transition={bpTransition.med}
       >
         <AnimatePresence>
           {isPublish ? (
@@ -2857,9 +3156,9 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
         </AnimatePresence>
         <motion.div
           className="bp-toolbar"
-          initial={{ opacity: 0, y: -6 }}
+          initial={false}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ ...bpTransition.fast, delay: 0.05 }}
+          transition={bpTransition.fast}
         >
           <span>
             <label htmlFor="bp-pick">Blueprint</label>
@@ -2932,6 +3231,9 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
           >
             Publish
           </motion.button>
+          {!standalone ? (
+            <ModuleSettingsGear moduleId="blueprint" label="Blueprint designer organization settings" />
+          ) : null}
         </motion.div>
         <AnimatePresence>
           {error ? (
@@ -3012,14 +3314,19 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
                 width={20000}
                 height={20000}
                 fill="rgba(15,23,42,0.01)"
-                listening={canEdit && (tool === "select" || tool === "draw-room")}
+                listening={canEdit && (tool === "select" || tool === "draw-room" || tool === "draw-rectangle" || tool === "draw-ellipse")}
                 onMouseDown={(e) => {
                   if (!canEdit) return;
-                  if (tool === "draw-room" && e.evt.button === 0) {
+                  if (
+                    (tool === "draw-room" || tool === "draw-rectangle" || tool === "draw-ellipse") &&
+                    e.evt.button === 0
+                  ) {
                     e.cancelBubble = true;
                     const st = e.target.getStage();
                     const w = getWorldFromStage(st);
-                    if (w) startDraw(w.x, w.y);
+                    if (!w) return;
+                    const mode = tool === "draw-room" ? "zone" : tool === "draw-rectangle" ? "rectangle" : "ellipse";
+                    beginBoxDraw(mode, w.x, w.y);
                   } else if (tool === "select" && e.evt.button === 0 && !spaceDown) {
                     beginMarqueeSelect(e);
                   }
@@ -3288,7 +3595,13 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
                             flushMultiDragMove(el.id, node);
                             return;
                           }
-                          const { x, y, guides } = snapZoneDrag(el, node.x(), node.y(), elements);
+                          const { x, y, guides } = snapZoneDrag(
+                            el,
+                            node.x(),
+                            node.y(),
+                            elements,
+                            blueprintSnapEnabledRef.current,
+                          );
                           node.x(x);
                           node.y(y);
                           setSnapGuides(guides);
@@ -3345,6 +3658,311 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
                         wrap="none"
                         ellipsis
                       />
+                    </Group>
+                  );
+                })}
+              {elements
+                .filter((el) => el.type === "rectangle")
+                .map((el) => {
+                  const w = el.width ?? MIN_ZONE;
+                  const h = el.height ?? MIN_ZONE;
+                  const sel = selectedIds.includes(el.id);
+                  const effLocked = isBlueprintElementEffectivelyLocked(elements, el);
+                  const interactSelect = canEdit && tool === "select" && !effLocked;
+                  const sw = pubLine(Math.max(0.65, 1 / stageScale));
+                  const cr = clampRectCornerRadius(w, h, el.cornerRadius ?? 0);
+                  const tg = taskGlowIds.has(el.id);
+                  return (
+                    <Rect
+                      key={el.id}
+                      ref={(node) => {
+                        if (el.id === selectedSingleId && tool === "select" && canEdit && selected?.type === "rectangle") {
+                          selectedNodeRef.current = node;
+                        }
+                      }}
+                      x={el.x}
+                      y={el.y}
+                      width={w}
+                      height={h}
+                      rotation={el.rotation ?? 0}
+                      cornerRadius={cr}
+                      fill={ANNOT_RECT_FILL}
+                      stroke={tg ? "rgba(56, 189, 248, 0.82)" : sel ? "rgba(96, 165, 250, 0.6)" : ANNOT_RECT_STROKE}
+                      strokeWidth={tg ? sw * 1.35 : sw}
+                      dash={effLocked ? [7, 5] : undefined}
+                      opacity={effLocked ? 0.74 : 1}
+                      hitStrokeWidth={ZONE_EDGE_HIT_PX / Math.max(0.35, stageScale)}
+                      listening={interactSelect}
+                      draggable={interactSelect}
+                      onClick={(e) => canEdit && handleSelectElementClick(e, el.id)}
+                      onTap={(e) => canEdit && handleSelectElementClick(e, el.id)}
+                      onDragStart={(e) => {
+                        if (canEdit && tool === "select") {
+                          setIsDraggingSelection(true);
+                          if (!tryBeginShiftDuplicateDrag(el.id, e.target, e)) checkpointBlueprint();
+                        }
+                        if (!shiftDupSessionRef.current) initMultiDragIfNeeded(el.id);
+                        if (canEdit && tool === "select") runDragScale(e.target, 1.02);
+                      }}
+                      onDragMove={(e) => {
+                        if (!canEdit || tool !== "select") return;
+                        const node = e.target;
+                        if (shiftDupSessionRef.current?.primaryOld === el.id) {
+                          applyShiftDuplicateDeltaFromNode(node);
+                          return;
+                        }
+                        if (groupDragRef.current && groupDragRef.current.primaryId === el.id) {
+                          flushMultiDragMove(el.id, node);
+                        }
+                      }}
+                      onDragEnd={(e) => {
+                        if (shiftDupSessionRef.current?.primaryOld === el.id) {
+                          setIsDraggingSelection(false);
+                          runDragScale(e.target, 1);
+                          replaceElements((prev) => relayoutAllDoors(prev));
+                          finishShiftDuplicateDrag();
+                          return;
+                        }
+                        setIsDraggingSelection(false);
+                        const g = groupDragRef.current;
+                        const wasMulti = g && g.primaryId === el.id;
+                        if (wasMulti) groupDragRef.current = null;
+                        runDragScale(e.target, 1);
+                        if (wasMulti) {
+                          replaceElements((prev) => syncBlueprintGroupBounds(relayoutAllDoors(prev)));
+                          return;
+                        }
+                        const nx = e.target.x();
+                        const ny = e.target.y();
+                        replaceElements((prev) => prev.map((x) => (x.id === el.id ? { ...x, x: nx, y: ny } : x)));
+                      }}
+                      onTransformEnd={(e) => syncTransformToState(el.id, e.target)}
+                    />
+                  );
+                })}
+              {elements
+                .filter((el) => el.type === "ellipse")
+                .map((el) => {
+                  const w = el.width ?? MIN_ZONE;
+                  const h = el.height ?? MIN_ZONE;
+                  const sel = selectedIds.includes(el.id);
+                  const effLocked = isBlueprintElementEffectivelyLocked(elements, el);
+                  const interactSelect = canEdit && tool === "select" && !effLocked;
+                  const sw = pubLine(Math.max(0.65, 1 / stageScale));
+                  const tg = taskGlowIds.has(el.id);
+                  return (
+                    <Group
+                      key={el.id}
+                      ref={(node) => {
+                        if (el.id === selectedSingleId && tool === "select" && canEdit && selected?.type === "ellipse") {
+                          selectedNodeRef.current = node;
+                        }
+                      }}
+                      x={el.x}
+                      y={el.y}
+                      rotation={el.rotation ?? 0}
+                      listening={interactSelect}
+                      draggable={interactSelect}
+                      opacity={effLocked ? 0.74 : 1}
+                      onClick={(e) => canEdit && handleSelectElementClick(e, el.id)}
+                      onTap={(e) => canEdit && handleSelectElementClick(e, el.id)}
+                      onDragStart={(e) => {
+                        if (canEdit && tool === "select") {
+                          setIsDraggingSelection(true);
+                          if (!tryBeginShiftDuplicateDrag(el.id, e.target, e)) checkpointBlueprint();
+                        }
+                        if (!shiftDupSessionRef.current) initMultiDragIfNeeded(el.id);
+                        if (canEdit && tool === "select") runDragScale(e.target, 1.02);
+                      }}
+                      onDragMove={(e) => {
+                        if (!canEdit || tool !== "select") return;
+                        const node = e.target;
+                        if (shiftDupSessionRef.current?.primaryOld === el.id) {
+                          applyShiftDuplicateDeltaFromNode(node);
+                          return;
+                        }
+                        if (groupDragRef.current && groupDragRef.current.primaryId === el.id) {
+                          flushMultiDragMove(el.id, node);
+                        }
+                      }}
+                      onDragEnd={(e) => {
+                        if (shiftDupSessionRef.current?.primaryOld === el.id) {
+                          setIsDraggingSelection(false);
+                          runDragScale(e.target, 1);
+                          replaceElements((prev) => relayoutAllDoors(prev));
+                          finishShiftDuplicateDrag();
+                          return;
+                        }
+                        setIsDraggingSelection(false);
+                        const g = groupDragRef.current;
+                        const wasMulti = g && g.primaryId === el.id;
+                        if (wasMulti) groupDragRef.current = null;
+                        runDragScale(e.target, 1);
+                        if (wasMulti) {
+                          replaceElements((prev) => syncBlueprintGroupBounds(relayoutAllDoors(prev)));
+                          return;
+                        }
+                        const nx = e.target.x();
+                        const ny = e.target.y();
+                        replaceElements((prev) => prev.map((x) => (x.id === el.id ? { ...x, x: nx, y: ny } : x)));
+                      }}
+                      onTransformEnd={(e) => syncTransformToState(el.id, e.target)}
+                    >
+                      <Ellipse
+                        x={w / 2}
+                        y={h / 2}
+                        radiusX={Math.max(1, w / 2)}
+                        radiusY={Math.max(1, h / 2)}
+                        fill={ANNOT_ELLIPSE_FILL}
+                        stroke={tg ? "rgba(56, 189, 248, 0.85)" : sel ? "rgba(125, 211, 252, 0.72)" : ANNOT_ELLIPSE_STROKE}
+                        strokeWidth={tg ? sw * 1.35 : sw}
+                        dash={effLocked ? [7, 5] : undefined}
+                        listening={false}
+                      />
+                    </Group>
+                  );
+                })}
+              {elements
+                .filter((el) => el.type === "polygon" && (el.path_points?.length ?? 0) >= 6)
+                .map((el) => {
+                  const pts = el.path_points ?? [];
+                  const sel = selectedIds.includes(el.id);
+                  const effLocked = isBlueprintElementEffectivelyLocked(elements, el);
+                  const interactSelect = canEdit && tool === "select" && !effLocked;
+                  const sw = pubLine(Math.max(0.65, 1 / stageScale));
+                  const tg = taskGlowIds.has(el.id);
+                  const showHandles = canEdit && tool === "select" && sel && !effLocked;
+                  const nVerts = pts.length / 2;
+                  return (
+                    <Group key={el.id} listening={false}>
+                      <Line
+                        points={pts}
+                        closed
+                        tension={0}
+                        fill={ANNOT_POLY_FILL}
+                        stroke={tg ? "rgba(56, 189, 248, 0.9)" : sel ? "rgba(196, 181, 253, 0.85)" : ANNOT_POLY_STROKE}
+                        strokeWidth={tg ? sw * 1.35 : sw}
+                        lineJoin="round"
+                        listening={interactSelect}
+                        draggable={interactSelect}
+                        opacity={effLocked ? 0.74 : 1}
+                        dash={effLocked ? [8, 5] : undefined}
+                        hitStrokeWidth={Math.max(16, 14 / stageScale)}
+                        onClick={(e) => canEdit && handleSelectElementClick(e, el.id)}
+                        onTap={(e) => canEdit && handleSelectElementClick(e, el.id)}
+                        onDragStart={(e) => {
+                          if (canEdit && tool === "select") {
+                            setIsDraggingSelection(true);
+                            if (!tryBeginShiftDuplicateDrag(el.id, e.target, e)) checkpointBlueprint();
+                          }
+                          if (!shiftDupSessionRef.current) initMultiDragIfNeeded(el.id);
+                          if (canEdit && tool === "select") runDragScale(e.target, 1.02);
+                        }}
+                        onDragMove={(e) => {
+                          if (!canEdit || tool !== "select") return;
+                          const node = e.target;
+                          if (shiftDupSessionRef.current?.primaryOld === el.id) {
+                            applyShiftDuplicateDeltaFromNode(node);
+                            return;
+                          }
+                          if (groupDragRef.current && groupDragRef.current.primaryId === el.id) {
+                            flushMultiDragMove(el.id, node);
+                          }
+                        }}
+                        onDragEnd={(e) => {
+                          if (shiftDupSessionRef.current?.primaryOld === el.id) {
+                            setIsDraggingSelection(false);
+                            runDragScale(e.target as Konva.Line, 1);
+                            replaceElements((prev) => relayoutAllDoors(prev));
+                            finishShiftDuplicateDrag();
+                            return;
+                          }
+                          setIsDraggingSelection(false);
+                          const g = groupDragRef.current;
+                          const wasMulti = g && g.primaryId === el.id;
+                          if (wasMulti) groupDragRef.current = null;
+                          const node = e.target as Konva.Line;
+                          runDragScale(node, 1);
+                          if (wasMulti) {
+                            node.position({ x: 0, y: 0 });
+                            replaceElements((prev) => syncBlueprintGroupBounds(relayoutAllDoors(prev)));
+                            return;
+                          }
+                          const ox = node.x();
+                          const oy = node.y();
+                          node.position({ x: 0, y: 0 });
+                          replaceElements((prev) =>
+                            prev.map((row) => {
+                              if (row.id !== el.id || row.type !== "polygon" || !row.path_points || row.path_points.length < 6) {
+                                return row;
+                              }
+                              const flat = row.path_points.map((v, i) => (i % 2 === 0 ? v + ox : v + oy));
+                              const bb = bboxFromPathPoints(flat);
+                              return {
+                                ...row,
+                                path_points: flat,
+                                x: bb.minX,
+                                y: bb.minY,
+                                width: bb.w,
+                                height: bb.h,
+                              };
+                            }),
+                          );
+                        }}
+                      />
+                      {showHandles
+                        ? Array.from({ length: nVerts }, (_, vi) => {
+                            const px = pts[vi * 2]!;
+                            const py = pts[vi * 2 + 1]!;
+                            return (
+                              <Circle
+                                key={`${el.id}-v-${vi}`}
+                                x={px}
+                                y={py}
+                                radius={POLY_HANDLE_R}
+                                fill="rgba(15, 23, 42, 0.92)"
+                                stroke="rgba(196, 181, 253, 0.9)"
+                                strokeWidth={Math.max(1, 1.2 / stageScale)}
+                                draggable
+                                onDragStart={(e) => {
+                                  e.cancelBubble = true;
+                                  checkpointBlueprint();
+                                }}
+                                onDragMove={(e) => {
+                                  e.cancelBubble = true;
+                                  const nx = e.target.x();
+                                  const ny = e.target.y();
+                                  replaceElements((prev) =>
+                                    prev.map((row) => {
+                                      if (row.id !== el.id || row.type !== "polygon" || !row.path_points) return row;
+                                      const flat = [...row.path_points];
+                                      flat[vi * 2] = nx;
+                                      flat[vi * 2 + 1] = ny;
+                                      const bb = bboxFromPathPoints(flat);
+                                      return {
+                                        ...row,
+                                        path_points: flat,
+                                        x: bb.minX,
+                                        y: bb.minY,
+                                        width: bb.w,
+                                        height: bb.h,
+                                      };
+                                    }),
+                                  );
+                                  batchLayer();
+                                }}
+                                onDragEnd={(e) => {
+                                  e.cancelBubble = true;
+                                  const nx = e.target.x();
+                                  const ny = e.target.y();
+                                  e.target.x(nx);
+                                  e.target.y(ny);
+                                  batchLayer();
+                                }}
+                              />
+                            );
+                          })
+                        : null}
                     </Group>
                   );
                 })}
@@ -3999,6 +4617,64 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
                   onPointerDown={onFreeDrawPointerDown}
                 />
               ) : null}
+              {canEdit && tool === "draw-polygon" ? (
+                <Rect
+                  x={-8000}
+                  y={-8000}
+                  width={20000}
+                  height={20000}
+                  fill="rgba(0,0,0,0.001)"
+                  listening
+                  onPointerDown={onPolygonOverlayPointerDown}
+                />
+              ) : null}
+              {canEdit && tool === "draw-polygon" && polygonDraft && polygonDraft.points.length > 0 ? (
+                <Group listening={false}>
+                  {(() => {
+                    const pts0 = polygonDraft.points;
+                    const flatOpen = [...pts0.flatMap((p) => [p.x, p.y])];
+                    if (polygonHover) flatOpen.push(polygonHover.x, polygonHover.y);
+                    const first = pts0[0]!;
+                    const nearFirst =
+                      pts0.length >= 3 &&
+                      polygonHover &&
+                      Math.hypot(polygonHover.x - first.x, polygonHover.y - first.y) <= POLY_CLOSE_PX;
+                    return (
+                      <>
+                        <Line
+                          points={flatOpen}
+                          stroke="rgba(196, 181, 253, 0.65)"
+                          strokeWidth={Math.max(0.85, 1.15 / stageScale)}
+                          dash={[6, 4]}
+                          lineCap="round"
+                          listening={false}
+                        />
+                        {pts0.length >= 3 && polygonHover ? (
+                          <Line
+                            points={[...pts0.flatMap((p) => [p.x, p.y]), first.x, first.y]}
+                            closed
+                            fill="rgba(167, 139, 250, 0.07)"
+                            strokeEnabled={false}
+                            listening={false}
+                          />
+                        ) : null}
+                        {pts0.map((p, i) => (
+                          <Circle
+                            key={`pvd-${i}`}
+                            x={p.x}
+                            y={p.y}
+                            radius={i === 0 ? (nearFirst ? 9 : 5) : 4}
+                            fill={i === 0 ? "rgba(167, 139, 250, 0.45)" : "rgba(148, 163, 184, 0.35)"}
+                            stroke="rgba(196, 181, 253, 0.85)"
+                            strokeWidth={Math.max(1, 1.1 / stageScale)}
+                            listening={false}
+                          />
+                        ))}
+                      </>
+                    );
+                  })()}
+                </Group>
+              ) : null}
               <Transformer
                 ref={transformerRef}
                 rotateEnabled={selected?.type !== "door"}
@@ -4042,6 +4718,7 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
                     },
                     elements,
                     sid,
+                    blueprintSnapEnabledRef.current,
                   );
                   return {
                     ...newBox,
@@ -4089,6 +4766,7 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
                     },
                     elements,
                     selectedSingleId,
+                    blueprintSnapEnabledRef.current,
                   );
                   setSnapGuides(guides);
                   batchLayer();
@@ -4330,6 +5008,43 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
                           ))}
                         </select>
                       </>
+                    ) : null}
+                    {selected.type === "rectangle" ? (
+                      <label className="bp-float-context__compact">
+                        <span>Corner radius</span>
+                        <input
+                          type="range"
+                          min={0}
+                          max={Math.max(
+                            0,
+                            Math.floor(
+                              Math.min(selected.width ?? MIN_ZONE, selected.height ?? MIN_ZONE) / 2,
+                            ),
+                          )}
+                          value={Math.round(
+                            clampRectCornerRadius(
+                              selected.width ?? MIN_ZONE,
+                              selected.height ?? MIN_ZONE,
+                              selected.cornerRadius ?? 0,
+                            ),
+                          )}
+                          onChange={(e) => {
+                            const w0 = selected.width ?? MIN_ZONE;
+                            const h0 = selected.height ?? MIN_ZONE;
+                            updateSelectedField({
+                              cornerRadius: clampRectCornerRadius(w0, h0, Number(e.target.value)),
+                            });
+                            batchLayer();
+                          }}
+                          aria-label="Corner radius"
+                        />
+                      </label>
+                    ) : null}
+                    {selected.type === "polygon" && selected.path_points ? (
+                      <span className="bp-float-context__meta">
+                        Polygon · {selected.path_points.length / 2} vertices · double-click or snap to first point to
+                        close
+                      </span>
                     ) : null}
                     {selected.type === "symbol" ? (
                       <>

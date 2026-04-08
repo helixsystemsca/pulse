@@ -26,5 +26,9 @@ const BlueprintDesigner = dynamic(
 );
 
 export default function BlueprintPage() {
-  return <BlueprintDesigner />;
+  return (
+    <div className="flex min-h-0 flex-1 flex-col">
+      <BlueprintDesigner />
+    </div>
+  );
 }

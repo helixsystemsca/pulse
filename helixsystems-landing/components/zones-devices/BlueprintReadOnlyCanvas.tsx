@@ -7,7 +7,7 @@
 
 import type Konva from "konva";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { Circle, Group, Layer, Line, Rect, Stage, Text } from "react-konva";
+import { Circle, Ellipse, Group, Layer, Line, Rect, Stage, Text } from "react-konva";
 import type { BlueprintElement } from "./blueprint-types";
 import {
   bboxFromPathPoints,
@@ -26,6 +26,11 @@ import {
 } from "@/lib/blueprint-layout";
 
 export type BlueprintReadOnlyTheme = "light" | "dark";
+
+function clampRectCornerRadiusRo(w: number, h: number, r: number): number {
+  const m = Math.min(w, h) / 2;
+  return Math.max(0, Math.min(r, m));
+}
 
 function wallDropOffset(deg: number) {
   const rad = (deg * Math.PI) / 180;
@@ -414,6 +419,65 @@ export function BlueprintReadOnlyCanvas({ elements, theme: themeName, minHeight 
                 </Group>
               );
             })}
+          {laidOut
+            .filter((el) => el.type === "rectangle")
+            .map((el) => {
+              const w = el.width ?? 24;
+              const h = el.height ?? 24;
+              const sw = swBase;
+              const cr = clampRectCornerRadiusRo(w, h, el.cornerRadius ?? 0);
+              return (
+                <Rect
+                  key={el.id}
+                  x={el.x}
+                  y={el.y}
+                  width={w}
+                  height={h}
+                  rotation={el.rotation ?? 0}
+                  cornerRadius={cr}
+                  fill={isDark ? "rgba(148, 197, 255, 0.06)" : "rgba(59, 130, 246, 0.06)"}
+                  stroke={isDark ? "rgba(148, 163, 184, 0.4)" : "rgba(71, 85, 105, 0.35)"}
+                  strokeWidth={sw}
+                  listening={false}
+                />
+              );
+            })}
+          {laidOut
+            .filter((el) => el.type === "ellipse")
+            .map((el) => {
+              const w = el.width ?? 24;
+              const h = el.height ?? 24;
+              const sw = swBase;
+              return (
+                <Group key={el.id} x={el.x} y={el.y} rotation={el.rotation ?? 0} listening={false}>
+                  <Ellipse
+                    x={w / 2}
+                    y={h / 2}
+                    radiusX={Math.max(1, w / 2)}
+                    radiusY={Math.max(1, h / 2)}
+                    fill={isDark ? "rgba(56, 189, 248, 0.07)" : "rgba(14, 165, 233, 0.06)"}
+                    stroke={isDark ? "rgba(125, 211, 252, 0.42)" : "rgba(2, 132, 199, 0.38)"}
+                    strokeWidth={sw}
+                    listening={false}
+                  />
+                </Group>
+              );
+            })}
+          {laidOut
+            .filter((el) => el.type === "polygon" && (el.path_points?.length ?? 0) >= 6)
+            .map((el) => (
+              <Line
+                key={el.id}
+                points={el.path_points ?? []}
+                closed
+                tension={0}
+                fill={isDark ? "rgba(167, 139, 250, 0.08)" : "rgba(139, 92, 246, 0.07)"}
+                stroke={isDark ? "rgba(196, 181, 253, 0.48)" : "rgba(124, 58, 237, 0.38)"}
+                strokeWidth={swBase}
+                lineJoin="round"
+                listening={false}
+              />
+            ))}
           {laidOut
             .filter((el) => el.type === "door")
             .map((el) => {

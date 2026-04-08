@@ -217,8 +217,10 @@ export function buildOrthogonalConnectionPath(args: {
   fromId: string;
   toId: string;
   snapToGrid: boolean;
+  /** When false, route with empty obstacles (simple elbow only). */
+  avoidObstacles?: boolean;
 }): number[] | null {
-  const { elements, fromId, toId, snapToGrid } = args;
+  const { elements, fromId, toId, snapToGrid, avoidObstacles = true } = args;
   const fromEl = elements.find((e) => e.id === fromId);
   const toEl = elements.find((e) => e.id === toId);
   if (!fromEl || !toEl || !isBlueprintConnectEndpoint(fromEl) || !isBlueprintConnectEndpoint(toEl)) return null;
@@ -239,7 +241,7 @@ export function buildOrthogonalConnectionPath(args: {
 
   const { sa, ea } = pickClosestAnchors(fromBox, toBox);
   const exclude = new Set([fromId, toId]);
-  const obstacles = collectObstacles(elements, exclude);
+  const obstacles = avoidObstacles ? collectObstacles(elements, exclude) : [];
   return bestOrthogonalPolyline(sa.x, sa.y, ea.x, ea.y, obstacles, snapToGrid);
 }
 

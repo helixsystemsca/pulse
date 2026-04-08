@@ -22,6 +22,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Card } from "@/components/pulse/Card";
 import { ModuleOnboardingHint } from "@/components/onboarding/ModuleOnboardingHint";
+import { ModuleSettingsGear } from "@/components/module-settings/ModuleSettingsGear";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { apiFetch } from "@/lib/api";
 import { emitOnboardingMaybeUpdated } from "@/lib/onboarding-events";
@@ -36,6 +37,7 @@ import {
 } from "@/lib/equipmentService";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
 import { managerOrAbove } from "@/lib/pulse-roles";
+import { useModuleSettings } from "@/providers/ModuleSettingsProvider";
 
 type ZoneOpt = { id: string; name: string };
 
@@ -79,6 +81,7 @@ export function EquipmentApp() {
   const router = useRouter();
   const { session } = usePulseAuth();
   const canMutate = managerOrAbove(session);
+  const assetMod = useModuleSettings("assets");
 
   const [tab, setTab] = useState<Tab>("overview");
   const [formMode, setFormMode] = useState<FormMode>("create");
@@ -100,6 +103,26 @@ export function EquipmentApp() {
     "name",
   );
   const [order, setOrder] = useState<"asc" | "desc">("asc");
+
+  const listColumns = useMemo(
+    () =>
+      [
+        ["name", "Name"],
+        ["type", "Type"],
+        ...(assetMod.settings.allowAssetHierarchy ? ([["zone_name", "Zone"]] as const) : []),
+        ["status", "Status"],
+        ["last_service_date", "Last service"],
+      ] as const,
+    [assetMod.settings.allowAssetHierarchy],
+  );
+
+  useEffect(() => {
+    if (!assetMod.settings.allowAssetHierarchy && sort === "zone_name") setSort("name");
+  }, [assetMod.settings.allowAssetHierarchy, sort]);
+
+  useEffect(() => {
+    if (!assetMod.settings.allowAssetHierarchy && filterZone) setFilterZone("");
+  }, [assetMod.settings.allowAssetHierarchy, filterZone]);
 
   const [toast, setToast] = useState<string | null>(null);
 
@@ -275,6 +298,10 @@ export function EquipmentApp() {
       setFormError("Equipment name is required.");
       return;
     }
+    if (assetMod.settings.requireSerialNumber && !formSerial.trim()) {
+      setFormError("Serial number is required for equipment in your organization settings.");
+      return;
+    }
     setFormSubmitting(true);
     setFormError(null);
     const intervalRaw = formServiceInterval.trim();
@@ -417,7 +444,12 @@ export function EquipmentApp() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Equipment" description="Manage and monitor all facility equipment." icon={Wrench} />
+      <PageHeader
+        title="Equipment"
+        description="Manage and monitor all facility equipment."
+        icon={Wrench}
+        actions={<ModuleSettingsGear moduleId="assets" label="Equipment organization settings" />}
+      />
       <p className="text-sm text-pulse-muted dark:text-gray-400">
         BLE location tags pair with <span className="font-medium text-pulse-navy dark:text-gray-200">tracked assets</span> in{" "}
         <Link href="/dashboard/setup?tab=devices" className="font-semibold text-[#2B4C7E] hover:underline dark:text-sky-400">
@@ -460,7 +492,9 @@ export function EquipmentApp() {
             <p className="text-sm text-pulse-muted">Loading…</p>
           ) : (
             <>
-              <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+              <section
+                className={`grid gap-3 sm:grid-cols-2 lg:grid-cols-3 ${assetMod.settings.enableMaintenanceHistory ? "xl:grid-cols-5" : "xl:grid-cols-4"}`}
+              >
                 <Card padding="md" className="flex flex-col gap-1">
                   <p className={LABEL}>Total equipment</p>
                   <p className="font-headline text-2xl font-bold tabular-nums text-pulse-navy">{overviewCounts.total}</p>
@@ -469,12 +503,14 @@ export function EquipmentApp() {
                   <p className={LABEL}>Active</p>
                   <p className="font-headline text-2xl font-bold tabular-nums text-emerald-800">{overviewCounts.byStatus.active}</p>
                 </Card>
-                <Card padding="md" className="flex flex-col gap-1">
-                  <p className={LABEL}>Maintenance</p>
-                  <p className="font-headline text-2xl font-bold tabular-nums text-amber-900">
-                    {overviewCounts.byStatus.maintenance}
-                  </p>
-                </Card>
+                {assetMod.settings.enableMaintenanceHistory ? (
+                  <Card padding="md" className="flex flex-col gap-1">
+                    <p className={LABEL}>Maintenance</p>
+                    <p className="font-headline text-2xl font-bold tabular-nums text-amber-900">
+                      {overviewCounts.byStatus.maintenance}
+                    </p>
+                  </Card>
+                ) : null}
                 <Card padding="md" className="flex flex-col gap-1">
                   <p className={LABEL}>Offline</p>
                   <p className="font-headline text-2xl font-bold tabular-nums text-pulse-muted">
@@ -549,17 +585,19 @@ export function EquipmentApp() {
                 />
               </div>
             </div>
-            <div className="w-full min-w-[140px] sm:w-auto">
-              <label className={LABEL}>Zone</label>
-              <select className={FIELD} value={filterZone} onChange={(e) => setFilterZone(e.target.value)}>
-                <option value="">All zones</option>
-                {zones.map((z) => (
-                  <option key={z.id} value={z.id}>
-                    {z.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+            {assetMod.settings.allowAssetHierarchy ? (
+              <div className="w-full min-w-[140px] sm:w-auto">
+                <label className={LABEL}>Zone</label>
+                <select className={FIELD} value={filterZone} onChange={(e) => setFilterZone(e.target.value)}>
+                  <option value="">All zones</option>
+                  {zones.map((z) => (
+                    <option key={z.id} value={z.id}>
+                      {z.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ) : null}
             <div className="w-full min-w-[140px] sm:w-auto">
               <label className={LABEL}>Type</label>
               <select className={FIELD} value={filterType} onChange={(e) => setFilterType(e.target.value)}>
@@ -603,15 +641,7 @@ export function EquipmentApp() {
               <table className="min-w-[720px] w-full text-left text-sm">
                 <thead>
                   <tr className="border-b border-slate-200 bg-slate-50/80">
-                    {(
-                      [
-                        ["name", "Name"],
-                        ["type", "Type"],
-                        ["zone_name", "Zone"],
-                        ["status", "Status"],
-                        ["last_service_date", "Last service"],
-                      ] as const
-                    ).map(([col, label]) => (
+                    {listColumns.map(([col, label]) => (
                       <th key={col} className="px-4 py-3 font-semibold text-pulse-navy">
                         <button
                           type="button"
@@ -656,7 +686,9 @@ export function EquipmentApp() {
                         </span>
                       </td>
                       <td className="px-4 py-3 text-pulse-muted">{r.type}</td>
-                      <td className="px-4 py-3 text-pulse-muted">{r.zone_name ?? "—"}</td>
+                      {assetMod.settings.allowAssetHierarchy ? (
+                        <td className="px-4 py-3 text-pulse-muted">{r.zone_name ?? "—"}</td>
+                      ) : null}
                       <td className="px-4 py-3">
                         <span className={`rounded-full px-2 py-0.5 text-xs font-semibold capitalize ${statusBadge(r.status)}`}>
                           {r.status}
@@ -765,25 +797,27 @@ export function EquipmentApp() {
                   ))}
                 </datalist>
               </div>
-              <div>
-                <label className={LABEL} htmlFor="eq-zone">
-                  Zone
-                </label>
-                <select
-                  id="eq-zone"
-                  className={FIELD}
-                  disabled={formMode === "view"}
-                  value={formZoneId}
-                  onChange={(e) => setFormZoneId(e.target.value)}
-                >
-                  <option value="">Unassigned</option>
-                  {zones.map((z) => (
-                    <option key={z.id} value={z.id}>
-                      {z.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              {assetMod.settings.allowAssetHierarchy ? (
+                <div>
+                  <label className={LABEL} htmlFor="eq-zone">
+                    Zone
+                  </label>
+                  <select
+                    id="eq-zone"
+                    className={FIELD}
+                    disabled={formMode === "view"}
+                    value={formZoneId}
+                    onChange={(e) => setFormZoneId(e.target.value)}
+                  >
+                    <option value="">Unassigned</option>
+                    {zones.map((z) => (
+                      <option key={z.id} value={z.id}>
+                        {z.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ) : null}
               <div>
                 <label className={LABEL} htmlFor="eq-status">
                   Status *
@@ -796,7 +830,10 @@ export function EquipmentApp() {
                   value={formStatus}
                   onChange={(e) => setFormStatus(e.target.value)}
                 >
-                  {STATUS_OPTS.map((o) => (
+                  {(assetMod.settings.enableMaintenanceHistory
+                    ? STATUS_OPTS
+                    : STATUS_OPTS.filter((o) => o.value !== "maintenance")
+                  ).map((o) => (
                     <option key={o.value} value={o.value}>
                       {o.label}
                     </option>

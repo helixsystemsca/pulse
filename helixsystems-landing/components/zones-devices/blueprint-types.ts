@@ -6,11 +6,13 @@ export type ConnectionStyle = "electrical" | "plumbing";
 
 export type BlueprintElement = {
   id: string;
-  type: "zone" | "device" | "door" | "path" | "symbol" | "group" | "connection";
+  type: "zone" | "device" | "door" | "path" | "symbol" | "group" | "connection" | "rectangle" | "ellipse" | "polygon";
   x: number;
   y: number;
   width?: number;
   height?: number;
+  /** Axis-aligned rectangle only; clamped to half the shorter side of width×height. */
+  cornerRadius?: number;
   name?: string;
   rotation?: number;
   locked?: boolean;
@@ -62,6 +64,9 @@ export type BlueprintHistoryState = {
 export type BlueprintDesignerTool =
   | "select"
   | "draw-room"
+  | "draw-rectangle"
+  | "draw-ellipse"
+  | "draw-polygon"
   | "place-device"
   | "place-door"
   | "free-draw"

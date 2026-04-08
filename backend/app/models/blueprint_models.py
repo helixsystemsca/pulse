@@ -82,5 +82,6 @@ class BlueprintElement(Base):
     connection_from_id: Mapped[Optional[str]] = mapped_column(UUID(as_uuid=False), nullable=True)
     connection_to_id: Mapped[Optional[str]] = mapped_column(UUID(as_uuid=False), nullable=True)
     connection_style: Mapped[Optional[str]] = mapped_column(String(16), nullable=True)
+    corner_radius: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
 
     blueprint: Mapped["Blueprint"] = relationship(back_populates="elements")

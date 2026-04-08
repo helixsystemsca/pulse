@@ -18,7 +18,9 @@ from app.api.deps import get_current_user, get_db, require_manager_or_above
 from app.core.user_roles import is_field_worker_like, user_has_any_role
 from app.services.onboarding_service import try_mark_onboarding_step
 from app.models.domain import EquipmentPart, FacilityEquipment, Tool, User, UserRole, Zone
+from app.core.org_module_settings_merge import merge_org_module_settings
 from app.models.pulse_models import (
+    PulseOrgModuleSettings,
     PulseWorkRequest,
     PulseWorkRequestActivity,
     PulseWorkRequestComment,
@@ -152,6 +154,42 @@ async def _get_settings_row(db: AsyncSession, cid: str) -> Optional[PulseWorkReq
 async def _settings_merged(db: AsyncSession, cid: str) -> dict[str, Any]:
     row = await _get_settings_row(db, cid)
     return merge_wr_settings(row.settings if row else None)
+
+
+async def _org_module_merged(db: AsyncSession, cid: str) -> dict[str, Any]:
+    q = await db.execute(select(PulseOrgModuleSettings).where(PulseOrgModuleSettings.company_id == cid))
+    row = q.scalar_one_or_none()
+    return merge_org_module_settings(row.settings if row else None)
+
+
+def _work_request_rules_from_org(org: dict[str, Any]) -> dict[str, Any]:
+    raw = org.get("workRequests")
+    return raw if isinstance(raw, dict) else {}
+
+
+def _assert_wr_org_status_change(
+    user: User,
+    wr: PulseWorkRequest,
+    old_status: PulseWorkRequestStatus,
+    new_status: PulseWorkRequestStatus,
+    rules: dict[str, Any],
+) -> None:
+    if new_status == PulseWorkRequestStatus.completed and old_status != PulseWorkRequestStatus.completed:
+        if rules.get("requirePhotoOnClose"):
+            atts = list(wr.attachments or [])
+            if len(atts) < 1:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Attachment required before closing this work order",
+                )
+    if old_status == PulseWorkRequestStatus.completed and new_status != PulseWorkRequestStatus.completed:
+        if not rules.get("lockAfterCompletion"):
+            return
+        if user.is_system_admin or user_has_any_role(user, UserRole.system_admin, UserRole.company_admin):
+            return
+        if rules.get("allowManualOverride") and user_has_any_role(user, UserRole.manager, UserRole.supervisor):
+            return
+        raise HTTPException(status_code=403, detail="This work order is locked after completion")
 
 
 def _row_out(
@@ -376,9 +414,19 @@ async def create_wr(
         raise HTTPException(status_code=400, detail="Unknown assignee")
 
     settings = await _settings_merged(db, cid)
+    org_mod = await _org_module_merged(db, cid)
+    wr_rules = _work_request_rules_from_org(org_mod)
+    eff_priority = body.priority
+    if wr_rules.get("enablePriorityLevels") is False:
+        eff_priority = PulseWorkRequestPriority.medium
+
     due = body.due_date
     if due is None:
-        due = default_due_date_for_priority(body.priority, settings)
+        due = default_due_date_for_priority(eff_priority, settings)
+
+    assignee_id = body.assigned_user_id
+    if assignee_id is None and wr_rules.get("autoAssignTechnician"):
+        assignee_id = user.id
 
     att = body.attachments if body.attachments is not None else []
     wr = PulseWorkRequest(
@@ -391,8 +439,8 @@ async def create_wr(
         part_id=resolved_part_id,
         zone_id=body.zone_id,
         category=body.category,
-        priority=body.priority,
-        assigned_user_id=body.assigned_user_id,
+        priority=eff_priority,
+        assigned_user_id=assignee_id,
         created_by_user_id=user.id,
         due_date=due,
         attachments=list(att),
@@ -514,6 +562,10 @@ async def patch_wr(
             raise HTTPException(status_code=400, detail="Unknown assignee")
 
     old_status = wr.status
+    if "status" in data and data["status"] != old_status:
+        org_mod = await _org_module_merged(db, cid)
+        wr_rules = _work_request_rules_from_org(org_mod)
+        _assert_wr_org_status_change(user, wr, old_status, data["status"], wr_rules)
     for k, v in data.items():
         setattr(wr, k, v)
     if wr.part_id:
@@ -601,6 +653,9 @@ async def post_status(
     wr = await _get_wr(db, cid, wr_id)
     _assert_worker_may_touch_wr(user, wr)
     old = wr.status
+    org_mod = await _org_module_merged(db, cid)
+    wr_rules = _work_request_rules_from_org(org_mod)
+    _assert_wr_org_status_change(user, wr, old, body.status, wr_rules)
     wr.status = body.status
     if body.status == PulseWorkRequestStatus.completed:
         wr.completed_at = datetime.now(timezone.utc)

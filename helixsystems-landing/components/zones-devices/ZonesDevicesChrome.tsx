@@ -48,7 +48,7 @@ export function ZonesDevicesChrome({ children }: { children: React.ReactNode }) 
       <motion.div
         key={pathname}
         className="flex min-h-0 flex-1 flex-col"
-        initial={{ opacity: 0, y: 8 }}
+        initial={isBlueprint ? false : { opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: bpDuration.med, ease: bpEase }}
       >

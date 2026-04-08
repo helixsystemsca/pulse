@@ -12,6 +12,7 @@ import { AppSideNav } from "./AppSideNav";
 import { ImpersonationBanner } from "./ImpersonationBanner";
 import { OnboardingChrome } from "@/components/onboarding/OnboardingChrome";
 import { OnboardingProvider } from "@/components/onboarding/OnboardingProvider";
+import { ModuleSettingsProvider } from "@/providers/ModuleSettingsProvider";
 import { ProximityPromptHost } from "./ProximityPromptHost";
 import { AppPoweredByFooter } from "./AppPoweredByFooter";
 import { PulseThemedBackground } from "./PulseThemedBackground";
@@ -36,6 +37,7 @@ export function AppLayout({
     <div className="relative min-h-screen">
       <PulseThemedBackground />
       <OnboardingProvider>
+        <ModuleSettingsProvider>
         <InactivitySessionGuard />
         <ServerTimeSync />
         <ProximityPromptHost />
@@ -51,6 +53,7 @@ export function AppLayout({
           </AppMain>
           <AppPoweredByFooter />
         </div>
+        </ModuleSettingsProvider>
       </OnboardingProvider>
     </div>
   );

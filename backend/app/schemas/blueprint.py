@@ -44,7 +44,18 @@ class TaskOverlayOut(TaskOverlayBase):
 
 
 class BlueprintElementBase(BaseModel):
-    type: Literal["zone", "device", "door", "path", "symbol", "group", "connection"]
+    type: Literal[
+        "zone",
+        "device",
+        "door",
+        "path",
+        "symbol",
+        "group",
+        "connection",
+        "rectangle",
+        "ellipse",
+        "polygon",
+    ]
     x: float
     y: float
     width: Optional[float] = None
@@ -76,6 +87,11 @@ class BlueprintElementBase(BaseModel):
     connection_from: Optional[str] = Field(None, description="Start element id (type connection)")
     connection_to: Optional[str] = Field(None, description="End element id (type connection)")
     connection_style: Optional[Literal["electrical", "plumbing"]] = None
+    corner_radius: Optional[float] = Field(
+        None,
+        ge=0.0,
+        description="Rounded corners for type rectangle (px); clamped client-side to half the shorter side",
+    )
 
     @model_validator(mode="after")
     def group_children_shape(self) -> "BlueprintElementBase":
@@ -119,6 +135,18 @@ class BlueprintElementBase(BaseModel):
                 seen.add(sid)
         elif self.children:
             raise ValueError("children is only valid for type group")
+        if self.corner_radius is not None and self.type != "rectangle":
+            raise ValueError("corner_radius is only valid for type rectangle")
+        if self.type == "rectangle":
+            if self.width is None or self.height is None or self.width < 1 or self.height < 1:
+                raise ValueError("rectangle requires positive width and height")
+        if self.type == "ellipse":
+            if self.width is None or self.height is None or self.width < 1 or self.height < 1:
+                raise ValueError("ellipse requires positive width and height")
+        if self.type == "polygon":
+            pts = self.path_points or []
+            if len(pts) < 6 or len(pts) % 2 != 0:
+                raise ValueError("polygon requires path_points with at least 3 vertices (flat x,y list)")
         return self
 
 
@@ -250,6 +278,32 @@ def element_in_to_orm_kwargs(el: BlueprintElementIn, *, blueprint_id: str) -> di
         w = max(max_x - min_x, 1.0) if max_x > min_x else 1.0
         h = max(max_y - min_y, 1.0) if max_y > min_y else 1.0
         path_points_json = json.dumps([float(x) for x in pts])
+    elif el.type == "rectangle":
+        if el.width is None or el.height is None or el.width < 1 or el.height < 1:
+            raise ValueError("rectangle requires positive width and height")
+        w, h = el.width, el.height
+        path_points_json = None
+        out_x, out_y = el.x, el.y
+    elif el.type == "ellipse":
+        if el.width is None or el.height is None or el.width < 1 or el.height < 1:
+            raise ValueError("ellipse requires positive width and height")
+        w, h = el.width, el.height
+        path_points_json = None
+        out_x, out_y = el.x, el.y
+    elif el.type == "polygon":
+        pts = el.path_points or []
+        if len(pts) < 6 or len(pts) % 2 != 0:
+            raise ValueError("polygon requires path_points with at least 3 vertices (flat x,y list)")
+        xs = pts[0::2]
+        ys = pts[1::2]
+        min_x, max_x = min(xs), max(xs)
+        min_y, max_y = min(ys), max(ys)
+        bx = min_x
+        by = min_y
+        w = max_x - min_x if max_x > min_x else 1.0
+        h = max_y - min_y if max_y > min_y else 1.0
+        path_points_json = json.dumps([float(x) for x in pts])
+        out_x, out_y = bx, by
     else:
         w = el.width if el.width is not None else 44.0
         h = el.height if el.height is not None else 44.0
@@ -282,6 +336,9 @@ def element_in_to_orm_kwargs(el: BlueprintElementIn, *, blueprint_id: str) -> di
         "connection_from_id": str(el.connection_from).strip() if el.type == "connection" and el.connection_from else None,
         "connection_to_id": str(el.connection_to).strip() if el.type == "connection" and el.connection_to else None,
         "connection_style": el.connection_style if el.type == "connection" else None,
+        "corner_radius": float(el.corner_radius)
+        if el.type == "rectangle" and el.corner_radius is not None
+        else None,
     }
 
 
@@ -344,6 +401,9 @@ def row_to_element_out(row) -> BlueprintElementOut:
             and getattr(row, "connection_style", None) in ("electrical", "plumbing")
             else None
         ),
+        corner_radius=float(row.corner_radius)
+        if row.element_type == "rectangle" and getattr(row, "corner_radius", None) is not None
+        else None,
     )
 
 

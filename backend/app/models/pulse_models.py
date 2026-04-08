@@ -220,6 +220,23 @@ class PulseWorkRequestSettings(Base):
     )
 
 
+class PulseOrgModuleSettings(Base):
+    """Unified per-tenant module toggles (work requests, schedule, assets, blueprint, compliance)."""
+
+    __tablename__ = "pulse_org_module_settings"
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    company_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, unique=True, index=True
+    )
+    settings: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+
 class PulseWorkerProfile(Base):
     """Certifications, notes, and weekly availability windows for scheduling hints."""
 

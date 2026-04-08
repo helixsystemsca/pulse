@@ -36,6 +36,7 @@ type Props = {
   onAddForDate: (iso: string) => void;
   scheduleDragLock: boolean;
   dragSession: { shiftId: string; duplicate: boolean } | null;
+  shiftDragEnabled?: boolean;
   onShiftDragSessionStart: (payload: { shiftId: string; duplicate: boolean }) => void;
   onShiftDragSessionEnd: () => void;
 };
@@ -58,6 +59,7 @@ export function ScheduleDayView({
   onAddForDate,
   scheduleDragLock,
   dragSession,
+  shiftDragEnabled = true,
   onShiftDragSessionStart,
   onShiftDragSessionEnd,
 }: Props) {
@@ -158,7 +160,8 @@ export function ScheduleDayView({
                   ? "ring-2 ring-dashed ring-blue-500/45 ring-offset-2 ring-offset-pulse-shell-cell dark:ring-blue-400/45 dark:ring-offset-pulse-shell-cell"
                   : "";
                 const chipLocked = scheduleDragLock && dragSession !== null && dragSession.shiftId !== s.id;
-                const canDrag = !scheduleDragLock || dragSession?.shiftId === s.id;
+                const canDrag =
+                  shiftDragEnabled && (!scheduleDragLock || dragSession?.shiftId === s.id);
 
                 return (
                   <div
@@ -181,6 +184,10 @@ export function ScheduleDayView({
                       }
                     }}
                     onDragStart={(e) => {
+                      if (!shiftDragEnabled) {
+                        e.preventDefault();
+                        return;
+                      }
                       const dup = e.shiftKey;
                       setShiftDragData(e.dataTransfer, {
                         shiftId: s.id,

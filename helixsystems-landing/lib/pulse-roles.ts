@@ -52,6 +52,15 @@ export function managerOrAbove(
   return sessionHasAnyRole(session, "manager", "company_admin", "supervisor");
 }
 
+/** Managers and company admins only (excludes supervisor) — matches strict compliance-flag rules. */
+export function complianceManagerFlagAllowed(
+  session: Pick<PulseAuthSession, "role" | "roles" | "is_system_admin"> | null | undefined,
+): boolean {
+  if (!session) return false;
+  if (session.is_system_admin || sessionHasAnyRole(session, "system_admin")) return true;
+  return sessionHasAnyRole(session, "manager", "company_admin");
+}
+
 /** Managers/supervisors without company_admin: limited invite/create role options. */
 export function isCreateRoleLimitedSession(
   session: Pick<PulseAuthSession, "role" | "roles"> | null | undefined,

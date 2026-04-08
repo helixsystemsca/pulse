@@ -1,7 +1,17 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { DoorClosed, LayoutGrid, MousePointer2, PencilLine, Radio, Shapes } from "lucide-react";
+import {
+  Circle as CircleIcon,
+  DoorClosed,
+  LayoutGrid,
+  MousePointer2,
+  PencilLine,
+  Pentagon,
+  Radio,
+  Shapes,
+  Square,
+} from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { bpTransition } from "@/lib/motion-presets";
 import type { BlueprintDesignerTool } from "./blueprint-types";
@@ -13,6 +23,9 @@ type RailItem =
 const RAIL_ITEMS: RailItem[] = [
   { kind: "tool", tool: "select", label: "Select", Icon: MousePointer2 },
   { kind: "tool", tool: "draw-room", label: "Draw room", Icon: LayoutGrid },
+  { kind: "tool", tool: "draw-rectangle", label: "Rectangle", Icon: Square },
+  { kind: "tool", tool: "draw-ellipse", label: "Circle / ellipse", Icon: CircleIcon },
+  { kind: "tool", tool: "draw-polygon", label: "Polygon", Icon: Pentagon },
   { kind: "tool", tool: "place-door", label: "Door", Icon: DoorClosed },
   { kind: "tool", tool: "place-device", label: "Place device", Icon: Radio },
   { kind: "tool", tool: "free-draw", label: "Free draw", Icon: PencilLine },

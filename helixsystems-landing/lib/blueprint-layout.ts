@@ -7,7 +7,7 @@ import type { BlueprintElement } from "@/components/zones-devices/blueprint-type
 
 export type ApiBlueprintElement = {
   id: string;
-  type: "zone" | "device" | "door" | "path" | "symbol" | "group" | "connection";
+  type: "zone" | "device" | "door" | "path" | "symbol" | "group" | "connection" | "rectangle" | "ellipse" | "polygon";
   x: number;
   y: number;
   width?: number | null;
@@ -27,6 +27,7 @@ export type ApiBlueprintElement = {
   connection_from?: string | null;
   connection_to?: string | null;
   connection_style?: string | null;
+  corner_radius?: number | null;
 };
 
 export const DOOR_ALONG_DEFAULT = 32;
@@ -324,6 +325,21 @@ export function elementWorldAabb(el: BlueprintElement): { L: number; R: number; 
     if (!Number.isFinite(L)) return null;
     return { L, R, T, B };
   }
+  if (el.type === "polygon" && el.path_points && el.path_points.length >= 6) {
+    const pts = el.path_points;
+    let L = Infinity;
+    let R = -Infinity;
+    let T = Infinity;
+    let B = -Infinity;
+    for (let i = 0; i + 1 < pts.length; i += 2) {
+      L = Math.min(L, pts[i]!);
+      R = Math.max(R, pts[i]!);
+      T = Math.min(T, pts[i + 1]!);
+      B = Math.max(B, pts[i + 1]!);
+    }
+    if (!Number.isFinite(L)) return null;
+    return { L, R, T, B };
+  }
   if (el.type === "door") {
     const along = el.width ?? DOOR_ALONG_DEFAULT;
     const depth = el.height ?? DOOR_DEPTH_DEFAULT;
@@ -412,6 +428,10 @@ export function mapApiElement(e: ApiBlueprintElement): BlueprintElement {
       e.type === "connection" && (e.connection_style === "electrical" || e.connection_style === "plumbing")
         ? e.connection_style
         : undefined,
+    cornerRadius:
+      e.type === "rectangle" && e.corner_radius != null && Number.isFinite(Number(e.corner_radius))
+        ? Number(e.corner_radius)
+        : undefined,
   };
 }
 
@@ -438,6 +458,7 @@ export function toApiPayload(elements: BlueprintElement[]) {
     connection_from: el.type === "connection" ? el.connection_from ?? null : null,
     connection_to: el.type === "connection" ? el.connection_to ?? null : null,
     connection_style: el.type === "connection" ? el.connection_style ?? null : null,
+    corner_radius: el.type === "rectangle" ? (el.cornerRadius ?? null) : null,
   }));
 }
 

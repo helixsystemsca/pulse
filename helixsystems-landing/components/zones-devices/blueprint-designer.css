@@ -20,8 +20,10 @@
   align-items: stretch;
   min-width: 0;
   min-height: 360px;
-  height: min(78vh, 820px, calc(100vh - 8rem));
-  max-height: calc(100vh - 8rem);
+  flex: 1 1 0;
+  max-height: calc(100vh - 9rem);
+  height: auto;
+  overflow-anchor: none;
   font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
 
@@ -865,6 +867,9 @@
 }
 
 .bp-stage-host.bp-stage-host--tool-draw-room:not(.is-panning):not(.bp-stage-host--publish),
+.bp-stage-host.bp-stage-host--tool-draw-rectangle:not(.is-panning):not(.bp-stage-host--publish),
+.bp-stage-host.bp-stage-host--tool-draw-ellipse:not(.is-panning):not(.bp-stage-host--publish),
+.bp-stage-host.bp-stage-host--tool-draw-polygon:not(.is-panning):not(.bp-stage-host--publish),
 .bp-stage-host.bp-stage-host--tool-free-draw:not(.is-panning):not(.bp-stage-host--publish) {
   cursor: crosshair;
 }

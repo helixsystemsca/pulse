@@ -8,6 +8,7 @@ import { Card } from "@/components/pulse/Card";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
 import { managerOrAbove } from "@/lib/pulse-roles";
+import { useModuleSettings } from "@/providers/ModuleSettingsProvider";
 import {
   fetchEquipment,
   fetchEquipmentParts,
@@ -154,6 +155,7 @@ export function EquipmentDetailApp({ equipmentId }: Props) {
   const { session } = usePulseAuth();
   const canMutate = managerOrAbove(session);
   const isSystemAdmin = Boolean(session?.is_system_admin || session?.role === "system_admin");
+  const assetMod = useModuleSettings("assets");
 
   const [data, setData] = useState<FacilityEquipmentDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -480,11 +482,13 @@ export function EquipmentDetailApp({ equipmentId }: Props) {
         }}
       />
 
-      <MaintenanceHistorySection
-        equipmentId={equipmentId}
-        workOrders={data.related_work_orders}
-        revision={maintenanceHistoryRevision}
-      />
+      {assetMod.settings.enableMaintenanceHistory ? (
+        <MaintenanceHistorySection
+          equipmentId={equipmentId}
+          workOrders={data.related_work_orders}
+          revision={maintenanceHistoryRevision}
+        />
+      ) : null}
 
       <section className="space-y-2">
         <h2 className={`${LABEL} inline-flex items-center gap-2`}>

@@ -62,24 +62,10 @@ export default function ZonesDevicesZonesPage() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: bpDuration.med, ease: bpEase }}
       >
-        Map physical areas to digital context for routing, proximity, and compliance. Open the{" "}
+        Map physical areas to digital context for routing, proximity, and compliance. Switch to the{" "}
         <strong className="text-pulse-navy dark:text-slate-100">Blueprint designer</strong> tab to draw
         facility layouts and place devices.
       </motion.p>
-      <motion.div
-        className="mb-4"
-        initial={{ opacity: 0, y: 6 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: bpDuration.med, ease: bpEase, delay: 0.02 }}
-      >
-        <Link
-          href="/zones-devices/blueprint"
-          className="inline-flex items-center gap-1 rounded-md border border-pulse-border bg-white px-4 py-2.5 text-sm font-semibold text-pulse-navy shadow-sm transition-colors hover:border-pulse-accent/40 hover:shadow-md dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:hover:border-slate-500"
-          prefetch={false}
-        >
-          Open Blueprint designer →
-        </Link>
-      </motion.div>
       <motion.div
         className="rounded-md border border-pulse-border bg-white p-5 shadow-card dark:border-slate-700 dark:bg-slate-800/80"
         initial={{ opacity: 0, y: 10 }}

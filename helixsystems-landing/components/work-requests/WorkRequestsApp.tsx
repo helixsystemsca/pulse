@@ -24,6 +24,7 @@ import { apiFetch } from "@/lib/api";
 import { fetchEquipmentList, fetchEquipmentParts } from "@/lib/equipmentService";
 import { emitOnboardingMaybeUpdated } from "@/lib/onboarding-events";
 import { PulseDrawer } from "@/components/schedule/PulseDrawer";
+import { ModuleSettingsGear } from "@/components/module-settings/ModuleSettingsGear";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { managerOrAbove } from "@/lib/pulse-roles";
 import { readSession } from "@/lib/pulse-session";
@@ -42,6 +43,7 @@ import {
   postWorkRequestComment,
   postWorkRequestStatus,
 } from "@/lib/workRequestsService";
+import { useModuleSettings, useModuleSettingsOptional } from "@/providers/ModuleSettingsProvider";
 
 type CompanyOption = { id: string; name: string };
 type ZoneOpt = { id: string; name: string };
@@ -120,6 +122,8 @@ export function WorkRequestsApp() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const wrMod = useModuleSettings("workRequests");
+  const moduleSettingsCtx = useModuleSettingsOptional();
   const session = readSession();
   const isSystemAdmin = Boolean(session?.is_system_admin || session?.role === "system_admin");
   const sessionCompanyId = session?.company_id ?? null;
@@ -186,6 +190,11 @@ export function WorkRequestsApp() {
     const t = window.setTimeout(() => setQDebounced(q.trim()), 300);
     return () => window.clearTimeout(t);
   }, [q]);
+
+  useEffect(() => {
+    if (!moduleSettingsCtx || !isSystemAdmin || !effectiveCompanyId) return;
+    void moduleSettingsCtx.loadForCompany(effectiveCompanyId);
+  }, [moduleSettingsCtx, isSystemAdmin, effectiveCompanyId]);
 
   useEffect(() => {
     if (!isSystemAdmin || !session?.access_token) return;
@@ -472,11 +481,15 @@ export function WorkRequestsApp() {
   async function quickStatus(id: string, status: string) {
     if (!effectiveCompanyId) return;
     setActionBusy(true);
+    setListError(null);
     try {
       await postWorkRequestStatus(isSystemAdmin ? effectiveCompanyId : null, id, status);
       setMenuFor(null);
       await loadList();
       if (detailId === id) await loadDetail();
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Could not update status";
+      setListError(msg);
     } finally {
       setActionBusy(false);
     }
@@ -527,13 +540,14 @@ export function WorkRequestsApp() {
         icon={ClipboardList}
         actions={
           <>
+            <ModuleSettingsGear moduleId="workRequests" label="Work requests organization settings" />
             <button
               type="button"
               className="app-btn-secondary inline-flex items-center gap-2 px-4 py-2.5"
               onClick={() => setSettingsOpen(true)}
             >
               <Settings className="h-4 w-4" aria-hidden />
-              Settings
+              Workflow
             </button>
             <button
               type="button"

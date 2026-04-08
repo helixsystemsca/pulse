@@ -9,6 +9,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.dialects.postgresql import array as pg_array
 
+from app.models.blueprint_models import Blueprint, BlueprintElement
 from app.models.device_hub import AutomationBleDevice, AutomationGateway
 from app.models.domain import Company, FacilityEquipment, User, UserRole, Zone
 from app.models.monitoring_models import MonitoringFacility, MonitoredSystem, Sensor, SensorReading
@@ -20,9 +21,23 @@ from app.models.pulse_models import (
 )
 
 
+async def blueprint_zone_shape_count(db: AsyncSession, company_id: str) -> int:
+    """Room/zone shapes drawn on saved floorplan blueprints (`element_type == zone`)."""
+    return int(
+        await db.scalar(
+            select(func.count())
+            .select_from(BlueprintElement)
+            .join(Blueprint, Blueprint.id == BlueprintElement.blueprint_id)
+            .where(Blueprint.company_id == company_id, BlueprintElement.element_type == "zone")
+        )
+        or 0
+    )
+
+
 @dataclass(frozen=True, slots=True)
 class OnboardingReality:
     zone_count: int
+    blueprint_zone_shape_count: int
     equipment_count: int
     gateway_count: int
     ble_device_count: int
@@ -52,6 +67,7 @@ async def load_onboarding_reality(
     zone_count = int(
         await db.scalar(select(func.count()).select_from(Zone).where(Zone.company_id == cid)) or 0
     )
+    bp_zone_shapes = await blueprint_zone_shape_count(db, cid)
     equipment_count = int(
         await db.scalar(
             select(func.count()).select_from(FacilityEquipment).where(FacilityEquipment.company_id == cid)
@@ -150,6 +166,7 @@ async def load_onboarding_reality(
 
     return OnboardingReality(
         zone_count=zone_count,
+        blueprint_zone_shape_count=bp_zone_shapes,
         equipment_count=equipment_count,
         gateway_count=gateway_count,
         ble_device_count=ble_device_count,

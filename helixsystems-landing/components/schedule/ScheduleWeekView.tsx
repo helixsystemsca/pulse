@@ -40,6 +40,7 @@ type Props = {
   scheduleDragLock: boolean;
   dragSession: { shiftId: string; duplicate: boolean } | null;
   calendarDropsDisabled: boolean;
+  shiftDragEnabled?: boolean;
   onShiftDragSessionStart: (payload: { shiftId: string; duplicate: boolean }) => void;
   onShiftDragSessionEnd: () => void;
 };
@@ -64,6 +65,7 @@ export function ScheduleWeekView({
   scheduleDragLock,
   dragSession,
   calendarDropsDisabled,
+  shiftDragEnabled = true,
   onShiftDragSessionStart,
   onShiftDragSessionEnd,
 }: Props) {
@@ -181,7 +183,7 @@ export function ScheduleWeekView({
                   : ""
               }`}
               onDragOver={(e) => {
-                if (calendarDropsDisabled) return;
+                if (!shiftDragEnabled || calendarDropsDisabled) return;
                 if (e.dataTransfer.types.includes(SHIFT_DRAG_MIME) || e.dataTransfer.types.includes("text/plain")) {
                   e.preventDefault();
                   e.dataTransfer.dropEffect = readShiftDragPayload(e.dataTransfer)?.duplicate ? "copy" : "move";
@@ -195,7 +197,7 @@ export function ScheduleWeekView({
               onDrop={(e) => {
                 e.preventDefault();
                 setDragOverDate(null);
-                if (calendarDropsDisabled) return;
+                if (!shiftDragEnabled || calendarDropsDisabled) return;
                 const p = readShiftDragPayload(e.dataTransfer);
                 if (p) onShiftMove(p.shiftId, date, p.duplicate ? "duplicate" : "move");
               }}
@@ -252,7 +254,8 @@ export function ScheduleWeekView({
                   const tip = scheduleShiftHoverSummary(s, w, conflicts);
                   const certFlag = shiftHasCertificationFlag(conflicts);
                   const chipLocked = scheduleDragLock && dragSession !== null && dragSession.shiftId !== s.id;
-                  const canDrag = !scheduleDragLock || dragSession?.shiftId === s.id;
+                  const canDrag =
+                    shiftDragEnabled && (!scheduleDragLock || dragSession?.shiftId === s.id);
 
                   return (
                     <div
@@ -275,6 +278,10 @@ export function ScheduleWeekView({
                         }
                       }}
                       onDragStart={(e) => {
+                        if (!shiftDragEnabled) {
+                          e.preventDefault();
+                          return;
+                        }
                         const dup = e.shiftKey;
                         setShiftDragData(e.dataTransfer, { shiftId: s.id, duplicate: dup });
                         attachShiftDragPreview(e, dup);

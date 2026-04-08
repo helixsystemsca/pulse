@@ -60,7 +60,7 @@ STEP_LABELS: dict[str, str] = {
 }
 
 STEP_DESCRIPTIONS: dict[str, str] = {
-    "create_zone": "Define areas so devices and work line up with the floor.",
+    "create_zone": "Add zones under Setup, or draw rooms on a saved floorplan blueprint.",
     "add_device": "Register a gateway or BLE tag — or turn on sample sensors instantly.",
     "add_equipment": "Record a fixed asset in the equipment registry for maintenance tracking.",
     "create_work_order": "Open a tracked maintenance or facility task.",
@@ -247,7 +247,8 @@ async def sync_user_onboarding_from_reality(db: AsyncSession, user: User) -> boo
         or m.get("create_work_order", False)
     )
 
-    m["create_zone"] = m["create_zone"] or reality.zone_count > 0
+    has_zones = reality.zone_count > 0 or reality.blueprint_zone_shape_count > 0
+    m["create_zone"] = m["create_zone"] or has_zones
     m["add_device"] = m["add_device"] or device_ok
     m["add_equipment"] = m["add_equipment"] or reality.equipment_count > 0
     m["view_operations"] = m["view_operations"] or data_ok

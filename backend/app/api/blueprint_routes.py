@@ -23,6 +23,7 @@ from app.schemas.blueprint import (
     row_to_element_out,
     tasks_model_to_json,
 )
+from app.services.onboarding_service import sync_user_onboarding_from_reality
 
 router = APIRouter(prefix="/blueprints", tags=["blueprints"])
 
@@ -62,6 +63,10 @@ async def create_blueprint(body: BlueprintCreateIn, db: Db, user: TenantUser) ->
     bp.tasks_json = tasks_model_to_json(body.tasks)
     await db.commit()
     await db.refresh(bp)
+    await db.refresh(user)
+    if await sync_user_onboarding_from_reality(db, user):
+        await db.commit()
+        await db.refresh(user)
     return await _detail_out(db, bp)
 
 
@@ -94,6 +99,10 @@ async def update_blueprint(
     bp.tasks_json = tasks_model_to_json(body.tasks)
     await db.commit()
     await db.refresh(bp)
+    await db.refresh(user)
+    if await sync_user_onboarding_from_reality(db, user):
+        await db.commit()
+        await db.refresh(user)
     return await _detail_out(db, bp)
 
 

@@ -43,6 +43,8 @@ type Props = {
   dragSession: { shiftId: string; duplicate: boolean } | null;
   /** When true (e.g. trash hovered), day cells ignore drops. */
   calendarDropsDisabled: boolean;
+  /** Organization setting: when false, shift chips cannot be dragged. */
+  shiftDragEnabled?: boolean;
   onShiftDragSessionStart: (payload: { shiftId: string; duplicate: boolean }) => void;
   onShiftDragSessionEnd: () => void;
 };
@@ -67,6 +69,7 @@ export function ScheduleCalendarGrid({
   scheduleDragLock,
   dragSession,
   calendarDropsDisabled,
+  shiftDragEnabled = true,
   onShiftDragSessionStart,
   onShiftDragSessionEnd,
 }: Props) {
@@ -167,7 +170,7 @@ export function ScheduleCalendarGrid({
                 c.inMonth ? "" : "bg-pulseShell-cell-muted opacity-80"
               } ${isOver && !calendarDropsDisabled ? "ring-2 ring-inset ring-blue-500/40 dark:ring-blue-400/45" : ""}`}
               onDragOver={(e) => {
-                if (calendarDropsDisabled) return;
+                if (!shiftDragEnabled || calendarDropsDisabled) return;
                 if (e.dataTransfer.types.includes(SHIFT_DRAG_MIME) || e.dataTransfer.types.includes("text/plain")) {
                   e.preventDefault();
                   e.dataTransfer.dropEffect = readShiftDragPayload(e.dataTransfer)?.duplicate ? "copy" : "move";
@@ -181,7 +184,7 @@ export function ScheduleCalendarGrid({
               onDrop={(e) => {
                 e.preventDefault();
                 setDragOverDate(null);
-                if (calendarDropsDisabled) return;
+                if (!shiftDragEnabled || calendarDropsDisabled) return;
                 const p = readShiftDragPayload(e.dataTransfer);
                 if (p) {
                   onShiftMove(p.shiftId, c.date, p.duplicate ? "duplicate" : "move");
@@ -253,7 +256,8 @@ export function ScheduleCalendarGrid({
 
                   const chipLocked =
                     scheduleDragLock && dragSession !== null && dragSession.shiftId !== s.id;
-                  const canDrag = !scheduleDragLock || dragSession?.shiftId === s.id;
+                  const canDrag =
+                    shiftDragEnabled && (!scheduleDragLock || dragSession?.shiftId === s.id);
 
                   return (
                     <div
@@ -276,6 +280,10 @@ export function ScheduleCalendarGrid({
                         }
                       }}
                       onDragStart={(e) => {
+                        if (!shiftDragEnabled) {
+                          e.preventDefault();
+                          return;
+                        }
                         const dup = e.shiftKey;
                         setShiftDragData(e.dataTransfer, { shiftId: s.id, duplicate: dup });
                         attachShiftDragPreview(e, dup);

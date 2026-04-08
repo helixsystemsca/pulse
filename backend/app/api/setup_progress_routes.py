@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_company_user, get_db
 from app.models.blueprint_models import Blueprint
+from app.services.onboarding_reality import blueprint_zone_shape_count
 from app.models.device_hub import AutomationBleDevice, AutomationGateway
 from app.models.domain import Company, FacilityEquipment, User, UserRole, Zone
 from app.models.pulse_models import PulseProjectTask, PulseWorkRequest
@@ -34,6 +35,7 @@ async def get_setup_progress(db: Db, user: Annotated[User, Depends(get_current_c
     zone_count = int(
         await db.scalar(select(func.count()).select_from(Zone).where(Zone.company_id == cid)) or 0
     )
+    blueprint_zone_shapes = await blueprint_zone_shape_count(db, cid)
     equipment_count = int(
         await db.scalar(select(func.count()).select_from(FacilityEquipment).where(FacilityEquipment.company_id == cid))
         or 0
@@ -89,7 +91,7 @@ async def get_setup_progress(db: Db, user: Annotated[User, Depends(get_current_c
         work_request_count=work_request_count,
         onboarding_demo_sensors=onboarding_demo_sensors,
         facility_layout_done=blueprint_count > 0,
-        zones_done=zone_count > 0,
+        zones_done=zone_count > 0 or blueprint_zone_shapes > 0,
         equipment_done=equipment_count > 0,
         workers_done=worker_user_count > 0,
         procedures_done=procedure_task_count > 0,

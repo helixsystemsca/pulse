@@ -1,6 +1,6 @@
 "use client";
 
-import { Activity, Eye, EyeOff, Loader2 } from "lucide-react";
+import { Activity, Eye, EyeOff, Loader2, Moon, Sun } from "lucide-react";
 import Link from "next/link";
 import { FormEvent, useEffect, useId, useState } from "react";
 import { isApiMode } from "@/lib/api";
@@ -17,8 +17,10 @@ import {
 } from "@/lib/pulse-session";
 import { helixMarketingHref, navigateAfterPulseLogin, pulseRoutes } from "@/lib/pulse-app";
 import { mailtoInfo } from "@/lib/helix-emails";
+import { useTheme } from "@/components/theme/ThemeProvider";
 
 export default function LoginPage() {
+  const { theme, toggleTheme } = useTheme();
   const emailFieldId = useId();
   const passwordFieldId = useId();
 
@@ -233,6 +235,22 @@ export default function LoginPage() {
                     "Sign In"
                   )}
                 </button>
+
+                <div className="flex justify-center pt-1">
+                  <button
+                    type="button"
+                    onClick={toggleTheme}
+                    title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+                    aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+                    className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-pulse-border bg-slate-50/80 text-pulse-navy shadow-sm outline-none transition-colors hover:bg-white focus-visible:ring-2 focus-visible:ring-blue-500/35 dark:border-white/20 dark:bg-white/10 dark:text-amber-200 dark:hover:bg-white/[0.15] dark:focus-visible:ring-blue-400/35"
+                  >
+                    {theme === "dark" ? (
+                      <Sun className="h-5 w-5" strokeWidth={2} aria-hidden />
+                    ) : (
+                      <Moon className="h-5 w-5" strokeWidth={2} aria-hidden />
+                    )}
+                  </button>
+                </div>
               </form>
 
               <div className="mt-8 border-t border-pulse-border pt-6 dark:border-white/10">

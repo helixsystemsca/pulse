@@ -26,6 +26,7 @@ from app.api.devices_routes import router as devices_router
 from app.api.equipment_routes import router as equipment_router
 from app.api.notifications_routes import router as notifications_router
 from app.api.onboarding_routes import router as onboarding_router
+from app.api.org_module_settings_routes import router as org_module_settings_router
 from app.api.setup_progress_routes import router as setup_progress_router
 from app.api.auth_routes import router as auth_router
 from app.api.blueprint_routes import router as blueprint_router
@@ -124,6 +125,7 @@ app.include_router(auth_router, prefix="/api/v1")
 app.include_router(onboarding_router, prefix="/api/v1")
 app.include_router(setup_progress_router, prefix="/api/v1")
 app.include_router(company_router, prefix="/api/v1")
+app.include_router(org_module_settings_router, prefix="/api/v1")
 app.include_router(profile_router, prefix="/api/v1")
 app.include_router(automation_events_router, prefix="/api/v1")
 app.include_router(automation_debug_router, prefix="/api/v1")

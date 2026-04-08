@@ -15,8 +15,10 @@ from sqlalchemy import and_, exists, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user, get_db, require_manager_or_above
+from app.core.org_module_settings_merge import merge_org_module_settings
 from app.core.user_roles import primary_jwt_role, user_has_any_role
 from app.models.domain import ComplianceRecord, ComplianceRule, Tool, User, UserRole
+from app.models.pulse_models import PulseOrgModuleSettings
 from app.modules.compliance import service as compliance_svc
 from app.modules.compliance.service import effective_status
 from app.schemas.compliance import (
@@ -196,6 +198,12 @@ async def _get_record(db: AsyncSession, cid: str, record_id: str) -> ComplianceR
     return row
 
 
+async def _org_module_settings_merged(db: AsyncSession, cid: str) -> dict:
+    q = await db.execute(select(PulseOrgModuleSettings).where(PulseOrgModuleSettings.company_id == cid))
+    row = q.scalar_one_or_none()
+    return merge_org_module_settings(row.settings if row else None)
+
+
 @router.post("/{record_id}/review", status_code=status.HTTP_204_NO_CONTENT)
 async def mark_reviewed(
     db: Db,
@@ -241,7 +249,19 @@ async def flag_record(
     record_id: str,
     body: ComplianceFlagBody,
 ) -> None:
-    _ = user
+    org = await _org_module_settings_merged(db, cid)
+    comp = org.get("compliance") or {}
+    if comp.get("requireManagerForEscalation"):
+        if not user_has_any_role(
+            user,
+            UserRole.system_admin,
+            UserRole.company_admin,
+            UserRole.manager,
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Only managers and company administrators may flag compliance records",
+            )
     row = await _get_record(db, cid, record_id)
     row.flagged = body.flagged
     await db.commit()

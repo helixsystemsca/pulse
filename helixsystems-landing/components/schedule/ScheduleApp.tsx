@@ -38,6 +38,8 @@ import { computeAlerts, computeWorkforceSummary } from "@/lib/schedule/selectors
 import { useScheduleStore } from "@/lib/schedule/schedule-store";
 import type { Shift } from "@/lib/schedule/types";
 import { ScheduleAlertsBanner } from "./ScheduleAlertsBanner";
+import { ModuleSettingsGear } from "@/components/module-settings/ModuleSettingsGear";
+import { useModuleSettings } from "@/providers/ModuleSettingsProvider";
 import { ScheduleCalendarGrid } from "./ScheduleCalendarGrid";
 import { ScheduleDayView } from "./ScheduleDayView";
 import { ScheduleLegendPanel } from "./ScheduleLegendPanel";
@@ -56,7 +58,47 @@ type View = "calendar" | "personnel" | "reports";
 type CalendarScale = "month" | "week" | "day";
 type ScheduleContentFilter = "workers" | "projects" | "combined";
 
+function mondayOfCalendarWeek(iso: string): string {
+  const d = parseLocalDate(iso);
+  const dow = d.getDay();
+  const delta = dow === 0 ? -6 : 1 - dow;
+  const mon = new Date(d.getFullYear(), d.getMonth(), d.getDate() + delta);
+  return formatLocalDate(mon);
+}
+
+function shiftLengthHours(sh: Pick<Shift, "startTime" | "endTime">): number {
+  const [shh, smm] = sh.startTime.split(":").map(Number);
+  const [ehh, emm] = sh.endTime.split(":").map(Number);
+  if (![shh, smm, ehh, emm].every((n) => Number.isFinite(n))) return 0;
+  let mins = ehh * 60 + emm - (shh * 60 + smm);
+  if (mins < 0) mins += 24 * 60;
+  return mins / 60;
+}
+
+function weeklyAssignedHours(
+  shifts: Shift[],
+  workerId: string,
+  anyDateInWeek: string,
+  omitShiftId?: string,
+): number {
+  const mon = mondayOfCalendarWeek(anyDateInWeek);
+  const sun = addDaysToIso(mon, 6);
+  let total = 0;
+  for (const s of shifts) {
+    if (omitShiftId && s.id === omitShiftId) continue;
+    if (s.shiftKind === "project_task" || !s.workerId || s.workerId !== workerId) continue;
+    if (s.date < mon || s.date > sun) continue;
+    if (s.eventType === "vacation") continue;
+    total += shiftLengthHours(s);
+  }
+  return total;
+}
+
 export function ScheduleApp() {
+  const scheduleMod = useModuleSettings("schedule");
+  const scheduleFlags = scheduleMod.settings as { allowShiftOverrides?: boolean };
+  const shiftDragEnabled = scheduleFlags.allowShiftOverrides !== false;
+
   const [cursor, setCursor] = useState(() => {
     const n = getServerDate();
     return { y: n.getFullYear(), m: n.getMonth() };
@@ -226,6 +268,17 @@ export function ScheduleApp() {
   const certsOf = (d: ShiftDraft) => (d.required_certifications ?? []).filter(Boolean);
 
   async function saveShift(draft: ShiftDraft) {
+    const weeklyCap = Number(scheduleMod.settings.enforceMaxHours) || 0;
+    if (weeklyCap > 0 && draft.workerId) {
+      const projected =
+        weeklyAssignedHours(shifts, draft.workerId, draft.date, draft.id ?? undefined) + shiftLengthHours(draft);
+      if (projected > weeklyCap + 1e-6) {
+        window.alert(
+          `This assignment would exceed the organization limit of ${weeklyCap} hours per week (${projected.toFixed(1)}h scheduled). Adjust times or turn off the cap in Schedule settings.`,
+        );
+        return;
+      }
+    }
     const certs = certsOf(draft);
     const req = {
       workerId: draft.workerId,
@@ -279,8 +332,22 @@ export function ScheduleApp() {
 
   const handleShiftMove = useCallback(
     async (shiftId: string, targetDate: string, mode: "move" | "duplicate") => {
+      if (!shiftDragEnabled) return;
       const sh = shifts.find((s) => s.id === shiftId);
       if (!sh) return;
+      const weeklyCap = Number(scheduleMod.settings.enforceMaxHours) || 0;
+      if (weeklyCap > 0 && sh.workerId && sh.eventType !== "vacation") {
+        const withShift =
+          mode === "move"
+            ? weeklyAssignedHours(shifts, sh.workerId, targetDate, sh.id) + shiftLengthHours(sh)
+            : weeklyAssignedHours(shifts, sh.workerId, targetDate) + shiftLengthHours(sh);
+        if (withShift > weeklyCap + 1e-6) {
+          window.alert(
+            `Moving or copying this shift would exceed the ${weeklyCap}h weekly limit (${withShift.toFixed(1)}h). Change schedule settings or adjust shifts.`,
+          );
+          return;
+        }
+      }
       if (mode === "duplicate" && sh.shiftKind === "project_task") {
         return;
       }
@@ -314,7 +381,7 @@ export function ScheduleApp() {
         uiFlags: { isNew: true },
       });
     },
-    [addShift, reloadPulseSchedule, shifts, updateShift],
+    [addShift, reloadPulseSchedule, scheduleMod.settings.enforceMaxHours, shiftDragEnabled, shifts, updateShift],
   );
 
   function prevMonth() {
@@ -448,13 +515,14 @@ export function ScheduleApp() {
                   <CalendarPlus className="h-4 w-4" />
                   Time off
                 </button>
+                <ModuleSettingsGear moduleId="schedule" label="Schedule organization settings" />
                 <button
                   type="button"
                   onClick={() => setSettingsOpen(true)}
                   className="inline-flex items-center gap-2 rounded-md border border-pulseShell-border bg-pulseShell-surface px-4 py-2 text-sm font-semibold text-gray-900 shadow-sm hover:bg-pulseShell-elevated dark:text-gray-100"
                 >
                   <Settings className="h-4 w-4" />
-                  Settings
+                  Layout
                 </button>
               </>
             }
@@ -587,6 +655,7 @@ export function ScheduleApp() {
                       onAddForDate={(iso) => openAdd(iso)}
                       scheduleDragLock={scheduleDragLock}
                       dragSession={dragSession}
+                      shiftDragEnabled={shiftDragEnabled}
                       onShiftDragSessionStart={setDragSession}
                       onShiftDragSessionEnd={() => {
                         setDragSession(null);
@@ -619,6 +688,7 @@ export function ScheduleApp() {
                     scheduleDragLock={scheduleDragLock}
                     dragSession={dragSession}
                     calendarDropsDisabled={calendarDropsDisabled}
+                    shiftDragEnabled={shiftDragEnabled}
                     onShiftDragSessionStart={setDragSession}
                     onShiftDragSessionEnd={() => {
                       setDragSession(null);
@@ -650,6 +720,7 @@ export function ScheduleApp() {
                     scheduleDragLock={scheduleDragLock}
                     dragSession={dragSession}
                     calendarDropsDisabled={calendarDropsDisabled}
+                    shiftDragEnabled={shiftDragEnabled}
                     onShiftDragSessionStart={setDragSession}
                     onShiftDragSessionEnd={() => {
                       setDragSession(null);
@@ -720,7 +791,7 @@ export function ScheduleApp() {
       <ScheduleSettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
 
       <ScheduleTrashDropZone
-        active={scheduleDragLock}
+        active={scheduleDragLock && shiftDragEnabled}
         isDuplicateDrag={!!dragSession?.duplicate}
         onHoverChange={setTrashHovering}
         onDropTrash={async (id) => {

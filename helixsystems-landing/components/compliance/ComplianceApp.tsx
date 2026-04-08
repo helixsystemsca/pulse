@@ -23,6 +23,9 @@ import {
   type ComplianceRecordRow,
 } from "@/lib/complianceService";
 import { readSession } from "@/lib/pulse-session";
+import { complianceManagerFlagAllowed } from "@/lib/pulse-roles";
+import { useModuleSettings } from "@/providers/ModuleSettingsProvider";
+import { ModuleSettingsGear } from "@/components/module-settings/ModuleSettingsGear";
 import { PageHeader } from "@/components/ui/PageHeader";
 
 type AssetOption = { id: string; name: string };
@@ -77,6 +80,8 @@ function missedAccent(sev: string): string {
 
 export function ComplianceApp() {
   const session = readSession();
+  const complianceMod = useModuleSettings("compliance");
+  const { settings: complianceSettings, loadForCompany } = complianceMod;
   const isSystemAdmin = Boolean(session?.is_system_admin || session?.role === "system_admin");
   const sessionCompanyId = session?.company_id ?? null;
 
@@ -117,6 +122,19 @@ export function ComplianceApp() {
       }
     })();
   }, [isSystemAdmin, session?.access_token]);
+
+  useEffect(() => {
+    if (isSystemAdmin) {
+      if (!effectiveCompanyId) return;
+      void loadForCompany(effectiveCompanyId);
+      return;
+    }
+    if (!sessionCompanyId) return;
+    void loadForCompany(sessionCompanyId);
+  }, [isSystemAdmin, effectiveCompanyId, loadForCompany, sessionCompanyId]);
+
+  const canFlagCompliance =
+    !complianceSettings.requireManagerForEscalation || complianceManagerFlagAllowed(session);
 
   useEffect(() => {
     if (!dataEnabled || isSystemAdmin) {
@@ -254,6 +272,7 @@ export function ComplianceApp() {
         title="Compliance Analytics"
         description="SOP acknowledgments, risk signals, and repeat patterns."
         icon={ShieldCheck}
+        actions={<ModuleSettingsGear moduleId="compliance" label="Compliance organization settings" />}
       />
 
       {isSystemAdmin ? (
@@ -325,7 +344,9 @@ export function ComplianceApp() {
             </p>
             <p className="mt-1 text-sm text-pulse-muted">
               {summaryHook.data && summaryHook.data.missed_severity !== "stable"
-                ? "Action required"
+                ? complianceSettings.strictReviewDeadlines
+                  ? "Urgent: overdue reviews are treated as high priority—investigate and close the loop promptly."
+                  : "Action required"
                 : "Within tolerance"}
             </p>
           </div>
@@ -481,8 +502,17 @@ export function ComplianceApp() {
                   <tbody>
                     {(listHook.data?.items ?? []).map((row) => {
                       const when = formatWhen(row.required_at);
+                      const repeatEmphasis =
+                        complianceSettings.showRepeatOffenderHighlight && row.repeat_offender;
+                      const overdueStrict =
+                        complianceSettings.strictReviewDeadlines && row.effective_status === "overdue";
                       return (
-                        <tr key={row.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50/60">
+                        <tr
+                          key={row.id}
+                          className={`border-b border-slate-100 last:border-0 hover:bg-slate-50/60 ${
+                            repeatEmphasis ? "bg-rose-50/35" : ""
+                          } ${overdueStrict ? "ring-1 ring-inset ring-amber-300/80" : ""}`}
+                        >
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-2.5">
                               <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-pulse-navy ring-1 ring-slate-200/60">
@@ -497,7 +527,7 @@ export function ComplianceApp() {
                               <div className="min-w-0">
                                 <div className="flex flex-wrap items-center gap-1.5">
                                   <span className="font-semibold text-pulse-navy">{row.user_name ?? "—"}</span>
-                                  {row.repeat_offender ? (
+                                  {complianceSettings.showRepeatOffenderHighlight && row.repeat_offender ? (
                                     <span className="inline-flex items-center gap-0.5 text-xs font-bold text-rose-600">
                                       <AlertTriangle className="h-3.5 w-3.5" aria-hidden />
                                       Repeat offender
@@ -531,6 +561,11 @@ export function ComplianceApp() {
                             </span>
                             {row.flagged ? (
                               <span className="ml-2 text-xs font-semibold text-amber-700">Flagged</span>
+                            ) : null}
+                            {complianceSettings.strictReviewDeadlines && row.effective_status === "overdue" ? (
+                              <span className="mt-1 block text-xs font-bold text-amber-800">
+                                Review overdue — address before it escalates.
+                              </span>
                             ) : null}
                           </td>
                           <td className="relative px-4 py-3 text-right">
@@ -575,8 +610,17 @@ export function ComplianceApp() {
                                 </button>
                                 <button
                                   type="button"
-                                  className="block w-full px-3 py-2 text-left text-sm text-pulse-navy hover:bg-slate-50"
-                                  onClick={() => onFlag(row.id, !row.flagged)}
+                                  disabled={!canFlagCompliance}
+                                  title={
+                                    !canFlagCompliance
+                                      ? "Only managers and company administrators may flag records in your organization."
+                                      : undefined
+                                  }
+                                  className="block w-full px-3 py-2 text-left text-sm text-pulse-navy hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-45"
+                                  onClick={() => {
+                                    if (!canFlagCompliance) return;
+                                    void onFlag(row.id, !row.flagged);
+                                  }}
                                 >
                                   {row.flagged ? "Unflag user" : "Flag user"}
                                 </button>
