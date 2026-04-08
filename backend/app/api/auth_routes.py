@@ -193,10 +193,12 @@ async def me(
     ob_enabled = user.onboarding_enabled
     ob_completed = user.onboarding_completed
     ob_seen = bool(user.onboarding_seen)
+    tour_done = bool(getattr(user, "user_onboarding_tour_completed", False))
     if user.company_id is None or user_has_any_role(user, UserRole.system_admin) or user.is_system_admin:
         ob_enabled = False
         ob_completed = True
         ob_seen = True
+        tour_done = True
 
     prim = primary_jwt_role(user)
     perm_out: list[str] | None = None
@@ -226,6 +228,7 @@ async def me(
         onboarding_enabled=ob_enabled,
         onboarding_completed=ob_completed,
         onboarding_seen=ob_seen,
+        user_onboarding_tour_completed=tour_done,
         permissions=perm_out,
         server_time=datetime.now(timezone.utc).isoformat(),
     )

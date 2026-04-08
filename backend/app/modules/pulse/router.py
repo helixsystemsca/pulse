@@ -229,11 +229,9 @@ async def create_work_request(
     )
     db.add(wr)
     await db.flush()
-    if is_field_worker_like(user):
-        await try_mark_onboarding_step(db, user.id, "log_issue")
-    else:
+    if not is_field_worker_like(user):
         await try_mark_onboarding_step(db, user.id, "create_work_order")
-        await try_mark_onboarding_step(db, user.id, "first_maintenance")
+        await try_mark_onboarding_step(db, user.id, "customize_workflow")
     await db.commit()
     await db.refresh(wr)
     return WorkRequestOut.model_validate(wr)
@@ -294,7 +292,6 @@ async def patch_work_request(
         and data["status"] == PulseWorkRequestStatus.completed
         and old_status != PulseWorkRequestStatus.completed
     ):
-        await try_mark_onboarding_step(db, user.id, "complete_work_order")
     await db.commit()
     await db.refresh(wr)
     return WorkRequestOut.model_validate(wr)

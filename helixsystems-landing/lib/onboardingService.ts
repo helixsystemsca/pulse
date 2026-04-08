@@ -1,4 +1,5 @@
 import { apiFetch } from "@/lib/api";
+import { readSession } from "@/lib/pulse-session";
 
 export type OnboardingFlow = "manager" | "worker";
 
@@ -11,17 +12,53 @@ export type OnboardingStepRow = {
   href: string;
 };
 
+export type OnboardingPersonaRole = "admin" | "manager" | "supervisor" | "lead" | "worker";
+
 export type OnboardingState = {
   onboarding_enabled: boolean;
   onboarding_completed: boolean;
+  org_onboarding_completed: boolean;
+  user_onboarding_tour_completed: boolean;
+  onboarding_role: OnboardingPersonaRole | string;
+  checklist_progress: Record<string, boolean> | null;
   steps: OnboardingStepRow[];
   completed_count: number;
   total_count: number;
   flow: OnboardingFlow;
 };
 
+function onboardingCacheKey(sub: string) {
+  return `pulse_onboarding_cache_v1_${sub}`;
+}
+
 export async function fetchOnboarding(): Promise<OnboardingState> {
-  return apiFetch<OnboardingState>("/api/v1/onboarding");
+  let sub: string | undefined;
+  try {
+    sub = readSession()?.sub;
+  } catch {
+    sub = undefined;
+  }
+  try {
+    const s = await apiFetch<OnboardingState>("/api/v1/onboarding");
+    if (typeof window !== "undefined" && sub) {
+      try {
+        localStorage.setItem(onboardingCacheKey(sub), JSON.stringify(s));
+      } catch {
+        /* ignore */
+      }
+    }
+    return s;
+  } catch (e) {
+    if (typeof window !== "undefined" && sub) {
+      try {
+        const raw = localStorage.getItem(onboardingCacheKey(sub));
+        if (raw) return JSON.parse(raw) as OnboardingState;
+      } catch {
+        /* ignore */
+      }
+    }
+    throw e;
+  }
 }
 
 export async function postOnboardingDemoData(): Promise<OnboardingState> {
@@ -58,6 +95,7 @@ export type OnboardingPatchBody = {
   completed?: boolean;
   onboarding_enabled?: boolean;
   onboarding_seen?: boolean;
+  user_onboarding_tour_completed?: boolean;
 };
 
 export async function patchOnboarding(body: OnboardingPatchBody): Promise<OnboardingState> {
@@ -69,14 +107,8 @@ export async function patchOnboarding(body: OnboardingPatchBody): Promise<Onboar
 
 /** Fallback when API href is unavailable (older servers). */
 export const ONBOARDING_STEP_HREF: Record<string, string> = {
-  create_zone: "/dashboard/setup?tab=zones",
-  add_device: "/dashboard/setup?tab=devices",
-  add_equipment: "/equipment",
   create_work_order: "/dashboard/maintenance/work-orders",
-  view_operations: "/monitoring",
-  complete_work_order: "/dashboard/maintenance/work-orders",
-  view_schedule: "/schedule",
-  log_issue: "/dashboard/maintenance/work-requests",
-  add_workers: "/dashboard/workers",
-  first_maintenance: "/dashboard/maintenance/work-orders",
+  add_equipment: "/equipment",
+  invite_team: "/dashboard/workers",
+  customize_workflow: "/dashboard/workers",
 };

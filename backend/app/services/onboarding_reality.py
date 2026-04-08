@@ -42,6 +42,7 @@ class OnboardingReality:
     gateway_count: int
     ble_device_count: int
     worker_user_count: int
+    active_company_user_count: int
     procedure_task_count: int
     work_request_count: int
     has_recent_sensor_readings: bool
@@ -171,6 +172,7 @@ async def load_onboarding_reality(
         gateway_count=gateway_count,
         ble_device_count=ble_device_count,
         worker_user_count=worker_user_count,
+        active_company_user_count=active_company_user_count,
         procedure_task_count=procedure_task_count,
         work_request_count=work_request_count,
         has_recent_sensor_readings=has_recent_sensor_readings,

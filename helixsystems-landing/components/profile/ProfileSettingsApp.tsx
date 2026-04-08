@@ -9,6 +9,7 @@ import { UserProfileAvatarPreview } from "@/components/profile/UserProfileAvatar
 import { usePulseAuth } from "@/hooks/usePulseAuth";
 import { apiFetch, refreshPulseUserFromServer } from "@/lib/api";
 import { uploadTenantCompanyLogoFile } from "@/lib/companyBrandingUpload";
+import { replayNonAdminOnboardingTour } from "@/lib/onboarding-events";
 import { parseClientApiError } from "@/lib/parse-client-api-error";
 import { uploadProfileAvatarFile } from "@/lib/profileAvatarUpload";
 import { sessionHasAnyRole } from "@/lib/pulse-roles";
@@ -27,7 +28,7 @@ const SECONDARY =
 const OP_ROLES = ["worker", "manager", "supervisor"] as const;
 
 export function ProfileSettingsApp() {
-  const { session } = usePulseAuth();
+  const { session, refresh } = usePulseAuth();
   const { theme } = useTheme();
   const avatarRef = useRef<HTMLInputElement>(null);
   const logoRef = useRef<HTMLInputElement>(null);
@@ -175,6 +176,20 @@ export function ProfileSettingsApp() {
         <div className="rounded-md border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900 dark:border-rose-900/50 dark:bg-rose-950/40 dark:text-rose-100">
           {err}
         </div>
+      ) : null}
+
+      {session.company_id && !isCompanyAdmin ? (
+        <section className="ds-card-elevated border border-ds-border p-5 shadow-[var(--ds-shadow-card)]">
+          <h2 className="text-sm font-bold text-ds-foreground">Onboarding</h2>
+          <p className="mt-1 text-sm text-ds-muted">Replay the short welcome tour whenever you need a refresher.</p>
+          <button
+            type="button"
+            className="ds-btn-secondary mt-4 px-4 py-2.5 text-sm"
+            onClick={() => void replayNonAdminOnboardingTour(refresh)}
+          >
+            Replay onboarding
+          </button>
+        </section>
       ) : null}
 
       <section className={CARD}>

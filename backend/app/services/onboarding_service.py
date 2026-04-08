@@ -1,4 +1,4 @@
-"""Per-user guided onboarding: step keys, role-filtered API surface, completion helpers."""
+"""Per-user onboarding: company_admin org checklist (4 steps) + non-admin modal tour flag."""
 
 from __future__ import annotations
 
@@ -12,118 +12,62 @@ from app.core.user_roles import user_has_any_role
 from app.models.domain import User, UserRole
 from app.services.onboarding_reality import load_onboarding_reality
 
-# Full universe of steps stored per user (JSON). New keys are merged in `_normalize_steps`.
-ALL_ONBOARDING_STEP_KEYS: tuple[str, ...] = (
-    "create_zone",
-    "add_device",
-    "add_equipment",
+# Stored checklist (company admins only). Legacy JSON keys are merged in `_normalize_steps`.
+ADMIN_CHECKLIST_KEYS: tuple[str, ...] = (
     "create_work_order",
-    "view_operations",
-    "complete_work_order",
-    "view_schedule",
-    "log_issue",
-    "add_workers",
-    "first_maintenance",
+    "add_equipment",
+    "invite_team",
+    "customize_workflow",
 )
 
-# Exposed for PATCH validation — must match union of role flows.
+ALL_ONBOARDING_STEP_KEYS: tuple[str, ...] = ADMIN_CHECKLIST_KEYS
+
 ONBOARDING_STEP_KEYS: tuple[str, ...] = ALL_ONBOARDING_STEP_KEYS
 
-MANAGER_OPTIONAL_STEP_KEYS: frozenset[str] = frozenset({"add_workers"})
-
-MANAGER_ONBOARDING_KEYS: tuple[str, ...] = (
-    "create_zone",
-    "add_device",
-    "view_operations",
-    "add_workers",
-    "first_maintenance",
-)
-
-WORKER_ONBOARDING_KEYS: tuple[str, ...] = (
-    "view_operations",
-    "complete_work_order",
-    "view_schedule",
-    "log_issue",
-)
+LEGACY_STEP_MERGE: dict[str, str] = {
+    "add_workers": "invite_team",
+    "first_maintenance": "customize_workflow",
+}
 
 STEP_LABELS: dict[str, str] = {
-    "create_zone": "Create facility zones",
-    "add_device": "Connect a gateway or tag (or use demo data)",
-    "add_equipment": "Add facility equipment",
-    "create_work_order": "Create a work order",
-    "view_operations": "View live or simulated system data",
-    "complete_work_order": "Complete a work order",
-    "view_schedule": "View your schedule",
-    "log_issue": "Log an issue",
-    "add_workers": "Add workers (optional)",
-    "first_maintenance": "First work order or procedure",
+    "create_work_order": "Create your first work order",
+    "add_equipment": "Add an asset",
+    "invite_team": "Invite your team",
+    "customize_workflow": "Customize your workflow",
 }
 
 STEP_DESCRIPTIONS: dict[str, str] = {
-    "create_zone": "Add zones under Setup, or draw rooms on a saved floorplan blueprint.",
-    "add_device": "Register a gateway or BLE tag — or turn on sample sensors instantly.",
-    "add_equipment": "Record a fixed asset in the equipment registry for maintenance tracking.",
-    "create_work_order": "Open a tracked maintenance or facility task.",
-    "view_operations": "Open Monitoring to see charts and telemetry as soon as data exists.",
-    "complete_work_order": "Mark an assigned or open work order as done.",
-    "view_schedule": "Review shifts and coverage for your team.",
-    "log_issue": "Report a problem so it can be tracked and resolved.",
-    "add_workers": "Invite field staff when you are ready — not required to explore Pulse.",
-    "first_maintenance": "Create a work order or add a procedure task under Projects.",
+    "create_work_order": "Open Maintenance and create a tracked work order for your facility.",
+    "add_equipment": "Register equipment so maintenance and history stay organized.",
+    "invite_team": "Add another user to your organization from Workers & roles.",
+    "customize_workflow": "Add a procedure task or a second work order to shape how work flows.",
 }
 
 STEP_HREFS: dict[str, str] = {
-    "create_zone": "/dashboard/setup?tab=zones",
-    "add_device": "/dashboard/setup?tab=devices",
-    "add_equipment": "/equipment",
     "create_work_order": "/dashboard/maintenance/work-orders",
-    "view_operations": "/monitoring",
-    "complete_work_order": "/dashboard/maintenance/work-orders",
-    "view_schedule": "/schedule",
-    "log_issue": "/dashboard/maintenance/work-requests",
-    "add_workers": "/dashboard/workers",
-    "first_maintenance": "/dashboard/maintenance/work-orders",
+    "add_equipment": "/equipment",
+    "invite_team": "/dashboard/workers",
+    "customize_workflow": "/dashboard/workers",
 }
 
-OnboardingFlowLiteral = Literal["manager", "worker"]
+OnboardingFlowOut = Literal["manager", "worker"]
 
 
-def _is_manager_flow(role: UserRole) -> bool:
-    return role in (UserRole.company_admin, UserRole.manager, UserRole.supervisor)
+def is_company_admin_checklist_user(user: User) -> bool:
+    return bool(user.company_id) and user_has_any_role(user, UserRole.company_admin)
 
 
-def is_manager_onboarding_user(user: User) -> bool:
-    return user_has_any_role(user, UserRole.company_admin, UserRole.manager, UserRole.supervisor)
-
-
-def step_keys_for_role(role: UserRole) -> tuple[str, ...]:
-    return MANAGER_ONBOARDING_KEYS if _is_manager_flow(role) else WORKER_ONBOARDING_KEYS
-
-
-def step_keys_for_user(user: User) -> tuple[str, ...]:
-    return MANAGER_ONBOARDING_KEYS if is_manager_onboarding_user(user) else WORKER_ONBOARDING_KEYS
-
-
-def completion_keys_for_role(role: UserRole) -> tuple[str, ...]:
-    keys = step_keys_for_role(role)
-    if _is_manager_flow(role):
-        return tuple(k for k in keys if k not in MANAGER_OPTIONAL_STEP_KEYS)
-    return keys
-
-
-def completion_keys_for_user(user: User) -> tuple[str, ...]:
-    keys = step_keys_for_user(user)
-    if is_manager_onboarding_user(user):
-        return tuple(k for k in keys if k not in MANAGER_OPTIONAL_STEP_KEYS)
-    return keys
-
-
-def flow_for_role(role: UserRole) -> OnboardingFlowLiteral:
-    return "manager" if _is_manager_flow(role) else "worker"
-
-
-def flow_for_user(user: User) -> OnboardingFlowLiteral:
-    return "manager" if is_manager_onboarding_user(user) else "worker"
+def onboarding_display_role(user: User) -> str:
+    """UI persona for modal slides (admin excluded from modal)."""
+    if user_has_any_role(user, UserRole.company_admin):
+        return "admin"
+    if user_has_any_role(user, UserRole.manager):
+        return "manager"
+    if user_has_any_role(user, UserRole.supervisor):
+        return "supervisor"
+    if user_has_any_role(user, UserRole.lead):
+        return "lead"
+    return "worker"
 
 
 def default_onboarding_steps() -> list[dict[str, Any]]:
@@ -131,76 +75,67 @@ def default_onboarding_steps() -> list[dict[str, Any]]:
 
 
 def _normalize_steps(raw: Any) -> list[dict[str, Any]]:
-    """Merge DB JSON with full key set; preserve completion flags for known keys."""
+    by_key: dict[str, bool] = {k: False for k in ALL_ONBOARDING_STEP_KEYS}
     if not isinstance(raw, list):
-        return default_onboarding_steps()
-    by_key: dict[str, bool] = {}
+        return [{"key": k, "completed": by_key[k]} for k in ALL_ONBOARDING_STEP_KEYS]
     for item in raw:
         if not isinstance(item, dict):
             continue
         key = item.get("key")
-        if key not in ALL_ONBOARDING_STEP_KEYS:
+        if not isinstance(key, str):
             continue
-        by_key[key] = bool(item.get("completed"))
-    return [{"key": k, "completed": by_key.get(k, False)} for k in ALL_ONBOARDING_STEP_KEYS]
+        completed = bool(item.get("completed"))
+        if key in ALL_ONBOARDING_STEP_KEYS:
+            by_key[key] = by_key[key] or completed
+            continue
+        tgt = LEGACY_STEP_MERGE.get(key)
+        if tgt:
+            by_key[tgt] = by_key[tgt] or completed
+    return [{"key": k, "completed": by_key[k]} for k in ALL_ONBOARDING_STEP_KEYS]
 
 
 def _steps_map(steps: Iterable[dict[str, Any]]) -> dict[str, dict[str, Any]]:
     return {str(s["key"]): s for s in steps}
 
 
-def filter_steps_for_role(full_steps: list[dict[str, Any]], role: UserRole) -> list[dict[str, Any]]:
+def admin_steps_labeled(full_steps: list[dict[str, Any]]) -> list[dict[str, Any]]:
     m = _steps_map(full_steps)
-    return [copy.deepcopy(m[k]) for k in step_keys_for_role(role) if k in m]
-
-
-def filter_steps_for_user(full_steps: list[dict[str, Any]], user: User) -> list[dict[str, Any]]:
-    m = _steps_map(full_steps)
-    return [copy.deepcopy(m[k]) for k in step_keys_for_user(user) if k in m]
-
-
-def steps_with_labels_and_descriptions(filtered_steps: Iterable[dict[str, Any]], user: User) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
-    for s in filtered_steps:
-        k = s["key"]
-        optional = is_manager_onboarding_user(user) and k in MANAGER_OPTIONAL_STEP_KEYS
+    for k in ADMIN_CHECKLIST_KEYS:
+        s = m[k]
         rows.append(
             {
                 "key": k,
                 "label": STEP_LABELS.get(k, k.replace("_", " ").title()),
                 "description": STEP_DESCRIPTIONS.get(k, ""),
                 "completed": bool(s.get("completed")),
-                "optional": optional,
+                "optional": False,
                 "href": STEP_HREFS.get(k, "/overview"),
             }
         )
     return rows
 
 
-def visible_progress(full_steps: list[dict[str, Any]], role: UserRole) -> tuple[int, int]:
-    keys = completion_keys_for_role(role)
+def admin_checklist_progress(full_steps: list[dict[str, Any]]) -> dict[str, bool]:
     m = _steps_map(full_steps)
-    done = sum(1 for k in keys if m.get(k, {}).get("completed"))
-    return done, len(keys)
+    return {k: bool(m[k].get("completed")) for k in ADMIN_CHECKLIST_KEYS}
 
 
-def visible_progress_for_user(full_steps: list[dict[str, Any]], user: User) -> tuple[int, int]:
-    keys = completion_keys_for_user(user)
+def admin_visible_progress(full_steps: list[dict[str, Any]]) -> tuple[int, int]:
     m = _steps_map(full_steps)
-    done = sum(1 for k in keys if m.get(k, {}).get("completed"))
-    return done, len(keys)
+    done = sum(1 for k in ADMIN_CHECKLIST_KEYS if m.get(k, {}).get("completed"))
+    return done, len(ADMIN_CHECKLIST_KEYS)
 
 
-def role_onboarding_complete(full_steps: list[dict[str, Any]], role: UserRole) -> bool:
-    keys = completion_keys_for_role(role)
+def admin_checklist_complete(full_steps: list[dict[str, Any]]) -> bool:
     m = _steps_map(full_steps)
-    return all(m.get(k, {}).get("completed") for k in keys)
+    return all(m.get(k, {}).get("completed") for k in ADMIN_CHECKLIST_KEYS)
 
 
-def user_onboarding_complete(full_mutable: list[dict[str, Any]], user: User) -> bool:
-    keys = completion_keys_for_user(user)
-    m = _steps_map(full_mutable)
-    return all(m.get(k, {}).get("completed") for k in keys)
+def flow_for_onboarding_api(user: User) -> OnboardingFlowOut:
+    """Legacy `flow` field: manager-like vs worker for older clients."""
+    r = onboarding_display_role(user)
+    return "manager" if r in ("admin", "manager", "supervisor", "lead") else "worker"
 
 
 async def try_mark_onboarding_step(db: AsyncSession, user_id: str, step_key: str) -> None:
@@ -209,6 +144,8 @@ async def try_mark_onboarding_step(db: AsyncSession, user_id: str, step_key: str
     q = await db.execute(select(User).where(User.id == user_id))
     user = q.scalar_one_or_none()
     if user is None or user.company_id is None:
+        return
+    if not user_has_any_role(user, UserRole.company_admin):
         return
     if not user.onboarding_enabled or user.onboarding_completed:
         return
@@ -222,16 +159,17 @@ async def try_mark_onboarding_step(db: AsyncSession, user_id: str, step_key: str
     if not changed:
         return
     user.onboarding_steps = copy.deepcopy(steps)
-    if user_onboarding_complete(steps, user):
-        user.onboarding_completed = True
+    recompute_onboarding_completed(user, steps)
     await db.flush()
 
 
 async def sync_user_onboarding_from_reality(db: AsyncSession, user: User) -> bool:
-    """Infer checklist completion from tenant data. Returns True if the user row was updated."""
+    """Infer admin checklist completion from tenant data. Returns True if the user row was updated."""
     if user.company_id is None:
         return False
     if not user.onboarding_enabled:
+        return False
+    if not user_has_any_role(user, UserRole.company_admin):
         return False
 
     reality = await load_onboarding_reality(db, str(user.company_id), for_user_id=str(user.id))
@@ -239,24 +177,12 @@ async def sync_user_onboarding_from_reality(db: AsyncSession, user: User) -> boo
     prev = {s["key"]: bool(s["completed"]) for s in steps}
     m = {k: prev.get(k, False) for k in ALL_ONBOARDING_STEP_KEYS}
 
-    device_ok = reality.gateway_count + reality.ble_device_count > 0 or reality.onboarding_demo_sensors
-    data_ok = reality.has_recent_sensor_readings or reality.onboarding_demo_sensors
-    maint_ok = (
-        reality.work_request_count > 0
-        or reality.procedure_task_count > 0
-        or m.get("create_work_order", False)
-    )
-
-    has_zones = reality.zone_count > 0 or reality.blueprint_zone_shape_count > 0
-    m["create_zone"] = m["create_zone"] or has_zones
-    m["add_device"] = m["add_device"] or device_ok
+    m["create_work_order"] = m["create_work_order"] or reality.work_request_count > 0
     m["add_equipment"] = m["add_equipment"] or reality.equipment_count > 0
-    m["view_operations"] = m["view_operations"] or data_ok
-    m["add_workers"] = m["add_workers"] or reality.worker_user_count > 0
-    m["first_maintenance"] = m["first_maintenance"] or maint_ok
-    m["complete_work_order"] = m["complete_work_order"] or reality.user_completed_wr_count > 0
-    m["log_issue"] = m["log_issue"] or reality.user_created_wr_count > 0
-    m["view_schedule"] = m["view_schedule"] or reality.user_shift_count > 0
+    m["invite_team"] = m["invite_team"] or reality.active_company_user_count >= 2
+    m["customize_workflow"] = (
+        m["customize_workflow"] or reality.procedure_task_count > 0 or reality.work_request_count >= 2
+    )
 
     new_steps = [{"key": k, "completed": m[k]} for k in ALL_ONBOARDING_STEP_KEYS]
     if {s["key"]: s["completed"] for s in new_steps} == prev:
@@ -270,21 +196,42 @@ async def sync_user_onboarding_from_reality(db: AsyncSession, user: User) -> boo
 
 def build_onboarding_state_out(user: User) -> dict[str, Any]:
     full = _normalize_steps(user.onboarding_steps)
-    filtered = filter_steps_for_user(full, user)
-    labeled = steps_with_labels_and_descriptions(filtered, user)
-    done, total = visible_progress_for_user(full, user)
-    flow_lit: OnboardingFlowLiteral = flow_for_user(user)
+    role_lit = onboarding_display_role(user)
+    tour_done = bool(getattr(user, "user_onboarding_tour_completed", False))
+
+    if is_company_admin_checklist_user(user):
+        labeled = admin_steps_labeled(full)
+        done, total = admin_visible_progress(full)
+        org_done = bool(user.onboarding_completed)
+        checklist_progress = admin_checklist_progress(full)
+    else:
+        labeled = []
+        done, total = 0, 0
+        org_done = False
+        checklist_progress = None
+
     return {
         "onboarding_enabled": user.onboarding_enabled,
         "onboarding_completed": user.onboarding_completed,
+        "org_onboarding_completed": org_done,
+        "user_onboarding_tour_completed": tour_done,
+        "onboarding_role": role_lit,
+        "checklist_progress": checklist_progress,
         "steps": labeled,
         "completed_count": done,
         "total_count": total,
-        "flow": flow_lit,
+        "flow": flow_for_onboarding_api(user),
     }
 
 
 def recompute_onboarding_completed(user: User, full_steps: list[dict[str, Any]] | None = None) -> None:
-    """Sync `onboarding_completed` from stored steps and role (e.g. after PATCH)."""
     steps = full_steps if full_steps is not None else _normalize_steps(user.onboarding_steps)
-    user.onboarding_completed = user_onboarding_complete(steps, user)
+    if is_company_admin_checklist_user(user):
+        user.onboarding_completed = admin_checklist_complete(steps)
+    else:
+        user.onboarding_completed = False
+
+
+# Backwards-compatible name (older callers / imports).
+def is_manager_onboarding_user(user: User) -> bool:
+    return is_company_admin_checklist_user(user)

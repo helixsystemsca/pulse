@@ -10,7 +10,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import get_db, require_manager_or_above
 from app.core.user_roles import user_has_any_role
 from app.core.audit.service import record_audit
-from app.services.onboarding_service import try_mark_onboarding_step
 from app.models.domain import ToolStatus, User, UserRole
 from app.schemas.api_common import ApiSuccess
 from app.schemas.devices import (
@@ -72,7 +71,6 @@ async def create_gateway(
             identifier=body.identifier,
             zone_id=body.zone_id,
         )
-        await try_mark_onboarding_step(db, actor.id, "add_device")
         await db.commit()
         await db.refresh(gw)
         return GatewayOut.model_validate(gw)
@@ -206,7 +204,6 @@ async def create_ble_device(
             assigned_worker_id=body.assigned_worker_id,
             assigned_equipment_id=body.assigned_equipment_id,
         )
-        await try_mark_onboarding_step(db, actor.id, "add_device")
         await db.commit()
         await db.refresh(row)
         return BleDeviceOut.model_validate(row)
@@ -286,7 +283,6 @@ async def create_tool(
                 ble_id=body.link_ble_device_id,
                 equipment_id=tool.id,
             )
-        await try_mark_onboarding_step(db, actor.id, "add_device")
         await db.commit()
         await db.refresh(tool)
         return EquipmentOut.model_validate(tool)
@@ -338,7 +334,6 @@ async def create_zone(
         description=body.description,
         meta=body.meta,
     )
-    await try_mark_onboarding_step(db, actor.id, "create_zone")
     await db.commit()
     await db.refresh(z)
     return ZoneOut.model_validate(z)

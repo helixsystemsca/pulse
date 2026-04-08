@@ -63,6 +63,8 @@ export type PulseAuthSession = {
   onboarding_completed?: boolean;
   /** From `/auth/me`; false until first-login intro is dismissed (server-backed). */
   onboarding_seen?: boolean;
+  /** From `/auth/me`; non-admin modal tour finished or skipped. */
+  user_onboarding_tour_completed?: boolean;
   iat: number;
   exp: number;
   /** Legacy: was tied to removed “Keep me signed in”; new sessions always use `false`. */
@@ -89,6 +91,7 @@ export type UserOut = {
   onboarding_enabled?: boolean;
   onboarding_completed?: boolean;
   onboarding_seen?: boolean;
+  user_onboarding_tour_completed?: boolean;
   /** UTC ISO timestamp from `GET /auth/me` for client clock sync. */
   server_time?: string;
 };
@@ -221,6 +224,7 @@ export function writeApiSession(
     onboarding_enabled: user.onboarding_enabled,
     onboarding_completed: user.onboarding_completed,
     onboarding_seen: user.onboarding_seen,
+    user_onboarding_tour_completed: user.user_onboarding_tour_completed,
     iat: now,
     exp,
     remember,

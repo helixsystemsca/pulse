@@ -3,7 +3,7 @@
 import { AlertTriangle, Battery, MapPin, Radio } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
-import { FacilitySetupChecklist } from "@/components/onboarding/FacilitySetupChecklist";
+import { AdminOnboardingChecklist } from "@/components/onboarding/AdminOnboardingChecklist";
 import { apiFetch, isApiMode } from "@/lib/api";
 import { fetchSetupProgress } from "@/lib/onboardingService";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
@@ -1080,7 +1080,7 @@ export function OperationalDashboard({
   }, [variant, notifyReady]);
 
   const facilitySetupSlot =
-    variant === "live" && session && canAccessPulseTenantApis(session) ? <FacilitySetupChecklist /> : null;
+    variant === "live" && session && canAccessPulseTenantApis(session) ? <AdminOnboardingChecklist /> : null;
 
   if (variant === "demo") {
     return (

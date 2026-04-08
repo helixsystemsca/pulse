@@ -528,7 +528,7 @@ async def create_task(
     db.add(t)
     await db.flush()
     await proj_svc.ensure_calendar_shift_for_task(db, cid, t)
-    await try_mark_onboarding_step(db, str(actor.id), "first_maintenance")
+    await try_mark_onboarding_step(db, str(actor.id), "customize_workflow")
     await db.commit()
     await db.refresh(t)
     return await task_to_out_enriched(db, t)

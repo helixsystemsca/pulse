@@ -16,7 +16,7 @@ from app.services.onboarding_service import (
     ONBOARDING_STEP_KEYS,
     _normalize_steps,
     build_onboarding_state_out,
-    is_manager_onboarding_user,
+    is_company_admin_checklist_user,
     recompute_onboarding_completed,
     sync_user_onboarding_from_reality,
 )
@@ -30,6 +30,10 @@ def _state_to_out(raw: dict) -> OnboardingStateOut:
     return OnboardingStateOut(
         onboarding_enabled=raw["onboarding_enabled"],
         onboarding_completed=raw["onboarding_completed"],
+        org_onboarding_completed=raw["org_onboarding_completed"],
+        user_onboarding_tour_completed=raw["user_onboarding_tour_completed"],
+        onboarding_role=raw["onboarding_role"],
+        checklist_progress=raw.get("checklist_progress"),
         steps=[OnboardingStepOut(**s) for s in raw["steps"]],
         completed_count=raw["completed_count"],
         total_count=raw["total_count"],
@@ -54,10 +58,10 @@ async def post_onboarding_demo_data(
     db: Db,
     user: Annotated[User, Depends(get_current_company_user)],
 ) -> OnboardingStateOut:
-    if not is_manager_onboarding_user(user):
+    if not is_company_admin_checklist_user(user):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="demo_onboarding_requires_manager",
+            detail="demo_onboarding_requires_company_admin",
         )
     cid = str(user.company_id)
     c = await db.get(Company, cid)
@@ -83,7 +87,15 @@ async def patch_onboarding(
     if body.onboarding_seen is not None:
         user.onboarding_seen = bool(body.onboarding_seen)
 
+    if body.user_onboarding_tour_completed is not None:
+        user.user_onboarding_tour_completed = bool(body.user_onboarding_tour_completed)
+
     if body.step is not None:
+        if not is_company_admin_checklist_user(user):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="step_patch_requires_company_admin",
+            )
         if body.step not in ONBOARDING_STEP_KEYS:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="invalid_step")
         want = True if body.completed is None else bool(body.completed)

@@ -31,16 +31,10 @@ def _uuid() -> str:
 
 _ONBOARDING_STEPS_DEFAULT_JSON = json.dumps(
     [
-        {"key": "create_zone", "completed": False},
-        {"key": "add_device", "completed": False},
-        {"key": "add_equipment", "completed": False},
         {"key": "create_work_order", "completed": False},
-        {"key": "view_operations", "completed": False},
-        {"key": "complete_work_order", "completed": False},
-        {"key": "view_schedule", "completed": False},
-        {"key": "log_issue", "completed": False},
-        {"key": "add_workers", "completed": False},
-        {"key": "first_maintenance", "completed": False},
+        {"key": "add_equipment", "completed": False},
+        {"key": "invite_team", "completed": False},
+        {"key": "customize_workflow", "completed": False},
     ]
 )
 
@@ -226,6 +220,10 @@ class User(Base):
     )
     #: First-login product intro modal dismissed or skipped; independent of checklist completion.
     onboarding_seen: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
+    #: Non-admin role tour (modal slides) finished or skipped; independent of org admin checklist.
+    user_onboarding_tour_completed: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("false")
+    )
 
     company: Mapped[Optional[Company]] = relationship(
         back_populates="users",

@@ -1,19 +1,19 @@
 "use client";
 
 import { useOnboarding } from "./OnboardingProvider";
-import { OnboardingFirstLoginModal } from "./OnboardingFirstLoginModal";
+import { NonAdminOnboardingModal } from "./NonAdminOnboardingModal";
 import { OnboardingReminderBanner } from "./OnboardingReminderBanner";
 
 /**
- * Fixed-position onboarding UI: first-login intro (server `onboarding_seen`), reminder banner, toast.
- * The main setup checklist lives on the operations dashboard (`FacilitySetupChecklist`).
+ * Fixed-position onboarding UI: non-admin welcome tour modal, setup reminder banner (company admins), toast.
+ * The org checklist card lives on the operations dashboard (`AdminOnboardingChecklist`).
  */
 export function OnboardingChrome() {
   const { active, toastMessage, dismissToast } = useOnboarding();
 
   return (
     <>
-      <OnboardingFirstLoginModal />
+      <NonAdminOnboardingModal />
       {active ? <OnboardingReminderBanner /> : null}
       {toastMessage ? (
         <div className="pointer-events-auto fixed bottom-24 left-1/2 z-[125] w-[min(92vw,24rem)] -translate-x-1/2 px-2 sm:bottom-28">

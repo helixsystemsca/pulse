@@ -14,6 +14,7 @@ import { isApiMode } from "@/lib/api";
 import { fetchOnboarding, type OnboardingState } from "@/lib/onboardingService";
 import { PULSE_ONBOARDING_UPDATED_EVENT } from "@/lib/onboarding-events";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
+import { sessionHasAnyRole } from "@/lib/pulse-roles";
 
 type Ctx = {
   state: OnboardingState | null;
@@ -141,7 +142,11 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
   }, [toastMessage]);
 
   const active = Boolean(
-    tenantEligible && state?.onboarding_enabled && !state?.onboarding_completed,
+    tenantEligible &&
+      session &&
+      sessionHasAnyRole(session, "company_admin") &&
+      state?.onboarding_enabled &&
+      !state?.onboarding_completed,
   );
 
   const value = useMemo(
@@ -155,7 +160,7 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
       toastMessage,
       dismissToast,
     }),
-    [state, loading, reload, checklistExpanded, active, toastMessage, dismissToast],
+    [state, loading, reload, checklistExpanded, active, toastMessage, dismissToast, session],
   );
 
   return <OnboardingContext.Provider value={value}>{children}</OnboardingContext.Provider>;

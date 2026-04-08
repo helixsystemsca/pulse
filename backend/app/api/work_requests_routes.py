@@ -448,11 +448,9 @@ async def create_wr(
     db.add(wr)
     await db.flush()
     await _log(db, wr.id, "created", user.id, {"title": wr.title})
-    if is_field_worker_like(user):
-        await try_mark_onboarding_step(db, user.id, "log_issue")
-    else:
+    if not is_field_worker_like(user):
         await try_mark_onboarding_step(db, user.id, "create_work_order")
-        await try_mark_onboarding_step(db, user.id, "first_maintenance")
+        await try_mark_onboarding_step(db, user.id, "customize_workflow")
     await db.commit()
     await db.refresh(wr)
     return await _detail(db, cid, wr.id, user.id)
@@ -662,8 +660,6 @@ async def post_status(
     else:
         wr.completed_at = None
     await _log(db, wr_id, "status_changed", user.id, {"from": old.value, "to": body.status.value})
-    if body.status == PulseWorkRequestStatus.completed and old != PulseWorkRequestStatus.completed:
-        await try_mark_onboarding_step(db, user.id, "complete_work_order")
     await db.commit()
     await db.refresh(wr)
     return await _detail(db, cid, wr_id)

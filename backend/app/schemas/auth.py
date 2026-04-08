@@ -54,6 +54,8 @@ class UserOut(BaseModel):
     onboarding_completed: bool = False
     #: True after user dismisses the first-login intro (or skipped); not the same as checklist completion.
     onboarding_seen: bool = True
+    #: Non-admin modal tour complete or skipped (distinct from org admin checklist).
+    user_onboarding_tour_completed: bool = False
     #: Effective permission strings for tenant UI (`["*"]` = full access). Omitted for system operators without a tenant session.
     permissions: Optional[list[str]] = None
     #: Current server time (UTC ISO-8601) for client clock sync; not persisted on the user row.
