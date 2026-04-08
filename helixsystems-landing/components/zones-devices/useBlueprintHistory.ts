@@ -11,6 +11,7 @@ function cloneElementsForHistory(elements: BlueprintElement[]): BlueprintElement
     ...el,
     path_points: el.path_points ? el.path_points.slice() : undefined,
     symbol_tags: el.symbol_tags ? el.symbol_tags.slice() : undefined,
+    children: el.children ? el.children.slice() : undefined,
   }));
 }
 

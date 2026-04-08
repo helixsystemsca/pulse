@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from typing import Optional
 from uuid import uuid4
 
-from sqlalchemy import DateTime, Float, ForeignKey, String, Text
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -75,5 +75,12 @@ class BlueprintElement(Base):
     symbol_type: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
     symbol_tags: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     symbol_notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    locked: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    # JSON array of child element UUID strings for `element_type="group"`
+    children_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    # `element_type="connection"`: orthogonal polyline endpoints, optional metadata
+    connection_from_id: Mapped[Optional[str]] = mapped_column(UUID(as_uuid=False), nullable=True)
+    connection_to_id: Mapped[Optional[str]] = mapped_column(UUID(as_uuid=False), nullable=True)
+    connection_style: Mapped[Optional[str]] = mapped_column(String(16), nullable=True)
 
     blueprint: Mapped["Blueprint"] = relationship(back_populates="elements")

@@ -2,22 +2,30 @@
  * Frontend blueprint element (API uses the same shape; optional fields match OpenAPI).
  * Design-tool mental model: `zone` ≈ room, `path` ≈ closed free-hand shape (free draw), `symbol` = placed icon.
  */
+export type ConnectionStyle = "electrical" | "plumbing";
+
 export type BlueprintElement = {
   id: string;
-  type: "zone" | "device" | "door" | "path" | "symbol";
+  type: "zone" | "device" | "door" | "path" | "symbol" | "group" | "connection";
   x: number;
   y: number;
   width?: number;
   height?: number;
   name?: string;
   rotation?: number;
+  locked?: boolean;
+  /** Child element ids when `type === "group"` (order preserved). */
+  children?: string[];
   linked_device_id?: string;
   assigned_zone_id?: string;
   device_kind?: string;
   /** Door on zone wall: "{zoneElementId}:{edge0-3}:{t01}" */
   wall_attachment?: string;
-  /** Flat x,y pairs (world), closed polygon without repeating first vertex */
+  /** Flat x,y pairs: closed polygon for `path` / zone outline; open orthogonal polyline for `connection`. */
   path_points?: number[];
+  connection_from?: string;
+  connection_to?: string;
+  connection_style?: ConnectionStyle;
   /** Symbol discriminator (extensible; built-ins listed in SYMBOL_LIBRARY) */
   symbol_type?: string;
   symbol_tags?: string[];

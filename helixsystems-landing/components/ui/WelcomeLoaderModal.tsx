@@ -28,23 +28,59 @@ export type WelcomeLoaderModalProps = {
 const WELCOME_HOLD_MS = 4000;
 const EXIT_MS = 300;
 
-/** Minimum counts to swap the time-of-day line for alert-aware copy. */
+/** Minimum counts for alert-aware status row copy. */
 const CRITICAL_GREETING_THRESHOLD = 1;
 const WARNING_GREETING_THRESHOLD = 1;
 
-const criticalMessages = [
-  "A few things need you sooner than later",
-  "Operations pinged — worth a quick sweep",
-  "We’ve got some red on the board — let’s triage",
-  "Heads up: a couple of urgent items are waving",
-];
+type WelcomeTimeBand = "morning" | "afternoon" | "evening";
 
-const warningMessages = [
-  "Nothing scary — just a few yellow flags up",
-  "Mostly calm, with a little nudge from alerts",
-  "A gentle tap from ops — worth a peek",
-  "Light housekeeping on the board today",
-];
+function welcomeTimeBand(date = new Date()): WelcomeTimeBand {
+  const h = date.getHours();
+  if (h < 12) return "morning";
+  if (h < 17) return "afternoon";
+  return "evening";
+}
+
+/** Short second-line copy under the time-based greeting; tone leans by local time of day. */
+const welcomeMessages: Record<WelcomeTimeBand, readonly string[]> = {
+  morning: [
+    "Let's make today count.",
+    "Focus mode: on.",
+    "You've got momentum—keep it going.",
+    "Let's get after it.",
+    "Today's a good day to win.",
+    "Let's build something great.",
+    "Another step forward.",
+    "Locked in.",
+  ],
+  afternoon: [
+    "You're in control today.",
+    "Small wins add up.",
+    "Let's build something great.",
+    "Progress over perfection.",
+    "Execute with intent.",
+    "Stay sharp.",
+    "Make it happen.",
+    "Keep pushing forward.",
+    "Locked in.",
+    "Focus mode: on.",
+  ],
+  evening: [
+    "Progress over perfection.",
+    "Another step forward.",
+    "Small wins add up.",
+    "Keep pushing forward.",
+    "You're in control today.",
+    "Let's build something great.",
+  ],
+};
+
+export function pickWelcomeMessage(date = new Date()): string {
+  const band = welcomeTimeBand(date);
+  const list = welcomeMessages[band];
+  const i = Math.floor(Math.random() * list.length);
+  return list[i] ?? "Let's make today count.";
+}
 
 function firstNameOnly(displayName: string): string {
   const t = displayName.trim();
@@ -60,23 +96,13 @@ export function timeOfDayGreeting(date = new Date()): string {
   return "Good evening";
 }
 
-function pickContextGreeting(criticalCount: number, warningCount: number): string {
-  if (criticalCount >= CRITICAL_GREETING_THRESHOLD) {
-    return criticalMessages[Math.floor(Math.random() * criticalMessages.length)] ?? timeOfDayGreeting();
-  }
-  if (warningCount >= WARNING_GREETING_THRESHOLD) {
-    return warningMessages[Math.floor(Math.random() * warningMessages.length)] ?? timeOfDayGreeting();
-  }
-  return timeOfDayGreeting();
-}
-
 function MiniDotLoader() {
   return (
-    <div className="flex shrink-0 items-center gap-1 pt-0.5" aria-hidden>
+    <div className="flex shrink-0 items-center gap-1.5" aria-hidden>
       {[0, 1, 2].map((i) => (
         <motion.span
           key={i}
-          className="h-1.5 w-1.5 rounded-full bg-slate-600/70 dark:bg-white/45"
+          className="h-2 w-2 rounded-full bg-slate-600/70 dark:bg-white/45"
           animate={{ opacity: [0.25, 0.95, 0.25], scale: [0.92, 1, 0.92] }}
           transition={{
             duration: 1.4,
@@ -126,8 +152,8 @@ export function WelcomeLoaderModal({
   const [skipEntirely, setSkipEntirely] = useState(false);
   const [open, setOpen] = useState(true);
   const [content, setContent] = useState<"loading" | "ready">("loading");
-  const [headlineGreeting, setHeadlineGreeting] = useState("");
-  const greetingPickedRef = useRef(false);
+  const [welcomeSubline, setWelcomeSubline] = useState("");
+  const welcomeLinePickedRef = useRef(false);
 
   useEffect(() => {
     setHydrated(true);
@@ -144,9 +170,9 @@ export function WelcomeLoaderModal({
   useEffect(() => {
     if (!hydrated || skipEntirely || !isReady) return;
 
-    if (!greetingPickedRef.current) {
-      greetingPickedRef.current = true;
-      setHeadlineGreeting(pickContextGreeting(criticalCount, warningCount));
+    if (!welcomeLinePickedRef.current) {
+      welcomeLinePickedRef.current = true;
+      setWelcomeSubline(pickWelcomeMessage());
     }
 
     setContent("ready");
@@ -160,14 +186,14 @@ export function WelcomeLoaderModal({
     }, WELCOME_HOLD_MS);
 
     return () => clearTimeout(t);
-  }, [hydrated, isReady, skipEntirely, storageKey, criticalCount, warningCount]);
+  }, [hydrated, isReady, skipEntirely, storageKey]);
 
   if (!hydrated || skipEntirely) {
     return null;
   }
 
   const firstName = firstNameOnly(userName);
-  const greeting = headlineGreeting || timeOfDayGreeting();
+  const greeting = timeOfDayGreeting();
   const phase = content;
   const status = statusForPhase(phase, criticalCount, warningCount);
 
@@ -189,7 +215,7 @@ export function WelcomeLoaderModal({
           aria-modal="true"
           aria-labelledby="welcome-loader-title"
           aria-busy={content === "loading"}
-          className="pointer-events-none fixed inset-0 z-[200] flex items-center justify-center p-6"
+          className="pointer-events-none fixed inset-0 z-[200] flex items-center justify-center p-5 sm:p-8"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -203,24 +229,24 @@ export function WelcomeLoaderModal({
 
           <motion.div
             layout
-            className="pointer-events-none relative w-full max-w-md rounded-[24px] border border-gray-200/80 bg-white/80 px-7 py-7 text-gray-900 shadow-[0_10px_40px_rgba(0,0,0,0.12)] backdrop-blur-xl dark:border-[#1F2937]/90 dark:bg-[#121821]/90 dark:text-gray-100 dark:shadow-[0_10px_40px_rgba(0,0,0,0.45)] dark:backdrop-blur-2xl sm:px-8 sm:py-8"
+            className="pointer-events-none relative w-full max-w-xl rounded-[28px] border border-gray-200/80 bg-white/80 px-9 py-9 text-gray-900 shadow-[0_14px_48px_rgba(0,0,0,0.14)] backdrop-blur-xl dark:border-[#1F2937]/90 dark:bg-[#121821]/90 dark:text-gray-100 dark:shadow-[0_14px_48px_rgba(0,0,0,0.48)] dark:backdrop-blur-2xl sm:px-10 sm:py-10"
             initial={{ opacity: 0, scale: 0.96, y: 8 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.98, y: 4 }}
             transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
           >
             <div
-              className="pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-gray-300/60 to-transparent dark:via-white/12"
+              className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-gray-300/60 to-transparent dark:via-white/12 sm:inset-x-10"
               aria-hidden
             />
 
-            <div className="flex gap-4">
+            <div className="flex items-center gap-5">
               <div
-                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-gray-200/90 bg-gray-50/90 dark:border-[#1F2937] dark:bg-[#0F172A]/80"
+                className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl border border-gray-200/90 bg-gray-50/90 dark:border-[#1F2937] dark:bg-[#0F172A]/80"
                 aria-hidden
               >
                 <Activity
-                  className="h-5 w-5 text-gray-800 dark:text-gray-200"
+                  className="h-6 w-6 text-gray-800 dark:text-gray-200"
                   strokeWidth={1.75}
                 />
               </div>
@@ -237,11 +263,11 @@ export function WelcomeLoaderModal({
                     >
                       <p
                         id="welcome-loader-title"
-                        className="font-headline text-[15px] font-semibold leading-snug tracking-tight text-gray-900 dark:text-white sm:text-base"
+                        className="font-headline text-base font-semibold leading-snug tracking-tight text-gray-900 dark:text-white sm:text-lg"
                       >
                         Preparing your workspace…
                       </p>
-                      <p className="mt-1 text-xs font-normal leading-relaxed text-gray-600 dark:text-gray-300">
+                      <p className="mt-1.5 text-sm font-normal leading-relaxed text-gray-600 dark:text-gray-300 sm:text-[15px]">
                         Gathering the latest from your operation
                       </p>
                     </motion.div>
@@ -255,12 +281,12 @@ export function WelcomeLoaderModal({
                     >
                       <h2
                         id="welcome-loader-title"
-                        className="font-headline text-[17px] font-semibold leading-snug tracking-tight text-gray-900 dark:text-white sm:text-lg"
+                        className="font-headline text-xl font-semibold leading-snug tracking-tight text-gray-900 dark:text-white sm:text-2xl"
                       >
                         {greeting}, {firstName}
                       </h2>
-                      <p className="mt-1.5 font-headline text-sm font-medium text-gray-600 dark:text-gray-300">
-                        Let&apos;s get to work!
+                      <p className="mt-2 font-headline text-base font-medium text-gray-600 dark:text-gray-300 sm:text-[17px]">
+                        {welcomeSubline || "Let's make today count."}
                       </p>
                     </motion.div>
                   )}
@@ -270,11 +296,11 @@ export function WelcomeLoaderModal({
               <MiniDotLoader />
             </div>
 
-            <div className="mt-6">
-              <p className="mb-2 text-[11px] font-medium uppercase tracking-wider text-slate-500/80 dark:text-white/40">
+            <div className="mt-8">
+              <p className="mb-2.5 text-xs font-medium uppercase tracking-wider text-slate-500/80 dark:text-white/40 sm:text-[13px]">
                 {content === "loading" ? "Loading" : "Ready"}
               </p>
-              <div className="h-1 overflow-hidden rounded-full bg-black/[0.08] dark:bg-white/10">
+              <div className="h-1.5 overflow-hidden rounded-full bg-black/[0.08] dark:bg-white/10">
                 <motion.div
                   className="h-full rounded-full bg-gradient-to-r from-cyan-400/55 via-teal-500/45 to-teal-400/50 dark:from-cyan-400/50 dark:via-teal-500/40 dark:to-cyan-500/45"
                   initial={false}
@@ -301,24 +327,24 @@ export function WelcomeLoaderModal({
             </div>
 
             <motion.div
-              className={`mt-5 flex items-start gap-2 text-left text-xs font-medium leading-relaxed ${statusRowClass}`}
+              className={`mt-6 flex items-start gap-2.5 text-left text-sm font-medium leading-relaxed ${statusRowClass}`}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.12, duration: 0.35 }}
             >
               {status.kind === "critical" ? (
-                <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 opacity-90" strokeWidth={2} aria-hidden />
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 opacity-90" strokeWidth={2} aria-hidden />
               ) : status.kind === "warning" ? (
-                <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 opacity-90" strokeWidth={2} aria-hidden />
+                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 opacity-90" strokeWidth={2} aria-hidden />
               ) : status.kind === "loading" ? (
                 <motion.span
-                  className="mt-0.5 block h-3.5 w-3.5 shrink-0 rounded-full border-2 border-slate-400/45 border-t-slate-700/80 dark:border-white/25 dark:border-t-white/70"
+                  className="mt-0.5 block h-4 w-4 shrink-0 rounded-full border-2 border-slate-400/45 border-t-slate-700/80 dark:border-white/25 dark:border-t-white/70"
                   animate={{ rotate: 360 }}
                   transition={{ duration: 1.8, repeat: Infinity, ease: "linear" }}
                   aria-hidden
                 />
               ) : (
-                <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 opacity-90" strokeWidth={2.5} aria-hidden />
+                <Check className="mt-0.5 h-4 w-4 shrink-0 opacity-90" strokeWidth={2.5} aria-hidden />
               )}
               <span>{status.message}</span>
             </motion.div>

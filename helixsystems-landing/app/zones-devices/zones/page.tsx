@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { FloorPlanBlueprintSection } from "@/components/zones-devices/FloorPlanBlueprintSection";
 import { ModuleOnboardingHint } from "@/components/onboarding/ModuleOnboardingHint";
 import { isApiMode } from "@/lib/api";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
@@ -93,6 +94,14 @@ export default function ZonesDevicesZonesPage() {
           under <strong>Setup</strong>. Blueprints sync to the server when you are signed in with a company
           account (API mode).
         </p>
+      </motion.div>
+      <motion.div
+        className="mt-6"
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: bpDuration.slow, ease: bpEase, delay: 0.06 }}
+      >
+        <FloorPlanBlueprintSection />
       </motion.div>
     </>
   );

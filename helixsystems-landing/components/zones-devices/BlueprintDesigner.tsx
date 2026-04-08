@@ -11,9 +11,35 @@ import { canAccessPulseTenantApis, readSession } from "@/lib/pulse-session";
 import { emitOnboardingMaybeUpdated } from "@/lib/onboarding-events";
 import { freehandOptionsFromSlider, processFreehandPath } from "@/lib/blueprint-freehand-path";
 import { mergeZonesUnion } from "@/lib/blueprint-zone-union";
+import {
+  blueprintConnectionPairKey,
+  blueprintConnectEndpointIdsInOrder,
+  buildOrthogonalConnectionPath,
+  existingConnectionPairKeys,
+  isBlueprintConnectEndpoint,
+  makeConnectionElement,
+} from "@/lib/blueprint-connect-routing";
+import {
+  blueprintIdsEligibleToFormGroup,
+  buildBlueprintChildToGroupMap,
+  canonicalizeBlueprintSelectionIds,
+  computeBlueprintGroupBounds,
+  expandBlueprintSelectionForDeletion,
+  expandBlueprintSelectionToEditableIds,
+  isBlueprintElementEffectivelyLocked,
+  resolveBlueprintGroupDragMembers,
+  resolveBlueprintHitToSelectionId,
+  syncBlueprintGroupBounds,
+} from "@/lib/blueprint-groups";
 import { bpDuration, bpEase, bpTransition } from "@/lib/motion-presets";
-import type { BlueprintDesignerTool, BlueprintElement, TaskOverlay } from "./blueprint-types";
-export type { BlueprintElement, BlueprintState, BlueprintHistoryState, TaskOverlay } from "./blueprint-types";
+import type { BlueprintDesignerTool, BlueprintElement, ConnectionStyle, TaskOverlay } from "./blueprint-types";
+export type {
+  BlueprintElement,
+  BlueprintState,
+  BlueprintHistoryState,
+  ConnectionStyle,
+  TaskOverlay,
+} from "./blueprint-types";
 import { BlueprintSymbolPanel } from "./BlueprintSymbolPanel";
 import { BlueprintTasksPanel } from "./BlueprintTasksPanel";
 import { BlueprintToolRail } from "./BlueprintToolRail";
@@ -28,13 +54,14 @@ type DeviceKind = "pump" | "tank" | "sensor" | "generic";
 type BlueprintSummary = { id: string; name: string; created_at: string };
 type ApiElement = {
   id: string;
-  type: "zone" | "device" | "door" | "path" | "symbol";
+  type: "zone" | "device" | "door" | "path" | "symbol" | "group" | "connection";
   x: number;
   y: number;
   width?: number | null;
   height?: number | null;
   name?: string | null;
   rotation?: number;
+  locked?: boolean | null;
   linked_device_id?: string | null;
   assigned_zone_id?: string | null;
   device_kind?: string | null;
@@ -43,6 +70,10 @@ type ApiElement = {
   symbol_type?: string | null;
   symbol_tags?: string[] | null;
   symbol_notes?: string | null;
+  children?: string[] | null;
+  connection_from?: string | null;
+  connection_to?: string | null;
+  connection_style?: string | null;
 };
 
 type ApiTask = {
@@ -656,8 +687,26 @@ const ZOOM_MAX = 3;
 const NUDGE_WORLD = 8;
 const UNDO_HISTORY_MAX = 50;
 
+/** World-space offset for Shift+drag duplicates so the copy is visible from the original. */
+const SHIFT_DUP_NUDGE = 10;
+
 /** Axis-aligned world bounds for marquee / selection union. */
 function elementWorldAabb(el: BlueprintElement): { L: number; R: number; T: number; B: number } | null {
+  if (el.type === "connection" && el.path_points && el.path_points.length >= 4) {
+    const pts = el.path_points;
+    let L = Infinity;
+    let R = -Infinity;
+    let T = Infinity;
+    let B = -Infinity;
+    for (let i = 0; i + 1 < pts.length; i += 2) {
+      L = Math.min(L, pts[i]!);
+      R = Math.max(R, pts[i]!);
+      T = Math.min(T, pts[i + 1]!);
+      B = Math.max(B, pts[i + 1]!);
+    }
+    if (!Number.isFinite(L)) return null;
+    return { L, R, T, B };
+  }
   if (el.type === "path" && el.path_points && el.path_points.length >= 6) {
     const pts = el.path_points;
     let L = Infinity;
@@ -690,6 +739,11 @@ function elementWorldAabb(el: BlueprintElement): { L: number; R: number; T: numb
     return { L: Math.min(...wx), R: Math.max(...wx), T: Math.min(...wy), B: Math.max(...wy) };
   }
   if (el.type === "zone") return zoneAabb(el);
+  if (el.type === "group") {
+    const w = el.width ?? 1;
+    const h = el.height ?? 1;
+    return { L: el.x, R: el.x + w, T: el.y, B: el.y + h };
+  }
   const w = el.width ?? DEVICE_DEFAULT;
   const h = el.height ?? DEVICE_DEFAULT;
   const rad = ((el.rotation ?? 0) * Math.PI) / 180;
@@ -753,6 +807,7 @@ function mapApiElement(e: ApiElement): BlueprintElement {
     height: e.height ?? undefined,
     name: e.name ?? undefined,
     rotation: e.rotation ?? 0,
+    locked: e.locked === true ? true : undefined,
     linked_device_id: e.linked_device_id ?? undefined,
     assigned_zone_id: e.assigned_zone_id ?? undefined,
     device_kind: e.device_kind ?? undefined,
@@ -761,6 +816,13 @@ function mapApiElement(e: ApiElement): BlueprintElement {
     symbol_type: e.symbol_type ?? undefined,
     symbol_tags: e.symbol_tags ?? undefined,
     symbol_notes: e.symbol_notes ?? undefined,
+    children: e.type === "group" && Array.isArray(e.children) ? e.children.map(String) : undefined,
+    connection_from: e.connection_from ?? undefined,
+    connection_to: e.connection_to ?? undefined,
+    connection_style:
+      e.type === "connection" && (e.connection_style === "electrical" || e.connection_style === "plumbing")
+        ? e.connection_style
+        : undefined,
   };
 }
 
@@ -773,6 +835,7 @@ function toApiPayload(elements: BlueprintElement[]) {
     width: el.width ?? null,
     height: el.height ?? null,
     rotation: el.rotation ?? 0,
+    locked: el.locked === true,
     name: el.name ?? null,
     linked_device_id: el.linked_device_id ?? null,
     assigned_zone_id: el.assigned_zone_id ?? null,
@@ -782,7 +845,37 @@ function toApiPayload(elements: BlueprintElement[]) {
     symbol_type: el.symbol_type ?? null,
     symbol_tags: el.symbol_tags ?? null,
     symbol_notes: el.symbol_notes ?? null,
+    children: el.type === "group" && el.children?.length ? el.children : null,
+    connection_from: el.type === "connection" ? el.connection_from ?? null : null,
+    connection_to: el.type === "connection" ? el.connection_to ?? null : null,
+    connection_style: el.type === "connection" ? el.connection_style ?? null : null,
   }));
+}
+
+/** Deep-enough clone for Shift+drag duplicate (new id, nudged geometry, doors lose wall attachment). */
+function cloneBlueprintElementForShiftDup(el: BlueprintElement, dx: number, dy: number): BlueprintElement {
+  const id = crypto.randomUUID();
+  if (el.type === "door") {
+    const { wall_attachment: _wa, ...rest } = el;
+    return { ...rest, id, x: el.x + dx, y: el.y + dy };
+  }
+  const base: BlueprintElement = {
+    ...el,
+    id,
+    path_points: el.path_points ? [...el.path_points] : undefined,
+    symbol_tags: el.symbol_tags ? [...el.symbol_tags] : undefined,
+  };
+  if ((el.type === "zone" || el.type === "path") && el.path_points && el.path_points.length >= 6) {
+    const flat = el.path_points.map((v, i) => (i % 2 === 0 ? v + dx : v + dy));
+    const bb = bboxFromPathPoints(flat);
+    return { ...base, path_points: flat, x: bb.minX, y: bb.minY, width: bb.w, height: bb.h };
+  }
+  if (el.type === "connection" && el.path_points && el.path_points.length >= 4) {
+    const flat = el.path_points.map((v, i) => (i % 2 === 0 ? v + dx : v + dy));
+    const bb = bboxFromPathPoints(flat);
+    return { ...base, path_points: flat, x: bb.minX, y: bb.minY, width: bb.w, height: bb.h };
+  }
+  return { ...base, x: el.x + dx, y: el.y + dy };
 }
 
 function nextRoomLabel(elements: BlueprintElement[]): string {
@@ -1034,6 +1127,8 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
   const [freehandTune, setFreehandTune] = useState<{ id: string; raw: number[] } | null>(null);
   const [freehandSlider, setFreehandSlider] = useState(52);
   const [doorWidthUnit, setDoorWidthUnit] = useState<"ft" | "m">("ft");
+  const [connectStyle, setConnectStyle] = useState<ConnectionStyle>("electrical");
+  const connectStyleRef = useRef<ConnectionStyle>("electrical");
   const [blueprintId, setBlueprintId] = useState<string | null>(null);
   const [blueprintName, setBlueprintName] = useState("Untitled blueprint");
   const [list, setList] = useState<BlueprintSummary[]>([]);
@@ -1086,6 +1181,14 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
   const stageScaleRef = useRef(stageScale);
   type GroupDragState = { primaryId: string; starts: Map<string, { x: number; y: number }>; pathFlats: Map<string, number[]> };
   const groupDragRef = useRef<GroupDragState | null>(null);
+  type ShiftDupSession = {
+    oldToNew: Map<string, string>;
+    primaryOld: string;
+    primaryNew: string;
+    primaryNodeStart: { x: number; y: number };
+    cloneStarts: Map<string, { x: number; y: number; pathFlat?: number[] }>;
+  };
+  const shiftDupSessionRef = useRef<ShiftDupSession | null>(null);
   const transformUndoPrimedRef = useRef(false);
   const linkingForTaskIdRef = useRef<string | null>(null);
 
@@ -1120,7 +1223,8 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
   const commitElements = useCallback(
     (updater: BlueprintElement[] | ((p: BlueprintElement[]) => BlueprintElement[])) => {
       updateBlueprint((bp) => {
-        const next = typeof updater === "function" ? updater(bp.elements) : updater;
+        const next0 = typeof updater === "function" ? updater(bp.elements) : updater;
+        const next = syncBlueprintGroupBounds(next0);
         const idSet = new Set(next.map((e) => e.id));
         const nextTasks = bp.tasks.map((t) => ({
           ...t,
@@ -1299,9 +1403,36 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
   useEffect(() => {
     stagePosRef.current = stagePos;
   }, [stagePos]);
+  useEffect(() => {
+    connectStyleRef.current = connectStyle;
+  }, [connectStyle]);
 
-  const selectionBounds =
-    selectedIds.length > 1 ? unionSelectionAabb(new Set(selectedIds), elements) : null;
+  const selectionBounds = useMemo(() => {
+    if (selectedIds.length > 1) return unionSelectionAabb(new Set(selectedIds), elements);
+    if (selectedIds.length === 1) {
+      const el = elements.find((e) => e.id === selectedIds[0]);
+      if (el?.type === "group") {
+        const a = elementWorldAabb(el);
+        if (a) return a;
+      }
+    }
+    return null;
+  }, [selectedIds, elements]);
+
+  const canGroupPick = useMemo(
+    () => blueprintIdsEligibleToFormGroup(elements, selectedIds),
+    [elements, selectedIds],
+  );
+
+  const canConnectSelection = useMemo(() => {
+    const ids = selectedIds.filter((id) => {
+      const el = elements.find((e) => e.id === id);
+      return (
+        el && isBlueprintConnectEndpoint(el) && !isBlueprintElementEffectivelyLocked(elements, el)
+      );
+    });
+    return ids.length >= 2;
+  }, [elements, selectedIds]);
 
   const zonesInSelection = useMemo(() => {
     return selectedIds
@@ -1340,6 +1471,91 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
     setSnapGuides([]);
   }, [zonesInSelection, commitElements, checkpointBlueprint]);
 
+  const groupSelected = useCallback(() => {
+    const pick = blueprintIdsEligibleToFormGroup(elementsRef.current, selectedIdsRef.current);
+    if (!pick) return;
+    checkpointBlueprint();
+    const gid = crypto.randomUUID();
+    const bb = computeBlueprintGroupBounds(elementsRef.current, pick);
+    if (!bb) return;
+    const groupEl: BlueprintElement = {
+      id: gid,
+      type: "group",
+      x: bb.x,
+      y: bb.y,
+      width: bb.width,
+      height: bb.height,
+      rotation: 0,
+      children: pick,
+    };
+    commitElements((prev) => [...prev, groupEl]);
+    setSelectedIds([gid]);
+    setSnapGuides([]);
+  }, [checkpointBlueprint, commitElements]);
+
+  const ungroupSelected = useCallback(() => {
+    const sid = selectedIdsRef.current.length === 1 ? selectedIdsRef.current[0] : null;
+    if (!sid) return;
+    const cur = elementsRef.current;
+    const el = cur.find((e) => e.id === sid);
+    if (el?.type !== "group" || !el.children?.length) return;
+    checkpointBlueprint();
+    const childIds = [...el.children];
+    commitElements((prev) => prev.filter((e) => e.id !== sid));
+    setSelectedIds(childIds);
+    setSnapGuides([]);
+  }, [checkpointBlueprint, commitElements]);
+
+  const toggleLockSelection = useCallback(() => {
+    const ids = selectedIdsRef.current;
+    if (ids.length === 0) return;
+    const cur = elementsRef.current;
+    const anyUnlocked = ids.some((id) => {
+      const row = cur.find((x) => x.id === id);
+      return row && !row.locked;
+    });
+    const nextLocked = anyUnlocked;
+    checkpointBlueprint();
+    commitElements((prev) => prev.map((e) => (ids.includes(e.id) ? { ...e, locked: nextLocked } : e)));
+  }, [checkpointBlueprint, commitElements]);
+
+  const connectSelectedEndpoints = useCallback(() => {
+    const cur = elementsRef.current;
+    const ordered = blueprintConnectEndpointIdsInOrder(selectedIdsRef.current, cur, true);
+    if (ordered.length < 2) return;
+    const keys = existingConnectionPairKeys(cur);
+    const style = connectStyleRef.current;
+    const toAdd: BlueprintElement[] = [];
+    for (let i = 0; i + 1 < ordered.length; i++) {
+      const fromId = ordered[i]!;
+      const toId = ordered[i + 1]!;
+      const pk = blueprintConnectionPairKey(fromId, toId);
+      if (keys.has(pk)) continue;
+      keys.add(pk);
+      const flat = buildOrthogonalConnectionPath({
+        elements: cur,
+        fromId,
+        toId,
+        snapToGrid: true,
+      });
+      if (!flat || flat.length < 4) continue;
+      toAdd.push(
+        makeConnectionElement({
+          id: crypto.randomUUID(),
+          fromId,
+          toId,
+          flatPoints: flat,
+          style,
+        }),
+      );
+    }
+    if (toAdd.length === 0) return;
+    checkpointBlueprint();
+    commitElements((prev) => [...prev, ...toAdd]);
+    setSelectedIds(toAdd.map((e) => e.id));
+    setSnapGuides([]);
+  }, [checkpointBlueprint, commitElements]);
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const t = e.target;
@@ -1357,6 +1573,17 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
         redo();
         return;
       }
+      if (mod && e.key.toLowerCase() === "g") {
+        e.preventDefault();
+        if (e.shiftKey) ungroupSelected();
+        else groupSelected();
+        return;
+      }
+      if (mod && e.key.toLowerCase() === "l") {
+        e.preventDefault();
+        toggleLockSelection();
+        return;
+      }
 
       if (e.key === "Escape") {
         e.preventDefault();
@@ -1372,7 +1599,7 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
       if (e.key === "Delete" || e.key === "Backspace") {
         if (selectedIdsRef.current.length === 0) return;
         e.preventDefault();
-        const drop = new Set(selectedIdsRef.current);
+        const drop = expandBlueprintSelectionForDeletion(elementsRef.current, selectedIdsRef.current);
         commitElements((prev) => relayoutAllDoors(prev.filter((el) => !drop.has(el.id))));
         setSelectedIds([]);
         setSnapGuides([]);
@@ -1389,10 +1616,11 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
       else if (e.key === "ArrowDown") dy = step;
       else return;
       e.preventDefault();
-      const idSet = new Set(ids);
+      const idSet = expandBlueprintSelectionToEditableIds(elementsRef.current, ids);
       commitElements((prev) => {
         const next = prev.map((el) => {
           if (!idSet.has(el.id)) return el;
+          if (isBlueprintElementEffectivelyLocked(prev, el)) return el;
           if (el.type === "door") return el;
           if (el.type === "path" && el.path_points && el.path_points.length >= 6) {
             const flat = el.path_points.map((v, i) => (i % 2 === 0 ? v + dx : v + dy));
@@ -1410,12 +1638,12 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
         for (const el of next) {
           if (idSet.has(el.id) && el.type === "zone") out = relayoutAttachedDoors(out, el.id);
         }
-        return relayoutAllDoors(out);
+        return syncBlueprintGroupBounds(relayoutAllDoors(out));
       });
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [undo, redo, commitElements]);
+  }, [undo, redo, commitElements, groupSelected, ungroupSelected, toggleLockSelection]);
   const pubLine = (v: number) => v * (isPublish ? 1.42 : 1);
   const pubFs = (v: number) => v * (isPublish ? 1.2 : 1);
   const symScale = isPublish ? 1.12 : 1;
@@ -1910,27 +2138,27 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
   const initMultiDragIfNeeded = useCallback((primaryId: string) => {
     const currentElements = elementsRef.current;
     const ids = selectedIdsRef.current;
-    if (ids.length < 2 || !ids.includes(primaryId)) {
+    const resolved = resolveBlueprintGroupDragMembers(currentElements, ids, primaryId);
+    if (!resolved) {
       groupDragRef.current = null;
       return;
     }
+    const memberIds = resolved.kind === "group" ? resolved.memberIds : resolved.ids;
     const starts = new Map<string, { x: number; y: number }>();
     const pathFlats = new Map<string, number[]>();
-    for (const id of ids) {
+    for (const id of memberIds) {
       const o = currentElements.find((x) => x.id === id);
-      if (!o || o.type === "door") continue;
+      if (!o || o.type === "door" || o.type === "connection") continue;
+      if (isBlueprintElementEffectivelyLocked(currentElements, o)) continue;
       if (o.type === "path" && o.path_points && o.path_points.length >= 6) {
-        /** Free-draw paths render as a `Line` at origin with absolute `points` — match Konva node for multi-drag. */
+        starts.set(id, { x: 0, y: 0 });
+        pathFlats.set(id, [...o.path_points]);
+      } else if (o.type === "zone" && zonePolygonFlat(o) && o.path_points) {
         starts.set(id, { x: 0, y: 0 });
         pathFlats.set(id, [...o.path_points]);
       } else {
         starts.set(id, { x: o.x, y: o.y });
       }
-    }
-    const prim = currentElements.find((x) => x.id === primaryId);
-    if (prim && prim.type === "zone" && zonePolygonFlat(prim) && ids.length > 1) {
-      groupDragRef.current = null;
-      return;
     }
     if (!starts.has(primaryId)) {
       groupDragRef.current = null;
@@ -1960,12 +2188,22 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
         }));
         return;
       }
+      const cur = elementsRef.current;
+      const hitEl = cur.find((x) => x.id === id);
+      if (hitEl && isBlueprintElementEffectivelyLocked(cur, hitEl)) return;
+
+      const resolved = resolveBlueprintHitToSelectionId(cur, id);
       const ne = e.evt as MouseEvent | TouchEvent;
       const shift = "shiftKey" in ne ? ne.shiftKey : false;
       if (shift) {
-        setSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+        setSelectedIds((prev) => {
+          const cand = prev.includes(resolved)
+            ? prev.filter((x) => x !== resolved)
+            : [...prev, resolved];
+          return canonicalizeBlueprintSelectionIds(cur, cand);
+        });
       } else {
-        setSelectedIds([id]);
+        setSelectedIds([resolved]);
       }
       setTaskStepPin(null);
     },
@@ -2014,7 +2252,14 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
       const R = Math.max(x0, w.x);
       const T = Math.min(y0, w.y);
       const B = Math.max(y0, w.y);
-      const picked = elementIdsInMarquee(elementsRef.current, { L, R, T, B });
+      const rawPicked0 = elementIdsInMarquee(elementsRef.current, { L, R, T, B });
+      const picked = canonicalizeBlueprintSelectionIds(
+        elementsRef.current,
+        rawPicked0.filter((pid) => {
+          const hit = elementsRef.current.find((e) => e.id === pid);
+          return hit && !isBlueprintElementEffectivelyLocked(elementsRef.current, hit);
+        }),
+      );
       if (ev.shiftKey) setSelectedIds((prev) => [...new Set([...prev, ...picked])]);
       else setSelectedIds(picked);
     };
@@ -2033,7 +2278,7 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
     replaceElements((prev) => {
       let next = prev.map((row) => {
         if (!g.starts.has(row.id)) return row;
-        if (row.type === "path" && g.pathFlats.has(row.id)) {
+        if ((row.type === "path" || row.type === "zone") && g.pathFlats.has(row.id)) {
           const flat = g.pathFlats.get(row.id)!;
           const nf = flat.map((v, i) => (i % 2 === 0 ? v + dx : v + dy));
           const bb = bboxFromPathPoints(nf);
@@ -2046,7 +2291,7 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
       for (const z of prev) {
         if (g.starts.has(z.id) && z.type === "zone") next = relayoutAttachedDoors(next, z.id);
       }
-      return next;
+      return syncBlueprintGroupBounds(next);
     });
     if (node.getClassName() === "Line") {
       node.position({ x: 0, y: 0 });
@@ -2054,7 +2299,181 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
     batchLayer();
   };
 
+  const finishShiftDuplicateDrag = useCallback(() => {
+    shiftDupSessionRef.current = null;
+    setSnapGuides([]);
+    groupDragRef.current = null;
+  }, []);
+
+  const applyShiftDuplicateDeltaFromNode = useCallback(
+    (node: Konva.Node) => {
+      const s = shiftDupSessionRef.current;
+      if (!s) return;
+      const dx = node.x() - s.primaryNodeStart.x;
+      const dy = node.y() - s.primaryNodeStart.y;
+      const prim = elementsRef.current.find((x) => x.id === s.primaryNew);
+      let ndx = dx;
+      let ndy = dy;
+      let guides: SnapGuide[] = [];
+      if (prim?.type === "zone" && !zonePolygonFlat(prim)) {
+        const st0 = s.cloneStarts.get(s.primaryNew);
+        if (st0 && st0.pathFlat === undefined) {
+          const draft = { ...prim, x: st0.x + dx, y: st0.y + dy };
+          const sn = snapZoneDrag(draft, st0.x + dx, st0.y + dy, elementsRef.current);
+          ndx = sn.x - st0.x;
+          ndy = sn.y - st0.y;
+          guides = sn.guides;
+        }
+      }
+      setSnapGuides(guides);
+      replaceElements((prev) => {
+        const next = prev.map((row) => {
+          const st = s.cloneStarts.get(row.id);
+          if (!st) return row;
+          if (
+            st.pathFlat &&
+            (row.type === "path" ||
+              row.type === "connection" ||
+              (row.type === "zone" && row.path_points && row.path_points.length >= 6))
+          ) {
+            const flat = st.pathFlat.map((v, i) => (i % 2 === 0 ? v + ndx : v + ndy));
+            const bb = bboxFromPathPoints(flat);
+            return { ...row, path_points: flat, x: bb.minX, y: bb.minY, width: bb.w, height: bb.h };
+          }
+          return { ...row, x: st.x + ndx, y: st.y + ndy };
+        });
+        return syncBlueprintGroupBounds(relayoutAllDoors(next));
+      });
+      node.x(s.primaryNodeStart.x);
+      node.y(s.primaryNodeStart.y);
+      batchLayer();
+    },
+    [replaceElements, batchLayer],
+  );
+
+  const tryBeginShiftDuplicateDrag = useCallback(
+    (primaryId: string, dragTarget: Konva.Node, evt: Konva.KonvaEventObject<DragEvent | MouseEvent>): boolean => {
+      if (designerMode !== "edit" || !canEditRef.current || linkingForTaskIdRef.current) return false;
+      const me = evt.evt as MouseEvent;
+      if (!me.shiftKey) return false;
+      let ids = [...selectedIdsRef.current];
+      const cur = elementsRef.current;
+      const childToGroup = buildBlueprintChildToGroupMap(cur);
+      if (!ids.includes(primaryId)) {
+        const g = childToGroup.get(primaryId);
+        if (g && ids.includes(g)) ids = [g];
+        else ids = [primaryId];
+      }
+
+      const isGroupDup = ids.some((id) => cur.find((x) => x.id === id)?.type === "group");
+      if (!isGroupDup) {
+        const polyPick = ids.filter((id) => {
+          const row = cur.find((x) => x.id === id);
+          return row?.type === "zone" && Boolean(zonePolygonFlat(row));
+        });
+        if (polyPick.length > 1) return false;
+      }
+
+      const oldToNew = new Map<string, string>();
+      const clones: BlueprintElement[] = [];
+      for (const id of ids) {
+        const src = cur.find((x) => x.id === id);
+        if (!src) continue;
+        if (src.type === "group") {
+          if (src.locked) continue;
+          if (
+            !src.children?.length ||
+            src.children.some((cid) => {
+              const ch = cur.find((x) => x.id === cid);
+              return !ch || isBlueprintElementEffectivelyLocked(cur, ch);
+            })
+          )
+            continue;
+          const nGroupId = crypto.randomUUID();
+          oldToNew.set(id, nGroupId);
+          const idMap = new Map<string, string>();
+          const genMembers: BlueprintElement[] = [];
+          for (const cid of src.children) {
+            const ch = cur.find((x) => x.id === cid);
+            if (!ch) continue;
+            const c = cloneBlueprintElementForShiftDup(ch, SHIFT_DUP_NUDGE, SHIFT_DUP_NUDGE);
+            oldToNew.set(cid, c.id);
+            idMap.set(cid, c.id);
+            genMembers.push(c);
+          }
+          const childrenNew = src.children.map((cid) => idMap.get(cid)).filter((x): x is string => Boolean(x));
+          if (childrenNew.length < 2) continue;
+          const bb = computeBlueprintGroupBounds(genMembers, childrenNew);
+          if (!bb) continue;
+          clones.push(
+            ...genMembers,
+            {
+              id: nGroupId,
+              type: "group",
+              x: bb.x,
+              y: bb.y,
+              width: bb.width,
+              height: bb.height,
+              rotation: 0,
+              locked: undefined,
+              children: childrenNew,
+            },
+          );
+          continue;
+        }
+        if (isBlueprintElementEffectivelyLocked(cur, src)) continue;
+        const c = cloneBlueprintElementForShiftDup(src, SHIFT_DUP_NUDGE, SHIFT_DUP_NUDGE);
+        oldToNew.set(id, c.id);
+        clones.push(c);
+      }
+      if (clones.length === 0) return false;
+      const primaryNew = oldToNew.get(primaryId);
+      if (!primaryNew) return false;
+
+      checkpointBlueprint();
+
+      const cloneStarts = new Map<string, { x: number; y: number; pathFlat?: number[] }>();
+      for (const c of clones) {
+        if (c.type === "group") continue;
+        if ((c.type === "path" || c.type === "zone") && c.path_points && c.path_points.length >= 6) {
+          cloneStarts.set(c.id, { x: 0, y: 0, pathFlat: [...c.path_points] });
+        } else if (c.type === "connection" && c.path_points && c.path_points.length >= 4) {
+          cloneStarts.set(c.id, { x: 0, y: 0, pathFlat: [...c.path_points] });
+        } else {
+          cloneStarts.set(c.id, { x: c.x, y: c.y });
+        }
+      }
+
+      const newElements = syncBlueprintGroupBounds([...cur, ...clones]);
+      replaceElements(() => newElements);
+      elementsRef.current = newElements;
+
+      const newSelection = ids.map((i) => oldToNew.get(i)).filter((x): x is string => Boolean(x));
+      setSelectedIds(newSelection);
+      selectedIdsRef.current = newSelection;
+
+      shiftDupSessionRef.current = {
+        oldToNew,
+        primaryOld: primaryId,
+        primaryNew,
+        primaryNodeStart: { x: dragTarget.x(), y: dragTarget.y() },
+        cloneStarts,
+      };
+      return true;
+    },
+    [checkpointBlueprint, designerMode, replaceElements],
+  );
+
   const syncTransformToState = (id: string, node: Konva.Node) => {
+    const curEls = elementsRef.current;
+    const rowForTransform = curEls.find((e) => e.id === id);
+    if (
+      !rowForTransform ||
+      rowForTransform.type === "group" ||
+      rowForTransform.type === "connection" ||
+      isBlueprintElementEffectivelyLocked(curEls, rowForTransform)
+    )
+      return;
     if (node.getClassName() === "Rect") {
       const maybeDoor = elements.find((e) => e.id === id);
       if (maybeDoor?.type === "door") {
@@ -2133,6 +2552,17 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
     }
     const sel = selectedSingleId ? elements.find((e) => e.id === selectedSingleId) : null;
     let n: Konva.Node | null = null;
+    if (
+      sel &&
+      (sel.type === "group" ||
+        sel.type === "connection" ||
+        sel.locked ||
+        isBlueprintElementEffectivelyLocked(elements, sel))
+    ) {
+      tr.nodes([]);
+      tr.getLayer()?.batchDraw();
+      return;
+    }
     if (sel?.type === "door") n = doorInnerRefMap.current.get(selectedSingleId!) ?? null;
     else if (sel?.type === "zone" && !zonePolygonFlat(sel)) n = selectedNodeRef.current;
     else if (sel?.type === "device" || sel?.type === "symbol") n = selectedNodeRef.current;
@@ -2375,7 +2805,7 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
         <p className="bp-hint">
           Zoom: scroll wheel. Pan: Space+drag or right-drag. Tools and selection actions sit on the floating bar below the
           canvas. Free draw uses simplify-js + Catmull–Rom smoothing (adjust right after drawing). Merge rooms: select
-          multiple zones (Shift or box) then Merge. Doors: use handles or type width (32 px ≈ 1 m).
+          multiple zones (Shift or box) then Merge. Duplicate: hold Shift and drag a selection to clone it (one undo reverses the copy and move). Doors: use handles or type width (32 px ≈ 1 m).
         </p>
       </motion.aside>
 
@@ -2600,6 +3030,8 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
                 .map((el) => {
                   const polyPts = zonePolygonFlat(el);
                   const sel = selectedIds.includes(el.id);
+                  const effLocked = isBlueprintElementEffectivelyLocked(elements, el);
+                  const interactSelect = canEdit && tool === "select" && !effLocked;
                   const zGlow = canEdit && tool === "select" && !sel && hoverZoneId === el.id;
                   const tg = taskGlowIds.has(el.id);
                   const zoneFill = isPublish ? "rgba(248, 250, 252, 0.085)" : ZONE_FACE_FILL;
@@ -2636,8 +3068,10 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
                           shadowBlur={tg ? 24 : sel ? 20 : zGlow ? 16 : 6}
                           shadowOpacity={tg ? 0.45 : sel ? 0.38 : zGlow ? 0.24 : 0.12}
                           hitStrokeWidth={ZONE_EDGE_HIT_PX / Math.max(0.35, stageScale)}
-                          listening={canEdit && tool === "select"}
-                          draggable={canEdit && tool === "select"}
+                          listening={interactSelect}
+                          draggable={interactSelect}
+                          opacity={effLocked ? 0.74 : 1}
+                          dash={effLocked ? [7, 5] : undefined}
                           onMouseEnter={() => {
                             if (canEdit && tool === "select") setCanvasHoverElementId(el.id);
                             if (canEdit && tool === "select" && !sel) setHoverZoneId(el.id);
@@ -2651,13 +3085,31 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
                           onDragStart={(e) => {
                             if (canEdit && tool === "select") {
                               setIsDraggingSelection(true);
-                              checkpointBlueprint();
+                              if (!tryBeginShiftDuplicateDrag(el.id, e.target, e)) checkpointBlueprint();
                             }
-                            initMultiDragIfNeeded(el.id);
+                            if (!shiftDupSessionRef.current) initMultiDragIfNeeded(el.id);
                             if (canEdit && tool === "select") runDragScale(e.target, 1.02);
                           }}
-                          onDragMove={() => batchLayer()}
+                          onDragMove={(e) => {
+                            if (shiftDupSessionRef.current?.primaryOld === el.id) {
+                              applyShiftDuplicateDeltaFromNode(e.target);
+                              return;
+                            }
+                            const g = groupDragRef.current;
+                            if (g && g.primaryId === el.id) {
+                              flushMultiDragMove(el.id, e.target);
+                              return;
+                            }
+                            batchLayer();
+                          }}
                           onDragEnd={(e) => {
+                            if (shiftDupSessionRef.current?.primaryOld === el.id) {
+                              setIsDraggingSelection(false);
+                              runDragScale(e.target as Konva.Line, 1);
+                              replaceElements((prev) => relayoutAllDoors(prev));
+                              finishShiftDuplicateDrag();
+                              return;
+                            }
                             setIsDraggingSelection(false);
                             const g = groupDragRef.current;
                             const wasMulti = g && g.primaryId === el.id;
@@ -2665,7 +3117,7 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
                             const node = e.target as Konva.Line;
                             runDragScale(node, 1);
                             if (wasMulti) {
-                              replaceElements((prev) => relayoutAllDoors(prev));
+                              replaceElements((prev) => syncBlueprintGroupBounds(relayoutAllDoors(prev)));
                               return;
                             }
                             const ox = node.x();
@@ -2794,11 +3246,13 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
                         }
                         shadowBlur={tg ? 24 : sel ? 20 : zGlow ? 16 : 6}
                         shadowOpacity={tg ? 0.45 : sel ? 0.38 : zGlow ? 0.24 : 0.12}
-                        strokeWidth={tg ? sw * 1.35 : sw}
                         shadowOffset={{ x: 0, y: sel ? 0 : 2 }}
                         hitStrokeWidth={ZONE_EDGE_HIT_PX / Math.max(0.35, stageScale)}
-                        listening={canEdit && tool === "select"}
-                        draggable={canEdit && tool === "select"}
+                        listening={interactSelect}
+                        draggable={interactSelect}
+                        opacity={effLocked ? 0.74 : 1}
+                        strokeWidth={effLocked ? sw * 1.05 : tg ? sw * 1.35 : sw}
+                        dash={effLocked ? [8, 5] : undefined}
                         onMouseEnter={(e) => {
                           if (canEdit && tool === "select") setCanvasHoverElementId(el.id);
                           if (canEdit && tool === "select" && !sel) setHoverZoneId(el.id);
@@ -2816,16 +3270,20 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
                         onDragStart={(e) => {
                           if (canEdit && tool === "select") {
                             setIsDraggingSelection(true);
-                            checkpointBlueprint();
+                            if (!tryBeginShiftDuplicateDrag(el.id, e.target, e)) checkpointBlueprint();
                           }
-                          initMultiDragIfNeeded(el.id);
+                          if (!shiftDupSessionRef.current) initMultiDragIfNeeded(el.id);
                           if (canEdit && tool === "select") runDragScale(e.target, 1.02);
                         }}
                         onDragMove={(e) => {
                           if (!canEdit || tool !== "select") return;
                           const node = e.target;
+                          if (shiftDupSessionRef.current?.primaryOld === el.id) {
+                            applyShiftDuplicateDeltaFromNode(node);
+                            return;
+                          }
                           const g = groupDragRef.current;
-                          if (g && g.primaryId === el.id && selectedIds.length > 1) {
+                          if (g && g.primaryId === el.id) {
                             setSnapGuides([]);
                             flushMultiDragMove(el.id, node);
                             return;
@@ -2837,6 +3295,14 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
                           batchLayer();
                         }}
                         onDragEnd={(e) => {
+                          if (shiftDupSessionRef.current?.primaryOld === el.id) {
+                            setIsDraggingSelection(false);
+                            runDragScale(e.target, 1);
+                            replaceElements((prev) => relayoutAllDoors(prev));
+                            setSnapGuides([]);
+                            finishShiftDuplicateDrag();
+                            return;
+                          }
                           setIsDraggingSelection(false);
                           const g = groupDragRef.current;
                           const wasMulti = g && g.primaryId === el.id;
@@ -2845,7 +3311,7 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
                           runDragScale(node, 1);
                           setSnapGuides([]);
                           if (wasMulti) {
-                            replaceElements((prev) => relayoutAllDoors(prev));
+                            replaceElements((prev) => syncBlueprintGroupBounds(relayoutAllDoors(prev)));
                             return;
                           }
                           const nx = node.x();
@@ -2886,6 +3352,8 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
                 .filter((el) => el.type === "door")
                 .map((el) => {
                   const sel = selectedIds.includes(el.id);
+                  const effLocked = isBlueprintElementEffectivelyLocked(elements, el);
+                  const interactSelect = canEdit && tool === "select" && !effLocked;
                   const along = el.width ?? DOOR_ALONG_DEFAULT;
                   const depth = el.height ?? DOOR_DEPTH_DEFAULT;
                   const bleed = Math.max(1.25, 2.2 / stageScale);
@@ -2906,7 +3374,8 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
                       rotation={rot}
                       scaleX={tg ? 1.08 : 1}
                       scaleY={tg ? 1.08 : 1}
-                      listening={canEdit && tool === "select"}
+                      opacity={effLocked ? 0.76 : 1}
+                      listening={interactSelect}
                       onMouseEnter={() => {
                         if (canEdit && tool === "select") setCanvasHoverElementId(el.id);
                       }}
@@ -2939,7 +3408,8 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
                         shadowColor={tg ? "rgba(56, 189, 248, 0.45)" : undefined}
                         shadowBlur={tg ? 14 : 0}
                         shadowOpacity={tg ? 0.9 : 0}
-                        listening={canEdit && tool === "select"}
+                        dash={effLocked ? [6, 4] : undefined}
+                        listening={interactSelect}
                         onTransformEnd={(e) => {
                           setSnapGuides([]);
                           syncTransformToState(el.id, e.target);
@@ -2955,6 +3425,8 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
                   const h = el.height ?? SYMBOL_DEFAULT;
                   const st = el.symbol_type ?? "generic";
                   const sel = selectedIds.includes(el.id);
+                  const effLocked = isBlueprintElementEffectivelyLocked(elements, el);
+                  const interactSelect = canEdit && tool === "select" && !effLocked;
                   const sGlow = canEdit && tool === "select" && !sel && hoverSymbolId === el.id;
                   const stg = taskGlowIds.has(el.id);
                   const symLabelFs = pubFs(Math.min(9, w / 5));
@@ -2978,8 +3450,8 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
                       rotation={el.rotation ?? 0}
                       scaleX={stg ? 1.06 : 1}
                       scaleY={stg ? 1.06 : 1}
-                      listening={canEdit && tool === "select"}
-                      draggable={canEdit && tool === "select"}
+                      listening={interactSelect}
+                      draggable={interactSelect}
                       shadowColor={
                         isPublish
                           ? "rgba(0, 0, 0, 0.25)"
@@ -2999,19 +3471,30 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
                       onDragStart={(e) => {
                         if (canEdit && tool === "select") {
                           setIsDraggingSelection(true);
-                          checkpointBlueprint();
+                          if (!tryBeginShiftDuplicateDrag(el.id, e.target, e)) checkpointBlueprint();
                         }
-                        initMultiDragIfNeeded(el.id);
+                        if (!shiftDupSessionRef.current) initMultiDragIfNeeded(el.id);
                         if (canEdit && tool === "select") runDragScale(e.target, 1.02);
                       }}
                       onDragMove={(e) => {
                         if (!canEdit || tool !== "select") return;
                         const node = e.target;
-                        if (groupDragRef.current && groupDragRef.current.primaryId === el.id && selectedIds.length > 1) {
+                        if (shiftDupSessionRef.current?.primaryOld === el.id) {
+                          applyShiftDuplicateDeltaFromNode(node);
+                          return;
+                        }
+                        if (groupDragRef.current && groupDragRef.current.primaryId === el.id) {
                           flushMultiDragMove(el.id, node);
                         }
                       }}
                       onDragEnd={(e) => {
+                        if (shiftDupSessionRef.current?.primaryOld === el.id) {
+                          setIsDraggingSelection(false);
+                          runDragScale(e.target, 1);
+                          replaceElements((prev) => relayoutAllDoors(prev));
+                          finishShiftDuplicateDrag();
+                          return;
+                        }
                         setIsDraggingSelection(false);
                         const g = groupDragRef.current;
                         const wasMulti = g && g.primaryId === el.id;
@@ -3019,7 +3502,7 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
                         const node = e.target;
                         runDragScale(node, 1);
                         if (wasMulti) {
-                          replaceElements((prev) => relayoutAllDoors(prev));
+                          replaceElements((prev) => syncBlueprintGroupBounds(relayoutAllDoors(prev)));
                           return;
                         }
                         const nx = node.x();
@@ -3037,14 +3520,17 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
                         setCanvasHoverElementId((z) => (z === el.id ? null : z));
                         setHoverSymbolId((z) => (z === el.id ? null : z));
                       }}
-                      opacity={0.98}
+                      opacity={effLocked ? 0.74 : 0.98}
                     >
                       <Rect
                         width={w}
                         height={h}
                         cornerRadius={8}
                         fill={isPublish ? "rgba(248, 250, 252, 0.1)" : "rgba(15, 23, 42, 0.14)"}
-                        strokeEnabled={false}
+                        stroke={effLocked ? "rgba(148, 163, 184, 0.45)" : undefined}
+                        strokeWidth={effLocked ? 1.15 : 0}
+                        dash={effLocked ? [6, 4] : undefined}
+                        strokeEnabled={effLocked}
                         listening={false}
                       />
                       <Group
@@ -3083,6 +3569,8 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
                   const kind = el.device_kind ?? "generic";
                   const st = mockLinkStatus(el.linked_device_id);
                   const sel = selectedIds.includes(el.id);
+                  const effLocked = isBlueprintElementEffectivelyLocked(elements, el);
+                  const interactSelect = canEdit && tool === "select" && !effLocked;
                   const dStroke = pubLine(Math.max(0.65, 0.92 / stageScale));
                   const dGlow = canEdit && tool === "select" && !sel && hoverDeviceId === el.id;
                   const dtg = taskGlowIds.has(el.id);
@@ -3105,8 +3593,8 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
                       rotation={el.rotation ?? 0}
                       scaleX={dtg ? 1.06 : 1}
                       scaleY={dtg ? 1.06 : 1}
-                      listening={canEdit && tool === "select"}
-                      draggable={canEdit && tool === "select"}
+                      listening={interactSelect}
+                      draggable={interactSelect}
                       shadowColor={
                         isPublish
                           ? "rgba(0, 0, 0, 0.35)"
@@ -3126,19 +3614,30 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
                       onDragStart={(e) => {
                         if (canEdit && tool === "select") {
                           setIsDraggingSelection(true);
-                          checkpointBlueprint();
+                          if (!tryBeginShiftDuplicateDrag(el.id, e.target, e)) checkpointBlueprint();
                         }
-                        initMultiDragIfNeeded(el.id);
+                        if (!shiftDupSessionRef.current) initMultiDragIfNeeded(el.id);
                         if (canEdit && tool === "select") runDragScale(e.target, 1.02);
                       }}
                       onDragMove={(e) => {
                         if (!canEdit || tool !== "select") return;
                         const node = e.target;
-                        if (groupDragRef.current && groupDragRef.current.primaryId === el.id && selectedIds.length > 1) {
+                        if (shiftDupSessionRef.current?.primaryOld === el.id) {
+                          applyShiftDuplicateDeltaFromNode(node);
+                          return;
+                        }
+                        if (groupDragRef.current && groupDragRef.current.primaryId === el.id) {
                           flushMultiDragMove(el.id, node);
                         }
                       }}
                       onDragEnd={(e) => {
+                        if (shiftDupSessionRef.current?.primaryOld === el.id) {
+                          setIsDraggingSelection(false);
+                          runDragScale(e.target, 1);
+                          replaceElements((prev) => relayoutAllDoors(prev));
+                          finishShiftDuplicateDrag();
+                          return;
+                        }
                         setIsDraggingSelection(false);
                         const g = groupDragRef.current;
                         const wasMulti = g && g.primaryId === el.id;
@@ -3146,7 +3645,7 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
                         const node = e.target;
                         runDragScale(node, 1);
                         if (wasMulti) {
-                          replaceElements((prev) => relayoutAllDoors(prev));
+                          replaceElements((prev) => syncBlueprintGroupBounds(relayoutAllDoors(prev)));
                           return;
                         }
                         const nx = node.x();
@@ -3165,9 +3664,10 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
                       onMouseLeave={(e) => {
                         setCanvasHoverElementId((z) => (z === el.id ? null : z));
                         setHoverDeviceId((z) => (z === el.id ? null : z));
-                        e.currentTarget.opacity(sel ? 1 : isPublish ? 1 : 0.97);
+                        const baseOp = isPublish ? 1 : effLocked ? 0.74 : 0.97;
+                        e.currentTarget.opacity(sel ? 1 : baseOp);
                       }}
-                      opacity={isPublish ? 1 : 0.97}
+                      opacity={isPublish ? 1 : effLocked ? 0.74 : 0.97}
                     >
                       {pulse ? (
                         <DevicePulseHalo
@@ -3194,6 +3694,7 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
                                   : "rgba(203, 213, 245, 0.16)"
                         }
                         strokeWidth={dtg ? dStroke * 1.35 : dStroke}
+                        dash={effLocked ? [7, 5] : undefined}
                         listening={false}
                       />
                       <Group
@@ -3229,6 +3730,8 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
                 .map((el) => {
                   const pts = el.path_points ?? [];
                   const sel = selectedIds.includes(el.id);
+                  const effLocked = isBlueprintElementEffectivelyLocked(elements, el);
+                  const interactSelect = canEdit && tool === "select" && !effLocked;
                   const sw = pubLine(Math.max(0.65, 1 / stageScale));
                   const pathFill = isPublish ? "rgba(56, 189, 248, 0.14)" : "rgba(56, 189, 248, 0.08)";
                   const ptg = taskGlowIds.has(el.id);
@@ -3253,8 +3756,10 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
                       shadowColor={ptg ? "rgba(56, 189, 248, 0.45)" : undefined}
                       shadowBlur={ptg ? 12 : 0}
                       shadowOpacity={ptg ? 1 : 0}
-                      listening={canEdit && tool === "select"}
-                      draggable={canEdit && tool === "select"}
+                      listening={interactSelect}
+                      draggable={interactSelect}
+                      opacity={effLocked ? 0.74 : 1}
+                      dash={effLocked ? [8, 5] : undefined}
                       hitStrokeWidth={Math.max(16, 14 / stageScale)}
                       onMouseEnter={() => {
                         if (canEdit && tool === "select") setCanvasHoverElementId(el.id);
@@ -3265,19 +3770,30 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
                       onDragStart={(e) => {
                         if (canEdit && tool === "select") {
                           setIsDraggingSelection(true);
-                          checkpointBlueprint();
+                          if (!tryBeginShiftDuplicateDrag(el.id, e.target, e)) checkpointBlueprint();
                         }
-                        initMultiDragIfNeeded(el.id);
+                        if (!shiftDupSessionRef.current) initMultiDragIfNeeded(el.id);
                         if (canEdit && tool === "select") runDragScale(e.target, 1.02);
                       }}
                       onDragMove={(e) => {
                         if (!canEdit || tool !== "select") return;
                         const node = e.target;
-                        if (groupDragRef.current && groupDragRef.current.primaryId === el.id && selectedIds.length > 1) {
+                        if (shiftDupSessionRef.current?.primaryOld === el.id) {
+                          applyShiftDuplicateDeltaFromNode(node);
+                          return;
+                        }
+                        if (groupDragRef.current && groupDragRef.current.primaryId === el.id) {
                           flushMultiDragMove(el.id, node);
                         }
                       }}
                       onDragEnd={(e) => {
+                        if (shiftDupSessionRef.current?.primaryOld === el.id) {
+                          setIsDraggingSelection(false);
+                          runDragScale(e.target as Konva.Line, 1);
+                          replaceElements((prev) => relayoutAllDoors(prev));
+                          finishShiftDuplicateDrag();
+                          return;
+                        }
                         setIsDraggingSelection(false);
                         const g = groupDragRef.current;
                         const wasMulti = g && g.primaryId === el.id;
@@ -3286,7 +3802,7 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
                         runDragScale(node, 1);
                         if (wasMulti) {
                           node.position({ x: 0, y: 0 });
-                          replaceElements((prev) => relayoutAllDoors(prev));
+                          replaceElements((prev) => syncBlueprintGroupBounds(relayoutAllDoors(prev)));
                           return;
                         }
                         const ox = node.x();
@@ -3295,6 +3811,87 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
                         replaceElements((prev) =>
                           prev.map((row) => {
                             if (row.id !== el.id || row.type !== "path" || !row.path_points || row.path_points.length < 6) {
+                              return row;
+                            }
+                            const flat = row.path_points.map((v, i) => (i % 2 === 0 ? v + ox : v + oy));
+                            const bb = bboxFromPathPoints(flat);
+                            return {
+                              ...row,
+                              path_points: flat,
+                              x: bb.minX,
+                              y: bb.minY,
+                              width: bb.w,
+                              height: bb.h,
+                            };
+                          }),
+                        );
+                      }}
+                    />
+                  );
+                })}
+              {elements
+                .filter((el) => el.type === "connection" && (el.path_points?.length ?? 0) >= 4)
+                .map((el) => {
+                  const pts = el.path_points ?? [];
+                  const sel = selectedIds.includes(el.id);
+                  const effLocked = isBlueprintElementEffectivelyLocked(elements, el);
+                  const interactSelectEdit = canEdit && tool === "select" && !effLocked;
+                  const isPlumb = el.connection_style === "plumbing";
+                  const sw = isPlumb ? Math.max(1.45, 2.05 / stageScale) : Math.max(0.85, 1.28 / stageScale);
+                  const stroke = sel
+                    ? "rgba(251, 191, 36, 0.95)"
+                    : isPlumb
+                      ? "rgba(34, 211, 238, 0.9)"
+                      : "rgba(226, 232, 240, 0.82)";
+                  return (
+                    <Line
+                      key={el.id}
+                      points={pts}
+                      closed={false}
+                      tension={0}
+                      fillEnabled={false}
+                      stroke={stroke}
+                      strokeWidth={sw}
+                      lineCap="square"
+                      lineJoin="miter"
+                      perfectDrawEnabled={false}
+                      listening={canEdit && tool === "select"}
+                      draggable={interactSelectEdit}
+                      hitStrokeWidth={Math.max(12, 16 / stageScale)}
+                      onClick={(e) => canEdit && handleSelectElementClick(e, el.id)}
+                      onTap={(e) => canEdit && handleSelectElementClick(e, el.id)}
+                      onDragStart={(e) => {
+                        if (interactSelectEdit) {
+                          setIsDraggingSelection(true);
+                          if (!tryBeginShiftDuplicateDrag(el.id, e.target, e)) checkpointBlueprint();
+                        }
+                        if (canEdit && tool === "select") runDragScale(e.target, 1.02);
+                      }}
+                      onDragMove={(e) => {
+                        if (!interactSelectEdit) return;
+                        if (shiftDupSessionRef.current?.primaryOld === el.id) {
+                          applyShiftDuplicateDeltaFromNode(e.target);
+                          return;
+                        }
+                        batchLayer();
+                      }}
+                      onDragEnd={(e) => {
+                        if (shiftDupSessionRef.current?.primaryOld === el.id) {
+                          setIsDraggingSelection(false);
+                          runDragScale(e.target as Konva.Line, 1);
+                          replaceElements((prev) => relayoutAllDoors(prev));
+                          finishShiftDuplicateDrag();
+                          return;
+                        }
+                        setIsDraggingSelection(false);
+                        runDragScale(e.target as Konva.Line, 1);
+                        const node = e.target as Konva.Line;
+                        const ox = node.x();
+                        const oy = node.y();
+                        node.position({ x: 0, y: 0 });
+                        replaceElements((prev) =>
+                          prev.map((row) => {
+                            if (row.id !== el.id || row.type !== "connection" || !row.path_points || row.path_points.length < 4) {
                               return row;
                             }
                             const flat = row.path_points.map((v, i) => (i % 2 === 0 ? v + ox : v + oy));
@@ -3550,12 +4147,50 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
                 {selectedIds.length > 1 ? (
                   <>
                     <span className="bp-float-context__meta">{selectedIds.length} selected</span>
+                    {canGroupPick ? (
+                      <button type="button" className="bp-btn" onClick={groupSelected}>
+                        Group
+                      </button>
+                    ) : null}
+                    {canConnectSelection ? (
+                      <>
+                        <div className="bp-float-context__chips" role="group" aria-label="Connection style">
+                          <button
+                            type="button"
+                            className={`bp-chip ${connectStyle === "electrical" ? "is-active" : ""}`}
+                            onClick={() => setConnectStyle("electrical")}
+                          >
+                            Electrical
+                          </button>
+                          <button
+                            type="button"
+                            className={`bp-chip ${connectStyle === "plumbing" ? "is-active" : ""}`}
+                            onClick={() => setConnectStyle("plumbing")}
+                          >
+                            Plumbing
+                          </button>
+                        </div>
+                        <button type="button" className="bp-btn" onClick={connectSelectedEndpoints}>
+                          Connect
+                        </button>
+                      </>
+                    ) : null}
                     {canMergeZones ? (
                       <button type="button" className="bp-btn" onClick={mergeSelectedRooms}>
                         Merge rooms
                       </button>
                     ) : null}
-                    <span className="bp-float-context__hint">Shift+click / drag box · drag group to move</span>
+                    <button type="button" className="bp-btn bp-btn--ghost" onClick={toggleLockSelection}>
+                      {selectedIds.some((id) => {
+                        const row = elements.find((x) => x.id === id);
+                        return row && !row.locked;
+                      })
+                        ? "Lock"
+                        : "Unlock"}
+                    </button>
+                    <span className="bp-float-context__hint">
+                      Shift+click / box select · Connect chains symbols/devices · Cmd+G group · Cmd+L lock
+                    </span>
                   </>
                 ) : selected ? (
                   <>
@@ -3568,6 +4203,25 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
                         aria-label="Name"
                       />
                     </label>
+                    {selected.type === "group" ? (
+                      <>
+                        <span className="bp-float-context__meta">
+                          {selected.children?.length ?? 0} elements — Cmd+Shift+G to ungroup
+                        </span>
+                        <button type="button" className="bp-btn" onClick={ungroupSelected}>
+                          Ungroup
+                        </button>
+                      </>
+                    ) : null}
+                    {selected.type === "connection" ? (
+                      <span className="bp-float-context__meta">
+                        {selected.connection_style === "plumbing" ? "Plumbing" : "Electrical"} run ·{" "}
+                        {(selected.path_points?.length ?? 0) / 2} vertices
+                      </span>
+                    ) : null}
+                    <button type="button" className="bp-btn bp-btn--ghost" onClick={toggleLockSelection}>
+                      {selected.locked ? "Unlock" : "Lock"}
+                    </button>
                     {selected.type === "door" ? (
                       <>
                         <label className="bp-float-context__compact">

@@ -44,12 +44,13 @@ class TaskOverlayOut(TaskOverlayBase):
 
 
 class BlueprintElementBase(BaseModel):
-    type: Literal["zone", "device", "door", "path", "symbol"]
+    type: Literal["zone", "device", "door", "path", "symbol", "group", "connection"]
     x: float
     y: float
     width: Optional[float] = None
     height: Optional[float] = None
     rotation: float = 0.0
+    locked: bool = False
     name: Optional[str] = None
     linked_device_id: Optional[str] = None
     assigned_zone_id: Optional[str] = None
@@ -68,6 +69,57 @@ class BlueprintElementBase(BaseModel):
     )
     symbol_tags: Optional[list[str]] = Field(None, description="Labels for search / maintenance (symbol type)")
     symbol_notes: Optional[str] = Field(None, description="Free-form notes (symbol type)")
+    children: Optional[list[str]] = Field(
+        None,
+        description='Child element ids when type is "group" (ordered; persisted as JSON)',
+    )
+    connection_from: Optional[str] = Field(None, description="Start element id (type connection)")
+    connection_to: Optional[str] = Field(None, description="End element id (type connection)")
+    connection_style: Optional[Literal["electrical", "plumbing"]] = None
+
+    @model_validator(mode="after")
+    def group_children_shape(self) -> "BlueprintElementBase":
+        if self.type == "connection":
+            ch = self.children
+            if ch:
+                raise ValueError("connection cannot have children")
+            pts = self.path_points or []
+            if len(pts) < 4 or len(pts) % 2 != 0:
+                raise ValueError("connection requires path_points with at least 2 points (flat x,y)")
+            if not self.connection_from or not str(self.connection_from).strip():
+                raise ValueError("connection requires connection_from")
+            if not self.connection_to or not str(self.connection_to).strip():
+                raise ValueError("connection requires connection_to")
+            if str(self.connection_from).strip() == str(self.connection_to).strip():
+                raise ValueError("connection_from and connection_to must differ")
+            try:
+                UUID(str(self.connection_from).strip())
+                UUID(str(self.connection_to).strip())
+            except ValueError as e:
+                raise ValueError("connection endpoints must be UUIDs") from e
+            if not self.connection_style:
+                raise ValueError("connection requires connection_style")
+        elif self.connection_from is not None or self.connection_to is not None or self.connection_style is not None:
+            raise ValueError("connection_from / connection_to / connection_style only valid for type connection")
+        if self.type == "group":
+            ch = self.children or []
+            if len(ch) < 2:
+                raise ValueError('group requires at least 2 children')
+            seen: set[str] = set()
+            for raw in ch:
+                sid = str(raw).strip()
+                if not sid:
+                    raise ValueError("group children must be non-empty UUID strings")
+                try:
+                    UUID(sid)
+                except ValueError as e:
+                    raise ValueError("group child id must be a UUID") from e
+                if sid in seen:
+                    raise ValueError("group children must be unique")
+                seen.add(sid)
+        elif self.children:
+            raise ValueError("children is only valid for type group")
+        return self
 
 
 class BlueprintElementIn(BlueprintElementBase):
@@ -133,6 +185,7 @@ class BlueprintUpdateIn(BaseModel):
 def element_in_to_orm_kwargs(el: BlueprintElementIn, *, blueprint_id: str) -> dict:
     path_points_json: Optional[str] = None
     symbol_tags_json: Optional[str] = None
+    children_json: Optional[str] = None
     out_x, out_y = el.x, el.y
     if el.type == "zone":
         pts = el.path_points or []
@@ -180,6 +233,23 @@ def element_in_to_orm_kwargs(el: BlueprintElementIn, *, blueprint_id: str) -> di
         tags = el.symbol_tags or []
         clean_tags = [str(t).strip() for t in tags if str(t).strip()]
         symbol_tags_json = json.dumps(clean_tags) if clean_tags else None
+    elif el.type == "group":
+        ch = el.children or []
+        w = el.width if el.width is not None else 1.0
+        h = el.height if el.height is not None else 1.0
+        children_json = json.dumps([str(c).strip() for c in ch])
+    elif el.type == "connection":
+        pts = el.path_points or []
+        if len(pts) < 4 or len(pts) % 2 != 0:
+            raise ValueError("connection requires path_points with at least 2 points (flat x,y)")
+        xs = pts[0::2]
+        ys = pts[1::2]
+        min_x, max_x = min(xs), max(xs)
+        min_y, max_y = min(ys), max(ys)
+        out_x, out_y = min_x, min_y
+        w = max(max_x - min_x, 1.0) if max_x > min_x else 1.0
+        h = max(max_y - min_y, 1.0) if max_y > min_y else 1.0
+        path_points_json = json.dumps([float(x) for x in pts])
     else:
         w = el.width if el.width is not None else 44.0
         h = el.height if el.height is not None else 44.0
@@ -207,6 +277,11 @@ def element_in_to_orm_kwargs(el: BlueprintElementIn, *, blueprint_id: str) -> di
         "symbol_type": el.symbol_type.strip()[:32] if el.type == "symbol" and el.symbol_type else None,
         "symbol_tags": symbol_tags_json if el.type == "symbol" else None,
         "symbol_notes": el.symbol_notes if el.type == "symbol" else None,
+        "locked": el.locked,
+        "children_json": children_json if el.type == "group" else None,
+        "connection_from_id": str(el.connection_from).strip() if el.type == "connection" and el.connection_from else None,
+        "connection_to_id": str(el.connection_to).strip() if el.type == "connection" and el.connection_to else None,
+        "connection_style": el.connection_style if el.type == "connection" else None,
     }
 
 
@@ -229,6 +304,15 @@ def row_to_element_out(row) -> BlueprintElementOut:
                 stags = [str(x) for x in tp]
         except (json.JSONDecodeError, TypeError, ValueError):
             stags = None
+    child_ids: Optional[list[str]] = None
+    raw_children = getattr(row, "children_json", None)
+    if raw_children:
+        try:
+            cp = json.loads(raw_children)
+            if isinstance(cp, list):
+                child_ids = [str(x) for x in cp]
+        except (json.JSONDecodeError, TypeError, ValueError):
+            child_ids = None
     return BlueprintElementOut(
         id=row.id,
         type=row.element_type,  # type: ignore[arg-type]
@@ -237,6 +321,7 @@ def row_to_element_out(row) -> BlueprintElementOut:
         width=row.width,
         height=row.height,
         rotation=row.rotation,
+        locked=bool(getattr(row, "locked", False)),
         name=row.name,
         linked_device_id=row.linked_device_id,
         assigned_zone_id=row.assigned_zone_id,
@@ -246,6 +331,19 @@ def row_to_element_out(row) -> BlueprintElementOut:
         symbol_type=getattr(row, "symbol_type", None),
         symbol_tags=stags,
         symbol_notes=getattr(row, "symbol_notes", None),
+        children=child_ids if row.element_type == "group" else None,
+        connection_from=str(getattr(row, "connection_from_id")).strip()
+        if getattr(row, "connection_from_id", None) and row.element_type == "connection"
+        else None,
+        connection_to=str(getattr(row, "connection_to_id")).strip()
+        if getattr(row, "connection_to_id", None) and row.element_type == "connection"
+        else None,
+        connection_style=(
+            getattr(row, "connection_style", None)
+            if row.element_type == "connection"
+            and getattr(row, "connection_style", None) in ("electrical", "plumbing")
+            else None
+        ),
     )
 
 
