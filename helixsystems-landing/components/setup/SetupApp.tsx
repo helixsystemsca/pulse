@@ -112,6 +112,7 @@ export function SetupApp() {
     }
   }, [searchParams]);
   const [loading, setLoading] = useState(false);
+  const [initialLoadDone, setInitialLoadDone] = useState(false);
   const [savingConfig, setSavingConfig] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -210,6 +211,7 @@ export function SetupApp() {
       setError(msg);
     } finally {
       setLoading(false);
+      setInitialLoadDone(true);
     }
   }, [effectiveCompanyId, isSystemAdmin, applyLiveDeviceData]);
 
@@ -587,6 +589,7 @@ export function SetupApp() {
       setAssignTargetId("");
       setToolQuickCreateName("");
       await refresh();
+      emitOnboardingMaybeUpdated();
     } catch {
       setError("Assignment failed");
     }
@@ -619,6 +622,7 @@ export function SetupApp() {
       setZonePickGateway(null);
       setAssignTargetId("");
       await refresh();
+      emitOnboardingMaybeUpdated();
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Could not update gateway zone");
     }
@@ -630,6 +634,7 @@ export function SetupApp() {
     try {
       const res = await patchFeatureConfig(isSystemAdmin ? effectiveCompanyId : null, "proximity_tracking", body);
       setFeatures(res.features ?? {});
+      emitOnboardingMaybeUpdated();
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Save failed");
     } finally {
@@ -643,6 +648,7 @@ export function SetupApp() {
     try {
       const res = await patchFeatureConfig(isSystemAdmin ? effectiveCompanyId : null, "sop_alerts", body);
       setFeatures(res.features ?? {});
+      emitOnboardingMaybeUpdated();
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Save failed");
     } finally {
@@ -721,7 +727,7 @@ export function SetupApp() {
         </div>
       ) : null}
 
-      {dataEnabled ? <SetupProgress items={progressItems} warnings={setupWarnings} /> : null}
+      {dataEnabled && initialLoadDone ? <SetupProgress items={progressItems} warnings={setupWarnings} /> : null}
 
       {dataEnabled ? (
         <AssignmentsOverview

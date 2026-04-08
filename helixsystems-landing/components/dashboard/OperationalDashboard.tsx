@@ -573,11 +573,11 @@ function DashboardBody({
       </header>
 
       {model.bannerNote ? (
-        <div className="border-b border-slate-200/80 bg-slate-900 px-4 py-3 text-center text-sm font-medium text-white dark:border-slate-700/45 dark:bg-slate-800">
+        <div className="border-b border-slate-200/80 bg-sky-50/80 px-4 py-3 text-center text-sm font-medium text-slate-700 backdrop-blur-sm dark:border-slate-700/45 dark:bg-sky-500/10 dark:text-slate-200">
           {model.bannerNote}{" "}
           <Link
             href="/monitoring"
-            className="font-semibold text-sky-200 underline decoration-sky-400/80 underline-offset-2 hover:text-white"
+            className="font-semibold text-blue-700 underline decoration-blue-300 underline-offset-2 hover:text-blue-800 dark:text-sky-200 dark:decoration-sky-400/80 dark:hover:text-sky-100"
           >
             Open Monitoring →
           </Link>

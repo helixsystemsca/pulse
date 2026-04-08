@@ -1,7 +1,7 @@
 "use client";
 
 import { AlertTriangle, Check, Circle } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 type Phase = "show" | "pulse" | "exit" | "gone";
 
@@ -23,9 +23,25 @@ export function SetupProgress({
   const shouldCelebrate = allChecklistDone && warnings.length === 0;
 
   const [phase, setPhase] = useState<Phase>("show");
+  const prevShouldCelebrateRef = useRef<boolean | null>(null);
 
   useEffect(() => {
+    // Only run the celebration animation when we *transition* into a fully-complete, no-warnings state.
+    // If the page loads already complete, keep the card visible (no pulse/exit loop on every load).
+    const prev = prevShouldCelebrateRef.current;
+    prevShouldCelebrateRef.current = shouldCelebrate;
+
     if (!shouldCelebrate) {
+      setPhase("show");
+      return;
+    }
+    if (prev === null) {
+      // First render and already complete: don't animate.
+      setPhase("show");
+      return;
+    }
+    if (prev === true) {
+      // Still complete: don't re-run animation.
       setPhase("show");
       return;
     }
