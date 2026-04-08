@@ -21,7 +21,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setThemeState] = useState<ThemeMode>("light");
 
   useEffect(() => {
-    const raw = localStorage.getItem(THEME_STORAGE_KEY);
+    const raw = localStorage.getItem(THEME_STORAGE_KEY) ?? localStorage.getItem("theme");
     const initial: ThemeMode = raw === "light" || raw === "dark" ? raw : "light";
     setThemeState(initial);
     applyTheme(initial);
@@ -32,6 +32,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     applyTheme(t);
     try {
       localStorage.setItem(THEME_STORAGE_KEY, t);
+      localStorage.setItem("theme", t);
     } catch {
       /* ignore */
     }

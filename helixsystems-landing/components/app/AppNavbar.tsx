@@ -54,9 +54,9 @@ export function AppNavbar() {
         <div className="flex min-w-0 items-center">
           <Link
             href={logoHref}
-            className="flex min-w-0 items-center gap-2.5 font-headline text-lg font-bold tracking-tight text-gray-900 no-underline hover:text-blue-600 sm:text-xl dark:text-gray-100 dark:hover:text-blue-400"
+            className="flex min-w-0 items-center gap-2.5 font-headline text-lg font-bold tracking-tight text-ds-foreground no-underline hover:text-ds-success sm:text-xl"
           >
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-pulseShell-border bg-pulseShell-elevated text-blue-600 shadow-[var(--pulse-shell-shadow)] dark:text-blue-400">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-ds-border bg-ds-secondary text-ds-success shadow-[var(--ds-shadow-card)]">
               <Activity className="h-4 w-4" strokeWidth={2} aria-hidden />
             </span>
             <span className="font-semibold">Pulse</span>
@@ -91,7 +91,7 @@ export function AppNavbar() {
               <button
                 type="button"
                 onClick={() => setUserOpen((o) => !o)}
-                className="flex items-center gap-2 rounded-md border border-gray-200 bg-white py-1 pl-1.5 pr-1.5 shadow-sm hover:bg-gray-50 dark:border-[#1F2937] dark:bg-[#111827] dark:hover:bg-[#0F172A] sm:py-1.5 sm:pl-2 sm:pr-2.5"
+                className="flex items-center gap-2 rounded-md border border-ds-border bg-ds-primary py-1 pl-1.5 pr-1.5 shadow-[var(--ds-shadow-card)] transition-colors hover:bg-ds-secondary sm:py-1.5 sm:pl-2 sm:pr-2.5"
                 aria-expanded={userOpen}
                 aria-haspopup="menu"
               >
@@ -110,43 +110,43 @@ export function AppNavbar() {
                     </span>
                   )}
                 </span>
-                <span className="hidden max-w-[11rem] truncate text-sm font-medium text-gray-500 dark:text-gray-400 md:block">
+                <span className="hidden max-w-[11rem] truncate text-sm font-medium text-ds-muted md:block">
                   {session?.email}
                 </span>
-                <ChevronDown className="h-4 w-4 shrink-0 text-gray-500 dark:text-gray-400" aria-hidden />
+                <ChevronDown className="h-4 w-4 shrink-0 text-ds-muted" aria-hidden />
               </button>
               {userOpen ? (
                 <div
-                  className="absolute right-0 mt-1 w-56 rounded-md border border-gray-200 bg-white py-1 shadow-lg dark:border-[#1F2937] dark:bg-[#111827] dark:shadow-[0_8px_24px_rgba(0,0,0,0.45)]"
+                  className="absolute right-0 mt-1 w-56 rounded-md border border-ds-border bg-ds-elevated py-1 shadow-[var(--ds-shadow-diffuse)]"
                   role="menu"
                 >
                   <Link
                     href={pulseApp.to("/dashboard/profile-settings")}
-                    className="flex items-center gap-2 px-3 py-2 text-sm text-gray-900 hover:bg-gray-50 dark:text-gray-100 dark:hover:bg-[#0F172A]"
+                    className="flex items-center gap-2 px-3 py-2 text-sm text-ds-foreground hover:bg-ds-secondary"
                     onClick={() => setUserOpen(false)}
                     role="menuitem"
                   >
-                    <Settings className="h-4 w-4 text-gray-500 dark:text-gray-400" strokeWidth={2} aria-hidden />
+                    <Settings className="h-4 w-4 text-ds-muted" strokeWidth={2} aria-hidden />
                     Profile Settings
                   </Link>
                   {session && sessionHasAnyRole(session, "company_admin") ? (
                     <Link
                       href={pulseApp.to("/dashboard/organization")}
-                      className="flex items-center gap-2 px-3 py-2 text-sm text-gray-900 hover:bg-gray-50 dark:text-gray-100 dark:hover:bg-[#0F172A]"
+                      className="flex items-center gap-2 px-3 py-2 text-sm text-ds-foreground hover:bg-ds-secondary"
                       onClick={() => setUserOpen(false)}
                       role="menuitem"
                     >
-                      <ImageIcon className="h-4 w-4 text-gray-500 dark:text-gray-400" strokeWidth={2} aria-hidden />
+                      <ImageIcon className="h-4 w-4 text-ds-muted" strokeWidth={2} aria-hidden />
                       Organization & branding
                     </Link>
                   ) : null}
                   <button
                     type="button"
                     onClick={signOut}
-                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-gray-900 hover:bg-gray-50 dark:text-gray-100 dark:hover:bg-[#0F172A]"
+                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-ds-foreground hover:bg-ds-secondary"
                     role="menuitem"
                   >
-                    <LogOut className="h-4 w-4 text-gray-500 dark:text-gray-400" strokeWidth={2} aria-hidden />
+                    <LogOut className="h-4 w-4 text-ds-muted" strokeWidth={2} aria-hidden />
                     Sign out
                   </button>
                 </div>

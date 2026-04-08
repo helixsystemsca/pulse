@@ -57,7 +57,7 @@ export default function OverviewPage() {
   if (!ready) {
     return (
       <div className="flex min-h-[40vh] items-center justify-center">
-        <p className="text-sm text-gray-500 dark:text-gray-400">Loading…</p>
+        <p className="text-sm text-ds-muted">Loading…</p>
       </div>
     );
   }

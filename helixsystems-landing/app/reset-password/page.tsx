@@ -2,6 +2,8 @@
 
 import { useSearchParams } from "next/navigation";
 import { FormEvent, Suspense, useState } from "react";
+import { Card } from "@/components/pulse/Card";
+import { dsInputClass, dsLabelClass } from "@/components/ui/ds-form-classes";
 import { getApiBaseUrl } from "@/lib/api";
 import { navigateAfterPulseLogin, pulseApp } from "@/lib/pulse-app";
 import { writeApiSession } from "@/lib/pulse-session";
@@ -46,44 +48,51 @@ function ResetForm() {
   }
 
   if (!token) {
-    return <p className="text-red-400">Missing token in URL.</p>;
+    return <p className="text-ds-danger">Missing token in URL.</p>;
   }
 
   return (
-    <form onSubmit={(e) => void onSubmit(e)} className="mx-auto mt-16 max-w-md space-y-4 rounded-md border border-zinc-800 bg-zinc-900 p-8 text-zinc-100">
-      <h1 className="text-lg font-semibold">Reset password</h1>
-      {err ? <p className="text-sm text-red-400">{err}</p> : null}
-      <div>
-        <label className="text-xs uppercase text-zinc-500">New password</label>
-        <input
-          type="password"
-          required
-          minLength={8}
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className="mt-1 w-full rounded-lg border border-zinc-600 bg-zinc-950 px-3 py-2 text-sm"
-        />
-      </div>
-      <button
-        type="submit"
-        disabled={busy}
-        className="w-full rounded-lg bg-blue-600 py-2 text-sm font-semibold text-white disabled:opacity-60"
-      >
-        {busy ? "Updating…" : "Save and sign in"}
-      </button>
-      <p className="text-center text-xs text-zinc-500">
-        <a href={pulseApp.login()} className="text-blue-400">
-          Back to login
-        </a>
-      </p>
-    </form>
+    <Card variant="elevated" padding="lg" className="mx-auto mt-16 max-w-md space-y-4">
+      <form onSubmit={(e) => void onSubmit(e)} className="space-y-4">
+        <h1 className="text-lg font-semibold text-ds-foreground">Reset password</h1>
+        {err ? (
+          <p className="ds-alert-critical rounded-lg border px-3 py-2 text-sm text-ds-foreground">{err}</p>
+        ) : null}
+        <div>
+          <label className={dsLabelClass} htmlFor="reset-password">
+            New password
+          </label>
+          <input
+            id="reset-password"
+            type="password"
+            required
+            minLength={8}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className={`mt-1.5 ${dsInputClass}`}
+          />
+        </div>
+        <button
+          type="submit"
+          disabled={busy}
+          className="ds-btn-solid-primary w-full py-2.5 text-sm disabled:opacity-60"
+        >
+          {busy ? "Updating…" : "Save and sign in"}
+        </button>
+        <p className="text-center text-xs text-ds-muted">
+          <a href={pulseApp.login()} className="ds-link">
+            Back to login
+          </a>
+        </p>
+      </form>
+    </Card>
   );
 }
 
 export default function ResetPasswordPage() {
   return (
-    <div className="min-h-screen bg-zinc-950 px-4">
-      <Suspense fallback={<p className="p-8 text-zinc-500">Loading…</p>}>
+    <div className="min-h-screen bg-ds-bg px-4">
+      <Suspense fallback={<p className="p-8 text-ds-muted">Loading…</p>}>
         <ResetForm />
       </Suspense>
     </div>

@@ -26,7 +26,12 @@ import { readSession } from "@/lib/pulse-session";
 import { complianceManagerFlagAllowed } from "@/lib/pulse-roles";
 import { useModuleSettings } from "@/providers/ModuleSettingsProvider";
 import { ModuleSettingsGear } from "@/components/module-settings/ModuleSettingsGear";
+import { Card } from "@/components/pulse/Card";
+import { DataTableCard, dataTableBodyRow, dataTableHeadRowClass } from "@/components/ui/DataTable";
+import { dsInputClass, dsLabelClass, dsSelectClass } from "@/components/ui/ds-form-classes";
+import { MetricCard } from "@/components/ui/MetricCard";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { StatusBadge, type StatusBadgeVariant } from "@/components/ui/StatusBadge";
 
 type AssetOption = { id: string; name: string };
 type CompanyOption = { id: string; name: string };
@@ -51,31 +56,31 @@ function formatWhen(iso: string): { date: string; time: string } {
   };
 }
 
-function statusBadgeClass(s: ComplianceRecordRow["effective_status"]): string {
+function statusVariant(s: ComplianceRecordRow["effective_status"]): StatusBadgeVariant {
   switch (s) {
     case "completed":
-      return "bg-sky-50 text-[#1e4a8a] ring-1 ring-sky-200/70";
+      return "success";
     case "pending":
-      return "bg-slate-100 text-slate-700 ring-1 ring-slate-200/80";
+      return "neutral";
     case "overdue":
-      return "bg-amber-50 text-amber-900 ring-1 ring-amber-200/80";
+      return "warning";
     case "ignored":
-      return "bg-rose-50 text-rose-800 ring-1 ring-rose-200/70";
+      return "danger";
     default:
-      return "bg-slate-100 text-slate-700";
+      return "neutral";
   }
 }
 
-function rateHealthBadge(rate: number): { label: string; className: string } {
-  if (rate >= 90) return { label: "Stable", className: "bg-sky-50 text-[#1e4a8a] ring-1 ring-sky-200/60" };
-  if (rate >= 70) return { label: "Watch", className: "bg-amber-50 text-amber-900 ring-1 ring-amber-200/60" };
-  return { label: "Critical", className: "bg-rose-50 text-rose-800 ring-1 ring-rose-200/60" };
+function rateHealthBadge(rate: number): { label: string; variant: StatusBadgeVariant } {
+  if (rate >= 90) return { label: "Stable", variant: "info" };
+  if (rate >= 70) return { label: "Watch", variant: "warning" };
+  return { label: "Critical", variant: "danger" };
 }
 
-function missedAccent(sev: string): string {
-  if (sev === "critical") return "border-l-rose-500";
-  if (sev === "warning") return "border-l-amber-500";
-  return "border-l-[#2563eb]";
+function missedBorderAccent(sev: string): "danger" | "warning" | "info" {
+  if (sev === "critical") return "danger";
+  if (sev === "warning") return "warning";
+  return "info";
 }
 
 export function ComplianceApp() {
@@ -276,10 +281,10 @@ export function ComplianceApp() {
       />
 
       {isSystemAdmin ? (
-        <div className="mt-6 rounded-md border border-pulse-border bg-white p-4 shadow-sm">
-          <label className="block text-xs font-semibold uppercase tracking-wide text-pulse-muted">Company</label>
+        <Card variant="secondary" padding="md" className="mt-6">
+          <label className={`block ${dsLabelClass}`}>Company</label>
           <select
-            className="mt-1.5 w-full max-w-md rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2 text-sm font-medium text-pulse-navy outline-none focus:border-pulse-accent focus:ring-2 focus:ring-pulse-accent/25 md:w-auto"
+            className={`${dsSelectClass} mt-1.5 max-w-md md:w-auto`}
             value={companyPick ?? ""}
             onChange={(e) => setCompanyPick(e.target.value || null)}
           >
@@ -290,91 +295,79 @@ export function ComplianceApp() {
               </option>
             ))}
           </select>
-          <p className="mt-2 text-xs text-pulse-muted">
+          <p className="mt-2 text-xs text-ds-muted">
             System administrators must choose a tenant to load compliance analytics.
           </p>
-        </div>
+        </Card>
       ) : null}
 
       {actionError ? (
-        <p className="mt-4 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800">
-          {actionError}
-        </p>
+        <p className="ds-alert-critical mt-4 rounded-lg border px-3 py-2 text-sm text-ds-foreground">{actionError}</p>
       ) : null}
 
       {!dataEnabled ? null : summaryHook.error ? (
-        <p className="mt-6 text-sm text-rose-600">{summaryHook.error}</p>
+        <p className="mt-6 text-sm text-ds-danger">{summaryHook.error}</p>
       ) : (
         <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <div className="rounded-md border border-pulse-border bg-white p-4 shadow-sm ring-1 ring-slate-100/80 border-l-4 border-l-[#2563eb]">
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-xs font-semibold uppercase tracking-wide text-pulse-muted">Compliance rate</span>
-              {rateBadge ? (
-                <span
-                  className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${rateBadge.className}`}
-                >
+          <MetricCard
+            borderAccent="info"
+            label="Compliance rate"
+            value={summaryHook.loading ? "—" : `${summaryHook.data?.compliance_rate ?? 0}%`}
+            badge={
+              rateBadge ? (
+                <StatusBadge variant={rateBadge.variant} className="text-[11px]">
                   {rateBadge.label}
+                </StatusBadge>
+              ) : null
+            }
+            hint={
+              !summaryHook.loading && summaryHook.data ? (
+                <span
+                  className={
+                    summaryHook.data.compliance_rate_trend_pct >= 0 ? "font-semibold text-ds-success" : "font-semibold text-ds-danger"
+                  }
+                >
+                  {summaryHook.data.compliance_rate_trend_pct >= 0 ? "↗" : "↘"}{" "}
+                  {Math.abs(summaryHook.data.compliance_rate_trend_pct)} pts vs prior period
                 </span>
-              ) : null}
-            </div>
-            <p className="mt-3 text-3xl font-bold tabular-nums text-pulse-navy">
-              {summaryHook.loading ? "—" : `${summaryHook.data?.compliance_rate ?? 0}%`}
-            </p>
-            {!summaryHook.loading && summaryHook.data ? (
-              <p
-                className={`mt-1 text-sm font-semibold ${summaryHook.data.compliance_rate_trend_pct >= 0 ? "text-emerald-600" : "text-rose-600"}`}
-              >
-                {summaryHook.data.compliance_rate_trend_pct >= 0 ? "↗" : "↘"}{" "}
-                {Math.abs(summaryHook.data.compliance_rate_trend_pct)} pts vs prior period
-              </p>
-            ) : null}
-          </div>
+              ) : null
+            }
+          />
 
-          <div
-            className={`rounded-md border border-pulse-border bg-white p-4 shadow-sm ring-1 ring-slate-100/80 border-l-4 ${missedAccent(summaryHook.data?.missed_severity ?? "stable")}`}
-          >
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold uppercase tracking-wide text-pulse-muted">
-                Missed acknowledgments
-              </span>
-              <AlertTriangle className="h-4 w-4 text-rose-500" aria-hidden />
-            </div>
-            <p className="mt-3 text-3xl font-bold tabular-nums text-pulse-navy">
-              {summaryHook.loading ? "—" : summaryHook.data?.missed_count ?? 0}
-            </p>
-            <p className="mt-1 text-sm text-pulse-muted">
-              {summaryHook.data && summaryHook.data.missed_severity !== "stable"
+          <MetricCard
+            borderAccent={missedBorderAccent(summaryHook.data?.missed_severity ?? "stable")}
+            label="Missed acknowledgments"
+            value={summaryHook.loading ? "—" : summaryHook.data?.missed_count ?? 0}
+            hint={
+              summaryHook.data && summaryHook.data.missed_severity !== "stable"
                 ? complianceSettings.strictReviewDeadlines
                   ? "Urgent: overdue reviews are treated as high priority—investigate and close the loop promptly."
                   : "Action required"
-                : "Within tolerance"}
-            </p>
-          </div>
+                : "Within tolerance"
+            }
+            badge={
+              <AlertTriangle className="h-4 w-4 text-ds-danger" aria-hidden />
+            }
+          />
 
-          <div className="rounded-md border border-pulse-border bg-white p-4 shadow-sm ring-1 ring-slate-100/80 border-l-4 border-l-amber-600/80">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold uppercase tracking-wide text-pulse-muted">
-                High-risk tool usage
-              </span>
-              <Wrench className="h-4 w-4 text-amber-700" aria-hidden />
-            </div>
-            <p className="mt-3 text-3xl font-bold tabular-nums text-pulse-navy">
-              {summaryHook.loading ? "—" : summaryHook.data?.high_risk_count ?? 0}
-            </p>
-            <p className="mt-1 text-sm text-pulse-muted">Monitored tool violations</p>
-          </div>
+          <MetricCard
+            borderAccent="warning"
+            label="High-risk tool usage"
+            value={summaryHook.loading ? "—" : summaryHook.data?.high_risk_count ?? 0}
+            hint="Monitored tool violations"
+            badge={<Wrench className="h-4 w-4 text-ds-warning" aria-hidden />}
+          />
 
-          <div className="rounded-md border border-pulse-border bg-white p-4 shadow-sm ring-1 ring-slate-100/80 border-l-4 border-l-slate-400">
-            <span className="text-xs font-semibold uppercase tracking-wide text-pulse-muted">Active monitors</span>
-            <p className="mt-3 text-3xl font-bold tabular-nums text-pulse-navy">
-              {summaryHook.loading ? "—" : summaryHook.data?.active_monitors ?? 0}
-            </p>
-            <p className="mt-1 text-sm text-pulse-muted">Tools with compliance rules</p>
-          </div>
+          <MetricCard
+            borderAccent="neutral"
+            label="Active monitors"
+            value={summaryHook.loading ? "—" : summaryHook.data?.active_monitors ?? 0}
+            hint="Tools with compliance rules"
+          />
         </div>
       )}
 
-      <div className="mt-6 border-b border-pulse-border">
+      <div className="mt-6 border-b border-ds-border">
         <div className="flex flex-wrap gap-1">
           {TAB_CATS.map((t) => (
             <button
@@ -383,8 +376,8 @@ export function ComplianceApp() {
               onClick={() => setTab(t.id)}
               className={`rounded-t-lg px-3 py-2 text-sm font-semibold transition-colors ${
                 tab === t.id
-                  ? "bg-sky-50/95 text-[#1e4a8a] ring-1 ring-sky-200/60 ring-b-0"
-                  : "text-pulse-muted hover:bg-slate-50 hover:text-pulse-navy"
+                  ? "bg-ds-secondary text-ds-foreground ring-1 ring-ds-border ring-b-0"
+                  : "text-ds-muted hover:bg-ds-primary hover:text-ds-foreground"
               }`}
             >
               {t.label}
@@ -394,18 +387,14 @@ export function ComplianceApp() {
       </div>
 
       {!dataEnabled ? (
-        <p className="mt-8 text-sm text-pulse-muted">
+        <p className="mt-8 text-sm text-ds-muted">
           {isSystemAdmin ? "Select a company to view compliance data." : "Sign in as a manager to view compliance."}
         </p>
       ) : (
         <>
           <div className="mt-4 flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-end lg:justify-between">
             <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-              <select
-                className="rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2 text-sm font-medium text-pulse-navy outline-none focus:border-pulse-accent focus:ring-2 focus:ring-pulse-accent/25"
-                value={toolFilter}
-                onChange={(e) => setToolFilter(e.target.value)}
-              >
+              <select className={dsSelectClass} value={toolFilter} onChange={(e) => setToolFilter(e.target.value)}>
                 <option value="">All tools</option>
                 {assets.map((a) => (
                   <option key={a.id} value={a.id}>
@@ -414,20 +403,16 @@ export function ComplianceApp() {
                 ))}
               </select>
               <div className="relative min-w-[12rem]">
-                <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-pulse-muted" />
+                <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-ds-muted" />
                 <input
                   type="search"
                   placeholder="Search user…"
                   value={userQ}
                   onChange={(e) => setUserQ(e.target.value)}
-                  className="w-full rounded-lg border border-slate-200 bg-slate-50/80 py-2 pl-9 pr-3 text-sm text-pulse-navy placeholder:text-slate-400 outline-none focus:border-pulse-accent focus:ring-2 focus:ring-pulse-accent/25"
+                  className={`${dsInputClass} py-2 pl-9 pr-3`}
                 />
               </div>
-              <select
-                className="rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2 text-sm font-medium text-pulse-navy outline-none focus:border-pulse-accent focus:ring-2 focus:ring-pulse-accent/25"
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-              >
+              <select className={dsSelectClass} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
                 <option value="">All statuses</option>
                 <option value="completed">Completed</option>
                 <option value="pending">Pending</option>
@@ -438,13 +423,13 @@ export function ComplianceApp() {
                 type="date"
                 value={dateFrom}
                 onChange={(e) => setDateFrom(e.target.value)}
-                className="rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2 text-sm text-pulse-navy outline-none focus:border-pulse-accent focus:ring-2 focus:ring-pulse-accent/25"
+                className={dsInputClass}
               />
               <input
                 type="date"
                 value={dateTo}
                 onChange={(e) => setDateTo(e.target.value)}
-                className="rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2 text-sm text-pulse-navy outline-none focus:border-pulse-accent focus:ring-2 focus:ring-pulse-accent/25"
+                className={dsInputClass}
               />
             </div>
             <div className="flex flex-wrap items-center gap-2">
@@ -454,7 +439,7 @@ export function ComplianceApp() {
                   setSort("date");
                   setDir((d) => (d === "desc" ? "asc" : "desc"));
                 }}
-                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-pulse-navy shadow-sm hover:bg-slate-50"
+                className="ds-btn-secondary px-3 py-2 text-xs"
               >
                 Sort date {sort === "date" ? (dir === "desc" ? "↓" : "↑") : ""}
               </button>
@@ -464,14 +449,14 @@ export function ComplianceApp() {
                   setSort("status");
                   setDir((d) => (d === "desc" ? "asc" : "desc"));
                 }}
-                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-pulse-navy shadow-sm hover:bg-slate-50"
+                className="ds-btn-secondary px-3 py-2 text-xs"
               >
                 Sort status {sort === "status" ? (dir === "desc" ? "↓" : "↑") : ""}
               </button>
               <button
                 type="button"
                 onClick={exportCsv}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-sky-50 px-3 py-2 text-xs font-bold text-[#1e4a8a] ring-1 ring-sky-200/70 hover:bg-sky-100/80"
+                className="ds-btn-solid-primary inline-flex items-center gap-1.5 px-3 py-2 text-xs"
               >
                 <Download className="h-3.5 w-3.5" aria-hidden />
                 Export CSV
@@ -479,19 +464,19 @@ export function ComplianceApp() {
             </div>
           </div>
 
-          <div className="mt-4 overflow-hidden rounded-md border border-pulse-border bg-white shadow-sm ring-1 ring-slate-100/80">
+          <DataTableCard className="mt-4">
             {listHook.loading ? (
-              <div className="flex items-center justify-center gap-2 py-16 text-pulse-muted">
+              <div className="flex items-center justify-center gap-2 py-16 text-ds-muted">
                 <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
                 Loading records…
               </div>
             ) : listHook.error ? (
-              <p className="p-6 text-sm text-rose-600">{listHook.error}</p>
+              <p className="p-6 text-sm text-ds-danger">{listHook.error}</p>
             ) : (
               <div className="overflow-x-auto">
                 <table className="min-w-full border-collapse text-left text-sm">
                   <thead>
-                    <tr className="border-b border-pulse-border bg-slate-50/80 text-xs font-bold uppercase tracking-wide text-pulse-muted">
+                    <tr className={dataTableHeadRowClass}>
                       <th className="px-4 py-3">User</th>
                       <th className="px-4 py-3">Tool / SOP</th>
                       <th className="px-4 py-3">Date / time</th>
@@ -509,13 +494,13 @@ export function ComplianceApp() {
                       return (
                         <tr
                           key={row.id}
-                          className={`border-b border-slate-100 last:border-0 hover:bg-slate-50/60 ${
-                            repeatEmphasis ? "bg-rose-50/35" : ""
-                          } ${overdueStrict ? "ring-1 ring-inset ring-amber-300/80" : ""}`}
+                          className={dataTableBodyRow(
+                            `${repeatEmphasis ? "bg-[color-mix(in_srgb,var(--ds-danger)_10%,var(--ds-surface-secondary))]" : ""} ${overdueStrict ? "ring-1 ring-inset ring-ds-warning/50" : ""}`,
+                          )}
                         >
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-2.5">
-                              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-pulse-navy ring-1 ring-slate-200/60">
+                              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-ds-secondary text-xs font-bold text-ds-foreground ring-1 ring-ds-border">
                                 {(row.user_name ?? "?")
                                   .split(/\s+/)
                                   .filter(Boolean)
@@ -526,44 +511,42 @@ export function ComplianceApp() {
                               </span>
                               <div className="min-w-0">
                                 <div className="flex flex-wrap items-center gap-1.5">
-                                  <span className="font-semibold text-pulse-navy">{row.user_name ?? "—"}</span>
+                                  <span className="font-semibold text-ds-foreground">{row.user_name ?? "—"}</span>
                                   {complianceSettings.showRepeatOffenderHighlight && row.repeat_offender ? (
-                                    <span className="inline-flex items-center gap-0.5 text-xs font-bold text-rose-600">
+                                    <span className="inline-flex items-center gap-0.5 text-xs font-bold text-ds-danger">
                                       <AlertTriangle className="h-3.5 w-3.5" aria-hidden />
                                       Repeat offender
                                     </span>
                                   ) : null}
                                 </div>
-                                <p className="text-xs text-pulse-muted">{roleLabel(row.user_role)}</p>
+                                <p className="text-xs text-ds-muted">{roleLabel(row.user_role)}</p>
                               </div>
                             </div>
                           </td>
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-2">
-                              <Wrench className="h-4 w-4 shrink-0 text-slate-400" aria-hidden />
+                              <Wrench className="h-4 w-4 shrink-0 text-ds-muted" aria-hidden />
                               <div className="min-w-0">
-                                <p className="font-medium text-pulse-navy">{row.tool_name ?? "—"}</p>
-                                <p className="truncate text-xs text-pulse-muted">
+                                <p className="font-medium text-ds-foreground">{row.tool_name ?? "—"}</p>
+                                <p className="truncate text-xs text-ds-muted">
                                   {row.sop_label ?? row.sop_id ?? "SOP"}
                                 </p>
                               </div>
                             </div>
                           </td>
-                          <td className="px-4 py-3 text-pulse-navy">
+                          <td className="px-4 py-3 text-ds-foreground">
                             <p className="font-medium">{when.date}</p>
-                            <p className="text-xs text-pulse-muted">{when.time}</p>
+                            <p className="text-xs text-ds-muted">{when.time}</p>
                           </td>
                           <td className="px-4 py-3">
-                            <span
-                              className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-bold capitalize ${statusBadgeClass(row.effective_status)}`}
-                            >
+                            <StatusBadge variant={statusVariant(row.effective_status)} className="capitalize">
                               {row.effective_status}
-                            </span>
+                            </StatusBadge>
                             {row.flagged ? (
-                              <span className="ml-2 text-xs font-semibold text-amber-700">Flagged</span>
+                              <span className="ml-2 text-xs font-semibold text-ds-warning">Flagged</span>
                             ) : null}
                             {complianceSettings.strictReviewDeadlines && row.effective_status === "overdue" ? (
-                              <span className="mt-1 block text-xs font-bold text-amber-800">
+                              <span className="mt-1 block text-xs font-bold text-ds-warning">
                                 Review overdue — address before it escalates.
                               </span>
                             ) : null}
@@ -571,17 +554,17 @@ export function ComplianceApp() {
                           <td className="relative px-4 py-3 text-right">
                             <button
                               type="button"
-                              className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-pulse-navy hover:bg-slate-50"
+                              className="ds-btn-secondary inline-flex h-8 w-8 items-center justify-center p-0"
                               aria-label="Row actions"
                               onClick={() => setMenuFor((m) => (m === row.id ? null : row.id))}
                             >
                               <MoreVertical className="h-4 w-4" aria-hidden />
                             </button>
                             {menuFor === row.id ? (
-                              <div className="absolute right-4 z-30 mt-1 w-52 rounded-lg border border-slate-200 bg-white py-1 text-left shadow-lg">
+                              <div className="absolute right-4 z-30 mt-1 w-52 rounded-lg border border-ds-border bg-ds-elevated py-1 text-left shadow-lg">
                                 <button
                                   type="button"
-                                  className="block w-full px-3 py-2 text-left text-sm text-pulse-navy hover:bg-slate-50"
+                                  className="block w-full px-3 py-2 text-left text-sm text-ds-foreground hover:bg-ds-secondary"
                                   onClick={() => {
                                     closeMenu();
                                     window.alert(
@@ -596,14 +579,14 @@ export function ComplianceApp() {
                                 </button>
                                 <button
                                   type="button"
-                                  className="block w-full px-3 py-2 text-left text-sm text-pulse-navy hover:bg-slate-50"
+                                  className="block w-full px-3 py-2 text-left text-sm text-ds-foreground hover:bg-ds-secondary"
                                   onClick={() => onReview(row.id)}
                                 >
                                   Mark as reviewed
                                 </button>
                                 <button
                                   type="button"
-                                  className="block w-full px-3 py-2 text-left text-sm text-pulse-navy hover:bg-slate-50"
+                                  className="block w-full px-3 py-2 text-left text-sm text-ds-foreground hover:bg-ds-secondary"
                                   onClick={() => onResend(row.id)}
                                 >
                                   Resend acknowledgment
@@ -616,7 +599,7 @@ export function ComplianceApp() {
                                       ? "Only managers and company administrators may flag records in your organization."
                                       : undefined
                                   }
-                                  className="block w-full px-3 py-2 text-left text-sm text-pulse-navy hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-45"
+                                  className="block w-full px-3 py-2 text-left text-sm text-ds-foreground hover:bg-ds-secondary disabled:cursor-not-allowed disabled:opacity-45"
                                   onClick={() => {
                                     if (!canFlagCompliance) return;
                                     void onFlag(row.id, !row.flagged);
@@ -634,7 +617,7 @@ export function ComplianceApp() {
                 </table>
               </div>
             )}
-            <div className="flex flex-col gap-2 border-t border-pulse-border px-4 py-3 text-sm text-pulse-muted sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-col gap-2 border-t border-ds-border px-4 py-3 text-sm text-ds-muted sm:flex-row sm:items-center sm:justify-between">
               <p>
                 Showing {start} to {end} of {total} results
               </p>
@@ -643,24 +626,24 @@ export function ComplianceApp() {
                   type="button"
                   disabled={page <= 0}
                   onClick={() => setPage((p) => Math.max(0, p - 1))}
-                  className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-bold text-pulse-navy disabled:opacity-40"
+                  className="ds-btn-secondary px-2 py-1 text-xs disabled:opacity-40"
                 >
                   Prev
                 </button>
-                <span className="text-xs font-semibold text-pulse-navy">
+                <span className="text-xs font-semibold text-ds-foreground">
                   Page {page + 1} / {totalPages}
                 </span>
                 <button
                   type="button"
                   disabled={page + 1 >= totalPages}
                   onClick={() => setPage((p) => p + 1)}
-                  className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-bold text-pulse-navy disabled:opacity-40"
+                  className="ds-btn-secondary px-2 py-1 text-xs disabled:opacity-40"
                 >
                   Next
                 </button>
               </div>
             </div>
-          </div>
+          </DataTableCard>
         </>
       )}
 

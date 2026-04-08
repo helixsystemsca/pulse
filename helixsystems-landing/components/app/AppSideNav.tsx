@@ -94,17 +94,16 @@ export function AppSideNav() {
   const systemRail = isSystemAdmin;
 
   const tenantShell =
-    "border border-gray-200 bg-white/90 shadow-md shadow-slate-900/6 backdrop-blur-md lg:hover:shadow-lg lg:hover:shadow-slate-900/8 dark:border-[#1F2937] dark:bg-[#111827] dark:shadow-[0_2px_14px_rgba(0,0,0,0.22)] dark:lg:hover:shadow-[0_3px_18px_rgba(0,0,0,0.28)]";
+    "border border-ds-border bg-ds-sidebar shadow-[var(--ds-shadow-card)] backdrop-blur-md lg:hover:shadow-[var(--ds-shadow-card-hover)]";
 
-  const tenantShellMobilePop =
-    "max-lg:shadow-lg max-lg:shadow-slate-900/10 dark:max-lg:shadow-[0_4px_22px_rgba(0,0,0,0.32)]";
+  const tenantShellMobilePop = "max-lg:shadow-[var(--ds-shadow-card-hover)]";
 
   return (
     <>
       {narrowExpanded ? (
         <button
           type="button"
-          className="fixed inset-0 z-[35] bg-slate-900/25 backdrop-blur-[1px] dark:bg-black/40"
+          className="fixed inset-0 z-[35] bg-[color-mix(in_srgb,var(--ds-text-primary)_18%,transparent)] backdrop-blur-[1px] dark:bg-[color-mix(in_srgb,#000_45%,transparent)]"
           aria-label="Close menu"
           onClick={() => setNarrowExpanded(false)}
         />
@@ -125,17 +124,17 @@ export function AppSideNav() {
                 href={item.href}
                 title={item.label}
                 onClick={() => setNarrowExpanded(false)}
-                className={`relative flex min-h-[2.375rem] items-center gap-2 rounded-lg py-1 pl-0.5 pr-1 text-xs font-semibold leading-tight transition-[color,background-color,box-shadow] ${
+                className={`relative flex min-h-[2.375rem] items-center gap-2 rounded-lg border-l-2 py-1 pl-0.5 pr-1 text-xs font-semibold leading-tight transition-[color,background-color,box-shadow,border-color] ${
                   active
-                    ? "bg-sky-50/95 text-[#1e4a8a] shadow-sm ring-2 ring-[#2B4C7E]/20 dark:bg-[#0F172A] dark:text-gray-100 dark:ring-[#1F2937]"
-                    : "text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-gray-100"
+                    ? "border-l-ds-success bg-[color-mix(in_srgb,var(--ds-success)_14%,var(--ds-sidebar))] text-ds-foreground shadow-[0_0_12px_color-mix(in_srgb,var(--ds-success)_22%,transparent)]"
+                    : "border-l-transparent text-ds-muted hover:bg-[color-mix(in_srgb,var(--ds-warning)_10%,var(--ds-sidebar))] hover:text-ds-foreground"
                 }`}
               >
                 <span
                   className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md ${
                     active
-                      ? "bg-white text-[#2B4C7E] shadow-sm ring-1 ring-sky-200/60 dark:bg-[#111827] dark:text-blue-300 dark:ring-[#1F2937]"
-                      : "bg-gray-100 text-gray-500 dark:bg-[#0F172A] dark:text-gray-400"
+                      ? "bg-ds-primary text-ds-success shadow-sm ring-1 ring-[color-mix(in_srgb,var(--ds-success)_35%,transparent)]"
+                      : "bg-ds-secondary text-ds-muted"
                   }`}
                 >
                   <Icon className="h-4 w-4" strokeWidth={2} aria-hidden />
@@ -155,13 +154,13 @@ export function AppSideNav() {
 
         <button
           type="button"
-          className="flex shrink-0 items-center justify-center border-t border-gray-200 py-1.5 dark:border-[#1F2937] lg:hidden"
+          className="flex shrink-0 items-center justify-center border-t border-ds-border py-1.5 lg:hidden"
           onClick={() => setNarrowExpanded((o) => !o)}
           aria-expanded={narrowExpanded}
           aria-label={narrowExpanded ? "Collapse navigation" : "Expand navigation"}
         >
           <ChevronRight
-            className={`h-4 w-4 transition-transform text-gray-500 dark:text-gray-400 ${narrowExpanded ? "rotate-180" : ""}`}
+            className={`h-4 w-4 transition-transform text-ds-muted ${narrowExpanded ? "rotate-180" : ""}`}
             strokeWidth={2}
             aria-hidden
           />

@@ -14,7 +14,7 @@ export function MaintenanceSubnav() {
   const pathname = usePathname();
   return (
     <nav
-      className="mb-6 flex flex-wrap gap-1 rounded-md border border-pulse-border bg-white/80 p-1 shadow-sm dark:border-slate-700 dark:bg-slate-900/60"
+      className="mb-6 flex flex-wrap gap-1 rounded-md border border-ds-border bg-ds-secondary p-1 shadow-sm"
       aria-label="Maintenance"
     >
       {tabs.map((t) => {
@@ -26,8 +26,8 @@ export function MaintenanceSubnav() {
             prefetch={false}
             className={`rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${
               active
-                ? "bg-pulse-accent text-white shadow-sm"
-                : "text-pulse-muted hover:bg-slate-100 dark:hover:bg-slate-800"
+                ? "bg-ds-success text-[#062422] shadow-sm dark:text-[#041612]"
+                : "text-ds-muted hover:bg-ds-primary"
             }`}
           >
             {t.label}

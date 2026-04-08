@@ -2,6 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ImpersonationTenantModal } from "@/components/system/ImpersonationTenantModal";
+import { Card } from "@/components/pulse/Card";
+import { DataTableCard, dataTableBodyRow, dataTableHeadRowClass } from "@/components/ui/DataTable";
+import { dsInputClass, dsLabelClass } from "@/components/ui/ds-form-classes";
 import { apiFetch } from "@/lib/api";
 import { setImpersonationOverlayAccessToken } from "@/lib/impersonation-overlay-token";
 import { parseClientApiError } from "@/lib/parse-client-api-error";
@@ -40,11 +43,9 @@ const ROLE_OPTIONS: { value: string; label: string }[] = [
   { value: "worker", label: "Worker" },
 ];
 
-const INPUT =
-  "w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 dark:border-zinc-600 dark:bg-zinc-900 dark:text-white dark:placeholder:text-zinc-500";
-const BTN_PRIMARY = "rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500";
-const BTN_SECONDARY =
-  "rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-800 hover:bg-gray-50 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800";
+const INPUT = dsInputClass;
+const BTN_PRIMARY = "ds-btn-solid-primary px-4 py-2 text-sm";
+const BTN_SECONDARY = "ds-btn-secondary px-4 py-2 text-sm";
 
 export default function SystemUsersPage() {
   const session = readSession();
@@ -152,8 +153,8 @@ export default function SystemUsersPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-xl font-semibold text-gray-900 dark:text-white">Users</h1>
-          <p className="mt-1 text-sm text-gray-500 dark:text-zinc-500">
+          <h1 className="text-xl font-semibold text-ds-foreground">Users</h1>
+          <p className="mt-1 text-sm text-ds-muted">
             Tenant accounts and pending invites. Impersonation opens a preview of the operations dashboard in a modal
             (your admin session stays here; close the modal to exit).
           </p>
@@ -161,35 +162,36 @@ export default function SystemUsersPage() {
         <button
           type="button"
           onClick={openFilters}
-          className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-900 hover:bg-gray-50 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800"
+          className="ds-btn-secondary inline-flex items-center gap-2 px-4 py-2 text-sm"
         >
           Filters
           {filterBadge > 0 ? (
-            <span className="rounded-full bg-blue-600 px-2 py-0.5 text-[11px] font-bold text-white">{filterBadge}</span>
+            <span className="app-badge-emerald px-2 py-0.5 text-[11px] font-bold">{filterBadge}</span>
           ) : null}
         </button>
       </div>
 
       {filterOpen ? (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-[color-mix(in_srgb,var(--ds-text-primary)_38%,transparent)] p-4 backdrop-blur-sm"
           onClick={() => setFilterOpen(false)}
           role="presentation"
         >
           <div
-            className="w-full max-w-md rounded-md border border-gray-200 bg-white p-6 shadow-2xl dark:border-zinc-700 dark:bg-zinc-950"
+            className="w-full max-w-md"
             role="dialog"
             aria-modal="true"
             aria-labelledby="users-filter-title"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between border-b border-gray-200 pb-4 dark:border-zinc-800">
-              <h2 id="users-filter-title" className="text-lg font-semibold text-gray-900 dark:text-white">
+            <Card variant="elevated" padding="lg" className="shadow-2xl">
+            <div className="flex items-center justify-between border-b border-ds-border pb-4">
+              <h2 id="users-filter-title" className="text-lg font-semibold text-ds-foreground">
                 Filter users
               </h2>
               <button
                 type="button"
-                className="rounded-lg px-2 py-1 text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white"
+                className="rounded-lg px-2 py-1 text-ds-muted transition-colors hover:bg-ds-secondary hover:text-ds-foreground"
                 onClick={() => setFilterOpen(false)}
                 aria-label="Close"
               >
@@ -198,7 +200,7 @@ export default function SystemUsersPage() {
             </div>
             <div className="mt-5 space-y-4">
               <div>
-                <label className="text-xs font-medium text-gray-600 dark:text-zinc-400" htmlFor="users-q">
+                <label className={`${dsLabelClass} !normal-case`} htmlFor="users-q">
                   Search
                 </label>
                 <input
@@ -206,18 +208,18 @@ export default function SystemUsersPage() {
                   value={draftQ}
                   onChange={(e) => setDraftQ(e.target.value)}
                   placeholder="Email, name, company…"
-                  className={`mt-1 ${INPUT}`}
+                  className={`mt-1.5 ${INPUT}`}
                 />
               </div>
               <div>
-                <label className="text-xs font-medium text-gray-600 dark:text-zinc-400" htmlFor="users-role">
+                <label className={`${dsLabelClass} !normal-case`} htmlFor="users-role">
                   Role
                 </label>
                 <select
                   id="users-role"
                   value={draftRole}
                   onChange={(e) => setDraftRole(e.target.value)}
-                  className={`mt-1 ${INPUT}`}
+                  className={`mt-1.5 ${INPUT}`}
                 >
                   {ROLE_OPTIONS.map((o) => (
                     <option key={o.value || "all"} value={o.value}>
@@ -235,123 +237,127 @@ export default function SystemUsersPage() {
                 Apply
               </button>
             </div>
+            </Card>
           </div>
         </div>
       ) : null}
 
       {loadError ? (
-        <div className="rounded-lg border border-red-900 bg-red-950/50 px-4 py-3 text-sm text-red-200">
+        <div className="ds-alert-critical rounded-lg border px-4 py-3 text-sm text-ds-foreground">
           <p className="font-medium">{loadError}</p>
         </div>
       ) : null}
 
       {resetLink ? (
-        <div className="rounded-lg border border-amber-800 bg-amber-950/30 px-4 py-3 text-sm text-amber-200">
+        <div className="ds-alert-warning rounded-lg border px-4 py-3 text-sm text-ds-foreground">
           <p className="font-medium">Reset link path (share securely; single-use):</p>
-          <code className="mt-2 block break-all text-xs">{resetLink}</code>
+          <code className="mt-2 block break-all text-xs text-ds-muted">{resetLink}</code>
         </div>
       ) : null}
 
       {loading ? (
-        <p className="text-gray-500 dark:text-zinc-500">Loading…</p>
+        <p className="text-ds-muted">Loading…</p>
       ) : (
         <div className="space-y-10">
           <div>
-            <h2 className="text-sm font-semibold text-gray-800 dark:text-zinc-300">Directory</h2>
-            <p className="mt-1 text-xs text-gray-500 dark:text-zinc-500">
-              Completed signups only. <strong className="text-gray-700 dark:text-zinc-400">Delete</strong> removes the
-              account (not allowed for
-              yourself or the last system admin).
+            <h2 className="text-sm font-semibold text-ds-foreground">Directory</h2>
+            <p className="mt-1 text-xs text-ds-muted">
+              Completed signups only. <strong className="text-ds-foreground">Delete</strong> removes the account (not
+              allowed for yourself or the last system admin).
             </p>
             {rows.length === 0 ? (
-              <p className="mt-3 text-sm text-gray-500 dark:text-zinc-500">No users match these filters.</p>
+              <p className="mt-3 text-sm text-ds-muted">No users match these filters.</p>
             ) : (
-              <div className="mt-3 overflow-x-auto rounded-lg border border-gray-200 dark:border-zinc-800">
-                <table className="min-w-full divide-y divide-gray-200 text-left text-sm dark:divide-zinc-800">
-                  <thead className="bg-gray-50 text-xs uppercase text-gray-500 dark:bg-zinc-900/80 dark:text-zinc-500">
-                    <tr>
-                      <th className="px-4 py-3">User</th>
-                      <th className="px-4 py-3">Role</th>
-                      <th className="px-4 py-3">Company</th>
-                      <th className="px-4 py-3">Last login</th>
-                      <th className="px-4 py-3">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200 bg-white/80 dark:divide-zinc-800 dark:bg-zinc-950/50">
-                    {rows.map((r) => (
-                      <tr key={r.id} className={r.is_active ? "" : "opacity-50"}>
-                        <td className="px-4 py-3">
-                          <div className="font-medium text-gray-900 dark:text-white">{r.full_name || "—"}</div>
-                          <div className="text-xs text-gray-500 dark:text-zinc-500">{r.email}</div>
-                        </td>
-                        <td className="px-4 py-3 text-gray-600 dark:text-zinc-400">{r.role}</td>
-                        <td className="px-4 py-3 text-gray-600 dark:text-zinc-400">{r.company_name || "—"}</td>
-                        <td className="px-4 py-3 text-xs text-gray-500 dark:text-zinc-500">{r.last_login || "—"}</td>
-                        <td className="space-x-2 px-4 py-3">
-                          {r.role !== "system_admin" && r.company_id ? (
-                            <button
-                              type="button"
-                              onClick={() => void impersonate(r.id, r)}
-                              className="text-xs text-blue-400 hover:underline"
-                            >
-                              Impersonate
-                            </button>
-                          ) : null}
-                          <button
-                            type="button"
-                            onClick={() => void requestReset(r.id)}
-                            className="text-xs text-gray-600 hover:underline dark:text-zinc-400"
-                          >
-                            Reset link
-                          </button>
-                          {r.id !== myUserId ? (
-                            <button
-                              type="button"
-                              onClick={() => void deleteUser(r.id, r.email)}
-                              className="text-xs text-red-400 hover:underline"
-                            >
-                              Delete
-                            </button>
-                          ) : null}
-                        </td>
+              <DataTableCard className="mt-3">
+                <div className="overflow-x-auto">
+                  <table className="min-w-full border-collapse text-left text-sm">
+                    <thead>
+                      <tr className={dataTableHeadRowClass}>
+                        <th className="px-4 py-3">User</th>
+                        <th className="px-4 py-3">Role</th>
+                        <th className="px-4 py-3">Company</th>
+                        <th className="px-4 py-3">Last login</th>
+                        <th className="px-4 py-3">Actions</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody>
+                      {rows.map((r) => (
+                        <tr key={r.id} className={dataTableBodyRow(r.is_active ? "" : "opacity-50")}>
+                          <td className="px-4 py-3">
+                            <div className="font-medium text-ds-foreground">{r.full_name || "—"}</div>
+                            <div className="text-xs text-ds-muted">{r.email}</div>
+                          </td>
+                          <td className="px-4 py-3 text-ds-muted">{r.role}</td>
+                          <td className="px-4 py-3 text-ds-muted">{r.company_name || "—"}</td>
+                          <td className="px-4 py-3 text-xs text-ds-muted">{r.last_login || "—"}</td>
+                          <td className="space-x-2 px-4 py-3">
+                            {r.role !== "system_admin" && r.company_id ? (
+                              <button
+                                type="button"
+                                onClick={() => void impersonate(r.id, r)}
+                                className="ds-link text-xs"
+                              >
+                                Impersonate
+                              </button>
+                            ) : null}
+                            <button
+                              type="button"
+                              onClick={() => void requestReset(r.id)}
+                              className="text-xs text-ds-muted underline decoration-dotted underline-offset-2 hover:text-ds-foreground"
+                            >
+                              Reset link
+                            </button>
+                            {r.id !== myUserId ? (
+                              <button
+                                type="button"
+                                onClick={() => void deleteUser(r.id, r.email)}
+                                className="text-xs text-ds-danger underline decoration-dotted underline-offset-2 hover:brightness-110"
+                              >
+                                Delete
+                              </button>
+                            ) : null}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </DataTableCard>
             )}
           </div>
 
           <div>
-            <h2 className="text-sm font-semibold text-gray-800 dark:text-zinc-300">Pending invites</h2>
-            <p className="mt-1 text-xs text-gray-500 dark:text-zinc-500">
+            <h2 className="text-sm font-semibold text-ds-foreground">Pending invites</h2>
+            <p className="mt-1 text-xs text-ds-muted">
               Open invites that have not finished signup—no account to impersonate yet.
             </p>
             {pendingInvites.length === 0 ? (
-              <p className="mt-3 text-sm text-gray-500 dark:text-zinc-500">No unused, non-expired invites.</p>
+              <p className="mt-3 text-sm text-ds-muted">No unused, non-expired invites.</p>
             ) : (
-              <div className="mt-3 overflow-x-auto rounded-lg border border-gray-200 dark:border-zinc-800">
-                <table className="min-w-full divide-y divide-gray-200 text-left text-sm dark:divide-zinc-800">
-                  <thead className="bg-gray-50 text-xs uppercase text-gray-500 dark:bg-zinc-900/80 dark:text-zinc-500">
-                    <tr>
-                      <th className="px-4 py-3">Email</th>
-                      <th className="px-4 py-3">Role</th>
-                      <th className="px-4 py-3">Company</th>
-                      <th className="px-4 py-3">Expires</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200 bg-white/80 dark:divide-zinc-800 dark:bg-zinc-950/50">
-                    {pendingInvites.map((r) => (
-                      <tr key={r.invite_id}>
-                        <td className="px-4 py-3 text-gray-900 dark:text-white">{r.email}</td>
-                        <td className="px-4 py-3 text-gray-600 dark:text-zinc-400">{r.role}</td>
-                        <td className="px-4 py-3 text-gray-600 dark:text-zinc-400">{r.company_name || r.company_id}</td>
-                        <td className="px-4 py-3 text-xs text-gray-500 dark:text-zinc-500">{r.expires_at}</td>
+              <DataTableCard className="mt-3">
+                <div className="overflow-x-auto">
+                  <table className="min-w-full border-collapse text-left text-sm">
+                    <thead>
+                      <tr className={dataTableHeadRowClass}>
+                        <th className="px-4 py-3">Email</th>
+                        <th className="px-4 py-3">Role</th>
+                        <th className="px-4 py-3">Company</th>
+                        <th className="px-4 py-3">Expires</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody>
+                      {pendingInvites.map((r) => (
+                        <tr key={r.invite_id} className={dataTableBodyRow()}>
+                          <td className="px-4 py-3 text-ds-foreground">{r.email}</td>
+                          <td className="px-4 py-3 text-ds-muted">{r.role}</td>
+                          <td className="px-4 py-3 text-ds-muted">{r.company_name || r.company_id}</td>
+                          <td className="px-4 py-3 text-xs text-ds-muted">{r.expires_at}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </DataTableCard>
             )}
           </div>
         </div>

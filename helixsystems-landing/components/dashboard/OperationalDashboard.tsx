@@ -74,24 +74,24 @@ type DashboardViewModel = {
 };
 
 const roleBadgeBase =
-  "pointer-events-none absolute -bottom-0.5 -right-0.5 z-10 flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-bold leading-none text-white shadow-sm ring-2 ring-white dark:ring-[#111827]";
+  "pointer-events-none absolute -bottom-0.5 -right-0.5 z-10 flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-bold leading-none text-white shadow-sm ring-2 ring-[var(--ds-surface-primary)]";
 
 function onsiteAvatarClass(badge?: "L" | "S") {
   const isLead = badge === "L";
   const shared =
-    "relative shrink-0 items-center justify-center rounded-full bg-emerald-100/85 dark:bg-emerald-500/12 font-bold text-emerald-700 dark:text-emerald-400 shadow-md ring-1 ring-emerald-300 dark:ring-emerald-500/35 ring-offset-2 ring-offset-white/70 dark:ring-offset-slate-900/50 transition-transform";
+    "relative shrink-0 items-center justify-center rounded-full bg-[color-mix(in_srgb,var(--ds-success)_22%,var(--ds-surface-secondary))] font-bold text-[color-mix(in_srgb,var(--ds-success)_25%,var(--ds-text-primary))] shadow-md ring-1 ring-[color-mix(in_srgb,var(--ds-success)_45%,transparent)] ring-offset-2 ring-offset-[var(--ds-surface-primary)] transition-transform";
   if (isLead) {
-    return `z-[1] flex h-14 w-14 text-base shadow-sm dark:shadow-[0_2px_8px_rgba(0,0,0,0.4)] ring-2 ring-emerald-400 dark:ring-emerald-500/45 md:h-16 md:w-16 md:text-lg ${shared}`;
+    return `z-[1] flex h-14 w-14 text-base shadow-[var(--ds-shadow-card)] ring-2 ring-[color-mix(in_srgb,var(--ds-success)_55%,transparent)] md:h-16 md:w-16 md:text-lg ${shared}`;
   }
   return `flex h-11 w-11 text-xs shadow-sm md:h-12 md:w-12 md:text-sm ${shared}`;
 }
 
 function offsiteAvatarClass() {
-  return "flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-amber-100/80 dark:bg-amber-500/12 text-xs font-bold text-amber-700 dark:text-amber-400 shadow-sm ring-1 ring-amber-300 dark:ring-amber-500/35 ring-offset-2 ring-offset-white/70 dark:ring-offset-slate-900/50 md:h-12 md:w-12 md:text-sm";
+  return "flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[color-mix(in_srgb,var(--ds-warning)_22%,var(--ds-surface-secondary))] text-xs font-bold text-[color-mix(in_srgb,var(--ds-warning)_30%,var(--ds-text-primary))] shadow-sm ring-1 ring-[color-mix(in_srgb,var(--ds-warning)_45%,transparent)] ring-offset-2 ring-offset-[var(--ds-surface-primary)] md:h-12 md:w-12 md:text-sm";
 }
 
 function absentAvatarClass() {
-  return "relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-100/85 dark:bg-red-500/12 text-xs font-bold text-red-700 dark:text-red-400 opacity-[0.92] shadow-sm ring-1 ring-red-300 dark:ring-red-500/40 ring-offset-2 ring-offset-white/70 dark:ring-offset-slate-900/50 after:absolute after:bottom-0 after:right-0 after:z-10 after:h-2.5 after:w-2.5 after:rounded-full after:bg-red-600 dark:bg-red-500 after:ring-2 after:ring-white dark:ring-[#111827] md:h-11 md:w-11 md:text-sm";
+  return "relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[color-mix(in_srgb,var(--ds-danger)_20%,var(--ds-surface-secondary))] text-xs font-bold text-[color-mix(in_srgb,var(--ds-danger)_35%,var(--ds-text-primary))] opacity-[0.96] shadow-sm ring-1 ring-[color-mix(in_srgb,var(--ds-danger)_45%,transparent)] ring-offset-2 ring-offset-[var(--ds-surface-primary)] after:absolute after:bottom-0 after:right-0 after:z-10 after:h-2.5 after:w-2.5 after:rounded-full after:bg-ds-danger after:ring-2 after:ring-[var(--ds-surface-primary)] md:h-11 md:w-11 md:text-sm";
 }
 
 function WorkforceBubbleFace({ initials, avatarUrl }: { initials: string; avatarUrl?: string | null }) {
@@ -537,9 +537,9 @@ function DashboardBody({
   const trimmedHeaderImage = headerImageUrl?.trim() || null;
 
   return (
-    <div className="flex flex-col overflow-hidden rounded-md border border-slate-200/80 bg-slate-50/50 dark:border-slate-700/45 dark:bg-slate-900/20">
-      <header className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 border-b border-slate-200/80 bg-white/60 px-4 py-4 dark:border-slate-700/45 dark:bg-slate-900/35 sm:px-6">
-        <span className="min-w-0 text-base font-bold leading-tight tracking-tight text-gray-900 dark:text-gray-100 sm:text-lg md:text-xl lg:text-2xl">
+    <div className="ds-dashboard-shell">
+      <header className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 border-b border-ds-border bg-ds-primary px-4 py-4 sm:px-6">
+        <span className="min-w-0 text-base font-bold leading-tight tracking-tight text-ds-foreground sm:text-lg md:text-xl lg:text-2xl">
           {model.title}
         </span>
         <div className="flex min-h-0 min-w-0 justify-center">
@@ -553,14 +553,14 @@ function DashboardBody({
         </div>
         {!hideHeaderWelcome ? (
           <div className="flex min-w-0 items-center justify-end gap-2 sm:gap-3">
-            <p className="min-w-0 truncate text-xs text-gray-500 dark:text-gray-400 sm:text-sm">
+            <p className="min-w-0 truncate text-xs text-ds-muted sm:text-sm">
               Welcome,{" "}
-              <span className="font-semibold text-gray-900 dark:text-gray-100">{model.welcomeName}</span>
+              <span className="font-semibold text-ds-foreground">{model.welcomeName}</span>
             </p>
-            <span className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-500/20 text-xs font-bold text-blue-600 dark:text-blue-400 ring-2 ring-gray-200 dark:ring-[#1F2937]">
+            <span className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[color-mix(in_srgb,var(--ds-success)_18%,var(--ds-surface-secondary))] text-xs font-bold text-ds-success ring-2 ring-ds-border">
               {userInitials.slice(0, 2)}
               <span
-                className="pointer-events-none absolute -right-0.5 -top-0.5 z-10 flex h-[18px] w-[18px] items-center justify-center rounded-full bg-blue-600 dark:bg-[#3B82F6] text-[9px] font-bold leading-none text-white shadow-sm dark:shadow-[0_2px_8px_rgba(0,0,0,0.4)] ring-2 ring-white dark:ring-[#111827]"
+                className="pointer-events-none absolute -right-0.5 -top-0.5 z-10 flex h-[18px] w-[18px] items-center justify-center rounded-full bg-ds-success text-[9px] font-bold leading-none text-[#041a17] shadow-[var(--ds-shadow-card)] ring-2 ring-[var(--ds-surface-primary)]"
                 aria-hidden
               >
                 M
@@ -573,12 +573,9 @@ function DashboardBody({
       </header>
 
       {model.bannerNote ? (
-        <div className="border-b border-slate-200/80 bg-sky-50/80 px-4 py-3 text-center text-sm font-medium text-slate-700 backdrop-blur-sm dark:border-slate-700/45 dark:bg-sky-500/10 dark:text-slate-200">
+        <div className="border-b border-ds-border bg-[color-mix(in_srgb,var(--ds-warning)_12%,var(--ds-primary))] px-4 py-3 text-center text-sm font-medium text-ds-foreground backdrop-blur-sm">
           {model.bannerNote}{" "}
-          <Link
-            href="/monitoring"
-            className="font-semibold text-blue-700 underline decoration-blue-300 underline-offset-2 hover:text-blue-800 dark:text-sky-200 dark:decoration-sky-400/80 dark:hover:text-sky-100"
-          >
+          <Link href="/monitoring" className="ds-link">
             Open Monitoring →
           </Link>
         </div>
@@ -590,44 +587,32 @@ function DashboardBody({
           className="app-dashboard-tile flex flex-col p-5 lg:col-span-12 lg:p-6"
           data-dashboard-tile="alerts"
         >
-          <h3 className="text-base font-bold text-gray-900 dark:text-gray-100">Active Alerts</h3>
+          <h3 className="text-base font-bold text-ds-foreground">Active Alerts</h3>
           <ul className="mt-4 flex flex-1 flex-col gap-3">
             {model.alerts.map((a, idx) => (
               <li
                 key={`${a.title}-${idx}`}
-                className={`flex gap-3 rounded-md border border-gray-200 p-4 dark:border-[#1F2937] ${
-                  a.severity === "critical"
-                    ? "border-l-2 border-l-red-500 bg-red-100/60 dark:border-l-red-400 dark:bg-red-950/50 dark:ring-1 dark:ring-red-500/25"
-                    : "border-l-2 border-l-amber-500 bg-amber-100/60 dark:border-l-amber-400 dark:bg-amber-950/55 dark:ring-1 dark:ring-amber-500/25"
+                className={`flex gap-3 rounded-md border p-4 ${
+                  a.severity === "critical" ? "ds-alert-critical" : "ds-alert-warning"
                 }`}
               >
                 <span
                   className={`mt-0.5 flex h-9 w-1 shrink-0 rounded-full ${
-                    a.severity === "critical" ? "bg-red-500 dark:bg-red-500/90" : "bg-amber-500 dark:bg-amber-400/90"
+                    a.severity === "critical" ? "bg-ds-danger" : "bg-ds-warning"
                   }`}
                 />
                 <div className="min-w-0 flex-1">
-                  <p
-                    className={`text-sm font-bold text-gray-900 ${
-                      a.severity === "critical" ? "dark:text-red-50" : "dark:text-amber-50"
-                    }`}
-                  >
-                    {a.title}
-                  </p>
+                  <p className="text-sm font-bold text-ds-foreground">{a.title}</p>
                   {a.subtitle ? (
-                    <p
-                      className={`mt-1 whitespace-pre-line text-xs leading-relaxed text-gray-500 ${
-                        a.severity === "critical" ? "dark:text-red-100/90" : "dark:text-amber-100/85"
-                      }`}
-                    >
+                    <p className="mt-1 whitespace-pre-line text-xs leading-relaxed text-ds-muted">
                       {a.subtitle}
                     </p>
                   ) : null}
                 </div>
                 {a.severity === "critical" ? (
-                  <AlertTriangle className="h-5 w-5 shrink-0 text-red-700 dark:text-red-200" aria-hidden />
+                  <AlertTriangle className="h-5 w-5 shrink-0 text-ds-danger" aria-hidden />
                 ) : (
-                  <Radio className="h-5 w-5 shrink-0 text-amber-700 dark:text-amber-200" aria-hidden />
+                  <Radio className="h-5 w-5 shrink-0 text-ds-warning" aria-hidden />
                 )}
               </li>
             ))}
@@ -638,23 +623,23 @@ function DashboardBody({
           className="app-dashboard-tile flex flex-col p-5 lg:col-span-5 lg:min-h-[280px] lg:p-6"
           data-dashboard-tile="workforce"
         >
-          <h3 className="text-base font-bold text-gray-900 dark:text-gray-100">Workforce</h3>
-          <p className="mt-2 text-sm font-semibold text-gray-900 dark:text-gray-100">
+          <h3 className="text-base font-bold text-ds-foreground">Workforce</h3>
+          <p className="mt-2 text-sm font-semibold text-ds-foreground">
             Today – {model.workforce.dateLabel}
           </p>
-          <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">{model.workforce.summaryLine}</p>
+          <p className="mt-2 text-xs text-ds-muted">{model.workforce.summaryLine}</p>
 
           <div className="mt-4 flex min-w-0 flex-col gap-4 sm:flex-row sm:items-start sm:gap-4">
             <div className="min-w-0 flex-1 space-y-4">
               <div className="space-y-3">
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-ds-success">
                   On-site
                 </p>
                 <div className="flex flex-wrap gap-3">
                   {model.workforce.onsite.length === 0 ? (
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                    <p className="text-sm text-ds-muted">
                       No one on shift right now. Add shifts under{" "}
-                      <Link href="/schedule" className="font-medium text-blue-600 dark:text-blue-400 hover:underline">
+                      <Link href="/schedule" className="ds-link font-medium">
                         Schedule
                       </Link>{" "}
                       when your roster is ready.
@@ -668,10 +653,12 @@ function DashboardBody({
                       >
                         <WorkforceBubbleFace initials={b.initials} avatarUrl={b.avatar_url} />
                         {b.badge === "L" ? (
-                          <span className={`${roleBadgeBase} bg-emerald-700`}>L</span>
+                          <span className={`${roleBadgeBase} bg-ds-success text-[#041a17]`}>L</span>
                         ) : null}
                         {b.badge === "S" ? (
-                          <span className={`${roleBadgeBase} bg-blue-600 dark:bg-[#3B82F6]`}>S</span>
+                          <span className={`${roleBadgeBase} bg-[color-mix(in_srgb,var(--ds-success)_75%,var(--ds-text-primary))] text-white`}>
+                            S
+                          </span>
                         ) : null}
                       </span>
                     ))
@@ -679,12 +666,12 @@ function DashboardBody({
                 </div>
               </div>
               <div className="space-y-3">
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-amber-700 dark:text-amber-400">
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-ds-warning">
                   Off-site
                 </p>
                 <div className="flex flex-wrap gap-3">
                   {model.workforce.offsite.length === 0 ? (
-                    <p className="text-sm text-gray-500 dark:text-gray-400">—</p>
+                    <p className="text-sm text-ds-muted">—</p>
                   ) : (
                     model.workforce.offsite.map((b) => (
                       <span key={b.id} title={b.title} className={offsiteAvatarClass()}>
@@ -695,11 +682,11 @@ function DashboardBody({
                 </div>
               </div>
             </div>
-            <div className="shrink-0 border-t border-gray-200 dark:border-[#1F2937] pt-4 sm:border-l sm:border-t-0 sm:pl-4 sm:pt-0">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-red-700 dark:text-red-400">Absent</p>
+            <div className="shrink-0 border-t border-ds-border pt-4 sm:border-l sm:border-t-0 sm:pl-4 sm:pt-0">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-ds-danger">Absent</p>
               <div className="mt-3 flex flex-wrap gap-3">
                 {model.workforce.absent.length === 0 ? (
-                  <p className="text-sm text-gray-500 dark:text-gray-400">—</p>
+                  <p className="text-sm text-ds-muted">—</p>
                 ) : (
                   model.workforce.absent.map((b) => (
                     <span key={b.id} title={b.title} className={absentAvatarClass()}>
@@ -711,7 +698,7 @@ function DashboardBody({
             </div>
           </div>
 
-          <div className="mt-4 flex flex-wrap gap-2 border-t border-gray-200 dark:border-[#1F2937] pt-4">
+          <div className="mt-4 flex flex-wrap gap-2 border-t border-ds-border pt-4">
             <span className="app-badge-emerald inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold">
               <span className="h-1.5 w-1.5 rounded-full bg-current opacity-90" />
               On-site · {model.workforce.counts.onsite}
@@ -732,7 +719,7 @@ function DashboardBody({
           data-dashboard-tile="work-requests"
         >
           <div className="flex flex-wrap items-start justify-between gap-3">
-            <h3 className="text-base font-bold text-gray-900 dark:text-gray-100">Work Requests</h3>
+            <h3 className="text-base font-bold text-ds-foreground">Work Requests</h3>
             <span className="app-badge-amber inline-flex items-center rounded-full px-3 py-1 text-xs font-bold tracking-tight">
               {model.workRequests.awaitingCount} requests awaiting assignment
             </span>
@@ -740,7 +727,7 @@ function DashboardBody({
           <p className="mt-2 text-xs">
             <Link
               href={workOrdersHref}
-              className="font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline"
+              className="ds-link"
             >
               Open work orders view →
             </Link>
@@ -748,23 +735,23 @@ function DashboardBody({
           <div className="mt-4 flex flex-col gap-4">
             {model.workRequests.newest ? (
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-ds-muted">
                   Newest
                 </p>
-                <div className="app-glass-inset-dense mt-2 rounded-md p-4">
+                <div className="ds-inset-panel mt-2 p-4">
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{model.workRequests.newest.title}</p>
-                      <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{model.workRequests.newest.subtitle}</p>
+                      <p className="text-sm font-semibold text-ds-foreground">{model.workRequests.newest.title}</p>
+                      <p className="mt-1 text-xs text-ds-muted">{model.workRequests.newest.subtitle}</p>
                     </div>
                     <TagPill tag={model.workRequests.newest.tag} />
                   </div>
                 </div>
               </div>
             ) : (
-              <p className="text-sm text-gray-500 dark:text-gray-400">
+              <p className="text-sm text-ds-muted">
                 No open work requests yet.{" "}
-                <Link href={workOrdersHref} className="font-medium text-blue-600 dark:text-blue-400 hover:underline">
+                <Link href={workOrdersHref} className="ds-link">
                   Open work orders
                 </Link>{" "}
                 to create the first tracked item.
@@ -773,12 +760,12 @@ function DashboardBody({
 
             {model.workRequests.oldest ? (
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Oldest</p>
-                <div className="app-glass-inset-dense mt-2 rounded-md p-4">
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-ds-muted">Oldest</p>
+                <div className="ds-inset-panel mt-2 p-4">
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{model.workRequests.oldest.title}</p>
-                      <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{model.workRequests.oldest.subtitle}</p>
+                      <p className="text-sm font-semibold text-ds-foreground">{model.workRequests.oldest.title}</p>
+                      <p className="mt-1 text-xs text-ds-muted">{model.workRequests.oldest.subtitle}</p>
                     </div>
                     <TagPill tag={model.workRequests.oldest.tag} />
                   </div>
@@ -787,22 +774,22 @@ function DashboardBody({
             ) : null}
 
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-red-700 dark:text-red-400">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-ds-danger">
                 High priority / Critical
               </p>
               {model.workRequests.critical.length === 0 ? (
-                <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">No high-priority items right now.</p>
+                <p className="mt-2 text-sm text-ds-muted">No high-priority items right now.</p>
               ) : (
                 <ul className="mt-2 flex flex-col gap-3">
                   {model.workRequests.critical.map((row) => (
                     <li
                       key={row.title}
-                      className="flex gap-3 rounded-md border border-gray-200 dark:border-[#1F2937] border-l-2 border-l-red-500 dark:border-l-red-400 bg-red-100/60 dark:bg-red-500/10 p-3"
+                      className="ds-alert-critical flex gap-3 rounded-md border p-3"
                     >
-                      <span className="mt-0.5 h-8 w-1 shrink-0 rounded-full bg-red-500 dark:bg-red-500/90" aria-hidden />
+                      <span className="mt-0.5 h-8 w-1 shrink-0 rounded-full bg-ds-danger" aria-hidden />
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-bold text-gray-900 dark:text-gray-100">{row.title}</p>
-                        <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">{row.subtitle}</p>
+                        <p className="text-sm font-bold text-ds-foreground">{row.title}</p>
+                        <p className="mt-0.5 text-xs text-ds-muted">{row.subtitle}</p>
                       </div>
                       <span className="app-badge-red shrink-0 self-start rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide">
                         Urgent
@@ -819,8 +806,8 @@ function DashboardBody({
           className="app-dashboard-tile flex flex-col p-5 lg:col-span-6"
           data-dashboard-tile="equipment"
         >
-          <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Equipment Update</p>
-          <p className="mt-2 text-2xl font-bold tabular-nums text-gray-900 dark:text-gray-100 md:text-3xl">
+          <p className="text-xs font-semibold uppercase tracking-wide text-ds-muted">Equipment Update</p>
+          <p className="mt-2 text-2xl font-bold tabular-nums text-ds-foreground md:text-3xl">
             {model.equipment.activeCount} Active Tools
           </p>
           <div className="mt-3 flex flex-wrap gap-2">
@@ -833,29 +820,29 @@ function DashboardBody({
               {model.equipment.outOfServiceCount} Out of Service
             </span>
           </div>
-          <div className="mt-4 flex flex-1 flex-col gap-4 border-t border-gray-200 dark:border-[#1F2937] pt-4">
+          <div className="mt-4 flex flex-1 flex-col gap-4 border-t border-ds-border pt-4">
             {model.equipment.showZonePrompt && !zonePromptDismissed ? (
-              <div className="rounded-md border border-gray-200 dark:border-[#1F2937] border-l-2 border-l-amber-500 dark:border-l-amber-400 bg-amber-100/60 dark:bg-amber-500/10 p-4 shadow-sm dark:shadow-[0_2px_8px_rgba(0,0,0,0.4)]">
+              <div className="ds-alert-warning rounded-md border p-4 shadow-sm">
                 <div className="flex gap-3">
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-100/90 dark:bg-amber-500/12 text-amber-700 dark:text-amber-400 ring-1 ring-amber-200 dark:ring-amber-500/20">
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[color-mix(in_srgb,var(--ds-warning)_22%,var(--ds-surface-secondary))] text-ds-warning ring-1 ring-[color-mix(in_srgb,var(--ds-warning)_35%,transparent)]">
                     <MapPin className="h-4 w-4" aria-hidden />
                   </span>
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold leading-snug text-gray-900 dark:text-gray-100">
+                    <p className="text-sm font-semibold leading-snug text-ds-foreground">
                       Several tools are accounted for, but may need zone checks.
                     </p>
-                    <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Schedule a cleanup?</p>
+                    <p className="mt-1 text-xs text-ds-muted">Schedule a cleanup?</p>
                     <div className="mt-3 flex flex-wrap gap-2">
                       <Link
                         href={pulseTenantNav.find((n) => n.href === "/dashboard/inventory")?.href ?? "/dashboard/inventory"}
-                        className="inline-flex rounded-lg bg-blue-600 dark:bg-[#3B82F6] px-3 py-1.5 text-xs font-semibold text-white shadow-sm dark:shadow-[0_2px_8px_rgba(0,0,0,0.4)] transition-[filter] hover:brightness-110"
+                        className="ds-btn-solid-primary inline-flex px-3 py-1.5 text-xs"
                       >
                         Review inventory
                       </Link>
                       <button
                         type="button"
                         onClick={onDismissZonePrompt}
-                        className="app-glass-inset-dense rounded-lg px-3 py-1.5 text-xs font-semibold text-gray-900 transition-colors hover:bg-white/60 dark:text-gray-100 dark:hover:bg-white/10"
+                        className="ds-btn-secondary px-3 py-1.5 text-xs"
                       >
                         Dismiss
                       </button>
@@ -865,12 +852,12 @@ function DashboardBody({
               </div>
             ) : null}
             {model.equipment.showBatteryNote ? (
-              <div className="app-glass-inset-dense rounded-md p-4 text-gray-500 dark:text-gray-400">
+              <div className="ds-inset-panel p-4 text-ds-muted">
                 <div className="flex gap-3">
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/70 text-gray-500 ring-1 ring-white/30 backdrop-blur-sm dark:bg-slate-900/65 dark:text-gray-400 dark:ring-white/10">
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-ds-secondary text-ds-muted ring-1 ring-ds-border">
                     <Battery className="h-4 w-4" aria-hidden />
                   </span>
-                  <p className="min-w-0 flex-1 text-sm leading-relaxed text-gray-900 dark:text-gray-100">
+                  <p className="min-w-0 flex-1 text-sm leading-relaxed text-ds-foreground">
                     Beacon equipment registered — confirm batteries and swaps on the floor before the next shift.
                   </p>
                 </div>
@@ -883,12 +870,12 @@ function DashboardBody({
           className="app-dashboard-tile flex flex-col p-5 lg:col-span-6"
           data-dashboard-tile="inventory"
         >
-          <h3 className="text-base font-bold text-gray-900 dark:text-gray-100">Inventory Status</h3>
+          <h3 className="text-base font-bold text-ds-foreground">Inventory Status</h3>
           <div className="mt-4 flex flex-1 flex-col gap-4">
-            <div className="app-glass-inset-dense flex items-start justify-between gap-4 rounded-md p-4">
+            <div className="ds-inset-panel flex items-start justify-between gap-4 p-4">
               <div>
-                <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">Consumables</p>
-                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                <p className="text-sm font-semibold text-ds-foreground">Consumables</p>
+                <p className="mt-1 text-xs text-ds-muted">
                   {model.inventory.consumablesOk
                     ? "Stock within target range"
                     : "One or more items need attention"}
@@ -904,15 +891,15 @@ function DashboardBody({
             </div>
 
             {model.inventory.alert ? (
-              <div className="app-surface-inset rounded-md p-4 shadow-sm dark:shadow-[0_2px_8px_rgba(0,0,0,0.25)]">
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+              <div className="ds-inset-panel p-4 shadow-sm">
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-ds-muted">
                   Inventory Alert
                 </p>
-                <div className="mt-3 flex items-start justify-between gap-4 rounded-md border border-gray-200 dark:border-[#1F2937] border-l-2 border-l-amber-500 dark:border-l-amber-400 bg-amber-100/60 dark:bg-amber-500/10 p-4">
+                <div className="ds-alert-warning mt-3 flex items-start justify-between gap-4 rounded-md border p-4">
                   <div className="min-w-0">
-                    <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{model.inventory.alert.category}</p>
-                    <p className="mt-2 flex items-center gap-2 text-xs font-medium text-amber-700 dark:text-amber-400">
-                      <span className="h-2 w-2 shrink-0 rounded-full bg-amber-500 dark:bg-amber-500" />
+                    <p className="text-sm font-semibold text-ds-foreground">{model.inventory.alert.category}</p>
+                    <p className="mt-2 flex items-center gap-2 text-xs font-medium text-ds-warning">
+                      <span className="h-2 w-2 shrink-0 rounded-full bg-ds-warning" />
                       {model.inventory.alert.message}
                     </p>
                   </div>
@@ -923,37 +910,37 @@ function DashboardBody({
                 <div className="mt-3 flex flex-wrap gap-2">
                   <Link
                     href={pulseTenantNav.find((n) => n.href === "/dashboard/inventory")?.href ?? "/dashboard/inventory"}
-                    className="app-glass-inset-dense rounded-lg px-3 py-1.5 text-xs font-semibold text-gray-900 transition-colors hover:bg-white/60 dark:text-gray-100 dark:hover:bg-white/10"
+                    className="ds-btn-secondary px-3 py-1.5 text-xs"
                   >
                     View stock
                   </Link>
                   <Link
                     href={pulseTenantNav.find((n) => n.href === "/dashboard/inventory")?.href ?? "/dashboard/inventory"}
-                    className="rounded-lg bg-blue-600 dark:bg-[#3B82F6] px-3 py-1.5 text-xs font-semibold text-white shadow-sm dark:shadow-[0_2px_8px_rgba(0,0,0,0.4)] transition-[filter] hover:brightness-110"
+                    className="ds-btn-solid-primary inline-flex px-3 py-1.5 text-xs"
                   >
                     Order Now
                   </Link>
                 </div>
               </div>
             ) : (
-              <p className="text-sm text-gray-500 dark:text-gray-400">No low-stock alerts.</p>
+              <p className="text-sm text-ds-muted">No low-stock alerts.</p>
             )}
 
-            <div className="border-t border-gray-200 dark:border-[#1F2937] pt-4">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+            <div className="border-t border-ds-border pt-4">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-ds-muted">
                 Shopping List
               </p>
               {model.inventory.shoppingList.length === 0 ? (
-                <p className="mt-3 text-sm text-gray-500 dark:text-gray-400">Add items from low-stock alerts.</p>
+                <p className="mt-3 text-sm text-ds-muted">Add items from low-stock alerts.</p>
               ) : (
                 <ul className="mt-3 space-y-2">
                   {model.inventory.shoppingList.map((item) => (
                     <li
                       key={item}
-                      className="app-glass-inset-dense flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-gray-900 transition-colors hover:bg-white/55 dark:text-gray-100 dark:hover:bg-white/10"
+                      className="ds-inset-panel ds-table-row-hover flex cursor-default items-center gap-2 px-3 py-2 text-sm text-ds-foreground"
                     >
                       <span
-                        className="flex h-4 w-4 shrink-0 rounded border border-white/25 bg-white/80 dark:border-white/15 dark:bg-slate-900/50"
+                        className="flex h-4 w-4 shrink-0 rounded border border-ds-border bg-ds-primary"
                         aria-hidden
                       />
                       {item}
@@ -1104,21 +1091,21 @@ export function OperationalDashboard({
   if (loading) {
     return (
       <div className="app-dashboard-tile rounded-md p-12 text-center">
-        <p className="text-sm text-gray-500 dark:text-gray-400">Loading live dashboard…</p>
+        <p className="text-sm text-ds-muted">Loading live dashboard…</p>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="rounded-md border border-gray-200 dark:border-[#1F2937] border-l-2 border-l-amber-500 dark:border-l-amber-400 bg-amber-100/60 dark:bg-amber-500/10 p-6 shadow-sm dark:shadow-[0_2px_8px_rgba(0,0,0,0.4)]">
-        <p className="text-sm text-amber-700 dark:text-amber-400" role="status">
+      <div className="ds-alert-warning rounded-md border p-6 shadow-sm">
+        <p className="text-sm text-ds-warning" role="status">
           {error}
         </p>
         <button
           type="button"
           onClick={() => void fetchLive()}
-          className="mt-4 rounded-md bg-blue-600 dark:bg-[#3B82F6] px-4 py-2 text-sm font-semibold text-white transition-[filter] hover:brightness-110"
+          className="ds-btn-solid-primary mt-4 px-4 py-2 text-sm"
         >
           Retry
         </button>
@@ -1128,7 +1115,7 @@ export function OperationalDashboard({
 
   if (!liveModel) {
     return (
-      <p className="text-sm text-gray-500 dark:text-gray-400">No dashboard data available.</p>
+      <p className="text-sm text-ds-muted">No dashboard data available.</p>
     );
   }
 

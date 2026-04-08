@@ -8,44 +8,80 @@ html {
 }
 
 /**
- * Pulse app shell — shared surfaces for schedule, header, and in-app chrome.
- * Light mode keeps a transparent canvas so {@link PulseThemedBackground} shows through.
+ * Pulse design system — Dusk Blue (dark) / Antique White (light).
+ * All UI colors SHOULD use `var(--ds-*)` or components that map to them. Legacy `--pulse-shell-*` aliases remain for gradual migration.
  */
 :root {
-  --pulse-shell-canvas: transparent;
-  --pulse-shell-surface: #ffffff;
-  --pulse-shell-elevated: #f8fafc;
-  --pulse-shell-cell: #ffffff;
-  --pulse-shell-cell-muted: rgb(248 250 252 / 0.94);
-  --pulse-shell-header-row: rgb(248 250 252 / 0.96);
-  --pulse-shell-border: rgb(226 232 240 / 0.95);
-  --pulse-shell-grid: rgb(203 213 225 / 0.42);
-  --pulse-shell-shadow:
-    0 1px 2px rgb(15 23 42 / 0.04), 0 1px 3px rgb(15 23 42 / 0.05);
-  --pulse-shell-kbd: rgb(241 245 249 / 1);
-  --pulse-header-bg: rgb(255 255 255 / 0.95);
-  --pulse-header-border: rgb(226 232 240 / 0.9);
-  --pulse-header-shadow: 0 1px 2px rgb(15 23 42 / 0.04), 0 1px 3px rgb(15 23 42 / 0.05);
-  --pulse-segment-active-bg: #0f172a;
-  --pulse-segment-active-fg: #ffffff;
+  /* —— Core tokens (Antique White light) —— */
+  --ds-bg: #ffeedb;
+  --ds-surface-primary: #ffffff;
+  --ds-surface-secondary: #fff7ed;
+  --ds-surface-elevated: #fdf1e3;
+  --ds-sidebar: #fdf1e3;
+  --ds-border: rgba(0, 0, 0, 0.06);
+  --ds-text-primary: #1a1a1a;
+  --ds-text-secondary: rgba(0, 0, 0, 0.6);
+  --ds-success: #36f1cd;
+  --ds-warning: #f2bb05;
+  --ds-danger: #eb5160;
+  --ds-shadow-card: 0 1px 2px rgba(26, 26, 26, 0.05), 0 4px 14px rgba(139, 90, 43, 0.06);
+  --ds-shadow-card-hover: 0 2px 4px rgba(26, 26, 26, 0.06), 0 8px 22px rgba(139, 90, 43, 0.1);
+  --ds-shadow-diffuse: 0 2px 16px rgba(26, 26, 26, 0.06);
+  --ds-chart-grid: rgba(0, 0, 0, 0.06);
+  --ds-focus-ring: color-mix(in srgb, var(--ds-success) 45%, transparent);
+  --ds-radius-card: 0.75rem;
+
+  /* Legacy shell (maps to design tokens) */
+  --pulse-shell-canvas: var(--ds-bg);
+  --pulse-shell-surface: var(--ds-surface-primary);
+  --pulse-shell-elevated: var(--ds-surface-elevated);
+  --pulse-shell-cell: var(--ds-surface-secondary);
+  --pulse-shell-cell-muted: color-mix(in srgb, var(--ds-surface-secondary) 92%, var(--ds-bg));
+  --pulse-shell-header-row: color-mix(in srgb, var(--ds-surface-secondary) 88%, white);
+  --pulse-shell-border: var(--ds-border);
+  --pulse-shell-grid: var(--ds-chart-grid);
+  --pulse-shell-shadow: var(--ds-shadow-card);
+  --pulse-shell-kbd: var(--ds-surface-secondary);
+  --pulse-header-bg: color-mix(in srgb, var(--ds-surface-primary) 96%, transparent);
+  --pulse-header-border: var(--ds-border);
+  --pulse-header-shadow: var(--ds-shadow-card);
+  --pulse-segment-active-bg: color-mix(in srgb, var(--ds-success) 18%, var(--ds-surface-primary));
+  --pulse-segment-active-fg: var(--ds-text-primary);
 }
 
 .dark {
-  --pulse-shell-canvas: #0c1424;
-  --pulse-shell-surface: #111827;
-  --pulse-shell-elevated: #172033;
-  --pulse-shell-cell: #151c2e;
-  --pulse-shell-cell-muted: rgb(15 23 42 / 0.58);
-  --pulse-shell-header-row: rgb(23 32 51 / 0.96);
-  --pulse-shell-border: rgb(55 65 81 / 0.55);
-  --pulse-shell-grid: rgb(148 163 184 / 0.11);
-  --pulse-shell-shadow: 0 1px 3px rgb(0 0 0 / 0.22), 0 2px 10px rgb(0 0 0 / 0.18);
-  --pulse-shell-kbd: rgb(17 24 39 / 0.95);
-  --pulse-header-bg: rgb(17 24 39 / 0.97);
-  --pulse-header-border: rgb(55 65 81 / 0.45);
-  --pulse-header-shadow: 0 1px 3px rgb(0 0 0 / 0.24), 0 2px 12px rgb(0 0 0 / 0.2);
-  --pulse-segment-active-bg: rgb(14 165 233 / 0.2);
-  --pulse-segment-active-fg: rgb(224 242 254);
+  --ds-bg: #4c6085;
+  --ds-surface-primary: #3f5274;
+  --ds-surface-secondary: #354766;
+  --ds-surface-elevated: #2c3a55;
+  --ds-sidebar: #2c3a55;
+  --ds-border: rgba(255, 255, 255, 0.08);
+  --ds-text-primary: #ffffff;
+  --ds-text-secondary: rgba(255, 255, 255, 0.7);
+  --ds-success: #36f1cd;
+  --ds-warning: #f2bb05;
+  --ds-danger: #eb5160;
+  --ds-shadow-card: 0 2px 12px rgba(0, 0, 0, 0.2), 0 1px 3px rgba(0, 0, 0, 0.18);
+  --ds-shadow-card-hover: 0 4px 22px rgba(0, 0, 0, 0.28), 0 2px 8px rgba(0, 0, 0, 0.2);
+  --ds-shadow-diffuse: 0 2px 20px rgba(0, 0, 0, 0.22);
+  --ds-chart-grid: rgba(255, 255, 255, 0.08);
+  --ds-focus-ring: color-mix(in srgb, var(--ds-success) 55%, transparent);
+
+  --pulse-shell-canvas: var(--ds-bg);
+  --pulse-shell-surface: var(--ds-surface-primary);
+  --pulse-shell-elevated: var(--ds-surface-elevated);
+  --pulse-shell-cell: var(--ds-surface-secondary);
+  --pulse-shell-cell-muted: color-mix(in srgb, var(--ds-surface-secondary) 75%, var(--ds-surface-elevated));
+  --pulse-shell-header-row: color-mix(in srgb, var(--ds-surface-secondary) 85%, var(--ds-bg));
+  --pulse-shell-border: var(--ds-border);
+  --pulse-shell-grid: var(--ds-chart-grid);
+  --pulse-shell-shadow: var(--ds-shadow-card);
+  --pulse-shell-kbd: var(--ds-surface-elevated);
+  --pulse-header-bg: color-mix(in srgb, var(--ds-surface-primary) 94%, transparent);
+  --pulse-header-border: var(--ds-border);
+  --pulse-header-shadow: var(--ds-shadow-card);
+  --pulse-segment-active-bg: color-mix(in srgb, var(--ds-success) 22%, var(--ds-surface-primary));
+  --pulse-segment-active-fg: var(--ds-text-primary);
 }
 
 /**
@@ -76,116 +112,92 @@ html {
     background-color: rgb(15 23 42 / 0.62);
   }
 
+  /**
+   * Card system — primary / secondary / elevated (same structure, token backgrounds).
+   */
+  .ds-card-primary,
   .app-glass-card,
   .app-card {
     position: relative;
     overflow: hidden;
-    border-radius: 0.375rem;
-    border: 1px solid rgb(255 255 255 / 0.2);
-    background-color: rgb(255 255 255 / 0.75);
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.06);
-    backdrop-filter: blur(24px);
+    border-radius: var(--ds-radius-card);
+    border: 1px solid var(--ds-border);
+    background-color: var(--ds-surface-primary);
+    box-shadow: var(--ds-shadow-card);
+    transition:
+      transform 200ms cubic-bezier(0.4, 0, 0.2, 1),
+      box-shadow 200ms cubic-bezier(0.4, 0, 0.2, 1),
+      filter 200ms cubic-bezier(0.4, 0, 0.2, 1),
+      background-color 200ms ease;
   }
-  .dark .app-glass-card,
-  .dark .app-card {
-    border-color: rgb(255 255 255 / 0.12);
-    background-color: rgb(15 23 42 / 0.72);
-    box-shadow: 0 2px 14px rgba(0, 0, 0, 0.22), 0 1px 4px rgba(0, 0, 0, 0.18);
-  }
-  .app-glass-card::before,
-  .app-card::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    border-radius: inherit;
-    pointer-events: none;
-    z-index: 0;
-    background: linear-gradient(to bottom, rgb(255 255 255 / 0.2), transparent);
-    opacity: 0.45;
-  }
-  .dark .app-glass-card::before,
-  .dark .app-card::before {
-    background: linear-gradient(to bottom, rgb(255 255 255 / 0.09), transparent);
-    opacity: 0.4;
-  }
-  .app-glass-card > *,
-  .app-card > * {
+  .ds-card-secondary {
     position: relative;
-    z-index: 1;
+    overflow: hidden;
+    border-radius: var(--ds-radius-card);
+    border: 1px solid var(--ds-border);
+    background-color: var(--ds-surface-secondary);
+    box-shadow: var(--ds-shadow-card);
+    transition:
+      transform 200ms cubic-bezier(0.4, 0, 0.2, 1),
+      box-shadow 200ms cubic-bezier(0.4, 0, 0.2, 1),
+      filter 200ms cubic-bezier(0.4, 0, 0.2, 1),
+      background-color 200ms ease;
   }
-
+  .ds-card-elevated,
   .app-glass-elevated {
     position: relative;
     overflow: hidden;
-    border-radius: 0.375rem;
-    border: 1px solid rgb(255 255 255 / 0.22);
-    background-color: rgb(255 255 255 / 0.85);
-    box-shadow:
-      0 4px 20px rgba(0, 0, 0, 0.12),
-      0 1px 3px rgba(0, 0, 0, 0.05);
-    backdrop-filter: blur(18px);
+    border-radius: var(--ds-radius-card);
+    border: 1px solid var(--ds-border);
+    background-color: var(--ds-surface-elevated);
+    box-shadow: var(--ds-shadow-diffuse);
+    transition:
+      transform 200ms cubic-bezier(0.4, 0, 0.2, 1),
+      box-shadow 200ms cubic-bezier(0.4, 0, 0.2, 1),
+      filter 200ms cubic-bezier(0.4, 0, 0.2, 1),
+      background-color 200ms ease;
   }
-  .dark .app-glass-elevated {
-    border-color: rgb(255 255 255 / 0.14);
-    background-color: rgb(15 23 42 / 0.85);
-    box-shadow:
-      0 4px 22px rgba(0, 0, 0, 0.28),
-      0 1px 4px rgba(0, 0, 0, 0.18);
+  .ds-card-primary:hover,
+  .ds-card-secondary:hover,
+  .ds-card-elevated:hover,
+  .app-glass-elevated:hover {
+    box-shadow: var(--ds-shadow-card-hover);
+    transform: translateY(-1px);
   }
-  .app-glass-elevated::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    border-radius: inherit;
-    pointer-events: none;
-    z-index: 0;
-    background: linear-gradient(to bottom, rgb(255 255 255 / 0.22), transparent);
-    opacity: 0.4;
+  :is(.ds-card-primary, .ds-card-secondary, .ds-card-elevated, .app-glass-elevated):hover {
+    filter: brightness(1.02);
   }
-  .dark .app-glass-elevated::before {
-    background: linear-gradient(to bottom, rgb(255 255 255 / 0.1), transparent);
+  .dark :is(.ds-card-primary, .ds-card-secondary, .ds-card-elevated, .app-glass-elevated):hover {
+    filter: brightness(1.05);
   }
-  .app-glass-elevated > * {
+  .app-glass-card > *,
+  .app-card > *,
+  .ds-card-primary > *,
+  .ds-card-secondary > *,
+  .ds-card-elevated > * {
     position: relative;
     z-index: 1;
   }
 
   .app-surface-inset,
   .app-elevated {
-    border-radius: 0.375rem;
-    border: 1px solid rgb(255 255 255 / 0.12);
-    background-color: rgb(255 255 255 / 0.08);
-    backdrop-filter: blur(8px);
-  }
-  .dark .app-surface-inset,
-  .dark .app-elevated {
-    border-color: rgb(255 255 255 / 0.08);
-    background-color: rgb(0 0 0 / 0.18);
+    border-radius: var(--ds-radius-card);
+    border: 1px solid var(--ds-border);
+    background-color: var(--ds-surface-secondary);
   }
 
   .app-glass-inset-dense {
-    border-radius: 0.375rem;
-    border: 1px solid rgb(255 255 255 / 0.18);
-    background-color: rgb(255 255 255 / 0.48);
-    backdrop-filter: blur(10px);
-  }
-  .dark .app-glass-inset-dense {
-    border-color: rgb(255 255 255 / 0.1);
-    background-color: rgb(15 23 42 / 0.55);
+    border-radius: var(--ds-radius-card);
+    border: 1px solid var(--ds-border);
+    background-color: var(--ds-surface-secondary);
   }
 
   .app-data-shell {
     overflow: hidden;
-    border-radius: 0.375rem;
-    border: 1px solid rgb(255 255 255 / 0.22);
-    background-color: rgb(255 255 255 / 0.88);
-    box-shadow: 0 2px 14px rgba(0, 0, 0, 0.09), 0 1px 2px rgba(0, 0, 0, 0.05);
-    backdrop-filter: blur(12px);
-  }
-  .dark .app-data-shell {
-    border-color: rgb(255 255 255 / 0.12);
-    background-color: rgb(15 23 42 / 0.9);
-    box-shadow: 0 2px 16px rgba(0, 0, 0, 0.22), 0 1px 3px rgba(0, 0, 0, 0.16);
+    border-radius: var(--ds-radius-card);
+    border: 1px solid var(--ds-border);
+    background-color: var(--ds-surface-primary);
+    box-shadow: var(--ds-shadow-card);
   }
 
   /**
@@ -197,12 +209,10 @@ html {
     isolation: isolate;
     box-sizing: border-box;
     width: 100%;
-    border-radius: 0.375rem;
-    border: 1px solid rgb(15 23 42 / 0.07);
-    background-color: #ffffff;
-    box-shadow:
-      0 1px 2px rgb(15 23 42 / 0.04),
-      0 4px 20px rgb(48 86 139 / 0.05);
+    border-radius: var(--ds-radius-card);
+    border: 1px solid var(--ds-border);
+    background-color: var(--ds-surface-primary);
+    box-shadow: var(--ds-shadow-card);
     padding: 1.25rem;
   }
   @media (min-width: 640px) {
@@ -224,53 +234,38 @@ html {
     border-radius: inherit;
     background: radial-gradient(
       ellipse 85% 55% at 0% 0%,
-      rgb(59 130 246 / 0.07),
+      color-mix(in srgb, var(--ds-success) 12%, transparent),
       transparent 52%
     );
     opacity: 1;
   }
-  .dark .app-page-shell {
-    border-color: rgb(148 163 184 / 0.14);
-    background-color: #1e293b;
-    box-shadow:
-      0 1px 0 rgb(255 255 255 / 0.05) inset,
-      0 4px 24px rgb(0 0 0 / 0.22),
-      0 1px 3px rgb(0 0 0 / 0.18);
-  }
   .dark .app-page-shell::before {
-    background: radial-gradient(ellipse 85% 55% at 0% 0%, rgb(59 130 246 / 0.1), transparent 50%);
+    background: radial-gradient(
+      ellipse 85% 55% at 0% 0%,
+      color-mix(in srgb, var(--ds-success) 18%, transparent),
+      transparent 50%
+    );
   }
 
   /** Overview dashboard tiles: inset panels inside {@link PageShell} (avoid stacked glass cards). */
   .app-dashboard-tile {
-    border-radius: 0.375rem;
-    border: 1px solid rgb(226 232 240 / 0.95);
-    background-color: rgb(248 250 252 / 0.92);
+    border-radius: var(--ds-radius-card);
+    border: 1px solid var(--ds-border);
+    background-color: var(--ds-surface-secondary);
     box-shadow: none;
-  }
-  .dark .app-dashboard-tile {
-    border-color: rgb(51 65 85 / 0.55);
-    background-color: rgb(15 23 42 / 0.4);
   }
 
   /** Secondary blocks inside the page shell (forms, pickers) — flat, not a second floating card. */
   .app-page-inset {
-    border-radius: 0.375rem;
-    border: 1px solid rgb(226 232 240 / 0.9);
-    background-color: rgb(241 245 249 / 0.65);
-  }
-  .dark .app-page-inset {
-    border-color: rgb(51 65 85 / 0.55);
-    background-color: rgb(15 23 42 / 0.35);
+    border-radius: var(--ds-radius-card);
+    border: 1px solid var(--ds-border);
+    background-color: var(--ds-surface-secondary);
   }
 
   .app-page-divider {
     margin: 0;
     border: 0;
-    border-top: 1px solid rgb(226 232 240 / 0.85);
-  }
-  .dark .app-page-divider {
-    border-top-color: rgb(51 65 85 / 0.55);
+    border-top: 1px solid var(--ds-border);
   }
 
 }
@@ -285,35 +280,32 @@ html {
   }
 
   /**
-   * App canvas: transparent in light (gradient shows); solid shell tint in dark for a flat blueprint base.
+   * App canvas — page background uses design token (Antique White / Dusk Blue).
    */
   .bg-pulse-bg {
-    @apply bg-transparent;
-  }
-  .dark .bg-pulse-bg {
-    background-color: var(--pulse-shell-canvas);
+    background-color: var(--ds-bg);
   }
 
   /** Primary surfaces */
   .app-canvas {
-    @apply bg-transparent;
+    background-color: var(--ds-bg);
   }
 
-  /** Marketing / alternating bands — light wash over themed gradient */
+  /** Marketing / alternating bands — warm wash */
   .bg-pulse-section {
-    background-color: rgb(248 250 252 / 0.45);
+    background-color: color-mix(in srgb, var(--ds-surface-secondary) 55%, var(--ds-bg));
   }
   .dark .bg-pulse-section {
-    background-color: rgb(2 6 23 / 0.28);
+    background-color: color-mix(in srgb, var(--ds-surface-elevated) 40%, var(--ds-bg));
   }
   .app-border {
-    @apply border-gray-200 dark:border-[#1F2937];
+    border-color: var(--ds-border);
   }
   .app-text {
-    @apply text-gray-900 dark:text-gray-100;
+    color: var(--ds-text-primary);
   }
   .app-text-secondary {
-    @apply text-gray-500 dark:text-gray-400;
+    color: var(--ds-text-secondary);
   }
   .app-shadow-card {
     @apply shadow-md dark:shadow-[0_2px_12px_rgba(0,0,0,0.22),0_1px_3px_rgba(0,0,0,0.16)];
@@ -323,58 +315,84 @@ html {
    * Outline / secondary actions (Settings, Export, etc.) — same on all feature pages.
    */
   .app-btn-secondary {
-    @apply rounded-md border px-4 py-2.5 text-sm font-semibold text-pulse-navy shadow-sm backdrop-blur-md transition-colors disabled:opacity-50;
-    border-color: rgb(255 255 255 / 0.25);
-    background-color: rgb(255 255 255 / 0.88);
+    @apply rounded-md border px-4 py-2.5 text-sm font-semibold shadow-sm transition-colors disabled:opacity-50;
+    border-color: var(--ds-border);
+    background-color: var(--ds-surface-secondary);
+    color: var(--ds-text-primary);
   }
   .app-btn-secondary:hover {
-    background-color: rgb(255 255 255 / 0.96);
-  }
-  .dark .app-btn-secondary {
-    border-color: rgb(255 255 255 / 0.12);
-    background-color: rgb(30 41 59 / 0.85);
-    color: rgb(243 244 246);
+    background-color: color-mix(in srgb, var(--ds-warning) 14%, var(--ds-surface-secondary));
+    box-shadow: var(--ds-shadow-card);
   }
   .dark .app-btn-secondary:hover {
-    background-color: rgb(30 41 59 / 0.94);
+    background-color: color-mix(in srgb, var(--ds-surface-primary) 88%, var(--ds-bg));
   }
 
-  /** Form fields — shared light/dark (higher opacity for readability) */
+  /** Form fields — token surfaces */
   .app-field {
-    @apply w-full rounded-md border border-slate-200/90 px-3 py-2.5 text-sm text-pulse-navy shadow-sm backdrop-blur-sm placeholder:text-slate-400 focus:border-[#2B4C7E]/35 focus:outline-none focus:ring-1 focus:ring-[#2B4C7E]/25 dark:border-[#374151] dark:text-gray-100 dark:placeholder:text-gray-500;
-    background-color: rgb(255 255 255 / 0.95);
+    @apply w-full rounded-md px-3 py-2.5 text-sm shadow-sm outline-none transition-colors;
+    border: 1px solid var(--ds-border);
+    background-color: var(--ds-surface-primary);
+    color: var(--ds-text-primary);
   }
-  .dark .app-field {
-    background-color: rgb(15 23 42 / 0.95);
+  .app-field::placeholder {
+    color: var(--ds-text-secondary);
+  }
+  .app-field:focus {
+    border-color: color-mix(in srgb, var(--ds-success) 40%, var(--ds-border));
+    box-shadow: 0 0 0 1px var(--ds-focus-ring);
   }
 
-  /** Tables: header row band — glass-friendly, readable over gradient */
+  /** Tables: header row */
   .app-table-head-row {
-    @apply border-b border-pulse-border text-xs font-bold uppercase tracking-wide text-pulse-muted dark:border-[#1F2937] dark:text-gray-400;
-    background-color: rgb(248 250 252 / 0.88);
-    backdrop-filter: blur(8px);
-  }
-  .dark .app-table-head-row {
-    background-color: rgb(15 23 42 / 0.82);
+    @apply border-b text-xs font-bold uppercase tracking-wide;
+    border-color: var(--ds-border);
+    color: var(--ds-text-secondary);
+    background-color: var(--ds-surface-secondary);
   }
 
   /**
-   * Status chips — light: soft fills · dark: saturated + white label (readable).
+   * Status — Aquamarine / Amber / Lobster (shared semantics).
    */
   .app-badge-emerald {
-    @apply bg-emerald-100 text-emerald-900 ring-1 ring-emerald-200/80 dark:bg-emerald-600 dark:text-white dark:ring-emerald-500/45;
+    background-color: color-mix(in srgb, var(--ds-success) 22%, var(--ds-surface-primary));
+    color: color-mix(in srgb, var(--ds-text-primary) 70%, var(--ds-success));
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--ds-success) 35%, transparent);
+  }
+  .dark .app-badge-emerald {
+    background-color: color-mix(in srgb, var(--ds-success) 18%, var(--ds-surface-secondary));
+    color: #fff;
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--ds-success) 45%, transparent);
   }
   .app-badge-amber {
-    @apply bg-amber-100 text-amber-950 ring-1 ring-amber-200/80 dark:bg-amber-600 dark:text-white dark:ring-amber-400/40;
+    background-color: color-mix(in srgb, var(--ds-warning) 22%, var(--ds-surface-primary));
+    color: color-mix(in srgb, var(--ds-text-primary) 65%, var(--ds-warning));
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--ds-warning) 40%, transparent);
+  }
+  .dark .app-badge-amber {
+    background-color: color-mix(in srgb, var(--ds-warning) 22%, var(--ds-surface-secondary));
+    color: #fff;
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--ds-warning) 45%, transparent);
   }
   .app-badge-red {
-    @apply bg-red-100 text-red-800 ring-1 ring-red-200/80 dark:bg-red-600 dark:text-white dark:ring-red-500/45;
+    background-color: color-mix(in srgb, var(--ds-danger) 18%, var(--ds-surface-primary));
+    color: color-mix(in srgb, var(--ds-danger) 55%, var(--ds-text-primary));
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--ds-danger) 35%, transparent);
+  }
+  .dark .app-badge-red {
+    background-color: color-mix(in srgb, var(--ds-danger) 22%, var(--ds-surface-secondary));
+    color: #fff;
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--ds-danger) 45%, transparent);
   }
   .app-badge-blue {
-    @apply bg-blue-100 text-blue-900 ring-1 ring-blue-200/80 dark:bg-blue-600 dark:text-white dark:ring-blue-400/45;
+    background-color: color-mix(in srgb, var(--ds-success) 15%, var(--ds-surface-secondary));
+    color: var(--ds-text-primary);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--ds-success) 30%, transparent);
   }
   .app-badge-slate {
-    @apply bg-slate-100 text-slate-800 ring-1 ring-slate-200/80 dark:bg-slate-600 dark:text-white dark:ring-slate-500/40;
+    background-color: var(--ds-surface-secondary);
+    color: var(--ds-text-secondary);
+    box-shadow: 0 0 0 1px var(--ds-border);
   }
   .app-badge-violet {
     @apply bg-violet-100 text-violet-900 ring-1 ring-violet-200/75 dark:bg-violet-600 dark:text-white dark:ring-violet-400/45;
@@ -384,6 +402,129 @@ html {
   }
   .app-badge-sky {
     @apply bg-sky-100 text-[#1e4a8a] ring-1 ring-sky-200/75 dark:bg-sky-600 dark:text-white dark:ring-sky-400/40;
+  }
+
+  /** Charts — use on SVG / Recharts cartesian grid */
+  .ds-chart-surface {
+    background-color: var(--ds-surface-primary);
+  }
+  .ds-chart-grid-line {
+    stroke: var(--ds-chart-grid);
+  }
+  .ds-chart-line-primary {
+    stroke: var(--ds-success);
+  }
+  .ds-chart-line-warning {
+    stroke: var(--ds-warning);
+  }
+  .ds-chart-line-danger {
+    stroke: var(--ds-danger);
+  }
+
+  /** Primary CTA — aquamarine */
+  .ds-btn-solid-primary {
+    border-radius: 0.5rem;
+    background-color: var(--ds-success);
+    color: #062422;
+    font-weight: 600;
+    box-shadow: var(--ds-shadow-card);
+    transition: filter 200ms ease, box-shadow 200ms ease, transform 200ms ease;
+  }
+  .ds-btn-solid-primary:hover {
+    filter: brightness(1.06);
+    box-shadow: var(--ds-shadow-card-hover);
+  }
+  .dark .ds-btn-solid-primary {
+    color: #041612;
+  }
+
+  .ds-btn-solid-danger {
+    border-radius: 0.5rem;
+    background-color: var(--ds-danger);
+    color: #fff;
+    font-weight: 600;
+    box-shadow: var(--ds-shadow-card);
+    transition: filter 200ms ease;
+  }
+  .ds-btn-solid-danger:hover {
+    filter: brightness(1.08);
+  }
+
+  /** Secondary / neutral surface button */
+  .ds-btn-secondary {
+    border-radius: 0.5rem;
+    border: 1px solid var(--ds-border);
+    background-color: var(--ds-surface-secondary);
+    color: var(--ds-text-primary);
+    font-weight: 600;
+    box-shadow: var(--ds-shadow-card);
+    transition: filter 200ms ease, box-shadow 200ms ease;
+  }
+  .ds-btn-secondary:hover {
+    filter: brightness(1.04);
+    box-shadow: var(--ds-shadow-card-hover);
+  }
+
+  .ds-link {
+    font-weight: 600;
+    color: var(--ds-success);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    transition: filter 150ms ease;
+  }
+  .ds-link:hover {
+    filter: brightness(1.12);
+  }
+
+  /** Dashboard / nested panels */
+  .ds-dashboard-shell {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border-radius: var(--ds-radius-card);
+    border: 1px solid var(--ds-border);
+    background-color: var(--ds-surface-secondary);
+    box-shadow: var(--ds-shadow-card);
+  }
+
+  .ds-inset-panel {
+    border-radius: var(--ds-radius-card);
+    border: 1px solid var(--ds-border);
+    background-color: var(--ds-surface-elevated);
+  }
+
+  .ds-alert-critical {
+    border-left: 2px solid var(--ds-danger);
+    background-color: color-mix(in srgb, var(--ds-danger) 14%, var(--ds-surface-primary));
+    border-color: var(--ds-border);
+  }
+  .dark .ds-alert-critical {
+    background-color: color-mix(in srgb, var(--ds-danger) 18%, var(--ds-surface-secondary));
+  }
+
+  .ds-alert-warning {
+    border-left: 2px solid var(--ds-warning);
+    background-color: color-mix(in srgb, var(--ds-warning) 14%, var(--ds-surface-primary));
+    border-color: var(--ds-border);
+  }
+  .dark .ds-alert-warning {
+    background-color: color-mix(in srgb, var(--ds-warning) 18%, var(--ds-surface-secondary));
+  }
+
+  .ds-alert-success {
+    border-left: 2px solid var(--ds-success);
+    background-color: color-mix(in srgb, var(--ds-success) 12%, var(--ds-surface-primary));
+    border-color: var(--ds-border);
+  }
+  .dark .ds-alert-success {
+    background-color: color-mix(in srgb, var(--ds-success) 16%, var(--ds-surface-secondary));
+  }
+
+  .ds-table-row-hover {
+    transition: background-color 150ms ease;
+  }
+  .ds-table-row-hover:hover {
+    background-color: color-mix(in srgb, var(--ds-warning) 8%, var(--ds-surface-secondary));
   }
 }
 

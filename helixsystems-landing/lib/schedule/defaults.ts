@@ -26,23 +26,23 @@ export const defaultShiftTypes: ShiftTypeConfig[] = [
   {
     key: "day",
     label: "Day",
-    bg: "bg-emerald-50",
-    border: "border-emerald-200/90",
-    text: "text-emerald-900",
+    bg: "bg-[color-mix(in_srgb,var(--ds-success)_14%,var(--ds-surface-primary))]",
+    border: "border-ds-border",
+    text: "text-ds-foreground",
   },
   {
     key: "afternoon",
     label: "Afternoon",
-    bg: "bg-amber-50",
-    border: "border-amber-200/90",
-    text: "text-amber-950",
+    bg: "bg-[color-mix(in_srgb,var(--ds-warning)_14%,var(--ds-surface-primary))]",
+    border: "border-ds-border",
+    text: "text-ds-foreground",
   },
   {
     key: "night",
     label: "Night",
-    bg: "bg-violet-50",
-    border: "border-violet-200/90",
-    text: "text-violet-950",
+    bg: "bg-[color-mix(in_srgb,var(--ds-danger)_10%,var(--ds-surface-primary))]",
+    border: "border-ds-border",
+    text: "text-ds-foreground",
   },
 ];
 

@@ -102,7 +102,7 @@ export function ScheduleDayView({
         <div className="flex min-w-0 flex-1 flex-col gap-3 sm:flex-row sm:items-start sm:gap-4">
           <button
             type="button"
-            className="inline-flex w-fit items-center gap-2 rounded-md border border-pulseShell-border bg-pulseShell-elevated px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm hover:bg-pulseShell-surface dark:text-gray-100"
+            className="inline-flex w-fit items-center gap-2 rounded-md border border-pulseShell-border bg-pulseShell-elevated px-3 py-2 text-sm font-semibold text-ds-foreground shadow-sm hover:bg-pulseShell-surface"
             onClick={onClose}
             aria-label="Back to calendar"
           >
@@ -110,9 +110,9 @@ export function ScheduleDayView({
             Calendar
           </button>
           <div className="min-w-0">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Day workspace</p>
-            <h2 className="font-headline text-xl font-bold tracking-tight text-gray-900 dark:text-white">{label}</h2>
-            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-ds-muted">Day workspace</p>
+            <h2 className="font-headline text-xl font-bold tracking-tight text-ds-foreground">{label}</h2>
+            <p className="mt-1 text-sm text-ds-muted">
               {sorted.length} shift{sorted.length === 1 ? "" : "s"} · edit, drag to reschedule, or drop on trash to
               delete.
             </p>
@@ -121,7 +121,7 @@ export function ScheduleDayView({
         <div className="flex shrink-0 flex-wrap items-center gap-2">
           <button
             type="button"
-            className="inline-flex items-center gap-2 rounded-md bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-gray-800 dark:bg-sky-600 dark:text-white dark:hover:bg-sky-500"
+            className="ds-btn-solid-primary inline-flex items-center gap-2 px-4 py-2.5 text-sm"
             onClick={() => onAddForDate(date)}
             aria-label="Add shift"
           >
@@ -135,7 +135,7 @@ export function ScheduleDayView({
         <div className="min-h-[16rem] border-b border-pulseShell-border lg:border-b-0 lg:border-r">
           <div className="max-h-[min(70vh,640px)] space-y-2 overflow-y-auto px-4 py-4 sm:px-5">
             {sorted.length === 0 ? (
-              <p className="py-12 text-center text-sm text-gray-500 dark:text-gray-400">No shifts this day.</p>
+              <p className="py-12 text-center text-sm text-ds-muted">No shifts this day.</p>
             ) : (
               sorted.map((s) => {
                 const st = typeMap.get(s.shiftType);
@@ -155,9 +155,9 @@ export function ScheduleDayView({
                 const acceptAny = s.accepts_any_certification === true;
                 const cls = st
                   ? `${st.bg} ${st.border} ${st.text} border`
-                  : "border border-pulseShell-border bg-pulseShell-elevated text-gray-900 dark:text-gray-100";
+                  : "border border-pulseShell-border bg-pulseShell-elevated text-ds-foreground";
                 const openCls = isOpen
-                  ? "ring-2 ring-dashed ring-blue-500/45 ring-offset-2 ring-offset-pulse-shell-cell dark:ring-blue-400/45 dark:ring-offset-pulse-shell-cell"
+                  ? "ring-2 ring-dashed ring-ds-success/45 ring-offset-2 ring-offset-pulse-shell-cell dark:ring-offset-pulse-shell-cell"
                   : "";
                 const chipLocked = scheduleDragLock && dragSession !== null && dragSession.shiftId !== s.id;
                 const canDrag =
@@ -202,7 +202,7 @@ export function ScheduleDayView({
                       <div className="min-w-0 flex-1">
                         <p className="flex flex-wrap items-center gap-1.5 font-semibold">
                           {isOpen ? (
-                            <span className="rounded bg-pulseShell-elevated px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-blue-600 dark:bg-sky-950/45 dark:text-blue-300">
+                            <span className="rounded bg-[color-mix(in_srgb,var(--ds-success)_18%,var(--ds-surface-elevated))] px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-ds-success">
                               Open
                             </span>
                           ) : null}
@@ -218,9 +218,9 @@ export function ScheduleDayView({
                         </p>
                         {req.length ? (
                           <p className="mt-1.5 text-xs leading-snug">
-                            <span className="font-semibold text-gray-500 dark:text-gray-400">Required: </span>
-                            <span className="text-gray-900 dark:text-gray-100">{formatCertCodesShort(req)}</span>
-                            <span className="text-gray-500 dark:text-gray-400">
+                            <span className="font-semibold text-ds-muted">Required: </span>
+                            <span className="text-ds-foreground">{formatCertCodesShort(req)}</span>
+                            <span className="text-ds-muted">
                               {" "}
                               ({acceptAny ? "any one" : "all"}: {formatCertCodesWithLabels(req)})
                             </span>
@@ -228,21 +228,21 @@ export function ScheduleDayView({
                         ) : null}
                         {w ? (
                           <p className="mt-0.5 text-xs leading-snug">
-                            <span className="font-semibold text-gray-500 dark:text-gray-400">Worker certs: </span>
-                            <span className="text-gray-900 dark:text-gray-100">
+                            <span className="font-semibold text-ds-muted">Worker certs: </span>
+                            <span className="text-ds-foreground">
                               {w.certifications?.filter(Boolean).length
                                 ? (w.certifications ?? []).filter(Boolean).join(", ")
                                 : "none on file"}
                             </span>
                           </p>
                         ) : (
-                          <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">Assign a worker to validate certifications.</p>
+                          <p className="mt-0.5 text-xs text-ds-muted">Assign a worker to validate certifications.</p>
                         )}
                         {certRows.map((c) => (
                           <p
                             key={`${s.id}-${c.code}-${c.label}`}
                             className={`mt-1 text-xs font-medium leading-snug ${
-                              c.severity === "critical" ? "text-red-800 dark:text-red-300" : "text-amber-900 dark:text-amber-300"
+                              c.severity === "critical" ? "text-ds-danger" : "text-ds-warning"
                             }`}
                           >
                             {c.label}
@@ -254,9 +254,7 @@ export function ScheduleDayView({
                               <p
                                 key={`${s.id}-${c.code}-${c.label}-o`}
                                 className={`text-xs leading-snug ${
-                                  c.severity === "critical"
-                                    ? "font-medium text-red-800 dark:text-red-300"
-                                    : "text-gray-500 dark:text-gray-400"
+                                  c.severity === "critical" ? "font-medium text-ds-danger" : "text-ds-muted"
                                 }`}
                               >
                                 {c.label}
@@ -267,25 +265,25 @@ export function ScheduleDayView({
                       </div>
                       <div className="flex shrink-0 flex-col items-end gap-1">
                         {s.uiFlags?.isNew ? (
-                          <span className="rounded bg-blue-100 px-1.5 py-0.5 text-[10px] font-bold text-blue-900 dark:bg-blue-950/50 dark:text-blue-200">
+                          <span className="rounded bg-[color-mix(in_srgb,var(--ds-success)_16%,var(--ds-surface-primary))] px-1.5 py-0.5 text-[10px] font-bold text-ds-success">
                             New
                           </span>
                         ) : null}
                         {s.uiFlags?.isUpdated ? (
-                          <span className="rounded bg-violet-100 px-1.5 py-0.5 text-[10px] font-bold text-violet-900 dark:bg-violet-950/50 dark:text-violet-200">
+                          <span className="rounded bg-[color-mix(in_srgb,var(--ds-warning)_16%,var(--ds-surface-primary))] px-1.5 py-0.5 text-[10px] font-bold text-ds-warning">
                             Updated
                           </span>
                         ) : null}
                         <div className="flex items-center gap-1">
                           {certFlag ? (
                             <span title={hoverTip} className="inline-flex">
-                              <Award className="h-3.5 w-3.5 text-gray-500 dark:text-gray-400" strokeWidth={2} aria-hidden />
+                              <Award className="h-3.5 w-3.5 text-ds-muted" strokeWidth={2} aria-hidden />
                             </span>
                           ) : null}
                           {sev ? (
                             <span
                               title={hoverTip}
-                              className={`h-2.5 w-2.5 rounded-full ${sev === "critical" ? "bg-red-500" : "bg-amber-400"}`}
+                              className={`h-2.5 w-2.5 rounded-full ${sev === "critical" ? "bg-ds-danger" : "bg-ds-warning"}`}
                               aria-label={hoverTip}
                             />
                           ) : null}
@@ -297,7 +295,7 @@ export function ScheduleDayView({
               })
             )}
           </div>
-          <p className="border-t border-pulseShell-border px-4 py-3 text-[11px] text-gray-500 dark:text-gray-400 sm:px-5">
+          <p className="border-t border-pulseShell-border px-4 py-3 text-[11px] text-ds-muted sm:px-5">
             Drag to a day in the month view to move or reschedule. Hold{" "}
             <kbd className="rounded border border-pulseShell-border bg-pulseShell-kbd px-1 dark:border-pulseShell-border">Shift</kbd>{" "}
             while dragging to duplicate. Drop on the bottom-right trash target to delete.
@@ -308,19 +306,19 @@ export function ScheduleDayView({
           className={`flex flex-col gap-3 bg-pulseShell-header-row/90 px-4 py-4 dark:bg-pulseShell-elevated/20 sm:px-5 lg:py-5 ${scheduleDragLock ? "pointer-events-none" : ""}`}
         >
           <div className="rounded-md border border-pulseShell-border bg-pulseShell-surface p-4 shadow-[var(--pulse-shell-shadow)]">
-            <p className="flex items-center gap-2 font-headline text-sm font-bold text-gray-900 dark:text-white">
-              <AlertTriangle className="h-4 w-4 text-amber-500" aria-hidden />
+            <p className="flex items-center gap-2 font-headline text-sm font-bold text-ds-foreground">
+              <AlertTriangle className="h-4 w-4 text-ds-warning" aria-hidden />
               Conflicts summary
             </p>
             {conflictSummary.withIssues === 0 ? (
-              <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">No issues flagged for this day.</p>
+              <p className="mt-2 text-sm text-ds-muted">No issues flagged for this day.</p>
             ) : (
               <>
-                <p className="mt-2 text-sm text-gray-900 dark:text-gray-100">
+                <p className="mt-2 text-sm text-ds-foreground">
                   <span className="font-semibold tabular-nums">{conflictSummary.withIssues}</span> shift
                   {conflictSummary.withIssues === 1 ? "" : "s"} with notes
                   {conflictSummary.shiftsWithCritical > 0 ? (
-                    <span className="text-red-700 dark:text-red-400">
+                    <span className="text-ds-danger">
                       {" "}
                       ·{" "}
                       <span className="font-semibold tabular-nums">{conflictSummary.shiftsWithCritical}</span> with
@@ -329,7 +327,7 @@ export function ScheduleDayView({
                   ) : null}
                   .
                 </p>
-                <ul className="mt-3 list-disc space-y-1.5 pl-4 text-xs text-gray-500 marker:text-gray-400 dark:text-gray-400 dark:marker:text-gray-500">
+                <ul className="mt-3 list-disc space-y-1.5 pl-4 text-xs text-ds-muted marker:text-ds-muted">
                   {conflictSummary.labels.map((lb) => (
                     <li key={lb}>{lb}</li>
                   ))}

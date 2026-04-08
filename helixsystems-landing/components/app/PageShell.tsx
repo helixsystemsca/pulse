@@ -15,7 +15,7 @@ export function PageShell({ children, className = "" }: { children: ReactNode; c
       animate={{ opacity: 1, y: 0 }}
       transition={bpTransition.med}
     >
-      <div className="relative flex min-h-0 flex-1 flex-col">{children}</div>
+      <div className="relative z-[1] flex min-h-0 flex-1 flex-col">{children}</div>
     </motion.div>
   );
 }

@@ -58,6 +58,20 @@ const config: Config = {
           grid: "var(--pulse-shell-grid)",
           kbd: "var(--pulse-shell-kbd)",
         },
+        /** Unified design system — prefer these for new UI */
+        ds: {
+          bg: "var(--ds-bg)",
+          foreground: "var(--ds-text-primary)",
+          muted: "var(--ds-text-secondary)",
+          border: "var(--ds-border)",
+          primary: "var(--ds-surface-primary)",
+          secondary: "var(--ds-surface-secondary)",
+          elevated: "var(--ds-surface-elevated)",
+          sidebar: "var(--ds-sidebar)",
+          success: "var(--ds-success)",
+          warning: "var(--ds-warning)",
+          danger: "var(--ds-danger)",
+        },
       },
       ringOffsetColor: {
         "pulse-shell-cell": "var(--pulse-shell-cell)",

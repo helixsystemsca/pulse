@@ -13,7 +13,16 @@ import {
   Shield,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { Card } from "@/components/pulse/Card";
 import { PulseDrawer } from "@/components/schedule/PulseDrawer";
+import { dataTableBodyRow, dataTableHeadRowClass } from "@/components/ui/DataTable";
+import {
+  dsCheckboxClass,
+  dsInputClass,
+  dsInputStackedClass,
+  dsLabelClass,
+  dsSelectClass,
+} from "@/components/ui/ds-form-classes";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { apiFetch, refreshPulseUserFromServer } from "@/lib/api";
 import { parseClientApiError } from "@/lib/parse-client-api-error";
@@ -43,11 +52,9 @@ import { useResolvedAvatarSrc } from "@/lib/useResolvedAvatarSrc";
 
 type CompanyOption = { id: string; name: string };
 
-const PRIMARY_BTN =
-  "rounded-[10px] bg-[#2B4C7E] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#234066] disabled:opacity-50";
-const FIELD =
-  "mt-1.5 w-full rounded-[10px] border border-slate-200/90 bg-white px-3 py-2.5 text-sm text-pulse-navy shadow-sm focus:border-[#2B4C7E]/35 focus:outline-none focus:ring-1 focus:ring-[#2B4C7E]/25 dark:border-[#374151] dark:bg-[#0F172A] dark:text-gray-100 dark:placeholder:text-gray-500";
-const LABEL = "text-[11px] font-semibold uppercase tracking-wider text-pulse-muted";
+const PRIMARY_BTN = "ds-btn-solid-primary px-5 py-2.5 text-sm";
+const FIELD = dsInputStackedClass;
+const LABEL = dsLabelClass;
 
 /** Keys must match `GLOBAL_SYSTEM_FEATURES` / tenant contract (system admin catalog). */
 const TENANT_PRODUCT_MODULES = [
@@ -130,7 +137,7 @@ function WorkerRosterFace({
   const src = useResolvedAvatarSrc(avatarUrl ?? null);
   const ini = initials(fullName, email);
   return (
-    <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-slate-100 text-xs font-bold text-pulse-navy ring-1 ring-slate-200/60">
+    <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-ds-secondary text-xs font-bold text-ds-foreground ring-1 ring-ds-border">
       {src ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img src={src} alt="" className="h-full w-full object-cover" />
@@ -142,7 +149,7 @@ function WorkerRosterFace({
 }
 
 function roleBadge(role: string): string {
-  if (role === "company_admin") return "app-badge-sky";
+  if (role === "company_admin") return "app-badge-blue";
   if (role === "manager") return "app-badge-blue";
   if (role === "supervisor") return "app-badge-blue";
   if (role === "lead") return "app-badge-emerald";
@@ -562,10 +569,8 @@ export function WorkersApp() {
       {createToast ? (
         <div
           role="status"
-          className={`fixed bottom-6 left-1/2 z-[95] max-w-md -translate-x-1/2 rounded-md border px-4 py-3 text-sm font-medium shadow-lg ${
-            createToast.variant === "success"
-              ? "border-emerald-200 bg-emerald-50 text-emerald-900 dark:border-emerald-500/35 dark:bg-emerald-950/90 dark:text-emerald-100"
-              : "border-rose-200 bg-rose-50 text-rose-900 dark:border-rose-500/35 dark:bg-rose-950/90 dark:text-rose-100"
+          className={`fixed bottom-6 left-1/2 z-[95] max-w-md -translate-x-1/2 rounded-md border px-4 py-3 text-sm font-medium text-ds-foreground shadow-lg ${
+            createToast.variant === "success" ? "ds-alert-success" : "ds-alert-critical"
           }`}
         >
           {createToast.message}
@@ -574,30 +579,30 @@ export function WorkersApp() {
 
       {inviteNotice ? (
         <div
-          className="overflow-hidden rounded-lg border border-slate-700/90 bg-slate-900 text-slate-100 shadow-lg ring-1 ring-slate-800 dark:border-slate-600/90 dark:bg-slate-950 dark:ring-slate-800/80"
+          className="ds-card-elevated overflow-hidden border border-ds-border text-ds-foreground shadow-lg"
           role="status"
         >
           <div className="flex min-w-0 gap-0">
-            <div className="w-1 shrink-0 bg-emerald-500" aria-hidden />
+            <div className="w-1 shrink-0 bg-ds-success" aria-hidden />
             <div className="flex min-w-0 flex-1 flex-col gap-3 px-4 py-4 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
               <div className="flex min-w-0 gap-3">
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-500/15 text-emerald-400 ring-1 ring-emerald-500/30">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[color-mix(in_srgb,var(--ds-success)_18%,var(--ds-surface-elevated))] text-ds-success ring-1 ring-[color-mix(in_srgb,var(--ds-success)_35%,transparent)]">
                   <CheckCircle2 className="h-5 w-5" strokeWidth={2} aria-hidden />
                 </span>
                 <div className="min-w-0 space-y-2">
-                  <p className="text-base font-bold leading-snug tracking-tight text-white">
+                  <p className="text-base font-bold leading-snug tracking-tight text-ds-foreground">
                     {inviteNotice.variant === "no_email"
                       ? "Invite created — email not sent from server"
                       : "Invite queued"}
                   </p>
-                  <p className="text-sm leading-relaxed text-slate-400">
+                  <p className="text-sm leading-relaxed text-ds-muted">
                     {inviteNotice.variant === "no_email"
                       ? "Outbound email is not configured. Copy the join link below and send it to the person directly."
                       : "If outbound email is configured, they should receive the invite shortly. You can still share the link below as a backup."}
                   </p>
                   <div className="pt-1">
-                    <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Join link</p>
-                    <p className="mt-1 break-all font-mono text-xs leading-relaxed text-slate-300 [word-break:break-word]">
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-ds-muted">Join link</p>
+                    <p className="mt-1 break-all font-mono text-xs leading-relaxed text-ds-muted [word-break:break-word]">
                       {inviteNotice.inviteUrl}
                     </p>
                   </div>
@@ -606,7 +611,7 @@ export function WorkersApp() {
               <div className="flex shrink-0 flex-wrap items-center gap-2 sm:flex-col sm:items-stretch sm:pt-1">
                 <button
                   type="button"
-                  className="inline-flex items-center justify-center gap-2 rounded-md bg-emerald-600/90 px-3 py-2 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-emerald-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900"
+                  className="ds-btn-solid-primary inline-flex items-center justify-center gap-2 px-3 py-2 text-xs"
                   onClick={() => {
                     void navigator.clipboard.writeText(inviteNotice.inviteUrl).then(() => {
                       setInviteLinkCopied(true);
@@ -628,7 +633,7 @@ export function WorkersApp() {
                 </button>
                 <button
                   type="button"
-                  className="rounded-md border border-slate-600/80 bg-slate-800/80 px-3 py-2 text-xs font-semibold text-slate-300 transition-colors hover:border-slate-500 hover:bg-slate-800 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900"
+                  className="ds-btn-secondary px-3 py-2 text-xs"
                   onClick={() => {
                     setInviteNotice(null);
                     setInviteLinkCopied(false);
@@ -643,10 +648,10 @@ export function WorkersApp() {
       ) : null}
 
       {isSystemAdmin ? (
-        <div className="mt-6 rounded-md border border-pulse-border bg-white p-4 shadow-sm dark:border-[#1F2937] dark:bg-[#111827] dark:shadow-[0_2px_8px_rgba(0,0,0,0.35)]">
-          <label className="block text-xs font-semibold uppercase tracking-wide text-pulse-muted">Company</label>
+        <Card variant="secondary" padding="md" className="mt-6">
+          <label className={`block ${dsLabelClass}`}>Company</label>
           <select
-            className="mt-1.5 w-full max-w-md rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2 text-sm font-medium text-pulse-navy outline-none focus:border-pulse-accent focus:ring-2 focus:ring-pulse-accent/25 dark:border-[#374151] dark:bg-[#0F172A] dark:text-gray-100 md:w-auto"
+            className={`${dsSelectClass} mt-1.5 max-w-md md:w-auto`}
             value={companyPick ?? ""}
             onChange={(e) => setCompanyPick(e.target.value || null)}
           >
@@ -657,7 +662,7 @@ export function WorkersApp() {
               </option>
             ))}
           </select>
-        </div>
+        </Card>
       ) : null}
 
       {!dataEnabled ? (
@@ -668,9 +673,9 @@ export function WorkersApp() {
         <div className="mt-6 grid gap-6 lg:grid-cols-12">
           <div className="flex flex-col gap-6 lg:col-span-4 xl:col-span-3">
             {isCompanyAdmin && contractCatalog.length > 0 ? (
-              <div className="rounded-md border border-pulse-border bg-white p-5 shadow-sm ring-1 ring-slate-100/80 dark:border-[#1F2937] dark:bg-[#111827] dark:ring-white/[0.06] dark:shadow-[0_2px_8px_rgba(0,0,0,0.35)]">
-                <h2 className="text-sm font-bold tracking-tight text-pulse-navy">Delegate Workers &amp; Roles page</h2>
-                <p className="mt-1 text-xs text-pulse-muted">
+              <Card variant="secondary" padding="md">
+                <h2 className="text-sm font-bold tracking-tight text-ds-foreground">Delegate Workers &amp; Roles page</h2>
+                <p className="mt-1 text-xs text-ds-muted">
                   By default only company admins use this page. Allow operational roles to manage roster and invites.
                 </p>
                 <div className="mt-4 space-y-2">
@@ -681,10 +686,10 @@ export function WorkersApp() {
                       ["lead", "Leads"],
                     ] as const
                   ).map(([key, label]) => (
-                    <label key={key} className="flex cursor-pointer items-center gap-2 text-sm text-pulse-navy">
+                    <label key={key} className="flex cursor-pointer items-center gap-2 text-sm text-ds-foreground">
                       <input
                         type="checkbox"
-                        className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500/50"
+                        className={dsCheckboxClass}
                         checked={delegationDraft[key as keyof typeof delegationDraft]}
                         onChange={(e) =>
                           setDelegationDraft((d) => ({ ...d, [key]: e.target.checked }))
@@ -694,13 +699,13 @@ export function WorkersApp() {
                     </label>
                   ))}
                 </div>
-              </div>
+              </Card>
             ) : null}
 
             {isCompanyAdmin && contractCatalog.length > 0 ? (
-              <div className="rounded-md border border-pulse-border bg-white p-5 shadow-sm ring-1 ring-slate-100/80 dark:border-[#1F2937] dark:bg-[#111827] dark:ring-white/[0.06] dark:shadow-[0_2px_8px_rgba(0,0,0,0.35)]">
-                <h2 className="text-sm font-bold tracking-tight text-pulse-navy">Permissions</h2>
-                <p className="mt-1 text-xs text-pulse-muted">
+              <Card variant="secondary" padding="md">
+                <h2 className="text-sm font-bold tracking-tight text-ds-foreground">Permissions</h2>
+                <p className="mt-1 text-xs text-ds-muted">
                   Your organization&apos;s Pulse modules come from the contract (set by the system admin). Pick a role,
                   then turn contract modules on or off for people in that role.
                 </p>
@@ -722,9 +727,9 @@ export function WorkersApp() {
                     return (
                       <div
                         key={`${permissionsRole}-${mod}`}
-                        className="flex items-center justify-between gap-3 rounded-md border border-slate-100 bg-slate-50/50 px-3 py-3 dark:border-[#374151] dark:bg-[#0F172A]/70"
+                        className="ds-inset-panel flex items-center justify-between gap-3 px-3 py-3"
                       >
-                        <p className="min-w-0 text-sm font-semibold text-pulse-navy">{MODULE_LABEL[mod] ?? mod}</p>
+                        <p className="min-w-0 text-sm font-semibold text-ds-foreground">{MODULE_LABEL[mod] ?? mod}</p>
                         <button
                           type="button"
                           role="switch"
@@ -734,11 +739,11 @@ export function WorkersApp() {
                             isCompanyAdmin ? toggleRoleModule(permissionsRole, mod) : undefined
                           }
                           className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${
-                            on ? "bg-[#2B4C7E]" : "bg-slate-200 dark:bg-slate-600"
+                            on ? "bg-ds-success" : "bg-ds-border"
                           } disabled:opacity-45`}
                         >
                           <span
-                            className={`absolute top-0.5 left-0.5 h-6 w-6 rounded-full bg-white shadow transition-transform dark:bg-gray-200 ${
+                            className={`absolute top-0.5 left-0.5 h-6 w-6 rounded-full bg-ds-primary shadow transition-transform ${
                               on ? "translate-x-5" : "translate-x-0"
                             }`}
                           />
@@ -755,14 +760,14 @@ export function WorkersApp() {
                 >
                   {accessPolicySaving ? "Saving…" : "Save permissions"}
                 </button>
-                <div className="mt-4 rounded-lg border border-slate-200/90 bg-slate-50/80 px-3 py-2 text-xs text-pulse-muted dark:border-[#374151] dark:bg-[#0F172A]/80 dark:text-slate-300">
+                <div className="ds-inset-panel mt-4 px-3 py-2 text-xs text-ds-muted">
                   Changes apply to all users with the {humanizeRole(permissionsRole)} role after you save.
                 </div>
-              </div>
+              </Card>
             ) : null}
 
             {isCompanyAdmin ? null : (
-              <p className="rounded-md border border-slate-200/90 bg-slate-50/90 px-3 py-2 text-xs text-pulse-muted dark:border-[#374151] dark:bg-[#0F172A]/80">
+              <p className="ds-inset-panel px-3 py-2 text-xs text-ds-muted">
                 Workers settings and contract-scoped module access are managed by a company administrator.
               </p>
             )}
@@ -770,13 +775,13 @@ export function WorkersApp() {
 
           <div className="lg:col-span-8 xl:col-span-9">
             <div className="relative mb-4">
-              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-pulse-muted" />
+              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-ds-muted" />
               <input
                 type="search"
                 placeholder="Search workers or roles…"
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
-                className="w-full rounded-lg border border-slate-200 bg-slate-50/80 py-2 pl-9 pr-3 text-sm text-pulse-navy placeholder:text-slate-400 outline-none focus:border-pulse-accent focus:ring-2 focus:ring-pulse-accent/25 dark:border-[#374151] dark:bg-[#0F172A] dark:text-gray-100 dark:placeholder:text-gray-500"
+                className={`${dsInputClass} py-2 pl-9 pr-3`}
               />
             </div>
 
@@ -786,24 +791,21 @@ export function WorkersApp() {
                 Loading roster…
               </div>
             ) : listError ? (
-              <p className="text-sm text-rose-600">{listError}</p>
+              <p className="text-sm text-ds-danger">{listError}</p>
             ) : (
               <div className="space-y-5">
                 {grouped.map(({ role, items }) =>
                   items.length === 0 ? null : (
-                    <div
-                      key={role}
-                      className="overflow-hidden rounded-md border border-pulse-border bg-white shadow-sm ring-1 ring-slate-100/80 dark:border-[#1F2937] dark:bg-[#111827] dark:ring-white/[0.06]"
-                    >
+                    <Card key={role} variant="secondary" padding="none" className="overflow-hidden shadow-sm">
                       <div className="app-table-head-row px-4 py-2.5">
-                        <p className="text-xs font-bold uppercase tracking-wide text-pulse-muted">
+                        <p className="text-xs font-bold uppercase tracking-wide text-ds-muted">
                           {roleGroupTitle(role)} ({items.length})
                         </p>
                       </div>
                       <div className="overflow-x-auto">
                         <table className="min-w-full border-collapse text-left text-sm">
                           <thead>
-                            <tr className="border-b border-slate-100 text-xs font-bold uppercase tracking-wide text-pulse-muted">
+                            <tr className={dataTableHeadRowClass}>
                               <th className="px-4 py-3">Name</th>
                               <th className="px-4 py-3">Role</th>
                               <th className="px-4 py-3">Status</th>
@@ -814,7 +816,7 @@ export function WorkersApp() {
                             {items.map((row) => (
                               <tr
                                 key={row.id}
-                                className="cursor-pointer border-b border-slate-50 last:border-0 hover:bg-slate-50/60 dark:border-[#1F2937] dark:hover:bg-[#0F172A]/90"
+                                className={`${dataTableBodyRow()} cursor-pointer`}
                                 onClick={() => setProfileId(row.id)}
                               >
                                 <td className="px-4 py-3">
@@ -825,10 +827,10 @@ export function WorkersApp() {
                                       email={row.email}
                                     />
                                     <div className="min-w-0">
-                                      <p className="font-semibold text-pulse-navy">
+                                      <p className="font-semibold text-ds-foreground">
                                         {row.full_name ?? row.email.split("@")[0]}
                                       </p>
-                                      <p className="truncate text-xs text-pulse-muted">{row.email}</p>
+                                      <p className="truncate text-xs text-ds-muted">{row.email}</p>
                                     </div>
                                   </div>
                                 </td>
@@ -847,14 +849,14 @@ export function WorkersApp() {
                                   </div>
                                 </td>
                                 <td className="px-4 py-3">
-                                  <span className="inline-flex items-center gap-1.5 text-sm text-pulse-navy">
+                                  <span className="inline-flex items-center gap-1.5 text-sm text-ds-foreground">
                                     <span
                                       className={`h-2 w-2 rounded-full ${
                                         (row.account_status ?? "active") === "invited"
-                                          ? "bg-amber-400"
+                                          ? "bg-ds-warning"
                                           : row.is_active
-                                            ? "bg-emerald-500"
-                                            : "bg-slate-300"
+                                            ? "bg-ds-success"
+                                            : "bg-ds-border"
                                       }`}
                                     />
                                     {(row.account_status ?? "active") === "invited"
@@ -867,17 +869,17 @@ export function WorkersApp() {
                                 <td className="relative px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
                                   <button
                                     type="button"
-                                    className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-pulse-navy hover:bg-slate-50 dark:border-[#374151] dark:bg-[#1F2937] dark:text-gray-100 dark:hover:bg-[#374151]"
+                                    className="ds-btn-secondary inline-flex h-8 w-8 items-center justify-center p-0"
                                     aria-label="Actions"
                                     onClick={() => setMenuFor((m) => (m === row.id ? null : row.id))}
                                   >
                                     <MoreVertical className="h-4 w-4" />
                                   </button>
                                   {menuFor === row.id ? (
-                                    <div className="absolute right-4 z-30 mt-1 w-44 rounded-lg border border-slate-200 bg-white py-1 text-left shadow-lg dark:border-[#374151] dark:bg-[#1F2937]">
+                                    <div className="absolute right-4 z-30 mt-1 w-44 rounded-lg border border-ds-border bg-ds-elevated py-1 text-left shadow-lg">
                                       <button
                                         type="button"
-                                        className="block w-full px-3 py-2 text-left text-sm text-pulse-navy hover:bg-slate-50 dark:text-gray-100 dark:hover:bg-[#374151]"
+                                        className="block w-full px-3 py-2 text-left text-sm text-ds-foreground hover:bg-ds-secondary"
                                         onClick={() => {
                                           setMenuFor(null);
                                           setProfileId(row.id);
@@ -893,7 +895,7 @@ export function WorkersApp() {
                           </tbody>
                         </table>
                       </div>
-                    </div>
+                    </Card>
                   ),
                 )}
               </div>
@@ -926,7 +928,7 @@ export function WorkersApp() {
           <div className="flex flex-wrap justify-end gap-3">
             <button
               type="button"
-              className="text-sm font-semibold text-pulse-muted hover:text-pulse-navy disabled:cursor-not-allowed disabled:opacity-50 dark:hover:text-slate-200"
+              className="text-sm font-semibold text-ds-muted transition-colors hover:text-ds-foreground disabled:cursor-not-allowed disabled:opacity-50"
               disabled={createInviteBusy}
               onClick={() => setCreateOpen(false)}
             >
@@ -1072,7 +1074,7 @@ export function WorkersApp() {
             {(profile?.account_status ?? "active") === "invited" ? (
               <button
                 type="button"
-                className="rounded-[10px] border border-slate-200/90 px-4 py-2.5 text-sm font-semibold text-pulse-navy shadow-sm hover:bg-slate-50 dark:border-[#374151] dark:text-gray-100 dark:hover:bg-[#1F2937]"
+                className="ds-btn-secondary px-4 py-2.5 text-sm"
                 disabled={profileBusy}
                 onClick={() => {
                   if (!profileId || !profile) return;
@@ -1134,7 +1136,7 @@ export function WorkersApp() {
                 </p>
                 <p>
                   <span className="text-pulse-muted">Status: </span>
-                  <span className="font-medium text-pulse-navy">{profile.is_active ? "Active" : "Inactive"}</span>
+                  <span className="font-medium text-ds-foreground">{profile.is_active ? "Active" : "Inactive"}</span>
                 </p>
                 <p>
                   <span className="text-pulse-muted">Email: </span>
@@ -1158,12 +1160,12 @@ export function WorkersApp() {
                   Select every role this person should have for scheduling, supervision, and permissions. At least one
                   role is required.
                 </p>
-                <div className="mt-3 space-y-2 rounded-lg border border-slate-100 bg-white p-3 dark:border-[#374151] dark:bg-[#0F172A]/80">
+                <div className="ds-inset-panel mt-3 space-y-2 p-3">
                   {PROFILE_ROLE_OPTIONS.map((key) => (
-                    <label key={key} className="flex cursor-pointer items-center gap-2 text-sm text-pulse-navy">
+                    <label key={key} className="flex cursor-pointer items-center gap-2 text-sm text-ds-foreground">
                       <input
                         type="checkbox"
-                        className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500/50"
+                        className={dsCheckboxClass}
                         checked={profileRolesDraft.includes(key)}
                         onChange={(e) => toggleProfileRole(key, e.target.checked)}
                       />
@@ -1189,12 +1191,12 @@ export function WorkersApp() {
                   Grant additional Pulse modules from your organization&apos;s contract (on top of this person&apos;s
                   role defaults).
                 </p>
-                <div className="mt-3 flex flex-col gap-1.5 rounded-lg border border-slate-100 bg-white p-3 dark:border-[#374151] dark:bg-[#0F172A]/80">
+                <div className="ds-inset-panel mt-3 flex flex-col gap-1.5 p-3">
                   {TENANT_PRODUCT_MODULES.filter((m) => contractCatalog.includes(m)).map((mod) => (
-                    <label key={mod} className="flex cursor-pointer items-center gap-2 text-sm text-pulse-navy">
+                    <label key={mod} className="flex cursor-pointer items-center gap-2 text-sm text-ds-foreground">
                       <input
                         type="checkbox"
-                        className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500/50"
+                        className={dsCheckboxClass}
                         checked={extraModulesDraft.includes(mod)}
                         onChange={(e) => {
                           setExtraModulesDraft((prev) =>
@@ -1248,9 +1250,9 @@ export function WorkersApp() {
                   profile.certifications.map((c) => (
                     <li
                       key={c.id}
-                      className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-100 bg-white px-3 py-2 dark:border-[#374151] dark:bg-[#0F172A]"
+                      className="ds-inset-panel flex flex-wrap items-center justify-between gap-2 px-3 py-2"
                     >
-                      <span className="font-medium text-pulse-navy">{c.name}</span>
+                      <span className="font-medium text-ds-foreground">{c.name}</span>
                       <span className="text-xs text-pulse-muted">
                         {c.expiry_date ? new Date(c.expiry_date).toLocaleDateString() : "No expiry"}
                       </span>
@@ -1265,7 +1267,7 @@ export function WorkersApp() {
 
             <section>
               <h3 className={LABEL}>Specialty training</h3>
-              <ul className="mt-2 space-y-1 text-sm text-pulse-navy">
+              <ul className="mt-2 space-y-1 text-sm text-ds-foreground">
                 {profile.training.length === 0 ? (
                   <li className="text-pulse-muted">None recorded.</li>
                 ) : (
@@ -1287,7 +1289,7 @@ export function WorkersApp() {
                   profile.skills.map((s) => (
                     <span
                       key={s.id}
-                      className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-pulse-navy ring-1 ring-slate-200/80"
+                      className="app-badge-slate rounded-full px-3 py-1 text-xs font-semibold"
                     >
                       {s.name} · L{s.level}
                     </span>
@@ -1298,19 +1300,19 @@ export function WorkersApp() {
 
             <section>
               <h3 className={LABEL}>Compliance summary</h3>
-              <div className="mt-2 grid gap-2 rounded-md border border-slate-100 bg-slate-50/80 p-4 text-sm sm:grid-cols-2 dark:border-[#374151] dark:bg-[#0F172A]/90 dark:text-gray-200">
+              <div className="ds-inset-panel mt-2 grid gap-2 p-4 text-sm sm:grid-cols-2 text-ds-foreground">
                 <p>
                   Compliance rate:{" "}
-                  <span className="font-bold text-pulse-navy">{profile.compliance_summary.compliance_rate_pct}%</span>
+                  <span className="font-bold text-ds-foreground">{profile.compliance_summary.compliance_rate_pct}%</span>
                 </p>
                 <p>Missed acknowledgments: {profile.compliance_summary.missed_acknowledgments}</p>
                 <p>Flags: {profile.compliance_summary.flagged_count}</p>
                 <p>
                   Repeat offender:{" "}
                   {profile.compliance_summary.repeat_offender ? (
-                    <span className="font-semibold text-rose-700">Yes</span>
+                    <span className="font-semibold text-ds-danger">Yes</span>
                   ) : (
-                    <span className="text-pulse-muted">No</span>
+                    <span className="text-ds-muted">No</span>
                   )}
                 </p>
               </div>
@@ -1367,7 +1369,7 @@ export function WorkersApp() {
           <div className="flex flex-wrap justify-end gap-3">
             <button
               type="button"
-              className="text-sm font-semibold text-pulse-muted hover:text-pulse-navy"
+              className="text-sm font-semibold text-ds-muted hover:text-ds-foreground"
               onClick={() => setSettingsOpen(false)}
             >
               Cancel
@@ -1384,7 +1386,7 @@ export function WorkersApp() {
           </p>
           <div>
             <p className={LABEL}>Section</p>
-            <div className="mt-1.5 flex flex-wrap gap-1 rounded-[10px] border border-slate-200/80 bg-slate-100/85 p-1">
+            <div className="mt-1.5 flex flex-wrap gap-1 rounded-[10px] border border-ds-border bg-ds-secondary p-1">
               {SETTINGS_TABS.map((t) => (
                 <button
                   key={t}
@@ -1392,8 +1394,8 @@ export function WorkersApp() {
                   onClick={() => setSettingsTab(t)}
                   className={`rounded-lg px-2.5 py-2 text-center text-xs font-semibold transition-colors sm:text-sm ${
                     settingsTab === t
-                      ? "bg-white text-[#2B4C7E] shadow-sm ring-1 ring-slate-200/90 dark:bg-[#1e3a5f] dark:text-sky-100 dark:ring-sky-500/35"
-                      : "text-pulse-muted hover:bg-white/70 dark:text-gray-400 dark:hover:bg-[#1F2937]"
+                      ? "bg-ds-primary text-ds-success shadow-sm ring-1 ring-ds-border"
+                      : "text-ds-muted hover:bg-ds-primary"
                   }`}
                 >
                   {t}

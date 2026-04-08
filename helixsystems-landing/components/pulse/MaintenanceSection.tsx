@@ -9,10 +9,10 @@ function DonutChart() {
         className="relative h-32 w-32 rounded-full sm:h-36 sm:w-36"
         style={{
           background:
-            "conic-gradient(rgb(37 99 235) 0% 82%, rgb(226 232 240) 82% 100%)",
+            "conic-gradient(var(--ds-success) 0% 82%, color-mix(in srgb, var(--ds-border) 85%, var(--ds-surface-primary)) 82% 100%)",
         }}
       >
-        <div className="absolute inset-[12px] flex flex-col items-center justify-center rounded-full bg-white sm:inset-[14px]">
+        <div className="absolute inset-[12px] flex flex-col items-center justify-center rounded-full bg-ds-primary sm:inset-[14px]">
           <span className="text-2xl font-bold text-pulse-navy sm:text-3xl">82%</span>
           <span className="text-xs font-medium text-pulse-muted">Optimal</span>
         </div>
@@ -61,13 +61,13 @@ export function MaintenanceSection() {
           </div>
 
           <div className="flex min-h-0 min-w-0">
-            <div className="flex h-full min-h-full w-full flex-col rounded-md border border-pulse-border bg-white p-6 shadow-lg md:p-8">
-              <div className="flex items-start justify-between border-b border-pulse-border pb-5">
+            <div className="flex h-full min-h-full w-full flex-col rounded-md border border-ds-border bg-ds-primary p-6 shadow-lg md:p-8">
+              <div className="flex items-start justify-between border-b border-ds-border pb-5">
                 <div>
                   <p className="text-sm font-semibold text-pulse-navy">Maintenance Hub</p>
                   <p className="text-xs text-pulse-muted">Work order pipeline</p>
                 </div>
-                <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
+                <span className="app-badge-emerald rounded-full px-3 py-1 text-xs font-semibold">
                   Live
                 </span>
               </div>
@@ -92,16 +92,16 @@ export function MaintenanceSection() {
                   <DonutChart />
                 </div>
 
-                <div className="mt-auto border-t border-pulse-border pt-5">
+                <div className="mt-auto border-t border-ds-border pt-5">
                   <p className="text-xs font-semibold uppercase tracking-wide text-pulse-muted">
                     Upcoming Schedule
                   </p>
                   <ul className="mt-3 space-y-2">
-                    <li className="flex items-center justify-between gap-3 rounded-md bg-slate-50 px-4 py-3 text-sm">
+                    <li className="ds-inset-panel ds-table-row-hover flex items-center justify-between gap-3 px-4 py-3 text-sm">
                       <span className="font-medium text-pulse-navy">Main Feed Pump Inspection</span>
                       <span className="shrink-0 text-xs text-pulse-muted">Tue</span>
                     </li>
-                    <li className="flex items-center justify-between gap-3 rounded-md bg-slate-50 px-4 py-3 text-sm">
+                    <li className="ds-inset-panel ds-table-row-hover flex items-center justify-between gap-3 px-4 py-3 text-sm">
                       <span className="font-medium text-pulse-navy">Precision Alignment · Line 2</span>
                       <span className="shrink-0 text-xs text-pulse-muted">Thu</span>
                     </li>

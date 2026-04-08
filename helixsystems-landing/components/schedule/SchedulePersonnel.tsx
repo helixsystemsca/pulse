@@ -40,13 +40,13 @@ export function SchedulePersonnel({
       className={`rounded-md border border-pulseShell-border bg-pulseShell-surface shadow-[var(--pulse-shell-shadow)] ${scheduleDragLocked ? "pointer-events-none" : ""}`}
     >
       <div className="border-b border-pulseShell-border px-5 py-4">
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Personnel</h2>
-        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Workers and shift load for {monthLabel(year, monthIndex)}</p>
+        <h2 className="text-lg font-semibold text-ds-foreground">Personnel</h2>
+        <p className="mt-1 text-sm text-ds-muted">Workers and shift load for {monthLabel(year, monthIndex)}</p>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full min-w-[32rem] text-left text-sm">
           <thead>
-            <tr className="border-b border-pulseShell-border text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-slate-400">
+            <tr className="border-b border-pulseShell-border text-[11px] font-semibold uppercase tracking-wide text-ds-muted">
               <th className="px-5 py-3">Name</th>
               <th className="px-5 py-3">Job role</th>
               <th className="px-5 py-3">Status</th>
@@ -59,20 +59,18 @@ export function SchedulePersonnel({
                 key={w.id}
                 className="border-b border-pulseShell-border/60 last:border-0 hover:bg-pulseShell-header-row/80 dark:hover:bg-pulseShell-elevated/35"
               >
-                <td className="px-5 py-3 font-medium text-gray-900 dark:text-gray-100">{w.name}</td>
-                <td className="px-5 py-3 text-gray-500 dark:text-gray-400">{roleMap.get(w.role) ?? w.role}</td>
+                <td className="px-5 py-3 font-medium text-ds-foreground">{w.name}</td>
+                <td className="px-5 py-3 text-ds-muted">{roleMap.get(w.role) ?? w.role}</td>
                 <td className="px-5 py-3">
                   <span
                     className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${
-                      w.active
-                        ? "bg-emerald-50 text-emerald-900 ring-1 ring-emerald-200/80 dark:bg-emerald-950/40 dark:text-emerald-200 dark:ring-emerald-500/25"
-                        : "bg-gray-100 text-gray-500 dark:bg-pulseShell-elevated dark:text-slate-400"
+                      w.active ? "app-badge-emerald" : "app-badge-slate"
                     }`}
                   >
                     {w.active ? "Active" : "Inactive"}
                   </span>
                 </td>
-                <td className="px-5 py-3 text-right tabular-nums text-gray-900 dark:text-gray-100">{count}</td>
+                <td className="px-5 py-3 text-right tabular-nums text-ds-foreground">{count}</td>
               </tr>
             ))}
           </tbody>

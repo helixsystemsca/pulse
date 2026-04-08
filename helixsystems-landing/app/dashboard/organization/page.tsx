@@ -38,7 +38,7 @@ export default function OrganizationBrandingPage() {
 
   if (!sessionHasAnyRole(effective, "company_admin")) {
     return (
-      <div className="rounded-md border border-amber-200 bg-amber-50/90 p-4 text-sm text-amber-950 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-100">
+      <div className="ds-alert-warning rounded-md border p-4 text-sm text-ds-foreground">
         Only company administrators can change organization branding.
       </div>
     );
@@ -55,10 +55,10 @@ export default function OrganizationBrandingPage() {
   return (
     <div className="mx-auto max-w-2xl space-y-6 py-2">
       <div>
-        <h1 className="text-xl font-semibold text-pulse-navy dark:text-slate-100">Organization</h1>
-        <p className="mt-1 text-sm text-pulse-muted dark:text-gray-400">
+        <h1 className="text-xl font-semibold text-ds-foreground">Organization</h1>
+        <p className="mt-1 text-sm text-ds-muted">
           Name and branding for{" "}
-          <strong className="text-pulse-navy dark:text-slate-200">{effective.company.name}</strong>.
+          <strong className="text-ds-foreground">{effective.company.name}</strong>.
         </p>
       </div>
       <OrganizationBrandingPanel initialCompany={effective.company} />

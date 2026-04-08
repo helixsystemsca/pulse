@@ -27,7 +27,7 @@ export function UserProfileAvatarPreview({
 
   return (
     <div
-      className={`relative flex shrink-0 items-center justify-center overflow-hidden rounded-full border border-slate-200 bg-slate-100 text-slate-600 ring-2 ring-white dark:border-[#374151] dark:bg-[#0F172A] dark:text-gray-300 dark:ring-[#111827] ${sizeClassName} ${className}`.trim()}
+      className={`relative flex shrink-0 items-center justify-center overflow-hidden rounded-full border border-ds-border bg-ds-secondary text-ds-muted ring-2 ring-ds-primary ${sizeClassName} ${className}`.trim()}
     >
       {src ? (
         // eslint-disable-next-line @next/next/no-img-element

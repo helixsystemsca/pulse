@@ -14,21 +14,24 @@ export function FeatureCard({
   icon: Icon,
   title,
   description,
-  iconClassName = "text-pulse-accent",
+  iconClassName = "text-ds-success",
   variant = "default",
 }: FeatureCardProps) {
   return (
-    <Card className={`flex gap-4 ${variant === "alert" ? "border-red-100/90" : ""}`}>
+    <Card
+      className={`flex gap-4 ${variant === "alert" ? "border-[color-mix(in_srgb,var(--ds-danger)_40%,var(--ds-border))]" : ""}`}
+      variant="primary"
+    >
       <div
-        className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-slate-100/85 dark:bg-slate-800/50 ${
-          variant === "alert" ? "text-red-500" : ""
+        className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-md border border-ds-border bg-ds-secondary ${
+          variant === "alert" ? "text-ds-danger" : ""
         } ${iconClassName}`}
       >
         <Icon className="h-6 w-6" strokeWidth={1.75} />
       </div>
       <div className="min-w-0">
-        <h3 className="text-lg font-semibold text-pulse-navy">{title}</h3>
-        <p className="mt-1.5 text-sm leading-relaxed text-pulse-muted">{description}</p>
+        <h3 className="text-lg font-semibold text-ds-foreground">{title}</h3>
+        <p className="mt-1.5 text-sm leading-relaxed text-ds-muted">{description}</p>
       </div>
     </Card>
   );
@@ -42,13 +45,13 @@ type SmallFeatureCardProps = {
 
 export function SmallFeatureCard({ icon, title, description }: SmallFeatureCardProps) {
   return (
-    <Card className="flex items-start gap-3 p-5 shadow-sm md:p-6">
-      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-blue-50 text-pulse-accent">
+    <Card className="flex items-start gap-3 !p-5 shadow-[var(--ds-shadow-card)] md:!p-6" variant="primary">
+      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-ds-border bg-ds-secondary text-ds-success">
         {icon}
       </div>
       <div className="min-w-0">
-        <h4 className="font-semibold text-pulse-navy">{title}</h4>
-        <p className="mt-1.5 text-sm leading-relaxed text-pulse-muted">{description}</p>
+        <h4 className="font-semibold text-ds-foreground">{title}</h4>
+        <p className="mt-1.5 text-sm leading-relaxed text-ds-muted">{description}</p>
       </div>
     </Card>
   );

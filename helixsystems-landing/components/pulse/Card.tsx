@@ -1,31 +1,42 @@
 import type { ReactNode } from "react";
 
+export type CardVariant = "primary" | "secondary" | "elevated";
+
 type CardProps = {
   children: ReactNode;
   className?: string;
   /** default: comfortable p-6 */
-  padding?: "md" | "lg";
+  padding?: "none" | "md" | "lg";
+  /** Surface tier — maps to design-system card tokens in globals.css */
+  variant?: CardVariant;
   /** Whole card is a control (e.g. wraps a link). Default: static surface, no hover lift. */
   interactive?: boolean;
 };
 
 const paddingClass = {
+  none: "",
   md: "p-5",
   lg: "p-6",
 } as const;
 
-const interactiveShadow =
-  "cursor-pointer transition-shadow duration-200 ease-out hover:shadow-[0_4px_18px_rgba(0,0,0,0.12),0_1px_3px_rgba(0,0,0,0.06)] dark:hover:shadow-[0_4px_20px_rgba(0,0,0,0.28),0_1px_4px_rgba(0,0,0,0.18)]";
+const variantClass: Record<CardVariant, string> = {
+  primary: "ds-card-primary text-ds-foreground",
+  secondary: "ds-card-secondary text-ds-foreground",
+  elevated: "ds-card-elevated text-ds-foreground",
+};
+
+const interactiveClass = "cursor-pointer";
 
 export function Card({
   children,
   className = "",
   padding = "lg",
+  variant = "primary",
   interactive = false,
 }: CardProps) {
   return (
     <div
-      className={`app-glass-card rounded-md text-gray-900 dark:text-gray-100 ${interactive ? interactiveShadow : ""} ${paddingClass[padding]} ${className}`}
+      className={`${variantClass[variant]} ${interactive ? interactiveClass : ""} ${paddingClass[padding]} ${className}`}
     >
       {children}
     </div>

@@ -25,7 +25,7 @@ export function AdminControlSection() {
         className="mx-auto mt-12 grid max-w-5xl scroll-mt-24 gap-8 md:mt-16 md:grid-cols-3 md:gap-12"
       >
         <div className="text-center md:text-left">
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-md bg-blue-50 text-pulse-accent md:mx-0">
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-md bg-[color-mix(in_srgb,var(--ds-success)_12%,var(--ds-surface-secondary))] text-pulse-accent md:mx-0">
             <LayoutDashboard className="h-6 w-6" strokeWidth={1.75} />
           </div>
           <h3 className="text-lg font-semibold text-pulse-navy">Active work and alerts</h3>
@@ -34,7 +34,7 @@ export function AdminControlSection() {
           </p>
         </div>
         <div className="text-center md:text-left">
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-md bg-blue-50 text-pulse-accent md:mx-0">
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-md bg-[color-mix(in_srgb,var(--ds-success)_12%,var(--ds-surface-secondary))] text-pulse-accent md:mx-0">
             <Eye className="h-6 w-6" strokeWidth={1.75} />
           </div>
           <h3 className="text-lg font-semibold text-pulse-navy">Tool and asset status</h3>
@@ -43,7 +43,7 @@ export function AdminControlSection() {
           </p>
         </div>
         <div className="text-center md:text-left">
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-md bg-blue-50 text-pulse-accent md:mx-0">
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-md bg-[color-mix(in_srgb,var(--ds-success)_12%,var(--ds-surface-secondary))] text-pulse-accent md:mx-0">
             <Shield className="h-6 w-6" strokeWidth={1.75} />
           </div>
           <h3 className="text-lg font-semibold text-pulse-navy">Users, roles, and company settings</h3>

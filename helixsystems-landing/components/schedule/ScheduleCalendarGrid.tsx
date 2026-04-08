@@ -118,11 +118,11 @@ export function ScheduleCalendarGrid({
       <div
         className={`flex flex-wrap items-center justify-between gap-3 border-b border-pulseShell-border px-4 py-3 sm:px-5 ${scheduleDragLock ? "pointer-events-none" : ""}`}
       >
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{monthLabel(year, monthIndex)}</h2>
+        <h2 className="text-lg font-semibold text-ds-foreground">{monthLabel(year, monthIndex)}</h2>
         <div className="flex items-center gap-1">
           <button
             type="button"
-            className="rounded-lg border border-pulseShell-border bg-pulseShell-elevated p-2 text-gray-900 shadow-sm hover:bg-pulseShell-surface dark:text-gray-100"
+            className="rounded-lg border border-pulseShell-border bg-pulseShell-elevated p-2 text-ds-foreground shadow-sm hover:bg-pulseShell-surface"
             onClick={onPrevMonth}
             aria-label="Previous month"
           >
@@ -130,7 +130,7 @@ export function ScheduleCalendarGrid({
           </button>
           <button
             type="button"
-            className="rounded-lg border border-pulseShell-border bg-pulseShell-elevated p-2 text-gray-900 shadow-sm hover:bg-pulseShell-surface dark:text-gray-100"
+            className="rounded-lg border border-pulseShell-border bg-pulseShell-elevated p-2 text-ds-foreground shadow-sm hover:bg-pulseShell-surface"
             onClick={onNextMonth}
             aria-label="Next month"
           >
@@ -139,7 +139,7 @@ export function ScheduleCalendarGrid({
         </div>
       </div>
       <p
-        className={`border-b border-pulseShell-border px-4 py-2 text-[11px] text-gray-500 dark:text-gray-400 sm:px-5 ${scheduleDragLock ? "pointer-events-none" : ""}`}
+        className={`border-b border-pulseShell-border px-4 py-2 text-[11px] text-ds-muted sm:px-5 ${scheduleDragLock ? "pointer-events-none" : ""}`}
       >
         Drag a shift to another day to move it. Hold{" "}
         <kbd className="rounded border border-pulseShell-border bg-pulseShell-kbd px-1 dark:border-pulseShell-border">Shift</kbd> while dragging to duplicate. Drop on the
@@ -151,7 +151,7 @@ export function ScheduleCalendarGrid({
         {WEEK.map((d) => (
           <div
             key={d}
-            className="bg-pulseShell-header-row px-1 py-2 text-center text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-slate-400"
+            className="bg-pulseShell-header-row px-1 py-2 text-center text-[11px] font-semibold uppercase tracking-wide text-ds-muted"
           >
             {d}
           </div>
@@ -168,7 +168,7 @@ export function ScheduleCalendarGrid({
               key={c.date}
               className={`relative flex min-h-[7.5rem] flex-col bg-pulseShell-cell ${cellPointer} ${
                 c.inMonth ? "" : "bg-pulseShell-cell-muted opacity-80"
-              } ${isOver && !calendarDropsDisabled ? "ring-2 ring-inset ring-blue-500/40 dark:ring-blue-400/45" : ""}`}
+              } ${isOver && !calendarDropsDisabled ? "ring-2 ring-inset ring-ds-success/40" : ""}`}
               onDragOver={(e) => {
                 if (!shiftDragEnabled || calendarDropsDisabled) return;
                 if (e.dataTransfer.types.includes(SHIFT_DRAG_MIME) || e.dataTransfer.types.includes("text/plain")) {
@@ -205,7 +205,7 @@ export function ScheduleCalendarGrid({
                   <button
                     type="button"
                     className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold hover:bg-pulseShell-elevated dark:hover:bg-pulseShell-surface/80 ${
-                      c.inMonth ? "text-gray-900 dark:text-gray-100" : "text-gray-500 dark:text-gray-400"
+                      c.inMonth ? "text-ds-foreground" : "text-ds-muted"
                     }`}
                     onClick={() => onOpenDay(c.date)}
                     aria-label={`Open day view for ${c.date}`}
@@ -215,7 +215,7 @@ export function ScheduleCalendarGrid({
                 ) : (
                   <span
                     className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold ${
-                      c.inMonth ? "text-gray-900 dark:text-gray-100" : "text-gray-500 dark:text-gray-400"
+                      c.inMonth ? "text-ds-foreground" : "text-ds-muted"
                     }`}
                   >
                     {c.dayOfMonth}
@@ -224,7 +224,7 @@ export function ScheduleCalendarGrid({
                 {c.inMonth ? (
                   <button
                     type="button"
-                    className="rounded-md p-1 text-gray-500 hover:bg-pulseShell-elevated hover:text-blue-600 dark:text-slate-400 dark:hover:bg-pulseShell-surface/80 dark:hover:text-blue-400"
+                    className="rounded-md p-1 text-ds-muted hover:bg-pulseShell-elevated hover:text-ds-success dark:hover:bg-pulseShell-surface/80"
                     aria-label={`Add shift on ${c.date}`}
                     onClick={() => onAddForDate(c.date)}
                   >
@@ -245,9 +245,9 @@ export function ScheduleCalendarGrid({
                   const roleLb = roleMap.get(s.role) ?? s.role;
                   const cls = st
                     ? `${st.bg} ${st.border} ${st.text} border`
-                    : "border border-pulseShell-border bg-pulseShell-elevated text-gray-900 dark:text-gray-100";
+                    : "border border-pulseShell-border bg-pulseShell-elevated text-ds-foreground";
                   const openCls = isOpen
-                    ? "ring-2 ring-dashed ring-blue-500/40 ring-offset-1 ring-offset-pulse-shell-cell dark:ring-blue-400/45 dark:ring-offset-pulse-shell-cell"
+                    ? "ring-2 ring-dashed ring-ds-success/45 ring-offset-1 ring-offset-pulse-shell-cell dark:ring-offset-pulse-shell-cell"
                     : "";
                   const conflicts = getShiftConflicts(s, fullDay, workers, settings, timeOffBlocks, zones);
                   const sev = worstConflictSeverity(conflicts);
@@ -295,7 +295,7 @@ export function ScheduleCalendarGrid({
                         <div className="min-w-0 flex-1">
                           <p className="flex items-center gap-1 truncate font-semibold">
                             {isOpen ? (
-                              <span className="shrink-0 rounded bg-pulseShell-elevated/95 px-0.5 text-[9px] font-bold uppercase text-blue-600 dark:bg-sky-950/45 dark:text-blue-300">
+                              <span className="shrink-0 rounded bg-[color-mix(in_srgb,var(--ds-success)_18%,var(--ds-surface-elevated))] px-0.5 text-[9px] font-bold uppercase text-ds-success">
                                 Open
                               </span>
                             ) : null}
@@ -312,22 +312,22 @@ export function ScheduleCalendarGrid({
                         </div>
                         <div className="flex shrink-0 flex-col items-end gap-0.5">
                           {s.uiFlags?.isNew ? (
-                            <span className="text-[8px] font-bold uppercase text-blue-700">New</span>
+                            <span className="text-[8px] font-bold uppercase text-ds-success">New</span>
                           ) : null}
                           {s.uiFlags?.isUpdated ? (
-                            <span className="text-[8px] font-bold uppercase text-violet-700">Chg</span>
+                            <span className="text-[8px] font-bold uppercase text-ds-warning">Chg</span>
                           ) : null}
                           <div className="flex items-center gap-0.5">
                             {certFlag ? (
                               <span title={tip} className="inline-flex">
-                                <Award className="h-3 w-3 shrink-0 text-gray-500 dark:text-gray-400" strokeWidth={2} aria-hidden />
+                                <Award className="h-3 w-3 shrink-0 text-ds-muted" strokeWidth={2} aria-hidden />
                               </span>
                             ) : null}
                             {sev ? (
                               <span
                                 title={tip}
                                 className={`inline-block h-2 w-2 shrink-0 rounded-full ${
-                                  sev === "critical" ? "bg-red-500" : "bg-amber-400"
+                                  sev === "critical" ? "bg-ds-danger" : "bg-ds-warning"
                                 }`}
                                 aria-label={tip}
                               />

@@ -21,7 +21,7 @@ export function InventoryAlertsSection() {
             title="Alerts for missing equipment"
             description="Unreturned or misplaced tools raise a flag before the job packs up and goes home."
             variant="alert"
-            iconClassName="text-red-500"
+            iconClassName="text-ds-danger"
           />
           <FeatureCard
             icon={Bell}

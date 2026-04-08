@@ -113,18 +113,18 @@ export function ScheduleWeekView({
       <div
         className={`flex flex-wrap items-center justify-between gap-3 border-b border-pulseShell-border px-4 py-3 sm:px-5 ${scheduleDragLock ? "pointer-events-none" : ""}`}
       >
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{label}</h2>
+        <h2 className="text-lg font-semibold text-ds-foreground">{label}</h2>
         <div className="flex flex-wrap items-center gap-1">
           <button
             type="button"
-            className="rounded-lg border border-pulseShell-border bg-pulseShell-elevated px-2 py-1.5 text-xs font-semibold text-gray-900 shadow-sm hover:bg-pulseShell-surface dark:text-gray-100"
+            className="rounded-lg border border-pulseShell-border bg-pulseShell-elevated px-2 py-1.5 text-xs font-semibold text-ds-foreground shadow-sm hover:bg-pulseShell-surface"
             onClick={onToday}
           >
             Today
           </button>
           <button
             type="button"
-            className="rounded-lg border border-pulseShell-border bg-pulseShell-elevated p-2 text-gray-900 shadow-sm hover:bg-pulseShell-surface dark:text-gray-100"
+            className="rounded-lg border border-pulseShell-border bg-pulseShell-elevated p-2 text-ds-foreground shadow-sm hover:bg-pulseShell-surface"
             onClick={onPrevWeek}
             aria-label="Previous week"
           >
@@ -132,7 +132,7 @@ export function ScheduleWeekView({
           </button>
           <button
             type="button"
-            className="rounded-lg border border-pulseShell-border bg-pulseShell-elevated p-2 text-gray-900 shadow-sm hover:bg-pulseShell-surface dark:text-gray-100"
+            className="rounded-lg border border-pulseShell-border bg-pulseShell-elevated p-2 text-ds-foreground shadow-sm hover:bg-pulseShell-surface"
             onClick={onNextWeek}
             aria-label="Next week"
           >
@@ -141,7 +141,7 @@ export function ScheduleWeekView({
         </div>
       </div>
       <p
-        className={`border-b border-pulseShell-border px-4 py-2 text-[11px] text-gray-500 dark:text-gray-400 sm:px-5 ${scheduleDragLock ? "pointer-events-none" : ""}`}
+        className={`border-b border-pulseShell-border px-4 py-2 text-[11px] text-ds-muted sm:px-5 ${scheduleDragLock ? "pointer-events-none" : ""}`}
       >
         Week view — same drag, drop, and shift actions as the month grid.
       </p>
@@ -156,11 +156,11 @@ export function ScheduleWeekView({
             <div
               key={date}
               className={`bg-pulseShell-header-row px-1 py-2 text-center text-[11px] font-semibold uppercase tracking-wide ${
-                isToday ? "text-blue-600 dark:text-blue-400" : "text-gray-500 dark:text-slate-400"
+                isToday ? "text-ds-success" : "text-ds-muted"
               }`}
             >
               <div>{dow}</div>
-              <div className="mt-0.5 tabular-nums text-gray-900 dark:text-gray-100">
+              <div className="mt-0.5 tabular-nums text-ds-foreground">
                 {d.getMonth() + 1}/{d.getDate()}
               </div>
             </div>
@@ -178,9 +178,7 @@ export function ScheduleWeekView({
             <div
               key={date}
               className={`relative flex min-h-[14rem] flex-col bg-pulseShell-cell ${cellPointer} ${
-                isOver && !calendarDropsDisabled
-                  ? "ring-2 ring-inset ring-blue-500/40 dark:ring-blue-400/45"
-                  : ""
+                isOver && !calendarDropsDisabled ? "ring-2 ring-inset ring-ds-success/40" : ""
               }`}
               onDragOver={(e) => {
                 if (!shiftDragEnabled || calendarDropsDisabled) return;
@@ -214,20 +212,20 @@ export function ScheduleWeekView({
                 {onOpenDay ? (
                   <button
                     type="button"
-                    className="flex h-7 min-w-[1.75rem] items-center justify-center rounded-full text-xs font-semibold text-gray-900 hover:bg-pulseShell-elevated dark:text-gray-100 dark:hover:bg-pulseShell-surface/80"
+                    className="flex h-7 min-w-[1.75rem] items-center justify-center rounded-full text-xs font-semibold text-ds-foreground hover:bg-pulseShell-elevated dark:hover:bg-pulseShell-surface/80"
                     onClick={() => onOpenDay(date)}
                     aria-label={`Open day view for ${date}`}
                   >
                     {d.getDate()}
                   </button>
                 ) : (
-                  <span className="flex h-7 w-7 items-center justify-center text-xs font-semibold text-gray-900 dark:text-gray-100">
+                  <span className="flex h-7 w-7 items-center justify-center text-xs font-semibold text-ds-foreground">
                     {d.getDate()}
                   </span>
                 )}
                 <button
                   type="button"
-                  className="rounded-md p-1 text-gray-500 hover:bg-pulseShell-elevated hover:text-blue-600 dark:text-slate-400 dark:hover:bg-pulseShell-surface/80 dark:hover:text-blue-400"
+                  className="rounded-md p-1 text-ds-muted hover:bg-pulseShell-elevated hover:text-ds-success dark:hover:bg-pulseShell-surface/80"
                   aria-label={`Add shift on ${date}`}
                   onClick={() => onAddForDate(date)}
                 >
@@ -245,9 +243,9 @@ export function ScheduleWeekView({
                   const roleLb = roleMap.get(s.role) ?? s.role;
                   const cls = st
                     ? `${st.bg} ${st.border} ${st.text} border`
-                    : "border border-pulseShell-border bg-pulseShell-elevated text-gray-900 dark:text-gray-100";
+                    : "border border-pulseShell-border bg-pulseShell-elevated text-ds-foreground";
                   const openCls = isOpen
-                    ? "ring-2 ring-dashed ring-blue-500/40 ring-offset-1 ring-offset-pulse-shell-cell dark:ring-blue-400/45 dark:ring-offset-pulse-shell-cell"
+                    ? "ring-2 ring-dashed ring-ds-success/45 ring-offset-1 ring-offset-pulse-shell-cell dark:ring-offset-pulse-shell-cell"
                     : "";
                   const conflicts = getShiftConflicts(s, fullDay, workers, settings, timeOffBlocks, zones);
                   const sev = worstConflictSeverity(conflicts);
@@ -293,7 +291,7 @@ export function ScheduleWeekView({
                         <div className="min-w-0 flex-1">
                           <p className="flex items-center gap-1 truncate font-semibold">
                             {isOpen ? (
-                              <span className="shrink-0 rounded bg-pulseShell-elevated/95 px-0.5 text-[9px] font-bold uppercase text-blue-600 dark:bg-sky-950/45 dark:text-blue-300">
+                              <span className="shrink-0 rounded bg-[color-mix(in_srgb,var(--ds-success)_18%,var(--ds-surface-elevated))] px-0.5 text-[9px] font-bold uppercase text-ds-success">
                                 Open
                               </span>
                             ) : null}
@@ -312,14 +310,14 @@ export function ScheduleWeekView({
                           <div className="flex items-center gap-0.5">
                             {certFlag ? (
                               <span title={tip} className="inline-flex">
-                                <Award className="h-3 w-3 shrink-0 text-gray-500 dark:text-gray-400" strokeWidth={2} aria-hidden />
+                                <Award className="h-3 w-3 shrink-0 text-ds-muted" strokeWidth={2} aria-hidden />
                               </span>
                             ) : null}
                             {sev ? (
                               <span
                                 title={tip}
                                 className={`inline-block h-2 w-2 shrink-0 rounded-full ${
-                                  sev === "critical" ? "bg-red-500" : "bg-amber-400"
+                                  sev === "critical" ? "bg-ds-danger" : "bg-ds-warning"
                                 }`}
                               />
                             ) : null}

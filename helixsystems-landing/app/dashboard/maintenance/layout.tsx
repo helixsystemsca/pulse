@@ -10,7 +10,7 @@ export default function MaintenanceLayout({ children }: { children: React.ReactN
   return (
     <div className="mx-auto max-w-6xl px-4 py-6">
       <div className="mb-4">
-        <h1 className="text-xl font-semibold text-pulse-navy dark:text-slate-100">Maintenance</h1>
+        <h1 className="text-xl font-semibold text-ds-foreground">Maintenance</h1>
         <p className="mt-1 text-sm text-pulse-muted">
           Unified work orders, preventative rules, reusable procedures, and optional work-request intake.
         </p>
