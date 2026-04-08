@@ -411,7 +411,7 @@ export function EquipmentDetailApp({ equipmentId }: Props) {
               {rtlsMatch.linkedTags.map((b) => (
                 <li
                   key={b.id}
-                  className="rounded-lg border border-slate-100 bg-slate-50/90 px-3 py-2 text-sm dark:border-[#374151] dark:bg-[#111827]/60"
+                  className="rounded-lg border border-slate-100 bg-slate-50/90 px-3 py-2 text-sm dark:border-ds-border dark:bg-ds-primary/95"
                 >
                   <span className="font-medium text-pulse-navy dark:text-gray-100">{b.name}</span>
                   <span className="mt-0.5 block font-mono text-xs text-pulse-muted">{b.mac_address}</span>

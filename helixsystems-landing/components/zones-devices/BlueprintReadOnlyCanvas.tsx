@@ -149,7 +149,7 @@ function SymbolGlyphRo({ symbolType, isDark }: { symbolType: string; isDark: boo
 function palette(theme: BlueprintReadOnlyTheme) {
   if (theme === "dark") {
     return {
-      canvasBg: "#0f172a",
+      canvasBg: "#354766",
       grid: "rgba(148, 163, 184, 0.07)",
       zoneFill: "rgba(248, 250, 252, 0.038)",
       zoneStroke: "rgba(229, 231, 235, 0.88)",
@@ -157,14 +157,14 @@ function palette(theme: BlueprintReadOnlyTheme) {
       zoneShadow: "rgba(0, 0, 0, 0.2)",
       pathFill: "rgba(56, 189, 248, 0.08)",
       pathStroke: "rgba(148, 197, 255, 0.52)",
-      doorFill: "rgba(15, 23, 42, 0.2)",
+      doorFill: "rgba(53, 71, 102, 0.22)",
       doorStroke: "rgba(148, 163, 184, 0.45)",
-      doorCut: "#0f172a",
-      symbolPlate: "rgba(15, 23, 42, 0.14)",
-      devicePlate: "rgba(15, 23, 42, 0.18)",
+      doorCut: "#354766",
+      symbolPlate: "rgba(53, 71, 102, 0.16)",
+      devicePlate: "rgba(53, 71, 102, 0.2)",
       deviceStroke: "rgba(203, 213, 245, 0.16)",
       label: "#cbd5f5",
-      mass: "rgba(3, 7, 18, 0.62)",
+      mass: "rgba(44, 58, 85, 0.58)",
     };
   }
   return {

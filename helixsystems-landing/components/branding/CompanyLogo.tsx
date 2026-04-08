@@ -78,7 +78,7 @@ export function CompanyLogo({
   const fallbackText = (companyName?.trim() || "Organization").slice(0, 48);
   const ring =
     variant === "dark"
-      ? "border-zinc-700 bg-zinc-900 text-zinc-200 ring-1 ring-zinc-700"
+      ? "border-ds-border bg-ds-secondary text-ds-foreground ring-1 ring-ds-border"
       : "border-slate-200/80 bg-slate-50 text-pulse-navy ring-1 ring-slate-200/60";
 
   const external = logoUrl?.startsWith("http://") || logoUrl?.startsWith("https://");

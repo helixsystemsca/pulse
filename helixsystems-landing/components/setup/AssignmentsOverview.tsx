@@ -3,7 +3,7 @@
 import { Layers, MapPin, Radio, Users } from "lucide-react";
 
 const card =
-  "rounded-md border border-slate-200/80 bg-white p-5 shadow-card dark:border-[#1F2937] dark:bg-[#0F172A] dark:shadow-[0_2px_8px_rgba(0,0,0,0.35)]";
+  "rounded-md border border-slate-200/80 bg-white p-5 shadow-card dark:border-ds-border dark:bg-ds-secondary dark:shadow-[0_2px_8px_rgba(0,0,0,0.35)]";
 
 export function AssignmentsOverview({
   workers,
@@ -15,7 +15,7 @@ export function AssignmentsOverview({
   tagSummary: { registered: number; assigned: number; unassigned: number };
 }) {
   return (
-    <section className="rounded-md border border-slate-200/80 bg-white/90 p-5 shadow-card dark:border-[#1F2937] dark:bg-[#111827] dark:shadow-[0_2px_8px_rgba(0,0,0,0.4)] md:p-6">
+    <section className="rounded-md border border-slate-200/80 bg-white/90 p-5 shadow-card dark:border-ds-border dark:bg-ds-primary dark:shadow-[0_2px_8px_rgba(0,0,0,0.4)] md:p-6">
       <div className="flex items-center gap-2">
         <Layers className="h-5 w-5 text-[#2B4C7E] dark:text-sky-400" aria-hidden />
         <div>
@@ -36,7 +36,7 @@ export function AssignmentsOverview({
               workers.map((w) => (
                 <li
                   key={w.id}
-                  className="flex flex-col rounded-lg bg-slate-50/90 px-3 py-2 ring-1 ring-slate-200/60 dark:bg-[#111827] dark:ring-[#374151]"
+                  className="flex flex-col rounded-lg bg-slate-50/90 px-3 py-2 ring-1 ring-slate-200/60 dark:bg-ds-primary dark:ring-ds-border"
                 >
                   <span className="font-medium text-pulse-navy dark:text-gray-100">{w.name}</span>
                   <span className="text-xs text-pulse-muted dark:text-gray-500">{w.tag ? `Tag: ${w.tag}` : "No tag assigned"}</span>
@@ -83,7 +83,7 @@ export function AssignmentsOverview({
               zoneRows.map((z) => (
                 <li
                   key={z.id}
-                  className="flex flex-col rounded-lg bg-slate-50/90 px-3 py-2 ring-1 ring-slate-200/60 dark:bg-[#111827] dark:ring-[#374151]"
+                  className="flex flex-col rounded-lg bg-slate-50/90 px-3 py-2 ring-1 ring-slate-200/60 dark:bg-ds-primary dark:ring-ds-border"
                 >
                   <span className="font-medium text-pulse-navy dark:text-gray-100">{z.name}</span>
                   <span className="text-xs text-pulse-muted dark:text-gray-500">

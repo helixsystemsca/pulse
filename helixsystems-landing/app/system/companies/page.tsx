@@ -230,7 +230,7 @@ export default function SystemCompaniesPage() {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-xl font-semibold text-gray-900 dark:text-white">Companies</h1>
-          <p className="mt-1 text-sm text-gray-500 dark:text-zinc-500">Create tenants, features, and invites.</p>
+          <p className="mt-1 text-sm text-gray-500 dark:text-ds-muted">Create tenants, features, and invites.</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <button
@@ -255,12 +255,12 @@ export default function SystemCompaniesPage() {
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="Filter by name…"
-          className="w-full max-w-xs rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-blue-500/50 dark:border-zinc-600 dark:bg-zinc-900 dark:text-white dark:placeholder:text-zinc-500"
+          className="w-full max-w-xs rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-blue-500/50 dark:border-ds-border dark:bg-ds-secondary dark:text-ds-foreground dark:placeholder:text-ds-muted"
         />
         <button
           type="button"
           onClick={() => void load()}
-          className="rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
+          className="rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 dark:border-ds-border dark:text-ds-muted dark:hover:bg-ds-interactive-hover"
         >
           Search
         </button>
@@ -345,11 +345,11 @@ export default function SystemCompaniesPage() {
       ) : null}
 
       {loading ? (
-        <p className="text-gray-500 dark:text-zinc-500">Loading…</p>
+        <p className="text-gray-500 dark:text-ds-muted">Loading…</p>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-zinc-800">
-          <table className="min-w-full divide-y divide-gray-200 text-left text-sm dark:divide-zinc-800">
-            <thead className="bg-gray-50 text-xs uppercase text-gray-500 dark:bg-zinc-900/80 dark:text-zinc-500">
+        <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-ds-border">
+          <table className="min-w-full divide-y divide-gray-200 text-left text-sm dark:divide-ds-border">
+            <thead className="bg-gray-50 text-xs uppercase text-gray-500 dark:bg-ds-primary dark:text-ds-muted">
               <tr>
                 <th className="px-4 py-3">Company</th>
                 <th className="px-4 py-3">Users</th>
@@ -358,7 +358,7 @@ export default function SystemCompaniesPage() {
                 <th className="px-4 py-3 w-44 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200 bg-white/80 dark:divide-zinc-800 dark:bg-zinc-950/50">
+            <tbody className="divide-y divide-gray-200 bg-white/80 dark:divide-ds-border dark:bg-ds-secondary">
               {rows.map((r) => (
                 <tr
                   key={r.id}
@@ -371,25 +371,25 @@ export default function SystemCompaniesPage() {
                       router.push(`/system/companies/${r.id}`);
                     }
                   }}
-                  className={`cursor-pointer transition-colors hover:bg-gray-50 dark:hover:bg-zinc-900/70 ${
+                  className={`ds-table-row-hover cursor-pointer transition-colors hover:bg-gray-50 ${
                     r.is_active ? "" : "opacity-60"
                   }`}
                 >
                   <td className="px-4 py-3 font-medium text-gray-900 dark:text-white">
                     <span className="text-blue-600 dark:text-blue-300">{r.name}</span>
-                    <div className="text-xs font-normal text-gray-500 dark:text-zinc-500">{r.id}</div>
-                    <p className="mt-0.5 text-[11px] text-gray-500 dark:text-zinc-600">Click for features &amp; settings</p>
+                    <div className="text-xs font-normal text-gray-500 dark:text-ds-muted">{r.id}</div>
+                    <p className="mt-0.5 text-[11px] text-gray-500 dark:text-ds-muted">Click for features &amp; settings</p>
                   </td>
-                  <td className="px-4 py-3 text-gray-600 dark:text-zinc-400">{r.user_count}</td>
+                  <td className="px-4 py-3 text-gray-600 dark:text-ds-muted">{r.user_count}</td>
                   <td className="px-4 py-3">
                     {r.enabled_features.length === 0 ? (
-                      <span className="text-xs text-gray-500 dark:text-zinc-600">None</span>
+                      <span className="text-xs text-gray-500 dark:text-ds-muted">None</span>
                     ) : (
                       <div className="flex max-w-md flex-wrap gap-1">
                         {r.enabled_features.map((f) => (
                           <span
                             key={f}
-                            className="rounded bg-gray-100 px-1.5 py-0.5 text-xs text-gray-800 dark:bg-zinc-800 dark:text-zinc-300"
+                            className="rounded bg-gray-100 px-1.5 py-0.5 text-xs text-gray-800 dark:bg-ds-primary dark:text-ds-muted"
                           >
                             {f}
                           </span>
@@ -403,7 +403,7 @@ export default function SystemCompaniesPage() {
                         Active
                       </span>
                     ) : (
-                      <span className="rounded-full bg-zinc-800 px-2 py-0.5 text-xs font-medium text-zinc-500">
+                      <span className="rounded-full bg-ds-primary px-2 py-0.5 text-xs font-medium text-ds-muted">
                         Inactive
                       </span>
                     )}
@@ -452,27 +452,27 @@ export default function SystemCompaniesPage() {
       )}
 
       {modal === "invite" ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-          <div className="relative w-full max-w-md rounded-md border border-zinc-700 bg-zinc-900 p-6 shadow-xl">
+        <div className="ds-modal-backdrop fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+          <div className="relative w-full max-w-md rounded-md border border-ds-border bg-ds-primary p-6 text-ds-foreground shadow-xl">
             {inviteSubmitting ? (
               <div
-                className="absolute inset-0 z-20 flex flex-col items-center justify-center rounded-md bg-zinc-950/90 px-6 backdrop-blur-sm"
+                className="absolute inset-0 z-20 flex flex-col items-center justify-center rounded-md bg-ds-bg/88 px-6 backdrop-blur-sm"
                 aria-busy="true"
                 aria-live="polite"
               >
                 <Loader2 className="h-10 w-10 animate-spin text-blue-400" aria-hidden />
-                <p className="mt-4 text-center text-sm font-semibold text-zinc-100">Working on it…</p>
-                <p className="mt-2 max-w-sm text-center text-xs leading-relaxed text-zinc-400">
+                <p className="mt-4 text-center text-sm font-semibold text-ds-foreground">Working on it…</p>
+                <p className="mt-2 max-w-sm text-center text-xs leading-relaxed text-ds-muted">
                   Creating the tenant, storing the invite, and sending mail from your API (often a few seconds). If SMTP
                   isn’t configured, the company is still created—you’ll get the invite link in the blue banner after this
                   closes.
                 </p>
               </div>
             ) : null}
-            <h2 className="text-lg font-semibold text-white">Create company + invite</h2>
-            <p className="mt-1 text-xs text-zinc-500">
+            <h2 className="text-lg font-semibold text-ds-foreground">Create company + invite</h2>
+            <p className="mt-1 text-xs text-ds-muted">
               Email uses the full template from the API and is sent from{" "}
-              <span className="text-zinc-400">{HELIX_NOREPLY_EMAIL}</span> when SMTP is configured.
+              <span className="text-ds-foreground/80">{HELIX_NOREPLY_EMAIL}</span> when SMTP is configured.
             </p>
             <form className="mt-4 space-y-4" onSubmit={(e) => void submitCreateInvite(e)}>
               {bootstrapFail ? (
@@ -487,33 +487,33 @@ export default function SystemCompaniesPage() {
                 </div>
               ) : null}
               <div>
-                <label className="text-xs font-medium uppercase text-zinc-500">Company name</label>
+                <label className="text-xs font-medium uppercase text-ds-muted">Company name</label>
                 <input
                   required
                   value={companyName}
                   onChange={(e) => setCompanyName(e.target.value)}
                   disabled={inviteSubmitting}
-                  className="mt-1 w-full rounded-lg border border-zinc-600 bg-zinc-950 px-3 py-2 text-sm text-white disabled:opacity-50"
+                  className="mt-1 w-full rounded-lg border border-ds-border bg-ds-secondary px-3 py-2 text-sm text-ds-foreground disabled:opacity-50"
                 />
               </div>
               <div>
-                <label className="text-xs font-medium uppercase text-zinc-500">Admin email</label>
+                <label className="text-xs font-medium uppercase text-ds-muted">Admin email</label>
                 <input
                   required
                   type="email"
                   value={adminEmail}
                   onChange={(e) => setAdminEmail(e.target.value)}
                   disabled={inviteSubmitting}
-                  className="mt-1 w-full rounded-lg border border-zinc-600 bg-zinc-950 px-3 py-2 text-sm text-white disabled:opacity-50"
+                  className="mt-1 w-full rounded-lg border border-ds-border bg-ds-secondary px-3 py-2 text-sm text-ds-foreground disabled:opacity-50"
                 />
               </div>
               <div>
-                <p className="text-xs font-medium uppercase text-zinc-500">Initial features</p>
+                <p className="text-xs font-medium uppercase text-ds-muted">Initial features</p>
                 <div className="mt-2 flex flex-wrap gap-2">
                   {sortCatalogFeatures(catalog).map((f) => (
                     <label
                       key={f}
-                      className={`flex items-center gap-1 text-xs text-zinc-400 ${inviteSubmitting ? "pointer-events-none opacity-50" : ""}`}
+                      className={`flex items-center gap-1 text-xs text-ds-muted ${inviteSubmitting ? "pointer-events-none opacity-50" : ""}`}
                     >
                       <input
                         type="checkbox"
@@ -531,14 +531,14 @@ export default function SystemCompaniesPage() {
                   type="button"
                   onClick={() => setModal(null)}
                   disabled={inviteSubmitting}
-                  className="rounded-lg border border-zinc-600 px-4 py-2 text-sm text-zinc-300 disabled:opacity-50"
+                  className="rounded-lg border border-ds-border bg-ds-secondary px-4 py-2 text-sm text-ds-foreground disabled:opacity-50"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={inviteSubmitting}
-                  className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+                  className="inline-flex items-center justify-center gap-2 rounded-lg bg-ds-success px-4 py-2 text-sm font-semibold text-[#0a2f28] disabled:opacity-60"
                 >
                   {inviteSubmitting ? (
                     <>
@@ -556,16 +556,16 @@ export default function SystemCompaniesPage() {
       ) : null}
 
       {modal === "password" ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-          <div className="relative w-full max-w-md rounded-md border border-amber-900/60 bg-zinc-900 p-6 shadow-xl">
+        <div className="ds-modal-backdrop fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+          <div className="relative w-full max-w-md rounded-md border border-amber-900/50 bg-ds-primary p-6 text-ds-foreground shadow-xl">
             {passwordSubmitting ? (
               <div
-                className="absolute inset-0 z-20 flex flex-col items-center justify-center rounded-md bg-zinc-950/90 px-6 backdrop-blur-sm"
+                className="absolute inset-0 z-20 flex flex-col items-center justify-center rounded-md bg-ds-bg/88 px-6 backdrop-blur-sm"
                 aria-busy="true"
                 aria-live="polite"
               >
                 <Loader2 className="h-10 w-10 animate-spin text-amber-400" aria-hidden />
-                <p className="mt-4 text-center text-sm font-semibold text-zinc-100">Creating company…</p>
+                <p className="mt-4 text-center text-sm font-semibold text-ds-foreground">Creating company…</p>
               </div>
             ) : null}
             <h2 className="text-lg font-semibold text-amber-50">Quick create (no email)</h2>
@@ -595,17 +595,17 @@ export default function SystemCompaniesPage() {
             ) : null}
             <form className="mt-4 space-y-4" onSubmit={(e) => void submitBootstrapPassword(e)}>
               <div>
-                <label className="text-xs font-medium uppercase text-zinc-500">Company name</label>
+                <label className="text-xs font-medium uppercase text-ds-muted">Company name</label>
                 <input
                   required
                   value={companyName}
                   onChange={(e) => setCompanyName(e.target.value)}
                   disabled={passwordSubmitting}
-                  className="mt-1 w-full rounded-lg border border-zinc-600 bg-zinc-950 px-3 py-2 text-sm text-white disabled:opacity-50"
+                  className="mt-1 w-full rounded-lg border border-ds-border bg-ds-secondary px-3 py-2 text-sm text-ds-foreground disabled:opacity-50"
                 />
               </div>
               <div>
-                <label className="text-xs font-medium uppercase text-zinc-500">Admin email (login)</label>
+                <label className="text-xs font-medium uppercase text-ds-muted">Admin email (login)</label>
                 <input
                   required
                   type="email"
@@ -613,20 +613,20 @@ export default function SystemCompaniesPage() {
                   onChange={(e) => setAdminEmail(e.target.value)}
                   placeholder="you@example.com"
                   disabled={passwordSubmitting}
-                  className="mt-1 w-full rounded-lg border border-zinc-600 bg-zinc-950 px-3 py-2 text-sm text-white placeholder:text-zinc-600 disabled:opacity-50"
+                  className="mt-1 w-full rounded-lg border border-ds-border bg-ds-secondary px-3 py-2 text-sm text-ds-foreground placeholder:text-ds-muted disabled:opacity-50"
                 />
               </div>
               <div>
-                <label className="text-xs font-medium uppercase text-zinc-500">Admin full name (optional)</label>
+                <label className="text-xs font-medium uppercase text-ds-muted">Admin full name (optional)</label>
                 <input
                   value={adminFullName}
                   onChange={(e) => setAdminFullName(e.target.value)}
                   disabled={passwordSubmitting}
-                  className="mt-1 w-full rounded-lg border border-zinc-600 bg-zinc-950 px-3 py-2 text-sm text-white disabled:opacity-50"
+                  className="mt-1 w-full rounded-lg border border-ds-border bg-ds-secondary px-3 py-2 text-sm text-ds-foreground disabled:opacity-50"
                 />
               </div>
               <div>
-                <label className="text-xs font-medium uppercase text-zinc-500">Password (min 8 characters)</label>
+                <label className="text-xs font-medium uppercase text-ds-muted">Password (min 8 characters)</label>
                 <input
                   required
                   type="password"
@@ -635,16 +635,16 @@ export default function SystemCompaniesPage() {
                   value={adminPassword}
                   onChange={(e) => setAdminPassword(e.target.value)}
                   disabled={passwordSubmitting}
-                  className="mt-1 w-full rounded-lg border border-zinc-600 bg-zinc-950 px-3 py-2 text-sm text-white disabled:opacity-50"
+                  className="mt-1 w-full rounded-lg border border-ds-border bg-ds-secondary px-3 py-2 text-sm text-ds-foreground disabled:opacity-50"
                 />
               </div>
               <div>
-                <p className="text-xs font-medium uppercase text-zinc-500">Initial features</p>
+                <p className="text-xs font-medium uppercase text-ds-muted">Initial features</p>
                 <div className="mt-2 flex flex-wrap gap-2">
                   {sortCatalogFeatures(catalog).map((f) => (
                     <label
                       key={f}
-                      className={`flex items-center gap-1 text-xs text-zinc-400 ${passwordSubmitting ? "pointer-events-none opacity-50" : ""}`}
+                      className={`flex items-center gap-1 text-xs text-ds-muted ${passwordSubmitting ? "pointer-events-none opacity-50" : ""}`}
                     >
                       <input
                         type="checkbox"
@@ -662,7 +662,7 @@ export default function SystemCompaniesPage() {
                   type="button"
                   onClick={() => setModal(null)}
                   disabled={passwordSubmitting}
-                  className="rounded-lg border border-zinc-600 px-4 py-2 text-sm text-zinc-300 disabled:opacity-50"
+                  className="rounded-lg border border-ds-border bg-ds-secondary px-4 py-2 text-sm text-ds-foreground disabled:opacity-50"
                 >
                   Cancel
                 </button>

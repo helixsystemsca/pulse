@@ -44,7 +44,7 @@ export function PulseDrawer({
     <div className={`fixed inset-0 ${elevated ? "z-[90]" : "z-[80]"}`}>
       <button
         type="button"
-        className="absolute inset-0 bg-slate-900/35 backdrop-blur-[2px] dark:bg-black/55"
+        className="ds-modal-backdrop absolute inset-0 backdrop-blur-[2px]"
         aria-label="Close panel"
         onClick={onClose}
       />
@@ -68,7 +68,7 @@ export function PulseDrawer({
             </div>
             <button
               type="button"
-              className="shrink-0 rounded-lg p-2 text-gray-500 transition-colors hover:bg-pulseShell-elevated hover:text-gray-900 dark:text-slate-400 dark:hover:bg-pulseShell-elevated dark:hover:text-slate-100"
+              className="shrink-0 rounded-lg p-2 text-ds-muted transition-colors hover:bg-ds-interactive-hover hover:text-ds-foreground dark:text-slate-400 dark:hover:text-slate-100"
               onClick={onClose}
               aria-label="Close"
             >

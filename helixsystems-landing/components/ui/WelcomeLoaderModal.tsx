@@ -229,7 +229,7 @@ export function WelcomeLoaderModal({
 
           <motion.div
             layout
-            className="pointer-events-none relative w-full max-w-xl rounded-[28px] border border-gray-200/80 bg-white/80 px-9 py-9 text-gray-900 shadow-[0_14px_48px_rgba(0,0,0,0.14)] backdrop-blur-xl dark:border-[#1F2937]/90 dark:bg-[#121821]/90 dark:text-gray-100 dark:shadow-[0_14px_48px_rgba(0,0,0,0.48)] dark:backdrop-blur-2xl sm:px-10 sm:py-10"
+            className="pointer-events-none relative w-full max-w-xl rounded-[28px] border border-gray-200/80 bg-white/80 px-9 py-9 text-gray-900 shadow-[0_14px_48px_rgba(0,0,0,0.14)] backdrop-blur-xl dark:border-ds-border/90 dark:bg-ds-primary/95 dark:text-gray-100 dark:shadow-[0_14px_48px_rgba(0,0,0,0.48)] dark:backdrop-blur-2xl sm:px-10 sm:py-10"
             initial={{ opacity: 0, scale: 0.96, y: 8 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.98, y: 4 }}
@@ -242,7 +242,7 @@ export function WelcomeLoaderModal({
 
             <div className="flex items-center gap-5">
               <div
-                className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl border border-gray-200/90 bg-gray-50/90 dark:border-[#1F2937] dark:bg-[#0F172A]/80"
+                className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl border border-gray-200/90 bg-gray-50/90 dark:border-ds-border dark:bg-ds-secondary/95"
                 aria-hidden
               >
                 <Activity
@@ -300,7 +300,7 @@ export function WelcomeLoaderModal({
               <p className="mb-2.5 text-xs font-medium uppercase tracking-wider text-slate-500/80 dark:text-white/40 sm:text-[13px]">
                 {content === "loading" ? "Loading" : "Ready"}
               </p>
-              <div className="h-1.5 overflow-hidden rounded-full bg-black/[0.08] dark:bg-white/10">
+              <div className="h-1.5 overflow-hidden rounded-full bg-[color-mix(in_srgb,var(--ds-text-primary)_9%,transparent)] dark:bg-white/10">
                 <motion.div
                   className="h-full rounded-full bg-gradient-to-r from-cyan-400/55 via-teal-500/45 to-teal-400/50 dark:from-cyan-400/50 dark:via-teal-500/40 dark:to-cyan-500/45"
                   initial={false}

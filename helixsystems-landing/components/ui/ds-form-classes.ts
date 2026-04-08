@@ -1,7 +1,7 @@
 /** Standard Pulse form controls — token surfaces and focus ring */
 
 export const dsInputClass =
-  "w-full rounded-lg border border-ds-border bg-ds-primary px-3 py-2.5 text-sm text-ds-foreground shadow-sm outline-none placeholder:text-ds-muted focus:border-ds-border focus:ring-2 focus:ring-[var(--ds-focus-ring)]";
+  "w-full rounded-lg border border-ds-border bg-ds-primary px-3 py-2.5 text-sm text-ds-foreground shadow-sm outline-none transition-[border-color,box-shadow,background-color] duration-200 placeholder:text-ds-muted focus:border-[color-mix(in_srgb,var(--ds-success)_38%,var(--ds-border))] focus:bg-ds-primary focus:ring-2 focus:ring-[var(--ds-focus-ring)]";
 
 export const dsSelectClass = dsInputClass;
 

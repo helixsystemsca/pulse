@@ -67,8 +67,8 @@ export function SetupProgress({
 
   const sectionClass =
     phase === "exit"
-      ? "setup-progress-card-exit rounded-md border border-slate-200/80 bg-white/95 p-5 shadow-card dark:border-[#1F2937] dark:bg-[#111827] dark:shadow-[0_2px_8px_rgba(0,0,0,0.4)] md:p-6"
-      : "rounded-md border border-slate-200/80 bg-white/95 p-5 shadow-card dark:border-[#1F2937] dark:bg-[#111827] dark:shadow-[0_2px_8px_rgba(0,0,0,0.4)] md:p-6";
+      ? "setup-progress-card-exit rounded-md border border-slate-200/80 bg-white/95 p-5 shadow-card dark:border-ds-border dark:bg-ds-primary dark:shadow-[0_2px_8px_rgba(0,0,0,0.4)] md:p-6"
+      : "rounded-md border border-slate-200/80 bg-white/95 p-5 shadow-card dark:border-ds-border dark:bg-ds-primary dark:shadow-[0_2px_8px_rgba(0,0,0,0.4)] md:p-6";
 
   const pctClass =
     phase === "pulse"
@@ -87,7 +87,7 @@ export function SetupProgress({
           <span className="ml-1 text-xs text-pulse-muted dark:text-gray-500">complete</span>
         </div>
       </div>
-      <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-[#0F172A]">
+      <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-ds-secondary">
         <div
           className="h-full rounded-full bg-emerald-500 dark:bg-emerald-500"
           style={{ width: `${pct}%` }}
@@ -103,7 +103,7 @@ export function SetupProgress({
             {warnings.map((w) => (
               <li
                 key={w.id}
-                className="flex flex-col gap-2 rounded-lg bg-white/60 px-3 py-2.5 ring-1 ring-amber-200/50 dark:bg-[#0F172A]/90 dark:ring-amber-500/25 sm:flex-row sm:items-center sm:justify-between"
+                className="flex flex-col gap-2 rounded-lg bg-white/60 px-3 py-2.5 ring-1 ring-amber-200/50 dark:bg-ds-secondary/90 dark:ring-amber-500/25 sm:flex-row sm:items-center sm:justify-between"
               >
                 <span>{w.text}</span>
                 {w.action ? (
@@ -127,7 +127,7 @@ export function SetupProgress({
             className={`flex items-center gap-3 rounded-md px-3 py-2.5 text-sm ring-1 ${
               row.done
                 ? "bg-emerald-50/90 text-emerald-950 ring-emerald-200/70 dark:bg-emerald-950/55 dark:text-emerald-100 dark:ring-emerald-500/35"
-                : "bg-slate-50/90 text-pulse-navy ring-slate-200/70 dark:bg-[#0F172A] dark:text-gray-200 dark:ring-[#374151]"
+                : "bg-slate-50/90 text-pulse-navy ring-slate-200/70 dark:bg-ds-secondary dark:text-gray-200 dark:ring-ds-border"
             }`}
           >
             {row.done ? (

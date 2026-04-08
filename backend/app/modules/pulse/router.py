@@ -2,7 +2,7 @@
 
 from datetime import datetime, timezone
 from collections import defaultdict
-from typing import Annotated, Optional
+from typing import Annotated, Any, Optional
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 from fastapi.responses import FileResponse
@@ -62,6 +62,23 @@ from app.schemas.pulse import (
     WorkerSkillMiniOut,
     ZoneOut,
 )
+
+
+def _worker_scheduling_fields(prof: Optional[PulseWorkerProfile]) -> tuple[Optional[str], list[dict[str, Any]]]:
+    if not prof:
+        return None, []
+    raw = dict(prof.scheduling or {})
+    et = raw.get("employment_type")
+    rs = raw.get("recurring_shifts") or []
+    if not isinstance(rs, list):
+        rs = []
+    if et is None or (isinstance(et, str) and not str(et).strip()):
+        emp: Optional[str] = None
+    else:
+        emp = str(et).strip()
+    rec = [x for x in rs if isinstance(x, dict)]
+    return emp, rec
+
 
 router = APIRouter(prefix="/pulse", tags=["pulse"])
 
@@ -346,6 +363,7 @@ async def list_workers(db: Db, cid: CompanyId) -> list[WorkerOut]:
         certs = list(prof.certifications or []) if prof else []
         notes = prof.notes if prof else None
         avail = dict(prof.availability or {}) if prof else {}
+        emp, rec = _worker_scheduling_fields(prof)
         uid_s = str(u.id)
         out.append(
             WorkerOut(
@@ -359,6 +377,8 @@ async def list_workers(db: Db, cid: CompanyId) -> list[WorkerOut]:
                 notes=notes,
                 availability=avail,
                 avatar_url=co_worker_avatar_url(uid_s, u.avatar_url),
+                employment_type=emp,
+                recurring_shifts=rec,
             )
         )
     return out
@@ -409,6 +429,21 @@ async def patch_worker_profile(
         prof.notes = data["notes"]
     if "availability" in data:
         prof.availability = data["availability"] or {}
+    if "employment_type" in data or "recurring_shifts" in data:
+        cur = dict(prof.scheduling or {})
+        if "employment_type" in data:
+            et = data.pop("employment_type")
+            if et is None or (isinstance(et, str) and not str(et).strip()):
+                cur.pop("employment_type", None)
+            else:
+                cur["employment_type"] = str(et).strip()
+        if "recurring_shifts" in data:
+            rs = data.pop("recurring_shifts")
+            if rs is None:
+                cur.pop("recurring_shifts", None)
+            else:
+                cur["recurring_shifts"] = list(rs)
+        prof.scheduling = cur
     await db.commit()
     pq2 = await db.execute(select(User).where(User.id == user_id))
     u2 = pq2.scalar_one()
@@ -420,6 +455,7 @@ async def patch_worker_profile(
     )
     skills = [WorkerSkillMiniOut(name=r[0], level=int(r[1] or 1)) for r in skq.all()]
     uid_s = str(u2.id)
+    emp, rec = _worker_scheduling_fields(prof)
     return WorkerOut(
         id=uid_s,
         email=u2.email,
@@ -431,6 +467,8 @@ async def patch_worker_profile(
         notes=prof.notes,
         availability=dict(prof.availability or {}),
         avatar_url=co_worker_avatar_url(uid_s, u2.avatar_url),
+        employment_type=emp,
+        recurring_shifts=rec,
     )
 
 

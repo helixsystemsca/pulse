@@ -24,14 +24,14 @@ type CompanyRow = {
 };
 
 const inputCls =
-  "min-w-[12rem] flex-1 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-500/40 focus:outline-none focus:ring-2 focus:ring-blue-500/50 disabled:opacity-50 dark:border-zinc-600 dark:bg-zinc-900 dark:text-white dark:placeholder:text-zinc-600";
+  "min-w-[12rem] flex-1 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-500/40 focus:outline-none focus:ring-2 focus:ring-blue-500/50 disabled:opacity-50 dark:border-ds-border dark:bg-ds-secondary dark:text-white dark:placeholder:text-ds-muted";
 const sectionCls =
-  "rounded-lg border border-gray-200 bg-white/90 p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-950/50";
+  "rounded-lg border border-gray-200 bg-white/90 p-5 shadow-sm dark:border-ds-border dark:bg-ds-secondary";
 const labelCls = "text-xs font-medium uppercase text-gray-500 dark:text-zinc-500";
 const btnPrimary =
   "rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-500 hover:shadow disabled:opacity-40";
 const btnSecondary =
-  "rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-gray-800 shadow-sm transition hover:bg-gray-50 disabled:opacity-40 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700";
+  "rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-gray-800 shadow-sm transition hover:bg-gray-50 disabled:opacity-40 dark:border-ds-border dark:bg-ds-elevated dark:text-ds-foreground dark:hover:bg-ds-interactive-hover";
 
 export default function SystemCompanyDetailPage() {
   const { theme } = useTheme();
@@ -306,7 +306,7 @@ export default function SystemCompanyDetailPage() {
             </span>
             {row.owner_admin_id ? (
               <span className="font-mono text-xs">
-                Owner admin: <span className="text-gray-800 dark:text-zinc-300">{row.owner_admin_id}</span>
+                Owner admin: <span className="text-gray-800 dark:text-ds-muted">{row.owner_admin_id}</span>
               </span>
             ) : null}
           </div>
@@ -344,13 +344,13 @@ export default function SystemCompanyDetailPage() {
           {sortCatalogFeatures(catalog).map((f) => (
             <label
               key={f}
-              className={`flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-800 dark:border-zinc-700 dark:bg-zinc-900/80 dark:text-zinc-300 ${
+              className={`flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-800 dark:border-ds-border dark:bg-ds-secondary/80 dark:text-ds-muted ${
                 !row.is_active ? "cursor-not-allowed opacity-50" : "cursor-pointer"
               }`}
             >
               <input
                 type="checkbox"
-                className="rounded border-gray-300 dark:border-zinc-600"
+                className="rounded border-gray-300 dark:border-ds-border"
                 checked={row.enabled_features.includes(f)}
                 disabled={!row.is_active}
                 onChange={(e) => void toggleCompanyFeature(row.enabled_features, f, e.target.checked)}
@@ -362,7 +362,7 @@ export default function SystemCompanyDetailPage() {
       </section>
 
       {row.is_active ? (
-        <div className="border-t border-gray-200 pt-6 dark:border-zinc-800">
+        <div className="border-t border-gray-200 pt-6 dark:border-ds-border">
           <button
             type="button"
             onClick={() => void disableCompany()}

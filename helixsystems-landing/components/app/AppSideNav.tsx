@@ -103,7 +103,7 @@ export function AppSideNav() {
       {narrowExpanded ? (
         <button
           type="button"
-          className="fixed inset-0 z-[35] bg-[color-mix(in_srgb,var(--ds-text-primary)_18%,transparent)] backdrop-blur-[1px] dark:bg-[color-mix(in_srgb,#000_45%,transparent)]"
+          className="fixed inset-0 z-[35] bg-[color-mix(in_srgb,var(--ds-text-primary)_18%,transparent)] backdrop-blur-[1px] dark:bg-[color-mix(in_srgb,var(--ds-surface-elevated)_52%,var(--ds-bg)_48%)]"
           aria-label="Close menu"
           onClick={() => setNarrowExpanded(false)}
         />
@@ -127,7 +127,7 @@ export function AppSideNav() {
                 className={`relative flex min-h-[2.375rem] items-center gap-2 rounded-lg border-l-2 py-1 pl-0.5 pr-1 text-xs font-semibold leading-tight transition-[color,background-color,box-shadow,border-color] ${
                   active
                     ? "border-l-ds-success bg-[color-mix(in_srgb,var(--ds-success)_14%,var(--ds-sidebar))] text-ds-foreground shadow-[0_0_12px_color-mix(in_srgb,var(--ds-success)_22%,transparent)]"
-                    : "border-l-transparent text-ds-muted hover:bg-[color-mix(in_srgb,var(--ds-warning)_10%,var(--ds-sidebar))] hover:text-ds-foreground"
+                    : "border-l-transparent text-ds-muted hover:bg-[color-mix(in_srgb,var(--ds-success)_10%,var(--ds-sidebar))] hover:text-ds-foreground"
                 }`}
               >
                 <span

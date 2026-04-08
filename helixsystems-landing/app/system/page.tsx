@@ -20,7 +20,7 @@ type Overview = {
 };
 
 const cardCls =
-  "rounded-lg border border-gray-200 bg-white/90 p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-950/50";
+  "rounded-lg border border-gray-200 bg-white/90 p-4 shadow-sm dark:border-ds-border dark:bg-ds-secondary";
 
 export default function SystemOverviewPage() {
   const [data, setData] = useState<Overview | null>(null);

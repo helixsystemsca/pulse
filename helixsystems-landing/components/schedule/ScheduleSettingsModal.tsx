@@ -261,7 +261,7 @@ export function ScheduleSettingsModal({ open, onClose }: Props) {
               <button
                 type="button"
                 onClick={addRole}
-                className="inline-flex items-center gap-1 rounded-lg border border-pulseShell-border bg-pulseShell-elevated px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm hover:bg-pulseShell-surface dark:text-gray-100"
+                className="inline-flex items-center gap-1 rounded-lg border border-pulseShell-border bg-pulseShell-elevated px-3 py-2 text-sm font-semibold text-ds-foreground shadow-sm hover:bg-ds-interactive-hover dark:text-gray-100"
               >
                 <Plus className="h-4 w-4" />
                 Add role

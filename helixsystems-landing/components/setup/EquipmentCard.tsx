@@ -4,7 +4,7 @@ import { Link2, Wrench } from "lucide-react";
 import type { EquipmentOut } from "@/lib/setup-api";
 
 const cardBase =
-  "rounded-md border border-slate-200/80 bg-white p-5 shadow-card dark:border-[#374151] dark:bg-[#111827]";
+  "rounded-md border border-slate-200/80 bg-white p-5 shadow-card dark:border-ds-border dark:bg-ds-primary";
 
 export function EquipmentCard({
   equipment,

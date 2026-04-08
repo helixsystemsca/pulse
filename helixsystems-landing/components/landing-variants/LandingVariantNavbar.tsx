@@ -37,7 +37,7 @@ const presets: Record<
   },
   b: {
     header:
-      "sticky top-0 z-50 border-b border-white/10 bg-slate-950/75 backdrop-blur-xl",
+      "sticky top-0 z-50 border-b border-white/10 bg-[#2c3a55]/80 backdrop-blur-xl",
     logo: "font-headline text-xl font-extrabold tracking-tight text-white no-underline transition-transform duration-200 hover:scale-[1.02]",
     linkIdle:
       "border-b-2 border-transparent pb-0.5 text-sm font-semibold text-slate-300 no-underline transition-colors duration-200 hover:text-cyan-200",
@@ -57,14 +57,14 @@ const presets: Record<
     linkIdle:
       "border-b-2 border-transparent pb-0.5 text-sm font-semibold text-slate-600 no-underline transition-colors duration-200 hover:text-slate-900",
     linkActive:
-      "border-b-2 border-slate-900 pb-0.5 text-sm font-semibold text-slate-900 no-underline",
+      "border-b-2 border-pulse-navy pb-0.5 text-sm font-semibold text-pulse-navy no-underline",
     mobileBar: "flex flex-wrap items-center justify-center gap-4 border-t border-slate-100 px-6 py-2 md:hidden",
     mobileLinkIdle:
       "border-b-2 border-transparent pb-0.5 text-xs font-semibold text-slate-600 no-underline transition-colors duration-200 hover:text-slate-900",
     mobileLinkActive:
-      "border-b-2 border-slate-900 pb-0.5 text-xs font-semibold text-slate-900 no-underline",
+      "border-b-2 border-pulse-navy pb-0.5 text-xs font-semibold text-pulse-navy no-underline",
     launch:
-      "rounded-full border border-slate-900 bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:scale-[1.02] hover:shadow-md no-underline",
+      "rounded-full border border-pulse-navy bg-pulse-navy px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:scale-[1.02] hover:shadow-md no-underline",
   },
   d: {
     header:

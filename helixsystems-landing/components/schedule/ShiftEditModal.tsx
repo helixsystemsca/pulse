@@ -177,6 +177,7 @@ export function ShiftEditModal({
     { value: "work", label: "Work" },
     { value: "training", label: "Training" },
     { value: "vacation", label: "Vacation" },
+    { value: "sick", label: "Sick leave" },
   ];
 
   const presetChips = [
@@ -347,7 +348,7 @@ export function ShiftEditModal({
                 key={`${p.label}-${i}`}
                 type="button"
                 onClick={() => setDraft((d) => ({ ...d, startTime: p.start, endTime: p.end }))}
-                className="rounded-lg border border-pulseShell-border bg-pulseShell-elevated px-2.5 py-1.5 text-xs font-semibold text-[#2B4C7E] shadow-sm hover:bg-pulseShell-surface dark:text-blue-300"
+                className="rounded-lg border border-pulseShell-border bg-pulseShell-elevated px-2.5 py-1.5 text-xs font-semibold text-ds-foreground shadow-sm hover:bg-ds-interactive-hover dark:text-ds-foreground"
               >
                 {p.label}
               </button>

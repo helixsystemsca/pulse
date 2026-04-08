@@ -1,5 +1,4 @@
 import { AppLayout } from "@/components/app/AppLayout";
-import { PulseThemedBackground } from "@/components/app/PulseThemedBackground";
 import { isPulseAppHost, requestHostnameFromHeaders } from "@/lib/pulse-host";
 import type { Metadata } from "next";
 import { headers } from "next/headers";
@@ -14,12 +13,7 @@ export default function LoginLayout({ children }: { children: React.ReactNode })
   const h = headers();
   const host = requestHostnameFromHeaders((name) => h.get(name));
   if (isPulseAppHost(host)) {
-    return (
-      <>
-        <PulseThemedBackground />
-        <div className="login-shell login-shell--full flex flex-col">{children}</div>
-      </>
-    );
+    return <div className="login-shell login-shell--full flex flex-col">{children}</div>;
   }
   return (
     <AppLayout

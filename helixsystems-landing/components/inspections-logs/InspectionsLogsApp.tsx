@@ -12,12 +12,12 @@ import { InspectionBuilder } from "./InspectionBuilder";
 import { LogBuilder } from "./LogBuilder";
 
 const TABLE_WRAP =
-  "mt-6 overflow-hidden rounded-md border border-gray-200 bg-white shadow-sm dark:border-[#1F2937] dark:bg-[#111827] dark:shadow-[0_2px_8px_rgba(0,0,0,0.4)]";
+  "mt-6 overflow-hidden rounded-md border border-gray-200 bg-white shadow-sm dark:border-ds-border dark:bg-ds-primary dark:shadow-[0_2px_8px_rgba(0,0,0,0.4)]";
 const TH =
   "px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400";
 const TD = "px-4 py-3 text-sm text-gray-900 dark:text-gray-100";
 const ROW =
-  "border-t border-gray-200 transition-colors hover:bg-gray-50/90 dark:border-[#1F2937] dark:hover:bg-[#0B0F14]/35";
+  "border-t border-gray-200 transition-colors hover:bg-gray-50/90 dark:border-ds-border dark:hover:bg-ds-interactive-hover";
 const LINKISH =
   "text-xs font-semibold text-blue-600 hover:text-blue-700 disabled:opacity-40 dark:text-blue-400 dark:hover:text-blue-300";
 const TAB_ACTIVE = "border-b-2 border-blue-600 text-gray-900 dark:border-blue-400 dark:text-gray-100";
@@ -92,7 +92,7 @@ export function InspectionsLogsApp() {
         actions={<CreateDropdown onNewInspection={openNewInspection} onNewLog={openNewLog} />}
       />
 
-      <div className="border-b border-gray-200 dark:border-[#1F2937]">
+      <div className="border-b border-gray-200 dark:border-ds-border">
         <nav className="flex gap-6" aria-label="Module tabs">
           <button
             type="button"
@@ -142,7 +142,7 @@ export function InspectionsLogsApp() {
             <div className={TABLE_WRAP}>
               <table className="w-full border-collapse text-left">
                 <thead>
-                  <tr className="bg-gray-50 dark:bg-[#0B0F14]/40">
+                  <tr className="bg-gray-50 dark:bg-ds-secondary/90">
                     <th className={TH}>Name</th>
                     <th className={TH}>Last completed</th>
                     <th className={TH}>Frequency</th>
@@ -210,7 +210,7 @@ export function InspectionsLogsApp() {
             <div className={TABLE_WRAP}>
               <table className="w-full border-collapse text-left">
                 <thead>
-                  <tr className="bg-gray-50 dark:bg-[#0B0F14]/40">
+                  <tr className="bg-gray-50 dark:bg-ds-secondary/90">
                     <th className={TH}>Template</th>
                     <th className={TH}>Completed</th>
                     <th className={TH}>By</th>
@@ -260,7 +260,7 @@ export function InspectionsLogsApp() {
             <div className={TABLE_WRAP}>
               <table className="w-full border-collapse text-left">
                 <thead>
-                  <tr className="bg-gray-50 dark:bg-[#0B0F14]/40">
+                  <tr className="bg-gray-50 dark:bg-ds-secondary/90">
                     <th className={TH}>Name</th>
                     <th className={TH}>Last entry</th>
                     <th className={TH}>Entries</th>
@@ -328,7 +328,7 @@ export function InspectionsLogsApp() {
             <div className={TABLE_WRAP}>
               <table className="w-full border-collapse text-left">
                 <thead>
-                  <tr className="bg-gray-50 dark:bg-[#0B0F14]/40">
+                  <tr className="bg-gray-50 dark:bg-ds-secondary/90">
                     <th className={TH}>Template</th>
                     <th className={TH}>Submitted</th>
                     <th className={TH}>By</th>
@@ -433,7 +433,7 @@ function InspectionFillModal({
     <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
       <button
         type="button"
-        className="absolute inset-0 bg-slate-950/50 backdrop-blur-[2px]"
+        className="ds-modal-backdrop absolute inset-0 backdrop-blur-[2px]"
         aria-label="Close"
         onClick={onClose}
       />
@@ -449,7 +449,7 @@ function InspectionFillModal({
                 <input
                   type="checkbox"
                   id={item.id}
-                  className="mt-1 h-4 w-4 rounded border-gray-200 dark:border-[#1F2937] text-blue-600 dark:text-blue-400 focus:ring-blue-500/40 dark:focus:ring-blue-400/40"
+                  className="mt-1 h-4 w-4 rounded border-gray-200 dark:border-ds-border text-blue-600 dark:text-blue-400 focus:ring-blue-500/40 dark:focus:ring-blue-400/40"
                   checked={checks[item.id] ?? false}
                   onChange={(e) => setChecks((c) => ({ ...c, [item.id]: e.target.checked }))}
                 />
@@ -462,7 +462,7 @@ function InspectionFillModal({
         <div className="mt-6 flex justify-end gap-2">
           <button
             type="button"
-            className="rounded-md border border-gray-200 dark:border-[#1F2937] bg-gray-100 dark:bg-[#0F172A]/70 px-4 py-2 text-sm font-semibold text-gray-900 dark:text-gray-100"
+            className="rounded-md border border-gray-200 dark:border-ds-border bg-gray-100 dark:bg-ds-secondary/95 px-4 py-2 text-sm font-semibold text-gray-900 dark:text-gray-100"
             onClick={onClose}
           >
             Cancel
@@ -507,7 +507,7 @@ function LogFillModal({
     <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
       <button
         type="button"
-        className="absolute inset-0 bg-slate-950/50 backdrop-blur-[2px]"
+        className="ds-modal-backdrop absolute inset-0 backdrop-blur-[2px]"
         aria-label="Close"
         onClick={onClose}
       />
@@ -522,7 +522,7 @@ function LogFillModal({
               </label>
               {field.type === "notes" ? (
                 <textarea
-                  className="mt-1.5 w-full rounded-md border border-gray-200 dark:border-[#1F2937] bg-gray-50 dark:bg-[#0B0F14]/40 px-3 py-2 text-sm text-gray-900 dark:text-gray-100"
+                  className="mt-1.5 w-full rounded-md border border-gray-200 dark:border-ds-border bg-gray-50 dark:bg-ds-secondary/90 px-3 py-2 text-sm text-gray-900 dark:text-gray-100"
                   rows={3}
                   value={vals[field.id] ?? ""}
                   onChange={(e) => setField(field.id, e.target.value)}
@@ -530,7 +530,7 @@ function LogFillModal({
               ) : (
                 <input
                   type={field.type === "number" ? "number" : "text"}
-                  className="mt-1.5 w-full rounded-md border border-gray-200 dark:border-[#1F2937] bg-gray-50 dark:bg-[#0B0F14]/40 px-3 py-2 text-sm text-gray-900 dark:text-gray-100"
+                  className="mt-1.5 w-full rounded-md border border-gray-200 dark:border-ds-border bg-gray-50 dark:bg-ds-secondary/90 px-3 py-2 text-sm text-gray-900 dark:text-gray-100"
                   value={vals[field.id] ?? ""}
                   onChange={(e) => setField(field.id, e.target.value)}
                 />
@@ -541,7 +541,7 @@ function LogFillModal({
         <div className="mt-6 flex justify-end gap-2">
           <button
             type="button"
-            className="rounded-md border border-gray-200 dark:border-[#1F2937] bg-gray-100 dark:bg-[#0F172A]/70 px-4 py-2 text-sm font-semibold text-gray-900 dark:text-gray-100"
+            className="rounded-md border border-gray-200 dark:border-ds-border bg-gray-100 dark:bg-ds-secondary/95 px-4 py-2 text-sm font-semibold text-gray-900 dark:text-gray-100"
             onClick={onClose}
           >
             Cancel
@@ -583,7 +583,7 @@ function EntryViewModal({
     <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
       <button
         type="button"
-        className="absolute inset-0 bg-slate-950/50 backdrop-blur-[2px]"
+        className="ds-modal-backdrop absolute inset-0 backdrop-blur-[2px]"
         aria-label="Close"
         onClick={onClose}
       />
@@ -598,7 +598,7 @@ function EntryViewModal({
                 .slice()
                 .sort((a, b) => a.order - b.order)
                 .map((item) => (
-                  <div key={item.id} className="flex justify-between gap-4 border-b border-gray-200/60 dark:border-[#1F2937]/60 pb-2">
+                  <div key={item.id} className="flex justify-between gap-4 border-b border-gray-200/60 dark:border-ds-border/60 pb-2">
                     <dt className="text-gray-500 dark:text-gray-400">{item.label}</dt>
                     <dd className="font-medium text-gray-900 dark:text-gray-100">
                       {entry.values[item.id] === true ? "✓" : "—"}
@@ -611,7 +611,7 @@ function EntryViewModal({
                 .slice()
                 .sort((a, b) => a.order - b.order)
                 .map((f) => (
-                  <div key={f.id} className="border-b border-gray-200/60 dark:border-[#1F2937]/60 pb-2">
+                  <div key={f.id} className="border-b border-gray-200/60 dark:border-ds-border/60 pb-2">
                     <dt className="text-gray-500 dark:text-gray-400">{f.label}</dt>
                     <dd className="mt-1 text-gray-900 dark:text-gray-100">
                       {String(entry.values[f.id] ?? "—")}
@@ -623,7 +623,7 @@ function EntryViewModal({
         <div className="mt-6 flex justify-end">
           <button
             type="button"
-            className="rounded-md border border-gray-200 dark:border-[#1F2937] bg-gray-100 dark:bg-[#0F172A]/70 px-4 py-2 text-sm font-semibold text-gray-900 dark:text-gray-100"
+            className="rounded-md border border-gray-200 dark:border-ds-border bg-gray-100 dark:bg-ds-secondary/95 px-4 py-2 text-sm font-semibold text-gray-900 dark:text-gray-100"
             onClick={onClose}
           >
             Close

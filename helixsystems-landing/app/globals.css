@@ -8,44 +8,47 @@ html {
 }
 
 /**
- * Pulse design system — Dusk Blue (dark) / Antique White (light).
+ * Pulse design system — Dusk Blue (dark) / white + Mint Cream shell (light).
  * All UI colors SHOULD use `var(--ds-*)` or components that map to them. Legacy `--pulse-shell-*` aliases remain for gradual migration.
  */
 :root {
-  /* —— Core tokens (Antique White light) —— */
-  --ds-bg: #ffeedb;
+  /* —— Core tokens (light: white surfaces, mint shell for chrome only) —— */
+  --ds-bg: #ffffff;
   --ds-surface-primary: #ffffff;
-  --ds-surface-secondary: #fff7ed;
-  --ds-surface-elevated: #fdf1e3;
-  --ds-sidebar: #fdf1e3;
+  --ds-surface-secondary: #f8faf8;
+  --ds-surface-elevated: #ffffff;
+  --ds-sidebar: #f2f7f2;
+  --ds-header: #f2f7f2;
   --ds-border: rgba(0, 0, 0, 0.06);
-  --ds-text-primary: #1a1a1a;
+  --ds-text-primary: #111111;
   --ds-text-secondary: rgba(0, 0, 0, 0.6);
   --ds-success: #36f1cd;
   --ds-warning: #f2bb05;
   --ds-danger: #eb5160;
-  --ds-shadow-card: 0 1px 2px rgba(26, 26, 26, 0.05), 0 4px 14px rgba(139, 90, 43, 0.06);
-  --ds-shadow-card-hover: 0 2px 4px rgba(26, 26, 26, 0.06), 0 8px 22px rgba(139, 90, 43, 0.1);
-  --ds-shadow-diffuse: 0 2px 16px rgba(26, 26, 26, 0.06);
+  --ds-interactive-hover: rgba(54, 241, 205, 0.08);
+  --ds-interactive-hover-strong: rgba(54, 241, 205, 0.12);
+  --ds-shadow-card: 0 1px 2px rgba(0, 0, 0, 0.04), 0 4px 14px rgba(0, 0, 0, 0.05);
+  --ds-shadow-card-hover: 0 2px 6px rgba(0, 0, 0, 0.05), 0 8px 22px rgba(0, 0, 0, 0.06);
+  --ds-shadow-diffuse: 0 2px 16px rgba(0, 0, 0, 0.05);
   --ds-chart-grid: rgba(0, 0, 0, 0.06);
-  --ds-focus-ring: color-mix(in srgb, var(--ds-success) 45%, transparent);
+  --ds-focus-ring: rgba(54, 241, 205, 0.4);
   --ds-radius-card: 0.75rem;
 
-  /* Legacy shell (maps to design tokens) */
+  /* Legacy shell — tables & schedule: white cells, neutral chrome */
   --pulse-shell-canvas: var(--ds-bg);
   --pulse-shell-surface: var(--ds-surface-primary);
-  --pulse-shell-elevated: var(--ds-surface-elevated);
-  --pulse-shell-cell: var(--ds-surface-secondary);
-  --pulse-shell-cell-muted: color-mix(in srgb, var(--ds-surface-secondary) 92%, var(--ds-bg));
-  --pulse-shell-header-row: color-mix(in srgb, var(--ds-surface-secondary) 88%, white);
+  --pulse-shell-elevated: var(--ds-surface-secondary);
+  --pulse-shell-cell: #ffffff;
+  --pulse-shell-cell-muted: #f4f6f4;
+  --pulse-shell-header-row: #ffffff;
   --pulse-shell-border: var(--ds-border);
   --pulse-shell-grid: var(--ds-chart-grid);
   --pulse-shell-shadow: var(--ds-shadow-card);
   --pulse-shell-kbd: var(--ds-surface-secondary);
-  --pulse-header-bg: color-mix(in srgb, var(--ds-surface-primary) 96%, transparent);
+  --pulse-header-bg: var(--ds-header);
   --pulse-header-border: var(--ds-border);
   --pulse-header-shadow: var(--ds-shadow-card);
-  --pulse-segment-active-bg: color-mix(in srgb, var(--ds-success) 18%, var(--ds-surface-primary));
+  --pulse-segment-active-bg: color-mix(in srgb, var(--ds-success) 16%, var(--ds-surface-primary));
   --pulse-segment-active-fg: var(--ds-text-primary);
 }
 
@@ -55,24 +58,27 @@ html {
   --ds-surface-secondary: #354766;
   --ds-surface-elevated: #2c3a55;
   --ds-sidebar: #2c3a55;
+  --ds-header: color-mix(in srgb, var(--ds-surface-primary) 94%, transparent);
   --ds-border: rgba(255, 255, 255, 0.08);
   --ds-text-primary: #ffffff;
   --ds-text-secondary: rgba(255, 255, 255, 0.7);
   --ds-success: #36f1cd;
   --ds-warning: #f2bb05;
   --ds-danger: #eb5160;
+  --ds-interactive-hover: color-mix(in srgb, var(--ds-success) 16%, transparent);
+  --ds-interactive-hover-strong: color-mix(in srgb, var(--ds-success) 22%, transparent);
   --ds-shadow-card: 0 2px 12px rgba(0, 0, 0, 0.2), 0 1px 3px rgba(0, 0, 0, 0.18);
   --ds-shadow-card-hover: 0 4px 22px rgba(0, 0, 0, 0.28), 0 2px 8px rgba(0, 0, 0, 0.2);
   --ds-shadow-diffuse: 0 2px 20px rgba(0, 0, 0, 0.22);
   --ds-chart-grid: rgba(255, 255, 255, 0.08);
-  --ds-focus-ring: color-mix(in srgb, var(--ds-success) 55%, transparent);
+  --ds-focus-ring: rgba(54, 241, 205, 0.45);
 
   --pulse-shell-canvas: var(--ds-bg);
   --pulse-shell-surface: var(--ds-surface-primary);
   --pulse-shell-elevated: var(--ds-surface-elevated);
   --pulse-shell-cell: var(--ds-surface-secondary);
   --pulse-shell-cell-muted: color-mix(in srgb, var(--ds-surface-secondary) 75%, var(--ds-surface-elevated));
-  --pulse-shell-header-row: color-mix(in srgb, var(--ds-surface-secondary) 85%, var(--ds-bg));
+  --pulse-shell-header-row: var(--ds-surface-primary);
   --pulse-shell-border: var(--ds-border);
   --pulse-shell-grid: var(--ds-chart-grid);
   --pulse-shell-shadow: var(--ds-shadow-card);
@@ -98,7 +104,7 @@ html {
   }
   .dark .app-glass-frame {
     border-color: rgb(255 255 255 / 0.1);
-    background-color: rgb(15 23 42 / 0.28);
+    background-color: color-mix(in srgb, var(--ds-surface-elevated) 78%, transparent);
     box-shadow: 0 2px 14px rgba(0, 0, 0, 0.24), 0 1px 3px rgba(0, 0, 0, 0.2);
   }
 
@@ -109,7 +115,7 @@ html {
   }
   .dark .app-glass-frame-header {
     border-color: rgb(255 255 255 / 0.1);
-    background-color: rgb(15 23 42 / 0.62);
+    background-color: color-mix(in srgb, var(--ds-surface-primary) 88%, transparent);
   }
 
   /**
@@ -164,8 +170,20 @@ html {
     box-shadow: var(--ds-shadow-card-hover);
     transform: translateY(-1px);
   }
-  :is(.ds-card-primary, .ds-card-secondary, .ds-card-elevated, .app-glass-elevated):hover {
-    filter: brightness(1.02);
+  html:not(.dark) .ds-card-primary:hover,
+  html:not(.dark) .app-glass-card:hover,
+  html:not(.dark) .app-card:hover {
+    background-color: color-mix(in srgb, var(--ds-success) 8%, var(--ds-surface-primary));
+    filter: none;
+  }
+  html:not(.dark) .ds-card-secondary:hover {
+    background-color: color-mix(in srgb, var(--ds-success) 8%, var(--ds-surface-secondary));
+    filter: none;
+  }
+  html:not(.dark) .ds-card-elevated:hover,
+  html:not(.dark) .app-glass-elevated:hover {
+    background-color: color-mix(in srgb, var(--ds-success) 8%, var(--ds-surface-elevated));
+    filter: none;
   }
   .dark :is(.ds-card-primary, .ds-card-secondary, .ds-card-elevated, .app-glass-elevated):hover {
     filter: brightness(1.05);
@@ -251,7 +269,7 @@ html {
   .app-dashboard-tile {
     border-radius: var(--ds-radius-card);
     border: 1px solid var(--ds-border);
-    background-color: var(--ds-surface-secondary);
+    background-color: var(--ds-surface-primary);
     box-shadow: none;
   }
 
@@ -280,7 +298,70 @@ html {
   }
 
   /**
-   * App canvas — page background uses design token (Antique White / Dusk Blue).
+   * Auth screens — token canvas + slow aquamarine / indigo glow (light + dark).
+   */
+  @keyframes auth-gradient-float {
+    from {
+      transform: translate(0, 0) scale(1);
+    }
+    to {
+      transform: translate(1.5%, -1.2%) scale(1.02);
+    }
+  }
+
+  .auth-background {
+    position: relative;
+    isolation: isolate;
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-height: 0;
+    min-width: 0;
+    width: 100%;
+    overflow: hidden;
+    background-color: var(--ds-bg);
+  }
+
+  .auth-gradient-overlay {
+    pointer-events: none;
+    position: absolute;
+    inset: -28%;
+    z-index: 0;
+    backdrop-filter: blur(40px);
+    -webkit-backdrop-filter: blur(40px);
+    background: radial-gradient(circle at 30% 40%, rgba(54, 241, 205, 0.15), transparent 70%);
+    animation: auth-gradient-float 14s ease-in-out infinite alternate;
+  }
+
+  .dark .auth-gradient-overlay {
+    background:
+      radial-gradient(circle at 30% 40%, rgba(54, 241, 205, 0.2), transparent 70%),
+      radial-gradient(circle at 80% 70%, rgba(99, 102, 241, 0.15), transparent 70%);
+  }
+
+  .auth-shell-inner {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-height: 0;
+    min-width: 0;
+  }
+
+  /** Form host: elevated surface without card hover lift / tint shift */
+  .auth-card-host.ds-card-elevated:hover {
+    transform: none;
+    box-shadow: var(--ds-shadow-diffuse);
+    filter: none !important;
+  }
+
+  html:not(.dark) .auth-card-host.ds-card-elevated:hover {
+    background-color: var(--ds-surface-elevated);
+  }
+
+  /**
+   * App canvas — page background uses design token (white / Dusk Blue).
    */
   .bg-pulse-bg {
     background-color: var(--ds-bg);
@@ -291,9 +372,9 @@ html {
     background-color: var(--ds-bg);
   }
 
-  /** Marketing / alternating bands — warm wash */
+  /** Marketing / alternating bands — subtle neutral wash */
   .bg-pulse-section {
-    background-color: color-mix(in srgb, var(--ds-surface-secondary) 55%, var(--ds-bg));
+    background-color: color-mix(in srgb, var(--ds-surface-secondary) 42%, var(--ds-bg));
   }
   .dark .bg-pulse-section {
     background-color: color-mix(in srgb, var(--ds-surface-elevated) 40%, var(--ds-bg));
@@ -307,6 +388,17 @@ html {
   .app-text-secondary {
     color: var(--ds-text-secondary);
   }
+
+  /**
+   * Modal / drawer scrims — token-tinted (light: soft neutral; dark: Dusk blend, not near-black).
+   */
+  .ds-modal-backdrop {
+    background-color: color-mix(in srgb, var(--ds-text-primary) 22%, transparent);
+  }
+  .dark .ds-modal-backdrop {
+    background-color: color-mix(in srgb, var(--ds-surface-elevated) 62%, var(--ds-bg) 38%);
+  }
+
   .app-shadow-card {
     @apply shadow-md dark:shadow-[0_2px_12px_rgba(0,0,0,0.22),0_1px_3px_rgba(0,0,0,0.16)];
   }
@@ -321,7 +413,7 @@ html {
     color: var(--ds-text-primary);
   }
   .app-btn-secondary:hover {
-    background-color: color-mix(in srgb, var(--ds-warning) 14%, var(--ds-surface-secondary));
+    background-color: color-mix(in srgb, var(--ds-interactive-hover-strong) 100%, var(--ds-surface-secondary));
     box-shadow: var(--ds-shadow-card);
   }
   .dark .app-btn-secondary:hover {
@@ -339,18 +431,17 @@ html {
     color: var(--ds-text-secondary);
   }
   .app-field:focus {
-    border-color: color-mix(in srgb, var(--ds-success) 40%, var(--ds-border));
-    box-shadow: 0 0 0 1px var(--ds-focus-ring);
+    border-color: color-mix(in srgb, var(--ds-success) 35%, var(--ds-border));
+    box-shadow: 0 0 0 2px var(--ds-focus-ring);
   }
 
-  /** Tables: header row */
+  /** Tables: header row — primary surface; body rows use secondary via DataTable / feature classes */
   .app-table-head-row {
     @apply border-b text-xs font-bold uppercase tracking-wide;
     border-color: var(--ds-border);
     color: var(--ds-text-secondary);
-    background-color: var(--ds-surface-secondary);
+    background-color: var(--ds-surface-primary);
   }
-
   /**
    * Status — Aquamarine / Amber / Lobster (shared semantics).
    */
@@ -428,11 +519,15 @@ html {
     color: #062422;
     font-weight: 600;
     box-shadow: var(--ds-shadow-card);
-    transition: filter 200ms ease, box-shadow 200ms ease, transform 200ms ease;
+    transition: filter 180ms ease, box-shadow 180ms ease, transform 180ms ease;
   }
-  .ds-btn-solid-primary:hover {
+  .ds-btn-solid-primary:hover:not(:disabled) {
     filter: brightness(1.06);
     box-shadow: var(--ds-shadow-card-hover);
+    transform: translateY(-1px);
+  }
+  .ds-btn-solid-primary:active:not(:disabled) {
+    transform: translateY(0);
   }
   .dark .ds-btn-solid-primary {
     color: #041612;
@@ -461,8 +556,14 @@ html {
     transition: filter 200ms ease, box-shadow 200ms ease;
   }
   .ds-btn-secondary:hover {
-    filter: brightness(1.04);
     box-shadow: var(--ds-shadow-card-hover);
+  }
+  html:not(.dark) .ds-btn-secondary:hover {
+    background-color: color-mix(in srgb, var(--ds-interactive-hover-strong) 100%, var(--ds-surface-secondary));
+    filter: none;
+  }
+  .dark .ds-btn-secondary:hover {
+    filter: brightness(1.04);
   }
 
   .ds-link {
@@ -483,7 +584,7 @@ html {
     overflow: hidden;
     border-radius: var(--ds-radius-card);
     border: 1px solid var(--ds-border);
-    background-color: var(--ds-surface-secondary);
+    background-color: var(--ds-surface-primary);
     box-shadow: var(--ds-shadow-card);
   }
 
@@ -524,7 +625,10 @@ html {
     transition: background-color 150ms ease;
   }
   .ds-table-row-hover:hover {
-    background-color: color-mix(in srgb, var(--ds-warning) 8%, var(--ds-surface-secondary));
+    background-color: var(--ds-interactive-hover);
+  }
+  .dark .ds-table-row-hover:hover {
+    background-color: rgba(54, 241, 205, 0.08);
   }
 }
 
@@ -558,7 +662,31 @@ html {
   }
 }
 
+/** Schedule: invalid worker drop feedback */
+@keyframes schedule-cell-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20% {
+    transform: translateX(-5px);
+  }
+  40% {
+    transform: translateX(5px);
+  }
+  60% {
+    transform: translateX(-4px);
+  }
+  80% {
+    transform: translateX(4px);
+  }
+}
+
 @layer utilities {
+  .schedule-cell-shake {
+    animation: schedule-cell-shake 0.38s ease-out;
+  }
+
   .setup-progress-pct-pulse {
     display: inline-block;
     transform-origin: center;

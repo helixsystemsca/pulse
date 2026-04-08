@@ -11,7 +11,7 @@ export function AppPoweredByFooter() {
   const gutter = authed ? "pl-[5rem] sm:pl-[5.25rem]" : "";
   return (
     <footer
-      className={`mt-auto shrink-0 border-t border-gray-200 bg-white/90 dark:border-[#1F2937] dark:bg-[#0B0F14]/95 ${gutter}`.trim()}
+      className={`mt-auto shrink-0 border-t border-gray-200 bg-white/90 dark:border-ds-border dark:bg-ds-elevated ${gutter}`.trim()}
     >
       <div className="flex items-center justify-center gap-2 px-4 py-3">
         <Link

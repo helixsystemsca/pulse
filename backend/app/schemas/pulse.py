@@ -146,12 +146,16 @@ class WorkerOut(BaseModel):
     notes: Optional[str]
     availability: dict[str, Any]
     avatar_url: Optional[str] = None
+    employment_type: Optional[str] = None
+    recurring_shifts: list[dict[str, Any]] = []
 
 
 class WorkerProfilePatch(BaseModel):
     certifications: Optional[list[str]] = None
     notes: Optional[str] = None
     availability: Optional[dict[str, Any]] = None
+    employment_type: Optional[str] = None
+    recurring_shifts: Optional[list[dict[str, Any]]] = None
 
 
 class ShiftCreate(BaseModel):

@@ -98,7 +98,7 @@ export function InactivitySessionGuard() {
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-[2px]"
+      className="ds-modal-backdrop fixed inset-0 z-[100] flex items-center justify-center p-4 backdrop-blur-[2px]"
       role="alertdialog"
       aria-modal="true"
       aria-labelledby="inactivity-warning-title"

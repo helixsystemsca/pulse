@@ -11,9 +11,9 @@ export function DataTableCard({ children, className = "" }: { children: ReactNod
 }
 
 export const dataTableHeadRowClass =
-  "border-b border-ds-border bg-ds-secondary text-left text-xs font-bold uppercase tracking-wide text-ds-muted";
+  "border-b border-ds-border bg-ds-primary text-left text-xs font-bold uppercase tracking-wide text-ds-muted";
 
 /** Base body row — combine with optional emphasis classes from the feature. */
 export function dataTableBodyRow(extra = ""): string {
-  return `ds-table-row-hover border-b border-ds-border/70 last:border-0 ${extra}`.trim();
+  return `ds-table-row-hover bg-ds-secondary border-b border-ds-border/70 last:border-0 ${extra}`.trim();
 }

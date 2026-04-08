@@ -143,13 +143,13 @@ function EquipmentSetupScreen() {
 
             <section className="rounded-md border border-slate-200/80 bg-white p-2 shadow-sm">
               <p className="text-[10px] font-bold text-pulse-navy">Photo</p>
-              <div className="relative mt-1 overflow-hidden rounded-md bg-slate-900">
+              <div className="relative mt-1 overflow-hidden rounded-md bg-[#3f5274]">
                 <div className="relative aspect-[16/10] w-full" aria-hidden>
                   <div
                     className="pointer-events-none absolute inset-0 z-0 scale-105 bg-cover bg-center blur-[1.5px]"
                     style={{ backgroundImage: "url('/images/pumps.avif')" }}
                   />
-                  <div className="pointer-events-none absolute inset-0 z-[1] bg-gradient-to-b from-black/55 via-black/42 to-black/30" />
+                  <div className="pointer-events-none absolute inset-0 z-[1] bg-gradient-to-b from-[#2c3a55]/65 via-[#2c3a55]/45 to-[#354766]/35" />
                 </div>
                 <button
                   type="button"
@@ -214,24 +214,24 @@ function RuggedTabletFrame({ children }: { children: ReactNode }) {
         aria-hidden
       />
 
-      <div className="relative rounded-3xl bg-gradient-to-b from-slate-600 via-slate-800 to-slate-950 p-2 shadow-2xl shadow-slate-950/45 ring-1 ring-white/10">
+      <div className="relative rounded-3xl bg-gradient-to-b from-slate-600 via-slate-700 to-slate-800 p-2 shadow-2xl shadow-slate-900/35 ring-1 ring-white/10">
         {/* Corner bumpers */}
         <span
-          className="pointer-events-none absolute -left-0.5 top-6 h-10 w-1.5 rounded-l-md bg-slate-900/90"
+          className="pointer-events-none absolute -left-0.5 top-6 h-10 w-1.5 rounded-l-md bg-slate-800/95"
           aria-hidden
         />
         <span
-          className="pointer-events-none absolute -right-0.5 bottom-8 h-14 w-1.5 rounded-r-md bg-slate-900/90"
+          className="pointer-events-none absolute -right-0.5 bottom-8 h-14 w-1.5 rounded-r-md bg-slate-800/95"
           aria-hidden
         />
 
         <div className="aspect-[4/3] w-full">
-          <div className="flex h-full flex-col rounded-md border border-slate-500/40 bg-slate-950 p-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
+          <div className="flex h-full flex-col rounded-md border border-slate-500/40 bg-slate-800 p-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
             {/* Front camera / sensor */}
             <div className="relative flex h-4 shrink-0 items-end justify-center pb-0.5">
               <span className="h-1.5 w-1.5 rounded-full bg-slate-700 ring-1 ring-slate-600/80" />
             </div>
-            <div className="relative min-h-0 flex-1 overflow-hidden rounded-[0.65rem] bg-slate-950">
+            <div className="relative min-h-0 flex-1 overflow-hidden rounded-[0.65rem] bg-slate-800">
               <div className="pointer-events-none absolute inset-0 z-10 bg-gradient-to-br from-white/[0.07] via-transparent to-transparent" aria-hidden />
               <div className="pointer-events-none absolute inset-0 z-10 bg-gradient-to-tr from-transparent via-white/[0.02] to-white/[0.06]" aria-hidden />
               <div className="relative z-0 h-full w-full origin-top scale-[0.98]">{children}</div>

@@ -16,6 +16,9 @@ import { sessionHasAnyRole } from "@/lib/pulse-roles";
 
 const BANNER_DISMISS_KEY = "pulse_admin_setup_banner_dismissed";
 
+/** Dashboard body uses `lg:grid-cols-12`; span full width like other rows. */
+const DASHBOARD_GRID_ROW = "w-full min-w-0 lg:col-span-12";
+
 type Phase = "active" | "celebrating" | "exiting" | "done";
 
 export function AdminOnboardingChecklist() {
@@ -106,7 +109,11 @@ export function AdminOnboardingChecklist() {
   if (error && !onb) return null;
   if (!onb) {
     return (
-      <section id="admin-onboarding-checklist" className="ds-card-elevated p-5 lg:p-6" aria-hidden>
+      <section
+        id="admin-onboarding-checklist"
+        className={`ds-card-elevated p-5 lg:p-6 ${DASHBOARD_GRID_ROW}`}
+        aria-hidden
+      >
         <p className="text-sm text-ds-muted">Loading setup…</p>
       </section>
     );
@@ -122,7 +129,9 @@ export function AdminOnboardingChecklist() {
 
   if (phase === "done" && orgDone && !bannerDismissed) {
     return (
-      <div className="ds-card-primary flex flex-wrap items-center justify-between gap-3 border border-ds-border px-4 py-3 shadow-[var(--ds-shadow-card)]">
+      <div
+        className={`ds-card-primary flex flex-wrap items-center justify-between gap-3 border border-ds-border px-4 py-3 shadow-[var(--ds-shadow-card)] ${DASHBOARD_GRID_ROW}`}
+      >
         <p className="text-sm font-semibold text-ds-success">Setup complete ✓</p>
         <button
           type="button"
@@ -155,7 +164,7 @@ export function AdminOnboardingChecklist() {
   return (
     <section
       id="admin-onboarding-checklist"
-      className={`ds-card-primary ${cardAnim} ${fadeExit} border border-ds-border p-5 lg:p-6 shadow-[var(--ds-shadow-card)] ${successLook ? "border-[color-mix(in_srgb,var(--ds-success)_55%,var(--ds-border))] bg-[color-mix(in_srgb,var(--ds-success)_10%,var(--ds-primary))]" : ""}`}
+      className={`ds-card-primary ${DASHBOARD_GRID_ROW} ${cardAnim} ${fadeExit} border border-ds-border p-5 lg:p-6 shadow-[var(--ds-shadow-card)] ${successLook ? "border-[color-mix(in_srgb,var(--ds-success)_55%,var(--ds-border))] bg-[color-mix(in_srgb,var(--ds-success)_10%,var(--ds-primary))]" : ""}`}
       aria-labelledby="admin-onboarding-title"
     >
       <div className="flex flex-wrap items-baseline justify-between gap-2">

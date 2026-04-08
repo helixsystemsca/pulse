@@ -27,7 +27,7 @@ export function ModuleSettingsGear({ moduleId, label, className = "" }: Props) {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className={`inline-flex items-center justify-center rounded-lg border border-slate-200/90 bg-white p-2.5 text-pulse-navy shadow-sm transition-colors hover:bg-slate-50 dark:border-[#374151] dark:bg-[#111827] dark:text-slate-100 dark:hover:bg-[#1F2937] ${className}`.trim()}
+        className={`inline-flex items-center justify-center rounded-lg border border-slate-200/90 bg-white p-2.5 text-pulse-navy shadow-sm transition-colors hover:bg-slate-50 dark:border-ds-border dark:bg-ds-primary dark:text-slate-100 dark:hover:bg-ds-interactive-hover ${className}`.trim()}
         title={label}
         aria-label={label}
       >

@@ -36,9 +36,9 @@ import { useResolvedAvatarSrc } from "@/lib/useResolvedAvatarSrc";
 const PRIMARY_BTN =
   "rounded-[10px] bg-[#2B4C7E] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#234066] disabled:opacity-50";
 const SECONDARY_BTN =
-  "rounded-[10px] border border-slate-200/90 bg-white px-4 py-2 text-sm font-semibold text-pulse-navy shadow-sm transition-colors hover:bg-slate-50 dark:border-[#374151] dark:bg-[#1F2937] dark:text-slate-100 dark:hover:bg-[#374151]";
+  "rounded-[10px] border border-slate-200/90 bg-white px-4 py-2 text-sm font-semibold text-pulse-navy shadow-sm transition-colors hover:bg-slate-50 dark:border-ds-border dark:bg-ds-secondary dark:text-slate-100 dark:hover:bg-ds-interactive-hover";
 const FIELD =
-  "mt-1.5 w-full rounded-[10px] border border-slate-200/90 bg-white px-3 py-2.5 text-sm text-pulse-navy shadow-sm focus:border-[#2B4C7E]/35 focus:outline-none focus:ring-1 focus:ring-[#2B4C7E]/25 dark:border-[#374151] dark:bg-[#0F172A] dark:text-gray-100";
+  "mt-1.5 w-full rounded-[10px] border border-slate-200/90 bg-white px-3 py-2.5 text-sm text-pulse-navy shadow-sm focus:border-[#2B4C7E]/35 focus:outline-none focus:ring-1 focus:ring-[#2B4C7E]/25 dark:border-ds-border dark:bg-ds-secondary dark:text-gray-100";
 const LABEL = "text-[11px] font-semibold uppercase tracking-wider text-pulse-muted";
 
 function displayName(w: PulseWorkerApi): string {
@@ -58,7 +58,7 @@ function ProjectWorkerMiniAvatar({ w }: { w: PulseWorkerApi }) {
   const src = useResolvedAvatarSrc(w.avatar_url ?? null);
   const ini = initials(w.full_name, w.email);
   return (
-    <span className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-white text-[10px] font-bold text-pulse-navy ring-1 ring-slate-200 dark:bg-[#1F2937] dark:text-slate-100 dark:ring-[#374151]">
+    <span className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-white text-[10px] font-bold text-pulse-navy ring-1 ring-slate-200 dark:bg-ds-secondary dark:text-slate-100 dark:ring-ds-border">
       {src ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img src={src} alt="" className="h-full w-full object-cover" />
@@ -348,13 +348,13 @@ export function ProjectDetailApp({ projectId }: { projectId: string }) {
             </p>
           ) : null}
 
-          <div className="flex max-w-2xl flex-wrap gap-2 rounded-lg border border-slate-200/90 bg-white p-1 shadow-sm dark:border-[#374151] dark:bg-[#111827]">
+          <div className="flex max-w-2xl flex-wrap gap-2 rounded-lg border border-slate-200/90 bg-white p-1 shadow-sm dark:border-ds-border dark:bg-ds-primary">
             <button
               type="button"
               className={`inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm font-semibold transition-colors ${
                 viewTab === "tasks"
                   ? "bg-sky-50/95 text-[#1e4a8a] ring-1 ring-sky-200/80 dark:bg-[#1e3a5f] dark:text-sky-100 dark:ring-sky-500/35"
-                  : "text-pulse-navy hover:bg-white/80 dark:text-gray-300 dark:hover:bg-[#1F2937]"
+                  : "text-pulse-navy hover:bg-white/80 dark:text-gray-300 dark:hover:bg-ds-interactive-hover"
               }`}
               onClick={() => setViewTab("tasks")}
             >
@@ -366,7 +366,7 @@ export function ProjectDetailApp({ projectId }: { projectId: string }) {
               className={`inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm font-semibold transition-colors ${
                 viewTab === "board"
                   ? "bg-sky-50/95 text-[#1e4a8a] ring-1 ring-sky-200/80 dark:bg-[#1e3a5f] dark:text-sky-100 dark:ring-sky-500/35"
-                  : "text-pulse-navy hover:bg-white/80 dark:text-gray-300 dark:hover:bg-[#1F2937]"
+                  : "text-pulse-navy hover:bg-white/80 dark:text-gray-300 dark:hover:bg-ds-interactive-hover"
               }`}
               onClick={() => setViewTab("board")}
             >
@@ -378,7 +378,7 @@ export function ProjectDetailApp({ projectId }: { projectId: string }) {
               className={`inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm font-semibold transition-colors ${
                 viewTab === "automation"
                   ? "bg-sky-50/95 text-[#1e4a8a] ring-1 ring-sky-200/80 dark:bg-[#1e3a5f] dark:text-sky-100 dark:ring-sky-500/35"
-                  : "text-pulse-navy hover:bg-white/80 dark:text-gray-300 dark:hover:bg-[#1F2937]"
+                  : "text-pulse-navy hover:bg-white/80 dark:text-gray-300 dark:hover:bg-ds-interactive-hover"
               }`}
               onClick={() => setViewTab("automation")}
             >
@@ -467,7 +467,7 @@ export function ProjectDetailApp({ projectId }: { projectId: string }) {
                       return (
                         <li
                           key={w.id}
-                          className="flex items-center justify-between gap-3 rounded-lg border border-slate-100 bg-slate-50/60 px-3 py-2.5 transition-colors dark:border-[#374151] dark:bg-[#0F172A]/60"
+                          className="flex items-center justify-between gap-3 rounded-lg border border-slate-100 bg-slate-50/60 px-3 py-2.5 transition-colors dark:border-ds-border dark:bg-ds-secondary/60"
                         >
                           <div className="flex min-w-0 items-center gap-2">
                             <ProjectWorkerMiniAvatar w={w} />
@@ -503,7 +503,7 @@ export function ProjectDetailApp({ projectId }: { projectId: string }) {
               {KANBAN_COLS.map((col) => (
                 <div
                   key={col.key}
-                  className="flex min-h-[12rem] flex-col rounded-md border border-slate-200/90 bg-white/90 p-3 shadow-sm dark:border-[#374151] dark:bg-[#111827]/90"
+                  className="flex min-h-[12rem] flex-col rounded-md border border-slate-200/90 bg-white/90 p-3 shadow-sm dark:border-ds-border dark:bg-ds-primary/90"
                   onDragOver={(e) => {
                     e.preventDefault();
                     e.dataTransfer.dropEffect = "move";
@@ -514,7 +514,7 @@ export function ProjectDetailApp({ projectId }: { projectId: string }) {
                     if (id) void onDropOnColumn(col.key, id);
                   }}
                 >
-                  <p className="border-b border-slate-100 pb-2 text-center text-[11px] font-bold uppercase tracking-wide text-pulse-muted dark:border-[#374151]">
+                  <p className="border-b border-slate-100 pb-2 text-center text-[11px] font-bold uppercase tracking-wide text-pulse-muted dark:border-ds-border">
                     {col.label}
                   </p>
                   <div className="mt-2 flex flex-1 flex-col gap-2">
@@ -533,7 +533,7 @@ export function ProjectDetailApp({ projectId }: { projectId: string }) {
                             e.dataTransfer.setData("text/task-id", t.id);
                             e.dataTransfer.effectAllowed = "move";
                           }}
-                          className={`cursor-grab rounded-md border border-slate-200/90 bg-slate-50/90 px-3 py-2.5 text-left shadow-sm active:cursor-grabbing dark:border-[#374151] dark:bg-[#0F172A]/80 ${
+                          className={`cursor-grab rounded-md border border-slate-200/90 bg-slate-50/90 px-3 py-2.5 text-left shadow-sm active:cursor-grabbing dark:border-ds-border dark:bg-ds-secondary/95 ${
                             t.is_blocked ? "opacity-75" : ""
                           }`}
                         >
@@ -598,7 +598,7 @@ function TaskSection({
       {tasks.length === 0 ? (
         <Card
           padding="md"
-          className="mt-3 border-dashed border-slate-200/90 dark:border-[#374151]"
+          className="mt-3 border-dashed border-slate-200/90 dark:border-ds-border"
         >
           <p className="text-sm text-pulse-muted">{empty}</p>
         </Card>
@@ -644,7 +644,7 @@ function TaskSection({
                       {(t.required_skill_names ?? []).map((s) => (
                         <span
                           key={s}
-                          className="rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-pulse-navy dark:bg-[#1F2937] dark:text-slate-200"
+                          className="rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-pulse-navy dark:bg-ds-secondary dark:text-slate-200"
                         >
                           {s}
                         </span>
@@ -788,9 +788,9 @@ function ProjectTaskModal({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-[2px] dark:bg-black/60">
+    <div className="ds-modal-backdrop fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-[2px]">
       <div
-        className="max-h-[min(90vh,720px)] w-full max-w-lg overflow-y-auto rounded-xl border border-slate-200/90 bg-white p-6 shadow-2xl dark:border-[#374151] dark:bg-[#111827]"
+        className="max-h-[min(90vh,720px)] w-full max-w-lg overflow-y-auto rounded-xl border border-slate-200/90 bg-white p-6 shadow-2xl dark:border-ds-border dark:bg-ds-primary"
         role="dialog"
         aria-modal="true"
         aria-labelledby="task-modal-title"
@@ -842,7 +842,7 @@ function ProjectTaskModal({
               Required skills
             </label>
             <p className="mb-2 text-[11px] text-pulse-muted">Multi-select from roster and company categories.</p>
-            <div className="max-h-36 overflow-y-auto rounded-[10px] border border-slate-200/90 p-2 dark:border-[#374151]">
+            <div className="max-h-36 overflow-y-auto rounded-[10px] border border-slate-200/90 p-2 dark:border-ds-border">
               {skillOptions.length === 0 ? (
                 <p className="px-1 text-xs text-pulse-muted">Add skills in Workers &amp; Roles to populate this list.</p>
               ) : (
@@ -851,7 +851,7 @@ function ProjectTaskModal({
                     const on = skillsSel.includes(s);
                     return (
                       <li key={s}>
-                        <label className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-xs hover:bg-slate-50 dark:hover:bg-[#0F172A]">
+                        <label className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-xs hover:bg-slate-50 dark:hover:bg-ds-interactive-hover">
                           <input
                             type="checkbox"
                             className="h-3.5 w-3.5 rounded border-slate-300 text-blue-600"
@@ -902,7 +902,7 @@ function ProjectTaskModal({
             {showAdvanced ? "Hide advanced" : "Advanced: location, SOP, dependencies"}
           </button>
           {showAdvanced ? (
-            <div className="space-y-4 border-t border-slate-100 pt-4 dark:border-[#374151]">
+            <div className="space-y-4 border-t border-slate-100 pt-4 dark:border-ds-border">
               <div>
                 <label className={LABEL} htmlFor="tm-loc">
                   Location tag
@@ -936,7 +936,7 @@ function ProjectTaskModal({
             </div>
           ) : null}
         </div>
-        <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-4 dark:border-[#374151]">
+        <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-4 dark:border-ds-border">
           {task ? (
             <button
               type="button"

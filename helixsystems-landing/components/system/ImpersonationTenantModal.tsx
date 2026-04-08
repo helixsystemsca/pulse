@@ -60,7 +60,7 @@ export function ImpersonationTenantModal({
 
   return (
     <div
-      className="fixed inset-0 z-[200] flex flex-col bg-slate-900/40 backdrop-blur-sm dark:bg-black/50"
+      className="ds-modal-backdrop fixed inset-0 z-[200] flex flex-col backdrop-blur-sm"
       role="dialog"
       aria-modal="true"
       aria-labelledby="impersonation-modal-title"

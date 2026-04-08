@@ -129,7 +129,7 @@ export function NonAdminOnboardingModal() {
     <div className="fixed inset-0 z-[560] flex items-center justify-center p-4" role="dialog" aria-modal="true">
       <button
         type="button"
-        className="absolute inset-0 bg-[color-mix(in_srgb,var(--ds-text-primary)_42%,transparent)] backdrop-blur-[2px] dark:bg-[color-mix(in_srgb,var(--ds-bg)_24%,#000)]"
+        className="ds-modal-backdrop absolute inset-0 backdrop-blur-[2px]"
         aria-label="Close"
         onClick={() => void skip()}
       />

@@ -16,9 +16,9 @@ import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { replayNonAdminOnboardingTour } from "@/lib/onboarding-events";
 import { sessionHasAnyRole } from "@/lib/pulse-roles";
 
-/** Shell tokens: `--pulse-header-*` in globals.css (light glass · dark blueprint bar). */
+/** Top bar uses mint cream (`bg-ds-header`) in light theme; token-driven in dark. */
 const HEADER =
-  "sticky top-0 z-50 h-16 shrink-0 border-b backdrop-blur-md border-[var(--pulse-header-border)] bg-[var(--pulse-header-bg)] shadow-[var(--pulse-header-shadow)]";
+  "sticky top-0 z-50 h-16 shrink-0 border-b backdrop-blur-md border-ds-border bg-ds-header shadow-[var(--ds-shadow-card)]";
 
 export function AppNavbar() {
   const pathname = usePathname();
@@ -75,7 +75,7 @@ export function AppNavbar() {
             <button
               type="button"
               onClick={() => onboarding.setChecklistExpanded(true)}
-              className="inline-flex max-w-[7rem] truncate rounded-md border border-sky-200/90 bg-sky-50 px-2 py-1.5 text-[11px] font-semibold text-[#1e4a8a] shadow-sm hover:bg-sky-100/90 dark:border-blue-500/30 dark:bg-blue-500/15 dark:text-blue-300 dark:hover:bg-blue-500/25 sm:max-w-none sm:px-2.5 sm:text-xs"
+              className="inline-flex max-w-[7rem] truncate rounded-md border border-ds-border bg-ds-header px-2 py-1.5 text-[11px] font-semibold text-ds-foreground shadow-sm hover:bg-ds-interactive-hover dark:border-ds-border dark:bg-ds-secondary/60 dark:hover:bg-ds-interactive-hover sm:max-w-none sm:px-2.5 sm:text-xs"
             >
               Resume setup
             </button>
@@ -105,10 +105,10 @@ export function AppNavbar() {
                       nameFallback={session.full_name || session.email}
                       sizeClassName="h-8 w-8"
                       fallback="initials"
-                      className="!border-gray-200 !bg-gray-100 !text-gray-900 !ring-1 !ring-gray-200 dark:!border-[#1F2937] dark:!bg-[#0F172A] dark:!text-gray-100 dark:!ring-[#1F2937]"
+                      className="!border-gray-200 !bg-gray-100 !text-gray-900 !ring-1 !ring-gray-200 dark:!border-ds-border dark:!bg-ds-secondary dark:!text-gray-100 dark:!ring-ds-border"
                     />
                   ) : (
-                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 text-xs font-bold text-gray-900 ring-1 ring-gray-200 dark:bg-[#0F172A] dark:text-gray-100 dark:ring-[#1F2937]">
+                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 text-xs font-bold text-gray-900 ring-1 ring-gray-200 dark:bg-ds-secondary dark:text-gray-100 dark:ring-ds-border">
                       ?
                     </span>
                   )}

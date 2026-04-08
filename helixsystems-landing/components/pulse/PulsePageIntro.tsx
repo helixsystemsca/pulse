@@ -7,13 +7,13 @@ export function PulsePageIntro() {
   return (
     <section className="grid w-full grid-cols-1 overflow-hidden border-b border-slate-800/50 md:h-[min(85vh,56rem)] md:min-h-[36rem] md:grid-cols-2">
       {/* LEFT — IMAGE: fills half the hero; crop/zoom to worker on the left of Header.jpg (spills clipped). */}
-      <div className="relative min-h-[38vh] w-full overflow-hidden bg-[#0f172a] md:min-h-0">
+      <div className="relative min-h-[38vh] w-full overflow-hidden bg-ds-bg md:min-h-0">
         <img
           src="/images/Header.jpg"
           alt="Industrial worker using a tablet on the operations floor"
           className="absolute left-0 top-0 h-full w-[138%] max-w-none object-cover object-[14%_44%] sm:object-[16%_42%] md:w-[125%] md:object-[18%_center]"
         />
-        <div className="pointer-events-none absolute inset-0 bg-slate-900/25" aria-hidden />
+        <div className="pointer-events-none absolute inset-0 bg-ds-elevated/20" aria-hidden />
       </div>
 
       {/* RIGHT — PANEL */}

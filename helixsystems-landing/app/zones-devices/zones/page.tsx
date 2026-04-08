@@ -67,7 +67,7 @@ export default function ZonesDevicesZonesPage() {
         facility layouts and place devices.
       </motion.p>
       <motion.div
-        className="rounded-md border border-pulse-border bg-white p-5 shadow-card dark:border-slate-700 dark:bg-slate-800/80"
+        className="rounded-md border border-pulse-border bg-white p-5 shadow-card dark:border-slate-700 dark:bg-ds-secondary/95"
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: bpDuration.slow, ease: bpEase, delay: 0.04 }}

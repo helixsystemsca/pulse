@@ -69,7 +69,9 @@ export function computeWorkforceSummary(
   let otHours = 0;
   for (const w of workers) {
     if (!w.active) continue;
-    const mine = inMonth.filter((s) => s.workerId === w.id);
+    const mine = inMonth.filter(
+      (s) => s.workerId === w.id && s.eventType === "work" && s.shiftKind !== "project_task",
+    );
     const hrs = mine.reduce((acc, s) => acc + shiftHours(s.startTime, s.endTime), 0);
     if (hrs > settings.staffing.maxHoursPerWorkerPerWeek * 1.1) otHours += 1;
   }

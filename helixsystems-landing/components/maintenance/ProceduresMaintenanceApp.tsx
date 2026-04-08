@@ -95,18 +95,18 @@ export function ProceduresMaintenanceApp() {
 
   return (
     <div className="grid gap-6 lg:grid-cols-2">
-      <section className="rounded-md border border-pulse-border bg-white p-4 shadow-card dark:border-slate-700 dark:bg-slate-900/50">
+      <section className="rounded-md border border-pulse-border bg-white p-4 shadow-card dark:border-slate-700 dark:bg-ds-bg/65">
         <h2 className="text-sm font-semibold text-pulse-navy dark:text-slate-100">New procedure</h2>
         <p className="mt-1 text-xs text-pulse-muted">Steps are one per line; they are stored as a reusable list.</p>
         <div className="mt-3 space-y-2">
           <input
-            className="w-full rounded-lg border border-pulse-border px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-900"
+            className="w-full rounded-lg border border-pulse-border px-3 py-2 text-sm dark:border-slate-600 dark:bg-ds-secondary"
             placeholder="Title"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
           />
           <textarea
-            className="min-h-[8rem] w-full rounded-lg border border-pulse-border px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-900"
+            className="min-h-[8rem] w-full rounded-lg border border-pulse-border px-3 py-2 text-sm dark:border-slate-600 dark:bg-ds-secondary"
             placeholder="Step 1&#10;Step 2&#10;…"
             value={stepsText}
             onChange={(e) => setStepsText(e.target.value)}
@@ -125,7 +125,7 @@ export function ProceduresMaintenanceApp() {
       <div className="space-y-4">
         {err ? <p className="text-sm text-red-600 dark:text-red-400">{err}</p> : null}
 
-        <section className="rounded-md border border-pulse-border bg-white p-4 shadow-card dark:border-slate-700 dark:bg-slate-900/50">
+        <section className="rounded-md border border-pulse-border bg-white p-4 shadow-card dark:border-slate-700 dark:bg-ds-bg/65">
           <h2 className="text-sm font-semibold text-pulse-navy dark:text-slate-100">Library</h2>
           {loading ? (
             <p className="mt-2 text-sm text-pulse-muted">Loading…</p>
@@ -140,8 +140,8 @@ export function ProceduresMaintenanceApp() {
                     onClick={() => setSelectedId(r.id)}
                     className={`flex w-full items-start justify-between gap-2 px-2 py-2 text-left text-sm transition-colors ${
                       selectedId === r.id
-                        ? "bg-pulse-accent/10 text-pulse-navy dark:bg-slate-800 dark:text-slate-100"
-                        : "hover:bg-slate-50 dark:hover:bg-slate-800/80"
+                        ? "bg-pulse-accent/10 text-pulse-navy dark:bg-ds-secondary dark:text-slate-100"
+                        : "hover:bg-slate-50 dark:hover:bg-ds-interactive-hover"
                     }`}
                   >
                     <span className="font-medium">{r.title}</span>
@@ -154,16 +154,16 @@ export function ProceduresMaintenanceApp() {
         </section>
 
         {selected ? (
-          <section className="rounded-md border border-pulse-border bg-white p-4 shadow-card dark:border-slate-700 dark:bg-slate-900/50">
+          <section className="rounded-md border border-pulse-border bg-white p-4 shadow-card dark:border-slate-700 dark:bg-ds-bg/65">
             <h2 className="text-sm font-semibold text-pulse-navy dark:text-slate-100">Edit</h2>
             <div className="mt-3 space-y-2">
               <input
-                className="w-full rounded-lg border border-pulse-border px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-900"
+                className="w-full rounded-lg border border-pulse-border px-3 py-2 text-sm dark:border-slate-600 dark:bg-ds-secondary"
                 value={editTitle}
                 onChange={(e) => setEditTitle(e.target.value)}
               />
               <textarea
-                className="min-h-[10rem] w-full rounded-lg border border-pulse-border px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-900"
+                className="min-h-[10rem] w-full rounded-lg border border-pulse-border px-3 py-2 text-sm dark:border-slate-600 dark:bg-ds-secondary"
                 value={editStepsText}
                 onChange={(e) => setEditStepsText(e.target.value)}
               />

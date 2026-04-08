@@ -44,9 +44,9 @@ type ZoneOpt = { id: string; name: string };
 const PRIMARY_BTN =
   "rounded-[10px] bg-[#2B4C7E] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#234066] disabled:opacity-50";
 const SECONDARY_BTN =
-  "rounded-[10px] border border-slate-200/90 bg-white px-5 py-2.5 text-sm font-semibold text-pulse-navy shadow-sm transition-colors hover:bg-slate-50 disabled:opacity-50 dark:border-[#374151] dark:bg-[#1F2937] dark:text-gray-100 dark:hover:bg-[#374151]";
+  "rounded-[10px] border border-slate-200/90 bg-white px-5 py-2.5 text-sm font-semibold text-pulse-navy shadow-sm transition-colors hover:bg-slate-50 disabled:opacity-50 dark:border-ds-border dark:bg-ds-secondary dark:text-gray-100 dark:hover:bg-ds-interactive-hover";
 const FIELD =
-  "mt-1.5 w-full rounded-[10px] border border-slate-200/90 bg-white px-3 py-2.5 text-sm text-pulse-navy shadow-sm focus:border-[#2B4C7E]/35 focus:outline-none focus:ring-1 focus:ring-[#2B4C7E]/25 disabled:opacity-60 dark:border-[#374151] dark:bg-[#0F172A] dark:text-gray-100 dark:placeholder:text-gray-500";
+  "mt-1.5 w-full rounded-[10px] border border-slate-200/90 bg-white px-3 py-2.5 text-sm text-pulse-navy shadow-sm focus:border-[#2B4C7E]/35 focus:outline-none focus:ring-1 focus:ring-[#2B4C7E]/25 disabled:opacity-60 dark:border-ds-border dark:bg-ds-secondary dark:text-gray-100 dark:placeholder:text-gray-500";
 const LABEL = "text-[11px] font-semibold uppercase tracking-wider text-pulse-muted";
 
 const TYPE_SUGGESTIONS = ["General", "HVAC", "Mechanical / fluid", "Electrical", "Tools", "Safety", "Other"];
@@ -434,7 +434,7 @@ export function EquipmentApp() {
       className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${
         tab === id
           ? "bg-sky-50/95 text-[#1e4a8a] ring-1 ring-sky-200/80 dark:bg-[#1e3a5f] dark:text-sky-100 dark:ring-sky-500/35"
-          : "text-pulse-navy hover:bg-white/80 dark:text-gray-300 dark:hover:bg-[#1F2937]"
+          : "text-pulse-navy hover:bg-white/80 dark:text-gray-300 dark:hover:bg-ds-interactive-hover"
       }`}
     >
       <Icon className="h-4 w-4 shrink-0" strokeWidth={2} aria-hidden />
@@ -468,7 +468,7 @@ export function EquipmentApp() {
       ) : null}
 
       <nav
-        className="flex flex-wrap gap-1 rounded-md border border-slate-200/90 bg-white p-1 shadow-sm dark:border-[#374151] dark:bg-[#111827]"
+        className="flex flex-wrap gap-1 rounded-md border border-slate-200/90 bg-white p-1 shadow-sm dark:border-ds-border dark:bg-ds-primary"
         aria-label="Equipment sections"
       >
         {tabBtn("overview", "Overview", LayoutGrid)}

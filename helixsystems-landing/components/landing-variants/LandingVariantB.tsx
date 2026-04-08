@@ -10,9 +10,9 @@ export function LandingVariantB({ homePath }: { homePath: string }) {
   return (
     <>
       <LandingVariantNavbar preset="b" homePath={homePath} />
-      <main className="min-h-screen bg-slate-950 text-white">
+      <main className="min-h-screen bg-[#2c3a55] text-white">
         <section className="relative overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-br from-slate-950 via-[#0b2a33] to-slate-950" />
+          <div className="absolute inset-0 bg-gradient-to-br from-[#2c3a55] via-[#354766] to-[#2c3a55]" />
           <div className="absolute -left-24 top-0 h-72 w-72 rounded-full bg-cyan-500/15 blur-3xl" />
           <div className="absolute -right-24 bottom-0 h-96 w-96 rounded-full bg-teal-400/10 blur-3xl" />
 
@@ -56,8 +56,8 @@ export function LandingVariantB({ homePath }: { homePath: string }) {
               <div className="rounded-3xl border border-white/10 bg-white/5 p-4 shadow-[0_20px_80px_rgba(0,0,0,0.45)] backdrop-blur-xl md:p-5">
                 <HeroDemoPanel
                   floatingTone="dark"
-                  gradientClassName="from-slate-900 via-slate-800 to-slate-900"
-                  floatingCardClassName="border-white/10 bg-slate-950/70 backdrop-blur-xl"
+                  gradientClassName="from-[#354766] via-[#3f5274] to-[#354766]"
+                  floatingCardClassName="border-white/10 bg-[#2c3a55]/75 backdrop-blur-xl"
                   floatingWrapClassName="md:left-6"
                   frameClassName="ring-white/10"
                 />
@@ -92,7 +92,7 @@ export function LandingVariantB({ homePath }: { homePath: string }) {
           </div>
         </section>
 
-        <section id="products" className="scroll-mt-24 border-t border-white/10 bg-slate-900/40 py-20 md:py-28">
+        <section id="products" className="scroll-mt-24 border-t border-white/10 bg-[#354766]/50 py-20 md:py-28">
           <div className="mx-auto max-w-7xl px-6">
             <p className="text-xs font-bold uppercase tracking-[0.15em] text-cyan-200">{whatWeBuild.kicker}</p>
             <h2 className="mt-4 max-w-2xl font-headline text-3xl font-extrabold tracking-tight text-white md:text-4xl">
@@ -106,7 +106,7 @@ export function LandingVariantB({ homePath }: { homePath: string }) {
                   key={title}
                   className="flex h-full flex-col rounded-md border border-white/10 bg-white/5 p-8 shadow-[0_14px_40px_rgba(0,0,0,0.35)] backdrop-blur-md transition-all duration-200 hover:scale-[1.02] hover:shadow-[0_20px_55px_rgba(0,0,0,0.45)]"
                 >
-                  <div className="flex h-14 w-14 items-center justify-center rounded-md bg-slate-950/40 text-cyan-200 ring-1 ring-white/10">
+                  <div className="flex h-14 w-14 items-center justify-center rounded-md bg-[#2c3a55]/45 text-cyan-200 ring-1 ring-white/10">
                     <Icon className="h-7 w-7" strokeWidth={1.75} />
                   </div>
                   <h3 className="mt-6 font-headline text-xl font-bold text-white">{title}</h3>
@@ -140,7 +140,7 @@ export function LandingVariantB({ homePath }: { homePath: string }) {
           id="contact"
           classNames={{
             section:
-              "border-t border-white/10 bg-slate-950 py-20 md:py-28 text-white bg-gradient-to-b from-slate-950 to-slate-900",
+              "border-t border-white/10 bg-[#2c3a55] py-20 md:py-28 text-white bg-gradient-to-b from-[#2c3a55] to-[#354766]",
             kicker: "text-cyan-200",
             heading: "text-white",
             lead: "text-slate-300",
@@ -148,9 +148,9 @@ export function LandingVariantB({ homePath }: { homePath: string }) {
             form: "border-white/10 bg-white/5 shadow-[0_18px_60px_rgba(0,0,0,0.35)] backdrop-blur-xl",
             label: "text-slate-200",
             input:
-              "border-white/15 bg-slate-950/40 text-white placeholder:text-slate-500 focus:border-cyan-400 focus:ring-cyan-400/20",
+              "border-white/15 bg-[#2c3a55]/40 text-white placeholder:text-slate-500 focus:border-cyan-400 focus:ring-cyan-400/20",
             textarea:
-              "border-white/15 bg-slate-950/40 text-white placeholder:text-slate-500 focus:border-cyan-400 focus:ring-cyan-400/20",
+              "border-white/15 bg-[#2c3a55]/40 text-white placeholder:text-slate-500 focus:border-cyan-400 focus:ring-cyan-400/20",
             submit:
               "rounded-full bg-gradient-to-r from-cyan-400 to-teal-400 text-slate-950 shadow-lg hover:from-cyan-300 hover:to-teal-300 hover:scale-[1.02] transition-transform font-bold",
           }}
@@ -158,7 +158,7 @@ export function LandingVariantB({ homePath }: { homePath: string }) {
 
         <HelixFooter
           classNames={{
-            footer: "border-white/10 bg-slate-950",
+            footer: "border-white/10 bg-[#2c3a55]",
             inner: "text-white",
             brand: "text-white",
             tagline: "text-slate-400",

@@ -23,7 +23,7 @@ export function LandingVariantC({ homePath }: { homePath: string }) {
           <div className="mx-auto grid max-w-7xl items-stretch gap-0 lg:grid-cols-2">
             <div className="flex flex-col justify-center px-6 py-16 md:px-10 md:py-24 lg:pl-8 lg:pr-12">
               <div className="inline-flex w-max items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1">
-                <span className="h-1.5 w-1.5 rounded-full bg-slate-900" />
+                <span className="h-1.5 w-1.5 rounded-full bg-pulse-navy" />
                 <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-600">
                   {landingHero.badge}
                 </span>
@@ -42,7 +42,7 @@ export function LandingVariantC({ homePath }: { homePath: string }) {
               <div className="mt-8 flex flex-wrap items-center gap-3">
                 <Link
                   href="/pulse"
-                  className="inline-flex items-center gap-2 rounded-full border border-slate-900 bg-slate-900 px-8 py-3.5 text-sm font-semibold text-white transition-all duration-200 hover:scale-[1.02] hover:shadow-lg no-underline"
+                  className="inline-flex items-center gap-2 rounded-full border border-pulse-navy bg-pulse-navy px-8 py-3.5 text-sm font-semibold text-white transition-all duration-200 hover:scale-[1.02] hover:shadow-lg no-underline"
                 >
                   {landingHero.ctaExplore}
                   <ArrowRight className="h-4 w-4" />
@@ -155,7 +155,7 @@ export function LandingVariantC({ homePath }: { homePath: string }) {
 
         <section className="border-t border-slate-100 bg-slate-50 py-20 md:py-28">
           <div className="mx-auto max-w-7xl px-6">
-            <div className="overflow-hidden rounded-[28px] border border-slate-200/80 bg-white shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
+            <div className="overflow-hidden rounded-[28px] border border-slate-200/80 bg-white shadow-[0_18px_60px_rgba(44,58,85,0.08)]">
               <div className="grid gap-0 lg:grid-cols-2">
                 <div className="relative min-h-[240px]">
                   <div className="absolute inset-0 bg-gradient-to-tr from-slate-200/60 via-white to-slate-100" />
@@ -168,7 +168,7 @@ export function LandingVariantC({ homePath }: { homePath: string }) {
                   <p className="mt-5 text-[15px] leading-relaxed text-slate-600 md:text-lg">{pulsePreview.body}</p>
                   <Link
                     href="/pulse"
-                    className="mt-8 inline-flex w-max items-center gap-2 rounded-full border border-slate-900 bg-slate-900 px-6 py-3 text-sm font-semibold text-white transition-all duration-200 hover:scale-[1.02] hover:shadow-lg no-underline"
+                    className="mt-8 inline-flex w-max items-center gap-2 rounded-full border border-pulse-navy bg-pulse-navy px-6 py-3 text-sm font-semibold text-white transition-all duration-200 hover:scale-[1.02] hover:shadow-lg no-underline"
                   >
                     {pulsePreview.cta}
                     <ArrowRight className="h-4 w-4" />
@@ -187,12 +187,12 @@ export function LandingVariantC({ homePath }: { homePath: string }) {
             heading: `${t} !font-semibold text-slate-900`,
             lead: "text-slate-600",
             mailtoLink: "text-slate-900 underline-offset-4 hover:underline",
-            form: "rounded-[28px] border-slate-200/80 shadow-[0_18px_60px_rgba(15,23,42,0.06)]",
+            form: "rounded-[28px] border-slate-200/80 shadow-[0_18px_60px_rgba(44,58,85,0.08)]",
             label: "text-slate-800",
-            input: "rounded-md border-slate-200 bg-slate-50 focus:border-slate-900 focus:ring-slate-900/15",
-            textarea: "rounded-md border-slate-200 bg-slate-50 focus:border-slate-900 focus:ring-slate-900/15",
+            input: "rounded-md border-slate-200 bg-slate-50 focus:border-pulse-navy focus:ring-pulse-navy/15",
+            textarea: "rounded-md border-slate-200 bg-slate-50 focus:border-pulse-navy focus:ring-pulse-navy/15",
             submit:
-              "rounded-full bg-slate-900 shadow-md hover:bg-slate-800 hover:scale-[1.02] transition-transform duration-200",
+              "rounded-full bg-pulse-navy shadow-md hover:brightness-110 hover:scale-[1.02] transition-transform duration-200",
           }}
         />
 

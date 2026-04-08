@@ -24,6 +24,9 @@ import {
   parseLocalDate,
   weekDatesFromSunday,
 } from "@/lib/schedule/calendar";
+import { inferShiftTypeFromStart, mergeEphemeralSchedule, normalizeWeekdayKey, weekdayKeyFromIso } from "@/lib/schedule/recurring";
+import { suggestReplacementLabel } from "@/lib/schedule/suggest-replacement";
+import { buildWorkerDragHighlightMap, evaluateWorkerDrop } from "@/lib/schedule/worker-drag-highlights";
 import {
   isPulseApiShiftId,
   localDateTimeToIso,
@@ -36,7 +39,7 @@ import {
 } from "@/lib/schedule/pulse-bridge";
 import { computeAlerts, computeWorkforceSummary } from "@/lib/schedule/selectors";
 import { useScheduleStore } from "@/lib/schedule/schedule-store";
-import type { Shift } from "@/lib/schedule/types";
+import type { ScheduleDragSession, Shift } from "@/lib/schedule/types";
 import { ScheduleAlertsBanner } from "./ScheduleAlertsBanner";
 import { ModuleSettingsGear } from "@/components/module-settings/ModuleSettingsGear";
 import { useModuleSettings } from "@/providers/ModuleSettingsProvider";
@@ -49,6 +52,7 @@ import { ScheduleSettingsModal } from "./ScheduleSettingsModal";
 import { ScheduleTrashDropZone } from "./ScheduleTrashDropZone";
 import { Card } from "@/components/pulse/Card";
 import { ScheduleWeekView } from "./ScheduleWeekView";
+import { ScheduleWorkerPanel } from "./ScheduleWorkerPanel";
 import { ScheduleWorkforceBar } from "./ScheduleWorkforceBar";
 import type { ShiftDraft } from "./ShiftEditModal";
 import { ShiftEditModal } from "./ShiftEditModal";
@@ -88,7 +92,7 @@ function weeklyAssignedHours(
     if (omitShiftId && s.id === omitShiftId) continue;
     if (s.shiftKind === "project_task" || !s.workerId || s.workerId !== workerId) continue;
     if (s.date < mon || s.date > sun) continue;
-    if (s.eventType === "vacation") continue;
+    if (s.eventType === "vacation" || s.eventType === "sick") continue;
     total += shiftLengthHours(s);
   }
   return total;
@@ -109,7 +113,7 @@ export function ScheduleApp() {
   const [contentFilter, setContentFilter] = useState<ScheduleContentFilter>("combined");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [timeOffOpen, setTimeOffOpen] = useState(false);
-  const [dragSession, setDragSession] = useState<{ shiftId: string; duplicate: boolean } | null>(null);
+  const [dragSession, setDragSession] = useState<ScheduleDragSession | null>(null);
   const [trashHovering, setTrashHovering] = useState(false);
   const [deleteToast, setDeleteToast] = useState<string | null>(null);
   const [shiftModal, setShiftModal] = useState<{
@@ -217,15 +221,51 @@ export function ScheduleApp() {
     void reloadPulseSchedule();
   }, [hydrated, reloadPulseSchedule]);
 
+  const visibleDatesForScheduleMerge = useMemo(() => {
+    if (calendarScale === "month") return monthGrid(cursor.y, cursor.m).map((c) => c.date);
+    if (calendarScale === "week") return weekDatesFromSunday(focusDate);
+    return [focusDate];
+  }, [calendarScale, cursor.y, cursor.m, focusDate]);
+
+  const shiftsForView = useMemo(() => {
+    const zid = zones[0]?.id ?? shifts[0]?.zoneId ?? "";
+    if (!zid) return shifts;
+    return mergeEphemeralSchedule(shifts, workers, visibleDatesForScheduleMerge, timeOffBlocks, zid);
+  }, [shifts, workers, visibleDatesForScheduleMerge, timeOffBlocks, zones]);
+
   const displayShifts = useMemo(() => {
+    const base = shiftsForView;
     if (contentFilter === "workers") {
-      return shifts.filter((s) => s.shiftKind !== "project_task");
+      return base.filter((s) => s.shiftKind !== "project_task");
     }
     if (contentFilter === "projects") {
-      return shifts.filter((s) => s.shiftKind === "project_task");
+      return base.filter((s) => s.shiftKind === "project_task");
     }
-    return shifts;
-  }, [shifts, contentFilter]);
+    return base;
+  }, [shiftsForView, contentFilter]);
+
+  const workerHighlightMap = useMemo(() => {
+    if (dragSession?.kind !== "worker") return null;
+    const w = workers.find((x) => x.id === dragSession.workerId);
+    if (!w) return null;
+    const dates =
+      calendarScale === "month"
+        ? monthGrid(cursor.y, cursor.m).map((c) => c.date)
+        : calendarScale === "week"
+          ? weekDatesFromSunday(focusDate)
+          : [focusDate];
+    return buildWorkerDragHighlightMap(w, dates, shiftsForView, settings, timeOffBlocks);
+  }, [
+    dragSession,
+    workers,
+    shiftsForView,
+    settings,
+    timeOffBlocks,
+    calendarScale,
+    cursor.y,
+    cursor.m,
+    focusDate,
+  ]);
 
   const weekDates = useMemo(() => weekDatesFromSunday(focusDate), [focusDate]);
 
@@ -247,14 +287,14 @@ export function ScheduleApp() {
   }, [calendarScale, focusDate, cursor.y, cursor.m]);
 
   const alerts = useMemo(
-    () => computeAlerts(shifts, metricsMonth.y, metricsMonth.m, settings),
-    [shifts, metricsMonth.y, metricsMonth.m, settings],
+    () => computeAlerts(shiftsForView, metricsMonth.y, metricsMonth.m, settings),
+    [shiftsForView, metricsMonth.y, metricsMonth.m, settings],
   );
 
   const summary = useMemo(
     () =>
-      computeWorkforceSummary(workers, shifts, metricsMonth.y, metricsMonth.m, settings, pendingRequests),
-    [workers, shifts, metricsMonth.y, metricsMonth.m, settings, pendingRequests],
+      computeWorkforceSummary(workers, shiftsForView, metricsMonth.y, metricsMonth.m, settings, pendingRequests),
+    [workers, shiftsForView, metricsMonth.y, metricsMonth.m, settings, pendingRequests],
   );
 
   function openAdd(dateIso: string) {
@@ -271,7 +311,8 @@ export function ScheduleApp() {
     const weeklyCap = Number(scheduleMod.settings.enforceMaxHours) || 0;
     if (weeklyCap > 0 && draft.workerId) {
       const projected =
-        weeklyAssignedHours(shifts, draft.workerId, draft.date, draft.id ?? undefined) + shiftLengthHours(draft);
+        weeklyAssignedHours(shiftsForView, draft.workerId, draft.date, draft.id ?? undefined) +
+        shiftLengthHours(draft);
       if (projected > weeklyCap + 1e-6) {
         window.alert(
           `This assignment would exceed the organization limit of ${weeklyCap} hours per week (${projected.toFixed(1)}h scheduled). Adjust times or turn off the cap in Schedule settings.`,
@@ -333,14 +374,15 @@ export function ScheduleApp() {
   const handleShiftMove = useCallback(
     async (shiftId: string, targetDate: string, mode: "move" | "duplicate") => {
       if (!shiftDragEnabled) return;
-      const sh = shifts.find((s) => s.id === shiftId);
+      const sh = shiftsForView.find((s) => s.id === shiftId);
       if (!sh) return;
+      if (sh.autoGenerated) return;
       const weeklyCap = Number(scheduleMod.settings.enforceMaxHours) || 0;
-      if (weeklyCap > 0 && sh.workerId && sh.eventType !== "vacation") {
+      if (weeklyCap > 0 && sh.workerId && sh.eventType !== "vacation" && sh.eventType !== "sick") {
         const withShift =
           mode === "move"
-            ? weeklyAssignedHours(shifts, sh.workerId, targetDate, sh.id) + shiftLengthHours(sh)
-            : weeklyAssignedHours(shifts, sh.workerId, targetDate) + shiftLengthHours(sh);
+            ? weeklyAssignedHours(shiftsForView, sh.workerId, targetDate, sh.id) + shiftLengthHours(sh)
+            : weeklyAssignedHours(shiftsForView, sh.workerId, targetDate) + shiftLengthHours(sh);
         if (withShift > weeklyCap + 1e-6) {
           window.alert(
             `Moving or copying this shift would exceed the ${weeklyCap}h weekly limit (${withShift.toFixed(1)}h). Change schedule settings or adjust shifts.`,
@@ -381,7 +423,36 @@ export function ScheduleApp() {
         uiFlags: { isNew: true },
       });
     },
-    [addShift, reloadPulseSchedule, scheduleMod.settings.enforceMaxHours, shiftDragEnabled, shifts, updateShift],
+    [addShift, reloadPulseSchedule, scheduleMod.settings.enforceMaxHours, shiftDragEnabled, shiftsForView, updateShift],
+  );
+
+  const handleWorkerDrop = useCallback(
+    (workerId: string, targetDate: string) => {
+      const w = workers.find((x) => x.id === workerId);
+      if (!w) return;
+      const ev = evaluateWorkerDrop(w, targetDate, shiftsForView, settings, timeOffBlocks);
+      if (!ev.ok) return;
+      const dow = weekdayKeyFromIso(targetDate);
+      const rule = w.recurringShifts?.find((r) => normalizeWeekdayKey(String(r.dayOfWeek)) === dow);
+      const start = rule?.start ?? settings.workDayStart;
+      const end = rule?.end ?? settings.workDayEnd;
+      const zoneId = zones[0]?.id ?? shifts[0]?.zoneId ?? "";
+      if (!zoneId) return;
+      addShift({
+        workerId: w.id,
+        date: targetDate,
+        startTime: start,
+        endTime: end,
+        shiftType: inferShiftTypeFromStart(start),
+        eventType: "work",
+        role: (rule?.role ?? w.role) as Shift["role"],
+        zoneId,
+        shiftKind: "workforce",
+        required_certifications: rule?.requiredCertifications?.filter(Boolean),
+        uiFlags: { isNew: true },
+      });
+    },
+    [addShift, shifts, shiftsForView, settings, timeOffBlocks, workers, zones],
   );
 
   function prevMonth() {
@@ -423,7 +494,7 @@ export function ScheduleApp() {
     [displayShifts, focusDate],
   );
 
-  const dayAllShifts = useMemo(() => shifts.filter((s) => s.date === focusDate), [shifts, focusDate]);
+  const dayAllShifts = useMemo(() => shiftsForView.filter((s) => s.date === focusDate), [shiftsForView, focusDate]);
 
   const scheduleDragLock = dragSession !== null;
   const calendarDropsDisabled = trashHovering;
@@ -498,7 +569,7 @@ export function ScheduleApp() {
                       }}
                       className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${
                         view === key
-                          ? "bg-gray-900 text-white shadow-sm dark:bg-[var(--pulse-segment-active-bg)] dark:text-[var(--pulse-segment-active-fg)] dark:shadow-sm dark:ring-1 dark:ring-sky-400/30"
+                          ? "bg-[var(--pulse-segment-active-bg)] text-[var(--pulse-segment-active-fg)] shadow-sm ring-1 ring-[color-mix(in_srgb,var(--ds-success)_28%,transparent)] dark:ring-sky-400/30"
                           : "text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:text-slate-400 dark:hover:bg-white/[0.06] dark:hover:text-slate-100"
                       }`}
                     >
@@ -510,7 +581,7 @@ export function ScheduleApp() {
                 <button
                   type="button"
                   onClick={() => setTimeOffOpen(true)}
-                  className="inline-flex items-center gap-2 rounded-md border border-pulseShell-border bg-pulseShell-surface px-4 py-2 text-sm font-semibold text-gray-900 shadow-sm hover:bg-pulseShell-elevated dark:text-gray-100"
+                  className="inline-flex items-center gap-2 rounded-md border border-pulseShell-border bg-pulseShell-surface px-4 py-2 text-sm font-semibold text-ds-foreground shadow-sm hover:bg-ds-interactive-hover dark:text-gray-100"
                 >
                   <CalendarPlus className="h-4 w-4" />
                   Time off
@@ -519,7 +590,7 @@ export function ScheduleApp() {
                 <button
                   type="button"
                   onClick={() => setSettingsOpen(true)}
-                  className="inline-flex items-center gap-2 rounded-md border border-pulseShell-border bg-pulseShell-surface px-4 py-2 text-sm font-semibold text-gray-900 shadow-sm hover:bg-pulseShell-elevated dark:text-gray-100"
+                  className="inline-flex items-center gap-2 rounded-md border border-pulseShell-border bg-pulseShell-surface px-4 py-2 text-sm font-semibold text-ds-foreground shadow-sm hover:bg-ds-interactive-hover dark:text-gray-100"
                 >
                   <Settings className="h-4 w-4" />
                   Layout
@@ -552,7 +623,7 @@ export function ScheduleApp() {
                     onClick={() => setCalendarScale(key)}
                     className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${
                       calendarScale === key
-                        ? "bg-gray-900 text-white shadow-sm dark:bg-[var(--pulse-segment-active-bg)] dark:text-[var(--pulse-segment-active-fg)] dark:shadow-sm dark:ring-1 dark:ring-sky-400/30"
+                        ? "bg-[var(--pulse-segment-active-bg)] text-[var(--pulse-segment-active-fg)] shadow-sm ring-1 ring-[color-mix(in_srgb,var(--ds-success)_28%,transparent)] dark:ring-sky-400/30"
                         : "text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:text-slate-400 dark:hover:bg-white/[0.06] dark:hover:text-slate-100"
                     }`}
                   >
@@ -583,7 +654,7 @@ export function ScheduleApp() {
                     onClick={() => setContentFilter(key)}
                     className={`rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${
                       contentFilter === key
-                        ? "bg-gray-900 text-white shadow-sm dark:bg-[var(--pulse-segment-active-bg)] dark:text-[var(--pulse-segment-active-fg)] dark:shadow-sm dark:ring-1 dark:ring-sky-400/30"
+                        ? "bg-[var(--pulse-segment-active-bg)] text-[var(--pulse-segment-active-fg)] shadow-sm ring-1 ring-[color-mix(in_srgb,var(--ds-success)_28%,transparent)] dark:ring-sky-400/30"
                         : "text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:text-slate-400 dark:hover:bg-white/[0.06] dark:hover:text-slate-100"
                     }`}
                   >
@@ -602,12 +673,29 @@ export function ScheduleApp() {
         <div className="relative mt-5">
           {scheduleDragLock ? (
             <div
-              className="pointer-events-none fixed inset-0 z-[115] bg-slate-900/[0.06] dark:bg-black/25"
+              className="pointer-events-none fixed inset-0 z-[115] bg-[color-mix(in_srgb,var(--ds-text-primary)_6%,transparent)] dark:bg-ds-bg/35"
               aria-hidden
             />
           ) : null}
           {view === "calendar" ? (
             <div className="flex flex-col gap-6 xl:flex-row xl:items-start">
+              <div className="flex w-full shrink-0 flex-col gap-4 xl:order-first xl:w-72">
+                <ScheduleWorkerPanel
+                  workers={workers}
+                  rosterDragEnabled={shiftDragEnabled}
+                  onDragSessionStart={setDragSession}
+                  onDragSessionEnd={() => {
+                    setDragSession(null);
+                    setTrashHovering(false);
+                  }}
+                />
+                <ScheduleLegendPanel
+                  shiftTypes={shiftTypes}
+                  workers={workers}
+                  shifts={displayShifts}
+                  contentFilter={contentFilter}
+                />
+              </div>
               <div className="min-w-0 flex-1 space-y-4">
                 {calendarScale === "day" ? (
                   <div className="space-y-3">
@@ -617,7 +705,7 @@ export function ScheduleApp() {
                       <div className="flex flex-wrap items-center gap-1">
                         <button
                           type="button"
-                          className="rounded-lg border border-pulseShell-border bg-pulseShell-elevated p-2 text-gray-900 shadow-sm hover:bg-pulseShell-surface dark:text-gray-100"
+                          className="rounded-lg border border-pulseShell-border bg-pulseShell-elevated p-2 text-ds-foreground shadow-sm hover:bg-ds-interactive-hover dark:text-gray-100"
                           onClick={() => setFocusDate((p) => addDaysToIso(p, -1))}
                           aria-label="Previous day"
                         >
@@ -625,14 +713,14 @@ export function ScheduleApp() {
                         </button>
                         <button
                           type="button"
-                          className="rounded-lg border border-pulseShell-border bg-pulseShell-elevated px-3 py-2 text-xs font-semibold text-gray-900 shadow-sm hover:bg-pulseShell-surface dark:text-gray-100"
+                          className="rounded-lg border border-pulseShell-border bg-pulseShell-elevated px-3 py-2 text-xs font-semibold text-ds-foreground shadow-sm hover:bg-ds-interactive-hover dark:text-gray-100"
                           onClick={goToday}
                         >
                           Today
                         </button>
                         <button
                           type="button"
-                          className="rounded-lg border border-pulseShell-border bg-pulseShell-elevated p-2 text-gray-900 shadow-sm hover:bg-pulseShell-surface dark:text-gray-100"
+                          className="rounded-lg border border-pulseShell-border bg-pulseShell-elevated p-2 text-ds-foreground shadow-sm hover:bg-ds-interactive-hover dark:text-gray-100"
                           onClick={() => setFocusDate((p) => addDaysToIso(p, 1))}
                           aria-label="Next day"
                         >
@@ -644,6 +732,7 @@ export function ScheduleApp() {
                       date={focusDate}
                       onClose={() => setCalendarScale("month")}
                       shifts={dayDisplayShifts}
+                      contextShifts={shiftsForView}
                       dayShiftsAll={dayAllShifts}
                       workers={workers}
                       zones={zones}
@@ -655,7 +744,10 @@ export function ScheduleApp() {
                       onAddForDate={(iso) => openAdd(iso)}
                       scheduleDragLock={scheduleDragLock}
                       dragSession={dragSession}
+                      calendarDropsDisabled={calendarDropsDisabled}
                       shiftDragEnabled={shiftDragEnabled}
+                      workerDayHighlight={workerHighlightMap?.[focusDate] ?? null}
+                      onWorkerDrop={(workerId) => handleWorkerDrop(workerId, focusDate)}
                       onShiftDragSessionStart={setDragSession}
                       onShiftDragSessionEnd={() => {
                         setDragSession(null);
@@ -680,6 +772,7 @@ export function ScheduleApp() {
                     onSelectShift={openEdit}
                     onAddForDate={openAdd}
                     onShiftMove={handleShiftMove}
+                    onWorkerDrop={handleWorkerDrop}
                     onOpenDay={(iso) => {
                       setFocusDate(iso);
                       setCalendarScale("day");
@@ -689,6 +782,7 @@ export function ScheduleApp() {
                     dragSession={dragSession}
                     calendarDropsDisabled={calendarDropsDisabled}
                     shiftDragEnabled={shiftDragEnabled}
+                    workerHighlightByDate={workerHighlightMap}
                     onShiftDragSessionStart={setDragSession}
                     onShiftDragSessionEnd={() => {
                       setDragSession(null);
@@ -712,6 +806,7 @@ export function ScheduleApp() {
                     onSelectShift={openEdit}
                     onAddForDate={openAdd}
                     onShiftMove={handleShiftMove}
+                    onWorkerDrop={handleWorkerDrop}
                     onOpenDay={(iso) => {
                       setFocusDate(iso);
                       setCalendarScale("day");
@@ -721,6 +816,7 @@ export function ScheduleApp() {
                     dragSession={dragSession}
                     calendarDropsDisabled={calendarDropsDisabled}
                     shiftDragEnabled={shiftDragEnabled}
+                    workerHighlightByDate={workerHighlightMap}
                     onShiftDragSessionStart={setDragSession}
                     onShiftDragSessionEnd={() => {
                       setDragSession(null);
@@ -728,14 +824,6 @@ export function ScheduleApp() {
                     }}
                   />
                 ) : null}
-              </div>
-              <div className="w-full shrink-0 xl:w-72">
-                <ScheduleLegendPanel
-                  shiftTypes={shiftTypes}
-                  workers={workers}
-                  shifts={displayShifts}
-                  contentFilter={contentFilter}
-                />
               </div>
             </div>
           ) : null}
@@ -766,12 +854,14 @@ export function ScheduleApp() {
         roles={roles}
         shiftTypes={shiftTypes}
         settings={settings}
-        allShifts={shifts}
+        allShifts={shiftsForView}
         onClose={() => setShiftModal(null)}
         onSave={saveShift}
         onDelete={
           shiftModal?.shift
             ? async (id) => {
+                const removed = shiftsForView.find((s) => s.id === id);
+                const remaining = shiftsForView.filter((s) => s.id !== id);
                 if (isApiMode() && isPulseApiShiftId(id)) {
                   try {
                     await apiFetch(`/api/v1/pulse/schedule/shifts/${id}`, { method: "DELETE" });
@@ -783,6 +873,11 @@ export function ScheduleApp() {
                   deleteShift(id);
                 }
                 setShiftModal(null);
+                const tip =
+                  removed && !removed.autoGenerated
+                    ? suggestReplacementLabel(removed, workers, remaining, settings, timeOffBlocks)
+                    : null;
+                setDeleteToast(tip ? `Shift deleted. ${tip}` : "Shift deleted");
               }
             : undefined
         }
@@ -791,8 +886,8 @@ export function ScheduleApp() {
       <ScheduleSettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
 
       <ScheduleTrashDropZone
-        active={scheduleDragLock && shiftDragEnabled}
-        isDuplicateDrag={!!dragSession?.duplicate}
+        active={scheduleDragLock && shiftDragEnabled && dragSession?.kind === "shift"}
+        isDuplicateDrag={dragSession?.kind === "shift" && dragSession.duplicate}
         onHoverChange={setTrashHovering}
         onDropTrash={async (id) => {
           if (isApiMode() && isPulseApiShiftId(id)) {
@@ -807,13 +902,19 @@ export function ScheduleApp() {
           }
           setDragSession(null);
           setTrashHovering(false);
-          setDeleteToast("Shift deleted");
+          const removed = shiftsForView.find((s) => s.id === id);
+          const remaining = shiftsForView.filter((s) => s.id !== id);
+          const tip =
+            removed && !removed.autoGenerated
+              ? suggestReplacementLabel(removed, workers, remaining, settings, timeOffBlocks)
+              : null;
+          setDeleteToast(tip ? `Shift deleted. ${tip}` : "Shift deleted");
         }}
       />
 
       {deleteToast ? (
         <div
-          className="pointer-events-none fixed bottom-24 left-1/2 z-[150] -translate-x-1/2 rounded-md border border-pulseShell-border bg-slate-900 px-4 py-2.5 text-center text-sm font-medium text-slate-100 shadow-lg dark:bg-pulseShell-elevated dark:text-slate-100 sm:bottom-28"
+          className="pointer-events-none fixed bottom-24 left-1/2 z-[150] -translate-x-1/2 rounded-md border border-pulseShell-border bg-pulseShell-elevated px-4 py-2.5 text-center text-sm font-medium text-ds-foreground shadow-lg dark:text-ds-foreground sm:bottom-28"
           role="status"
         >
           {deleteToast}

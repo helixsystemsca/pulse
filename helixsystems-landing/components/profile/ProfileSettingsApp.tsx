@@ -16,14 +16,14 @@ import { sessionHasAnyRole } from "@/lib/pulse-roles";
 import type { CompanySummary } from "@/lib/pulse-session";
 
 const FIELD =
-  "mt-1.5 w-full rounded-[10px] border border-slate-200/90 bg-white px-3 py-2.5 text-sm text-pulse-navy shadow-sm focus:border-[#2B4C7E]/35 focus:outline-none focus:ring-1 focus:ring-[#2B4C7E]/25 dark:border-[#374151] dark:bg-[#0F172A] dark:text-gray-100 dark:placeholder:text-gray-500";
+  "mt-1.5 w-full rounded-[10px] border border-slate-200/90 bg-white px-3 py-2.5 text-sm text-pulse-navy shadow-sm focus:border-[#2B4C7E]/35 focus:outline-none focus:ring-1 focus:ring-[#2B4C7E]/25 dark:border-ds-border dark:bg-ds-secondary dark:text-gray-100 dark:placeholder:text-gray-500";
 const LABEL = "text-[11px] font-semibold uppercase tracking-wider text-pulse-muted";
 const CARD =
-  "rounded-md border border-pulse-border bg-white p-5 shadow-sm ring-1 ring-slate-100/80 dark:border-[#1F2937] dark:bg-[#111827] dark:ring-white/[0.06] dark:shadow-[0_2px_8px_rgba(0,0,0,0.35)]";
+  "rounded-md border border-pulse-border bg-white p-5 shadow-sm ring-1 ring-slate-100/80 dark:border-ds-border dark:bg-ds-primary dark:ring-white/[0.06] dark:shadow-[0_2px_8px_rgba(0,0,0,0.35)]";
 const PRIMARY =
   "rounded-[10px] bg-[#2B4C7E] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#234066] disabled:opacity-50 inline-flex items-center justify-center gap-2";
 const SECONDARY =
-  "rounded-[10px] border border-slate-200/90 bg-white px-4 py-2.5 text-sm font-semibold text-pulse-navy shadow-sm hover:bg-slate-50 disabled:opacity-50 dark:border-[#374151] dark:bg-[#1F2937] dark:text-gray-100 dark:hover:bg-[#374151]";
+  "rounded-[10px] border border-slate-200/90 bg-white px-4 py-2.5 text-sm font-semibold text-pulse-navy shadow-sm hover:bg-slate-50 disabled:opacity-50 dark:border-ds-border dark:bg-ds-secondary dark:text-gray-100 dark:hover:bg-ds-interactive-hover";
 
 const OP_ROLES = ["worker", "manager", "supervisor"] as const;
 
@@ -350,7 +350,7 @@ export function ProfileSettingsApp() {
           administrator permissions.
         </p>
         <div className="mt-5 space-y-4">
-          <div className="flex items-center justify-between gap-4 rounded-lg border border-slate-100 bg-slate-50/50 px-3 py-3 dark:border-[#374151] dark:bg-[#0F172A]/70">
+          <div className="flex items-center justify-between gap-4 rounded-lg border border-slate-100 bg-slate-50/50 px-3 py-3 dark:border-ds-border dark:bg-ds-secondary/95">
             <div>
               <p className="text-sm font-semibold text-pulse-navy dark:text-slate-100">Participate in operations</p>
               <p className="mt-0.5 text-xs text-pulse-muted">

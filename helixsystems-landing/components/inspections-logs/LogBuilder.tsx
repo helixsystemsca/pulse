@@ -6,11 +6,11 @@ import { newId } from "@/lib/inspectionsLogsStorage";
 import type { LogFieldDef, LogFieldType, LogTemplate } from "@/lib/inspectionsLogsTypes";
 
 const FIELD =
-  "mt-1.5 w-full rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-500 focus:border-blue-500/50 focus:outline-none focus:ring-1 focus:ring-blue-500/25 dark:border-[#1F2937] dark:bg-[#0B0F14]/40 dark:text-gray-100 dark:placeholder:text-gray-400 dark:focus:border-blue-400/50 dark:focus:ring-blue-400/25";
+  "mt-1.5 w-full rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-500 focus:border-blue-500/50 focus:outline-none focus:ring-1 focus:ring-blue-500/25 dark:border-ds-border dark:bg-ds-secondary/90 dark:text-gray-100 dark:placeholder:text-gray-400 dark:focus:border-blue-400/50 dark:focus:ring-blue-400/25";
 const LABEL =
   "text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400";
 const BTN_SECONDARY =
-  "rounded-md border border-gray-200 bg-gray-100 px-3 py-2 text-xs font-semibold text-gray-900 transition-colors hover:bg-gray-200/80 dark:border-[#1F2937] dark:bg-[#0F172A]/70 dark:text-gray-100 dark:hover:bg-[#1F2937]/50";
+  "rounded-md border border-gray-200 bg-gray-100 px-3 py-2 text-xs font-semibold text-gray-900 transition-colors hover:bg-gray-200/80 dark:border-ds-border dark:bg-ds-secondary/95 dark:text-gray-100 dark:hover:bg-ds-interactive-hover";
 const BTN_PRIMARY =
   "rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition-[filter] hover:brightness-110 disabled:opacity-45 dark:bg-[#3B82F6]";
 
@@ -93,7 +93,7 @@ export function LogBuilder({
   };
 
   return (
-    <div className="rounded-md border border-gray-200 bg-white p-6 shadow-sm dark:border-[#1F2937] dark:bg-[#111827] dark:shadow-[0_2px_8px_rgba(0,0,0,0.4)]">
+    <div className="rounded-md border border-gray-200 bg-white p-6 shadow-sm dark:border-ds-border dark:bg-ds-primary dark:shadow-[0_2px_8px_rgba(0,0,0,0.4)]">
       <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
         {initial ? "Edit log template" : "New log template"}
       </h2>
@@ -133,10 +133,10 @@ export function LogBuilder({
           {sortFields(fields).map((field, idx) => (
             <li
               key={field.id}
-              className="flex flex-wrap items-center gap-2 rounded-md border border-gray-200 dark:border-[#1F2937] bg-gray-50/90 dark:bg-[#0B0F14]/35 px-3 py-2 sm:flex-nowrap"
+              className="flex flex-wrap items-center gap-2 rounded-md border border-gray-200 dark:border-ds-border bg-gray-50/90 dark:bg-ds-secondary/90 px-3 py-2 sm:flex-nowrap"
             >
               <select
-                className="rounded-lg border border-gray-200 dark:border-[#1F2937] bg-gray-50 dark:bg-[#0B0F14]/50 px-2 py-1.5 text-xs font-medium text-gray-900 dark:text-gray-100"
+                className="rounded-lg border border-gray-200 dark:border-ds-border bg-gray-50 dark:bg-ds-secondary/95 px-2 py-1.5 text-xs font-medium text-gray-900 dark:text-gray-100"
                 value={field.type}
                 onChange={(e) => updateField(field.id, { type: e.target.value as LogFieldType })}
               >
@@ -147,7 +147,7 @@ export function LogBuilder({
                 ))}
               </select>
               <input
-                className="min-w-0 flex-1 rounded-lg border border-gray-200 dark:border-[#1F2937] bg-transparent px-2 py-1.5 text-sm text-gray-900 dark:text-gray-100 placeholder:text-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500/25 dark:placeholder:text-gray-400 dark:focus:ring-blue-400/25"
+                className="min-w-0 flex-1 rounded-lg border border-gray-200 dark:border-ds-border bg-transparent px-2 py-1.5 text-sm text-gray-900 dark:text-gray-100 placeholder:text-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500/25 dark:placeholder:text-gray-400 dark:focus:ring-blue-400/25"
                 value={field.label}
                 onChange={(e) => updateField(field.id, { label: e.target.value })}
                 placeholder={`Field ${idx + 1} label`}
@@ -155,7 +155,7 @@ export function LogBuilder({
               <div className="flex shrink-0 gap-0.5">
                 <button
                   type="button"
-                  className="rounded-lg p-1.5 text-gray-500 dark:text-gray-400 hover:bg-gray-200/70 hover:text-gray-900 dark:hover:bg-[#1F2937]/50 dark:text-gray-100 dark:hover:text-gray-100"
+                  className="rounded-lg p-1.5 text-gray-500 dark:text-gray-400 hover:bg-gray-200/70 hover:text-gray-900 dark:hover:bg-ds-interactive-hover dark:text-gray-100 dark:hover:text-gray-100"
                   aria-label="Move up"
                   onClick={() => move(field.id, -1)}
                 >
@@ -163,7 +163,7 @@ export function LogBuilder({
                 </button>
                 <button
                   type="button"
-                  className="rounded-lg p-1.5 text-gray-500 dark:text-gray-400 hover:bg-gray-200/70 hover:text-gray-900 dark:hover:bg-[#1F2937]/50 dark:text-gray-100 dark:hover:text-gray-100"
+                  className="rounded-lg p-1.5 text-gray-500 dark:text-gray-400 hover:bg-gray-200/70 hover:text-gray-900 dark:hover:bg-ds-interactive-hover dark:text-gray-100 dark:hover:text-gray-100"
                   aria-label="Move down"
                   onClick={() => move(field.id, 1)}
                 >
@@ -184,7 +184,7 @@ export function LogBuilder({
         {fields.length === 0 ? <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">Add at least one field.</p> : null}
       </div>
 
-      <div className="mt-8 border-t border-gray-200 dark:border-[#1F2937] pt-6">
+      <div className="mt-8 border-t border-gray-200 dark:border-ds-border pt-6">
         <p className={LABEL}>Future automation (optional)</p>
         <div className="mt-3 grid gap-4 sm:grid-cols-3">
           <div>

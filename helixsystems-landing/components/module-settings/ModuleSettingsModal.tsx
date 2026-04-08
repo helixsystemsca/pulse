@@ -60,17 +60,17 @@ export function ModuleSettingsModal({ moduleId, open, onClose }: Props) {
     <div className="fixed inset-0 z-[140] flex items-center justify-center p-4">
       <button
         type="button"
-        className="absolute inset-0 bg-slate-950/45 backdrop-blur-[2px]"
+        className="ds-modal-backdrop absolute inset-0 backdrop-blur-[2px]"
         aria-label="Close"
         onClick={onClose}
       />
       <div
-        className="relative flex max-h-[min(90vh,720px)] w-full max-w-lg flex-col overflow-hidden rounded-xl border border-slate-200/90 bg-white shadow-2xl dark:border-[#374151] dark:bg-[#111827]"
+        className="relative flex max-h-[min(90vh,720px)] w-full max-w-lg flex-col overflow-hidden rounded-xl border border-slate-200/90 bg-white shadow-2xl dark:border-ds-border dark:bg-ds-primary"
         role="dialog"
         aria-modal="true"
         aria-labelledby="module-settings-title"
       >
-        <div className="flex items-start justify-between gap-3 border-b border-slate-200/80 px-5 py-4 dark:border-[#374151]">
+        <div className="flex items-start justify-between gap-3 border-b border-slate-200/80 px-5 py-4 dark:border-ds-border">
           <div>
             <h2 id="module-settings-title" className="text-lg font-semibold text-pulse-navy dark:text-slate-100">
               {meta.title} settings
@@ -81,7 +81,7 @@ export function ModuleSettingsModal({ moduleId, open, onClose }: Props) {
           </div>
           <button
             type="button"
-            className="rounded-lg p-2 text-pulse-muted hover:bg-slate-100 hover:text-pulse-navy dark:hover:bg-[#1F2937]"
+            className="rounded-lg p-2 text-pulse-muted hover:bg-slate-100 hover:text-pulse-navy dark:hover:bg-ds-interactive-hover"
             onClick={onClose}
           >
             <X className="h-5 w-5" aria-hidden />
@@ -105,7 +105,7 @@ export function ModuleSettingsModal({ moduleId, open, onClose }: Props) {
                     {sec.fields.map((f) => (
                       <div
                         key={f.key}
-                        className="rounded-lg border border-slate-200/80 bg-slate-50/50 px-3 py-3 dark:border-[#374151] dark:bg-[#0B0F14]/50"
+                        className="rounded-lg border border-slate-200/80 bg-slate-50/50 px-3 py-3 dark:border-ds-border dark:bg-ds-secondary/95"
                       >
                         {f.type === "toggle" ? (
                           <label className="flex cursor-pointer items-start gap-3">
@@ -131,7 +131,7 @@ export function ModuleSettingsModal({ moduleId, open, onClose }: Props) {
                             <p className="text-xs text-pulse-muted">{f.description}</p>
                             <input
                               type="number"
-                              className="mt-1.5 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm dark:border-[#374151] dark:bg-[#0F172A]"
+                              className="mt-1.5 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm dark:border-ds-border dark:bg-ds-secondary"
                               value={Number((draft as Record<string, unknown>)[f.key] ?? 0)}
                               disabled={!canConfigure}
                               onChange={(e) => {
@@ -155,7 +155,7 @@ export function ModuleSettingsModal({ moduleId, open, onClose }: Props) {
 
         {message ? <p className="px-5 text-sm text-pulse-muted">{message}</p> : null}
 
-        <div className="flex flex-wrap items-center justify-end gap-2 border-t border-slate-200/80 px-5 py-3 dark:border-[#374151]">
+        <div className="flex flex-wrap items-center justify-end gap-2 border-t border-slate-200/80 px-5 py-3 dark:border-ds-border">
           <button
             type="button"
             className="rounded-lg px-3 py-2 text-sm font-semibold text-pulse-muted hover:text-pulse-navy dark:hover:text-slate-100"

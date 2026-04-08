@@ -16,11 +16,11 @@ import type { PulseWorkerApi } from "@/lib/schedule/pulse-bridge";
 const PRIMARY_BTN =
   "rounded-[10px] bg-[#2B4C7E] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#234066] disabled:opacity-50";
 const SECONDARY_BTN =
-  "rounded-[10px] border border-slate-200/90 bg-white px-5 py-2.5 text-sm font-semibold text-pulse-navy shadow-sm transition-colors hover:bg-slate-50 disabled:opacity-50 dark:border-[#374151] dark:bg-[#1F2937] dark:text-slate-100 dark:hover:bg-[#374151]";
+  "rounded-[10px] border border-slate-200/90 bg-white px-5 py-2.5 text-sm font-semibold text-pulse-navy shadow-sm transition-colors hover:bg-slate-50 disabled:opacity-50 dark:border-ds-border dark:bg-ds-secondary dark:text-slate-100 dark:hover:bg-ds-interactive-hover";
 const DANGER_BTN =
-  "rounded-[10px] border border-red-200/90 bg-white px-5 py-2.5 text-sm font-semibold text-red-700 shadow-sm transition-colors hover:bg-red-50 disabled:opacity-50 dark:border-red-500/35 dark:bg-[#1F2937] dark:text-red-300 dark:hover:bg-red-950/50";
+  "rounded-[10px] border border-red-200/90 bg-white px-5 py-2.5 text-sm font-semibold text-red-700 shadow-sm transition-colors hover:bg-red-50 disabled:opacity-50 dark:border-red-500/35 dark:bg-ds-secondary dark:text-red-300 dark:hover:bg-red-950/50";
 const FIELD =
-  "mt-1.5 w-full rounded-[10px] border border-slate-200/90 bg-white px-3 py-2.5 text-sm text-pulse-navy shadow-sm focus:border-[#2B4C7E]/35 focus:outline-none focus:ring-1 focus:ring-[#2B4C7E]/25 dark:border-[#374151] dark:bg-[#0F172A] dark:text-gray-100";
+  "mt-1.5 w-full rounded-[10px] border border-slate-200/90 bg-white px-3 py-2.5 text-sm text-pulse-navy shadow-sm focus:border-[#2B4C7E]/35 focus:outline-none focus:ring-1 focus:ring-[#2B4C7E]/25 dark:border-ds-border dark:bg-ds-secondary dark:text-gray-100";
 const LABEL = "text-[11px] font-semibold uppercase tracking-wider text-pulse-muted";
 
 function displayName(w: PulseWorkerApi): string {
@@ -219,7 +219,7 @@ export function ProjectsApp() {
       {filtered.length === 0 ? (
         <Card
           padding="md"
-          className="space-y-3 border-dashed border-slate-200/90 dark:border-[#374151]"
+          className="space-y-3 border-dashed border-slate-200/90 dark:border-ds-border"
         >
           {rows.length === 0 ? (
             <ModuleOnboardingHint>
@@ -244,7 +244,7 @@ export function ProjectsApp() {
             return (
               <Card key={p.id} padding="md" className="h-full">
                 <div className="flex items-start gap-3">
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-slate-200/80 bg-slate-50 text-pulse-accent dark:border-[#374151] dark:bg-[#0F172A]">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-slate-200/80 bg-slate-50 text-pulse-accent dark:border-ds-border dark:bg-ds-secondary">
                     <FolderKanban className="h-5 w-5" aria-hidden />
                   </span>
                   <div className="min-w-0 flex-1">
@@ -260,7 +260,7 @@ export function ProjectsApp() {
                       {owner ? displayName(owner) : "—"}
                     </p>
                     <div className="mt-3 flex flex-wrap items-center gap-2">
-                      <span className="inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-pulse-muted ring-1 ring-slate-200/80 dark:bg-[#1F2937] dark:text-slate-300 dark:ring-[#374151]">
+                      <span className="inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-pulse-muted ring-1 ring-slate-200/80 dark:bg-ds-secondary dark:text-slate-300 dark:ring-ds-border">
                         {statusLabel(p.status)}
                       </span>
                     </div>
@@ -269,7 +269,7 @@ export function ProjectsApp() {
                         <span>Progress</span>
                         <span className="tabular-nums text-pulse-navy dark:text-slate-200">{p.progress_pct}%</span>
                       </div>
-                      <div className="mt-1 h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-[#1F2937]">
+                      <div className="mt-1 h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-ds-secondary">
                         <div
                           className="h-full rounded-full bg-pulse-accent transition-[width] duration-500 ease-out"
                           style={{ width: `${p.progress_pct}%` }}
@@ -318,9 +318,9 @@ export function ProjectsApp() {
       )}
 
       {createOpen ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-[2px] dark:bg-black/60">
+        <div className="ds-modal-backdrop fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-[2px]">
           <div
-            className="max-h-[min(90vh,640px)] w-full max-w-lg overflow-y-auto rounded-xl border border-slate-200/90 bg-white p-6 shadow-2xl dark:border-[#374151] dark:bg-[#111827]"
+            className="max-h-[min(90vh,640px)] w-full max-w-lg overflow-y-auto rounded-xl border border-slate-200/90 bg-white p-6 shadow-2xl dark:border-ds-border dark:bg-ds-primary"
             role="dialog"
             aria-modal="true"
             aria-labelledby="create-project-title"

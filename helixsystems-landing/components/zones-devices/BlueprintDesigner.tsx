@@ -148,7 +148,7 @@ const TRANSFORMER_PADDING_PX = 12;
 /** Max distance from click to zone edge to place a door (world px) */
 const WALL_SNAP_PX = 26;
 /** Match blueprint canvas background (--bp-bg) for wall “cut” overlay */
-const CANVAS_BG_CUT = "#0f172a";
+const CANVAS_BG_CUT = "#354766";
 
 /** Free-draw: min distance between raw samples (world px) */
 const FREE_DRAW_SAMPLE_DIST = 1.1;

@@ -4,7 +4,7 @@
 
 import { formatLocalDate } from "@/lib/schedule/calendar";
 import { sessionPrimaryRole } from "@/lib/pulse-roles";
-import type { Shift, ShiftTypeKey, Worker, Zone } from "@/lib/schedule/types";
+import type { EmploymentType, RecurringShiftRule, Shift, ShiftTypeKey, Worker, Zone } from "@/lib/schedule/types";
 
 export type PulseShiftApi = {
   id: string;
@@ -25,6 +25,14 @@ export type PulseShiftApi = {
   task_priority?: string | null;
 };
 
+export type PulseRecurringShiftApi = {
+  day_of_week: string;
+  start: string;
+  end: string;
+  role?: string | null;
+  required_certifications?: string[] | null;
+};
+
 export type PulseWorkerApi = {
   id: string;
   email: string;
@@ -35,6 +43,10 @@ export type PulseWorkerApi = {
   avatar_url?: string | null;
   /** From Workers & Roles profiles (`pulse_worker_skills`). */
   skills?: { name: string; level: number }[];
+  certifications?: string[];
+  availability?: Record<string, unknown>;
+  employment_type?: string | null;
+  recurring_shifts?: PulseRecurringShiftApi[] | null;
 };
 
 export type PulseZoneApi = { id: string; name: string };
@@ -48,12 +60,40 @@ function toShiftType(st: string): ShiftTypeKey {
   return "day";
 }
 
+const EMP_TYPES = new Set(["full_time", "regular_part_time", "part_time"]);
+
+function mapEmploymentType(raw: string | null | undefined): EmploymentType | undefined {
+  const v = (raw || "").trim();
+  if (EMP_TYPES.has(v)) return v as EmploymentType;
+  return undefined;
+}
+
+function mapRecurring(rows: PulseRecurringShiftApi[] | null | undefined): RecurringShiftRule[] | undefined {
+  if (!rows?.length) return undefined;
+  const out: RecurringShiftRule[] = [];
+  for (const r of rows) {
+    if (!r?.day_of_week || !r.start || !r.end) continue;
+    out.push({
+      dayOfWeek: r.day_of_week,
+      start: r.start,
+      end: r.end,
+      role: r.role ?? undefined,
+      requiredCertifications: r.required_certifications?.filter(Boolean) ?? undefined,
+    });
+  }
+  return out.length ? out : undefined;
+}
+
 export function pulseWorkersToSchedule(workers: PulseWorkerApi[]): Worker[] {
   return workers.map((w) => ({
     id: w.id,
     name: (w.full_name || w.email || "User").trim(),
     role: sessionPrimaryRole({ roles: w.roles, role: w.role }) || "worker",
     active: true,
+    certifications: w.certifications?.filter(Boolean),
+    availability: (w.availability ?? undefined) as Worker["availability"],
+    employmentType: mapEmploymentType(w.employment_type),
+    recurringShifts: mapRecurring(w.recurring_shifts ?? undefined),
   }));
 }
 

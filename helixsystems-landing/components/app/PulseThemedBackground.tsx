@@ -1,22 +1,14 @@
 /**
- * App canvas behind cards: token-based background with optional warm grid (light) / soft depth (dark).
+ * App canvas behind cards: clean white base (light) with neutral grid / soft depth (dark).
  */
 export function PulseThemedBackground() {
   return (
     <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden" aria-hidden>
-      <div
-        className="absolute inset-0"
-        style={{
-          background: `linear-gradient(165deg,
-            color-mix(in srgb, var(--ds-bg) 100%, white) 0%,
-            var(--ds-bg) 38%,
-            color-mix(in srgb, var(--ds-bg) 88%, var(--ds-warning)) 100%)`,
-        }}
-      />
+      <div className="absolute inset-0 bg-ds-bg" />
       <div
         className="absolute inset-0 dark:hidden"
         style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32'%3E%3Cg fill='none' stroke='%23c4a574' stroke-width='0.75' stroke-opacity='0.14'%3E%3Cpath d='M16 6v20M6 16h20'/%3E%3C/g%3E%3C/svg%3E")`,
+          backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32'%3E%3Cg fill='none' stroke='%23000000' stroke-width='0.75' stroke-opacity='0.05'%3E%3Cpath d='M16 6v20M6 16h20'/%3E%3C/g%3E%3C/svg%3E")`,
           backgroundSize: "32px 32px",
         }}
       />
@@ -41,13 +33,19 @@ export function PulseThemedBackground() {
         </g>
       </svg>
       <div
-        className="absolute inset-0"
+        className="absolute inset-0 dark:hidden"
+        style={{
+          background: `radial-gradient(ellipse 78% 58% at 100% 0%, color-mix(in srgb, var(--ds-success) 5%, transparent), transparent 52%)`,
+        }}
+      />
+      <div
+        className="absolute inset-0 hidden dark:block"
         style={{
           background: `radial-gradient(ellipse 85% 65% at 0% 0%, color-mix(in srgb, var(--ds-success) 16%, transparent), transparent 55%)`,
         }}
       />
       <div
-        className="absolute inset-0"
+        className="absolute inset-0 hidden dark:block"
         style={{
           background: `radial-gradient(ellipse 75% 60% at 100% 100%, color-mix(in srgb, var(--ds-warning) 12%, transparent), transparent 48%)`,
         }}

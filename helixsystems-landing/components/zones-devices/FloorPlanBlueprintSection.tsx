@@ -12,7 +12,7 @@ import type { BlueprintReadOnlyTheme } from "./BlueprintReadOnlyCanvas";
 
 const BlueprintReadOnlyCanvas = dynamic(
   () => import("./BlueprintReadOnlyCanvas").then((m) => ({ default: m.BlueprintReadOnlyCanvas })),
-  { ssr: false, loading: () => <div className="min-h-[420px] animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800/80" /> },
+  { ssr: false, loading: () => <div className="min-h-[420px] animate-pulse rounded-lg bg-slate-100 dark:bg-ds-secondary/95" /> },
 );
 
 type BlueprintSummary = { id: string; name: string; created_at: string };
@@ -125,7 +125,7 @@ export function FloorPlanBlueprintSection() {
 
   if (!isApiMode()) {
     return (
-      <div className="rounded-md border border-pulse-border bg-white p-4 dark:border-slate-600 dark:bg-slate-800/80">
+      <div className="rounded-md border border-pulse-border bg-white p-4 dark:border-slate-600 dark:bg-ds-secondary/95">
         <p className="m-0 text-sm text-pulse-muted">Connect to the API to view saved blueprints on this page.</p>
       </div>
     );
@@ -133,7 +133,7 @@ export function FloorPlanBlueprintSection() {
 
   if (!session?.access_token || !canAccessPulseTenantApis(session)) {
     return (
-      <div className="rounded-md border border-pulse-border bg-white p-4 dark:border-slate-600 dark:bg-slate-800/80">
+      <div className="rounded-md border border-pulse-border bg-white p-4 dark:border-slate-600 dark:bg-ds-secondary/95">
         <p className="m-0 text-sm text-pulse-navy dark:text-slate-200">
           Sign in with a <strong>company</strong> account to list blueprints. System admins: use Impersonate, then reload.
         </p>
@@ -142,7 +142,7 @@ export function FloorPlanBlueprintSection() {
   }
 
   return (
-    <div className="rounded-md border border-pulse-border bg-white p-4 shadow-card dark:border-slate-700 dark:bg-slate-800/80">
+    <div className="rounded-md border border-pulse-border bg-white p-4 shadow-card dark:border-slate-700 dark:bg-ds-secondary/95">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div className="min-w-0 flex-1">
           <label htmlFor="floor-plan-blueprint" className="text-xs font-semibold uppercase tracking-wide text-pulse-muted">
@@ -150,7 +150,7 @@ export function FloorPlanBlueprintSection() {
           </label>
           <select
             id="floor-plan-blueprint"
-            className="mt-1.5 w-full max-w-md rounded-md border border-pulse-border bg-white px-3 py-2 text-sm font-medium text-pulse-navy shadow-sm focus:border-pulse-accent focus:outline-none focus:ring-1 focus:ring-pulse-accent/30 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-sky-500 dark:focus:ring-sky-500/30"
+            className="mt-1.5 w-full max-w-md rounded-md border border-pulse-border bg-white px-3 py-2 text-sm font-medium text-pulse-navy shadow-sm focus:border-pulse-accent focus:outline-none focus:ring-1 focus:ring-pulse-accent/30 dark:border-slate-600 dark:bg-ds-secondary dark:text-slate-100 dark:focus:border-sky-500 dark:focus:ring-sky-500/30"
             value={selectedId}
             disabled={loadingList || list.length === 0}
             onChange={(e) => setSelectedId(e.target.value)}
@@ -168,7 +168,7 @@ export function FloorPlanBlueprintSection() {
         </div>
         <Link
           href="/zones-devices/blueprint"
-          className="inline-flex shrink-0 items-center justify-center rounded-md border border-pulse-border bg-slate-50 px-3 py-2 text-sm font-semibold text-pulse-navy transition-colors hover:border-pulse-accent/40 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 dark:hover:border-slate-500"
+          className="inline-flex shrink-0 items-center justify-center rounded-md border border-pulse-border bg-slate-50 px-3 py-2 text-sm font-semibold text-pulse-navy transition-colors hover:border-pulse-accent/40 dark:border-slate-600 dark:bg-ds-secondary dark:text-slate-100 dark:hover:border-slate-500"
         >
           Edit in designer
         </Link>
@@ -189,7 +189,7 @@ export function FloorPlanBlueprintSection() {
       {selectedId && list.length > 0 ? (
         <div className="mt-4">
           {loadingDetail ? (
-            <div className="min-h-[420px] animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800/80" />
+            <div className="min-h-[420px] animate-pulse rounded-lg bg-slate-100 dark:bg-ds-secondary/95" />
           ) : detail ? (
             <>
               <p className="mb-2 text-sm font-medium text-pulse-navy dark:text-slate-100">{detail.name}</p>

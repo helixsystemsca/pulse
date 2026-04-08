@@ -93,25 +93,25 @@ export function PreventativeMaintenanceApp() {
 
   return (
     <div className="space-y-6">
-      <section className="rounded-md border border-pulse-border bg-white p-4 shadow-card dark:border-slate-700 dark:bg-slate-900/50">
+      <section className="rounded-md border border-pulse-border bg-white p-4 shadow-card dark:border-slate-700 dark:bg-ds-bg/65">
         <h2 className="text-sm font-semibold text-pulse-navy dark:text-slate-100">Add rule</h2>
         <p className="mt-1 text-xs text-pulse-muted">
           Tie a facility equipment id to a frequency string. Generation of work orders from rules is not automated yet.
         </p>
         <div className="mt-3 flex flex-wrap gap-2">
           <input
-            className="min-w-[12rem] flex-1 rounded-lg border border-pulse-border px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-900"
+            className="min-w-[12rem] flex-1 rounded-lg border border-pulse-border px-3 py-2 text-sm dark:border-slate-600 dark:bg-ds-secondary"
             placeholder="Asset ID (facility_equipment.id)"
             value={assetId}
             onChange={(e) => setAssetId(e.target.value)}
           />
           <input
-            className="w-36 rounded-lg border border-pulse-border px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-900"
+            className="w-36 rounded-lg border border-pulse-border px-3 py-2 text-sm dark:border-slate-600 dark:bg-ds-secondary"
             value={frequency}
             onChange={(e) => setFrequency(e.target.value)}
           />
           <select
-            className="min-w-[10rem] rounded-lg border border-pulse-border px-2 py-2 text-sm dark:border-slate-600 dark:bg-slate-900"
+            className="min-w-[10rem] rounded-lg border border-pulse-border px-2 py-2 text-sm dark:border-slate-600 dark:bg-ds-secondary"
             value={procedureId}
             onChange={(e) => setProcedureId(e.target.value)}
           >
@@ -135,7 +135,7 @@ export function PreventativeMaintenanceApp() {
 
       {err ? <p className="text-sm text-red-600 dark:text-red-400">{err}</p> : null}
 
-      <section className="rounded-md border border-pulse-border bg-white p-4 shadow-card dark:border-slate-700 dark:bg-slate-900/50">
+      <section className="rounded-md border border-pulse-border bg-white p-4 shadow-card dark:border-slate-700 dark:bg-ds-bg/65">
         <h2 className="text-sm font-semibold text-pulse-navy dark:text-slate-100">Rules</h2>
         {loading ? (
           <p className="mt-2 text-sm text-pulse-muted">Loading…</p>
@@ -178,17 +178,17 @@ export function PreventativeMaintenanceApp() {
           <h2 className="text-sm font-semibold text-pulse-navy dark:text-slate-100">Edit rule</h2>
           <div className="mt-3 flex flex-wrap gap-2">
             <input
-              className="min-w-[12rem] flex-1 rounded-lg border border-pulse-border px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-900"
+              className="min-w-[12rem] flex-1 rounded-lg border border-pulse-border px-3 py-2 text-sm dark:border-slate-600 dark:bg-ds-secondary"
               value={editAsset}
               onChange={(e) => setEditAsset(e.target.value)}
             />
             <input
-              className="w-36 rounded-lg border border-pulse-border px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-900"
+              className="w-36 rounded-lg border border-pulse-border px-3 py-2 text-sm dark:border-slate-600 dark:bg-ds-secondary"
               value={editFrequency}
               onChange={(e) => setEditFrequency(e.target.value)}
             />
             <select
-              className="min-w-[10rem] rounded-lg border border-pulse-border px-2 py-2 text-sm dark:border-slate-600 dark:bg-slate-900"
+              className="min-w-[10rem] rounded-lg border border-pulse-border px-2 py-2 text-sm dark:border-slate-600 dark:bg-ds-secondary"
               value={editProcedureId}
               onChange={(e) => setEditProcedureId(e.target.value)}
             >

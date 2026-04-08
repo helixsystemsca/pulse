@@ -3,7 +3,7 @@
 import { X } from "lucide-react";
 
 const overlay =
-  "fixed inset-0 z-50 flex items-end justify-center bg-slate-900/40 p-4 sm:items-center sm:p-6";
+  "ds-modal-backdrop fixed inset-0 z-50 flex items-end justify-center p-4 backdrop-blur-[2px] sm:items-center sm:p-6";
 const sheet =
   "w-full max-w-md rounded-md border border-slate-200/90 bg-white p-6 shadow-card-lg";
 

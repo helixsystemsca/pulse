@@ -13,8 +13,8 @@ export function ZonesDevicesChrome({ children }: { children: React.ReactNode }) 
   const tabClass = (active: boolean) =>
     `rounded-lg px-3.5 py-2 text-sm font-semibold transition-colors ${
       active
-        ? "bg-white text-pulse-navy shadow-sm ring-1 ring-slate-200/80 dark:bg-slate-800 dark:text-slate-100 dark:ring-slate-600"
-        : "text-pulse-muted hover:bg-white/60 hover:text-pulse-navy dark:hover:bg-slate-800/60 dark:hover:text-slate-100"
+        ? "bg-white text-pulse-navy shadow-sm ring-1 ring-slate-200/80 dark:bg-ds-secondary dark:text-slate-100 dark:ring-slate-600"
+        : "text-pulse-muted hover:bg-white/60 hover:text-pulse-navy dark:hover:bg-ds-interactive-hover dark:hover:text-slate-100"
     }`;
 
   return (

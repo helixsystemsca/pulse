@@ -44,7 +44,7 @@ export function OnboardingReminderBanner() {
         </Link>
         <button
           type="button"
-          className="shrink-0 rounded-lg p-1 text-pulse-muted hover:bg-slate-100 hover:text-pulse-navy dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
+          className="shrink-0 rounded-lg p-1 text-pulse-muted hover:bg-slate-100 hover:text-pulse-navy dark:text-slate-400 dark:hover:bg-ds-interactive-hover dark:hover:text-slate-100"
           aria-label="Dismiss reminder"
           onClick={() => {
             try {

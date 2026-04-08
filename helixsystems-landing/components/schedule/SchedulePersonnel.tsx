@@ -57,7 +57,7 @@ export function SchedulePersonnel({
             {rows.map(({ w, count }) => (
               <tr
                 key={w.id}
-                className="border-b border-pulseShell-border/60 last:border-0 hover:bg-pulseShell-header-row/80 dark:hover:bg-pulseShell-elevated/35"
+                className="ds-table-row-hover border-b border-pulseShell-border/60 last:border-0"
               >
                 <td className="px-5 py-3 font-medium text-ds-foreground">{w.name}</td>
                 <td className="px-5 py-3 text-ds-muted">{roleMap.get(w.role) ?? w.role}</td>

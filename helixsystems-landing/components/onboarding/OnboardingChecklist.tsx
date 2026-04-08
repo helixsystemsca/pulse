@@ -15,17 +15,17 @@ export function OnboardingChecklist() {
 
   return (
     <div
-      className={`pointer-events-auto fixed bottom-4 right-4 z-[115] flex max-w-[min(100vw-2rem,22rem)] flex-col rounded-md border border-slate-200/90 bg-white shadow-xl backdrop-blur-sm transition-all duration-200 dark:border-slate-600 dark:bg-slate-900 ${
+      className={`pointer-events-auto fixed bottom-4 right-4 z-[115] flex max-w-[min(100vw-2rem,22rem)] flex-col rounded-md border border-slate-200/90 bg-white shadow-xl backdrop-blur-sm transition-all duration-200 dark:border-slate-600 dark:bg-ds-secondary ${
         checklistExpanded ? "max-h-[min(72vh,32rem)]" : ""
       }`}
     >
       <button
         type="button"
         onClick={() => setChecklistExpanded(!checklistExpanded)}
-        className="flex w-full items-center gap-3 rounded-t-md px-4 py-3 text-left hover:bg-slate-50 dark:hover:bg-slate-800/80"
+        className="flex w-full items-center gap-3 rounded-t-md px-4 py-3 text-left hover:bg-slate-50 dark:hover:bg-ds-interactive-hover"
         aria-expanded={checklistExpanded}
       >
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-slate-200 bg-slate-50 text-[#2B4C7E] dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-slate-200 bg-slate-50 text-[#2B4C7E] dark:border-slate-600 dark:bg-ds-secondary dark:text-slate-100">
           <ListChecks className="h-4 w-4" strokeWidth={2} />
         </span>
         <div className="min-w-0 flex-1">
@@ -57,7 +57,7 @@ export function OnboardingChecklist() {
               <li key={s.key}>
                 <Link
                   href={href}
-                  className={`flex items-start gap-2 rounded-lg px-2 py-2 text-sm transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/80 ${
+                  className={`flex items-start gap-2 rounded-lg px-2 py-2 text-sm transition-colors hover:bg-slate-50 dark:hover:bg-ds-interactive-hover ${
                     s.completed ? "text-pulse-muted dark:text-slate-400" : "text-pulse-navy dark:text-slate-100"
                   }`}
                   onClick={() => setChecklistExpanded(false)}
@@ -66,7 +66,7 @@ export function OnboardingChecklist() {
                     className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded border ${
                       s.completed
                         ? "border-emerald-400 bg-emerald-50 text-emerald-700 dark:border-emerald-500/45 dark:bg-emerald-950/55 dark:text-emerald-300"
-                        : "border-slate-300 bg-white dark:border-slate-600 dark:bg-slate-900"
+                        : "border-slate-300 bg-white dark:border-slate-600 dark:bg-ds-secondary"
                     }`}
                     aria-hidden
                   >

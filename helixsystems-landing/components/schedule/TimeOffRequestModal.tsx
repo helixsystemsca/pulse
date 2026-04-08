@@ -8,7 +8,13 @@ type Props = {
   open: boolean;
   workers: Worker[];
   onClose: () => void;
-  onSubmit: (payload: { workerId: string; startDate: string; endDate: string; status: "approved" | "pending" }) => void;
+  onSubmit: (payload: {
+    workerId: string;
+    startDate: string;
+    endDate: string;
+    status: "approved" | "pending";
+    kind: "vacation" | "sick";
+  }) => void;
 };
 
 /**
@@ -19,6 +25,7 @@ export function TimeOffRequestModal({ open, workers, onClose, onSubmit }: Props)
   const [start, setStart] = useState("");
   const [end, setEnd] = useState("");
   const [status, setStatus] = useState<"approved" | "pending">("approved");
+  const [kind, setKind] = useState<"vacation" | "sick">("vacation");
 
   return (
     <PulseDrawer
@@ -41,7 +48,7 @@ export function TimeOffRequestModal({ open, workers, onClose, onSubmit }: Props)
             className="rounded-[10px] bg-[#2B4C7E] px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-[#234066] disabled:opacity-40"
             disabled={!workerId || !start || !end}
             onClick={() => {
-              onSubmit({ workerId, startDate: start, endDate: end, status });
+              onSubmit({ workerId, startDate: start, endDate: end, status, kind });
               onClose();
             }}
           >
@@ -99,6 +106,20 @@ export function TimeOffRequestModal({ open, workers, onClose, onSubmit }: Props)
               onChange={(e) => setEnd(e.target.value)}
             />
           </div>
+        </div>
+        <div>
+          <label className="text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400" htmlFor="pto-kind">
+            Type
+          </label>
+          <select
+            id="pto-kind"
+            className="mt-1.5 w-full rounded-[10px] border border-pulseShell-border bg-pulseShell-surface px-3 py-2.5 text-sm text-gray-900 dark:text-gray-100"
+            value={kind}
+            onChange={(e) => setKind(e.target.value as "vacation" | "sick")}
+          >
+            <option value="vacation">Vacation (amber on calendar)</option>
+            <option value="sick">Sick leave (rose tint on calendar)</option>
+          </select>
         </div>
         <div>
           <label className="text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400" htmlFor="pto-status">

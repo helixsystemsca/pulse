@@ -2,6 +2,9 @@
 
 import { useSearchParams } from "next/navigation";
 import { FormEvent, Suspense, useState } from "react";
+import { AuthBrandLink } from "@/components/auth/AuthBrandLink";
+import { AuthScreenShell } from "@/components/auth/AuthScreenShell";
+import { dsInputClass, dsLabelClass } from "@/components/ui/ds-form-classes";
 import { getApiBaseUrl } from "@/lib/api";
 import { navigateAfterPulseLogin, pulseApp } from "@/lib/pulse-app";
 import { writeApiSession } from "@/lib/pulse-session";
@@ -47,55 +50,62 @@ function JoinForm() {
   }
 
   if (!token) {
-    return <p className="text-red-400">Missing token in URL.</p>;
+    return <p className="text-center text-sm font-medium text-ds-danger">Missing token in URL.</p>;
   }
 
   return (
-    <form onSubmit={(e) => void onSubmit(e)} className="mx-auto mt-16 max-w-md space-y-4 rounded-md border border-zinc-800 bg-zinc-900 p-6 text-zinc-100">
-      <h1 className="text-lg font-semibold">Activate your account</h1>
-      <p className="text-sm text-zinc-500">Set your password to finish joining your organization.</p>
-      {err ? <p className="text-sm text-red-400">{err}</p> : null}
-      <div>
-        <label className="text-xs uppercase text-zinc-500">Full name (optional)</label>
-        <input
-          value={fullName}
-          onChange={(e) => setFullName(e.target.value)}
-          className="mt-1 w-full rounded-lg border border-zinc-600 bg-zinc-950 px-3 py-2 text-sm"
-        />
+    <div className="auth-card-host ds-card-elevated mx-auto w-full max-w-[480px] rounded-2xl border border-ds-border p-6 sm:p-8">
+      <div className="flex flex-col items-center text-center">
+        <AuthBrandLink />
+        <p className="mt-4 text-sm text-ds-muted">Employee invite</p>
       </div>
-      <div>
-        <label className="text-xs uppercase text-zinc-500">Password (min 8 characters)</label>
-        <input
-          type="password"
-          required
-          minLength={8}
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className="mt-1 w-full rounded-lg border border-zinc-600 bg-zinc-950 px-3 py-2 text-sm"
-        />
-      </div>
-      <button
-        type="submit"
-        disabled={busy}
-        className="w-full rounded-lg bg-blue-600 py-2 text-sm font-semibold text-white disabled:opacity-60"
-      >
-        {busy ? "Working…" : "Activate account"}
-      </button>
-      <p className="text-center text-xs text-zinc-500">
-        <a href={pulseApp.login()} className="text-blue-400">
-          Sign in instead
-        </a>
-      </p>
-    </form>
+      <form onSubmit={(e) => void onSubmit(e)} className="mt-8 space-y-4">
+        <div>
+          <h1 className="text-lg font-semibold text-ds-foreground">Activate your account</h1>
+          <p className="mt-1 text-sm text-ds-muted">Set your password to finish joining your organization.</p>
+        </div>
+        {err ? <p className="ds-alert-critical rounded-lg border px-3 py-2 text-sm text-ds-foreground">{err}</p> : null}
+        <div>
+          <label className={dsLabelClass} htmlFor="join-full-name">
+            Full name (optional)
+          </label>
+          <input id="join-full-name" value={fullName} onChange={(e) => setFullName(e.target.value)} className={`mt-1.5 ${dsInputClass}`} />
+        </div>
+        <div>
+          <label className={dsLabelClass} htmlFor="join-password">
+            Password (min 8 characters)
+          </label>
+          <input
+            id="join-password"
+            type="password"
+            required
+            minLength={8}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className={`mt-1.5 ${dsInputClass}`}
+          />
+        </div>
+        <button type="submit" disabled={busy} className="ds-btn-solid-primary w-full py-3 text-sm disabled:opacity-60">
+          {busy ? "Working…" : "Activate account"}
+        </button>
+        <p className="text-center text-xs text-ds-muted">
+          <a href={pulseApp.login()} className="ds-link">
+            Sign in instead
+          </a>
+        </p>
+      </form>
+    </div>
   );
 }
 
 export default function JoinPage() {
   return (
-    <div className="min-h-screen bg-zinc-950 px-4">
-      <Suspense fallback={<p className="p-8 text-zinc-500">Loading…</p>}>
-        <JoinForm />
-      </Suspense>
-    </div>
+    <AuthScreenShell className="flex min-h-0 flex-1 flex-col">
+      <div className="flex min-h-0 flex-1 flex-col justify-center px-4 py-10 md:py-14">
+        <Suspense fallback={<p className="text-center text-sm text-ds-muted">Loading…</p>}>
+          <JoinForm />
+        </Suspense>
+      </div>
+    </AuthScreenShell>
   );
 }

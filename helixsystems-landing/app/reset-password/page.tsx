@@ -2,7 +2,8 @@
 
 import { useSearchParams } from "next/navigation";
 import { FormEvent, Suspense, useState } from "react";
-import { Card } from "@/components/pulse/Card";
+import { AuthBrandLink } from "@/components/auth/AuthBrandLink";
+import { AuthScreenShell } from "@/components/auth/AuthScreenShell";
 import { dsInputClass, dsLabelClass } from "@/components/ui/ds-form-classes";
 import { getApiBaseUrl } from "@/lib/api";
 import { navigateAfterPulseLogin, pulseApp } from "@/lib/pulse-app";
@@ -48,16 +49,21 @@ function ResetForm() {
   }
 
   if (!token) {
-    return <p className="text-ds-danger">Missing token in URL.</p>;
+    return <p className="text-center text-sm font-medium text-ds-danger">Missing token in URL.</p>;
   }
 
   return (
-    <Card variant="elevated" padding="lg" className="mx-auto mt-16 max-w-md space-y-4">
-      <form onSubmit={(e) => void onSubmit(e)} className="space-y-4">
-        <h1 className="text-lg font-semibold text-ds-foreground">Reset password</h1>
-        {err ? (
-          <p className="ds-alert-critical rounded-lg border px-3 py-2 text-sm text-ds-foreground">{err}</p>
-        ) : null}
+    <div className="auth-card-host ds-card-elevated mx-auto w-full max-w-[480px] rounded-2xl border border-ds-border p-6 sm:p-8">
+      <div className="flex flex-col items-center text-center">
+        <AuthBrandLink />
+        <p className="mt-4 text-sm text-ds-muted">Secure password reset</p>
+      </div>
+      <form onSubmit={(e) => void onSubmit(e)} className="mt-8 space-y-4">
+        <div>
+          <h1 className="text-lg font-semibold text-ds-foreground">Reset password</h1>
+          <p className="mt-1 text-sm text-ds-muted">Choose a new password for your account.</p>
+        </div>
+        {err ? <p className="ds-alert-critical rounded-lg border px-3 py-2 text-sm text-ds-foreground">{err}</p> : null}
         <div>
           <label className={dsLabelClass} htmlFor="reset-password">
             New password
@@ -72,11 +78,7 @@ function ResetForm() {
             className={`mt-1.5 ${dsInputClass}`}
           />
         </div>
-        <button
-          type="submit"
-          disabled={busy}
-          className="ds-btn-solid-primary w-full py-2.5 text-sm disabled:opacity-60"
-        >
+        <button type="submit" disabled={busy} className="ds-btn-solid-primary w-full py-3 text-sm disabled:opacity-60">
           {busy ? "Updating…" : "Save and sign in"}
         </button>
         <p className="text-center text-xs text-ds-muted">
@@ -85,16 +87,18 @@ function ResetForm() {
           </a>
         </p>
       </form>
-    </Card>
+    </div>
   );
 }
 
 export default function ResetPasswordPage() {
   return (
-    <div className="min-h-screen bg-ds-bg px-4">
-      <Suspense fallback={<p className="p-8 text-ds-muted">Loading…</p>}>
-        <ResetForm />
-      </Suspense>
-    </div>
+    <AuthScreenShell className="flex min-h-0 flex-1 flex-col">
+      <div className="flex min-h-0 flex-1 flex-col justify-center px-4 py-10 md:py-14">
+        <Suspense fallback={<p className="text-center text-sm text-ds-muted">Loading…</p>}>
+          <ResetForm />
+        </Suspense>
+      </div>
+    </AuthScreenShell>
   );
 }

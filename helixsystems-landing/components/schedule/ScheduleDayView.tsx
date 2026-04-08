@@ -1,7 +1,7 @@
 "use client";
 
 import { AlertTriangle, ArrowLeft, Award, Plus } from "lucide-react";
-import { useMemo } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   formatCertCodesShort,
   formatCertCodesWithLabels,
@@ -9,9 +9,12 @@ import {
   shiftHasCertificationFlag,
 } from "@/lib/schedule/certifications";
 import { getShiftConflicts, worstConflictSeverity } from "@/lib/schedule/conflicts";
-import { attachShiftDragPreview, setShiftDragData } from "@/lib/schedule/drag";
+import { workerHighlightOverlayClass } from "@/lib/schedule/drag-highlight-classes";
+import { attachShiftDragPreview, readWorkerDragPayload, setShiftDragData, WORKER_DRAG_MIME } from "@/lib/schedule/drag";
+import { evaluateWorkerDrop, type WorkerDayHighlight } from "@/lib/schedule/worker-drag-highlights";
 import { formatTimeRange } from "@/lib/schedule/time-format";
 import type {
+  ScheduleDragSession,
   ScheduleRoleDefinition,
   ScheduleSettings,
   Shift,
@@ -25,6 +28,8 @@ type Props = {
   date: string;
   onClose: () => void;
   shifts: Shift[];
+  /** Full schedule used for worker-drop validation (weekly hours, etc.). */
+  contextShifts: Shift[];
   dayShiftsAll: Shift[];
   workers: Worker[];
   zones: Zone[];
@@ -35,9 +40,12 @@ type Props = {
   onSelectShift: (shift: Shift) => void;
   onAddForDate: (iso: string) => void;
   scheduleDragLock: boolean;
-  dragSession: { shiftId: string; duplicate: boolean } | null;
+  dragSession: ScheduleDragSession | null;
+  calendarDropsDisabled?: boolean;
   shiftDragEnabled?: boolean;
-  onShiftDragSessionStart: (payload: { shiftId: string; duplicate: boolean }) => void;
+  workerDayHighlight?: WorkerDayHighlight | null;
+  onWorkerDrop?: (workerId: string) => void;
+  onShiftDragSessionStart: (payload: ScheduleDragSession) => void;
   onShiftDragSessionEnd: () => void;
 };
 
@@ -48,6 +56,7 @@ export function ScheduleDayView({
   date,
   onClose,
   shifts,
+  contextShifts,
   dayShiftsAll,
   workers,
   zones,
@@ -59,10 +68,25 @@ export function ScheduleDayView({
   onAddForDate,
   scheduleDragLock,
   dragSession,
+  calendarDropsDisabled = false,
   shiftDragEnabled = true,
+  workerDayHighlight = null,
+  onWorkerDrop,
   onShiftDragSessionStart,
   onShiftDragSessionEnd,
 }: Props) {
+  const [shake, setShake] = useState(false);
+  const shakeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const triggerShake = () => {
+    if (shakeTimer.current) clearTimeout(shakeTimer.current);
+    setShake(true);
+    shakeTimer.current = setTimeout(() => {
+      setShake(false);
+      shakeTimer.current = null;
+    }, 420);
+  };
+
   const typeMap = useMemo(() => new Map(shiftTypes.map((t) => [t.key, t])), [shiftTypes]);
   const zoneMap = useMemo(() => new Map(zones.map((z) => [z.id, z.label])), [zones]);
   const roleMap = useMemo(() => new Map(roles.map((r) => [r.id, r.label])), [roles]);
@@ -102,7 +126,7 @@ export function ScheduleDayView({
         <div className="flex min-w-0 flex-1 flex-col gap-3 sm:flex-row sm:items-start sm:gap-4">
           <button
             type="button"
-            className="inline-flex w-fit items-center gap-2 rounded-md border border-pulseShell-border bg-pulseShell-elevated px-3 py-2 text-sm font-semibold text-ds-foreground shadow-sm hover:bg-pulseShell-surface"
+            className="inline-flex w-fit items-center gap-2 rounded-md border border-pulseShell-border bg-pulseShell-elevated px-3 py-2 text-sm font-semibold text-ds-foreground shadow-sm hover:bg-ds-interactive-hover"
             onClick={onClose}
             aria-label="Back to calendar"
           >
@@ -132,8 +156,38 @@ export function ScheduleDayView({
       </div>
 
       <div className="grid gap-0 lg:grid-cols-[minmax(0,1fr)_280px]">
-        <div className="min-h-[16rem] border-b border-pulseShell-border lg:border-b-0 lg:border-r">
-          <div className="max-h-[min(70vh,640px)] space-y-2 overflow-y-auto px-4 py-4 sm:px-5">
+        <div
+          className={`relative min-h-[16rem] border-b border-pulseShell-border lg:border-b-0 lg:border-r ${shake ? "schedule-cell-shake" : ""}`}
+          title={dragSession?.kind === "worker" && workerDayHighlight?.tooltip ? workerDayHighlight.tooltip : undefined}
+          onDragOver={(e) => {
+            if (!shiftDragEnabled || calendarDropsDisabled || dragSession?.kind !== "worker") return;
+            if (!e.dataTransfer.types.includes(WORKER_DRAG_MIME)) return;
+            e.preventDefault();
+            e.dataTransfer.dropEffect = "copy";
+          }}
+          onDrop={(e) => {
+            e.preventDefault();
+            if (!shiftDragEnabled || calendarDropsDisabled || !onWorkerDrop) return;
+            const wp = readWorkerDragPayload(e.dataTransfer);
+            if (!wp) return;
+            const w = workers.find((x) => x.id === wp.workerId);
+            if (w) {
+              const ev = evaluateWorkerDrop(w, date, contextShifts, settings, timeOffBlocks);
+              if (!ev.ok) {
+                triggerShake();
+                return;
+              }
+            }
+            onWorkerDrop(wp.workerId);
+          }}
+        >
+          {dragSession?.kind === "worker" && workerDayHighlight ? (
+            <div
+              className={`pointer-events-none absolute inset-0 z-0 ${workerHighlightOverlayClass(workerDayHighlight.tone)}`}
+              aria-hidden
+            />
+          ) : null}
+          <div className="relative z-[1] max-h-[min(70vh,640px)] space-y-2 overflow-y-auto px-4 py-4 sm:px-5">
             {sorted.length === 0 ? (
               <p className="py-12 text-center text-sm text-ds-muted">No shifts this day.</p>
             ) : (
@@ -141,8 +195,10 @@ export function ScheduleDayView({
                 const st = typeMap.get(s.shiftType);
                 const w = s.workerId ? workerMap.get(s.workerId) : null;
                 const isOpen = !s.workerId;
-                const name =
+                const rawName =
                   s.shiftKind === "project_task" && s.taskTitle ? s.taskTitle : (w?.name ?? "Open shift");
+                const name =
+                  s.eventType === "vacation" ? "Vacation" : s.eventType === "sick" ? "Sick leave" : rawName;
                 const zone = zoneMap.get(s.zoneId) ?? "—";
                 const roleLb = roleMap.get(s.role) ?? s.role;
                 const conflicts = getShiftConflicts(s, dayShiftsAll, workers, settings, timeOffBlocks, zones);
@@ -156,12 +212,24 @@ export function ScheduleDayView({
                 const cls = st
                   ? `${st.bg} ${st.border} ${st.text} border`
                   : "border border-pulseShell-border bg-pulseShell-elevated text-ds-foreground";
+                const ptoCls =
+                  s.eventType === "vacation"
+                    ? "border-[color-mix(in_srgb,var(--ds-warning)_38%,var(--ds-border))] bg-[color-mix(in_srgb,var(--ds-warning)_18%,var(--ds-surface-primary))] text-ds-foreground"
+                    : s.eventType === "sick"
+                      ? "border-[color-mix(in_srgb,var(--ds-danger)_32%,var(--ds-border))] bg-[color-mix(in_srgb,var(--ds-danger)_15%,var(--ds-surface-primary))] text-ds-foreground"
+                      : "";
+                const chipBaseCls = ptoCls || cls;
                 const openCls = isOpen
                   ? "ring-2 ring-dashed ring-ds-success/45 ring-offset-2 ring-offset-pulse-shell-cell dark:ring-offset-pulse-shell-cell"
                   : "";
-                const chipLocked = scheduleDragLock && dragSession !== null && dragSession.shiftId !== s.id;
+                const chipLocked =
+                  scheduleDragLock &&
+                  (dragSession?.kind === "worker" ||
+                    (dragSession?.kind === "shift" && dragSession.shiftId !== s.id));
                 const canDrag =
-                  shiftDragEnabled && (!scheduleDragLock || dragSession?.shiftId === s.id);
+                  shiftDragEnabled &&
+                  !s.autoGenerated &&
+                  (!scheduleDragLock || (dragSession?.kind === "shift" && dragSession.shiftId === s.id));
 
                 return (
                   <div
@@ -170,21 +238,23 @@ export function ScheduleDayView({
                     tabIndex={0}
                     draggable={canDrag}
                     className={`w-full rounded-md px-3 py-3 text-left text-sm shadow-sm transition-opacity hover:brightness-[0.98] ${
-                      canDrag ? "cursor-grab active:cursor-grabbing" : "cursor-default"
-                    } ${chipLocked ? "pointer-events-none" : ""} ${cls} ${openCls}`}
+                      s.autoGenerated ? "opacity-[0.92]" : ""
+                    } ${canDrag ? "cursor-grab active:cursor-grabbing" : "cursor-default"} ${
+                      chipLocked ? "pointer-events-none" : ""
+                    } ${chipBaseCls} ${openCls}`}
                     onClick={() => {
-                      if (scheduleDragLock) return;
+                      if (scheduleDragLock || s.autoGenerated) return;
                       onSelectShift(s);
                     }}
                     onKeyDown={(e) => {
-                      if (scheduleDragLock) return;
+                      if (scheduleDragLock || s.autoGenerated) return;
                       if (e.key === "Enter" || e.key === " ") {
                         e.preventDefault();
                         onSelectShift(s);
                       }
                     }}
                     onDragStart={(e) => {
-                      if (!shiftDragEnabled) {
+                      if (!shiftDragEnabled || s.autoGenerated) {
                         e.preventDefault();
                         return;
                       }
@@ -194,7 +264,7 @@ export function ScheduleDayView({
                         duplicate: dup,
                       });
                       attachShiftDragPreview(e, dup);
-                      onShiftDragSessionStart({ shiftId: s.id, duplicate: dup });
+                      onShiftDragSessionStart({ kind: "shift", shiftId: s.id, duplicate: dup });
                     }}
                     onDragEnd={onShiftDragSessionEnd}
                   >
@@ -264,6 +334,11 @@ export function ScheduleDayView({
                         ) : null}
                       </div>
                       <div className="flex shrink-0 flex-col items-end gap-1">
+                        {s.autoGenerated ? (
+                          <span className="rounded bg-pulseShell-elevated px-1.5 py-0.5 text-[10px] font-bold text-ds-muted">
+                            Auto
+                          </span>
+                        ) : null}
                         {s.uiFlags?.isNew ? (
                           <span className="rounded bg-[color-mix(in_srgb,var(--ds-success)_16%,var(--ds-surface-primary))] px-1.5 py-0.5 text-[10px] font-bold text-ds-success">
                             New

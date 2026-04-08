@@ -60,14 +60,14 @@ const TABS: { id: TabId; label: string; icon: typeof Radio }[] = [
 ];
 
 const FIELD =
-  "mt-1.5 w-full rounded-md border border-slate-200/90 bg-white px-3 py-2.5 text-sm text-pulse-navy shadow-sm focus:border-[#2B4C7E]/35 focus:outline-none focus:ring-1 focus:ring-[#2B4C7E]/25 dark:border-[#374151] dark:bg-[#0F172A] dark:text-gray-100 dark:placeholder:text-gray-500";
+  "mt-1.5 w-full rounded-md border border-slate-200/90 bg-white px-3 py-2.5 text-sm text-pulse-navy shadow-sm focus:border-[#2B4C7E]/35 focus:outline-none focus:ring-1 focus:ring-[#2B4C7E]/25 dark:border-ds-border dark:bg-ds-secondary dark:text-gray-100 dark:placeholder:text-gray-500";
 const LABEL = "text-[11px] font-semibold uppercase tracking-wider text-pulse-muted dark:text-gray-500";
 const BTN_PRIMARY =
   "rounded-md bg-[#2B4C7E] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#234066] disabled:opacity-50";
 const TAB_ACTIVE =
   "border-[#2B4C7E] bg-[#ebf2ff] text-[#2B4C7E] shadow-sm dark:border-sky-500/45 dark:bg-[#1e3a5f] dark:text-sky-100";
 const TAB_IDLE =
-  "border-transparent bg-white/60 text-pulse-muted hover:border-slate-200 hover:text-pulse-navy dark:bg-[#1F2937]/90 dark:text-gray-400 dark:hover:border-[#374151] dark:hover:bg-[#374151] dark:hover:text-gray-100";
+  "border-transparent bg-white/60 text-pulse-muted hover:border-slate-200 hover:text-pulse-navy dark:bg-ds-secondary/95 dark:text-gray-400 dark:hover:border-ds-border dark:hover:bg-ds-interactive-hover dark:hover:text-gray-100";
 
 function companyQs(companyId: string | null): string {
   return companyId ? `company_id=${encodeURIComponent(companyId)}` : "";
@@ -814,12 +814,12 @@ export function SetupApp() {
                 );
               })}
               {gateways.length === 0 ? (
-                <p className="rounded-md border border-dashed border-slate-200 bg-white/60 p-6 text-sm text-pulse-muted dark:border-[#374151] dark:bg-[#0F172A]/80 dark:text-gray-500">
+                <p className="rounded-md border border-dashed border-slate-200 bg-white/60 p-6 text-sm text-pulse-muted dark:border-ds-border dark:bg-ds-secondary/95 dark:text-gray-500">
                   No gateways yet. Add your first ESP32 edge device below.
                 </p>
               ) : null}
             </div>
-            <div className="rounded-md border border-slate-200/80 bg-white p-5 shadow-card dark:border-[#1F2937] dark:bg-[#111827] dark:shadow-[0_2px_8px_rgba(0,0,0,0.4)]">
+            <div className="rounded-md border border-slate-200/80 bg-white p-5 shadow-card dark:border-ds-border dark:bg-ds-primary dark:shadow-[0_2px_8px_rgba(0,0,0,0.4)]">
               <h3 className="font-semibold text-pulse-navy">Add gateway</h3>
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
                 <div className="sm:col-span-2">
@@ -970,12 +970,12 @@ export function SetupApp() {
                 );
               })}
               {bleDevices.length === 0 ? (
-                <p className="rounded-md border border-dashed border-slate-200 bg-white/60 p-6 text-sm text-pulse-muted dark:border-[#374151] dark:bg-[#0F172A]/80 dark:text-gray-500">
+                <p className="rounded-md border border-dashed border-slate-200 bg-white/60 p-6 text-sm text-pulse-muted dark:border-ds-border dark:bg-ds-secondary/95 dark:text-gray-500">
                   No BLE tags yet. Register worker or equipment tags below.
                 </p>
               ) : null}
             </div>
-            <div className="rounded-md border border-slate-200/80 bg-white p-5 shadow-card dark:border-[#1F2937] dark:bg-[#111827] dark:shadow-[0_2px_8px_rgba(0,0,0,0.4)]">
+            <div className="rounded-md border border-slate-200/80 bg-white p-5 shadow-card dark:border-ds-border dark:bg-ds-primary dark:shadow-[0_2px_8px_rgba(0,0,0,0.4)]">
               <h3 className="font-semibold text-pulse-navy">Register tag</h3>
               <div className="mt-4 grid gap-3">
                 <div>
@@ -1038,7 +1038,7 @@ export function SetupApp() {
             <strong className="text-pulse-navy">Gateways &amp; sensors</strong> tab, or use Assign on each tag card. Roster
             for reference:
           </p>
-          <div className="overflow-hidden rounded-md border border-slate-200/80 bg-white shadow-card dark:border-[#1F2937] dark:bg-[#111827] dark:shadow-[0_2px_8px_rgba(0,0,0,0.4)]">
+          <div className="overflow-hidden rounded-md border border-slate-200/80 bg-white shadow-card dark:border-ds-border dark:bg-ds-primary dark:shadow-[0_2px_8px_rgba(0,0,0,0.4)]">
             <table className="w-full text-left text-sm">
               <thead className="bg-slate-50/90 text-[11px] font-semibold uppercase tracking-wider text-pulse-muted">
                 <tr>
@@ -1101,11 +1101,11 @@ export function SetupApp() {
             })}
           </div>
           {zones.length === 0 ? (
-            <p className="rounded-md border border-dashed border-slate-200 bg-white/60 p-6 text-sm text-pulse-muted dark:border-[#374151] dark:bg-[#0F172A]/80 dark:text-gray-500">
+            <p className="rounded-md border border-dashed border-slate-200 bg-white/60 p-6 text-sm text-pulse-muted dark:border-ds-border dark:bg-ds-secondary/95 dark:text-gray-500">
               No zones yet. Create regions of your facility, then assign gateways.
             </p>
           ) : null}
-          <div className="rounded-md border border-slate-200/80 bg-white p-5 shadow-card dark:border-[#1F2937] dark:bg-[#111827] dark:shadow-[0_2px_8px_rgba(0,0,0,0.4)] md:max-w-lg">
+          <div className="rounded-md border border-slate-200/80 bg-white p-5 shadow-card dark:border-ds-border dark:bg-ds-primary dark:shadow-[0_2px_8px_rgba(0,0,0,0.4)] md:max-w-lg">
             <h3 className="font-semibold text-pulse-navy">Create zone</h3>
             <label className={LABEL}>Name</label>
             <input className={FIELD} value={zoneName} onChange={(e) => setZoneName(e.target.value)} placeholder="Receiving" />
@@ -1179,7 +1179,7 @@ export function SetupApp() {
                 Equipment.
               </p>
             ) : null}
-            <div className="mt-4 rounded-md border border-slate-200/90 bg-slate-50/80 p-3 dark:border-[#374151] dark:bg-[#111827]/80">
+            <div className="mt-4 rounded-md border border-slate-200/90 bg-slate-50/80 p-3 dark:border-ds-border dark:bg-ds-primary/80">
               <p className="text-xs font-semibold text-pulse-navy dark:text-gray-200">New tracked asset</p>
               <p className="mt-1 text-[11px] text-pulse-muted">
                 If nothing is listed yet, add a name and create — then save assignment.

@@ -17,7 +17,7 @@ function PhoneChrome() {
           />
           {/* Dynamic Island–style camera bar */}
           <div
-            className="pointer-events-none absolute left-1/2 top-2 z-[60] h-[22px] w-[min(34%,5.75rem)] min-w-[4.75rem] -translate-x-1/2 rounded-full bg-black shadow-[inset_0_1px_2px_rgba(255,255,255,0.14),0_2px_6px_rgba(0,0,0,0.45)] ring-1 ring-black/90 sm:top-2.5 sm:h-6 sm:min-w-[5.25rem] sm:w-[min(36%,6rem)]"
+            className="pointer-events-none absolute left-1/2 top-2 z-[60] h-[22px] w-[min(34%,5.75rem)] min-w-[4.75rem] -translate-x-1/2 rounded-full bg-slate-800 shadow-[inset_0_1px_2px_rgba(255,255,255,0.14),0_2px_6px_rgba(0,0,0,0.35)] ring-1 ring-slate-950/50 sm:top-2.5 sm:h-6 sm:min-w-[5.25rem] sm:w-[min(36%,6rem)]"
             aria-hidden
           />
           <div className="relative z-10 flex h-full min-h-0 flex-col">

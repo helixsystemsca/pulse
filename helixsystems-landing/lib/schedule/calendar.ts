@@ -122,3 +122,17 @@ export function shiftHours(start: string, end: string): number {
   if (b <= a) b += 24 * 60;
   return (b - a) / 60;
 }
+
+/** Every calendar date from start through end (inclusive), as YYYY-MM-DD. */
+export function expandInclusiveDateRange(startIso: string, endIso: string): string[] {
+  const a = parseLocalDate(startIso);
+  const b = parseLocalDate(endIso);
+  if (b < a) return [];
+  const out: string[] = [];
+  const d = new Date(a);
+  while (d <= b) {
+    out.push(formatLocalDate(d));
+    d.setDate(d.getDate() + 1);
+  }
+  return out;
+}
