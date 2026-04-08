@@ -256,7 +256,6 @@ async def patch_work_request(
     wr = await db.get(PulseWorkRequest, work_request_id)
     if not wr or wr.company_id != cid:
         raise HTTPException(status_code=404, detail="Not found")
-    old_status = wr.status
     data = body.model_dump(exclude_unset=True)
     if "tool_id" in data and data["tool_id"] and not await _tool_in_company(db, cid, data["tool_id"]):
         raise HTTPException(status_code=400, detail="Unknown asset")
@@ -287,11 +286,6 @@ async def patch_work_request(
             wr.completed_at = datetime.now(timezone.utc)
         else:
             wr.completed_at = None
-    if (
-        "status" in data
-        and data["status"] == PulseWorkRequestStatus.completed
-        and old_status != PulseWorkRequestStatus.completed
-    ):
     await db.commit()
     await db.refresh(wr)
     return WorkRequestOut.model_validate(wr)
