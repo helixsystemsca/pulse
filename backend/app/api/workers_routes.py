@@ -838,6 +838,20 @@ async def patch_worker(
 
     data = body.model_dump(exclude_unset=True)
 
+    if "email" in data and data["email"] is not None:
+        if not user_has_any_role(actor, UserRole.company_admin):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Only company administrators can change sign-in email",
+            )
+        new_email = str(data["email"]).strip().lower()
+        if new_email != (target.email or "").strip().lower():
+            existing_q = await db.execute(select(User).where(func.lower(User.email) == new_email))
+            other = existing_q.scalar_one_or_none()
+            if other and str(other.id) != str(target.id):
+                raise HTTPException(status_code=400, detail="Email already in use")
+            target.email = new_email
+
     if body.roles is not None:
         if not user_has_any_role(actor, UserRole.company_admin):
             raise HTTPException(status_code=403, detail="Only company_admin can change roles")

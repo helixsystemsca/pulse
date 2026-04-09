@@ -236,6 +236,19 @@ export function WorkersApp() {
   const [permissionsRole, setPermissionsRole] = useState<PermissionRole>("manager");
   const [extraModulesDraft, setExtraModulesDraft] = useState<string[]>([]);
 
+  const [basicDraft, setBasicDraft] = useState({
+    full_name: "",
+    email: "",
+    phone: "",
+    start_date: "",
+  });
+  const [positionDraft, setPositionDraft] = useState({
+    job_title: "",
+    department: "",
+    shift: "",
+    supervisor_id: "",
+  });
+
   const [inviteNotice, setInviteNotice] = useState<InviteLinkBanner | null>(null);
   const [inviteLinkCopied, setInviteLinkCopied] = useState(false);
 
@@ -345,6 +358,32 @@ export function WorkersApp() {
     setExtraModulesDraft([...(profile.feature_allow_extra ?? [])]);
   }, [profile?.id, profile]);
 
+  useEffect(() => {
+    if (!profile) return;
+    setBasicDraft({
+      full_name: profile.full_name ?? "",
+      email: profile.email ?? "",
+      phone: profile.phone ?? "",
+      start_date: profile.start_date ? profile.start_date.slice(0, 10) : "",
+    });
+    setPositionDraft({
+      job_title: profile.job_title ?? "",
+      department: profile.department ?? "",
+      shift: profile.shift ?? "",
+      supervisor_id: profile.supervisor_id ?? "",
+    });
+  }, [profile]);
+
+  /** HR fields (not roles/modules): company admin, or manager/supervisor for non-admin profiles, or lead for workers. */
+  const canEditWorkerBasics = useMemo(() => {
+    if (!profile || !session) return false;
+    if (isCompanyAdmin) return true;
+    if (principalHasAnyRole(profile, "company_admin")) return false;
+    if (managerOrAbove(session)) return true;
+    if (sessionHasAnyRole(session, "lead") && principalHasAnyRole(profile, "worker")) return true;
+    return false;
+  }, [profile, session, isCompanyAdmin]);
+
   const grouped = useMemo(() => {
     const order = ["company_admin", "manager", "supervisor", "lead", "worker"] as const;
     const m = new Map<string, WorkerRow[]>();
@@ -367,6 +406,11 @@ export function WorkersApp() {
       ),
     [list],
   );
+
+  const profileSupervisorOptions = useMemo(() => {
+    if (!profile) return supervisors;
+    return supervisors.filter((u) => u.id !== profile.id);
+  }, [supervisors, profile]);
 
   function toggleRoleModule(role: string, mod: string) {
     setRoleFeatureAccessDraft((prev) => {
@@ -420,6 +464,54 @@ export function WorkersApp() {
       });
       await loadProfile();
       await loadList();
+    } finally {
+      setProfileBusy(false);
+    }
+  }
+
+  async function saveProfileHr() {
+    if (!profileId || !profile || !canEditWorkerBasics) return;
+    const payload: Record<string, unknown> = {};
+    const trim = (s: string) => s.trim();
+    if (trim(basicDraft.full_name) !== (profile.full_name ?? "").trim()) {
+      payload.full_name = trim(basicDraft.full_name) || null;
+    }
+    if (isCompanyAdmin && trim(basicDraft.email).toLowerCase() !== profile.email.trim().toLowerCase()) {
+      if (!trim(basicDraft.email)) {
+        window.alert("Email cannot be empty.");
+        return;
+      }
+      payload.email = trim(basicDraft.email).toLowerCase();
+    }
+    if (trim(basicDraft.phone) !== (profile.phone ?? "").trim()) {
+      payload.phone = trim(basicDraft.phone) || null;
+    }
+    const curStart = profile.start_date ? profile.start_date.slice(0, 10) : "";
+    if (basicDraft.start_date.trim() !== curStart) {
+      payload.start_date = basicDraft.start_date.trim() || null;
+    }
+    if (trim(positionDraft.job_title) !== (profile.job_title ?? "").trim()) {
+      payload.job_title = trim(positionDraft.job_title) || null;
+    }
+    if (trim(positionDraft.department) !== (profile.department ?? "").trim()) {
+      payload.department = trim(positionDraft.department) || null;
+    }
+    if (trim(positionDraft.shift) !== (profile.shift ?? "").trim()) {
+      payload.shift = trim(positionDraft.shift) || null;
+    }
+    const sid = trim(positionDraft.supervisor_id);
+    const curSid = profile.supervisor_id ?? "";
+    if (sid !== curSid) {
+      payload.supervisor_id = sid || null;
+    }
+    if (Object.keys(payload).length === 0) return;
+    setProfileBusy(true);
+    try {
+      await patchWorker(apiCompany, profileId, payload);
+      await loadProfile();
+      await loadList();
+      await refreshPulseUserFromServer();
+      refresh();
     } finally {
       setProfileBusy(false);
     }
@@ -1088,6 +1180,7 @@ export function WorkersApp() {
         title={profile?.full_name ?? profile?.email ?? "Worker profile"}
         subtitle={profile ? profile.email : undefined}
         onClose={() => setProfileId(null)}
+        belowAppHeader
         wide
         elevated
         labelledBy="worker-profile-title"
@@ -1117,6 +1210,16 @@ export function WorkersApp() {
                 }}
               >
                 Resend invite
+              </button>
+            ) : null}
+            {canEditWorkerBasics ? (
+              <button
+                type="button"
+                className="app-btn-secondary px-4 py-2.5 text-sm font-semibold"
+                disabled={profileBusy}
+                onClick={() => void saveProfileHr()}
+              >
+                {profileBusy ? "Saving…" : "Save profile details"}
               </button>
             ) : null}
             <button type="button" className={PRIMARY_BTN} disabled={profileBusy} onClick={() => void saveProfileNotes()}>
@@ -1160,18 +1263,85 @@ export function WorkersApp() {
                   <span className="text-pulse-muted">Status: </span>
                   <span className="font-medium text-ds-foreground">{profile.is_active ? "Active" : "Inactive"}</span>
                 </p>
-                <p>
-                  <span className="text-pulse-muted">Email: </span>
-                  {profile.email}
-                </p>
-                <p>
-                  <span className="text-pulse-muted">Phone: </span>
-                  {profile.phone ?? "—"}
-                </p>
-                <p>
-                  <span className="text-pulse-muted">Start date: </span>
-                  {profile.start_date ?? "—"}
-                </p>
+                {canEditWorkerBasics ? (
+                  <>
+                    <div className="sm:col-span-2">
+                      <label className={LABEL} htmlFor="worker-profile-full-name">
+                        Display name
+                      </label>
+                      <input
+                        id="worker-profile-full-name"
+                        className={FIELD}
+                        value={basicDraft.full_name}
+                        onChange={(e) => setBasicDraft((d) => ({ ...d, full_name: e.target.value }))}
+                        autoComplete="name"
+                      />
+                    </div>
+                    {isCompanyAdmin ? (
+                      <div className="sm:col-span-2">
+                        <label className={LABEL} htmlFor="worker-profile-email">
+                          Email
+                        </label>
+                        <input
+                          id="worker-profile-email"
+                          type="email"
+                          className={FIELD}
+                          value={basicDraft.email}
+                          onChange={(e) => setBasicDraft((d) => ({ ...d, email: e.target.value }))}
+                          autoComplete="email"
+                        />
+                        <p className="mt-1 text-xs text-pulse-muted">
+                          This is the address they use to sign in; changing it updates their login identity.
+                        </p>
+                      </div>
+                    ) : (
+                      <p className="sm:col-span-2">
+                        <span className="text-pulse-muted">Email: </span>
+                        {profile.email}
+                      </p>
+                    )}
+                    <div>
+                      <label className={LABEL} htmlFor="worker-profile-phone">
+                        Phone
+                      </label>
+                      <input
+                        id="worker-profile-phone"
+                        type="tel"
+                        className={FIELD}
+                        value={basicDraft.phone}
+                        onChange={(e) => setBasicDraft((d) => ({ ...d, phone: e.target.value }))}
+                        autoComplete="tel"
+                      />
+                    </div>
+                    <div>
+                      <label className={LABEL} htmlFor="worker-profile-start">
+                        Start date
+                      </label>
+                      <input
+                        id="worker-profile-start"
+                        type="date"
+                        className={FIELD}
+                        value={basicDraft.start_date}
+                        onChange={(e) => setBasicDraft((d) => ({ ...d, start_date: e.target.value }))}
+                      />
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <p>
+                      <span className="text-pulse-muted">Email: </span>
+                      {profile.email}
+                    </p>
+                    <p>
+                      <span className="text-pulse-muted">Phone: </span>
+                      {profile.phone ?? "—"}
+                    </p>
+                    <p>
+                      <span className="text-pulse-muted">Start date: </span>
+                      {profile.start_date ?? "—"}
+                    </p>
+                  </>
+                )}
               </div>
             </section>
 
@@ -1243,24 +1413,96 @@ export function WorkersApp() {
 
             <section>
               <h3 className={SECTION_KICKER}>Position &amp; shift</h3>
-              <div className="mt-2 grid gap-2 text-sm sm:grid-cols-2">
-                <p>
-                  <span className="text-pulse-muted">Job title: </span>
-                  {profile.job_title ?? "—"}
-                </p>
-                <p>
-                  <span className="text-pulse-muted">Department: </span>
-                  {profile.department ?? "—"}
-                </p>
-                <p>
-                  <span className="text-pulse-muted">Shift: </span>
-                  {profile.shift ?? "—"}
-                </p>
-                <p>
-                  <span className="text-pulse-muted">Supervisor: </span>
-                  {profile.supervisor_name ?? "—"}
-                </p>
-              </div>
+              {canEditWorkerBasics ? (
+                <div className="mt-2 grid gap-4 text-sm sm:grid-cols-2">
+                  <div className="sm:col-span-2">
+                    <label className={LABEL} htmlFor="worker-profile-job-title">
+                      Job title
+                    </label>
+                    <input
+                      id="worker-profile-job-title"
+                      className={FIELD}
+                      value={positionDraft.job_title}
+                      onChange={(e) => setPositionDraft((d) => ({ ...d, job_title: e.target.value }))}
+                    />
+                  </div>
+                  <div className="sm:col-span-2">
+                    <label className={LABEL} htmlFor="worker-profile-department">
+                      Department
+                    </label>
+                    <input
+                      id="worker-profile-department"
+                      className={FIELD}
+                      value={positionDraft.department}
+                      onChange={(e) => setPositionDraft((d) => ({ ...d, department: e.target.value }))}
+                    />
+                  </div>
+                  <div>
+                    <label className={LABEL} htmlFor="worker-profile-shift">
+                      Shift
+                    </label>
+                    <select
+                      id="worker-profile-shift"
+                      className={FIELD}
+                      value={positionDraft.shift}
+                      onChange={(e) => setPositionDraft((d) => ({ ...d, shift: e.target.value }))}
+                    >
+                      <option value="">—</option>
+                      {(fullSettings.shifts ?? []).map((s) => (
+                        <option key={s.key} value={s.key}>
+                          {s.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className={LABEL} htmlFor="worker-profile-supervisor">
+                      Supervisor
+                    </label>
+                    <select
+                      id="worker-profile-supervisor"
+                      className={FIELD}
+                      value={positionDraft.supervisor_id}
+                      onChange={(e) => setPositionDraft((d) => ({ ...d, supervisor_id: e.target.value }))}
+                    >
+                      <option value="">—</option>
+                      {profile.supervisor_id &&
+                      !profileSupervisorOptions.some((s) => s.id === profile.supervisor_id) ? (
+                        <option value={profile.supervisor_id}>
+                          {profile.supervisor_name?.trim() || "Current supervisor (unavailable)"}
+                        </option>
+                      ) : null}
+                      {profileSupervisorOptions.map((s) => (
+                        <option key={s.id} value={s.id}>
+                          {(s.full_name ?? s.email) +
+                            ` (${sortRolesForDisplay(s.roles?.length ? s.roles : [s.role])
+                              .map((x) => humanizeRole(x))
+                              .join(", ")})`}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              ) : (
+                <div className="mt-2 grid gap-2 text-sm sm:grid-cols-2">
+                  <p>
+                    <span className="text-pulse-muted">Job title: </span>
+                    {profile.job_title ?? "—"}
+                  </p>
+                  <p>
+                    <span className="text-pulse-muted">Department: </span>
+                    {profile.department ?? "—"}
+                  </p>
+                  <p>
+                    <span className="text-pulse-muted">Shift: </span>
+                    {profile.shift ?? "—"}
+                  </p>
+                  <p>
+                    <span className="text-pulse-muted">Supervisor: </span>
+                    {profile.supervisor_name ?? "—"}
+                  </p>
+                </div>
+              )}
             </section>
 
             <section>
@@ -1384,6 +1626,7 @@ export function WorkersApp() {
         title="Workers configuration"
         subtitle="Roles, shifts, skill categories, and certification rules"
         onClose={() => setSettingsOpen(false)}
+        belowAppHeader
         wide
         elevated
         labelledBy="workers-settings-title"

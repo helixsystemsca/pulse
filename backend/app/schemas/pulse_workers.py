@@ -149,6 +149,7 @@ class WorkerCreateIn(BaseModel):
 
 class WorkerPatchIn(BaseModel):
     full_name: Optional[str] = Field(None, max_length=255)
+    email: Optional[str] = Field(None, max_length=320)
     is_active: Optional[bool] = None
     role: Optional[str] = None
     roles: Optional[list[str]] = None
@@ -165,6 +166,16 @@ class WorkerPatchIn(BaseModel):
     skills: Optional[list[WorkerSkillIn]] = None
     training: Optional[list[WorkerTrainingIn]] = None
     feature_allow_extra: Optional[list[str]] = None
+
+    @field_validator("email", mode="before")
+    @classmethod
+    def _normalize_email_patch(cls, v: object) -> Optional[str]:
+        if v is None:
+            return None
+        if isinstance(v, str):
+            s = v.strip().lower()
+            return s or None
+        return str(v).strip().lower() or None
 
     @field_validator("supervisor_id", mode="before")
     @classmethod
