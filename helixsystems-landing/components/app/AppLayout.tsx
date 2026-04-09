@@ -41,8 +41,8 @@ export function AppLayout({
         <InactivitySessionGuard />
         <ServerTimeSync />
         <ProximityPromptHost />
-        <AppSideNav />
-        <div className="flex min-h-screen min-w-0 flex-col">
+        <div data-pulse-app-shell className="flex min-h-screen min-w-0 flex-col">
+          <AppSideNav />
           <AppNavbar />
           <ImpersonationBanner />
           <AppMain className={mainClassName}>

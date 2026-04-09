@@ -5,6 +5,7 @@ from typing import Annotated, Any
 from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import FileResponse
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -20,13 +21,18 @@ from app.core.email_smtp import send_employee_invite
 from app.core.permissions import keys as perm_keys
 from app.core.permissions.service import PermissionService
 from app.core.system_tokens import generate_raw_token, hash_system_token
+from app.core.user_avatar_upload import (
+    INTERNAL_AVATAR_PATH,
+    user_avatar_media_type,
+    user_avatar_pending_disk_path,
+)
 from app.core.user_roles import (
     default_operational_role_for_invite_role,
     user_has_any_role,
     user_roles_subset_of,
     validate_tenant_roles_non_empty,
 )
-from app.models.domain import Company, RolePermissionTarget, User, UserAccountStatus, UserRole
+from app.models.domain import AvatarStatus, Company, RolePermissionTarget, User, UserAccountStatus, UserRole
 from app.schemas.rbac import AssignRoleBody, CompanyUserCreate, RolePermissionsPut, WorkerDenyPatch
 
 router = APIRouter(prefix="/users", tags=["users"])
@@ -254,3 +260,79 @@ async def patch_worker_deny(
     )
     await db.commit()
     return {"id": user_id, "deny": body.deny}
+
+
+@router.get("/avatars/pending")
+async def list_pending_avatars(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    admin: Annotated[User, Depends(require_company_admin_scoped)],
+) -> list[dict[str, str]]:
+    q = await db.execute(
+        select(User).where(
+            User.company_id == str(admin.company_id),
+            User.avatar_status == AvatarStatus.pending,
+            User.is_active.is_(True),
+        )
+    )
+    rows = q.scalars().all()
+    return [
+        {
+            "id": u.id,
+            "email": u.email,
+            "full_name": u.full_name or "",
+        }
+        for u in rows
+    ]
+
+
+@router.get("/{user_id}/avatar-pending")
+async def get_pending_avatar_file(
+    user_id: str,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    admin: Annotated[User, Depends(require_company_admin_scoped)],
+) -> FileResponse:
+    q = await db.get(User, user_id)
+    if not q or str(q.company_id) != str(admin.company_id):
+        raise HTTPException(status_code=404, detail="User not found")
+    if q.avatar_status != AvatarStatus.pending:
+        raise HTTPException(status_code=404, detail="No pending avatar")
+    path = user_avatar_pending_disk_path(user_id)
+    if not path.is_file():
+        raise HTTPException(status_code=404, detail="No pending avatar")
+    return FileResponse(path, media_type=user_avatar_media_type(path))
+
+
+@router.post("/{user_id}/approve-avatar")
+async def approve_avatar(
+    user_id: str,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    admin: Annotated[User, Depends(require_company_admin_scoped)],
+) -> dict[str, str]:
+    u = await db.get(User, user_id)
+    if not u or str(u.company_id) != str(admin.company_id):
+        raise HTTPException(status_code=404, detail="User not found")
+    if u.avatar_status != AvatarStatus.pending:
+        raise HTTPException(status_code=400, detail="Avatar is not pending")
+    # Approve: make the avatar visible to coworkers by setting the normal avatar_url.
+    u.avatar_url = INTERNAL_AVATAR_PATH
+    u.avatar_pending_url = None
+    u.avatar_status = AvatarStatus.approved
+    await db.commit()
+    return {"id": user_id, "avatar_status": "approved"}
+
+
+@router.post("/{user_id}/reject-avatar")
+async def reject_avatar(
+    user_id: str,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    admin: Annotated[User, Depends(require_company_admin_scoped)],
+) -> dict[str, str]:
+    u = await db.get(User, user_id)
+    if not u or str(u.company_id) != str(admin.company_id):
+        raise HTTPException(status_code=404, detail="User not found")
+    if u.avatar_status != AvatarStatus.pending:
+        raise HTTPException(status_code=400, detail="Avatar is not pending")
+    u.avatar_pending_url = None
+    u.avatar_status = AvatarStatus.rejected
+    await db.commit()
+    return {"id": user_id, "avatar_status": "rejected"}

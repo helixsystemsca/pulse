@@ -8,6 +8,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { Activity, AlertCircle, AlertTriangle, Check } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { PULSE_WELCOME_SESSION_KEY } from "@/lib/pulse-session";
 
 /** @deprecated Use `PULSE_WELCOME_SESSION_KEY` from `@/lib/pulse-session`. */
@@ -168,6 +169,13 @@ export function WelcomeLoaderModal({
   }, [storageKey]);
 
   useEffect(() => {
+    if (!hydrated || skipEntirely) return;
+    const root = document.documentElement;
+    if (open) root.classList.add("pulse-welcome-blur");
+    return () => root.classList.remove("pulse-welcome-blur");
+  }, [hydrated, open, skipEntirely]);
+
+  useEffect(() => {
     if (!hydrated || skipEntirely || !isReady) return;
 
     if (!welcomeLinePickedRef.current) {
@@ -206,7 +214,7 @@ export function WelcomeLoaderModal({
           ? "text-ds-muted"
           : "text-ds-success";
 
-  return (
+  const overlay = (
     <AnimatePresence>
       {open ? (
         <motion.div
@@ -222,10 +230,7 @@ export function WelcomeLoaderModal({
           transition={{ duration: EXIT_MS / 1000, ease: [0.4, 0, 0.2, 1] }}
         >
           {/* Dimmed canvas — gradient, not solid black */}
-          <div
-            className="pointer-events-none absolute inset-0 bg-black/35 backdrop-blur-[3px]"
-            aria-hidden
-          />
+          <div className="pointer-events-none absolute inset-0 bg-black/35 backdrop-blur-[3px]" aria-hidden />
 
           <motion.div
             layout
@@ -245,10 +250,7 @@ export function WelcomeLoaderModal({
                 className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl border border-ds-border bg-ds-secondary"
                 aria-hidden
               >
-                <Activity
-                  className="h-6 w-6 text-ds-foreground"
-                  strokeWidth={1.75}
-                />
+                <Activity className="h-6 w-6 text-ds-foreground" strokeWidth={1.75} />
               </div>
 
               <div className="min-w-0 flex-1 text-left">
@@ -353,4 +355,6 @@ export function WelcomeLoaderModal({
       ) : null}
     </AnimatePresence>
   );
+
+  return createPortal(overlay, document.body);
 }

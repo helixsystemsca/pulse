@@ -12,6 +12,24 @@ export function configureApi(next: Partial<ApiConfig>) {
   cfg = { ...cfg, ...next };
 }
 
+export function getApiBaseUrl(): string {
+  return cfg.baseUrl;
+}
+
+export function resolveApiUrl(pathOrUrl: string | null | undefined): string | null {
+  const s = (pathOrUrl ?? "").trim();
+  if (!s) return null;
+  // Already absolute (http/https/file/etc).
+  if (/^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//.test(s)) return s;
+  // Absolute path relative to API host.
+  if (s.startsWith("/")) {
+    if (!cfg.baseUrl) return null;
+    return `${cfg.baseUrl.replace(/\/$/, "")}${s}`;
+  }
+  // Unknown/relative-ish; return as-is and let caller decide.
+  return s;
+}
+
 export async function apiFetch<T>(
   path: string,
   opts: { method?: string; body?: unknown; token?: string } = {},

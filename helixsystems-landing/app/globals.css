@@ -8,6 +8,17 @@ html {
 }
 
 /**
+ * Welcome loader: blur the entire app shell (nav + header + page) while the
+ * fixed overlay is showing. The overlay itself is portaled to `document.body`
+ * so it stays crisp.
+ */
+html.pulse-welcome-blur [data-pulse-app-shell] {
+  filter: blur(10px) saturate(1.06) drop-shadow(0 0 24px rgba(54, 241, 205, 0.18));
+  pointer-events: none;
+  user-select: none;
+}
+
+/**
  * Pulse design system — Dusk Blue (dark) / neutral shell (light).
  * Accents: Aquamarine #36F1CD, Amber Gold #F2BB05, Lobster Pink #EB5160 — use solid fills with `--ds-on-accent` text, not soft pastel mixes.
  * Legacy `--pulse-shell-*` aliases remain for gradual migration.

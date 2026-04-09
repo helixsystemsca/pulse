@@ -186,6 +186,7 @@ async def me(
                 name=co.name,
                 logo_url=co.logo_url,
                 header_image_url=co.header_image_url,
+                background_image_url=getattr(co, "background_image_url", None),
                 timezone=co.timezone,
                 industry=co.industry,
             )
@@ -217,6 +218,7 @@ async def me(
         roles=list(user.roles),
         full_name=user.full_name,
         avatar_url=user.avatar_url,
+        avatar_status=getattr(user, "avatar_status", None).value if getattr(user, "avatar_status", None) else None,
         job_title=user.job_title,
         operational_role=(str(user.operational_role).strip() or None) if user.operational_role else None,
         enabled_features=eff_feats,

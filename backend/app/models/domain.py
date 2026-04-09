@@ -70,6 +70,12 @@ class RolePermissionTarget(str, enum.Enum):
     worker = "worker"
 
 
+class AvatarStatus(str, enum.Enum):
+    approved = "approved"
+    pending = "pending"
+    rejected = "rejected"
+
+
 class FacilityEquipmentStatus(str, enum.Enum):
     """Facility equipment registry (distinct from tracked tools / BLE tags)."""
 
@@ -115,6 +121,8 @@ class Company(Base):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     logo_url: Mapped[Optional[str]] = mapped_column(String(2048), nullable=True)
     header_image_url: Mapped[Optional[str]] = mapped_column(String(2048), nullable=True)
+    background_image_url: Mapped[Optional[str]] = mapped_column(String(2048), nullable=True)
+    theme: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
     timezone: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
     industry: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     owner_admin_id: Mapped[Optional[str]] = mapped_column(
@@ -173,6 +181,12 @@ class User(Base):
     hashed_password: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     full_name: Mapped[Optional[str]] = mapped_column(String(255))
     avatar_url: Mapped[Optional[str]] = mapped_column(String(2048), nullable=True)
+    avatar_pending_url: Mapped[Optional[str]] = mapped_column(String(2048), nullable=True)
+    avatar_status: Mapped[AvatarStatus] = mapped_column(
+        Enum(AvatarStatus, values_callable=lambda x: [e.value for e in x], native_enum=False, length=16),
+        nullable=False,
+        server_default=text("'approved'"),
+    )
     job_title: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     operational_role: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
     roles: Mapped[list[str]] = mapped_column(

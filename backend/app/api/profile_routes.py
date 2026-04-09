@@ -12,13 +12,16 @@ from app.api.deps import get_current_company_user, get_db
 from app.core.company_logo_upload import normalize_logo_content_type
 from app.core.user_avatar_upload import (
     INTERNAL_AVATAR_PATH,
+    INTERNAL_AVATAR_PENDING_PATH,
     user_avatar_disk_path,
+    user_avatar_pending_disk_path,
     user_avatar_media_type,
     validate_logo_bytes,
     write_user_avatar_file,
+    write_user_avatar_pending_file,
 )
 from app.core.user_roles import user_has_any_role
-from app.models.domain import Company, User, UserRole
+from app.models.domain import AvatarStatus, Company, User, UserRole
 from app.schemas.profile import ProfileAvatarUploadOut, ProfileSettingsPatch
 
 router = APIRouter(prefix="/profile", tags=["profile"])
@@ -32,6 +35,21 @@ async def get_my_avatar_file(
     path = user_avatar_disk_path(uid)
     if not path.is_file():
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No uploaded avatar")
+    return FileResponse(path, media_type=user_avatar_media_type(path))
+
+
+@router.get("/avatar-pending")
+async def get_my_avatar_pending_file(
+    user: Annotated[User, Depends(get_current_company_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> FileResponse:
+    uid = str(user.id)
+    q = await db.get(User, uid)
+    if not q or q.avatar_status != AvatarStatus.pending:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No pending avatar")
+    path = user_avatar_pending_disk_path(uid)
+    if not path.is_file():
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No pending avatar")
     return FileResponse(path, media_type=user_avatar_media_type(path))
 
 
@@ -49,13 +67,17 @@ async def upload_my_avatar(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
 
     uid = str(user.id)
-    write_user_avatar_file(uid, ext, raw)
     q = await db.get(User, uid)
     if not q:
         raise HTTPException(status_code=404, detail="User not found")
+
+    # Make the new avatar immediately visible to teammates.
+    write_user_avatar_file(uid, ext, raw)
     q.avatar_url = INTERNAL_AVATAR_PATH
+    q.avatar_pending_url = None
+    q.avatar_status = AvatarStatus.approved
     await db.commit()
-    return ProfileAvatarUploadOut(avatar_url=INTERNAL_AVATAR_PATH)
+    return ProfileAvatarUploadOut(avatar_url=INTERNAL_AVATAR_PATH, message="Avatar updated")
 
 
 @router.patch("/settings")
