@@ -57,9 +57,16 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
   const signIn = useCallback(async (email: string, password: string) => {
     ensureApiConfiguredFromEnv();
+    // Drop the previous principal immediately so UI (name, avatar) cannot flash the last user during swap.
+    setSession(null);
+    try {
+      await SecureStore.deleteItemAsync(TOKEN_KEY);
+    } catch {
+      /* ignore */
+    }
     const token = await loginWithPassword(email, password);
-    const user = await loadSessionUser(token);
     await SecureStore.setItemAsync(TOKEN_KEY, token);
+    const user = await loadSessionUser(token);
     setSession({ token, user });
   }, []);
 

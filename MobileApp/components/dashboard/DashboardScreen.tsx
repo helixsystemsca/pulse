@@ -7,29 +7,13 @@ import * as ImagePicker from "expo-image-picker";
 import { useTheme } from "@/theme/ThemeProvider";
 import { useSession } from "@/store/session";
 import { getOrganization, type Organization } from "@/lib/api/pulse";
-import { resolveApiUrl } from "@/lib/api/client";
+import { fetchAuthenticatedImageAsDataUri } from "@/lib/fetchAuthenticatedImageDataUri";
 import { uploadProfileAvatar } from "@/lib/api/profileAvatar";
 
 /** Bundled hero (same asset as web `public/images/panorama.jpg`) until org background from the API is reliable. */
 const HOME_HERO_PANORAMA = require("../../assets/images/panorama.jpg") as ImageSourcePropType;
 
 type PresenceStatus = "green" | "amber" | "red";
-
-/** Signed-in fetches for `/api/v1/company/*` paths need the bearer token (RN `Image` does not send cookies). */
-function pulseAuthenticatedImageSource(
-  raw: string | null | undefined,
-  token: string,
-): ImageSourcePropType | null {
-  const s = (raw ?? "").trim();
-  if (!s) return null;
-  const uri = resolveApiUrl(s);
-  if (!uri) return null;
-  if (/^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//.test(s)) {
-    return { uri };
-  }
-  if (!token) return null;
-  return { uri, headers: { Authorization: `Bearer ${token}` } };
-}
 
 function firstName(full: string | null | undefined): string {
   const s = (full ?? "").trim();
@@ -51,6 +35,7 @@ function Avatar({
   size = 44,
   imageSource,
   imageReloadKey = 0,
+  profileOwnerKey,
 }: {
   initials: string;
   onPress?: () => void;
@@ -59,14 +44,17 @@ function Avatar({
   imageSource?: ImageSourcePropType | null;
   /** Bumps after a new upload so the same avatar URL still reloads from the server. */
   imageReloadKey?: number;
+  /** When the signed-in user changes, remount the bitmap so RN cannot reuse the previous user's cached image. */
+  profileOwnerKey?: string;
 }) {
   const [imageFailed, setImageFailed] = useState(false);
 
   useEffect(() => {
     setImageFailed(false);
-  }, [imageSource]);
+  }, [imageSource, profileOwnerKey]);
 
   const showPhoto = Boolean(imageSource) && !imageFailed;
+  const imageMountKey = `${profileOwnerKey ?? "anon"}-${imageReloadKey}`;
 
   return (
     <Pressable
@@ -85,7 +73,7 @@ function Avatar({
     >
       {showPhoto ? (
         <Image
-          key={imageReloadKey}
+          key={imageMountKey}
           source={imageSource!}
           style={{ width: size, height: size }}
           resizeMode="cover"
@@ -182,7 +170,10 @@ export function DashboardScreen() {
   const [org, setOrg] = useState<Organization | null>(null);
   const [orgErr, setOrgErr] = useState<string | null>(null);
   const [brandingKey, setBrandingKey] = useState(0);
+  const [companyLogoUri, setCompanyLogoUri] = useState<string | null>(null);
+  const [companyLogoFailed, setCompanyLogoFailed] = useState(false);
   const [avatarReloadKey, setAvatarReloadKey] = useState(0);
+  const [avatarPhotoUri, setAvatarPhotoUri] = useState<string | null>(null);
   const [avatarUploadBusy, setAvatarUploadBusy] = useState(false);
 
   const pickAndUploadAvatar = useCallback(async () => {
@@ -232,6 +223,61 @@ export function DashboardScreen() {
     };
   }, [token, isFocused]);
 
+  const effectiveLogoRaw = useMemo(
+    () => (org?.logo_url ?? session?.user.companyLogoUrl ?? "").trim(),
+    [org?.logo_url, session?.user.companyLogoUrl],
+  );
+  const effectiveCompanyName = useMemo(
+    () => (org?.name ?? session?.user.companyName ?? "").trim(),
+    [org?.name, session?.user.companyName],
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+    setCompanyLogoFailed(false);
+    if (!effectiveLogoRaw || !token) {
+      setCompanyLogoUri(null);
+      return;
+    }
+    void (async () => {
+      try {
+        const uri = await fetchAuthenticatedImageAsDataUri(effectiveLogoRaw, token);
+        if (cancelled) return;
+        setCompanyLogoUri(uri);
+        if (!uri) setCompanyLogoFailed(true);
+      } catch {
+        if (!cancelled) {
+          setCompanyLogoUri(null);
+          setCompanyLogoFailed(true);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [effectiveLogoRaw, token, brandingKey]);
+
+  const avatarRaw = useMemo(() => (session?.user.avatarUrl ?? "").trim(), [session?.user.avatarUrl]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!avatarRaw || !token) {
+      setAvatarPhotoUri(null);
+      return;
+    }
+    void (async () => {
+      try {
+        const uri = await fetchAuthenticatedImageAsDataUri(avatarRaw, token);
+        if (!cancelled) setAvatarPhotoUri(uri);
+      } catch {
+        if (!cancelled) setAvatarPhotoUri(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [avatarRaw, token, session?.user.id, avatarReloadKey]);
+
   // Placeholder presence + zone until backend presence endpoint is wired.
   const presence: PresenceStatus = "green";
   const lastZone = "Garage";
@@ -246,25 +292,10 @@ export function DashboardScreen() {
     return `${a}${b}`.toUpperCase();
   }, [session?.user.fullName]);
 
-  const companyLogoSource = useMemo(
-    () => pulseAuthenticatedImageSource(org?.logo_url, token),
-    [org?.logo_url, token],
-  );
-
   const avatarDisplaySource = useMemo((): ImageSourcePropType | null => {
-    const raw = (session?.user.avatarUrl ?? "").trim();
-    if (!raw) return null;
-    const uri = resolveApiUrl(raw);
-    if (!uri) return null;
-    const isAbsolute = /^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//.test(raw);
-    if (isAbsolute) {
-      return { uri };
-    }
-    if (token) {
-      return { uri, headers: { Authorization: `Bearer ${token}` } };
-    }
-    return { uri };
-  }, [session?.user.avatarUrl, token]);
+    if (!avatarPhotoUri) return null;
+    return { uri: avatarPhotoUri };
+  }, [avatarPhotoUri]);
 
   // Temporary, mock toolbox content until tools API is aligned to backend.
   const toolbox = [
@@ -309,19 +340,36 @@ export function DashboardScreen() {
                 colors={colors}
                 imageSource={avatarDisplaySource}
                 imageReloadKey={avatarReloadKey}
+                profileOwnerKey={session?.user.id}
                 onPress={token ? pickAndUploadAvatar : undefined}
               />
             </View>
 
-            {companyLogoSource ? (
+            {companyLogoUri && !companyLogoFailed ? (
               <View style={{ alignItems: "center", marginTop: spacing.md }}>
                 <Image
-                  key={brandingKey}
-                  source={companyLogoSource}
+                  source={{ uri: companyLogoUri }}
                   style={{ width: 220, height: 64 }}
                   resizeMode="contain"
                   accessibilityLabel="Company logo"
+                  onError={() => setCompanyLogoFailed(true)}
                 />
+              </View>
+            ) : effectiveCompanyName ? (
+              <View style={{ alignItems: "center", marginTop: spacing.md }}>
+                <Text
+                  style={{
+                    color: colors.text,
+                    fontWeight: "800",
+                    fontSize: 20,
+                    letterSpacing: -0.3,
+                    textAlign: "center",
+                  }}
+                  numberOfLines={2}
+                  accessibilityLabel="Company name"
+                >
+                  {effectiveCompanyName}
+                </Text>
               </View>
             ) : null}
 

@@ -62,6 +62,7 @@ export async function apiFetch<T>(
   const url = `${cfg.baseUrl.replace(/\/$/, "")}${path.startsWith("/") ? path : `/${path}`}`;
   const res = await fetch(url, {
     method: opts.method ?? (opts.body ? "POST" : "GET"),
+    cache: "no-store",
     headers: {
       "Content-Type": "application/json",
       ...(opts.token ? { Authorization: `Bearer ${opts.token}` } : {}),
@@ -87,7 +88,7 @@ export async function apiPostFormData<T>(
   const url = `${cfg.baseUrl.replace(/\/$/, "")}${path.startsWith("/") ? path : `/${path}`}`;
   const headers: Record<string, string> = {};
   if (opts.token) headers.Authorization = `Bearer ${opts.token}`;
-  const res = await fetch(url, { method: "POST", headers, body: formData });
+  const res = await fetch(url, { method: "POST", cache: "no-store", headers, body: formData });
   if (!res.ok) {
     const msg = await res.text().catch(() => "");
     throw new Error(parsePulseApiErrorMessage(msg) || `Request failed (${res.status})`);
