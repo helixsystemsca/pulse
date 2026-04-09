@@ -53,7 +53,9 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("REQUIRE_HTTPS", "require_https"),
     )
     trusted_hosts: str = ""
-    # Local folder for Pulse beacon photos (MVP); swap for S3/R2 keys later.
+    #: Directory for company logos, user avatars, equipment images, etc. In production this must be a
+    #: persistent volume (or object storage); default `var/uploads` is wiped on many PaaS redeploys, which
+    #: yields 404 on /company/logo and avatar routes while the DB still points at internal paths.
     pulse_uploads_dir: str = "var/uploads"
     system_invite_expire_hours: int = 48
     system_password_reset_expire_hours: int = 24

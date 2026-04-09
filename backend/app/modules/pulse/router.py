@@ -12,7 +12,12 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import require_tenant_user
-from app.core.user_avatar_upload import co_worker_avatar_url, user_avatar_disk_path, user_avatar_media_type
+from app.core.user_avatar_upload import (
+    INTERNAL_AVATAR_PATH,
+    co_worker_avatar_url,
+    user_avatar_disk_path,
+    user_avatar_media_type,
+)
 from app.core.user_roles import is_field_worker_like, primary_jwt_role
 from app.services.onboarding_service import try_mark_onboarding_step
 from app.core.database import get_db
@@ -398,6 +403,10 @@ async def get_worker_avatar_file(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No uploaded avatar")
     path = user_avatar_disk_path(user_id)
     if not path.is_file():
+        if (u.avatar_url or "").strip() == INTERNAL_AVATAR_PATH:
+            u.avatar_url = None
+            u.avatar_pending_url = None
+            await db.commit()
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No uploaded avatar")
     return FileResponse(path, media_type=user_avatar_media_type(path))
 

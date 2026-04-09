@@ -38,8 +38,8 @@ const PRIMARY_BTN =
 const SECONDARY_BTN =
   "rounded-[10px] border border-slate-200/90 bg-white px-4 py-2 text-sm font-semibold text-pulse-navy shadow-sm transition-colors hover:bg-slate-50 dark:border-ds-border dark:bg-ds-secondary dark:text-slate-100 dark:hover:bg-ds-interactive-hover";
 const FIELD =
-  "mt-1.5 w-full rounded-[10px] border border-slate-200/90 bg-white px-3 py-2.5 text-sm text-pulse-navy shadow-sm focus:border-[#2B4C7E]/35 focus:outline-none focus:ring-1 focus:ring-[#2B4C7E]/25 dark:border-ds-border dark:bg-ds-secondary dark:text-gray-100";
-const LABEL = "text-[11px] font-semibold uppercase tracking-wider text-pulse-muted";
+  "mt-1.5 w-full rounded-[10px] border border-ds-border bg-ds-secondary px-3 py-2.5 text-sm text-ds-foreground shadow-sm focus:border-[color-mix(in_srgb,var(--ds-success)_45%,var(--ds-border))] focus:outline-none focus:ring-1 focus:ring-[color-mix(in_srgb,var(--ds-success)_28%,transparent)]";
+const LABEL = "text-[11px] font-semibold uppercase tracking-wider text-ds-muted";
 
 function displayName(w: PulseWorkerApi): string {
   return (w.full_name || w.email || "User").trim();
@@ -58,7 +58,7 @@ function ProjectWorkerMiniAvatar({ w }: { w: PulseWorkerApi }) {
   const src = useResolvedAvatarSrc(w.avatar_url ?? null);
   const ini = initials(w.full_name, w.email);
   return (
-    <span className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-white text-[10px] font-bold text-pulse-navy ring-1 ring-slate-200 dark:bg-ds-secondary dark:text-slate-100 dark:ring-ds-border">
+    <span className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-ds-elevated text-[10px] font-bold text-ds-foreground ring-1 ring-ds-border">
       {src ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img src={src} alt="" className="h-full w-full object-cover" />
@@ -418,11 +418,11 @@ export function ProjectDetailApp({ projectId }: { projectId: string }) {
               </div>
               <div className="lg:col-span-5 xl:col-span-4">
                 <Card padding="md" className="sticky top-4 space-y-4">
-                  <div className="flex items-center gap-2 text-pulse-navy dark:text-slate-100">
-                    <Users className="h-5 w-5 text-pulse-accent" aria-hidden />
+                  <div className="flex items-center gap-2 text-ds-foreground">
+                    <Users className="h-5 w-5 text-ds-success" aria-hidden />
                     <h2 className="text-sm font-bold tracking-tight">Workforce skill match</h2>
                   </div>
-                  <p className="text-xs text-pulse-muted">
+                  <p className="text-xs text-ds-muted">
                     Skills come from Workers &amp; Roles profiles. Pick a task to compare required skills to the roster.
                   </p>
                   <div>
@@ -467,27 +467,27 @@ export function ProjectDetailApp({ projectId }: { projectId: string }) {
                       return (
                         <li
                           key={w.id}
-                          className="flex items-center justify-between gap-3 rounded-lg border border-slate-100 bg-slate-50/60 px-3 py-2.5 transition-colors dark:border-ds-border dark:bg-ds-secondary/60"
+                          className="flex items-center justify-between gap-3 rounded-lg border border-ds-border bg-ds-secondary px-3 py-2.5 transition-colors hover:bg-ds-interactive-hover"
                         >
                           <div className="flex min-w-0 items-center gap-2">
                             <ProjectWorkerMiniAvatar w={w} />
                             <div className="min-w-0">
-                              <p className="truncate text-sm font-semibold text-pulse-navy dark:text-slate-100">
+                              <p className="truncate text-sm font-semibold text-ds-foreground">
                                 {displayName(w)}
                               </p>
                               {w.skills?.length ? (
-                                <p className="truncate text-[11px] text-pulse-muted">
+                                <p className="truncate text-[11px] text-ds-muted">
                                   {w.skills.map((s) => s.name).join(", ")}
                                 </p>
                               ) : (
-                                <p className="text-[11px] text-pulse-muted">No skills on profile</p>
+                                <p className="text-[11px] text-ds-muted">No skills on profile</p>
                               )}
                             </div>
                           </div>
                           {ok === true ? (
-                            <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-600 dark:text-emerald-400" aria-label="Has required skills" />
+                            <CheckCircle2 className="h-5 w-5 shrink-0 text-ds-success" aria-label="Has required skills" />
                           ) : ok === false ? (
-                            <span className="shrink-0 text-[11px] font-medium text-pulse-muted">—</span>
+                            <span className="shrink-0 text-[11px] font-medium text-ds-muted">—</span>
                           ) : null}
                         </li>
                       );

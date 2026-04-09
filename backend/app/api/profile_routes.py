@@ -30,10 +30,16 @@ router = APIRouter(prefix="/profile", tags=["profile"])
 @router.get("/avatar")
 async def get_my_avatar_file(
     user: Annotated[User, Depends(get_current_company_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> FileResponse:
     uid = str(user.id)
     path = user_avatar_disk_path(uid)
     if not path.is_file():
+        row = await db.get(User, uid)
+        if row and (row.avatar_url or "").strip() == INTERNAL_AVATAR_PATH:
+            row.avatar_url = None
+            row.avatar_pending_url = None
+            await db.commit()
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No uploaded avatar")
     return FileResponse(
         path,

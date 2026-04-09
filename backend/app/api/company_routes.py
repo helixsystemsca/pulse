@@ -52,11 +52,16 @@ def _guess_media_type(path: Path) -> str:
 @router.get("/logo")
 async def get_company_logo_file(
     user: Annotated[User, Depends(get_current_company_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> FileResponse:
     """Serve the uploaded logo for the authenticated user's company (Authorization required)."""
     cid = str(user.company_id)
     path = _logo_disk_path(cid)
     if not path.is_file():
+        co = await db.get(Company, cid)
+        if co and (co.logo_url or "").strip() == INTERNAL_LOGO_PATH:
+            co.logo_url = None
+            await db.commit()
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No uploaded logo")
     return FileResponse(
         path,
@@ -68,10 +73,15 @@ async def get_company_logo_file(
 @router.get("/background")
 async def get_company_background_file(
     user: Annotated[User, Depends(get_current_company_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> FileResponse:
     cid = str(user.company_id)
     path = background_disk_path(cid)
     if not path.is_file():
+        co = await db.get(Company, cid)
+        if co and (co.background_image_url or "").strip() == INTERNAL_BACKGROUND_PATH:
+            co.background_image_url = None
+            await db.commit()
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No uploaded background")
     return FileResponse(
         path,

@@ -14,7 +14,7 @@ import { OnboardingChrome } from "@/components/onboarding/OnboardingChrome";
 import { OnboardingProvider } from "@/components/onboarding/OnboardingProvider";
 import { ModuleSettingsProvider } from "@/providers/ModuleSettingsProvider";
 import { ProximityPromptHost } from "./ProximityPromptHost";
-import { AppPoweredByFooter } from "./AppPoweredByFooter";
+import { AppLayoutFooter } from "./AppLayoutFooter";
 import { PulseThemedBackground } from "./PulseThemedBackground";
 
 type AppLayoutProps = {
@@ -51,7 +51,7 @@ export function AppLayout({
             </MainContentWidth>
             <OnboardingChrome />
           </AppMain>
-          <AppPoweredByFooter />
+          <AppLayoutFooter />
         </div>
         </ModuleSettingsProvider>
       </OnboardingProvider>
