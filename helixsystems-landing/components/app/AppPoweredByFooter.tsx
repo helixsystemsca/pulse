@@ -8,12 +8,12 @@ import { usePulseAuth } from "@/hooks/usePulseAuth";
 /** Global strip below main content: visible “Powered by” + wordmark (not shown on marketing-only pages). */
 export function AppPoweredByFooter() {
   const { authed } = usePulseAuth();
-  const gutter = authed ? "pl-[5rem] sm:pl-[5.25rem]" : "";
+  const gutter = authed ? "lg:pl-64" : "";
   return (
     <footer
-      className={`mt-auto shrink-0 border-t border-gray-200 bg-white/90 dark:border-ds-border dark:bg-ds-elevated ${gutter}`.trim()}
+      className={`mt-auto flex h-14 shrink-0 items-center border-t border-gray-200 bg-white/90 dark:border-ds-border dark:bg-ds-elevated ${gutter}`.trim()}
     >
-      <div className="flex items-center justify-center gap-2 px-4 py-3">
+      <div className="flex w-full items-center justify-center gap-2 px-4">
         <Link
           href={helixMarketingHref("/")}
           target="_blank"
