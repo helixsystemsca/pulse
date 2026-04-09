@@ -76,22 +76,25 @@ type DashboardViewModel = {
 const roleBadgeBase =
   "pointer-events-none absolute -bottom-0.5 -right-0.5 z-10 flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-bold leading-none text-white shadow-sm ring-2 ring-[var(--ds-surface-primary)]";
 
+/** Dashboard workforce bubbles: gold fill + black initials; `WorkforceBubbleFace` shows profile photo when `avatar_url` is set. */
+const workforceAvatarGoldBase =
+  "rounded-full bg-ds-warning font-bold text-ds-on-accent shadow-sm ring-1 ring-black/20 ring-offset-2 ring-offset-[var(--ds-surface-primary)]";
+
 function onsiteAvatarClass(badge?: "L" | "S") {
   const isLead = badge === "L";
-  const shared =
-    "relative shrink-0 items-center justify-center rounded-full bg-[color-mix(in_srgb,var(--ds-success)_22%,var(--ds-surface-secondary))] font-bold text-[color-mix(in_srgb,var(--ds-success)_25%,var(--ds-text-primary))] shadow-md ring-1 ring-[color-mix(in_srgb,var(--ds-success)_45%,transparent)] ring-offset-2 ring-offset-[var(--ds-surface-primary)] transition-transform";
+  const shared = `relative shrink-0 items-center justify-center ${workforceAvatarGoldBase} transition-transform`;
   if (isLead) {
-    return `z-[1] flex h-14 w-14 text-base shadow-[var(--ds-shadow-card)] ring-2 ring-[color-mix(in_srgb,var(--ds-success)_55%,transparent)] md:h-16 md:w-16 md:text-lg ${shared}`;
+    return `z-[1] flex h-14 w-14 text-base shadow-[var(--ds-shadow-card)] ring-2 ring-black/25 md:h-16 md:w-16 md:text-lg ${shared}`;
   }
-  return `flex h-11 w-11 text-xs shadow-sm md:h-12 md:w-12 md:text-sm ${shared}`;
+  return `flex h-11 w-11 text-xs md:h-12 md:w-12 md:text-sm ${shared}`;
 }
 
 function offsiteAvatarClass() {
-  return "flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[color-mix(in_srgb,var(--ds-warning)_22%,var(--ds-surface-secondary))] text-xs font-bold text-[color-mix(in_srgb,var(--ds-warning)_30%,var(--ds-text-primary))] shadow-sm ring-1 ring-[color-mix(in_srgb,var(--ds-warning)_45%,transparent)] ring-offset-2 ring-offset-[var(--ds-surface-primary)] md:h-12 md:w-12 md:text-sm";
+  return `flex h-11 w-11 shrink-0 items-center justify-center ${workforceAvatarGoldBase} text-xs md:h-12 md:w-12 md:text-sm`;
 }
 
 function absentAvatarClass() {
-  return "relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[color-mix(in_srgb,var(--ds-danger)_20%,var(--ds-surface-secondary))] text-xs font-bold text-[color-mix(in_srgb,var(--ds-danger)_35%,var(--ds-text-primary))] opacity-[0.96] shadow-sm ring-1 ring-[color-mix(in_srgb,var(--ds-danger)_45%,transparent)] ring-offset-2 ring-offset-[var(--ds-surface-primary)] after:absolute after:bottom-0 after:right-0 after:z-10 after:h-2.5 after:w-2.5 after:rounded-full after:bg-ds-danger after:ring-2 after:ring-[var(--ds-surface-primary)] md:h-11 md:w-11 md:text-sm";
+  return `relative flex h-10 w-10 shrink-0 items-center justify-center ${workforceAvatarGoldBase} text-xs opacity-[0.96] after:absolute after:bottom-0 after:right-0 after:z-10 after:h-2.5 after:w-2.5 after:rounded-full after:bg-ds-danger after:ring-2 after:ring-[var(--ds-surface-primary)] md:h-11 md:w-11 md:text-sm`;
 }
 
 function WorkforceBubbleFace({ initials, avatarUrl }: { initials: string; avatarUrl?: string | null }) {
@@ -99,7 +102,11 @@ function WorkforceBubbleFace({ initials, avatarUrl }: { initials: string; avatar
   if (src) {
     return (
       // eslint-disable-next-line @next/next/no-img-element
-      <img src={src} alt="" className="h-full w-full rounded-full object-cover" />
+      <img
+        src={src}
+        alt=""
+        className="h-full w-full rounded-full object-cover object-center"
+      />
     );
   }
   return <>{initials}</>;
@@ -557,10 +564,10 @@ function DashboardBody({
               Welcome,{" "}
               <span className="font-semibold text-ds-foreground">{model.welcomeName}</span>
             </p>
-            <span className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[color-mix(in_srgb,var(--ds-success)_18%,var(--ds-surface-secondary))] text-xs font-bold text-ds-success ring-2 ring-ds-border">
+            <span className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-ds-success text-xs font-bold text-ds-on-accent ring-2 ring-ds-border">
               {userInitials.slice(0, 2)}
               <span
-                className="pointer-events-none absolute -right-0.5 -top-0.5 z-10 flex h-[18px] w-[18px] items-center justify-center rounded-full bg-ds-success text-[9px] font-bold leading-none text-[#041a17] shadow-[var(--ds-shadow-card)] ring-2 ring-[var(--ds-surface-primary)]"
+                className="pointer-events-none absolute -right-0.5 -top-0.5 z-10 flex h-[18px] w-[18px] items-center justify-center rounded-full bg-ds-success text-[9px] font-bold leading-none text-ds-on-accent shadow-[var(--ds-shadow-card)] ring-2 ring-[var(--ds-surface-primary)]"
                 aria-hidden
               >
                 M
@@ -573,7 +580,7 @@ function DashboardBody({
       </header>
 
       {model.bannerNote ? (
-        <div className="border-b border-ds-border bg-[color-mix(in_srgb,var(--ds-warning)_12%,var(--ds-primary))] px-4 py-3 text-center text-sm font-medium text-ds-foreground backdrop-blur-sm">
+        <div className="border-b border-ds-border bg-ds-secondary px-4 py-3 text-center text-sm font-medium text-ds-foreground backdrop-blur-sm">
           {model.bannerNote}{" "}
           <Link href="/monitoring" className="ds-link">
             Open Monitoring →
@@ -592,8 +599,10 @@ function DashboardBody({
             {model.alerts.map((a, idx) => (
               <li
                 key={`${a.title}-${idx}`}
-                className={`flex gap-3 rounded-md border p-4 ${
-                  a.severity === "critical" ? "ds-alert-critical" : "ds-alert-warning"
+                className={`flex gap-3 rounded-md border border-ds-border p-4 ${
+                  a.severity === "critical"
+                    ? "ds-alert-critical"
+                    : "bg-ds-surface-secondary"
                 }`}
               >
                 <span
@@ -653,10 +662,10 @@ function DashboardBody({
                       >
                         <WorkforceBubbleFace initials={b.initials} avatarUrl={b.avatar_url} />
                         {b.badge === "L" ? (
-                          <span className={`${roleBadgeBase} bg-ds-success text-[#041a17]`}>L</span>
+                          <span className={`${roleBadgeBase} bg-ds-success text-ds-on-accent`}>L</span>
                         ) : null}
                         {b.badge === "S" ? (
-                          <span className={`${roleBadgeBase} bg-[color-mix(in_srgb,var(--ds-success)_75%,var(--ds-text-primary))] text-white`}>
+                          <span className={`${roleBadgeBase} bg-ds-success text-ds-on-accent`}>
                             S
                           </span>
                         ) : null}
@@ -824,7 +833,7 @@ function DashboardBody({
             {model.equipment.showZonePrompt && !zonePromptDismissed ? (
               <div className="ds-alert-warning rounded-md border p-4 shadow-sm">
                 <div className="flex gap-3">
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[color-mix(in_srgb,var(--ds-warning)_22%,var(--ds-surface-secondary))] text-ds-warning ring-1 ring-[color-mix(in_srgb,var(--ds-warning)_35%,transparent)]">
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-ds-warning text-ds-on-accent ring-1 ring-black/20">
                     <MapPin className="h-4 w-4" aria-hidden />
                   </span>
                   <div className="min-w-0 flex-1">

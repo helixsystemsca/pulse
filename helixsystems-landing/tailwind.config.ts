@@ -73,6 +73,8 @@ const config: Config = {
           success: "var(--ds-success)",
           warning: "var(--ds-warning)",
           danger: "var(--ds-danger)",
+          /** Black text on solid aquamarine / amber / lobster */
+          "on-accent": "var(--ds-on-accent)",
         },
       },
       ringOffsetColor: {
