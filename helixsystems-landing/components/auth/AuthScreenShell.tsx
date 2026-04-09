@@ -7,13 +7,12 @@ type AuthScreenShellProps = {
 };
 
 /**
- * Full-viewport auth canvas: `bg-ds-bg`, animated aquamarine gradient, soft blur.
+ * Full-viewport auth canvas: theme mint or dusk gradient + static aquamarine glow (`::before`).
  * Place inside `login-shell` or `AppMain` so flex-1 fills the available height.
  */
 export function AuthScreenShell({ children, className = "" }: AuthScreenShellProps) {
   return (
     <div className={`auth-background ${className}`.trim()}>
-      <div className="auth-gradient-overlay" aria-hidden />
       <div className="auth-shell-inner">{children}</div>
     </div>
   );

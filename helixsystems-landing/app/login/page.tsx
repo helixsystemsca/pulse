@@ -198,7 +198,7 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={submitting}
-                className="ds-btn-solid-primary flex w-full items-center justify-center gap-2 py-3 text-sm disabled:cursor-not-allowed disabled:opacity-70"
+                className="ds-btn-gradient-primary flex w-full items-center justify-center gap-2 py-3 text-sm"
               >
                 {submitting ? (
                   <>

@@ -85,7 +85,7 @@ function InviteForm() {
             className={`mt-1.5 ${dsInputClass}`}
           />
         </div>
-        <button type="submit" disabled={busy} className="ds-btn-solid-primary w-full py-3 text-sm disabled:opacity-60">
+        <button type="submit" disabled={busy} className="ds-btn-gradient-primary w-full py-3 text-sm">
           {busy ? "Working…" : "Activate account"}
         </button>
         <p className="text-center text-xs text-ds-muted">
