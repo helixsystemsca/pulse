@@ -6,7 +6,7 @@
  */
 
 import type Konva from "konva";
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Circle, Ellipse, Group, Layer, Line, Rect, Stage, Text } from "react-konva";
 import type { BlueprintElement } from "./blueprint-types";
 import {
@@ -192,15 +192,27 @@ export type BlueprintReadOnlyCanvasProps = {
   theme: BlueprintReadOnlyTheme;
   /** Min height of the preview region */
   minHeight?: number;
+  /**
+   * When this value changes (e.g. selected blueprint id), the view is auto-fitted again
+   * and any manual zoom from the wheel is cleared.
+   */
+  fitResetKey?: string;
 };
 
 const ZOOM_MIN = 0.35;
 const ZOOM_MAX = 2.75;
 
-export function BlueprintReadOnlyCanvas({ elements, theme: themeName, minHeight = 420 }: BlueprintReadOnlyCanvasProps) {
+export function BlueprintReadOnlyCanvas({
+  elements,
+  theme: themeName,
+  minHeight = 420,
+  fitResetKey,
+}: BlueprintReadOnlyCanvasProps) {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const stageRef = useRef<Konva.Stage | null>(null);
-  const [size, setSize] = useState({ w: 640, h: minHeight });
+  const userAdjustedRef = useRef(false);
+  const prevFitKeyRef = useRef<string | undefined>(undefined);
+  const [size, setSize] = useState({ w: 320, h: minHeight });
   const [scale, setScale] = useState(1);
   const [pos, setPos] = useState({ x: 0, y: 0 });
 
@@ -230,28 +242,30 @@ export function BlueprintReadOnlyCanvas({ elements, theme: themeName, minHeight 
     [],
   );
 
-  useEffect(() => {
+  /** Width from layout only; height stays `minHeight` to avoid ResizeObserver ↔ canvas size feedback loops. */
+  useLayoutEffect(() => {
     const el = hostRef.current;
     if (!el) return;
-    const ro = new ResizeObserver(() => {
-      const r = el.getBoundingClientRect();
-      const w = Math.max(320, Math.floor(r.width));
-      const h = Math.max(minHeight, Math.floor(r.height));
-      setSize({ w, h });
-      fitView(w, h, laidOut);
-    });
-    ro.observe(el);
-    const r = el.getBoundingClientRect();
-    const w = Math.max(320, Math.floor(r.width));
-    const h = Math.max(minHeight, Math.floor(r.height));
-    setSize({ w, h });
-    fitView(w, h, laidOut);
-    return () => ro.disconnect();
-  }, [fitView, laidOut, minHeight]);
 
-  useEffect(() => {
+    const measure = () => {
+      const w = Math.max(320, Math.floor(el.getBoundingClientRect().width));
+      setSize((prev) => (prev.w === w && prev.h === minHeight ? prev : { w, h: minHeight }));
+    };
+
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [minHeight]);
+
+  useLayoutEffect(() => {
+    if (prevFitKeyRef.current !== fitResetKey) {
+      prevFitKeyRef.current = fitResetKey;
+      userAdjustedRef.current = false;
+    }
+    if (userAdjustedRef.current) return;
     fitView(size.w, size.h, laidOut);
-  }, [fitView, laidOut, size.w, size.h]);
+  }, [fitView, fitResetKey, laidOut, size.h, size.w]);
 
   const gridLines = useMemo(() => {
     const { w, h } = size;
@@ -275,6 +289,7 @@ export function BlueprintReadOnlyCanvas({ elements, theme: themeName, minHeight 
 
   const handleWheel = (e: Konva.KonvaEventObject<WheelEvent>) => {
     e.evt.preventDefault();
+    userAdjustedRef.current = true;
     const stage = stageRef.current;
     if (!stage) return;
     const dir = e.evt.deltaY > 0 ? -1 : 1;
@@ -301,7 +316,7 @@ export function BlueprintReadOnlyCanvas({ elements, theme: themeName, minHeight 
     <div
       ref={hostRef}
       className="relative w-full overflow-hidden rounded-lg border border-ds-border"
-      style={{ minHeight, background: theme.canvasBg }}
+      style={{ height: minHeight, width: "100%", background: theme.canvasBg }}
     >
       <Stage
         ref={stageRef}

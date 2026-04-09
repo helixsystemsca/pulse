@@ -31,6 +31,8 @@ function alertCountsFromAlerts(alerts: AlertItem[]): OperationalDashboardReadyPa
 type WorkforceBubble = {
   id: string;
   initials: string;
+  /** Shown under the avatar when a profile photo is displayed (contrasts with theme). */
+  displayName: string;
   title: string;
   kind: "onsite" | "offsite" | "absent";
   badge?: "L" | "S";
@@ -76,7 +78,7 @@ type DashboardViewModel = {
 const roleBadgeBase =
   "pointer-events-none absolute -bottom-0.5 -right-0.5 z-10 flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-bold leading-none text-white shadow-sm ring-2 ring-[var(--ds-surface-primary)]";
 
-/** Dashboard workforce bubbles: gold fill + black initials; `WorkforceBubbleFace` shows profile photo when `avatar_url` is set. */
+/** Dashboard workforce bubbles: gold fill + black initials; photo replaces initials when `avatar_url` resolves. */
 const workforceAvatarGoldBase =
   "rounded-full bg-ds-warning font-bold text-ds-on-accent shadow-sm ring-1 ring-black/20 ring-offset-2 ring-offset-[var(--ds-surface-primary)]";
 
@@ -97,19 +99,58 @@ function absentAvatarClass() {
   return `relative flex h-10 w-10 shrink-0 items-center justify-center ${workforceAvatarGoldBase} text-xs opacity-[0.96] after:absolute after:bottom-0 after:right-0 after:z-10 after:h-2.5 after:w-2.5 after:rounded-full after:bg-ds-danger after:ring-2 after:ring-[var(--ds-surface-primary)] md:h-11 md:w-11 md:text-sm`;
 }
 
-function WorkforceBubbleFace({ initials, avatarUrl }: { initials: string; avatarUrl?: string | null }) {
-  const src = useResolvedAvatarSrc(avatarUrl ?? null);
-  if (src) {
+function WorkforceBubbleFaceContent({
+  initials,
+  resolvedSrc,
+  photoAlt,
+}: {
+  initials: string;
+  resolvedSrc: string | null;
+  /** Accessible name when a profile photo is shown */
+  photoAlt?: string;
+}) {
+  if (resolvedSrc) {
     return (
       // eslint-disable-next-line @next/next/no-img-element
       <img
-        src={src}
-        alt=""
+        src={resolvedSrc}
+        alt={photoAlt?.trim() ? photoAlt : ""}
         className="h-full w-full rounded-full object-cover object-center"
       />
     );
   }
   return <>{initials}</>;
+}
+
+function WorkforceBubbleStack({
+  bubble,
+  faceClassName,
+  badges,
+}: {
+  bubble: WorkforceBubble;
+  faceClassName: string;
+  badges?: ReactNode;
+}) {
+  const resolvedSrc = useResolvedAvatarSrc(bubble.avatar_url ?? null);
+  const showName = Boolean(resolvedSrc && bubble.displayName.trim());
+
+  return (
+    <span className="inline-flex flex-col items-center gap-1">
+      <span title={bubble.title} className={faceClassName}>
+        <WorkforceBubbleFaceContent
+          initials={bubble.initials}
+          resolvedSrc={resolvedSrc}
+          photoAlt={bubble.displayName}
+        />
+        {badges}
+      </span>
+      {showName ? (
+        <span className="max-w-[6.5rem] truncate text-center text-[10px] font-semibold leading-tight text-black dark:text-white">
+          {bubble.displayName}
+        </span>
+      ) : null}
+    </span>
+  );
 }
 
 function initialsFromUser(email: string, fullName: string | null | undefined): string {
@@ -161,18 +202,52 @@ function demoModel(): DashboardViewModel {
       }),
       summaryLine: "9 Scheduled · 1 Lead · 1 Supervisor · 6 On-site · 2 Off-site · 1 Sick",
       onsite: [
-        { id: "1", initials: "MR", title: "Site lead · On-site", kind: "onsite", badge: "L" },
-        { id: "2", initials: "AR", title: "Supervisor · On-site", kind: "onsite", badge: "S" },
-        { id: "3", initials: "JA", title: "Technician · On-site", kind: "onsite" },
-        { id: "4", initials: "LS", title: "Technician · On-site", kind: "onsite" },
-        { id: "5", initials: "NT", title: "Technician · On-site", kind: "onsite" },
-        { id: "6", initials: "KP", title: "Technician · On-site", kind: "onsite" },
+        {
+          id: "1",
+          initials: "MR",
+          displayName: "Morgan Reid",
+          title: "Site lead · On-site",
+          kind: "onsite",
+          badge: "L",
+        },
+        {
+          id: "2",
+          initials: "AR",
+          displayName: "Avery Rowe",
+          title: "Supervisor · On-site",
+          kind: "onsite",
+          badge: "S",
+        },
+        { id: "3", initials: "JA", displayName: "Jordan Ali", title: "Technician · On-site", kind: "onsite" },
+        { id: "4", initials: "LS", displayName: "Lane Smith", title: "Technician · On-site", kind: "onsite" },
+        { id: "5", initials: "NT", displayName: "Nina Torres", title: "Technician · On-site", kind: "onsite" },
+        { id: "6", initials: "KP", displayName: "Kai Park", title: "Technician · On-site", kind: "onsite" },
       ],
       offsite: [
-        { id: "7", initials: "RW", title: "Technician · Off-site (Site B)", kind: "offsite" },
-        { id: "8", initials: "EB", title: "Technician · Off-site (vendor call)", kind: "offsite" },
+        {
+          id: "7",
+          initials: "RW",
+          displayName: "River Walsh",
+          title: "Technician · Off-site (Site B)",
+          kind: "offsite",
+        },
+        {
+          id: "8",
+          initials: "EB",
+          displayName: "Emery Blake",
+          title: "Technician · Off-site (vendor call)",
+          kind: "offsite",
+        },
       ],
-      absent: [{ id: "9", initials: "DM", title: "Absent · Sick (unavailable)", kind: "absent" }],
+      absent: [
+        {
+          id: "9",
+          initials: "DM",
+          displayName: "Drew Mills",
+          title: "Absent · Sick (unavailable)",
+          kind: "absent",
+        },
+      ],
       counts: { onsite: 6, offsite: 2, absent: 1 },
     },
     workRequests: {
@@ -345,7 +420,8 @@ function buildLiveModel(
       if (w.role === "company_admin") badge = "L";
       else if (w.role === "manager") badge = "S";
     }
-    return { id: w.id, initials, title, kind, badge, avatar_url: w.avatar_url };
+    const displayName = w.full_name?.trim() || w.email.split("@")[0] || w.email;
+    return { id: w.id, initials, displayName, title, kind, badge, avatar_url: w.avatar_url };
   });
 
   const onsite = bubbles.filter((b) => b.kind === "onsite");
@@ -651,21 +727,18 @@ function DashboardBody({
                     </p>
                   ) : (
                     model.workforce.onsite.map((b) => (
-                      <span
+                      <WorkforceBubbleStack
                         key={b.id}
-                        title={b.title}
-                        className={onsiteAvatarClass(b.badge)}
-                      >
-                        <WorkforceBubbleFace initials={b.initials} avatarUrl={b.avatar_url} />
-                        {b.badge === "L" ? (
-                          <span className={`${roleBadgeBase} bg-ds-success text-ds-on-accent`}>L</span>
-                        ) : null}
-                        {b.badge === "S" ? (
-                          <span className={`${roleBadgeBase} bg-ds-success text-ds-on-accent`}>
-                            S
-                          </span>
-                        ) : null}
-                      </span>
+                        bubble={b}
+                        faceClassName={onsiteAvatarClass(b.badge)}
+                        badges={
+                          b.badge === "L" ? (
+                            <span className={`${roleBadgeBase} bg-ds-success text-ds-on-accent`}>L</span>
+                          ) : b.badge === "S" ? (
+                            <span className={`${roleBadgeBase} bg-ds-success text-ds-on-accent`}>S</span>
+                          ) : null
+                        }
+                      />
                     ))
                   )}
                 </div>
@@ -679,9 +752,7 @@ function DashboardBody({
                     <p className="text-sm text-ds-muted">—</p>
                   ) : (
                     model.workforce.offsite.map((b) => (
-                      <span key={b.id} title={b.title} className={offsiteAvatarClass()}>
-                        <WorkforceBubbleFace initials={b.initials} avatarUrl={b.avatar_url} />
-                      </span>
+                      <WorkforceBubbleStack key={b.id} bubble={b} faceClassName={offsiteAvatarClass()} />
                     ))
                   )}
                 </div>
@@ -694,9 +765,7 @@ function DashboardBody({
                   <p className="text-sm text-ds-muted">—</p>
                 ) : (
                   model.workforce.absent.map((b) => (
-                    <span key={b.id} title={b.title} className={absentAvatarClass()}>
-                      <WorkforceBubbleFace initials={b.initials} avatarUrl={b.avatar_url} />
-                    </span>
+                    <WorkforceBubbleStack key={b.id} bubble={b} faceClassName={absentAvatarClass()} />
                   ))
                 )}
               </div>

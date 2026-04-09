@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
 import { apiFetch, isApiMode } from "@/lib/api";
 import { mapApiElement, type ApiBlueprintElement } from "@/lib/blueprint-layout";
@@ -121,7 +121,10 @@ export function FloorPlanBlueprintSection() {
     };
   }, [tenantOk, selectedId]);
 
-  const elements = detail ? detail.elements.map(mapApiElement) : [];
+  const elements = useMemo(
+    () => (detail ? detail.elements.map(mapApiElement) : []),
+    [detail],
+  );
 
   if (!isApiMode()) {
     return (
@@ -193,7 +196,7 @@ export function FloorPlanBlueprintSection() {
           ) : detail ? (
             <>
               <p className="mb-2 text-sm font-medium text-ds-foreground">{detail.name}</p>
-              <BlueprintReadOnlyCanvas elements={elements} theme={theme} />
+              <BlueprintReadOnlyCanvas elements={elements} theme={theme} fitResetKey={detail.id} />
             </>
           ) : null}
         </div>
