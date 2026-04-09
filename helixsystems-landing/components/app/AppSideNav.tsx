@@ -83,7 +83,7 @@ export function AppSideNav() {
 
   return (
     <aside
-      className={`fixed left-0 top-16 z-[40] hidden h-[calc(100dvh-4rem-3.5rem)] w-64 flex-col overflow-y-auto border-r ${tenantShell} lg:flex`}
+      className={`fixed bottom-0 left-0 top-16 z-[40] hidden w-64 flex-col overflow-y-auto border-r ${tenantShell} lg:flex`}
       aria-label={systemRail ? "System navigation" : "App navigation"}
     >
       <nav className="flex flex-col gap-0.5 p-2">
@@ -96,24 +96,24 @@ export function AppSideNav() {
               key={`${item.href}-${item.label}`}
               href={item.href}
               title={item.label}
-              className={`relative flex min-h-[2.5rem] items-center gap-2 rounded-lg border-l-2 px-2 py-2 text-sm font-semibold leading-tight transition-[color,background-color,box-shadow,border-color] ${
+              className={`relative flex min-h-[2.875rem] items-center gap-2.5 rounded-lg border-l-2 px-2.5 py-2.5 text-[15px] font-semibold leading-tight transition-[color,background-color,box-shadow,border-color] ${
                 active
                   ? "border-l-ds-success bg-[color-mix(in_srgb,var(--ds-success)_14%,var(--ds-sidebar))] text-ds-foreground shadow-[0_0_12px_color-mix(in_srgb,var(--ds-success)_22%,transparent)]"
                   : "border-l-transparent text-ds-muted hover:bg-[color-mix(in_srgb,var(--ds-success)_10%,var(--ds-sidebar))] hover:text-ds-foreground"
               }`}
             >
               <span
-                className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md ${
+                className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-md ${
                   active
                     ? "bg-ds-primary text-ds-success shadow-sm ring-1 ring-[color-mix(in_srgb,var(--ds-success)_35%,transparent)]"
                     : "bg-ds-secondary text-ds-muted"
                 }`}
               >
-                <Icon className="h-4 w-4" strokeWidth={2} aria-hidden />
+                <Icon className="h-[1.125rem] w-[1.125rem]" strokeWidth={2} aria-hidden />
               </span>
               <span className="min-w-0 flex-1 overflow-hidden text-left">
                 <span className="block truncate">{line1}</span>
-                {line2 ? <span className="mt-0.5 block truncate text-xs opacity-90">{line2}</span> : null}
+                {line2 ? <span className="mt-0.5 block truncate text-[13px] opacity-90">{line2}</span> : null}
               </span>
             </Link>
           );

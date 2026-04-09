@@ -10,6 +10,14 @@ import { readSession } from "@/lib/pulse-session";
  */
 export function useAuthenticatedAssetSrc(url: string | null | undefined): string | null {
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
+  const [authEpoch, setAuthEpoch] = useState(0);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const bump = () => setAuthEpoch((n) => n + 1);
+    window.addEventListener("pulse-auth-change", bump);
+    return () => window.removeEventListener("pulse-auth-change", bump);
+  }, []);
 
   useEffect(() => {
     if (!url) {
@@ -40,7 +48,10 @@ export function useAuthenticatedAssetSrc(url: string | null | undefined): string
     let cancelled = false;
     const path = url.startsWith("/") ? url : `/${url}`;
     const fullUrl = `${base.replace(/\/$/, "")}${path}`;
-    fetch(fullUrl, { headers: { Authorization: `Bearer ${token}` } })
+    fetch(fullUrl, {
+      cache: "no-store",
+      headers: { Authorization: `Bearer ${token}` },
+    })
       .then((r) => (r.ok ? r.blob() : Promise.reject(new Error(String(r.status)))))
       .then((b) => {
         if (cancelled) return;
@@ -60,7 +71,7 @@ export function useAuthenticatedAssetSrc(url: string | null | undefined): string
     return () => {
       cancelled = true;
     };
-  }, [url]);
+  }, [url, authEpoch]);
 
   if (!url) return null;
   if (url.startsWith("http://") || url.startsWith("https://")) return url;

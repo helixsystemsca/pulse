@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import { AdminOnboardingChecklist } from "@/components/onboarding/AdminOnboardingChecklist";
 import { apiFetch, isApiMode } from "@/lib/api";
 import { fetchSetupProgress } from "@/lib/onboardingService";
+import { useAuthenticatedAssetSrc } from "@/hooks/useAuthenticatedAssetSrc";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
 import { pulseTenantNav } from "@/lib/pulse-app";
 import { canAccessPulseTenantApis, readSession } from "@/lib/pulse-session";
@@ -656,13 +657,52 @@ function headerInitials(welcomeName: string): string {
   return t.slice(0, 2).toUpperCase();
 }
 
+/** Dusk blue brand stroke (matches `--ds-bg` dark / design token). */
+const OPS_HEADER_LOGO_RING = "#4C6085";
+
+function OperationsHeaderLogoMark({
+  logoUrl,
+  companyName,
+}: {
+  logoUrl?: string | null;
+  companyName?: string | null;
+}) {
+  const raw = logoUrl?.trim() || null;
+  const internal = raw && !raw.startsWith("http://") && !raw.startsWith("https://") ? raw : null;
+  const resolved = useAuthenticatedAssetSrc(internal);
+  const src =
+    !raw ? null : raw.startsWith("http://") || raw.startsWith("https://") ? raw : resolved;
+  const waiting = Boolean(internal && !src);
+  const initials = headerInitials(companyName ?? "");
+
+  return (
+    <div
+      className="flex h-[4.5rem] w-[4.5rem] shrink-0 items-center justify-center overflow-hidden rounded-full border-2 bg-white shadow-[var(--ds-shadow-card)]"
+      style={{ borderColor: OPS_HEADER_LOGO_RING }}
+      title={(companyName?.trim() || "Company").slice(0, 48)}
+    >
+      {src ? (
+        // eslint-disable-next-line @next/next/no-img-element -- blob or tenant https URL
+        <img src={src} alt="" className="max-h-[2.75rem] max-w-[2.75rem] object-contain" />
+      ) : waiting ? (
+        <span className="h-8 w-8 animate-pulse rounded-md bg-ds-secondary" aria-hidden />
+      ) : (
+        <span className="px-1 text-center text-xs font-bold leading-tight" style={{ color: OPS_HEADER_LOGO_RING }}>
+          {initials}
+        </span>
+      )}
+    </div>
+  );
+}
+
 function DashboardBody({
   model,
   workOrdersHref,
   hideHeaderWelcome,
   zonePromptDismissed,
   onDismissZonePrompt,
-  headerImageUrl,
+  headerLogoUrl,
+  headerCompanyName,
   facilitySetupChecklist,
 }: {
   model: DashboardViewModel;
@@ -670,12 +710,12 @@ function DashboardBody({
   hideHeaderWelcome?: boolean;
   zonePromptDismissed?: boolean;
   onDismissZonePrompt?: () => void;
-  /** Tenant banner for Operations header only; omit or null when unset — no placeholder. */
-  headerImageUrl?: string | null;
+  /** Tenant logo for Operations header center (API path or https). */
+  headerLogoUrl?: string | null;
+  headerCompanyName?: string | null;
   facilitySetupChecklist?: ReactNode;
 }) {
   const userInitials = headerInitials(model.welcomeName);
-  const trimmedHeaderImage = headerImageUrl?.trim() || null;
 
   return (
     <div className="ds-dashboard-shell">
@@ -684,13 +724,7 @@ function DashboardBody({
           {model.title}
         </span>
         <div className="flex min-h-0 min-w-0 justify-center">
-          {trimmedHeaderImage ? (
-            <img
-              src={trimmedHeaderImage}
-              alt=""
-              className="max-h-12 max-w-[min(100%,280px)] object-contain object-center sm:max-h-14"
-            />
-          ) : null}
+          <OperationsHeaderLogoMark logoUrl={headerLogoUrl} companyName={headerCompanyName} />
         </div>
         {!hideHeaderWelcome ? (
           <div className="flex min-w-0 items-center justify-end gap-2 sm:gap-3">
@@ -1252,9 +1286,6 @@ export function OperationalDashboard({
     );
   }
 
-  const liveHeaderImage =
-    session?.company?.header_image_url?.trim() || null;
-
   return (
     <DashboardBody
       model={liveModel}
@@ -1262,7 +1293,8 @@ export function OperationalDashboard({
       hideHeaderWelcome
       zonePromptDismissed={zoneDismissed}
       onDismissZonePrompt={() => setZoneDismissed(true)}
-      headerImageUrl={liveHeaderImage}
+      headerLogoUrl={session?.company?.logo_url ?? null}
+      headerCompanyName={session?.company?.name ?? null}
       facilitySetupChecklist={facilitySetupSlot}
     />
   );

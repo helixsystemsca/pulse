@@ -13,6 +13,8 @@ export type SessionUser = {
   role: string;
   roles: string[];
   permissions: string[];
+  /** From `/auth/me`; relative paths need `resolveApiUrl` + bearer when loading in `Image`. */
+  avatarUrl?: string | null;
 };
 
 /** Same database + JWT as the Pulse web app: `POST /api/v1/auth/login`. */
@@ -35,6 +37,7 @@ export function pulseMeToSessionUser(me: PulseMe): SessionUser {
     role: me.role,
     roles: me.roles ?? [],
     permissions: Array.isArray(me.permissions) ? me.permissions : me.permissions == null ? [] : [],
+    avatarUrl: me.avatar_url ?? null,
   };
 }
 

@@ -16,6 +16,8 @@ type SessionCtx = {
   authReady: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
+  /** Re-fetch `/auth/me` and update in-memory user (e.g. after profile photo upload). */
+  refreshProfile: () => Promise<void>;
   has: (perm: string) => boolean;
 };
 
@@ -70,6 +72,14 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     setSession(null);
   }, []);
 
+  const refreshProfile = useCallback(async () => {
+    ensureApiConfiguredFromEnv();
+    const token = await SecureStore.getItemAsync(TOKEN_KEY);
+    if (!token) return;
+    const user = await loadSessionUser(token);
+    setSession({ token, user });
+  }, []);
+
   const value = useMemo<SessionCtx>(() => {
     const perms = new Set(session?.user.permissions ?? []);
     return {
@@ -77,12 +87,13 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       authReady,
       signIn,
       signOut,
+      refreshProfile,
       has: (perm: string) => {
         if (perms.has("*")) return true;
         return perms.has(perm);
       },
     };
-  }, [session, authReady, signIn, signOut]);
+  }, [session, authReady, signIn, signOut, refreshProfile]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

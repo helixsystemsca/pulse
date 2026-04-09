@@ -58,7 +58,11 @@ async def get_company_logo_file(
     path = _logo_disk_path(cid)
     if not path.is_file():
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No uploaded logo")
-    return FileResponse(path, media_type=_guess_media_type(path))
+    return FileResponse(
+        path,
+        media_type=_guess_media_type(path),
+        headers={"Cache-Control": "private, no-store"},
+    )
 
 
 @router.get("/background")
@@ -69,7 +73,11 @@ async def get_company_background_file(
     path = background_disk_path(cid)
     if not path.is_file():
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No uploaded background")
-    return FileResponse(path, media_type=_guess_media_type(path))
+    return FileResponse(
+        path,
+        media_type=_guess_media_type(path),
+        headers={"Cache-Control": "private, no-store"},
+    )
 
 
 @router.post("/logo", response_model=CompanyLogoUploadOut)

@@ -1,19 +1,26 @@
 import React, { useEffect, useMemo } from "react";
-import { router, useSegments } from "expo-router";
+import { router, usePathname, useSegments } from "expo-router";
 import { ProximityPromptBanner } from "@/components/ProximityPromptBanner";
 import { useBLE } from "@/lib/ble/useBLE";
 
-/** Approx. dashboard hero height (greeting + optional logo) so the banner clears the ImageBackground header. */
-const HOME_HERO_OFFSET = 168;
+/** Clears dashboard hi/avatar row + padding; tune if logo is large. */
+const HOME_HERO_CLEARANCE = 188;
 
 export function BLEPromptHost() {
+  const pathname = usePathname();
   const segments = useSegments();
   const { event, dismiss } = useBLE();
 
-  const layoutTopOffset = useMemo(() => {
-    const leaf = segments[segments.length - 1] ?? "";
-    return leaf === "index" ? HOME_HERO_OFFSET : 0;
-  }, [segments]);
+  const heroClearance = useMemo(() => {
+    const path = pathname ?? "";
+    const onHomeTab =
+      path === "/" ||
+      path === "/(tabs)" ||
+      path.endsWith("/(tabs)/index") ||
+      path.endsWith("/index") ||
+      (segments as string[]).includes("index");
+    return onHomeTab ? HOME_HERO_CLEARANCE : 0;
+  }, [pathname, segments]);
 
   useEffect(() => {
     // no-op; hook holds state
@@ -36,7 +43,7 @@ export function BLEPromptHost() {
       title={title}
       message={message}
       primaryLabel="Open"
-      layoutTopOffset={layoutTopOffset}
+      heroClearance={heroClearance}
       onPrimary={() => {
         dismiss();
         router.push(primaryTo);

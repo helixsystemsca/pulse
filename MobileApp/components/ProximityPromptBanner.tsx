@@ -9,8 +9,8 @@ type Props = {
   primaryLabel: string;
   onPrimary: () => void;
   onDismiss: () => void;
-  /** Push the bar down (e.g. home tab hero) so it sits under the image header, not on top of it. */
-  layoutTopOffset?: number;
+  /** Pixels below status bar to clear dashboard image + greeting + avatar (home); 0 on other tabs. */
+  heroClearance?: number;
 };
 
 /** Fixed strip (secondary header) until user opens or dismisses — stays above Pixel gesture nav. */
@@ -20,7 +20,7 @@ export function ProximityPromptBanner({
   primaryLabel,
   onPrimary,
   onDismiss,
-  layoutTopOffset = 0,
+  heroClearance = 0,
 }: Props) {
   const insets = useSafeAreaInsets();
   const { colors, radii, spacing } = useTheme();
@@ -34,16 +34,21 @@ export function ProximityPromptBanner({
     ]).start();
   }, [opacity, slide]);
 
-  const chrome = useMemo(
+  const dusk = colors.background;
+  const aqua = colors.success;
+
+  const bannerTop = insets.top + heroClearance;
+
+  const notificationBodyStyle = useMemo(
     () => ({
-      backgroundColor: colors.surface,
+      backgroundColor: aqua,
       borderBottomWidth: 1,
-      borderBottomColor: colors.border,
-      paddingTop: insets.top + layoutTopOffset + spacing.sm,
+      borderBottomColor: dusk,
+      paddingTop: spacing.sm,
       paddingHorizontal: spacing.lg,
       paddingBottom: spacing.md,
     }),
-    [colors.border, colors.surface, insets.top, layoutTopOffset, spacing.lg, spacing.md, spacing.sm],
+    [aqua, dusk, spacing.lg, spacing.md, spacing.sm],
   );
 
   return (
@@ -52,7 +57,7 @@ export function ProximityPromptBanner({
         position: "absolute",
         left: 0,
         right: 0,
-        top: 0,
+        top: bannerTop,
         zIndex: 1000,
         opacity,
         transform: [{ translateY: slide }],
@@ -64,10 +69,10 @@ export function ProximityPromptBanner({
       }}
       pointerEvents="box-none"
     >
-      <View style={chrome}>
-        <Text style={{ color: colors.text, fontSize: 16, fontWeight: "800" }}>{title}</Text>
+      <View style={notificationBodyStyle}>
+        <Text style={{ color: "#FFFFFF", fontSize: 16, fontWeight: "800" }}>{title}</Text>
         <Text
-          style={{ color: colors.muted, marginTop: 6, fontSize: 13, lineHeight: 18 }}
+          style={{ color: "rgba(255,255,255,0.92)", marginTop: 6, fontSize: 13, lineHeight: 18 }}
           numberOfLines={3}
         >
           {message}
@@ -76,29 +81,30 @@ export function ProximityPromptBanner({
         <View style={{ flexDirection: "row", marginTop: spacing.md, gap: 10 }}>
           <Pressable
             onPress={onDismiss}
-            style={{
+            style={({ pressed }) => ({
               flex: 1,
               paddingVertical: 12,
               borderRadius: radii.md,
-              borderWidth: 1,
-              borderColor: colors.border,
-              backgroundColor: colors.card,
+              borderWidth: 2,
+              borderColor: dusk,
+              backgroundColor: pressed ? "rgba(76,96,133,0.35)" : "rgba(255,255,255,0.18)",
               alignItems: "center",
-            }}
+            })}
           >
-            <Text style={{ color: colors.text, fontWeight: "700" }}>Dismiss</Text>
+            <Text style={{ color: "#FFFFFF", fontWeight: "700" }}>Dismiss</Text>
           </Pressable>
           <Pressable
             onPress={onPrimary}
-            style={{
+            style={({ pressed }) => ({
               flex: 1,
               paddingVertical: 12,
               borderRadius: radii.md,
-              backgroundColor: colors.success,
+              backgroundColor: dusk,
               alignItems: "center",
-            }}
+              opacity: pressed ? 0.9 : 1,
+            })}
           >
-            <Text style={{ color: "#0A0A0A", fontWeight: "800" }}>{primaryLabel}</Text>
+            <Text style={{ color: "#FFFFFF", fontWeight: "800" }}>{primaryLabel}</Text>
           </Pressable>
         </View>
       </View>

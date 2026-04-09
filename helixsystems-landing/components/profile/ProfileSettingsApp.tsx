@@ -10,6 +10,7 @@ import { usePulseAuth } from "@/hooks/usePulseAuth";
 import { apiFetch, refreshPulseUserFromServer } from "@/lib/api";
 import { uploadTenantCompanyLogoFile } from "@/lib/companyBrandingUpload";
 import { replayNonAdminOnboardingTour } from "@/lib/onboarding-events";
+import { getImpersonationOverlayAccessToken } from "@/lib/impersonation-overlay-token";
 import { parseClientApiError } from "@/lib/parse-client-api-error";
 import { uploadProfileAvatarFile } from "@/lib/profileAvatarUpload";
 import { sessionHasAnyRole } from "@/lib/pulse-roles";
@@ -125,6 +126,11 @@ export function ProfileSettingsApp() {
       await uploadProfileAvatarFile(f);
       await refreshPulseUserFromServer();
       setAvatarUrl("/api/v1/profile/avatar");
+      // `refreshPulseUserFromServer` returns early when the in-memory impersonation overlay is active
+      // (no `writeApiSession` → no `pulse-auth-change`). Still bump avatar resolution in that case.
+      if (typeof window !== "undefined" && getImpersonationOverlayAccessToken()) {
+        window.dispatchEvent(new Event("pulse-auth-change"));
+      }
       setToast("Profile photo updated.");
     } catch (e) {
       setErr(parseClientApiError(e).message);
@@ -140,6 +146,9 @@ export function ProfileSettingsApp() {
     try {
       await uploadTenantCompanyLogoFile(f);
       await refreshPulseUserFromServer();
+      if (typeof window !== "undefined" && getImpersonationOverlayAccessToken()) {
+        window.dispatchEvent(new Event("pulse-auth-change"));
+      }
       setToast("Company logo updated.");
       if (logoRef.current) logoRef.current.value = "";
     } catch (e) {

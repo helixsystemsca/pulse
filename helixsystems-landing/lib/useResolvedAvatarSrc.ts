@@ -46,7 +46,8 @@ export function useResolvedAvatarSrc(avatarUrl: string | null | undefined): stri
       return;
     }
     let cancelled = false;
-    fetch(url, { headers: { Authorization: `Bearer ${token}` } })
+    // Same URL after a new upload is still `/api/v1/profile/avatar`; avoid a stale disk cache.
+    fetch(url, { cache: "no-store", headers: { Authorization: `Bearer ${token}` } })
       .then((r) => (r.ok ? r.blob() : Promise.reject(new Error(String(r.status)))))
       .then((b) => {
         if (cancelled) return;

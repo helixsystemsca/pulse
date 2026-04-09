@@ -75,3 +75,23 @@ export async function apiFetch<T>(
   return (await res.json()) as T;
 }
 
+/** POST `multipart/form-data`. Do not set `Content-Type` — the runtime sets the boundary. */
+export async function apiPostFormData<T>(
+  path: string,
+  formData: FormData,
+  opts: { token?: string } = {},
+): Promise<T> {
+  if (!cfg.baseUrl) {
+    throw new Error("API baseUrl is not configured");
+  }
+  const url = `${cfg.baseUrl.replace(/\/$/, "")}${path.startsWith("/") ? path : `/${path}`}`;
+  const headers: Record<string, string> = {};
+  if (opts.token) headers.Authorization = `Bearer ${opts.token}`;
+  const res = await fetch(url, { method: "POST", headers, body: formData });
+  if (!res.ok) {
+    const msg = await res.text().catch(() => "");
+    throw new Error(parsePulseApiErrorMessage(msg) || `Request failed (${res.status})`);
+  }
+  return (await res.json()) as T;
+}
+

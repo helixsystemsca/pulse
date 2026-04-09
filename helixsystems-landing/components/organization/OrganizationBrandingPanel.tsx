@@ -9,6 +9,7 @@ import { dsFormHintClass, dsInputClass, dsLabelClass } from "@/components/ui/ds-
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { useAuthenticatedAssetSrc } from "@/hooks/useAuthenticatedAssetSrc";
 import { apiFetch, refreshPulseUserFromServer } from "@/lib/api";
+import { getImpersonationOverlayAccessToken } from "@/lib/impersonation-overlay-token";
 import { uploadTenantCompanyBackgroundFile, uploadTenantCompanyLogoFile } from "@/lib/companyBrandingUpload";
 import { parseClientApiError } from "@/lib/parse-client-api-error";
 import type { CompanySummary } from "@/lib/pulse-session";
@@ -85,6 +86,9 @@ export function OrganizationBrandingPanel({ initialCompany, onCompanyUpdated }: 
       syncParent(next);
       setLogoUrlDraft(next.logo_url ?? "");
       setOk("Logo uploaded.");
+      if (typeof window !== "undefined" && getImpersonationOverlayAccessToken()) {
+        window.dispatchEvent(new Event("pulse-auth-change"));
+      }
       if (logoFileRef.current) logoFileRef.current.value = "";
     } catch (e) {
       setErr(parseClientApiError(e).message);
@@ -106,6 +110,9 @@ export function OrganizationBrandingPanel({ initialCompany, onCompanyUpdated }: 
       syncParent(next);
       setBgUrlDraft(bgPath);
       setOk("Header background uploaded — visible on the mobile app after refresh.");
+      if (typeof window !== "undefined" && getImpersonationOverlayAccessToken()) {
+        window.dispatchEvent(new Event("pulse-auth-change"));
+      }
       if (bgFileRef.current) bgFileRef.current.value = "";
     } catch (e) {
       setErr(parseClientApiError(e).message);
@@ -133,6 +140,9 @@ export function OrganizationBrandingPanel({ initialCompany, onCompanyUpdated }: 
       syncParent(next);
       setLogoUrlDraft(next.logo_url ?? "");
       setOk("Logo link saved.");
+      if (typeof window !== "undefined" && getImpersonationOverlayAccessToken()) {
+        window.dispatchEvent(new Event("pulse-auth-change"));
+      }
     } catch (e) {
       setErr(parseClientApiError(e).message);
     } finally {
@@ -159,6 +169,9 @@ export function OrganizationBrandingPanel({ initialCompany, onCompanyUpdated }: 
       syncParent(next);
       setBgUrlDraft(next.background_image_url ?? "");
       setOk("Header background URL saved.");
+      if (typeof window !== "undefined" && getImpersonationOverlayAccessToken()) {
+        window.dispatchEvent(new Event("pulse-auth-change"));
+      }
     } catch (e) {
       setErr(parseClientApiError(e).message);
     } finally {

@@ -35,7 +35,11 @@ async def get_my_avatar_file(
     path = user_avatar_disk_path(uid)
     if not path.is_file():
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No uploaded avatar")
-    return FileResponse(path, media_type=user_avatar_media_type(path))
+    return FileResponse(
+        path,
+        media_type=user_avatar_media_type(path),
+        headers={"Cache-Control": "private, no-store"},
+    )
 
 
 @router.get("/avatar-pending")

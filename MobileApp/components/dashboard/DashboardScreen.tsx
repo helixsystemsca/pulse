@@ -1,12 +1,32 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { Image, ImageBackground, Pressable, ScrollView, Text, View } from "react-native";
+import { useIsFocused } from "@react-navigation/native";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import type { ImageSourcePropType } from "react-native";
+import { Alert, Image, ImageBackground, Pressable, ScrollView, Text, View } from "react-native";
 import { BlurView } from "expo-blur";
+import * as ImagePicker from "expo-image-picker";
 import { useTheme } from "@/theme/ThemeProvider";
 import { useSession } from "@/store/session";
 import { getOrganization, type Organization } from "@/lib/api/pulse";
 import { resolveApiUrl } from "@/lib/api/client";
+import { uploadProfileAvatar } from "@/lib/api/profileAvatar";
 
 type PresenceStatus = "green" | "amber" | "red";
+
+/** Signed-in fetches for `/api/v1/company/*` paths need the bearer token (RN `Image` does not send cookies). */
+function pulseAuthenticatedImageSource(
+  raw: string | null | undefined,
+  token: string,
+): ImageSourcePropType | null {
+  const s = (raw ?? "").trim();
+  if (!s) return null;
+  const uri = resolveApiUrl(s);
+  if (!uri) return null;
+  if (/^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//.test(s)) {
+    return { uri };
+  }
+  if (!token) return null;
+  return { uri, headers: { Authorization: `Bearer ${token}` } };
+}
 
 function firstName(full: string | null | undefined): string {
   const s = (full ?? "").trim();
@@ -26,12 +46,25 @@ function Avatar({
   onPress,
   colors,
   size = 44,
+  imageSource,
+  imageReloadKey = 0,
 }: {
   initials: string;
   onPress?: () => void;
   colors: { surface: string; border: string; text: string; muted: string };
   size?: number;
+  imageSource?: ImageSourcePropType | null;
+  /** Bumps after a new upload so the same avatar URL still reloads from the server. */
+  imageReloadKey?: number;
 }) {
+  const [imageFailed, setImageFailed] = useState(false);
+
+  useEffect(() => {
+    setImageFailed(false);
+  }, [imageSource]);
+
+  const showPhoto = Boolean(imageSource) && !imageFailed;
+
   return (
     <Pressable
       onPress={onPress}
@@ -44,9 +77,21 @@ function Avatar({
         backgroundColor: colors.surface,
         alignItems: "center",
         justifyContent: "center",
+        overflow: "hidden",
       }}
     >
-      <Text style={{ color: colors.text, fontWeight: "800" }}>{initials}</Text>
+      {showPhoto ? (
+        <Image
+          key={imageReloadKey}
+          source={imageSource!}
+          style={{ width: size, height: size }}
+          resizeMode="cover"
+          accessibilityLabel="Profile photo"
+          onError={() => setImageFailed(true)}
+        />
+      ) : (
+        <Text style={{ color: colors.text, fontWeight: "800" }}>{initials}</Text>
+      )}
     </Pressable>
   );
 }
@@ -127,21 +172,53 @@ function ToolboxCard({
 
 export function DashboardScreen() {
   const { colors, spacing, radii, text } = useTheme();
-  const { session, has } = useSession();
+  const { session, has, refreshProfile } = useSession();
   const token = session?.token ?? "";
+  const isFocused = useIsFocused();
 
   const [org, setOrg] = useState<Organization | null>(null);
   const [orgErr, setOrgErr] = useState<string | null>(null);
+  const [brandingKey, setBrandingKey] = useState(0);
+  const [avatarReloadKey, setAvatarReloadKey] = useState(0);
+  const [avatarUploadBusy, setAvatarUploadBusy] = useState(false);
+
+  const pickAndUploadAvatar = useCallback(async () => {
+    if (!token || avatarUploadBusy) return;
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) {
+      Alert.alert("Photos", "Allow photo access in Settings to set your profile picture.");
+      return;
+    }
+    const picked = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.85,
+    });
+    if (picked.canceled || !picked.assets?.[0]) return;
+    const asset = picked.assets[0];
+    setAvatarUploadBusy(true);
+    try {
+      await uploadProfileAvatar(token, asset.uri, asset.mimeType ?? null, asset.fileName ?? null);
+      await refreshProfile();
+      setAvatarReloadKey(Date.now());
+    } catch (e) {
+      Alert.alert("Profile photo", e instanceof Error ? e.message : "Upload failed");
+    } finally {
+      setAvatarUploadBusy(false);
+    }
+  }, [token, avatarUploadBusy, refreshProfile]);
 
   useEffect(() => {
     let cancelled = false;
-    if (!token) return;
+    if (!token || !isFocused) return;
     void (async () => {
       try {
         const o = await getOrganization(token);
         if (!cancelled) {
           setOrg(o);
           setOrgErr(null);
+          setBrandingKey((k) => k + 1);
         }
       } catch (e) {
         if (!cancelled) setOrgErr(e instanceof Error ? e.message : "Failed to load organization");
@@ -150,7 +227,7 @@ export function DashboardScreen() {
     return () => {
       cancelled = true;
     };
-  }, [token]);
+  }, [token, isFocused]);
 
   // Placeholder presence + zone until backend presence endpoint is wired.
   const presence: PresenceStatus = "green";
@@ -166,8 +243,29 @@ export function DashboardScreen() {
     return `${a}${b}`.toUpperCase();
   }, [session?.user.fullName]);
 
-  const bgUrl = resolveApiUrl(org?.background_image_url ?? null);
-  const logoUrl = resolveApiUrl(org?.logo_url ?? null);
+  const companyBgSource = useMemo(
+    () => pulseAuthenticatedImageSource(org?.background_image_url, token),
+    [org?.background_image_url, token],
+  );
+  const companyLogoSource = useMemo(
+    () => pulseAuthenticatedImageSource(org?.logo_url, token),
+    [org?.logo_url, token],
+  );
+
+  const avatarDisplaySource = useMemo((): ImageSourcePropType | null => {
+    const raw = (session?.user.avatarUrl ?? "").trim();
+    if (!raw) return null;
+    const uri = resolveApiUrl(raw);
+    if (!uri) return null;
+    const isAbsolute = /^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//.test(raw);
+    if (isAbsolute) {
+      return { uri };
+    }
+    if (token) {
+      return { uri, headers: { Authorization: `Bearer ${token}` } };
+    }
+    return { uri };
+  }, [session?.user.avatarUrl, token]);
 
   // Temporary, mock toolbox content until tools API is aligned to backend.
   const toolbox = [
@@ -179,9 +277,10 @@ export function DashboardScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <ImageBackground
-        source={bgUrl ? { uri: bgUrl } : undefined}
+        key={brandingKey}
+        source={companyBgSource ?? undefined}
         style={{ flex: 1 }}
-        blurRadius={bgUrl ? 18 : 0}
+        blurRadius={companyBgSource ? 18 : 0}
         resizeMode="cover"
       >
         <BlurView intensity={35} tint="dark" style={{ flex: 1 }}>
@@ -207,13 +306,20 @@ export function DashboardScreen() {
                 </View>
               </View>
 
-              <Avatar initials={initials} colors={colors} onPress={() => {}} />
+              <Avatar
+                initials={initials}
+                colors={colors}
+                imageSource={avatarDisplaySource}
+                imageReloadKey={avatarReloadKey}
+                onPress={token ? pickAndUploadAvatar : undefined}
+              />
             </View>
 
-            {logoUrl ? (
+            {companyLogoSource ? (
               <View style={{ alignItems: "center", marginTop: spacing.md }}>
                 <Image
-                  source={{ uri: logoUrl }}
+                  key={brandingKey}
+                  source={companyLogoSource}
                   style={{ width: 220, height: 64 }}
                   resizeMode="contain"
                   accessibilityLabel="Company logo"

@@ -30,6 +30,13 @@ export function CompanyLogo({
   showName = true,
 }: Props) {
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
+  const [authEpoch, setAuthEpoch] = useState(0);
+
+  useEffect(() => {
+    const bump = () => setAuthEpoch((n) => n + 1);
+    window.addEventListener("pulse-auth-change", bump);
+    return () => window.removeEventListener("pulse-auth-change", bump);
+  }, []);
 
   useEffect(() => {
     if (!logoUrl || logoUrl.startsWith("http://") || logoUrl.startsWith("https://")) {
@@ -53,7 +60,7 @@ export function CompanyLogo({
     let cancelled = false;
     const path = logoUrl.startsWith("/") ? logoUrl : `/${logoUrl}`;
     const url = `${base.replace(/\/$/, "")}${path}`;
-    fetch(url, { headers: { Authorization: `Bearer ${token}` } })
+    fetch(url, { cache: "no-store", headers: { Authorization: `Bearer ${token}` } })
       .then((r) => (r.ok ? r.blob() : Promise.reject(new Error(String(r.status)))))
       .then((b) => {
         if (cancelled) return;
@@ -73,7 +80,7 @@ export function CompanyLogo({
     return () => {
       cancelled = true;
     };
-  }, [logoUrl]);
+  }, [logoUrl, authEpoch]);
 
   const fallbackText = (companyName?.trim() || "Organization").slice(0, 48);
   const ring =
