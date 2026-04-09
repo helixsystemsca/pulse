@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
-import type { LayoutRectangle, View } from "react-native";
+import type { LayoutChangeEvent, LayoutRectangle } from "react-native";
 
 /**
  * Tiny helper to capture layouts for tooltip highlighting.
@@ -10,8 +10,10 @@ export function useOnboardingTargets() {
   const [targets, setTargets] = useState<Record<string, LayoutRectangle | null>>({});
 
   const onLayoutFor = useCallback(
-    (id: string) => (e: { nativeEvent: { layout: LayoutRectangle } }) => {
-      setTargets((prev) => ({ ...prev, [id]: e.nativeEvent.layout }));
+    (id: string) => (e: LayoutChangeEvent | null | undefined) => {
+      const layout = e?.nativeEvent?.layout ?? null;
+      if (!layout) return;
+      setTargets((prev) => ({ ...prev, [id]: layout }));
     },
     [],
   );

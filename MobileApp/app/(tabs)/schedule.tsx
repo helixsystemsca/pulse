@@ -1,6 +1,7 @@
 import React from "react";
 import { ScrollView, Text, View } from "react-native";
 import { useTheme } from "@/theme/ThemeProvider";
+import { Screen } from "@/components/Screen";
 
 export default function ScheduleScreen() {
   const { colors, radii, spacing, text } = useTheme();
@@ -11,7 +12,7 @@ export default function ScheduleScreen() {
   ];
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.background }}>
+    <Screen>
       <ScrollView contentContainerStyle={{ padding: spacing.lg, paddingBottom: 110 }}>
         <Text style={{ color: colors.text, ...text.h1 }}>Schedule</Text>
         <Text style={{ color: colors.muted, marginTop: 6, ...text.body }}>
@@ -41,7 +42,7 @@ export default function ScheduleScreen() {
           ))}
         </View>
       </ScrollView>
-    </View>
+    </Screen>
   );
 }
 

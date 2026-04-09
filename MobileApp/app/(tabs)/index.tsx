@@ -3,6 +3,7 @@ import { Pressable, ScrollView, Text, View } from "react-native";
 import { useTheme } from "@/theme/ThemeProvider";
 import { TooltipOnboarding, type OnboardingStep } from "@/components/TooltipOnboarding";
 import { useOnboardingTargets } from "@/hooks/useOnboardingTargets";
+import { Screen } from "@/components/Screen";
 
 export default function HomeScreen() {
   const { colors, radii, spacing, text } = useTheme();
@@ -50,7 +51,7 @@ export default function HomeScreen() {
   );
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.background }}>
+    <Screen>
       <ScrollView contentContainerStyle={{ padding: spacing.lg, paddingBottom: 110 }}>
         <Text style={{ color: colors.text, ...text.h1 }}>Pulse</Text>
         <Text style={{ color: colors.muted, marginTop: 6, ...text.body }}>
@@ -115,6 +116,6 @@ export default function HomeScreen() {
       </ScrollView>
 
       <TooltipOnboarding steps={steps} />
-    </View>
+    </Screen>
   );
 }

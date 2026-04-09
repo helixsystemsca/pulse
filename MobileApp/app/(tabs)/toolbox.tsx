@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import { useTheme } from "@/theme/ThemeProvider";
+import { Screen } from "@/components/Screen";
 
 type ToolRow = { id: string; name: string; status: "assigned_ok" | "missing" };
 
@@ -20,7 +21,7 @@ export default function ToolboxScreen() {
       : { bg: "rgba(54,241,205,0.18)", fg: colors.success, label: "Assigned" };
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.background }}>
+    <Screen>
       <ScrollView contentContainerStyle={{ padding: spacing.lg, paddingBottom: 110 }}>
         <Text style={{ color: colors.text, ...text.h1 }}>Toolbox</Text>
         <Text style={{ color: colors.muted, marginTop: 6, ...text.body }}>
@@ -112,7 +113,7 @@ export default function ToolboxScreen() {
           })}
         </View>
       </ScrollView>
-    </View>
+    </Screen>
   );
 }
 

@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { useTheme } from "@/theme/ThemeProvider";
+import { Screen } from "@/components/Screen";
 
 type TaskRow = { id: string; title: string; status: "open" | "in_progress" | "completed" };
 
@@ -19,7 +20,7 @@ export default function TasksScreen() {
     setRows((prev) => prev.map((r) => (r.id === id ? { ...r, status: st } : r)));
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.background }}>
+    <Screen>
       <ScrollView contentContainerStyle={{ padding: spacing.lg, paddingBottom: 110 }}>
         <Text style={{ color: colors.text, ...text.h1 }}>Tasks</Text>
         <Text style={{ color: colors.muted, marginTop: 6, ...text.body }}>
@@ -102,7 +103,7 @@ export default function TasksScreen() {
           </Text>
         </View>
       </ScrollView>
-    </View>
+    </Screen>
   );
 }
 

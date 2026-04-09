@@ -8,6 +8,7 @@ import "react-native-reanimated";
 import { ThemeProvider } from "@/theme/ThemeProvider";
 import { SessionProvider } from "@/store/session";
 import { ensurePushPermissions, registerNotificationDeepLinks } from "@/lib/notifications";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -49,12 +50,14 @@ export default function RootLayout() {
 function RootLayoutNav() {
   return (
     <ThemeProvider>
-      <SessionProvider>
-        <RootSideEffects />
-        <Stack screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="(tabs)" />
-        </Stack>
-      </SessionProvider>
+      <SafeAreaProvider>
+        <SessionProvider>
+          <RootSideEffects />
+          <Stack screenOptions={{ headerShown: false }}>
+            <Stack.Screen name="(tabs)" />
+          </Stack>
+        </SessionProvider>
+      </SafeAreaProvider>
     </ThemeProvider>
   );
 }
