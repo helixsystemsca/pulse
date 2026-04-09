@@ -8,6 +8,7 @@ import { apiFetch, isApiMode } from "@/lib/api";
 import { mapApiElement, type ApiBlueprintElement } from "@/lib/blueprint-layout";
 import { parseClientApiError } from "@/lib/parse-client-api-error";
 import { canAccessPulseTenantApis } from "@/lib/pulse-session";
+import { sessionHasAnyRole } from "@/lib/pulse-roles";
 import type { BlueprintReadOnlyTheme } from "./BlueprintReadOnlyCanvas";
 
 const BlueprintReadOnlyCanvas = dynamic(
@@ -127,7 +128,8 @@ export function FloorPlanBlueprintSection() {
     [detail],
   );
 
-  const canDelete = Boolean(tenantOk && selectedId && !loadingList && !deleting);
+  const isCompanyAdmin = sessionHasAnyRole(session, "company_admin");
+  const canDelete = Boolean(tenantOk && isCompanyAdmin && selectedId && !loadingList && !deleting);
 
   async function deleteSelected() {
     if (!canDelete) return;
@@ -196,7 +198,13 @@ export function FloorPlanBlueprintSection() {
             onClick={() => void deleteSelected()}
             disabled={!canDelete}
             aria-disabled={!canDelete}
-            title={!selectedId ? "Select a blueprint to delete" : undefined}
+            title={
+              !isCompanyAdmin
+                ? "Only company admins can delete blueprints"
+                : !selectedId
+                  ? "Select a blueprint to delete"
+                  : undefined
+            }
           >
             {deleting ? "Deleting…" : "Delete"}
           </button>

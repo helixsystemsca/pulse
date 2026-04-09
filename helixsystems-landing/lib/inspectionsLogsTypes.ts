@@ -5,13 +5,18 @@
 
 export type TemplateType = "inspection" | "log";
 
+/** How an inspection line is answered when someone submits a run (default: checkbox). */
+export type InspectionItemResponseType = "checkbox" | "text" | "number" | "notes" | "yes_no";
+
 export type InspectionChecklistItem = {
   id: string;
   label: string;
   order: number;
+  response_type?: InspectionItemResponseType;
 };
 
-export type LogFieldType = "text" | "number" | "notes";
+/** Log template field kinds — add several of each type as needed. */
+export type LogFieldType = "text" | "number" | "notes" | "checkbox" | "yes_no";
 
 export type LogFieldDef = {
   id: string;

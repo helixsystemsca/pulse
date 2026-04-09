@@ -97,6 +97,16 @@ async def get_current_company_user(user: Annotated[User, Depends(get_current_use
     return user
 
 
+async def get_current_company_admin_user(user: Annotated[User, Depends(get_current_company_user)]) -> User:
+    """Company org admin only (not manager/supervisor/lead/worker). For destructive tenant operations."""
+    if not user_has_any_role(user, UserRole.company_admin):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="company_admin role required",
+        )
+    return user
+
+
 async def require_tenant_user(
     user: Annotated[User, Depends(get_current_company_user)],
 ) -> User:

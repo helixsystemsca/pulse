@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_company_user, get_db
+from app.api.deps import get_current_company_admin_user, get_current_company_user, get_db
 from app.models.blueprint_models import Blueprint, BlueprintElement
 from app.models.domain import User
 from app.schemas.blueprint import (
@@ -29,6 +29,7 @@ router = APIRouter(prefix="/blueprints", tags=["blueprints"])
 
 Db = Annotated[AsyncSession, Depends(get_db)]
 TenantUser = Annotated[User, Depends(get_current_company_user)]
+CompanyAdminUser = Annotated[User, Depends(get_current_company_admin_user)]
 
 
 async def _get_blueprint(db: AsyncSession, company_id: str, blueprint_id: str) -> Blueprint | None:
@@ -104,6 +105,20 @@ async def update_blueprint(
         await db.commit()
         await db.refresh(user)
     return await _detail_out(db, bp)
+
+
+@router.delete("/{blueprint_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_blueprint(blueprint_id: str, db: Db, user: CompanyAdminUser) -> None:
+    cid = str(user.company_id)
+    bp = await _get_blueprint(db, cid, blueprint_id)
+    if not bp:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Blueprint not found")
+    await db.execute(delete(Blueprint).where(Blueprint.id == blueprint_id, Blueprint.company_id == cid))
+    await db.commit()
+    await db.refresh(user)
+    if await sync_user_onboarding_from_reality(db, user):
+        await db.commit()
+        await db.refresh(user)
 
 
 async def _detail_out(db: AsyncSession, bp: Blueprint) -> BlueprintDetailOut:

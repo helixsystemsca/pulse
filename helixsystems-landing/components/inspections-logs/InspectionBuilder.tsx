@@ -3,7 +3,11 @@
 import { ArrowDown, ArrowUp, Plus, Trash2 } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 import { newId } from "@/lib/inspectionsLogsStorage";
-import type { InspectionChecklistItem, InspectionTemplate } from "@/lib/inspectionsLogsTypes";
+import type {
+  InspectionChecklistItem,
+  InspectionItemResponseType,
+  InspectionTemplate,
+} from "@/lib/inspectionsLogsTypes";
 
 const FIELD =
   "app-field mt-1.5 w-full rounded-md border-ds-border bg-ds-primary text-ds-foreground placeholder:text-ds-muted focus:border-ds-success/40 focus:ring-2 focus:ring-[var(--ds-focus-ring)]";
@@ -14,6 +18,14 @@ const BTN_PRIMARY = "ds-btn-solid-primary rounded-md px-4 py-2 text-sm font-semi
 function sortItems(items: InspectionChecklistItem[]): InspectionChecklistItem[] {
   return [...items].sort((a, b) => a.order - b.order);
 }
+
+const RESPONSE_TYPES: { value: InspectionItemResponseType; label: string }[] = [
+  { value: "checkbox", label: "Checkbox" },
+  { value: "text", label: "Short text" },
+  { value: "number", label: "Number" },
+  { value: "notes", label: "Long text" },
+  { value: "yes_no", label: "Yes / No" },
+];
 
 export function InspectionBuilder({
   initial,
@@ -34,15 +46,15 @@ export function InspectionBuilder({
   const [linkedZoneId, setLinkedZoneId] = useState(initial?.linked_zone_id ?? "");
   const [frequency, setFrequency] = useState(initial?.frequency ?? "");
 
-  const addItem = useCallback(() => {
+  const addItem = useCallback((response_type: InspectionItemResponseType = "checkbox") => {
     setItems((prev) => {
       const nextOrder = prev.length === 0 ? 0 : Math.max(...prev.map((p) => p.order)) + 1;
-      return [...prev, { id: newId(), label: "", order: nextOrder }];
+      return [...prev, { id: newId(), label: "", order: nextOrder, response_type }];
     });
   }, []);
 
-  const updateLabel = useCallback((id: string, label: string) => {
-    setItems((prev) => prev.map((i) => (i.id === id ? { ...i, label } : i)));
+  const updateItem = useCallback((id: string, patch: Partial<InspectionChecklistItem>) => {
+    setItems((prev) => prev.map((i) => (i.id === id ? { ...i, ...patch } : i)));
   }, []);
 
   const removeItem = useCallback((id: string) => {
@@ -66,7 +78,12 @@ export function InspectionBuilder({
     if (!trimmed) return;
     const checklist_items = sortItems(items)
       .filter((i) => i.label.trim())
-      .map((i, idx) => ({ ...i, label: i.label.trim(), order: idx }));
+      .map((i, idx) => ({
+        ...i,
+        label: i.label.trim(),
+        order: idx,
+        response_type: i.response_type ?? "checkbox",
+      }));
     const base = initial;
     const t: InspectionTemplate = {
       id: base?.id ?? newId(),
@@ -89,7 +106,7 @@ export function InspectionBuilder({
         {initial ? "Edit inspection template" : "New inspection template"}
       </h2>
       <p className="mt-1 text-sm text-ds-muted">
-        Checklist items can be checked when completing a run.
+        Add any mix of checkboxes, short or long text, numbers, and yes/no lines. Each line is one question or check.
       </p>
 
       <div className="mt-6 grid gap-5 sm:grid-cols-2">
@@ -111,22 +128,38 @@ export function InspectionBuilder({
       <div className="mt-6">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <span className={LABEL}>Checklist items</span>
-          <button type="button" className={BTN_SECONDARY} onClick={addItem}>
-            <Plus className="mr-1 inline h-3.5 w-3.5" aria-hidden />
-            Add item
-          </button>
+          <div className="flex flex-wrap gap-2">
+            {RESPONSE_TYPES.map((rt) => (
+              <button key={rt.value} type="button" className={BTN_SECONDARY} onClick={() => addItem(rt.value)}>
+                <Plus className="mr-1 inline h-3.5 w-3.5" aria-hidden />
+                {rt.label}
+              </button>
+            ))}
+          </div>
         </div>
         <ul className="mt-3 space-y-2">
           {sortItems(items).map((item, idx) => (
             <li
               key={item.id}
-              className="flex items-center gap-2 rounded-md border border-ds-border bg-ds-secondary px-3 py-2"
+              className="flex flex-wrap items-center gap-2 rounded-md border border-ds-border bg-ds-secondary px-3 py-2 sm:flex-nowrap"
             >
-              <span className="flex h-4 w-4 shrink-0 rounded border border-ds-border" aria-hidden />
+              <select
+                className="rounded-lg border border-ds-border bg-ds-primary px-2 py-1.5 text-xs font-medium text-ds-foreground"
+                value={item.response_type ?? "checkbox"}
+                onChange={(e) =>
+                  updateItem(item.id, { response_type: e.target.value as InspectionItemResponseType })
+                }
+              >
+                {RESPONSE_TYPES.map((rt) => (
+                  <option key={rt.value} value={rt.value}>
+                    {rt.label}
+                  </option>
+                ))}
+              </select>
               <input
-                className="min-w-0 flex-1 border-0 bg-transparent text-sm text-ds-foreground placeholder:text-ds-muted focus:ring-0"
+                className="min-w-0 flex-1 rounded-lg border border-ds-border bg-ds-primary px-2 py-1.5 text-sm text-ds-foreground placeholder:text-ds-muted focus:outline-none focus:ring-2 focus:ring-[var(--ds-focus-ring)]"
                 value={item.label}
-                onChange={(e) => updateLabel(item.id, e.target.value)}
+                onChange={(e) => updateItem(item.id, { label: e.target.value })}
                 placeholder={`Item ${idx + 1}`}
               />
               <div className="flex shrink-0 gap-0.5">

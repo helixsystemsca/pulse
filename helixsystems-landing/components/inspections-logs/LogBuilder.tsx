@@ -17,9 +17,11 @@ function sortFields(fields: LogFieldDef[]): LogFieldDef[] {
 }
 
 const FIELD_TYPES: { value: LogFieldType; label: string }[] = [
-  { value: "text", label: "Text" },
+  { value: "text", label: "Short text" },
   { value: "number", label: "Number" },
-  { value: "notes", label: "Notes" },
+  { value: "notes", label: "Long text" },
+  { value: "checkbox", label: "Checkbox" },
+  { value: "yes_no", label: "Yes / No" },
 ];
 
 export function LogBuilder({
@@ -96,7 +98,8 @@ export function LogBuilder({
         {initial ? "Edit log template" : "New log template"}
       </h2>
       <p className="mt-1 text-sm text-ds-muted">
-        Define fields for each submission. Timestamp is recorded automatically when an entry is saved.
+        Add any combination of short text, numbers, long text, checkboxes, and yes/no fields. Timestamp is saved when
+        an entry is submitted.
       </p>
 
       <div className="mt-6 grid gap-5 sm:grid-cols-2">

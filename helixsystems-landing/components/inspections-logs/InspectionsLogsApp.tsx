@@ -5,7 +5,14 @@ import type { ReactNode } from "react";
 import { useCallback, useMemo, useState } from "react";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { useInspectionsLogsStore } from "@/hooks/useInspectionsLogsStore";
-import type { EntryRecord, InspectionTemplate, LogFieldDef, LogTemplate } from "@/lib/inspectionsLogsTypes";
+import type {
+  EntryRecord,
+  InspectionItemResponseType,
+  InspectionTemplate,
+  LogFieldDef,
+  LogFieldType,
+  LogTemplate,
+} from "@/lib/inspectionsLogsTypes";
 import { readSession } from "@/lib/pulse-session";
 import { CreateDropdown } from "./CreateDropdown";
 import { InspectionBuilder } from "./InspectionBuilder";
@@ -373,6 +380,7 @@ export function InspectionsLogsApp() {
 
       {inspectFill ? (
         <InspectionFillModal
+          key={inspectFill.id}
           template={inspectFill}
           onClose={() => setInspectFill(null)}
           onSubmit={(values) => {
@@ -390,6 +398,7 @@ export function InspectionsLogsApp() {
 
       {logFill ? (
         <LogFillModal
+          key={logFill.id}
           template={logFill}
           onClose={() => setLogFill(null)}
           onSubmit={(values) => {
@@ -412,6 +421,13 @@ export function InspectionsLogsApp() {
   );
 }
 
+function defaultInspectionValue(responseType: InspectionItemResponseType | undefined): unknown {
+  const rt = responseType ?? "checkbox";
+  if (rt === "checkbox") return false;
+  if (rt === "yes_no") return "";
+  return "";
+}
+
 function InspectionFillModal({
   template,
   onClose,
@@ -421,13 +437,16 @@ function InspectionFillModal({
   onClose: () => void;
   onSubmit: (values: Record<string, unknown>) => void;
 }) {
-  const [checks, setChecks] = useState<Record<string, boolean>>(() => {
-    const o: Record<string, boolean> = {};
+  const [values, setValues] = useState<Record<string, unknown>>(() => {
+    const o: Record<string, unknown> = {};
     template.checklist_items.forEach((i) => {
-      o[i.id] = false;
+      o[i.id] = defaultInspectionValue(i.response_type);
     });
     return o;
   });
+
+  const inputCls =
+    "mt-1.5 w-full rounded-md border border-ds-border bg-ds-primary px-3 py-2 text-sm text-ds-foreground focus:border-ds-success/40 focus:outline-none focus:ring-2 focus:ring-[var(--ds-focus-ring)]";
 
   return (
     <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
@@ -439,25 +458,101 @@ function InspectionFillModal({
       />
       <div className="app-glass-elevated relative max-h-[90vh] w-full max-w-lg overflow-auto rounded-md p-6">
         <h3 className="text-lg font-semibold text-ds-foreground">Submit inspection — {template.name}</h3>
-        <p className="mt-1 text-xs text-ds-muted">Check each item as verified.</p>
-        <ul className="mt-4 space-y-3">
+        <p className="mt-1 text-xs text-ds-muted">Complete each line according to its type.</p>
+        <ul className="mt-4 space-y-4">
           {template.checklist_items
             .slice()
             .sort((a, b) => a.order - b.order)
-            .map((item) => (
-              <li key={item.id} className="flex items-start gap-3">
-                <input
-                  type="checkbox"
-                  id={item.id}
-                  className="mt-1 h-4 w-4 rounded border-ds-border text-ds-success focus:ring-2 focus:ring-[var(--ds-focus-ring)]"
-                  checked={checks[item.id] ?? false}
-                  onChange={(e) => setChecks((c) => ({ ...c, [item.id]: e.target.checked }))}
-                />
-                <label htmlFor={item.id} className="text-sm text-ds-foreground">
-                  {item.label}
-                </label>
-              </li>
-            ))}
+            .map((item) => {
+              const rt: InspectionItemResponseType = item.response_type ?? "checkbox";
+              const id = `inspection-${item.id}`;
+              if (rt === "checkbox") {
+                return (
+                  <li key={item.id} className="flex items-start gap-3">
+                    <input
+                      type="checkbox"
+                      id={id}
+                      className="mt-1 h-4 w-4 rounded border-ds-border text-ds-success focus:ring-2 focus:ring-[var(--ds-focus-ring)]"
+                      checked={values[item.id] === true}
+                      onChange={(e) => setValues((c) => ({ ...c, [item.id]: e.target.checked }))}
+                    />
+                    <label htmlFor={id} className="text-sm text-ds-foreground">
+                      {item.label}
+                    </label>
+                  </li>
+                );
+              }
+              if (rt === "yes_no") {
+                return (
+                  <li key={item.id}>
+                    <label htmlFor={id} className="text-[11px] font-semibold uppercase tracking-wider text-ds-muted">
+                      {item.label}
+                    </label>
+                    <select
+                      id={id}
+                      className={inputCls}
+                      value={typeof values[item.id] === "string" ? (values[item.id] as string) : ""}
+                      onChange={(e) => setValues((c) => ({ ...c, [item.id]: e.target.value }))}
+                    >
+                      <option value="">— Select —</option>
+                      <option value="yes">Yes</option>
+                      <option value="no">No</option>
+                    </select>
+                  </li>
+                );
+              }
+              if (rt === "notes") {
+                return (
+                  <li key={item.id}>
+                    <label htmlFor={id} className="text-[11px] font-semibold uppercase tracking-wider text-ds-muted">
+                      {item.label}
+                    </label>
+                    <textarea
+                      id={id}
+                      className={`${inputCls} min-h-[4.5rem] resize-y`}
+                      rows={3}
+                      value={typeof values[item.id] === "string" ? (values[item.id] as string) : ""}
+                      onChange={(e) => setValues((c) => ({ ...c, [item.id]: e.target.value }))}
+                    />
+                  </li>
+                );
+              }
+              if (rt === "number") {
+                return (
+                  <li key={item.id}>
+                    <label htmlFor={id} className="text-[11px] font-semibold uppercase tracking-wider text-ds-muted">
+                      {item.label}
+                    </label>
+                    <input
+                      id={id}
+                      type="number"
+                      className={inputCls}
+                      value={values[item.id] === undefined || values[item.id] === "" ? "" : String(values[item.id])}
+                      onChange={(e) =>
+                        setValues((c) => ({
+                          ...c,
+                          [item.id]: e.target.value === "" ? "" : Number(e.target.value),
+                        }))
+                      }
+                    />
+                  </li>
+                );
+              }
+              return (
+                <li key={item.id}>
+                  <label htmlFor={id} className="text-[11px] font-semibold uppercase tracking-wider text-ds-muted">
+                    {item.label}
+                  </label>
+                  <input
+                    id={id}
+                    type="text"
+                    className={inputCls}
+                    value={typeof values[item.id] === "string" ? (values[item.id] as string) : ""}
+                    onChange={(e) => setValues((c) => ({ ...c, [item.id]: e.target.value }))}
+                  />
+                </li>
+              );
+            })}
         </ul>
         <div className="mt-6 flex justify-end gap-2">
           <button
@@ -470,7 +565,7 @@ function InspectionFillModal({
           <button
             type="button"
             className="ds-btn-solid-primary rounded-md px-4 py-2 text-sm font-semibold"
-            onClick={() => onSubmit(checks)}
+            onClick={() => onSubmit(values)}
           >
             Save completion
           </button>
@@ -478,6 +573,12 @@ function InspectionFillModal({
       </div>
     </div>
   );
+}
+
+function defaultLogValue(fieldType: LogFieldType): unknown {
+  if (fieldType === "checkbox") return false;
+  if (fieldType === "yes_no") return "";
+  return "";
 }
 
 function LogFillModal({
@@ -493,15 +594,16 @@ function LogFillModal({
     () => [...template.fields].sort((a, b) => a.order - b.order),
     [template.fields],
   );
-  const [vals, setVals] = useState<Record<string, string>>(() => {
-    const o: Record<string, string> = {};
+  const [vals, setVals] = useState<Record<string, unknown>>(() => {
+    const o: Record<string, unknown> = {};
     sorted.forEach((f) => {
-      o[f.id] = "";
+      o[f.id] = defaultLogValue(f.type);
     });
     return o;
   });
 
-  const setField = (id: string, v: string) => setVals((s) => ({ ...s, [id]: v }));
+  const inputCls =
+    "mt-1.5 w-full rounded-md border border-ds-border bg-ds-primary px-3 py-2 text-sm text-ds-foreground focus:border-ds-success/40 focus:outline-none focus:ring-2 focus:ring-[var(--ds-focus-ring)]";
 
   return (
     <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
@@ -515,28 +617,99 @@ function LogFillModal({
         <h3 className="text-lg font-semibold text-ds-foreground">New log entry — {template.name}</h3>
         <p className="mt-1 text-xs text-ds-muted">Timestamp is saved automatically when you submit.</p>
         <div className="mt-4 space-y-4">
-          {sorted.map((field: LogFieldDef) => (
-            <div key={field.id}>
-              <label className="text-[11px] font-semibold uppercase tracking-wider text-ds-muted">
+          {sorted.map((field: LogFieldDef) => {
+            const id = `log-field-${field.id}`;
+            const label = (
+              <label htmlFor={id} className="text-[11px] font-semibold uppercase tracking-wider text-ds-muted">
                 {field.label || "Field"}
               </label>
-              {field.type === "notes" ? (
-                <textarea
-                  className="mt-1.5 w-full rounded-md border border-ds-border bg-ds-primary px-3 py-2 text-sm text-ds-foreground"
-                  rows={3}
-                  value={vals[field.id] ?? ""}
-                  onChange={(e) => setField(field.id, e.target.value)}
-                />
-              ) : (
+            );
+
+            if (field.type === "checkbox") {
+              return (
+                <div key={field.id} className="flex items-start gap-3">
+                  <input
+                    type="checkbox"
+                    id={id}
+                    className="mt-1 h-4 w-4 rounded border-ds-border text-ds-success focus:ring-2 focus:ring-[var(--ds-focus-ring)]"
+                    checked={vals[field.id] === true}
+                    onChange={(e) => setVals((s) => ({ ...s, [field.id]: e.target.checked }))}
+                  />
+                  <label htmlFor={id} className="text-sm text-ds-foreground">
+                    {field.label || "Field"}
+                  </label>
+                </div>
+              );
+            }
+
+            if (field.type === "yes_no") {
+              return (
+                <div key={field.id}>
+                  {label}
+                  <select
+                    id={id}
+                    className={inputCls}
+                    value={typeof vals[field.id] === "string" ? (vals[field.id] as string) : ""}
+                    onChange={(e) => setVals((s) => ({ ...s, [field.id]: e.target.value }))}
+                  >
+                    <option value="">— Select —</option>
+                    <option value="yes">Yes</option>
+                    <option value="no">No</option>
+                  </select>
+                </div>
+              );
+            }
+
+            if (field.type === "notes") {
+              return (
+                <div key={field.id}>
+                  {label}
+                  <textarea
+                    id={id}
+                    className={`${inputCls} min-h-[4.5rem] resize-y`}
+                    rows={3}
+                    value={typeof vals[field.id] === "string" ? (vals[field.id] as string) : ""}
+                    onChange={(e) => setVals((s) => ({ ...s, [field.id]: e.target.value }))}
+                  />
+                </div>
+              );
+            }
+
+            if (field.type === "number") {
+              return (
+                <div key={field.id}>
+                  {label}
+                  <input
+                    id={id}
+                    type="number"
+                    className={inputCls}
+                    value={
+                      vals[field.id] === undefined || vals[field.id] === "" ? "" : String(vals[field.id])
+                    }
+                    onChange={(e) =>
+                      setVals((s) => ({
+                        ...s,
+                        [field.id]: e.target.value === "" ? "" : Number(e.target.value),
+                      }))
+                    }
+                  />
+                </div>
+              );
+            }
+
+            return (
+              <div key={field.id}>
+                {label}
                 <input
-                  type={field.type === "number" ? "number" : "text"}
-                  className="mt-1.5 w-full rounded-md border border-ds-border bg-ds-primary px-3 py-2 text-sm text-ds-foreground"
-                  value={vals[field.id] ?? ""}
-                  onChange={(e) => setField(field.id, e.target.value)}
+                  id={id}
+                  type="text"
+                  className={inputCls}
+                  value={typeof vals[field.id] === "string" ? (vals[field.id] as string) : ""}
+                  onChange={(e) => setVals((s) => ({ ...s, [field.id]: e.target.value }))}
                 />
-              )}
-            </div>
-          ))}
+              </div>
+            );
+          })}
         </div>
         <div className="mt-6 flex justify-end gap-2">
           <button
@@ -597,27 +770,42 @@ function EntryViewModal({
             ? tpl.checklist_items
                 .slice()
                 .sort((a, b) => a.order - b.order)
-                .map((item) => (
-                  <div key={item.id} className="flex justify-between gap-4 border-b border-ds-border pb-2">
-                    <dt className="text-ds-muted">{item.label}</dt>
-                    <dd className="font-medium text-ds-foreground">
-                      {entry.values[item.id] === true ? "✓" : "—"}
-                    </dd>
-                  </div>
-                ))
+                .map((item) => {
+                  const rt = item.response_type ?? "checkbox";
+                  const v = entry.values[item.id];
+                  let shown: string;
+                  if (rt === "checkbox") shown = v === true ? "✓" : "—";
+                  else if (rt === "yes_no")
+                    shown = v === "yes" ? "Yes" : v === "no" ? "No" : "—";
+                  else if (v === undefined || v === null || v === "") shown = "—";
+                  else shown = String(v);
+                  return (
+                    <div key={item.id} className="flex justify-between gap-4 border-b border-ds-border pb-2">
+                      <dt className="text-ds-muted">{item.label}</dt>
+                      <dd className="max-w-[55%] text-right font-medium text-ds-foreground">{shown}</dd>
+                    </div>
+                  );
+                })
             : null}
           {entry.template_type === "log" && tpl && tpl.type === "log"
             ? tpl.fields
                 .slice()
                 .sort((a, b) => a.order - b.order)
-                .map((f) => (
-                  <div key={f.id} className="border-b border-ds-border pb-2">
-                    <dt className="text-ds-muted">{f.label}</dt>
-                    <dd className="mt-1 text-ds-foreground">
-                      {String(entry.values[f.id] ?? "—")}
-                    </dd>
-                  </div>
-                ))
+                .map((f) => {
+                  const v = entry.values[f.id];
+                  let shown: string;
+                  if (f.type === "checkbox") shown = v === true ? "✓" : "—";
+                  else if (f.type === "yes_no")
+                    shown = v === "yes" ? "Yes" : v === "no" ? "No" : "—";
+                  else if (v === undefined || v === null || v === "") shown = "—";
+                  else shown = String(v);
+                  return (
+                    <div key={f.id} className="border-b border-ds-border pb-2">
+                      <dt className="text-ds-muted">{f.label}</dt>
+                      <dd className="mt-1 font-medium text-ds-foreground">{shown}</dd>
+                    </div>
+                  );
+                })
             : null}
         </dl>
         <div className="mt-6 flex justify-end">
