@@ -102,12 +102,12 @@ function WorkOrdersMaintenanceAppInner() {
 
   return (
     <div className="grid gap-6 lg:grid-cols-2">
-      <section className="rounded-md border border-pulse-border bg-white p-4 shadow-card dark:border-slate-700 dark:bg-ds-bg/65">
+      <section className="rounded-md border border-ds-border bg-ds-primary p-4 shadow-[var(--ds-shadow-card)]">
         <div className="flex flex-wrap items-center gap-3">
           <label className="text-xs font-semibold uppercase text-pulse-muted">
             Type
             <select
-              className="ml-2 rounded-lg border border-pulse-border bg-white px-2 py-1.5 text-sm dark:border-slate-600 dark:bg-ds-secondary"
+              className="ml-2 rounded-lg border border-ds-border bg-ds-primary px-2 py-1.5 text-sm text-ds-foreground"
               value={typeFilter}
               onChange={(e) => setTypeFilter(e.target.value as "" | WorkOrderType)}
             >
@@ -122,7 +122,7 @@ function WorkOrdersMaintenanceAppInner() {
 
         <div className="mt-4 flex gap-2">
           <input
-            className="min-w-0 flex-1 rounded-lg border border-pulse-border bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-ds-secondary"
+            className="min-w-0 flex-1 rounded-lg border border-ds-border bg-ds-primary px-3 py-2 text-sm text-ds-foreground"
             placeholder="New work order title…"
             value={draftTitle}
             onChange={(e) => setDraftTitle(e.target.value)}
@@ -155,7 +155,7 @@ function WorkOrdersMaintenanceAppInner() {
             <p className="p-4 text-sm text-pulse-muted">No work orders yet.</p>
           ) : (
             <table className="w-full text-left text-sm">
-              <thead className="sticky top-0 bg-slate-50 text-xs uppercase text-pulse-muted dark:bg-ds-secondary/95">
+              <thead className="sticky top-0 bg-ds-primary text-xs uppercase text-ds-muted">
                 <tr>
                   <th className="px-3 py-2 font-semibold">Title</th>
                   <th className="px-3 py-2 font-semibold">Type</th>
@@ -182,7 +182,7 @@ function WorkOrdersMaintenanceAppInner() {
         </div>
       </section>
 
-      <aside className="rounded-md border border-pulse-border bg-white p-4 shadow-card dark:border-slate-700 dark:bg-ds-bg/65">
+      <aside className="rounded-md border border-ds-border bg-ds-primary p-4 shadow-[var(--ds-shadow-card)]">
         {!detail ? (
           <p className="text-sm text-pulse-muted">Select a work order to view asset link and procedure steps.</p>
         ) : (
@@ -243,7 +243,7 @@ export function WorkOrdersMaintenanceApp() {
   return (
     <Suspense
       fallback={
-        <div className="flex min-h-[12rem] items-center justify-center rounded-md border border-pulse-border bg-white p-8 dark:border-slate-700 dark:bg-ds-bg/65">
+        <div className="flex min-h-[12rem] items-center justify-center rounded-md border border-ds-border bg-ds-secondary p-8 text-ds-muted">
           <p className="text-sm text-pulse-muted">Loading work orders…</p>
         </div>
       }

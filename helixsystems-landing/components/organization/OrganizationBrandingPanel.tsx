@@ -1,5 +1,6 @@
 "use client";
 
+import { AlertCircle, CheckCircle2 } from "lucide-react";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { CompanyLogo } from "@/components/branding/CompanyLogo";
 import { Card } from "@/components/pulse/Card";
@@ -96,10 +97,16 @@ export function OrganizationBrandingPanel({ initialCompany, onCompanyUpdated }: 
       />
 
       {err ? (
-        <p className="ds-alert-critical mt-3 rounded-lg border px-3 py-2 text-sm text-ds-foreground">{err}</p>
+        <div className="ds-notification ds-notification-critical mt-3 flex gap-2 px-3 py-2 text-sm text-ds-foreground">
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-ds-danger" aria-hidden />
+          <p>{err}</p>
+        </div>
       ) : null}
       {ok ? (
-        <p className="ds-alert-success mt-3 rounded-lg border px-3 py-2 text-sm text-ds-foreground">{ok}</p>
+        <div className="ds-notification ds-notification-success mt-3 flex gap-2 px-3 py-2 text-sm text-ds-foreground">
+          <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-ds-success" aria-hidden />
+          <p>{ok}</p>
+        </div>
       ) : null}
 
       <div className="mt-4 flex flex-wrap items-center gap-4">

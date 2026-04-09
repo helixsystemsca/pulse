@@ -26,8 +26,8 @@ export function MaintenanceSubnav() {
             prefetch={false}
             className={`rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${
               active
-                ? "bg-ds-success text-[#062422] shadow-sm dark:text-[#041612]"
-                : "text-ds-muted hover:bg-ds-primary"
+                ? "border-b-2 border-ds-success bg-ds-primary text-ds-foreground"
+                : "border-b-2 border-transparent text-ds-muted hover:bg-ds-primary hover:text-ds-foreground"
             }`}
           >
             {t.label}

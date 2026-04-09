@@ -23,6 +23,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Card } from "@/components/pulse/Card";
 import { ModuleOnboardingHint } from "@/components/onboarding/ModuleOnboardingHint";
 import { ModuleSettingsGear } from "@/components/module-settings/ModuleSettingsGear";
+import { dataTableBodyRow, dataTableHeadRowClass } from "@/components/ui/DataTable";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { apiFetch } from "@/lib/api";
 import { emitOnboardingMaybeUpdated } from "@/lib/onboarding-events";
@@ -41,13 +42,10 @@ import { useModuleSettings } from "@/providers/ModuleSettingsProvider";
 
 type ZoneOpt = { id: string; name: string };
 
-const PRIMARY_BTN =
-  "rounded-[10px] bg-[#2B4C7E] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#234066] disabled:opacity-50";
-const SECONDARY_BTN =
-  "rounded-[10px] border border-slate-200/90 bg-white px-5 py-2.5 text-sm font-semibold text-pulse-navy shadow-sm transition-colors hover:bg-slate-50 disabled:opacity-50 dark:border-ds-border dark:bg-ds-secondary dark:text-gray-100 dark:hover:bg-ds-interactive-hover";
-const FIELD =
-  "mt-1.5 w-full rounded-[10px] border border-slate-200/90 bg-white px-3 py-2.5 text-sm text-pulse-navy shadow-sm focus:border-[#2B4C7E]/35 focus:outline-none focus:ring-1 focus:ring-[#2B4C7E]/25 disabled:opacity-60 dark:border-ds-border dark:bg-ds-secondary dark:text-gray-100 dark:placeholder:text-gray-500";
-const LABEL = "text-[11px] font-semibold uppercase tracking-wider text-pulse-muted";
+const PRIMARY_BTN = "ds-btn-solid-primary px-5 py-2.5 text-sm disabled:opacity-50";
+const SECONDARY_BTN = "ds-btn-secondary px-5 py-2.5 text-sm disabled:opacity-50";
+const FIELD = "app-field mt-1.5";
+const LABEL = "text-[11px] font-semibold uppercase tracking-wider text-ds-muted";
 
 const TYPE_SUGGESTIONS = ["General", "HVAC", "Mechanical / fluid", "Electrical", "Tools", "Safety", "Other"];
 const STATUS_OPTS = [
@@ -69,11 +67,11 @@ function formatDate(iso: string | null | undefined): string {
 function statusBadge(status: string): string {
   switch (status) {
     case "maintenance":
-      return "bg-amber-50 text-amber-900 ring-1 ring-amber-200/80 dark:bg-amber-600 dark:text-white dark:ring-amber-400/40";
+      return "app-badge-amber";
     case "offline":
-      return "bg-slate-100 text-pulse-muted ring-1 ring-slate-200/80 dark:bg-slate-600 dark:text-white dark:ring-slate-500/40";
+      return "app-badge-slate";
     default:
-      return "bg-emerald-50 text-emerald-900 ring-1 ring-emerald-200/80 dark:bg-emerald-600 dark:text-white dark:ring-emerald-500/40";
+      return "app-badge-emerald";
   }
 }
 
@@ -408,9 +406,9 @@ export function EquipmentApp() {
           icon={Wrench}
         />
         <div className="app-page-inset p-5">
-          <p className="text-sm text-pulse-muted dark:text-slate-400">
+          <p className="text-sm text-ds-muted">
             The equipment module is not enabled for your organization. A system administrator can turn on the{" "}
-            <span className="font-semibold text-pulse-navy dark:text-slate-100">equipment</span> feature for your company
+            <span className="font-semibold text-ds-foreground">equipment</span> feature for your company
             in System admin → Companies.
           </p>
         </div>
@@ -433,8 +431,8 @@ export function EquipmentApp() {
       }}
       className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${
         tab === id
-          ? "bg-sky-50/95 text-[#1e4a8a] ring-1 ring-sky-200/80 dark:bg-[#1e3a5f] dark:text-sky-100 dark:ring-sky-500/35"
-          : "text-pulse-navy hover:bg-white/80 dark:text-gray-300 dark:hover:bg-ds-interactive-hover"
+          ? "border-b-2 border-ds-success bg-ds-primary text-ds-foreground"
+          : "border-b-2 border-transparent text-ds-muted hover:bg-ds-primary hover:text-ds-foreground"
       }`}
     >
       <Icon className="h-4 w-4 shrink-0" strokeWidth={2} aria-hidden />
@@ -450,9 +448,9 @@ export function EquipmentApp() {
         icon={Wrench}
         actions={<ModuleSettingsGear moduleId="assets" label="Equipment organization settings" />}
       />
-      <p className="text-sm text-pulse-muted dark:text-gray-400">
-        BLE location tags pair with <span className="font-medium text-pulse-navy dark:text-gray-200">tracked assets</span> in{" "}
-        <Link href="/dashboard/setup?tab=devices" className="font-semibold text-[#2B4C7E] hover:underline dark:text-sky-400">
+      <p className="text-sm text-ds-muted">
+        BLE location tags pair with <span className="font-medium text-ds-foreground">tracked assets</span> in{" "}
+        <Link href="/dashboard/setup?tab=devices" className="ds-link font-semibold">
           Zones &amp; Devices
         </Link>
         . Naming a tracked asset like a row here helps tie RTLS to this list.
@@ -460,7 +458,7 @@ export function EquipmentApp() {
 
       {toast ? (
         <div
-          className="fixed bottom-6 left-1/2 z-50 max-w-md -translate-x-1/2 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-900 shadow-lg"
+          className="ds-notification ds-notification-success fixed bottom-6 left-1/2 z-50 max-w-md -translate-x-1/2 px-4 py-3 text-sm font-medium text-ds-foreground"
           role="status"
         >
           {toast}
@@ -468,7 +466,7 @@ export function EquipmentApp() {
       ) : null}
 
       <nav
-        className="flex flex-wrap gap-1 rounded-md border border-slate-200/90 bg-white p-1 shadow-sm dark:border-ds-border dark:bg-ds-primary"
+        className="flex flex-wrap gap-1 rounded-md border border-ds-border bg-ds-secondary p-1"
         aria-label="Equipment sections"
       >
         {tabBtn("overview", "Overview", LayoutGrid)}
@@ -478,18 +476,18 @@ export function EquipmentApp() {
 
       {!loading && statsItems.length === 0 && !error ? (
         <ModuleOnboardingHint>
-          <strong className="font-semibold text-pulse-navy dark:text-slate-100">Build your equipment layer.</strong>{" "}
+          <strong className="font-semibold text-ds-foreground">Build your equipment layer.</strong>{" "}
           Register assets here so you can track location, maintenance rhythm, and monitoring context alongside work
           in the field.
         </ModuleOnboardingHint>
       ) : null}
 
-      {error ? <p className="text-sm font-medium text-red-700">{error}</p> : null}
+      {error ? <p className="text-sm font-medium text-ds-danger">{error}</p> : null}
 
       {tab === "overview" && (
         <div className="space-y-6">
           {loading ? (
-            <p className="text-sm text-pulse-muted">Loading…</p>
+            <p className="text-sm text-ds-muted">Loading…</p>
           ) : (
             <>
               <section
@@ -497,30 +495,30 @@ export function EquipmentApp() {
               >
                 <Card padding="md" className="flex flex-col gap-1">
                   <p className={LABEL}>Total equipment</p>
-                  <p className="font-headline text-2xl font-bold tabular-nums text-pulse-navy">{overviewCounts.total}</p>
+                  <p className="font-headline text-2xl font-bold tabular-nums text-ds-foreground">{overviewCounts.total}</p>
                 </Card>
                 <Card padding="md" className="flex flex-col gap-1">
                   <p className={LABEL}>Active</p>
-                  <p className="font-headline text-2xl font-bold tabular-nums text-emerald-800">{overviewCounts.byStatus.active}</p>
+                  <p className="font-headline text-2xl font-bold tabular-nums text-ds-success">{overviewCounts.byStatus.active}</p>
                 </Card>
                 {assetMod.settings.enableMaintenanceHistory ? (
                   <Card padding="md" className="flex flex-col gap-1">
                     <p className={LABEL}>Maintenance</p>
-                    <p className="font-headline text-2xl font-bold tabular-nums text-amber-900">
+                    <p className="font-headline text-2xl font-bold tabular-nums text-ds-warning">
                       {overviewCounts.byStatus.maintenance}
                     </p>
                   </Card>
                 ) : null}
                 <Card padding="md" className="flex flex-col gap-1">
                   <p className={LABEL}>Offline</p>
-                  <p className="font-headline text-2xl font-bold tabular-nums text-pulse-muted">
+                  <p className="font-headline text-2xl font-bold tabular-nums text-ds-muted">
                     {overviewCounts.byStatus.offline}
                   </p>
                 </Card>
-                <Card padding="md" className="flex flex-col gap-1 border-l-4 border-l-amber-500/90">
+                <Card padding="md" className="flex flex-col gap-1 border-l-4 border-l-ds-warning">
                   <p className={LABEL}>Parts needing replacement</p>
-                  <p className="font-headline text-2xl font-bold tabular-nums text-amber-950">{partsNeedingReplacement}</p>
-                  <p className="text-xs text-pulse-muted">Due soon or overdue (all assets)</p>
+                  <p className="font-headline text-2xl font-bold tabular-nums text-ds-warning">{partsNeedingReplacement}</p>
+                  <p className="text-xs text-ds-muted">Due soon or overdue (all assets)</p>
                 </Card>
               </section>
 
@@ -536,19 +534,19 @@ export function EquipmentApp() {
               </div>
 
               <section className="space-y-3">
-                <h2 className="text-sm font-bold uppercase tracking-wide text-pulse-muted">Recent updates</h2>
+                <h2 className="text-sm font-bold uppercase tracking-wide text-ds-muted">Recent updates</h2>
                 <Card padding="md" className="!p-0 overflow-hidden">
                   {recent.length === 0 ? (
-                    <p className="p-4 text-sm text-pulse-muted">
+                    <p className="p-4 text-sm text-ds-muted">
                       No equipment yet. Add your first asset to start tracking maintenance.
                     </p>
                   ) : (
-                    <ul className="divide-y divide-slate-100">
+                    <ul className="divide-y divide-ds-border">
                       {recent.map((r) => (
                         <li key={r.id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-3">
                           <div>
-                            <p className="font-semibold text-pulse-navy">{r.name}</p>
-                            <p className="text-xs text-pulse-muted">
+                            <p className="font-semibold text-ds-foreground">{r.name}</p>
+                            <p className="text-xs text-ds-muted">
                               {r.type} · {formatDate(r.updated_at)}
                             </p>
                           </div>
@@ -574,7 +572,7 @@ export function EquipmentApp() {
                 Search
               </label>
               <div className="relative mt-1.5">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-pulse-muted" aria-hidden />
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ds-muted" aria-hidden />
                 <input
                   id="eq-search"
                   className={`${FIELD} pl-9`}
@@ -627,12 +625,12 @@ export function EquipmentApp() {
 
           <Card padding="md" className="!p-0 overflow-x-auto">
             {listLoading ? (
-              <div className="flex items-center justify-center gap-2 p-12 text-pulse-muted">
+              <div className="flex items-center justify-center gap-2 p-12 text-ds-muted">
                 <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
                 Loading…
               </div>
             ) : items.length === 0 ? (
-              <p className="p-8 text-center text-sm text-pulse-muted">
+              <p className="p-8 text-center text-sm text-ds-muted">
                 {search.trim() || filterZone || filterType || filterStatus
                   ? "No equipment matches your filters."
                   : "No equipment yet. Add your first asset to start tracking maintenance."}
@@ -640,12 +638,12 @@ export function EquipmentApp() {
             ) : (
               <table className="min-w-[720px] w-full text-left text-sm">
                 <thead>
-                  <tr className="border-b border-slate-200 bg-slate-50/80">
+                  <tr className={dataTableHeadRowClass}>
                     {listColumns.map(([col, label]) => (
-                      <th key={col} className="px-4 py-3 font-semibold text-pulse-navy">
+                      <th key={col} className="px-4 py-3 font-semibold text-ds-foreground">
                         <button
                           type="button"
-                          className="inline-flex items-center gap-1 hover:text-[#2B4C7E]"
+                          className="inline-flex items-center gap-1 hover:text-ds-success"
                           onClick={() => toggleSort(col)}
                         >
                           {label}
@@ -653,7 +651,7 @@ export function EquipmentApp() {
                         </button>
                       </th>
                     ))}
-                    <th className="px-4 py-3 font-semibold text-pulse-navy">Actions</th>
+                    <th className="px-4 py-3 font-semibold text-ds-foreground">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -662,7 +660,7 @@ export function EquipmentApp() {
                       key={r.id}
                       role="link"
                       tabIndex={0}
-                      className="cursor-pointer border-b border-slate-100 hover:bg-slate-50/50"
+                      className={dataTableBodyRow("cursor-pointer")}
                       onClick={() => router.push(`/equipment/${encodeURIComponent(r.id)}`)}
                       onKeyDown={(e) => {
                         if (e.key === "Enter" || e.key === " ") {
@@ -671,35 +669,35 @@ export function EquipmentApp() {
                         }
                       }}
                     >
-                      <td className="px-4 py-3 font-medium text-pulse-navy">
+                      <td className="px-4 py-3 font-medium text-ds-foreground">
                         <span className="inline-flex items-center gap-2">
                           {(r.parts_overdue_count ?? 0) > 0 ? (
-                            <span className="inline-flex shrink-0 text-red-600" title="Has overdue parts">
+                            <span className="inline-flex shrink-0 text-ds-danger" title="Has overdue parts">
                               <AlertTriangle className="h-4 w-4" aria-hidden />
                             </span>
                           ) : (r.parts_due_soon_count ?? 0) > 0 ? (
-                            <span className="inline-flex shrink-0 text-amber-600" title="Has parts due soon">
+                            <span className="inline-flex shrink-0 text-ds-warning" title="Has parts due soon">
                               <AlertTriangle className="h-4 w-4" aria-hidden />
                             </span>
                           ) : null}
                           {r.name}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-pulse-muted">{r.type}</td>
+                      <td className="px-4 py-3 text-ds-muted">{r.type}</td>
                       {assetMod.settings.allowAssetHierarchy ? (
-                        <td className="px-4 py-3 text-pulse-muted">{r.zone_name ?? "—"}</td>
+                        <td className="px-4 py-3 text-ds-muted">{r.zone_name ?? "—"}</td>
                       ) : null}
                       <td className="px-4 py-3">
                         <span className={`rounded-full px-2 py-0.5 text-xs font-semibold capitalize ${statusBadge(r.status)}`}>
                           {r.status}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-pulse-muted tabular-nums">{formatDate(r.last_service_date)}</td>
+                      <td className="px-4 py-3 text-ds-muted tabular-nums">{formatDate(r.last_service_date)}</td>
                       <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                         <div className="flex flex-wrap gap-1">
                           <button
                             type="button"
-                            className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2 py-1 text-xs font-semibold text-pulse-navy hover:bg-slate-50"
+                            className="ds-btn-secondary inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-xs font-semibold"
                             onClick={() => void openView(r.id)}
                           >
                             <Eye className="h-3.5 w-3.5" aria-hidden />
@@ -709,7 +707,7 @@ export function EquipmentApp() {
                             <>
                               <button
                                 type="button"
-                                className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2 py-1 text-xs font-semibold text-pulse-navy hover:bg-slate-50"
+                                className="ds-btn-secondary inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-xs font-semibold"
                                 onClick={() => void openEdit(r.id)}
                               >
                                 <Pencil className="h-3.5 w-3.5" aria-hidden />
@@ -717,7 +715,7 @@ export function EquipmentApp() {
                               </button>
                               <button
                                 type="button"
-                                className="inline-flex items-center gap-1 rounded-lg border border-red-200 px-2 py-1 text-xs font-semibold text-red-700 hover:bg-red-50"
+                                className="inline-flex items-center gap-1 rounded-lg border border-ds-danger/40 px-2 py-1 text-xs font-semibold text-ds-danger hover:bg-ds-secondary"
                                 onClick={() => void onDelete(r.id)}
                               >
                                 <Trash2 className="h-3.5 w-3.5" aria-hidden />
@@ -741,7 +739,7 @@ export function EquipmentApp() {
             <div className="flex items-center gap-2">
               <button
                 type="button"
-                className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2 py-1.5 text-sm font-semibold text-pulse-navy hover:bg-slate-50"
+                className="ds-btn-secondary inline-flex items-center gap-1 rounded-lg border px-2 py-1.5 text-sm font-semibold"
                 onClick={() => {
                   resetForm();
                   setTab("list");
@@ -750,7 +748,7 @@ export function EquipmentApp() {
                 <ArrowLeft className="h-4 w-4" aria-hidden />
                 Back to list
               </button>
-              <h2 className="font-headline text-lg font-bold text-pulse-navy">
+              <h2 className="font-headline text-lg font-bold text-ds-foreground">
                 {formMode === "create" ? "Add equipment" : formMode === "edit" ? "Edit equipment" : "Equipment details"}
               </h2>
             </div>
@@ -761,7 +759,7 @@ export function EquipmentApp() {
             ) : null}
           </div>
 
-          {formError ? <p className="mb-4 text-sm font-medium text-red-700">{formError}</p> : null}
+          {formError ? <p className="mb-4 text-sm font-medium text-ds-danger">{formError}</p> : null}
 
           <form onSubmit={onSubmitForm} className="space-y-5">
             <div className="grid gap-5 md:grid-cols-2">

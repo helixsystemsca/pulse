@@ -1,6 +1,7 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
+import { AlertCircle } from "lucide-react";
 import { FormEvent, Suspense, useState } from "react";
 import { AuthBrandLink } from "@/components/auth/AuthBrandLink";
 import { AuthScreenShell } from "@/components/auth/AuthScreenShell";
@@ -63,7 +64,12 @@ function ResetForm() {
           <h1 className="text-lg font-semibold text-ds-foreground">Reset password</h1>
           <p className="mt-1 text-sm text-ds-muted">Choose a new password for your account.</p>
         </div>
-        {err ? <p className="ds-alert-critical rounded-lg border px-3 py-2 text-sm text-ds-foreground">{err}</p> : null}
+        {err ? (
+          <div className="ds-notification ds-notification-critical flex gap-2 px-3 py-2 text-sm text-ds-foreground">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-ds-danger" aria-hidden />
+            <p>{err}</p>
+          </div>
+        ) : null}
         <div>
           <label className={dsLabelClass} htmlFor="reset-password">
             New password

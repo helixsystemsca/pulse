@@ -628,41 +628,72 @@ html {
     background-color: var(--ds-surface-elevated);
   }
 
-  .ds-alert-critical {
-    border-left: 3px solid var(--ds-danger);
-    background-color: var(--ds-surface-secondary);
-    border-color: var(--ds-border);
-  }
-  .dark .ds-alert-critical {
-    background-color: var(--ds-surface-secondary);
-  }
-
-  .ds-alert-warning {
-    border-left: 3px solid var(--ds-warning);
-    background-color: var(--ds-surface-secondary);
-    border-color: var(--ds-border);
-  }
-  .dark .ds-alert-warning {
-    background-color: var(--ds-surface-secondary);
+  /**
+   * Embedded notifications — sit flush with parent surface; severity = icon + left accent + faint tint.
+   * Legacy `.ds-alert-*` aliases keep the same look for inline messages.
+   */
+  .ds-notification {
+    border: 1px solid var(--ds-border);
+    border-left-width: 3px;
+    border-radius: 0.375rem;
+    background: transparent;
+    transition: background-color 150ms ease;
   }
 
+  .ds-notification-success,
   .ds-alert-success {
-    border-left: 3px solid var(--ds-success);
-    background-color: var(--ds-surface-secondary);
-    border-color: var(--ds-border);
+    border-left-color: var(--ds-success);
+    background: rgba(54, 241, 205, 0.04);
   }
-  .dark .ds-alert-success {
-    background-color: var(--ds-surface-secondary);
+
+  .ds-notification-warning,
+  .ds-alert-warning {
+    border-left-color: var(--ds-warning);
+    background: rgba(242, 187, 5, 0.04);
+  }
+
+  .ds-notification-critical,
+  .ds-alert-critical {
+    border-left-color: var(--ds-danger);
+    background: rgba(235, 81, 96, 0.04);
+  }
+
+  /** Info-style: no tint, neutral left edge */
+  .ds-notification-muted {
+    border-left-color: var(--ds-border);
+    background: transparent;
+  }
+
+  .ds-notification:hover,
+  .ds-notification-success:hover,
+  .ds-notification-warning:hover,
+  .ds-notification-critical:hover,
+  .ds-notification-muted:hover,
+  .ds-alert-success:hover,
+  .ds-alert-warning:hover,
+  .ds-alert-critical:hover {
+    background: rgba(0, 0, 0, 0.02);
+  }
+
+  .dark .ds-notification:hover,
+  .dark .ds-notification-success:hover,
+  .dark .ds-notification-warning:hover,
+  .dark .ds-notification-critical:hover,
+  .dark .ds-notification-muted:hover,
+  .dark .ds-alert-success:hover,
+  .dark .ds-alert-warning:hover,
+  .dark .ds-alert-critical:hover {
+    background: rgba(255, 255, 255, 0.02);
   }
 
   .ds-table-row-hover {
     transition: background-color 150ms ease;
   }
   .ds-table-row-hover:hover {
-    background-color: var(--ds-interactive-hover);
+    background-color: rgba(54, 241, 205, 0.06);
   }
   .dark .ds-table-row-hover:hover {
-    background-color: rgba(54, 241, 205, 0.08);
+    background-color: rgba(54, 241, 205, 0.06);
   }
 }
 

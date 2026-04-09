@@ -1,6 +1,6 @@
 "use client";
 
-import { Eye, EyeOff, Loader2, Moon, Sun } from "lucide-react";
+import { AlertCircle, Eye, EyeOff, Loader2, Moon, Sun } from "lucide-react";
 import Link from "next/link";
 import { FormEvent, useEffect, useId, useState } from "react";
 import { AuthBrandLink } from "@/components/auth/AuthBrandLink";
@@ -128,9 +128,13 @@ export default function LoginPage() {
 
             <form className="mt-8 space-y-5" onSubmit={onSubmit} noValidate>
               {formError ? (
-                <p className="ds-alert-critical rounded-lg border px-3 py-2 text-center text-sm font-medium text-ds-foreground" role="alert">
-                  {formError}
-                </p>
+                <div
+                  className="ds-notification ds-notification-critical flex items-start justify-center gap-2 px-3 py-2 text-sm font-medium text-ds-foreground"
+                  role="alert"
+                >
+                  <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-ds-danger" aria-hidden />
+                  <span className="text-center">{formError}</span>
+                </div>
               ) : null}
 
               <div>

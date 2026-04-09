@@ -12,17 +12,17 @@ import { InspectionBuilder } from "./InspectionBuilder";
 import { LogBuilder } from "./LogBuilder";
 
 const TABLE_WRAP =
-  "mt-6 overflow-hidden rounded-md border border-gray-200 bg-white shadow-sm dark:border-ds-border dark:bg-ds-primary dark:shadow-[0_2px_8px_rgba(0,0,0,0.4)]";
+  "mt-6 overflow-hidden rounded-md border border-ds-border bg-ds-secondary shadow-sm";
 const TH =
-  "px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400";
-const TD = "px-4 py-3 text-sm text-gray-900 dark:text-gray-100";
+  "bg-ds-primary px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-ds-muted";
+const TD = "bg-ds-secondary px-4 py-3 text-sm text-ds-foreground";
 const ROW =
-  "border-t border-gray-200 transition-colors hover:bg-gray-50/90 dark:border-ds-border dark:hover:bg-ds-interactive-hover";
+  "ds-table-row-hover border-t border-ds-border bg-ds-secondary transition-colors";
 const LINKISH =
-  "text-xs font-semibold text-blue-600 hover:text-blue-700 disabled:opacity-40 dark:text-blue-400 dark:hover:text-blue-300";
-const TAB_ACTIVE = "border-b-2 border-blue-600 text-gray-900 dark:border-blue-400 dark:text-gray-100";
+  "ds-link text-xs font-semibold disabled:opacity-40";
+const TAB_ACTIVE = "border-b-2 border-ds-success bg-ds-primary text-ds-foreground";
 const TAB_IDLE =
-  "border-b-2 border-transparent text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100";
+  "border-b-2 border-transparent text-ds-muted hover:bg-ds-secondary hover:text-ds-foreground";
 
 function formatWhen(iso: string | null): string {
   if (!iso) return "—";
@@ -92,11 +92,11 @@ export function InspectionsLogsApp() {
         actions={<CreateDropdown onNewInspection={openNewInspection} onNewLog={openNewLog} />}
       />
 
-      <div className="border-b border-gray-200 dark:border-ds-border">
-        <nav className="flex gap-6" aria-label="Module tabs">
+      <div className="rounded-md border border-ds-border bg-ds-secondary p-1">
+        <nav className="flex flex-wrap gap-1" aria-label="Module tabs">
           <button
             type="button"
-            className={tab === "inspections" ? TAB_ACTIVE : TAB_IDLE}
+            className={`rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${tab === "inspections" ? TAB_ACTIVE : TAB_IDLE}`}
             onClick={() => {
               setTab("inspections");
               setBuilder(null);
@@ -106,7 +106,7 @@ export function InspectionsLogsApp() {
           </button>
           <button
             type="button"
-            className={tab === "logs" ? TAB_ACTIVE : TAB_IDLE}
+            className={`rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${tab === "logs" ? TAB_ACTIVE : TAB_IDLE}`}
             onClick={() => {
               setTab("logs");
               setBuilder(null);
@@ -138,11 +138,11 @@ export function InspectionsLogsApp() {
       {!builder && tab === "inspections" ? (
         <>
           <section>
-            <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400">Inspection templates</h2>
+            <h2 className="text-sm font-semibold text-ds-muted">Inspection templates</h2>
             <div className={TABLE_WRAP}>
               <table className="w-full border-collapse text-left">
                 <thead>
-                  <tr className="bg-gray-50 dark:bg-ds-secondary/90">
+                  <tr className="bg-ds-primary">
                     <th className={TH}>Name</th>
                     <th className={TH}>Last completed</th>
                     <th className={TH}>Frequency</th>
@@ -152,7 +152,7 @@ export function InspectionsLogsApp() {
                 <tbody>
                   {store.inspectionTemplates.length === 0 ? (
                     <tr>
-                      <td className={`${TD} text-gray-500 dark:text-gray-400`} colSpan={4}>
+                      <td className={`${TD} text-ds-muted`} colSpan={4}>
                         No inspection templates yet. Create one to get started.
                       </td>
                     </tr>
@@ -162,11 +162,11 @@ export function InspectionsLogsApp() {
                         <td className={TD}>
                           <span className="font-medium">{tpl.name}</span>
                           {tpl.description ? (
-                            <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">{tpl.description}</p>
+                            <p className="mt-0.5 text-xs text-ds-muted">{tpl.description}</p>
                           ) : null}
                         </td>
-                        <td className={`${TD} text-gray-500 dark:text-gray-400`}>{formatWhen(store.lastAt(tpl.id))}</td>
-                        <td className={`${TD} text-gray-500 dark:text-gray-400`}>{tpl.frequency?.trim() || "—"}</td>
+                        <td className={`${TD} text-ds-muted`}>{formatWhen(store.lastAt(tpl.id))}</td>
+                        <td className={`${TD} text-ds-muted`}>{tpl.frequency?.trim() || "—"}</td>
                         <td className={`${TD} text-right`}>
                           <BtnRow>
                             <button
@@ -206,11 +206,11 @@ export function InspectionsLogsApp() {
           </section>
 
           <section>
-            <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400">Completed inspections</h2>
+            <h2 className="text-sm font-semibold text-ds-muted">Completed inspections</h2>
             <div className={TABLE_WRAP}>
               <table className="w-full border-collapse text-left">
                 <thead>
-                  <tr className="bg-gray-50 dark:bg-ds-secondary/90">
+                  <tr className="bg-ds-primary">
                     <th className={TH}>Template</th>
                     <th className={TH}>Completed</th>
                     <th className={TH}>By</th>
@@ -220,7 +220,7 @@ export function InspectionsLogsApp() {
                 <tbody>
                   {inspectionEntries.length === 0 ? (
                     <tr>
-                      <td className={`${TD} text-gray-500 dark:text-gray-400`} colSpan={4}>
+                      <td className={`${TD} text-ds-muted`} colSpan={4}>
                         No completed inspections yet.
                       </td>
                     </tr>
@@ -234,8 +234,8 @@ export function InspectionsLogsApp() {
                         return (
                           <tr key={entry.id} className={ROW}>
                             <td className={TD}>{tpl?.name ?? entry.template_id}</td>
-                            <td className={`${TD} text-gray-500 dark:text-gray-400`}>{formatWhen(entry.created_at)}</td>
-                            <td className={`${TD} text-gray-500 dark:text-gray-400`}>{entry.user_id ?? "—"}</td>
+                            <td className={`${TD} text-ds-muted`}>{formatWhen(entry.created_at)}</td>
+                            <td className={`${TD} text-ds-muted`}>{entry.user_id ?? "—"}</td>
                             <td className={`${TD} text-right`}>
                               <button type="button" className={LINKISH} onClick={() => setViewEntry(entry)}>
                                 <Eye className="mr-0.5 inline h-3.5 w-3.5" aria-hidden />
@@ -256,11 +256,11 @@ export function InspectionsLogsApp() {
       {!builder && tab === "logs" ? (
         <>
           <section>
-            <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400">Log templates</h2>
+            <h2 className="text-sm font-semibold text-ds-muted">Log templates</h2>
             <div className={TABLE_WRAP}>
               <table className="w-full border-collapse text-left">
                 <thead>
-                  <tr className="bg-gray-50 dark:bg-ds-secondary/90">
+                  <tr className="bg-ds-primary">
                     <th className={TH}>Name</th>
                     <th className={TH}>Last entry</th>
                     <th className={TH}>Entries</th>
@@ -270,7 +270,7 @@ export function InspectionsLogsApp() {
                 <tbody>
                   {store.logTemplates.length === 0 ? (
                     <tr>
-                      <td className={`${TD} text-gray-500 dark:text-gray-400`} colSpan={4}>
+                      <td className={`${TD} text-ds-muted`} colSpan={4}>
                         No log templates yet.
                       </td>
                     </tr>
@@ -280,10 +280,10 @@ export function InspectionsLogsApp() {
                         <td className={TD}>
                           <span className="font-medium">{tpl.name}</span>
                           {tpl.description ? (
-                            <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">{tpl.description}</p>
+                            <p className="mt-0.5 text-xs text-ds-muted">{tpl.description}</p>
                           ) : null}
                         </td>
-                        <td className={`${TD} text-gray-500 dark:text-gray-400`}>{formatWhen(store.lastAt(tpl.id))}</td>
+                        <td className={`${TD} text-ds-muted`}>{formatWhen(store.lastAt(tpl.id))}</td>
                         <td className={TD}>{store.entryCount(tpl.id)}</td>
                         <td className={`${TD} text-right`}>
                           <BtnRow>
@@ -324,11 +324,11 @@ export function InspectionsLogsApp() {
           </section>
 
           <section>
-            <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400">Submitted log entries</h2>
+            <h2 className="text-sm font-semibold text-ds-muted">Submitted log entries</h2>
             <div className={TABLE_WRAP}>
               <table className="w-full border-collapse text-left">
                 <thead>
-                  <tr className="bg-gray-50 dark:bg-ds-secondary/90">
+                  <tr className="bg-ds-primary">
                     <th className={TH}>Template</th>
                     <th className={TH}>Submitted</th>
                     <th className={TH}>By</th>
@@ -338,7 +338,7 @@ export function InspectionsLogsApp() {
                 <tbody>
                   {logEntries.length === 0 ? (
                     <tr>
-                      <td className={`${TD} text-gray-500 dark:text-gray-400`} colSpan={4}>
+                      <td className={`${TD} text-ds-muted`} colSpan={4}>
                         No log entries yet.
                       </td>
                     </tr>
@@ -352,8 +352,8 @@ export function InspectionsLogsApp() {
                         return (
                           <tr key={entry.id} className={ROW}>
                             <td className={TD}>{tpl?.name ?? entry.template_id}</td>
-                            <td className={`${TD} text-gray-500 dark:text-gray-400`}>{formatWhen(entry.created_at)}</td>
-                            <td className={`${TD} text-gray-500 dark:text-gray-400`}>{entry.user_id ?? "—"}</td>
+                            <td className={`${TD} text-ds-muted`}>{formatWhen(entry.created_at)}</td>
+                            <td className={`${TD} text-ds-muted`}>{entry.user_id ?? "—"}</td>
                             <td className={`${TD} text-right`}>
                               <button type="button" className={LINKISH} onClick={() => setViewEntry(entry)}>
                                 <Eye className="mr-0.5 inline h-3.5 w-3.5" aria-hidden />
@@ -438,8 +438,8 @@ function InspectionFillModal({
         onClick={onClose}
       />
       <div className="app-glass-elevated relative max-h-[90vh] w-full max-w-lg overflow-auto rounded-md p-6">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Submit inspection — {template.name}</h3>
-        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Check each item as verified.</p>
+        <h3 className="text-lg font-semibold text-ds-foreground">Submit inspection — {template.name}</h3>
+        <p className="mt-1 text-xs text-ds-muted">Check each item as verified.</p>
         <ul className="mt-4 space-y-3">
           {template.checklist_items
             .slice()
@@ -449,11 +449,11 @@ function InspectionFillModal({
                 <input
                   type="checkbox"
                   id={item.id}
-                  className="mt-1 h-4 w-4 rounded border-gray-200 dark:border-ds-border text-blue-600 dark:text-blue-400 focus:ring-blue-500/40 dark:focus:ring-blue-400/40"
+                  className="mt-1 h-4 w-4 rounded border-ds-border text-ds-success focus:ring-2 focus:ring-[var(--ds-focus-ring)]"
                   checked={checks[item.id] ?? false}
                   onChange={(e) => setChecks((c) => ({ ...c, [item.id]: e.target.checked }))}
                 />
-                <label htmlFor={item.id} className="text-sm text-gray-900 dark:text-gray-100">
+                <label htmlFor={item.id} className="text-sm text-ds-foreground">
                   {item.label}
                 </label>
               </li>
@@ -462,14 +462,14 @@ function InspectionFillModal({
         <div className="mt-6 flex justify-end gap-2">
           <button
             type="button"
-            className="rounded-md border border-gray-200 dark:border-ds-border bg-gray-100 dark:bg-ds-secondary/95 px-4 py-2 text-sm font-semibold text-gray-900 dark:text-gray-100"
+            className="rounded-md border border-ds-border bg-ds-secondary px-4 py-2 text-sm font-semibold text-ds-foreground"
             onClick={onClose}
           >
             Cancel
           </button>
           <button
             type="button"
-            className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:brightness-110 dark:bg-[#3B82F6]"
+            className="ds-btn-solid-primary rounded-md px-4 py-2 text-sm font-semibold"
             onClick={() => onSubmit(checks)}
           >
             Save completion
@@ -512,17 +512,17 @@ function LogFillModal({
         onClick={onClose}
       />
       <div className="app-glass-elevated relative max-h-[90vh] w-full max-w-lg overflow-auto rounded-md p-6">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">New log entry — {template.name}</h3>
-        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Timestamp is saved automatically when you submit.</p>
+        <h3 className="text-lg font-semibold text-ds-foreground">New log entry — {template.name}</h3>
+        <p className="mt-1 text-xs text-ds-muted">Timestamp is saved automatically when you submit.</p>
         <div className="mt-4 space-y-4">
           {sorted.map((field: LogFieldDef) => (
             <div key={field.id}>
-              <label className="text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+              <label className="text-[11px] font-semibold uppercase tracking-wider text-ds-muted">
                 {field.label || "Field"}
               </label>
               {field.type === "notes" ? (
                 <textarea
-                  className="mt-1.5 w-full rounded-md border border-gray-200 dark:border-ds-border bg-gray-50 dark:bg-ds-secondary/90 px-3 py-2 text-sm text-gray-900 dark:text-gray-100"
+                  className="mt-1.5 w-full rounded-md border border-ds-border bg-ds-primary px-3 py-2 text-sm text-ds-foreground"
                   rows={3}
                   value={vals[field.id] ?? ""}
                   onChange={(e) => setField(field.id, e.target.value)}
@@ -530,7 +530,7 @@ function LogFillModal({
               ) : (
                 <input
                   type={field.type === "number" ? "number" : "text"}
-                  className="mt-1.5 w-full rounded-md border border-gray-200 dark:border-ds-border bg-gray-50 dark:bg-ds-secondary/90 px-3 py-2 text-sm text-gray-900 dark:text-gray-100"
+                  className="mt-1.5 w-full rounded-md border border-ds-border bg-ds-primary px-3 py-2 text-sm text-ds-foreground"
                   value={vals[field.id] ?? ""}
                   onChange={(e) => setField(field.id, e.target.value)}
                 />
@@ -541,14 +541,14 @@ function LogFillModal({
         <div className="mt-6 flex justify-end gap-2">
           <button
             type="button"
-            className="rounded-md border border-gray-200 dark:border-ds-border bg-gray-100 dark:bg-ds-secondary/95 px-4 py-2 text-sm font-semibold text-gray-900 dark:text-gray-100"
+            className="rounded-md border border-ds-border bg-ds-secondary px-4 py-2 text-sm font-semibold text-ds-foreground"
             onClick={onClose}
           >
             Cancel
           </button>
           <button
             type="button"
-            className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:brightness-110 dark:bg-[#3B82F6]"
+            className="ds-btn-solid-primary rounded-md px-4 py-2 text-sm font-semibold"
             onClick={() => {
               const out: Record<string, unknown> = { ...vals };
               sorted.forEach((f) => {
@@ -588,8 +588,8 @@ function EntryViewModal({
         onClick={onClose}
       />
       <div className="app-glass-elevated relative max-h-[90vh] w-full max-w-lg overflow-auto rounded-md p-6">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Record detail</h3>
-        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+        <h3 className="text-lg font-semibold text-ds-foreground">Record detail</h3>
+        <p className="mt-1 text-xs text-ds-muted">
           {tpl?.name ?? "Template"} · {formatWhen(entry.created_at)}
         </p>
         <dl className="mt-4 space-y-3 text-sm">
@@ -598,9 +598,9 @@ function EntryViewModal({
                 .slice()
                 .sort((a, b) => a.order - b.order)
                 .map((item) => (
-                  <div key={item.id} className="flex justify-between gap-4 border-b border-gray-200/60 dark:border-ds-border/60 pb-2">
-                    <dt className="text-gray-500 dark:text-gray-400">{item.label}</dt>
-                    <dd className="font-medium text-gray-900 dark:text-gray-100">
+                  <div key={item.id} className="flex justify-between gap-4 border-b border-ds-border pb-2">
+                    <dt className="text-ds-muted">{item.label}</dt>
+                    <dd className="font-medium text-ds-foreground">
                       {entry.values[item.id] === true ? "✓" : "—"}
                     </dd>
                   </div>
@@ -611,9 +611,9 @@ function EntryViewModal({
                 .slice()
                 .sort((a, b) => a.order - b.order)
                 .map((f) => (
-                  <div key={f.id} className="border-b border-gray-200/60 dark:border-ds-border/60 pb-2">
-                    <dt className="text-gray-500 dark:text-gray-400">{f.label}</dt>
-                    <dd className="mt-1 text-gray-900 dark:text-gray-100">
+                  <div key={f.id} className="border-b border-ds-border pb-2">
+                    <dt className="text-ds-muted">{f.label}</dt>
+                    <dd className="mt-1 text-ds-foreground">
                       {String(entry.values[f.id] ?? "—")}
                     </dd>
                   </div>
@@ -623,7 +623,7 @@ function EntryViewModal({
         <div className="mt-6 flex justify-end">
           <button
             type="button"
-            className="rounded-md border border-gray-200 dark:border-ds-border bg-gray-100 dark:bg-ds-secondary/95 px-4 py-2 text-sm font-semibold text-gray-900 dark:text-gray-100"
+            className="rounded-md border border-ds-border bg-ds-secondary px-4 py-2 text-sm font-semibold text-ds-foreground"
             onClick={onClose}
           >
             Close

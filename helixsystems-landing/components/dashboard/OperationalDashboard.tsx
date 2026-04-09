@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertTriangle, Battery, MapPin, Radio } from "lucide-react";
+import { AlertTriangle, Battery, Info, MapPin, Package, Radio } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { AdminOnboardingChecklist } from "@/components/onboarding/AdminOnboardingChecklist";
@@ -580,11 +580,14 @@ function DashboardBody({
       </header>
 
       {model.bannerNote ? (
-        <div className="border-b border-ds-border bg-ds-secondary px-4 py-3 text-center text-sm font-medium text-ds-foreground backdrop-blur-sm">
-          {model.bannerNote}{" "}
-          <Link href="/monitoring" className="ds-link">
-            Open Monitoring →
-          </Link>
+        <div className="ds-notification ds-notification-warning flex flex-wrap items-center justify-center gap-2 border-x-0 border-t-0 rounded-none px-4 py-3 text-sm font-medium text-ds-foreground">
+          <Info className="h-4 w-4 shrink-0 text-ds-warning" aria-hidden />
+          <span>
+            {model.bannerNote}{" "}
+            <Link href="/monitoring" className="ds-link">
+              Open Monitoring →
+            </Link>
+          </span>
         </div>
       ) : null}
 
@@ -599,17 +602,15 @@ function DashboardBody({
             {model.alerts.map((a, idx) => (
               <li
                 key={`${a.title}-${idx}`}
-                className={`flex gap-3 rounded-md border border-ds-border p-4 ${
-                  a.severity === "critical"
-                    ? "ds-alert-critical"
-                    : "bg-ds-surface-secondary"
+                className={`ds-notification flex gap-3 p-4 ${
+                  a.severity === "critical" ? "ds-notification-critical" : "ds-notification-warning"
                 }`}
               >
-                <span
-                  className={`mt-0.5 flex h-9 w-1 shrink-0 rounded-full ${
-                    a.severity === "critical" ? "bg-ds-danger" : "bg-ds-warning"
-                  }`}
-                />
+                {a.severity === "critical" ? (
+                  <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-ds-danger" aria-hidden />
+                ) : (
+                  <Radio className="mt-0.5 h-5 w-5 shrink-0 text-ds-warning" aria-hidden />
+                )}
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-bold text-ds-foreground">{a.title}</p>
                   {a.subtitle ? (
@@ -618,11 +619,6 @@ function DashboardBody({
                     </p>
                   ) : null}
                 </div>
-                {a.severity === "critical" ? (
-                  <AlertTriangle className="h-5 w-5 shrink-0 text-ds-danger" aria-hidden />
-                ) : (
-                  <Radio className="h-5 w-5 shrink-0 text-ds-warning" aria-hidden />
-                )}
               </li>
             ))}
           </ul>
@@ -747,7 +743,7 @@ function DashboardBody({
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-ds-muted">
                   Newest
                 </p>
-                <div className="ds-inset-panel mt-2 p-4">
+                <div className="mt-2 rounded-md border border-ds-border bg-transparent p-4">
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <div className="min-w-0">
                       <p className="text-sm font-semibold text-ds-foreground">{model.workRequests.newest.title}</p>
@@ -770,7 +766,7 @@ function DashboardBody({
             {model.workRequests.oldest ? (
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-ds-muted">Oldest</p>
-                <div className="ds-inset-panel mt-2 p-4">
+                <div className="mt-2 rounded-md border border-ds-border bg-transparent p-4">
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <div className="min-w-0">
                       <p className="text-sm font-semibold text-ds-foreground">{model.workRequests.oldest.title}</p>
@@ -793,9 +789,9 @@ function DashboardBody({
                   {model.workRequests.critical.map((row) => (
                     <li
                       key={row.title}
-                      className="ds-alert-critical flex gap-3 rounded-md border p-3"
+                      className="ds-notification ds-notification-critical flex gap-3 p-3"
                     >
-                      <span className="mt-0.5 h-8 w-1 shrink-0 rounded-full bg-ds-danger" aria-hidden />
+                      <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-ds-danger" aria-hidden />
                       <div className="min-w-0 flex-1">
                         <p className="text-sm font-bold text-ds-foreground">{row.title}</p>
                         <p className="mt-0.5 text-xs text-ds-muted">{row.subtitle}</p>
@@ -831,11 +827,9 @@ function DashboardBody({
           </div>
           <div className="mt-4 flex flex-1 flex-col gap-4 border-t border-ds-border pt-4">
             {model.equipment.showZonePrompt && !zonePromptDismissed ? (
-              <div className="ds-alert-warning rounded-md border p-4 shadow-sm">
+              <div className="ds-notification ds-notification-warning p-4">
                 <div className="flex gap-3">
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-ds-warning text-ds-on-accent ring-1 ring-black/20">
-                    <MapPin className="h-4 w-4" aria-hidden />
-                  </span>
+                  <MapPin className="mt-0.5 h-5 w-5 shrink-0 text-ds-warning" aria-hidden />
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-semibold leading-snug text-ds-foreground">
                       Several tools are accounted for, but may need zone checks.
@@ -861,11 +855,9 @@ function DashboardBody({
               </div>
             ) : null}
             {model.equipment.showBatteryNote ? (
-              <div className="ds-inset-panel p-4 text-ds-muted">
+              <div className="ds-notification ds-notification-muted p-4">
                 <div className="flex gap-3">
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-ds-secondary text-ds-muted ring-1 ring-ds-border">
-                    <Battery className="h-4 w-4" aria-hidden />
-                  </span>
+                  <Battery className="mt-0.5 h-5 w-5 shrink-0 text-ds-muted" aria-hidden />
                   <p className="min-w-0 flex-1 text-sm leading-relaxed text-ds-foreground">
                     Beacon equipment registered — confirm batteries and swaps on the floor before the next shift.
                   </p>
@@ -881,7 +873,7 @@ function DashboardBody({
         >
           <h3 className="text-base font-bold text-ds-foreground">Inventory Status</h3>
           <div className="mt-4 flex flex-1 flex-col gap-4">
-            <div className="ds-inset-panel flex items-start justify-between gap-4 p-4">
+            <div className="flex items-start justify-between gap-4 rounded-md border border-ds-border bg-transparent p-4">
               <div>
                 <p className="text-sm font-semibold text-ds-foreground">Consumables</p>
                 <p className="mt-1 text-xs text-ds-muted">
@@ -900,19 +892,17 @@ function DashboardBody({
             </div>
 
             {model.inventory.alert ? (
-              <div className="ds-inset-panel p-4 shadow-sm">
+              <div>
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-ds-muted">
                   Inventory Alert
                 </p>
-                <div className="ds-alert-warning mt-3 flex items-start justify-between gap-4 rounded-md border p-4">
-                  <div className="min-w-0">
+                <div className="ds-notification ds-notification-warning mt-3 flex items-start justify-between gap-4 p-4">
+                  <Package className="mt-0.5 h-5 w-5 shrink-0 text-ds-warning" aria-hidden />
+                  <div className="min-w-0 flex-1">
                     <p className="text-sm font-semibold text-ds-foreground">{model.inventory.alert.category}</p>
-                    <p className="mt-2 flex items-center gap-2 text-xs font-medium text-ds-warning">
-                      <span className="h-2 w-2 shrink-0 rounded-full bg-ds-warning" />
-                      {model.inventory.alert.message}
-                    </p>
+                    <p className="mt-2 text-xs font-medium text-ds-foreground">{model.inventory.alert.message}</p>
                   </div>
-                      <span className="app-badge-amber shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold">
+                  <span className="app-badge-amber shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold">
                     Soon
                   </span>
                 </div>
@@ -946,10 +936,10 @@ function DashboardBody({
                   {model.inventory.shoppingList.map((item) => (
                     <li
                       key={item}
-                      className="ds-inset-panel ds-table-row-hover flex cursor-default items-center gap-2 px-3 py-2 text-sm text-ds-foreground"
+                      className="ds-table-row-hover flex cursor-default items-center gap-2 rounded-md border border-ds-border bg-transparent px-3 py-2 text-sm text-ds-foreground"
                     >
                       <span
-                        className="flex h-4 w-4 shrink-0 rounded border border-ds-border bg-ds-primary"
+                        className="flex h-4 w-4 shrink-0 rounded border border-ds-border bg-transparent"
                         aria-hidden
                       />
                       {item}
@@ -1107,14 +1097,17 @@ export function OperationalDashboard({
 
   if (error) {
     return (
-      <div className="ds-alert-warning rounded-md border p-6 shadow-sm">
-        <p className="text-sm text-ds-warning" role="status">
-          {error}
-        </p>
+      <div className="ds-notification ds-notification-critical flex flex-col gap-4 p-6 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex min-w-0 gap-3">
+          <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-ds-danger" aria-hidden />
+          <p className="text-sm text-ds-foreground" role="status">
+            {error}
+          </p>
+        </div>
         <button
           type="button"
           onClick={() => void fetchLive()}
-          className="ds-btn-solid-primary mt-4 px-4 py-2 text-sm"
+          className="ds-btn-solid-primary shrink-0 px-4 py-2 text-sm sm:mt-0"
         >
           Retry
         </button>

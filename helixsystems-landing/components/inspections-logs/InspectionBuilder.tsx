@@ -6,13 +6,10 @@ import { newId } from "@/lib/inspectionsLogsStorage";
 import type { InspectionChecklistItem, InspectionTemplate } from "@/lib/inspectionsLogsTypes";
 
 const FIELD =
-  "mt-1.5 w-full rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-500 focus:border-blue-500/50 focus:outline-none focus:ring-1 focus:ring-blue-500/25 dark:border-ds-border dark:bg-ds-secondary/90 dark:text-gray-100 dark:placeholder:text-gray-400 dark:focus:border-blue-400/50 dark:focus:ring-blue-400/25";
-const LABEL =
-  "text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400";
-const BTN_SECONDARY =
-  "rounded-md border border-gray-200 bg-gray-100 px-3 py-2 text-xs font-semibold text-gray-900 transition-colors hover:bg-gray-200/80 dark:border-ds-border dark:bg-ds-secondary/95 dark:text-gray-100 dark:hover:bg-ds-interactive-hover";
-const BTN_PRIMARY =
-  "rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition-[filter] hover:brightness-110 disabled:opacity-45 dark:bg-[#3B82F6]";
+  "app-field mt-1.5 w-full rounded-md border-ds-border bg-ds-primary text-ds-foreground placeholder:text-ds-muted focus:border-ds-success/40 focus:ring-2 focus:ring-[var(--ds-focus-ring)]";
+const LABEL = "text-[11px] font-semibold uppercase tracking-wider text-ds-muted";
+const BTN_SECONDARY = "ds-btn-secondary rounded-md px-3 py-2 text-xs font-semibold";
+const BTN_PRIMARY = "ds-btn-solid-primary rounded-md px-4 py-2 text-sm font-semibold disabled:opacity-45";
 
 function sortItems(items: InspectionChecklistItem[]): InspectionChecklistItem[] {
   return [...items].sort((a, b) => a.order - b.order);
@@ -87,11 +84,11 @@ export function InspectionBuilder({
   };
 
   return (
-    <div className="rounded-md border border-gray-200 bg-white p-6 shadow-sm dark:border-ds-border dark:bg-ds-primary dark:shadow-[0_2px_8px_rgba(0,0,0,0.4)]">
-      <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+    <div className="rounded-md border border-ds-border bg-ds-primary p-6 shadow-sm">
+      <h2 className="text-lg font-semibold text-ds-foreground">
         {initial ? "Edit inspection template" : "New inspection template"}
       </h2>
-      <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+      <p className="mt-1 text-sm text-ds-muted">
         Checklist items can be checked when completing a run.
       </p>
 
@@ -123,11 +120,11 @@ export function InspectionBuilder({
           {sortItems(items).map((item, idx) => (
             <li
               key={item.id}
-              className="flex items-center gap-2 rounded-md border border-gray-200 dark:border-ds-border bg-gray-50/90 dark:bg-ds-secondary/90 px-3 py-2"
+              className="flex items-center gap-2 rounded-md border border-ds-border bg-ds-secondary px-3 py-2"
             >
-              <span className="flex h-4 w-4 shrink-0 rounded border border-gray-200 dark:border-ds-border" aria-hidden />
+              <span className="flex h-4 w-4 shrink-0 rounded border border-ds-border" aria-hidden />
               <input
-                className="min-w-0 flex-1 border-0 bg-transparent text-sm text-gray-900 dark:text-gray-100 placeholder:text-gray-500 dark:placeholder:text-gray-400 focus:ring-0"
+                className="min-w-0 flex-1 border-0 bg-transparent text-sm text-ds-foreground placeholder:text-ds-muted focus:ring-0"
                 value={item.label}
                 onChange={(e) => updateLabel(item.id, e.target.value)}
                 placeholder={`Item ${idx + 1}`}
@@ -135,7 +132,7 @@ export function InspectionBuilder({
               <div className="flex shrink-0 gap-0.5">
                 <button
                   type="button"
-                  className="rounded-lg p-1.5 text-gray-500 dark:text-gray-400 hover:bg-gray-200/70 hover:text-gray-900 dark:hover:bg-ds-interactive-hover dark:text-gray-100 dark:hover:text-gray-100"
+                  className="rounded-lg p-1.5 text-ds-muted hover:bg-ds-interactive-hover hover:text-ds-foreground"
                   aria-label="Move up"
                   onClick={() => move(item.id, -1)}
                 >
@@ -143,7 +140,7 @@ export function InspectionBuilder({
                 </button>
                 <button
                   type="button"
-                  className="rounded-lg p-1.5 text-gray-500 dark:text-gray-400 hover:bg-gray-200/70 hover:text-gray-900 dark:hover:bg-ds-interactive-hover dark:text-gray-100 dark:hover:text-gray-100"
+                  className="rounded-lg p-1.5 text-ds-muted hover:bg-ds-interactive-hover hover:text-ds-foreground"
                   aria-label="Move down"
                   onClick={() => move(item.id, 1)}
                 >
@@ -161,14 +158,14 @@ export function InspectionBuilder({
             </li>
           ))}
         </ul>
-        {items.length === 0 ? <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">Add at least one checklist item.</p> : null}
+        {items.length === 0 ? <p className="mt-2 text-sm text-ds-muted">Add at least one checklist item.</p> : null}
       </div>
 
-      <div className="mt-8 border-t border-gray-200 dark:border-ds-border pt-6">
+      <div className="mt-8 border-t border-ds-border pt-6">
         <p className={LABEL}>Future automation (optional)</p>
         <div className="mt-3 grid gap-4 sm:grid-cols-3">
           <div>
-            <label className="text-xs text-gray-500 dark:text-gray-400">Linked equipment ID</label>
+            <label className="text-xs text-ds-muted">Linked equipment ID</label>
             <input
               className={FIELD}
               value={linkedEquipmentId}
@@ -177,7 +174,7 @@ export function InspectionBuilder({
             />
           </div>
           <div>
-            <label className="text-xs text-gray-500 dark:text-gray-400">Linked zone ID</label>
+            <label className="text-xs text-ds-muted">Linked zone ID</label>
             <input
               className={FIELD}
               value={linkedZoneId}
@@ -186,7 +183,7 @@ export function InspectionBuilder({
             />
           </div>
           <div>
-            <label className="text-xs text-gray-500 dark:text-gray-400">Frequency</label>
+            <label className="text-xs text-ds-muted">Frequency</label>
             <input
               className={FIELD}
               value={frequency}

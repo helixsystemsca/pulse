@@ -4,6 +4,7 @@
  * Workers & Roles: role permissions, roster by role, profile drawer, create user, settings.
  */
 import {
+  AlertCircle,
   Check,
   CheckCircle2,
   Copy,
@@ -569,27 +570,28 @@ export function WorkersApp() {
       {createToast ? (
         <div
           role="status"
-          className={`fixed bottom-6 left-1/2 z-[95] max-w-md -translate-x-1/2 rounded-md border px-4 py-3 text-sm font-medium text-ds-foreground shadow-lg ${
-            createToast.variant === "success" ? "ds-alert-success" : "ds-alert-critical"
+          className={`ds-notification fixed bottom-6 left-1/2 z-[95] flex max-w-md -translate-x-1/2 items-center gap-2 px-4 py-3 text-sm font-medium text-ds-foreground ${
+            createToast.variant === "success" ? "ds-notification-success" : "ds-notification-critical"
           }`}
         >
+          {createToast.variant === "success" ? (
+            <CheckCircle2 className="h-5 w-5 shrink-0 text-ds-success" aria-hidden />
+          ) : (
+            <AlertCircle className="h-5 w-5 shrink-0 text-ds-danger" aria-hidden />
+          )}
           {createToast.message}
         </div>
       ) : null}
 
       {inviteNotice ? (
         <div
-          className="ds-card-elevated overflow-hidden border border-ds-border text-ds-foreground shadow-lg"
+          className="ds-notification ds-notification-success overflow-hidden text-ds-foreground"
           role="status"
         >
-          <div className="flex min-w-0 gap-0">
-            <div className="w-1 shrink-0 bg-ds-success" aria-hidden />
-            <div className="flex min-w-0 flex-1 flex-col gap-3 px-4 py-4 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
-              <div className="flex min-w-0 gap-3">
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[color-mix(in_srgb,var(--ds-success)_18%,var(--ds-surface-elevated))] text-ds-success ring-1 ring-[color-mix(in_srgb,var(--ds-success)_35%,transparent)]">
-                  <CheckCircle2 className="h-5 w-5" strokeWidth={2} aria-hidden />
-                </span>
-                <div className="min-w-0 space-y-2">
+          <div className="flex min-w-0 flex-col gap-3 px-4 py-4 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+            <div className="flex min-w-0 gap-3">
+              <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-ds-success" strokeWidth={2} aria-hidden />
+              <div className="min-w-0 space-y-2">
                   <p className="text-base font-bold leading-snug tracking-tight text-ds-foreground">
                     {inviteNotice.variant === "no_email"
                       ? "Invite created — email not sent from server"
@@ -606,42 +608,41 @@ export function WorkersApp() {
                       {inviteNotice.inviteUrl}
                     </p>
                   </div>
-                </div>
               </div>
-              <div className="flex shrink-0 flex-wrap items-center gap-2 sm:flex-col sm:items-stretch sm:pt-1">
-                <button
-                  type="button"
-                  className="ds-btn-solid-primary inline-flex items-center justify-center gap-2 px-3 py-2 text-xs"
-                  onClick={() => {
-                    void navigator.clipboard.writeText(inviteNotice.inviteUrl).then(() => {
-                      setInviteLinkCopied(true);
-                      window.setTimeout(() => setInviteLinkCopied(false), 2000);
-                    });
-                  }}
-                >
-                  {inviteLinkCopied ? (
-                    <>
-                      <Check className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden />
-                      Copied
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
-                      Copy link
-                    </>
-                  )}
-                </button>
-                <button
-                  type="button"
-                  className="ds-btn-secondary px-3 py-2 text-xs"
-                  onClick={() => {
-                    setInviteNotice(null);
-                    setInviteLinkCopied(false);
-                  }}
-                >
-                  Dismiss
-                </button>
-              </div>
+            </div>
+            <div className="flex shrink-0 flex-wrap items-center gap-2 sm:flex-col sm:items-stretch sm:pt-1">
+              <button
+                type="button"
+                className="ds-btn-solid-primary inline-flex items-center justify-center gap-2 px-3 py-2 text-xs"
+                onClick={() => {
+                  void navigator.clipboard.writeText(inviteNotice.inviteUrl).then(() => {
+                    setInviteLinkCopied(true);
+                    window.setTimeout(() => setInviteLinkCopied(false), 2000);
+                  });
+                }}
+              >
+                {inviteLinkCopied ? (
+                  <>
+                    <Check className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden />
+                    Copied
+                  </>
+                ) : (
+                  <>
+                    <Copy className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
+                    Copy link
+                  </>
+                )}
+              </button>
+              <button
+                type="button"
+                className="ds-btn-secondary px-3 py-2 text-xs"
+                onClick={() => {
+                  setInviteNotice(null);
+                  setInviteLinkCopied(false);
+                }}
+              >
+                Dismiss
+              </button>
             </div>
           </div>
         </div>

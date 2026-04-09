@@ -6,6 +6,7 @@ import { isApiMode } from "@/lib/api";
 import { navigateToPulseLogin } from "@/lib/pulse-app";
 import { readSession } from "@/lib/pulse-session";
 import { sessionHasAnyRole } from "@/lib/pulse-roles";
+import { AlertTriangle } from "lucide-react";
 import { useEffect, useState } from "react";
 
 export default function OrganizationBrandingPage() {
@@ -38,8 +39,9 @@ export default function OrganizationBrandingPage() {
 
   if (!sessionHasAnyRole(effective, "company_admin")) {
     return (
-      <div className="ds-alert-warning rounded-md border p-4 text-sm text-ds-foreground">
-        Only company administrators can change organization branding.
+      <div className="ds-notification ds-notification-warning flex gap-3 p-4 text-sm text-ds-foreground">
+        <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-ds-warning" aria-hidden />
+        <p>Only company administrators can change organization branding.</p>
       </div>
     );
   }

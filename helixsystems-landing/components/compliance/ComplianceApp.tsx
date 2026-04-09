@@ -5,6 +5,7 @@
  * CSV export. System admins pick a `company_id`; tenant users use the JWT company.
  */
 import {
+  AlertCircle,
   AlertTriangle,
   Download,
   Loader2,
@@ -302,7 +303,10 @@ export function ComplianceApp() {
       ) : null}
 
       {actionError ? (
-        <p className="ds-alert-critical mt-4 rounded-lg border px-3 py-2 text-sm text-ds-foreground">{actionError}</p>
+        <div className="ds-notification ds-notification-critical mt-4 flex gap-2 px-3 py-2 text-sm text-ds-foreground">
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-ds-danger" aria-hidden />
+          <p>{actionError}</p>
+        </div>
       ) : null}
 
       {!dataEnabled ? null : summaryHook.error ? (

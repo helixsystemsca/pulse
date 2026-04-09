@@ -13,18 +13,18 @@ export function ZonesDevicesChrome({ children }: { children: React.ReactNode }) 
   const tabClass = (active: boolean) =>
     `rounded-lg px-3.5 py-2 text-sm font-semibold transition-colors ${
       active
-        ? "bg-white text-pulse-navy shadow-sm ring-1 ring-slate-200/80 dark:bg-ds-secondary dark:text-slate-100 dark:ring-slate-600"
-        : "text-pulse-muted hover:bg-white/60 hover:text-pulse-navy dark:hover:bg-ds-interactive-hover dark:hover:text-slate-100"
+        ? "border-b-2 border-ds-success bg-ds-primary text-ds-foreground"
+        : "border-b-2 border-transparent text-ds-muted hover:bg-ds-primary hover:text-ds-foreground"
     }`;
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-5">
       <div>
-        <p className="m-0 text-[0.7rem] font-bold uppercase tracking-[0.14em] text-pulse-muted">
+        <p className="m-0 text-[0.7rem] font-bold uppercase tracking-[0.14em] text-ds-muted">
           Zones &amp; floor plans
         </p>
         <nav
-          className="app-page-inset mt-2 inline-flex gap-1 p-1 shadow-sm"
+          className="mt-2 inline-flex gap-1 rounded-md border border-ds-border bg-ds-secondary p-1"
           aria-label="Zones and blueprints"
         >
           <Link

@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from "react";
 type CreateAction = "inspection" | "log";
 
 const BTN =
-  "inline-flex items-center gap-2 rounded-md border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-900 shadow-sm transition-colors hover:bg-gray-200/80 dark:border-ds-border dark:bg-ds-primary dark:text-gray-100 dark:shadow-[0_2px_8px_rgba(0,0,0,0.4)] dark:hover:bg-ds-interactive-hover";
+  "ds-btn-secondary inline-flex items-center gap-2 rounded-md border px-4 py-2.5 text-sm font-semibold shadow-sm";
 
 export function CreateDropdown({
   onNewInspection,
@@ -36,19 +36,19 @@ export function CreateDropdown({
   return (
     <div className="relative" ref={ref}>
       <button type="button" className={BTN} aria-expanded={open} onClick={() => setOpen((o) => !o)}>
-        <Plus className="h-4 w-4 text-blue-600 dark:text-blue-400" strokeWidth={2} aria-hidden />
+        <Plus className="h-4 w-4 text-ds-success" strokeWidth={2} aria-hidden />
         Create
         <ChevronDown className={`h-4 w-4 opacity-70 transition-transform ${open ? "rotate-180" : ""}`} />
       </button>
       {open ? (
         <div
-          className="absolute right-0 z-50 mt-1.5 min-w-[11rem] rounded-md border border-gray-200 bg-white py-1 shadow-lg dark:border-ds-border dark:bg-ds-primary dark:shadow-[0_8px_24px_rgba(0,0,0,0.45)]"
+          className="absolute right-0 z-50 mt-1.5 min-w-[11rem] rounded-md border border-ds-border bg-ds-elevated py-1 shadow-[var(--ds-shadow-card)]"
           role="menu"
         >
           <button
             type="button"
             role="menuitem"
-            className="flex w-full px-3 py-2.5 text-left text-sm font-medium text-gray-900 hover:bg-gray-100 dark:text-gray-100 dark:hover:bg-ds-interactive-hover"
+            className="flex w-full px-3 py-2.5 text-left text-sm font-medium text-ds-foreground hover:bg-ds-interactive-hover"
             onClick={() => pick("inspection")}
           >
             New Inspection
@@ -56,7 +56,7 @@ export function CreateDropdown({
           <button
             type="button"
             role="menuitem"
-            className="flex w-full px-3 py-2.5 text-left text-sm font-medium text-gray-900 hover:bg-gray-100 dark:text-gray-100 dark:hover:bg-ds-interactive-hover"
+            className="flex w-full px-3 py-2.5 text-left text-sm font-medium text-ds-foreground hover:bg-ds-interactive-hover"
             onClick={() => pick("log")}
           >
             New Log

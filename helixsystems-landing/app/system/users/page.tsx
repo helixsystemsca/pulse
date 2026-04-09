@@ -1,5 +1,6 @@
 "use client";
 
+import { AlertCircle, Info } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ImpersonationTenantModal } from "@/components/system/ImpersonationTenantModal";
 import { Card } from "@/components/pulse/Card";
@@ -243,15 +244,19 @@ export default function SystemUsersPage() {
       ) : null}
 
       {loadError ? (
-        <div className="ds-alert-critical rounded-lg border px-4 py-3 text-sm text-ds-foreground">
+        <div className="ds-notification ds-notification-critical flex gap-3 px-4 py-3 text-sm text-ds-foreground">
+          <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-ds-danger" aria-hidden />
           <p className="font-medium">{loadError}</p>
         </div>
       ) : null}
 
       {resetLink ? (
-        <div className="ds-alert-warning rounded-lg border px-4 py-3 text-sm text-ds-foreground">
-          <p className="font-medium">Reset link path (share securely; single-use):</p>
-          <code className="mt-2 block break-all text-xs text-ds-muted">{resetLink}</code>
+        <div className="ds-notification ds-notification-warning flex gap-3 px-4 py-3 text-sm text-ds-foreground">
+          <Info className="mt-0.5 h-5 w-5 shrink-0 text-ds-warning" aria-hidden />
+          <div className="min-w-0 flex-1">
+            <p className="font-medium">Reset link path (share securely; single-use):</p>
+            <code className="mt-2 block break-all text-xs text-ds-muted">{resetLink}</code>
+          </div>
         </div>
       ) : null}
 

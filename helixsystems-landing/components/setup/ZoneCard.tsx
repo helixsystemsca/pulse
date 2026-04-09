@@ -4,7 +4,7 @@ import { MapPin } from "lucide-react";
 import type { ZoneOut } from "@/lib/setup-api";
 
 const cardBase =
-  "rounded-md border border-slate-200/80 bg-white p-5 shadow-card dark:border-ds-border dark:bg-ds-primary";
+  "rounded-md border border-ds-border bg-ds-primary p-5 shadow-[var(--ds-shadow-card)]";
 
 export function ZoneCard({
   zone,

@@ -97,11 +97,11 @@ export function MaintenanceSection() {
                     Upcoming Schedule
                   </p>
                   <ul className="mt-3 space-y-2">
-                    <li className="ds-inset-panel ds-table-row-hover flex items-center justify-between gap-3 px-4 py-3 text-sm">
+                    <li className="ds-table-row-hover flex items-center justify-between gap-3 rounded-md border border-ds-border bg-transparent px-4 py-3 text-sm">
                       <span className="font-medium text-pulse-navy">Main Feed Pump Inspection</span>
                       <span className="shrink-0 text-xs text-pulse-muted">Tue</span>
                     </li>
-                    <li className="ds-inset-panel ds-table-row-hover flex items-center justify-between gap-3 px-4 py-3 text-sm">
+                    <li className="ds-table-row-hover flex items-center justify-between gap-3 rounded-md border border-ds-border bg-transparent px-4 py-3 text-sm">
                       <span className="font-medium text-pulse-navy">Precision Alignment · Line 2</span>
                       <span className="shrink-0 text-xs text-pulse-muted">Thu</span>
                     </li>

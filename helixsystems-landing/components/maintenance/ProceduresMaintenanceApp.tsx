@@ -95,7 +95,7 @@ export function ProceduresMaintenanceApp() {
 
   return (
     <div className="grid gap-6 lg:grid-cols-2">
-      <section className="rounded-md border border-pulse-border bg-white p-4 shadow-card dark:border-slate-700 dark:bg-ds-bg/65">
+      <section className="rounded-md border border-ds-border bg-ds-primary p-4 shadow-[var(--ds-shadow-card)]">
         <h2 className="text-sm font-semibold text-pulse-navy dark:text-slate-100">New procedure</h2>
         <p className="mt-1 text-xs text-pulse-muted">Steps are one per line; they are stored as a reusable list.</p>
         <div className="mt-3 space-y-2">
@@ -123,16 +123,16 @@ export function ProceduresMaintenanceApp() {
       </section>
 
       <div className="space-y-4">
-        {err ? <p className="text-sm text-red-600 dark:text-red-400">{err}</p> : null}
+        {err ? <p className="text-sm text-ds-danger">{err}</p> : null}
 
-        <section className="rounded-md border border-pulse-border bg-white p-4 shadow-card dark:border-slate-700 dark:bg-ds-bg/65">
-          <h2 className="text-sm font-semibold text-pulse-navy dark:text-slate-100">Library</h2>
+        <section className="rounded-md border border-ds-border bg-ds-primary p-4 shadow-[var(--ds-shadow-card)]">
+          <h2 className="text-sm font-semibold text-ds-foreground">Library</h2>
           {loading ? (
-            <p className="mt-2 text-sm text-pulse-muted">Loading…</p>
+            <p className="mt-2 text-sm text-ds-muted">Loading…</p>
           ) : rows.length === 0 ? (
-            <p className="mt-2 text-sm text-pulse-muted">No procedures yet.</p>
+            <p className="mt-2 text-sm text-ds-muted">No procedures yet.</p>
           ) : (
-            <ul className="mt-3 max-h-[min(50vh,24rem)] divide-y divide-pulse-border overflow-auto dark:divide-slate-700">
+            <ul className="mt-3 max-h-[min(50vh,24rem)] divide-y divide-ds-border overflow-auto">
               {rows.map((r) => (
                 <li key={r.id}>
                   <button
@@ -140,12 +140,12 @@ export function ProceduresMaintenanceApp() {
                     onClick={() => setSelectedId(r.id)}
                     className={`flex w-full items-start justify-between gap-2 px-2 py-2 text-left text-sm transition-colors ${
                       selectedId === r.id
-                        ? "bg-pulse-accent/10 text-pulse-navy dark:bg-ds-secondary dark:text-slate-100"
-                        : "hover:bg-slate-50 dark:hover:bg-ds-interactive-hover"
+                        ? "bg-ds-secondary text-ds-foreground"
+                        : "ds-table-row-hover"
                     }`}
                   >
                     <span className="font-medium">{r.title}</span>
-                    <span className="shrink-0 text-xs text-pulse-muted">{r.steps.length} steps</span>
+                    <span className="shrink-0 text-xs text-ds-muted">{r.steps.length} steps</span>
                   </button>
                 </li>
               ))}
@@ -154,16 +154,16 @@ export function ProceduresMaintenanceApp() {
         </section>
 
         {selected ? (
-          <section className="rounded-md border border-pulse-border bg-white p-4 shadow-card dark:border-slate-700 dark:bg-ds-bg/65">
-            <h2 className="text-sm font-semibold text-pulse-navy dark:text-slate-100">Edit</h2>
+          <section className="rounded-md border border-ds-border bg-ds-primary p-4 shadow-[var(--ds-shadow-card)]">
+            <h2 className="text-sm font-semibold text-ds-foreground">Edit</h2>
             <div className="mt-3 space-y-2">
               <input
-                className="w-full rounded-lg border border-pulse-border px-3 py-2 text-sm dark:border-slate-600 dark:bg-ds-secondary"
+                className="app-field w-full rounded-lg px-3 py-2 text-sm"
                 value={editTitle}
                 onChange={(e) => setEditTitle(e.target.value)}
               />
               <textarea
-                className="min-h-[10rem] w-full rounded-lg border border-pulse-border px-3 py-2 text-sm dark:border-slate-600 dark:bg-ds-secondary"
+                className="app-field min-h-[10rem] w-full rounded-lg px-3 py-2 text-sm"
                 value={editStepsText}
                 onChange={(e) => setEditStepsText(e.target.value)}
               />
