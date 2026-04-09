@@ -57,15 +57,18 @@ export default function HomeScreen() {
           Field view — fast, focused, and mobile-first.
         </Text>
 
-        <View style={{ marginTop: spacing.lg, gap: spacing.md }}>
+        <View style={{ marginTop: spacing.lg }}>
           <Card title="Assigned tasks" value="3" hint="1 due soon · 0 overdue" />
+          <View style={{ height: spacing.md }} />
           <Card title="Alerts" value="2" hint="Tool issue · Upcoming event" />
+          <View style={{ height: spacing.md }} />
           <Card title="Upcoming shifts" value="1" hint="Today 2:00–6:00 PM · Boiler Room" />
         </View>
 
-        <View style={{ marginTop: spacing.lg, gap: spacing.sm }}>
+        <View style={{ marginTop: spacing.lg }}>
           <Text style={{ color: colors.text, ...text.h2 }}>Quick actions</Text>
-          <View style={{ flexDirection: "row", gap: spacing.sm }}>
+          <View style={{ height: spacing.sm }} />
+          <View style={{ flexDirection: "row" }}>
             <Pressable
               onLayout={onLayoutFor("tasks")}
               style={{
@@ -74,6 +77,7 @@ export default function HomeScreen() {
                 borderRadius: radii.md,
                 backgroundColor: colors.success,
                 alignItems: "center",
+                marginRight: spacing.sm,
               }}
             >
               <Text style={{ color: "#0A0A0A", fontWeight: "900" }}>Go to tasks</Text>
@@ -93,6 +97,7 @@ export default function HomeScreen() {
               <Text style={{ color: colors.text, fontWeight: "800" }}>View schedule</Text>
             </Pressable>
           </View>
+          <View style={{ height: spacing.sm }} />
           <Pressable
             onLayout={onLayoutFor("toolbox")}
             style={{

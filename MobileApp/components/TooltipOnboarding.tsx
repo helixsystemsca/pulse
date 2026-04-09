@@ -52,7 +52,10 @@ export function TooltipOnboarding({
   const overlay = useMemo(
     () => ({
       position: "absolute" as const,
-      inset: 0,
+      left: 0,
+      right: 0,
+      top: 0,
+      bottom: 0,
       backgroundColor: "rgba(0,0,0,0.30)",
     }),
     [],
@@ -62,7 +65,7 @@ export function TooltipOnboarding({
 
   const t = step.target;
   return (
-    <View style={{ position: "absolute", inset: 0 }} pointerEvents="box-none">
+    <View style={{ position: "absolute", left: 0, right: 0, top: 0, bottom: 0 }} pointerEvents="box-none">
       <Pressable style={overlay} onPress={finish} />
 
       {t ? (
@@ -103,7 +106,7 @@ export function TooltipOnboarding({
         <Text style={{ color: colors.text, fontSize: 15, fontWeight: "800" }}>{step.title}</Text>
         <Text style={{ color: colors.muted, marginTop: 8, fontSize: 13, lineHeight: 18 }}>{step.body}</Text>
 
-        <View style={{ flexDirection: "row", gap: 10, marginTop: spacing.lg }}>
+        <View style={{ flexDirection: "row", marginTop: spacing.lg }}>
           <Pressable
             onPress={finish}
             style={{
@@ -114,6 +117,7 @@ export function TooltipOnboarding({
               borderColor: colors.border,
               backgroundColor: colors.card,
               alignItems: "center",
+              marginRight: 10,
             }}
           >
             <Text style={{ color: colors.text, fontWeight: "800" }}>Skip</Text>

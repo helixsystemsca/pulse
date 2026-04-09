@@ -26,7 +26,7 @@ export default function DrawingsScreen() {
           Read-only floor plans. Pan and zoom, and highlight zones.
         </Text>
 
-        <View style={{ flexDirection: "row", gap: 10, marginTop: spacing.md }}>
+        <View style={{ flexDirection: "row", marginTop: spacing.md }}>
           <Pressable
             onPress={() => setScale((s) => Math.max(0.6, Number((s - 0.1).toFixed(2))))}
             style={{
@@ -37,6 +37,7 @@ export default function DrawingsScreen() {
               borderWidth: 1,
               borderColor: colors.border,
               alignItems: "center",
+              marginRight: 10,
             }}
           >
             <Text style={{ color: colors.text, fontWeight: "900" }}>−</Text>

@@ -18,23 +18,25 @@ export default function ScheduleScreen() {
           Your upcoming shifts — fast list with a calendar feel.
         </Text>
 
-        <View style={{ marginTop: spacing.lg, gap: spacing.sm }}>
-          {shifts.map((s) => (
-            <View
-              key={s.id}
-              style={{
-                backgroundColor: colors.card,
-                borderColor: colors.border,
-                borderWidth: 1,
-                borderRadius: radii.lg,
-                padding: spacing.lg,
-              }}
-            >
-              <Text style={{ color: colors.muted, fontSize: 12, fontWeight: "900", textTransform: "uppercase" }}>
-                {s.when}
-              </Text>
-              <Text style={{ color: colors.text, marginTop: 6, fontSize: 16, fontWeight: "900" }}>{s.time}</Text>
-              <Text style={{ color: colors.muted, marginTop: 6, fontSize: 13 }}>{s.zone}</Text>
+        <View style={{ marginTop: spacing.lg }}>
+          {shifts.map((s, i) => (
+            <View key={s.id}>
+              {i ? <View style={{ height: spacing.sm }} /> : null}
+              <View
+                style={{
+                  backgroundColor: colors.card,
+                  borderColor: colors.border,
+                  borderWidth: 1,
+                  borderRadius: radii.lg,
+                  padding: spacing.lg,
+                }}
+              >
+                <Text style={{ color: colors.muted, fontSize: 12, fontWeight: "900", textTransform: "uppercase" }}>
+                  {s.when}
+                </Text>
+                <Text style={{ color: colors.text, marginTop: 6, fontSize: 16, fontWeight: "900" }}>{s.time}</Text>
+                <Text style={{ color: colors.muted, marginTop: 6, fontSize: 13 }}>{s.zone}</Text>
+              </View>
             </View>
           ))}
         </View>

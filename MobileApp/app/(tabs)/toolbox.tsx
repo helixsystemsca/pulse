@@ -45,21 +45,22 @@ export default function ToolboxScreen() {
           </View>
         ) : null}
 
-        <View style={{ marginTop: spacing.lg, gap: spacing.sm }}>
-          {tools.map((t) => {
+        <View style={{ marginTop: spacing.lg }}>
+          {tools.map((t, i) => {
             const b = badge(t.status);
             return (
-              <View
-                key={t.id}
-                style={{
-                  backgroundColor: colors.card,
-                  borderColor: colors.border,
-                  borderWidth: 1,
-                  borderRadius: radii.lg,
-                  padding: spacing.lg,
-                }}
-              >
-                <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+              <View key={t.id}>
+                {i ? <View style={{ height: spacing.sm }} /> : null}
+                <View
+                  style={{
+                    backgroundColor: colors.card,
+                    borderColor: colors.border,
+                    borderWidth: 1,
+                    borderRadius: radii.lg,
+                    padding: spacing.lg,
+                  }}
+                >
+                  <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
                   <Text style={{ color: colors.text, fontSize: 15, fontWeight: "800", flex: 1 }} numberOfLines={1}>
                     {t.name}
                   </Text>
@@ -76,7 +77,7 @@ export default function ToolboxScreen() {
                     <Text style={{ color: b.fg, fontSize: 12, fontWeight: "900" }}>{b.label}</Text>
                   </View>
                 </View>
-                <View style={{ flexDirection: "row", gap: 10, marginTop: spacing.md }}>
+                <View style={{ flexDirection: "row", marginTop: spacing.md }}>
                   <Pressable
                     onPress={() => {}}
                     style={{
@@ -87,6 +88,7 @@ export default function ToolboxScreen() {
                       borderWidth: 1,
                       borderColor: colors.border,
                       alignItems: "center",
+                      marginRight: 10,
                     }}
                   >
                     <Text style={{ color: colors.text, fontWeight: "800" }}>Check in</Text>
@@ -104,6 +106,7 @@ export default function ToolboxScreen() {
                     <Text style={{ color: "#0A0A0A", fontWeight: "900" }}>Check out</Text>
                   </Pressable>
                 </View>
+              </View>
               </View>
             );
           })}

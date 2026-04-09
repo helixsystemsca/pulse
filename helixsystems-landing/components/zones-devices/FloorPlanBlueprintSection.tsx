@@ -60,6 +60,7 @@ export function FloorPlanBlueprintSection() {
   const [detail, setDetail] = useState<BlueprintDetail | null>(null);
   const [loadingList, setLoadingList] = useState(true);
   const [loadingDetail, setLoadingDetail] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const refreshList = useCallback(async () => {
@@ -126,6 +127,25 @@ export function FloorPlanBlueprintSection() {
     [detail],
   );
 
+  const canDelete = Boolean(tenantOk && selectedId && !loadingList && !deleting);
+
+  async function deleteSelected() {
+    if (!canDelete) return;
+    const name = detail?.name ?? "this blueprint";
+    if (!confirm(`Delete "${name}"? This cannot be undone.`)) return;
+    setDeleting(true);
+    setError(null);
+    try {
+      await apiFetch(`/api/blueprints/${selectedId}`, { method: "DELETE" });
+      await refreshList();
+      setDetail(null);
+    } catch (e) {
+      setError(blueprintLoadMessage(e));
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   if (!isApiMode()) {
     return (
       <div className="rounded-md border border-ds-border bg-ds-secondary p-4">
@@ -169,12 +189,24 @@ export function FloorPlanBlueprintSection() {
             )}
           </select>
         </div>
-        <Link
-          href="/zones-devices/blueprint"
-          className="ds-btn-secondary inline-flex shrink-0 items-center justify-center rounded-md px-3 py-2 text-sm font-semibold"
-        >
-          Edit in designer
-        </Link>
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
+          <button
+            type="button"
+            className="ds-btn-secondary inline-flex items-center justify-center rounded-md px-3 py-2 text-sm font-semibold"
+            onClick={() => void deleteSelected()}
+            disabled={!canDelete}
+            aria-disabled={!canDelete}
+            title={!selectedId ? "Select a blueprint to delete" : undefined}
+          >
+            {deleting ? "Deleting…" : "Delete"}
+          </button>
+          <Link
+            href="/zones-devices/blueprint"
+            className="ds-btn-secondary inline-flex items-center justify-center rounded-md px-3 py-2 text-sm font-semibold"
+          >
+            Edit in designer
+          </Link>
+        </div>
       </div>
 
       {error ? <p className="mt-3 text-sm text-ds-danger">{error}</p> : null}

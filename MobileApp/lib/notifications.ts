@@ -22,7 +22,7 @@ export function registerNotificationDeepLinks() {
   const sub = Notifications.addNotificationResponseReceivedListener((resp) => {
     const data = resp.notification.request.content.data as Record<string, unknown> | undefined;
     const to = typeof data?.to === "string" ? data.to : null;
-    if (to) router.push(to);
+    if (to) router.push(to as never);
   });
   return () => sub.remove();
 }

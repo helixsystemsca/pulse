@@ -51,14 +51,21 @@ export function BottomSheetPrompt({
     >
       <Pressable
         onPress={onDismiss}
-        style={{ position: "absolute", inset: 0, backgroundColor: "rgba(0,0,0,0.25)" }}
+        style={{
+          position: "absolute",
+          left: 0,
+          right: 0,
+          top: 0,
+          bottom: 0,
+          backgroundColor: "rgba(0,0,0,0.25)",
+        }}
       />
       <Animated.View style={{ transform: [{ translateY: y }] }}>
         <View style={sheetStyle}>
           <Text style={{ color: colors.text, fontSize: 16, fontWeight: "700" }}>{title}</Text>
           <Text style={{ color: colors.muted, marginTop: 8, fontSize: 13, lineHeight: 18 }}>{message}</Text>
 
-          <View style={{ flexDirection: "row", gap: 10, marginTop: spacing.lg }}>
+          <View style={{ flexDirection: "row", marginTop: spacing.lg }}>
             <Pressable
               onPress={onDismiss}
               style={{
@@ -69,6 +76,7 @@ export function BottomSheetPrompt({
                 borderColor: colors.border,
                 backgroundColor: colors.card,
                 alignItems: "center",
+                marginRight: 10,
               }}
             >
               <Text style={{ color: colors.text, fontWeight: "700" }}>Dismiss</Text>

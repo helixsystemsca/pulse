@@ -26,49 +26,52 @@ export default function TasksScreen() {
           Assigned work orders, PMs, and inspections.
         </Text>
 
-        <View style={{ marginTop: spacing.lg, gap: spacing.sm }}>
-          {open.map((t) => (
-            <View
-              key={t.id}
-              style={{
-                backgroundColor: colors.card,
-                borderColor: colors.border,
-                borderWidth: 1,
-                borderRadius: radii.lg,
-                padding: spacing.lg,
-              }}
-            >
-              <Text style={{ color: colors.text, fontSize: 15, fontWeight: "900" }}>{t.title}</Text>
-              <Text style={{ color: colors.muted, marginTop: 6, fontSize: 12, fontWeight: "800" }}>
-                Status: {t.status.replace("_", " ")}
-              </Text>
-              <View style={{ flexDirection: "row", gap: 10, marginTop: spacing.md }}>
-                <Pressable
-                  onPress={() => setStatus(t.id, "in_progress")}
-                  style={{
-                    flex: 1,
-                    paddingVertical: 12,
-                    borderRadius: radii.md,
-                    backgroundColor: colors.surface,
-                    borderWidth: 1,
-                    borderColor: colors.border,
-                    alignItems: "center",
-                  }}
-                >
-                  <Text style={{ color: colors.text, fontWeight: "800" }}>Start</Text>
-                </Pressable>
-                <Pressable
-                  onPress={() => setStatus(t.id, "completed")}
-                  style={{
-                    flex: 1,
-                    paddingVertical: 12,
-                    borderRadius: radii.md,
-                    backgroundColor: colors.success,
-                    alignItems: "center",
-                  }}
-                >
-                  <Text style={{ color: "#0A0A0A", fontWeight: "900" }}>Complete</Text>
-                </Pressable>
+        <View style={{ marginTop: spacing.lg }}>
+          {open.map((t, i) => (
+            <View key={t.id}>
+              {i ? <View style={{ height: spacing.sm }} /> : null}
+              <View
+                style={{
+                  backgroundColor: colors.card,
+                  borderColor: colors.border,
+                  borderWidth: 1,
+                  borderRadius: radii.lg,
+                  padding: spacing.lg,
+                }}
+              >
+                <Text style={{ color: colors.text, fontSize: 15, fontWeight: "900" }}>{t.title}</Text>
+                <Text style={{ color: colors.muted, marginTop: 6, fontSize: 12, fontWeight: "800" }}>
+                  Status: {t.status.replace("_", " ")}
+                </Text>
+                <View style={{ flexDirection: "row", marginTop: spacing.md }}>
+                  <Pressable
+                    onPress={() => setStatus(t.id, "in_progress")}
+                    style={{
+                      flex: 1,
+                      paddingVertical: 12,
+                      borderRadius: radii.md,
+                      backgroundColor: colors.surface,
+                      borderWidth: 1,
+                      borderColor: colors.border,
+                      alignItems: "center",
+                      marginRight: 10,
+                    }}
+                  >
+                    <Text style={{ color: colors.text, fontWeight: "800" }}>Start</Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={() => setStatus(t.id, "completed")}
+                    style={{
+                      flex: 1,
+                      paddingVertical: 12,
+                      borderRadius: radii.md,
+                      backgroundColor: colors.success,
+                      alignItems: "center",
+                    }}
+                  >
+                    <Text style={{ color: "#0A0A0A", fontWeight: "900" }}>Complete</Text>
+                  </Pressable>
+                </View>
               </View>
             </View>
           ))}
