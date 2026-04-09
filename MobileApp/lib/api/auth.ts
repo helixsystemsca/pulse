@@ -1,21 +1,44 @@
 import { apiFetch } from "./client";
+import { getMe, type PulseMe } from "./pulse";
 
-export type AuthSession = {
-  accessToken: string;
-  user: {
-    id: string;
-    fullName: string;
-    role: string;
-    permissions: string[];
-  };
+export type TokenResponse = {
+  access_token: string;
+  token_type?: string;
 };
 
-export async function signIn(email: string, password: string): Promise<AuthSession> {
-  // Placeholder shape — align with your existing Pulse auth when ready.
-  return apiFetch<AuthSession>("/api/mobile/auth/sign-in", { body: { email, password } });
+export type SessionUser = {
+  id: string;
+  email: string;
+  fullName: string;
+  role: string;
+  roles: string[];
+  permissions: string[];
+};
+
+/** Same database + JWT as the Pulse web app: `POST /api/v1/auth/login`. */
+export async function loginWithPassword(email: string, password: string): Promise<string> {
+  const norm = email.trim().toLowerCase();
+  const res = await apiFetch<TokenResponse>("/api/v1/auth/login", {
+    method: "POST",
+    body: { email: norm, password },
+  });
+  const token = res.access_token?.trim();
+  if (!token) throw new Error("No access token from server");
+  return token;
 }
 
-export async function signOut(): Promise<void> {
-  return apiFetch<void>("/api/mobile/auth/sign-out", { method: "POST" });
+export function pulseMeToSessionUser(me: PulseMe): SessionUser {
+  return {
+    id: me.id,
+    email: me.email,
+    fullName: (me.full_name ?? "").trim() || me.email,
+    role: me.role,
+    roles: me.roles ?? [],
+    permissions: Array.isArray(me.permissions) ? me.permissions : me.permissions == null ? [] : [],
+  };
 }
 
+export async function loadSessionUser(token: string): Promise<SessionUser> {
+  const me = await getMe(token);
+  return pulseMeToSessionUser(me);
+}

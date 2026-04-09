@@ -1,13 +1,21 @@
-import React, { createContext, useContext, useMemo, useState, type ReactNode } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import * as SecureStore from "expo-secure-store";
+import { ensureApiConfiguredFromEnv } from "@/lib/api/client";
+import { loadSessionUser, loginWithPassword, type SessionUser } from "@/lib/api/auth";
+
+const TOKEN_KEY = "pulse_access_token";
 
 export type Session = {
   token: string;
-  user: { id: string; fullName: string; role: string; permissions: string[] };
+  user: SessionUser;
 };
 
 type SessionCtx = {
   session: Session | null;
-  setSession: (s: Session | null) => void;
+  /** False until SecureStore + optional `/auth/me` hydrate finishes. */
+  authReady: boolean;
+  signIn: (email: string, password: string) => Promise<void>;
+  signOut: () => Promise<void>;
   has: (perm: string) => boolean;
 };
 
@@ -15,15 +23,66 @@ const Ctx = createContext<SessionCtx | null>(null);
 
 export function SessionProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
+  const [authReady, setAuthReady] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      ensureApiConfiguredFromEnv();
+      try {
+        const token = await SecureStore.getItemAsync(TOKEN_KEY);
+        if (!token || cancelled) {
+          if (!cancelled) setAuthReady(true);
+          return;
+        }
+        const user = await loadSessionUser(token);
+        if (!cancelled) setSession({ token, user });
+      } catch {
+        try {
+          await SecureStore.deleteItemAsync(TOKEN_KEY);
+        } catch {
+          /* ignore */
+        }
+        if (!cancelled) setSession(null);
+      } finally {
+        if (!cancelled) setAuthReady(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const signIn = useCallback(async (email: string, password: string) => {
+    ensureApiConfiguredFromEnv();
+    const token = await loginWithPassword(email, password);
+    const user = await loadSessionUser(token);
+    await SecureStore.setItemAsync(TOKEN_KEY, token);
+    setSession({ token, user });
+  }, []);
+
+  const signOut = useCallback(async () => {
+    try {
+      await SecureStore.deleteItemAsync(TOKEN_KEY);
+    } catch {
+      /* ignore */
+    }
+    setSession(null);
+  }, []);
 
   const value = useMemo<SessionCtx>(() => {
     const perms = new Set(session?.user.permissions ?? []);
     return {
       session,
-      setSession,
-      has: (perm: string) => perms.has(perm),
+      authReady,
+      signIn,
+      signOut,
+      has: (perm: string) => {
+        if (perms.has("*")) return true;
+        return perms.has(perm);
+      },
     };
-  }, [session]);
+  }, [session, authReady, signIn, signOut]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
@@ -33,4 +92,3 @@ export function useSession() {
   if (!v) throw new Error("SessionProvider missing");
   return v;
 }
-

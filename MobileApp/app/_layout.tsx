@@ -8,7 +8,7 @@ import "react-native-reanimated";
 import { ThemeProvider } from "@/theme/ThemeProvider";
 import { SessionProvider } from "@/store/session";
 import { ensurePushPermissions, registerNotificationDeepLinks } from "@/lib/notifications";
-import { configureApi } from "@/lib/api/client";
+import { ensureApiConfiguredFromEnv } from "@/lib/api/client";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 export {
@@ -55,6 +55,7 @@ function RootLayoutNav() {
         <SessionProvider>
           <RootSideEffects />
           <Stack screenOptions={{ headerShown: false }}>
+            <Stack.Screen name="login" />
             <Stack.Screen name="(tabs)" />
           </Stack>
         </SessionProvider>
@@ -67,7 +68,7 @@ function RootSideEffects() {
   useEffect(() => {
     // Configure API base URL from env. Example:
     // EXPO_PUBLIC_API_BASE_URL=https://pulse.helixsystems.ca
-    configureApi({ baseUrl: process.env.EXPO_PUBLIC_API_BASE_URL ?? "" });
+    ensureApiConfiguredFromEnv();
     void ensurePushPermissions();
     const unsub = registerNotificationDeepLinks();
     return unsub;

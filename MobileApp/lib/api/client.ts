@@ -12,6 +12,28 @@ export function configureApi(next: Partial<ApiConfig>) {
   cfg = { ...cfg, ...next };
 }
 
+/** Sync `EXPO_PUBLIC_API_BASE_URL` into the client (call before any authenticated request). */
+export function ensureApiConfiguredFromEnv() {
+  const base = (process.env.EXPO_PUBLIC_API_BASE_URL ?? "").trim();
+  if (base) configureApi({ baseUrl: base });
+}
+
+export function parsePulseApiErrorMessage(raw: string): string {
+  const t = (raw ?? "").trim();
+  if (!t) return "Request failed";
+  try {
+    const j = JSON.parse(t) as { detail?: unknown };
+    if (typeof j.detail === "string") return j.detail;
+    if (Array.isArray(j.detail) && j.detail.length > 0) {
+      const row = j.detail[0] as { msg?: string };
+      if (row && typeof row.msg === "string") return row.msg;
+    }
+  } catch {
+    /* plain text or HTML */
+  }
+  return t.length > 240 ? "Request failed" : t;
+}
+
 export function getApiBaseUrl(): string {
   return cfg.baseUrl;
 }
@@ -48,7 +70,7 @@ export async function apiFetch<T>(
   });
   if (!res.ok) {
     const msg = await res.text().catch(() => "");
-    throw new Error(msg || `Request failed (${res.status})`);
+    throw new Error(parsePulseApiErrorMessage(msg) || `Request failed (${res.status})`);
   }
   return (await res.json()) as T;
 }
