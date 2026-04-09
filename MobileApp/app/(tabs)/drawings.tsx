@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import { useTheme } from "@/theme/ThemeProvider";
+import { Screen } from "@/components/Screen";
 
 type Zone = { id: string; name: string; x: number; y: number; w: number; h: number };
 
@@ -19,7 +20,7 @@ export default function DrawingsScreen() {
   );
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.background }}>
+    <Screen>
       <View style={{ padding: spacing.lg, paddingBottom: spacing.sm }}>
         <Text style={{ color: colors.text, ...text.h1 }}>Drawings</Text>
         <Text style={{ color: colors.muted, marginTop: 6, ...text.body }}>
@@ -116,7 +117,7 @@ export default function DrawingsScreen() {
           </View>
         </ScrollView>
       </ScrollView>
-    </View>
+    </Screen>
   );
 }
 

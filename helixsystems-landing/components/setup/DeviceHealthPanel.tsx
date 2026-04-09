@@ -41,36 +41,36 @@ export function DeviceHealthPanel({
   });
 
   const miniList = "space-y-2 text-sm";
-  const item = "rounded-lg border border-slate-200/80 bg-slate-50/80 px-3 py-2";
+  const item = "rounded-lg border border-ds-border bg-ds-secondary/60 px-3 py-2";
 
   return (
-    <section className="rounded-md border border-slate-200/80 bg-white/90 p-5 shadow-card md:p-6">
+    <section className="rounded-md border border-ds-border bg-ds-primary p-5 shadow-[var(--ds-shadow-card)] md:p-6">
       <div className="flex items-center gap-2">
-        <Activity className="h-5 w-5 text-[#2B4C7E]" aria-hidden />
+        <Activity className="h-5 w-5 text-ds-foreground" aria-hidden />
         <div>
-          <h2 className="text-lg font-semibold text-pulse-navy">Device health &amp; activity</h2>
-          <p className="text-sm text-pulse-muted">Offline infrastructure, quiet tags, and battery alerts.</p>
+          <h2 className="text-lg font-semibold text-ds-foreground">Device health &amp; activity</h2>
+          <p className="text-sm text-ds-muted">Offline infrastructure, quiet tags, and battery alerts.</p>
         </div>
       </div>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-3">
         <div>
-          <div className="flex items-center gap-2 text-pulse-navy">
+          <div className="flex items-center gap-2 text-ds-foreground">
             <WifiOff className="h-4 w-4 text-rose-700" aria-hidden />
             <h3 className="text-sm font-semibold">Offline gateways</h3>
           </div>
           <ul className={`mt-3 ${miniList}`}>
             {offlineGateways.length === 0 ? (
-              <li className={`${item} text-pulse-muted`}>All gateways report online.</li>
+              <li className={`${item} text-ds-muted`}>All gateways report online.</li>
             ) : (
               offlineGateways.map((g) => {
                 const st = statusById.get(g.id);
                 const last = st?.last_seen_at ?? g.last_seen_at;
                 return (
                   <li key={g.id} className={item}>
-                    <span className="font-medium text-pulse-navy">{g.name}</span>
-                    <span className="mt-0.5 block font-mono text-xs text-pulse-muted">{g.identifier}</span>
-                    <span className="mt-1 block text-xs text-pulse-muted">
+                    <span className="font-medium text-ds-foreground">{g.name}</span>
+                    <span className="mt-0.5 block font-mono text-xs text-ds-muted">{g.identifier}</span>
+                    <span className="mt-1 block text-xs text-ds-muted">
                       Last heartbeat {formatRelativeTime(last)}
                     </span>
                   </li>
@@ -81,22 +81,22 @@ export function DeviceHealthPanel({
         </div>
 
         <div>
-          <div className="flex items-center gap-2 text-pulse-navy">
+          <div className="flex items-center gap-2 text-ds-foreground">
             <Radio className="h-4 w-4 text-amber-700" aria-hidden />
             <h3 className="text-sm font-semibold">Quiet tags</h3>
           </div>
-          <p className="mt-1 text-[11px] text-pulse-muted">
+          <p className="mt-1 text-[11px] text-ds-muted">
             No detection for more than {STALE_TAG_SEC}s (or never).
           </p>
           <ul className={`mt-2 ${miniList} max-h-52 overflow-y-auto pr-1`}>
             {staleTags.length === 0 ? (
-              <li className={`${item} text-pulse-muted`}>All tags recently heard.</li>
+              <li className={`${item} text-ds-muted`}>All tags recently heard.</li>
             ) : (
               staleTags.map((b) => (
                 <li key={b.id} className={item}>
-                  <span className="font-medium text-pulse-navy">{b.name}</span>
-                  <span className="block font-mono text-xs text-pulse-muted">{b.mac_address}</span>
-                  <span className="mt-1 block text-xs text-pulse-muted">
+                  <span className="font-medium text-ds-foreground">{b.name}</span>
+                  <span className="block font-mono text-xs text-ds-muted">{b.mac_address}</span>
+                  <span className="mt-1 block text-xs text-ds-muted">
                     Last seen {formatRelativeTime(b.last_seen_at ?? null)}
                   </span>
                 </li>
@@ -106,20 +106,20 @@ export function DeviceHealthPanel({
         </div>
 
         <div>
-          <div className="flex items-center gap-2 text-pulse-navy">
+          <div className="flex items-center gap-2 text-ds-foreground">
             <BatteryLow className="h-4 w-4 text-amber-800" aria-hidden />
             <h3 className="text-sm font-semibold">Low battery</h3>
           </div>
-          <p className="mt-1 text-[11px] text-pulse-muted">Shown when hardware reports battery % (optional field).</p>
+          <p className="mt-1 text-[11px] text-ds-muted">Shown when hardware reports battery % (optional field).</p>
           <ul className={`mt-2 ${miniList}`}>
             {lowBatteryTags.length === 0 ? (
-              <li className={`${item} text-pulse-muted`}>No low-battery rows from the API.</li>
+              <li className={`${item} text-ds-muted`}>No low-battery rows from the API.</li>
             ) : (
               lowBatteryTags.map((b) => {
                 const pct = (b as BleDeviceOut & { battery_percent?: number | null }).battery_percent;
                 return (
                   <li key={b.id} className={item}>
-                    <span className="font-medium text-pulse-navy">{b.name}</span>
+                    <span className="font-medium text-ds-foreground">{b.name}</span>
                     <span className="block text-xs text-amber-900">{pct}%</span>
                   </li>
                 );

@@ -1,5 +1,8 @@
 import * as Notifications from "expo-notifications";
 import { router } from "expo-router";
+import { Platform } from "react-native";
+import * as Device from "expo-device";
+import Constants from "expo-constants";
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -12,6 +15,22 @@ Notifications.setNotificationHandler({
 });
 
 export async function ensurePushPermissions() {
+  // Scaffold only: avoid crashes on web / simulators / emulators.
+  if (Platform.OS === "web") return false;
+  if (!Device.isDevice) return false;
+
+  // Some Expo flows will throw if projectId is missing; skip in that case.
+  const projectId =
+    Constants.expoConfig?.extra?.eas?.projectId ?? (Constants.easConfig as { projectId?: string } | undefined)?.projectId;
+  if (!projectId) return false;
+
+  if (Platform.OS === "android") {
+    await Notifications.setNotificationChannelAsync("default", {
+      name: "default",
+      importance: Notifications.AndroidImportance.DEFAULT,
+    });
+  }
+
   const cur = await Notifications.getPermissionsAsync();
   if (cur.status === "granted") return true;
   const next = await Notifications.requestPermissionsAsync();

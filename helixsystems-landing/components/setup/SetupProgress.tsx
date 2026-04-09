@@ -67,27 +67,27 @@ export function SetupProgress({
 
   const sectionClass =
     phase === "exit"
-      ? "setup-progress-card-exit rounded-md border border-slate-200/80 bg-white/95 p-5 shadow-card dark:border-ds-border dark:bg-ds-primary dark:shadow-[0_2px_8px_rgba(0,0,0,0.4)] md:p-6"
-      : "rounded-md border border-slate-200/80 bg-white/95 p-5 shadow-card dark:border-ds-border dark:bg-ds-primary dark:shadow-[0_2px_8px_rgba(0,0,0,0.4)] md:p-6";
+      ? "setup-progress-card-exit rounded-md border border-ds-border bg-ds-primary p-5 shadow-[var(--ds-shadow-card)] md:p-6"
+      : "rounded-md border border-ds-border bg-ds-primary p-5 shadow-[var(--ds-shadow-card)] md:p-6";
 
   const pctClass =
     phase === "pulse"
-      ? "setup-progress-pct-pulse text-2xl font-bold tabular-nums text-[#2B4C7E] dark:text-sky-400"
-      : "text-2xl font-bold tabular-nums text-[#2B4C7E] dark:text-sky-400";
+      ? "setup-progress-pct-pulse text-2xl font-bold tabular-nums text-ds-foreground"
+      : "text-2xl font-bold tabular-nums text-ds-foreground";
 
   return (
     <section className={sectionClass}>
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h2 className="text-sm font-semibold text-pulse-navy dark:text-gray-100">Setup progress</h2>
-          <p className="mt-0.5 text-sm text-pulse-muted dark:text-gray-400">Track what is left before go-live.</p>
+          <h2 className="text-sm font-semibold text-ds-foreground">Setup progress</h2>
+          <p className="mt-0.5 text-sm text-ds-muted">Track what is left before go-live.</p>
         </div>
         <div className="text-right">
           <span className={pctClass}>{pct}%</span>
-          <span className="ml-1 text-xs text-pulse-muted dark:text-gray-500">complete</span>
+          <span className="ml-1 text-xs text-ds-muted">complete</span>
         </div>
       </div>
-      <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-ds-secondary">
+      <div className="mt-4 h-2 overflow-hidden rounded-full bg-ds-secondary">
         <div
           className="h-full rounded-full bg-emerald-500 dark:bg-emerald-500"
           style={{ width: `${pct}%` }}
@@ -127,13 +127,13 @@ export function SetupProgress({
             className={`flex items-center gap-3 rounded-md px-3 py-2.5 text-sm ring-1 ${
               row.done
                 ? "bg-emerald-50/90 text-emerald-950 ring-emerald-200/70 dark:bg-emerald-950/55 dark:text-emerald-100 dark:ring-emerald-500/35"
-                : "bg-slate-50/90 text-pulse-navy ring-slate-200/70 dark:bg-ds-secondary dark:text-gray-200 dark:ring-ds-border"
+                : "bg-ds-secondary/60 text-ds-foreground ring-ds-border"
             }`}
           >
             {row.done ? (
               <Check className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden />
             ) : (
-              <Circle className="h-4 w-4 shrink-0 text-slate-400 dark:text-slate-500" aria-hidden />
+              <Circle className="h-4 w-4 shrink-0 text-ds-muted" aria-hidden />
             )}
             <span className={row.done ? "font-medium" : ""}>{row.label}</span>
           </li>

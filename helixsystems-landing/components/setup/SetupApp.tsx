@@ -4,7 +4,7 @@
  * Infrastructure & RTLS: gateways, tags, zones, worker and equipment tag assignment, automation.
  */
 import { Loader2, MapPin, Radio, Settings2, Users } from "lucide-react";
-import { useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { apiFetch } from "@/lib/api";
 import { readSession } from "@/lib/pulse-session";
@@ -60,14 +60,14 @@ const TABS: { id: TabId; label: string; icon: typeof Radio }[] = [
 ];
 
 const FIELD =
-  "mt-1.5 w-full rounded-md border border-slate-200/90 bg-white px-3 py-2.5 text-sm text-pulse-navy shadow-sm focus:border-[#2B4C7E]/35 focus:outline-none focus:ring-1 focus:ring-[#2B4C7E]/25 dark:border-ds-border dark:bg-ds-secondary dark:text-gray-100 dark:placeholder:text-gray-500";
-const LABEL = "text-[11px] font-semibold uppercase tracking-wider text-pulse-muted dark:text-gray-500";
+  "mt-1.5 w-full rounded-md border border-ds-border bg-ds-primary px-3 py-2.5 text-sm text-ds-foreground shadow-[var(--ds-shadow-card)] placeholder:text-ds-muted focus:outline-none focus:ring-1 focus:ring-ds-border/50 dark:bg-ds-secondary";
+const LABEL = "text-[11px] font-semibold uppercase tracking-wider text-ds-muted";
 const BTN_PRIMARY =
-  "rounded-md bg-[#2B4C7E] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#234066] disabled:opacity-50";
+  "rounded-md bg-ds-accent px-4 py-2.5 text-sm font-semibold text-ds-accent-foreground shadow-[var(--ds-shadow-card)] transition-colors hover:bg-ds-accent/90 disabled:opacity-50";
 const TAB_ACTIVE =
-  "border-[#2B4C7E] bg-[#ebf2ff] text-[#2B4C7E] shadow-sm dark:border-sky-500/45 dark:bg-[#1e3a5f] dark:text-sky-100";
+  "border-ds-border bg-ds-primary text-ds-foreground shadow-[var(--ds-shadow-card)]";
 const TAB_IDLE =
-  "border-transparent bg-white/60 text-pulse-muted hover:border-slate-200 hover:text-pulse-navy dark:bg-ds-secondary/95 dark:text-gray-400 dark:hover:border-ds-border dark:hover:bg-ds-interactive-hover dark:hover:text-gray-100";
+  "border-transparent bg-ds-secondary/60 text-ds-muted hover:border-ds-border hover:bg-ds-interactive-hover hover:text-ds-foreground";
 
 function companyQs(companyId: string | null): string {
   return companyId ? `company_id=${encodeURIComponent(companyId)}` : "";
@@ -92,8 +92,10 @@ function facilitySelectValue(facilityId: string): string {
   return `f:${facilityId}`;
 }
 
-export function SetupApp() {
+export function SetupApp({ defaultTab }: { defaultTab?: TabId }) {
   const searchParams = useSearchParams();
+  const pathname = usePathname();
+  const router = useRouter();
   const session = readSession();
   const isSystemAdmin = Boolean(session?.is_system_admin || session?.role === "system_admin");
   const sessionCompanyId = session?.company_id ?? null;
@@ -103,14 +105,48 @@ export function SetupApp() {
   const effectiveCompanyId = isSystemAdmin ? companyPick : sessionCompanyId;
   const dataEnabled = Boolean(effectiveCompanyId);
 
-  const [tab, setTab] = useState<TabId>("devices");
+  const [tab, setTab] = useState<TabId>(defaultTab ?? "devices");
 
   useEffect(() => {
     const t = searchParams.get("tab");
     if (t === "devices" || t === "workers" || t === "zones" || t === "automation") {
       setTab(t);
+      return;
     }
-  }, [searchParams]);
+    if (defaultTab) setTab(defaultTab);
+  }, [searchParams, defaultTab]);
+
+  useEffect(() => {
+    if (pathname === "/zones") {
+      setTab("zones");
+      return;
+    }
+    if (pathname === "/devices") {
+      if (tab !== "devices" && tab !== "workers" && tab !== "automation") setTab("devices");
+    }
+  }, [pathname, tab]);
+
+  const navigateTab = useCallback(
+    (nextTab: TabId) => {
+      // Canonical URLs for Zones/Devices:
+      // - `/zones` => zones
+      // - `/devices` => devices default; workers/automation remain query-based
+      if (nextTab === "zones") {
+        router.replace("/zones");
+        setTab("zones");
+        return;
+      }
+      if (nextTab === "devices") {
+        router.replace("/devices");
+        setTab("devices");
+        return;
+      }
+      // Keep other tabs discoverable without adding more routes.
+      router.replace(`/devices?tab=${encodeURIComponent(nextTab)}`);
+      setTab(nextTab);
+    },
+    [router],
+  );
   const [loading, setLoading] = useState(false);
   const [initialLoadDone, setInitialLoadDone] = useState(false);
   const [savingConfig, setSavingConfig] = useState(false);
@@ -748,7 +784,7 @@ export function SetupApp() {
           <button
             key={id}
             type="button"
-            onClick={() => setTab(id)}
+            onClick={() => navigateTab(id)}
             className={`inline-flex items-center gap-2 rounded-md border px-4 py-2.5 text-sm font-semibold transition-colors ${
               tab === id ? TAB_ACTIVE : TAB_IDLE
             }`}
@@ -761,7 +797,7 @@ export function SetupApp() {
 
       {loading && !gateways.length && !bleDevices.length ? (
         <div className="flex justify-center py-16">
-          <Loader2 className="h-8 w-8 animate-spin text-[#2B4C7E]" aria-label="Loading" />
+          <Loader2 className="h-8 w-8 animate-spin text-ds-muted" aria-label="Loading" />
         </div>
       ) : null}
 
@@ -769,7 +805,7 @@ export function SetupApp() {
         <div className="space-y-8">
         <div className="grid gap-8 lg:grid-cols-2">
           <div className="space-y-4">
-            <h2 className="text-lg font-semibold text-pulse-navy">Gateways</h2>
+            <h2 className="text-lg font-semibold text-ds-foreground">Gateways</h2>
             <div className="grid gap-4 sm:grid-cols-1">
               {gateways.map((g) => {
                 const stRow = statusByGatewayId.get(g.id);
@@ -814,13 +850,13 @@ export function SetupApp() {
                 );
               })}
               {gateways.length === 0 ? (
-                <p className="rounded-md border border-dashed border-slate-200 bg-white/60 p-6 text-sm text-pulse-muted dark:border-ds-border dark:bg-ds-secondary/95 dark:text-gray-500">
+                <p className="rounded-md border border-dashed border-ds-border bg-ds-secondary/60 p-6 text-sm text-ds-muted">
                   No gateways yet. Add your first ESP32 edge device below.
                 </p>
               ) : null}
             </div>
-            <div className="rounded-md border border-slate-200/80 bg-white p-5 shadow-card dark:border-ds-border dark:bg-ds-primary dark:shadow-[0_2px_8px_rgba(0,0,0,0.4)]">
-              <h3 className="font-semibold text-pulse-navy">Add gateway</h3>
+            <div className="rounded-md border border-ds-border bg-ds-primary p-5 shadow-[var(--ds-shadow-card)]">
+              <h3 className="font-semibold text-ds-foreground">Add gateway</h3>
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
                 <div className="sm:col-span-2">
                   <label className={LABEL}>Name</label>
@@ -849,7 +885,7 @@ export function SetupApp() {
           </div>
 
           <div className="space-y-4">
-            <h2 className="text-lg font-semibold text-pulse-navy">Tags</h2>
+            <h2 className="text-lg font-semibold text-ds-foreground">Tags</h2>
             {unassignedBle.length > 0 ? (
               <div className="rounded-md border border-amber-200/90 bg-amber-50/50 p-4 ring-1 ring-amber-200/60 md:p-5">
                 <div className="flex flex-wrap items-center justify-between gap-2">
@@ -915,7 +951,7 @@ export function SetupApp() {
               </div>
             ) : null}
             {assignedBleOnly.length > 0 ? (
-              <p className="text-xs font-semibold uppercase tracking-wider text-pulse-muted">Assigned tags</p>
+              <p className="text-xs font-semibold uppercase tracking-wider text-ds-muted">Assigned tags</p>
             ) : null}
             <div className="grid gap-4">
               {assignedBleOnly.map((b) => {
@@ -970,13 +1006,13 @@ export function SetupApp() {
                 );
               })}
               {bleDevices.length === 0 ? (
-                <p className="rounded-md border border-dashed border-slate-200 bg-white/60 p-6 text-sm text-pulse-muted dark:border-ds-border dark:bg-ds-secondary/95 dark:text-gray-500">
+                <p className="rounded-md border border-dashed border-ds-border bg-ds-secondary/60 p-6 text-sm text-ds-muted">
                   No BLE tags yet. Register worker or equipment tags below.
                 </p>
               ) : null}
             </div>
-            <div className="rounded-md border border-slate-200/80 bg-white p-5 shadow-card dark:border-ds-border dark:bg-ds-primary dark:shadow-[0_2px_8px_rgba(0,0,0,0.4)]">
-              <h3 className="font-semibold text-pulse-navy">Register tag</h3>
+            <div className="rounded-md border border-ds-border bg-ds-primary p-5 shadow-[var(--ds-shadow-card)]">
+              <h3 className="font-semibold text-ds-foreground">Register tag</h3>
               <div className="mt-4 grid gap-3">
                 <div>
                   <label className={LABEL}>Name</label>
@@ -1008,8 +1044,8 @@ export function SetupApp() {
         <DeviceHealthPanel gateways={gateways} gatewayStatus={gwStatus} bleDevices={bleDevices} />
 
         <div className="space-y-3">
-          <h2 className="text-lg font-semibold text-pulse-navy">Recent activity</h2>
-          <p className="text-sm text-pulse-muted">Live automation and detection events for this company.</p>
+          <h2 className="text-lg font-semibold text-ds-foreground">Recent activity</h2>
+          <p className="text-sm text-ds-muted">Live automation and detection events for this company.</p>
           <LiveActivityFeed
             companyId={effectiveCompanyId}
             isSystemAdminBase={isSystemAdmin}
@@ -1033,14 +1069,14 @@ export function SetupApp() {
 
       {tab === "workers" && dataEnabled ? (
         <div className="space-y-4">
-          <p className="text-sm text-pulse-muted">
-            Assign <strong className="text-pulse-navy">worker tags</strong> from the{" "}
-            <strong className="text-pulse-navy">Gateways &amp; sensors</strong> tab, or use Assign on each tag card. Roster
+          <p className="text-sm text-ds-muted">
+            Assign <strong className="text-ds-foreground">worker tags</strong> from the{" "}
+            <strong className="text-ds-foreground">Gateways &amp; sensors</strong> tab, or use Assign on each tag card. Roster
             for reference:
           </p>
-          <div className="overflow-hidden rounded-md border border-slate-200/80 bg-white shadow-card dark:border-ds-border dark:bg-ds-primary dark:shadow-[0_2px_8px_rgba(0,0,0,0.4)]">
+          <div className="overflow-hidden rounded-md border border-ds-border bg-ds-primary shadow-[var(--ds-shadow-card)]">
             <table className="w-full text-left text-sm">
-              <thead className="bg-slate-50/90 text-[11px] font-semibold uppercase tracking-wider text-pulse-muted">
+              <thead className="bg-ds-secondary/60 text-[11px] font-semibold uppercase tracking-wider text-ds-muted">
                 <tr>
                   <th className="px-4 py-3">Name</th>
                   <th className="px-4 py-3">Role</th>
@@ -1052,10 +1088,10 @@ export function SetupApp() {
                 {workers.map((w) => {
                   const tag = bleDevices.find((b) => b.type === "worker_tag" && b.assigned_worker_id === w.id);
                   return (
-                    <tr key={w.id} className="border-t border-slate-100">
-                      <td className="px-4 py-3 font-medium text-pulse-navy">{w.full_name || w.email}</td>
-                      <td className="px-4 py-3 capitalize text-pulse-muted">{w.role.replace("_", " ")}</td>
-                      <td className="px-4 py-3 text-pulse-muted">{tag ? tag.name : "—"}</td>
+                    <tr key={w.id} className="border-t border-ds-border">
+                      <td className="px-4 py-3 font-medium text-ds-foreground">{w.full_name || w.email}</td>
+                      <td className="px-4 py-3 capitalize text-ds-muted">{w.role.replace("_", " ")}</td>
+                      <td className="px-4 py-3 text-ds-muted">{tag ? tag.name : "—"}</td>
                       <td className="px-4 py-3 text-right">
                         <button
                           type="button"
@@ -1078,7 +1114,7 @@ export function SetupApp() {
                               setAssignTargetId(w.id);
                             }
                           }}
-                          className="text-xs font-semibold text-[#2B4C7E] hover:underline"
+                          className="ds-link text-xs font-semibold"
                         >
                           {tag ? "Reassign" : "Assign tag"}
                         </button>
@@ -1101,12 +1137,12 @@ export function SetupApp() {
             })}
           </div>
           {zones.length === 0 ? (
-            <p className="rounded-md border border-dashed border-slate-200 bg-white/60 p-6 text-sm text-pulse-muted dark:border-ds-border dark:bg-ds-secondary/95 dark:text-gray-500">
+            <p className="rounded-md border border-dashed border-ds-border bg-ds-secondary/60 p-6 text-sm text-ds-muted">
               No zones yet. Create regions of your facility, then assign gateways.
             </p>
           ) : null}
-          <div className="rounded-md border border-slate-200/80 bg-white p-5 shadow-card dark:border-ds-border dark:bg-ds-primary dark:shadow-[0_2px_8px_rgba(0,0,0,0.4)] md:max-w-lg">
-            <h3 className="font-semibold text-pulse-navy">Create zone</h3>
+          <div className="rounded-md border border-ds-border bg-ds-primary p-5 shadow-[var(--ds-shadow-card)] md:max-w-lg">
+            <h3 className="font-semibold text-ds-foreground">Create zone</h3>
             <label className={LABEL}>Name</label>
             <input className={FIELD} value={zoneName} onChange={(e) => setZoneName(e.target.value)} placeholder="Receiving" />
             <label className={`${LABEL} mt-3 block`}>Description</label>
@@ -1154,7 +1190,7 @@ export function SetupApp() {
               ))}
             </select>
             {unassignWorkerLabels.length === 0 ? (
-              <p className="mt-2 text-xs text-pulse-muted">
+              <p className="mt-2 text-xs text-ds-muted">
                 No roster workers loaded. Add or invite people under Workforce, then refresh this page.
               </p>
             ) : null}
@@ -1174,14 +1210,14 @@ export function SetupApp() {
               ))}
             </select>
             {trackedAssetOptions.length === 0 ? (
-              <p className="mt-2 text-xs text-pulse-muted">
+              <p className="mt-2 text-xs text-ds-muted">
                 No tracked assets or facility equipment yet. Use &quot;New tracked asset&quot; below or register items under
                 Equipment.
               </p>
             ) : null}
-            <div className="mt-4 rounded-md border border-slate-200/90 bg-slate-50/80 p-3 dark:border-ds-border dark:bg-ds-primary/80">
-              <p className="text-xs font-semibold text-pulse-navy dark:text-gray-200">New tracked asset</p>
-              <p className="mt-1 text-[11px] text-pulse-muted">
+            <div className="mt-4 rounded-md border border-ds-border bg-ds-secondary/60 p-3">
+              <p className="text-xs font-semibold text-ds-foreground">New tracked asset</p>
+              <p className="mt-1 text-[11px] text-ds-muted">
                 If nothing is listed yet, add a name and create — then save assignment.
               </p>
               <div className="mt-2 flex flex-wrap gap-2">

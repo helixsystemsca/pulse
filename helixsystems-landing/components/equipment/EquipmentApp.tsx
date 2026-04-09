@@ -450,7 +450,7 @@ export function EquipmentApp() {
       />
       <p className="text-sm text-ds-muted">
         BLE location tags pair with <span className="font-medium text-ds-foreground">tracked assets</span> in{" "}
-        <Link href="/dashboard/setup?tab=devices" className="ds-link font-semibold">
+        <Link href="/devices" className="ds-link font-semibold">
           Zones &amp; Devices
         </Link>
         . Naming a tracked asset like a row here helps tie RTLS to this list.

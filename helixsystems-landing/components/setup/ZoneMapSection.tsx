@@ -20,12 +20,12 @@ export function ZoneMapSection({
   assignedTagCount: number;
 }) {
   return (
-    <section className="rounded-md border border-slate-200/80 bg-white/90 p-5 shadow-card md:p-6">
+    <section className="rounded-md border border-ds-border bg-ds-primary p-5 shadow-[var(--ds-shadow-card)] md:p-6">
       <div className="flex items-center gap-2">
-        <MapPin className="h-5 w-5 text-[#2B4C7E]" aria-hidden />
+        <MapPin className="h-5 w-5 text-ds-foreground" aria-hidden />
         <div>
-          <h2 className="text-lg font-semibold text-pulse-navy">Zone map</h2>
-          <p className="text-sm text-pulse-muted">
+          <h2 className="text-lg font-semibold text-ds-foreground">Zone map</h2>
+          <p className="text-sm text-ds-muted">
             Physical coverage areas and gateway placement. Fleet: {tagCount} tag{tagCount === 1 ? "" : "s"} registered
             {tagCount ? ` (${assignedTagCount} assigned)` : ""}.
           </p>
@@ -33,13 +33,13 @@ export function ZoneMapSection({
       </div>
 
       <div className="mt-4 grid gap-3 text-sm">
-        <div className="hidden rounded-lg bg-slate-50/90 px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-pulse-muted md:grid md:grid-cols-[1fr_1.2fr_auto] md:gap-3">
+        <div className="hidden rounded-lg bg-ds-secondary/60 px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-ds-muted md:grid md:grid-cols-[1fr_1.2fr_auto] md:gap-3">
           <span>Zone</span>
           <span>Gateways in zone</span>
           <span className="text-right">Gateways</span>
         </div>
         {zones.length === 0 ? (
-          <p className="rounded-md border border-dashed border-slate-200 bg-white/60 px-4 py-6 text-pulse-muted">
+          <p className="rounded-md border border-dashed border-ds-border bg-ds-secondary/60 px-4 py-6 text-ds-muted">
             Create zones to see them on this map. Gateways you assign to a zone appear in the middle column.
           </p>
         ) : (
@@ -48,19 +48,19 @@ export function ZoneMapSection({
             return (
               <div
                 key={z.id}
-                className="grid gap-2 rounded-md border border-slate-200/80 bg-slate-50/50 p-4 md:grid-cols-[1fr_1.2fr_auto] md:items-center md:gap-3"
+                className="grid gap-2 rounded-md border border-ds-border bg-ds-secondary/40 p-4 md:grid-cols-[1fr_1.2fr_auto] md:items-center md:gap-3"
               >
                 <div>
-                  <p className="font-semibold text-pulse-navy">{z.name}</p>
-                  {z.description ? <p className="text-xs text-pulse-muted">{z.description}</p> : null}
+                  <p className="font-semibold text-ds-foreground">{z.name}</p>
+                  {z.description ? <p className="text-xs text-ds-muted">{z.description}</p> : null}
                 </div>
-                <div className="text-pulse-muted">
+                <div className="text-ds-muted">
                   {gws.length ? (
-                    <ul className="list-inside list-disc text-sm text-pulse-navy">
+                    <ul className="list-inside list-disc text-sm text-ds-foreground">
                       {gws.map((g) => (
                         <li key={g.id}>
                           <span className="font-medium">{g.name}</span>
-                          <span className="ml-1 font-mono text-xs text-pulse-muted">{g.identifier}</span>
+                          <span className="ml-1 font-mono text-xs text-ds-muted">{g.identifier}</span>
                         </li>
                       ))}
                     </ul>
@@ -68,8 +68,8 @@ export function ZoneMapSection({
                     <span className="text-sm italic">No gateways assigned — assign from gateway card</span>
                   )}
                 </div>
-                <div className="text-right text-xs text-pulse-muted md:border-l md:border-slate-200/80 md:pl-3">
-                  <span className="block font-semibold text-pulse-navy">{gws.length}</span>
+                <div className="text-right text-xs text-ds-muted md:border-l md:border-ds-border md:pl-3">
+                  <span className="block font-semibold text-ds-foreground">{gws.length}</span>
                   <span>in this zone</span>
                 </div>
               </div>
@@ -78,7 +78,7 @@ export function ZoneMapSection({
         )}
       </div>
 
-      <p className="mt-4 text-center text-[11px] text-pulse-muted">
+      <p className="mt-4 text-center text-[11px] text-ds-muted">
         Visual floorplan editor can plug in here later — layout stays in this section.
       </p>
     </section>

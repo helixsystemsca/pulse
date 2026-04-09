@@ -42,7 +42,7 @@ export const pulseTenantNav = [
   { href: "/dashboard/maintenance/work-orders", label: "Maintenance" },
   { href: "/dashboard/inventory", label: "Inventory" },
   { href: "/equipment", label: "Equipment" },
-  { href: "/dashboard/setup", label: "Zones & Devices" },
+  { href: "/devices", label: "Zones & Devices" },
 ] as const;
 
 /** System administration shell — center nav on `/system/*`. */
@@ -68,7 +68,7 @@ export const pulseTenantSidebarNav = [
   { href: "/dashboard/inventory", label: "Inventory", icon: "package" as const },
   { href: "/equipment", label: "Equipment", icon: "wrench" as const },
   { href: "/zones-devices/zones", label: "Floor Plans", icon: "layers" as const },
-  { href: "/dashboard/setup", label: "Zones & Devices", icon: "map-pin" as const },
+  { href: "/devices", label: "Zones & Devices", icon: "map-pin" as const },
 ] as const;
 
 /** System admin rail — platform tooling only; product modules live on the tenant rail. */

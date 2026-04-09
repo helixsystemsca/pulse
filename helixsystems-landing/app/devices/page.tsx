@@ -4,13 +4,10 @@ import { SetupApp } from "@/components/setup/SetupApp";
 import { isApiMode } from "@/lib/api";
 import { navigateToPulseLogin } from "@/lib/pulse-app";
 import { readSession } from "@/lib/pulse-session";
-import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 
-export default function SetupDashboardPage() {
+export default function DevicesPage() {
   const [ready, setReady] = useState(false);
-  const router = useRouter();
-  const searchParams = useSearchParams();
 
   useEffect(() => {
     const s = readSession();
@@ -25,24 +22,6 @@ export default function SetupDashboardPage() {
     setReady(true);
   }, []);
 
-  useEffect(() => {
-    if (!ready) return;
-    const tab = searchParams.get("tab");
-    if (tab === "zones") {
-      router.replace("/zones");
-      return;
-    }
-    if (tab === "devices") {
-      router.replace("/devices");
-      return;
-    }
-    if (tab === "workers" || tab === "automation") {
-      router.replace(`/devices?tab=${encodeURIComponent(tab)}`);
-      return;
-    }
-    router.replace("/devices");
-  }, [ready, router, searchParams]);
-
   if (!ready) {
     return (
       <div className="flex min-h-[40vh] items-center justify-center">
@@ -51,5 +30,16 @@ export default function SetupDashboardPage() {
     );
   }
 
-  return null;
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-[40vh] items-center justify-center">
+          <p className="text-sm text-pulse-muted">Loading…</p>
+        </div>
+      }
+    >
+      <SetupApp defaultTab="devices" />
+    </Suspense>
+  );
 }
+

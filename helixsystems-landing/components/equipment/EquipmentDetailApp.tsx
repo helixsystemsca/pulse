@@ -398,7 +398,7 @@ export function EquipmentDetailApp({ equipmentId }: Props) {
         <Card padding="md" className="space-y-3">
           <p className="text-sm text-pulse-muted">
             Location tags are managed in{" "}
-            <Link href="/dashboard/setup?tab=devices" className="font-semibold text-[#2B4C7E] hover:underline">
+            <Link href="/devices" className="ds-link font-semibold">
               Zones &amp; Devices
             </Link>
             . When a <span className="font-medium text-pulse-navy">tracked asset</span> uses the same name as this facility

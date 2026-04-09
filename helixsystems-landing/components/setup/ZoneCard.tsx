@@ -16,20 +16,20 @@ export function ZoneCard({
   return (
     <div className={cardBase}>
       <div className="flex items-start gap-3">
-        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-indigo-50 text-indigo-900">
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-ds-secondary text-ds-foreground">
           <MapPin className="h-5 w-5" aria-hidden />
         </div>
         <div className="min-w-0 flex-1">
-          <h3 className="font-semibold text-pulse-navy">{zone.name}</h3>
+          <h3 className="font-semibold text-ds-foreground">{zone.name}</h3>
           {zone.description ? (
-            <p className="mt-1 text-sm text-pulse-muted">{zone.description}</p>
+            <p className="mt-1 text-sm text-ds-muted">{zone.description}</p>
           ) : (
-            <p className="mt-1 text-sm italic text-pulse-muted/80">No description</p>
+            <p className="mt-1 text-sm italic text-ds-muted/80">No description</p>
           )}
         </div>
       </div>
-      <div className="mt-4 border-t border-slate-100 pt-4 text-sm text-pulse-muted">
-        <span className="font-medium text-pulse-navy">{gatewayCount}</span> gateway
+      <div className="mt-4 border-t border-ds-border pt-4 text-sm text-ds-muted">
+        <span className="font-medium text-ds-foreground">{gatewayCount}</span> gateway
         {gatewayCount === 1 ? "" : "s"} assigned to this zone
       </div>
     </div>

@@ -49,8 +49,8 @@ export default function ZonesDevicesZonesPage() {
               Blueprint designer
             </Link>{" "}
             to draw your layout, or define areas manually under{" "}
-            <Link href="/dashboard/setup?tab=zones" className="ds-link font-semibold">
-              Setup → Zones
+            <Link href="/zones" className="ds-link font-semibold">
+              Zones
             </Link>
             .
           </ModuleOnboardingHint>
@@ -73,7 +73,7 @@ export default function ZonesDevicesZonesPage() {
       >
         <p className="m-0 text-sm text-ds-foreground">
           Zone geometry and RTLS setup continue in{" "}
-          <Link href="/dashboard/setup" className="ds-link font-semibold">
+          <Link href="/devices" className="ds-link font-semibold">
             Zones &amp; devices
           </Link>{" "}
           under <strong className="font-semibold">Setup</strong>. Blueprints sync to the server when you are signed in

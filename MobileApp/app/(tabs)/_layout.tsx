@@ -3,6 +3,7 @@ import FontAwesome from "@expo/vector-icons/FontAwesome";
 import { Tabs } from "expo-router";
 import { useTheme } from "@/theme/ThemeProvider";
 import { BLEPromptHost } from "./_ble";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 function TabBarIcon(props: { name: React.ComponentProps<typeof FontAwesome>["name"]; color: string }) {
   return <FontAwesome size={22} {...props} />;
@@ -10,6 +11,7 @@ function TabBarIcon(props: { name: React.ComponentProps<typeof FontAwesome>["nam
 
 export default function TabLayout() {
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
 
   return (
     <>
@@ -22,7 +24,8 @@ export default function TabLayout() {
             backgroundColor: colors.surface,
             borderTopColor: colors.border,
             borderTopWidth: 1,
-            height: 62,
+            paddingBottom: Math.max(insets.bottom, 8),
+            height: 62 + Math.max(insets.bottom, 8),
           },
         }}
       >

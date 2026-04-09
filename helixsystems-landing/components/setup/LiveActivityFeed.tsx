@@ -65,8 +65,8 @@ const FILTER_TABS: { id: ActivityFilter; label: string }[] = [
 
 const TAB_BTN =
   "rounded-lg px-2.5 py-1 text-xs font-semibold transition-colors ring-1 ring-transparent";
-const TAB_ON = "bg-[#ebf2ff] text-[#2B4C7E] ring-[#2B4C7E]/25";
-const TAB_OFF = "bg-white text-pulse-muted hover:bg-slate-50 ring-slate-200/80";
+const TAB_ON = "bg-ds-primary text-ds-foreground ring-ds-border";
+const TAB_OFF = "bg-ds-secondary/60 text-ds-muted hover:bg-ds-interactive-hover ring-ds-border";
 
 /** UI-only cap: open sessions shown as ended after this age. */
 const OPEN_SESSION_UI_CAP_MS = 5 * 60 * 1000;
@@ -103,21 +103,21 @@ function SessionBlockView({
         ? `Session (in progress) — ${block.workerLabel} ↔ ${block.equipLabel}`
         : `Session — ${block.workerLabel} ↔ ${block.equipLabel}`;
   return (
-    <li className="border-b border-slate-100 last:border-0">
-      <div className="bg-sky-50/50 px-3 py-2">
-        <p className="text-sm font-semibold text-pulse-navy">{title}</p>
-        <p className="mt-0.5 text-[10px] text-pulse-muted">
+    <li className="border-b border-ds-border last:border-0">
+      <div className="bg-ds-secondary/60 px-3 py-2">
+        <p className="text-sm font-semibold text-ds-foreground">{title}</p>
+        <p className="mt-0.5 text-[10px] text-ds-muted">
           {uiCappedOpen ? "Worker + equipment timeline (open session shown capped at 5 min)" : "Worker + equipment timeline"}
         </p>
       </div>
-      <ul className="divide-y divide-slate-100/80 bg-white/60">
+      <ul className="divide-y divide-ds-border bg-ds-secondary/40">
         {block.children.map((r) => (
           <li key={r.key} className="flex flex-wrap items-start justify-between gap-2 px-3 py-2 pl-5 text-sm">
             <div className="min-w-0">
-              <p className="font-medium text-pulse-navy">{r.headline}</p>
-              {r.sub ? <p className="mt-0.5 font-mono text-[10px] text-pulse-muted">{r.sub}</p> : null}
+              <p className="font-medium text-ds-foreground">{r.headline}</p>
+              {r.sub ? <p className="mt-0.5 font-mono text-[10px] text-ds-muted">{r.sub}</p> : null}
             </div>
-            <time className="shrink-0 text-xs tabular-nums text-pulse-muted" dateTime={r.created_at ?? undefined}>
+            <time className="shrink-0 text-xs tabular-nums text-ds-muted" dateTime={r.created_at ?? undefined}>
               {formatRelativeTime(r.created_at)}
             </time>
           </li>
@@ -129,13 +129,13 @@ function SessionBlockView({
 
 function FlatRowView({ r }: { r: RichActivityRow }) {
   return (
-    <li className="list-none border-b border-slate-100 last:border-0">
+    <li className="list-none border-b border-ds-border last:border-0">
       <div className="flex flex-wrap items-start justify-between gap-2 px-3 py-2.5 text-sm">
       <div className="min-w-0">
-        <p className="font-medium text-pulse-navy">{r.headline}</p>
-        {r.sub ? <p className="mt-0.5 font-mono text-[10px] text-pulse-muted">{r.sub}</p> : null}
+        <p className="font-medium text-ds-foreground">{r.headline}</p>
+        {r.sub ? <p className="mt-0.5 font-mono text-[10px] text-ds-muted">{r.sub}</p> : null}
       </div>
-      <time className="shrink-0 text-xs tabular-nums text-pulse-muted" dateTime={r.created_at ?? undefined}>
+      <time className="shrink-0 text-xs tabular-nums text-ds-muted" dateTime={r.created_at ?? undefined}>
         {formatRelativeTime(r.created_at)}
       </time>
       </div>
@@ -234,7 +234,7 @@ export function LiveActivityFeed({
 
   return (
     <section
-      className="rounded-md border border-slate-200/80 bg-white p-5 shadow-card md:p-6"
+      className="rounded-md border border-ds-border bg-ds-primary p-5 shadow-[var(--ds-shadow-card)] md:p-6"
       onPointerEnter={() => {
         pauseLiveUpdatesRef.current = true;
         if (catchUpTimerRef.current != null) window.clearTimeout(catchUpTimerRef.current);
@@ -253,14 +253,14 @@ export function LiveActivityFeed({
       }}
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-2 text-pulse-navy">
-          <Radio className="h-5 w-5 text-[#2B4C7E]" aria-hidden />
+        <div className="flex items-center gap-2 text-ds-foreground">
+          <Radio className="h-5 w-5 text-ds-foreground" aria-hidden />
           <div>
             <h2 className="text-sm font-semibold">Live activity</h2>
-            <p className="text-xs text-pulse-muted">Session view, filters, and pin (client-side dedupe).</p>
+            <p className="text-xs text-ds-muted">Session view, filters, and pin (client-side dedupe).</p>
           </div>
         </div>
-        {loading ? <Loader2 className="h-4 w-4 animate-spin text-pulse-muted" aria-hidden /> : null}
+        {loading ? <Loader2 className="h-4 w-4 animate-spin text-ds-muted" aria-hidden /> : null}
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -277,11 +277,11 @@ export function LiveActivityFeed({
       </div>
 
       {pinOptions && (pinOptions.gateways.length > 0 || pinOptions.ble.length > 0) ? (
-        <div className="mt-3 flex flex-wrap items-end gap-2 rounded-md bg-slate-50/80 p-3 ring-1 ring-slate-200/70">
+        <div className="mt-3 flex flex-wrap items-end gap-2 rounded-md bg-ds-secondary/60 p-3 ring-1 ring-ds-border">
           <div className="min-w-[140px]">
-            <label className="text-[10px] font-semibold uppercase tracking-wide text-pulse-muted">Pin device</label>
+            <label className="text-[10px] font-semibold uppercase tracking-wide text-ds-muted">Pin device</label>
             <select
-              className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs text-pulse-navy"
+              className="mt-1 w-full rounded-lg border border-ds-border bg-ds-primary px-2 py-1.5 text-xs text-ds-foreground"
               value={pinKind === "none" ? "" : `${pinKind}|${pinValue}`}
               onChange={(e) => {
                 const v = e.target.value;
@@ -322,13 +322,13 @@ export function LiveActivityFeed({
                 setPinKind("none");
                 setPinValue("");
               }}
-              className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs font-medium text-pulse-navy hover:bg-slate-50"
+              className="inline-flex items-center gap-1 rounded-lg border border-ds-border bg-ds-primary px-2 py-1.5 text-xs font-medium text-ds-foreground hover:bg-ds-interactive-hover"
             >
               <PinOff className="h-3.5 w-3.5" aria-hidden />
               Clear pin
             </button>
           ) : (
-            <span className="inline-flex items-center gap-1 pb-1.5 text-[10px] text-pulse-muted">
+            <span className="inline-flex items-center gap-1 pb-1.5 text-[10px] text-ds-muted">
               <Pin className="h-3 w-3" aria-hidden />
               Optional
             </span>
@@ -338,9 +338,9 @@ export function LiveActivityFeed({
 
       {err ? <p className="mt-3 text-sm text-rose-700">{err}</p> : null}
       {empty ? (
-        <p className="mt-4 text-sm text-pulse-muted">No rows match this view. Adjust filters or pin.</p>
+        <p className="mt-4 text-sm text-ds-muted">No rows match this view. Adjust filters or pin.</p>
       ) : (
-        <ul className="mt-4 divide-y divide-slate-100 rounded-md border border-slate-100 bg-slate-50/40">
+        <ul className="mt-4 divide-y divide-ds-border rounded-md border border-ds-border bg-ds-secondary/40">
           {visible.map((block) =>
             "kind" in block && block.kind === "session" ? (
               <SessionBlockView key={block.id} block={block} />
