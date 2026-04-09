@@ -102,7 +102,7 @@ function MiniDotLoader() {
       {[0, 1, 2].map((i) => (
         <motion.span
           key={i}
-          className="h-2 w-2 rounded-full bg-slate-600/70 dark:bg-white/45"
+          className="h-2 w-2 rounded-full bg-ds-muted/70"
           animate={{ opacity: [0.25, 0.95, 0.25], scale: [0.92, 1, 0.92] }}
           transition={{
             duration: 1.4,
@@ -199,12 +199,12 @@ export function WelcomeLoaderModal({
 
   const statusRowClass =
     status.kind === "critical"
-      ? "text-red-400/95"
+      ? "text-ds-danger"
       : status.kind === "warning"
-        ? "text-amber-300/95"
+        ? "text-ds-warning"
         : status.kind === "loading"
-          ? "text-slate-500 dark:text-white/45"
-          : "text-emerald-400/90";
+          ? "text-ds-muted"
+          : "text-ds-success";
 
   return (
     <AnimatePresence>
@@ -223,30 +223,30 @@ export function WelcomeLoaderModal({
         >
           {/* Dimmed canvas — gradient, not solid black */}
           <div
-            className="pointer-events-none absolute inset-0 bg-gradient-to-br from-slate-900/50 via-slate-800/35 to-slate-950/45 backdrop-blur-[3px] dark:from-slate-950/45 dark:via-slate-900/40 dark:to-slate-950/50"
+            className="pointer-events-none absolute inset-0 bg-black/35 backdrop-blur-[3px]"
             aria-hidden
           />
 
           <motion.div
             layout
-            className="pointer-events-none relative w-full max-w-xl rounded-[28px] border border-gray-200/80 bg-white/80 px-9 py-9 text-gray-900 shadow-[0_14px_48px_rgba(0,0,0,0.14)] backdrop-blur-xl dark:border-ds-border/90 dark:bg-ds-primary/95 dark:text-gray-100 dark:shadow-[0_14px_48px_rgba(0,0,0,0.48)] dark:backdrop-blur-2xl sm:px-10 sm:py-10"
+            className="pointer-events-none relative w-full max-w-xl rounded-[28px] border border-ds-border bg-ds-primary/95 px-9 py-9 text-ds-foreground shadow-[var(--ds-shadow-diffuse)] backdrop-blur-2xl sm:px-10 sm:py-10"
             initial={{ opacity: 0, scale: 0.96, y: 8 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.98, y: 4 }}
             transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
           >
             <div
-              className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-gray-300/60 to-transparent dark:via-white/12 sm:inset-x-10"
+              className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-[color-mix(in_srgb,var(--ds-text-primary)_12%,transparent)] to-transparent sm:inset-x-10"
               aria-hidden
             />
 
             <div className="flex items-center gap-5">
               <div
-                className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl border border-gray-200/90 bg-gray-50/90 dark:border-ds-border dark:bg-ds-secondary/95"
+                className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl border border-ds-border bg-ds-secondary"
                 aria-hidden
               >
                 <Activity
-                  className="h-6 w-6 text-gray-800 dark:text-gray-200"
+                  className="h-6 w-6 text-ds-foreground"
                   strokeWidth={1.75}
                 />
               </div>
@@ -263,11 +263,11 @@ export function WelcomeLoaderModal({
                     >
                       <p
                         id="welcome-loader-title"
-                        className="font-headline text-base font-semibold leading-snug tracking-tight text-gray-900 dark:text-white sm:text-lg"
+                        className="font-headline text-base font-semibold leading-snug tracking-tight text-ds-foreground sm:text-lg"
                       >
                         Preparing your workspace…
                       </p>
-                      <p className="mt-1.5 text-sm font-normal leading-relaxed text-gray-600 dark:text-gray-300 sm:text-[15px]">
+                      <p className="mt-1.5 text-sm font-normal leading-relaxed text-ds-muted sm:text-[15px]">
                         Gathering the latest from your operation
                       </p>
                     </motion.div>
@@ -281,11 +281,11 @@ export function WelcomeLoaderModal({
                     >
                       <h2
                         id="welcome-loader-title"
-                        className="font-headline text-xl font-semibold leading-snug tracking-tight text-gray-900 dark:text-white sm:text-2xl"
+                        className="font-headline text-xl font-semibold leading-snug tracking-tight text-ds-foreground sm:text-2xl"
                       >
                         {greeting}, {firstName}
                       </h2>
-                      <p className="mt-2 font-headline text-base font-medium text-gray-600 dark:text-gray-300 sm:text-[17px]">
+                      <p className="mt-2 font-headline text-base font-medium text-ds-muted sm:text-[17px]">
                         {welcomeSubline || "Let's make today count."}
                       </p>
                     </motion.div>
@@ -297,12 +297,12 @@ export function WelcomeLoaderModal({
             </div>
 
             <div className="mt-8">
-              <p className="mb-2.5 text-xs font-medium uppercase tracking-wider text-slate-500/80 dark:text-white/40 sm:text-[13px]">
+              <p className="mb-2.5 text-xs font-medium uppercase tracking-wider text-ds-muted sm:text-[13px]">
                 {content === "loading" ? "Loading" : "Ready"}
               </p>
-              <div className="h-1.5 overflow-hidden rounded-full bg-[color-mix(in_srgb,var(--ds-text-primary)_9%,transparent)] dark:bg-white/10">
+              <div className="h-1.5 overflow-hidden rounded-full bg-[color-mix(in_srgb,var(--ds-text-primary)_9%,transparent)]">
                 <motion.div
-                  className="h-full rounded-full bg-gradient-to-r from-cyan-400/55 via-teal-500/45 to-teal-400/50 dark:from-cyan-400/50 dark:via-teal-500/40 dark:to-cyan-500/45"
+                  className="h-full rounded-full bg-gradient-to-r from-ds-success/55 via-ds-success/40 to-ds-success/55"
                   initial={false}
                   animate={
                     content === "loading"
@@ -338,7 +338,7 @@ export function WelcomeLoaderModal({
                 <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 opacity-90" strokeWidth={2} aria-hidden />
               ) : status.kind === "loading" ? (
                 <motion.span
-                  className="mt-0.5 block h-4 w-4 shrink-0 rounded-full border-2 border-slate-400/45 border-t-slate-700/80 dark:border-white/25 dark:border-t-white/70"
+                  className="mt-0.5 block h-4 w-4 shrink-0 rounded-full border-2 border-ds-border border-t-[color-mix(in_srgb,var(--ds-text-primary)_70%,transparent)]"
                   animate={{ rotate: 360 }}
                   transition={{ duration: 1.8, repeat: Infinity, ease: "linear" }}
                   aria-hidden
