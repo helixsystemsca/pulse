@@ -98,6 +98,7 @@ type CreateFormState = {
   full_name: string;
   email: string;
   role: string;
+  employment_type: "full_time" | "regular_part_time" | "part_time";
   department: string;
   shift: string;
   start_date: string;
@@ -110,6 +111,7 @@ const CREATE_FORM_EMPTY: CreateFormState = {
   full_name: "",
   email: "",
   role: "worker",
+  employment_type: "full_time",
   department: "",
   shift: "",
   start_date: "",
@@ -493,6 +495,7 @@ export function WorkersApp() {
         email: createForm.email.trim(),
         full_name: createForm.full_name.trim() || null,
         role: createForm.role,
+        employment_type: createForm.employment_type || null,
         department: createForm.department.trim() || null,
         shift: createForm.shift || null,
         start_date: createForm.start_date || null,
@@ -990,6 +993,23 @@ export function WorkersApp() {
                   <option value="manager">Manager</option>
                 </>
               )}
+            </select>
+          </div>
+          <div>
+            <label className={LABEL}>Employment type</label>
+            <select
+              className={FIELD}
+              value={createForm.employment_type}
+              onChange={(e) =>
+                setCreateForm((f) => ({
+                  ...f,
+                  employment_type: e.target.value as CreateFormState["employment_type"],
+                }))
+              }
+            >
+              <option value="full_time">Full time</option>
+              <option value="regular_part_time">Regular part time</option>
+              <option value="part_time">Part time</option>
             </select>
           </div>
           <div>

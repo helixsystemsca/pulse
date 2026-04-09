@@ -18,12 +18,11 @@ function colorFromKey(key: string): { bg: string; border: string } {
 
 type Props = {
   shiftTypes: ShiftTypeConfig[];
-  workers: Worker[];
   shifts: Shift[];
   contentFilter: "workers" | "projects" | "combined";
 };
 
-export function ScheduleLegendPanel({ shiftTypes, workers, shifts, contentFilter }: Props) {
+export function ScheduleLegendPanel({ shiftTypes, shifts, contentFilter }: Props) {
   const [open, setOpen] = useState(true);
 
   const projects = useMemo(() => {
@@ -33,11 +32,6 @@ export function ScheduleLegendPanel({ shiftTypes, workers, shifts, contentFilter
     }
     return [...names].sort((a, b) => a.localeCompare(b));
   }, [shifts]);
-
-  const activeWorkers = useMemo(
-    () => workers.filter((w) => w.active).sort((a, b) => a.name.localeCompare(b.name)),
-    [workers],
-  );
 
   return (
     <aside
@@ -67,27 +61,6 @@ export function ScheduleLegendPanel({ shiftTypes, workers, shifts, contentFilter
             ))}
           </ul>
         </section>
-
-        {(contentFilter === "workers" || contentFilter === "combined") && activeWorkers.length > 0 ? (
-          <section>
-            <h3 className="text-[11px] font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400">Workers</h3>
-            <ul className="mt-2 max-h-40 space-y-1.5 overflow-y-auto pr-1">
-              {activeWorkers.map((w) => {
-                const c = colorFromKey(w.id);
-                return (
-                  <li key={w.id} className="flex items-center gap-2 text-xs text-gray-900 dark:text-gray-100">
-                    <span
-                      className="h-3 w-3 shrink-0 rounded-full border"
-                      style={{ backgroundColor: c.bg, borderColor: c.border }}
-                      aria-hidden
-                    />
-                    <span className="truncate">{w.name}</span>
-                  </li>
-                );
-              })}
-            </ul>
-          </section>
-        ) : null}
 
         {(contentFilter === "projects" || contentFilter === "combined") && projects.length > 0 ? (
           <section>

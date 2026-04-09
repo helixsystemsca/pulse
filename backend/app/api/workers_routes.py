@@ -641,7 +641,14 @@ async def _apply_worker_hr_and_extras(
                 start_date=body.start_date,
             )
         )
-    await _ensure_profile(db, cid, user.id)
+    prof = await _ensure_profile(db, cid, user.id)
+    if body.employment_type is not None:
+        cur = dict(prof.scheduling or {})
+        if body.employment_type:
+            cur["employment_type"] = body.employment_type
+        else:
+            cur.pop("employment_type", None)
+        prof.scheduling = cur
     await db.flush()
     if body.certifications:
         await _sync_structured_certs(db, cid, user.id, body.certifications)
@@ -904,6 +911,16 @@ async def patch_worker(
     if "profile_notes" in data:
         prof = await _ensure_profile(db, cid, user_id)
         prof.notes = data["profile_notes"]
+
+    if "employment_type" in data:
+        prof = await _ensure_profile(db, cid, user_id)
+        cur = dict(prof.scheduling or {})
+        et = data["employment_type"]
+        if et:
+            cur["employment_type"] = et
+        else:
+            cur.pop("employment_type", None)
+        prof.scheduling = cur
 
     if body.certifications is not None:
         await _sync_structured_certs(db, cid, user_id, body.certifications)

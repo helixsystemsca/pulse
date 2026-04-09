@@ -7,6 +7,8 @@ from typing import Any, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+_EMPLOYMENT_TYPES = {"full_time", "regular_part_time", "part_time"}
+
 
 class WorkerCertificationIn(BaseModel):
     name: str = Field(..., min_length=1, max_length=255)
@@ -117,6 +119,7 @@ class WorkerCreateIn(BaseModel):
     shift: Optional[str] = Field(None, max_length=64)
     supervisor_id: Optional[str] = None
     start_date: Optional[date] = None
+    employment_type: Optional[str] = None
     certifications: Optional[list[WorkerCertificationIn]] = None
     skills: Optional[list[WorkerSkillIn]] = None
     training: Optional[list[WorkerTrainingIn]] = None
@@ -130,6 +133,18 @@ class WorkerCreateIn(BaseModel):
             s = v.strip()
             return s or None
         return str(v).strip() or None
+
+    @field_validator("employment_type", mode="before")
+    @classmethod
+    def _normalize_employment_type(cls, v: object) -> Optional[str]:
+        if v is None:
+            return None
+        s = str(v).strip()
+        if not s:
+            return None
+        if s not in _EMPLOYMENT_TYPES:
+            raise ValueError("Invalid employment_type")
+        return s
 
 
 class WorkerPatchIn(BaseModel):
@@ -145,6 +160,7 @@ class WorkerPatchIn(BaseModel):
     start_date: Optional[date] = None
     profile_notes: Optional[str] = None
     supervisor_notes: Optional[str] = None
+    employment_type: Optional[str] = None
     certifications: Optional[list[WorkerCertificationIn]] = None
     skills: Optional[list[WorkerSkillIn]] = None
     training: Optional[list[WorkerTrainingIn]] = None
@@ -159,6 +175,18 @@ class WorkerPatchIn(BaseModel):
             s = v.strip()
             return s or None
         return str(v).strip() or None
+
+    @field_validator("employment_type", mode="before")
+    @classmethod
+    def _normalize_employment_type_patch(cls, v: object) -> Optional[str]:
+        if v is None:
+            return None
+        s = str(v).strip()
+        if not s:
+            return None
+        if s not in _EMPLOYMENT_TYPES:
+            raise ValueError("Invalid employment_type")
+        return s
 
 
 class WorkersSettingsOut(BaseModel):

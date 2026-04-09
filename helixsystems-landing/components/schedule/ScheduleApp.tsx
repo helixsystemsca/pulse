@@ -102,6 +102,8 @@ export function ScheduleApp() {
   const scheduleMod = useModuleSettings("schedule");
   const scheduleFlags = scheduleMod.settings as { allowShiftOverrides?: boolean };
   const shiftDragEnabled = scheduleFlags.allowShiftOverrides !== false;
+  // Worker → calendar drag creates a new shift; keep enabled even when shift overrides are locked down.
+  const workerDragEnabled = true;
 
   const [cursor, setCursor] = useState(() => {
     const n = getServerDate();
@@ -682,7 +684,7 @@ export function ScheduleApp() {
               <div className="flex w-full shrink-0 flex-col gap-4 xl:order-first xl:w-72">
                 <ScheduleWorkerPanel
                   workers={workers}
-                  rosterDragEnabled={shiftDragEnabled}
+                  rosterDragEnabled={workerDragEnabled}
                   onDragSessionStart={setDragSession}
                   onDragSessionEnd={() => {
                     setDragSession(null);
@@ -691,7 +693,6 @@ export function ScheduleApp() {
                 />
                 <ScheduleLegendPanel
                   shiftTypes={shiftTypes}
-                  workers={workers}
                   shifts={displayShifts}
                   contentFilter={contentFilter}
                 />
