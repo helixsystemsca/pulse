@@ -348,13 +348,13 @@ export function ProjectDetailApp({ projectId }: { projectId: string }) {
             </p>
           ) : null}
 
-          <div className="flex max-w-2xl flex-wrap gap-2 rounded-lg border border-slate-200/90 bg-white p-1 shadow-sm dark:border-ds-border dark:bg-ds-primary">
+          <div className="flex max-w-2xl flex-wrap gap-2 rounded-lg border border-ds-border bg-ds-secondary p-1 shadow-[var(--ds-shadow-card)]">
             <button
               type="button"
               className={`inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm font-semibold transition-colors ${
                 viewTab === "tasks"
-                  ? "bg-sky-50/95 text-[#1e4a8a] ring-1 ring-sky-200/80 dark:bg-[#1e3a5f] dark:text-sky-100 dark:ring-sky-500/35"
-                  : "text-pulse-navy hover:bg-white/80 dark:text-gray-300 dark:hover:bg-ds-interactive-hover"
+                  ? "bg-ds-success text-ds-on-accent shadow-sm"
+                  : "text-ds-muted hover:bg-ds-interactive-hover hover:text-ds-foreground"
               }`}
               onClick={() => setViewTab("tasks")}
             >
@@ -365,8 +365,8 @@ export function ProjectDetailApp({ projectId }: { projectId: string }) {
               type="button"
               className={`inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm font-semibold transition-colors ${
                 viewTab === "board"
-                  ? "bg-sky-50/95 text-[#1e4a8a] ring-1 ring-sky-200/80 dark:bg-[#1e3a5f] dark:text-sky-100 dark:ring-sky-500/35"
-                  : "text-pulse-navy hover:bg-white/80 dark:text-gray-300 dark:hover:bg-ds-interactive-hover"
+                  ? "bg-ds-success text-ds-on-accent shadow-sm"
+                  : "text-ds-muted hover:bg-ds-interactive-hover hover:text-ds-foreground"
               }`}
               onClick={() => setViewTab("board")}
             >
@@ -377,8 +377,8 @@ export function ProjectDetailApp({ projectId }: { projectId: string }) {
               type="button"
               className={`inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm font-semibold transition-colors ${
                 viewTab === "automation"
-                  ? "bg-sky-50/95 text-[#1e4a8a] ring-1 ring-sky-200/80 dark:bg-[#1e3a5f] dark:text-sky-100 dark:ring-sky-500/35"
-                  : "text-pulse-navy hover:bg-white/80 dark:text-gray-300 dark:hover:bg-ds-interactive-hover"
+                  ? "bg-ds-success text-ds-on-accent shadow-sm"
+                  : "text-ds-muted hover:bg-ds-interactive-hover hover:text-ds-foreground"
               }`}
               onClick={() => setViewTab("automation")}
             >

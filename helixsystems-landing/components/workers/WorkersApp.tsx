@@ -56,6 +56,7 @@ type CompanyOption = { id: string; name: string };
 const PRIMARY_BTN = "ds-btn-solid-primary px-5 py-2.5 text-sm";
 const FIELD = dsInputStackedClass;
 const LABEL = dsLabelClass;
+const SECTION_KICKER = "text-[11px] font-semibold uppercase tracking-wider text-ds-success";
 
 /** Keys must match `GLOBAL_SYSTEM_FEATURES` / tenant contract (system admin catalog). */
 const TENANT_PRODUCT_MODULES = [
@@ -1112,7 +1113,7 @@ export function WorkersApp() {
         ) : (
           <div className="space-y-8" id="worker-profile-title">
             <section>
-              <h3 className={LABEL}>Basic info</h3>
+              <h3 className={SECTION_KICKER}>Basic info</h3>
               <div className="mt-3 flex items-center gap-3 sm:col-span-2">
                 <UserProfileAvatarPreview
                   avatarUrl={profile.avatar_url}
@@ -1156,7 +1157,7 @@ export function WorkersApp() {
 
             {isCompanyAdmin && !principalHasAnyRole(profile, "company_admin") ? (
               <section>
-                <h3 className={LABEL}>Edit roles</h3>
+                <h3 className={SECTION_KICKER}>Edit roles</h3>
                 <p className="mt-1 text-xs text-pulse-muted">
                   Select every role this person should have for scheduling, supervision, and permissions. At least one
                   role is required.
@@ -1187,7 +1188,7 @@ export function WorkersApp() {
 
             {isCompanyAdmin && !principalHasAnyRole(profile, "company_admin") && contractCatalog.length > 0 ? (
               <section>
-                <h3 className={LABEL}>Extra module access</h3>
+                <h3 className={SECTION_KICKER}>Extra module access</h3>
                 <p className="mt-1 text-xs text-pulse-muted">
                   Grant additional Pulse modules from your organization&apos;s contract (on top of this person&apos;s
                   role defaults).
@@ -1221,7 +1222,7 @@ export function WorkersApp() {
             ) : null}
 
             <section>
-              <h3 className={LABEL}>Position &amp; shift</h3>
+              <h3 className={SECTION_KICKER}>Position &amp; shift</h3>
               <div className="mt-2 grid gap-2 text-sm sm:grid-cols-2">
                 <p>
                   <span className="text-pulse-muted">Job title: </span>
@@ -1243,7 +1244,7 @@ export function WorkersApp() {
             </section>
 
             <section>
-              <h3 className={LABEL}>Certifications</h3>
+              <h3 className={SECTION_KICKER}>Certifications</h3>
               <ul className="mt-2 space-y-2">
                 {profile.certifications.length === 0 ? (
                   <li className="text-sm text-pulse-muted">None on file.</li>
@@ -1267,7 +1268,7 @@ export function WorkersApp() {
             </section>
 
             <section>
-              <h3 className={LABEL}>Specialty training</h3>
+              <h3 className={SECTION_KICKER}>Specialty training</h3>
               <ul className="mt-2 space-y-1 text-sm text-ds-foreground">
                 {profile.training.length === 0 ? (
                   <li className="text-pulse-muted">None recorded.</li>
@@ -1282,7 +1283,7 @@ export function WorkersApp() {
             </section>
 
             <section>
-              <h3 className={LABEL}>Skill affinities</h3>
+              <h3 className={SECTION_KICKER}>Skill affinities</h3>
               <div className="mt-2 flex flex-wrap gap-2">
                 {profile.skills.length === 0 ? (
                   <span className="text-sm text-pulse-muted">None tagged.</span>
@@ -1300,7 +1301,7 @@ export function WorkersApp() {
             </section>
 
             <section>
-              <h3 className={LABEL}>Compliance summary</h3>
+              <h3 className={SECTION_KICKER}>Compliance summary</h3>
               <div className="ds-inset-panel mt-2 grid gap-2 p-4 text-sm sm:grid-cols-2 text-ds-foreground">
                 <p>
                   Compliance rate:{" "}
@@ -1320,7 +1321,7 @@ export function WorkersApp() {
             </section>
 
             <section>
-              <h3 className={LABEL}>Work activity</h3>
+              <h3 className={SECTION_KICKER}>Work activity</h3>
               <div className="mt-2 grid gap-2 text-sm sm:grid-cols-3">
                 <p>Open work requests: {profile.work_summary.open_work_requests}</p>
                 <p>Completed (90d): {profile.work_summary.completed_tasks}</p>
@@ -1334,7 +1335,7 @@ export function WorkersApp() {
             </section>
 
             <section>
-              <h3 className={LABEL}>Notes / supervisor comments</h3>
+              <h3 className={SECTION_KICKER}>Notes / supervisor comments</h3>
               <div className="mt-2 space-y-3">
                 <div>
                   <p className="text-xs text-pulse-muted">Profile notes</p>
