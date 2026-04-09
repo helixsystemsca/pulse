@@ -204,8 +204,10 @@ export function ScheduleCalendarGrid({
                 c.inMonth ? "" : "bg-pulseShell-cell-muted opacity-80"
               } ${isOver && !calendarDropsDisabled ? "ring-2 ring-inset ring-ds-success/40" : ""} ${shakeDate === c.date ? "schedule-cell-shake" : ""}`}
               onDragOver={(e) => {
-                if (!shiftDragEnabled || calendarDropsDisabled) return;
+                if (calendarDropsDisabled) return;
                 if (!dragAccepts(e)) return;
+                // Roster → calendar is always allowed; shift chip drag respects org "allow shift overrides".
+                if (dragSession?.kind === "shift" && !shiftDragEnabled) return;
                 e.preventDefault();
                 const sp = readShiftDragPayload(e.dataTransfer);
                 const wp = readWorkerDragPayload(e.dataTransfer);
@@ -221,7 +223,7 @@ export function ScheduleCalendarGrid({
               onDrop={(e) => {
                 e.preventDefault();
                 setDragOverDate(null);
-                if (!shiftDragEnabled || calendarDropsDisabled) return;
+                if (calendarDropsDisabled) return;
                 const wp = readWorkerDragPayload(e.dataTransfer);
                 if (wp) {
                   const w = workers.find((x) => x.id === wp.workerId);
@@ -235,6 +237,7 @@ export function ScheduleCalendarGrid({
                   onWorkerDrop(wp.workerId, c.date);
                   return;
                 }
+                if (!shiftDragEnabled) return;
                 const p = readShiftDragPayload(e.dataTransfer);
                 if (p) {
                   onShiftMove(p.shiftId, c.date, p.duplicate ? "duplicate" : "move");

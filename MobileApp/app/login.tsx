@@ -4,8 +4,10 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
+  ScrollView,
   Text,
   TextInput,
+  useWindowDimensions,
   View,
 } from "react-native";
 import type { Href } from "expo-router";
@@ -16,6 +18,7 @@ import { useSession } from "@/store/session";
 import { useTheme } from "@/theme/ThemeProvider";
 
 export default function LoginScreen() {
+  const { height: windowHeight } = useWindowDimensions();
   const { colors, radii, spacing, text } = useTheme();
   const { session, authReady, signIn } = useSession();
   const [email, setEmail] = useState("");
@@ -24,6 +27,7 @@ export default function LoginScreen() {
   const [error, setError] = useState<string | null>(null);
 
   const apiConfigured = Boolean((process.env.EXPO_PUBLIC_API_BASE_URL ?? "").trim());
+  const contentPadTop = Math.round(windowHeight * 0.12);
 
   const onSubmit = useCallback(async () => {
     setError(null);
@@ -69,13 +73,23 @@ export default function LoginScreen() {
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         style={{ flex: 1 }}
       >
-      <View style={{ flex: 1, paddingHorizontal: spacing.lg, paddingTop: spacing.xl, justifyContent: "center" }}>
-        <Text style={{ color: colors.text, ...text.h1 }}>Pulse</Text>
-        <Text style={{ color: colors.muted, marginTop: spacing.sm, ...text.body }}>
-          Sign in with the same email and password as the web app.
-        </Text>
+        <ScrollView
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{
+            flexGrow: 1,
+            paddingHorizontal: spacing.lg,
+            paddingTop: contentPadTop,
+            paddingBottom: spacing.xl + 120,
+          }}
+        >
+          <Text style={{ color: colors.text, ...text.h1 }}>Pulse</Text>
+          <Text style={{ color: colors.muted, marginTop: spacing.sm, ...text.body }}>
+            Sign in with the same email and password as the web app.
+          </Text>
 
-        {!apiConfigured ? (
+          {!apiConfigured ? (
           <View
             style={{
               marginTop: spacing.lg,
@@ -159,7 +173,7 @@ export default function LoginScreen() {
             <Text style={{ color: "#0a0a0a", fontWeight: "800", fontSize: 16 }}>Sign in</Text>
           )}
         </Pressable>
-      </View>
+        </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );

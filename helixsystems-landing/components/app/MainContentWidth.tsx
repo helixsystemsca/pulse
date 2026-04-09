@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
 /**
- * Standard content width for authenticated Pulse pages: 90% viewport, capped, centered.
+ * Authenticated Pulse pages: fill the main column edge-to-edge with small uniform inset.
  */
 export function MainContentWidth({
   children,
@@ -13,7 +13,7 @@ export function MainContentWidth({
   return (
     <div
       id="layout-wrapper"
-      className={`mx-auto w-[min(100%,92vw)] max-w-[1360px] px-4 py-5 sm:px-5 sm:py-6 md:py-7 ${className}`.trim()}
+      className={`box-border flex min-h-0 w-full min-w-0 flex-1 flex-col p-4 ${className}`.trim()}
       data-layout="main-content"
     >
       {children}

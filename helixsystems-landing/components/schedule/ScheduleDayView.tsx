@@ -160,14 +160,16 @@ export function ScheduleDayView({
           className={`relative min-h-[16rem] border-b border-pulseShell-border lg:border-b-0 lg:border-r ${shake ? "schedule-cell-shake" : ""}`}
           title={dragSession?.kind === "worker" && workerDayHighlight?.tooltip ? workerDayHighlight.tooltip : undefined}
           onDragOver={(e) => {
-            if (!shiftDragEnabled || calendarDropsDisabled || dragSession?.kind !== "worker") return;
-            if (!e.dataTransfer.types.includes(WORKER_DRAG_MIME)) return;
+            if (calendarDropsDisabled) return;
+            const workerDrag =
+              dragSession?.kind === "worker" || e.dataTransfer.types.includes(WORKER_DRAG_MIME);
+            if (!workerDrag) return;
             e.preventDefault();
             e.dataTransfer.dropEffect = "copy";
           }}
           onDrop={(e) => {
             e.preventDefault();
-            if (!shiftDragEnabled || calendarDropsDisabled || !onWorkerDrop) return;
+            if (calendarDropsDisabled || !onWorkerDrop) return;
             const wp = readWorkerDragPayload(e.dataTransfer);
             if (!wp) return;
             const w = workers.find((x) => x.id === wp.workerId);

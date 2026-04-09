@@ -3,6 +3,7 @@ import { apiPostFormData } from "@/lib/api";
 type CompanyLogoUploadOut = {
   logo_url?: string | null;
   header_image_url?: string | null;
+  background_image_url?: string | null;
   message?: string;
 };
 
@@ -11,6 +12,13 @@ export async function uploadTenantCompanyLogoFile(file: File): Promise<CompanyLo
   const fd = new FormData();
   fd.set("file", file);
   return apiPostFormData<CompanyLogoUploadOut>("/api/v1/company/logo", fd);
+}
+
+/** Tenant company admin: POST /api/v1/company/background (mobile / app header hero). */
+export async function uploadTenantCompanyBackgroundFile(file: File): Promise<CompanyLogoUploadOut> {
+  const fd = new FormData();
+  fd.set("file", file);
+  return apiPostFormData<CompanyLogoUploadOut>("/api/v1/company/background", fd);
 }
 
 /** System operator: POST /api/system/companies/{companyId}/logo */

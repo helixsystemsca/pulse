@@ -15,5 +15,7 @@ type AppMainProps = {
 export function AppMain({ children, className = "" }: AppMainProps) {
   const { authed } = usePulseAuth();
   const gutter = authed ? "lg:pl-64" : "";
-  return <main className={`min-h-0 flex-1 ${gutter} ${className}`.trim()}>{children}</main>;
+  return (
+    <main className={`flex min-h-0 min-w-0 flex-1 flex-col ${gutter} ${className}`.trim()}>{children}</main>
+  );
 }

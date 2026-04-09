@@ -217,8 +217,9 @@ export function ScheduleWeekView({
                 isOver && !calendarDropsDisabled ? "ring-2 ring-inset ring-ds-success/40" : ""
               } ${shakeDate === date ? "schedule-cell-shake" : ""}`}
               onDragOver={(e) => {
-                if (!shiftDragEnabled || calendarDropsDisabled) return;
+                if (calendarDropsDisabled) return;
                 if (!dragAccepts(e)) return;
+                if (dragSession?.kind === "shift" && !shiftDragEnabled) return;
                 e.preventDefault();
                 const sp = readShiftDragPayload(e.dataTransfer);
                 const wp = readWorkerDragPayload(e.dataTransfer);
@@ -234,7 +235,7 @@ export function ScheduleWeekView({
               onDrop={(e) => {
                 e.preventDefault();
                 setDragOverDate(null);
-                if (!shiftDragEnabled || calendarDropsDisabled) return;
+                if (calendarDropsDisabled) return;
                 const wp = readWorkerDragPayload(e.dataTransfer);
                 if (wp) {
                   const w = workers.find((x) => x.id === wp.workerId);
@@ -248,6 +249,7 @@ export function ScheduleWeekView({
                   onWorkerDrop(wp.workerId, date);
                   return;
                 }
+                if (!shiftDragEnabled) return;
                 const p = readShiftDragPayload(e.dataTransfer);
                 if (p) onShiftMove(p.shiftId, date, p.duplicate ? "duplicate" : "move");
               }}

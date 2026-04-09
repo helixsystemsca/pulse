@@ -28,6 +28,8 @@ export type CompanySummary = {
   logo_url?: string | null;
   /** Operations dashboard banner only; not shown in global nav. */
   header_image_url?: string | null;
+  /** Mobile / app blurred hero; may be `/api/v1/company/background` after upload. */
+  background_image_url?: string | null;
   timezone?: string | null;
   industry?: string | null;
 };

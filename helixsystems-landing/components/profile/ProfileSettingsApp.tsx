@@ -350,10 +350,10 @@ export function ProfileSettingsApp() {
           administrator permissions.
         </p>
         <div className="mt-5 space-y-4">
-          <div className="flex items-center justify-between gap-4 rounded-lg border border-slate-100 bg-slate-50/50 px-3 py-3 dark:border-ds-border dark:bg-ds-secondary/95">
+          <div className="flex items-center justify-between gap-4 rounded-lg border border-ds-border bg-ds-secondary px-3 py-3">
             <div>
-              <p className="text-sm font-semibold text-pulse-navy dark:text-slate-100">Participate in operations</p>
-              <p className="mt-0.5 text-xs text-pulse-muted">
+              <p className="text-sm font-semibold text-ds-foreground">Participate in operations</p>
+              <p className="mt-0.5 text-xs text-ds-muted">
                 Turn off to exclude yourself from workforce monitoring and operational rosters.
               </p>
             </div>
@@ -363,11 +363,11 @@ export function ProfileSettingsApp() {
               aria-checked={participate}
               onClick={() => setParticipate((p) => !p)}
               className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${
-                participate ? "bg-[#2B4C7E]" : "bg-slate-200 dark:bg-slate-600"
+                participate ? "bg-[#2B4C7E]" : "bg-slate-200 dark:bg-ds-elevated"
               }`}
             >
               <span
-                className={`absolute top-0.5 left-0.5 h-6 w-6 rounded-full bg-white shadow transition-transform dark:bg-gray-200 ${
+                className={`absolute top-0.5 left-0.5 h-6 w-6 rounded-full bg-white shadow transition-transform ${
                   participate ? "translate-x-5" : "translate-x-0"
                 }`}
               />

@@ -234,20 +234,20 @@ export function WelcomeLoaderModal({
 
           <motion.div
             layout
-            className="pointer-events-none relative w-full max-w-xl rounded-[28px] border border-ds-border bg-ds-primary/95 px-9 py-9 text-ds-foreground shadow-[var(--ds-shadow-diffuse)] backdrop-blur-2xl sm:px-10 sm:py-10"
+            className="welcome-loader-card pointer-events-none relative w-full max-w-xl rounded-[28px] border border-ds-border px-9 py-9 text-ds-foreground sm:px-10 sm:py-10"
             initial={{ opacity: 0, scale: 0.96, y: 8 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.98, y: 4 }}
             transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
           >
             <div
-              className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-[color-mix(in_srgb,var(--ds-text-primary)_12%,transparent)] to-transparent sm:inset-x-10"
+              className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-[color-mix(in_srgb,var(--ds-success)_45%,transparent)] to-transparent dark:via-white/20 sm:inset-x-10"
               aria-hidden
             />
 
             <div className="flex items-center gap-5">
               <div
-                className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl border border-ds-border bg-ds-secondary"
+                className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl border border-ds-border bg-white/55 shadow-sm dark:bg-black/25 dark:shadow-none"
                 aria-hidden
               >
                 <Activity className="h-6 w-6 text-ds-foreground" strokeWidth={1.75} />
@@ -302,7 +302,7 @@ export function WelcomeLoaderModal({
               <p className="mb-2.5 text-xs font-medium uppercase tracking-wider text-ds-muted sm:text-[13px]">
                 {content === "loading" ? "Loading" : "Ready"}
               </p>
-              <div className="h-1.5 overflow-hidden rounded-full bg-[color-mix(in_srgb,var(--ds-text-primary)_9%,transparent)]">
+              <div className="h-1.5 overflow-hidden rounded-full bg-black/12 dark:bg-white/15">
                 <motion.div
                   className="h-full rounded-full bg-gradient-to-r from-ds-success/55 via-ds-success/40 to-ds-success/55"
                   initial={false}

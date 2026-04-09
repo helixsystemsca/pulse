@@ -1,10 +1,19 @@
-import React, { useEffect } from "react";
-import { router } from "expo-router";
-import { BottomSheetPrompt } from "@/components/BottomSheetPrompt";
+import React, { useEffect, useMemo } from "react";
+import { router, useSegments } from "expo-router";
+import { ProximityPromptBanner } from "@/components/ProximityPromptBanner";
 import { useBLE } from "@/lib/ble/useBLE";
 
+/** Approx. dashboard hero height (greeting + optional logo) so the banner clears the ImageBackground header. */
+const HOME_HERO_OFFSET = 168;
+
 export function BLEPromptHost() {
+  const segments = useSegments();
   const { event, dismiss } = useBLE();
+
+  const layoutTopOffset = useMemo(() => {
+    const leaf = segments[segments.length - 1] ?? "";
+    return leaf === "index" ? HOME_HERO_OFFSET : 0;
+  }, [segments]);
 
   useEffect(() => {
     // no-op; hook holds state
@@ -23,10 +32,11 @@ export function BLEPromptHost() {
   const primaryTo = event.kind === "zone" ? "/drawings" : "/tasks";
 
   return (
-    <BottomSheetPrompt
+    <ProximityPromptBanner
       title={title}
       message={message}
       primaryLabel="Open"
+      layoutTopOffset={layoutTopOffset}
       onPrimary={() => {
         dismiss();
         router.push(primaryTo);
