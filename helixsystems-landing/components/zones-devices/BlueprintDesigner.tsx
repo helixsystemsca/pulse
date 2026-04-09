@@ -1146,9 +1146,13 @@ export type BlueprintDesignerProps = {
    * Editor, publish preview, PNG/PDF export, and local undo still work.
    */
   standalone?: boolean;
+  /**
+   * Pulse full-screen shell: drop outer card padding and lift `max-height` so the stage uses the modal viewport.
+   */
+  fullscreen?: boolean;
 };
 
-export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps) {
+export function BlueprintDesigner({ standalone = false, fullscreen = false }: BlueprintDesignerProps) {
   const {
     blueprint,
     updateBlueprint,
@@ -3044,18 +3048,21 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
     batchLayer();
   }, [selectedSingleId, commitElements, checkpointBlueprint, batchLayer]);
 
-  const wrapPulseFrame = (node: ReactNode) =>
-    standalone ? (
-      node
-    ) : (
+  const wrapPulseFrame = (node: ReactNode) => {
+    if (standalone) return node;
+    if (fullscreen) {
+      return <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col">{node}</div>;
+    }
+    return (
       <div className="flex min-h-0 flex-1 flex-col rounded-lg border border-ds-border bg-ds-primary p-2 shadow-[var(--ds-shadow-card)]">
         {node}
       </div>
     );
+  };
 
   return wrapPulseFrame(
     <div
-      className={`bp-shell${isPublish ? " bp-shell--publish" : ""}${!standalone ? " bp-shell--pulse" : ""}`}
+      className={`bp-shell${isPublish ? " bp-shell--publish" : ""}${!standalone ? " bp-shell--pulse" : ""}${fullscreen ? " bp-shell--fullscreen" : ""}`}
     >
       <motion.aside
         className={`bp-sidebar${isPublish ? " bp-sidebar--disabled" : ""}`}

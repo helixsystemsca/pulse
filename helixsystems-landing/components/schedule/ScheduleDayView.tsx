@@ -10,7 +10,13 @@ import {
 } from "@/lib/schedule/certifications";
 import { getShiftConflicts, worstConflictSeverity } from "@/lib/schedule/conflicts";
 import { workerHighlightOverlayClass } from "@/lib/schedule/drag-highlight-classes";
-import { attachShiftDragPreview, readWorkerDragPayload, setShiftDragData, WORKER_DRAG_MIME } from "@/lib/schedule/drag";
+import {
+  attachShiftDragPreview,
+  readWorkerDragPayload,
+  scheduleDayWorkerDropZoneAccepts,
+  setShiftDragData,
+} from "@/lib/schedule/drag";
+import { flushSync } from "react-dom";
 import { evaluateWorkerDrop, type WorkerDayHighlight } from "@/lib/schedule/worker-drag-highlights";
 import { formatTimeRange } from "@/lib/schedule/time-format";
 import type {
@@ -161,9 +167,7 @@ export function ScheduleDayView({
           title={dragSession?.kind === "worker" && workerDayHighlight?.tooltip ? workerDayHighlight.tooltip : undefined}
           onDragOver={(e) => {
             if (calendarDropsDisabled) return;
-            const workerDrag =
-              dragSession?.kind === "worker" || e.dataTransfer.types.includes(WORKER_DRAG_MIME);
-            if (!workerDrag) return;
+            if (!scheduleDayWorkerDropZoneAccepts(e, dragSession)) return;
             e.preventDefault();
             e.dataTransfer.dropEffect = "copy";
           }}
@@ -266,7 +270,9 @@ export function ScheduleDayView({
                         duplicate: dup,
                       });
                       attachShiftDragPreview(e, dup);
-                      onShiftDragSessionStart({ kind: "shift", shiftId: s.id, duplicate: dup });
+                      flushSync(() =>
+                        onShiftDragSessionStart({ kind: "shift", shiftId: s.id, duplicate: dup }),
+                      );
                     }}
                     onDragEnd={onShiftDragSessionEnd}
                   >

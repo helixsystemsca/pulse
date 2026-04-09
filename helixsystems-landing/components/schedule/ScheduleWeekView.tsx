@@ -11,10 +11,10 @@ import {
   attachShiftDragPreview,
   readShiftDragPayload,
   readWorkerDragPayload,
+  scheduleCalendarDragOverAccepts,
   setShiftDragData,
-  SHIFT_DRAG_MIME,
-  WORKER_DRAG_MIME,
 } from "@/lib/schedule/drag";
+import { flushSync } from "react-dom";
 import { formatTimeRange } from "@/lib/schedule/time-format";
 import { evaluateWorkerDrop } from "@/lib/schedule/worker-drag-highlights";
 import type { WorkerDayHighlight } from "@/lib/schedule/worker-drag-highlights";
@@ -132,13 +132,6 @@ export function ScheduleWeekView({
       : "pointer-events-auto"
     : "";
 
-  const dragAccepts = (e: React.DragEvent) => {
-    if (e.dataTransfer.types.includes(SHIFT_DRAG_MIME) || e.dataTransfer.types.includes(WORKER_DRAG_MIME)) {
-      return true;
-    }
-    return e.dataTransfer.types.includes("text/plain");
-  };
-
   return (
     <div
       className={`rounded-md border border-pulseShell-border bg-pulseShell-surface shadow-[var(--pulse-shell-shadow)] ${scheduleDragLock ? "pointer-events-none" : ""}`}
@@ -218,14 +211,19 @@ export function ScheduleWeekView({
               } ${shakeDate === date ? "schedule-cell-shake" : ""}`}
               onDragOver={(e) => {
                 if (calendarDropsDisabled) return;
-                if (!dragAccepts(e)) return;
+                if (!scheduleCalendarDragOverAccepts(e, dragSession)) return;
                 if (dragSession?.kind === "shift" && !shiftDragEnabled) return;
                 e.preventDefault();
-                const sp = readShiftDragPayload(e.dataTransfer);
-                const wp = readWorkerDragPayload(e.dataTransfer);
-                if (wp) e.dataTransfer.dropEffect = "copy";
-                else if (sp) e.dataTransfer.dropEffect = sp.duplicate ? "copy" : "move";
-                else e.dataTransfer.dropEffect = "move";
+                if (dragSession?.kind === "worker") e.dataTransfer.dropEffect = "copy";
+                else if (dragSession?.kind === "shift")
+                  e.dataTransfer.dropEffect = dragSession.duplicate ? "copy" : "move";
+                else {
+                  const sp = readShiftDragPayload(e.dataTransfer);
+                  const wp = readWorkerDragPayload(e.dataTransfer);
+                  if (wp) e.dataTransfer.dropEffect = "copy";
+                  else if (sp) e.dataTransfer.dropEffect = sp.duplicate ? "copy" : "move";
+                  else e.dataTransfer.dropEffect = "move";
+                }
                 setDragOverDate(date);
               }}
               onDragLeave={(e) => {
@@ -354,7 +352,9 @@ export function ScheduleWeekView({
                         const dup = e.shiftKey;
                         setShiftDragData(e.dataTransfer, { shiftId: s.id, duplicate: dup });
                         attachShiftDragPreview(e, dup);
-                        onShiftDragSessionStart({ kind: "shift", shiftId: s.id, duplicate: dup });
+                        flushSync(() =>
+                          onShiftDragSessionStart({ kind: "shift", shiftId: s.id, duplicate: dup }),
+                        );
                       }}
                       onDragEnd={onShiftDragSessionEnd}
                     >

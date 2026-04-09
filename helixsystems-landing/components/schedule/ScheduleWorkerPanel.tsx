@@ -2,6 +2,7 @@
 
 import { ChevronDown, GripVertical } from "lucide-react";
 import { useMemo, useState } from "react";
+import { flushSync } from "react-dom";
 import { attachWorkerDragPreview, setWorkerDragData } from "@/lib/schedule/drag";
 import type { EmploymentType, ScheduleDragSession, Worker } from "@/lib/schedule/types";
 
@@ -96,7 +97,7 @@ export function ScheduleWorkerPanel({
                           }
                           setWorkerDragData(e.dataTransfer, { workerId: w.id });
                           attachWorkerDragPreview(e, w.name);
-                          onDragSessionStart({ kind: "worker", workerId: w.id });
+                          flushSync(() => onDragSessionStart({ kind: "worker", workerId: w.id }));
                         }}
                         onDragEnd={onDragSessionEnd}
                         onKeyDown={(e) => {

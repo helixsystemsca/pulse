@@ -10,6 +10,9 @@ import { getOrganization, type Organization } from "@/lib/api/pulse";
 import { resolveApiUrl } from "@/lib/api/client";
 import { uploadProfileAvatar } from "@/lib/api/profileAvatar";
 
+/** Bundled hero (same asset as web `public/images/panorama.jpg`) until org background from the API is reliable. */
+const HOME_HERO_PANORAMA = require("../../assets/images/panorama.jpg") as ImageSourcePropType;
+
 type PresenceStatus = "green" | "amber" | "red";
 
 /** Signed-in fetches for `/api/v1/company/*` paths need the bearer token (RN `Image` does not send cookies). */
@@ -243,10 +246,6 @@ export function DashboardScreen() {
     return `${a}${b}`.toUpperCase();
   }, [session?.user.fullName]);
 
-  const companyBgSource = useMemo(
-    () => pulseAuthenticatedImageSource(org?.background_image_url, token),
-    [org?.background_image_url, token],
-  );
   const companyLogoSource = useMemo(
     () => pulseAuthenticatedImageSource(org?.logo_url, token),
     [org?.logo_url, token],
@@ -277,10 +276,9 @@ export function DashboardScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <ImageBackground
-        key={brandingKey}
-        source={companyBgSource ?? undefined}
+        source={HOME_HERO_PANORAMA}
         style={{ flex: 1 }}
-        blurRadius={companyBgSource ? 18 : 0}
+        blurRadius={18}
         resizeMode="cover"
       >
         <BlurView intensity={35} tint="dark" style={{ flex: 1 }}>

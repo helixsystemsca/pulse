@@ -1,7 +1,35 @@
 /** HTML5 drag payload for schedule shift chips (move vs Shift+duplicate). */
 
+import type { DragEvent } from "react";
+import type { ScheduleDragSession } from "./types";
+
 export const SHIFT_DRAG_MIME = "application/x-pulse-shift";
 export const WORKER_DRAG_MIME = "application/x-pulse-schedule-worker";
+
+function listDataTransferTypes(dt: DataTransfer): string[] {
+  try {
+    return Array.from(dt.types ?? []);
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Calendar / week cells call `preventDefault` on dragover only when this is true.
+ * Some browsers omit custom MIME types from `dataTransfer.types` until drop; the live
+ * `dragSession` from `dragstart` (prefer `flushSync` when setting it) must be trusted.
+ */
+export function scheduleCalendarDragOverAccepts(e: DragEvent, dragSession: ScheduleDragSession | null): boolean {
+  if (dragSession?.kind === "worker" || dragSession?.kind === "shift") return true;
+  return listDataTransferTypes(e.dataTransfer).some((t) => t === SHIFT_DRAG_MIME || t === WORKER_DRAG_MIME);
+}
+
+/** Day panel accepts worker drops only (not shift moves). */
+export function scheduleDayWorkerDropZoneAccepts(e: DragEvent, dragSession: ScheduleDragSession | null): boolean {
+  if (dragSession?.kind === "worker") return true;
+  if (dragSession?.kind === "shift") return false;
+  return listDataTransferTypes(e.dataTransfer).includes(WORKER_DRAG_MIME);
+}
 
 export type ShiftDragPayload = {
   shiftId: string;

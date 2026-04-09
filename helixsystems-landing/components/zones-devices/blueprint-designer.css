@@ -27,6 +27,14 @@
   font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
 
+/* Full-screen modal (Zones → Blueprint): use full flex height, not the embedded page cap */
+.bp-shell.bp-shell--fullscreen {
+  max-height: none;
+  height: 100%;
+  min-height: 0;
+  flex: 1 1 0;
+}
+
 /* Modern minimal scrollbars (Firefox + WebKit) */
 .bp-scrollable,
 .bp-sidebar,
@@ -1457,6 +1465,13 @@
     min-height: min(78vh, 820px);
   }
 
+  .bp-shell.bp-shell--fullscreen {
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+    max-height: none;
+  }
+
   .bp-sidebar,
   .bp-props {
     width: 100%;
@@ -1465,6 +1480,10 @@
 
   .bp-sidebar {
     max-height: min(60vh, 520px);
+  }
+
+  .bp-shell.bp-shell--fullscreen .bp-sidebar {
+    max-height: min(38vh, 360px);
   }
 
   .bp-props {
