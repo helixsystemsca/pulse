@@ -36,3 +36,9 @@ export function BLEPromptHost() {
   );
 }
 
+// Expo Router treats files in route directories as screens and expects a default export.
+// This file also exports `BLEPromptHost` which is mounted from the tab layout.
+export default function BLEPromptRoute() {
+  return null;
+}
+

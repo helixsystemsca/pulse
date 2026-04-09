@@ -1,32 +1,16 @@
 "use client";
 
-import { SetupApp } from "@/components/setup/SetupApp";
 import { isApiMode } from "@/lib/api";
 import { navigateToPulseLogin } from "@/lib/pulse-app";
 import { readSession } from "@/lib/pulse-session";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 
-export default function SetupDashboardPage() {
-  const [ready, setReady] = useState(false);
+function SetupDashboardRedirector() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
   useEffect(() => {
-    const s = readSession();
-    if (!s) {
-      navigateToPulseLogin();
-      return;
-    }
-    if (isApiMode() && !s.access_token) {
-      navigateToPulseLogin();
-      return;
-    }
-    setReady(true);
-  }, []);
-
-  useEffect(() => {
-    if (!ready) return;
     const tab = searchParams.get("tab");
     if (tab === "zones") {
       router.replace("/zones");
@@ -41,7 +25,26 @@ export default function SetupDashboardPage() {
       return;
     }
     router.replace("/devices");
-  }, [ready, router, searchParams]);
+  }, [router, searchParams]);
+
+  return null;
+}
+
+export default function SetupDashboardPage() {
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    const s = readSession();
+    if (!s) {
+      navigateToPulseLogin();
+      return;
+    }
+    if (isApiMode() && !s.access_token) {
+      navigateToPulseLogin();
+      return;
+    }
+    setReady(true);
+  }, []);
 
   if (!ready) {
     return (
@@ -51,5 +54,15 @@ export default function SetupDashboardPage() {
     );
   }
 
-  return null;
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-[40vh] items-center justify-center">
+          <p className="text-sm text-pulse-muted">Loading…</p>
+        </div>
+      }
+    >
+      <SetupDashboardRedirector />
+    </Suspense>
+  );
 }
