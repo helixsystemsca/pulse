@@ -1,7 +1,7 @@
 "use client";
 
 import { animate, AnimatePresence, motion } from "framer-motion";
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type Konva from "konva";
 import { Circle, Ellipse, Group, Layer, Line, Rect, Stage, Text, Transformer } from "react-konva";
 import { apiFetch, isApiMode } from "@/lib/api";
@@ -3044,8 +3044,19 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
     batchLayer();
   }, [selectedSingleId, commitElements, checkpointBlueprint, batchLayer]);
 
-  return (
-    <div className={`bp-shell${isPublish ? " bp-shell--publish" : ""}`}>
+  const wrapPulseFrame = (node: ReactNode) =>
+    standalone ? (
+      node
+    ) : (
+      <div className="flex min-h-0 flex-1 flex-col rounded-lg border border-ds-border bg-ds-primary p-2 shadow-[var(--ds-shadow-card)]">
+        {node}
+      </div>
+    );
+
+  return wrapPulseFrame(
+    <div
+      className={`bp-shell${isPublish ? " bp-shell--publish" : ""}${!standalone ? " bp-shell--pulse" : ""}`}
+    >
       <motion.aside
         className={`bp-sidebar${isPublish ? " bp-sidebar--disabled" : ""}`}
         aria-label="Blueprint tasks"
@@ -3057,7 +3068,7 @@ export function BlueprintDesigner({ standalone = false }: BlueprintDesignerProps
           <p className="bp-hint" style={{ marginBottom: 12 }}>
             Public playground: same editor as Pulse. <strong>Publish</strong> to export PNG/PDF. Saving to your org
             requires signing in on the{" "}
-            <a href={pulseApp.login()} className="text-sky-600 underline dark:text-sky-400">
+            <a href={pulseApp.login()} className="ds-link font-semibold">
               Pulse app
             </a>
             .

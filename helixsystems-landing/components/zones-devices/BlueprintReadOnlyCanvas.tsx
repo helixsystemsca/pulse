@@ -300,7 +300,7 @@ export function BlueprintReadOnlyCanvas({ elements, theme: themeName, minHeight 
   return (
     <div
       ref={hostRef}
-      className="relative w-full overflow-hidden rounded-lg border border-pulse-border dark:border-slate-600"
+      className="relative w-full overflow-hidden rounded-lg border border-ds-border"
       style={{ minHeight, background: theme.canvasBg }}
     >
       <Stage
@@ -610,7 +610,7 @@ export function BlueprintReadOnlyCanvas({ elements, theme: themeName, minHeight 
             })}
         </Layer>
       </Stage>
-      <p className="pointer-events-none absolute bottom-2 right-3 m-0 text-[10px] text-slate-500 opacity-80 dark:text-slate-400">
+      <p className="pointer-events-none absolute bottom-2 right-3 m-0 text-[10px] text-ds-muted opacity-80">
         Scroll to zoom
       </p>
     </div>

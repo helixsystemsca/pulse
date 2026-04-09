@@ -9,10 +9,7 @@ export const metadata: Metadata = {
 
 export default function ZonesDevicesLayout({ children }: { children: React.ReactNode }) {
   return (
-    <AppLayout
-      mainClassName="bg-pulse-bg flex min-h-0 flex-1 flex-col"
-      mainContentClassName="flex min-h-0 flex-1 flex-col"
-    >
+    <AppLayout mainClassName="bg-pulse-bg">
       <ZonesDevicesChrome>{children}</ZonesDevicesChrome>
     </AppLayout>
   );

@@ -142,7 +142,7 @@ export function FloorPlanBlueprintSection() {
   }
 
   return (
-    <div className="rounded-md border border-ds-border bg-ds-primary p-4 shadow-[var(--ds-shadow-card)]">
+    <div className="rounded-lg border border-ds-border bg-ds-primary p-4 shadow-[var(--ds-shadow-card)]">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div className="min-w-0 flex-1">
           <label htmlFor="floor-plan-blueprint" className="text-xs font-semibold uppercase tracking-wide text-ds-muted">
@@ -187,9 +187,9 @@ export function FloorPlanBlueprintSection() {
       ) : null}
 
       {selectedId && list.length > 0 ? (
-        <div className="mt-4">
+        <div className="mt-4 rounded-lg border border-ds-border bg-ds-secondary p-3">
           {loadingDetail ? (
-            <div className="min-h-[420px] animate-pulse rounded-lg bg-ds-secondary" />
+            <div className="min-h-[420px] animate-pulse rounded-lg bg-ds-primary/80" />
           ) : detail ? (
             <>
               <p className="mb-2 text-sm font-medium text-ds-foreground">{detail.name}</p>

@@ -691,7 +691,7 @@
 .bp-tool.is-active {
   background: rgba(59, 130, 246, 0.16);
   border-color: rgba(96, 165, 250, 0.45);
-  color: #fff;
+  color: var(--bp-text);
   box-shadow:
     0 0 0 1px rgba(59, 130, 246, 0.2),
     0 0 24px rgba(59, 130, 246, 0.14);
@@ -745,6 +745,12 @@
   border: 1px solid var(--bp-panel-border);
   box-shadow: 0 12px 48px rgba(0, 0, 0, 0.4), 0 1px 0 rgba(255, 255, 255, 0.03) inset;
   background: var(--bp-panel-solid);
+}
+
+/* Pulse app: align blueprint chrome with design-system surfaces */
+.bp-shell--pulse .bp-canvas-wrap {
+  background: var(--ds-surface-secondary);
+  border-color: var(--ds-border);
 }
 
 .bp-workspace .bp-canvas-wrap {
