@@ -21,6 +21,7 @@ class GatewayPatchIn(BaseModel):
     zone_id: Optional[str] = None
     name: Optional[str] = Field(None, min_length=1, max_length=255)
     status: Optional[str] = Field(None, max_length=32)
+    assigned: Optional[bool] = None
 
 
 class GatewayOut(BaseModel):
@@ -31,6 +32,7 @@ class GatewayOut(BaseModel):
     name: str
     identifier: str
     status: str
+    assigned: bool = False
     zone_id: Optional[str] = None
     last_seen_at: Optional[datetime] = None
     ingest_enabled: bool = False
@@ -41,6 +43,17 @@ class GatewayIngestSecretRotateOut(BaseModel):
 
     gateway_id: str
     ingest_secret: str
+
+
+class GatewayRegisterIn(BaseModel):
+    """ESP32 captive-portal onboarding: announce presence (matches `automation_gateways.identifier`)."""
+
+    gateway_id: str = Field(..., min_length=1, max_length=128)
+    ip: str = Field(..., min_length=1, max_length=64)
+    firmware_version: str = Field(default="unknown", max_length=32)
+    #: With `register_token` matching server `GATEWAY_REGISTER_TOKEN`, create under this tenant.
+    company_id: Optional[str] = None
+    register_token: Optional[str] = Field(default=None, max_length=256)
 
 
 # --- BLE ---

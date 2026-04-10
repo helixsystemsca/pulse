@@ -128,8 +128,12 @@ async def patch_gateway(
 async def list_gateways(
     db: Db,
     company_id: CompanyId,
+    unassigned: Annotated[Optional[bool], Query(description="If true, only gateways not yet assigned to a zone")] = None,
 ) -> list[GatewayOut]:
-    rows = await _svc(db).list_gateways(company_id=company_id)
+    rows = await _svc(db).list_gateways(
+        company_id=company_id,
+        unassigned_only=bool(unassigned),
+    )
     return [GatewayOut.model_validate(r) for r in rows]
 
 

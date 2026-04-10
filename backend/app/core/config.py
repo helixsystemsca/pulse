@@ -96,6 +96,16 @@ class Settings(BaseSettings):
         default="https://pulse.helixsystems.ca",
         validation_alias=AliasChoices("PULSE_APP_PUBLIC_URL", "pulse_app_public_url"),
     )
+    #: When set, unknown `gateway_id` on POST /api/gateway/register creates a row under this company.
+    gateway_auto_register_company_id: str = Field(
+        default="",
+        validation_alias=AliasChoices("GATEWAY_AUTO_REGISTER_COMPANY_ID", "gateway_auto_register_company_id"),
+    )
+    #: If non-empty, devices may send `company_id` + `register_token` in the register body to pick a tenant.
+    gateway_register_token: str = Field(
+        default="",
+        validation_alias=AliasChoices("GATEWAY_REGISTER_TOKEN", "gateway_register_token"),
+    )
 
     @property
     def cors_origin_list(self) -> List[str]:

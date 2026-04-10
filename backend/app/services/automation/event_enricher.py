@@ -208,7 +208,10 @@ async def enrich_event(db: AsyncSession, event: AutomationEvent) -> EnrichResult
     # Match the self-reported gateway string to a real installed gateway record; mark it online.
     gateway_id_raw = payload_in.get("gateway_id")
     if gateway_id_raw:
-        gw = await svc.get_gateway(company_id=company_id, gateway_id=str(gateway_id_raw))
+        raw_gw = str(gateway_id_raw).strip()
+        gw = await svc.get_gateway(company_id=company_id, gateway_id=raw_gw)
+        if gw is None:
+            gw = await svc.get_gateway_by_identifier(company_id=company_id, identifier=raw_gw)
         if gw:
             payload_in["gateway_id"] = str(gw.id)
             gw.last_seen_at = datetime.now(timezone.utc)
@@ -228,7 +231,7 @@ async def enrich_event(db: AsyncSession, event: AutomationEvent) -> EnrichResult
             warnings.append("unknown_gateway")
             logger.warning(
                 "enrich_event: unknown gateway_id=%s company=%s event=%s",
-                gateway_id_raw,
+                raw_gw,
                 company_id,
                 event.id,
             )

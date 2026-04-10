@@ -1,5 +1,6 @@
 import { apiFetch } from "./client";
 import { getMe, type PulseMe } from "./pulse";
+import { applyServerTimeFromIso } from "@/lib/serverTime";
 
 export type TokenResponse = {
   access_token: string;
@@ -48,5 +49,6 @@ export function pulseMeToSessionUser(me: PulseMe): SessionUser {
 
 export async function loadSessionUser(token: string): Promise<SessionUser> {
   const me = await getMe(token);
+  applyServerTimeFromIso(me.server_time ?? undefined);
   return pulseMeToSessionUser(me);
 }

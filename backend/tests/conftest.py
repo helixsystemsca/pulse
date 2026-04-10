@@ -254,6 +254,7 @@ async def seeded_tenant(db_session: AsyncSession) -> TenantSeed:
         name="Sim gateway",
         identifier=f"gw-{suffix}",
         status="online",
+        assigned=False,
         zone_id=None,
     )
     db.add(gw)

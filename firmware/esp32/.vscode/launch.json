@@ -12,9 +12,9 @@
             "type": "platformio-debug",
             "request": "launch",
             "name": "PIO Debug",
-            "executable": "C:/Users/jcoll/Documents/Helix_Systems/firmware/esp32/.pio/build/esp32-c3-devkitm-1/firmware.elf",
-            "projectEnvName": "esp32-c3-devkitm-1",
-            "toolchainBinDir": "C:/Users/jcoll/.platformio/packages/toolchain-riscv32-esp/bin",
+            "executable": "C:/Users/jcoll/Documents/Helix_Systems/firmware/esp32/.pio/build/waveshare_s3_mini/firmware.elf",
+            "projectEnvName": "waveshare_s3_mini",
+            "toolchainBinDir": "C:/Users/jcoll/.platformio/packages/toolchain-xtensa-esp32s3/bin",
             "internalConsoleOptions": "openOnSessionStart",
             "preLaunchTask": {
                 "type": "PlatformIO",
@@ -25,18 +25,18 @@
             "type": "platformio-debug",
             "request": "launch",
             "name": "PIO Debug (skip Pre-Debug)",
-            "executable": "C:/Users/jcoll/Documents/Helix_Systems/firmware/esp32/.pio/build/esp32-c3-devkitm-1/firmware.elf",
-            "projectEnvName": "esp32-c3-devkitm-1",
-            "toolchainBinDir": "C:/Users/jcoll/.platformio/packages/toolchain-riscv32-esp/bin",
+            "executable": "C:/Users/jcoll/Documents/Helix_Systems/firmware/esp32/.pio/build/waveshare_s3_mini/firmware.elf",
+            "projectEnvName": "waveshare_s3_mini",
+            "toolchainBinDir": "C:/Users/jcoll/.platformio/packages/toolchain-xtensa-esp32s3/bin",
             "internalConsoleOptions": "openOnSessionStart"
         },
         {
             "type": "platformio-debug",
             "request": "launch",
             "name": "PIO Debug (without uploading)",
-            "executable": "C:/Users/jcoll/Documents/Helix_Systems/firmware/esp32/.pio/build/esp32-c3-devkitm-1/firmware.elf",
-            "projectEnvName": "esp32-c3-devkitm-1",
-            "toolchainBinDir": "C:/Users/jcoll/.platformio/packages/toolchain-riscv32-esp/bin",
+            "executable": "C:/Users/jcoll/Documents/Helix_Systems/firmware/esp32/.pio/build/waveshare_s3_mini/firmware.elf",
+            "projectEnvName": "waveshare_s3_mini",
+            "toolchainBinDir": "C:/Users/jcoll/.platformio/packages/toolchain-xtensa-esp32s3/bin",
             "internalConsoleOptions": "openOnSessionStart",
             "loadMode": "manual"
         }

@@ -69,6 +69,18 @@ const TAB_ACTIVE =
 const TAB_IDLE =
   "border-transparent bg-ds-secondary/60 text-ds-muted hover:border-ds-border hover:bg-ds-interactive-hover hover:text-ds-foreground";
 
+function isUnassignedGateway(g: GatewayOut): boolean {
+  return g.assigned === false;
+}
+
+/** UI-only: online if we have a parseable last_seen within 30s (matches firmware heartbeat cadence). */
+function gatewaySeenOnlineUi(lastSeenAt: string | null | undefined): boolean {
+  if (!lastSeenAt) return false;
+  const t = Date.parse(lastSeenAt);
+  if (Number.isNaN(t)) return false;
+  return Date.now() - t < 30_000;
+}
+
 function companyQs(companyId: string | null): string {
   return companyId ? `company_id=${encodeURIComponent(companyId)}` : "";
 }
@@ -170,6 +182,7 @@ export function SetupApp({ defaultTab }: { defaultTab?: TabId }) {
   const [gwName, setGwName] = useState("");
   const [gwIdent, setGwIdent] = useState("");
   const [gwZoneId, setGwZoneId] = useState("");
+  const [newGwZoneById, setNewGwZoneById] = useState<Record<string, string>>({});
 
   const [bleName, setBleName] = useState("");
   const [bleMac, setBleMac] = useState("");
@@ -199,6 +212,9 @@ export function SetupApp({ defaultTab }: { defaultTab?: TabId }) {
     for (const r of gwStatus) m.set(r.id, r);
     return m;
   }, [gwStatus]);
+
+  const newGateways = useMemo(() => gateways.filter(isUnassignedGateway), [gateways]);
+  const mainGateways = useMemo(() => gateways.filter((g) => !isUnassignedGateway(g)), [gateways]);
 
   const zoneNameById = useMemo(() => {
     const m = new Map<string, string>();
@@ -352,7 +368,7 @@ export function SetupApp({ defaultTab }: { defaultTab?: TabId }) {
   const setupSteps = useMemo(() => {
     const gatewayAdded = gateways.length > 0;
     const zoneCreated = zones.length > 0;
-    const zoneAssignedToGateway = gateways.some((g) => Boolean(g.zone_id));
+    const zoneAssignedToGateway = gateways.some((g) => !isUnassignedGateway(g) && Boolean(g.zone_id));
     const tagRegistered = bleDevices.length > 0;
     const tagAssigned = bleDevices.some((b) => Boolean(b.assigned_worker_id || b.assigned_equipment_id));
     const trackingEnabled = Boolean(features.proximity_tracking?.enabled ?? true);
@@ -453,7 +469,7 @@ export function SetupApp({ defaultTab }: { defaultTab?: TabId }) {
   );
 
   const warnAssignZone = useCallback(() => {
-    const g = gateways.find((x) => !x.zone_id);
+    const g = gateways.find((x) => !isUnassignedGateway(x) && !x.zone_id);
     if (g) {
       setTab("devices");
       setZonePickGateway(g);
@@ -488,7 +504,7 @@ export function SetupApp({ defaultTab }: { defaultTab?: TabId }) {
 
   const setupWarnings = useMemo(() => {
     const w: { id: string; text: string; action?: { label: string; onClick: () => void } }[] = [];
-    if (gateways.some((g) => !g.zone_id)) {
+    if (gateways.some((g) => !isUnassignedGateway(g) && !g.zone_id)) {
       w.push({
         id: "gw-zone",
         text: "One or more gateways have no zone — assign zones for accurate coverage.",
@@ -533,6 +549,23 @@ export function SetupApp({ defaultTab }: { defaultTab?: TabId }) {
     setDetectionSinceMs(Date.now() - 1000);
     setDetectionTarget({ kind: "gateway", gatewayId: g.id });
   }, []);
+
+  const assignNewGatewayToZone = async (gatewayId: string) => {
+    const zid = newGwZoneById[gatewayId]?.trim();
+    if (!zid || !effectiveCompanyId) return;
+    setError(null);
+    try {
+      await patchGateway(isSystemAdmin ? effectiveCompanyId : null, gatewayId, {
+        zone_id: zid,
+        assigned: true,
+      });
+      setNewGwZoneById((m) => ({ ...m, [gatewayId]: "" }));
+      await refreshLiveDevices();
+      emitOnboardingMaybeUpdated();
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Could not assign gateway");
+    }
+  };
 
   const onAddGateway = async () => {
     if (!gwName.trim() || !gwIdent.trim()) return;
@@ -805,9 +838,74 @@ export function SetupApp({ defaultTab }: { defaultTab?: TabId }) {
         <div className="space-y-8">
         <div className="grid gap-8 lg:grid-cols-2">
           <div className="space-y-4">
+            {newGateways.length > 0 ? (
+              <div className="rounded-md border border-emerald-200/90 bg-emerald-50/50 p-4 ring-1 ring-emerald-200/60 dark:border-emerald-500/30 dark:bg-emerald-950/40 dark:ring-emerald-500/20 md:p-5">
+                <h3 className="text-sm font-semibold text-emerald-950 dark:text-emerald-100">
+                  New Gateways Detected
+                </h3>
+                <p className="mt-1 text-xs text-emerald-900/85 dark:text-emerald-200/80">
+                  These devices checked in over the network but are not assigned to a zone yet. Pick a zone and add them
+                  to the main list.
+                </p>
+                <ul className="mt-4 space-y-4">
+                  {newGateways.map((g) => {
+                    const online = gatewaySeenOnlineUi(g.last_seen_at);
+                    return (
+                      <li
+                        key={g.id}
+                        className="flex flex-col gap-3 rounded-md border border-emerald-200/70 bg-ds-primary/80 p-3 dark:border-emerald-500/25 sm:flex-row sm:flex-wrap sm:items-end"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <p className="font-mono text-sm font-medium text-ds-foreground">{g.identifier}</p>
+                          <p className="mt-1 text-xs text-ds-muted">
+                            Status:{" "}
+                            <span className={online ? "font-semibold text-emerald-700 dark:text-emerald-300" : ""}>
+                              {online ? "Online" : "Offline"}
+                            </span>
+                            {g.last_seen_at ? (
+                              <span className="ml-2 text-ds-muted">
+                                · Last seen {new Date(g.last_seen_at).toLocaleString()}
+                              </span>
+                            ) : null}
+                          </p>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <label className="sr-only" htmlFor={`new-gw-zone-${g.id}`}>
+                            Assign to zone
+                          </label>
+                          <select
+                            id={`new-gw-zone-${g.id}`}
+                            className={FIELD}
+                            value={newGwZoneById[g.id] ?? ""}
+                            onChange={(e) =>
+                              setNewGwZoneById((m) => ({ ...m, [g.id]: e.target.value }))
+                            }
+                          >
+                            <option value="">Assign to zone…</option>
+                            {zones.map((z) => (
+                              <option key={z.id} value={z.id}>
+                                {z.name}
+                              </option>
+                            ))}
+                          </select>
+                          <button
+                            type="button"
+                            className={BTN_PRIMARY}
+                            disabled={!newGwZoneById[g.id]?.trim()}
+                            onClick={() => void assignNewGatewayToZone(g.id)}
+                          >
+                            Add
+                          </button>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            ) : null}
             <h2 className="text-lg font-semibold text-ds-foreground">Gateways</h2>
             <div className="grid gap-4 sm:grid-cols-1">
-              {gateways.map((g) => {
+              {mainGateways.map((g) => {
                 const stRow = statusByGatewayId.get(g.id);
                 const st = stRow?.status ?? "offline";
                 const online = st === "online";
@@ -849,9 +947,9 @@ export function SetupApp({ defaultTab }: { defaultTab?: TabId }) {
                   />
                 );
               })}
-              {gateways.length === 0 ? (
+              {mainGateways.length === 0 ? (
                 <p className="rounded-md border border-dashed border-ds-border bg-ds-secondary/60 p-6 text-sm text-ds-muted">
-                  No gateways yet. Add your first ESP32 edge device below.
+                  No gateways in your list yet. New devices appear above when they register, or add one manually below.
                 </p>
               ) : null}
             </div>

@@ -23,6 +23,7 @@ from app.api.automation_events_routes import router as automation_events_router
 from app.api.automation_config_routes import router as automation_config_router
 from app.api.device_ingest_routes import router as device_ingest_router
 from app.api.devices_routes import router as devices_router
+from app.api.gateway_register_routes import router as gateway_register_router
 from app.api.equipment_routes import router as equipment_router
 from app.api.notifications_routes import router as notifications_router
 from app.api.onboarding_routes import router as onboarding_router
@@ -117,6 +118,7 @@ app.add_middleware(
 app.add_middleware(RequireHttpsMiddleware, enabled=settings.require_https)
 
 app.include_router(public_router, prefix="/api/public")
+app.include_router(gateway_register_router, prefix="/api")
 app.include_router(blueprint_router, prefix="/api")
 app.include_router(compliance_router, prefix="/api")
 app.include_router(work_requests_router, prefix="/api")

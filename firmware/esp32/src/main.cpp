@@ -24,32 +24,43 @@
  * 5. Your web UI helps teams install gateways, map zones, and monitor what happened.
  *
  * Technical stack note for implementers: Arduino framework + NimBLE-Arduino.
- * Copy include/secrets.h.example → include/secrets.h for Wi‑Fi and API settings.
+ * Copy include/secrets.h.example → include/secrets.h for API_BASE_URL (Wi‑Fi is captive-portal provisioned).
  */
 
 #include <Arduino.h>
 #include <WiFi.h>
+#include <WiFiManager.h>
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
 #include <NimBLEDevice.h>
+#include <esp_mac.h>
 #include <cmath>
 #include <cstring>
 #include <ctime>
 #include <cstdint>
 
 // ---- User configuration -------------------------------------------------
-// Create include/secrets.h from secrets.h.example
 #if __has_include("secrets.h")
 #include "secrets.h"
-#else
-#define WIFI_SSID "YOUR_SSID"
-#define WIFI_PASS "YOUR_PASSWORD"
-#define API_BASE_URL "{http://host:PORT}"
-#define GATEWAY_ID "gateway-local-01"
 #endif
 
+#ifndef API_BASE_URL
+#define API_BASE_URL "http://192.168.1.1"
+#endif
 #ifndef API_EVENTS_PATH
 #define API_EVENTS_PATH "/api/v1/events"
+#endif
+#ifndef API_REGISTER_PATH
+#define API_REGISTER_PATH "/api/gateway/register"
+#endif
+#ifndef PROVISIONING_AP_PREFIX
+#define PROVISIONING_AP_PREFIX "Helix-Gateway-"
+#endif
+#ifndef WIFI_HOSTNAME
+#define WIFI_HOSTNAME "helix-gateway"
+#endif
+#ifndef FIRMWARE_VERSION
+#define FIRMWARE_VERSION "1.0"
 #endif
 
 // Install-time list: which radio addresses belong to a **person badge** vs **equipment tag**
@@ -89,6 +100,13 @@ static constexpr uint32_t kHttpCriticalRetryDelayMs = 180; // non-blocking singl
 
 // WiFi
 static constexpr uint32_t kWifiReconnectMs = 5000;
+static constexpr uint32_t kGatewayRegisterRetryMs = 60000;
+
+/** Stable id for JSON + registration: last 3 bytes of STA MAC as hex → `gateway_aabbcc`. */
+static char g_gateway_id[20];
+static uint32_t g_ble_known_adv_count = 0;
+static uint32_t g_last_gateway_register_attempt_ms = 0;
+static bool g_gateway_register_ok = false;
 
 // NTP (UTC) for ISO8601 timestamps
 static constexpr char kNtpServer[] = "pool.ntp.org";
@@ -344,6 +362,7 @@ class ScanCallbacks : public NimBLEAdvertisedDeviceCallbacks {
     int8_t rssi = adv->getRSSI();
     // Drop very weak readings — mostly noise, avoids EMA / movement jitter.
     if (rssi < kRssiNoiseFloorDb) return;
+    g_ble_known_adv_count++;
     uint32_t now = millis();
     applyRssiSample(g_tags[idx], rssi, now);
   }
@@ -367,37 +386,102 @@ static void bleSetup() {
   }
 }
 
-// ---- WiFi ---------------------------------------------------------------
+// ---- WiFi (captive portal + STA) ---------------------------------------
 
 static uint32_t g_last_wifi_attempt = 0;
+
+static void buildGatewayIdFromMac() {
+  uint8_t mac[6];
+  esp_read_mac(mac, ESP_MAC_WIFI_STA);
+  snprintf(g_gateway_id, sizeof(g_gateway_id), "gateway_%02x%02x%02x", mac[3], mac[4], mac[5]);
+}
+
+/**
+ * First boot or cleared NVS: open a setup AP (PROVISIONING_AP_PREFIX + last 2 bytes of MAC) and
+ * captive portal; credentials are stored by WiFiManager. Then STA only, coexistence-friendly sleep.
+ */
+static void wifiSetup() {
+  buildGatewayIdFromMac();
+
+  WiFi.mode(WIFI_STA);
+  WiFi.setSleep(true);
+  WiFi.setHostname(WIFI_HOSTNAME);
+
+  uint8_t mac[6];
+  esp_read_mac(mac, ESP_MAC_WIFI_STA);
+  char apSuffix[5];
+  snprintf(apSuffix, sizeof(apSuffix), "%02X%02X", mac[4], mac[5]);
+  const String apName = String(PROVISIONING_AP_PREFIX) + apSuffix;
+
+  WiFiManager wm;
+  wm.setConfigPortalTimeout(300);
+
+  Serial.printf("WiFi gateway_id=%s  hostname=%s\n", g_gateway_id, WIFI_HOSTNAME);
+  Serial.println("Starting provisioning AP (if no saved Wi‑Fi credentials)…");
+  Serial.printf("AP name pattern: %s%s\n", PROVISIONING_AP_PREFIX, apSuffix);
+  Serial.flush();
+
+  if (!wm.autoConnect(apName.c_str())) {
+    Serial.println("WiFi: captive portal timed out or connect failed — restarting in 5 s");
+    Serial.flush();
+    delay(5000);
+    ESP.restart();
+  }
+
+  WiFi.mode(WIFI_STA);
+  WiFi.setHostname(WIFI_HOSTNAME);
+  WiFi.setSleep(true);
+  Serial.print("WiFi connected ");
+  Serial.println(WiFi.localIP());
+  Serial.flush();
+}
 
 static void wifiMaintain(uint32_t now_ms) {
   if (WiFi.status() == WL_CONNECTED) return;
   if ((uint32_t)(now_ms - g_last_wifi_attempt) < kWifiReconnectMs) return;
   g_last_wifi_attempt = now_ms;
   Serial.println("WiFi disconnected — reconnecting…");
-  WiFi.disconnect(true, false);
+  WiFi.disconnect(false);
   WiFi.mode(WIFI_STA);
-  WiFi.setSleep(false);
-  WiFi.begin(WIFI_SSID, WIFI_PASS);
+  WiFi.setHostname(WIFI_HOSTNAME);
+  WiFi.setSleep(true);
+  WiFi.begin();
 }
 
-static void wifiWaitSetup() {
-  WiFi.mode(WIFI_STA);
-  WiFi.setSleep(false);
-  WiFi.begin(WIFI_SSID, WIFI_PASS);
-  uint32_t start = millis();
-  while (WiFi.status() != WL_CONNECTED && (uint32_t)(millis() - start) < 20000) {
-    delay(250);
-    Serial.print(".");
+static void tryGatewayRegister(uint32_t now_ms) {
+  if (g_gateway_register_ok || WiFi.status() != WL_CONNECTED) return;
+  if (g_last_gateway_register_attempt_ms != 0 &&
+      (uint32_t)(now_ms - g_last_gateway_register_attempt_ms) < kGatewayRegisterRetryMs) {
+    return;
   }
-  Serial.println();
-  if (WiFi.status() == WL_CONNECTED) {
-    Serial.print("WiFi OK ");
-    Serial.println(WiFi.localIP());
-  } else {
-    Serial.println("WiFi failed — will retry in loop");
+  g_last_gateway_register_attempt_ms = now_ms;
+
+  JsonDocument doc;
+  doc["gateway_id"] = g_gateway_id;
+  doc["ip"] = WiFi.localIP().toString();
+  doc["firmware_version"] = FIRMWARE_VERSION;
+
+  String body;
+  serializeJson(doc, body);
+  const String url = String(API_BASE_URL) + API_REGISTER_PATH;
+
+  HTTPClient http;
+  http.setTimeout(10000);
+  if (!http.begin(url)) {
+    Serial.println("Gateway register: http.begin failed");
+    return;
   }
+  http.addHeader("Content-Type", "application/json");
+  const int code = http.POST(body);
+  http.end();
+
+  if (code >= 200 && code < 300) {
+    g_gateway_register_ok = true;
+    Serial.println("Gateway registered");
+    return;
+  }
+  Serial.printf("Gateway register failed HTTP %d (retry in %lu s)\n", code,
+                (unsigned long)(kGatewayRegisterRetryMs / 1000));
 }
 
 // ---- HTTP -------------------------------------------------------------
@@ -436,7 +520,7 @@ static bool postProximity(const TagState &t) {
 
   JsonDocument doc;
   doc["event_type"] = "proximity_update";
-  doc["gateway_id"] = GATEWAY_ID;
+  doc["gateway_id"] = g_gateway_id;
   doc["worker_tag_mac"] = t.is_worker ? macStr : "";
   doc["equipment_tag_mac"] = t.is_worker ? "" : macStr;
   doc["distance"] = distanceStr(t.distance);
@@ -636,10 +720,25 @@ static void processPendingSends(uint32_t now_ms) {
  */
 void setup() {
   Serial.begin(115200);
-  delay(200);
+#if ARDUINO_USB_CDC_ON_BOOT
+  // USB-CDC: give the host time to enumerate (Windows often needs ~1–2s). Avoid `while (!Serial)` —
+  // on some S3 + driver combos `Serial` never tests true and you lose logs or delay oddly.
+  delay(2000);
+#else
+  delay(300);
+#endif
+  Serial.println();
+  Serial.println("Helix gateway: boot");
+  Serial.flush();
 
   initTagStates();
-  wifiWaitSetup();
+  // Start BLE *before* WiFi. If WiFi.connect fails after a long attempt, some chips leave coexistence / BT
+  // address setup in a state where ble_hs_util_ensure_addr() errors and NimBLE hits assert → abort() on core 1.
+  bleSetup();
+  Serial.println("BLE gateway running (passive scan)");
+
+  wifiSetup();
+  tryGatewayRegister(millis());
 
   if (WiFi.status() == WL_CONNECTED) {
     configTime(kGmtOffsetSec, kDaylightOffsetSec, kNtpServer);
@@ -650,14 +749,21 @@ void setup() {
       Serial.println("NTP unavailable — events will use boot+millis() until time syncs");
     }
   }
-
-  bleSetup();
-  Serial.println("BLE gateway running (passive scan)");
 }
 
 void loop() {
   uint32_t now = millis();
   wifiMaintain(now);
+  tryGatewayRegister(now);
+
+  static uint32_t s_last_ble_log_ms = 0;
+  if ((uint32_t)(now - s_last_ble_log_ms) >= 10000) {
+    s_last_ble_log_ms = now;
+    Serial.printf("BLE scan: %lu known-tag advertisements (last 10 s)\n",
+                  (unsigned long)g_ble_known_adv_count);
+    g_ble_known_adv_count = 0;
+  }
+
   processDeviceExpiration(now);
   processHttpRetry(now);
   processPendingSends(now);

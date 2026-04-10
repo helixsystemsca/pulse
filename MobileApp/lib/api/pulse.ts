@@ -10,6 +10,8 @@ export type PulseMe = {
   avatar_url?: string | null;
   avatar_status?: "approved" | "pending" | "rejected" | string | null;
   permissions?: string[] | null;
+  /** UTC ISO from server — syncs client clock for shift “on-site” logic (see `serverTime.ts`). */
+  server_time?: string | null;
   company?: {
     id: string;
     name: string;

@@ -7,8 +7,11 @@ export type GatewayOut = {
   name: string;
   identifier: string;
   status: string;
+  /** False = plug-and-play pool until operator assigns a zone (omit on older APIs → treated as assigned). */
+  assigned?: boolean;
   zone_id: string | null;
   last_seen_at: string | null;
+  ingest_enabled?: boolean;
 };
 
 export type BleDeviceOut = {
@@ -65,8 +68,18 @@ function withCompany(path: string, companyId: string | null): string {
   return path.includes("?") ? `${path}&${qs}` : `${path}?${qs}`;
 }
 
-export async function fetchGateways(companyId: string | null): Promise<GatewayOut[]> {
-  return apiFetch<GatewayOut[]>(withCompany("/api/v1/gateways", companyId));
+export async function fetchGateways(
+  companyId: string | null,
+  opts?: { unassignedOnly?: boolean },
+): Promise<GatewayOut[]> {
+  const base = withCompany("/api/v1/gateways", companyId);
+  const qs =
+    opts?.unassignedOnly === true
+      ? base.includes("?")
+        ? `${base}&unassigned=true`
+        : `${base}?unassigned=true`
+      : base;
+  return apiFetch<GatewayOut[]>(qs);
 }
 
 export async function fetchGatewayStatus(companyId: string | null): Promise<GatewayStatusRow[]> {
@@ -148,7 +161,7 @@ export async function createGateway(
 export async function patchGateway(
   companyId: string | null,
   gatewayId: string,
-  body: { zone_id?: string | null; name?: string },
+  body: { zone_id?: string | null; name?: string; assigned?: boolean },
 ): Promise<GatewayOut> {
   return apiFetch<GatewayOut>(withCompany(`/api/v1/gateways/${gatewayId}`, companyId), {
     method: "PATCH",

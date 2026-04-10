@@ -7,6 +7,9 @@ export const theme = {
 
     text: "#FFFFFF",
     muted: "rgba(255,255,255,0.6)",
+    /** Readable on light frosted header (same family as `background`). */
+    headerGlassText: "#4C6085",
+    headerGlassMuted: "rgba(76, 96, 133, 0.78)",
 
     success: "#36F1CD", // aquamarine
     warning: "#F2BB05", // amber

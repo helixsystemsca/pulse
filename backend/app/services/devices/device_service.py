@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 import secrets
+from datetime import datetime, timezone
 from typing import Any, Optional, Tuple
 from uuid import uuid4
 
@@ -12,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth.security import hash_password
 from app.models.device_hub import AutomationBleDevice, AutomationGateway
-from app.models.domain import Tool, ToolStatus, User, Zone
+from app.models.domain import Company, Tool, ToolStatus, User, Zone
 
 
 def _uuid_str() -> str:
@@ -47,10 +48,12 @@ class DeviceService:
         name: str,
         identifier: str,
         zone_id: Optional[str] = None,
+        assigned: Optional[bool] = None,
     ) -> AutomationGateway:
         ident = normalize_gateway_identifier(identifier)
         if not ident:
             raise ValueError("identifier is required")
+        resolved_assigned = bool(zone_id) if assigned is None else bool(assigned)
         gw = AutomationGateway(
             id=_uuid_str(),
             company_id=company_id,
@@ -58,6 +61,7 @@ class DeviceService:
             identifier=ident,
             status="online",
             zone_id=zone_id,
+            assigned=resolved_assigned,
         )
         self._db.add(gw)
         await self._db.flush()
@@ -71,6 +75,34 @@ class DeviceService:
             )
         )
         return q.scalar_one_or_none()
+
+    async def get_gateway_by_identifier(self, *, company_id: str, identifier: str) -> Optional[AutomationGateway]:
+        ident = normalize_gateway_identifier(identifier)
+        if not ident:
+            return None
+        q = await self._db.execute(
+            select(AutomationGateway).where(
+                AutomationGateway.company_id == company_id,
+                AutomationGateway.identifier == ident,
+            )
+        )
+        return q.scalar_one_or_none()
+
+    async def list_gateways_by_identifier_global(self, identifier: str) -> list[AutomationGateway]:
+        ident = normalize_gateway_identifier(identifier)
+        if not ident:
+            return []
+        q = await self._db.execute(select(AutomationGateway).where(AutomationGateway.identifier == ident))
+        return list(q.scalars().all())
+
+    async def mark_gateway_seen_online(self, gw: AutomationGateway) -> None:
+        gw.last_seen_at = datetime.now(timezone.utc)
+        gw.status = "online"
+        await self._db.flush()
+
+    async def company_exists(self, company_id: str) -> bool:
+        q = await self._db.execute(select(Company.id).where(Company.id == company_id))
+        return q.scalar_one_or_none() is not None
 
     async def get_gateway_by_id_only(self, gateway_id: str) -> Optional[AutomationGateway]:
         """Resolve gateway by primary key (globally unique) — device ingest only."""
@@ -86,13 +118,13 @@ class DeviceService:
         await self._db.flush()
         return gw, plain
 
-    async def list_gateways(self, *, company_id: str) -> list[AutomationGateway]:
-        q = await self._db.execute(
-            select(AutomationGateway)
-            .where(AutomationGateway.company_id == company_id)
-            .order_by(AutomationGateway.name)
-        )
-        return list(q.scalars().all())
+    async def list_gateways(self, *, company_id: str, unassigned_only: bool = False) -> list[AutomationGateway]:
+        q = select(AutomationGateway).where(AutomationGateway.company_id == company_id)
+        if unassigned_only:
+            q = q.where(AutomationGateway.assigned.is_(False))
+        q = q.order_by(AutomationGateway.name)
+        rows = await self._db.execute(q)
+        return list(rows.scalars().all())
 
     async def patch_gateway(
         self,
@@ -106,6 +138,10 @@ class DeviceService:
             raise LookupError("gateway_not_found")
         if "zone_id" in updates:
             gw.zone_id = updates["zone_id"]
+        if "assigned" in updates:
+            gw.assigned = bool(updates["assigned"])
+        elif "zone_id" in updates and updates.get("zone_id"):
+            gw.assigned = True
         if "name" in updates:
             gw.name = str(updates["name"]).strip()
         if "status" in updates:

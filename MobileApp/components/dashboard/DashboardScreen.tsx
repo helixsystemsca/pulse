@@ -9,11 +9,10 @@ import { useSession } from "@/store/session";
 import { getOrganization, type Organization } from "@/lib/api/pulse";
 import { fetchAuthenticatedImageAsDataUri } from "@/lib/fetchAuthenticatedImageDataUri";
 import { uploadProfileAvatar } from "@/lib/api/profileAvatar";
+import { loadMyShiftPresence, type MyShiftPresence } from "@/lib/workforcePresence";
 
 /** Bundled hero (same asset as web `public/images/panorama.jpg`) until org background from the API is reliable. */
 const HOME_HERO_PANORAMA = require("../../assets/images/panorama.jpg") as ImageSourcePropType;
-
-type PresenceStatus = "green" | "amber" | "red";
 
 function firstName(full: string | null | undefined): string {
   const s = (full ?? "").trim();
@@ -22,10 +21,10 @@ function firstName(full: string | null | undefined): string {
   return parts[0] ?? "there";
 }
 
-function statusDotColor(status: PresenceStatus, colors: ReturnType<typeof useTheme>["colors"]) {
-  if (status === "green") return colors.success;
-  if (status === "amber") return colors.warning;
-  return colors.danger;
+function presenceDotColor(dot: MyShiftPresence["dot"], colors: ReturnType<typeof useTheme>["colors"]): string {
+  if (dot === "on_shift") return colors.success;
+  if (dot === "scheduled_off") return colors.warning;
+  return colors.headerGlassMuted;
 }
 
 function Avatar({
@@ -170,8 +169,8 @@ export function DashboardScreen() {
   const [org, setOrg] = useState<Organization | null>(null);
   const [orgErr, setOrgErr] = useState<string | null>(null);
   const [brandingKey, setBrandingKey] = useState(0);
-  const [companyLogoUri, setCompanyLogoUri] = useState<string | null>(null);
-  const [companyLogoFailed, setCompanyLogoFailed] = useState(false);
+  const [headerBgUri, setHeaderBgUri] = useState<string | null>(null);
+  const [shiftPresence, setShiftPresence] = useState<MyShiftPresence | null>(null);
   const [avatarReloadKey, setAvatarReloadKey] = useState(0);
   const [avatarPhotoUri, setAvatarPhotoUri] = useState<string | null>(null);
   const [avatarUploadBusy, setAvatarUploadBusy] = useState(false);
@@ -223,39 +222,35 @@ export function DashboardScreen() {
     };
   }, [token, isFocused]);
 
-  const effectiveLogoRaw = useMemo(
-    () => (org?.logo_url ?? session?.user.companyLogoUrl ?? "").trim(),
-    [org?.logo_url, session?.user.companyLogoUrl],
-  );
   const effectiveCompanyName = useMemo(
     () => (org?.name ?? session?.user.companyName ?? "").trim(),
     [org?.name, session?.user.companyName],
   );
 
+  const effectiveHeaderBgRaw = useMemo(
+    () => (org?.background_image_url ?? org?.header_image_url ?? "").trim(),
+    [org?.background_image_url, org?.header_image_url],
+  );
+
   useEffect(() => {
     let cancelled = false;
-    setCompanyLogoFailed(false);
-    if (!effectiveLogoRaw || !token) {
-      setCompanyLogoUri(null);
+    if (!effectiveHeaderBgRaw || !token) {
+      setHeaderBgUri(null);
       return;
     }
     void (async () => {
       try {
-        const uri = await fetchAuthenticatedImageAsDataUri(effectiveLogoRaw, token);
+        const uri = await fetchAuthenticatedImageAsDataUri(effectiveHeaderBgRaw, token);
         if (cancelled) return;
-        setCompanyLogoUri(uri);
-        if (!uri) setCompanyLogoFailed(true);
+        setHeaderBgUri(uri);
       } catch {
-        if (!cancelled) {
-          setCompanyLogoUri(null);
-          setCompanyLogoFailed(true);
-        }
+        if (!cancelled) setHeaderBgUri(null);
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [effectiveLogoRaw, token, brandingKey]);
+  }, [effectiveHeaderBgRaw, token, brandingKey]);
 
   const avatarRaw = useMemo(() => (session?.user.avatarUrl ?? "").trim(), [session?.user.avatarUrl]);
 
@@ -278,9 +273,44 @@ export function DashboardScreen() {
     };
   }, [avatarRaw, token, session?.user.id, avatarReloadKey]);
 
-  // Placeholder presence + zone until backend presence endpoint is wired.
-  const presence: PresenceStatus = "green";
-  const lastZone = "Garage";
+  useEffect(() => {
+    let cancelled = false;
+    let interval: ReturnType<typeof setInterval> | undefined;
+    if (!token || !isFocused || !session?.user.id) {
+      setShiftPresence(null);
+      return () => {
+        cancelled = true;
+      };
+    }
+    const run = async () => {
+      const p = await loadMyShiftPresence(token, session.user.id);
+      if (!cancelled) setShiftPresence(p);
+    };
+    void run();
+    interval = setInterval(run, 45_000);
+    return () => {
+      cancelled = true;
+      if (interval) clearInterval(interval);
+    };
+  }, [token, isFocused, session?.user.id]);
+
+  const displayShiftPresence: MyShiftPresence = useMemo(() => {
+    if (shiftPresence) return shiftPresence;
+    if (token && session?.user.id) {
+      return { primaryLabel: "Loading schedule…", detailLine: "", dot: "unknown" };
+    }
+    return { primaryLabel: "Sign in for schedule", detailLine: "", dot: "unknown" };
+  }, [shiftPresence, token, session?.user.id]);
+
+  const headerAvatarColors = useMemo(
+    () => ({
+      surface: "rgba(255,255,255,0.94)",
+      border: "rgba(76, 96, 133, 0.28)",
+      text: colors.headerGlassText,
+      muted: colors.headerGlassMuted,
+    }),
+    [colors.headerGlassMuted, colors.headerGlassText],
+  );
 
   const greetingName = useMemo(() => firstName(session?.user.fullName ?? null), [session?.user.fullName]);
   const initials = useMemo(() => {
@@ -297,6 +327,11 @@ export function DashboardScreen() {
     return { uri: avatarPhotoUri };
   }, [avatarPhotoUri]);
 
+  const headerBackgroundSource = useMemo((): ImageSourcePropType => {
+    if (headerBgUri) return { uri: headerBgUri };
+    return HOME_HERO_PANORAMA;
+  }, [headerBgUri]);
+
   // Temporary, mock toolbox content until tools API is aligned to backend.
   const toolbox = [
     { name: "Circular Saw", line1: "Ready · Blade guard", line2: "OK" },
@@ -304,146 +339,166 @@ export function DashboardScreen() {
     { name: "Batteries (×2)", line1: "Charged", batteryPct: 80 },
   ] as const;
 
+  /** Header band only — subtle frosted glass, not full-screen. */
+  const HEADER_BG_HEIGHT = 168;
+
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
-      <ImageBackground
-        source={HOME_HERO_PANORAMA}
-        style={{ flex: 1 }}
-        blurRadius={18}
-        resizeMode="cover"
+      <View
+        style={{
+          height: HEADER_BG_HEIGHT,
+          width: "100%",
+          overflow: "hidden",
+          borderBottomLeftRadius: radii.lg,
+          borderBottomRightRadius: radii.lg,
+        }}
       >
-        <BlurView intensity={35} tint="dark" style={{ flex: 1 }}>
-          <View style={{ flex: 1, paddingHorizontal: spacing.lg, paddingTop: spacing.lg }}>
-            <View style={{ flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between" }}>
-              <View style={{ flex: 1, paddingRight: spacing.md }}>
-                <Text style={{ color: colors.text, ...text.h1 }}>Hi, {greetingName}!</Text>
-                <View style={{ height: 10 }} />
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                  <View
-                    style={{
-                      width: 8,
-                      height: 8,
-                      borderRadius: 4,
-                      backgroundColor: statusDotColor(presence, colors),
-                    }}
-                  />
-                  <Text style={{ color: colors.muted, fontWeight: "700" }}>
-                    {presence === "green" ? "On-site" : presence === "amber" ? "Not scheduled" : "Needs attention"}
-                  </Text>
-                  <Text style={{ color: colors.muted, fontWeight: "700" }}>·</Text>
-                  <Text style={{ color: colors.muted, fontWeight: "700" }}>{lastZone}</Text>
-                </View>
-              </View>
-
-              <Avatar
-                initials={initials}
-                colors={colors}
-                imageSource={avatarDisplaySource}
-                imageReloadKey={avatarReloadKey}
-                profileOwnerKey={session?.user.id}
-                onPress={token ? pickAndUploadAvatar : undefined}
-              />
-            </View>
-
-            {companyLogoUri && !companyLogoFailed ? (
-              <View style={{ alignItems: "center", marginTop: spacing.md }}>
-                <Image
-                  source={{ uri: companyLogoUri }}
-                  style={{ width: 220, height: 64 }}
-                  resizeMode="contain"
-                  accessibilityLabel="Company logo"
-                  onError={() => setCompanyLogoFailed(true)}
-                />
-              </View>
-            ) : effectiveCompanyName ? (
-              <View style={{ alignItems: "center", marginTop: spacing.md }}>
-                <Text
-                  style={{
-                    color: colors.text,
-                    fontWeight: "800",
-                    fontSize: 20,
-                    letterSpacing: -0.3,
-                    textAlign: "center",
-                  }}
-                  numberOfLines={2}
-                  accessibilityLabel="Company name"
-                >
-                  {effectiveCompanyName}
-                </Text>
-              </View>
-            ) : null}
-
-            <View style={{ height: spacing.lg }} />
-
+        <ImageBackground
+          source={headerBackgroundSource}
+          style={{ flex: 1, width: "100%", height: "100%" }}
+          blurRadius={5}
+          resizeMode="cover"
+        >
+          <BlurView intensity={14} tint="light" style={{ flex: 1 }}>
             <View
               style={{
-                backgroundColor: "rgba(255,255,255,0.14)",
-                borderWidth: 1,
-                borderColor: "rgba(255,255,255,0.16)",
-                borderRadius: radii.lg,
-                padding: spacing.md,
+                flex: 1,
+                paddingHorizontal: spacing.lg,
+                paddingTop: spacing.md,
+                paddingBottom: spacing.md,
+                backgroundColor: "rgba(255,255,255,0.22)",
+                borderBottomWidth: 1,
+                borderBottomColor: "rgba(255,255,255,0.28)",
               }}
             >
-              <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-                <Text style={{ color: colors.text, fontWeight: "900" }}>Current Toolbox</Text>
-                <Text style={{ color: colors.success, fontWeight: "900" }}>View All</Text>
+              <View style={{ flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between" }}>
+                <View style={{ flex: 1, paddingRight: spacing.md }}>
+                  <Text style={{ color: colors.headerGlassText, ...text.h1 }}>Hi, {greetingName}!</Text>
+                  {effectiveCompanyName ? (
+                    <Text
+                      style={{
+                        marginTop: 4,
+                        color: colors.headerGlassMuted,
+                        fontWeight: "700",
+                        fontSize: 14,
+                      }}
+                      numberOfLines={1}
+                      accessibilityLabel="Company name"
+                    >
+                      {effectiveCompanyName}
+                    </Text>
+                  ) : null}
+                  <View style={{ height: 10 }} />
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                    <View
+                      style={{
+                        width: 8,
+                        height: 8,
+                        borderRadius: 4,
+                        backgroundColor: presenceDotColor(displayShiftPresence.dot, colors),
+                      }}
+                    />
+                    <Text style={{ color: colors.headerGlassText, fontWeight: "700" }}>
+                      {displayShiftPresence.primaryLabel}
+                    </Text>
+                    {displayShiftPresence.detailLine ? (
+                      <>
+                        <Text style={{ color: colors.headerGlassMuted, fontWeight: "700" }}>·</Text>
+                        <Text style={{ color: colors.headerGlassMuted, fontWeight: "700" }}>
+                          {displayShiftPresence.detailLine}
+                        </Text>
+                      </>
+                    ) : null}
+                  </View>
+                </View>
+
+                <Avatar
+                  initials={initials}
+                  colors={headerAvatarColors}
+                  imageSource={avatarDisplaySource}
+                  imageReloadKey={avatarReloadKey}
+                  profileOwnerKey={session?.user.id}
+                  onPress={token ? pickAndUploadAvatar : undefined}
+                />
               </View>
             </View>
+          </BlurView>
+        </ImageBackground>
+      </View>
 
-            <View style={{ height: spacing.sm }} />
-
-            <ScrollView contentContainerStyle={{ paddingBottom: 110 }}>
-              {(has("module.tool_tracking.read") || true) && (
-                <View style={{ gap: 10 }}>
-                  {toolbox.map((t) => (
-                    <ToolboxCard
-                      key={t.name}
-                      name={t.name}
-                      line1={t.line1}
-                      line2={"line2" in t ? (t as any).line2 : undefined}
-                      batteryPct={"batteryPct" in t ? (t as any).batteryPct : undefined}
-                    />
-                  ))}
-                </View>
-              )}
-
-              {orgErr ? (
-                <View
-                  style={{
-                    marginTop: 14,
-                    backgroundColor: "rgba(235,81,96,0.14)",
-                    borderColor: "rgba(235,81,96,0.35)",
-                    borderWidth: 1,
-                    borderRadius: radii.md,
-                    padding: 12,
-                  }}
-                >
-                  <Text style={{ color: colors.text, fontWeight: "800" }}>Org load failed</Text>
-                  <Text style={{ marginTop: 4, color: colors.muted }}>{orgErr}</Text>
-                </View>
-              ) : null}
-
-              {!token ? (
-                <View
-                  style={{
-                    marginTop: 14,
-                    backgroundColor: "rgba(255,255,255,0.12)",
-                    borderColor: "rgba(255,255,255,0.18)",
-                    borderWidth: 1,
-                    borderRadius: radii.md,
-                    padding: 12,
-                  }}
-                >
-                  <Text style={{ color: colors.text, fontWeight: "800" }}>Not signed in</Text>
-                  <Text style={{ marginTop: 4, color: colors.muted }}>
-                    Set a session token and configure `EXPO_PUBLIC_API_BASE_URL` to load live org/user data.
-                  </Text>
-                </View>
-              ) : null}
-            </ScrollView>
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{
+          paddingHorizontal: spacing.lg,
+          paddingTop: spacing.lg,
+          paddingBottom: 110,
+        }}
+      >
+        <View
+          style={{
+            backgroundColor: colors.surface,
+            borderWidth: 1,
+            borderColor: colors.border,
+            borderRadius: radii.lg,
+            padding: spacing.md,
+          }}
+        >
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+            <Text style={{ color: colors.text, fontWeight: "900" }}>Current Toolbox</Text>
+            <Text style={{ color: colors.success, fontWeight: "900" }}>View All</Text>
           </View>
-        </BlurView>
-      </ImageBackground>
+        </View>
+
+        <View style={{ height: spacing.sm }} />
+
+        {(has("module.tool_tracking.read") || true) && (
+          <View style={{ gap: 10 }}>
+            {toolbox.map((t) => (
+              <ToolboxCard
+                key={t.name}
+                name={t.name}
+                line1={t.line1}
+                line2={"line2" in t ? (t as any).line2 : undefined}
+                batteryPct={"batteryPct" in t ? (t as any).batteryPct : undefined}
+              />
+            ))}
+          </View>
+        )}
+
+        {orgErr ? (
+          <View
+            style={{
+              marginTop: 14,
+              backgroundColor: "rgba(235,81,96,0.14)",
+              borderColor: "rgba(235,81,96,0.35)",
+              borderWidth: 1,
+              borderRadius: radii.md,
+              padding: 12,
+            }}
+          >
+            <Text style={{ color: colors.text, fontWeight: "800" }}>Org load failed</Text>
+            <Text style={{ marginTop: 4, color: colors.muted }}>{orgErr}</Text>
+          </View>
+        ) : null}
+
+        {!token ? (
+          <View
+            style={{
+              marginTop: 14,
+              backgroundColor: "rgba(255,255,255,0.12)",
+              borderColor: "rgba(255,255,255,0.18)",
+              borderWidth: 1,
+              borderRadius: radii.md,
+              padding: 12,
+            }}
+          >
+            <Text style={{ color: colors.text, fontWeight: "800" }}>Not signed in</Text>
+            <Text style={{ marginTop: 4, color: colors.muted }}>
+              Set a session token and configure `EXPO_PUBLIC_API_BASE_URL` to load live org/user data.
+            </Text>
+          </View>
+        ) : null}
+      </ScrollView>
     </View>
   );
 }
