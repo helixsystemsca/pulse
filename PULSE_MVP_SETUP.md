@@ -1,6 +1,6 @@
 # Pulse MVP — full-stack setup
 
-This guide covers the **helixsystems-landing** Next.js Pulse UI with the **backend** FastAPI service, PostgreSQL, JWT auth, and tenant-scoped **`/api/v1/pulse/*`** APIs.
+This guide covers the **`frontend/`** Next.js Pulse UI with the **backend** FastAPI service, PostgreSQL, JWT auth, and tenant-scoped **`/api/v1/pulse/*`** APIs.
 
 ## Prerequisites
 
@@ -61,16 +61,16 @@ Set **`SYS_ADMIN_PASSWORD`** (8+ characters), optionally **`SYS_ADMIN_EMAIL`** (
    - Use system admin to create a **company** and **users** (see `POST /api/v1/system/companies` and your user-creation flow / admin tooling).
    - Log in with a tenant user’s **email** and password (**minimum 8 characters** per `LoginRequest`).
 
-## 3. Frontend (Next.js — helixsystems-landing)
+## 3. Frontend (Next.js — `frontend/`)
 
 1. Install dependencies:
 
    ```bash
-   cd helixsystems-landing
+   cd frontend
    npm install
    ```
 
-2. Copy `helixsystems-landing/.env.example` to `helixsystems-landing/.env.local` and set:
+2. Copy `frontend/.env.example` to `frontend/.env.local` and set:
 
    | Variable | Purpose |
    |----------|---------|
@@ -108,7 +108,7 @@ Scheduling enforces **overlap** and **supervisor / ticketed** rules; **availabil
 - [ ] Run **`alembic upgrade head`**.
 - [ ] Start **uvicorn**; confirm OpenAPI at `http://127.0.0.1:8000/docs` (non-production).
 - [ ] Create a **company** and **tenant users** with passwords (8+ chars).
-- [ ] Configure **`helixsystems-landing/.env.local`** with **`NEXT_PUBLIC_API_URL`**.
+- [ ] Configure **`frontend/.env.local`** with **`NEXT_PUBLIC_API_URL`**.
 - [ ] Run **`npm run dev`**; test **`/login`** → **`/overview`**.
 - [ ] (Later) Point **`PULSE_UPLOADS_DIR`** / app config at **S3/R2** and replace local file writes in the beacon photo handler.
 

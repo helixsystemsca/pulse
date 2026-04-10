@@ -1,6 +1,6 @@
 # Helix Systems — codebase map
 
-Living overview of **helixsystems-landing** (marketing + Pulse app), the **operations backend**, and suggested cleanups.
+Living overview of **`frontend/`** (marketing + Pulse app), the **operations backend**, and suggested cleanups.
 
 ---
 
@@ -77,7 +77,7 @@ Supporting pieces: `components/site/*`, shared `app/layout.tsx`, `globals.css`, 
 
 ### `maintenance_system/` (removed)
 
-- **Status:** Standalone `maintenance_system/backend` + `frontend` were **not referenced** by `helixsystems-landing` or `backend/` (only self-references in its own README).
+- **Status:** Standalone `maintenance_system/backend` + its old web tree were **not referenced** by the current **`frontend/`** app or `backend/` (only self-references in its own README).
 - **Decision:** Treated as an old or experimental slice. **Folder deleted** from this repo so you can reintroduce maintenance features cleanly on the main `backend` + Pulse app stack when ready.
 
 ### Optional follow-ups (from earlier audit)

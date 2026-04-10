@@ -22,7 +22,7 @@ This document is aimed at **enterprise IT and security reviewers**. It describes
                  on LAN for cloud                                      sets X-Forwarded-Proto
 ```
 
-- **BLE layer:** Untrusted broadcast medium. Gateways must **whitelist** known tag IDs / MACs, **ignore** unknown frames, and **debounce** to limit flooding (see `firmware/esp32-gateway/README.md`).
+- **BLE layer:** Untrusted broadcast medium. Gateways must **whitelist** known tag IDs / MACs, **ignore** unknown frames, and **debounce** to limit flooding (see `firmware/esp32/README.md`).
 - **Gateway → cloud:** Authenticated with **per-gateway secret** (bcrypt hash stored server-side; plaintext only at rotate time).
 - **User → cloud:** JWT bearer tokens for interactive users; **RBAC** via `UserRole` and permission checks on routes.
 - **Server → customer:** No callback channel required for ingestion (pull/poll from devices is not used for the event path described here).

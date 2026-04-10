@@ -1,7 +1,7 @@
 """Canonical feature keys editable from the internal system admin dashboard."""
 
 # Product-facing catalog (system admin UI). Order matches tenant sidebar in `pulse-app.ts`.
-# Keys must stay in sync with `helixsystems-landing/lib/pulse-nav-features.ts`.
+# Keys must stay in sync with `frontend/lib/pulse-nav-features.ts`.
 GLOBAL_SYSTEM_FEATURES: tuple[str, ...] = (
     "compliance",
     "schedule",
