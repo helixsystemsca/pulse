@@ -3,6 +3,8 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import type { ImageSourcePropType } from "react-native";
 import { Alert, Image, ImageBackground, Pressable, ScrollView, Text, View } from "react-native";
 import { BlurView } from "expo-blur";
+import { LinearGradient } from "expo-linear-gradient";
+import FontAwesome from "@expo/vector-icons/FontAwesome";
 import * as ImagePicker from "expo-image-picker";
 import { useTheme } from "@/theme/ThemeProvider";
 import { useSession } from "@/store/session";
@@ -24,7 +26,8 @@ function firstName(full: string | null | undefined): string {
 function presenceDotColor(dot: MyShiftPresence["dot"], colors: ReturnType<typeof useTheme>["colors"]): string {
   if (dot === "on_shift") return colors.success;
   if (dot === "scheduled_off") return colors.warning;
-  return colors.headerGlassMuted;
+  /** Readable on dusk bar */
+  return "rgba(255,255,255,0.55)";
 }
 
 function Avatar({
@@ -305,12 +308,26 @@ export function DashboardScreen() {
   const headerAvatarColors = useMemo(
     () => ({
       surface: "rgba(255,255,255,0.94)",
-      border: "rgba(76, 96, 133, 0.28)",
+      border: "rgba(255,255,255,0.45)",
       text: colors.headerGlassText,
       muted: colors.headerGlassMuted,
     }),
     [colors.headerGlassMuted, colors.headerGlassText],
   );
+
+  /** Zone when on shift; otherwise company name for context. */
+  const headerLocationLine = useMemo(() => {
+    if (displayShiftPresence.dot === "on_shift" && displayShiftPresence.detailLine) {
+      return displayShiftPresence.detailLine;
+    }
+    return effectiveCompanyName;
+  }, [displayShiftPresence.detailLine, displayShiftPresence.dot, effectiveCompanyName]);
+
+  /** Extra schedule detail only when not using detail as location (on-site zone). */
+  const headerScheduleDetail = useMemo(() => {
+    if (displayShiftPresence.dot === "on_shift") return "";
+    return displayShiftPresence.detailLine ?? "";
+  }, [displayShiftPresence.detailLine, displayShiftPresence.dot]);
 
   const greetingName = useMemo(() => firstName(session?.user.fullName ?? null), [session?.user.fullName]);
   const initials = useMemo(() => {
@@ -339,8 +356,11 @@ export function DashboardScreen() {
     { name: "Batteries (×2)", line1: "Charged", batteryPct: 80 },
   ] as const;
 
-  /** Header band only — subtle frosted glass, not full-screen. */
-  const HEADER_BG_HEIGHT = 168;
+  /** Header band only — subtle frosted glass; dusk bar with welcome + location (left) and schedule (right). */
+  const HEADER_BG_HEIGHT = 178;
+  /** Dusk #4C6085 — gradient for bottom bar (~90% opacity feel). */
+  const duskBarGradient = ["rgba(76, 96, 133, 0.58)", "rgba(76, 96, 133, 0.9)"] as const;
+  const barScheduleText = { color: "#FFFFFF" as const, fontSize: 13, fontWeight: "700" as const, lineHeight: 18 };
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
@@ -359,59 +379,16 @@ export function DashboardScreen() {
           blurRadius={5}
           resizeMode="cover"
         >
-          <BlurView intensity={14} tint="light" style={{ flex: 1 }}>
-            <View
-              style={{
-                flex: 1,
-                paddingHorizontal: spacing.lg,
-                paddingTop: spacing.md,
-                paddingBottom: spacing.md,
-                backgroundColor: "rgba(255,255,255,0.22)",
-                borderBottomWidth: 1,
-                borderBottomColor: "rgba(255,255,255,0.28)",
-              }}
-            >
-              <View style={{ flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between" }}>
-                <View style={{ flex: 1, paddingRight: spacing.md }}>
-                  <Text style={{ color: colors.headerGlassText, ...text.h1 }}>Hi, {greetingName}!</Text>
-                  {effectiveCompanyName ? (
-                    <Text
-                      style={{
-                        marginTop: 4,
-                        color: colors.headerGlassMuted,
-                        fontWeight: "700",
-                        fontSize: 14,
-                      }}
-                      numberOfLines={1}
-                      accessibilityLabel="Company name"
-                    >
-                      {effectiveCompanyName}
-                    </Text>
-                  ) : null}
-                  <View style={{ height: 10 }} />
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                    <View
-                      style={{
-                        width: 8,
-                        height: 8,
-                        borderRadius: 4,
-                        backgroundColor: presenceDotColor(displayShiftPresence.dot, colors),
-                      }}
-                    />
-                    <Text style={{ color: colors.headerGlassText, fontWeight: "700" }}>
-                      {displayShiftPresence.primaryLabel}
-                    </Text>
-                    {displayShiftPresence.detailLine ? (
-                      <>
-                        <Text style={{ color: colors.headerGlassMuted, fontWeight: "700" }}>·</Text>
-                        <Text style={{ color: colors.headerGlassMuted, fontWeight: "700" }}>
-                          {displayShiftPresence.detailLine}
-                        </Text>
-                      </>
-                    ) : null}
-                  </View>
-                </View>
-
+          <BlurView intensity={14} tint="light" style={{ flex: 1, overflow: "hidden" }}>
+            <View style={{ flex: 1, backgroundColor: "rgba(255,255,255,0.14)" }}>
+              <View
+                style={{
+                  position: "absolute",
+                  top: spacing.md,
+                  right: spacing.lg,
+                  zIndex: 2,
+                }}
+              >
                 <Avatar
                   initials={initials}
                   colors={headerAvatarColors}
@@ -421,6 +398,109 @@ export function DashboardScreen() {
                   onPress={token ? pickAndUploadAvatar : undefined}
                 />
               </View>
+
+              <LinearGradient
+                colors={[...duskBarGradient]}
+                locations={[0, 1]}
+                start={{ x: 0.5, y: 0 }}
+                end={{ x: 0.5, y: 1 }}
+                style={{
+                  position: "absolute",
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  paddingHorizontal: spacing.md,
+                  paddingVertical: 8,
+                }}
+              >
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: 10,
+                  }}
+                  accessibilityRole="summary"
+                  accessibilityLabel={`Hi ${greetingName}. ${headerLocationLine ? `${headerLocationLine}. ` : ""}${displayShiftPresence.primaryLabel}${headerScheduleDetail ? `. ${headerScheduleDetail}` : ""}`}
+                >
+                  <View style={{ flex: 1, minWidth: 0, paddingRight: 4 }}>
+                    <Text
+                      style={{
+                        color: "#FFFFFF",
+                        fontSize: 20,
+                        fontWeight: "800",
+                        lineHeight: 24,
+                        letterSpacing: -0.2,
+                      }}
+                      numberOfLines={1}
+                      ellipsizeMode="tail"
+                      accessibilityRole="header"
+                    >
+                      Hi, {greetingName}!
+                    </Text>
+                    {headerLocationLine ? (
+                      <View
+                        style={{
+                          flexDirection: "row",
+                          alignItems: "center",
+                          gap: 5,
+                          marginTop: 3,
+                          minHeight: 18,
+                        }}
+                      >
+                        <FontAwesome
+                          name="map-marker"
+                          size={13}
+                          color="rgba(255,255,255,0.92)"
+                          style={{ marginTop: 1 }}
+                        />
+                        <Text
+                          style={{
+                            ...barScheduleText,
+                            flex: 1,
+                            minWidth: 0,
+                            color: "rgba(255,255,255,0.92)",
+                            fontWeight: "600",
+                          }}
+                          numberOfLines={1}
+                          ellipsizeMode="tail"
+                          accessibilityLabel={
+                            displayShiftPresence.dot === "on_shift" ? "Location" : "Organization"
+                          }
+                        >
+                          {headerLocationLine}
+                        </Text>
+                      </View>
+                    ) : null}
+                  </View>
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      flexShrink: 0,
+                      gap: 6,
+                      maxWidth: "40%",
+                    }}
+                  >
+                    <View
+                      style={{
+                        width: 7,
+                        height: 7,
+                        borderRadius: 4,
+                        backgroundColor: presenceDotColor(displayShiftPresence.dot, colors),
+                      }}
+                    />
+                    <Text style={{ ...barScheduleText, flexShrink: 1 }} numberOfLines={1} ellipsizeMode="tail">
+                      {displayShiftPresence.primaryLabel}
+                      {headerScheduleDetail ? (
+                        <Text style={{ color: "rgba(255,255,255,0.85)", fontWeight: "600" }}>
+                          {` · ${headerScheduleDetail}`}
+                        </Text>
+                      ) : null}
+                    </Text>
+                  </View>
+                </View>
+              </LinearGradient>
             </View>
           </BlurView>
         </ImageBackground>
