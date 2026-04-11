@@ -1,11 +1,38 @@
 """Application configuration (env-driven)."""
 
+import logging
 from functools import lru_cache
 from typing import List, Optional, Set
 from urllib.parse import urlparse
 
 from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+_log = logging.getLogger(__name__)
+
+
+def _browser_origin_from_token(raw: str) -> Optional[str]:
+    """Return scheme://host[:port] or None if ``raw`` is not a valid browser Origin (common typo: ``https:host``)."""
+    o = raw.strip()
+    if len(o) >= 2 and o[0] == o[-1] and o[0] in "\"'":
+        o = o[1:-1].strip()
+    o = o.rstrip("/")
+    if not o:
+        return None
+    lower = o.lower()
+    if "://" in o:
+        to_parse = o
+    elif lower.startswith("http:") or lower.startswith("https:"):
+        # Typo ``https:host`` (missing ``//``) — never prepend another scheme.
+        return None
+    else:
+        to_parse = f"https://{o}"
+    parsed = urlparse(to_parse)
+    if parsed.scheme not in ("http", "https") or not parsed.netloc:
+        return None
+    if parsed.path not in ("", "/") or parsed.query or parsed.fragment:
+        return None
+    return f"{parsed.scheme}://{parsed.netloc}".rstrip("/")
 
 
 class Settings(BaseSettings):
@@ -163,23 +190,30 @@ class Settings(BaseSettings):
         out: List[str] = []
         seen: Set[str] = set()
         for part in text.split(","):
-            o = part.strip()
-            if len(o) >= 2 and o[0] == o[-1] and o[0] in "\"'":
-                o = o[1:-1].strip()
-            # Origins must match the browser's Origin header (no path, no trailing slash).
-            o = o.rstrip("/")
+            raw = part.strip()
+            if not raw:
+                continue
+            o = _browser_origin_from_token(raw)
             if not o:
+                _log.warning(
+                    "CORS_ORIGINS skipped invalid origin token %r (use https://host, e.g. https://pulse.example.com)",
+                    raw[:120],
+                )
                 continue
             if o not in seen:
                 seen.add(o)
                 out.append(o)
         extra = self.cors_extra_origins.replace(";", ",")
         for part in extra.split(","):
-            o = part.strip()
-            if len(o) >= 2 and o[0] == o[-1] and o[0] in "\"'":
-                o = o[1:-1].strip()
-            o = o.rstrip("/")
+            raw = part.strip()
+            if not raw:
+                continue
+            o = _browser_origin_from_token(raw)
             if not o:
+                _log.warning(
+                    "CORS_EXTRA_ORIGINS skipped invalid origin token %r",
+                    raw[:120],
+                )
                 continue
             if o not in seen:
                 seen.add(o)
@@ -217,10 +251,15 @@ class Settings(BaseSettings):
         if not raw:
             return ""
         to_parse = raw if "://" in raw else f"https://{raw}"
-        parsed = urlparse(to_parse)
-        if parsed.scheme and parsed.netloc:
-            return f"{parsed.scheme}://{parsed.netloc}".rstrip("/")
-        return raw.rstrip("/")
+        o = _browser_origin_from_token(to_parse)
+        if o:
+            return o
+        _log.warning(
+            "PULSE_APP_PUBLIC_URL is not a valid browser origin %r — fix (e.g. https://pulse.example.com); "
+            "it will not be merged into CORS until corrected.",
+            raw[:120],
+        )
+        return ""
 
 
 @lru_cache

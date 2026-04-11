@@ -4,11 +4,11 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "node scripts/next-build-with-version.mjs",
     "start": "next start",
     "lint": "next lint",
     "test": "vitest run",
-    "deploy:check": "npm run build"
+    "deploy:check": "node scripts/next-build-with-version.mjs --no-bump"
   },
   "engines": {
     "node": ">=18.18.0"

@@ -28,4 +28,6 @@ jobs:
       - name: Install
         run: npm ci
       - name: Build (production)
+        env:
+          SKIP_BUILD_VERSION_BUMP: "1"
         run: npm run build

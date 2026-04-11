@@ -18,6 +18,7 @@ import {
   writeSession,
 } from "@/lib/pulse-session";
 import { helixMarketingHref, navigateAfterPulseLogin, pulseRoutes } from "@/lib/pulse-app";
+import { PULSE_BUILD_VERSION } from "@/lib/pulse-build-version";
 import { mailtoInfo } from "@/lib/helix-emails";
 import { useTheme } from "@/components/theme/ThemeProvider";
 
@@ -241,7 +242,11 @@ export default function LoginPage() {
             </div>
           </div>
 
-          <p className="mt-8 text-center text-xs text-ds-muted">© 2026 Helix Systems</p>
+          <p className="mt-8 text-center text-xs text-ds-muted">
+            © 2026 Helix Systems
+            <span className="mx-1.5 text-ds-muted/70">·</span>
+            <span className="tabular-nums">{PULSE_BUILD_VERSION}</span>
+          </p>
         </div>
       </div>
     </AuthScreenShell>
