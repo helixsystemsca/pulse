@@ -22,6 +22,7 @@ DEFAULT_WORKERS_SETTINGS: dict[str, Any] = {
     ],
     "shifts": [
         {"key": "day", "label": "Day shift"},
+        {"key": "afternoon", "label": "Afternoon shift"},
         {"key": "night", "label": "Night shift"},
         {"key": "custom", "label": "Custom"},
     ],

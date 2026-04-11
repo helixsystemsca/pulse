@@ -12,6 +12,8 @@ export type WorkerRow = {
   phone: string | null;
   department: string | null;
   job_title: string | null;
+  /** HR shift key; label comes from workers settings `shifts`. */
+  shift?: string | null;
   avatar_url?: string | null;
   last_active_at?: string | null;
   last_login_city?: string | null;

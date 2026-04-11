@@ -71,6 +71,7 @@ class WorkerRowOut(BaseModel):
     phone: Optional[str] = None
     department: Optional[str] = None
     job_title: Optional[str] = None
+    shift: Optional[str] = None
     avatar_url: Optional[str] = None
     last_active_at: Optional[datetime] = None
     last_login_city: Optional[str] = None

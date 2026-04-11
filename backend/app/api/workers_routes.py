@@ -576,6 +576,7 @@ async def list_workers(
                 phone=h.phone if h else None,
                 department=h.department if h else None,
                 job_title=h.job_title if h else None,
+                shift=h.shift if h else None,
                 avatar_url=co_worker_avatar_url(uid_s, u.avatar_url),
                 last_active_at=u.last_active_at,
                 last_login_city=le.city if le else None,

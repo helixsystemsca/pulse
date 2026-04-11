@@ -161,6 +161,17 @@ function roleBadge(role: string): string {
   return "app-badge-slate";
 }
 
+function shiftRosterLabel(
+  key: string | null | undefined,
+  shifts: { key: string; label: string }[] | undefined,
+): string {
+  const k = key?.trim();
+  if (!k) return "—";
+  const row = shifts?.find((s) => s.key === k);
+  if (row?.label) return row.label;
+  return k.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
 function roleGroupTitle(role: string): string {
   if (role === "company_admin") return "Company Admin";
   if (role === "manager") return "Managers";
@@ -1004,6 +1015,7 @@ export function WorkersApp() {
                             <tr className={dataTableHeadRowClass}>
                               <th className="px-4 py-3">Name</th>
                               <th className="px-4 py-3">Role</th>
+                              <th className="px-4 py-3">Shift</th>
                               <th className="px-4 py-3">Status</th>
                               <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-ds-muted">
                                 Last active
@@ -1051,6 +1063,9 @@ export function WorkersApp() {
                                       </span>
                                     ))}
                                   </div>
+                                </td>
+                                <td className="px-4 py-3 text-sm text-ds-foreground">
+                                  {shiftRosterLabel(row.shift, fullSettings.shifts)}
                                 </td>
                                 <td className="px-4 py-3">
                                   <span className="inline-flex items-center gap-1.5 text-sm text-ds-foreground">
@@ -1583,7 +1598,7 @@ export function WorkersApp() {
                   </p>
                   <p>
                     <span className="text-pulse-muted">Shift: </span>
-                    {profile.shift ?? "—"}
+                    {shiftRosterLabel(profile.shift, fullSettings.shifts)}
                   </p>
                   <p>
                     <span className="text-pulse-muted">Supervisor: </span>
