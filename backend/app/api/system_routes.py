@@ -26,6 +26,7 @@ from app.core.features.system_catalog import (
     normalize_enabled_features,
 )
 from app.core.company_logo_upload import INTERNAL_LOGO_PATH, normalize_logo_content_type, validate_logo_bytes
+from app.core.login_activity import latest_login_event_per_user, list_recent_login_events
 from app.core.pulse_storage import write_company_logo_bytes
 from app.core.system_audit import record_system_log
 from app.core.system_tokens import generate_raw_token, hash_system_token as hash_opaque_token
@@ -40,6 +41,7 @@ from app.models.domain import (
     UserRole,
 )
 from app.schemas.auth import Token
+from app.schemas.login_events import LoginEventOut
 from app.schemas.system_admin import (
     SystemCompanyBootstrapPassword,
     SystemCompanyCreate,
@@ -624,8 +626,10 @@ async def list_all_users(
         )
     stmt = stmt.order_by(User.created_at.desc()).offset(offset).limit(limit)
     rows = (await db.execute(stmt)).all()
+    login_latest = await latest_login_event_per_user(db, [u.id for u, _ in rows])
     out_users: list[SystemUserRow] = []
     for u, company_name in rows:
+        le = login_latest.get(u.id)
         out_users.append(
             SystemUserRow(
                 id=u.id,
@@ -637,6 +641,10 @@ async def list_all_users(
                 company_name=company_name,
                 is_active=u.is_active,
                 last_login=u.last_login.isoformat() if u.last_login else None,
+                last_active_at=u.last_active_at.isoformat() if u.last_active_at else None,
+                last_login_city=le.city if le else None,
+                last_login_region=le.region if le else None,
+                last_login_user_agent=le.user_agent if le else None,
             )
         )
 
@@ -665,6 +673,20 @@ async def list_all_users(
         )
 
     return SystemUsersDirectoryOut(users=out_users, pending_invites=out_inv)
+
+
+@router.get("/users/{user_id}/login-events", response_model=list[LoginEventOut])
+async def system_user_login_events(
+    user_id: str,
+    _: Annotated[User, Depends(require_system_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> list[LoginEventOut]:
+    """Last 20 password logins for any user (system_admin)."""
+    u = await db.get(User, user_id)
+    if not u:
+        raise HTTPException(status_code=404, detail="User not found")
+    rows = await list_recent_login_events(db, user_id, limit=20)
+    return [LoginEventOut.model_validate(r) for r in rows]
 
 
 @router.post("/users/{user_id}/impersonate", response_model=Token)

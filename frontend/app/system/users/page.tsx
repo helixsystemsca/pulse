@@ -1,12 +1,14 @@
 "use client";
 
-import { AlertCircle, Info } from "lucide-react";
+import { AlertCircle, Info, Loader2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ImpersonationTenantModal } from "@/components/system/ImpersonationTenantModal";
 import { Card } from "@/components/pulse/Card";
 import { DataTableCard, dataTableBodyRow, dataTableHeadRowClass } from "@/components/ui/DataTable";
 import { dsInputClass, dsLabelClass } from "@/components/ui/ds-form-classes";
 import { apiFetch } from "@/lib/api";
+import type { LoginEventRow } from "@/lib/workersService";
+import { fetchSystemUserLoginEvents } from "@/lib/workersService";
 import { setImpersonationOverlayAccessToken } from "@/lib/impersonation-overlay-token";
 import { parseClientApiError } from "@/lib/parse-client-api-error";
 import { readSession } from "@/lib/pulse-session";
@@ -20,6 +22,10 @@ type UserRow = {
   company_name: string | null;
   is_active: boolean;
   last_login: string | null;
+  last_active_at?: string | null;
+  last_login_city?: string | null;
+  last_login_region?: string | null;
+  last_login_user_agent?: string | null;
 };
 
 type PendingInviteRow = {
@@ -48,6 +54,30 @@ const INPUT = dsInputClass;
 const BTN_PRIMARY = "ds-btn-solid-primary px-4 py-2 text-sm";
 const BTN_SECONDARY = "ds-btn-secondary px-4 py-2 text-sm";
 
+function formatWhen(iso: string | null | undefined): string {
+  if (!iso) return "—";
+  try {
+    return new Date(iso).toLocaleString();
+  } catch {
+    return iso;
+  }
+}
+
+function formatGeo(r: UserRow): string {
+  const c = r.last_login_city?.trim();
+  const reg = r.last_login_region?.trim();
+  if (c && reg) return `${c}, ${reg}`;
+  if (c) return c;
+  if (reg) return reg;
+  return "—";
+}
+
+function shortenUa(ua: string | null | undefined, max = 56): string {
+  const s = (ua ?? "").trim();
+  if (!s) return "—";
+  return s.length > max ? `${s.slice(0, max)}…` : s;
+}
+
 export default function SystemUsersPage() {
   const session = readSession();
   const myUserId = session?.sub ?? "";
@@ -68,6 +98,12 @@ export default function SystemUsersPage() {
   const [filterOpen, setFilterOpen] = useState(false);
   const [draftQ, setDraftQ] = useState("");
   const [draftRole, setDraftRole] = useState("");
+
+  const [activityOpen, setActivityOpen] = useState(false);
+  const [activityTarget, setActivityTarget] = useState<UserRow | null>(null);
+  const [activityRows, setActivityRows] = useState<LoginEventRow[]>([]);
+  const [activityLoading, setActivityLoading] = useState(false);
+  const [activityError, setActivityError] = useState<string | null>(null);
 
   const openFilters = () => {
     setDraftQ(appliedQ);
@@ -138,6 +174,22 @@ export default function SystemUsersPage() {
       method: "POST",
     });
     setResetLink(res.reset_link_path);
+  };
+
+  const openLoginActivity = async (r: UserRow) => {
+    setActivityTarget(r);
+    setActivityOpen(true);
+    setActivityLoading(true);
+    setActivityError(null);
+    setActivityRows([]);
+    try {
+      const evs = await fetchSystemUserLoginEvents(r.id);
+      setActivityRows(evs);
+    } catch (e: unknown) {
+      setActivityError(parseClientApiError(e).message);
+    } finally {
+      setActivityLoading(false);
+    }
   };
 
   const deleteUser = async (userId: string, email: string) => {
@@ -282,6 +334,9 @@ export default function SystemUsersPage() {
                         <th className="px-4 py-3">Role</th>
                         <th className="px-4 py-3">Company</th>
                         <th className="px-4 py-3">Last login</th>
+                        <th className="px-4 py-3">Last active</th>
+                        <th className="hidden px-4 py-3 lg:table-cell">Last sign-in (geo)</th>
+                        <th className="hidden px-4 py-3 xl:table-cell">Browser</th>
                         <th className="px-4 py-3">Actions</th>
                       </tr>
                     </thead>
@@ -295,7 +350,19 @@ export default function SystemUsersPage() {
                           <td className="px-4 py-3 text-ds-muted">{r.role}</td>
                           <td className="px-4 py-3 text-ds-muted">{r.company_name || "—"}</td>
                           <td className="px-4 py-3 text-xs text-ds-muted">{r.last_login || "—"}</td>
+                          <td className="px-4 py-3 text-xs text-ds-muted">{formatWhen(r.last_active_at)}</td>
+                          <td className="hidden px-4 py-3 text-xs text-ds-muted lg:table-cell">{formatGeo(r)}</td>
+                          <td className="hidden max-w-[12rem] px-4 py-3 text-xs text-ds-muted xl:table-cell">
+                            <span title={r.last_login_user_agent ?? ""}>{shortenUa(r.last_login_user_agent)}</span>
+                          </td>
                           <td className="space-x-2 px-4 py-3">
+                            <button
+                              type="button"
+                              onClick={() => void openLoginActivity(r)}
+                              className="ds-link text-xs"
+                            >
+                              Login activity
+                            </button>
                             {r.role !== "system_admin" && r.company_id ? (
                               <button
                                 type="button"
@@ -375,6 +442,79 @@ export default function SystemUsersPage() {
           targetName={impersonationModal.full_name}
           onClosed={() => setImpersonationModal(null)}
         />
+      ) : null}
+
+      {activityOpen ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-[color-mix(in_srgb,var(--ds-text-primary)_38%,transparent)] p-4 backdrop-blur-sm"
+          onClick={() => setActivityOpen(false)}
+          role="presentation"
+        >
+          <div
+            className="max-h-[85vh] w-full max-w-3xl overflow-hidden rounded-xl border border-ds-border bg-ds-elevated shadow-2xl"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="login-activity-title"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-ds-border px-4 py-3">
+              <div>
+                <h2 id="login-activity-title" className="text-sm font-semibold text-ds-foreground">
+                  Login activity
+                </h2>
+                <p className="text-xs text-ds-muted">
+                  {activityTarget?.full_name || activityTarget?.email || "User"} — last 20 sign-ins
+                </p>
+              </div>
+              <button
+                type="button"
+                className="rounded-lg px-2 py-1 text-ds-muted hover:bg-ds-secondary"
+                onClick={() => setActivityOpen(false)}
+                aria-label="Close"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="max-h-[calc(85vh-4rem)] overflow-y-auto p-4">
+              {activityLoading ? (
+                <div className="flex items-center gap-2 text-sm text-ds-muted">
+                  <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
+                  Loading…
+                </div>
+              ) : null}
+              {activityError ? <p className="text-sm text-ds-danger">{activityError}</p> : null}
+              {!activityLoading && !activityError && activityRows.length === 0 ? (
+                <p className="text-sm text-ds-muted">No recorded logins yet.</p>
+              ) : null}
+              {!activityLoading && activityRows.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full border-collapse text-left text-xs">
+                    <thead>
+                      <tr className={dataTableHeadRowClass}>
+                        <th className="px-3 py-2">When</th>
+                        <th className="px-3 py-2">IP</th>
+                        <th className="px-3 py-2">Location</th>
+                        <th className="px-3 py-2">User agent</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {activityRows.map((ev) => (
+                        <tr key={ev.id} className={dataTableBodyRow()}>
+                          <td className="px-3 py-2 text-ds-foreground">{formatWhen(ev.timestamp)}</td>
+                          <td className="px-3 py-2 text-ds-muted">{ev.ip_address}</td>
+                          <td className="px-3 py-2 text-ds-muted">
+                            {[ev.city, ev.region].filter(Boolean).join(", ") || "—"}
+                          </td>
+                          <td className="max-w-[20rem] px-3 py-2 break-all text-ds-muted">{ev.user_agent || "—"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : null}
+            </div>
+          </div>
+        </div>
       ) : null}
     </div>
   );

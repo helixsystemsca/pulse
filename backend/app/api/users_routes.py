@@ -27,6 +27,7 @@ from app.core.pulse_storage import (
     read_user_avatar_pending_bytes,
 )
 from app.core.user_avatar_upload import INTERNAL_AVATAR_PATH
+from app.core.login_activity import list_recent_login_events
 from app.core.user_roles import (
     default_operational_role_for_invite_role,
     user_has_any_role,
@@ -34,6 +35,7 @@ from app.core.user_roles import (
     validate_tenant_roles_non_empty,
 )
 from app.models.domain import AvatarStatus, Company, RolePermissionTarget, User, UserAccountStatus, UserRole
+from app.schemas.login_events import LoginEventOut
 from app.schemas.rbac import AssignRoleBody, CompanyUserCreate, RolePermissionsPut, WorkerDenyPatch
 
 router = APIRouter(prefix="/users", tags=["users"])
@@ -44,6 +46,16 @@ def _ensure_same_company(actor: User, target_company_id: str) -> None:
         return
     if actor.company_id is None or str(actor.company_id) != str(target_company_id):
         raise HTTPException(status_code=403, detail="Company mismatch")
+
+
+def _can_view_user_login_events(actor: User, target: User) -> bool:
+    if actor.id == target.id:
+        return True
+    if UserRole.company_admin.value not in actor.roles:
+        return False
+    if actor.company_id is None or target.company_id is None:
+        return False
+    return str(actor.company_id) == str(target.company_id)
 
 
 def _join_path(raw_token: str) -> str:
@@ -351,3 +363,19 @@ async def reject_avatar(
     u.avatar_status = AvatarStatus.rejected
     await db.commit()
     return {"id": user_id, "avatar_status": "rejected"}
+
+
+@router.get("/{user_id}/login-events", response_model=list[LoginEventOut])
+async def list_login_events_for_user(
+    user_id: str,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    actor: Annotated[User, Depends(get_current_user)],
+) -> list[LoginEventOut]:
+    """Last 20 successful password logins (self or company_admin in same org)."""
+    target = await db.get(User, user_id)
+    if not target:
+        raise HTTPException(status_code=404, detail="User not found")
+    if not _can_view_user_login_events(actor, target):
+        raise HTTPException(status_code=403, detail="Not allowed to view login activity for this user")
+    rows = await list_recent_login_events(db, user_id, limit=20)
+    return [LoginEventOut.model_validate(r) for r in rows]

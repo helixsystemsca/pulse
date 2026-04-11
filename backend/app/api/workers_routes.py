@@ -26,6 +26,7 @@ from app.core.user_roles import (
 )
 from app.core.company_features import tenant_enabled_feature_names_with_legacy
 from app.core.config import get_settings
+from app.core.login_activity import latest_login_event_per_user
 from app.core.user_avatar_upload import co_worker_avatar_url
 from app.core.features.service import MODULE_KEYS
 from app.core.features.system_catalog import GLOBAL_SYSTEM_FEATURES
@@ -557,10 +558,12 @@ async def list_workers(
         hq = await db.execute(select(PulseWorkerHR).where(PulseWorkerHR.user_id.in_(hid)))
         for h in hq.scalars().all():
             hr_map[h.user_id] = h
+    login_latest = await latest_login_event_per_user(db, [u.id for u in users])
     items: list[WorkerRowOut] = []
     for u in users:
         h = hr_map.get(u.id)
         uid_s = str(u.id)
+        le = login_latest.get(uid_s)
         items.append(
             WorkerRowOut(
                 id=uid_s,
@@ -574,6 +577,10 @@ async def list_workers(
                 department=h.department if h else None,
                 job_title=h.job_title if h else None,
                 avatar_url=co_worker_avatar_url(uid_s, u.avatar_url),
+                last_active_at=u.last_active_at,
+                last_login_city=le.city if le else None,
+                last_login_region=le.region if le else None,
+                last_login_user_agent=le.user_agent if le else None,
             )
         )
     return WorkerListOut(items=items)

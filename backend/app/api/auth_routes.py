@@ -13,6 +13,7 @@ from app.api.deps import get_current_user, require_system_admin
 from app.core.audit.service import record_audit
 from app.core.auth.security import create_access_token, decode_token, hash_password, verify_password
 from app.core.database import get_db
+from app.core.login_activity import log_login_event
 from app.core.permissions.service import PermissionService
 from app.core.tenant_feature_access import contract_and_effective_features_for_me
 from app.core.system_audit import record_system_log
@@ -111,7 +112,9 @@ async def login(
         await db.commit()
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
 
-    user.last_login = datetime.now(timezone.utc)
+    now = datetime.now(timezone.utc)
+    user.last_login = now
+    user.last_active_at = now
     await record_audit(
         db,
         action="auth.login",
@@ -119,6 +122,7 @@ async def login(
         company_id=user.company_id,
         metadata={"email": user.email},
     )
+    await log_login_event(db, request, user)
     await db.commit()
     return _token_for_user(user)
 

@@ -68,6 +68,10 @@ class SystemUserRow(BaseModel):
     company_name: Optional[str]
     is_active: bool
     last_login: Optional[str]
+    last_active_at: Optional[str] = None
+    last_login_city: Optional[str] = None
+    last_login_region: Optional[str] = None
+    last_login_user_agent: Optional[str] = None
 
 
 class SystemPendingInviteRow(BaseModel):

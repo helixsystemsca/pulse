@@ -38,9 +38,10 @@ import {
   sessionHasAnyRole,
   sortRolesForDisplay,
 } from "@/lib/pulse-roles";
-import type { WorkerDetail, WorkerRow, WorkersSettings } from "@/lib/workersService";
+import type { LoginEventRow, WorkerDetail, WorkerRow, WorkersSettings } from "@/lib/workersService";
 import {
   createWorker,
+  fetchUserLoginEvents,
   fetchWorkerDetail,
   fetchWorkerList,
   fetchWorkerSettings,
@@ -174,6 +175,30 @@ function certBadge(status: string): string {
   return "app-badge-slate";
 }
 
+function formatLoginWhen(iso: string | null | undefined): string {
+  if (!iso) return "—";
+  try {
+    return new Date(iso).toLocaleString();
+  } catch {
+    return iso;
+  }
+}
+
+function formatLoginPlace(row: WorkerRow): string {
+  const c = row.last_login_city?.trim();
+  const r = row.last_login_region?.trim();
+  if (c && r) return `${c}, ${r}`;
+  if (c) return c;
+  if (r) return r;
+  return "—";
+}
+
+function shortenUa(ua: string | null | undefined, max = 72): string {
+  const s = (ua ?? "").trim();
+  if (!s) return "—";
+  return s.length > max ? `${s.slice(0, max)}…` : s;
+}
+
 const PERMISSION_ROLE_OPTIONS = ["manager", "supervisor", "lead", "worker"] as const;
 type PermissionRole = (typeof PERMISSION_ROLE_OPTIONS)[number];
 
@@ -260,6 +285,12 @@ export function WorkersApp() {
     null,
   );
 
+  const [activityUserId, setActivityUserId] = useState<string | null>(null);
+  const [activityLabel, setActivityLabel] = useState("");
+  const [activityRows, setActivityRows] = useState<LoginEventRow[]>([]);
+  const [activityLoading, setActivityLoading] = useState(false);
+  const [activityError, setActivityError] = useState<string | null>(null);
+
   const [createForm, setCreateForm] = useState<CreateFormState>({ ...CREATE_FORM_EMPTY });
 
   useEffect(() => {
@@ -320,6 +351,22 @@ export function WorkersApp() {
     const t = window.setTimeout(() => void loadList(), 280);
     return () => window.clearTimeout(t);
   }, [loadList]);
+
+  const openLoginActivity = useCallback(async (row: WorkerRow) => {
+    setActivityUserId(row.id);
+    setActivityLabel(row.full_name ?? row.email);
+    setActivityLoading(true);
+    setActivityError(null);
+    setActivityRows([]);
+    try {
+      const rows = await fetchUserLoginEvents(row.id);
+      setActivityRows(rows);
+    } catch (e: unknown) {
+      setActivityError(parseClientApiError(e).message);
+    } finally {
+      setActivityLoading(false);
+    }
+  }, []);
 
   const loadProfile = useCallback(async () => {
     if (!profileId || !effectiveCompanyId) return;
@@ -906,6 +953,15 @@ export function WorkersApp() {
                               <th className="px-4 py-3">Name</th>
                               <th className="px-4 py-3">Role</th>
                               <th className="px-4 py-3">Status</th>
+                              <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-ds-muted">
+                                Last active
+                              </th>
+                              <th className="hidden px-4 py-3 text-xs font-semibold uppercase tracking-wide text-ds-muted lg:table-cell">
+                                Last sign-in (geo)
+                              </th>
+                              <th className="hidden px-4 py-3 text-xs font-semibold uppercase tracking-wide text-ds-muted lg:table-cell">
+                                Browser / device
+                              </th>
                               <th className="px-4 py-3 text-right">Action</th>
                             </tr>
                           </thead>
@@ -963,6 +1019,17 @@ export function WorkersApp() {
                                         : "Inactive"}
                                   </span>
                                 </td>
+                                <td className="max-w-[10rem] px-4 py-3 text-xs text-ds-muted">
+                                  {formatLoginWhen(row.last_active_at)}
+                                </td>
+                                <td className="hidden max-w-[12rem] px-4 py-3 text-xs text-ds-muted lg:table-cell">
+                                  {formatLoginPlace(row)}
+                                </td>
+                                <td className="hidden max-w-[14rem] px-4 py-3 text-xs text-ds-muted lg:table-cell">
+                                  <span className="line-clamp-2" title={row.last_login_user_agent ?? ""}>
+                                    {shortenUa(row.last_login_user_agent)}
+                                  </span>
+                                </td>
                                 <td className="relative px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
                                   <button
                                     type="button"
@@ -984,6 +1051,18 @@ export function WorkersApp() {
                                       >
                                         View profile
                                       </button>
+                                      {isCompanyAdmin ? (
+                                        <button
+                                          type="button"
+                                          className="block w-full px-3 py-2 text-left text-sm text-ds-foreground hover:bg-ds-secondary"
+                                          onClick={() => {
+                                            setMenuFor(null);
+                                            void openLoginActivity(row);
+                                          }}
+                                        >
+                                          Login activity
+                                        </button>
+                                      ) : null}
                                     </div>
                                   ) : null}
                                 </td>
@@ -1619,6 +1698,58 @@ export function WorkersApp() {
             </section>
           </div>
         )}
+      </PulseDrawer>
+
+      <PulseDrawer
+        open={Boolean(activityUserId)}
+        title="Login activity"
+        subtitle={activityLabel ? `Recorded sign-ins for ${activityLabel}` : "Recorded sign-ins"}
+        onClose={() => {
+          setActivityUserId(null);
+          setActivityRows([]);
+          setActivityError(null);
+        }}
+        belowAppHeader
+        wide
+      >
+        <div className="space-y-4">
+          {activityLoading ? (
+            <div className="flex items-center gap-2 text-sm text-ds-muted">
+              <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
+              Loading…
+            </div>
+          ) : null}
+          {activityError ? <p className="text-sm text-ds-danger">{activityError}</p> : null}
+          {!activityLoading && !activityError && activityRows.length === 0 ? (
+            <p className="text-sm text-ds-muted">No recorded logins yet.</p>
+          ) : null}
+          {!activityLoading && activityRows.length > 0 ? (
+            <div className="overflow-x-auto rounded-lg border border-ds-border">
+              <table className="min-w-full border-collapse text-left text-xs">
+                <thead>
+                  <tr className={dataTableHeadRowClass}>
+                    <th className="px-3 py-2">When</th>
+                    <th className="px-3 py-2">IP</th>
+                    <th className="px-3 py-2">Location</th>
+                    <th className="px-3 py-2">User agent</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {activityRows.map((ev) => (
+                    <tr key={ev.id} className={dataTableBodyRow()}>
+                      <td className="px-3 py-2 text-ds-foreground">{formatLoginWhen(ev.timestamp)}</td>
+                      <td className="px-3 py-2 text-ds-muted">{ev.ip_address}</td>
+                      <td className="px-3 py-2 text-ds-muted">
+                        {[ev.city, ev.region].filter(Boolean).join(", ") || "—"}
+                      </td>
+                      <td className="max-w-[18rem] px-3 py-2 break-all text-ds-muted">{ev.user_agent || "—"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : null}
+        </div>
       </PulseDrawer>
 
       <PulseDrawer

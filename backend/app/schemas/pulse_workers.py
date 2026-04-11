@@ -72,6 +72,10 @@ class WorkerRowOut(BaseModel):
     department: Optional[str] = None
     job_title: Optional[str] = None
     avatar_url: Optional[str] = None
+    last_active_at: Optional[datetime] = None
+    last_login_city: Optional[str] = None
+    last_login_region: Optional[str] = None
+    last_login_user_agent: Optional[str] = None
 
 
 class WorkerListOut(BaseModel):

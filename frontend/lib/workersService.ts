@@ -13,6 +13,20 @@ export type WorkerRow = {
   department: string | null;
   job_title: string | null;
   avatar_url?: string | null;
+  last_active_at?: string | null;
+  last_login_city?: string | null;
+  last_login_region?: string | null;
+  last_login_user_agent?: string | null;
+};
+
+export type LoginEventRow = {
+  id: string;
+  timestamp: string;
+  ip_address: string;
+  city?: string | null;
+  region?: string | null;
+  country?: string | null;
+  user_agent?: string | null;
 };
 
 export type WorkerCert = {
@@ -87,6 +101,15 @@ function withCompany(path: string, companyId: string | null): string {
   const qs = companyQs(companyId);
   if (!qs) return path;
   return path.includes("?") ? `${path}&${qs}` : `${path}?${qs}`;
+}
+
+export async function fetchUserLoginEvents(userId: string): Promise<LoginEventRow[]> {
+  return apiFetch<LoginEventRow[]>(`/api/v1/users/${encodeURIComponent(userId)}/login-events`);
+}
+
+/** system_admin: cross-tenant login history */
+export async function fetchSystemUserLoginEvents(userId: string): Promise<LoginEventRow[]> {
+  return apiFetch<LoginEventRow[]>(`/api/system/users/${encodeURIComponent(userId)}/login-events`);
 }
 
 export async function fetchWorkerList(
