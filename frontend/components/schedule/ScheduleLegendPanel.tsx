@@ -2,7 +2,8 @@
 
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { useMemo, useState } from "react";
-import type { Shift, ShiftTypeConfig, Worker } from "@/lib/schedule/types";
+import { shiftCodesLegendLines } from "@/lib/schedule/shift-codes";
+import type { Shift, ShiftTypeConfig } from "@/lib/schedule/types";
 
 /** Stable pseudo-color from string (for worker / project rows). */
 function colorFromKey(key: string): { bg: string; border: string } {
@@ -50,6 +51,17 @@ export function ScheduleLegendPanel({ shiftTypes, shifts, contentFilter }: Props
         </span>
       </button>
       <div className={`space-y-5 px-4 pb-4 pt-2 ${open ? "" : "hidden lg:block"}`}>
+        <section>
+          <h3 className="text-[11px] font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+            Month / week abbreviations
+          </h3>
+          <ul className="mt-2 space-y-1 text-[11px] text-gray-600 dark:text-gray-300">
+            {shiftCodesLegendLines().map((line) => (
+              <li key={line}>{line}</li>
+            ))}
+          </ul>
+        </section>
+
         <section>
           <h3 className="text-[11px] font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400">Shift types</h3>
           <ul className="mt-2 space-y-2">

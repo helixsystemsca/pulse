@@ -593,24 +593,43 @@ html.pulse-welcome-blur [data-pulse-app-shell] {
     transform: translateY(0);
   }
 
-  /** Auth (and shared brand): aquamarine → dusk; same in light and dark */
+  /** Auth (and shared brand): light aquamarine → sky; gloss overlay + inset sheen */
   .ds-btn-gradient-primary {
-    border-radius: 0.5rem;
-    border: none;
-    background: linear-gradient(135deg, #36f1cd 0%, #4c6085 100%);
+    position: relative;
+    overflow: hidden;
+    border-radius: 0.625rem;
+    border: 1px solid rgba(255, 255, 255, 0.28);
+    background-image:
+      linear-gradient(
+        180deg,
+        rgba(255, 255, 255, 0.36) 0%,
+        rgba(255, 255, 255, 0.1) 30%,
+        rgba(255, 255, 255, 0) 52%
+      ),
+      linear-gradient(135deg, #9cf9e8 0%, #52e6cf 28%, #4cc8de 62%, #8adcf0 100%);
     color: #fff;
     font-weight: 600;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+    text-shadow: 0 1px 0 rgba(0, 0, 0, 0.12);
+    box-shadow:
+      0 3px 12px rgba(32, 140, 130, 0.28),
+      inset 0 1px 0 rgba(255, 255, 255, 0.5),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.1);
     transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
   }
   .ds-btn-gradient-primary:hover:not(:disabled) {
     transform: translateY(-1px);
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.14);
-    filter: brightness(1.05);
+    box-shadow:
+      0 6px 18px rgba(32, 160, 150, 0.38),
+      inset 0 1px 0 rgba(255, 255, 255, 0.58),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.08);
+    filter: brightness(1.04) saturate(1.04);
   }
   .ds-btn-gradient-primary:active:not(:disabled) {
     transform: translateY(0);
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+    box-shadow:
+      0 2px 8px rgba(32, 120, 110, 0.22),
+      inset 0 1px 0 rgba(255, 255, 255, 0.35),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.12);
   }
   .ds-btn-gradient-primary:disabled {
     cursor: not-allowed;
@@ -660,6 +679,70 @@ html.pulse-welcome-blur [data-pulse-app-shell] {
   }
   .dark .ds-btn-secondary:hover {
     filter: brightness(1.04);
+  }
+
+  /** Auth shell: square theme toggle — glossy surface matching CTA */
+  .ds-btn-auth-icon {
+    display: inline-flex;
+    height: 2.5rem;
+    width: 2.5rem;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border-radius: 0.625rem;
+    border: 1px solid color-mix(in srgb, white 18%, var(--ds-border));
+    color: var(--ds-text-primary);
+    background-image:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0) 48%),
+      linear-gradient(
+        165deg,
+        color-mix(in srgb, white 14%, var(--ds-surface-secondary)) 0%,
+        var(--ds-surface-secondary) 100%
+      );
+    box-shadow:
+      0 2px 8px rgba(0, 0, 0, 0.1),
+      inset 0 1px 0 rgba(255, 255, 255, 0.18);
+    transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease;
+  }
+  .dark .ds-btn-auth-icon {
+    background-image:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0) 48%),
+      linear-gradient(
+        165deg,
+        color-mix(in srgb, white 10%, var(--ds-surface-secondary)) 0%,
+        var(--ds-surface-secondary) 100%
+      );
+    box-shadow:
+      0 2px 12px rgba(0, 0, 0, 0.22),
+      inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  }
+  .ds-btn-auth-icon:hover {
+    transform: translateY(-1px);
+    filter: brightness(1.05);
+    box-shadow:
+      0 4px 14px rgba(0, 0, 0, 0.14),
+      inset 0 1px 0 rgba(255, 255, 255, 0.26);
+  }
+  .dark .ds-btn-auth-icon:hover {
+    box-shadow:
+      0 4px 16px rgba(0, 0, 0, 0.28),
+      inset 0 1px 0 rgba(255, 255, 255, 0.14);
+  }
+  .ds-btn-auth-icon:active {
+    transform: translateY(0);
+    filter: brightness(0.98);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ds-btn-auth-icon {
+      transition: none;
+    }
+    .ds-btn-auth-icon:hover {
+      transform: none;
+    }
+    .ds-btn-auth-icon:active {
+      transform: none;
+    }
   }
 
   .ds-link {

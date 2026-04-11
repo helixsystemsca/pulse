@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense } from "react";
 import { WorkersApp } from "@/components/workers/WorkersApp";
 import { isApiMode } from "@/lib/api";
 import { navigateToPulseLogin } from "@/lib/pulse-app";
@@ -30,5 +31,15 @@ export default function WorkersDashboardPage() {
     );
   }
 
-  return <WorkersApp />;
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-[40vh] items-center justify-center">
+          <p className="text-sm text-pulse-muted">Loading…</p>
+        </div>
+      }
+    >
+      <WorkersApp />
+    </Suspense>
+  );
 }

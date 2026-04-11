@@ -220,7 +220,7 @@ export default function LoginPage() {
                   onClick={toggleTheme}
                   title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
                   aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-                  className="ds-btn-secondary inline-flex h-10 w-10 items-center justify-center rounded-lg p-0 shadow-sm"
+                  className="ds-btn-auth-icon"
                 >
                   {theme === "dark" ? (
                     <Sun className="h-5 w-5" strokeWidth={2} aria-hidden />

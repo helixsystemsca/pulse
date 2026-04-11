@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo } from "react";
 import { monthLabel, parseLocalDate } from "@/lib/schedule/calendar";
 import type { Shift, Worker } from "@/lib/schedule/types";
@@ -59,7 +60,14 @@ export function SchedulePersonnel({
                 key={w.id}
                 className="ds-table-row-hover border-b border-pulseShell-border/60 last:border-0"
               >
-                <td className="px-5 py-3 font-medium text-ds-foreground">{w.name}</td>
+                <td className="px-5 py-3 font-medium text-ds-foreground">
+                  <Link
+                    href={`/dashboard/workers?profile=${encodeURIComponent(w.id)}`}
+                    className="text-ds-foreground underline decoration-dotted underline-offset-2 hover:text-ds-success"
+                  >
+                    {w.name}
+                  </Link>
+                </td>
                 <td className="px-5 py-3 text-ds-muted">{roleMap.get(w.role) ?? w.role}</td>
                 <td className="px-5 py-3">
                   <span

@@ -9,10 +9,10 @@ import {
   CheckCircle2,
   Copy,
   Loader2,
-  MoreVertical,
   Search,
   Shield,
 } from "lucide-react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Card } from "@/components/pulse/Card";
 import { PulseDrawer } from "@/components/schedule/PulseDrawer";
@@ -203,6 +203,9 @@ const PERMISSION_ROLE_OPTIONS = ["manager", "supervisor", "lead", "worker"] as c
 type PermissionRole = (typeof PERMISSION_ROLE_OPTIONS)[number];
 
 export function WorkersApp() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname() || "/dashboard/workers";
   const { session, refresh } = usePulseAuth();
   const isSystemAdmin = Boolean(session?.is_system_admin || session?.role === "system_admin");
   const sessionCompanyId = session?.company_id ?? null;
@@ -236,6 +239,11 @@ export function WorkersApp() {
   const [fullSettings, setFullSettings] = useState<WorkersSettings>({});
 
   const [profileId, setProfileId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const p = searchParams.get("profile")?.trim();
+    if (p) setProfileId(p);
+  }, [searchParams]);
   const [profile, setProfile] = useState<WorkerDetail | null>(null);
   const [profileLoading, setProfileLoading] = useState(false);
   const [noteDraft, setNoteDraft] = useState("");
@@ -243,7 +251,6 @@ export function WorkersApp() {
   const [profileBusy, setProfileBusy] = useState(false);
   const [profileRolesDraft, setProfileRolesDraft] = useState<string[]>([]);
 
-  const [menuFor, setMenuFor] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsTab, setSettingsTab] = useState<SettingsTab>("Roles");
@@ -352,14 +359,14 @@ export function WorkersApp() {
     return () => window.clearTimeout(t);
   }, [loadList]);
 
-  const openLoginActivity = useCallback(async (row: WorkerRow) => {
-    setActivityUserId(row.id);
-    setActivityLabel(row.full_name ?? row.email);
+  const openLoginActivity = useCallback(async (target: Pick<WorkerRow, "id" | "full_name" | "email">) => {
+    setActivityUserId(target.id);
+    setActivityLabel(target.full_name ?? target.email);
     setActivityLoading(true);
     setActivityError(null);
     setActivityRows([]);
     try {
-      const rows = await fetchUserLoginEvents(row.id);
+      const rows = await fetchUserLoginEvents(target.id);
       setActivityRows(rows);
     } catch (e: unknown) {
       setActivityError(parseClientApiError(e).message);
@@ -431,6 +438,24 @@ export function WorkersApp() {
     return false;
   }, [profile, session, isCompanyAdmin]);
 
+  /** Soft-remove from roster (PATCH is_active); matches server rules for company_admin / manager / supervisor. */
+  const canDeactivateProfile = useMemo(() => {
+    if (!profile || !session?.sub) return false;
+    if (profile.id === session.sub) return false;
+    if (principalHasAnyRole(profile, "company_admin")) return false;
+    if (isCompanyAdmin) return true;
+    if (managerOrAbove(session) && principalHasAnyRole(profile, "worker", "lead")) return true;
+    return false;
+  }, [profile, session, isCompanyAdmin]);
+
+  const clearProfileQueryFromUrl = useCallback(() => {
+    const q = new URLSearchParams(searchParams.toString());
+    if (!q.has("profile")) return;
+    q.delete("profile");
+    const qs = q.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+  }, [searchParams, router, pathname]);
+
   const grouped = useMemo(() => {
     const order = ["company_admin", "manager", "supervisor", "lead", "worker"] as const;
     const m = new Map<string, WorkerRow[]>();
@@ -466,6 +491,33 @@ export function WorkersApp() {
       else cur.add(mod);
       return { ...prev, [role]: [...cur].sort() };
     });
+  }
+
+  async function setProfileActive(next: boolean) {
+    if (!profileId || !profile || !canDeactivateProfile) return;
+    const label = profile.full_name ?? profile.email;
+    const msg = next
+      ? `Restore roster access for ${label}? They will be able to sign in again if they have credentials.`
+      : `Remove ${label} from the roster? They will no longer be able to sign in until reactivated.`;
+    if (!confirm(msg)) return;
+    setProfileBusy(true);
+    try {
+      const updated = await patchWorker(apiCompany, profileId, { is_active: next });
+      setProfile(updated);
+      setCreateToast({
+        message: next ? "User reactivated." : "User deactivated.",
+        variant: "success",
+      });
+      await loadList();
+      if (!next) {
+        setProfileId(null);
+        clearProfileQueryFromUrl();
+      }
+    } catch (e: unknown) {
+      setCreateToast({ message: parseClientApiError(e).message, variant: "error" });
+    } finally {
+      setProfileBusy(false);
+    }
   }
 
   async function saveAccessPolicy() {
@@ -962,7 +1014,6 @@ export function WorkersApp() {
                               <th className="hidden px-4 py-3 text-xs font-semibold uppercase tracking-wide text-ds-muted lg:table-cell">
                                 Browser / device
                               </th>
-                              <th className="px-4 py-3 text-right">Action</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -1030,42 +1081,6 @@ export function WorkersApp() {
                                     {shortenUa(row.last_login_user_agent)}
                                   </span>
                                 </td>
-                                <td className="relative px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
-                                  <button
-                                    type="button"
-                                    className="ds-btn-secondary inline-flex h-8 w-8 items-center justify-center p-0"
-                                    aria-label="Actions"
-                                    onClick={() => setMenuFor((m) => (m === row.id ? null : row.id))}
-                                  >
-                                    <MoreVertical className="h-4 w-4" />
-                                  </button>
-                                  {menuFor === row.id ? (
-                                    <div className="absolute right-4 z-30 mt-1 w-44 rounded-lg border border-ds-border bg-ds-elevated py-1 text-left shadow-lg">
-                                      <button
-                                        type="button"
-                                        className="block w-full px-3 py-2 text-left text-sm text-ds-foreground hover:bg-ds-secondary"
-                                        onClick={() => {
-                                          setMenuFor(null);
-                                          setProfileId(row.id);
-                                        }}
-                                      >
-                                        View profile
-                                      </button>
-                                      {isCompanyAdmin ? (
-                                        <button
-                                          type="button"
-                                          className="block w-full px-3 py-2 text-left text-sm text-ds-foreground hover:bg-ds-secondary"
-                                          onClick={() => {
-                                            setMenuFor(null);
-                                            void openLoginActivity(row);
-                                          }}
-                                        >
-                                          Login activity
-                                        </button>
-                                      ) : null}
-                                    </div>
-                                  ) : null}
-                                </td>
                               </tr>
                             ))}
                           </tbody>
@@ -1079,15 +1094,6 @@ export function WorkersApp() {
           </div>
         </div>
       )}
-
-      {menuFor ? (
-        <button
-          type="button"
-          className="fixed inset-0 z-20 cursor-default bg-transparent"
-          aria-label="Close menu"
-          onClick={() => setMenuFor(null)}
-        />
-      ) : null}
 
       <PulseDrawer
         open={createOpen}
@@ -1258,7 +1264,10 @@ export function WorkersApp() {
         open={Boolean(profileId)}
         title={profile?.full_name ?? profile?.email ?? "Worker profile"}
         subtitle={profile ? profile.email : undefined}
-        onClose={() => setProfileId(null)}
+        onClose={() => {
+          setProfileId(null);
+          clearProfileQueryFromUrl();
+        }}
         belowAppHeader
         wide
         elevated
@@ -1674,6 +1683,53 @@ export function WorkersApp() {
                 </p>
               </div>
             </section>
+
+            {isCompanyAdmin || canDeactivateProfile ? (
+              <section>
+                <h3 className={SECTION_KICKER}>Account</h3>
+                <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+                  {isCompanyAdmin ? (
+                    <button
+                      type="button"
+                      className="ds-btn-secondary px-4 py-2 text-sm font-semibold"
+                      onClick={() =>
+                        void openLoginActivity({
+                          id: profile.id,
+                          full_name: profile.full_name,
+                          email: profile.email,
+                        })
+                      }
+                    >
+                      View login activity
+                    </button>
+                  ) : null}
+                  {canDeactivateProfile && profile.is_active ? (
+                    <button
+                      type="button"
+                      className="rounded-lg border border-ds-danger/40 bg-[color-mix(in_srgb,var(--ds-danger)_10%,transparent)] px-4 py-2 text-sm font-semibold text-ds-danger hover:brightness-95"
+                      disabled={profileBusy}
+                      onClick={() => void setProfileActive(false)}
+                    >
+                      Deactivate user
+                    </button>
+                  ) : null}
+                  {canDeactivateProfile && !profile.is_active ? (
+                    <button
+                      type="button"
+                      className="ds-btn-secondary px-4 py-2 text-sm font-semibold"
+                      disabled={profileBusy}
+                      onClick={() => void setProfileActive(true)}
+                    >
+                      Reactivate user
+                    </button>
+                  ) : null}
+                </div>
+                <p className="mt-2 text-xs text-ds-muted">
+                  Deactivated users cannot sign in. Company administrators can restore access; another company admin
+                  cannot be changed here.
+                </p>
+              </section>
+            ) : null}
 
             <section>
               <h3 className={SECTION_KICKER}>Notes / supervisor comments</h3>
