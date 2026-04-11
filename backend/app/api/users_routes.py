@@ -5,7 +5,7 @@ from typing import Annotated, Any
 from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.responses import FileResponse
+from starlette.responses import Response
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -21,11 +21,12 @@ from app.core.email_smtp import send_employee_invite
 from app.core.permissions import keys as perm_keys
 from app.core.permissions.service import PermissionService
 from app.core.system_tokens import generate_raw_token, hash_system_token
-from app.core.user_avatar_upload import (
-    INTERNAL_AVATAR_PATH,
-    user_avatar_media_type,
-    user_avatar_pending_disk_path,
+from app.core.pulse_storage import (
+    delete_user_avatar_pending_files,
+    promote_user_avatar_pending_to_approved,
+    read_user_avatar_pending_bytes,
 )
+from app.core.user_avatar_upload import INTERNAL_AVATAR_PATH
 from app.core.user_roles import (
     default_operational_role_for_invite_role,
     user_has_any_role,
@@ -290,16 +291,20 @@ async def get_pending_avatar_file(
     user_id: str,
     db: Annotated[AsyncSession, Depends(get_db)],
     admin: Annotated[User, Depends(require_company_admin_scoped)],
-) -> FileResponse:
+) -> Response:
     q = await db.get(User, user_id)
     if not q or str(q.company_id) != str(admin.company_id):
         raise HTTPException(status_code=404, detail="User not found")
     if q.avatar_status != AvatarStatus.pending:
         raise HTTPException(status_code=404, detail="No pending avatar")
-    path = user_avatar_pending_disk_path(user_id)
-    if not path.is_file():
+    try:
+        blob = await read_user_avatar_pending_bytes(user_id)
+    except RuntimeError as e:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e)) from e
+    if not blob:
         raise HTTPException(status_code=404, detail="No pending avatar")
-    return FileResponse(path, media_type=user_avatar_media_type(path))
+    data, media_type = blob
+    return Response(content=data, media_type=media_type, headers={"Cache-Control": "private, no-store"})
 
 
 @router.post("/{user_id}/approve-avatar")
@@ -313,7 +318,13 @@ async def approve_avatar(
         raise HTTPException(status_code=404, detail="User not found")
     if u.avatar_status != AvatarStatus.pending:
         raise HTTPException(status_code=400, detail="Avatar is not pending")
-    # Approve: make the avatar visible to coworkers by setting the normal avatar_url.
+    try:
+        promoted = await promote_user_avatar_pending_to_approved(user_id)
+    except RuntimeError as e:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e)) from e
+    if not promoted:
+        raise HTTPException(status_code=404, detail="No pending avatar file")
+    # Approve: coworkers load /pulse/workers/{id}/avatar from user_avatars storage.
     u.avatar_url = INTERNAL_AVATAR_PATH
     u.avatar_pending_url = None
     u.avatar_status = AvatarStatus.approved
@@ -332,6 +343,10 @@ async def reject_avatar(
         raise HTTPException(status_code=404, detail="User not found")
     if u.avatar_status != AvatarStatus.pending:
         raise HTTPException(status_code=400, detail="Avatar is not pending")
+    try:
+        await delete_user_avatar_pending_files(user_id)
+    except RuntimeError as e:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e)) from e
     u.avatar_pending_url = None
     u.avatar_status = AvatarStatus.rejected
     await db.commit()

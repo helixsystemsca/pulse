@@ -6,18 +6,15 @@ from typing import Annotated, Any, Optional
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 from fastapi.responses import FileResponse
+from starlette.responses import Response
 from sqlalchemy import and_, delete, func, select
 from sqlalchemy.dialects.postgresql import array as pg_array
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import require_tenant_user
-from app.core.user_avatar_upload import (
-    INTERNAL_AVATAR_PATH,
-    co_worker_avatar_url,
-    user_avatar_disk_path,
-    user_avatar_media_type,
-)
+from app.core.pulse_storage import read_user_avatar_bytes
+from app.core.user_avatar_upload import INTERNAL_AVATAR_PATH, co_worker_avatar_url
 from app.core.user_roles import is_field_worker_like, primary_jwt_role
 from app.services.onboarding_service import try_mark_onboarding_step
 from app.core.database import get_db
@@ -394,21 +391,25 @@ async def get_worker_avatar_file(
     db: Db,
     cid: CompanyId,
     user_id: str,
-) -> FileResponse:
+) -> Response:
     u = await pulse_svc._user_in_company(db, cid, user_id)
     if not u or not u.avatar_url:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No avatar")
     raw = str(u.avatar_url).strip()
     if raw.lower().startswith("http://") or raw.lower().startswith("https://"):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No uploaded avatar")
-    path = user_avatar_disk_path(user_id)
-    if not path.is_file():
+    try:
+        blob = await read_user_avatar_bytes(user_id)
+    except RuntimeError as e:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e)) from e
+    if not blob:
         if (u.avatar_url or "").strip() == INTERNAL_AVATAR_PATH:
             u.avatar_url = None
             u.avatar_pending_url = None
             await db.commit()
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No uploaded avatar")
-    return FileResponse(path, media_type=user_avatar_media_type(path))
+    data, media_type = blob
+    return Response(content=data, media_type=media_type, headers={"Cache-Control": "private, no-store"})
 
 
 @router.patch("/workers/{user_id}/profile", response_model=WorkerOut)

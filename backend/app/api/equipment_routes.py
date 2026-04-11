@@ -3,17 +3,21 @@
 from __future__ import annotations
 
 from datetime import date, datetime, timedelta, timezone
-from pathlib import Path
 from typing import Annotated, Optional
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
-from fastapi.responses import FileResponse
+from starlette.responses import Response
 from sqlalchemy import Select, and_, asc, case, delete, desc, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_company_user, get_db, require_manager_or_above
-from app.core.config import get_settings
+from app.core.pulse_storage import (
+    read_equipment_image_bytes,
+    read_part_image_bytes,
+    write_equipment_image_bytes,
+    write_part_image_bytes,
+)
 from app.models.domain import EquipmentPart, FacilityEquipment, FacilityEquipmentStatus, User, Zone
 from app.models.pulse_models import PulseWorkRequest
 from app.schemas.equipment_part import (
@@ -55,37 +59,7 @@ def _part_image_internal_url(part_id: str) -> str:
     return f"/api/v1/equipment/parts/{part_id}/image"
 
 
-def _equipment_image_disk_path(company_id: str, equipment_id: str) -> Path:
-    root = Path(get_settings().pulse_uploads_dir) / "facility_equipment_images" / company_id
-    root.mkdir(parents=True, exist_ok=True)
-    for ext in (".png", ".jpg", ".jpeg", ".webp"):
-        p = root / f"{equipment_id}{ext}"
-        if p.is_file():
-            return p
-    return root / f"{equipment_id}.jpg"
-
-
-def _part_image_disk_path(company_id: str, part_id: str) -> Path:
-    root = Path(get_settings().pulse_uploads_dir) / "equipment_part_images" / company_id
-    root.mkdir(parents=True, exist_ok=True)
-    for ext in (".png", ".jpg", ".jpeg", ".webp"):
-        p = root / f"{part_id}{ext}"
-        if p.is_file():
-            return p
-    return root / f"{part_id}.jpg"
-
-
-def _guess_media_type(path: Path) -> str:
-    suf = path.suffix.lower()
-    return {
-        ".png": "image/png",
-        ".jpg": "image/jpeg",
-        ".jpeg": "image/jpeg",
-        ".webp": "image/webp",
-    }.get(suf, "application/octet-stream")
-
-
-async def _save_upload_image(file: UploadFile, dest_no_ext: Path) -> None:
+async def _save_equipment_image_upload(file: UploadFile, company_id: str, equipment_id: str) -> None:
     ct = (file.content_type or "").split(";")[0].strip().lower()
     if ct not in _CT_EXT:
         raise HTTPException(
@@ -96,14 +70,27 @@ async def _save_upload_image(file: UploadFile, dest_no_ext: Path) -> None:
     if len(raw) > _MAX_IMAGE_BYTES:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Image too large (max 5MB)")
     ext = _CT_EXT[ct]
-    path = dest_no_ext.parent / f"{dest_no_ext.name}{ext}"
-    for old in dest_no_ext.parent.glob(f"{dest_no_ext.name}.*"):
-        if old != path:
-            try:
-                old.unlink()
-            except OSError:
-                pass
-    path.write_bytes(raw)
+    try:
+        await write_equipment_image_bytes(company_id, equipment_id, ext, raw, ct)
+    except RuntimeError as e:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e)) from e
+
+
+async def _save_part_image_upload(file: UploadFile, company_id: str, part_id: str) -> None:
+    ct = (file.content_type or "").split(";")[0].strip().lower()
+    if ct not in _CT_EXT:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Upload a JPEG, PNG, or WebP image (max 5MB)",
+        )
+    raw = await file.read()
+    if len(raw) > _MAX_IMAGE_BYTES:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Image too large (max 5MB)")
+    ext = _CT_EXT[ct]
+    try:
+        await write_part_image_bytes(company_id, part_id, ext, raw, ct)
+    except RuntimeError as e:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e)) from e
 
 
 def _row_to_out(
@@ -324,13 +311,17 @@ async def get_part_image_file(
     part_id: str,
     user: TenantUser,
     db: Db,
-) -> FileResponse:
+) -> Response:
     cid = str(user.company_id)
     await _get_part_or_404(db, cid, part_id)
-    path = _part_image_disk_path(cid, part_id)
-    if not path.is_file():
+    try:
+        blob = await read_part_image_bytes(cid, part_id)
+    except RuntimeError as e:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e)) from e
+    if not blob:
         raise HTTPException(status_code=404, detail="No image for this part")
-    return FileResponse(path, media_type=_guess_media_type(path))
+    data, media_type = blob
+    return Response(content=data, media_type=media_type, headers={"Cache-Control": "private, no-store"})
 
 
 @router.post("/parts/{part_id}/image", response_model=EquipmentPartImageUploadOut)
@@ -342,8 +333,7 @@ async def upload_part_image(
 ) -> EquipmentPartImageUploadOut:
     cid = str(user.company_id)
     row = await _get_part_or_404(db, cid, part_id)
-    dest = _part_image_disk_path(cid, part_id)
-    await _save_upload_image(file, dest.with_suffix(""))
+    await _save_part_image_upload(file, cid, part_id)
     internal = _part_image_internal_url(part_id)
     row.image_url = internal
     row.updated_at = datetime.now(timezone.utc)
@@ -405,13 +395,17 @@ async def get_equipment_image_file(
     equipment_id: str,
     user: TenantUser,
     db: Db,
-) -> FileResponse:
+) -> Response:
     cid = str(user.company_id)
     await _get_equipment_or_404(db, cid, equipment_id)
-    path = _equipment_image_disk_path(cid, equipment_id)
-    if not path.is_file():
+    try:
+        blob = await read_equipment_image_bytes(cid, equipment_id)
+    except RuntimeError as e:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e)) from e
+    if not blob:
         raise HTTPException(status_code=404, detail="No image for this equipment")
-    return FileResponse(path, media_type=_guess_media_type(path))
+    data, media_type = blob
+    return Response(content=data, media_type=media_type, headers={"Cache-Control": "private, no-store"})
 
 
 @router.post("/{equipment_id}/image", response_model=EquipmentImageUploadOut)
@@ -423,8 +417,7 @@ async def upload_equipment_image(
 ) -> EquipmentImageUploadOut:
     cid = str(user.company_id)
     row = await _get_equipment_or_404(db, cid, equipment_id)
-    dest = _equipment_image_disk_path(cid, equipment_id)
-    await _save_upload_image(file, dest.with_suffix(""))
+    await _save_equipment_image_upload(file, cid, equipment_id)
     internal = _equipment_image_internal_url(equipment_id)
     row.image_url = internal
     row.updated_at = datetime.now(timezone.utc)

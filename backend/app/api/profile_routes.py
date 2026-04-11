@@ -5,21 +5,13 @@ from __future__ import annotations
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
-from fastapi.responses import FileResponse
+from starlette.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_company_user, get_db
 from app.core.company_logo_upload import normalize_logo_content_type
-from app.core.user_avatar_upload import (
-    INTERNAL_AVATAR_PATH,
-    INTERNAL_AVATAR_PENDING_PATH,
-    user_avatar_disk_path,
-    user_avatar_pending_disk_path,
-    user_avatar_media_type,
-    validate_logo_bytes,
-    write_user_avatar_file,
-    write_user_avatar_pending_file,
-)
+from app.core.pulse_storage import read_user_avatar_bytes, read_user_avatar_pending_bytes, write_user_avatar_bytes
+from app.core.user_avatar_upload import INTERNAL_AVATAR_PATH, validate_logo_bytes
 from app.core.user_roles import user_has_any_role
 from app.models.domain import AvatarStatus, Company, User, UserRole
 from app.schemas.profile import ProfileAvatarUploadOut, ProfileSettingsPatch
@@ -31,36 +23,40 @@ router = APIRouter(prefix="/profile", tags=["profile"])
 async def get_my_avatar_file(
     user: Annotated[User, Depends(get_current_company_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
-) -> FileResponse:
+) -> Response:
     uid = str(user.id)
-    path = user_avatar_disk_path(uid)
-    if not path.is_file():
+    try:
+        blob = await read_user_avatar_bytes(uid)
+    except RuntimeError as e:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e)) from e
+    if not blob:
         row = await db.get(User, uid)
         if row and (row.avatar_url or "").strip() == INTERNAL_AVATAR_PATH:
             row.avatar_url = None
             row.avatar_pending_url = None
             await db.commit()
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No uploaded avatar")
-    return FileResponse(
-        path,
-        media_type=user_avatar_media_type(path),
-        headers={"Cache-Control": "private, no-store"},
-    )
+    data, media_type = blob
+    return Response(content=data, media_type=media_type, headers={"Cache-Control": "private, no-store"})
 
 
 @router.get("/avatar-pending")
 async def get_my_avatar_pending_file(
     user: Annotated[User, Depends(get_current_company_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
-) -> FileResponse:
+) -> Response:
     uid = str(user.id)
     q = await db.get(User, uid)
     if not q or q.avatar_status != AvatarStatus.pending:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No pending avatar")
-    path = user_avatar_pending_disk_path(uid)
-    if not path.is_file():
+    try:
+        blob = await read_user_avatar_pending_bytes(uid)
+    except RuntimeError as e:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e)) from e
+    if not blob:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No pending avatar")
-    return FileResponse(path, media_type=user_avatar_media_type(path))
+    data, media_type = blob
+    return Response(content=data, media_type=media_type, headers={"Cache-Control": "private, no-store"})
 
 
 @router.post("/avatar", response_model=ProfileAvatarUploadOut)
@@ -82,7 +78,10 @@ async def upload_my_avatar(
         raise HTTPException(status_code=404, detail="User not found")
 
     # Make the new avatar immediately visible to teammates.
-    write_user_avatar_file(uid, ext, raw)
+    try:
+        await write_user_avatar_bytes(uid, ext, ct, raw)
+    except RuntimeError as e:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e)) from e
     q.avatar_url = INTERNAL_AVATAR_PATH
     q.avatar_pending_url = None
     q.avatar_status = AvatarStatus.approved

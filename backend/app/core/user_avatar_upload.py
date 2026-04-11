@@ -2,47 +2,12 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Optional
 
-from app.core.config import get_settings
 from app.core.company_logo_upload import validate_logo_bytes
 
 INTERNAL_AVATAR_PATH = "/api/v1/profile/avatar"
 INTERNAL_AVATAR_PENDING_PATH = "/api/v1/profile/avatar-pending"
-
-
-def user_avatar_disk_path(user_id: str) -> Path:
-    """On-disk path for the user's uploaded profile image, if present."""
-    root = Path(get_settings().pulse_uploads_dir) / "user_avatars"
-    root.mkdir(parents=True, exist_ok=True)
-    for ext in (".png", ".jpg", ".jpeg", ".webp", ".gif"):
-        p = root / f"{user_id}{ext}"
-        if p.is_file():
-            return p
-    return root / f"{user_id}.png"
-
-
-def user_avatar_pending_disk_path(user_id: str) -> Path:
-    """On-disk path for a pending avatar awaiting approval."""
-    root = Path(get_settings().pulse_uploads_dir) / "user_avatars_pending"
-    root.mkdir(parents=True, exist_ok=True)
-    for ext in (".png", ".jpg", ".jpeg", ".webp", ".gif"):
-        p = root / f"{user_id}{ext}"
-        if p.is_file():
-            return p
-    return root / f"{user_id}.png"
-
-
-def user_avatar_media_type(path: Path) -> str:
-    suf = path.suffix.lower()
-    return {
-        ".png": "image/png",
-        ".jpg": "image/jpeg",
-        ".jpeg": "image/jpeg",
-        ".webp": "image/webp",
-        ".gif": "image/gif",
-    }.get(suf, "application/octet-stream")
 
 
 def co_worker_avatar_url(user_id: str, stored_avatar_url: Optional[str]) -> Optional[str]:
@@ -61,40 +26,9 @@ def co_worker_avatar_url(user_id: str, stored_avatar_url: Optional[str]) -> Opti
     return f"/api/v1/pulse/workers/{user_id}/avatar"
 
 
-def write_user_avatar_file(user_id: str, ext_with_dot: str, raw: bytes) -> None:
-    root = Path(get_settings().pulse_uploads_dir) / "user_avatars"
-    root.mkdir(parents=True, exist_ok=True)
-    path = root / f"{user_id}{ext_with_dot}"
-    for old in root.glob(f"{user_id}.*"):
-        if old != path:
-            try:
-                old.unlink()
-            except OSError:
-                pass
-    path.write_bytes(raw)
-
-
-def write_user_avatar_pending_file(user_id: str, ext_with_dot: str, raw: bytes) -> None:
-    root = Path(get_settings().pulse_uploads_dir) / "user_avatars_pending"
-    root.mkdir(parents=True, exist_ok=True)
-    path = root / f"{user_id}{ext_with_dot}"
-    for old in root.glob(f"{user_id}.*"):
-        if old != path:
-            try:
-                old.unlink()
-            except OSError:
-                pass
-    path.write_bytes(raw)
-
-
 __all__ = [
     "INTERNAL_AVATAR_PATH",
     "INTERNAL_AVATAR_PENDING_PATH",
     "co_worker_avatar_url",
-    "user_avatar_disk_path",
-    "user_avatar_pending_disk_path",
-    "user_avatar_media_type",
     "validate_logo_bytes",
-    "write_user_avatar_file",
-    "write_user_avatar_pending_file",
 ]

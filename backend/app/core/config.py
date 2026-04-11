@@ -57,6 +57,55 @@ class Settings(BaseSettings):
     #: persistent volume (or object storage); default `var/uploads` is wiped on many PaaS redeploys, which
     #: yields 404 on /company/logo and avatar routes while the DB still points at internal paths.
     pulse_uploads_dir: str = "var/uploads"
+    #: ``local`` uses ``pulse_uploads_dir``; ``s3`` / ``object`` = S3-compatible storage (see ``pulse_s3_*``).
+    pulse_storage_backend: str = Field(
+        default="local",
+        validation_alias=AliasChoices("PULSE_STORAGE_BACKEND", "pulse_storage_backend"),
+    )
+    #: R2 / MinIO custom endpoint. Omit for AWS S3.
+    pulse_s3_endpoint_url: Optional[str] = Field(
+        default=None,
+        validation_alias=AliasChoices(
+            "PULSE_S3_ENDPOINT_URL",
+            "AWS_ENDPOINT_URL",
+            "S3_ENDPOINT_URL",
+            "pulse_s3_endpoint_url",
+        ),
+    )
+    pulse_s3_bucket: str = Field(
+        default="",
+        validation_alias=AliasChoices("PULSE_S3_BUCKET", "AWS_S3_BUCKET", "S3_BUCKET", "pulse_s3_bucket"),
+    )
+    pulse_s3_access_key_id: str = Field(
+        default="",
+        validation_alias=AliasChoices(
+            "PULSE_S3_ACCESS_KEY_ID",
+            "AWS_ACCESS_KEY_ID",
+            "pulse_s3_access_key_id",
+        ),
+    )
+    pulse_s3_secret_access_key: str = Field(
+        default="",
+        validation_alias=AliasChoices(
+            "PULSE_S3_SECRET_ACCESS_KEY",
+            "AWS_SECRET_ACCESS_KEY",
+            "pulse_s3_secret_access_key",
+        ),
+    )
+    pulse_s3_region: str = Field(
+        default="us-east-1",
+        validation_alias=AliasChoices(
+            "PULSE_S3_REGION",
+            "AWS_REGION",
+            "AWS_DEFAULT_REGION",
+            "pulse_s3_region",
+        ),
+    )
+    #: Logical prefix inside the bucket (no leading/trailing slashes).
+    pulse_s3_key_prefix: str = Field(
+        default="pulse",
+        validation_alias=AliasChoices("PULSE_S3_KEY_PREFIX", "pulse_s3_key_prefix"),
+    )
     system_invite_expire_hours: int = 48
     system_password_reset_expire_hours: int = 24
     #: Lets system_admin call POST /api/system/companies/bootstrap-legacy (company + admin with password, no email).

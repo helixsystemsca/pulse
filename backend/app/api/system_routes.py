@@ -25,12 +25,8 @@ from app.core.features.system_catalog import (
     canonicalize_enabled_features_for_admin_ui,
     normalize_enabled_features,
 )
-from app.core.company_logo_upload import (
-    INTERNAL_LOGO_PATH,
-    normalize_logo_content_type,
-    validate_logo_bytes,
-    write_company_logo_file,
-)
+from app.core.company_logo_upload import INTERNAL_LOGO_PATH, normalize_logo_content_type, validate_logo_bytes
+from app.core.pulse_storage import write_company_logo_bytes
 from app.core.system_audit import record_system_log
 from app.core.system_tokens import generate_raw_token, hash_system_token as hash_opaque_token
 from app.models.domain import (
@@ -501,7 +497,10 @@ async def upload_company_logo_as_system_admin(
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
 
-    write_company_logo_file(company_id, ext, raw)
+    try:
+        await write_company_logo_bytes(company_id, ext, ct, raw)
+    except RuntimeError as e:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e)) from e
     c.logo_url = INTERNAL_LOGO_PATH
     await record_system_log(
         db,

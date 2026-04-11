@@ -2,92 +2,68 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
-from fastapi.responses import FileResponse
+from starlette.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_company_user, get_db, require_company_admin_scoped
-from app.core.company_background_upload import (
-    INTERNAL_BACKGROUND_PATH,
-    background_disk_path,
-    write_company_background_file,
+from app.core.company_background_upload import INTERNAL_BACKGROUND_PATH
+from app.core.company_logo_upload import INTERNAL_LOGO_PATH, normalize_logo_content_type, validate_logo_bytes
+from app.core.pulse_storage import (
+    read_company_background_bytes,
+    read_company_logo_bytes,
+    write_company_background_bytes,
+    write_company_logo_bytes,
 )
-from app.core.company_logo_upload import (
-    INTERNAL_LOGO_PATH,
-    normalize_logo_content_type,
-    validate_logo_bytes,
-    write_company_logo_file,
-)
-from app.core.config import get_settings
 from app.models.domain import Company, User
 from app.schemas.company import CompanyLogoUploadOut, CompanyProfilePatch
 
 router = APIRouter(prefix="/company", tags=["company"])
 
-
-def _logo_disk_path(company_id: str) -> Path:
-    root = Path(get_settings().pulse_uploads_dir) / "company_logos"
-    root.mkdir(parents=True, exist_ok=True)
-    for ext in (".png", ".jpg", ".jpeg", ".webp", ".gif"):
-        p = root / f"{company_id}{ext}"
-        if p.is_file():
-            return p
-    return root / f"{company_id}.png"
-
-
-def _guess_media_type(path: Path) -> str:
-    suf = path.suffix.lower()
-    return {
-        ".png": "image/png",
-        ".jpg": "image/jpeg",
-        ".jpeg": "image/jpeg",
-        ".webp": "image/webp",
-        ".gif": "image/gif",
-    }.get(suf, "application/octet-stream")
+_CACHE_PRIVATE = {"Cache-Control": "private, no-store"}
 
 
 @router.get("/logo")
 async def get_company_logo_file(
     user: Annotated[User, Depends(get_current_company_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
-) -> FileResponse:
+) -> Response:
     """Serve the uploaded logo for the authenticated user's company (Authorization required)."""
     cid = str(user.company_id)
-    path = _logo_disk_path(cid)
-    if not path.is_file():
+    try:
+        blob = await read_company_logo_bytes(cid)
+    except RuntimeError as e:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e)) from e
+    if not blob:
         co = await db.get(Company, cid)
         if co and (co.logo_url or "").strip() == INTERNAL_LOGO_PATH:
             co.logo_url = None
             await db.commit()
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No uploaded logo")
-    return FileResponse(
-        path,
-        media_type=_guess_media_type(path),
-        headers={"Cache-Control": "private, no-store"},
-    )
+    data, media_type = blob
+    return Response(content=data, media_type=media_type, headers=_CACHE_PRIVATE)
 
 
 @router.get("/background")
 async def get_company_background_file(
     user: Annotated[User, Depends(get_current_company_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
-) -> FileResponse:
+) -> Response:
     cid = str(user.company_id)
-    path = background_disk_path(cid)
-    if not path.is_file():
+    try:
+        blob = await read_company_background_bytes(cid)
+    except RuntimeError as e:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e)) from e
+    if not blob:
         co = await db.get(Company, cid)
         if co and (co.background_image_url or "").strip() == INTERNAL_BACKGROUND_PATH:
             co.background_image_url = None
             await db.commit()
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No uploaded background")
-    return FileResponse(
-        path,
-        media_type=_guess_media_type(path),
-        headers={"Cache-Control": "private, no-store"},
-    )
+    data, media_type = blob
+    return Response(content=data, media_type=media_type, headers=_CACHE_PRIVATE)
 
 
 @router.post("/logo", response_model=CompanyLogoUploadOut)
@@ -104,7 +80,10 @@ async def upload_company_logo(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
 
     cid = str(user.company_id)
-    write_company_logo_file(cid, ext, raw)
+    try:
+        await write_company_logo_bytes(cid, ext, ct, raw)
+    except RuntimeError as e:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e)) from e
 
     co = await db.get(Company, cid)
     if not co:
@@ -134,7 +113,10 @@ async def upload_company_background(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
 
     cid = str(user.company_id)
-    write_company_background_file(cid, ext, raw)
+    try:
+        await write_company_background_bytes(cid, ext, ct, raw)
+    except RuntimeError as e:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e)) from e
 
     co = await db.get(Company, cid)
     if not co:
