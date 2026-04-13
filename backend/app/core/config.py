@@ -44,9 +44,9 @@ class Settings(BaseSettings):
 
     database_url: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/ops_intel"
     secret_key: str = "dev-only-change-in-production"
-    #: JWT access token lifetime. Default 12m is slightly above the Pulse UI idle timeout (10m) so active
+    #: JWT access token lifetime. Default 62m is slightly above the Pulse UI idle timeout (60m) so active
     #: sessions keep working; raise for longer work blocks (or add refresh tokens). Env: ACCESS_TOKEN_EXPIRE_MINUTES.
-    access_token_expire_minutes: int = 12
+    access_token_expire_minutes: int = 62
     algorithm: str = "HS256"
     # Comma-separated origins, no paths. Env: CORS_ORIGINS (preferred) or CORS_ORIGIN.
     # Production: include every site the browser uses (https://www.example.com and https://example.com

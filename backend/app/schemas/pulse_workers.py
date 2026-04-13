@@ -109,6 +109,8 @@ class WorkerDetailOut(BaseModel):
     availability: dict[str, Any] = {}
     profile_notes: Optional[str] = None
     supervisor_notes: Optional[str] = None
+    #: From `pulse_worker_profiles.scheduling` — same values exposed on Pulse schedule workers.
+    employment_type: Optional[str] = None
     compliance_summary: WorkerComplianceSummaryOut
     work_summary: WorkerWorkSummaryOut
     created_at: datetime

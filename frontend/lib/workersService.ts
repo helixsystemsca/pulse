@@ -80,6 +80,8 @@ export type WorkerDetail = {
   availability: Record<string, unknown>;
   profile_notes: string | null;
   supervisor_notes: string | null;
+  /** Scheduling profile: full_time | regular_part_time | part_time (Pulse roster / schedule). */
+  employment_type?: string | null;
   compliance_summary: WorkerComplianceSummary;
   work_summary: WorkerWorkSummary;
   created_at: string;
@@ -165,6 +167,10 @@ export async function patchWorker(
     method: "PATCH",
     json: body,
   });
+}
+
+export async function deleteWorker(companyId: string | null, id: string): Promise<void> {
+  await apiFetch<undefined>(withCompany(`/api/workers/${id}`, companyId), { method: "DELETE" });
 }
 
 export type WorkersSettingsResponse = {

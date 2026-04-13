@@ -41,6 +41,7 @@ import {
 import type { LoginEventRow, WorkerDetail, WorkerRow, WorkersSettings } from "@/lib/workersService";
 import {
   createWorker,
+  deleteWorker,
   fetchUserLoginEvents,
   fetchWorkerDetail,
   fetchWorkerList,
@@ -94,6 +95,14 @@ type InviteLinkBanner = {
 };
 
 const PROFILE_ROLE_OPTIONS = ["worker", "lead", "supervisor", "manager"] as const;
+
+const EMPLOYMENT_TYPE_KEYS = ["full_time", "regular_part_time", "part_time"] as const;
+type EmploymentTypeKey = (typeof EMPLOYMENT_TYPE_KEYS)[number] | "";
+
+function normalizeEmploymentDraft(raw: string | null | undefined): EmploymentTypeKey {
+  const s = (raw ?? "").trim();
+  return (EMPLOYMENT_TYPE_KEYS as readonly string[]).includes(s) ? (s as EmploymentTypeKey) : "";
+}
 
 type CreateFormState = {
   full_name: string;
@@ -284,6 +293,7 @@ export function WorkersApp() {
     email: "",
     phone: "",
     start_date: "",
+    employment_type: "" as EmploymentTypeKey,
   });
   const [positionDraft, setPositionDraft] = useState({
     job_title: "",
@@ -430,6 +440,7 @@ export function WorkersApp() {
       email: profile.email ?? "",
       phone: profile.phone ?? "",
       start_date: profile.start_date ? profile.start_date.slice(0, 10) : "",
+      employment_type: normalizeEmploymentDraft(profile.employment_type),
     });
     setPositionDraft({
       job_title: profile.job_title ?? "",
@@ -458,6 +469,14 @@ export function WorkersApp() {
     if (managerOrAbove(session) && principalHasAnyRole(profile, "worker", "lead")) return true;
     return false;
   }, [profile, session, isCompanyAdmin]);
+
+  /** Hard-delete roster user (API enforces company / system admin). */
+  const canDeleteWorkerProfile = useMemo(() => {
+    if (!profile || !session?.sub) return false;
+    if (profile.id === session.sub) return false;
+    if (principalHasAnyRole(profile, "company_admin")) return false;
+    return isCompanyAdmin || isSystemAdmin;
+  }, [profile, session, isCompanyAdmin, isSystemAdmin]);
 
   const clearProfileQueryFromUrl = useCallback(() => {
     const q = new URLSearchParams(searchParams.toString());
@@ -502,6 +521,32 @@ export function WorkersApp() {
       else cur.add(mod);
       return { ...prev, [role]: [...cur].sort() };
     });
+  }
+
+  async function removeWorkerProfilePermanently() {
+    if (!profileId || !profile || !canDeleteWorkerProfile) return;
+    const label = profile.full_name?.trim() || profile.email;
+    if (
+      !window.confirm(
+        `Permanently delete ${label}? Their sign-in will be removed. Schedule assignments and other links to this user may be cleared. This cannot be undone.`,
+      )
+    ) {
+      return;
+    }
+    setProfileBusy(true);
+    try {
+      await deleteWorker(apiCompany, profileId);
+      setCreateToast({ message: "User deleted.", variant: "success" });
+      setProfileId(null);
+      clearProfileQueryFromUrl();
+      await loadList();
+      await refreshPulseUserFromServer();
+      refresh();
+    } catch (e: unknown) {
+      setCreateToast({ message: parseClientApiError(e).message, variant: "error" });
+    } finally {
+      setProfileBusy(false);
+    }
   }
 
   async function setProfileActive(next: boolean) {
@@ -599,6 +644,10 @@ export function WorkersApp() {
     const curStart = profile.start_date ? profile.start_date.slice(0, 10) : "";
     if (basicDraft.start_date.trim() !== curStart) {
       payload.start_date = basicDraft.start_date.trim() || null;
+    }
+    const curEmp = normalizeEmploymentDraft(profile.employment_type);
+    if (basicDraft.employment_type !== curEmp) {
+      payload.employment_type = basicDraft.employment_type || null;
     }
     if (trim(positionDraft.job_title) !== (profile.job_title ?? "").trim()) {
       payload.job_title = trim(positionDraft.job_title) || null;
@@ -1340,6 +1389,10 @@ export function WorkersApp() {
           <div className="space-y-8" id="worker-profile-title">
             <section>
               <h3 className={SECTION_KICKER}>Basic info</h3>
+              <p className="mt-1 max-w-prose text-xs text-pulse-muted">
+                Changes here update this person&apos;s roster record for Pulse (schedule assignments, projects, device
+                ownership where linked by user, and permissions).
+              </p>
               <div className="mt-3 flex items-center gap-3 sm:col-span-2">
                 <UserProfileAvatarPreview
                   avatarUrl={profile.avatar_url}
@@ -1364,7 +1417,13 @@ export function WorkersApp() {
                 </p>
                 <p>
                   <span className="text-pulse-muted">Status: </span>
-                  <span className="font-medium text-ds-foreground">{profile.is_active ? "Active" : "Inactive"}</span>
+                  <span className="font-medium text-ds-foreground">
+                    {(profile.account_status ?? "active") === "invited"
+                      ? "Invited (pending activation)"
+                      : profile.is_active
+                        ? "Active"
+                        : "Inactive"}
+                  </span>
                 </p>
                 {canEditWorkerBasics ? (
                   <>
@@ -1428,6 +1487,30 @@ export function WorkersApp() {
                         onChange={(e) => setBasicDraft((d) => ({ ...d, start_date: e.target.value }))}
                       />
                     </div>
+                    <div className="sm:col-span-2">
+                      <label className={LABEL} htmlFor="worker-profile-employment">
+                        Employment status
+                      </label>
+                      <select
+                        id="worker-profile-employment"
+                        className={FIELD}
+                        value={basicDraft.employment_type}
+                        onChange={(e) =>
+                          setBasicDraft((d) => ({
+                            ...d,
+                            employment_type: e.target.value as EmploymentTypeKey,
+                          }))
+                        }
+                      >
+                        <option value="">— Not set —</option>
+                        <option value="full_time">Full time</option>
+                        <option value="regular_part_time">Regular part time</option>
+                        <option value="part_time">Part time</option>
+                      </select>
+                      <p className="mt-1 text-xs text-pulse-muted">
+                        Used on the schedule roster and worker profile; matches invite defaults when left unset.
+                      </p>
+                    </div>
                   </>
                 ) : (
                   <>
@@ -1442,6 +1525,16 @@ export function WorkersApp() {
                     <p>
                       <span className="text-pulse-muted">Start date: </span>
                       {profile.start_date ?? "—"}
+                    </p>
+                    <p className="sm:col-span-2">
+                      <span className="text-pulse-muted">Employment: </span>
+                      {normalizeEmploymentDraft(profile.employment_type) === "full_time"
+                        ? "Full time"
+                        : normalizeEmploymentDraft(profile.employment_type) === "regular_part_time"
+                          ? "Regular part time"
+                          : normalizeEmploymentDraft(profile.employment_type) === "part_time"
+                            ? "Part time"
+                            : "—"}
                     </p>
                   </>
                 )}
@@ -1738,10 +1831,23 @@ export function WorkersApp() {
                       Reactivate user
                     </button>
                   ) : null}
+                  {canDeleteWorkerProfile ? (
+                    <button
+                      type="button"
+                      className="rounded-lg border border-ds-danger/50 bg-[color-mix(in_srgb,var(--ds-danger)_8%,transparent)] px-4 py-2 text-sm font-semibold text-ds-danger transition-colors hover:bg-[color-mix(in_srgb,var(--ds-danger)_14%,transparent)] disabled:opacity-50"
+                      disabled={profileBusy}
+                      onClick={() => void removeWorkerProfilePermanently()}
+                    >
+                      Delete user permanently
+                    </button>
+                  ) : null}
                 </div>
                 <p className="mt-2 text-xs text-ds-muted">
                   Deactivated users cannot sign in. Company administrators can restore access; another company admin
                   cannot be changed here.
+                  {canDeleteWorkerProfile
+                    ? " Permanent delete removes the account from your tenant (not available for company administrators)."
+                    : null}
                 </p>
               </section>
             ) : null}

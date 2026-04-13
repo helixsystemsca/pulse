@@ -39,7 +39,6 @@ import {
 } from "@/lib/setup-api";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { AssignmentModal } from "@/components/setup/AssignmentModal";
-import { AssignmentsOverview } from "@/components/setup/AssignmentsOverview";
 import { ConfigPanel } from "@/components/setup/ConfigPanel";
 import { DeviceHealthPanel } from "@/components/setup/DeviceHealthPanel";
 import { DeviceCard } from "@/components/setup/DeviceCard";
@@ -68,6 +67,12 @@ const TAB_ACTIVE =
   "border-ds-border bg-ds-primary text-ds-foreground shadow-[var(--ds-shadow-card)]";
 const TAB_IDLE =
   "border-transparent bg-ds-secondary/60 text-ds-muted hover:border-ds-border hover:bg-ds-interactive-hover hover:text-ds-foreground";
+
+/** Matches former Assignments overview inset cards. */
+const TAB_SUMMARY_PANEL =
+  "rounded-md border border-ds-border bg-ds-primary p-5 shadow-[var(--ds-shadow-card)] md:p-6";
+const TAB_SUMMARY_INSET =
+  "flex flex-col rounded-lg bg-ds-secondary/60 px-3 py-2 ring-1 ring-ds-border text-sm";
 
 function isUnassignedGateway(g: GatewayOut): boolean {
   return g.assigned === false;
@@ -799,11 +804,21 @@ export function SetupApp({ defaultTab }: { defaultTab?: TabId }) {
       {dataEnabled && initialLoadDone ? <SetupProgress items={progressItems} warnings={setupWarnings} /> : null}
 
       {dataEnabled ? (
-        <AssignmentsOverview
-          workers={overviewData.workersMapped}
-          zoneRows={overviewData.zoneMapped}
-          tagSummary={overviewData.tagSummary}
-        />
+        <nav className="flex flex-wrap gap-2" aria-label="Zones and devices sections">
+          {TABS.map(({ id, label, icon: Icon }) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => navigateTab(id)}
+              className={`inline-flex items-center gap-2 rounded-md border px-4 py-2.5 text-sm font-semibold transition-colors ${
+                tab === id ? TAB_ACTIVE : TAB_IDLE
+              }`}
+            >
+              <Icon className="h-4 w-4" aria-hidden />
+              {label}
+            </button>
+          ))}
+        </nav>
       ) : null}
 
       {error ? (
@@ -811,22 +826,6 @@ export function SetupApp({ defaultTab }: { defaultTab?: TabId }) {
           {error}
         </div>
       ) : null}
-
-      <nav className="flex flex-wrap gap-2">
-        {TABS.map(({ id, label, icon: Icon }) => (
-          <button
-            key={id}
-            type="button"
-            onClick={() => navigateTab(id)}
-            className={`inline-flex items-center gap-2 rounded-md border px-4 py-2.5 text-sm font-semibold transition-colors ${
-              tab === id ? TAB_ACTIVE : TAB_IDLE
-            }`}
-          >
-            <Icon className="h-4 w-4" aria-hidden />
-            {label}
-          </button>
-        ))}
-      </nav>
 
       {loading && !gateways.length && !bleDevices.length ? (
         <div className="flex justify-center py-16">
@@ -836,6 +835,29 @@ export function SetupApp({ defaultTab }: { defaultTab?: TabId }) {
 
       {tab === "devices" && dataEnabled ? (
         <div className="space-y-8">
+          <section className={TAB_SUMMARY_PANEL}>
+            <div className="flex items-center gap-2 text-ds-foreground">
+              <Radio className="h-4 w-4 text-ds-muted" aria-hidden />
+              <h2 className="text-sm font-semibold">Active tags</h2>
+            </div>
+            <div className="mt-3 grid grid-cols-3 gap-2 text-center text-sm">
+              <div className="app-badge-slate rounded-lg px-2 py-2">
+                <p className="text-lg font-semibold tabular-nums">{overviewData.tagSummary.registered}</p>
+                <p className="text-[10px] font-semibold uppercase tracking-wide opacity-90">Registered</p>
+              </div>
+              <div className="app-badge-emerald rounded-lg px-2 py-2">
+                <p className="text-lg font-semibold tabular-nums">{overviewData.tagSummary.assigned}</p>
+                <p className="text-[10px] font-semibold uppercase tracking-wide opacity-90">Assigned</p>
+              </div>
+              <div className="app-badge-amber rounded-lg px-2 py-2">
+                <p className="text-lg font-semibold tabular-nums">{overviewData.tagSummary.unassigned}</p>
+                <p className="text-[10px] font-semibold uppercase tracking-wide opacity-90">Unassigned</p>
+              </div>
+            </div>
+            <p className="mt-3 text-xs text-ds-muted">
+              Worker tags go to roster members; equipment tags attach to tracked assets below.
+            </p>
+          </section>
         <div className="grid gap-8 lg:grid-cols-2">
           <div className="space-y-4">
             {newGateways.length > 0 ? (
@@ -1167,6 +1189,38 @@ export function SetupApp({ defaultTab }: { defaultTab?: TabId }) {
 
       {tab === "workers" && dataEnabled ? (
         <div className="space-y-4">
+          <section className={TAB_SUMMARY_PANEL}>
+            <div className="flex items-center gap-2 text-ds-foreground">
+              <Users className="h-4 w-4 text-ds-muted" aria-hidden />
+              <h2 className="text-sm font-semibold">Workers</h2>
+            </div>
+            <ul className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              {overviewData.workersMapped.length === 0 ? (
+                <li className="text-sm text-ds-muted">No workers in roster.</li>
+              ) : (
+                overviewData.workersMapped.map((w) => (
+                  <li key={w.id} className={TAB_SUMMARY_INSET}>
+                    <span className="font-medium text-ds-foreground">{w.name}</span>
+                    <span className="text-xs text-ds-muted">{w.tag ? `Tag: ${w.tag}` : "No tag assigned"}</span>
+                  </li>
+                ))
+              )}
+            </ul>
+            <div className="mt-4 grid grid-cols-3 gap-2 border-t border-ds-border pt-4 text-center text-sm">
+              <div className="app-badge-slate rounded-lg px-2 py-2">
+                <p className="text-lg font-semibold tabular-nums">{overviewData.tagSummary.registered}</p>
+                <p className="text-[10px] font-semibold uppercase tracking-wide opacity-90">Tags registered</p>
+              </div>
+              <div className="app-badge-emerald rounded-lg px-2 py-2">
+                <p className="text-lg font-semibold tabular-nums">{overviewData.tagSummary.assigned}</p>
+                <p className="text-[10px] font-semibold uppercase tracking-wide opacity-90">Assigned</p>
+              </div>
+              <div className="app-badge-amber rounded-lg px-2 py-2">
+                <p className="text-lg font-semibold tabular-nums">{overviewData.tagSummary.unassigned}</p>
+                <p className="text-[10px] font-semibold uppercase tracking-wide opacity-90">Unassigned</p>
+              </div>
+            </div>
+          </section>
           <p className="text-sm text-ds-muted">
             Assign <strong className="text-ds-foreground">worker tags</strong> from the{" "}
             <strong className="text-ds-foreground">Gateways &amp; sensors</strong> tab, or use Assign on each tag card. Roster
@@ -1228,6 +1282,26 @@ export function SetupApp({ defaultTab }: { defaultTab?: TabId }) {
 
       {tab === "zones" && dataEnabled ? (
         <div className="space-y-6">
+          <section className={TAB_SUMMARY_PANEL}>
+            <div className="flex items-center gap-2 text-ds-foreground">
+              <MapPin className="h-4 w-4 text-ds-muted" aria-hidden />
+              <h2 className="text-sm font-semibold">Zones &amp; gateways</h2>
+            </div>
+            <ul className="mt-3 space-y-2 text-sm">
+              {overviewData.zoneMapped.length === 0 ? (
+                <li className="text-ds-muted">No zones defined.</li>
+              ) : (
+                overviewData.zoneMapped.map((z) => (
+                  <li key={z.id} className={TAB_SUMMARY_INSET}>
+                    <span className="font-medium text-ds-foreground">{z.name}</span>
+                    <span className="text-xs text-ds-muted">
+                      {z.gateways.length ? z.gateways.join(", ") : "No gateways assigned"}
+                    </span>
+                  </li>
+                ))
+              )}
+            </ul>
+          </section>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {zones.map((z) => {
               const gatewayCount = gateways.filter((g) => g.zone_id === z.id).length;

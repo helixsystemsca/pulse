@@ -10,7 +10,7 @@ import { applyServerTimeFromUserOut } from "@/lib/serverTime";
 export const PULSE_AUTH_STORAGE_KEY = "pulse_auth_v1";
 
 /** Wall-clock session cap when JWT `exp` is missing (seconds). Matches default backend `ACCESS_TOKEN_EXPIRE_MINUTES`. */
-const SESSION_FALLBACK_TTL_SEC = 12 * 60;
+const SESSION_FALLBACK_TTL_SEC = 62 * 60;
 
 /** `sessionStorage` flag for the post-login welcome overlay; cleared when auth ends so the next sign-in can show it. */
 export const PULSE_WELCOME_SESSION_KEY = "welcome_shown";

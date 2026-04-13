@@ -11,8 +11,8 @@ import { navigateToPulseLogin } from "@/lib/pulse-app";
 import { clearSession } from "@/lib/pulse-session";
 
 const THROTTLE_MS = 1000;
-const IDLE_MS = 10 * 60 * 1000;
-const WARNING_MS = 9 * 60 * 1000;
+const IDLE_MS = 60 * 60 * 1000;
+const WARNING_MS = 59 * 60 * 1000;
 
 const PUBLIC_PATH_PREFIXES = ["/login", "/invite", "/reset-password"];
 

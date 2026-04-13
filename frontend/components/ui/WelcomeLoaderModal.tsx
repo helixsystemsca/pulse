@@ -205,7 +205,8 @@ export function WelcomeLoaderModal({
   const phase = content;
   const status = statusForPhase(phase, criticalCount, warningCount);
 
-  const statusRowClass =
+  /** Severity tint on the icon only; body copy stays neutral like the rest of the card. */
+  const statusIconClass =
     status.kind === "critical"
       ? "text-ds-danger"
       : status.kind === "warning"
@@ -329,15 +330,23 @@ export function WelcomeLoaderModal({
             </div>
 
             <motion.div
-              className={`mt-6 flex items-start gap-2.5 text-left text-sm font-medium leading-relaxed ${statusRowClass}`}
+              className="mt-6 flex items-start gap-2.5 text-left text-sm font-medium leading-relaxed text-ds-muted"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.12, duration: 0.35 }}
             >
               {status.kind === "critical" ? (
-                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 opacity-90" strokeWidth={2} aria-hidden />
+                <AlertTriangle
+                  className={`mt-0.5 h-4 w-4 shrink-0 opacity-90 ${statusIconClass}`}
+                  strokeWidth={2}
+                  aria-hidden
+                />
               ) : status.kind === "warning" ? (
-                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 opacity-90" strokeWidth={2} aria-hidden />
+                <AlertCircle
+                  className={`mt-0.5 h-4 w-4 shrink-0 opacity-90 ${statusIconClass}`}
+                  strokeWidth={2}
+                  aria-hidden
+                />
               ) : status.kind === "loading" ? (
                 <motion.span
                   className="mt-0.5 block h-4 w-4 shrink-0 rounded-full border-2 border-ds-border border-t-[color-mix(in_srgb,var(--ds-text-primary)_70%,transparent)]"
@@ -346,7 +355,11 @@ export function WelcomeLoaderModal({
                   aria-hidden
                 />
               ) : (
-                <Check className="mt-0.5 h-4 w-4 shrink-0 opacity-90" strokeWidth={2.5} aria-hidden />
+                <Check
+                  className={`mt-0.5 h-4 w-4 shrink-0 opacity-90 ${statusIconClass}`}
+                  strokeWidth={2.5}
+                  aria-hidden
+                />
               )}
               <span>{status.message}</span>
             </motion.div>

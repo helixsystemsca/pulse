@@ -3,7 +3,7 @@
 import { animate, AnimatePresence, motion } from "framer-motion";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type Konva from "konva";
-import { Circle, Ellipse, Group, Layer, Line, Rect, Stage, Text, Transformer } from "react-konva";
+import { Circle, Ellipse, Group, Image as KonvaImage, Layer, Line, Rect, Stage, Text, Transformer } from "react-konva";
 import { apiFetch, isApiMode } from "@/lib/api";
 import { parseClientApiError } from "@/lib/parse-client-api-error";
 import { pulseApp } from "@/lib/pulse-app";
@@ -1196,6 +1196,16 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
   const [saveNotice, setSaveNotice] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [designerMode, setDesignerMode] = useState<"edit" | "publish">("edit");
+  /** Full-viewport editor shell (fixed overlay); canvas uses maximum vertical space. */
+  const [immersiveOpen, setImmersiveOpen] = useState(false);
+  /** Floor plan / satellite underlay drawn beneath grid and geometry. */
+  const underlayInputRef = useRef<HTMLInputElement | null>(null);
+  const [underlayObjectUrl, setUnderlayObjectUrl] = useState<string | null>(null);
+  const [underlayHtmlImage, setUnderlayHtmlImage] = useState<HTMLImageElement | null>(null);
+  const [underlayOpacity, setUnderlayOpacity] = useState(0.42);
+  const [underlayScale, setUnderlayScale] = useState(0.35);
+  const [underlayLocked, setUnderlayLocked] = useState(false);
+  const [underlayPos, setUnderlayPos] = useState({ x: 0, y: 0 });
 
   const [zonesApi, setZonesApi] = useState<{ id: string; name: string }[]>([]);
   const [equipmentApi, setEquipmentApi] = useState<{ id: string; name: string }[]>([]);
@@ -1540,6 +1550,35 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
   useEffect(() => {
     stagePosRef.current = stagePos;
   }, [stagePos]);
+
+  const underlayPlacedForUrlRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!underlayHtmlImage || !underlayObjectUrl) {
+      underlayPlacedForUrlRef.current = null;
+      return;
+    }
+    if (underlayPlacedForUrlRef.current === underlayObjectUrl) return;
+    underlayPlacedForUrlRef.current = underlayObjectUrl;
+    const img = underlayHtmlImage;
+    const host = hostRef.current;
+    const r = host?.getBoundingClientRect();
+    const wv = Math.max(320, Math.floor(r?.width ?? stageSize.w));
+    const hv = Math.max(380, Math.floor(r?.height ?? stageSize.h));
+    const sc = Math.max(0.001, stageScaleRef.current);
+    const px = stagePosRef.current.x;
+    const py = stagePosRef.current.y;
+    const maxW = (wv * 0.9) / sc;
+    const maxH = (hv * 0.9) / sc;
+    const fit = Math.min(maxW / img.naturalWidth, maxH / img.naturalHeight, 3);
+    const cx = (-px + wv / 2) / sc;
+    const cy = (-py + hv / 2) / sc;
+    setUnderlayScale(fit);
+    setUnderlayPos({
+      x: cx - (img.naturalWidth * fit) / 2,
+      y: cy - (img.naturalHeight * fit) / 2,
+    });
+  }, [underlayHtmlImage, underlayObjectUrl, stageSize.w, stageSize.h]);
+
   useEffect(() => {
     connectStyleRef.current = connectStyle;
   }, [connectStyle]);
@@ -1861,7 +1900,51 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
     const r = el.getBoundingClientRect();
     setStageSize({ w: Math.max(320, Math.floor(r.width)), h: Math.max(380, Math.floor(r.height)) });
     return () => ro.disconnect();
-  }, []);
+  }, [immersiveOpen]);
+
+  useEffect(() => {
+    if (!underlayObjectUrl) {
+      setUnderlayHtmlImage(null);
+      return;
+    }
+    const img = new window.Image();
+    img.decoding = "async";
+    img.onload = () => {
+      setUnderlayHtmlImage(img);
+    };
+    img.onerror = () => {
+      setUnderlayHtmlImage(null);
+    };
+    img.src = underlayObjectUrl;
+    return () => {
+      img.onload = null;
+      img.onerror = null;
+    };
+  }, [underlayObjectUrl]);
+
+  useEffect(() => {
+    return () => {
+      if (underlayObjectUrl) URL.revokeObjectURL(underlayObjectUrl);
+    };
+  }, [underlayObjectUrl]);
+
+  useEffect(() => {
+    if (!immersiveOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [immersiveOpen]);
+
+  useEffect(() => {
+    if (!immersiveOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setImmersiveOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [immersiveOpen]);
 
   useEffect(() => {
     const kd = (e: KeyboardEvent) => {
@@ -3060,9 +3143,24 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
     );
   };
 
-  return wrapPulseFrame(
+  return (
     <div
-      className={`bp-shell${isPublish ? " bp-shell--publish" : ""}${!standalone ? " bp-shell--pulse" : ""}${fullscreen ? " bp-shell--fullscreen" : ""}`}
+      className={`bp-immersive-root${immersiveOpen ? " bp-immersive-root--open" : ""}`}
+      role={immersiveOpen ? "dialog" : undefined}
+      aria-modal={immersiveOpen ? "true" : undefined}
+      aria-label={immersiveOpen ? "Blueprint editor, fullscreen" : undefined}
+    >
+      {immersiveOpen ? (
+        <div className="bp-immersive-topbar">
+          <span className="bp-immersive-topbar__title">Blueprint editor</span>
+          <button type="button" className="bp-btn bp-btn--ghost" onClick={() => setImmersiveOpen(false)}>
+            Close
+          </button>
+        </div>
+      ) : null}
+      {wrapPulseFrame(
+    <div
+      className={`bp-shell${isPublish ? " bp-shell--publish" : ""}${!standalone ? " bp-shell--pulse" : ""}${fullscreen ? " bp-shell--fullscreen" : ""}${immersiveOpen ? " bp-shell--immersive" : ""}`}
     >
       <motion.aside
         className={`bp-sidebar${isPublish ? " bp-sidebar--disabled" : ""}`}
@@ -3173,7 +3271,7 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
           ) : null}
         </AnimatePresence>
         <motion.div
-          className="bp-toolbar"
+          className={`bp-toolbar${immersiveOpen ? " bp-toolbar--compact" : ""}`}
           initial={false}
           animate={{ opacity: 1, y: 0 }}
           transition={bpTransition.fast}
@@ -3249,10 +3347,106 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
           >
             Publish
           </motion.button>
+          <motion.button
+            type="button"
+            className="bp-btn bp-btn--ghost"
+            disabled={isPublish}
+            title={immersiveOpen ? "Return to embedded layout" : "Open fullscreen editor"}
+            onClick={() => setImmersiveOpen((v) => !v)}
+            whileHover={isPublish ? undefined : { scale: 1.02 }}
+            whileTap={isPublish ? undefined : { scale: 0.985 }}
+            transition={bpTransition.fast}
+          >
+            {immersiveOpen ? "Exit fullscreen" : "Fullscreen"}
+          </motion.button>
           {!standalone ? (
             <ModuleSettingsGear moduleId="blueprint" label="Blueprint designer organization settings" />
           ) : null}
         </motion.div>
+        {!isPublish ? (
+          <div className={`bp-underlay-panel${immersiveOpen ? " bp-underlay-panel--compact" : ""}`}>
+            <input
+              ref={underlayInputRef}
+              type="file"
+              accept="image/*"
+              className="sr-only"
+              aria-label="Choose floor plan underlay image"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (!f) return;
+                setUnderlayObjectUrl((prev) => {
+                  if (prev) URL.revokeObjectURL(prev);
+                  return URL.createObjectURL(f);
+                });
+                underlayPlacedForUrlRef.current = null;
+                e.target.value = "";
+              }}
+            />
+            <button
+              type="button"
+              className="bp-btn bp-btn--ghost"
+              disabled={!canEdit}
+              onClick={() => underlayInputRef.current?.click()}
+            >
+              Underlay…
+            </button>
+            {underlayHtmlImage ? (
+              <>
+                <button
+                  type="button"
+                  className="bp-btn bp-btn--ghost"
+                  disabled={!canEdit}
+                  onClick={() => {
+                    setUnderlayObjectUrl((prev) => {
+                      if (prev) URL.revokeObjectURL(prev);
+                      return null;
+                    });
+                    setUnderlayHtmlImage(null);
+                    underlayPlacedForUrlRef.current = null;
+                  }}
+                >
+                  Clear underlay
+                </button>
+                <label className="bp-underlay-field">
+                  <span>Opacity</span>
+                  <input
+                    type="range"
+                    min={5}
+                    max={100}
+                    value={Math.round(underlayOpacity * 100)}
+                    disabled={!canEdit}
+                    onChange={(e) => setUnderlayOpacity(Number(e.target.value) / 100)}
+                  />
+                </label>
+                <label className="bp-underlay-field">
+                  <span>Zoom</span>
+                  <input
+                    type="range"
+                    min={2}
+                    max={300}
+                    value={Math.round(underlayScale * 100)}
+                    disabled={!canEdit || underlayLocked}
+                    onChange={(e) => setUnderlayScale(Number(e.target.value) / 100)}
+                  />
+                </label>
+                <label className="bp-underlay-lock">
+                  <input
+                    type="checkbox"
+                    checked={underlayLocked}
+                    disabled={!canEdit}
+                    onChange={(e) => setUnderlayLocked(e.target.checked)}
+                  />
+                  <span>Lock</span>
+                </label>
+                <span className="bp-underlay-hint">
+                  {underlayLocked
+                    ? "Unlock to scale or drag the image (Select tool)."
+                    : "Select tool: drag the image to align."}
+                </span>
+              </>
+            ) : null}
+          </div>
+        ) : null}
         <AnimatePresence>
           {error ? (
             <motion.p
@@ -3312,6 +3506,25 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
             onMouseMove={onStageMouseMove}
             onMouseUp={onStageMouseUp}
           >
+            {underlayHtmlImage ? (
+              <Layer name="blueprint-underlay">
+                <KonvaImage
+                  name="blueprint-underlay-image"
+                  image={underlayHtmlImage}
+                  x={underlayPos.x}
+                  y={underlayPos.y}
+                  width={underlayHtmlImage.naturalWidth * underlayScale}
+                  height={underlayHtmlImage.naturalHeight * underlayScale}
+                  opacity={underlayOpacity}
+                  listening={!underlayLocked && canEdit && !isPublish && tool === "select"}
+                  draggable={!underlayLocked && canEdit && !isPublish && tool === "select"}
+                  onDragEnd={(e) => {
+                    const node = e.target;
+                    setUnderlayPos({ x: node.x(), y: node.y() });
+                  }}
+                />
+              </Layer>
+            ) : null}
             <Layer ref={layerRef}>
               {gridLines}
               {snapGuideLines}
@@ -5133,6 +5346,8 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
         />
       </motion.div>
       </div>
+    </div>
+      )}
     </div>
   );
 }

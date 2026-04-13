@@ -9,6 +9,7 @@ import {
   List,
   Plus,
   Settings2,
+  Trash2,
   Users,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -241,6 +242,11 @@ export function ProjectDetailApp({ projectId }: { projectId: string }) {
       data.status !== "completed",
   );
 
+  /** Matches the "Owner:" line in the header (`owner_user_id`). */
+  const isProjectOwner = Boolean(
+    session?.sub && data?.owner_user_id && data.owner_user_id === session.sub,
+  );
+
   async function markProjectComplete() {
     if (!data || !session?.sub || data.created_by_user_id !== session.sub || projectCompleting) return;
     setProjectCompleting(true);
@@ -257,6 +263,24 @@ export function ProjectDetailApp({ projectId }: { projectId: string }) {
       setToast(message || "Could not update project.");
     } finally {
       setProjectCompleting(false);
+    }
+  }
+
+  async function removeTask(t: TaskRow) {
+    if (!isProjectOwner || !data) return;
+    if (!window.confirm(`Delete “${t.title}”? This cannot be undone.`)) return;
+    const prev = data;
+    setData({
+      ...data,
+      tasks: data.tasks.filter((x) => x.id !== t.id),
+    });
+    try {
+      await deleteTask(t.id);
+      setToast("Task deleted.");
+      emitOnboardingMaybeUpdated();
+    } catch {
+      setData(prev);
+      setToast("Could not delete task.");
     }
   }
 
@@ -402,6 +426,8 @@ export function ProjectDetailApp({ projectId }: { projectId: string }) {
                   }}
                   onComplete={(t) => void markComplete(t)}
                   workerMap={workerMap}
+                  canDelete={isProjectOwner}
+                  onDelete={(t) => void removeTask(t)}
                 />
                 <TaskSection
                   title="Completed tasks"
@@ -414,6 +440,8 @@ export function ProjectDetailApp({ projectId }: { projectId: string }) {
                   onComplete={() => {}}
                   workerMap={workerMap}
                   completedStyle
+                  canDelete={isProjectOwner}
+                  onDelete={(t) => void removeTask(t)}
                 />
               </div>
               <div className="lg:col-span-5 xl:col-span-4">
@@ -575,6 +603,9 @@ export function ProjectDetailApp({ projectId }: { projectId: string }) {
   );
 }
 
+const TASK_DELETE_ICON_BTN =
+  "inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] border border-slate-200/90 text-pulse-muted shadow-sm transition-colors hover:border-red-200 hover:bg-red-50 hover:text-red-700 disabled:opacity-50 dark:border-ds-border dark:text-ds-muted dark:hover:border-red-500/40 dark:hover:bg-red-950/50 dark:hover:text-red-300";
+
 function TaskSection({
   title,
   empty,
@@ -583,6 +614,8 @@ function TaskSection({
   onComplete,
   workerMap,
   completedStyle,
+  canDelete,
+  onDelete,
 }: {
   title: string;
   empty: string;
@@ -591,6 +624,8 @@ function TaskSection({
   onComplete: (t: TaskRow) => void;
   workerMap: Map<string, string>;
   completedStyle?: boolean;
+  canDelete?: boolean;
+  onDelete?: (t: TaskRow) => void;
 }) {
   return (
     <section>
@@ -657,11 +692,24 @@ function TaskSection({
                     </p>
                   ) : null}
                 </div>
-                {!completedStyle && t.status !== "complete" ? (
-                  <button type="button" className={SECONDARY_BTN} onClick={() => onComplete(t)}>
-                    Mark complete
-                  </button>
-                ) : null}
+                <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+                  {canDelete && onDelete ? (
+                    <button
+                      type="button"
+                      className={TASK_DELETE_ICON_BTN}
+                      aria-label={`Delete task: ${t.title}`}
+                      title="Delete task"
+                      onClick={() => onDelete(t)}
+                    >
+                      <Trash2 className="h-4 w-4" aria-hidden />
+                    </button>
+                  ) : null}
+                  {!completedStyle && t.status !== "complete" ? (
+                    <button type="button" className={SECONDARY_BTN} onClick={() => onComplete(t)}>
+                      Mark complete
+                    </button>
+                  ) : null}
+                </div>
               </div>
             </Card>
           ))}

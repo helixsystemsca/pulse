@@ -1,7 +1,7 @@
 "use client";
 
 import { AlertTriangle, Check, Circle } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
 type Phase = "show" | "pulse" | "exit" | "gone";
 
@@ -23,41 +23,40 @@ export function SetupProgress({
   const shouldCelebrate = allChecklistDone && warnings.length === 0;
 
   const [phase, setPhase] = useState<Phase>("show");
-  const prevShouldCelebrateRef = useRef<boolean | null>(null);
 
   useEffect(() => {
-    // Only run the celebration animation when we *transition* into a fully-complete, no-warnings state.
-    // If the page loads already complete, keep the card visible (no pulse/exit loop on every load).
-    const prev = prevShouldCelebrateRef.current;
-    prevShouldCelebrateRef.current = shouldCelebrate;
-
     if (!shouldCelebrate) {
       setPhase("show");
       return;
     }
-    if (prev === null) {
-      // First render and already complete: don't animate.
-      setPhase("show");
-      return;
-    }
-    if (prev === true) {
-      // Still complete: don't re-run animation.
-      setPhase("show");
-      return;
-    }
+
+    let alive = true;
+    const timeouts: ReturnType<typeof setTimeout>[] = [];
 
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (reduced) {
-      const t = window.setTimeout(() => setPhase("gone"), 450);
-      return () => clearTimeout(t);
+      timeouts.push(
+        window.setTimeout(() => {
+          if (alive) setPhase("gone");
+        }, 450),
+      );
+    } else {
+      setPhase("pulse");
+      timeouts.push(
+        window.setTimeout(() => {
+          if (alive) setPhase("exit");
+        }, PULSE_MS),
+      );
+      timeouts.push(
+        window.setTimeout(() => {
+          if (alive) setPhase("gone");
+        }, PULSE_MS + EXIT_MS),
+      );
     }
 
-    setPhase("pulse");
-    const tExit = window.setTimeout(() => setPhase("exit"), PULSE_MS);
-    const tGone = window.setTimeout(() => setPhase("gone"), PULSE_MS + EXIT_MS);
     return () => {
-      clearTimeout(tExit);
-      clearTimeout(tGone);
+      alive = false;
+      for (const t of timeouts) clearTimeout(t);
     };
   }, [shouldCelebrate]);
 

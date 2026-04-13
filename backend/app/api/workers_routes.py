@@ -455,6 +455,11 @@ async def _build_detail(db: AsyncSession, cid: str, u: User, users_map: dict[str
     extras = list(u.feature_allow_extra) if isinstance(getattr(u, "feature_allow_extra", None), list) else []
 
     uid_s = str(u.id)
+    sched = dict(p.scheduling or {}) if p else {}
+    raw_et = sched.get("employment_type")
+    emp_type = str(raw_et).strip() if raw_et is not None else ""
+    employment_type = emp_type if emp_type in ("full_time", "regular_part_time", "part_time") else None
+
     return WorkerDetailOut(
         id=uid_s,
         company_id=str(u.company_id) if u.company_id else cid,
@@ -480,6 +485,7 @@ async def _build_detail(db: AsyncSession, cid: str, u: User, users_map: dict[str
         availability=dict(p.availability or {}) if p else {},
         profile_notes=p.notes if p else None,
         supervisor_notes=hr.supervisor_notes if hr else None,
+        employment_type=employment_type,
         compliance_summary=co,
         work_summary=wo,
         created_at=u.created_at,
@@ -966,3 +972,36 @@ async def patch_worker(
     assert u2
     users_map = await _users_by_company(db, cid)
     return await _build_detail(db, cid, u2, users_map)
+
+
+@router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_worker(
+    db: Db,
+    actor: WorkersSettingsAdminUser,
+    cid: CompanyId,
+    user_id: str,
+) -> None:
+    """Permanently remove a tenant roster user. Company administrators (and system administrators) only."""
+    if str(actor.id) == user_id:
+        raise HTTPException(status_code=400, detail="Cannot delete your own account")
+
+    target = await pulse_svc._user_in_company(db, cid, user_id)
+    rset2 = {r.value for r in _ROSTER_ROLES}
+    if not target or not set(target.roles) & rset2:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    if user_has_any_role(target, UserRole.company_admin):
+        raise HTTPException(
+            status_code=400,
+            detail="Cannot delete a company administrator. Demote them first or contact support.",
+        )
+
+    company = await db.get(Company, cid)
+    if company and company.owner_admin_id and str(company.owner_admin_id) == user_id:
+        raise HTTPException(
+            status_code=400,
+            detail="This user is the organization owner record. Reassign the owner before deleting this account.",
+        )
+
+    await db.execute(delete(User).where(User.id == user_id))
+    await db.commit()
