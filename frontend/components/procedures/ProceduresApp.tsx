@@ -12,7 +12,14 @@ import {
 import { useResolvedProtectedAssetSrc } from "@/lib/useResolvedProtectedAssetSrc";
 import { parseClientApiError } from "@/lib/parse-client-api-error";
 
-type DraftStep = { key: string; text: string; file: File | null; image_url: string | null };
+type DraftStep = {
+  key: string;
+  text: string;
+  file: File | null;
+  image_url: string | null;
+  recommended_workers: number | null;
+  tools_csv: string;
+};
 
 function newKey() {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
@@ -24,6 +31,8 @@ function toDraftFromProcedure(row: ProcedureRow): DraftStep[] {
     text: typeof s === "string" ? s : s.text ?? "",
     file: null,
     image_url: typeof s === "string" ? null : (s.image_url ?? null),
+    recommended_workers: typeof s === "string" ? null : (s.recommended_workers ?? null),
+    tools_csv: typeof s === "string" ? "" : ((s.tools ?? []).join(", ") || ""),
   }));
 }
 
@@ -43,7 +52,7 @@ export function ProceduresApp() {
   const [err, setErr] = useState<string | null>(null);
   const [title, setTitle] = useState("");
   const [draftSteps, setDraftSteps] = useState<DraftStep[]>([
-    { key: newKey(), text: "", file: null, image_url: null },
+    { key: newKey(), text: "", file: null, image_url: null, recommended_workers: null, tools_csv: "" },
   ]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState("");
@@ -80,7 +89,10 @@ export function ProceduresApp() {
   }, [selected]);
 
   const addDraftRow = (setter: Dispatch<SetStateAction<DraftStep[]>>) => {
-    setter((prev) => [...prev, { key: newKey(), text: "", file: null, image_url: null }]);
+    setter((prev) => [
+      ...prev,
+      { key: newKey(), text: "", file: null, image_url: null, recommended_workers: null, tools_csv: "" },
+    ]);
   };
 
   const removeDraftRow = (setter: Dispatch<SetStateAction<DraftStep[]>>, key: string) => {
@@ -99,7 +111,18 @@ export function ProceduresApp() {
   const create = async () => {
     const t = title.trim();
     if (!t) return;
-    const normalized = draftSteps.map((s) => ({ text: s.text.trim(), image_url: s.image_url }));
+    const normalized = draftSteps.map((s) => {
+      const tools = s.tools_csv
+        .split(",")
+        .map((x) => x.trim())
+        .filter(Boolean);
+      return {
+        text: s.text.trim(),
+        image_url: s.image_url,
+        recommended_workers: s.recommended_workers ?? null,
+        tools,
+      };
+    });
     if (!normalized.some((s, i) => s.text || s.image_url || draftSteps[i]?.file)) {
       setErr("Add at least one step with text or a picture.");
       return;
@@ -110,7 +133,7 @@ export function ProceduresApp() {
       const proc = await createProcedure({ title: t, steps: normalized });
       await uploadPendingFiles(proc.id, draftSteps);
       setTitle("");
-      setDraftSteps([{ key: newKey(), text: "", file: null, image_url: null }]);
+      setDraftSteps([{ key: newKey(), text: "", file: null, image_url: null, recommended_workers: null, tools_csv: "" }]);
       await load();
     } catch (e) {
       setErr(parseClientApiError(e).message);
@@ -123,10 +146,18 @@ export function ProceduresApp() {
     if (!selectedId) return;
     const t = editTitle.trim();
     if (!t) return;
-    const normalized = editSteps.map((s) => ({
-      text: s.text.trim(),
-      image_url: s.file ? null : s.image_url,
-    }));
+    const normalized = editSteps.map((s) => {
+      const tools = s.tools_csv
+        .split(",")
+        .map((x) => x.trim())
+        .filter(Boolean);
+      return {
+        text: s.text.trim(),
+        image_url: s.file ? null : s.image_url,
+        recommended_workers: s.recommended_workers ?? null,
+        tools,
+      };
+    });
     if (!normalized.some((s, i) => s.text || s.image_url || editSteps[i]?.file)) {
       setErr("Add at least one step with text or a picture.");
       return;
@@ -182,6 +213,66 @@ export function ProceduresApp() {
               )
             }
           />
+
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            <div>
+              <label
+                className="block text-xs font-semibold uppercase text-ds-muted"
+                htmlFor={`${idPrefix}-w-${step.key}`}
+              >
+                Recommended workers
+              </label>
+              <input
+                id={`${idPrefix}-w-${step.key}`}
+                type="number"
+                min={1}
+                inputMode="numeric"
+                className="mt-1 w-full rounded-md border border-ds-border bg-ds-primary px-3 py-2 text-sm text-ds-foreground dark:bg-ds-secondary"
+                placeholder="e.g. 2"
+                value={step.recommended_workers ?? ""}
+                onChange={(e) => {
+                  const raw = e.target.value;
+                  const next = raw === "" ? null : Math.max(1, Number(raw));
+                  setSteps((prev) => prev.map((s) => (s.key === step.key ? { ...s, recommended_workers: next } : s)));
+                }}
+              />
+            </div>
+            <div>
+              <label
+                className="block text-xs font-semibold uppercase text-ds-muted"
+                htmlFor={`${idPrefix}-tools-${step.key}`}
+              >
+                Required tools
+              </label>
+              <input
+                id={`${idPrefix}-tools-${step.key}`}
+                className="mt-1 w-full rounded-md border border-ds-border bg-ds-primary px-3 py-2 text-sm text-ds-foreground dark:bg-ds-secondary"
+                placeholder="e.g. Wrench, Ladder, Gloves"
+                value={step.tools_csv}
+                onChange={(e) =>
+                  setSteps((prev) => prev.map((s) => (s.key === step.key ? { ...s, tools_csv: e.target.value } : s)))
+                }
+              />
+              {step.tools_csv.trim() ? (
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {step.tools_csv
+                    .split(",")
+                    .map((x) => x.trim())
+                    .filter(Boolean)
+                    .slice(0, 12)
+                    .map((tool) => (
+                      <span
+                        key={tool}
+                        className="rounded-full border border-ds-border bg-ds-primary px-2 py-0.5 text-[11px] font-semibold text-ds-foreground"
+                      >
+                        {tool}
+                      </span>
+                    ))}
+                </div>
+              ) : null}
+            </div>
+          </div>
+
           <label className="mt-3 flex cursor-pointer flex-col gap-2 text-xs font-semibold uppercase text-ds-muted">
             <span className="inline-flex items-center gap-1 text-ds-foreground">
               <ImagePlus className="h-4 w-4" aria-hidden />

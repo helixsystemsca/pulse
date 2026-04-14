@@ -28,10 +28,33 @@ function procedureStepText(s: string | ProcedureStep): string {
 function ProcedureStepLine({ step, index }: { step: string | ProcedureStep; index: number }) {
   const text = procedureStepText(step);
   const imageUrl = typeof step === "string" ? null : (step.image_url ?? null);
+  const recommendedWorkers = typeof step === "string" ? null : (step.recommended_workers ?? null);
+  const tools = typeof step === "string" ? [] : (step.tools ?? []);
   const { src, loading, failed } = useResolvedProtectedAssetSrc(imageUrl);
   return (
     <li className="text-pulse-muted">
       <span className="font-medium text-pulse-navy dark:text-slate-100">{index + 1}.</span> {text || "—"}
+      {recommendedWorkers || (tools && tools.length) ? (
+        <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-pulse-muted">
+          {recommendedWorkers ? (
+            <span className="rounded-full border border-pulse-border bg-white px-2 py-0.5 font-semibold dark:border-slate-600 dark:bg-ds-secondary">
+              {recommendedWorkers} worker{recommendedWorkers === 1 ? "" : "s"} recommended
+            </span>
+          ) : null}
+          {tools?.length ? (
+            <div className="flex flex-wrap gap-1.5">
+              {tools.slice(0, 10).map((t) => (
+                <span
+                  key={t}
+                  className="rounded-full border border-pulse-border bg-white px-2 py-0.5 font-semibold dark:border-slate-600 dark:bg-ds-secondary"
+                >
+                  {t}
+                </span>
+              ))}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
       {imageUrl ? (
         <div className="mt-2">
           {loading ? <p className="text-xs">Loading image…</p> : null}

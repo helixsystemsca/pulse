@@ -2,7 +2,9 @@
 
 import { AlertTriangle, Battery, Info, MapPin, Package, Radio } from "lucide-react";
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { GridLayout, useContainerWidth, type Layout, type LayoutItem } from "react-grid-layout";
+import { DashboardCard } from "@/components/dashboard/DashboardCard";
 import { AdminOnboardingChecklist } from "@/components/onboarding/AdminOnboardingChecklist";
 import { apiFetch, isApiMode } from "@/lib/api";
 import { fetchSetupProgress } from "@/lib/onboardingService";
@@ -12,6 +14,9 @@ import { pulseTenantNav } from "@/lib/pulse-app";
 import { canAccessPulseTenantApis, readSession } from "@/lib/pulse-session";
 import { getServerDate, getServerNow } from "@/lib/serverTime";
 import { useResolvedAvatarSrc } from "@/lib/useResolvedAvatarSrc";
+
+import "react-grid-layout/css/styles.css";
+import "react-resizable/css/styles.css";
 
 type AlertItem = { severity: "critical" | "warning"; title: string; subtitle?: string };
 
@@ -824,6 +829,444 @@ function DashboardBody({
   facilitySetupChecklist?: ReactNode;
 }) {
   const userInitials = headerInitials(model.welcomeName);
+  const [editMode, setEditMode] = useState(false);
+  const [showAddWidget, setShowAddWidget] = useState(false);
+  const { width, containerRef, mounted } = useContainerWidth({ initialWidth: 1200 });
+
+  const storageKey = "dashboard_layout_v1";
+
+  const widgetRegistry = useMemo(() => {
+    return {
+      alerts: {
+        title: "Active Alerts",
+        accent: "yellow" as const,
+        render: () => (
+          <ul className="flex flex-1 flex-col gap-3">
+            {model.alerts.map((a, idx) => (
+              <li
+                key={`${a.title}-${idx}`}
+                className={`ds-notification flex gap-3 p-4 ${
+                  a.severity === "critical" ? "ds-notification-critical" : "ds-notification-warning"
+                }`}
+              >
+                {a.severity === "critical" ? (
+                  <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-ds-danger" aria-hidden />
+                ) : (
+                  <Radio className="mt-0.5 h-5 w-5 shrink-0 text-ds-warning" aria-hidden />
+                )}
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-bold text-ds-foreground">{a.title}</p>
+                  {a.subtitle ? (
+                    <p className="mt-1 whitespace-pre-line text-xs leading-relaxed text-ds-muted">
+                      {a.subtitle}
+                    </p>
+                  ) : null}
+                </div>
+              </li>
+            ))}
+          </ul>
+        ),
+      },
+      workforce: {
+        title: "Workforce",
+        accent: "blue" as const,
+        render: () => (
+          <>
+            <p className="text-sm font-semibold text-ds-foreground">Today – {model.workforce.dateLabel}</p>
+            <p className="mt-2 text-xs text-ds-muted">{model.workforce.summaryLine}</p>
+
+            <div className="mt-4 space-y-5">
+              <div className="space-y-3">
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
+                  On Site
+                </p>
+                <div className="flex flex-wrap gap-3">
+                  {model.workforce.onSite.length === 0 ? (
+                    <p className="text-sm text-ds-muted">No workers currently on site</p>
+                  ) : (
+                    model.workforce.onSite.map((b) => (
+                      <WorkforceBubbleStack
+                        key={b.id}
+                        bubble={b}
+                        faceClassName={onsiteAvatarClass()}
+                        badges={
+                          <>
+                            {b.badge ? <WorkforceRoleLetterBadge letter={b.badge} /> : null}
+                            <WorkforceStatusDot color="green" />
+                          </>
+                        }
+                      />
+                    ))
+                  )}
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-amber-700 dark:text-amber-300">
+                  On Shift Now
+                </p>
+                <div className="flex flex-wrap gap-3">
+                  {model.workforce.onShiftNow.length === 0 ? (
+                    <p className="text-sm text-ds-muted">—</p>
+                  ) : (
+                    model.workforce.onShiftNow.map((b) => (
+                      <WorkforceBubbleStack
+                        key={b.id}
+                        bubble={b}
+                        faceClassName={scheduledAvatarClass()}
+                        badges={
+                          <>
+                            {b.badge ? <WorkforceRoleLetterBadge letter={b.badge} /> : null}
+                            <WorkforceStatusDot color="yellow" />
+                          </>
+                        }
+                      />
+                    ))
+                  )}
+                </div>
+              </div>
+
+              {model.workforce.upcomingToday.length > 0 ? (
+                <div className="space-y-3">
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-blue-700 dark:text-blue-300">
+                    Upcoming Today
+                  </p>
+                  <div className="flex flex-wrap gap-3">
+                    {model.workforce.upcomingToday.map((b) => (
+                      <WorkforceBubbleStack
+                        key={b.id}
+                        bubble={b}
+                        faceClassName={scheduledAvatarClass()}
+                        badges={
+                          <>
+                            {b.badge ? <WorkforceRoleLetterBadge letter={b.badge} /> : null}
+                            <WorkforceUpcomingPill />
+                          </>
+                        }
+                      />
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+
+              {model.workforce.offSite.length > 0 ? (
+                <div className="space-y-3 border-t border-ds-border pt-4">
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-ds-muted">Off Site</p>
+                  <div className="flex flex-wrap gap-3 opacity-90">
+                    {model.workforce.offSite.map((b) => (
+                      <WorkforceBubbleStack
+                        key={b.id}
+                        bubble={b}
+                        faceClassName={offsiteAvatarClass()}
+                        badges={
+                          <>
+                            {b.badge ? <WorkforceRoleLetterBadge letter={b.badge} /> : null}
+                            <WorkforceStatusDot color="gray" />
+                          </>
+                        }
+                      />
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          </>
+        ),
+      },
+      workRequests: {
+        title: "Work Requests",
+        accent: "red" as const,
+        render: () => (
+          <>
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <span className="app-badge-amber inline-flex items-center rounded-full px-3 py-1 text-xs font-bold tracking-tight">
+                {model.workRequests.awaitingCount} requests awaiting assignment
+              </span>
+            </div>
+            <p className="mt-2 text-xs">
+              <Link href={workOrdersHref} className="ds-link">
+                Open work orders view →
+              </Link>
+            </p>
+            <div className="mt-4 flex flex-col gap-4">
+              {model.workRequests.newest ? (
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-ds-muted">Newest</p>
+                  <div className="mt-2 rounded-md border border-ds-border bg-transparent p-4">
+                    <div className="flex flex-wrap items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-ds-foreground">{model.workRequests.newest.title}</p>
+                        <p className="mt-1 text-xs text-ds-muted">{model.workRequests.newest.subtitle}</p>
+                      </div>
+                      <TagPill tag={model.workRequests.newest.tag} />
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-sm text-ds-muted">
+                  No open work requests yet.{" "}
+                  <Link href={workOrdersHref} className="ds-link">
+                    Open work orders
+                  </Link>{" "}
+                  to create the first tracked item.
+                </p>
+              )}
+
+              {model.workRequests.oldest ? (
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-ds-muted">Oldest</p>
+                  <div className="mt-2 rounded-md border border-ds-border bg-transparent p-4">
+                    <div className="flex flex-wrap items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-ds-foreground">{model.workRequests.oldest.title}</p>
+                        <p className="mt-1 text-xs text-ds-muted">{model.workRequests.oldest.subtitle}</p>
+                      </div>
+                      <TagPill tag={model.workRequests.oldest.tag} />
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-ds-danger">
+                  High priority / Critical
+                </p>
+                {model.workRequests.critical.length === 0 ? (
+                  <p className="mt-2 text-sm text-ds-muted">No high-priority items right now.</p>
+                ) : (
+                  <ul className="mt-2 flex flex-col gap-3">
+                    {model.workRequests.critical.map((row) => (
+                      <li key={row.title} className="ds-notification ds-notification-critical flex gap-3 p-3">
+                        <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-ds-danger" aria-hidden />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-bold text-ds-foreground">{row.title}</p>
+                          <p className="mt-0.5 text-xs text-ds-muted">{row.subtitle}</p>
+                        </div>
+                        <span className="app-badge-red shrink-0 self-start rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide">
+                          Urgent
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
+          </>
+        ),
+      },
+      equipment: {
+        title: "Equipment Update",
+        accent: "none" as const,
+        render: () => (
+          <>
+            <p className="text-2xl font-bold tabular-nums text-ds-foreground md:text-3xl">
+              {model.equipment.activeCount} Active Tools
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <span className="app-badge-amber inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold">
+                <span className="h-1.5 w-1.5 rounded-full bg-current opacity-90" />
+                {model.equipment.missingCount} Missing
+              </span>
+              <span className="app-badge-red inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold">
+                <span className="h-1.5 w-1.5 rounded-full bg-current opacity-90" />
+                {model.equipment.outOfServiceCount} Out of Service
+              </span>
+            </div>
+            <div className="mt-4 flex flex-1 flex-col gap-4 border-t border-ds-border pt-4">
+              {model.equipment.showZonePrompt && !zonePromptDismissed ? (
+                <div className="ds-notification ds-notification-warning p-4">
+                  <div className="flex gap-3">
+                    <MapPin className="mt-0.5 h-5 w-5 shrink-0 text-ds-warning" aria-hidden />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold leading-snug text-ds-foreground">
+                        Several tools are accounted for, but may need zone checks.
+                      </p>
+                      <p className="mt-1 text-xs text-ds-muted">Schedule a cleanup?</p>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <Link
+                          href={
+                            pulseTenantNav.find((n) => n.href === "/dashboard/inventory")?.href ?? "/dashboard/inventory"
+                          }
+                          className="ds-btn-solid-primary inline-flex px-3 py-1.5 text-xs"
+                        >
+                          Review inventory
+                        </Link>
+                        <button
+                          type="button"
+                          onClick={onDismissZonePrompt}
+                          className="ds-btn-secondary px-3 py-1.5 text-xs"
+                        >
+                          Dismiss
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+              {model.equipment.showBatteryNote ? (
+                <div className="ds-notification ds-notification-muted p-4">
+                  <div className="flex gap-3">
+                    <Battery className="mt-0.5 h-5 w-5 shrink-0 text-ds-muted" aria-hidden />
+                    <p className="min-w-0 flex-1 text-sm leading-relaxed text-ds-foreground">
+                      Beacon equipment registered — confirm batteries and swaps on the floor before the next shift.
+                    </p>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          </>
+        ),
+      },
+      inventory: {
+        title: "Inventory Status",
+        accent: "green" as const,
+        render: () => (
+          <div className="mt-1 flex flex-1 flex-col gap-4">
+            <div className="flex items-start justify-between gap-4 rounded-md border border-ds-border bg-transparent p-4">
+              <div>
+                <p className="text-sm font-semibold text-ds-foreground">Consumables</p>
+                <p className="mt-1 text-xs text-ds-muted">
+                  {model.inventory.consumablesOk ? "Stock within target range" : "One or more items need attention"}
+                </p>
+              </div>
+              <span
+                className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                  model.inventory.consumablesOk ? "app-badge-emerald" : "app-badge-amber"
+                }`}
+              >
+                {model.inventory.consumablesOk ? "OK" : "Review"}
+              </span>
+            </div>
+
+            {model.inventory.alert ? (
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-ds-muted">Inventory Alert</p>
+                <div className="ds-notification ds-notification-warning mt-3 flex items-start justify-between gap-4 p-4">
+                  <Package className="mt-0.5 h-5 w-5 shrink-0 text-ds-warning" aria-hidden />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold text-ds-foreground">{model.inventory.alert.category}</p>
+                    <p className="mt-2 text-xs font-medium text-ds-foreground">{model.inventory.alert.message}</p>
+                  </div>
+                  <span className="app-badge-amber shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold">
+                    Soon
+                  </span>
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <Link
+                    href={pulseTenantNav.find((n) => n.href === "/dashboard/inventory")?.href ?? "/dashboard/inventory"}
+                    className="ds-btn-secondary px-3 py-1.5 text-xs"
+                  >
+                    View stock
+                  </Link>
+                  <Link
+                    href={pulseTenantNav.find((n) => n.href === "/dashboard/inventory")?.href ?? "/dashboard/inventory"}
+                    className="ds-btn-solid-primary inline-flex px-3 py-1.5 text-xs"
+                  >
+                    Order Now
+                  </Link>
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm text-ds-muted">No low-stock alerts.</p>
+            )}
+
+            <div className="border-t border-ds-border pt-4">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-ds-muted">Shopping List</p>
+              {model.inventory.shoppingList.length === 0 ? (
+                <p className="mt-3 text-sm text-ds-muted">Add items from low-stock alerts.</p>
+              ) : (
+                <ul className="mt-3 space-y-2">
+                  {model.inventory.shoppingList.map((item) => (
+                    <li
+                      key={item}
+                      className="ds-table-row-hover flex cursor-default items-center gap-2 rounded-md border border-ds-border bg-transparent px-3 py-2 text-sm text-ds-foreground"
+                    >
+                      <span className="flex h-4 w-4 shrink-0 rounded border border-ds-border bg-transparent" aria-hidden />
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+        ),
+      },
+      setup: facilitySetupChecklist
+        ? {
+            title: "Setup checklist",
+            accent: "none" as const,
+            render: () => facilitySetupChecklist,
+          }
+        : null,
+    } as const;
+  }, [facilitySetupChecklist, model, onDismissZonePrompt, pulseTenantNav, workOrdersHref, zonePromptDismissed]);
+
+  const allWidgetKeys = useMemo(() => {
+    return Object.keys(widgetRegistry).filter((k) => (widgetRegistry as Record<string, unknown>)[k] != null);
+  }, [widgetRegistry]);
+
+  const defaultLayout = useMemo((): Layout => {
+    const base: Layout = [
+      { i: "alerts", x: 0, y: 0, w: 12, h: 3, minW: 6, minH: 2 },
+      { i: "workforce", x: 0, y: 3, w: 6, h: 4, minW: 4, minH: 3 },
+      { i: "workRequests", x: 6, y: 3, w: 6, h: 4, minW: 4, minH: 3 },
+      { i: "equipment", x: 0, y: 7, w: 6, h: 4, minW: 4, minH: 3 },
+      { i: "inventory", x: 6, y: 7, w: 6, h: 4, minW: 4, minH: 3 },
+    ];
+    return widgetRegistry.setup
+      ? ([{ i: "setup", x: 0, y: 0, w: 12, h: 2, minW: 6, minH: 2 }, ...base] as const)
+      : base;
+  }, [widgetRegistry.setup]);
+
+  const [layout, setLayout] = useState<Layout>(defaultLayout);
+
+  // Load saved layout once per "shape" (e.g. when setup widget appears/disappears).
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(storageKey);
+      if (!raw) {
+        setLayout(defaultLayout);
+        return;
+      }
+      const parsed = JSON.parse(raw) as Layout;
+      if (!Array.isArray(parsed)) {
+        setLayout(defaultLayout);
+        return;
+      }
+      const validKeys = new Set(allWidgetKeys);
+      const filtered = parsed.filter((l) => l && typeof l.i === "string" && validKeys.has(l.i));
+      const present = new Set(filtered.map((l) => l.i));
+      const missing = defaultLayout.filter((l) => !present.has(l.i));
+      setLayout([...filtered, ...missing]);
+    } catch {
+      setLayout(defaultLayout);
+    }
+  }, [allWidgetKeys, defaultLayout]);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(storageKey, JSON.stringify(layout));
+    } catch {
+      /* ignore quota / privacy mode */
+    }
+  }, [layout]);
+
+  const layoutKeys = useMemo(() => new Set(layout.map((l) => l.i)), [layout]);
+  const availableToAdd = useMemo(() => allWidgetKeys.filter((k) => !layoutKeys.has(k)), [allWidgetKeys, layoutKeys]);
+
+  const removeWidget = useCallback((id: string) => {
+    setLayout((prev) => prev.filter((l) => l.i !== id));
+  }, []);
+
+  const addWidget = useCallback(
+    (id: string) => {
+      if (layoutKeys.has(id)) return;
+      const base = defaultLayout.find((l) => l.i === id);
+      const next: LayoutItem = base ?? { i: id, x: 0, y: Infinity, w: 6, h: 3 };
+      setLayout((prev) => [...prev, { ...next, x: 0, y: Infinity }]);
+    },
+    [defaultLayout, layoutKeys],
+  );
 
   return (
     <div className="ds-dashboard-shell">
@@ -867,379 +1310,127 @@ function DashboardBody({
         </div>
       ) : null}
 
-      <div className="grid gap-5 p-5 lg:grid-cols-12 lg:gap-6 lg:p-6">
-        {facilitySetupChecklist}
-        <section
-          className="app-dashboard-tile flex flex-col p-5 lg:col-span-12 lg:p-6"
-          data-dashboard-tile="alerts"
-        >
-          <h3 className="text-base font-bold text-ds-foreground">Active Alerts</h3>
-          <ul className="mt-4 flex flex-1 flex-col gap-3">
-            {model.alerts.map((a, idx) => (
-              <li
-                key={`${a.title}-${idx}`}
-                className={`ds-notification flex gap-3 p-4 ${
-                  a.severity === "critical" ? "ds-notification-critical" : "ds-notification-warning"
-                }`}
-              >
-                {a.severity === "critical" ? (
-                  <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-ds-danger" aria-hidden />
-                ) : (
-                  <Radio className="mt-0.5 h-5 w-5 shrink-0 text-ds-warning" aria-hidden />
-                )}
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-bold text-ds-foreground">{a.title}</p>
-                  {a.subtitle ? (
-                    <p className="mt-1 whitespace-pre-line text-xs leading-relaxed text-ds-muted">
-                      {a.subtitle}
-                    </p>
-                  ) : null}
-                </div>
-              </li>
-            ))}
-          </ul>
-        </section>
-
-        <section
-          className="app-dashboard-tile flex flex-col p-5 lg:col-span-5 lg:min-h-[280px] lg:p-6"
-          data-dashboard-tile="workforce"
-        >
-          <h3 className="text-base font-bold text-ds-foreground">Workforce</h3>
-          <p className="mt-2 text-sm font-semibold text-ds-foreground">
-            Today – {model.workforce.dateLabel}
-          </p>
-          <p className="mt-2 text-xs text-ds-muted">{model.workforce.summaryLine}</p>
-
-          <div className="mt-4 space-y-5">
-            <div className="space-y-3">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
-                On Site
-              </p>
-              <div className="flex flex-wrap gap-3">
-                {model.workforce.onSite.length === 0 ? (
-                  <p className="text-sm text-ds-muted">No workers currently on site</p>
-                ) : (
-                  model.workforce.onSite.map((b) => (
-                    <WorkforceBubbleStack
-                      key={b.id}
-                      bubble={b}
-                      faceClassName={onsiteAvatarClass()}
-                      badges={
-                        <>
-                          {b.badge ? <WorkforceRoleLetterBadge letter={b.badge} /> : null}
-                          <WorkforceStatusDot color="green" />
-                        </>
-                      }
-                    />
-                  ))
-                )}
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-amber-700 dark:text-amber-300">
-                On Shift Now
-              </p>
-              <div className="flex flex-wrap gap-3">
-                {model.workforce.onShiftNow.length === 0 ? (
-                  <p className="text-sm text-ds-muted">—</p>
-                ) : (
-                  model.workforce.onShiftNow.map((b) => (
-                    <WorkforceBubbleStack
-                      key={b.id}
-                      bubble={b}
-                      faceClassName={scheduledAvatarClass()}
-                      badges={
-                        <>
-                          {b.badge ? <WorkforceRoleLetterBadge letter={b.badge} /> : null}
-                          <WorkforceStatusDot color="yellow" />
-                        </>
-                      }
-                    />
-                  ))
-                )}
-              </div>
-            </div>
-
-            {model.workforce.upcomingToday.length > 0 ? (
-              <div className="space-y-3">
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-blue-700 dark:text-blue-300">
-                  Upcoming Today
-                </p>
-                <div className="flex flex-wrap gap-3">
-                  {model.workforce.upcomingToday.map((b) => (
-                    <WorkforceBubbleStack
-                      key={b.id}
-                      bubble={b}
-                      faceClassName={scheduledAvatarClass()}
-                      badges={
-                        <>
-                          {b.badge ? <WorkforceRoleLetterBadge letter={b.badge} /> : null}
-                          <WorkforceUpcomingPill />
-                        </>
-                      }
-                    />
-                  ))}
-                </div>
-              </div>
-            ) : null}
-
-            {model.workforce.offSite.length > 0 ? (
-              <div className="space-y-3 border-t border-ds-border pt-4">
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-ds-muted">
-                  Off Site
-                </p>
-                <div className="flex flex-wrap gap-3 opacity-90">
-                  {model.workforce.offSite.map((b) => (
-                    <WorkforceBubbleStack
-                      key={b.id}
-                      bubble={b}
-                      faceClassName={offsiteAvatarClass()}
-                      badges={
-                        <>
-                          {b.badge ? <WorkforceRoleLetterBadge letter={b.badge} /> : null}
-                          <WorkforceStatusDot color="gray" />
-                        </>
-                      }
-                    />
-                  ))}
-                </div>
-              </div>
-            ) : null}
-          </div>
-        </section>
-
-        <section
-          className="app-dashboard-tile p-5 lg:col-span-7 lg:p-6"
-          data-dashboard-tile="work-requests"
-        >
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <h3 className="text-base font-bold text-ds-foreground">Work Requests</h3>
-            <span className="app-badge-amber inline-flex items-center rounded-full px-3 py-1 text-xs font-bold tracking-tight">
-              {model.workRequests.awaitingCount} requests awaiting assignment
-            </span>
-          </div>
-          <p className="mt-2 text-xs">
-            <Link
-              href={workOrdersHref}
-              className="ds-link"
+      <div className="p-5 lg:p-6">
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+          <button
+            type="button"
+            className={editMode ? "ds-btn-solid-primary px-4 py-2 text-sm" : "ds-btn-secondary px-4 py-2 text-sm"}
+            onClick={() => setEditMode((v) => !v)}
+          >
+            {editMode ? "Done Editing" : "Edit Dashboard"}
+          </button>
+          {editMode ? (
+            <button
+              type="button"
+              className="ds-btn-secondary px-4 py-2 text-sm"
+              onClick={() => setShowAddWidget(true)}
+              disabled={availableToAdd.length === 0}
+              title={availableToAdd.length === 0 ? "All widgets are already added" : "Add a widget"}
             >
-              Open work orders view →
-            </Link>
-          </p>
-          <div className="mt-4 flex flex-col gap-4">
-            {model.workRequests.newest ? (
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-ds-muted">
-                  Newest
-                </p>
-                <div className="mt-2 rounded-md border border-ds-border bg-transparent p-4">
-                  <div className="flex flex-wrap items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold text-ds-foreground">{model.workRequests.newest.title}</p>
-                      <p className="mt-1 text-xs text-ds-muted">{model.workRequests.newest.subtitle}</p>
-                    </div>
-                    <TagPill tag={model.workRequests.newest.tag} />
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <p className="text-sm text-ds-muted">
-                No open work requests yet.{" "}
-                <Link href={workOrdersHref} className="ds-link">
-                  Open work orders
-                </Link>{" "}
-                to create the first tracked item.
-              </p>
-            )}
+              Add Widget
+            </button>
+          ) : null}
+        </div>
 
-            {model.workRequests.oldest ? (
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-ds-muted">Oldest</p>
-                <div className="mt-2 rounded-md border border-ds-border bg-transparent p-4">
-                  <div className="flex flex-wrap items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold text-ds-foreground">{model.workRequests.oldest.title}</p>
-                      <p className="mt-1 text-xs text-ds-muted">{model.workRequests.oldest.subtitle}</p>
-                    </div>
-                    <TagPill tag={model.workRequests.oldest.tag} />
-                  </div>
-                </div>
-              </div>
-            ) : null}
-
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-ds-danger">
-                High priority / Critical
-              </p>
-              {model.workRequests.critical.length === 0 ? (
-                <p className="mt-2 text-sm text-ds-muted">No high-priority items right now.</p>
-              ) : (
-                <ul className="mt-2 flex flex-col gap-3">
-                  {model.workRequests.critical.map((row) => (
-                    <li
-                      key={row.title}
-                      className="ds-notification ds-notification-critical flex gap-3 p-3"
-                    >
-                      <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-ds-danger" aria-hidden />
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-bold text-ds-foreground">{row.title}</p>
-                        <p className="mt-0.5 text-xs text-ds-muted">{row.subtitle}</p>
-                      </div>
-                      <span className="app-badge-red shrink-0 self-start rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide">
-                        Urgent
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          </div>
-        </section>
-
-        <section
-          className="app-dashboard-tile flex flex-col p-5 lg:col-span-6"
-          data-dashboard-tile="equipment"
-        >
-          <p className="text-xs font-semibold uppercase tracking-wide text-ds-muted">Equipment Update</p>
-          <p className="mt-2 text-2xl font-bold tabular-nums text-ds-foreground md:text-3xl">
-            {model.equipment.activeCount} Active Tools
-          </p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            <span className="app-badge-amber inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold">
-              <span className="h-1.5 w-1.5 rounded-full bg-current opacity-90" />
-              {model.equipment.missingCount} Missing
-            </span>
-            <span className="app-badge-red inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold">
-              <span className="h-1.5 w-1.5 rounded-full bg-current opacity-90" />
-              {model.equipment.outOfServiceCount} Out of Service
-            </span>
-          </div>
-          <div className="mt-4 flex flex-1 flex-col gap-4 border-t border-ds-border pt-4">
-            {model.equipment.showZonePrompt && !zonePromptDismissed ? (
-              <div className="ds-notification ds-notification-warning p-4">
-                <div className="flex gap-3">
-                  <MapPin className="mt-0.5 h-5 w-5 shrink-0 text-ds-warning" aria-hidden />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold leading-snug text-ds-foreground">
-                      Several tools are accounted for, but may need zone checks.
-                    </p>
-                    <p className="mt-1 text-xs text-ds-muted">Schedule a cleanup?</p>
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      <Link
-                        href={pulseTenantNav.find((n) => n.href === "/dashboard/inventory")?.href ?? "/dashboard/inventory"}
-                        className="ds-btn-solid-primary inline-flex px-3 py-1.5 text-xs"
-                      >
-                        Review inventory
-                      </Link>
-                      <button
-                        type="button"
-                        onClick={onDismissZonePrompt}
-                        className="ds-btn-secondary px-3 py-1.5 text-xs"
-                      >
-                        Dismiss
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ) : null}
-            {model.equipment.showBatteryNote ? (
-              <div className="ds-notification ds-notification-muted p-4">
-                <div className="flex gap-3">
-                  <Battery className="mt-0.5 h-5 w-5 shrink-0 text-ds-muted" aria-hidden />
-                  <p className="min-w-0 flex-1 text-sm leading-relaxed text-ds-foreground">
-                    Beacon equipment registered — confirm batteries and swaps on the floor before the next shift.
-                  </p>
-                </div>
-              </div>
-            ) : null}
-          </div>
-        </section>
-
-        <section
-          className="app-dashboard-tile flex flex-col p-5 lg:col-span-6"
-          data-dashboard-tile="inventory"
-        >
-          <h3 className="text-base font-bold text-ds-foreground">Inventory Status</h3>
-          <div className="mt-4 flex flex-1 flex-col gap-4">
-            <div className="flex items-start justify-between gap-4 rounded-md border border-ds-border bg-transparent p-4">
-              <div>
-                <p className="text-sm font-semibold text-ds-foreground">Consumables</p>
-                <p className="mt-1 text-xs text-ds-muted">
-                  {model.inventory.consumablesOk
-                    ? "Stock within target range"
-                    : "One or more items need attention"}
-                </p>
-              </div>
-              <span
-                className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold ${
-                  model.inventory.consumablesOk ? "app-badge-emerald" : "app-badge-amber"
-                }`}
-              >
-                {model.inventory.consumablesOk ? "OK" : "Review"}
-              </span>
-            </div>
-
-            {model.inventory.alert ? (
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-ds-muted">
-                  Inventory Alert
-                </p>
-                <div className="ds-notification ds-notification-warning mt-3 flex items-start justify-between gap-4 p-4">
-                  <Package className="mt-0.5 h-5 w-5 shrink-0 text-ds-warning" aria-hidden />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold text-ds-foreground">{model.inventory.alert.category}</p>
-                    <p className="mt-2 text-xs font-medium text-ds-foreground">{model.inventory.alert.message}</p>
-                  </div>
-                  <span className="app-badge-amber shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold">
-                    Soon
+        <div ref={containerRef as any}>
+          {mounted ? (
+            <GridLayout
+              layout={layout}
+              width={width}
+              gridConfig={{ cols: 12, rowHeight: 100, margin: [24, 24], containerPadding: [0, 0] }}
+              dragConfig={{ enabled: editMode, bounded: false, handle: ".dashboard-drag-handle" }}
+              resizeConfig={{ enabled: editMode, handles: ["se"] }}
+              onLayoutChange={(next) => setLayout(next)}
+            >
+          {layout.map((item) => {
+            const w = (widgetRegistry as Record<string, any>)[item.i] as
+              | { title: string; accent: "yellow" | "red" | "blue" | "green" | "none"; render: () => ReactNode }
+              | null
+              | undefined;
+            if (!w) return <div key={item.i} />;
+            const headerRight = (
+              <div className="flex items-center gap-2">
+                {editMode ? (
+                  <span className="dashboard-drag-handle select-none rounded-md border border-black/10 bg-white/70 px-2 py-1 text-[11px] font-semibold text-slate-700">
+                    Drag
                   </span>
-                </div>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <Link
-                    href={pulseTenantNav.find((n) => n.href === "/dashboard/inventory")?.href ?? "/dashboard/inventory"}
-                    className="ds-btn-secondary px-3 py-1.5 text-xs"
+                ) : null}
+                {editMode ? (
+                  <button
+                    type="button"
+                    onClick={() => removeWidget(item.i)}
+                    className="rounded-md border border-black/10 bg-white/80 px-2 py-1 text-xs font-semibold text-slate-700 hover:bg-white"
+                    aria-label={`Remove ${w.title}`}
+                    title="Remove widget"
                   >
-                    View stock
-                  </Link>
-                  <Link
-                    href={pulseTenantNav.find((n) => n.href === "/dashboard/inventory")?.href ?? "/dashboard/inventory"}
-                    className="ds-btn-solid-primary inline-flex px-3 py-1.5 text-xs"
-                  >
-                    Order Now
-                  </Link>
-                </div>
+                    ×
+                  </button>
+                ) : null}
               </div>
-            ) : (
-              <p className="text-sm text-ds-muted">No low-stock alerts.</p>
-            )}
+            );
+            return (
+              <div
+                key={item.i}
+                className={[
+                  "transition-transform",
+                  editMode ? "cursor-grab active:cursor-grabbing" : "",
+                ].join(" ")}
+              >
+                <DashboardCard title={w.title} accent={w.accent} headerRight={headerRight} className="h-full">
+                  {w.render()}
+                </DashboardCard>
+              </div>
+            );
+          })}
+            </GridLayout>
+          ) : null}
+        </div>
 
-            <div className="border-t border-ds-border pt-4">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-ds-muted">
-                Shopping List
-              </p>
-              {model.inventory.shoppingList.length === 0 ? (
-                <p className="mt-3 text-sm text-ds-muted">Add items from low-stock alerts.</p>
-              ) : (
-                <ul className="mt-3 space-y-2">
-                  {model.inventory.shoppingList.map((item) => (
-                    <li
-                      key={item}
-                      className="ds-table-row-hover flex cursor-default items-center gap-2 rounded-md border border-ds-border bg-transparent px-3 py-2 text-sm text-ds-foreground"
-                    >
-                      <span
-                        className="flex h-4 w-4 shrink-0 rounded border border-ds-border bg-transparent"
-                        aria-hidden
-                      />
-                      {item}
-                    </li>
-                  ))}
-                </ul>
-              )}
+        {showAddWidget ? (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="ds-modal-backdrop absolute inset-0" onClick={() => setShowAddWidget(false)} aria-hidden />
+            <div className="relative w-full max-w-md rounded-2xl border border-black/[0.06] bg-white p-5 shadow-[0_18px_55px_rgba(0,0,0,0.18)]">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-lg font-semibold text-slate-900">Add Widget</p>
+                  <p className="mt-1 text-sm text-slate-600">Choose a widget to add back to your dashboard.</p>
+                </div>
+                <button
+                  type="button"
+                  className="rounded-md px-2 py-1 text-sm font-semibold text-slate-600 hover:bg-slate-100"
+                  onClick={() => setShowAddWidget(false)}
+                  aria-label="Close add widget dialog"
+                >
+                  ×
+                </button>
+              </div>
+              <div className="mt-4 space-y-2">
+                {availableToAdd.length === 0 ? (
+                  <p className="text-sm text-slate-600">All widgets are already added.</p>
+                ) : (
+                  availableToAdd.map((key) => {
+                    const ww = (widgetRegistry as Record<string, any>)[key] as { title: string } | null | undefined;
+                    if (!ww) return null;
+                    return (
+                      <button
+                        key={key}
+                        type="button"
+                        className="flex w-full items-center justify-between rounded-xl border border-black/10 bg-white px-4 py-3 text-left text-sm font-semibold text-slate-900 hover:bg-slate-50"
+                        onClick={() => {
+                          addWidget(key);
+                          setShowAddWidget(false);
+                        }}
+                      >
+                        <span>{ww.title}</span>
+                        <span className="text-slate-500">Add</span>
+                      </button>
+                    );
+                  })
+                )}
+              </div>
             </div>
           </div>
-        </section>
+        ) : null}
       </div>
     </div>
   );
@@ -1292,10 +1483,13 @@ export function OperationalDashboard({
 
     setLoading(true);
     setError(null);
+    // Align "today" with the schedule module: use local day bounds, not UTC midnight.
+    // This avoids excluding shifts for tenants in non-UTC timezones.
     const now = new Date(getServerNow());
-    const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+    const start = new Date(now);
+    start.setHours(0, 0, 0, 0);
     const end = new Date(start);
-    end.setUTCDate(end.getUTCDate() + 1);
+    end.setHours(23, 59, 59, 999);
     const from = start.toISOString();
     const to = end.toISOString();
 

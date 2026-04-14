@@ -25,6 +25,10 @@ export type WorkOrderRow = {
 export type ProcedureStep = {
   text: string;
   image_url?: string | null;
+  /** Optional: recommended number of workers for this step. */
+  recommended_workers?: number | null;
+  /** Optional: tools required to complete this step. */
+  tools?: string[];
 };
 
 export type ProcedureRow = {
