@@ -1,9 +1,11 @@
 "use client";
 
-import { AlertTriangle, Battery, Info, MapPin, Package, Radio } from "lucide-react";
+import { AlertTriangle, Battery, Check, Info, MapPin, Package, Pencil, Plus, Radio, Settings } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { GridLayout, noCompactor, useContainerWidth, type Layout, type LayoutItem } from "react-grid-layout";
+import { DashboardAddWidgetWizard } from "@/components/dashboard/DashboardAddWidgetWizard";
+import { DashboardCustomPeekWidget } from "@/components/dashboard/DashboardCustomPeekWidget";
 import { DashboardCard } from "@/components/dashboard/DashboardCard";
 import { AdminOnboardingChecklist } from "@/components/onboarding/AdminOnboardingChecklist";
 import { apiFetch, isApiMode } from "@/lib/api";
@@ -15,6 +17,12 @@ import { pulseTenantNav } from "@/lib/pulse-app";
 import { canAccessPulseTenantApis, readSession } from "@/lib/pulse-session";
 import { getServerDate, getServerNow } from "@/lib/serverTime";
 import { useResolvedAvatarSrc } from "@/lib/useResolvedAvatarSrc";
+import {
+  DASHBOARD_CUSTOM_WIDGETS_STORAGE,
+  DASHBOARD_LAYOUT_STORAGE_V1,
+  DASHBOARD_LAYOUT_STORAGE_V2,
+  type CustomDashboardWidgetConfig,
+} from "@/lib/dashboardPageWidgetCatalog";
 
 import "react-grid-layout/css/styles.css";
 import "react-resizable/css/styles.css";
@@ -69,7 +77,7 @@ type WorkforceBubble = {
 
 type WorkTag = { kind: "progress" | "overdue" | "urgent"; label: string };
 
-type DashboardViewModel = {
+export type DashboardViewModel = {
   title: string;
   welcomeName: string;
   /** Short banner when demo or guided telemetry is active for this tenant. */
@@ -836,9 +844,12 @@ function DashboardBody({
   const userInitials = headerInitials(model.welcomeName);
   const [editMode, setEditMode] = useState(false);
   const [showAddWidget, setShowAddWidget] = useState(false);
+  const [showPeekWizard, setShowPeekWizard] = useState(false);
+  const [peekWizardMode, setPeekWizardMode] = useState<"create" | "edit">("create");
+  const [peekWizardInitial, setPeekWizardInitial] = useState<CustomDashboardWidgetConfig | null>(null);
+  const [customConfigs, setCustomConfigs] = useState<Record<string, CustomDashboardWidgetConfig>>({});
+  const [layoutHydrated, setLayoutHydrated] = useState(false);
   const { width, containerRef, mounted } = useContainerWidth({ initialWidth: 1200 });
-
-  const storageKey = "dashboard_layout_v1";
 
   const widgetRegistry = useMemo(() => {
     return {
@@ -1227,42 +1238,87 @@ function DashboardBody({
 
   const [layout, setLayout] = useState<Layout>(defaultLayout);
 
-  // Load saved layout once per "shape" (e.g. when setup widget appears/disappears).
+  // Load saved layout (v2) and custom peek configs; migrate legacy v1 layout once.
   useEffect(() => {
+    let parsedConfigs: Record<string, CustomDashboardWidgetConfig> = {};
     try {
-      const raw = window.localStorage.getItem(storageKey);
-      if (!raw) {
-        setLayout(defaultLayout);
-        return;
-      }
-      const parsed = JSON.parse(raw) as Layout;
-      if (!Array.isArray(parsed)) {
-        setLayout(defaultLayout);
-        return;
-      }
-      const validKeys = new Set(allWidgetKeys);
-      const filtered = parsed.filter((l) => l && typeof l.i === "string" && validKeys.has(l.i));
-      const present = new Set(filtered.map((l) => l.i));
-      const missing = defaultLayout.filter((l) => !present.has(l.i));
-      setLayout([...filtered, ...missing]);
+      const cw = window.localStorage.getItem(DASHBOARD_CUSTOM_WIDGETS_STORAGE);
+      if (cw) parsedConfigs = JSON.parse(cw) as Record<string, CustomDashboardWidgetConfig>;
     } catch {
-      setLayout(defaultLayout);
+      parsedConfigs = {};
     }
+
+    let nextLayout: Layout | null = null;
+    try {
+      const v2 = window.localStorage.getItem(DASHBOARD_LAYOUT_STORAGE_V2);
+      if (v2) nextLayout = JSON.parse(v2) as Layout;
+    } catch {
+      nextLayout = null;
+    }
+    if (!nextLayout) {
+      try {
+        const v1 = window.localStorage.getItem(DASHBOARD_LAYOUT_STORAGE_V1);
+        if (v1) {
+          nextLayout = JSON.parse(v1) as Layout;
+          try {
+            window.localStorage.setItem(DASHBOARD_LAYOUT_STORAGE_V2, v1);
+          } catch {
+            /* ignore */
+          }
+        }
+      } catch {
+        nextLayout = null;
+      }
+    }
+    if (!nextLayout) nextLayout = defaultLayout;
+
+    const validBuiltins = new Set(allWidgetKeys);
+    const filtered: LayoutItem[] = [];
+    for (const l of nextLayout) {
+      if (!l || typeof l.i !== "string") continue;
+      if (l.i.startsWith("cw_")) {
+        if (parsedConfigs[l.i]) filtered.push(l);
+      } else if (validBuiltins.has(l.i)) {
+        filtered.push(l);
+      }
+    }
+    const present = new Set(filtered.map((x) => x.i));
+    const missing = defaultLayout.filter((l) => !present.has(l.i));
+    setLayout([...filtered, ...missing] as Layout);
+    setCustomConfigs(parsedConfigs);
+    setLayoutHydrated(true);
   }, [allWidgetKeys, defaultLayout]);
 
   useEffect(() => {
+    if (!layoutHydrated) return;
     try {
-      window.localStorage.setItem(storageKey, JSON.stringify(layout));
+      window.localStorage.setItem(DASHBOARD_LAYOUT_STORAGE_V2, JSON.stringify(layout));
     } catch {
       /* ignore quota / privacy mode */
     }
-  }, [layout]);
+  }, [layout, layoutHydrated]);
+
+  useEffect(() => {
+    if (!layoutHydrated) return;
+    try {
+      window.localStorage.setItem(DASHBOARD_CUSTOM_WIDGETS_STORAGE, JSON.stringify(customConfigs));
+    } catch {
+      /* ignore */
+    }
+  }, [customConfigs, layoutHydrated]);
 
   const layoutKeys = useMemo(() => new Set(layout.map((l) => l.i)), [layout]);
   const availableToAdd = useMemo(() => allWidgetKeys.filter((k) => !layoutKeys.has(k)), [allWidgetKeys, layoutKeys]);
 
   const removeWidget = useCallback((id: string) => {
     setLayout((prev) => prev.filter((l) => l.i !== id));
+    if (id.startsWith("cw_")) {
+      setCustomConfigs((prev) => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
+    }
   }, []);
 
   const addWidget = useCallback(
@@ -1274,6 +1330,11 @@ function DashboardBody({
     },
     [defaultLayout, layoutKeys],
   );
+
+  const saveCustomPeek = useCallback((config: CustomDashboardWidgetConfig, layoutItem: LayoutItem | null) => {
+    setCustomConfigs((prev) => ({ ...prev, [config.id]: config }));
+    if (layoutItem) setLayout((prev) => [...prev, layoutItem]);
+  }, []);
 
   return (
     <div className="ds-dashboard-shell">
@@ -1313,25 +1374,52 @@ function DashboardBody({
       ) : null}
 
       <div className="p-5 lg:p-6">
-        <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-          <button
-            type="button"
-            className={editMode ? "ds-btn-solid-primary px-4 py-2 text-sm" : "ds-btn-secondary px-4 py-2 text-sm"}
-            onClick={() => setEditMode((v) => !v)}
+        <div className="mb-5 flex flex-wrap items-center gap-2">
+          <div
+            className="inline-flex items-center rounded-xl border border-slate-200/90 bg-white p-1 shadow-[var(--ds-shadow-card)] dark:border-ds-border dark:bg-ds-secondary"
+            role="group"
+            aria-label="Dashboard layout"
           >
-            {editMode ? "Done Editing" : "Edit Dashboard"}
-          </button>
-          {editMode ? (
             <button
               type="button"
-              className="ds-btn-secondary px-4 py-2 text-sm"
-              onClick={() => setShowAddWidget(true)}
-              disabled={availableToAdd.length === 0}
-              title={availableToAdd.length === 0 ? "All widgets are already added" : "Add a widget"}
+              onClick={() => setEditMode((v) => !v)}
+              title={editMode ? "Done editing layout" : "Edit dashboard layout"}
+              aria-label={editMode ? "Done editing layout" : "Edit dashboard layout"}
+              aria-pressed={editMode}
+              className={[
+                "inline-flex h-10 w-10 cursor-pointer items-center justify-center rounded-lg transition-colors",
+                editMode
+                  ? "bg-[#2B4C7E] text-white shadow-sm dark:bg-white/20 dark:text-white"
+                  : "text-[#2B4C7E] hover:bg-slate-100 dark:text-white dark:hover:bg-white/10",
+              ].join(" ")}
             >
-              Add Widget
+              {editMode ? (
+                <Check className="h-[1.125rem] w-[1.125rem] shrink-0" strokeWidth={2.5} aria-hidden />
+              ) : (
+                <Pencil className="h-[1.125rem] w-[1.125rem] shrink-0" strokeWidth={2.5} aria-hidden />
+              )}
             </button>
-          ) : null}
+            <span className="mx-0.5 h-6 w-px shrink-0 bg-slate-200 dark:bg-ds-border" aria-hidden />
+            <button
+              type="button"
+              disabled={!editMode}
+              onClick={() => editMode && setShowAddWidget(true)}
+              title={
+                editMode
+                  ? "Add a built-in card or a custom page peek"
+                  : "Turn on edit mode to add widgets"
+              }
+              aria-label="Add widget"
+              className={[
+                "inline-flex h-10 w-10 items-center justify-center rounded-lg transition-colors",
+                editMode
+                  ? "cursor-pointer text-[#2B4C7E] hover:bg-slate-100 dark:text-white dark:hover:bg-white/10"
+                  : "cursor-not-allowed text-[#2B4C7E]/35 dark:text-white/35",
+              ].join(" ")}
+            >
+              <Plus className="h-[1.125rem] w-[1.125rem] shrink-0" strokeWidth={2.5} aria-hidden />
+            </button>
+          </div>
         </div>
 
         <div ref={containerRef as any}>
@@ -1346,6 +1434,55 @@ function DashboardBody({
               onLayoutChange={(next) => setLayout(next)}
             >
           {layout.map((item) => {
+            if (item.i.startsWith("cw_")) {
+              const cfg = customConfigs[item.i];
+              if (!cfg) return <div key={item.i} />;
+              const headerRight = (
+                <div className="flex items-center gap-2">
+                  {editMode ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPeekWizardInitial(cfg);
+                        setPeekWizardMode("edit");
+                        setShowPeekWizard(true);
+                      }}
+                      className="inline-flex items-center rounded-md border border-black/10 bg-white/80 px-2 py-1 text-slate-700 hover:bg-white dark:border-ds-border dark:bg-ds-secondary dark:text-gray-100 dark:hover:bg-ds-interactive-hover"
+                      aria-label="Customize peek widget"
+                      title="Customize"
+                    >
+                      <Settings className="h-3.5 w-3.5" aria-hidden />
+                    </button>
+                  ) : null}
+                  {editMode ? (
+                    <span className="dashboard-drag-handle select-none rounded-md border border-black/10 bg-slate-900/90 px-2 py-1 text-[11px] font-semibold text-white shadow-sm dark:bg-white/85 dark:text-slate-900">
+                      Drag
+                    </span>
+                  ) : null}
+                  {editMode ? (
+                    <button
+                      type="button"
+                      onClick={() => removeWidget(item.i)}
+                      className="rounded-md border border-black/10 bg-white/80 px-2 py-1 text-xs font-semibold text-slate-700 hover:bg-white"
+                      aria-label={`Remove ${cfg.title}`}
+                      title="Remove widget"
+                    >
+                      ×
+                    </button>
+                  ) : null}
+                </div>
+              );
+              return (
+                <div
+                  key={item.i}
+                  className={["transition-transform", editMode ? "cursor-grab active:cursor-grabbing" : ""].join(" ")}
+                >
+                  <DashboardCard title={cfg.title} accent="blue" headerRight={headerRight} className="h-full">
+                    <DashboardCustomPeekWidget config={cfg} model={model} />
+                  </DashboardCard>
+                </div>
+              );
+            }
             const w = (widgetRegistry as Record<string, any>)[item.i] as
               | { title: string; accent: "yellow" | "red" | "blue" | "green" | "none"; render: () => ReactNode }
               | null
@@ -1402,7 +1539,10 @@ function DashboardBody({
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="text-lg font-semibold text-slate-900">Add Widget</p>
-                  <p className="mt-1 text-sm text-slate-600">Choose a widget to add back to your dashboard.</p>
+                  <p className="mt-1 text-sm text-slate-600">
+                    Re-enable a built-in card, or build a compact &quot;peek&quot; from another Pulse page (pick slices and
+                    options).
+                  </p>
                 </div>
                 <button
                   type="button"
@@ -1414,8 +1554,22 @@ function DashboardBody({
                 </button>
               </div>
               <div className="mt-4 space-y-2">
+                <button
+                  type="button"
+                  className="flex w-full items-center justify-between rounded-xl border border-[#2B4C7E]/25 bg-sky-50/80 px-4 py-3 text-left text-sm font-semibold text-[#2B4C7E] hover:bg-sky-50"
+                  onClick={() => {
+                    setShowAddWidget(false);
+                    setPeekWizardInitial(null);
+                    setPeekWizardMode("create");
+                    setShowPeekWizard(true);
+                  }}
+                >
+                  <span>Custom page peek…</span>
+                  <span className="text-xs font-semibold text-[#2B4C7E]/80">New</span>
+                </button>
+                <p className="pt-2 text-[11px] font-semibold uppercase tracking-wider text-slate-500">Built-in cards</p>
                 {availableToAdd.length === 0 ? (
-                  <p className="text-sm text-slate-600">All widgets are already added.</p>
+                  <p className="text-sm text-slate-600">All built-in widgets are already on the board.</p>
                 ) : (
                   availableToAdd.map((key) => {
                     const ww = (widgetRegistry as Record<string, any>)[key] as { title: string } | null | undefined;
@@ -1440,6 +1594,17 @@ function DashboardBody({
             </div>
           </div>
         ) : null}
+
+        <DashboardAddWidgetWizard
+          open={showPeekWizard}
+          mode={peekWizardMode}
+          initialConfig={peekWizardInitial}
+          onClose={() => {
+            setShowPeekWizard(false);
+            setPeekWizardInitial(null);
+          }}
+          onSave={saveCustomPeek}
+        />
       </div>
     </div>
   );

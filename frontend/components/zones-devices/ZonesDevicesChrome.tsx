@@ -98,15 +98,24 @@ export function ZonesDevicesChrome({ children }: { children: React.ReactNode }) 
           Blueprint designer
         </Link>
       </nav>
-      <motion.div
-        key={pathname}
-        className="flex min-h-0 flex-1 flex-col"
-        initial={isBlueprint ? false : { opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: bpDuration.med, ease: bpEase }}
-      >
-        {children}
-      </motion.div>
+      {/*
+        Blueprint designer uses `position: fixed` for immersive fullscreen. A Framer Motion parent
+        with `transform` (e.g. translateY) creates a containing block so fixed overlays only cover
+        this column and the app header stays visible — use a plain div on the blueprint route.
+      */}
+      {isBlueprint ? (
+        <div className="flex min-h-0 flex-1 flex-col">{children}</div>
+      ) : (
+        <motion.div
+          key={pathname}
+          className="flex min-h-0 flex-1 flex-col"
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: bpDuration.med, ease: bpEase }}
+        >
+          {children}
+        </motion.div>
+      )}
     </div>
   );
 }

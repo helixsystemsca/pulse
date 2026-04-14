@@ -30,6 +30,7 @@ from app.schemas.maintenance_hub import (
     ProcedureCreate,
     ProcedureOut,
     ProcedureStepImageOut,
+    ProcedureStepIn,
     ProcedureUpdate,
     WorkOrderCreate,
     WorkOrderDetailOut,
@@ -38,6 +39,7 @@ from app.schemas.maintenance_hub import (
     WorkOrderStatusApi,
     WorkOrderType,
     normalize_procedure_steps,
+    procedure_steps_to_storage,
 )
 
 router = APIRouter(prefix="/cmms", tags=["maintenance-hub"])
@@ -287,8 +289,15 @@ async def list_procedures(db: Db, cid: CompanyId) -> list[ProcedureOut]:
 
 @router.post("/procedures", response_model=ProcedureOut, status_code=status.HTTP_201_CREATED)
 async def create_procedure(db: Db, cid: CompanyId, body: ProcedureCreate) -> ProcedureOut:
-    payload = [{"text": (s.text or "").strip(), "image_url": s.image_url} for s in body.steps]
-    row = PulseProcedure(company_id=cid, title=body.title.strip(), steps=payload)
+    payload = procedure_steps_to_storage(body.steps) if body.steps else []
+    row = PulseProcedure(
+        company_id=cid,
+        title=body.title.strip(),
+        steps=payload,
+        created_by_user_id=body.created_by_user_id,
+        created_by_name=(body.created_by_name or "").strip() or None,
+        review_required=bool(body.review_required),
+    )
     db.add(row)
     await db.commit()
     await db.refresh(row)
@@ -310,10 +319,27 @@ async def update_procedure(
     row = await db.get(PulseProcedure, procedure_id)
     if not row or row.company_id != cid:
         raise HTTPException(status_code=404, detail="Not found")
-    if body.title is not None:
-        row.title = body.title.strip()
-    if body.steps is not None:
-        row.steps = [{"text": (s.text or "").strip(), "image_url": s.image_url} for s in body.steps]
+    patch = body.model_dump(exclude_unset=True)
+    if "title" in patch and patch["title"] is not None:
+        row.title = patch["title"].strip()
+    if "steps" in patch and patch["steps"] is not None:
+        raw_steps = patch["steps"]
+        parsed = [ProcedureStepIn.model_validate(s) for s in raw_steps]
+        row.steps = procedure_steps_to_storage(parsed)
+    if "created_by_user_id" in patch:
+        row.created_by_user_id = patch["created_by_user_id"]
+    if "created_by_name" in patch:
+        cn = patch["created_by_name"]
+        row.created_by_name = None if cn is None else (str(cn).strip() or None)
+    if "review_required" in patch and patch["review_required"] is not None:
+        row.review_required = bool(patch["review_required"])
+    if "reviewed_by_user_id" in patch:
+        row.reviewed_by_user_id = patch["reviewed_by_user_id"]
+    if "reviewed_by_name" in patch:
+        rn = patch["reviewed_by_name"]
+        row.reviewed_by_name = None if rn is None else (str(rn).strip() or None)
+    if "reviewed_at" in patch:
+        row.reviewed_at = patch["reviewed_at"]
     row.updated_at = datetime.now(timezone.utc)
     await db.commit()
     await db.refresh(row)

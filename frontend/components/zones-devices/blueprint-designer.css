@@ -45,7 +45,8 @@
   flex-direction: column;
   position: fixed;
   inset: 0;
-  z-index: 90;
+  /* Above app chrome (navbar z-50, drawers z-80–90) so fullscreen truly covers the window */
+  z-index: 130;
   box-sizing: border-box;
   min-height: 0;
   min-width: 0;

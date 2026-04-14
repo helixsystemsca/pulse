@@ -2,11 +2,12 @@
 
 import { Plus, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { ModuleSettingsForm } from "@/components/module-settings/ModuleSettingsModal";
 import { useScheduleStore } from "@/lib/schedule/schedule-store";
 import type { ShiftTypeConfig } from "@/lib/schedule/types";
 import { PulseDrawer } from "./PulseDrawer";
 
-const TABS = ["General", "Roles", "Shift types", "Zones", "Staffing"] as const;
+const TABS = ["Organization", "General", "Roles", "Shift types", "Zones", "Staffing"] as const;
 type Tab = (typeof TABS)[number];
 
 type Props = {
@@ -41,13 +42,13 @@ export function ScheduleSettingsModal({ open, onClose }: Props) {
   const pendingRequests = useScheduleStore((s) => s.pendingRequests);
   const resetDemo = useScheduleStore((s) => s.resetDemo);
 
-  const [tab, setTab] = useState<Tab>("General");
+  const [tab, setTab] = useState<Tab>("Organization");
   const [zoneInput, setZoneInput] = useState("");
   const [roleError, setRoleError] = useState<string | null>(null);
 
   useEffect(() => {
     if (open) {
-      setTab("General");
+      setTab("Organization");
       setRoleError(null);
     }
   }, [open]);
@@ -79,24 +80,26 @@ export function ScheduleSettingsModal({ open, onClose }: Props) {
     <PulseDrawer
       open={open}
       title="Schedule settings"
-      subtitle="Defaults for calendar behavior, roles, zones, and staffing rules"
+      subtitle="Organization rules, calendar defaults, roles, zones, and staffing"
       onClose={onClose}
       wide
       elevated
       labelledBy="settings-drawer-title"
       footer={
-        <div className="flex flex-wrap items-center justify-end gap-4">
-          <button
-            type="button"
-            className="text-sm font-semibold text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
-            onClick={onClose}
-          >
-            Cancel
-          </button>
-          <button type="button" className={PRIMARY_BTN} onClick={onClose}>
-            Save & close
-          </button>
-        </div>
+        tab === "Organization" ? undefined : (
+          <div className="flex flex-wrap items-center justify-end gap-4">
+            <button
+              type="button"
+              className="text-sm font-semibold text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
+              onClick={onClose}
+            >
+              Cancel
+            </button>
+            <button type="button" className={PRIMARY_BTN} onClick={onClose}>
+              Save & close
+            </button>
+          </div>
+        )
       }
     >
       <div className="mx-auto max-w-xl space-y-5">
@@ -127,6 +130,9 @@ export function ScheduleSettingsModal({ open, onClose }: Props) {
             <p className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950 dark:border-amber-500/30 dark:bg-amber-950/35 dark:text-amber-100">
               {roleError}
             </p>
+          ) : null}
+          {tab === "Organization" ? (
+            <ModuleSettingsForm moduleId="schedule" onCancel={() => setTab("General")} />
           ) : null}
           {tab === "General" ? (
             <div className="space-y-4">

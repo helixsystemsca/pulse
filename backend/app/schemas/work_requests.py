@@ -95,6 +95,9 @@ class WorkRequestPatchIn(BaseModel):
     assigned_user_id: Optional[str] = None
     due_date: Optional[datetime] = None
     attachments: Optional[list[Any]] = None
+    # Optional context when changing status (logged on `status_changed` activity).
+    note: Optional[str] = Field(None, max_length=2000)
+    hold_reason: Optional[str] = Field(None, max_length=128)
 
 
 class WorkRequestCommentIn(BaseModel):
@@ -107,6 +110,8 @@ class WorkRequestAssignIn(BaseModel):
 
 class WorkRequestStatusIn(BaseModel):
     status: PulseWorkRequestStatus
+    note: Optional[str] = Field(None, max_length=2000)
+    hold_reason: Optional[str] = Field(None, max_length=128)
 
 
 class WorkRequestSettingsOut(BaseModel):

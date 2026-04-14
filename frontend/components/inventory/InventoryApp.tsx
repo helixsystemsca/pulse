@@ -76,6 +76,15 @@ const DEFAULT_SETTINGS: Required<
   alerts: { low_stock: true, missing: true },
 };
 
+/** Controlled textarea lines: trim each line but keep empties so Enter / new rows are not stripped immediately. */
+function draftLinesFromTextarea(value: string): string[] {
+  return value.split("\n").map((line) => line.trim());
+}
+
+function normalizeNonEmptyLines(lines: string[]): string[] {
+  return lines.map((x) => x.trim()).filter((x) => x.length > 0);
+}
+
 const SETTINGS_TABS = [
   "Categories",
   "Status rules",
@@ -231,8 +240,9 @@ export function InventoryApp() {
   const [detailPanel, setDetailPanel] = useState<"none" | "assign" | "move" | "use">("none");
 
   useEffect(() => {
+    if (settingsOpen) return;
     setSettingsDraft(mergedSettings);
-  }, [mergedSettings]);
+  }, [mergedSettings, settingsOpen]);
 
   useEffect(() => {
     const t = window.setTimeout(() => setQDebounced(q.trim()), 300);
@@ -572,10 +582,10 @@ export function InventoryApp() {
     setActionBusy(true);
     try {
       await patchInventorySettings(apiCompany, {
-        categories: settingsDraft.categories,
+        categories: normalizeNonEmptyLines(settingsDraft.categories),
         status_rules: settingsDraft.status_rules,
         threshold_defaults: settingsDraft.threshold_defaults,
-        locations: settingsDraft.locations,
+        locations: normalizeNonEmptyLines(settingsDraft.locations ?? []),
         assignment_rules: settingsDraft.assignment_rules,
         alerts: settingsDraft.alerts,
       });
@@ -1574,7 +1584,7 @@ export function InventoryApp() {
                     onChange={(e) =>
                       setSettingsDraft((d) => ({
                         ...d,
-                        categories: e.target.value.split("\n").map((x) => x.trim()).filter(Boolean),
+                        categories: draftLinesFromTextarea(e.target.value),
                       }))
                     }
                   />
@@ -1628,7 +1638,7 @@ export function InventoryApp() {
                     onChange={(e) =>
                       setSettingsDraft((d) => ({
                         ...d,
-                        locations: e.target.value.split("\n").map((x) => x.trim()).filter(Boolean),
+                        locations: draftLinesFromTextarea(e.target.value),
                       }))
                     }
                   />

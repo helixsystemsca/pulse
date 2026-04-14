@@ -145,10 +145,38 @@ const WORKFLOW_STATUSES: { id: WorkItemStatus; label: string }[] = [
   { id: "overdue", label: "Overdue" },
 ];
 
+/** Preset keys stored on activity `meta.hold_reason` when placing a request on hold. */
+const WORK_REQUEST_HOLD_REASONS: { id: string; label: string }[] = [
+  { id: "awaiting_parts", label: "On hold — awaiting parts" },
+  { id: "access", label: "On hold — access to area" },
+  { id: "vendor", label: "On hold — vendor / contractor" },
+  { id: "equipment", label: "On hold — equipment availability" },
+  { id: "other", label: "Other" },
+];
+
 type WorkTab = "my_work" | "approval" | "all";
 
 function isWorkItemStatus(v: string): v is WorkItemStatus {
   return WORKFLOW_STATUSES.some((s) => s.id === v);
+}
+
+function terminalRowStatus(status: string): boolean {
+  return status === "completed" || status === "cancelled";
+}
+
+function activityStatusSummary(meta: Record<string, unknown>, action: string): string | null {
+  if (action !== "status_changed") return null;
+  const parts: string[] = [];
+  const cr = meta.close_reason;
+  if (typeof cr === "string" && cr.trim()) parts.push(`Close: ${cr.trim()}`);
+  const hr = meta.hold_reason;
+  if (typeof hr === "string" && hr.trim()) {
+    const label = WORK_REQUEST_HOLD_REASONS.find((r) => r.id === hr)?.label ?? hr;
+    parts.push(label);
+  }
+  const n = meta.note;
+  if (typeof n === "string" && n.trim() && typeof hr === "string" && hr.trim()) parts.push(n.trim());
+  return parts.length > 0 ? parts.join(" · ") : null;
 }
 
 function categoryCodeFromRow(row: WorkRequestRow): { code: "ISS" | "PM" | "SET"; category: "issue" | "preventative" | "setup" } {
@@ -247,6 +275,12 @@ export function WorkRequestsApp(props?: WorkRequestsAppProps) {
   const [detailLoading, setDetailLoading] = useState(false);
   const [commentText, setCommentText] = useState("");
   const [actionBusy, setActionBusy] = useState(false);
+
+  const [closeModalForId, setCloseModalForId] = useState<string | null>(null);
+  const [closeReasonDraft, setCloseReasonDraft] = useState("");
+  const [holdModalForId, setHoldModalForId] = useState<string | null>(null);
+  const [holdReasonKey, setHoldReasonKey] = useState<string>(WORK_REQUEST_HOLD_REASONS[0]!.id);
+  const [holdNoteDraft, setHoldNoteDraft] = useState("");
 
   const [createForm, setCreateForm] = useState({
     title: "",
@@ -544,7 +578,9 @@ export function WorkRequestsApp(props?: WorkRequestsAppProps) {
     setActionBusy(true);
     try {
       // No dedicated "rejected" status in the requested model; map to cancelled to avoid creating a new backend state.
-      await postWorkRequestStatus(isSystemAdmin ? effectiveCompanyId : null, id, "cancelled");
+      await postWorkRequestStatus(isSystemAdmin ? effectiveCompanyId : null, id, "cancelled", {
+        note: "Rejected during approval",
+      });
       await loadList();
       if (detailId === id) await loadDetail();
     } finally {
@@ -675,6 +711,51 @@ export function WorkRequestsApp(props?: WorkRequestsAppProps) {
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Could not update status";
       setListError(msg);
+    } finally {
+      setActionBusy(false);
+    }
+  }
+
+  async function confirmCloseWorkRequest() {
+    if (!effectiveCompanyId || !closeModalForId) return;
+    const reason = closeReasonDraft.trim();
+    if (!reason) return;
+    const id = closeModalForId;
+    setActionBusy(true);
+    setListError(null);
+    try {
+      await postWorkRequestStatus(isSystemAdmin ? effectiveCompanyId : null, id, "cancelled", { note: reason });
+      setCloseModalForId(null);
+      setCloseReasonDraft("");
+      setMenuFor(null);
+      await loadList();
+      if (detailId === id) await loadDetail();
+    } catch (e) {
+      setListError(e instanceof Error ? e.message : "Could not close request");
+    } finally {
+      setActionBusy(false);
+    }
+  }
+
+  async function confirmHoldWorkRequest() {
+    if (!effectiveCompanyId || !holdModalForId) return;
+    if (!holdReasonKey.trim()) return;
+    const id = holdModalForId;
+    setActionBusy(true);
+    setListError(null);
+    try {
+      await postWorkRequestStatus(isSystemAdmin ? effectiveCompanyId : null, id, "hold", {
+        hold_reason: holdReasonKey,
+        note: holdNoteDraft.trim() || undefined,
+      });
+      setHoldModalForId(null);
+      setHoldNoteDraft("");
+      setHoldReasonKey(WORK_REQUEST_HOLD_REASONS[0]!.id);
+      setMenuFor(null);
+      await loadList();
+      if (detailId === id) await loadDetail();
+    } catch (e) {
+      setListError(e instanceof Error ? e.message : "Could not place request on hold");
     } finally {
       setActionBusy(false);
     }
@@ -1044,25 +1125,45 @@ export function WorkRequestsApp(props?: WorkRequestsAppProps) {
                                     Start work
                                   </button>
                                 ) : null}
-                                {row.status === "in_progress" ? (
+                                {row.status !== "pending_approval" && !terminalRowStatus(row.status) ? (
                                   <button
                                     type="button"
                                     className="block w-full px-3 py-2 text-left text-sm text-pulse-navy hover:bg-slate-50 dark:text-gray-100 dark:hover:bg-ds-interactive-hover"
-                                    onClick={() => void completeItem(row.id)}
+                                    onClick={() => {
+                                      setMenuFor(null);
+                                      void completeItem(row.id);
+                                    }}
                                   >
                                     Complete
                                   </button>
                                 ) : null}
-                                <button
-                                  type="button"
-                                  className="block w-full px-3 py-2 text-left text-sm text-pulse-navy hover:bg-slate-50 dark:text-gray-100 dark:hover:bg-ds-interactive-hover"
-                                  onClick={() => {
-                                    setMenuFor(null);
-                                    setDetailId(row.id);
-                                  }}
-                                >
-                                  View details
-                                </button>
+                                {!terminalRowStatus(row.status) ? (
+                                  <button
+                                    type="button"
+                                    className="block w-full px-3 py-2 text-left text-sm text-pulse-navy hover:bg-slate-50 dark:text-gray-100 dark:hover:bg-ds-interactive-hover"
+                                    onClick={() => {
+                                      setMenuFor(null);
+                                      setCloseReasonDraft("");
+                                      setCloseModalForId(row.id);
+                                    }}
+                                  >
+                                    Close
+                                  </button>
+                                ) : null}
+                                {!terminalRowStatus(row.status) && row.status !== "hold" ? (
+                                  <button
+                                    type="button"
+                                    className="block w-full px-3 py-2 text-left text-sm text-pulse-navy hover:bg-slate-50 dark:text-gray-100 dark:hover:bg-ds-interactive-hover"
+                                    onClick={() => {
+                                      setMenuFor(null);
+                                      setHoldReasonKey(WORK_REQUEST_HOLD_REASONS[0]!.id);
+                                      setHoldNoteDraft("");
+                                      setHoldModalForId(row.id);
+                                    }}
+                                  >
+                                    Hold
+                                  </button>
+                                ) : null}
                               </div>
                             ) : null}
                           </td>
@@ -1477,15 +1578,19 @@ export function WorkRequestsApp(props?: WorkRequestsAppProps) {
                 {detail.activity.length === 0 ? (
                   <li className="text-sm text-pulse-muted">No activity yet.</li>
                 ) : (
-                  detail.activity.map((a) => (
-                    <li key={a.id} className="text-sm">
-                      <span className="font-semibold text-pulse-navy">{a.action.replace(/_/g, " ")}</span>
-                      <span className="text-pulse-muted">
-                        {" "}
-                        · {a.performer_name ?? "—"} · {new Date(a.created_at).toLocaleString()}
-                      </span>
-                    </li>
-                  ))
+                  detail.activity.map((a) => {
+                    const statusLine = activityStatusSummary(a.meta, a.action);
+                    return (
+                      <li key={a.id} className="text-sm">
+                        <span className="font-semibold text-pulse-navy">{a.action.replace(/_/g, " ")}</span>
+                        <span className="text-pulse-muted">
+                          {" "}
+                          · {a.performer_name ?? "—"} · {new Date(a.created_at).toLocaleString()}
+                        </span>
+                        {statusLine ? <p className="mt-1 text-xs text-pulse-muted">{statusLine}</p> : null}
+                      </li>
+                    );
+                  })
                 )}
               </ul>
             </div>
@@ -1690,6 +1795,142 @@ export function WorkRequestsApp(props?: WorkRequestsAppProps) {
           </div>
         )}
       </PulseDrawer>
+
+      {closeModalForId ? (
+        <div className="fixed inset-0 z-[130] flex items-center justify-center p-4">
+          <button
+            type="button"
+            className="ds-modal-backdrop absolute inset-0 backdrop-blur-[2px]"
+            aria-label="Dismiss"
+            disabled={actionBusy}
+            onClick={() => {
+              if (!actionBusy) {
+                setCloseModalForId(null);
+                setCloseReasonDraft("");
+              }
+            }}
+          />
+          <div
+            className="relative w-full max-w-md rounded-xl border border-slate-200/90 bg-white p-5 shadow-xl dark:border-ds-border dark:bg-ds-primary"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="wr-close-title"
+          >
+            <h2 id="wr-close-title" className="text-lg font-semibold text-pulse-navy dark:text-gray-100">
+              Close work request
+            </h2>
+            <p className="mt-1 text-sm text-pulse-muted">
+              This will mark the request as cancelled. Your reason is saved on the activity timeline.
+            </p>
+            <label className="mt-4 block">
+              <span className={LABEL}>Reason for closing</span>
+              <textarea
+                className={`${FIELD} min-h-[100px]`}
+                value={closeReasonDraft}
+                onChange={(e) => setCloseReasonDraft(e.target.value)}
+                placeholder="e.g. Duplicate entry, resolved elsewhere, no longer needed…"
+              />
+            </label>
+            <div className="mt-4 flex flex-wrap justify-end gap-2">
+              <button
+                type="button"
+                className="rounded-lg px-4 py-2 text-sm font-semibold text-pulse-muted hover:text-pulse-navy dark:hover:text-gray-100"
+                disabled={actionBusy}
+                onClick={() => {
+                  setCloseModalForId(null);
+                  setCloseReasonDraft("");
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className={PRIMARY_BTN}
+                disabled={actionBusy || !closeReasonDraft.trim()}
+                onClick={() => void confirmCloseWorkRequest()}
+              >
+                {actionBusy ? "Closing…" : "Close request"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {holdModalForId ? (
+        <div className="fixed inset-0 z-[130] flex items-center justify-center p-4">
+          <button
+            type="button"
+            className="ds-modal-backdrop absolute inset-0 backdrop-blur-[2px]"
+            aria-label="Dismiss"
+            disabled={actionBusy}
+            onClick={() => {
+              if (!actionBusy) {
+                setHoldModalForId(null);
+                setHoldNoteDraft("");
+                setHoldReasonKey(WORK_REQUEST_HOLD_REASONS[0]!.id);
+              }
+            }}
+          />
+          <div
+            className="relative w-full max-w-md rounded-xl border border-slate-200/90 bg-white p-5 shadow-xl dark:border-ds-border dark:bg-ds-primary"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="wr-hold-title"
+          >
+            <h2 id="wr-hold-title" className="text-lg font-semibold text-pulse-navy dark:text-gray-100">
+              Place on hold
+            </h2>
+            <p className="mt-1 text-sm text-pulse-muted">
+              Choose a reason. Optional notes are stored with the activity record.
+            </p>
+            <label className="mt-4 block">
+              <span className={LABEL}>Hold reason</span>
+              <select
+                className={FIELD}
+                value={holdReasonKey}
+                onChange={(e) => setHoldReasonKey(e.target.value)}
+              >
+                {WORK_REQUEST_HOLD_REASONS.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {r.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="mt-4 block">
+              <span className={LABEL}>Additional detail (optional)</span>
+              <textarea
+                className={`${FIELD} min-h-[80px]`}
+                value={holdNoteDraft}
+                onChange={(e) => setHoldNoteDraft(e.target.value)}
+                placeholder="Access hours, part numbers, vendor name…"
+              />
+            </label>
+            <div className="mt-4 flex flex-wrap justify-end gap-2">
+              <button
+                type="button"
+                className="rounded-lg px-4 py-2 text-sm font-semibold text-pulse-muted hover:text-pulse-navy dark:hover:text-gray-100"
+                disabled={actionBusy}
+                onClick={() => {
+                  setHoldModalForId(null);
+                  setHoldNoteDraft("");
+                  setHoldReasonKey(WORK_REQUEST_HOLD_REASONS[0]!.id);
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className={PRIMARY_BTN}
+                disabled={actionBusy}
+                onClick={() => void confirmHoldWorkRequest()}
+              >
+                {actionBusy ? "Saving…" : "Place on hold"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

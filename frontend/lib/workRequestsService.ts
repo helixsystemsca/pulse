@@ -186,11 +186,15 @@ export async function postWorkRequestStatus(
   companyId: string | null,
   id: string,
   status: string,
+  extra?: { note?: string | null; hold_reason?: string | null },
 ): Promise<WorkRequestDetail> {
   const qs = companyQs(companyId);
+  const body: Record<string, unknown> = { status };
+  if (extra?.note != null && extra.note !== "") body.note = extra.note;
+  if (extra?.hold_reason != null && extra.hold_reason !== "") body.hold_reason = extra.hold_reason;
   return apiFetch<WorkRequestDetail>(`/api/work-requests/${id}/status${qs ? `?${qs}` : ""}`, {
     method: "POST",
-    json: { status },
+    json: body,
   });
 }
 

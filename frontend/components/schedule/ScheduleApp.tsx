@@ -49,7 +49,6 @@ import { computeAlerts, computeWorkforceSummary } from "@/lib/schedule/selectors
 import { useScheduleStore } from "@/lib/schedule/schedule-store";
 import type { ScheduleDragSession, Shift } from "@/lib/schedule/types";
 import { ScheduleAlertsBanner } from "./ScheduleAlertsBanner";
-import { ModuleSettingsGear } from "@/components/module-settings/ModuleSettingsGear";
 import { useModuleSettings } from "@/providers/ModuleSettingsProvider";
 import { ScheduleCalendarGrid } from "./ScheduleCalendarGrid";
 import { ScheduleDayView } from "./ScheduleDayView";
@@ -727,14 +726,13 @@ export function ScheduleApp() {
                   <CalendarPlus className="h-4 w-4" />
                   Time off
                 </button>
-                <ModuleSettingsGear moduleId="schedule" label="Schedule organization settings" />
                 <button
                   type="button"
                   onClick={() => setSettingsOpen(true)}
                   className="inline-flex items-center gap-2 rounded-md border border-pulseShell-border bg-pulseShell-surface px-4 py-2 text-sm font-semibold text-ds-foreground shadow-sm hover:bg-ds-interactive-hover dark:text-gray-100"
                 >
                   <Settings className="h-4 w-4" />
-                  Layout
+                  Settings
                 </button>
               </>
             }

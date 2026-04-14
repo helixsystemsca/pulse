@@ -64,6 +64,8 @@ export function ProceduresApp() {
   const [editCreatorName, setEditCreatorName] = useState("");
   const [ackOpen, setAckOpen] = useState(false);
   const [ackForId, setAckForId] = useState<string | null>(null);
+  /** Step index when reading a not-yet-acknowledged procedure (paginated); modal opens after Next on the last step. */
+  const [readerStep, setReaderStep] = useState(0);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const session = readSession();
@@ -118,21 +120,22 @@ export function ProceduresApp() {
       setEditCreatorName("");
       setAckOpen(false);
       setAckForId(null);
+      setReaderStep(0);
       setEditing(false);
       return;
     }
     setEditTitle(selected.title);
     setEditSteps(toDraftFromProcedure(selected));
     setEditCreatorName(selected.created_by_name?.trim() || "");
-    if (userId && !editing) {
-      const needs = !hasAcknowledgedProcedure(userId, selected.id);
-      setAckForId(selected.id);
-      setAckOpen(needs);
-    } else {
-      setAckForId(selected.id);
-      setAckOpen(false);
-    }
-  }, [selected, userId, editing]);
+    setAckForId(selected.id);
+    setAckOpen(false);
+  }, [selected, editing]);
+
+  useEffect(() => {
+    if (!selected?.id) return;
+    setReaderStep(0);
+    setAckOpen(false);
+  }, [selected?.id]);
 
   const canEditSelected = useMemo(() => {
     if (!selected) return false;
@@ -595,6 +598,86 @@ export function ProceduresApp() {
                   </button>
                 </div>
               </>
+            ) : userId && !hasAcknowledgedProcedure(userId, selected.id) ? (
+              <div className="mt-4 space-y-4">
+                <div className="rounded-md border border-ds-border bg-ds-secondary/40 p-3">
+                  <p className="text-sm font-semibold text-ds-foreground">Title</p>
+                  <p className="mt-1 text-sm text-ds-muted">{selected.title}</p>
+                </div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-ds-muted">
+                  Step {readerStep + 1} of {selected.steps.length}
+                </p>
+                {(() => {
+                  const s = selected.steps[readerStep];
+                  if (s === undefined) return null;
+                  const step = typeof s === "string" ? { text: s } : s;
+                  const idx = readerStep;
+                  return (
+                    <ol className="space-y-3">
+                      <li className="rounded-md border border-ds-border bg-ds-primary p-4">
+                        <div className="flex items-start gap-3">
+                          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-ds-border bg-ds-secondary text-xs font-bold text-ds-foreground">
+                            {idx + 1}
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <p className="whitespace-pre-wrap text-sm text-ds-foreground">{step.text ?? ""}</p>
+                            {typeof s !== "string" && (s.recommended_workers || (s.tools?.length ?? 0) > 0) ? (
+                              <div className="mt-2 flex flex-wrap gap-2 text-xs text-ds-muted">
+                                {s.recommended_workers ? (
+                                  <span className="rounded-full border border-ds-border bg-ds-secondary/60 px-2 py-0.5 font-semibold">
+                                    Recommended workers: {s.recommended_workers}
+                                  </span>
+                                ) : null}
+                                {(s.tools ?? []).map((t) => (
+                                  <span
+                                    key={t}
+                                    className="rounded-full border border-ds-border bg-ds-secondary/60 px-2 py-0.5 font-semibold"
+                                  >
+                                    {t}
+                                  </span>
+                                ))}
+                              </div>
+                            ) : null}
+                            {typeof s !== "string" ? <StepImagePreview imageUrl={s.image_url ?? null} /> : null}
+                          </div>
+                        </div>
+                      </li>
+                    </ol>
+                  );
+                })()}
+                <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-ds-border pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedId(null)}
+                    className="rounded-md border border-ds-border px-4 py-2 text-sm font-semibold text-ds-foreground hover:bg-ds-secondary"
+                  >
+                    Close
+                  </button>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      disabled={readerStep <= 0}
+                      onClick={() => setReaderStep((n) => Math.max(0, n - 1))}
+                      className="rounded-md border border-ds-border px-4 py-2 text-sm font-semibold text-ds-foreground hover:bg-ds-secondary disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      Back
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (readerStep < selected.steps.length - 1) {
+                          setReaderStep((n) => Math.min(selected.steps.length - 1, n + 1));
+                        } else {
+                          setAckOpen(true);
+                        }
+                      }}
+                      className="rounded-md bg-ds-accent px-4 py-2 text-sm font-semibold text-ds-accent-foreground shadow-sm hover:bg-ds-accent/90"
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+              </div>
             ) : (
               <div className="mt-4 space-y-4">
                 <div className="rounded-md border border-ds-border bg-ds-secondary/40 p-3">

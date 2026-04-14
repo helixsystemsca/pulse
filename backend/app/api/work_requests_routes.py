@@ -252,6 +252,25 @@ async def _log(db: AsyncSession, wr_id: str, action: str, uid: Optional[str], me
     )
 
 
+def _status_change_meta(
+    old: PulseWorkRequestStatus,
+    new: PulseWorkRequestStatus,
+    *,
+    note: Optional[str],
+    hold_reason: Optional[str],
+) -> dict[str, Any]:
+    """Extra fields for activity history (stored on `status_changed`)."""
+    meta: dict[str, Any] = {"from": old.value, "to": new.value}
+    if new == PulseWorkRequestStatus.cancelled and note:
+        meta["close_reason"] = note
+    if new == PulseWorkRequestStatus.hold:
+        if hold_reason:
+            meta["hold_reason"] = hold_reason
+        if note:
+            meta["note"] = note
+    return meta
+
+
 async def _get_wr(db: AsyncSession, cid: str, wr_id: str) -> PulseWorkRequest:
     wr = await db.get(PulseWorkRequest, wr_id)
     if not wr or wr.company_id != cid:
@@ -550,6 +569,10 @@ async def patch_wr(
 ) -> WorkRequestDetailOut:
     wr = await _get_wr(db, cid, wr_id)
     data = body.model_dump(exclude_unset=True)
+    note_ctx = data.pop("note", None)
+    hold_reason_ctx = data.pop("hold_reason", None)
+    note_s = (str(note_ctx).strip() if note_ctx is not None else "") or None
+    hold_reason_s = (str(hold_reason_ctx).strip() if hold_reason_ctx is not None else "") or None
 
     if is_field_worker_like(user):
         _assert_worker_may_touch_wr(user, wr)
@@ -585,10 +608,15 @@ async def patch_wr(
             raise HTTPException(status_code=400, detail="Unknown assignee")
 
     old_status = wr.status
-    if "status" in data and data["status"] != old_status:
+    new_status = data.get("status")
+    if "status" in data and new_status != old_status:
         org_mod = await _org_module_merged(db, cid)
         wr_rules = _work_request_rules_from_org(org_mod)
-        _assert_wr_org_status_change(user, wr, old_status, data["status"], wr_rules)
+        _assert_wr_org_status_change(user, wr, old_status, new_status, wr_rules)
+        if new_status == PulseWorkRequestStatus.cancelled and not note_s:
+            raise HTTPException(status_code=400, detail="Close reason is required")
+        if new_status == PulseWorkRequestStatus.hold and not hold_reason_s:
+            raise HTTPException(status_code=400, detail="Hold reason is required")
     for k, v in data.items():
         setattr(wr, k, v)
     if wr.part_id:
@@ -604,7 +632,18 @@ async def patch_wr(
     if "status" in data and data["status"] != PulseWorkRequestStatus.completed:
         wr.completed_at = None
     if "status" in data and data["status"] != old_status:
-        await _log(db, wr_id, "status_changed", user.id, {"from": old_status.value, "to": wr.status.value})
+        await _log(
+            db,
+            wr_id,
+            "status_changed",
+            user.id,
+            _status_change_meta(
+                old_status,
+                wr.status,
+                note=note_s,
+                hold_reason=hold_reason_s,
+            ),
+        )
     if (
         "status" in data
         and data["status"] == PulseWorkRequestStatus.completed
@@ -676,6 +715,12 @@ async def post_status(
     wr = await _get_wr(db, cid, wr_id)
     _assert_worker_may_touch_wr(user, wr)
     old = wr.status
+    note_s = (body.note or "").strip() or None
+    hold_reason_s = (body.hold_reason or "").strip() or None
+    if body.status == PulseWorkRequestStatus.cancelled and not note_s:
+        raise HTTPException(status_code=400, detail="Close reason is required")
+    if body.status == PulseWorkRequestStatus.hold and not hold_reason_s:
+        raise HTTPException(status_code=400, detail="Hold reason is required")
     org_mod = await _org_module_merged(db, cid)
     wr_rules = _work_request_rules_from_org(org_mod)
     _assert_wr_org_status_change(user, wr, old, body.status, wr_rules)
@@ -684,7 +729,13 @@ async def post_status(
         wr.completed_at = datetime.now(timezone.utc)
     else:
         wr.completed_at = None
-    await _log(db, wr_id, "status_changed", user.id, {"from": old.value, "to": body.status.value})
+    await _log(
+        db,
+        wr_id,
+        "status_changed",
+        user.id,
+        _status_change_meta(old, body.status, note=note_s, hold_reason=hold_reason_s),
+    )
     await db.commit()
     await db.refresh(wr)
     return await _detail(db, cid, wr_id)

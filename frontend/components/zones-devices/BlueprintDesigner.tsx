@@ -1249,6 +1249,26 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
   const [designerMode, setDesignerMode] = useState<"edit" | "publish">("edit");
   /** Full-viewport editor shell (fixed overlay); canvas uses maximum vertical space. */
   const [immersiveOpen, setImmersiveOpen] = useState(false);
+
+  useEffect(() => {
+    if (!immersiveOpen) return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setImmersiveOpen(false);
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [immersiveOpen]);
+
+  const openDesignerInNewTab = useCallback(() => {
+    if (typeof window === "undefined") return;
+    const path = standalone ? "/blueprint" : "/zones-devices/blueprint";
+    window.open(`${window.location.origin}${path}`, "_blank", "noopener,noreferrer");
+  }, [standalone]);
   /** Floor plan / satellite underlay drawn beneath grid and geometry. */
   const underlayInputRef = useRef<HTMLInputElement | null>(null);
   const [underlayObjectUrl, setUnderlayObjectUrl] = useState<string | null>(null);
@@ -3692,13 +3712,25 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
             type="button"
             className="bp-btn bp-btn--ghost"
             disabled={isPublish}
-            title={immersiveOpen ? "Return to embedded layout" : "Open fullscreen editor"}
+            title={immersiveOpen ? "Return to embedded layout" : "Fullscreen overlay (Escape to close)"}
             onClick={() => setImmersiveOpen((v) => !v)}
             whileHover={isPublish ? undefined : { scale: 1.02 }}
             whileTap={isPublish ? undefined : { scale: 0.985 }}
             transition={bpTransition.fast}
           >
             {immersiveOpen ? "Exit fullscreen" : "Fullscreen"}
+          </motion.button>
+          <motion.button
+            type="button"
+            className="bp-btn bp-btn--ghost"
+            disabled={isPublish}
+            title="Open the designer in a new browser tab"
+            onClick={openDesignerInNewTab}
+            whileHover={isPublish ? undefined : { scale: 1.02 }}
+            whileTap={isPublish ? undefined : { scale: 0.985 }}
+            transition={bpTransition.fast}
+          >
+            New tab
           </motion.button>
           {!standalone ? (
             <ModuleSettingsGear moduleId="blueprint" label="Blueprint designer organization settings" />
