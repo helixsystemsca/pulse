@@ -3,11 +3,12 @@
 import { AlertTriangle, Battery, Info, MapPin, Package, Radio } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { GridLayout, useContainerWidth, type Layout, type LayoutItem } from "react-grid-layout";
+import { GridLayout, noCompactor, useContainerWidth, type Layout, type LayoutItem } from "react-grid-layout";
 import { DashboardCard } from "@/components/dashboard/DashboardCard";
 import { AdminOnboardingChecklist } from "@/components/onboarding/AdminOnboardingChecklist";
 import { apiFetch, isApiMode } from "@/lib/api";
-import { fetchSetupProgress } from "@/lib/onboardingService";
+import { fetchOnboarding, fetchSetupProgress } from "@/lib/onboardingService";
+import { sessionHasAnyRole } from "@/lib/pulse-roles";
 import { useAuthenticatedAssetSrc } from "@/hooks/useAuthenticatedAssetSrc";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
 import { pulseTenantNav } from "@/lib/pulse-app";
@@ -773,6 +774,8 @@ function headerInitials(welcomeName: string): string {
 /** Dusk blue brand stroke (matches `--ds-bg` dark / design token). */
 const OPS_HEADER_LOGO_RING = "#4C6085";
 
+const ADMIN_SETUP_BANNER_DISMISS_KEY = "pulse_admin_setup_banner_dismissed";
+
 function OperationsHeaderLogoMark({
   logoUrl,
   companyName,
@@ -1208,13 +1211,15 @@ function DashboardBody({
   const defaultLayout = useMemo((): Layout => {
     const base: Layout = [
       { i: "alerts", x: 0, y: 0, w: 12, h: 3, minW: 6, minH: 2 },
-      { i: "workforce", x: 0, y: 3, w: 6, h: 4, minW: 4, minH: 3 },
-      { i: "workRequests", x: 6, y: 3, w: 6, h: 4, minW: 4, minH: 3 },
-      { i: "equipment", x: 0, y: 7, w: 6, h: 4, minW: 4, minH: 3 },
-      { i: "inventory", x: 6, y: 7, w: 6, h: 4, minW: 4, minH: 3 },
+      // Three-up row so Equipment can sit beside Workforce + Inventory.
+      { i: "workforce", x: 0, y: 3, w: 4, h: 4, minW: 3, minH: 3 },
+      { i: "inventory", x: 4, y: 3, w: 4, h: 4, minW: 3, minH: 3 },
+      { i: "equipment", x: 8, y: 3, w: 4, h: 4, minW: 3, minH: 3 },
+      // Full-width row for the detailed list card.
+      { i: "workRequests", x: 0, y: 7, w: 12, h: 4, minW: 6, minH: 3 },
     ];
     return widgetRegistry.setup
-      ? ([{ i: "setup", x: 0, y: 0, w: 12, h: 2, minW: 6, minH: 2 }, ...base] as const)
+      ? ([{ i: "setup", x: 0, y: 0, w: 12, h: 3, minW: 6, minH: 2 }, ...base] as const)
       : base;
   }, [widgetRegistry.setup]);
 
@@ -1340,6 +1345,7 @@ function DashboardBody({
               gridConfig={{ cols: 12, rowHeight: 100, margin: [24, 24], containerPadding: [0, 0] }}
               dragConfig={{ enabled: editMode, bounded: false, handle: ".dashboard-drag-handle" }}
               resizeConfig={{ enabled: editMode, handles: ["se"] }}
+              compactor={noCompactor}
               onLayoutChange={(next) => setLayout(next)}
             >
           {layout.map((item) => {
@@ -1351,7 +1357,7 @@ function DashboardBody({
             const headerRight = (
               <div className="flex items-center gap-2">
                 {editMode ? (
-                  <span className="dashboard-drag-handle select-none rounded-md border border-black/10 bg-white/70 px-2 py-1 text-[11px] font-semibold text-slate-700">
+                  <span className="dashboard-drag-handle select-none rounded-md border border-black/10 bg-slate-900/90 px-2 py-1 text-[11px] font-semibold text-white shadow-sm dark:bg-white/85 dark:text-slate-900">
                     Drag
                   </span>
                 ) : null}
@@ -1376,7 +1382,13 @@ function DashboardBody({
                   editMode ? "cursor-grab active:cursor-grabbing" : "",
                 ].join(" ")}
               >
-                <DashboardCard title={w.title} accent={w.accent} headerRight={headerRight} className="h-full">
+                <DashboardCard
+                  title={w.title}
+                  accent={w.accent}
+                  headerRight={headerRight}
+                  className="h-full"
+                  bodyClassName={item.i === "setup" ? "overflow-auto" : undefined}
+                >
                   {w.render()}
                 </DashboardCard>
               </div>
@@ -1452,6 +1464,7 @@ export function OperationalDashboard({
   const [error, setError] = useState<string | null>(null);
   const [zoneDismissed, setZoneDismissed] = useState(false);
   const readyNotifiedRef = useRef(false);
+  const [showSetupChecklist, setShowSetupChecklist] = useState(false);
 
   const workOrdersHref =
     pulseTenantNav.find((n) => n.href === "/dashboard/maintenance")?.href ?? "/dashboard/maintenance";
@@ -1561,8 +1574,55 @@ export function OperationalDashboard({
     }
   }, [variant, notifyReady]);
 
+  useEffect(() => {
+    if (variant !== "live") {
+      setShowSetupChecklist(false);
+      return;
+    }
+    if (!isApiMode()) {
+      setShowSetupChecklist(false);
+      return;
+    }
+    if (!session || !canAccessPulseTenantApis(session) || !sessionHasAnyRole(session, "company_admin")) {
+      setShowSetupChecklist(false);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      try {
+        const onb = await fetchOnboarding();
+        if (cancelled) return;
+        if (!onb.onboarding_enabled) {
+          setShowSetupChecklist(false);
+          return;
+        }
+        if (onb.onboarding_role !== "admin") {
+          setShowSetupChecklist(false);
+          return;
+        }
+        const orgDone = onb.org_onboarding_completed ?? onb.onboarding_completed;
+        let bannerDismissed = true;
+        try {
+          bannerDismissed = localStorage.getItem(ADMIN_SETUP_BANNER_DISMISS_KEY) === "1";
+        } catch {
+          bannerDismissed = true;
+        }
+        const hasBanner = orgDone && !bannerDismissed;
+        const hasSteps = Array.isArray(onb.steps) && onb.steps.length > 0;
+        // Show if there is an active checklist OR the completion banner.
+        setShowSetupChecklist((!orgDone && hasSteps) || hasBanner);
+      } catch {
+        // If onboarding can't load, prefer hiding the widget vs showing an empty card.
+        if (!cancelled) setShowSetupChecklist(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [session, variant]);
+
   const facilitySetupSlot =
-    variant === "live" && session && canAccessPulseTenantApis(session) ? <AdminOnboardingChecklist /> : null;
+    variant === "live" && showSetupChecklist ? <AdminOnboardingChecklist /> : null;
 
   if (variant === "demo") {
     return (

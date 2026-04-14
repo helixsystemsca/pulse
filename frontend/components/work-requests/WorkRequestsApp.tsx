@@ -28,7 +28,10 @@ import { PulseDrawer } from "@/components/schedule/PulseDrawer";
 import { ModuleSettingsGear } from "@/components/module-settings/ModuleSettingsGear";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { managerOrAbove } from "@/lib/pulse-roles";
+import { isTenantNavFeatureEnabled } from "@/lib/pulse-nav-features";
+import { isTenantNavPermissionGranted } from "@/lib/pulse-nav-permissions";
 import { readSession } from "@/lib/pulse-session";
+import { sessionHasAnyRole } from "@/lib/pulse-roles";
 import type {
   WorkRequestDetail,
   WorkRequestRow,
@@ -43,6 +46,7 @@ import {
   patchWorkRequestSettings,
   postWorkRequestComment,
   postWorkRequestStatus,
+  postWorkRequestAssign,
 } from "@/lib/workRequestsService";
 import { useModuleSettings, useModuleSettingsOptional } from "@/providers/ModuleSettingsProvider";
 
@@ -122,6 +126,45 @@ function PriorityIcon({ p }: { p: string }) {
 const SETTINGS_TABS = ["Statuses", "Priorities & SLA", "Assignment", "Notifications"] as const;
 type SettingsTab = (typeof SETTINGS_TABS)[number];
 
+type WorkItemStatus =
+  | "pending_approval"
+  | "approved"
+  | "assigned"
+  | "in_progress"
+  | "completed"
+  | "cancelled"
+  | "overdue";
+
+const WORKFLOW_STATUSES: { id: WorkItemStatus; label: string }[] = [
+  { id: "pending_approval", label: "Pending approval" },
+  { id: "approved", label: "Approved" },
+  { id: "assigned", label: "Assigned" },
+  { id: "in_progress", label: "In progress" },
+  { id: "completed", label: "Completed" },
+  { id: "cancelled", label: "Cancelled" },
+  { id: "overdue", label: "Overdue" },
+];
+
+type WorkTab = "my_work" | "approval" | "all";
+
+function isWorkItemStatus(v: string): v is WorkItemStatus {
+  return WORKFLOW_STATUSES.some((s) => s.id === v);
+}
+
+function categoryCodeFromRow(row: WorkRequestRow): { code: "ISS" | "PM" | "SET"; category: "issue" | "preventative" | "setup" } {
+  const k = (row.category_key ?? "").toLowerCase();
+  if (k === "preventative") return { code: "PM", category: "preventative" };
+  if (k === "setup") return { code: "SET", category: "setup" };
+  return { code: "ISS", category: "issue" };
+}
+
+function workItemDisplayId(row: WorkRequestRow): string {
+  const raw = (row.display_id ?? row.id).trim();
+  if (/^[A-Z]{2,5}-\d{1,8}$/.test(raw)) return raw;
+  const { code } = categoryCodeFromRow(row);
+  return `${code}-${row.id.slice(0, 6).toUpperCase()}`;
+}
+
 export type WorkRequestsAppProps = {
   /** When true, list is driven by hub category + status chips from the maintenance hub URL. */
   hubMode?: boolean;
@@ -140,11 +183,23 @@ export function WorkRequestsApp(props?: WorkRequestsAppProps) {
   const isSystemAdmin = Boolean(session?.is_system_admin || session?.role === "system_admin");
   const sessionCompanyId = session?.company_id ?? null;
   const canManage = managerOrAbove(session);
+  const canApprove = sessionHasAnyRole(session, "supervisor", "manager", "company_admin");
+  const canAssign = sessionHasAnyRole(session, "lead", "supervisor", "manager", "company_admin");
+  const canAccessWorkRequests = useMemo(() => {
+    if (isSystemAdmin) return true;
+    // Role-based module access is enforced server-side and reflected in `/auth/me`:
+    // - `enabled_features` controls which modules the tenant can use
+    // - `permissions` controls who can open which modules (configured via Workers & Roles)
+    if (!session) return false;
+    if (!sessionCompanyId) return false;
+    if (!isTenantNavFeatureEnabled("/dashboard/work-requests", session.enabled_features)) return false;
+    return isTenantNavPermissionGranted("/dashboard/work-requests", session.permissions);
+  }, [isSystemAdmin, session, sessionCompanyId]);
 
   const [companyPick, setCompanyPick] = useState<string | null>(null);
   const [companies, setCompanies] = useState<CompanyOption[]>([]);
   const effectiveCompanyId = isSystemAdmin ? companyPick : sessionCompanyId;
-  const dataEnabled = Boolean(effectiveCompanyId) && canManage;
+  const dataEnabled = Boolean(effectiveCompanyId) && canAccessWorkRequests;
 
   const [q, setQ] = useState("");
   const [qDebounced, setQDebounced] = useState("");
@@ -156,6 +211,17 @@ export function WorkRequestsApp(props?: WorkRequestsAppProps) {
   const [dateTo, setDateTo] = useState("");
   const [page, setPage] = useState(0);
   const pageSize = 12;
+
+  const defaultTab: WorkTab = useMemo(() => {
+    if (session && sessionHasAnyRole(session, "worker") && !canApprove && !canAssign) return "my_work";
+    return "approval";
+  }, [session, canApprove, canAssign]);
+
+  const [tab, setTab] = useState<WorkTab>(defaultTab);
+
+  useEffect(() => {
+    setTab(defaultTab);
+  }, [defaultTab]);
 
   const [zones, setZones] = useState<ZoneOpt[]>([]);
   const [assets, setAssets] = useState<AssetOpt[]>([]);
@@ -435,6 +501,94 @@ export function WorkRequestsApp(props?: WorkRequestsAppProps) {
     setPage(0);
   }
 
+  const filteredRows = useMemo(() => {
+    const me = session?.sub ?? null;
+    const list = [...rows];
+    const st = (r: WorkRequestRow) => (isWorkItemStatus(r.status) ? r.status : ("pending_approval" as WorkItemStatus));
+
+    if (tab === "my_work") {
+      return list.filter((r) => r.assigned_user_id && me && r.assigned_user_id === me).filter((r) => {
+        const s = st(r);
+        return s === "assigned" || s === "in_progress";
+      });
+    }
+    if (tab === "approval") {
+      return list.filter((r) => {
+        const s = st(r);
+        return s === "pending_approval" || s === "approved";
+      });
+    }
+    // all
+    if (canApprove || canAssign || isSystemAdmin) return list;
+    // workers who somehow reach All tab still only see assigned/in-progress
+    return list.filter((r) => r.assigned_user_id && me && r.assigned_user_id === me).filter((r) => {
+      const s = st(r);
+      return s === "assigned" || s === "in_progress";
+    });
+  }, [rows, tab, session?.sub, canApprove, canAssign, isSystemAdmin]);
+
+  async function approveItem(id: string) {
+    if (!effectiveCompanyId || !canApprove) return;
+    setActionBusy(true);
+    try {
+      await postWorkRequestStatus(isSystemAdmin ? effectiveCompanyId : null, id, "approved");
+      await loadList();
+      if (detailId === id) await loadDetail();
+    } finally {
+      setActionBusy(false);
+    }
+  }
+
+  async function rejectItem(id: string) {
+    if (!effectiveCompanyId || !canApprove) return;
+    setActionBusy(true);
+    try {
+      // No dedicated "rejected" status in the requested model; map to cancelled to avoid creating a new backend state.
+      await postWorkRequestStatus(isSystemAdmin ? effectiveCompanyId : null, id, "cancelled");
+      await loadList();
+      if (detailId === id) await loadDetail();
+    } finally {
+      setActionBusy(false);
+    }
+  }
+
+  async function assignItem(id: string, userId: string | null) {
+    if (!effectiveCompanyId || !canAssign) return;
+    setActionBusy(true);
+    try {
+      await postWorkRequestAssign(isSystemAdmin ? effectiveCompanyId : null, id, userId);
+      await postWorkRequestStatus(isSystemAdmin ? effectiveCompanyId : null, id, userId ? "assigned" : "approved");
+      await loadList();
+      if (detailId === id) await loadDetail();
+    } finally {
+      setActionBusy(false);
+    }
+  }
+
+  async function startItem(id: string) {
+    if (!effectiveCompanyId) return;
+    setActionBusy(true);
+    try {
+      await postWorkRequestStatus(isSystemAdmin ? effectiveCompanyId : null, id, "in_progress");
+      await loadList();
+      if (detailId === id) await loadDetail();
+    } finally {
+      setActionBusy(false);
+    }
+  }
+
+  async function completeItem(id: string) {
+    if (!effectiveCompanyId) return;
+    setActionBusy(true);
+    try {
+      await postWorkRequestStatus(isSystemAdmin ? effectiveCompanyId : null, id, "completed");
+      await loadList();
+      if (detailId === id) await loadDetail();
+    } finally {
+      setActionBusy(false);
+    }
+  }
+
   async function onCreateSubmit() {
     if (!effectiveCompanyId || !createForm.title.trim()) return;
     setActionBusy(true);
@@ -446,7 +600,7 @@ export function WorkRequestsApp(props?: WorkRequestsAppProps) {
           note: line.trim(),
         }));
       }
-      await createWorkRequest(isSystemAdmin ? effectiveCompanyId : null, {
+      const created = await createWorkRequest(isSystemAdmin ? effectiveCompanyId : null, {
         title: createForm.title.trim(),
         description: createForm.description.trim() || null,
         tool_id: createForm.tool_id || null,
@@ -459,6 +613,8 @@ export function WorkRequestsApp(props?: WorkRequestsAppProps) {
         due_date: createForm.due_date ? `${createForm.due_date}T12:00:00.000Z` : null,
         attachments,
       });
+      // Workflow default: pending approval, regardless of who created it.
+      await postWorkRequestStatus(isSystemAdmin ? effectiveCompanyId : null, created.id, "pending_approval");
       setCreateOpen(false);
       setCreateForm({
         title: "",
@@ -555,9 +711,15 @@ export function WorkRequestsApp(props?: WorkRequestsAppProps) {
     }
   }
 
-  if (!canManage) {
+  if (!canAccessWorkRequests) {
     return (
-      <p className="text-sm text-pulse-muted">Work requests are available to managers and administrators.</p>
+      <p className="text-sm text-pulse-muted">
+        You don&apos;t have access to Work Requests with this account. Access is managed under{" "}
+        <Link href="/dashboard/workers" className="ds-link">
+          Workers &amp; Roles
+        </Link>
+        .
+      </p>
     );
   }
 
@@ -593,6 +755,40 @@ export function WorkRequestsApp(props?: WorkRequestsAppProps) {
           </>
         }
       />
+
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={() => setTab("my_work")}
+          className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
+            tab === "my_work" ? "border-[#2B4C7E] bg-[#2B4C7E]/10 text-[#2B4C7E]" : "border-slate-200 bg-white text-pulse-muted hover:bg-slate-50"
+          }`}
+        >
+          My Work
+        </button>
+        {(canApprove || canAssign || isSystemAdmin) ? (
+          <button
+            type="button"
+            onClick={() => setTab("approval")}
+            className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
+              tab === "approval" ? "border-[#2B4C7E] bg-[#2B4C7E]/10 text-[#2B4C7E]" : "border-slate-200 bg-white text-pulse-muted hover:bg-slate-50"
+            }`}
+          >
+            Approval
+          </button>
+        ) : null}
+        {(canApprove || canAssign || isSystemAdmin) ? (
+          <button
+            type="button"
+            onClick={() => setTab("all")}
+            className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
+              tab === "all" ? "border-[#2B4C7E] bg-[#2B4C7E]/10 text-[#2B4C7E]" : "border-slate-200 bg-white text-pulse-muted hover:bg-slate-50"
+            }`}
+          >
+            All
+          </button>
+        ) : null}
+      </div>
 
       {isSystemAdmin ? (
         <div className="mt-6 rounded-md border border-pulse-border bg-white p-4 shadow-sm dark:border-ds-border dark:bg-ds-primary dark:shadow-[0_2px_8px_rgba(0,0,0,0.35)]">
@@ -653,12 +849,11 @@ export function WorkRequestsApp(props?: WorkRequestsAppProps) {
                 }}
               >
                 <option value="">Status</option>
-                <option value="open">Open</option>
-                <option value="in_progress">In progress</option>
-                <option value="hold">Hold</option>
-                <option value="completed">Completed</option>
-                <option value="cancelled">Cancelled</option>
-                <option value="overdue">Overdue</option>
+                {WORKFLOW_STATUSES.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.label}
+                  </option>
+                ))}
               </select>
               <select
                 className="rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2 text-sm font-medium text-pulse-navy outline-none focus:border-pulse-accent focus:ring-2 focus:ring-pulse-accent/25 dark:border-ds-border dark:bg-ds-secondary dark:text-gray-100"
@@ -732,7 +927,7 @@ export function WorkRequestsApp(props?: WorkRequestsAppProps) {
                     <tr className="app-table-head-row border-pulse-border">
                       <th className="px-4 py-3">Status</th>
                       <th className="px-4 py-3">Priority</th>
-                      <th className="px-4 py-3">Asset &amp; ID</th>
+                      <th className="px-4 py-3">Work item</th>
                       <th className="px-4 py-3">Location</th>
                       <th className="px-4 py-3">Category</th>
                       <th className="px-4 py-3">Description</th>
@@ -742,7 +937,7 @@ export function WorkRequestsApp(props?: WorkRequestsAppProps) {
                     </tr>
                   </thead>
                   <tbody>
-                    {rows.map((row) => {
+                    {filteredRows.map((row) => {
                       const desc = (row.description ?? "").replace(/\s+/g, " ").trim();
                       const short = desc.length > 72 ? `${desc.slice(0, 72)}…` : desc || "—";
                       const overdueStyle = row.is_overdue ? "font-semibold text-[#c53030]" : "text-pulse-navy";
@@ -769,8 +964,9 @@ export function WorkRequestsApp(props?: WorkRequestsAppProps) {
                             </span>
                           </td>
                           <td className="px-4 py-3 align-top">
-                            <p className="font-semibold text-pulse-navy">{row.asset_name ?? "—"}</p>
-                            <p className="text-xs text-pulse-muted">{row.asset_tag ?? row.tool_id ?? ""}</p>
+                            <p className="font-semibold text-pulse-navy">{workItemDisplayId(row)}</p>
+                            <p className="mt-0.5 font-semibold text-pulse-navy">{row.title}</p>
+                            <p className="text-xs text-pulse-muted">{row.asset_name ?? row.asset_tag ?? row.tool_id ?? ""}</p>
                             {row.equipment_name ? (
                               <p className="mt-0.5 text-xs text-pulse-muted">
                                 Equipment:{" "}
@@ -812,6 +1008,51 @@ export function WorkRequestsApp(props?: WorkRequestsAppProps) {
                             </button>
                             {menuFor === row.id ? (
                               <div className="absolute right-4 z-30 mt-1 w-48 rounded-lg border border-slate-200 bg-white py-1 text-left shadow-lg dark:border-ds-border dark:bg-ds-elevated">
+                                {row.status === "pending_approval" && canApprove ? (
+                                  <>
+                                    <button
+                                      type="button"
+                                      className="block w-full px-3 py-2 text-left text-sm text-pulse-navy hover:bg-slate-50 dark:text-gray-100 dark:hover:bg-ds-interactive-hover"
+                                      onClick={() => void approveItem(row.id)}
+                                    >
+                                      Approve
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="block w-full px-3 py-2 text-left text-sm text-rose-700 hover:bg-slate-50 dark:text-rose-200 dark:hover:bg-ds-interactive-hover"
+                                      onClick={() => void rejectItem(row.id)}
+                                    >
+                                      Reject
+                                    </button>
+                                  </>
+                                ) : null}
+                                {row.status === "approved" && canAssign ? (
+                                  <button
+                                    type="button"
+                                    className="block w-full px-3 py-2 text-left text-sm text-pulse-navy hover:bg-slate-50 dark:text-gray-100 dark:hover:bg-ds-interactive-hover"
+                                    onClick={() => setDetailId(row.id)}
+                                  >
+                                    Assign…
+                                  </button>
+                                ) : null}
+                                {row.status === "assigned" ? (
+                                  <button
+                                    type="button"
+                                    className="block w-full px-3 py-2 text-left text-sm text-pulse-navy hover:bg-slate-50 dark:text-gray-100 dark:hover:bg-ds-interactive-hover"
+                                    onClick={() => void startItem(row.id)}
+                                  >
+                                    Start work
+                                  </button>
+                                ) : null}
+                                {row.status === "in_progress" ? (
+                                  <button
+                                    type="button"
+                                    className="block w-full px-3 py-2 text-left text-sm text-pulse-navy hover:bg-slate-50 dark:text-gray-100 dark:hover:bg-ds-interactive-hover"
+                                    onClick={() => void completeItem(row.id)}
+                                  >
+                                    Complete
+                                  </button>
+                                ) : null}
                                 <button
                                   type="button"
                                   className="block w-full px-3 py-2 text-left text-sm text-pulse-navy hover:bg-slate-50 dark:text-gray-100 dark:hover:bg-ds-interactive-hover"
@@ -821,34 +1062,6 @@ export function WorkRequestsApp(props?: WorkRequestsAppProps) {
                                   }}
                                 >
                                   View details
-                                </button>
-                                <button
-                                  type="button"
-                                  className="block w-full px-3 py-2 text-left text-sm text-pulse-navy hover:bg-slate-50 dark:text-gray-100 dark:hover:bg-ds-interactive-hover"
-                                  onClick={() => void quickStatus(row.id, "in_progress")}
-                                >
-                                  Mark in progress
-                                </button>
-                                <button
-                                  type="button"
-                                  className="block w-full px-3 py-2 text-left text-sm text-pulse-navy hover:bg-slate-50 dark:text-gray-100 dark:hover:bg-ds-interactive-hover"
-                                  onClick={() => void quickStatus(row.id, "hold")}
-                                >
-                                  Mark on hold
-                                </button>
-                                <button
-                                  type="button"
-                                  className="block w-full px-3 py-2 text-left text-sm text-pulse-navy hover:bg-slate-50 dark:text-gray-100 dark:hover:bg-ds-interactive-hover"
-                                  onClick={() => void quickStatus(row.id, "open")}
-                                >
-                                  Mark open
-                                </button>
-                                <button
-                                  type="button"
-                                  className="block w-full px-3 py-2 text-left text-sm text-pulse-navy hover:bg-slate-50 dark:text-gray-100 dark:hover:bg-ds-interactive-hover"
-                                  onClick={() => void quickStatus(row.id, "completed")}
-                                >
-                                  Mark completed
                                 </button>
                               </div>
                             ) : null}
@@ -1115,6 +1328,9 @@ export function WorkRequestsApp(props?: WorkRequestsAppProps) {
               {detail.title}
             </p>
             <div className="flex flex-wrap gap-2">
+              <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-bold text-pulse-navy ring-1 ring-slate-200/80 dark:bg-ds-secondary dark:text-gray-100 dark:ring-ds-border">
+                {workItemDisplayId(detail)}
+              </span>
               <span
                 className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-bold capitalize ${statusBadgeClass(detail.display_status)}`}
               >
@@ -1136,6 +1352,23 @@ export function WorkRequestsApp(props?: WorkRequestsAppProps) {
               <div>
                 <h3 className={LABEL}>Assigned</h3>
                 <p className="mt-1.5 text-sm text-pulse-navy">{detail.assignee_name ?? "Unassigned"}</p>
+                {(detail.status === "approved" || detail.status === "pending_approval") && canAssign ? (
+                  <div className="mt-3">
+                    <label className={LABEL}>Assign to</label>
+                    <select
+                      className={FIELD}
+                      value={detail.assigned_user_id ?? ""}
+                      onChange={(e) => void assignItem(detail.id, e.target.value || null)}
+                    >
+                      <option value="">Unassigned</option>
+                      {workers.map((w) => (
+                        <option key={w.id} value={w.id}>
+                          {w.full_name ?? w.email}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ) : null}
               </div>
               <div>
                 <h3 className={LABEL}>Due date</h3>
@@ -1205,6 +1438,37 @@ export function WorkRequestsApp(props?: WorkRequestsAppProps) {
                 <h3 className={LABEL}>Linked part</h3>
                 <p className="mt-1.5 text-sm text-pulse-navy">{detail.part_name ?? "—"}</p>
               </div>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              {detail.status === "pending_approval" && canApprove ? (
+                <>
+                  <button type="button" className={PRIMARY_BTN} disabled={actionBusy} onClick={() => void approveItem(detail.id)}>
+                    Approve
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded-[10px] border border-rose-200 bg-rose-50 px-5 py-2.5 text-sm font-semibold text-rose-800 shadow-sm hover:bg-rose-100 disabled:opacity-50 dark:border-rose-500/35 dark:bg-rose-950/40 dark:text-rose-100"
+                    disabled={actionBusy}
+                    onClick={() => void rejectItem(detail.id)}
+                  >
+                    Reject
+                  </button>
+                </>
+              ) : null}
+              {detail.status === "approved" && canAssign ? (
+                <span className="text-sm text-pulse-muted">Assign a worker to move this item to “Assigned”.</span>
+              ) : null}
+              {detail.status === "assigned" ? (
+                <button type="button" className={PRIMARY_BTN} disabled={actionBusy} onClick={() => void startItem(detail.id)}>
+                  Start
+                </button>
+              ) : null}
+              {detail.status === "in_progress" ? (
+                <button type="button" className={PRIMARY_BTN} disabled={actionBusy} onClick={() => void completeItem(detail.id)}>
+                  Complete
+                </button>
+              ) : null}
             </div>
 
             <div>

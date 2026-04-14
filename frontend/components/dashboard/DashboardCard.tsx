@@ -16,31 +16,31 @@ export function DashboardCard({
   children,
   headerRight,
   className,
+  bodyClassName,
 }: {
   title?: string;
   accent?: DashboardAccent;
   children: ReactNode;
   headerRight?: ReactNode;
   className?: string;
+  bodyClassName?: string;
 }) {
   return (
     <section
       className={[
-        "relative overflow-hidden rounded-2xl border border-black/[0.06] bg-white shadow-[0_4px_12px_rgba(0,0,0,0.06)]",
+        "relative flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-black/[0.06] bg-white shadow-[0_4px_12px_rgba(0,0,0,0.06)]",
         "transition-shadow duration-200 hover:shadow-[0_6px_18px_rgba(0,0,0,0.08)]",
         className ?? "",
       ].join(" ")}
     >
       <div className={`h-1 w-full ${ACCENT_BG[accent]}`} aria-hidden />
-      <div className="p-5">
-        {title ? (
-          <div className="mb-3 flex items-start justify-between gap-3">
-            <h3 className="text-[18px] font-semibold leading-tight text-slate-900">{title}</h3>
-            {headerRight ? <div className="shrink-0">{headerRight}</div> : null}
-          </div>
-        ) : headerRight ? (
-          <div className="mb-3 flex items-start justify-end">{headerRight}</div>
-        ) : null}
+      {title || headerRight ? (
+        <div className="flex items-start justify-between gap-3 px-5 pb-3 pt-4">
+          {title ? <h3 className="text-[18px] font-semibold leading-tight text-slate-900">{title}</h3> : <span />}
+          {headerRight ? <div className="shrink-0">{headerRight}</div> : null}
+        </div>
+      ) : null}
+      <div className={["flex-1 min-h-0 px-5 pb-5", bodyClassName ?? ""].join(" ")}>
         {children}
       </div>
     </section>

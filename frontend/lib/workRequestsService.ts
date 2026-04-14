@@ -6,6 +6,10 @@ import { apiFetch } from "@/lib/api";
 export type WorkRequestRow = {
   id: string;
   company_id: string;
+  /** Optional human-readable work item code from server (e.g. ISS-1024). */
+  display_id?: string | null;
+  /** Optional category for multi-stage workflow. */
+  category_key?: "issue" | "preventative" | "setup" | null;
   title: string;
   description: string | null;
   tool_id: string | null;
@@ -28,6 +32,10 @@ export type WorkRequestRow = {
   is_overdue: boolean;
   completed_at: string | null;
   created_by_user_id: string | null;
+  /** Workflow metadata (future-ready; may be null/absent on older servers). */
+  approved_by_user_id?: string | null;
+  approved_at?: string | null;
+  assigned_at?: string | null;
   created_at: string;
   updated_at: string;
 };

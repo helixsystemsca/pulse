@@ -16,9 +16,10 @@ const HUB_CATS = [
 
 const STATUS_IDS = [
   { id: "", label: "All statuses" },
-  { id: "open", label: "Open" },
+  { id: "pending_approval", label: "Pending approval" },
+  { id: "approved", label: "Approved" },
+  { id: "assigned", label: "Assigned" },
   { id: "in_progress", label: "In progress" },
-  { id: "hold", label: "Hold" },
   { id: "completed", label: "Complete" },
   { id: "cancelled", label: "Cancelled" },
   { id: "overdue", label: "Overdue" },
