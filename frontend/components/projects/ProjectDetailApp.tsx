@@ -116,6 +116,8 @@ export function ProjectDetailApp({ projectId }: { projectId: string }) {
 
   const [matchTaskId, setMatchTaskId] = useState<string>("");
   const [workerFilter, setWorkerFilter] = useState<"all" | "matching">("all");
+  const [taskSort, setTaskSort] = useState<"priority" | "location" | "task">("priority");
+  const [locationFilter, setLocationFilter] = useState<string>("");
 
   const reload = useCallback(async () => {
     try {
@@ -168,6 +170,52 @@ export function ProjectDetailApp({ projectId }: { projectId: string }) {
 
   const tasks = data?.tasks ?? [];
 
+  const locationOptions = useMemo(() => {
+    const set = new Set<string>();
+    for (const t of tasks) {
+      const v = (t.location_tag_id ?? "").trim();
+      if (v) set.add(v);
+    }
+    return [...set].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }));
+  }, [tasks]);
+
+  const priorityRank = useCallback((p: string) => {
+    // smaller = higher priority
+    if (p === "critical") return 0;
+    if (p === "high") return 1;
+    if (p === "medium") return 2;
+    if (p === "low") return 3;
+    return 4;
+  }, []);
+
+  const sortTasks = useCallback(
+    (a: TaskRow, b: TaskRow) => {
+      const aLoc = (a.location_tag_id ?? "").trim();
+      const bLoc = (b.location_tag_id ?? "").trim();
+      const aTitle = a.title.trim();
+      const bTitle = b.title.trim();
+      const pr = priorityRank(a.priority) - priorityRank(b.priority);
+
+      if (taskSort === "priority") {
+        if (pr !== 0) return pr;
+        if (aTitle !== bTitle) return aTitle.localeCompare(bTitle, undefined, { sensitivity: "base" });
+        return aLoc.localeCompare(bLoc, undefined, { sensitivity: "base" });
+      }
+
+      if (taskSort === "location") {
+        if (aLoc !== bLoc) return aLoc.localeCompare(bLoc, undefined, { sensitivity: "base" });
+        if (pr !== 0) return pr;
+        return aTitle.localeCompare(bTitle, undefined, { sensitivity: "base" });
+      }
+
+      // taskSort === "task"
+      if (aTitle !== bTitle) return aTitle.localeCompare(bTitle, undefined, { sensitivity: "base" });
+      if (pr !== 0) return pr;
+      return aLoc.localeCompare(bLoc, undefined, { sensitivity: "base" });
+    },
+    [priorityRank, taskSort],
+  );
+
   const skillNameOptions = useMemo(() => {
     const set = new Set<string>();
     for (const c of skillCategories) {
@@ -191,6 +239,20 @@ export function ProjectDetailApp({ projectId }: { projectId: string }) {
 
   const activeTasks = useMemo(() => tasks.filter((t) => t.status !== "complete"), [tasks]);
   const completedTasks = useMemo(() => tasks.filter((t) => t.status === "complete"), [tasks]);
+
+  const filteredActiveTasks = useMemo(() => {
+    const loc = locationFilter.trim().toLowerCase();
+    const base = loc ? activeTasks.filter((t) => (t.location_tag_id ?? "").trim().toLowerCase() === loc) : activeTasks;
+    return [...base].sort(sortTasks);
+  }, [activeTasks, locationFilter, sortTasks]);
+
+  const filteredCompletedTasks = useMemo(() => {
+    const loc = locationFilter.trim().toLowerCase();
+    const base = loc
+      ? completedTasks.filter((t) => (t.location_tag_id ?? "").trim().toLowerCase() === loc)
+      : completedTasks;
+    return [...base].sort(sortTasks);
+  }, [completedTasks, locationFilter, sortTasks]);
 
   const tasksWithSkillReqs = useMemo(
     () => activeTasks.filter((t) => (t.required_skill_names?.length ?? 0) > 0),
@@ -416,10 +478,50 @@ export function ProjectDetailApp({ projectId }: { projectId: string }) {
           {viewTab === "tasks" ? (
             <div className="grid gap-6 lg:grid-cols-12">
               <div className="space-y-6 lg:col-span-7 xl:col-span-8">
+                <Card padding="md" className="space-y-3">
+                  <div className="flex flex-wrap items-end justify-between gap-3">
+                    <div className="min-w-[14rem]">
+                      <label className={LABEL} htmlFor="task-location-filter">
+                        Location
+                      </label>
+                      <select
+                        id="task-location-filter"
+                        className={FIELD}
+                        value={locationFilter}
+                        onChange={(e) => setLocationFilter(e.target.value)}
+                      >
+                        <option value="">All locations</option>
+                        {locationOptions.map((l) => (
+                          <option key={l} value={l}>
+                            {l}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="min-w-[14rem]">
+                      <label className={LABEL} htmlFor="task-sort">
+                        Sort
+                      </label>
+                      <select
+                        id="task-sort"
+                        className={FIELD}
+                        value={taskSort}
+                        onChange={(e) => setTaskSort(e.target.value as "priority" | "location" | "task")}
+                      >
+                        <option value="priority">Highest priority</option>
+                        <option value="location">Location</option>
+                        <option value="task">Task</option>
+                      </select>
+                    </div>
+                  </div>
+                  <p className="text-xs text-ds-muted">
+                    When sorting by location or task, priority is used as the next sort key.
+                  </p>
+                </Card>
                 <TaskSection
                   title="Active tasks"
                   empty="No active tasks. Create one to get started."
-                  tasks={activeTasks}
+                  tasks={filteredActiveTasks}
                   onEdit={(t) => {
                     setEditingTask(t);
                     setTaskModalOpen(true);
@@ -432,7 +534,7 @@ export function ProjectDetailApp({ projectId }: { projectId: string }) {
                 <TaskSection
                   title="Completed tasks"
                   empty="No completed tasks yet."
-                  tasks={completedTasks}
+                  tasks={filteredCompletedTasks}
                   onEdit={(t) => {
                     setEditingTask(t);
                     setTaskModalOpen(true);
@@ -649,10 +751,15 @@ function TaskSection({
                 <div className="min-w-0 flex-1">
                   <button
                     type="button"
-                    className="text-left text-base font-semibold text-pulse-navy hover:text-pulse-accent dark:text-slate-100"
+                    className="flex min-w-0 items-center gap-2 text-left text-base font-semibold text-pulse-navy hover:text-pulse-accent dark:text-slate-100"
                     onClick={() => onEdit(t)}
                   >
-                    {t.title}
+                    {t.location_tag_id?.trim() ? (
+                      <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-pulse-navy dark:bg-ds-secondary dark:text-slate-200">
+                        {t.location_tag_id.trim()}
+                      </span>
+                    ) : null}
+                    <span className="min-w-0 truncate">{t.title}</span>
                   </button>
                   {t.description ? (
                     <p className="mt-1 line-clamp-2 text-xs text-pulse-muted">{t.description}</p>
@@ -766,7 +873,7 @@ function ProjectTaskModal({
       setSopRef(task.sop_id ?? "");
       setDepSelected([...(task.depends_on_task_ids ?? [])]);
       setSkillsSel([...(task.required_skill_names ?? [])]);
-      setShowAdvanced(Boolean(task.location_tag_id || task.sop_id || (task.depends_on_task_ids?.length ?? 0) > 0));
+      setShowAdvanced(Boolean(task.sop_id || (task.depends_on_task_ids?.length ?? 0) > 0));
     } else {
       setTitle("");
       setDescription("");
@@ -886,6 +993,18 @@ function ProjectTaskModal({
             </div>
           </div>
           <div>
+            <label className={LABEL} htmlFor="tm-loc">
+              Location
+            </label>
+            <input
+              id="tm-loc"
+              className={FIELD}
+              value={locTag}
+              onChange={(e) => setLocTag(e.target.value)}
+              placeholder="e.g. Pool deck, Mechanical room, Lobby"
+            />
+          </div>
+          <div>
             <label className={LABEL}>
               Required skills
             </label>
@@ -947,16 +1066,10 @@ function ProjectTaskModal({
             className="text-xs font-semibold text-pulse-accent hover:underline"
             onClick={() => setShowAdvanced((v) => !v)}
           >
-            {showAdvanced ? "Hide advanced" : "Advanced: location, SOP, dependencies"}
+            {showAdvanced ? "Hide advanced" : "Advanced: SOP, dependencies"}
           </button>
           {showAdvanced ? (
             <div className="space-y-4 border-t border-slate-100 pt-4 dark:border-ds-border">
-              <div>
-                <label className={LABEL} htmlFor="tm-loc">
-                  Location tag
-                </label>
-                <input id="tm-loc" className={FIELD} value={locTag} onChange={(e) => setLocTag(e.target.value)} />
-              </div>
               <div>
                 <label className={LABEL} htmlFor="tm-sop">
                   SOP id

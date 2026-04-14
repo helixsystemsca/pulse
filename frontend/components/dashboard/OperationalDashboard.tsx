@@ -1308,12 +1308,7 @@ function DashboardBody({
       {model.bannerNote ? (
         <div className="ds-notification ds-notification-warning flex flex-wrap items-center justify-center gap-2 border-x-0 border-t-0 rounded-none px-4 py-3 text-sm font-medium text-ds-foreground">
           <Info className="h-4 w-4 shrink-0 text-ds-warning" aria-hidden />
-          <span>
-            {model.bannerNote}{" "}
-            <Link href="/monitoring" className="ds-link">
-              Open Monitoring →
-            </Link>
-          </span>
+          <span>{model.bannerNote}</span>
         </div>
       ) : null}
 
@@ -1540,11 +1535,7 @@ export function OperationalDashboard({
         beaconList,
       );
       const welcome = welcomeFromSession(auth?.email, auth?.full_name);
-      const bannerNote =
-        setupProgress?.onboarding_demo_sensors === true
-          ? "Demo monitoring data is active for your organization."
-          : null;
-      const withWelcome: DashboardViewModel = { ...model, welcomeName: welcome, bannerNote };
+      const withWelcome: DashboardViewModel = { ...model, welcomeName: welcome, bannerNote: null };
       readyPayload = alertCountsFromAlerts(withWelcome.alerts);
       setLiveModel(withWelcome);
     } catch (err) {

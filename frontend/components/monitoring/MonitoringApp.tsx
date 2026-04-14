@@ -6,7 +6,8 @@ import { Card } from "@/components/pulse/Card";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { isApiMode, refreshPulseUserFromServer } from "@/lib/api";
 import { emitOnboardingMaybeUpdated } from "@/lib/onboarding-events";
-import { patchOnboarding } from "@/lib/onboardingService";
+import { fetchSetupProgress, patchOnboarding } from "@/lib/onboardingService";
+import { readSession } from "@/lib/pulse-session";
 import {
   co2StatusLabel,
   co2Tanks,
@@ -44,6 +45,7 @@ type MainTab = "systems" | "people";
 
 export function MonitoringApp() {
   const [tab, setTab] = useState<MainTab>("systems");
+  const [demoSensors, setDemoSensors] = useState(false);
 
   useEffect(() => {
     if (!isApiMode()) return;
@@ -55,6 +57,24 @@ export function MonitoringApp() {
         if (!cancelled) emitOnboardingMaybeUpdated();
       } catch {
         /* worker / 403 / offline */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isApiMode()) return;
+    const s = readSession();
+    if (!s?.access_token) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const p = await fetchSetupProgress();
+        if (!cancelled) setDemoSensors(p.onboarding_demo_sensors === true);
+      } catch {
+        if (!cancelled) setDemoSensors(false);
       }
     })();
     return () => {
@@ -85,6 +105,12 @@ export function MonitoringApp() {
         description="Real-time visibility into people and systems"
         icon={Activity}
       />
+
+      {demoSensors ? (
+        <div className="ds-notification ds-notification-warning flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-sm font-medium text-ds-foreground">
+          <span>Demo monitoring data is active for your organization.</span>
+        </div>
+      ) : null}
 
       <nav
         className="flex flex-wrap gap-1 rounded-md border border-ds-border bg-ds-secondary p-1"

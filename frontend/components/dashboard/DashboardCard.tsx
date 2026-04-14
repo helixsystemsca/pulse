@@ -46,6 +46,7 @@ export function DashboardCard({
   bodyClassName?: string;
 }) {
   const a = ACCENT_HEADER[accent];
+  const hasHeader = Boolean(title || headerRight);
   return (
     <section
       className={[
@@ -63,7 +64,7 @@ export function DashboardCard({
           </div>
         </div>
       ) : null}
-      <div className={["flex-1 min-h-0 px-5 pb-5", bodyClassName ?? ""].join(" ")}>
+      <div className={["flex-1 min-h-0 px-5 pb-5", hasHeader ? "pt-2" : "pt-5", bodyClassName ?? ""].join(" ")}>
         {children}
       </div>
     </section>
