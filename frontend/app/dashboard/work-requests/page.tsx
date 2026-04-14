@@ -4,8 +4,7 @@ import { Suspense, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 /**
- * Legacy `/dashboard/work-requests` — maintenance intake and deep links live under
- * `/dashboard/maintenance/work-requests` (query string preserved).
+ * Legacy `/dashboard/work-requests` — redirects to the unified work request hub (query preserved).
  */
 function WorkRequestsRedirectInner() {
   const router = useRouter();
@@ -13,7 +12,7 @@ function WorkRequestsRedirectInner() {
 
   useEffect(() => {
     const q = searchParams.toString();
-    router.replace(`/dashboard/maintenance/work-requests${q ? `?${q}` : ""}`);
+    router.replace(`/dashboard/maintenance${q ? `?${q}` : ""}`);
   }, [router, searchParams]);
 
   return (

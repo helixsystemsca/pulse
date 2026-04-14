@@ -339,6 +339,43 @@ async def write_part_image_bytes(
         await _run_sync(_local)
 
 
+# --- Procedure step images (per step index, stem = procedure_id + "_" + index) ---
+
+
+def _procedure_step_stem(procedure_id: str, step_index: int) -> str:
+    return f"{procedure_id}_{step_index}"
+
+
+async def read_procedure_step_image_bytes(
+    company_id: str, procedure_id: str, step_index: int
+) -> Optional[tuple[bytes, str]]:
+    sub = f"procedure_step_images/{company_id}"
+    stem = _procedure_step_stem(procedure_id, step_index)
+
+    def _local() -> Optional[tuple[bytes, str]]:
+        return _local_read_stem(sub, stem, _EQUIP_EXTS)
+
+    if _backend() == "s3":
+        return await _run_sync(lambda: _s3_read_stem(sub, stem, _EQUIP_EXTS))
+    return _local()
+
+
+async def write_procedure_step_image_bytes(
+    company_id: str, procedure_id: str, step_index: int, ext_with_dot: str, raw: bytes, content_type: str
+) -> None:
+    sub = f"procedure_step_images/{company_id}"
+    stem = _procedure_step_stem(procedure_id, step_index)
+    ct = (content_type or "").split(";")[0].strip() or media_type_for_ext(ext_with_dot)
+
+    def _local() -> None:
+        _local_write_stem(sub, stem, ext_with_dot, raw)
+
+    if _backend() == "s3":
+        await _run_sync(lambda: _s3_write_stem(sub, stem, ext_with_dot, ct, raw))
+    else:
+        await _run_sync(_local)
+
+
 __all__ = [
     "delete_user_avatar_pending_files",
     "media_type_for_ext",
@@ -347,12 +384,14 @@ __all__ = [
     "read_company_logo_bytes",
     "read_equipment_image_bytes",
     "read_part_image_bytes",
+    "read_procedure_step_image_bytes",
     "read_user_avatar_bytes",
     "read_user_avatar_pending_bytes",
     "write_company_background_bytes",
     "write_company_logo_bytes",
     "write_equipment_image_bytes",
     "write_part_image_bytes",
+    "write_procedure_step_image_bytes",
     "write_user_avatar_bytes",
     "write_user_avatar_pending_bytes",
 ]

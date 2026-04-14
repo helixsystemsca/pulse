@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
 import { apiFetch, isApiMode } from "@/lib/api";
-import { mapApiElement, type ApiBlueprintElement } from "@/lib/blueprint-layout";
+import { mapApiElement, parseApiBlueprintLayers, type ApiBlueprintElement } from "@/lib/blueprint-layout";
 import { parseClientApiError } from "@/lib/parse-client-api-error";
 import { canAccessPulseTenantApis } from "@/lib/pulse-session";
 import { sessionHasAnyRole } from "@/lib/pulse-roles";
@@ -24,6 +24,7 @@ type BlueprintDetail = {
   created_at: string;
   updated_at: string;
   elements: ApiBlueprintElement[];
+  layers?: unknown;
 };
 
 function blueprintLoadMessage(err: unknown): string {
@@ -125,6 +126,11 @@ export function FloorPlanBlueprintSection() {
 
   const elements = useMemo(
     () => (detail ? detail.elements.map(mapApiElement) : []),
+    [detail],
+  );
+
+  const blueprintLayers = useMemo(
+    () => (detail ? parseApiBlueprintLayers(detail.layers) : []),
     [detail],
   );
 
@@ -236,7 +242,12 @@ export function FloorPlanBlueprintSection() {
           ) : detail ? (
             <>
               <p className="mb-2 text-sm font-medium text-ds-foreground">{detail.name}</p>
-              <BlueprintReadOnlyCanvas elements={elements} theme={theme} fitResetKey={detail.id} />
+              <BlueprintReadOnlyCanvas
+                elements={elements}
+                layers={blueprintLayers}
+                theme={theme}
+                fitResetKey={detail.id}
+              />
             </>
           ) : null}
         </div>

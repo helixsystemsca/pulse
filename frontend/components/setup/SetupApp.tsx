@@ -3,7 +3,7 @@
 /**
  * Infrastructure & RTLS: gateways, tags, zones, worker and equipment tag assignment, automation.
  */
-import { Loader2, MapPin, Radio, Settings2, Users } from "lucide-react";
+import { Loader2, MapPin, Pencil, Radio, Settings2, Trash2, Users } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { apiFetch } from "@/lib/api";
@@ -22,6 +22,7 @@ import {
   createEquipment,
   createGateway,
   createZone,
+  deleteZone,
   fetchBleDevices,
   fetchEquipmentList,
   fetchFeatureConfigs,
@@ -31,6 +32,7 @@ import {
   fetchZones,
   patchFeatureConfig,
   patchGateway,
+  patchZone,
   type BleDeviceOut,
   type EquipmentOut,
   type GatewayOut,
@@ -73,6 +75,10 @@ const TAB_SUMMARY_PANEL =
   "rounded-md border border-ds-border bg-ds-primary p-5 shadow-[var(--ds-shadow-card)] md:p-6";
 const TAB_SUMMARY_INSET =
   "flex flex-col rounded-lg bg-ds-secondary/60 px-3 py-2 ring-1 ring-ds-border text-sm";
+const ICON_BTN =
+  "inline-flex shrink-0 items-center justify-center rounded-md p-1.5 text-ds-muted transition-colors hover:bg-ds-interactive-hover hover:text-ds-foreground";
+const ICON_BTN_DANGER =
+  "inline-flex shrink-0 items-center justify-center rounded-md p-1.5 text-ds-muted transition-colors hover:bg-red-500/10 hover:text-ds-danger";
 
 function isUnassignedGateway(g: GatewayOut): boolean {
   return g.assigned === false;
@@ -195,6 +201,9 @@ export function SetupApp({ defaultTab }: { defaultTab?: TabId }) {
 
   const [zoneName, setZoneName] = useState("");
   const [zoneDesc, setZoneDesc] = useState("");
+  const [zoneListDraft, setZoneListDraft] = useState<{ id: string; name: string; description: string } | null>(
+    null,
+  );
 
   const [detectionTarget, setDetectionTarget] = useState<DetectionTestTarget | null>(null);
   const [detectionSinceMs, setDetectionSinceMs] = useState<number | null>(null);
@@ -620,6 +629,37 @@ export function SetupApp({ defaultTab }: { defaultTab?: TabId }) {
       emitOnboardingMaybeUpdated();
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Could not create zone");
+    }
+  };
+
+  const onPatchZone = async (zoneId: string, body: { name: string; description: string | null }) => {
+    setError(null);
+    try {
+      await patchZone(isSystemAdmin ? effectiveCompanyId : null, zoneId, body);
+      setZoneListDraft((d) => (d?.id === zoneId ? null : d));
+      await refresh();
+      emitOnboardingMaybeUpdated();
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Could not update zone");
+    }
+  };
+
+  const onDeleteZone = async (zoneId: string, label: string) => {
+    if (
+      !window.confirm(
+        `Delete zone "${label}"? Gateways assigned to this zone will no longer be linked to it.`,
+      )
+    ) {
+      return;
+    }
+    setError(null);
+    try {
+      await deleteZone(isSystemAdmin ? effectiveCompanyId : null, zoneId);
+      setZoneListDraft((d) => (d?.id === zoneId ? null : d));
+      await refresh();
+      emitOnboardingMaybeUpdated();
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Could not delete zone");
     }
   };
 
@@ -1292,11 +1332,89 @@ export function SetupApp({ defaultTab }: { defaultTab?: TabId }) {
                 <li className="text-ds-muted">No zones defined.</li>
               ) : (
                 overviewData.zoneMapped.map((z) => (
-                  <li key={z.id} className={TAB_SUMMARY_INSET}>
-                    <span className="font-medium text-ds-foreground">{z.name}</span>
-                    <span className="text-xs text-ds-muted">
-                      {z.gateways.length ? z.gateways.join(", ") : "No gateways assigned"}
-                    </span>
+                  <li key={z.id} className={`${TAB_SUMMARY_INSET} flex-row items-start justify-between gap-2`}>
+                    <div className="min-w-0 flex-1">
+                      {zoneListDraft?.id === z.id ? (
+                        <div className="space-y-2">
+                          <div>
+                            <span className={LABEL}>Name</span>
+                            <input
+                              className={FIELD}
+                              value={zoneListDraft.name}
+                              onChange={(e) => setZoneListDraft({ ...zoneListDraft, name: e.target.value })}
+                              autoComplete="off"
+                            />
+                          </div>
+                          <div>
+                            <span className={LABEL}>Description</span>
+                            <input
+                              className={FIELD}
+                              value={zoneListDraft.description}
+                              onChange={(e) =>
+                                setZoneListDraft({ ...zoneListDraft, description: e.target.value })
+                              }
+                              placeholder="Optional"
+                              autoComplete="off"
+                            />
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            <button
+                              type="button"
+                              className={`${BTN_PRIMARY} px-3 py-1.5 text-xs`}
+                              onClick={() =>
+                                void onPatchZone(z.id, {
+                                  name: zoneListDraft.name.trim(),
+                                  description: zoneListDraft.description.trim() || null,
+                                })
+                              }
+                              disabled={!zoneListDraft.name.trim()}
+                            >
+                              Save
+                            </button>
+                            <button
+                              type="button"
+                              className="rounded-md border border-ds-border bg-ds-secondary/60 px-3 py-1.5 text-xs font-semibold text-ds-foreground hover:bg-ds-interactive-hover"
+                              onClick={() => setZoneListDraft(null)}
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <span className="font-medium text-ds-foreground">{z.name}</span>
+                          <span className="text-xs text-ds-muted">
+                            {z.gateways.length ? z.gateways.join(", ") : "No gateways assigned"}
+                          </span>
+                        </>
+                      )}
+                    </div>
+                    {zoneListDraft?.id !== z.id ? (
+                      <div className="flex shrink-0 gap-0.5 self-start pt-0.5">
+                        <button
+                          type="button"
+                          className={ICON_BTN}
+                          aria-label={`Edit zone ${z.name}`}
+                          onClick={() =>
+                            setZoneListDraft({
+                              id: z.id,
+                              name: z.name,
+                              description: zones.find((zn) => zn.id === z.id)?.description ?? "",
+                            })
+                          }
+                        >
+                          <Pencil className="h-4 w-4" aria-hidden />
+                        </button>
+                        <button
+                          type="button"
+                          className={ICON_BTN_DANGER}
+                          aria-label={`Delete zone ${z.name}`}
+                          onClick={() => void onDeleteZone(z.id, z.name)}
+                        >
+                          <Trash2 className="h-4 w-4" aria-hidden />
+                        </button>
+                      </div>
+                    ) : null}
                   </li>
                 ))
               )}
@@ -1305,7 +1423,15 @@ export function SetupApp({ defaultTab }: { defaultTab?: TabId }) {
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {zones.map((z) => {
               const gatewayCount = gateways.filter((g) => g.zone_id === z.id).length;
-              return <ZoneCard key={z.id} zone={z} gatewayCount={gatewayCount} />;
+              return (
+                <ZoneCard
+                  key={z.id}
+                  zone={z}
+                  gatewayCount={gatewayCount}
+                  onUpdate={(body) => onPatchZone(z.id, body)}
+                  onDelete={() => onDeleteZone(z.id, z.name)}
+                />
+              );
             })}
           </div>
           {zones.length === 0 ? (

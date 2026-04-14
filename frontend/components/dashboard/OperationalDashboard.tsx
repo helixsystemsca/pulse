@@ -1138,8 +1138,7 @@ export function OperationalDashboard({
   const readyNotifiedRef = useRef(false);
 
   const workOrdersHref =
-    pulseTenantNav.find((n) => n.href === "/dashboard/maintenance/work-orders")?.href ??
-    "/dashboard/maintenance/work-orders";
+    pulseTenantNav.find((n) => n.href === "/dashboard/maintenance")?.href ?? "/dashboard/maintenance";
 
   const notifyReady = useCallback(
     (payload?: OperationalDashboardReadyPayload) => {

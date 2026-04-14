@@ -8,9 +8,10 @@
 import type Konva from "konva";
 import { useCallback, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Circle, Ellipse, Group, Layer, Line, Rect, Stage, Text } from "react-konva";
-import type { BlueprintElement } from "./blueprint-types";
+import type { BlueprintElement, BlueprintLayer } from "./blueprint-types";
 import {
   bboxFromPathPoints,
+  blueprintPaintZIndices,
   DOOR_ALONG_DEFAULT,
   DOOR_DEPTH_DEFAULT,
   DEVICE_DEFAULT,
@@ -189,6 +190,8 @@ function palette(theme: BlueprintReadOnlyTheme) {
 
 export type BlueprintReadOnlyCanvasProps = {
   elements: BlueprintElement[];
+  /** When set, element `layer_id` controls paint order (top-first list). */
+  layers?: BlueprintLayer[];
   theme: BlueprintReadOnlyTheme;
   /** Min height of the preview region */
   minHeight?: number;
@@ -204,6 +207,7 @@ const ZOOM_MAX = 2.75;
 
 export function BlueprintReadOnlyCanvas({
   elements,
+  layers = [],
   theme: themeName,
   minHeight = 420,
   fitResetKey,
@@ -218,6 +222,11 @@ export function BlueprintReadOnlyCanvas({
 
   const laidOut = useMemo(() => relayoutAllDoors(elements), [elements]);
   const theme = useMemo(() => palette(themeName), [themeName]);
+  const elementZ = useMemo(() => blueprintPaintZIndices(laidOut, layers), [laidOut, layers]);
+  const ez = (elementId: string) => {
+    const z = elementZ.get(elementId);
+    return z === undefined ? {} : { zIndex: z };
+  };
 
   const fitView = useCallback(
     (stageW: number, stageH: number, els: BlueprintElement[]) => {
@@ -328,7 +337,7 @@ export function BlueprintReadOnlyCanvas({
         scaleY={scale}
         onWheel={handleWheel}
       >
-        <Layer listening={false}>
+        <Layer listening={false} sortChildren>
           {gridLines}
           {laidOut
             .filter((el) => el.type === "zone")
@@ -339,7 +348,7 @@ export function BlueprintReadOnlyCanvas({
                 const bb = bboxFromPathPoints(polyPts);
                 const labelSize = Math.min(11, Math.max(9, Math.min(bb.w, bb.h) / 7));
                 return (
-                  <Group key={el.id}>
+                  <Group key={el.id} {...ez(el.id)}>
                     <Line
                       points={polyPts}
                       closed
@@ -380,7 +389,7 @@ export function BlueprintReadOnlyCanvas({
               const ins = Math.max(0.6, 1.05 / scale);
               const labelSize = Math.min(11, Math.max(9, Math.min(w, h) / 7));
               return (
-                <Group key={el.id}>
+                <Group key={el.id} {...ez(el.id)}>
                   <Rect
                     x={el.x + dx}
                     y={el.y + dy}
@@ -444,6 +453,7 @@ export function BlueprintReadOnlyCanvas({
               return (
                 <Rect
                   key={el.id}
+                  {...ez(el.id)}
                   x={el.x}
                   y={el.y}
                   width={w}
@@ -464,7 +474,7 @@ export function BlueprintReadOnlyCanvas({
               const h = el.height ?? 24;
               const sw = swBase;
               return (
-                <Group key={el.id} x={el.x} y={el.y} rotation={el.rotation ?? 0} listening={false}>
+                <Group key={el.id} {...ez(el.id)} x={el.x} y={el.y} rotation={el.rotation ?? 0} listening={false}>
                   <Ellipse
                     x={w / 2}
                     y={h / 2}
@@ -483,6 +493,7 @@ export function BlueprintReadOnlyCanvas({
             .map((el) => (
               <Line
                 key={el.id}
+                {...ez(el.id)}
                 points={el.path_points ?? []}
                 closed
                 tension={0}
@@ -502,7 +513,7 @@ export function BlueprintReadOnlyCanvas({
               const sw = Math.max(0.55, 0.88 / scale);
               const rot = el.rotation ?? 0;
               return (
-                <Group key={el.id} x={el.x} y={el.y} rotation={rot} listening={false}>
+                <Group key={el.id} {...ez(el.id)} x={el.x} y={el.y} rotation={rot} listening={false}>
                   <Rect x={-along / 2 - bleed} y={-depth / 2 - bleed} width={along + 2 * bleed} height={depth + 2 * bleed} cornerRadius={3} fill={theme.doorCut} listening={false} />
                   <Rect x={-along / 2} y={-depth / 2} width={along} height={depth} cornerRadius={2} fill={theme.doorFill} stroke={theme.doorStroke} strokeWidth={sw} listening={false} />
                 </Group>
@@ -518,7 +529,7 @@ export function BlueprintReadOnlyCanvas({
               const labelBand = Math.ceil(symLabelFs + SYMBOL_LABEL_BAND_GAP);
               const iconSlotH = Math.max(4, h - labelBand);
               return (
-                <Group key={el.id} x={el.x} y={el.y} rotation={el.rotation ?? 0} opacity={0.98} listening={false}>
+                <Group key={el.id} {...ez(el.id)} x={el.x} y={el.y} rotation={el.rotation ?? 0} opacity={0.98} listening={false}>
                   <Rect width={w} height={h} cornerRadius={8} fill={theme.symbolPlate} strokeEnabled={false} listening={false} />
                   <Group x={w / 2} y={iconSlotH / 2 - SYMBOL_ICON_Y_NUDGE} scaleX={symScale} scaleY={symScale} listening={false}>
                     <SymbolGlyphRo symbolType={st} isDark={isDark} />
@@ -551,7 +562,7 @@ export function BlueprintReadOnlyCanvas({
               const st = mockLinkStatus(el.linked_device_id);
               const dStroke = Math.max(0.65, 0.92 / scale);
               return (
-                <Group key={el.id} x={el.x} y={el.y} rotation={el.rotation ?? 0} listening={false}>
+                <Group key={el.id} {...ez(el.id)} x={el.x} y={el.y} rotation={el.rotation ?? 0} listening={false}>
                   <Rect
                     width={w}
                     height={h}
@@ -589,6 +600,7 @@ export function BlueprintReadOnlyCanvas({
               return (
                 <Line
                   key={el.id}
+                  {...ez(el.id)}
                   points={pts}
                   closed
                   tension={PATH_LINE_TENSION}
@@ -611,6 +623,7 @@ export function BlueprintReadOnlyCanvas({
               return (
                 <Line
                   key={el.id}
+                  {...ez(el.id)}
                   points={pts}
                   closed={false}
                   tension={0}

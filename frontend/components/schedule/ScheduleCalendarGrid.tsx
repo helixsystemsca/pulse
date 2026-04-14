@@ -186,9 +186,16 @@ export function ScheduleCalendarGrid({
             <div
               key={c.date}
               title={dragSession?.kind === "worker" && hl?.tooltip ? hl.tooltip : undefined}
-              className={`relative flex min-h-[7.5rem] flex-col bg-pulseShell-cell ${cellPointer} ${
+              className={`relative flex h-full min-h-0 flex-col bg-pulseShell-cell ${cellPointer} ${
                 c.inMonth ? "" : "bg-pulseShell-cell-muted opacity-80"
-              } ${isOver && !calendarDropsDisabled ? "ring-2 ring-inset ring-ds-success/40" : ""} ${shakeDate === c.date ? "schedule-cell-shake" : ""}`}
+              } ${c.inMonth && onOpenDay && !scheduleDragLock ? "cursor-pointer" : ""} ${
+                isOver && !calendarDropsDisabled ? "ring-2 ring-inset ring-ds-success/40" : ""
+              } ${shakeDate === c.date ? "schedule-cell-shake" : ""}`}
+              onClick={(e) => {
+                if (!c.inMonth || !onOpenDay || scheduleDragLock) return;
+                if ((e.target as HTMLElement).closest("[data-schedule-interactive]")) return;
+                onOpenDay(c.date);
+              }}
               onDragOver={(e) => {
                 if (calendarDropsDisabled) return;
                 if (!scheduleCalendarDragOverAccepts(e, dragSession)) return;
@@ -251,6 +258,7 @@ export function ScheduleCalendarGrid({
                 {c.inMonth && onOpenDay ? (
                   <button
                     type="button"
+                    data-schedule-interactive
                     className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold hover:bg-ds-interactive-hover ${
                       c.inMonth ? "text-ds-foreground" : "text-ds-muted"
                     }`}
@@ -271,6 +279,7 @@ export function ScheduleCalendarGrid({
                 {c.inMonth ? (
                   <button
                     type="button"
+                    data-schedule-interactive
                     className="rounded-md p-1 text-ds-muted hover:bg-ds-interactive-hover hover:text-ds-success"
                     aria-label={`Add shift on ${c.date}`}
                     onClick={() => onAddForDate(c.date)}
@@ -294,7 +303,8 @@ export function ScheduleCalendarGrid({
                 shiftDragEnabled={shiftDragEnabled}
                 onShiftDragSessionStart={onShiftDragSessionStart}
                 onShiftDragSessionEnd={onShiftDragSessionEnd}
-                scrollClassName="max-h-[11rem] flex-1 flex-col gap-1 overflow-y-auto px-1 pb-2 pt-1"
+                chipDetailLevel="summary"
+                scrollClassName="flex min-h-0 flex-1 flex-col gap-0.5 px-1 pb-1.5 pt-0.5"
               />
             </div>
           );

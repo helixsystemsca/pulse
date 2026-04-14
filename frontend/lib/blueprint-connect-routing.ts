@@ -296,8 +296,9 @@ export function makeConnectionElement(args: {
   toId: string;
   flatPoints: number[];
   style: ConnectionStyle;
+  layer_id?: string;
 }): BlueprintElement {
-  const { id, fromId, toId, flatPoints, style } = args;
+  const { id, fromId, toId, flatPoints, style, layer_id } = args;
   let minX = Infinity;
   let minY = Infinity;
   let maxX = -Infinity;
@@ -322,6 +323,7 @@ export function makeConnectionElement(args: {
     connection_from: fromId,
     connection_to: toId,
     connection_style: style,
+    ...(layer_id ? { layer_id } : {}),
   };
 }
 

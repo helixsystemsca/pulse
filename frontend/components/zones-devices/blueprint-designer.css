@@ -184,7 +184,8 @@
 .bp-sidebar,
 .bp-props,
 .bp-symbol-panel__scroll,
-.bp-tasks__list {
+.bp-tasks__list,
+.bp-layers__list {
   scrollbar-width: thin;
   scrollbar-color: var(--bp-scroll-thumb) transparent;
 }
@@ -193,7 +194,8 @@
 .bp-sidebar::-webkit-scrollbar,
 .bp-props::-webkit-scrollbar,
 .bp-symbol-panel__scroll::-webkit-scrollbar,
-.bp-tasks__list::-webkit-scrollbar {
+.bp-tasks__list::-webkit-scrollbar,
+.bp-layers__list::-webkit-scrollbar {
   width: 7px;
   height: 7px;
 }
@@ -202,7 +204,8 @@
 .bp-sidebar::-webkit-scrollbar-track,
 .bp-props::-webkit-scrollbar-track,
 .bp-symbol-panel__scroll::-webkit-scrollbar-track,
-.bp-tasks__list::-webkit-scrollbar-track {
+.bp-tasks__list::-webkit-scrollbar-track,
+.bp-layers__list::-webkit-scrollbar-track {
   background: transparent;
   border-radius: 6px;
 }
@@ -211,7 +214,8 @@
 .bp-sidebar::-webkit-scrollbar-thumb,
 .bp-props::-webkit-scrollbar-thumb,
 .bp-symbol-panel__scroll::-webkit-scrollbar-thumb,
-.bp-tasks__list::-webkit-scrollbar-thumb {
+.bp-tasks__list::-webkit-scrollbar-thumb,
+.bp-layers__list::-webkit-scrollbar-thumb {
   background: var(--bp-scroll-thumb);
   border-radius: 6px;
   border: 2px solid transparent;
@@ -222,7 +226,8 @@
 .bp-sidebar:hover::-webkit-scrollbar-thumb,
 .bp-props:hover::-webkit-scrollbar-thumb,
 .bp-symbol-panel__scroll:hover::-webkit-scrollbar-thumb,
-.bp-tasks__list:hover::-webkit-scrollbar-thumb {
+.bp-tasks__list:hover::-webkit-scrollbar-thumb,
+.bp-layers__list:hover::-webkit-scrollbar-thumb {
   background: var(--bp-scroll-thumb-hover);
   background-clip: padding-box;
 }
@@ -1028,7 +1033,8 @@
 .bp-stage-host.bp-stage-host--tool-draw-rectangle:not(.is-panning):not(.bp-stage-host--publish),
 .bp-stage-host.bp-stage-host--tool-draw-ellipse:not(.is-panning):not(.bp-stage-host--publish),
 .bp-stage-host.bp-stage-host--tool-draw-polygon:not(.is-panning):not(.bp-stage-host--publish),
-.bp-stage-host.bp-stage-host--tool-free-draw:not(.is-panning):not(.bp-stage-host--publish) {
+.bp-stage-host.bp-stage-host--tool-free-draw:not(.is-panning):not(.bp-stage-host--publish),
+.bp-stage-host.bp-stage-host--tool-draw-pen:not(.is-panning):not(.bp-stage-host--publish) {
   cursor: crosshair;
 }
 
@@ -1368,6 +1374,138 @@
 .bp-tasks--disabled {
   opacity: 0.55;
   pointer-events: none;
+}
+
+/* —— Layer stack (paint order) —— */
+.bp-layers {
+  display: flex;
+  flex-direction: column;
+  gap: var(--bp-space-1);
+  padding-top: var(--bp-space-2);
+  margin-top: var(--bp-space-1);
+  border-top: 1px solid var(--bp-panel-border);
+}
+
+.bp-layers h3 {
+  margin: 0;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--bp-muted);
+}
+
+.bp-layers--disabled {
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.bp-layers__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.bp-layers__actions .bp-btn {
+  width: 100%;
+}
+
+.bp-layers__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: min(220px, 28vh);
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.bp-layers__row {
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+  border-radius: 6px;
+  border: 1px solid var(--bp-panel-border);
+  background: rgba(15, 23, 42, 0.28);
+  transition: border-color 0.18s ease, background 0.18s ease, opacity 0.15s ease;
+}
+
+.bp-layers__row.is-active {
+  border-color: rgba(59, 130, 246, 0.45);
+  background: rgba(59, 130, 246, 0.08);
+}
+
+.bp-layers__row.is-dragging {
+  opacity: 0.55;
+}
+
+.bp-layers__select {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  border: none;
+  background: transparent;
+  color: var(--bp-text);
+  font-size: 0.8rem;
+  font-weight: 500;
+  padding: 8px 6px 8px 8px;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.bp-layers__select:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.bp-layers__name {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bp-layers__rename-input {
+  box-sizing: border-box;
+  width: 100%;
+  margin: 0;
+  padding: 4px 6px;
+  font-size: 0.8rem;
+  border-radius: 4px;
+  border: 1px solid rgba(59, 130, 246, 0.45);
+  background: rgba(15, 23, 42, 0.95);
+  color: var(--bp-text);
+}
+
+.bp-layers__rename-input:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+.bp-layers__delete {
+  flex-shrink: 0;
+  width: 30px;
+  border: none;
+  border-left: 1px solid var(--bp-panel-border);
+  background: transparent;
+  color: var(--bp-muted);
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+  border-radius: 0 5px 5px 0;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.bp-layers__delete:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.12);
+  color: #f87171;
+}
+
+.bp-layers__delete:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
 }
 
 .bp-tasks__add {

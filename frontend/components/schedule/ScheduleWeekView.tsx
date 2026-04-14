@@ -199,9 +199,16 @@ export function ScheduleWeekView({
             <div
               key={date}
               title={dragSession?.kind === "worker" && hl?.tooltip ? hl.tooltip : undefined}
-              className={`relative flex min-h-[14rem] flex-col bg-pulseShell-cell ${cellPointer} ${
-                isOver && !calendarDropsDisabled ? "ring-2 ring-inset ring-ds-success/40" : ""
-              } ${shakeDate === date ? "schedule-cell-shake" : ""}`}
+              className={`relative flex h-full min-h-0 flex-col bg-pulseShell-cell ${cellPointer} ${
+                onOpenDay && !scheduleDragLock ? "cursor-pointer" : ""
+              } ${isOver && !calendarDropsDisabled ? "ring-2 ring-inset ring-ds-success/40" : ""} ${
+                shakeDate === date ? "schedule-cell-shake" : ""
+              }`}
+              onClick={(e) => {
+                if (!onOpenDay || scheduleDragLock) return;
+                if ((e.target as HTMLElement).closest("[data-schedule-interactive]")) return;
+                onOpenDay(date);
+              }}
               onDragOver={(e) => {
                 if (calendarDropsDisabled) return;
                 if (!scheduleCalendarDragOverAccepts(e, dragSession)) return;
@@ -260,6 +267,7 @@ export function ScheduleWeekView({
                 {onOpenDay ? (
                   <button
                     type="button"
+                    data-schedule-interactive
                     className="flex h-7 min-w-[1.75rem] items-center justify-center rounded-full text-xs font-semibold text-ds-foreground hover:bg-ds-interactive-hover"
                     onClick={() => onOpenDay(date)}
                     aria-label={`Open day view for ${date}`}
@@ -273,6 +281,7 @@ export function ScheduleWeekView({
                 )}
                 <button
                   type="button"
+                  data-schedule-interactive
                   className="rounded-md p-1 text-ds-muted hover:bg-ds-interactive-hover hover:text-ds-success"
                   aria-label={`Add shift on ${date}`}
                   onClick={() => onAddForDate(date)}
@@ -295,7 +304,8 @@ export function ScheduleWeekView({
                 shiftDragEnabled={shiftDragEnabled}
                 onShiftDragSessionStart={onShiftDragSessionStart}
                 onShiftDragSessionEnd={onShiftDragSessionEnd}
-                scrollClassName="max-h-[20rem] flex-1 flex-col gap-1 overflow-y-auto px-1 pb-2 pt-1"
+                chipDetailLevel="summary"
+                scrollClassName="flex min-h-0 flex-1 flex-col gap-0.5 px-1 pb-1.5 pt-0.5"
               />
             </div>
           );

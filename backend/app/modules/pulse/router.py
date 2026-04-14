@@ -182,6 +182,7 @@ async def list_work_requests(
             conds.append(PulseWorkRequest.due_date < now)
             conds.append(PulseWorkRequest.status != PulseWorkRequestStatus.completed)
             conds.append(PulseWorkRequest.status != PulseWorkRequestStatus.cancelled)
+            conds.append(PulseWorkRequest.status != PulseWorkRequestStatus.hold)
         else:
             try:
                 st = PulseWorkRequestStatus(sf)

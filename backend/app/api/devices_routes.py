@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Annotated, Any, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_db, require_manager_or_above
@@ -25,6 +25,7 @@ from app.schemas.devices import (
     GatewayPatchIn,
     ZoneCreateIn,
     ZoneOut,
+    ZoneUpdateIn,
 )
 from app.services.automation.operational_service import list_gateway_operational_status
 from app.services.devices.device_service import DeviceService
@@ -341,3 +342,48 @@ async def create_zone(
     await db.commit()
     await db.refresh(z)
     return ZoneOut.model_validate(z)
+
+
+@router.patch("/zones/{zone_id}", response_model=ZoneOut)
+async def patch_zone(
+    zone_id: str,
+    body: ZoneUpdateIn,
+    db: Db,
+    company_id: CompanyId,
+) -> ZoneOut:
+    updates = body.model_dump(exclude_unset=True)
+    if not updates:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="no fields to update",
+        )
+    try:
+        z = await _svc(db).update_zone(
+            company_id=company_id,
+            zone_id=zone_id,
+            updates=updates,
+        )
+        await db.commit()
+        await db.refresh(z)
+        return ZoneOut.model_validate(z)
+    except LookupError:
+        await db.rollback()
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="zone not found") from None
+    except ValueError as e:
+        await db.rollback()
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
+
+
+@router.delete("/zones/{zone_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_zone(
+    zone_id: str,
+    db: Db,
+    company_id: CompanyId,
+) -> Response:
+    try:
+        await _svc(db).delete_zone(company_id=company_id, zone_id=zone_id)
+        await db.commit()
+    except LookupError:
+        await db.rollback()
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="zone not found") from None
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

@@ -44,7 +44,7 @@ STEP_DESCRIPTIONS: dict[str, str] = {
 }
 
 STEP_HREFS: dict[str, str] = {
-    "create_work_order": "/dashboard/maintenance/work-orders",
+    "create_work_order": "/dashboard/maintenance",
     "add_equipment": "/equipment",
     "invite_team": "/dashboard/workers",
     "customize_workflow": "/dashboard/workers",

@@ -1,10 +1,6 @@
-import { PreventativeMaintenanceApp } from "@/components/maintenance/PreventativeMaintenanceApp";
-import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 
-export const metadata: Metadata = {
-  title: { absolute: "Preventative | Maintenance | Pulse" },
-};
-
-export default function MaintenancePreventativePage() {
-  return <PreventativeMaintenanceApp />;
+/** Legacy URL — preventative rules are in the hub (expand “Preventative scheduling”). */
+export default function LegacyMaintenancePreventativePage() {
+  redirect("/dashboard/maintenance?hub=preventative");
 }

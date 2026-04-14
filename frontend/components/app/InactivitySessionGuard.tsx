@@ -8,18 +8,11 @@ import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
 import { navigateToPulseLogin } from "@/lib/pulse-app";
-import { clearSession } from "@/lib/pulse-session";
+import { clearSession, isPulsePublicPath } from "@/lib/pulse-session";
 
 const THROTTLE_MS = 1000;
 const IDLE_MS = 60 * 60 * 1000;
 const WARNING_MS = 59 * 60 * 1000;
-
-const PUBLIC_PATH_PREFIXES = ["/login", "/invite", "/reset-password"];
-
-function isPublicPath(pathname: string | null): boolean {
-  if (!pathname) return true;
-  return PUBLIC_PATH_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`));
-}
 
 export function InactivitySessionGuard() {
   const pathname = usePathname();
@@ -66,7 +59,7 @@ export function InactivitySessionGuard() {
   }, [armTimers]);
 
   useEffect(() => {
-    if (!authed || isPublicPath(pathname)) {
+    if (!authed || isPulsePublicPath(pathname)) {
       clearTimers();
       setWarningOpen(false);
       return;

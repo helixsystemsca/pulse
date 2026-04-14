@@ -1,5 +1,5 @@
-import { redirect } from "next/navigation";
+import { MaintenanceWorkHub } from "@/components/maintenance/MaintenanceWorkHub";
 
-export default function MaintenanceIndexPage() {
-  redirect("/dashboard/maintenance/work-orders");
+export default function MaintenanceHubPage() {
+  return <MaintenanceWorkHub />;
 }

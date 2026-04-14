@@ -219,7 +219,9 @@ async def dashboard_aggregate(db: AsyncSession, company_id: str) -> dict[str, An
         .select_from(PulseWorkRequest)
         .where(
             PulseWorkRequest.company_id == company_id,
-            PulseWorkRequest.status.in_((PulseWorkRequestStatus.open, PulseWorkRequestStatus.in_progress)),
+            PulseWorkRequest.status.in_(
+                (PulseWorkRequestStatus.open, PulseWorkRequestStatus.in_progress, PulseWorkRequestStatus.hold)
+            ),
         )
     )
     open_wr = int(open_wr_q.scalar_one() or 0)

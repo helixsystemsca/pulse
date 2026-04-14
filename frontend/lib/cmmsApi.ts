@@ -1,10 +1,11 @@
 /**
  * Maintenance hub API — `/api/v1/cmms/*` (tenant-scoped, feature: work_orders).
  */
-import { apiFetch } from "@/lib/api";
+import { apiFetch, getApiBaseUrl } from "@/lib/api";
+import { readSession } from "@/lib/pulse-session";
 
 export type WorkOrderType = "preventative" | "issue" | "request";
-export type WorkOrderStatus = "open" | "in_progress" | "completed" | "cancelled";
+export type WorkOrderStatus = "open" | "in_progress" | "hold" | "completed" | "cancelled";
 
 export type WorkOrderRow = {
   id: string;
@@ -21,11 +22,16 @@ export type WorkOrderRow = {
   tool_id?: string | null;
 };
 
+export type ProcedureStep = {
+  text: string;
+  image_url?: string | null;
+};
+
 export type ProcedureRow = {
   id: string;
   company_id: string;
   title: string;
-  steps: string[];
+  steps: ProcedureStep[];
   created_at: string;
   updated_at: string;
 };
@@ -88,15 +94,39 @@ export async function fetchProcedures(): Promise<ProcedureRow[]> {
   return apiFetch<ProcedureRow[]>("/api/v1/cmms/procedures");
 }
 
-export async function createProcedure(body: { title: string; steps: string[] }): Promise<ProcedureRow> {
+export async function createProcedure(body: { title: string; steps: ProcedureStep[] }): Promise<ProcedureRow> {
   return apiFetch<ProcedureRow>("/api/v1/cmms/procedures", { method: "POST", json: body });
 }
 
 export async function patchProcedure(
   id: string,
-  body: Partial<{ title: string; steps: string[] }>,
+  body: Partial<{ title: string; steps: ProcedureStep[] }>,
 ): Promise<ProcedureRow> {
   return apiFetch<ProcedureRow>(`/api/v1/cmms/procedures/${id}`, { method: "PATCH", json: body });
+}
+
+export async function uploadProcedureStepImage(
+  procedureId: string,
+  stepIndex: number,
+  file: File,
+): Promise<{ image_url: string }> {
+  const base = getApiBaseUrl();
+  if (!base) throw new Error("NEXT_PUBLIC_API_URL is not configured");
+  const token = readSession()?.access_token;
+  if (!token) throw new Error("Not signed in");
+  const url = `${base}/api/v1/cmms/procedures/${encodeURIComponent(procedureId)}/steps/${stepIndex}/image`;
+  const fd = new FormData();
+  fd.set("file", file);
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+    body: fd,
+  });
+  if (!res.ok) {
+    const t = await res.text();
+    throw new Error(t || res.statusText);
+  }
+  return res.json() as Promise<{ image_url: string }>;
 }
 
 export async function fetchPreventativeRules(): Promise<PreventativeRuleRow[]> {

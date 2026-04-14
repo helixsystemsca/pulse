@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 from typing import Any, Optional, Tuple
 from uuid import uuid4
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth.security import hash_password
@@ -202,6 +202,45 @@ class DeviceService:
             select(Zone).where(Zone.company_id == company_id).order_by(Zone.name)
         )
         return list(q.scalars().all())
+
+    async def get_zone(self, *, company_id: str, zone_id: str) -> Optional[Zone]:
+        q = await self._db.execute(
+            select(Zone).where(Zone.id == zone_id, Zone.company_id == company_id)
+        )
+        return q.scalar_one_or_none()
+
+    async def update_zone(
+        self,
+        *,
+        company_id: str,
+        zone_id: str,
+        updates: dict[str, Any],
+    ) -> Zone:
+        z = await self.get_zone(company_id=company_id, zone_id=zone_id)
+        if not z:
+            raise LookupError("zone_not_found")
+        if "name" in updates:
+            nz = str(updates["name"] or "").strip()
+            if not nz:
+                raise ValueError("zone name is required")
+            z.name = nz
+        if "description" in updates:
+            raw = updates["description"]
+            if raw is None:
+                z.description = None
+            else:
+                s = str(raw).strip()
+                z.description = s if s else None
+        await self._db.flush()
+        return z
+
+    async def delete_zone(self, *, company_id: str, zone_id: str) -> None:
+        res = await self._db.execute(
+            delete(Zone).where(Zone.id == zone_id, Zone.company_id == company_id)
+        )
+        if not res.rowcount:
+            raise LookupError("zone_not_found")
+        await self._db.flush()
 
     async def get_ble_device(self, *, company_id: str, ble_id: str) -> Optional[AutomationBleDevice]:
         q = await self._db.execute(

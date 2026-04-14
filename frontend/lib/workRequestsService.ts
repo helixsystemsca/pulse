@@ -79,6 +79,7 @@ function buildListQuery(params: {
   status?: string;
   priority?: string;
   zone_id?: string;
+  hub_category?: string;
   date_from?: string;
   date_to?: string;
   due_after?: string;
@@ -92,6 +93,7 @@ function buildListQuery(params: {
   if (params.status) sp.set("status", params.status);
   if (params.priority) sp.set("priority", params.priority);
   if (params.zone_id) sp.set("zone_id", params.zone_id);
+  if (params.hub_category) sp.set("hub_category", params.hub_category);
   if (params.date_from) sp.set("date_from", params.date_from);
   if (params.date_to) sp.set("date_to", params.date_to);
   if (params.due_after) sp.set("due_after", params.due_after);

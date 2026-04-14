@@ -241,7 +241,9 @@ async def _work_summary(db: AsyncSession, cid: str, user_id: str, now: datetime)
         .where(
             PulseWorkRequest.company_id == cid,
             PulseWorkRequest.assigned_user_id == user_id,
-            PulseWorkRequest.status.in_((PulseWorkRequestStatus.open, PulseWorkRequestStatus.in_progress)),
+            PulseWorkRequest.status.in_(
+                (PulseWorkRequestStatus.open, PulseWorkRequestStatus.in_progress, PulseWorkRequestStatus.hold)
+            ),
         )
     )
     open_wr = int(open_q.scalar_one() or 0)
@@ -459,6 +461,10 @@ async def _build_detail(db: AsyncSession, cid: str, u: User, users_map: dict[str
     raw_et = sched.get("employment_type")
     emp_type = str(raw_et).strip() if raw_et is not None else ""
     employment_type = emp_type if emp_type in ("full_time", "regular_part_time", "part_time") else None
+    raw_rs = sched.get("recurring_shifts") or []
+    if not isinstance(raw_rs, list):
+        raw_rs = []
+    recurring_shifts = [x for x in raw_rs if isinstance(x, dict)]
 
     return WorkerDetailOut(
         id=uid_s,
@@ -486,6 +492,7 @@ async def _build_detail(db: AsyncSession, cid: str, u: User, users_map: dict[str
         profile_notes=p.notes if p else None,
         supervisor_notes=hr.supervisor_notes if hr else None,
         employment_type=employment_type,
+        recurring_shifts=recurring_shifts,
         compliance_summary=co,
         work_summary=wo,
         created_at=u.created_at,
@@ -940,14 +947,45 @@ async def patch_worker(
         prof = await _ensure_profile(db, cid, user_id)
         prof.notes = data["profile_notes"]
 
-    if "employment_type" in data:
+    if "employment_type" in data or "recurring_shifts" in data:
         prof = await _ensure_profile(db, cid, user_id)
         cur = dict(prof.scheduling or {})
-        et = data["employment_type"]
-        if et:
-            cur["employment_type"] = et
-        else:
-            cur.pop("employment_type", None)
+        if "employment_type" in data:
+            et = data["employment_type"]
+            if et:
+                cur["employment_type"] = et
+            else:
+                cur.pop("employment_type", None)
+        if "recurring_shifts" in data:
+            rs = data["recurring_shifts"]
+            if rs is None:
+                cur.pop("recurring_shifts", None)
+            else:
+                cleaned: list[dict[str, Any]] = []
+                for item in rs:
+                    if not isinstance(item, dict):
+                        continue
+                    dow = item.get("day_of_week") or item.get("dayOfWeek")
+                    start = item.get("start")
+                    end = item.get("end")
+                    if dow is None or start is None or end is None:
+                        continue
+                    row: dict[str, Any] = {
+                        "day_of_week": str(dow).strip().lower(),
+                        "start": str(start).strip(),
+                        "end": str(end).strip(),
+                    }
+                    role_v = item.get("role")
+                    if role_v is not None and str(role_v).strip():
+                        row["role"] = str(role_v).strip()
+                    rc = item.get("required_certifications")
+                    if isinstance(rc, list) and rc:
+                        row["required_certifications"] = [str(x) for x in rc if x is not None and str(x).strip()]
+                    cleaned.append(row)
+                if cleaned:
+                    cur["recurring_shifts"] = cleaned
+                else:
+                    cur.pop("recurring_shifts", None)
         prof.scheduling = cur
 
     if body.certifications is not None:

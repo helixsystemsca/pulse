@@ -4,6 +4,12 @@
  */
 export type ConnectionStyle = "electrical" | "plumbing";
 
+/** Named stack entry; list order is top-first (index 0 draws on top). */
+export type BlueprintLayer = {
+  id: string;
+  name: string;
+};
+
 export type BlueprintElement = {
   id: string;
   type: "zone" | "device" | "door" | "path" | "symbol" | "group" | "connection" | "rectangle" | "ellipse" | "polygon";
@@ -32,6 +38,8 @@ export type BlueprintElement = {
   symbol_type?: string;
   symbol_tags?: string[];
   symbol_notes?: string;
+  /** Which {@link BlueprintLayer} this element paints in (omit = bottom layer when layers exist). */
+  layer_id?: string;
 };
 
 /** Instruction overlay linked to canvas elements (maintenance / SOP-style). */
@@ -48,6 +56,8 @@ export type TaskOverlay = {
 export type BlueprintState = {
   elements: BlueprintElement[];
   tasks: TaskOverlay[];
+  /** Top-first paint stack; empty means legacy single-stack ordering until first save. */
+  layers: BlueprintLayer[];
 };
 
 /**
@@ -70,4 +80,5 @@ export type BlueprintDesignerTool =
   | "place-device"
   | "place-door"
   | "free-draw"
+  | "draw-pen"
   | "place-symbol";

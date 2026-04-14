@@ -3,7 +3,7 @@
  * Kept in sync with `BlueprintDesigner` floorplan semantics.
  */
 
-import type { BlueprintElement } from "@/components/zones-devices/blueprint-types";
+import type { BlueprintElement, BlueprintLayer } from "@/components/zones-devices/blueprint-types";
 
 export type ApiBlueprintElement = {
   id: string;
@@ -28,6 +28,7 @@ export type ApiBlueprintElement = {
   connection_to?: string | null;
   connection_style?: string | null;
   corner_radius?: number | null;
+  layer_id?: string | null;
 };
 
 export const DOOR_ALONG_DEFAULT = 32;
@@ -378,6 +379,64 @@ export function elementWorldAabb(el: BlueprintElement): { L: number; R: number; 
   return { L: Math.min(...wx), R: Math.max(...wx), T: Math.min(...wy), B: Math.max(...wy) };
 }
 
+/** Matches designer / read-only canvas draw order (groups have no painted node). */
+/** Normalize `blueprint.layers` from API JSON for the editor and read-only preview. */
+export function parseApiBlueprintLayers(raw: unknown): BlueprintLayer[] {
+  if (!raw || !Array.isArray(raw)) return [];
+  const out: BlueprintLayer[] = [];
+  for (const item of raw) {
+    if (!item || typeof item !== "object") continue;
+    const id = String((item as { id?: unknown }).id ?? "").trim();
+    const name = String((item as { name?: unknown }).name ?? "Layer").trim() || "Layer";
+    if (!id) continue;
+    out.push({ id, name: name.slice(0, 120) });
+  }
+  return out;
+}
+
+const PAINT_TYPE_ORDER: BlueprintElement["type"][] = [
+  "zone",
+  "rectangle",
+  "ellipse",
+  "polygon",
+  "door",
+  "symbol",
+  "device",
+  "path",
+  "connection",
+];
+
+const PAINT_ORDER_GAP = 250_000;
+
+/**
+ * Konva `zIndex` per element id. `layers` is top-first (index 0 = top). When `layers` is empty, returns an empty map
+ * (caller keeps legacy sibling order). Unknown or missing `layer_id` is treated as the bottom layer (last in `layers`).
+ */
+export function blueprintPaintZIndices(elements: BlueprintElement[], layers: BlueprintLayer[]): Map<string, number> {
+  const map = new Map<string, number>();
+  if (!layers.length) return map;
+  const rank = new Map(layers.map((L, i) => [L.id, i]));
+  const bottomId = layers[layers.length - 1]!.id;
+  const resolveLayer = (el: BlueprintElement) =>
+    el.layer_id && rank.has(el.layer_id) ? el.layer_id : bottomId;
+  const orderedIds: string[] = [];
+  for (const t of PAINT_TYPE_ORDER) {
+    for (const el of elements) {
+      if (el.type === t) orderedIds.push(el.id);
+    }
+  }
+  let seq = 0;
+  for (const id of orderedIds) {
+    const el = elements.find((e) => e.id === id);
+    if (!el) continue;
+    const lid = resolveLayer(el);
+    const li = rank.get(lid) ?? layers.length - 1;
+    const tier = (layers.length - li) * PAINT_ORDER_GAP;
+    map.set(id, tier + seq++);
+  }
+  return map;
+}
+
 export function unionBlueprintElementsBounds(elements: BlueprintElement[]): {
   L: number;
   R: number;
@@ -432,6 +491,7 @@ export function mapApiElement(e: ApiBlueprintElement): BlueprintElement {
       e.type === "rectangle" && e.corner_radius != null && Number.isFinite(Number(e.corner_radius))
         ? Number(e.corner_radius)
         : undefined,
+    layer_id: e.layer_id ?? undefined,
   };
 }
 
@@ -459,6 +519,7 @@ export function toApiPayload(elements: BlueprintElement[]) {
     connection_to: el.type === "connection" ? el.connection_to ?? null : null,
     connection_style: el.type === "connection" ? el.connection_style ?? null : null,
     corner_radius: el.type === "rectangle" ? (el.cornerRadius ?? null) : null,
+    layer_id: el.layer_id ?? null,
   }));
 }
 

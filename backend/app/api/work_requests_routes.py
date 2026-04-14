@@ -21,6 +21,7 @@ from app.models.domain import EquipmentPart, FacilityEquipment, Tool, User, User
 from app.core.org_module_settings_merge import merge_org_module_settings
 from app.models.pulse_models import (
     PulseOrgModuleSettings,
+    PulseWorkOrderType,
     PulseWorkRequest,
     PulseWorkRequestActivity,
     PulseWorkRequestComment,
@@ -310,6 +311,10 @@ async def list_work_requests(
     date_to: Optional[datetime] = Query(None),
     due_after: Optional[datetime] = Query(None, description="Filter by due_date >= (UTC)"),
     due_before: Optional[datetime] = Query(None, description="Filter by due_date <= (UTC)"),
+    hub_category: Optional[str] = Query(
+        None,
+        description="Optional hub facet: preventative | work_requests | projects",
+    ),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
 ) -> WorkRequestListOut:
@@ -346,12 +351,31 @@ async def list_work_requests(
         conds.append(PulseWorkRequest.due_date.isnot(None))
         conds.append(PulseWorkRequest.due_date <= due_before)
 
+    if hub_category:
+        hc = hub_category.strip().lower()
+        if hc == "preventative":
+            conds.append(PulseWorkRequest.work_order_type == PulseWorkOrderType.preventative)
+        elif hc in ("work_requests", "work_request"):
+            conds.append(
+                PulseWorkRequest.work_order_type.in_((PulseWorkOrderType.issue, PulseWorkOrderType.request))
+            )
+        elif hc == "projects":
+            conds.append(
+                or_(
+                    func.lower(PulseWorkRequest.category) == "project",
+                    func.lower(PulseWorkRequest.category) == "projects",
+                )
+            )
+        else:
+            raise HTTPException(status_code=400, detail="Invalid hub_category")
+
     if status_filter:
         if status_filter == "overdue":
             conds.append(PulseWorkRequest.due_date.isnot(None))
             conds.append(PulseWorkRequest.due_date < now)
             conds.append(PulseWorkRequest.status != PulseWorkRequestStatus.completed)
             conds.append(PulseWorkRequest.status != PulseWorkRequestStatus.cancelled)
+            conds.append(PulseWorkRequest.status != PulseWorkRequestStatus.hold)
         else:
             try:
                 st = PulseWorkRequestStatus(status_filter)
@@ -388,6 +412,7 @@ async def list_work_requests(
         PulseWorkRequest.due_date < now,
         PulseWorkRequest.status != PulseWorkRequestStatus.completed,
         PulseWorkRequest.status != PulseWorkRequestStatus.cancelled,
+        PulseWorkRequest.status != PulseWorkRequestStatus.hold,
     )
     occ = int((await db.execute(occ_stmt)).scalar_one() or 0)
 

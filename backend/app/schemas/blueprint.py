@@ -10,6 +10,11 @@ from uuid import UUID, uuid4
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 
+class BlueprintLayer(BaseModel):
+    id: str = Field(..., min_length=1, max_length=64)
+    name: str = Field(..., min_length=1, max_length=120)
+
+
 class TaskOverlayBase(BaseModel):
     id: str = Field(..., min_length=1, max_length=64)
     title: str = Field(..., min_length=1, max_length=400)
@@ -92,6 +97,11 @@ class BlueprintElementBase(BaseModel):
         ge=0.0,
         description="Rounded corners for type rectangle (px); clamped client-side to half the shorter side",
     )
+    layer_id: Optional[str] = Field(
+        None,
+        description="Blueprint layer UUID (see blueprint.layers); omit for default layer",
+        max_length=64,
+    )
 
     @model_validator(mode="after")
     def group_children_shape(self) -> "BlueprintElementBase":
@@ -168,12 +178,14 @@ class BlueprintDetailOut(BlueprintSummaryOut):
     updated_at: datetime
     elements: list[BlueprintElementOut]
     tasks: list[TaskOverlayOut] = []
+    layers: list[BlueprintLayer] = []
 
 
 class BlueprintCreateIn(BaseModel):
     name: str = Field(..., min_length=1, max_length=255)
     elements: list[BlueprintElementIn] = []
     tasks: list[TaskOverlayIn] = []
+    layers: list[BlueprintLayer] = []
 
     @field_validator("elements")
     @classmethod
@@ -187,6 +199,13 @@ class BlueprintCreateIn(BaseModel):
     def max_tasks(cls, v: list) -> list:
         if len(v) > 500:
             raise ValueError("Too many tasks (max 500)")
+        return v
+
+    @field_validator("layers")
+    @classmethod
+    def max_layers(cls, v: list) -> list:
+        if len(v) > 80:
+            raise ValueError("Too many layers (max 80)")
         return v
 
 
@@ -194,6 +213,7 @@ class BlueprintUpdateIn(BaseModel):
     name: str = Field(..., min_length=1, max_length=255)
     elements: list[BlueprintElementIn] = []
     tasks: list[TaskOverlayIn] = []
+    layers: list[BlueprintLayer] = []
 
     @field_validator("elements")
     @classmethod
@@ -207,6 +227,13 @@ class BlueprintUpdateIn(BaseModel):
     def max_tasks(cls, v: list) -> list:
         if len(v) > 500:
             raise ValueError("Too many tasks (max 500)")
+        return v
+
+    @field_validator("layers")
+    @classmethod
+    def max_layers_update(cls, v: list) -> list:
+        if len(v) > 80:
+            raise ValueError("Too many layers (max 80)")
         return v
 
 
@@ -313,6 +340,13 @@ def element_in_to_orm_kwargs(el: BlueprintElementIn, *, blueprint_id: str) -> di
             UUID(el.id)
         except ValueError as e:
             raise ValueError("Invalid element id (expected UUID)") from e
+    layer_id_out: Optional[str] = None
+    if el.layer_id and str(el.layer_id).strip():
+        try:
+            UUID(str(el.layer_id).strip())
+        except ValueError as e:
+            raise ValueError("Invalid layer_id (expected UUID)") from e
+        layer_id_out = str(el.layer_id).strip()
     return {
         "id": eid,
         "blueprint_id": blueprint_id,
@@ -339,6 +373,7 @@ def element_in_to_orm_kwargs(el: BlueprintElementIn, *, blueprint_id: str) -> di
         "corner_radius": float(el.corner_radius)
         if el.type == "rectangle" and el.corner_radius is not None
         else None,
+        "layer_id": layer_id_out,
     }
 
 
@@ -404,6 +439,9 @@ def row_to_element_out(row) -> BlueprintElementOut:
         corner_radius=float(row.corner_radius)
         if row.element_type == "rectangle" and getattr(row, "corner_radius", None) is not None
         else None,
+        layer_id=str(getattr(row, "layer_id", None)).strip()
+        if getattr(row, "layer_id", None) and str(getattr(row, "layer_id", "")).strip()
+        else None,
     )
 
 
@@ -411,6 +449,37 @@ def tasks_model_to_json(tasks: list[TaskOverlayIn]) -> Optional[str]:
     if not tasks:
         return None
     return json.dumps([t.model_dump(mode="json") for t in tasks])
+
+
+def default_blueprint_layers() -> list[BlueprintLayer]:
+    lid = str(uuid4())
+    return [BlueprintLayer(id=lid, name="Layer 1")]
+
+
+def layers_model_to_json(layers: list[BlueprintLayer]) -> Optional[str]:
+    if not layers:
+        return None
+    return json.dumps([L.model_dump(mode="json") for L in layers])
+
+
+def parse_layers_json(raw: Optional[str]) -> list[BlueprintLayer]:
+    if not raw or not str(raw).strip():
+        return []
+    try:
+        data = json.loads(raw)
+    except (json.JSONDecodeError, TypeError):
+        return []
+    if not isinstance(data, list):
+        return []
+    out: list[BlueprintLayer] = []
+    for item in data:
+        if not isinstance(item, dict):
+            continue
+        try:
+            out.append(BlueprintLayer.model_validate(item))
+        except ValueError:
+            continue
+    return out
 
 
 def parse_tasks_json(raw: Optional[str]) -> list[TaskOverlayOut]:

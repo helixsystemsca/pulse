@@ -38,6 +38,14 @@ import {
   sessionHasAnyRole,
   sortRolesForDisplay,
 } from "@/lib/pulse-roles";
+import {
+  buildRecurringRowsForDays,
+  canonicalRecurringJson,
+  recurringRowsFromApi,
+  rotationDaysFromRecurring,
+  ROTATION_WEEKDAY_SHORT,
+  shiftWindowFromRosterKey,
+} from "@/lib/workerRotation";
 import type { LoginEventRow, WorkerDetail, WorkerRow, WorkersSettings } from "@/lib/workersService";
 import {
   createWorker,
@@ -59,6 +67,15 @@ const PRIMARY_BTN = "ds-btn-solid-primary px-5 py-2.5 text-sm";
 const FIELD = dsInputStackedClass;
 const LABEL = dsLabelClass;
 const SECTION_KICKER = "text-[11px] font-semibold uppercase tracking-wider text-ds-success";
+
+const EMPTY_ROTATION_DAYS: boolean[] = [false, false, false, false, false, false, false];
+
+const ROTATION_PRESET_BUTTONS: { label: string; days: boolean[] }[] = [
+  { label: "Sun–Wed", days: [true, true, true, true, false, false, false] },
+  { label: "Tue–Sat", days: [false, false, true, true, true, true, true] },
+  { label: "Mon–Fri", days: [false, true, true, true, true, true, false] },
+  { label: "All week", days: [true, true, true, true, true, true, true] },
+];
 
 /** Keys must match `GLOBAL_SYSTEM_FEATURES` / tenant contract (system admin catalog). */
 const TENANT_PRODUCT_MODULES = [
@@ -102,6 +119,15 @@ type EmploymentTypeKey = (typeof EMPLOYMENT_TYPE_KEYS)[number] | "";
 function normalizeEmploymentDraft(raw: string | null | undefined): EmploymentTypeKey {
   const s = (raw ?? "").trim();
   return (EMPLOYMENT_TYPE_KEYS as readonly string[]).includes(s) ? (s as EmploymentTypeKey) : "";
+}
+
+function formatRotationReadOnly(profile: WorkerDetail): string {
+  const rows = recurringRowsFromApi(profile.recurring_shifts ?? []);
+  if (!rows.length) return "—";
+  const days = rotationDaysFromRecurring(rows);
+  const bits = ROTATION_WEEKDAY_SHORT.filter((_, i) => days[i]).join(", ");
+  const w = rows[0];
+  return `${bits} (${w.start}–${w.end})`;
 }
 
 type CreateFormState = {
@@ -301,6 +327,7 @@ export function WorkersApp() {
     shift: "",
     supervisor_id: "",
   });
+  const [rotationDaysDraft, setRotationDaysDraft] = useState<boolean[]>(() => [...EMPTY_ROTATION_DAYS]);
 
   const [inviteNotice, setInviteNotice] = useState<InviteLinkBanner | null>(null);
   const [inviteLinkCopied, setInviteLinkCopied] = useState(false);
@@ -448,6 +475,7 @@ export function WorkersApp() {
       shift: profile.shift ?? "",
       supervisor_id: profile.supervisor_id ?? "",
     });
+    setRotationDaysDraft(rotationDaysFromRecurring(recurringRowsFromApi(profile.recurring_shifts ?? [])));
   }, [profile]);
 
   /** HR fields (not roles/modules): company admin, or manager/supervisor for non-admin profiles, or lead for workers. */
@@ -662,6 +690,17 @@ export function WorkersApp() {
     const curSid = profile.supervisor_id ?? "";
     if (sid !== curSid) {
       payload.supervisor_id = sid || null;
+    }
+    const rotationSelected = rotationDaysDraft.some(Boolean);
+    if (rotationSelected && !trim(positionDraft.shift)) {
+      window.alert("Choose a shift above so the schedule knows which hours to use on rotation days.");
+      return;
+    }
+    const win = shiftWindowFromRosterKey(trim(positionDraft.shift), fullSettings.shifts ?? []);
+    const nextRotation = buildRecurringRowsForDays(rotationDaysDraft, win);
+    const prevRotation = recurringRowsFromApi(profile.recurring_shifts ?? []);
+    if (canonicalRecurringJson(prevRotation) !== canonicalRecurringJson(nextRotation)) {
+      payload.recurring_shifts = nextRotation;
     }
     if (Object.keys(payload).length === 0) return;
     setProfileBusy(true);
@@ -1678,6 +1717,54 @@ export function WorkersApp() {
                       ))}
                     </select>
                   </div>
+                  <div className="sm:col-span-2">
+                    <span className={LABEL}>Weekly rotation (schedule)</span>
+                    <p className="mt-1 text-xs text-pulse-muted">
+                      Choose weekdays for this worker&apos;s repeating pattern. Hours follow the shift above (day /
+                      afternoon / night). Fills the schedule when they have no other assignment that day.
+                    </p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {ROTATION_PRESET_BUTTONS.map((p) => (
+                        <button
+                          key={p.label}
+                          type="button"
+                          className="rounded-md border border-ds-border bg-ds-card px-2.5 py-1 text-xs font-medium text-ds-foreground hover:bg-ds-muted/30"
+                          onClick={() => setRotationDaysDraft([...p.days])}
+                        >
+                          {p.label}
+                        </button>
+                      ))}
+                      <button
+                        type="button"
+                        className="rounded-md border border-ds-border px-2.5 py-1 text-xs font-medium text-pulse-muted hover:bg-ds-muted/30"
+                        onClick={() => setRotationDaysDraft([...EMPTY_ROTATION_DAYS])}
+                      >
+                        Clear
+                      </button>
+                    </div>
+                    <div className="mt-3 flex flex-wrap gap-3">
+                      {ROTATION_WEEKDAY_SHORT.map((label, i) => (
+                        <label
+                          key={label}
+                          className="flex cursor-pointer items-center gap-1.5 text-sm text-ds-foreground"
+                        >
+                          <input
+                            type="checkbox"
+                            className={dsCheckboxClass}
+                            checked={rotationDaysDraft[i] ?? false}
+                            onChange={() =>
+                              setRotationDaysDraft((prev) => {
+                                const next = [...prev];
+                                next[i] = !next[i];
+                                return next;
+                              })
+                            }
+                          />
+                          {label}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               ) : (
                 <div className="mt-2 grid gap-2 text-sm sm:grid-cols-2">
@@ -1696,6 +1783,10 @@ export function WorkersApp() {
                   <p>
                     <span className="text-pulse-muted">Supervisor: </span>
                     {profile.supervisor_name ?? "—"}
+                  </p>
+                  <p className="sm:col-span-2">
+                    <span className="text-pulse-muted">Weekly rotation: </span>
+                    {formatRotationReadOnly(profile)}
                   </p>
                 </div>
               )}

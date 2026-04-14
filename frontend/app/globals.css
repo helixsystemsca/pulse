@@ -636,6 +636,47 @@ html.pulse-welcome-blur [data-pulse-app-shell] {
     opacity: 0.65;
   }
 
+  /** Dark: CTA reads with the dusk shell — deep teal/navy fill + aquamarine edge glow (not pastel mint). */
+  .dark .ds-btn-gradient-primary {
+    border: 1px solid color-mix(in srgb, var(--ds-success) 38%, transparent);
+    background-image:
+      linear-gradient(
+        180deg,
+        rgba(255, 255, 255, 0.14) 0%,
+        rgba(255, 255, 255, 0.05) 32%,
+        rgba(255, 255, 255, 0) 52%
+      ),
+      linear-gradient(
+        135deg,
+        color-mix(in srgb, var(--ds-success) 18%, var(--ds-surface-elevated)) 0%,
+        color-mix(in srgb, var(--ds-success) 36%, #152a32) 40%,
+        color-mix(in srgb, var(--ds-success) 28%, #0f1f26) 100%
+      );
+    color: #f1f5f9;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+    box-shadow:
+      0 0 0 1px rgba(0, 0, 0, 0.35),
+      0 4px 22px color-mix(in srgb, var(--ds-success) 22%, transparent),
+      inset 0 1px 0 rgba(255, 255, 255, 0.14),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.35);
+  }
+  .dark .ds-btn-gradient-primary:hover:not(:disabled) {
+    filter: brightness(1.06) saturate(1.05);
+    box-shadow:
+      0 0 0 1px rgba(0, 0, 0, 0.3),
+      0 6px 28px color-mix(in srgb, var(--ds-success) 32%, transparent),
+      inset 0 1px 0 rgba(255, 255, 255, 0.18),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.28);
+  }
+  .dark .ds-btn-gradient-primary:active:not(:disabled) {
+    filter: brightness(0.98);
+    box-shadow:
+      0 0 0 1px rgba(0, 0, 0, 0.4),
+      0 2px 12px color-mix(in srgb, var(--ds-success) 18%, transparent),
+      inset 0 1px 0 rgba(255, 255, 255, 0.1),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.4);
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .ds-btn-gradient-primary {
       transition: none;

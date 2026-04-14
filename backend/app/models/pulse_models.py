@@ -31,6 +31,7 @@ def _uuid() -> str:
 class PulseWorkRequestStatus(str, enum.Enum):
     open = "open"
     in_progress = "in_progress"
+    hold = "hold"
     completed = "completed"
     cancelled = "cancelled"
 

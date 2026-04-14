@@ -82,6 +82,14 @@ export type WorkerDetail = {
   supervisor_notes: string | null;
   /** Scheduling profile: full_time | regular_part_time | part_time (Pulse roster / schedule). */
   employment_type?: string | null;
+  /** Weekly rotation templates (Pulse schedule ephemeral shifts). */
+  recurring_shifts?: {
+    day_of_week: string;
+    start: string;
+    end: string;
+    role?: string | null;
+    required_certifications?: string[] | null;
+  }[];
   compliance_summary: WorkerComplianceSummary;
   work_summary: WorkerWorkSummary;
   created_at: string;

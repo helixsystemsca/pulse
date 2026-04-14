@@ -1,9 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { BlueprintElement, BlueprintState, TaskOverlay } from "./blueprint-types";
+import type { BlueprintElement, BlueprintLayer, BlueprintState, TaskOverlay } from "./blueprint-types";
 
 const DEFAULT_MAX = 50;
+
+function defaultHistoryLayers(): BlueprintLayer[] {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+    return [{ id: crypto.randomUUID(), name: "Layer 1" }];
+  }
+  return [{ id: `layer-${Date.now()}`, name: "Layer 1" }];
+}
 
 /** Shallow snapshot of blueprint elements for undo stacks (copy array-valued fields). */
 function cloneElementsForHistory(elements: BlueprintElement[]): BlueprintElement[] {
@@ -23,15 +30,33 @@ function cloneTasksForHistory(tasks: TaskOverlay[]): TaskOverlay[] {
   }));
 }
 
+function cloneLayersForHistory(layers: BlueprintLayer[]): BlueprintLayer[] {
+  return layers.map((L) => ({ ...L }));
+}
+
 function cloneBlueprintState(s: BlueprintState): BlueprintState {
   return {
     elements: cloneElementsForHistory(s.elements),
     tasks: cloneTasksForHistory(s.tasks),
+    layers: cloneLayersForHistory(s.layers),
   };
 }
 
+function layersEqual(a: BlueprintLayer[], b: BlueprintLayer[]): boolean {
+  if (a === b) return true;
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) {
+    if (a[i]!.id !== b[i]!.id || a[i]!.name !== b[i]!.name) return false;
+  }
+  return true;
+}
+
 function blueprintDataUnchanged(prev: BlueprintState, next: BlueprintState): boolean {
-  return prev.elements === next.elements && prev.tasks === next.tasks;
+  return (
+    prev.elements === next.elements &&
+    prev.tasks === next.tasks &&
+    layersEqual(prev.layers, next.layers)
+  );
 }
 
 export type UseBlueprintHistoryOptions = {
@@ -47,7 +72,7 @@ export type UseBlueprintHistoryOptions = {
 export function useBlueprintHistory(options?: UseBlueprintHistoryOptions) {
   const max = options?.maxDepth ?? DEFAULT_MAX;
   const [present, setPresent] = useState<BlueprintState>(
-    () => options?.initial ?? { elements: [], tasks: [] },
+    () => options?.initial ?? { elements: [], tasks: [], layers: defaultHistoryLayers() },
   );
 
   const pastRef = useRef<BlueprintState[]>([]);

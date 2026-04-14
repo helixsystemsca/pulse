@@ -4,7 +4,14 @@
  */
 import { normalizeApiBaseUrl } from "@/lib/api-base-url";
 import { getImpersonationOverlayAccessToken, setImpersonationOverlayAccessToken } from "@/lib/impersonation-overlay-token";
-import { readSession, writeApiSession, type UserOut } from "@/lib/pulse-session";
+import { navigateToPulseLogin } from "@/lib/pulse-app";
+import {
+  clearSession,
+  isPulsePublicPath,
+  readSession,
+  writeApiSession,
+  type UserOut,
+} from "@/lib/pulse-session";
 import { applyServerTimeFromUserOut } from "@/lib/serverTime";
 
 export { setImpersonationOverlayAccessToken };
@@ -43,6 +50,40 @@ export function getApiBaseUrl(): string {
 
 export function isApiMode(): boolean {
   return Boolean(getApiBaseUrl()) && process.env.NEXT_PUBLIC_USE_MOCK_AUTH !== "true";
+}
+
+function pathSkips401SessionRedirect(apiPath: string): boolean {
+  return apiPath.toLowerCase().includes("/auth/login");
+}
+
+/**
+ * When an API call returns 401 with a bearer we sent: clear impersonation overlay (tenant preview)
+ * or end the Pulse session and go to sign-in so the UI cannot stay “logged in” with a dead token.
+ */
+export function handleSessionExpiredFromApiResponse(
+  requestUrl: string,
+  responseStatus: number,
+  hadAuthorizationBearer: boolean,
+): void {
+  if (responseStatus !== 401 || !hadAuthorizationBearer) return;
+  if (typeof window === "undefined") return;
+  const apiPath = pathOnlyFromUrl(requestUrl);
+  if (pathSkips401SessionRedirect(apiPath)) return;
+  if (isPulsePublicPath(window.location.pathname)) return;
+
+  const overlay = getImpersonationOverlayAccessToken();
+  const systemOrMe =
+    apiPath.includes("/api/system") ||
+    apiPath === "/api/v1/auth/me" ||
+    apiPath.endsWith("/api/v1/auth/me");
+
+  if (overlay && !systemOrMe) {
+    setImpersonationOverlayAccessToken(null);
+    return;
+  }
+
+  clearSession();
+  navigateToPulseLogin();
 }
 
 export type ApiErrorBody = {
@@ -84,6 +125,7 @@ export async function apiFetch<T>(
     }
   }
   if (!res.ok) {
+    handleSessionExpiredFromApiResponse(url, res.status, Boolean(bearer));
     const err = new Error(`API ${res.status}`) as Error & { status: number; body: unknown; requestUrl: string };
     err.status = res.status;
     err.body = data;
@@ -120,6 +162,7 @@ export async function apiPostFormData<T>(path: string, formData: FormData): Prom
     }
   }
   if (!res.ok) {
+    handleSessionExpiredFromApiResponse(url, res.status, Boolean(bearer));
     const err = new Error(`API ${res.status}`) as Error & { status: number; body: unknown; requestUrl: string };
     err.status = res.status;
     err.body = data;
@@ -151,7 +194,12 @@ export async function refreshPulseUserFromServer(): Promise<void> {
   const meRes = await fetch(`${base}/api/v1/auth/me`, {
     headers: { Authorization: `Bearer ${s.access_token}` },
   });
-  if (!meRes.ok) return;
+  if (!meRes.ok) {
+    if (meRes.status === 401) {
+      handleSessionExpiredFromApiResponse(`${base}/api/v1/auth/me`, 401, Boolean(s.access_token));
+    }
+    return;
+  }
   const user = (await meRes.json()) as UserOut;
   applyServerTimeFromUserOut(user);
   writeApiSession(s.access_token, user, s.remember);

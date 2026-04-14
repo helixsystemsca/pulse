@@ -11,7 +11,10 @@ export function permissionRequiredForTenantNavHref(href: string): string | null 
   if (href === "/schedule") return "module.jobs.read";
   if (href === "/monitoring") return "module.notifications.read";
   if (href === "/projects" || href.startsWith("/projects/")) return "module.analytics.read";
-  if (href === "/dashboard/maintenance/work-orders" || href.startsWith("/dashboard/maintenance")) {
+  if (href === "/dashboard/maintenance" || href.startsWith("/dashboard/maintenance")) {
+    return "module.maintenance.read";
+  }
+  if (href === "/dashboard/procedures" || href.startsWith("/dashboard/procedures")) {
     return "module.maintenance.read";
   }
   if (href === "/dashboard/workers" || href.startsWith("/dashboard/workers")) return "module.jobs.read";

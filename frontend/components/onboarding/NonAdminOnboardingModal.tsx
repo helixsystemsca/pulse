@@ -17,19 +17,19 @@ function slidesForRole(role: string): Slide[] {
       {
         title: "View your tasks",
         body: "See assigned work orders and what needs attention next.",
-        tryHref: "/dashboard/maintenance/work-orders",
+        tryHref: "/dashboard/maintenance",
         tryLabel: "Try it",
       },
       {
         title: "Update status",
         body: "Move work forward from open to complete as you finish the job.",
-        tryHref: "/dashboard/maintenance/work-orders",
+        tryHref: "/dashboard/maintenance",
         tryLabel: "Try it",
       },
       {
         title: "Add photos & notes",
         body: "Capture proof and details on the work order so the team stays aligned.",
-        tryHref: "/dashboard/maintenance/work-orders",
+        tryHref: "/dashboard/maintenance",
         tryLabel: "Try it",
       },
     ];
@@ -38,7 +38,7 @@ function slidesForRole(role: string): Slide[] {
     {
       title: "Work orders",
       body: "Create and track maintenance work in one place.",
-      tryHref: "/dashboard/maintenance/work-orders",
+      tryHref: "/dashboard/maintenance",
       tryLabel: "Try it",
     },
     {

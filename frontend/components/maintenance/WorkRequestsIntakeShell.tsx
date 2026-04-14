@@ -38,11 +38,11 @@ function WorkRequestsIntakeInner() {
   return (
     <div className="space-y-4">
       <p className="text-sm text-pulse-muted">
-        Submit and triage intake requests here. Approved items typically become work orders on the{" "}
-        <Link href="/dashboard/maintenance/work-orders" className="font-semibold text-pulse-accent hover:underline">
-          Work orders
-        </Link>{" "}
-        tab.
+        Submit and triage intake requests here. Track everything in the{" "}
+        <Link href="/dashboard/maintenance" className="font-semibold text-pulse-accent hover:underline">
+          Work request hub
+        </Link>
+        .
       </p>
       <WorkRequestsApp />
     </div>

@@ -9,7 +9,7 @@ from app.models.pulse_models import PulseWorkRequest, PulseWorkRequestPriority, 
 
 # Re-export for routers that need the raw defaults structure.
 DEFAULT_WR_SETTINGS: dict[str, Any] = {
-    "statuses": {"open": True, "in_progress": True, "completed": True, "cancelled": True},
+    "statuses": {"open": True, "in_progress": True, "hold": True, "completed": True, "cancelled": True},
     "priority_colors": {
         "low": "#64748b",
         "medium": "#3182ce",
@@ -42,7 +42,14 @@ def display_status(wr: PulseWorkRequest, now: Optional[datetime] = None) -> str:
         return "completed"
     if st == PulseWorkRequestStatus.cancelled:
         return "cancelled"
-    if wr.due_date and wr.due_date < now and st != PulseWorkRequestStatus.completed:
+    if st == PulseWorkRequestStatus.hold:
+        return "hold"
+    if (
+        wr.due_date
+        and wr.due_date < now
+        and st != PulseWorkRequestStatus.completed
+        and st != PulseWorkRequestStatus.hold
+    ):
         return "overdue"
     return st.value
 

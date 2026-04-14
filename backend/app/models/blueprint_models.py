@@ -36,6 +36,8 @@ class Blueprint(Base):
     )
     # JSON array of task overlays (id, title, mode, content, linked_element_ids)
     tasks_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    # JSON array of {id, name} — top-first paint order (first entry draws on top)
+    layers_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
     elements: Mapped[list["BlueprintElement"]] = relationship(
         back_populates="blueprint",
@@ -83,5 +85,6 @@ class BlueprintElement(Base):
     connection_to_id: Mapped[Optional[str]] = mapped_column(UUID(as_uuid=False), nullable=True)
     connection_style: Mapped[Optional[str]] = mapped_column(String(16), nullable=True)
     corner_radius: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    layer_id: Mapped[Optional[str]] = mapped_column(String(36), nullable=True)
 
     blueprint: Mapped["Blueprint"] = relationship(back_populates="elements")

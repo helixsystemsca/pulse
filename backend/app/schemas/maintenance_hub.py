@@ -8,14 +8,38 @@ from typing import Any, Literal, Optional
 from pydantic import BaseModel, Field, field_validator
 
 WorkOrderType = Literal["preventative", "issue", "request"]
-WorkOrderStatusApi = Literal["open", "in_progress", "completed", "cancelled"]
+WorkOrderStatusApi = Literal["open", "in_progress", "hold", "completed", "cancelled"]
+
+
+class ProcedureStepOut(BaseModel):
+    text: str
+    image_url: Optional[str] = None
+
+
+def normalize_procedure_steps(v: Any) -> list[ProcedureStepOut]:
+    if v is None:
+        return []
+    if not isinstance(v, list):
+        return []
+    out: list[ProcedureStepOut] = []
+    for item in v:
+        if isinstance(item, str):
+            out.append(ProcedureStepOut(text=item.strip(), image_url=None))
+        elif isinstance(item, dict):
+            t = str(item.get("text") or "").strip()
+            img = item.get("image_url")
+            url = str(img).strip() if img else None
+            out.append(ProcedureStepOut(text=t, image_url=url or None))
+        else:
+            out.append(ProcedureStepOut(text=str(item).strip(), image_url=None))
+    return out
 
 
 class ProcedureOut(BaseModel):
     id: str
     company_id: str
     title: str
-    steps: list[str]
+    steps: list[ProcedureStepOut]
     created_at: datetime
     updated_at: datetime
 
@@ -23,22 +47,27 @@ class ProcedureOut(BaseModel):
 
     @field_validator("steps", mode="before")
     @classmethod
-    def _steps(cls, v: Any) -> list[str]:
-        if v is None:
-            return []
-        if isinstance(v, list):
-            return [str(x) for x in v]
-        return []
+    def _steps(cls, v: Any) -> list[ProcedureStepOut]:
+        return normalize_procedure_steps(v)
+
+
+class ProcedureStepIn(BaseModel):
+    text: str = Field(default="", max_length=8000)
+    image_url: Optional[str] = Field(None, max_length=2048)
 
 
 class ProcedureCreate(BaseModel):
     title: str = Field(..., min_length=1, max_length=255)
-    steps: list[str] = Field(default_factory=list)
+    steps: list[ProcedureStepIn] = Field(default_factory=list)
 
 
 class ProcedureUpdate(BaseModel):
     title: Optional[str] = Field(None, min_length=1, max_length=255)
-    steps: Optional[list[str]] = None
+    steps: Optional[list[ProcedureStepIn]] = None
+
+
+class ProcedureStepImageOut(BaseModel):
+    image_url: str
 
 
 class WorkOrderOut(BaseModel):

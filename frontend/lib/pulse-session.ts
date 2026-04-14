@@ -4,10 +4,22 @@
  */
 
 import { normalizeApiBaseUrl } from "@/lib/api-base-url";
-import { getImpersonationOverlayAccessToken } from "@/lib/impersonation-overlay-token";
+import {
+  getImpersonationOverlayAccessToken,
+  setImpersonationOverlayAccessToken,
+} from "@/lib/impersonation-overlay-token";
+import { navigateToPulseLogin } from "@/lib/pulse-app";
 import { applyServerTimeFromUserOut } from "@/lib/serverTime";
 
 export const PULSE_AUTH_STORAGE_KEY = "pulse_auth_v1";
+
+const PUBLIC_PATH_PREFIXES = ["/login", "/invite", "/reset-password"] as const;
+
+/** Routes where we do not redirect to sign-in when the stored session is cleared (login, invite, password reset). */
+export function isPulsePublicPath(pathname: string | null): boolean {
+  if (!pathname) return true;
+  return PUBLIC_PATH_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`));
+}
 
 /** Wall-clock session cap when JWT `exp` is missing (seconds). Matches default backend `ACCESS_TOKEN_EXPIRE_MINUTES`. */
 const SESSION_FALLBACK_TTL_SEC = 62 * 60;
@@ -136,18 +148,25 @@ export function readSession(): PulseAuthSession | null {
     if (!raw) return null;
     const data = JSON.parse(raw) as PulseAuthSession;
     if (typeof data.exp !== "number" || data.exp * 1000 <= Date.now()) {
-      clearSessionQuiet();
+      clearSession();
+      if (!isPulsePublicPath(window.location.pathname)) {
+        navigateToPulseLogin();
+      }
       return null;
     }
     return data;
   } catch {
-    clearSessionQuiet();
+    clearSession();
+    if (!isPulsePublicPath(window.location.pathname)) {
+      navigateToPulseLogin();
+    }
     return null;
   }
 }
 
 function clearSessionQuiet() {
   if (typeof window === "undefined") return;
+  setImpersonationOverlayAccessToken(null);
   localStorage.removeItem(PULSE_AUTH_STORAGE_KEY);
   document.cookie = "pulse_session=; path=/; max-age=0; SameSite=Lax";
   try {

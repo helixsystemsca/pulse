@@ -5,12 +5,14 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Annotated, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 from sqlalchemy import and_, delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from starlette.responses import Response
 
 from app.api.deps import require_tenant_user
 from app.core.database import get_db
+from app.core.pulse_storage import read_procedure_step_image_bytes, write_procedure_step_image_bytes
 from app.models.domain import User, Zone
 from app.models.pulse_models import (
     PulsePreventativeRule,
@@ -27,6 +29,7 @@ from app.schemas.maintenance_hub import (
     PreventativeRuleUpdate,
     ProcedureCreate,
     ProcedureOut,
+    ProcedureStepImageOut,
     ProcedureUpdate,
     WorkOrderCreate,
     WorkOrderDetailOut,
@@ -34,9 +37,21 @@ from app.schemas.maintenance_hub import (
     WorkOrderUpdate,
     WorkOrderStatusApi,
     WorkOrderType,
+    normalize_procedure_steps,
 )
 
 router = APIRouter(prefix="/cmms", tags=["maintenance-hub"])
+
+_MAX_STEP_IMAGE_BYTES = 5 * 1024 * 1024
+_STEP_IMAGE_CT_EXT = {
+    "image/jpeg": ".jpg",
+    "image/png": ".png",
+    "image/webp": ".webp",
+}
+
+
+def _procedure_step_image_url(procedure_id: str, step_index: int) -> str:
+    return f"/api/v1/cmms/procedures/{procedure_id}/steps/{step_index}/image"
 
 
 async def _company_id(user: User = Depends(require_tenant_user)) -> str:
@@ -68,7 +83,7 @@ def _apply_asset_id(wr: PulseWorkRequest, asset_id: Optional[str]) -> None:
 
 def _wo_status_str(s: PulseWorkRequestStatus) -> WorkOrderStatusApi:
     v = s.value if hasattr(s, "value") else str(s)
-    if v in ("open", "in_progress", "completed", "cancelled"):
+    if v in ("open", "in_progress", "hold", "completed", "cancelled"):
         return v  # type: ignore[return-value]
     return "open"
 
@@ -272,7 +287,8 @@ async def list_procedures(db: Db, cid: CompanyId) -> list[ProcedureOut]:
 
 @router.post("/procedures", response_model=ProcedureOut, status_code=status.HTTP_201_CREATED)
 async def create_procedure(db: Db, cid: CompanyId, body: ProcedureCreate) -> ProcedureOut:
-    row = PulseProcedure(company_id=cid, title=body.title.strip(), steps=list(body.steps))
+    payload = [{"text": (s.text or "").strip(), "image_url": s.image_url} for s in body.steps]
+    row = PulseProcedure(company_id=cid, title=body.title.strip(), steps=payload)
     db.add(row)
     await db.commit()
     await db.refresh(row)
@@ -297,11 +313,71 @@ async def update_procedure(
     if body.title is not None:
         row.title = body.title.strip()
     if body.steps is not None:
-        row.steps = list(body.steps)
+        row.steps = [{"text": (s.text or "").strip(), "image_url": s.image_url} for s in body.steps]
     row.updated_at = datetime.now(timezone.utc)
     await db.commit()
     await db.refresh(row)
     return ProcedureOut.model_validate(row)
+
+
+@router.get("/procedures/{procedure_id}/steps/{step_index}/image")
+async def get_procedure_step_image(
+    procedure_id: str,
+    step_index: int,
+    db: Db,
+    cid: CompanyId,
+) -> Response:
+    row = await db.get(PulseProcedure, procedure_id)
+    if not row or row.company_id != cid:
+        raise HTTPException(status_code=404, detail="Not found")
+    blob = await read_procedure_step_image_bytes(cid, procedure_id, step_index)
+    if not blob:
+        raise HTTPException(status_code=404, detail="No image for this step")
+    data, media_type = blob
+    return Response(content=data, media_type=media_type)
+
+
+@router.post(
+    "/procedures/{procedure_id}/steps/{step_index}/image",
+    response_model=ProcedureStepImageOut,
+)
+async def upload_procedure_step_image(
+    procedure_id: str,
+    step_index: int,
+    db: Db,
+    cid: CompanyId,
+    file: UploadFile = File(...),
+) -> ProcedureStepImageOut:
+    if step_index < 0 or step_index > 200:
+        raise HTTPException(status_code=400, detail="Invalid step index")
+    row = await db.get(PulseProcedure, procedure_id)
+    if not row or row.company_id != cid:
+        raise HTTPException(status_code=404, detail="Not found")
+    steps_list = normalize_procedure_steps(row.steps)
+    if step_index >= len(steps_list):
+        raise HTTPException(
+            status_code=400,
+            detail="Step index out of range — save procedure steps first",
+        )
+    ct = (file.content_type or "").split(";")[0].strip().lower()
+    if ct not in _STEP_IMAGE_CT_EXT:
+        raise HTTPException(status_code=400, detail="Upload a JPEG, PNG, or WebP image (max 5MB)")
+    raw = await file.read()
+    if len(raw) > _MAX_STEP_IMAGE_BYTES:
+        raise HTTPException(status_code=400, detail="Image too large (max 5MB)")
+    ext = _STEP_IMAGE_CT_EXT[ct]
+    try:
+        await write_procedure_step_image_bytes(cid, procedure_id, step_index, ext, raw, ct)
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e)) from e
+    url = _procedure_step_image_url(procedure_id, step_index)
+    as_dict = [s.model_dump() for s in steps_list]
+    as_dict[step_index]["image_url"] = url
+    row.steps = as_dict
+    row.updated_at = datetime.now(timezone.utc)
+    await db.commit()
+    await db.refresh(row)
+    return ProcedureStepImageOut(image_url=url)
 
 
 @router.delete("/procedures/{procedure_id}", status_code=status.HTTP_204_NO_CONTENT)

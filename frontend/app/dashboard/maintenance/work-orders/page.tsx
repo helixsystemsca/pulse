@@ -1,10 +1,6 @@
-import { WorkOrdersMaintenanceApp } from "@/components/maintenance/WorkOrdersMaintenanceApp";
-import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 
-export const metadata: Metadata = {
-  title: { absolute: "Work orders | Maintenance | Pulse" },
-};
-
-export default function MaintenanceWorkOrdersPage() {
-  return <WorkOrdersMaintenanceApp />;
+/** Legacy URL — work orders are listed in the unified hub. */
+export default function LegacyMaintenanceWorkOrdersPage() {
+  redirect("/dashboard/maintenance");
 }

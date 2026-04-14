@@ -122,6 +122,11 @@ class ZoneCreateIn(BaseModel):
     meta: Optional[dict[str, Any]] = None
 
 
+class ZoneUpdateIn(BaseModel):
+    name: Optional[str] = Field(None, min_length=1, max_length=255)
+    description: Optional[str] = None
+
+
 class ZoneOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

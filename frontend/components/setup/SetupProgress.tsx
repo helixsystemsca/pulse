@@ -1,12 +1,40 @@
 "use client";
 
 import { AlertTriangle, Check, Circle } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
 
 type Phase = "show" | "pulse" | "exit" | "gone";
 
 const PULSE_MS = 980;
 const EXIT_MS = 560;
+
+/** Avoid replaying the 100% celebration when `SetupApp` remounts (e.g. `/zones` ↔ `/devices` tab navigation). */
+const CELEBRATED_KEY = "pulse_setup_progress_celebrated_v1";
+
+function readCelebrated(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    return sessionStorage.getItem(CELEBRATED_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function writeCelebrated(): void {
+  try {
+    sessionStorage.setItem(CELEBRATED_KEY, "1");
+  } catch {
+    /* ignore */
+  }
+}
+
+function clearCelebrated(): void {
+  try {
+    sessionStorage.removeItem(CELEBRATED_KEY);
+  } catch {
+    /* ignore */
+  }
+}
 
 export function SetupProgress({
   items,
@@ -24,20 +52,33 @@ export function SetupProgress({
 
   const [phase, setPhase] = useState<Phase>("show");
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!shouldCelebrate) {
       setPhase("show");
+      clearCelebrated();
       return;
     }
+    if (readCelebrated()) {
+      setPhase("gone");
+    }
+  }, [shouldCelebrate]);
+
+  useEffect(() => {
+    if (!shouldCelebrate) return;
+    if (readCelebrated()) return;
 
     let alive = true;
-    const timeouts: ReturnType<typeof setTimeout>[] = [];
+    /** Browser timer ids — avoid `ReturnType<typeof setTimeout>` (Node `Timeout` vs `number`). */
+    const timeouts: number[] = [];
 
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (reduced) {
       timeouts.push(
         window.setTimeout(() => {
-          if (alive) setPhase("gone");
+          if (alive) {
+            writeCelebrated();
+            setPhase("gone");
+          }
         }, 450),
       );
     } else {
@@ -49,14 +90,17 @@ export function SetupProgress({
       );
       timeouts.push(
         window.setTimeout(() => {
-          if (alive) setPhase("gone");
+          if (alive) {
+            writeCelebrated();
+            setPhase("gone");
+          }
         }, PULSE_MS + EXIT_MS),
       );
     }
 
     return () => {
       alive = false;
-      for (const t of timeouts) clearTimeout(t);
+      for (const id of timeouts) window.clearTimeout(id);
     };
   }, [shouldCelebrate]);
 

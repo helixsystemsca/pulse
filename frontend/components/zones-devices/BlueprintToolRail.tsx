@@ -6,6 +6,7 @@ import {
   DoorClosed,
   LayoutGrid,
   MousePointer2,
+  Pen,
   PencilLine,
   Pentagon,
   Radio,
@@ -29,6 +30,7 @@ const RAIL_ITEMS: RailItem[] = [
   { kind: "tool", tool: "place-door", label: "Door", Icon: DoorClosed },
   { kind: "tool", tool: "place-device", label: "Place device", Icon: Radio },
   { kind: "tool", tool: "free-draw", label: "Free draw", Icon: PencilLine },
+  { kind: "tool", tool: "draw-pen", label: "Pen", Icon: Pen },
   { kind: "symbols", label: "Symbols", Icon: Shapes },
 ];
 

@@ -111,6 +111,8 @@ class WorkerDetailOut(BaseModel):
     supervisor_notes: Optional[str] = None
     #: From `pulse_worker_profiles.scheduling` — same values exposed on Pulse schedule workers.
     employment_type: Optional[str] = None
+    #: Weekly rotation templates for Pulse schedule (`pulse_worker_profiles.scheduling`).
+    recurring_shifts: list[dict[str, Any]] = Field(default_factory=list)
     compliance_summary: WorkerComplianceSummaryOut
     work_summary: WorkerWorkSummaryOut
     created_at: datetime
@@ -169,6 +171,7 @@ class WorkerPatchIn(BaseModel):
     profile_notes: Optional[str] = None
     supervisor_notes: Optional[str] = None
     employment_type: Optional[str] = None
+    recurring_shifts: Optional[list[dict[str, Any]]] = None
     certifications: Optional[list[WorkerCertificationIn]] = None
     skills: Optional[list[WorkerSkillIn]] = None
     training: Optional[list[WorkerTrainingIn]] = None

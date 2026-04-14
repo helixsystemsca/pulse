@@ -14,6 +14,7 @@ import {
   Loader2,
   Minus,
   MoreVertical,
+  Pause,
   Search,
   Settings,
 } from "lucide-react";
@@ -79,6 +80,8 @@ function statusBadgeClass(display: string): string {
       return "bg-[#fdebeb] text-[#c53030] ring-1 ring-red-200/80 dark:bg-red-600 dark:text-white dark:ring-red-500/45";
     case "in_progress":
       return "bg-[#ebf8ff] text-[#3182ce] ring-1 ring-blue-200/80 dark:bg-blue-600 dark:text-white dark:ring-blue-500/40";
+    case "hold":
+      return "bg-amber-50 text-amber-900 ring-1 ring-amber-200/80 dark:bg-amber-700 dark:text-white dark:ring-amber-500/40";
     case "completed":
       return "bg-[#e6fffa] text-[#38a169] ring-1 ring-emerald-200/70 dark:bg-emerald-600 dark:text-white dark:ring-emerald-500/40";
     case "cancelled":
@@ -105,6 +108,7 @@ function StatusIcon({ display }: { display: string }) {
   if (display === "overdue") return <AlertCircle className="h-3.5 w-3.5 shrink-0" aria-hidden />;
   if (display === "completed") return <CheckCircle2 className="h-3.5 w-3.5 shrink-0" aria-hidden />;
   if (display === "in_progress") return <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" aria-hidden />;
+  if (display === "hold") return <Pause className="h-3.5 w-3.5 shrink-0" aria-hidden />;
   return <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-current opacity-80" aria-hidden />;
 }
 
@@ -118,7 +122,15 @@ function PriorityIcon({ p }: { p: string }) {
 const SETTINGS_TABS = ["Statuses", "Priorities & SLA", "Assignment", "Notifications"] as const;
 type SettingsTab = (typeof SETTINGS_TABS)[number];
 
-export function WorkRequestsApp() {
+export type WorkRequestsAppProps = {
+  /** When true, list is driven by hub category + status chips from the maintenance hub URL. */
+  hubMode?: boolean;
+  initialHubCategory?: string;
+  initialStatusFilter?: string;
+};
+
+export function WorkRequestsApp(props?: WorkRequestsAppProps) {
+  const { hubMode = false, initialHubCategory = "", initialStatusFilter = "" } = props ?? {};
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -136,7 +148,8 @@ export function WorkRequestsApp() {
 
   const [q, setQ] = useState("");
   const [qDebounced, setQDebounced] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState(hubMode ? initialStatusFilter : "");
+  const [hubCategoryFilter, setHubCategoryFilter] = useState(hubMode ? initialHubCategory : "");
   const [priorityFilter, setPriorityFilter] = useState("");
   const [zoneFilter, setZoneFilter] = useState("");
   const [dateFrom, setDateFrom] = useState("");
@@ -245,6 +258,13 @@ export function WorkRequestsApp() {
   }, [dataEnabled, wrFromUrl]);
 
   useEffect(() => {
+    if (!hubMode) return;
+    setHubCategoryFilter(initialHubCategory ?? "");
+    setStatusFilter(initialStatusFilter ?? "");
+    setPage(0);
+  }, [hubMode, initialHubCategory, initialStatusFilter]);
+
+  useEffect(() => {
     if (!dataEnabled || searchParams.get("create") !== "1") return;
     const sig = searchParams.toString();
     if (lastCreateQuerySig.current === sig) return;
@@ -302,6 +322,7 @@ export function WorkRequestsApp() {
         status: statusFilter || undefined,
         priority: priorityFilter || undefined,
         zone_id: zoneFilter || undefined,
+        hub_category: hubMode && hubCategoryFilter ? hubCategoryFilter : undefined,
         due_after,
         due_before,
         limit: pageSize,
@@ -328,6 +349,8 @@ export function WorkRequestsApp() {
     dateFrom,
     dateTo,
     page,
+    hubMode,
+    hubCategoryFilter,
   ]);
 
   useEffect(() => {
@@ -392,12 +415,18 @@ export function WorkRequestsApp() {
 
   function clearFilters() {
     setQ("");
-    setStatusFilter("");
     setPriorityFilter("");
     setZoneFilter("");
     setDateFrom("");
     setDateTo("");
     setPage(0);
+    if (hubMode) {
+      setStatusFilter(initialStatusFilter ?? "");
+      setHubCategoryFilter(initialHubCategory ?? "");
+    } else {
+      setStatusFilter("");
+      setHubCategoryFilter("");
+    }
   }
 
   function applyCriticalView() {
@@ -497,7 +526,7 @@ export function WorkRequestsApp() {
 
   const defaultSettings = useMemo(
     () => ({
-      statuses: { open: true, in_progress: true, completed: true, cancelled: true },
+      statuses: { open: true, in_progress: true, hold: true, completed: true, cancelled: true },
       priority_colors: { low: "#64748b", medium: "#3182ce", high: "#dd6b20", critical: "#c53030" },
       sla_hours: { critical: 24, high: 48, medium: 72, low: 168 },
       assignment_rules: { default_by: "asset" },
@@ -536,7 +565,11 @@ export function WorkRequestsApp() {
     <div className="space-y-6">
       <PageHeader
         title="Work Requests"
-        description="Manage and monitor maintenance tasks across all zones."
+        description={
+          hubMode
+            ? "Triaged requests and work orders for your facility. Use the hub chips above to narrow by category and status ID."
+            : "Manage and monitor maintenance tasks across all zones."
+        }
         icon={ClipboardList}
         actions={
           <>
@@ -607,13 +640,22 @@ export function WorkRequestsApp() {
                 className="rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2 text-sm font-medium text-pulse-navy outline-none focus:border-pulse-accent focus:ring-2 focus:ring-pulse-accent/25 dark:border-ds-border dark:bg-ds-secondary dark:text-gray-100"
                 value={statusFilter}
                 onChange={(e) => {
-                  setStatusFilter(e.target.value);
+                  const v = e.target.value;
+                  setStatusFilter(v);
                   setPage(0);
+                  if (hubMode) {
+                    const sp = new URLSearchParams(searchParams.toString());
+                    if (v) sp.set("status", v);
+                    else sp.delete("status");
+                    const nq = sp.toString();
+                    router.replace(nq ? `${pathname}?${nq}` : pathname, { scroll: false });
+                  }
                 }}
               >
                 <option value="">Status</option>
                 <option value="open">Open</option>
                 <option value="in_progress">In progress</option>
+                <option value="hold">Hold</option>
                 <option value="completed">Completed</option>
                 <option value="cancelled">Cancelled</option>
                 <option value="overdue">Overdue</option>
@@ -786,6 +828,20 @@ export function WorkRequestsApp() {
                                   onClick={() => void quickStatus(row.id, "in_progress")}
                                 >
                                   Mark in progress
+                                </button>
+                                <button
+                                  type="button"
+                                  className="block w-full px-3 py-2 text-left text-sm text-pulse-navy hover:bg-slate-50 dark:text-gray-100 dark:hover:bg-ds-interactive-hover"
+                                  onClick={() => void quickStatus(row.id, "hold")}
+                                >
+                                  Mark on hold
+                                </button>
+                                <button
+                                  type="button"
+                                  className="block w-full px-3 py-2 text-left text-sm text-pulse-navy hover:bg-slate-50 dark:text-gray-100 dark:hover:bg-ds-interactive-hover"
+                                  onClick={() => void quickStatus(row.id, "open")}
+                                >
+                                  Mark open
                                 </button>
                                 <button
                                   type="button"
@@ -1268,7 +1324,7 @@ export function WorkRequestsApp() {
 
             {settingsTab === "Statuses" ? (
               <div className="space-y-3">
-                {(["open", "in_progress", "completed", "cancelled"] as const).map((k) => (
+                {(["open", "in_progress", "hold", "completed", "cancelled"] as const).map((k) => (
                   <label key={k} className="flex items-center justify-between gap-3 rounded-lg border border-slate-200/80 bg-white px-3 py-2 dark:border-ds-border dark:bg-ds-secondary">
                     <span className="text-sm font-medium capitalize text-pulse-navy">{k.replace(/_/g, " ")}</span>
                     <input

@@ -24,7 +24,7 @@ export function ServerTimeSync() {
         const user = await apiFetch<UserOut>("/api/v1/auth/me");
         if (!cancelled) applyServerTimeFromUserOut(user);
       } catch {
-        /* 401 / network — offset unchanged */
+        /* 401 clears session + redirects via apiFetch; network — offset unchanged */
       }
     };
 

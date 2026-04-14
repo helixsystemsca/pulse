@@ -107,7 +107,7 @@ export async function patchOnboarding(body: OnboardingPatchBody): Promise<Onboar
 
 /** Fallback when API href is unavailable (older servers). */
 export const ONBOARDING_STEP_HREF: Record<string, string> = {
-  create_work_order: "/dashboard/maintenance/work-orders",
+  create_work_order: "/dashboard/maintenance",
   add_equipment: "/equipment",
   invite_team: "/dashboard/workers",
   customize_workflow: "/dashboard/workers",

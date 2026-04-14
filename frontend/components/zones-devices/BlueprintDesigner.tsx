@@ -12,6 +12,8 @@ import { useModuleSettings } from "@/providers/ModuleSettingsProvider";
 import { ModuleSettingsGear } from "@/components/module-settings/ModuleSettingsGear";
 import { emitOnboardingMaybeUpdated } from "@/lib/onboarding-events";
 import { freehandOptionsFromSlider, processFreehandPath } from "@/lib/blueprint-freehand-path";
+import { flattenPenDraftToClosedPath, type PenDraftAnchor } from "@/lib/blueprint-pen-path";
+import { mergeClosedShapesUnion } from "@/lib/blueprint-shape-merge";
 import { mergeZonesUnion } from "@/lib/blueprint-zone-union";
 import {
   blueprintConnectionPairKey,
@@ -33,17 +35,29 @@ import {
   resolveBlueprintHitToSelectionId,
   syncBlueprintGroupBounds,
 } from "@/lib/blueprint-groups";
-import { unionBlueprintElementsBounds } from "@/lib/blueprint-layout";
+import {
+  blueprintPaintZIndices,
+  parseApiBlueprintLayers,
+  unionBlueprintElementsBounds,
+} from "@/lib/blueprint-layout";
 import { bpDuration, bpEase, bpTransition } from "@/lib/motion-presets";
-import type { BlueprintDesignerTool, BlueprintElement, ConnectionStyle, TaskOverlay } from "./blueprint-types";
+import type {
+  BlueprintDesignerTool,
+  BlueprintElement,
+  BlueprintLayer,
+  ConnectionStyle,
+  TaskOverlay,
+} from "./blueprint-types";
 export type {
   BlueprintElement,
+  BlueprintLayer,
   BlueprintState,
   BlueprintHistoryState,
   ConnectionStyle,
   TaskOverlay,
 } from "./blueprint-types";
 import { BlueprintSymbolPanel } from "./BlueprintSymbolPanel";
+import { BlueprintLayersPanel } from "./BlueprintLayersPanel";
 import { BlueprintTasksPanel } from "./BlueprintTasksPanel";
 import { BlueprintToolRail } from "./BlueprintToolRail";
 import type { SymbolLibraryId } from "./blueprint-symbols-shared";
@@ -78,6 +92,7 @@ type ApiElement = {
   connection_to?: string | null;
   connection_style?: string | null;
   corner_radius?: number | null;
+  layer_id?: string | null;
 };
 
 type ApiTask = {
@@ -95,6 +110,7 @@ type BlueprintDetail = {
   updated_at: string;
   elements: ApiElement[];
   tasks?: ApiTask[] | null;
+  layers?: unknown;
 };
 
 function mapApiTasks(raw: ApiTask[] | undefined | null): TaskOverlay[] {
@@ -698,6 +714,7 @@ const NUDGE_WORLD = 8;
 const UNDO_HISTORY_MAX = 50;
 
 const POLY_CLOSE_PX = 14;
+const PEN_DRAG_CURVE_PX = 8;
 const POLY_HANDLE_R = 7;
 const ANNOT_RECT_FILL = "rgba(148, 197, 255, 0.06)";
 const ANNOT_RECT_STROKE = "rgba(148, 163, 184, 0.42)";
@@ -866,10 +883,11 @@ function mapApiElement(e: ApiElement): BlueprintElement {
       e.type === "rectangle" && e.corner_radius != null && Number.isFinite(Number(e.corner_radius))
         ? Number(e.corner_radius)
         : undefined,
+    layer_id: e.layer_id?.trim() || undefined,
   };
 }
 
-function toApiPayload(elements: BlueprintElement[]) {
+function toApiPayload(elements: BlueprintElement[], layers: BlueprintLayer[]) {
   return elements.map((el) => ({
     id: el.id,
     type: el.type,
@@ -893,6 +911,7 @@ function toApiPayload(elements: BlueprintElement[]) {
     connection_to: el.type === "connection" ? el.connection_to ?? null : null,
     connection_style: el.type === "connection" ? el.connection_style ?? null : null,
     corner_radius: el.type === "rectangle" ? (el.cornerRadius ?? null) : null,
+    layer_id: el.layer_id ?? null,
   }));
 }
 
@@ -1164,10 +1183,42 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
   } = useBlueprintHistory({ maxDepth: UNDO_HISTORY_MAX });
   const elements = blueprint.elements;
   const tasks = blueprint.tasks;
+  const layers = blueprint.layers;
+
+  const activePaintLayerIdRef = useRef<string | null>(null);
+  const [activeLayerId, setActiveLayerId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (layers.length === 0) {
+      setActiveLayerId(null);
+      activePaintLayerIdRef.current = null;
+      return;
+    }
+    setActiveLayerId((cur) => (cur && layers.some((l) => l.id === cur) ? cur : layers[0]!.id));
+  }, [layers]);
+
+  useEffect(() => {
+    activePaintLayerIdRef.current = activeLayerId ?? layers[0]?.id ?? null;
+  }, [activeLayerId, layers]);
+
+  const elementZ = useMemo(() => blueprintPaintZIndices(elements, layers), [elements, layers]);
+  const ez = (elementId: string) => {
+    const z = elementZ.get(elementId);
+    return z === undefined ? {} : { zIndex: z };
+  };
+
+  const layerIdForNewGeometry = useCallback(() => {
+    const id = activePaintLayerIdRef.current ?? layers[0]?.id;
+    return id ? { layer_id: id } : {};
+  }, [layers]);
 
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [marqueeBox, setMarqueeBox] = useState<{ L: number; R: number; T: number; B: number } | null>(null);
   const [tool, setTool] = useState<Tool>("select");
+  const toolRef = useRef<Tool>(tool);
+  useEffect(() => {
+    toolRef.current = tool;
+  }, [tool]);
   const [placeKind, setPlaceKind] = useState<DeviceKind>("generic");
   const [placeSymbolKind, setPlaceSymbolKind] = useState<SymbolLibraryId>("tree");
   const [symbolPanelOpen, setSymbolPanelOpen] = useState(false);
@@ -1229,6 +1280,10 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
   const polygonDraftRef = useRef<{ points: { x: number; y: number }[] } | null>(null);
   const [polygonDraft, setPolygonDraft] = useState<{ points: { x: number; y: number }[] } | null>(null);
   const [polygonHover, setPolygonHover] = useState<{ x: number; y: number } | null>(null);
+  const penDraftRef = useRef<{ anchors: PenDraftAnchor[] } | null>(null);
+  const [penDraft, setPenDraft] = useState<{ anchors: PenDraftAnchor[] } | null>(null);
+  const [penHover, setPenHover] = useState<{ x: number; y: number } | null>(null);
+  const penWinCleanupRef = useRef<(() => void) | null>(null);
   const panLastRef = useRef<{ x: number; y: number } | null>(null);
   const hostRef = useRef<HTMLDivElement | null>(null);
   const layerRef = useRef<Konva.Layer | null>(null);
@@ -1299,6 +1354,13 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
       setPolygonDraft(null);
       setPolygonHover(null);
     }
+    if (tool !== "draw-pen") {
+      penWinCleanupRef.current?.();
+      penWinCleanupRef.current = null;
+      penDraftRef.current = null;
+      setPenDraft(null);
+      setPenHover(null);
+    }
     if (tool !== "draw-room" && tool !== "draw-rectangle" && tool !== "draw-ellipse") {
       drawOriginRef.current = null;
       drawModeRef.current = null;
@@ -1362,6 +1424,64 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
       updateBlueprint((bp) => ({
         ...bp,
         tasks: bp.tasks.map((t) => (t.id === id ? { ...t, ...patch } : t)),
+      }));
+    },
+    [updateBlueprint],
+  );
+
+  const reorderLayers = useCallback(
+    (fromIndex: number, toIndex: number) => {
+      updateBlueprint((bp) => {
+        const L = [...bp.layers];
+        const [row] = L.splice(fromIndex, 1);
+        if (!row) return bp;
+        L.splice(toIndex, 0, row);
+        return { ...bp, layers: L };
+      });
+    },
+    [updateBlueprint],
+  );
+
+  const addBlueprintLayer = useCallback(() => {
+    const id = crypto.randomUUID();
+    updateBlueprint((bp) => ({
+      ...bp,
+      layers: [{ id, name: `Layer ${bp.layers.length + 1}` }, ...bp.layers],
+    }));
+    setActiveLayerId(id);
+  }, [updateBlueprint]);
+
+  const deleteBlueprintLayer = useCallback(
+    (id: string) => {
+      updateBlueprint((bp) => {
+        if (bp.layers.length <= 1) return bp;
+        const ix = bp.layers.findIndex((l) => l.id === id);
+        if (ix < 0) return bp;
+        const oldBottom = bp.layers[bp.layers.length - 1]!.id;
+        const deletingBottom = id === oldBottom;
+        const nextLayers = bp.layers.filter((l) => l.id !== id);
+        const fallback =
+          ix + 1 < bp.layers.length ? bp.layers[ix + 1]!.id : bp.layers[ix - 1]!.id;
+        return {
+          ...bp,
+          layers: nextLayers,
+          elements: bp.elements.map((e) => {
+            if (e.layer_id === id) return { ...e, layer_id: fallback };
+            if (!e.layer_id && deletingBottom) return { ...e, layer_id: fallback };
+            return e;
+          }),
+        };
+      });
+      setActiveLayerId((cur) => (cur === id ? null : cur));
+    },
+    [updateBlueprint],
+  );
+
+  const renameBlueprintLayer = useCallback(
+    (id: string, name: string) => {
+      updateBlueprint((bp) => ({
+        ...bp,
+        layers: bp.layers.map((L) => (L.id === id ? { ...L, name } : L)),
       }));
     },
     [updateBlueprint],
@@ -1454,6 +1574,11 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
     freeDrawWinCleanupRef.current = null;
     freeDrawAccumRef.current = [];
     setFreeDrawPreview(null);
+    penWinCleanupRef.current?.();
+    penWinCleanupRef.current = null;
+    penDraftRef.current = null;
+    setPenDraft(null);
+    setPenHover(null);
     setLinkingForTaskId(null);
     setTaskStepHighlight(null);
     setTaskStepPin(null);
@@ -1618,6 +1743,24 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
 
   const canMergeZones = zonesInSelection.length >= 2;
 
+  const shapesMergeableInSelection = useMemo(() => {
+    return selectedIds
+      .map((id) => elements.find((e) => e.id === id))
+      .filter(
+        (e): e is BlueprintElement =>
+          Boolean(
+            e &&
+              (e.type === "path" ||
+                e.type === "polygon" ||
+                e.type === "rectangle" ||
+                e.type === "ellipse") &&
+              !isBlueprintElementEffectivelyLocked(elements, e),
+          ),
+      );
+  }, [selectedIds, elements]);
+
+  const canMergeShapes = shapesMergeableInSelection.length >= 2;
+
   const mergeSelectedRooms = useCallback(() => {
     if (zonesInSelection.length < 2) return;
     const keepId = zonesInSelection[0]!.id;
@@ -1647,6 +1790,29 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
     setSnapGuides([]);
   }, [zonesInSelection, commitElements, checkpointBlueprint]);
 
+  const mergeSelectedShapes = useCallback(() => {
+    if (shapesMergeableInSelection.length < 2) return;
+    const keepId = shapesMergeableInSelection[0]!.id;
+    const removeIds = new Set(shapesMergeableInSelection.map((z) => z.id));
+    const name =
+      shapesMergeableInSelection
+        .map((z) => z.name)
+        .filter(Boolean)
+        .join(" · ")
+        .slice(0, 120) || "Merged shape";
+    checkpointBlueprint();
+    commitElements((prev) => {
+      const toMerge = shapesMergeableInSelection.map((z) => prev.find((e) => e.id === z.id)).filter(Boolean) as BlueprintElement[];
+      if (toMerge.length < 2) return prev;
+      const merged = mergeClosedShapesUnion(keepId, name, toMerge);
+      if (!merged) return prev;
+      const rest = prev.filter((e) => !removeIds.has(e.id));
+      return relayoutAllDoors([...rest, merged]);
+    });
+    setSelectedIds([keepId]);
+    setSnapGuides([]);
+  }, [shapesMergeableInSelection, commitElements, checkpointBlueprint]);
+
   const groupSelected = useCallback(() => {
     const pick = blueprintIdsEligibleToFormGroup(elementsRef.current, selectedIdsRef.current);
     if (!pick) return;
@@ -1663,11 +1829,12 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
       height: bb.height,
       rotation: 0,
       children: pick,
+      ...layerIdForNewGeometry(),
     };
     commitElements((prev) => [...prev, groupEl]);
     setSelectedIds([gid]);
     setSnapGuides([]);
-  }, [checkpointBlueprint, commitElements]);
+  }, [checkpointBlueprint, commitElements, layerIdForNewGeometry]);
 
   const ungroupSelected = useCallback(() => {
     const sid = selectedIdsRef.current.length === 1 ? selectedIdsRef.current[0] : null;
@@ -1723,6 +1890,7 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
           toId,
           flatPoints: flat,
           style,
+          ...layerIdForNewGeometry(),
         }),
       );
     }
@@ -1731,7 +1899,127 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
     commitElements((prev) => [...prev, ...toAdd]);
     setSelectedIds(toAdd.map((e) => e.id));
     setSnapGuides([]);
-  }, [checkpointBlueprint, commitElements]);
+  }, [checkpointBlueprint, commitElements, layerIdForNewGeometry]);
+
+  const commitPenPathFromAnchors = useCallback(
+    (anchors: PenDraftAnchor[]) => {
+      const flat0 = flattenPenDraftToClosedPath(anchors);
+      if (!flat0) return;
+      const processed =
+        processFreehandPath(flat0, { ...freehandOptionsFromSlider(42), simplifyTolerance: 2.8 }) ?? flat0;
+      const id = crypto.randomUUID();
+      const { minX, minY, w, h } = bboxFromPathPoints(processed);
+      checkpointBlueprint();
+      commitElements((prev) => [
+        ...prev,
+        {
+          id,
+          type: "path" as const,
+          x: minX,
+          y: minY,
+          width: w,
+          height: h,
+          rotation: 0,
+          name: "Pen",
+          path_points: processed,
+          ...layerIdForNewGeometry(),
+        },
+      ]);
+      setSelectedIds([id]);
+      penDraftRef.current = null;
+      setPenDraft(null);
+      setPenHover(null);
+      setTool("select");
+    },
+    [checkpointBlueprint, commitElements, layerIdForNewGeometry],
+  );
+
+  const onPenOverlayPointerDown = (e: Konva.KonvaEventObject<PointerEvent>) => {
+    if (tool !== "draw-pen") return;
+    e.cancelBubble = true;
+    if (e.evt.pointerType === "mouse" && e.evt.button !== 0) return;
+    const stage = e.target.getStage();
+    if (!stage) return;
+    const w0 = getWorldFromStage(stage);
+    if (!w0) return;
+    const snap = (x: number, y: number) => ({
+      x: Math.round(x / GRID) * GRID,
+      y: Math.round(y / GRID) * GRID,
+    });
+
+    const anchors = penDraftRef.current?.anchors ?? [];
+    const me = e.evt as PointerEvent & { detail?: number };
+    if ((me.detail ?? 0) >= 2 && anchors.length >= 3) {
+      commitPenPathFromAnchors(anchors);
+      return;
+    }
+
+    const wPress = snap(w0.x, w0.y);
+    penWinCleanupRef.current?.();
+    penWinCleanupRef.current = null;
+
+    const onMove = (ev: PointerEvent) => {
+      const st = stageRef.current;
+      if (!st) return;
+      const rect = st.container().getBoundingClientRect();
+      const sx = ev.clientX - rect.left;
+      const sy = ev.clientY - rect.top;
+      const wx = (sx - st.x()) / st.scaleX();
+      const wy = (sy - st.y()) / st.scaleY();
+      setPenHover(snap(wx, wy));
+    };
+
+    const onUp = (ev: PointerEvent) => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
+      penWinCleanupRef.current = null;
+      setPenHover(null);
+
+      const st = stageRef.current;
+      if (!st) return;
+      const rect = st.container().getBoundingClientRect();
+      const sx = ev.clientX - rect.left;
+      const sy = ev.clientY - rect.top;
+      const wx = (sx - st.x()) / st.scaleX();
+      const wy = (sy - st.y()) / st.scaleY();
+      const wRelease = snap(wx, wy);
+
+      const cur = penDraftRef.current?.anchors ?? [];
+      if (cur.length >= 3) {
+        const first = cur[0]!;
+        if (Math.hypot(wRelease.x - first.x, wRelease.y - first.y) <= POLY_CLOSE_PX) {
+          commitPenPathFromAnchors(cur);
+          return;
+        }
+      }
+
+      if (cur.length === 0) {
+        const next = { anchors: [{ x: wRelease.x, y: wRelease.y }] };
+        penDraftRef.current = next;
+        setPenDraft(next);
+        return;
+      }
+
+      const drag = Math.hypot(wRelease.x - wPress.x, wRelease.y - wPress.y);
+      const nextAnchor: PenDraftAnchor =
+        drag >= PEN_DRAG_CURVE_PX
+          ? { x: wRelease.x, y: wRelease.y, qc: { x: wPress.x, y: wPress.y } }
+          : { x: wRelease.x, y: wRelease.y };
+      const next = { anchors: [...cur, nextAnchor] };
+      penDraftRef.current = next;
+      setPenDraft(next);
+    };
+
+    penWinCleanupRef.current = () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
+    };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
+  };
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -1762,6 +2050,15 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
         return;
       }
 
+      if (e.key === "Enter" && toolRef.current === "draw-pen") {
+        const anchors = penDraftRef.current?.anchors;
+        if (anchors && anchors.length >= 3) {
+          e.preventDefault();
+          commitPenPathFromAnchors(anchors);
+          return;
+        }
+      }
+
       if (e.key === "Escape") {
         e.preventDefault();
         setSymbolPanelOpen(false);
@@ -1769,6 +2066,11 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
         polygonDraftRef.current = null;
         setPolygonDraft(null);
         setPolygonHover(null);
+        penWinCleanupRef.current?.();
+        penWinCleanupRef.current = null;
+        penDraftRef.current = null;
+        setPenDraft(null);
+        setPenHover(null);
         drawOriginRef.current = null;
         drawModeRef.current = null;
         setDrawDraft(null);
@@ -1831,7 +2133,7 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [undo, redo, commitElements, groupSelected, ungroupSelected, toggleLockSelection]);
+  }, [undo, redo, commitElements, groupSelected, ungroupSelected, toggleLockSelection, commitPenPathFromAnchors]);
   const pubLine = (v: number) => v * (isPublish ? 1.42 : 1);
   const pubFs = (v: number) => v * (isPublish ? 1.2 : 1);
   const symScale = isPublish ? 1.12 : 1;
@@ -1995,9 +2297,14 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
       const d = await apiFetch<BlueprintDetail>(`/api/blueprints/${id}`);
       setBlueprintId(d.id);
       setBlueprintName(d.name);
+      const loadedLayers = parseApiBlueprintLayers(d.layers);
       resetBlueprint({
         elements: relayoutAllDoors(d.elements.map(mapApiElement)),
         tasks: mapApiTasks(d.tasks),
+        layers:
+          loadedLayers.length > 0
+            ? loadedLayers
+            : [{ id: crypto.randomUUID(), name: "Layer 1" }],
       });
       setSelectedIds([]);
       setError(null);
@@ -2038,7 +2345,7 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
     try {
       const payload = {
         name: blueprintName.trim() || "Untitled blueprint",
-        elements: toApiPayload(elements),
+        elements: toApiPayload(elements, layers),
         tasks: tasks.map((t) => ({
           id: t.id,
           title: t.title,
@@ -2046,22 +2353,33 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
           content: t.content,
           linked_element_ids: t.linked_element_ids,
         })),
+        layers: layers.map((L) => ({ id: L.id, name: L.name })),
       };
       if (blueprintId) {
         const d = await apiFetch<BlueprintDetail>(`/api/blueprints/${blueprintId}`, {
           method: "PUT",
           json: payload,
         });
+        const savedLayers = parseApiBlueprintLayers(d.layers);
         resetBlueprint({
           elements: relayoutAllDoors(d.elements.map(mapApiElement)),
           tasks: mapApiTasks(d.tasks),
+          layers:
+            savedLayers.length > 0
+              ? savedLayers
+              : [{ id: crypto.randomUUID(), name: "Layer 1" }],
         });
       } else {
         const d = await apiFetch<BlueprintDetail>("/api/blueprints", { method: "POST", json: payload });
         setBlueprintId(d.id);
+        const savedLayers = parseApiBlueprintLayers(d.layers);
         resetBlueprint({
           elements: relayoutAllDoors(d.elements.map(mapApiElement)),
           tasks: mapApiTasks(d.tasks),
+          layers:
+            savedLayers.length > 0
+              ? savedLayers
+              : [{ id: crypto.randomUUID(), name: "Layer 1" }],
         });
       }
       await refreshList();
@@ -2080,7 +2398,11 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
   const newBlueprint = () => {
     setBlueprintId(null);
     setBlueprintName("Untitled blueprint");
-    resetBlueprint({ elements: [], tasks: [] });
+    resetBlueprint({
+      elements: [],
+      tasks: [],
+      layers: [{ id: crypto.randomUUID(), name: "Layer 1" }],
+    });
     setSelectedIds([]);
     setTool("select");
     setSaveNotice(null);
@@ -2172,6 +2494,7 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
           height: d.h,
           name: nextRoomLabel(prev),
           rotation: 0,
+          ...layerIdForNewGeometry(),
         },
       ]);
     } else if (mode === "rectangle") {
@@ -2187,6 +2510,7 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
           rotation: 0,
           name: "Rectangle",
           cornerRadius: 0,
+          ...layerIdForNewGeometry(),
         },
       ]);
     } else if (mode === "ellipse") {
@@ -2201,6 +2525,7 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
           height: d.h,
           rotation: 0,
           name: "Ellipse",
+          ...layerIdForNewGeometry(),
         },
       ]);
     } else {
@@ -2230,6 +2555,7 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
         rotation: 0,
         name: "Polygon",
         path_points: flat,
+        ...layerIdForNewGeometry(),
       },
     ]);
     setSelectedIds([id]);
@@ -2284,6 +2610,7 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
         name: placeKind.charAt(0).toUpperCase() + placeKind.slice(1),
         rotation: 0,
         device_kind: placeKind,
+        ...layerIdForNewGeometry(),
       },
     ]);
     setSelectedIds([id]);
@@ -2309,6 +2636,7 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
         name: label,
         symbol_type: st,
         symbol_tags: [],
+        ...layerIdForNewGeometry(),
       },
     ]);
     setSelectedIds([id]);
@@ -2340,6 +2668,7 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
           rotation: rot,
           name: "Door",
           wall_attachment,
+          ...(zone.layer_id ? { layer_id: zone.layer_id } : layerIdForNewGeometry()),
         },
       ];
     });
@@ -2379,6 +2708,15 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
       const w = getWorldFromStage(e.target.getStage());
       if (w) {
         setPolygonHover({
+          x: Math.round(w.x / GRID) * GRID,
+          y: Math.round(w.y / GRID) * GRID,
+        });
+      }
+    }
+    if (tool === "draw-pen" && penDraftRef.current) {
+      const w = getWorldFromStage(e.target.getStage());
+      if (w) {
+        setPenHover({
           x: Math.round(w.x / GRID) * GRID,
           y: Math.round(w.y / GRID) * GRID,
         });
@@ -2473,6 +2811,7 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
             rotation: 0,
             name: "Shape",
             path_points: processed,
+            ...layerIdForNewGeometry(),
           },
         ]);
         setSelectedIds([id]);
@@ -3219,8 +3558,10 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
         />
         <p className="bp-hint">
           Zoom: scroll wheel. Pan: Space+drag or right-drag. Tools and selection actions sit on the floating bar below the
-          canvas. Free draw uses simplify-js + Catmull–Rom smoothing (adjust right after drawing). Merge rooms: select
-          multiple zones (Shift or box) then Merge. Duplicate: hold Shift and drag a selection to clone it (one undo reverses the copy and move). Doors: use handles or type width (32 px ≈ 1 m).
+          canvas. Free draw uses simplify-js + Catmull–Rom smoothing (adjust right after drawing). Pen tool: click/drag
+          for Bézier-like segments, then close the path. Merge shapes: select two or more paths, polygons, rectangles, or
+          ellipses (Shift or box) then Merge shapes for a boolean union. Merge rooms: select multiple zones then Merge.
+          Duplicate: hold Shift and drag a selection to clone it (one undo reverses the copy and move). Doors: use handles or type width (32 px ≈ 1 m).
         </p>
       </motion.aside>
 
@@ -3525,7 +3866,7 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
                 />
               </Layer>
             ) : null}
-            <Layer ref={layerRef}>
+            <Layer ref={layerRef} sortChildren>
               {gridLines}
               {snapGuideLines}
               {canEdit && freeDrawPreview && freeDrawPreview.length >= 4 ? (
@@ -3579,7 +3920,7 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
                     const bb = bboxFromPathPoints(polyPts);
                     const labelSize = pubFs(Math.min(11, Math.max(9, Math.min(bb.w, bb.h) / 7)));
                     return (
-                      <Group key={el.id}>
+                      <Group key={el.id} {...ez(el.id)}>
                         <Line
                           points={polyPts}
                           closed
@@ -3705,7 +4046,7 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
                   const ins = Math.max(0.6, pubLine(1.05 / stageScale));
                   const labelSize = pubFs(Math.min(11, Math.max(9, Math.min(w, h) / 7)));
                   return (
-                    <Group key={el.id}>
+                    <Group key={el.id} {...ez(el.id)}>
                       {/* Elevation mass — offset duplicate (under room face) */}
                       <Rect
                         x={el.x + dx}
@@ -3906,6 +4247,7 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
                   return (
                     <Rect
                       key={el.id}
+                      {...ez(el.id)}
                       ref={(node) => {
                         if (el.id === selectedSingleId && tool === "select" && canEdit && selected?.type === "rectangle") {
                           selectedNodeRef.current = node;
@@ -3984,6 +4326,7 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
                   return (
                     <Group
                       key={el.id}
+                      {...ez(el.id)}
                       ref={(node) => {
                         if (el.id === selectedSingleId && tool === "select" && canEdit && selected?.type === "ellipse") {
                           selectedNodeRef.current = node;
@@ -4065,7 +4408,7 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
                   const showHandles = canEdit && tool === "select" && sel && !effLocked;
                   const nVerts = pts.length / 2;
                   return (
-                    <Group key={el.id} listening={false}>
+                    <Group key={el.id} listening={false} {...ez(el.id)}>
                       <Line
                         points={pts}
                         closed
@@ -4218,6 +4561,7 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
                   return (
                     <Group
                       key={el.id}
+                      {...ez(el.id)}
                       x={el.x}
                       y={el.y}
                       rotation={rot}
@@ -4284,6 +4628,7 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
                   return (
                     <Group
                       key={el.id}
+                      {...ez(el.id)}
                       ref={(node) => {
                         if (
                           el.id === selectedSingleId &&
@@ -4427,6 +4772,7 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
                   return (
                     <Group
                       key={el.id}
+                      {...ez(el.id)}
                       ref={(node) => {
                         if (
                           el.id === selectedSingleId &&
@@ -4594,6 +4940,7 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
                   return (
                     <Line
                       key={el.id}
+                      {...ez(el.id)}
                       points={pts}
                       closed
                       tension={PATH_LINE_TENSION}
@@ -4695,6 +5042,7 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
                   return (
                     <Line
                       key={el.id}
+                      {...ez(el.id)}
                       points={pts}
                       closed={false}
                       tension={0}
@@ -4761,6 +5109,7 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
                 })}
               {tool === "select" && marqueeBox ? (
                 <Rect
+                  zIndex={44_997_000}
                   x={marqueeBox.L}
                   y={marqueeBox.T}
                   width={Math.max(0.01, marqueeBox.R - marqueeBox.L)}
@@ -4777,6 +5126,7 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
               ) : null}
               {tool === "select" && selectionBounds ? (
                 <Rect
+                  zIndex={44_997_100}
                   x={selectionBounds.L}
                   y={selectionBounds.T}
                   width={Math.max(0.01, selectionBounds.R - selectionBounds.L)}
@@ -4793,6 +5143,7 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
               ) : null}
               {canEdit && drawDraft && drawDraft.w > 0 && drawDraft.h > 0 ? (
                 <Rect
+                  zIndex={44_997_200}
                   x={drawDraft.x}
                   y={drawDraft.y}
                   width={drawDraft.w}
@@ -4859,6 +5210,64 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
                   onPointerDown={onPolygonOverlayPointerDown}
                 />
               ) : null}
+              {canEdit && tool === "draw-pen" ? (
+                <Rect
+                  x={-8000}
+                  y={-8000}
+                  width={20000}
+                  height={20000}
+                  fill="rgba(0,0,0,0.001)"
+                  listening
+                  onPointerDown={onPenOverlayPointerDown}
+                />
+              ) : null}
+              {canEdit && tool === "draw-pen" && penDraft && penDraft.anchors.length > 0 ? (
+                <Group listening={false}>
+                  {(() => {
+                    const pts0 = penDraft.anchors;
+                    const flatOpen = [...pts0.flatMap((p) => [p.x, p.y])];
+                    if (penHover) flatOpen.push(penHover.x, penHover.y);
+                    const first = pts0[0]!;
+                    const nearFirst =
+                      pts0.length >= 3 &&
+                      penHover &&
+                      Math.hypot(penHover.x - first.x, penHover.y - first.y) <= POLY_CLOSE_PX;
+                    return (
+                      <>
+                        <Line
+                          points={flatOpen}
+                          stroke="rgba(56, 189, 248, 0.75)"
+                          strokeWidth={Math.max(0.85, 1.15 / stageScale)}
+                          dash={[5, 4]}
+                          lineCap="round"
+                          listening={false}
+                        />
+                        {pts0.length >= 3 && penHover ? (
+                          <Line
+                            points={[...pts0.flatMap((p) => [p.x, p.y]), first.x, first.y]}
+                            closed
+                            fill="rgba(56, 189, 248, 0.06)"
+                            strokeEnabled={false}
+                            listening={false}
+                          />
+                        ) : null}
+                        {pts0.map((p, i) => (
+                          <Circle
+                            key={`pen-${i}`}
+                            x={p.x}
+                            y={p.y}
+                            radius={i === 0 ? (nearFirst ? 9 : 5) : 4}
+                            fill={i === 0 ? "rgba(56, 189, 248, 0.4)" : "rgba(148, 163, 184, 0.35)"}
+                            stroke="rgba(125, 211, 252, 0.9)"
+                            strokeWidth={Math.max(1, 1.1 / stageScale)}
+                            listening={false}
+                          />
+                        ))}
+                      </>
+                    );
+                  })()}
+                </Group>
+              ) : null}
               {canEdit && tool === "draw-polygon" && polygonDraft && polygonDraft.points.length > 0 ? (
                 <Group listening={false}>
                   {(() => {
@@ -4908,6 +5317,7 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
               ) : null}
               <Transformer
                 ref={transformerRef}
+                zIndex={45_000_000}
                 rotateEnabled={selected?.type !== "door"}
                 enabledAnchors={selected?.type === "door" ? ["middle-left", "middle-right"] : undefined}
                 borderStroke={
@@ -5012,6 +5422,14 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
         </div>
         {canEdit && !isPublish ? (
           <div className="bp-float-stack">
+            {tool === "draw-pen" ? (
+              <div className="bp-float-context">
+                <span className="bp-float-context__hint">
+                  <strong className="text-ds-foreground">Pen:</strong> click for corners; press and drag for a curved
+                  segment; click near the first point or press Enter to finish; double-click to finish; Esc cancels.
+                </span>
+              </div>
+            ) : null}
             {freehandTune && selected?.type === "path" && selected.id === freehandTune.id ? (
               <div className="bp-freehand-panel">
                 <span className="bp-freehand-panel__title">Stroke smoothness</span>
@@ -5087,6 +5505,11 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
                     {canMergeZones ? (
                       <button type="button" className="bp-btn" onClick={mergeSelectedRooms}>
                         Merge rooms
+                      </button>
+                    ) : null}
+                    {canMergeShapes ? (
+                      <button type="button" className="bp-btn" onClick={mergeSelectedShapes}>
+                        Merge shapes
                       </button>
                     ) : null}
                     <button type="button" className="bp-btn bp-btn--ghost" onClick={toggleLockSelection}>
@@ -5346,6 +5769,25 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
         />
       </motion.div>
       </div>
+
+      <motion.aside
+        className={`bp-sidebar bp-sidebar--right${isPublish ? " bp-sidebar--disabled" : ""}`}
+        aria-label="Blueprint layers"
+        initial={false}
+        animate={{ opacity: 1, x: 0 }}
+        transition={bpTransition.med}
+      >
+        <BlueprintLayersPanel
+          layers={layers}
+          activeLayerId={activeLayerId}
+          onSelectLayer={(id) => setActiveLayerId(id)}
+          onAddLayer={addBlueprintLayer}
+          onDeleteLayer={deleteBlueprintLayer}
+          onReorderLayers={reorderLayers}
+          onRenameLayer={renameBlueprintLayer}
+          disabled={isPublish}
+        />
+      </motion.aside>
     </div>
       )}
     </div>

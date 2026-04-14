@@ -9,8 +9,10 @@ export function isPulseNavActive(href: string, pathname: string): boolean {
   }
   if (href === "/overview") return pathname === "/overview";
   if (href === "/dashboard/compliance") return pathname === "/dashboard/compliance";
-  if (href === "/dashboard/maintenance/work-orders")
+  if (href === "/dashboard/maintenance")
     return pathname === "/dashboard/maintenance" || pathname.startsWith("/dashboard/maintenance/");
+  if (href === "/dashboard/procedures")
+    return pathname === "/dashboard/procedures" || pathname.startsWith("/dashboard/procedures/");
   if (href === "/dashboard/workers") return pathname === "/dashboard/workers";
   if (href === "/dashboard/inventory") return pathname === "/dashboard/inventory";
   if (href.startsWith("/dashboard")) return pathname === href || pathname.startsWith(`${href}/`);

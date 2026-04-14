@@ -6,10 +6,12 @@ import {
   createWorkOrder,
   fetchWorkOrderDetail,
   fetchWorkOrders,
+  type ProcedureStep,
   type WorkOrderDetail,
   type WorkOrderRow,
   type WorkOrderType,
 } from "@/lib/cmmsApi";
+import { useResolvedProtectedAssetSrc } from "@/lib/useResolvedProtectedAssetSrc";
 import { parseClientApiError } from "@/lib/parse-client-api-error";
 
 const TYPE_FILTERS: { value: "" | WorkOrderType; label: string }[] = [
@@ -18,6 +20,31 @@ const TYPE_FILTERS: { value: "" | WorkOrderType; label: string }[] = [
   { value: "preventative", label: "Preventative" },
   { value: "request", label: "Request" },
 ];
+
+function procedureStepText(s: string | ProcedureStep): string {
+  return typeof s === "string" ? s : (s.text ?? "");
+}
+
+function ProcedureStepLine({ step, index }: { step: string | ProcedureStep; index: number }) {
+  const text = procedureStepText(step);
+  const imageUrl = typeof step === "string" ? null : (step.image_url ?? null);
+  const { src, loading, failed } = useResolvedProtectedAssetSrc(imageUrl);
+  return (
+    <li className="text-pulse-muted">
+      <span className="font-medium text-pulse-navy dark:text-slate-100">{index + 1}.</span> {text || "—"}
+      {imageUrl ? (
+        <div className="mt-2">
+          {loading ? <p className="text-xs">Loading image…</p> : null}
+          {failed ? <p className="text-xs text-red-600">Image unavailable</p> : null}
+          {src ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={src} alt="" className="max-h-36 rounded border border-pulse-border object-contain dark:border-slate-600" />
+          ) : null}
+        </div>
+      ) : null}
+    </li>
+  );
+}
 
 function formatShortDate(iso: string | null): string {
   if (!iso) return "—";
@@ -216,9 +243,9 @@ function WorkOrdersMaintenanceAppInner() {
                 <h3 className="text-sm font-semibold text-pulse-navy dark:text-slate-100">
                   Procedure: {detail.procedure.title}
                 </h3>
-                <ol className="mt-2 list-decimal space-y-1 pl-5 text-sm text-pulse-muted">
+                <ol className="mt-2 list-none space-y-3 pl-0 text-sm">
                   {detail.procedure.steps.map((s, i) => (
-                    <li key={i}>{s}</li>
+                    <ProcedureStepLine key={i} step={s} index={i} />
                   ))}
                 </ol>
               </div>

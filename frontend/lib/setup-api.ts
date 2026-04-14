@@ -234,3 +234,20 @@ export async function createZone(
     json: body,
   });
 }
+
+export async function patchZone(
+  companyId: string | null,
+  zoneId: string,
+  body: { name?: string; description?: string | null },
+): Promise<ZoneOut> {
+  return apiFetch<ZoneOut>(withCompany(`/api/v1/zones/${zoneId}`, companyId), {
+    method: "PATCH",
+    json: body,
+  });
+}
+
+export async function deleteZone(companyId: string | null, zoneId: string): Promise<void> {
+  await apiFetch<void>(withCompany(`/api/v1/zones/${zoneId}`, companyId), {
+    method: "DELETE",
+  });
+}

@@ -1,10 +1,6 @@
-import { ProceduresMaintenanceApp } from "@/components/maintenance/ProceduresMaintenanceApp";
-import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 
-export const metadata: Metadata = {
-  title: { absolute: "Procedures | Maintenance | Pulse" },
-};
-
-export default function MaintenanceProceduresPage() {
-  return <ProceduresMaintenanceApp />;
+/** Legacy URL — procedures moved to `/dashboard/procedures`. */
+export default function LegacyMaintenanceProceduresPage() {
+  redirect("/dashboard/procedures");
 }

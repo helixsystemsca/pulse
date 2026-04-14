@@ -18,7 +18,10 @@ from app.schemas.blueprint import (
     BlueprintElementOut,
     BlueprintSummaryOut,
     BlueprintUpdateIn,
+    default_blueprint_layers,
     element_in_to_orm_kwargs,
+    layers_model_to_json,
+    parse_layers_json,
     parse_tasks_json,
     row_to_element_out,
     tasks_model_to_json,
@@ -62,6 +65,8 @@ async def create_blueprint(body: BlueprintCreateIn, db: Db, user: TenantUser) ->
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
         db.add(BlueprintElement(**kwargs))
     bp.tasks_json = tasks_model_to_json(body.tasks)
+    layers = body.layers if body.layers else default_blueprint_layers()
+    bp.layers_json = layers_model_to_json(layers)
     await db.commit()
     await db.refresh(bp)
     await db.refresh(user)
@@ -98,6 +103,8 @@ async def update_blueprint(
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
         db.add(BlueprintElement(**kwargs))
     bp.tasks_json = tasks_model_to_json(body.tasks)
+    layers = body.layers if body.layers else default_blueprint_layers()
+    bp.layers_json = layers_model_to_json(layers)
     await db.commit()
     await db.refresh(bp)
     await db.refresh(user)
@@ -127,6 +134,8 @@ async def _detail_out(db: AsyncSession, bp: Blueprint) -> BlueprintDetailOut:
     )
     elems = q.scalars().all()
     elements: list[BlueprintElementOut] = [row_to_element_out(e) for e in elems]
+    raw_layers = parse_layers_json(getattr(bp, "layers_json", None))
+    layers = raw_layers if raw_layers else default_blueprint_layers()
     return BlueprintDetailOut(
         id=bp.id,
         name=bp.name,
@@ -134,4 +143,5 @@ async def _detail_out(db: AsyncSession, bp: Blueprint) -> BlueprintDetailOut:
         updated_at=bp.updated_at,
         elements=elements,
         tasks=parse_tasks_json(getattr(bp, "tasks_json", None)),
+        layers=layers,
     )
