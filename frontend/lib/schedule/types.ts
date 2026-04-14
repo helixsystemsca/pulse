@@ -113,6 +113,8 @@ export interface Shift {
 export interface Zone {
   id: string;
   label: string;
+  /** Optional metadata from Pulse zones (e.g. building info). */
+  meta?: Record<string, unknown>;
 }
 
 export interface ScheduleRoleDefinition {

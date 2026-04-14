@@ -8,7 +8,11 @@ export type CompactDayShiftRow = {
   shifts: Shift[];
   /** Drag / edit primary */
   primaryShift: Shift;
-  /** One line: "Name · D1" or "Open · D2" */
+  /** Primary label (worker name / "Open" / "Project") */
+  name: string;
+  /** Shift code(s), e.g. "D1" or "D1+A1" or "Vac" */
+  code: string;
+  /** One line legacy: "Name · D1" */
   title: string;
   /** Optional second line (zone/role) — omitted in month/week for density */
   subtitle?: string;
@@ -42,6 +46,8 @@ export function buildCompactDayShiftRows(dayShifts: Shift[], workers: Worker[]):
         key: `proj:${s.id}`,
         shifts: [s],
         primaryShift: s,
+        name: s.workerId && workerMap.get(s.workerId) ? workerMap.get(s.workerId)!.name : "Project",
+        code: partForShift(s),
         title:
           s.workerId && workerMap.get(s.workerId)
             ? `${workerMap.get(s.workerId)!.name} · ${partForShift(s)}`
@@ -54,6 +60,8 @@ export function buildCompactDayShiftRows(dayShifts: Shift[], workers: Worker[]):
         key: `open:${s.id}`,
         shifts: [s],
         primaryShift: s,
+        name: "Open",
+        code: partForShift(s),
         title: `Open · ${partForShift(s)}`,
       });
       continue;
@@ -75,6 +83,8 @@ export function buildCompactDayShiftRows(dayShifts: Shift[], workers: Worker[]):
       key: `w:${wid}:${list.map((x) => x.id).join(":")}`,
       shifts: list,
       primaryShift: primary,
+      name,
+      code: uniq.join("+"),
       title: `${name} · ${uniq.join("+")}`,
     });
   }

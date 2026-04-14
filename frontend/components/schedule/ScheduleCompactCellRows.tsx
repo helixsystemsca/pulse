@@ -9,6 +9,7 @@ import {
   attachShiftDragPreview,
   setShiftDragData,
 } from "@/lib/schedule/drag";
+import { buildingIndicatorForZone } from "@/lib/schedule/building-indicators";
 import type {
   ScheduleDragSession,
   ScheduleRoleDefinition,
@@ -87,6 +88,7 @@ export function ScheduleCompactCellRows({
 }: Props) {
   const typeMap = new Map(shiftTypes.map((t) => [t.key, t]));
   const zoneMap = new Map(zones.map((z) => [z.id, z.label]));
+  const zoneObjMap = new Map(zones.map((z) => [z.id, z]));
   const roleMap = new Map(roles.map((r) => [r.id, r.label]));
   const workerMap = new Map(workers.map((w) => [w.id, w]));
 
@@ -97,20 +99,13 @@ export function ScheduleCompactCellRows({
       {rows.map((row) => {
         const s = row.primaryShift;
         const st = typeMap.get(s.shiftType);
-        const w = s.workerId ? workerMap.get(s.workerId) : null;
         const isOpen = !s.workerId && s.shiftKind !== "project_task";
         const zone = zoneMap.get(s.zoneId) ?? "—";
+        const zoneObj = zoneObjMap.get(s.zoneId);
+        const bld = buildingIndicatorForZone(zoneObj);
         const roleLb = roleMap.get(s.role) ?? s.role;
-        const cls = st
-          ? `${st.bg} ${st.border} ${st.text} border`
-          : "border border-pulseShell-border bg-pulseShell-elevated text-ds-foreground";
-        const ptoCls =
-          s.eventType === "vacation"
-            ? "border-[color-mix(in_srgb,var(--ds-warning)_38%,var(--ds-border))] bg-[color-mix(in_srgb,var(--ds-warning)_18%,var(--ds-surface-primary))] text-ds-foreground"
-            : s.eventType === "sick"
-              ? "border-[color-mix(in_srgb,var(--ds-danger)_32%,var(--ds-border))] bg-[color-mix(in_srgb,var(--ds-danger)_15%,var(--ds-surface-primary))] text-ds-foreground"
-              : "";
-        const chipBaseCls = ptoCls || cls;
+        // Outer card stays neutral; shift chip carries the shift-type color for compact scan.
+        const cardCls = "border border-pulseShell-border bg-pulseShell-surface text-ds-foreground";
         const openCls = isOpen
           ? "ring-2 ring-dashed ring-ds-success/45 ring-offset-1 ring-offset-pulse-shell-cell dark:ring-offset-pulse-shell-cell"
           : "";
@@ -143,7 +138,7 @@ export function ScheduleCompactCellRows({
             draggable={canDrag}
             className={`w-full rounded-lg text-left shadow-sm transition-colors hover:brightness-[0.97] ${
               summary ? "px-1 py-0.5 text-[10px] leading-tight" : "px-1.5 py-1.5 text-[11px] leading-snug"
-            } ${anyAuto ? "opacity-[0.92]" : ""} ${canDrag ? "cursor-grab active:cursor-grabbing" : "cursor-default"} ${chipLocked ? "pointer-events-none" : ""} ${chipBaseCls} ${openCls}`}
+            } ${anyAuto ? "opacity-[0.92]" : ""} ${canDrag ? "cursor-grab active:cursor-grabbing" : "cursor-default"} ${chipLocked ? "pointer-events-none" : ""} ${cardCls} ${openCls}`}
             onClick={(e) => {
               e.stopPropagation();
               if (scheduleDragLock || anyAuto) return;
@@ -169,36 +164,30 @@ export function ScheduleCompactCellRows({
             }}
             onDragEnd={onShiftDragSessionEnd}
           >
-            <div className={`flex items-center justify-between gap-1 ${summary ? "" : "items-start"}`}>
-              <div className="min-w-0 flex-1">
-                <p className="truncate font-semibold leading-tight">{row.title}</p>
-                {!summary ? (
-                  <>
-                    {row.shifts.length > 1 ? (
-                      <p className="truncate text-[10px] opacity-80">{row.shifts.length} blocks — tap to edit first</p>
-                    ) : s.shiftKind === "project_task" && s.projectName ? (
-                      <p className="truncate text-[10px] opacity-90">{s.projectName}</p>
-                    ) : (
-                      <p className="truncate text-[10px] opacity-90">
-                        {s.shiftKind === "project_task" ? "Project" : `${roleLb} · ${zone}`}
-                      </p>
-                    )}
-                  </>
-                ) : row.shifts.length > 1 ? (
-                  <p className="truncate text-[9px] opacity-75">{row.shifts.length} blocks</p>
+            <div className="min-w-0">
+              <p className="truncate font-semibold leading-tight">{row.name}</p>
+
+              <div className={`mt-0.5 flex items-center gap-1 ${summary ? "flex-nowrap" : "flex-wrap"}`}>
+                {/* Shift chip (colored by shift type) */}
+                <span
+                  className={`inline-flex shrink-0 items-center rounded-md border px-1.5 py-0.5 text-[10px] font-bold leading-none ${
+                    st ? `${st.bg} ${st.border} ${st.text}` : "border-pulseShell-border bg-pulseShell-elevated text-ds-foreground"
+                  }`}
+                >
+                  {row.code}
+                </span>
+
+                {/* Location chip (neutral, non-competitive) */}
+                {bld ? (
+                  <span className="inline-flex shrink-0 items-center rounded-md border border-pulseShell-border bg-pulseShell-elevated/40 px-1.5 py-0.5 text-[10px] font-bold leading-none text-ds-muted">
+                    {bld.code}
+                  </span>
                 ) : null}
-              </div>
-              <div className={`flex shrink-0 items-center gap-0.5 ${summary ? "flex-row" : "flex-col items-end gap-0.5"}`}>
-                {!summary && anyAuto ? (
-                  <span className="text-[8px] font-bold uppercase text-ds-muted">Auto</span>
-                ) : null}
-                {!summary && row.shifts.length === 1 && s.uiFlags?.isNew ? (
-                  <span className="text-[8px] font-bold uppercase text-ds-success">New</span>
-                ) : null}
-                {!summary && row.shifts.length === 1 && s.uiFlags?.isUpdated ? (
-                  <span className="text-[8px] font-bold uppercase text-ds-warning">Chg</span>
-                ) : null}
-                <div className="flex items-center gap-0.5">
+
+                <span className="flex-1" />
+
+                {/* Status dot at end of chip row */}
+                <span className="flex shrink-0 items-center gap-0.5">
                   {anyCert ? (
                     <span title={tip} className="inline-flex">
                       <Award className={`shrink-0 text-ds-muted ${summary ? "h-2.5 w-2.5" : "h-3 w-3"}`} strokeWidth={2} aria-hidden />
@@ -213,8 +202,24 @@ export function ScheduleCompactCellRows({
                       aria-label={tip}
                     />
                   ) : null}
-                </div>
+                </span>
               </div>
+
+              {!summary ? (
+                <>
+                  {row.shifts.length > 1 ? (
+                    <p className="mt-1 truncate text-[10px] opacity-80">{row.shifts.length} blocks — tap to edit first</p>
+                  ) : s.shiftKind === "project_task" && s.projectName ? (
+                    <p className="mt-1 truncate text-[10px] opacity-90">{s.projectName}</p>
+                  ) : (
+                    <p className="mt-1 truncate text-[10px] opacity-90">
+                      {s.shiftKind === "project_task" ? "Project" : `${roleLb} · ${zone}`}
+                    </p>
+                  )}
+                </>
+              ) : row.shifts.length > 1 ? (
+                <p className="truncate text-[9px] opacity-75">{row.shifts.length} blocks</p>
+              ) : null}
             </div>
           </div>
         );

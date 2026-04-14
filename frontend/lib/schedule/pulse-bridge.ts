@@ -49,7 +49,7 @@ export type PulseWorkerApi = {
   recurring_shifts?: PulseRecurringShiftApi[] | null;
 };
 
-export type PulseZoneApi = { id: string; name: string };
+export type PulseZoneApi = { id: string; name: string; meta?: Record<string, unknown> };
 
 function pad2(n: number): string {
   return String(n).padStart(2, "0");
@@ -98,7 +98,7 @@ export function pulseWorkersToSchedule(workers: PulseWorkerApi[]): Worker[] {
 }
 
 export function pulseZonesToSchedule(zones: PulseZoneApi[]): Zone[] {
-  return zones.map((z) => ({ id: z.id, label: z.name }));
+  return zones.map((z) => ({ id: z.id, label: z.name, meta: z.meta ?? undefined }));
 }
 
 export function pulseShiftToSchedule(row: PulseShiftApi, fallbackZoneId: string): Shift {

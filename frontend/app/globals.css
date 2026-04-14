@@ -430,6 +430,14 @@ html.pulse-welcome-blur [data-pulse-app-shell] {
     background-color: var(--ds-bg);
   }
 
+  /**
+   * Dashboard canvas — light gray/blue background to improve card separation,
+   * without changing the global design-system `--ds-bg`.
+   */
+  .bg-dashboard-canvas {
+    background-color: #f5f7fb;
+  }
+
   /** Primary surfaces */
   .app-canvas {
     background-color: var(--ds-bg);
