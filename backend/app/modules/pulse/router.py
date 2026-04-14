@@ -33,6 +33,7 @@ from app.models.pulse_models import (
     PulseProcedure,
     PulseProject,
     PulseProjectTask,
+    PulseScheduleAssignment,
     PulseScheduleShift,
     PulseWorkRequest,
     PulseWorkRequestStatus,
@@ -55,6 +56,9 @@ from app.schemas.pulse import (
     ShiftCreateResult,
     ShiftOut,
     ShiftUpdate,
+    ScheduleAssignmentCreate,
+    ScheduleAssignmentOut,
+    ScheduleAssignmentPatch,
     WorkRequestCreate,
     WorkRequestListOut,
     WorkRequestOut,
@@ -519,6 +523,91 @@ async def list_shifts(
         proj = projects_by_id.get(str(t.project_id)) if t else None
         out.append(_shift_to_out(r, t, proj))
     return out
+
+
+@router.get("/schedule/assignments", response_model=list[ScheduleAssignmentOut])
+async def list_schedule_assignments(
+    db: Db,
+    cid: CompanyId,
+    from_date: Optional[datetime] = Query(None, alias="from"),
+    to_date: Optional[datetime] = Query(None, alias="to"),
+    shift_type: Optional[str] = Query(None),
+) -> list[ScheduleAssignmentOut]:
+    stmt = select(PulseScheduleAssignment).where(PulseScheduleAssignment.company_id == cid)
+    if shift_type:
+        stmt = stmt.where(PulseScheduleAssignment.shift_type == str(shift_type).strip().lower())
+    if from_date is not None:
+        stmt = stmt.where(PulseScheduleAssignment.date >= from_date.date())
+    if to_date is not None:
+        stmt = stmt.where(PulseScheduleAssignment.date <= to_date.date())
+    stmt = stmt.order_by(PulseScheduleAssignment.date.asc(), PulseScheduleAssignment.shift_type.asc(), PulseScheduleAssignment.area.asc())
+    rows = (await db.execute(stmt)).scalars().all()
+    return [ScheduleAssignmentOut.model_validate(r) for r in rows]
+
+
+@router.post("/schedule/assignments", response_model=ScheduleAssignmentOut, status_code=status.HTTP_201_CREATED)
+async def create_schedule_assignment(db: Db, cid: CompanyId, body: ScheduleAssignmentCreate) -> ScheduleAssignmentOut:
+    row = PulseScheduleAssignment(
+        company_id=cid,
+        date=body.date,
+        shift_type=str(body.shift_type or "night").strip().lower(),
+        area=str(body.area).strip(),
+        assigned_user_id=body.assigned_user_id,
+        notes=body.notes,
+    )
+    db.add(row)
+    try:
+        await db.commit()
+    except IntegrityError as e:
+        await db.rollback()
+        raise HTTPException(status_code=400, detail="Duplicate assignment area for that day/shift") from e
+    return ScheduleAssignmentOut.model_validate(row)
+
+
+@router.patch("/schedule/assignments/{assignment_id}", response_model=ScheduleAssignmentOut)
+async def patch_schedule_assignment(
+    db: Db,
+    cid: CompanyId,
+    assignment_id: str,
+    body: ScheduleAssignmentPatch,
+) -> ScheduleAssignmentOut:
+    q = await db.execute(
+        select(PulseScheduleAssignment).where(
+            PulseScheduleAssignment.id == assignment_id,
+            PulseScheduleAssignment.company_id == cid,
+        )
+    )
+    row = q.scalar_one_or_none()
+    if not row:
+        raise HTTPException(status_code=404, detail="Assignment not found")
+    data = body.model_dump(exclude_unset=True)
+    if "area" in data and data["area"] is not None:
+        row.area = str(data["area"]).strip()
+    if "assigned_user_id" in data:
+        row.assigned_user_id = data["assigned_user_id"] or None
+    if "notes" in data:
+        row.notes = data["notes"]
+    try:
+        await db.commit()
+    except IntegrityError as e:
+        await db.rollback()
+        raise HTTPException(status_code=400, detail="Duplicate assignment area for that day/shift") from e
+    return ScheduleAssignmentOut.model_validate(row)
+
+
+@router.delete("/schedule/assignments/{assignment_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_schedule_assignment(db: Db, cid: CompanyId, assignment_id: str) -> None:
+    q = await db.execute(
+        select(PulseScheduleAssignment).where(
+            PulseScheduleAssignment.id == assignment_id,
+            PulseScheduleAssignment.company_id == cid,
+        )
+    )
+    row = q.scalar_one_or_none()
+    if not row:
+        return
+    await db.delete(row)
+    await db.commit()
 
 
 @router.post("/schedule/shifts", response_model=ShiftCreateResult)

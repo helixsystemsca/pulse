@@ -1,12 +1,14 @@
 import type { ModuleId } from "./defaults";
 
-export type SettingFieldType = "toggle" | "number";
+export type SettingFieldType = "toggle" | "number" | "json";
 
 export type SettingFieldMeta = {
   key: string;
   type: SettingFieldType;
   label: string;
   description: string;
+  /** For json fields: placeholder / hint text */
+  placeholder?: string;
 };
 
 export type SettingSectionMeta = {
@@ -89,6 +91,12 @@ export const MODULE_SETTINGS_UI: Record<ModuleId, { title: string; sections: Set
             label: "Show auto-generate hints",
             description: "Reserved for future bulk generation; keeps the option visible for admins.",
           },
+          {
+            key: "enableNightAssignments",
+            type: "toggle",
+            label: "Enable night assignments panel",
+            description: "Adds an Assignments tab in the Day view for tracking areas and notes for night shift.",
+          },
         ],
       },
       {
@@ -100,6 +108,33 @@ export const MODULE_SETTINGS_UI: Record<ModuleId, { title: string; sections: Set
             type: "number",
             label: "Max hours per week (0 = off)",
             description: "When greater than zero, adding or moving shifts warns if a worker exceeds this many hours per calendar week.",
+          },
+        ],
+      },
+      {
+        id: "coverage",
+        title: "Coverage rules",
+        description: "Custom staffing requirements (validated against the schedule; does not auto-assign).",
+        fields: [
+          {
+            key: "coverageRules",
+            type: "json",
+            label: "Coverage rules (advanced)",
+            description:
+              "Create rules to require certifications or counts per shift type. If you prefer, leave this empty and use the builder in the Schedule UI (coming next).",
+            placeholder: JSON.stringify(
+              [
+                {
+                  id: "rule-1",
+                  kind: "cert_per_shift_type",
+                  certification: "RO",
+                  minCount: 1,
+                  shiftTypes: ["day", "afternoon", "night"],
+                },
+              ],
+              null,
+              2,
+            ),
           },
         ],
       },

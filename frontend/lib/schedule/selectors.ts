@@ -45,7 +45,13 @@ export function computeAlerts(
     }
   }
 
-  return { daysMissingSupervisor, unassignedShiftCount, openSupervisorSlots };
+  return {
+    daysMissingSupervisor,
+    unassignedShiftCount,
+    openSupervisorSlots,
+    coverageCritical: 0,
+    coverageWarnings: 0,
+  };
 }
 
 export function computeWorkforceSummary(

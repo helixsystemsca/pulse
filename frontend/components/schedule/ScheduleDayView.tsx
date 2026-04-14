@@ -1,7 +1,7 @@
 "use client";
 
-import { AlertTriangle, ArrowLeft, Award, Plus } from "lucide-react";
-import { useMemo, useRef, useState } from "react";
+import { AlertTriangle, ArrowLeft, Award, Plus, ClipboardList, Trash2 } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   formatCertCodesShort,
   formatCertCodesWithLabels,
@@ -29,6 +29,13 @@ import type {
   Worker,
   Zone,
 } from "@/lib/schedule/types";
+import type { ScheduleAssignment } from "@/lib/schedule/assignments";
+import {
+  createScheduleAssignment,
+  deleteScheduleAssignment,
+  fetchScheduleAssignments,
+  patchScheduleAssignment,
+} from "@/lib/schedule/assignments";
 
 type Props = {
   date: string;
@@ -53,6 +60,7 @@ type Props = {
   onWorkerDrop?: (workerId: string) => void;
   onShiftDragSessionStart: (payload: ScheduleDragSession) => void;
   onShiftDragSessionEnd: () => void;
+  nightAssignmentsEnabled?: boolean;
 };
 
 /**
@@ -80,9 +88,18 @@ export function ScheduleDayView({
   onWorkerDrop,
   onShiftDragSessionStart,
   onShiftDragSessionEnd,
+  nightAssignmentsEnabled = false,
 }: Props) {
   const [shake, setShake] = useState(false);
   const shakeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const [assignShiftType, setAssignShiftType] = useState<string>("night");
+  const [assignments, setAssignments] = useState<ScheduleAssignment[]>([]);
+  const [assignLoading, setAssignLoading] = useState(false);
+  const [assignError, setAssignError] = useState<string | null>(null);
+  const [newArea, setNewArea] = useState("");
+  const [newWorkerId, setNewWorkerId] = useState<string>("");
+  const [newNotes, setNewNotes] = useState("");
 
   const triggerShake = () => {
     if (shakeTimer.current) clearTimeout(shakeTimer.current);
@@ -123,6 +140,29 @@ export function ScheduleDayView({
       totalLabels: labels.size,
     };
   }, [sorted, dayShiftsAll, workers, settings, timeOffBlocks, zones]);
+
+  useEffect(() => {
+    if (!nightAssignmentsEnabled) return;
+    let cancelled = false;
+    setAssignLoading(true);
+    setAssignError(null);
+    void (async () => {
+      try {
+        const from = `${date}T00:00:00.000Z`;
+        const to = `${date}T23:59:59.999Z`;
+        const rows = await fetchScheduleAssignments({ from, to, shift_type: assignShiftType });
+        if (cancelled) return;
+        setAssignments(rows.filter((r) => r.date === date));
+      } catch {
+        if (!cancelled) setAssignError("Could not load assignments.");
+      } finally {
+        if (!cancelled) setAssignLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [nightAssignmentsEnabled, date, assignShiftType]);
 
   return (
     <div className="overflow-hidden rounded-md border border-pulseShell-border bg-pulseShell-surface shadow-[var(--pulse-shell-shadow)]">
@@ -421,6 +461,175 @@ export function ScheduleDayView({
               </>
             )}
           </div>
+
+          {nightAssignmentsEnabled ? (
+            <div className="rounded-md border border-pulseShell-border bg-pulseShell-surface p-4 shadow-[var(--pulse-shell-shadow)]">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="flex items-center gap-2 font-headline text-sm font-bold text-ds-foreground">
+                    <ClipboardList className="h-4 w-4 text-ds-muted" aria-hidden />
+                    Assignments
+                  </p>
+                  <p className="mt-0.5 text-xs text-ds-muted">Areas and notes for this day (per shift type).</p>
+                </div>
+                <select
+                  className="rounded-md border border-pulseShell-border bg-pulseShell-elevated px-2 py-1.5 text-xs font-semibold text-ds-foreground"
+                  value={assignShiftType}
+                  onChange={(e) => setAssignShiftType(e.target.value)}
+                >
+                  {shiftTypes.map((t) => (
+                    <option key={t.key} value={t.key}>
+                      {t.label || t.key}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="mt-3 rounded-md border border-pulseShell-border bg-pulseShell-elevated p-3">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-ds-muted">Create</p>
+                <div className="mt-2 space-y-2">
+                  <input
+                    className="w-full rounded-md border border-pulseShell-border bg-pulseShell-surface px-3 py-2 text-sm text-ds-foreground"
+                    placeholder="Area (Pool Deck, Weight Room, Change Rooms, B Side, A Side)"
+                    value={newArea}
+                    onChange={(e) => setNewArea(e.target.value)}
+                  />
+                  <select
+                    className="w-full rounded-md border border-pulseShell-border bg-pulseShell-surface px-3 py-2 text-sm text-ds-foreground"
+                    value={newWorkerId}
+                    onChange={(e) => setNewWorkerId(e.target.value)}
+                  >
+                    <option value="">Unassigned</option>
+                    {workers
+                      .filter((w) => w.active)
+                      .map((w) => (
+                        <option key={w.id} value={w.id}>
+                          {w.name}
+                        </option>
+                      ))}
+                  </select>
+                  <textarea
+                    className="w-full rounded-md border border-pulseShell-border bg-pulseShell-surface px-3 py-2 text-sm text-ds-foreground"
+                    placeholder="Notes (optional)"
+                    value={newNotes}
+                    onChange={(e) => setNewNotes(e.target.value)}
+                  />
+                  <button
+                    type="button"
+                    className="ds-btn-solid-primary inline-flex w-full items-center justify-center gap-2 px-4 py-2 text-sm"
+                    disabled={assignLoading || !newArea.trim()}
+                    onClick={() => {
+                      if (!newArea.trim()) return;
+                      setAssignLoading(true);
+                      void (async () => {
+                        try {
+                          const created = await createScheduleAssignment({
+                            date,
+                            shift_type: assignShiftType,
+                            area: newArea.trim(),
+                            assigned_user_id: newWorkerId || null,
+                            notes: newNotes.trim() || null,
+                          });
+                          setAssignments((prev) => [...prev, created].sort((a, b) => a.area.localeCompare(b.area)));
+                          setNewArea("");
+                          setNewWorkerId("");
+                          setNewNotes("");
+                        } catch {
+                          window.alert("Could not create assignment.");
+                        } finally {
+                          setAssignLoading(false);
+                        }
+                      })();
+                    }}
+                  >
+                    <Plus className="h-4 w-4" />
+                    Add assignment
+                  </button>
+                </div>
+              </div>
+
+              {assignError ? (
+                <p className="mt-3 rounded-md border border-amber-200/90 bg-amber-50/60 px-3 py-2 text-sm text-amber-950 dark:border-amber-500/30 dark:bg-amber-950/35 dark:text-amber-100">
+                  {assignError}
+                </p>
+              ) : null}
+
+              <div className="mt-3 space-y-2">
+                {assignLoading ? <p className="text-sm text-ds-muted">Loading…</p> : null}
+                {!assignLoading && assignments.length === 0 ? (
+                  <p className="text-sm text-ds-muted">No assignments yet.</p>
+                ) : null}
+                {assignments.map((a) => (
+                  <div key={a.id} className="rounded-md border border-pulseShell-border bg-pulseShell-elevated p-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <input
+                        className="min-w-0 flex-1 rounded-md border border-pulseShell-border bg-pulseShell-surface px-3 py-2 text-sm text-ds-foreground"
+                        value={a.area}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          setAssignments((prev) => prev.map((x) => (x.id === a.id ? { ...x, area: v } : x)));
+                        }}
+                        onBlur={() => {
+                          void patchScheduleAssignment(a.id, { area: a.area.trim() || a.area }).catch(() =>
+                            window.alert("Could not save area."),
+                          );
+                        }}
+                      />
+                      <button
+                        type="button"
+                        className="inline-flex items-center gap-1 rounded-md border border-pulseShell-border px-2.5 py-2 text-xs font-semibold text-ds-muted hover:bg-red-50 hover:text-red-700"
+                        onClick={() => {
+                          if (typeof window !== "undefined" && !window.confirm("Delete this assignment?")) return;
+                          void deleteScheduleAssignment(a.id)
+                            .then(() => setAssignments((prev) => prev.filter((x) => x.id !== a.id)))
+                            .catch(() => window.alert("Could not delete assignment."));
+                        }}
+                        aria-label="Delete assignment"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                    <select
+                      className="mt-2 w-full rounded-md border border-pulseShell-border bg-pulseShell-surface px-3 py-2 text-sm text-ds-foreground"
+                      value={a.assigned_user_id ?? ""}
+                      onChange={(e) => {
+                        const v = e.target.value || null;
+                        setAssignments((prev) =>
+                          prev.map((x) => (x.id === a.id ? { ...x, assigned_user_id: v } : x)),
+                        );
+                        void patchScheduleAssignment(a.id, { assigned_user_id: v }).catch(() =>
+                          window.alert("Could not save worker."),
+                        );
+                      }}
+                    >
+                      <option value="">Unassigned</option>
+                      {workers
+                        .filter((w) => w.active)
+                        .map((w) => (
+                          <option key={w.id} value={w.id}>
+                            {w.name}
+                          </option>
+                        ))}
+                    </select>
+                    <textarea
+                      className="mt-2 w-full rounded-md border border-pulseShell-border bg-pulseShell-surface px-3 py-2 text-sm text-ds-foreground"
+                      value={a.notes ?? ""}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        setAssignments((prev) => prev.map((x) => (x.id === a.id ? { ...x, notes: v } : x)));
+                      }}
+                      onBlur={() => {
+                        void patchScheduleAssignment(a.id, { notes: (a.notes ?? "").trim() || null }).catch(() =>
+                          window.alert("Could not save notes."),
+                        );
+                      }}
+                      placeholder="Notes"
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
         </aside>
       </div>
     </div>

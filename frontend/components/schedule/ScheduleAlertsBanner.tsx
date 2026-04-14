@@ -20,6 +20,16 @@ export function ScheduleAlertsBanner({ alerts }: { alerts: ScheduleAlerts }) {
       `${alerts.openSupervisorSlots} supervisor slot${alerts.openSupervisorSlots === 1 ? "" : "s"} need assignment`,
     );
   }
+  if (alerts.coverageCritical > 0) {
+    parts.push(
+      `${alerts.coverageCritical} critical coverage rule violation${alerts.coverageCritical === 1 ? "" : "s"}`,
+    );
+  }
+  if (alerts.coverageWarnings > 0) {
+    parts.push(
+      `${alerts.coverageWarnings} coverage warning${alerts.coverageWarnings === 1 ? "" : "s"}`,
+    );
+  }
 
   if (parts.length === 0) {
     return (

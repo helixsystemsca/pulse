@@ -151,6 +151,10 @@ export interface ScheduleAlerts {
   unassignedShiftCount: number;
   /** Shifts that violate requireSupervisor (worker-only coverage when rule on). */
   openSupervisorSlots: number;
+  /** Coverage rule violations (critical). */
+  coverageCritical: number;
+  /** Coverage rule violations (warning). */
+  coverageWarnings: number;
 }
 
 export interface WorkforceSummary {

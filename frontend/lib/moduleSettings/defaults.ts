@@ -13,6 +13,8 @@ export const DEFAULT_ORG_MODULE_SETTINGS = {
     allowShiftOverrides: true,
     enforceMaxHours: 0,
     autoGenerateShifts: false,
+    coverageRules: [] as unknown[],
+    enableNightAssignments: true,
   },
   assets: {
     requireSerialNumber: false,

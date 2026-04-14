@@ -25,6 +25,7 @@ import {
   parseLocalDate,
   weekDatesFromSunday,
 } from "@/lib/schedule/calendar";
+import { evaluateCoverageRules } from "@/lib/schedule/coverage-rules";
 import {
   inferShiftTypeFromStart,
   isEphemeralScheduleShiftId,
@@ -395,8 +396,24 @@ export function ScheduleApp() {
   }, [calendarScale, focusDate, cursor.y, cursor.m]);
 
   const alerts = useMemo(
-    () => computeAlerts(shiftsForView, metricsMonth.y, metricsMonth.m, settings),
-    [shiftsForView, metricsMonth.y, metricsMonth.m, settings],
+    () => {
+      const base = computeAlerts(shiftsForView, metricsMonth.y, metricsMonth.m, settings);
+      const dates = monthGrid(metricsMonth.y, metricsMonth.m)
+        .filter((c) => c.inMonth)
+        .map((c) => c.date);
+      const v = evaluateCoverageRules(
+        (scheduleMod.settings as { coverageRules?: unknown }).coverageRules,
+        dates,
+        shiftsForView,
+        workers,
+      );
+      return {
+        ...base,
+        coverageCritical: v.filter((x) => x.severity === "critical").length,
+        coverageWarnings: v.filter((x) => x.severity === "warning").length,
+      };
+    },
+    [shiftsForView, metricsMonth.y, metricsMonth.m, settings, scheduleMod.settings, workers],
   );
 
   const summary = useMemo(
@@ -876,6 +893,9 @@ export function ScheduleApp() {
                         setDragSession(null);
                         setTrashHovering(false);
                       }}
+                      nightAssignmentsEnabled={
+                        (scheduleMod.settings as { enableNightAssignments?: boolean }).enableNightAssignments !== false
+                      }
                     />
                   </div>
                 ) : null}

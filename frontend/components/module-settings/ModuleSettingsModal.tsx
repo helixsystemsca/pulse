@@ -56,6 +56,17 @@ export function ModuleSettingsModal({ moduleId, open, onClose }: Props) {
 
   if (!open) return null;
 
+  function jsonStringFor(key: string): string {
+    const v = (draft as Record<string, unknown>)[key];
+    if (v === null || v === undefined) return "";
+    if (typeof v === "string") return v;
+    try {
+      return JSON.stringify(v, null, 2);
+    } catch {
+      return String(v);
+    }
+  }
+
   return (
     <div className="fixed inset-0 z-[140] flex items-center justify-center p-4">
       <button
@@ -124,6 +135,36 @@ export function ModuleSettingsModal({ moduleId, open, onClose }: Props) {
                               </span>
                               <span className="mt-0.5 block text-xs text-pulse-muted">{f.description}</span>
                             </span>
+                          </label>
+                        ) : f.type === "json" ? (
+                          <label className="block">
+                            <span className="text-sm font-medium text-pulse-navy dark:text-slate-100">{f.label}</span>
+                            <p className="text-xs text-pulse-muted">{f.description}</p>
+                            <textarea
+                              className="mt-1.5 w-full min-h-40 rounded-lg border border-slate-200 bg-white px-3 py-2 font-mono text-[12px] text-slate-900 dark:border-ds-border dark:bg-ds-secondary dark:text-slate-100"
+                              value={jsonStringFor(f.key)}
+                              placeholder={f.placeholder}
+                              disabled={!canConfigure}
+                              onChange={(e) => {
+                                const raw = e.target.value;
+                                if (!raw.trim()) {
+                                  setDraft((d) => ({ ...d, [f.key]: [] }) as typeof draft);
+                                  return;
+                                }
+                                try {
+                                  const parsed = JSON.parse(raw);
+                                  setDraft((d) => ({ ...d, [f.key]: parsed }) as typeof draft);
+                                } catch {
+                                  // Keep the raw string so users can fix JSON without losing input.
+                                  setDraft((d) => ({ ...d, [f.key]: raw }) as typeof draft);
+                                }
+                              }}
+                            />
+                            {typeof (draft as Record<string, unknown>)[f.key] === "string" ? (
+                              <p className="mt-1 text-xs text-amber-700 dark:text-amber-300">
+                                Invalid JSON (not saved as a rule list yet).
+                              </p>
+                            ) : null}
                           </label>
                         ) : (
                           <label className="block">

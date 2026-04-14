@@ -504,6 +504,34 @@ class PulseScheduleShift(Base):
     )
 
 
+class PulseScheduleAssignment(Base):
+    """
+    Per-day shift assignments (area + notes) that sit alongside workforce shifts.
+    Intended for "night shift assignments" style checklists.
+    """
+
+    __tablename__ = "pulse_schedule_assignments"
+    __table_args__ = (UniqueConstraint("company_id", "date", "shift_type", "area", name="uq_pulse_schedule_assign_area"),)
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    company_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    date: Mapped[date] = mapped_column(Date, nullable=False, index=True)
+    shift_type: Mapped[str] = mapped_column(String(32), default="night", nullable=False, index=True)
+    area: Mapped[str] = mapped_column(String(128), nullable=False)
+    assigned_user_id: Mapped[Optional[str]] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+
 class PulseBeaconEquipment(Base):
     __tablename__ = "pulse_beacon_equipment"
     __table_args__ = (UniqueConstraint("company_id", "beacon_id", name="uq_pulse_beacon_company_beacon"),)

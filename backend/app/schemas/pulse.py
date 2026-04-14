@@ -212,6 +212,34 @@ class ZoneOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class ScheduleAssignmentOut(BaseModel):
+    id: str
+    company_id: str
+    date: date
+    shift_type: str
+    area: str
+    assigned_user_id: Optional[str] = None
+    notes: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class ScheduleAssignmentCreate(BaseModel):
+    date: date
+    shift_type: str = "night"
+    area: str
+    assigned_user_id: Optional[str] = None
+    notes: Optional[str] = None
+
+
+class ScheduleAssignmentPatch(BaseModel):
+    area: Optional[str] = None
+    assigned_user_id: Optional[str] = None
+    notes: Optional[str] = None
+
+
 class AssetOut(BaseModel):
     id: str
     tag_id: str

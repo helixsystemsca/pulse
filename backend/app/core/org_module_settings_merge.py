@@ -17,6 +17,10 @@ DEFAULT_ORG_MODULE_SETTINGS: dict[str, Any] = {
         "allowShiftOverrides": True,
         "enforceMaxHours": 0,
         "autoGenerateShifts": False,
+        # Custom staffing / coverage validation rules (UI-managed; evaluated client-side).
+        "coverageRules": [],
+        # Optional: enable the night-shift assignments panel in the day view.
+        "enableNightAssignments": True,
     },
     "assets": {
         "requireSerialNumber": False,
