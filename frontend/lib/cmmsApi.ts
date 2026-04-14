@@ -114,7 +114,16 @@ export async function createProcedure(
 export async function patchProcedure(
   id: string,
   body: Partial<
-    { title: string; steps: ProcedureStep[] } & Pick<ProcedureRow, "review_required" | "reviewed_by_user_id" | "reviewed_by_name" | "reviewed_at">
+    { title: string; steps: ProcedureStep[] } &
+      Pick<
+        ProcedureRow,
+        | "review_required"
+        | "reviewed_by_user_id"
+        | "reviewed_by_name"
+        | "reviewed_at"
+        | "created_by_user_id"
+        | "created_by_name"
+      >
   >,
 ): Promise<ProcedureRow> {
   return apiFetch<ProcedureRow>(`/api/v1/cmms/procedures/${id}`, { method: "PATCH", json: body });

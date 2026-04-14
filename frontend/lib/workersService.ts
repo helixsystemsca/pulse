@@ -103,6 +103,8 @@ export type WorkersSettings = {
   certification_rules?: unknown[];
   workers_page_delegation?: { manager?: boolean; supervisor?: boolean; lead?: boolean };
   role_feature_access?: Record<string, string[]>;
+  /** Roles allowed to edit procedures (CMMS SOP library). Company admins can always edit. */
+  procedures_edit_roles?: string[];
 };
 
 function companyQs(companyId: string | null): string {

@@ -33,6 +33,7 @@ import { dsInputClass, dsLabelClass, dsSelectClass } from "@/components/ui/ds-fo
 import { MetricCard } from "@/components/ui/MetricCard";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { StatusBadge, type StatusBadgeVariant } from "@/components/ui/StatusBadge";
+import { HarnessInspectionForm } from "@/components/compliance/HarnessInspectionForm";
 
 type AssetOption = { id: string; name: string };
 type CompanyOption = { id: string; name: string };
@@ -396,6 +397,19 @@ export function ComplianceApp() {
         </p>
       ) : (
         <>
+          {tab === "inspections" ? (
+            <div className="mt-4">
+              <HarnessInspectionForm
+                onSubmit={(payload) => {
+                  // Temporary client-side integration point. Backend saving will plug in here.
+                  // eslint-disable-next-line no-console
+                  console.log("Harness inspection submit", payload);
+                  window.alert("Inspection captured (client-side). Ready to wire into Work Items.");
+                }}
+              />
+            </div>
+          ) : null}
+
           <div className="mt-4 flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-end lg:justify-between">
             <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
               <select className={dsSelectClass} value={toolFilter} onChange={(e) => setToolFilter(e.target.value)}>

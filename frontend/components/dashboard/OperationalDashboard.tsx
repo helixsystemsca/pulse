@@ -784,10 +784,12 @@ function OperationsHeaderLogoMark({
   companyName?: string | null;
 }) {
   const raw = logoUrl?.trim() || null;
-  const internal = raw && !raw.startsWith("http://") && !raw.startsWith("https://") ? raw : null;
+  const isExternal = Boolean(raw && (raw.startsWith("http://") || raw.startsWith("https://")));
+  // Public Next.js assets (e.g. `/images/panologo.png`) should NOT be fetched with bearer auth.
+  const isPublicLocal = Boolean(raw && raw.startsWith("/") && !raw.startsWith("/api"));
+  const internal = raw && !isExternal && !isPublicLocal ? raw : null;
   const resolved = useAuthenticatedAssetSrc(internal);
-  const src =
-    !raw ? null : raw.startsWith("http://") || raw.startsWith("https://") ? raw : resolved;
+  const src = !raw ? null : isExternal || isPublicLocal ? raw : resolved;
   const waiting = Boolean(internal && !src);
   const initials = headerInitials(companyName ?? "");
 
@@ -1671,7 +1673,7 @@ export function OperationalDashboard({
       hideHeaderWelcome
       zonePromptDismissed={zoneDismissed}
       onDismissZonePrompt={() => setZoneDismissed(true)}
-      headerLogoUrl={session?.company?.logo_url ?? null}
+      headerLogoUrl="/images/panologo.png"
       headerCompanyName={session?.company?.name ?? null}
       facilitySetupChecklist={facilitySetupSlot}
     />

@@ -1,7 +1,7 @@
 "use client";
 
 import { ImagePlus, Loader2, Plus, Trash2 } from "lucide-react";
-import { useCallback, useEffect, useId, useState, type Dispatch, type SetStateAction } from "react";
+import { useCallback, useEffect, useId, useMemo, useState, type Dispatch, type SetStateAction } from "react";
 import {
   createProcedure,
   fetchProcedures,
@@ -13,6 +13,8 @@ import { useResolvedProtectedAssetSrc } from "@/lib/useResolvedProtectedAssetSrc
 import { parseClientApiError } from "@/lib/parse-client-api-error";
 import { sessionHasAnyRole } from "@/lib/pulse-roles";
 import { readSession } from "@/lib/pulse-session";
+import { acknowledgeProcedure, hasAcknowledgedProcedure } from "@/lib/procedureAcknowledgments";
+import { fetchWorkerSettings } from "@/lib/workersService";
 
 type DraftStep = {
   key: string;
@@ -59,9 +61,24 @@ export function ProceduresApp() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState("");
   const [editSteps, setEditSteps] = useState<DraftStep[]>([]);
+  const [editCreatorName, setEditCreatorName] = useState("");
+  const [ackOpen, setAckOpen] = useState(false);
+  const [ackForId, setAckForId] = useState<string | null>(null);
+  const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const session = readSession();
   const canReview = sessionHasAnyRole(session, "lead", "supervisor", "manager", "company_admin");
+  const userId = session?.sub ?? null;
+  const [proceduresEditRoles, setProceduresEditRoles] = useState<string[]>(["manager", "supervisor", "lead"]);
+
+  const sessionRoleSet = useMemo(() => {
+    const s = new Set<string>();
+    if (session?.role) s.add(session.role);
+    for (const r of session?.roles ?? []) s.add(r);
+    return s;
+  }, [session?.role, session?.roles]);
+
+  const isCompanyAdmin = sessionHasAnyRole(session, "company_admin");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -80,17 +97,54 @@ export function ProceduresApp() {
     void load();
   }, [load]);
 
+  useEffect(() => {
+    void (async () => {
+      try {
+        const st = await fetchWorkerSettings(null);
+        const roles = st.settings?.procedures_edit_roles;
+        setProceduresEditRoles(Array.isArray(roles) && roles.length ? roles : ["manager", "supervisor", "lead"]);
+      } catch {
+        // default stays
+      }
+    })();
+  }, []);
+
   const selected = selectedId ? rows.find((r) => r.id === selectedId) ?? null : null;
 
   useEffect(() => {
     if (!selected) {
       setEditTitle("");
       setEditSteps([]);
+      setEditCreatorName("");
+      setAckOpen(false);
+      setAckForId(null);
+      setEditing(false);
       return;
     }
     setEditTitle(selected.title);
     setEditSteps(toDraftFromProcedure(selected));
-  }, [selected]);
+    setEditCreatorName(selected.created_by_name?.trim() || "");
+    if (userId && !editing) {
+      const needs = !hasAcknowledgedProcedure(userId, selected.id);
+      setAckForId(selected.id);
+      setAckOpen(needs);
+    } else {
+      setAckForId(selected.id);
+      setAckOpen(false);
+    }
+  }, [selected, userId, editing]);
+
+  const canEditSelected = useMemo(() => {
+    if (!selected) return false;
+    if (isCompanyAdmin) return true;
+    const allowedByRole = proceduresEditRoles.some((r) => sessionRoleSet.has(r));
+    const createdById = selected.created_by_user_id && userId ? selected.created_by_user_id === userId : false;
+    const meName = (session?.full_name?.trim() || "").toLowerCase();
+    const meEmail = (session?.email?.trim() || "").toLowerCase();
+    const createdByName = (selected.created_by_name?.trim() || "").toLowerCase();
+    const createdByNameMatch = Boolean(createdByName && (createdByName === meName || createdByName === meEmail));
+    return Boolean(allowedByRole || createdById || createdByNameMatch);
+  }, [selected, isCompanyAdmin, proceduresEditRoles, sessionRoleSet, userId, session?.full_name, session?.email]);
 
   const addDraftRow = (setter: Dispatch<SetStateAction<DraftStep[]>>) => {
     setter((prev) => [
@@ -178,13 +232,30 @@ export function ProceduresApp() {
     setSaving(true);
     setErr(null);
     try {
-      await patchProcedure(selectedId, { title: t, steps: normalized });
+      await patchProcedure(selectedId, {
+        title: t,
+        steps: normalized,
+        ...(canReview
+          ? {
+              created_by_name: editCreatorName.trim() || null,
+            }
+          : {}),
+      });
       await uploadPendingFiles(selectedId, editSteps);
       await load();
     } catch (e) {
       setErr(parseClientApiError(e).message);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const signAcknowledgment = async () => {
+    if (!userId || !selected) return;
+    try {
+      acknowledgeProcedure(userId, selected.id, selected.title);
+    } finally {
+      setAckOpen(false);
     }
   };
 
@@ -415,7 +486,31 @@ export function ProceduresApp() {
 
         {selected ? (
           <section className="rounded-md border border-ds-border bg-ds-primary p-5 shadow-[var(--ds-shadow-card)]">
-            <h2 className="text-base font-semibold text-ds-foreground">Edit</h2>
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <h2 className="text-base font-semibold text-ds-foreground">{editing ? "Edit" : "Procedure"}</h2>
+              {canEditSelected ? (
+                <div className="flex flex-wrap gap-2">
+                  {editing ? (
+                    <button
+                      type="button"
+                      className="rounded-md border border-ds-border px-3 py-2 text-sm font-semibold text-ds-foreground hover:bg-ds-secondary"
+                      onClick={() => setEditing(false)}
+                      disabled={saving}
+                    >
+                      Cancel edit
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      className="rounded-md bg-ds-accent px-3 py-2 text-sm font-semibold text-ds-accent-foreground"
+                      onClick={() => setEditing(true)}
+                    >
+                      Edit
+                    </button>
+                  )}
+                </div>
+              ) : null}
+            </div>
             <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-ds-muted">
               <span>
                 Created by{" "}
@@ -431,54 +526,157 @@ export function ProceduresApp() {
                 </span>
               ) : null}
             </div>
-            <label className="mt-3 block text-xs font-semibold uppercase text-ds-muted" htmlFor={`${formId}-edit-title`}>
-              Title
-            </label>
-            <input
-              id={`${formId}-edit-title`}
-              className="mt-1 w-full rounded-md border border-ds-border bg-ds-primary px-3 py-2 text-sm dark:bg-ds-secondary"
-              value={editTitle}
-              onChange={(e) => setEditTitle(e.target.value)}
-            />
-            {renderStepEditor(editSteps, setEditSteps, `${formId}-edit`)}
-            <button
-              type="button"
-              className="mt-2 inline-flex items-center gap-2 rounded-md border border-ds-border bg-ds-secondary/60 px-3 py-2 text-sm font-semibold text-ds-foreground hover:bg-ds-interactive-hover"
-              onClick={() => addDraftRow(setEditSteps)}
-            >
-              <Plus className="h-4 w-4" aria-hidden />
-              Add step
-            </button>
-            <div className="mt-4 flex flex-wrap gap-2">
-              <button
-                type="button"
-                disabled={saving || !editTitle.trim()}
-                onClick={() => void saveEdit()}
-                className="rounded-md bg-ds-accent px-4 py-2 text-sm font-semibold text-ds-accent-foreground disabled:opacity-50"
-              >
-                {saving ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : "Save changes"}
-              </button>
-              {selected.review_required && canReview ? (
+
+            {editing ? (
+              <>
+                {canReview ? (
+                  <div className="mt-3">
+                    <label
+                      className="block text-[11px] font-semibold uppercase tracking-wider text-ds-muted"
+                      htmlFor={`${formId}-edit-created-by`}
+                    >
+                      Creator (edit)
+                    </label>
+                    <input
+                      id={`${formId}-edit-created-by`}
+                      className="mt-1 w-full rounded-md border border-ds-border bg-ds-primary px-3 py-2 text-sm dark:bg-ds-secondary"
+                      placeholder="Name or email"
+                      value={editCreatorName}
+                      onChange={(e) => setEditCreatorName(e.target.value)}
+                    />
+                  </div>
+                ) : null}
+                <label className="mt-3 block text-xs font-semibold uppercase text-ds-muted" htmlFor={`${formId}-edit-title`}>
+                  Title
+                </label>
+                <input
+                  id={`${formId}-edit-title`}
+                  className="mt-1 w-full rounded-md border border-ds-border bg-ds-primary px-3 py-2 text-sm dark:bg-ds-secondary"
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value)}
+                />
+                {renderStepEditor(editSteps, setEditSteps, `${formId}-edit`)}
                 <button
                   type="button"
-                  disabled={saving}
-                  onClick={() => void markReviewed()}
-                  className="rounded-md border border-ds-border bg-ds-secondary/60 px-4 py-2 text-sm font-semibold text-ds-foreground hover:bg-ds-interactive-hover disabled:opacity-50"
+                  className="mt-2 inline-flex items-center gap-2 rounded-md border border-ds-border bg-ds-secondary/60 px-3 py-2 text-sm font-semibold text-ds-foreground hover:bg-ds-interactive-hover"
+                  onClick={() => addDraftRow(setEditSteps)}
                 >
-                  Mark reviewed
+                  <Plus className="h-4 w-4" aria-hidden />
+                  Add step
                 </button>
-              ) : null}
-              <button
-                type="button"
-                onClick={() => setSelectedId(null)}
-                className="rounded-md border border-ds-border px-4 py-2 text-sm font-semibold text-ds-foreground hover:bg-ds-secondary"
-              >
-                Close
-              </button>
-            </div>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    disabled={saving || !editTitle.trim()}
+                    onClick={() => void saveEdit()}
+                    className="rounded-md bg-ds-accent px-4 py-2 text-sm font-semibold text-ds-accent-foreground disabled:opacity-50"
+                  >
+                    {saving ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : "Save changes"}
+                  </button>
+                  {selected.review_required && canReview ? (
+                    <button
+                      type="button"
+                      disabled={saving}
+                      onClick={() => void markReviewed()}
+                      className="rounded-md border border-ds-border bg-ds-secondary/60 px-4 py-2 text-sm font-semibold text-ds-foreground hover:bg-ds-interactive-hover disabled:opacity-50"
+                    >
+                      Mark reviewed
+                    </button>
+                  ) : null}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditing(false);
+                      setSelectedId(null);
+                    }}
+                    className="rounded-md border border-ds-border px-4 py-2 text-sm font-semibold text-ds-foreground hover:bg-ds-secondary"
+                  >
+                    Close
+                  </button>
+                </div>
+              </>
+            ) : (
+              <div className="mt-4 space-y-4">
+                <div className="rounded-md border border-ds-border bg-ds-secondary/40 p-3">
+                  <p className="text-sm font-semibold text-ds-foreground">Title</p>
+                  <p className="mt-1 text-sm text-ds-muted">{selected.title}</p>
+                </div>
+                <ol className="space-y-3">
+                  {selected.steps.map((s, idx) => {
+                    const step = typeof s === "string" ? { text: s } : s;
+                    return (
+                      <li key={idx} className="rounded-md border border-ds-border bg-ds-primary p-4">
+                        <div className="flex items-start gap-3">
+                          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-ds-border bg-ds-secondary text-xs font-bold text-ds-foreground">
+                            {idx + 1}
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <p className="whitespace-pre-wrap text-sm text-ds-foreground">{step.text ?? ""}</p>
+                            {(typeof s !== "string" && (s.recommended_workers || (s.tools?.length ?? 0) > 0)) ? (
+                              <div className="mt-2 flex flex-wrap gap-2 text-xs text-ds-muted">
+                                {s.recommended_workers ? (
+                                  <span className="rounded-full border border-ds-border bg-ds-secondary/60 px-2 py-0.5 font-semibold">
+                                    Recommended workers: {s.recommended_workers}
+                                  </span>
+                                ) : null}
+                                {(s.tools ?? []).map((t) => (
+                                  <span key={t} className="rounded-full border border-ds-border bg-ds-secondary/60 px-2 py-0.5 font-semibold">
+                                    {t}
+                                  </span>
+                                ))}
+                              </div>
+                            ) : null}
+                            {typeof s !== "string" ? <StepImagePreview imageUrl={s.image_url ?? null} /> : null}
+                          </div>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ol>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedId(null)}
+                    className="rounded-md border border-ds-border px-4 py-2 text-sm font-semibold text-ds-foreground hover:bg-ds-secondary"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            )}
           </section>
         ) : null}
       </div>
+
+      {ackOpen && !editing && selected && ackForId === selected.id ? (
+        <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/30 px-4 py-8">
+          <div className="w-full max-w-lg rounded-xl border border-ds-border bg-ds-elevated p-5 shadow-[var(--ds-shadow-diffuse)]">
+            <h3 className="text-base font-semibold text-ds-foreground">Acknowledge procedure</h3>
+            <p className="mt-2 text-sm text-ds-muted">
+              Please confirm you’ve read and understand this procedure. This will be recorded in your profile under Compliance.
+            </p>
+            <div className="mt-4 rounded-md border border-ds-border bg-ds-primary p-3 text-sm text-ds-foreground">
+              <span className="font-semibold">Procedure:</span> {selected.title}
+            </div>
+            <div className="mt-4 flex flex-wrap justify-end gap-2">
+              <button
+                type="button"
+                className="rounded-md border border-ds-border px-4 py-2 text-sm font-semibold text-ds-foreground hover:bg-ds-secondary"
+                onClick={() => setAckOpen(false)}
+              >
+                Not now
+              </button>
+              <button
+                type="button"
+                className="rounded-md bg-ds-accent px-4 py-2 text-sm font-semibold text-ds-accent-foreground"
+                onClick={() => void signAcknowledgment()}
+              >
+                I acknowledge I’ve read this
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

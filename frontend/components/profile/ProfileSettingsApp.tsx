@@ -15,6 +15,7 @@ import { parseClientApiError } from "@/lib/parse-client-api-error";
 import { uploadProfileAvatarFile } from "@/lib/profileAvatarUpload";
 import { sessionHasAnyRole } from "@/lib/pulse-roles";
 import type { CompanySummary } from "@/lib/pulse-session";
+import { listProcedureAcknowledgments } from "@/lib/procedureAcknowledgments";
 
 const FIELD =
   "mt-1.5 w-full rounded-[10px] border border-slate-200/90 bg-white px-3 py-2.5 text-sm text-pulse-navy shadow-sm focus:border-[#2B4C7E]/35 focus:outline-none focus:ring-1 focus:ring-[#2B4C7E]/25 dark:border-ds-border dark:bg-ds-secondary dark:text-gray-100 dark:placeholder:text-gray-500";
@@ -53,6 +54,9 @@ export function ProfileSettingsApp() {
   const [err, setErr] = useState<string | null>(null);
 
   const isCompanyAdmin = session ? sessionHasAnyRole(session, "company_admin") : false;
+  const [procedureAcks, setProcedureAcks] = useState<{ procedure_id: string; procedure_title: string; signed_at: string }[]>(
+    [],
+  );
 
   const syncFromSession = useCallback(() => {
     if (!session) return;
@@ -75,6 +79,11 @@ export function ProfileSettingsApp() {
   useEffect(() => {
     syncFromSession();
   }, [syncFromSession]);
+
+  useEffect(() => {
+    if (!session?.sub) return;
+    setProcedureAcks(listProcedureAcknowledgments(session.sub));
+  }, [session?.sub]);
 
   useEffect(() => {
     void refreshPulseUserFromServer();
@@ -272,6 +281,31 @@ export function ProfileSettingsApp() {
               />
             </div>
           </div>
+        </div>
+      </section>
+
+      <section className={CARD}>
+        <h2 className="text-sm font-bold tracking-tight text-pulse-navy dark:text-slate-100">Compliance</h2>
+        <p className="mt-1 text-sm text-pulse-muted">Your acknowledgments for procedures and required reads.</p>
+        <div className="mt-4">
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-pulse-muted">Procedures acknowledged</h3>
+          {procedureAcks.length === 0 ? (
+            <p className="mt-2 text-sm text-pulse-muted">No procedure acknowledgments yet.</p>
+          ) : (
+            <ul className="mt-2 divide-y divide-slate-200/80 rounded-md border border-slate-200/90 bg-white/70 text-sm dark:divide-ds-border dark:border-ds-border dark:bg-ds-secondary/40">
+              {procedureAcks.map((a) => (
+                <li key={`${a.procedure_id}:${a.signed_at}`} className="flex flex-col gap-1 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="min-w-0">
+                    <p className="truncate font-semibold text-ds-foreground">{a.procedure_title}</p>
+                    <p className="truncate text-xs text-ds-muted">Signed that you read it</p>
+                  </div>
+                  <p className="shrink-0 text-xs font-semibold text-ds-muted">
+                    {new Date(a.signed_at).toLocaleString()}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       </section>
 

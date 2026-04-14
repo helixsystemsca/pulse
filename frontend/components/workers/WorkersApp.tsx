@@ -310,6 +310,7 @@ export function WorkersApp() {
     lead: false,
   });
   const [roleFeatureAccessDraft, setRoleFeatureAccessDraft] = useState<Record<string, string[]>>({});
+  const [proceduresEditRolesDraft, setProceduresEditRolesDraft] = useState<string[]>(["manager", "supervisor", "lead"]);
   const [accessPolicySaving, setAccessPolicySaving] = useState(false);
   const [permissionsRole, setPermissionsRole] = useState<PermissionRole>("manager");
   const [extraModulesDraft, setExtraModulesDraft] = useState<string[]>([]);
@@ -393,6 +394,11 @@ export function WorkersApp() {
         nextDraft[role] = rfa[role]?.length ? [...rfa[role]] : [...cat];
       }
       setRoleFeatureAccessDraft(nextDraft);
+      setProceduresEditRolesDraft(
+        Array.isArray(st.settings.procedures_edit_roles) && st.settings.procedures_edit_roles.length
+          ? [...st.settings.procedures_edit_roles]
+          : ["manager", "supervisor", "lead"],
+      );
       setSettingsDraft(st.settings);
     } catch (e: unknown) {
       setListError(e instanceof Error ? e.message : "Failed to load");
@@ -612,6 +618,7 @@ export function WorkersApp() {
         ...fullSettings,
         workers_page_delegation: delegationDraft,
         role_feature_access: roleFeatureAccessDraft,
+        procedures_edit_roles: proceduresEditRolesDraft,
       });
       setContractFeatureNamesFromApi(r.contract_feature_names ?? []);
       setFullSettings(r.settings);
@@ -1058,6 +1065,42 @@ export function WorkersApp() {
                 <div className="ds-inset-panel mt-4 px-3 py-2 text-xs text-ds-muted">
                   Changes apply to all users with the {humanizeRole(permissionsRole)} role after you save.
                 </div>
+              </Card>
+            ) : null}
+
+            {isCompanyAdmin ? (
+              <Card variant="secondary" padding="md">
+                <h2 className="text-sm font-bold tracking-tight text-ds-foreground">Procedure editing</h2>
+                <p className="mt-1 text-xs text-ds-muted">
+                  Choose which roles can edit procedures. Procedure creators can always edit their own procedures.
+                </p>
+                <div className="mt-4 space-y-2">
+                  {PERMISSION_ROLE_OPTIONS.map((role) => {
+                    const on = proceduresEditRolesDraft.includes(role);
+                    return (
+                      <label key={role} className="flex cursor-pointer items-center justify-between gap-3 text-sm text-ds-foreground">
+                        <span className="font-semibold">{humanizeRole(role)}</span>
+                        <input
+                          type="checkbox"
+                          className={dsCheckboxClass}
+                          checked={on}
+                          onChange={(e) => {
+                            const next = e.target.checked;
+                            setProceduresEditRolesDraft((prev) => {
+                              const set = new Set(prev);
+                              if (next) set.add(role);
+                              else set.delete(role);
+                              return [...set];
+                            });
+                          }}
+                        />
+                      </label>
+                    );
+                  })}
+                </div>
+                <p className="mt-3 text-xs text-ds-muted">
+                  Company admins can always edit procedures.
+                </p>
               </Card>
             ) : null}
 

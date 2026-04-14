@@ -39,7 +39,7 @@ export const pulseTenantNav = [
   { href: "/schedule", label: "Schedule" },
   { href: "/monitoring", label: "Monitoring" },
   { href: "/projects", label: "Projects" },
-  { href: "/dashboard/maintenance", label: "Work requests" },
+  { href: "/dashboard/maintenance", label: "Work Requests" },
   { href: "/dashboard/procedures", label: "Procedures" },
   { href: "/dashboard/inventory", label: "Inventory" },
   { href: "/equipment", label: "Equipment" },
@@ -64,12 +64,12 @@ export const pulseTenantSidebarNav = [
   { href: "/schedule", label: "Schedule", icon: "calendar" as const },
   { href: "/monitoring", label: "Monitoring", icon: "activity" as const },
   { href: "/projects", label: "Projects", icon: "folder-kanban" as const },
-  { href: "/dashboard/maintenance", label: "Work requests", icon: "clipboard" as const },
+  { href: "/dashboard/maintenance", label: "Work Requests", icon: "clipboard" as const },
   { href: "/dashboard/procedures", label: "Procedures", icon: "list-checks" as const },
   { href: "/dashboard/workers", label: "Workers & Roles", icon: "user-cog" as const },
   { href: "/dashboard/inventory", label: "Inventory", icon: "package" as const },
   { href: "/equipment", label: "Equipment", icon: "wrench" as const },
-  { href: "/zones-devices/zones", label: "Floor Plans", icon: "layers" as const },
+  { href: "/zones-devices/zones", label: "Drawings", icon: "layers" as const },
   { href: "/devices", label: "Zones & Devices", icon: "map-pin" as const },
 ] as const;
 
