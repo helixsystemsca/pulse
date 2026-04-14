@@ -6,6 +6,7 @@
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { Activity, ChevronDown, Image as ImageIcon, LogOut, ScrollText, Settings } from "lucide-react";
+import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useOnboardingOptional } from "@/components/onboarding/OnboardingProvider";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
@@ -28,6 +29,7 @@ export function AppNavbar() {
   const userMenuRef = useRef<HTMLDivElement>(null);
 
   const logoHref = authed ? pulseApp.to(pulseRoutes.overview) : pulseRoutes.pulseLanding;
+  const usePanoLogo = pathname?.startsWith("/dashboard");
 
   useEffect(() => {
     if (!userOpen) return;
@@ -57,10 +59,25 @@ export function AppNavbar() {
             href={logoHref}
             className="flex min-w-0 items-center gap-2.5 font-headline text-lg font-bold tracking-tight text-ds-foreground no-underline hover:text-ds-success sm:text-xl"
           >
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-ds-border bg-ds-secondary text-ds-success shadow-[var(--ds-shadow-card)]">
-              <Activity className="h-4 w-4" strokeWidth={2} aria-hidden />
-            </span>
-            <span className="font-semibold">Pulse</span>
+            {usePanoLogo ? (
+              <span className="flex h-9 shrink-0 items-center">
+                <Image
+                  src="/images/panologo.png"
+                  alt="Pano"
+                  width={140}
+                  height={36}
+                  priority
+                  className="h-9 w-auto object-contain"
+                />
+              </span>
+            ) : (
+              <>
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-ds-border bg-ds-secondary text-ds-success shadow-[var(--ds-shadow-card)]">
+                  <Activity className="h-4 w-4" strokeWidth={2} aria-hidden />
+                </span>
+                <span className="font-semibold">Pulse</span>
+              </>
+            )}
           </Link>
         </div>
 

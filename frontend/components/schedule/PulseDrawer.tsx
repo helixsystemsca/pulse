@@ -32,12 +32,14 @@ export function PulseDrawer({
   wide,
   labelledBy = "pulse-drawer-title",
   elevated = false,
-  belowAppHeader = false,
+  belowAppHeader = true,
 }: PulseDrawerProps) {
   if (!open) return null;
 
+  const HEADER_OFFSET = "4rem"; // matches app navbar height (h-16)
+  const HEADER_GAP = "12px";
   const panelLayout = belowAppHeader
-    ? "top-16 bottom-0 max-h-[calc(100dvh-4rem)] min-h-0"
+    ? `top-[calc(${HEADER_OFFSET}+${HEADER_GAP})] bottom-0 max-h-[calc(100dvh-${HEADER_OFFSET}-${HEADER_GAP})] min-h-0`
     : "top-0 h-full";
 
   return (

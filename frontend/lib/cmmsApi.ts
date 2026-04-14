@@ -36,6 +36,13 @@ export type ProcedureRow = {
   company_id: string;
   title: string;
   steps: ProcedureStep[];
+  /** Workflow metadata (optional; older servers may omit). */
+  created_by_user_id?: string | null;
+  created_by_name?: string | null;
+  review_required?: boolean;
+  reviewed_by_user_id?: string | null;
+  reviewed_by_name?: string | null;
+  reviewed_at?: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -98,13 +105,17 @@ export async function fetchProcedures(): Promise<ProcedureRow[]> {
   return apiFetch<ProcedureRow[]>("/api/v1/cmms/procedures");
 }
 
-export async function createProcedure(body: { title: string; steps: ProcedureStep[] }): Promise<ProcedureRow> {
+export async function createProcedure(
+  body: { title: string; steps: ProcedureStep[] } & Partial<Pick<ProcedureRow, "created_by_user_id" | "created_by_name" | "review_required">>,
+): Promise<ProcedureRow> {
   return apiFetch<ProcedureRow>("/api/v1/cmms/procedures", { method: "POST", json: body });
 }
 
 export async function patchProcedure(
   id: string,
-  body: Partial<{ title: string; steps: ProcedureStep[] }>,
+  body: Partial<
+    { title: string; steps: ProcedureStep[] } & Pick<ProcedureRow, "review_required" | "reviewed_by_user_id" | "reviewed_by_name" | "reviewed_at">
+  >,
 ): Promise<ProcedureRow> {
   return apiFetch<ProcedureRow>(`/api/v1/cmms/procedures/${id}`, { method: "PATCH", json: body });
 }

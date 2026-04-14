@@ -11,6 +11,8 @@ import {
 } from "@/lib/cmmsApi";
 import { useResolvedProtectedAssetSrc } from "@/lib/useResolvedProtectedAssetSrc";
 import { parseClientApiError } from "@/lib/parse-client-api-error";
+import { sessionHasAnyRole } from "@/lib/pulse-roles";
+import { readSession } from "@/lib/pulse-session";
 
 type DraftStep = {
   key: string;
@@ -58,6 +60,8 @@ export function ProceduresApp() {
   const [editTitle, setEditTitle] = useState("");
   const [editSteps, setEditSteps] = useState<DraftStep[]>([]);
   const [saving, setSaving] = useState(false);
+  const session = readSession();
+  const canReview = sessionHasAnyRole(session, "lead", "supervisor", "manager", "company_admin");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -130,7 +134,16 @@ export function ProceduresApp() {
     setSaving(true);
     setErr(null);
     try {
-      const proc = await createProcedure({ title: t, steps: normalized });
+      const creatorName = (session?.full_name?.trim() || session?.email?.trim() || "Unknown").slice(0, 80);
+      const creatorId = session?.sub ?? null;
+      const needsReview = !sessionHasAnyRole(session, "lead", "supervisor", "manager", "company_admin");
+      const proc = await createProcedure({
+        title: t,
+        steps: normalized,
+        created_by_user_id: creatorId,
+        created_by_name: creatorName,
+        review_required: needsReview,
+      });
       await uploadPendingFiles(proc.id, draftSteps);
       setTitle("");
       setDraftSteps([{ key: newKey(), text: "", file: null, image_url: null, recommended_workers: null, tools_csv: "" }]);
@@ -167,6 +180,27 @@ export function ProceduresApp() {
     try {
       await patchProcedure(selectedId, { title: t, steps: normalized });
       await uploadPendingFiles(selectedId, editSteps);
+      await load();
+    } catch (e) {
+      setErr(parseClientApiError(e).message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const markReviewed = async () => {
+    if (!selectedId || !selected) return;
+    if (!canReview) return;
+    setSaving(true);
+    setErr(null);
+    try {
+      const reviewerName = (session?.full_name?.trim() || session?.email?.trim() || "Supervisor").slice(0, 80);
+      await patchProcedure(selectedId, {
+        review_required: false,
+        reviewed_by_user_id: session?.sub ?? null,
+        reviewed_by_name: reviewerName,
+        reviewed_at: new Date().toISOString(),
+      });
       await load();
     } catch (e) {
       setErr(parseClientApiError(e).message);
@@ -356,7 +390,21 @@ export function ProceduresApp() {
                       selectedId === r.id ? "bg-ds-secondary text-ds-foreground" : "ds-table-row-hover"
                     }`}
                   >
-                    <span className="font-medium">{r.title}</span>
+                    <div className="min-w-0">
+                      <span className="font-medium">{r.title}</span>
+                      <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] font-semibold text-ds-muted">
+                        <span>By {r.created_by_name?.trim() || "—"}</span>
+                        {r.review_required ? (
+                          <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-amber-900">
+                            Needs review
+                          </span>
+                        ) : r.reviewed_at ? (
+                          <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-emerald-900">
+                            Reviewed
+                          </span>
+                        ) : null}
+                      </div>
+                    </div>
                     <span className="shrink-0 text-xs text-ds-muted">{r.steps.length} steps</span>
                   </button>
                 </li>
@@ -368,6 +416,21 @@ export function ProceduresApp() {
         {selected ? (
           <section className="rounded-md border border-ds-border bg-ds-primary p-5 shadow-[var(--ds-shadow-card)]">
             <h2 className="text-base font-semibold text-ds-foreground">Edit</h2>
+            <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-ds-muted">
+              <span>
+                Created by{" "}
+                <span className="font-semibold text-ds-foreground">{selected.created_by_name?.trim() || "—"}</span>
+              </span>
+              {selected.review_required ? (
+                <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 font-semibold text-amber-900">
+                  Needs review
+                </span>
+              ) : selected.reviewed_at ? (
+                <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 font-semibold text-emerald-900">
+                  Reviewed{selected.reviewed_by_name?.trim() ? ` by ${selected.reviewed_by_name}` : ""}
+                </span>
+              ) : null}
+            </div>
             <label className="mt-3 block text-xs font-semibold uppercase text-ds-muted" htmlFor={`${formId}-edit-title`}>
               Title
             </label>
@@ -395,6 +458,16 @@ export function ProceduresApp() {
               >
                 {saving ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : "Save changes"}
               </button>
+              {selected.review_required && canReview ? (
+                <button
+                  type="button"
+                  disabled={saving}
+                  onClick={() => void markReviewed()}
+                  className="rounded-md border border-ds-border bg-ds-secondary/60 px-4 py-2 text-sm font-semibold text-ds-foreground hover:bg-ds-interactive-hover disabled:opacity-50"
+                >
+                  Mark reviewed
+                </button>
+              ) : null}
               <button
                 type="button"
                 onClick={() => setSelectedId(null)}
