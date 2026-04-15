@@ -618,9 +618,17 @@ export function EquipmentApp() {
                 ))}
               </select>
             </div>
-            <button type="button" className={PRIMARY_BTN} onClick={() => void loadList()}>
-              Apply filters
-            </button>
+            <div className="flex w-full flex-wrap gap-2 sm:w-auto">
+              {canMutate ? (
+                <button type="button" className={PRIMARY_BTN} onClick={openCreate}>
+                  <Plus className="mr-2 inline h-4 w-4" aria-hidden />
+                  Add equipment
+                </button>
+              ) : null}
+              <button type="button" className={PRIMARY_BTN} onClick={() => void loadList()}>
+                Apply filters
+              </button>
+            </div>
           </div>
 
           <Card padding="md" className="!p-0 overflow-x-auto">
