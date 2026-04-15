@@ -17,6 +17,14 @@ import {
   type Co2TankStatus,
 } from "@/lib/monitoringMockData";
 
+function EmptyMonitoringPanel({ message }: { message: string }) {
+  return (
+    <Card padding="md" className="border-dashed border-ds-border bg-ds-secondary/30">
+      <p className="text-sm text-ds-muted">{message}</p>
+    </Card>
+  );
+}
+
 const LABEL = "text-[11px] font-semibold uppercase tracking-wider text-ds-muted";
 
 function co2BarColor(status: Co2TankStatus): string {
@@ -121,105 +129,109 @@ export function MonitoringApp() {
       </nav>
 
       {tab === "systems" ? (
-        <div className="space-y-10">
-          <section className="space-y-4" aria-labelledby="co2-heading">
-            <h2 id="co2-heading" className="font-headline text-lg font-bold text-ds-foreground">
-              CO₂ tank levels
-            </h2>
-            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-              {co2Tanks.map((tank) => {
-                const status = getCo2TankStatus(tank.level);
-                const barPct = Math.min(100, Math.max(0, (tank.level / 1000) * 100));
-                return (
-                  <Card key={tank.id} padding="md" className="flex flex-col gap-3">
-                    <div className="flex flex-wrap items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <p className="font-semibold text-ds-foreground">{tank.name}</p>
-                        <p className="mt-0.5 text-sm text-ds-muted">{tank.location}</p>
+        demoSensors ? (
+          <div className="space-y-10">
+            <section className="space-y-4" aria-labelledby="co2-heading">
+              <h2 id="co2-heading" className="font-headline text-lg font-bold text-ds-foreground">
+                CO₂ tank levels
+              </h2>
+              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                {co2Tanks.map((tank) => {
+                  const status = getCo2TankStatus(tank.level);
+                  const barPct = Math.min(100, Math.max(0, (tank.level / 1000) * 100));
+                  return (
+                    <Card key={tank.id} padding="md" className="flex flex-col gap-3">
+                      <div className="flex flex-wrap items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="font-semibold text-ds-foreground">{tank.name}</p>
+                          <p className="mt-0.5 text-sm text-ds-muted">{tank.location}</p>
+                        </div>
+                        <span className={`shrink-0 rounded-lg px-2.5 py-1 text-xs font-semibold ${co2BadgeClass(status)}`}>
+                          {co2StatusLabel(status)}
+                        </span>
                       </div>
-                      <span className={`shrink-0 rounded-lg px-2.5 py-1 text-xs font-semibold ${co2BadgeClass(status)}`}>
-                        {co2StatusLabel(status)}
-                      </span>
-                    </div>
-                    <div>
-                      <div className="flex items-baseline justify-between gap-2">
-                        <span className={LABEL}>Level (0–1000)</span>
-                        <span className="font-headline text-lg font-bold tabular-nums text-ds-foreground">{tank.level}</span>
-                      </div>
-                      <div
-                        className="mt-2 h-2.5 w-full overflow-hidden rounded-full bg-ds-secondary"
-                        role="progressbar"
-                        aria-valuenow={tank.level}
-                        aria-valuemin={0}
-                        aria-valuemax={1000}
-                        aria-label={`${tank.name} level`}
-                      >
+                      <div>
+                        <div className="flex items-baseline justify-between gap-2">
+                          <span className={LABEL}>Level (0–1000)</span>
+                          <span className="font-headline text-lg font-bold tabular-nums text-ds-foreground">{tank.level}</span>
+                        </div>
                         <div
-                          className={`h-full rounded-full transition-all ${co2BarColor(status)}`}
-                          style={{ width: `${barPct}%` }}
+                          className="mt-2 h-2.5 w-full overflow-hidden rounded-full bg-ds-secondary"
+                          role="progressbar"
+                          aria-valuenow={tank.level}
+                          aria-valuemin={0}
+                          aria-valuemax={1000}
+                          aria-label={`${tank.name} level`}
+                        >
+                          <div
+                            className={`h-full rounded-full transition-all ${co2BarColor(status)}`}
+                            style={{ width: `${barPct}%` }}
+                          />
+                        </div>
+                      </div>
+                    </Card>
+                  );
+                })}
+              </div>
+            </section>
+
+            <section className="space-y-4" aria-labelledby="pool-heading">
+              <h2 id="pool-heading" className="font-headline text-lg font-bold text-ds-foreground">
+                Pool controllers
+              </h2>
+              <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
+                {poolControllers.map((c) => (
+                  <Card key={c.id} padding="md" className="flex flex-col gap-4">
+                    <p className="font-semibold text-ds-foreground">{c.name}</p>
+                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                      <div>
+                        <p className={LABEL}>Chlorine</p>
+                        <p className="mt-1 font-headline text-base font-bold tabular-nums text-ds-foreground">{c.chlorine} ppm</p>
+                      </div>
+                      <div>
+                        <p className={LABEL}>pH</p>
+                        <p className="mt-1 font-headline text-base font-bold tabular-nums text-ds-foreground">{c.ph}</p>
+                      </div>
+                      <div>
+                        <p className={LABEL}>Flow</p>
+                        <p className="mt-1 font-headline text-base font-bold tabular-nums text-ds-foreground">{c.flow}</p>
+                      </div>
+                      <div>
+                        <p className={LABEL}>Temp</p>
+                        <p className="mt-1 font-headline text-base font-bold tabular-nums text-ds-foreground">{c.temp}°C</p>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-6 border-t border-ds-border pt-3">
+                      <div className="flex items-center gap-2">
+                        <span className={`inline-block h-2.5 w-2.5 shrink-0 rounded-full ${feederDot(c.co2FeederActive)}`} aria-hidden />
+                        <span className="text-sm font-medium text-ds-foreground">CO₂ feeder</span>
+                        <span className="text-xs text-ds-muted">{c.co2FeederActive ? "Active" : "Inactive"}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`inline-block h-2.5 w-2.5 shrink-0 rounded-full ${feederDot(c.chlorineFeederActive)}`}
+                          aria-hidden
                         />
+                        <span className="text-sm font-medium text-ds-foreground">Chlorine feeder</span>
+                        <span className="text-xs text-ds-muted">{c.chlorineFeederActive ? "Active" : "Inactive"}</span>
                       </div>
                     </div>
                   </Card>
-                );
-              })}
-            </div>
-          </section>
-
-          <section className="space-y-4" aria-labelledby="pool-heading">
-            <h2 id="pool-heading" className="font-headline text-lg font-bold text-ds-foreground">
-              Pool controllers
-            </h2>
-            <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
-              {poolControllers.map((c) => (
-                <Card key={c.id} padding="md" className="flex flex-col gap-4">
-                  <p className="font-semibold text-ds-foreground">{c.name}</p>
-                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                    <div>
-                      <p className={LABEL}>Chlorine</p>
-                      <p className="mt-1 font-headline text-base font-bold tabular-nums text-ds-foreground">{c.chlorine} ppm</p>
-                    </div>
-                    <div>
-                      <p className={LABEL}>pH</p>
-                      <p className="mt-1 font-headline text-base font-bold tabular-nums text-ds-foreground">{c.ph}</p>
-                    </div>
-                    <div>
-                      <p className={LABEL}>Flow</p>
-                      <p className="mt-1 font-headline text-base font-bold tabular-nums text-ds-foreground">{c.flow}</p>
-                    </div>
-                    <div>
-                      <p className={LABEL}>Temp</p>
-                      <p className="mt-1 font-headline text-base font-bold tabular-nums text-ds-foreground">{c.temp}°C</p>
-                    </div>
-                  </div>
-                  <div className="flex flex-wrap gap-6 border-t border-ds-border pt-3">
-                    <div className="flex items-center gap-2">
-                      <span className={`inline-block h-2.5 w-2.5 shrink-0 rounded-full ${feederDot(c.co2FeederActive)}`} aria-hidden />
-                      <span className="text-sm font-medium text-ds-foreground">CO₂ feeder</span>
-                      <span className="text-xs text-ds-muted">{c.co2FeederActive ? "Active" : "Inactive"}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span
-                        className={`inline-block h-2.5 w-2.5 shrink-0 rounded-full ${feederDot(c.chlorineFeederActive)}`}
-                        aria-hidden
-                      />
-                      <span className="text-sm font-medium text-ds-foreground">Chlorine feeder</span>
-                      <span className="text-xs text-ds-muted">{c.chlorineFeederActive ? "Active" : "Inactive"}</span>
-                    </div>
-                  </div>
-                </Card>
-              ))}
-            </div>
-          </section>
-        </div>
-      ) : (
+                ))}
+              </div>
+            </section>
+          </div>
+        ) : (
+          <EmptyMonitoringPanel message="No system telemetry here yet. When your organization turns on sample monitoring during onboarding, preview tiles appear in this tab. Otherwise this stays empty until your own sensors and controllers are connected." />
+        )
+      ) : demoSensors ? (
         <section aria-labelledby="people-heading">
           <h2 id="people-heading" className="sr-only">
             People monitoring
           </h2>
           <Card padding="md">
             <p className="mb-4 text-sm text-ds-muted">
-              Mock roster — connect HR / attendance and presence feeds when ready.
+              Sample roster for onboarding — connect HR / attendance and presence feeds when ready.
             </p>
             <ul className="divide-y divide-ds-border">
               {mockPeopleRows.map((row) => (
@@ -236,6 +248,8 @@ export function MonitoringApp() {
             </ul>
           </Card>
         </section>
+      ) : (
+        <EmptyMonitoringPanel message="No people presence data here yet. This section fills in when attendance or on-site feeds are integrated." />
       )}
     </div>
   );

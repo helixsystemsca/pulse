@@ -8,6 +8,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.features.system_catalog import normalize_enabled_features
 from app.models.domain import CompanyFeature
 
+# Stored when `sync_enabled_features` runs with zero catalog features so the tenant is not
+# mistaken for a pre–feature-gates company (which has no rows and still gets legacy defaults).
+_TENANT_EMPTY_FEATURES_MARKER = "_tenant_empty_feature_canvas"
+
+
 # When a company has no rows yet, treat product modules as on (pre‑gates behavior).
 _LEGACY_DEFAULT_PRODUCT_FEATURES: tuple[str, ...] = (
     "compliance",
@@ -28,6 +33,14 @@ async def sync_enabled_features(db: AsyncSession, company_id: str, requested: li
     await db.execute(delete(CompanyFeature).where(CompanyFeature.company_id == company_id))
     for name in names:
         db.add(CompanyFeature(company_id=company_id, feature_name=name, enabled=True))
+    if not names:
+        db.add(
+            CompanyFeature(
+                company_id=company_id,
+                feature_name=_TENANT_EMPTY_FEATURES_MARKER,
+                enabled=True,
+            )
+        )
     await db.flush()
 
 
