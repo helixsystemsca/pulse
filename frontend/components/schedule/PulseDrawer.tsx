@@ -12,6 +12,8 @@ type PulseDrawerProps = {
   footer?: ReactNode;
   /** Wider settings drawer */
   wide?: boolean;
+  /** Render as a centered modal instead of right-side drawer. */
+  placement?: "right" | "center";
   labelledBy?: string;
   /** Stack above shift drawer when both could interact */
   elevated?: boolean;
@@ -30,6 +32,7 @@ export function PulseDrawer({
   children,
   footer,
   wide,
+  placement = "right",
   labelledBy = "pulse-drawer-title",
   elevated = false,
   belowAppHeader = true,
@@ -38,12 +41,19 @@ export function PulseDrawer({
 
   const HEADER_OFFSET = "4rem"; // matches app navbar height (h-16)
   const HEADER_GAP = "12px";
-  const panelLayout = belowAppHeader
+  const rightPanelLayout = belowAppHeader
     ? `top-[calc(${HEADER_OFFSET}+${HEADER_GAP})] bottom-0 max-h-[calc(100dvh-${HEADER_OFFSET}-${HEADER_GAP})] min-h-0`
     : "top-0 h-full";
+  const centeredMaxH = belowAppHeader
+    ? `max-h-[calc(100dvh-${HEADER_OFFSET}-${HEADER_GAP}-2rem)]`
+    : "max-h-[calc(100dvh-2rem)]";
 
   return (
-    <div className={`fixed inset-0 ${elevated ? "z-[90]" : "z-[80]"}`}>
+    <div
+      className={`fixed inset-0 ${elevated ? "z-[90]" : "z-[80]"} ${
+        placement === "center" ? "flex items-center justify-center p-4" : ""
+      }`}
+    >
       <button
         type="button"
         className="ds-modal-backdrop absolute inset-0 backdrop-blur-[2px]"
@@ -51,8 +61,14 @@ export function PulseDrawer({
         onClick={onClose}
       />
       <aside
-        className={`absolute right-0 flex w-full flex-col border-l border-pulseShell-border bg-pulseShell-surface shadow-[0_0_28px_rgba(15,23,42,0.08)] transition-transform duration-200 ease-out dark:shadow-[0_0_36px_rgba(0,0,0,0.32)] ${panelLayout} ${
-          wide ? "sm:max-w-2xl" : "sm:max-w-[440px]"
+        className={`${
+          placement === "center"
+            ? `relative flex w-full flex-col overflow-hidden rounded-xl border border-pulseShell-border bg-pulseShell-surface shadow-[0_18px_60px_rgba(15,23,42,0.20)] ${centeredMaxH} ${
+                wide ? "max-w-2xl" : "max-w-[520px]"
+              }`
+            : `absolute right-0 flex w-full flex-col border-l border-pulseShell-border bg-pulseShell-surface shadow-[0_0_28px_rgba(15,23,42,0.08)] transition-transform duration-200 ease-out dark:shadow-[0_0_36px_rgba(0,0,0,0.32)] ${rightPanelLayout} ${
+                wide ? "sm:max-w-2xl" : "sm:max-w-[440px]"
+              }`
         }`}
         role="dialog"
         aria-modal="true"

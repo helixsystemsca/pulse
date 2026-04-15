@@ -33,6 +33,7 @@ export function TimeOffRequestModal({ open, workers, onClose, onSubmit }: Props)
       title="Time off (demo)"
       subtitle="Approved entries block availability hints on the schedule. Full workflow coming later."
       onClose={onClose}
+      placement="center"
       labelledBy="timeoff-drawer-title"
       footer={
         <div className="flex justify-end gap-3">

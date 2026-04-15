@@ -84,6 +84,7 @@ export function ScheduleSettingsModal({ open, onClose }: Props) {
       onClose={onClose}
       wide
       elevated
+      placement="center"
       labelledBy="settings-drawer-title"
       footer={
         tab === "Organization" ? undefined : (

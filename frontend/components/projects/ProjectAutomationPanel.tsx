@@ -158,6 +158,7 @@ export function ProjectAutomationPanel({ projectId }: { projectId: string }) {
         title="New automation rule"
         subtitle="Task triggers fire on save; scan triggers fire from Monitoring."
         onClose={() => setDrawerOpen(false)}
+        placement="center"
         labelledBy="automation-rule-title"
         footer={
           <div className="flex justify-end gap-3">

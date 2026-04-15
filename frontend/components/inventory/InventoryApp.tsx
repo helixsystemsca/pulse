@@ -1371,6 +1371,7 @@ export function InventoryApp() {
         title={editMode === "create" ? "Register item" : "Edit item"}
         subtitle="Tools are individually tracked; parts and consumables use quantity."
         wide
+        placement="center"
         onClose={() => {
           setEditOpen(false);
           setEditTargetId(null);
@@ -1540,6 +1541,7 @@ export function InventoryApp() {
         wide
         title="Inventory settings"
         subtitle="Categories, thresholds, storage labels,and alert policies."
+        placement="center"
         onClose={() => setSettingsOpen(false)}
         footer={
           <div className="flex justify-end gap-2">

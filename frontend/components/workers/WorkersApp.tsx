@@ -11,6 +11,7 @@ import {
   Loader2,
   Search,
   Shield,
+  Trash2,
 } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -532,6 +533,8 @@ export function WorkersApp() {
     return order.map((role) => ({ role, items: m.get(role) ?? [] }));
   }, [list]);
 
+  const canDeleteInvitedFromList = isCompanyAdmin || isSystemAdmin;
+
   const supervisors = useMemo(
     () =>
       list.filter(
@@ -555,6 +558,35 @@ export function WorkersApp() {
       else cur.add(mod);
       return { ...prev, [role]: [...cur].sort() };
     });
+  }
+
+  async function deleteInvitedWorkerFromList(row: WorkerRow) {
+    if (!canDeleteInvitedFromList) return;
+    if ((row.account_status ?? "active") !== "invited") return;
+    const label = row.full_name?.trim() || row.email;
+    if (
+      !window.confirm(
+        `Delete invited worker ${label}? This permanently removes the pending invite and user record. This cannot be undone.`,
+      )
+    ) {
+      return;
+    }
+    setProfileBusy(true);
+    try {
+      await deleteWorker(apiCompany, row.id);
+      setCreateToast({ message: "Invited worker deleted.", variant: "success" });
+      if (profileId === row.id) {
+        setProfileId(null);
+        clearProfileQueryFromUrl();
+      }
+      await loadList();
+      await refreshPulseUserFromServer();
+      refresh();
+    } catch (e: unknown) {
+      setCreateToast({ message: parseClientApiError(e).message, variant: "error" });
+    } finally {
+      setProfileBusy(false);
+    }
   }
 
   async function removeWorkerProfilePermanently() {
@@ -1167,7 +1199,8 @@ export function WorkersApp() {
                                 onClick={() => setProfileId(row.id)}
                               >
                                 <td className="px-4 py-3">
-                                  <div className="flex items-center gap-2.5">
+                                  <div className="flex items-center justify-between gap-3">
+                                    <div className="flex min-w-0 items-center gap-2.5">
                                     <WorkerRosterFace
                                       avatarUrl={row.avatar_url}
                                       fullName={row.full_name}
@@ -1179,6 +1212,22 @@ export function WorkersApp() {
                                       </p>
                                       <p className="truncate text-xs text-ds-muted">{row.email}</p>
                                     </div>
+                                    </div>
+                                    {canDeleteInvitedFromList && (row.account_status ?? "active") === "invited" ? (
+                                      <button
+                                        type="button"
+                                        className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-ds-danger/40 bg-[color-mix(in_srgb,var(--ds-danger)_8%,transparent)] text-ds-danger transition-colors hover:bg-[color-mix(in_srgb,var(--ds-danger)_14%,transparent)] disabled:opacity-50"
+                                        aria-label="Delete invited worker"
+                                        title="Delete invited worker"
+                                        disabled={profileBusy}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          void deleteInvitedWorkerFromList(row);
+                                        }}
+                                      >
+                                        <Trash2 className="h-4 w-4" aria-hidden />
+                                      </button>
+                                    ) : null}
                                   </div>
                                 </td>
                                 <td className="px-4 py-3">
@@ -1251,6 +1300,7 @@ export function WorkersApp() {
         }}
         belowAppHeader
         wide
+        placement="center"
         labelledBy="worker-create-title"
         footer={
           <div className="flex flex-wrap justify-end gap-3">
@@ -2071,6 +2121,7 @@ export function WorkersApp() {
         belowAppHeader
         wide
         elevated
+        placement="center"
         labelledBy="workers-settings-title"
         footer={
           <div className="flex flex-wrap justify-end gap-3">

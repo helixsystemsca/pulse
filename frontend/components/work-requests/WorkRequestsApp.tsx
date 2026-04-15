@@ -1248,6 +1248,7 @@ export function WorkRequestsApp(props?: WorkRequestsAppProps) {
         subtitle="Create a maintenance task for your team"
         onClose={() => setCreateOpen(false)}
         wide
+        placement="center"
         labelledBy="wr-create-title"
         footer={
           <div className="flex flex-wrap justify-end gap-3">
@@ -1648,6 +1649,7 @@ export function WorkRequestsApp(props?: WorkRequestsAppProps) {
         onClose={() => setSettingsOpen(false)}
         wide
         elevated
+        placement="center"
         labelledBy="wr-settings-title"
         footer={
           <div className="flex flex-wrap justify-end gap-3">

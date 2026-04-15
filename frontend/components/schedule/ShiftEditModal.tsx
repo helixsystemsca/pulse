@@ -199,6 +199,7 @@ export function ShiftEditModal({
       title={shift ? "Edit shift" : "Create shift"}
       subtitle={subtitle}
       onClose={onClose}
+      placement="center"
       labelledBy="shift-drawer-title"
       footer={
         <div className="flex flex-wrap items-center justify-between gap-4">
