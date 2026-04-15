@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import { X } from "lucide-react";
+import { useEffect } from "react";
 
 type PulseDrawerProps = {
   open: boolean;
@@ -37,6 +38,22 @@ export function PulseDrawer({
   elevated = false,
   belowAppHeader = true,
 }: PulseDrawerProps) {
+  useEffect(() => {
+    if (!open) return;
+    // Prevent the underlying app shell from scrolling when the drawer is open.
+    // Without this, wheel/trackpad gestures can scroll the page behind, making the drawer feel "stuck".
+    const body = document.body;
+    const prevOverflow = body.style.overflow;
+    const prevPaddingRight = body.style.paddingRight;
+    const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+    body.style.overflow = "hidden";
+    if (scrollbarWidth > 0) body.style.paddingRight = `${scrollbarWidth}px`;
+    return () => {
+      body.style.overflow = prevOverflow;
+      body.style.paddingRight = prevPaddingRight;
+    };
+  }, [open]);
+
   if (!open) return null;
 
   const HEADER_OFFSET = "4rem"; // matches app navbar height (h-16)
@@ -50,7 +67,7 @@ export function PulseDrawer({
 
   return (
     <div
-      className={`fixed inset-0 ${elevated ? "z-[90]" : "z-[80]"} ${
+      className={`fixed inset-0 overflow-hidden ${elevated ? "z-[90]" : "z-[80]"} ${
         placement === "center" ? "flex items-center justify-center p-4" : ""
       }`}
     >
@@ -94,7 +111,7 @@ export function PulseDrawer({
             </button>
           </div>
         </header>
-        <div className="min-h-0 flex-1 overflow-y-auto bg-pulseShell-header-row/80 px-6 py-5 dark:bg-pulseShell-canvas">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-pulseShell-header-row/80 px-6 py-5 dark:bg-pulseShell-canvas">
           {children}
         </div>
         {footer ? (

@@ -583,7 +583,16 @@ export function WorkersApp() {
       await refreshPulseUserFromServer();
       refresh();
     } catch (e: unknown) {
-      setCreateToast({ message: parseClientApiError(e).message, variant: "error" });
+      const err = parseClientApiError(e);
+      // If the invite was already cleared on the server (stale list), treat it as success and refresh the roster.
+      if (err.status === 404) {
+        setCreateToast({ message: "Invite already removed.", variant: "success" });
+        await loadList();
+        await refreshPulseUserFromServer();
+        refresh();
+      } else {
+        setCreateToast({ message: err.message, variant: "error" });
+      }
     } finally {
       setProfileBusy(false);
     }
@@ -903,14 +912,16 @@ export function WorkersApp() {
       {createToast ? (
         <div
           role="status"
-          className={`ds-notification fixed bottom-6 left-1/2 z-[95] flex max-w-md -translate-x-1/2 items-center gap-2 px-4 py-3 text-sm font-medium text-ds-foreground ${
-            createToast.variant === "success" ? "ds-notification-success" : "ds-notification-critical"
+          className={`ds-notification fixed bottom-6 left-1/2 z-[95] flex max-w-md -translate-x-1/2 items-center gap-2 px-4 py-3 text-sm font-medium ${
+            createToast.variant === "success"
+              ? "ds-notification-success text-ds-foreground"
+              : "border-ds-danger bg-ds-danger text-[var(--ds-on-accent)]"
           }`}
         >
           {createToast.variant === "success" ? (
             <CheckCircle2 className="h-5 w-5 shrink-0 text-ds-success" aria-hidden />
           ) : (
-            <AlertCircle className="h-5 w-5 shrink-0 text-ds-danger" aria-hidden />
+            <AlertCircle className="h-5 w-5 shrink-0 text-[var(--ds-on-accent)]" aria-hidden />
           )}
           {createToast.message}
         </div>

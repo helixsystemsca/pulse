@@ -51,6 +51,7 @@ function StepImagePreview({ imageUrl }: { imageUrl: string | null }) {
 
 export function ProceduresApp() {
   const formId = useId();
+  const [isCreating, setIsCreating] = useState(false);
   const [rows, setRows] = useState<ProcedureRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
@@ -205,6 +206,7 @@ export function ProceduresApp() {
       setTitle("");
       setDraftSteps([{ key: newKey(), text: "", file: null, image_url: null, recommended_workers: null, tools_csv: "" }]);
       await load();
+      setIsCreating(false);
     } catch (e) {
       setErr(parseClientApiError(e).message);
     } finally {
@@ -407,47 +409,110 @@ export function ProceduresApp() {
   );
 
   return (
-    <div className="grid gap-8 lg:grid-cols-2">
-      <section className="rounded-md border border-ds-border bg-ds-primary p-5 shadow-[var(--ds-shadow-card)]">
-        <h2 className="text-base font-semibold text-ds-foreground" id={`${formId}-new-title`}>
-          New procedure
-        </h2>
-        <p className="mt-1 text-sm text-ds-muted">Numbered steps, optional photo per step. Pictures upload after the procedure is created.</p>
-        <div className="mt-4 space-y-3">
-          <label className="block text-xs font-semibold uppercase text-ds-muted" htmlFor={`${formId}-title`}>
-            Title
-          </label>
-          <input
-            id={`${formId}-title`}
-            className="w-full rounded-md border border-ds-border bg-ds-primary px-3 py-2 text-sm dark:bg-ds-secondary"
-            placeholder="e.g. Monthly pump inspection"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-          />
-          {renderStepEditor(draftSteps, setDraftSteps, `${formId}-new`)}
+    <div className="mx-auto w-full max-w-6xl p-6">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 className="font-headline text-2xl font-bold tracking-tight text-ds-foreground">Procedures</h1>
+          <p className="mt-1 text-sm text-ds-muted">
+            Build reusable checklists with numbered steps and optional reference photos.
+          </p>
+        </div>
+        {isCreating ? (
           <button
             type="button"
-            className="mt-2 inline-flex items-center gap-2 rounded-md border border-ds-border bg-ds-secondary/60 px-3 py-2 text-sm font-semibold text-ds-foreground hover:bg-ds-interactive-hover"
-            onClick={() => addDraftRow(setDraftSteps)}
+            className="ds-btn-secondary px-4 py-2.5 text-sm"
+            onClick={() => {
+              setIsCreating(false);
+              setErr(null);
+            }}
+            disabled={saving}
+          >
+            Cancel
+          </button>
+        ) : (
+          <button
+            type="button"
+            className="ds-btn-solid-primary inline-flex items-center gap-2 px-4 py-2.5 text-sm"
+            onClick={() => {
+              setIsCreating(true);
+              setSelectedId(null);
+              setEditing(false);
+              setErr(null);
+            }}
           >
             <Plus className="h-4 w-4" aria-hidden />
-            Add step
+            Create procedure
           </button>
-          <button
-            type="button"
-            disabled={saving || !title.trim()}
-            onClick={() => void create()}
-            className="mt-4 w-full rounded-md bg-ds-accent px-4 py-2.5 text-sm font-semibold text-ds-accent-foreground shadow-sm hover:bg-ds-accent/90 disabled:opacity-50 sm:w-auto"
-          >
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : "Create procedure"}
-          </button>
+        )}
+      </div>
+
+      {err ? (
+        <div className="mt-6 rounded-xl border border-ds-border bg-ds-primary px-4 py-3 text-sm font-medium text-ds-danger shadow-sm">
+          {err}
         </div>
-      </section>
+      ) : null}
 
-      <div className="space-y-4">
-        {err ? <p className="text-sm text-ds-danger">{err}</p> : null}
+      <div className={`mt-6 ${isCreating ? "grid gap-6 lg:grid-cols-2" : "space-y-6"}`}>
+        {isCreating ? (
+          <section className="rounded-xl border border-ds-border bg-ds-primary p-6 shadow-[var(--ds-shadow-card)]">
+            <h2 className="text-base font-semibold text-ds-foreground" id={`${formId}-new-title`}>
+              New procedure
+            </h2>
+            <p className="mt-1 text-sm text-ds-muted">
+              Numbered steps, optional photo per step. Pictures upload after the procedure is created.
+            </p>
+            <div className="mt-4 space-y-3">
+              <label className="block text-xs font-semibold uppercase text-ds-muted" htmlFor={`${formId}-title`}>
+                Title
+              </label>
+              <input
+                id={`${formId}-title`}
+                className="w-full rounded-md border border-ds-border bg-ds-primary px-3 py-2 text-sm dark:bg-ds-secondary"
+                placeholder="e.g. Monthly pump inspection"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+              />
+              {renderStepEditor(draftSteps, setDraftSteps, `${formId}-new`)}
+              <button
+                type="button"
+                className="mt-2 inline-flex items-center gap-2 rounded-md border border-ds-border bg-ds-secondary/60 px-3 py-2 text-sm font-semibold text-ds-foreground hover:bg-ds-interactive-hover"
+                onClick={() => addDraftRow(setDraftSteps)}
+              >
+                <Plus className="h-4 w-4" aria-hidden />
+                Add step
+              </button>
+              <div className="mt-4 flex flex-wrap items-center justify-end gap-3">
+                <button
+                  type="button"
+                  className="ds-btn-secondary px-4 py-2.5 text-sm"
+                  onClick={() => {
+                    setIsCreating(false);
+                    setErr(null);
+                  }}
+                  disabled={saving}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={saving || !title.trim()}
+                  onClick={() => void create()}
+                  className="ds-btn-solid-primary inline-flex items-center gap-2 px-4 py-2.5 text-sm disabled:opacity-50"
+                >
+                  {saving ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : null}
+                  Create procedure
+                </button>
+              </div>
+            </div>
+          </section>
+        ) : null}
 
-        <section className="rounded-md border border-ds-border bg-ds-primary p-5 shadow-[var(--ds-shadow-card)]">
+        <section
+          className={`rounded-xl border border-ds-border bg-ds-primary p-6 shadow-[var(--ds-shadow-card)] ${
+            isCreating ? "opacity-50 pointer-events-none" : ""
+          }`}
+          aria-hidden={isCreating}
+        >
           <h2 className="text-base font-semibold text-ds-foreground">Library</h2>
           {loading ? (
             <p className="mt-3 text-sm text-ds-muted">Loading…</p>
@@ -460,8 +525,10 @@ export function ProceduresApp() {
                   <button
                     type="button"
                     onClick={() => setSelectedId(r.id)}
-                    className={`flex w-full items-start justify-between gap-2 px-2 py-3 text-left text-sm transition-colors ${
-                      selectedId === r.id ? "bg-ds-secondary text-ds-foreground" : "ds-table-row-hover"
+                    className={`flex w-full items-start justify-between gap-3 rounded-lg px-3 py-3 text-left text-sm transition-all ${
+                      selectedId === r.id
+                        ? "bg-ds-secondary text-ds-foreground"
+                        : "hover:bg-ds-secondary/60 hover:shadow-sm"
                     }`}
                   >
                     <div className="min-w-0">
@@ -487,8 +554,8 @@ export function ProceduresApp() {
           )}
         </section>
 
-        {selected ? (
-          <section className="rounded-md border border-ds-border bg-ds-primary p-5 shadow-[var(--ds-shadow-card)]">
+        {!isCreating && selected ? (
+          <section className="rounded-xl border border-ds-border bg-ds-primary p-6 shadow-[var(--ds-shadow-card)]">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <h2 className="text-base font-semibold text-ds-foreground">{editing ? "Edit" : "Procedure"}</h2>
               {canEditSelected ? (
