@@ -1533,7 +1533,7 @@ function DashboardBody({
         </div>
 
         {showAddWidget ? (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-[140] flex items-center justify-center p-4">
             <div className="ds-modal-backdrop absolute inset-0" onClick={() => setShowAddWidget(false)} aria-hidden />
             <div className="relative w-full max-w-md rounded-2xl border border-black/[0.06] bg-white p-5 shadow-[0_18px_55px_rgba(0,0,0,0.18)]">
               <div className="flex items-start justify-between gap-3">

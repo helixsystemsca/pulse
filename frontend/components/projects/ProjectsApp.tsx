@@ -318,7 +318,7 @@ export function ProjectsApp() {
       )}
 
       {createOpen ? (
-        <div className="ds-modal-backdrop fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-[2px]">
+        <div className="ds-modal-backdrop fixed inset-0 z-[140] flex items-center justify-center p-4 backdrop-blur-[2px]">
           <div
             className="max-h-[min(90vh,640px)] w-full max-w-lg overflow-y-auto rounded-xl border border-slate-200/90 bg-white p-6 shadow-2xl dark:border-ds-border dark:bg-ds-primary"
             role="dialog"
