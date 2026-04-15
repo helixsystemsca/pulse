@@ -7,6 +7,7 @@ Create Date: 2026-04-14
 
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy.dialects.postgresql import UUID
 
 
 # revision identifiers, used by Alembic.
@@ -19,12 +20,12 @@ depends_on = None
 def upgrade() -> None:
     op.create_table(
         "pulse_schedule_assignments",
-        sa.Column("id", sa.String(length=36), primary_key=True, nullable=False),
-        sa.Column("company_id", sa.String(length=36), nullable=False),
+        sa.Column("id", UUID(as_uuid=False), primary_key=True, nullable=False),
+        sa.Column("company_id", UUID(as_uuid=False), nullable=False),
         sa.Column("date", sa.Date(), nullable=False),
         sa.Column("shift_type", sa.String(length=32), nullable=False, server_default="night"),
         sa.Column("area", sa.String(length=128), nullable=False),
-        sa.Column("assigned_user_id", sa.String(length=36), nullable=True),
+        sa.Column("assigned_user_id", UUID(as_uuid=False), nullable=True),
         sa.Column("notes", sa.Text(), nullable=True),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
