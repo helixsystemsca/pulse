@@ -1,7 +1,7 @@
 """pulse_schedule_assignments (night shift areas + notes)
 
 Revision ID: 0060_pulse_schedule_assignments
-Revises: 0059_blueprint_layers
+Revises: 0059
 Create Date: 2026-04-14
 """
 
@@ -11,7 +11,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = "0060_pulse_schedule_assignments"
-down_revision = "0059_blueprint_layers"
+down_revision = "0059"
 branch_labels = None
 depends_on = None
 
