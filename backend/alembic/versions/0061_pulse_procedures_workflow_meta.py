@@ -1,6 +1,6 @@
 """pulse_procedures: creator + review workflow columns
 
-Revision ID: 0061_pulse_procedures_workflow_meta
+Revision ID: 0061_pulse_procedures_wf
 Revises: 0060_pulse_schedule_assignments
 Create Date: 2026-04-14
 """
@@ -12,7 +12,7 @@ from alembic import op
 from sqlalchemy.dialects.postgresql import UUID
 
 
-revision = "0061_pulse_procedures_workflow_meta"
+revision = "0061_pulse_procedures_wf"
 down_revision = "0060_pulse_schedule_assignments"
 branch_labels = None
 depends_on = None
