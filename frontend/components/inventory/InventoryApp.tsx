@@ -20,7 +20,7 @@ import {
   UserPlus,
   Wrench,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type KeyboardEvent } from "react";
 import { PulseDrawer } from "@/components/schedule/PulseDrawer";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { apiFetch } from "@/lib/api";
@@ -153,6 +153,66 @@ function typeIcon(t: string) {
   return Package;
 }
 
+const QTY_STEP_BTN =
+  "inline-flex h-7 w-7 shrink-0 select-none items-center justify-center rounded-md border border-slate-200/90 bg-white text-sm font-medium text-pulse-navy shadow-sm outline-none transition-[transform,colors] hover:bg-slate-50 focus-visible:ring-2 focus-visible:ring-[#2B4C7E]/25 active:scale-95 disabled:pointer-events-none disabled:opacity-40 dark:border-ds-border dark:bg-ds-secondary dark:hover:bg-white/10";
+
+function InventoryTableQtyCell(props: {
+  row: InventoryRow;
+  pending: boolean;
+  onUpdateQuantity: (id: string, newQuantity: number) => void;
+}) {
+  const { row, pending, onUpdateQuantity } = props;
+  if (row.item_type === "tool") {
+    return <span className="whitespace-nowrap font-medium text-pulse-navy">1 (tracked)</span>;
+  }
+
+  const onQtyKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      e.stopPropagation();
+      onUpdateQuantity(row.id, Math.max(0, row.quantity - 1));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      e.stopPropagation();
+      onUpdateQuantity(row.id, row.quantity + 1);
+    }
+  };
+
+  return (
+    <div
+      className="flex items-center gap-2 whitespace-nowrap"
+      onClick={(e) => e.stopPropagation()}
+      onKeyDown={onQtyKeyDown}
+      tabIndex={0}
+      role="group"
+      aria-label={`Adjust quantity for ${row.name}`}
+    >
+      <button
+        type="button"
+        onClick={() => onUpdateQuantity(row.id, Math.max(0, row.quantity - 1))}
+        disabled={pending || row.quantity <= 0}
+        className={QTY_STEP_BTN}
+        aria-label="Decrease quantity"
+      >
+        -
+      </button>
+      <span className="min-w-[2.25rem] text-center tabular-nums font-medium text-pulse-navy">{row.quantity}</span>
+      <button
+        type="button"
+        onClick={() => onUpdateQuantity(row.id, row.quantity + 1)}
+        disabled={pending}
+        className={QTY_STEP_BTN}
+        aria-label="Increase quantity"
+      >
+        +
+      </button>
+      <span className="max-w-[4.5rem] truncate text-xs text-pulse-muted" title={row.unit}>
+        {row.unit}
+      </span>
+    </div>
+  );
+}
+
 export function InventoryApp() {
   const session = readSession();
   const isSystemAdmin = Boolean(session?.is_system_admin || session?.role === "system_admin");
@@ -201,6 +261,7 @@ export function InventoryApp() {
   }, [settingsBaseline]);
 
   const [menuFor, setMenuFor] = useState<string | null>(null);
+  const [qtyPending, setQtyPending] = useState<Record<string, boolean>>({});
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsTab, setSettingsTab] = useState<SettingsTab>("Categories");
   const [settingsDraft, setSettingsDraft] = useState(mergedSettings);
@@ -651,6 +712,63 @@ export function InventoryApp() {
     }
   }
 
+  const updateQuantity = useCallback(
+    async (id: string, newQuantity: number) => {
+      if (!effectiveCompanyId) return;
+      const clamped = Math.max(0, newQuantity);
+
+      let snapshotRow: InventoryRow | null = null;
+      let snapshotDetail: InventoryDetail | null = null;
+
+      setRows((rs) => {
+        const cur = rs.find((r) => r.id === id);
+        if (cur) snapshotRow = { ...cur };
+        return rs.map((r) => (r.id === id ? { ...r, quantity: clamped } : r));
+      });
+
+      setDetail((d) => {
+        if (d?.id === id) {
+          snapshotDetail = d;
+          return { ...d, quantity: clamped };
+        }
+        return d;
+      });
+
+      setQtyPending((m) => ({ ...m, [id]: true }));
+      try {
+        const updated = await patchInventoryItem(apiCompany, id, { quantity: clamped });
+        setRows((rs) =>
+          rs.map((r) =>
+            r.id === id
+              ? {
+                  ...r,
+                  quantity: updated.quantity,
+                  inv_status: updated.inv_status,
+                  reorder_flag: updated.reorder_flag,
+                  last_movement_at: updated.last_movement_at,
+                }
+              : r,
+          ),
+        );
+        setDetail((d) => (d?.id === id ? updated : d));
+      } catch {
+        if (snapshotRow) {
+          setRows((rs) => rs.map((r) => (r.id === id ? snapshotRow! : r)));
+        }
+        if (snapshotDetail) {
+          setDetail(snapshotDetail);
+        }
+      } finally {
+        setQtyPending((m) => {
+          const next = { ...m };
+          delete next[id];
+          return next;
+        });
+      }
+    },
+    [apiCompany, effectiveCompanyId],
+  );
+
   function exportCsv() {
     const headers = [
       "SKU",
@@ -981,8 +1099,6 @@ export function InventoryApp() {
                   <tbody>
                     {rows.map((row) => {
                       const Icon = typeIcon(row.item_type);
-                      const qtyDisplay =
-                        row.item_type === "tool" ? "1 (tracked)" : `${row.quantity} ${row.unit}`;
                       return (
                         <tr
                           key={row.id}
@@ -1032,7 +1148,13 @@ export function InventoryApp() {
                               </span>
                             ) : null}
                           </td>
-                          <td className="px-4 py-3 align-top font-medium text-pulse-navy">{qtyDisplay}</td>
+                          <td className="px-4 py-3 align-top font-medium text-pulse-navy">
+                            <InventoryTableQtyCell
+                              row={row}
+                              pending={Boolean(qtyPending[row.id])}
+                              onUpdateQuantity={updateQuantity}
+                            />
+                          </td>
                           <td className="px-4 py-3 align-top">
                             {row.assignee_name ? (
                               <div className="flex items-center gap-2">

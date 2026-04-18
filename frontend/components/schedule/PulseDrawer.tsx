@@ -2,7 +2,9 @@
 
 import type { ReactNode } from "react";
 import { X } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
+import { createPortal } from "react-dom";
+import { APP_MODAL_PORTAL_Z_BASE, APP_MODAL_PORTAL_Z_ELEVATED } from "@/components/ui/app-modal-layer";
 
 type PulseDrawerProps = {
   open: boolean;
@@ -38,6 +40,11 @@ export function PulseDrawer({
   elevated = false,
   belowAppHeader = true,
 }: PulseDrawerProps) {
+  const [portalReady, setPortalReady] = useState(false);
+  useLayoutEffect(() => {
+    setPortalReady(true);
+  }, []);
+
   useEffect(() => {
     if (!open) return;
     // Prevent the underlying app shell from scrolling when the drawer is open.
@@ -54,23 +61,25 @@ export function PulseDrawer({
     };
   }, [open]);
 
-  if (!open) return null;
+  if (!open || !portalReady) return null;
 
-  const HEADER_OFFSET = "4rem"; // matches app navbar height (h-16)
-  const HEADER_GAP = "12px";
+  /** Outer shell already starts below the navbar — do not double-offset the panel. */
   const rightPanelLayout = belowAppHeader
-    ? `top-[calc(${HEADER_OFFSET}+${HEADER_GAP})] bottom-0 max-h-[calc(100dvh-${HEADER_OFFSET}-${HEADER_GAP})] min-h-0`
+    ? "top-0 bottom-0 max-h-full min-h-0"
     : "top-0 h-full";
   const centeredMaxH = belowAppHeader
-    ? `max-h-[calc(100dvh-${HEADER_OFFSET}-${HEADER_GAP}-2rem)]`
-    : "max-h-[calc(100dvh-2rem)]";
+    ? "max-h-full min-h-0"
+    : "max-h-[calc(100dvh-2rem)] min-h-0";
 
-  return (
-    <div
-      className={`fixed inset-0 overflow-hidden ${elevated ? "z-[90]" : "z-[80]"} ${
-        placement === "center" ? "flex items-center justify-center p-4" : ""
-      }`}
-    >
+  const zLayer = elevated ? APP_MODAL_PORTAL_Z_ELEVATED : APP_MODAL_PORTAL_Z_BASE;
+  const shellGeom = belowAppHeader ? "fixed left-0 right-0 top-16 bottom-0" : "fixed inset-0";
+  const shellOverflow =
+    placement === "center" ? "overflow-y-auto overflow-x-hidden" : "overflow-hidden";
+  const shellFlex =
+    placement === "center" ? "flex min-h-0 flex-col items-center justify-center p-4 sm:p-6" : "";
+
+  const layer = (
+    <div className={`pointer-events-auto ${shellGeom} ${zLayer} ${shellOverflow} ${shellFlex}`.trim()}>
       <button
         type="button"
         className="ds-modal-backdrop absolute inset-0 backdrop-blur-[2px]"
@@ -80,10 +89,10 @@ export function PulseDrawer({
       <aside
         className={`${
           placement === "center"
-            ? `relative flex w-full flex-col overflow-hidden rounded-xl border border-pulseShell-border bg-pulseShell-surface shadow-[0_18px_60px_rgba(15,23,42,0.20)] ${centeredMaxH} ${
+            ? `relative flex min-h-0 w-full shrink flex-col overflow-hidden rounded-xl border border-pulseShell-border bg-pulseShell-surface shadow-[0_18px_60px_rgba(15,23,42,0.20)] ${centeredMaxH} ${
                 wide ? "max-w-2xl" : "max-w-[520px]"
               }`
-            : `absolute right-0 flex w-full flex-col border-l border-pulseShell-border bg-pulseShell-surface shadow-[0_0_28px_rgba(15,23,42,0.08)] transition-transform duration-200 ease-out dark:shadow-[0_0_36px_rgba(0,0,0,0.32)] ${rightPanelLayout} ${
+            : `absolute right-0 flex min-h-0 w-full flex-col border-l border-pulseShell-border bg-pulseShell-surface shadow-[0_0_28px_rgba(15,23,42,0.08)] transition-transform duration-200 ease-out dark:shadow-[0_0_36px_rgba(0,0,0,0.32)] ${rightPanelLayout} ${
                 wide ? "sm:max-w-2xl" : "sm:max-w-[440px]"
               }`
         }`}
@@ -122,4 +131,6 @@ export function PulseDrawer({
       </aside>
     </div>
   );
+
+  return createPortal(layer, document.body);
 }

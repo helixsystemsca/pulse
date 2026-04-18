@@ -162,6 +162,22 @@ _ROSTER_ROLES = (
     UserRole.worker,
 )
 
+_ROSTER_ROLE_VALUES = {r.value for r in _ROSTER_ROLES}
+
+
+async def _roster_user_in_company_any_status(db: AsyncSession, cid: str, user_id: str) -> Optional[User]:
+    """Resolve a tenant roster `User` by id, including inactive rows.
+
+    `pulse_svc._user_in_company` only returns **active** users; the roster list defaults to
+    `include_inactive=true`, so invited/deactivated rows could appear in the UI while DELETE
+    incorrectly returned 404.
+    """
+    row = await db.execute(select(User).where(User.id == user_id, User.company_id == cid))
+    u = row.scalar_one_or_none()
+    if not u or not set(u.roles) & _ROSTER_ROLE_VALUES:
+        return None
+    return u
+
 
 def _employee_join_path(raw_token: str) -> str:
     return f"/join?token={quote(raw_token, safe='')}"
@@ -795,9 +811,8 @@ async def resend_worker_invite(
     cid: CompanyId,
     user_id: str,
 ) -> dict[str, Any]:
-    target = await pulse_svc._user_in_company(db, cid, user_id)
-    rsr = {r.value for r in _ROSTER_ROLES}
-    if not target or not set(target.roles) & rsr:
+    target = await _roster_user_in_company_any_status(db, cid, user_id)
+    if not target:
         raise HTTPException(status_code=404, detail="User not found")
     _patch_actor_can_touch_target(actor, target)
     if target.account_status != UserAccountStatus.invited:
@@ -1023,9 +1038,8 @@ async def delete_worker(
     if str(actor.id) == user_id:
         raise HTTPException(status_code=400, detail="Cannot delete your own account")
 
-    target = await pulse_svc._user_in_company(db, cid, user_id)
-    rset2 = {r.value for r in _ROSTER_ROLES}
-    if not target or not set(target.roles) & rset2:
+    target = await _roster_user_in_company_any_status(db, cid, user_id)
+    if not target:
         raise HTTPException(status_code=404, detail="User not found")
 
     if user_has_any_role(target, UserRole.company_admin):

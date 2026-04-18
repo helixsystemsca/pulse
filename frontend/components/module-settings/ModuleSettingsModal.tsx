@@ -1,7 +1,9 @@
 "use client";
 
 import { X } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useState } from "react";
+import { createPortal } from "react-dom";
+import { APP_MODAL_PORTAL_Z_BASE } from "@/components/ui/app-modal-layer";
 import type { ModuleId } from "@/lib/moduleSettings/defaults";
 import { MODULE_SETTINGS_UI } from "@/lib/moduleSettings/uiMeta";
 import { useModuleSettings } from "@/providers/ModuleSettingsProvider";
@@ -206,12 +208,33 @@ export function ModuleSettingsForm({ moduleId, closeOnSave = false, onClose, onC
 }
 
 export function ModuleSettingsModal({ moduleId, open, onClose }: ModalProps) {
-  if (!open) return null;
+  const [portalReady, setPortalReady] = useState(false);
+  useLayoutEffect(() => {
+    setPortalReady(true);
+  }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    const body = document.body;
+    const prevOverflow = body.style.overflow;
+    const prevPaddingRight = body.style.paddingRight;
+    const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+    body.style.overflow = "hidden";
+    if (scrollbarWidth > 0) body.style.paddingRight = `${scrollbarWidth}px`;
+    return () => {
+      body.style.overflow = prevOverflow;
+      body.style.paddingRight = prevPaddingRight;
+    };
+  }, [open]);
+
+  if (!open || !portalReady) return null;
 
   const meta = MODULE_SETTINGS_UI[moduleId];
 
-  return (
-    <div className="fixed inset-0 z-[140] flex items-center justify-center p-4">
+  const layer = (
+    <div
+      className={`pointer-events-auto fixed left-0 right-0 top-16 bottom-0 ${APP_MODAL_PORTAL_Z_BASE} flex min-h-0 flex-col items-center justify-center overflow-y-auto overflow-x-hidden p-4 sm:p-6`}
+    >
       <button
         type="button"
         className="ds-modal-backdrop absolute inset-0 backdrop-blur-[2px]"
@@ -219,7 +242,7 @@ export function ModuleSettingsModal({ moduleId, open, onClose }: ModalProps) {
         onClick={onClose}
       />
       <div
-        className="relative flex max-h-[min(90vh,720px)] w-full max-w-lg flex-col overflow-hidden rounded-xl border border-slate-200/90 bg-white shadow-2xl dark:border-ds-border dark:bg-ds-primary"
+        className="relative flex min-h-0 w-full max-w-lg shrink flex-col overflow-hidden rounded-xl border border-slate-200/90 bg-white shadow-2xl dark:border-ds-border dark:bg-ds-primary max-h-full"
         role="dialog"
         aria-modal="true"
         aria-labelledby="module-settings-title"
@@ -246,4 +269,6 @@ export function ModuleSettingsModal({ moduleId, open, onClose }: ModalProps) {
       </div>
     </div>
   );
+
+  return createPortal(layer, document.body);
 }
