@@ -1,6 +1,19 @@
 "use client";
 
-import { AlertTriangle, Battery, Check, Info, MapPin, Package, Pencil, Plus, Radio, Settings } from "lucide-react";
+import {
+  AlertCircle,
+  AlertTriangle,
+  Battery,
+  Check,
+  Info,
+  MapPin,
+  Minus,
+  Package,
+  Pencil,
+  Plus,
+  Radio,
+  Settings,
+} from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { GridLayout, noCompactor, useContainerWidth, type Layout, type LayoutItem } from "react-grid-layout";
@@ -13,7 +26,7 @@ import { fetchOnboarding, fetchSetupProgress } from "@/lib/onboardingService";
 import { sessionHasAnyRole } from "@/lib/pulse-roles";
 import { useAuthenticatedAssetSrc } from "@/hooks/useAuthenticatedAssetSrc";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
-import { pulseTenantNav } from "@/lib/pulse-app";
+import { pulseRoutes, pulseTenantNav } from "@/lib/pulse-app";
 import { canAccessPulseTenantApis, readSession } from "@/lib/pulse-session";
 import { getServerDate, getServerNow } from "@/lib/serverTime";
 import { useResolvedAvatarSrc } from "@/lib/useResolvedAvatarSrc";
@@ -27,7 +40,17 @@ import {
 import "react-grid-layout/css/styles.css";
 import "react-resizable/css/styles.css";
 
-type AlertItem = { severity: "critical" | "warning"; title: string; subtitle?: string };
+type AlertPriority = "critical" | "high" | "medium" | "low";
+
+type AlertItem = {
+  severity: "critical" | "warning";
+  /** Finer ordering for the Active Alerts card; falls back from `severity` when omitted. */
+  priority?: AlertPriority;
+  title: string;
+  subtitle?: string;
+  /** When false, excluded from welcome / severity totals (padding rows, “all clear”, etc.). */
+  countsTowardTotals?: boolean;
+};
 
 /** Passed to `OperationalDashboard` `onReady` for welcome modal / other consumers. */
 export type OperationalDashboardReadyPayload = {
@@ -36,11 +59,125 @@ export type OperationalDashboardReadyPayload = {
 };
 
 function alertCountsFromAlerts(alerts: AlertItem[]): OperationalDashboardReadyPayload {
-  const real = alerts.filter((a) => a.title !== "No active alerts");
+  const real = alerts.filter((a) => a.countsTowardTotals !== false);
   return {
-    criticalCount: real.filter((a) => a.severity === "critical").length,
-    warningCount: real.filter((a) => a.severity === "warning").length,
+    criticalCount: real.filter((a) => alertPriority(a) === "critical").length,
+    warningCount: real.filter((a) => {
+      const p = alertPriority(a);
+      return p === "high" || p === "medium" || p === "low";
+    }).length,
   };
+}
+
+const NO_ACTIVE_ALERTS_TITLE = "No active alerts";
+const NO_ADDITIONAL_ALERTS_TITLE = "No additional alerts";
+
+function alertPriority(a: AlertItem): AlertPriority {
+  if (a.priority) return a.priority;
+  return a.severity === "critical" ? "critical" : "medium";
+}
+
+function alertPriorityRank(p: AlertPriority): number {
+  switch (p) {
+    case "critical":
+      return 0;
+    case "high":
+      return 1;
+    case "medium":
+      return 2;
+    case "low":
+      return 3;
+    default:
+      return 9;
+  }
+}
+
+function compareAlerts(a: AlertItem, b: AlertItem): number {
+  const dr = alertPriorityRank(alertPriority(a)) - alertPriorityRank(alertPriority(b));
+  if (dr !== 0) return dr;
+  return a.title.localeCompare(b.title);
+}
+
+/** Active Alerts card: always three rows, highest priority first; pad with neutral rows. */
+function activeAlertCardRows(alerts: AlertItem[]): AlertItem[] {
+  const real = alerts
+    .filter((a) => a.countsTowardTotals !== false)
+    .filter((a) => a.title !== NO_ACTIVE_ALERTS_TITLE)
+    .slice()
+    .sort(compareAlerts);
+
+  const rows: AlertItem[] = [];
+
+  if (real.length === 0) {
+    rows.push({
+      severity: "warning",
+      priority: "low",
+      title: NO_ACTIVE_ALERTS_TITLE,
+      subtitle: "Operations look clear. New exceptions will surface here.",
+      countsTowardTotals: false,
+    });
+  } else {
+    for (const item of real.slice(0, 3)) rows.push(item);
+  }
+
+  while (rows.length < 3) {
+    rows.push({
+      severity: "warning",
+      priority: "low",
+      title: NO_ADDITIONAL_ALERTS_TITLE,
+      subtitle: "No further high-priority exceptions in this snapshot.",
+      countsTowardTotals: false,
+    });
+  }
+  return rows.slice(0, 3);
+}
+
+function ActiveAlertsRow({ alert: a }: { alert: AlertItem }) {
+  const p = alertPriority(a);
+  const isPad = a.countsTowardTotals === false && a.title === NO_ADDITIONAL_ALERTS_TITLE;
+  const accent =
+    p === "critical"
+      ? "ds-notification-critical"
+      : p === "high"
+        ? "ds-notification-warning"
+        : p === "medium"
+          ? ""
+          : "ds-notification-muted";
+  const style =
+    p === "medium"
+      ? ({
+          borderLeftColor: "#2B4C7E",
+          background: "rgba(43, 76, 126, 0.05)",
+        } as const)
+      : undefined;
+
+  const icon =
+    p === "critical" ? (
+      <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-ds-danger" aria-hidden />
+    ) : p === "high" ? (
+      <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-ds-warning" aria-hidden />
+    ) : p === "medium" ? (
+      <Info className="mt-0.5 h-5 w-5 shrink-0 text-[#2B4C7E]" aria-hidden />
+    ) : isPad ? (
+      <Minus className="mt-0.5 h-5 w-5 shrink-0 text-ds-muted" aria-hidden />
+    ) : (
+      <Radio className="mt-0.5 h-5 w-5 shrink-0 text-ds-muted" aria-hidden />
+    );
+
+  return (
+    <li
+      className={`ds-notification flex gap-3 p-4 ${accent}`.trim()}
+      style={style}
+    >
+      {icon}
+      <div className="min-w-0 flex-1">
+        <p className={`text-sm font-bold ${isPad ? "text-ds-muted" : "text-ds-foreground"}`}>{a.title}</p>
+        {a.subtitle ? (
+          <p className="mt-1 whitespace-pre-line text-xs leading-relaxed text-ds-muted">{a.subtitle}</p>
+        ) : null}
+      </div>
+    </li>
+  );
 }
 
 type WorkforceBubble = {
@@ -260,16 +397,19 @@ function demoModel(): DashboardViewModel {
     alerts: [
       {
         severity: "critical",
+        priority: "critical",
         title: "Missing Hammer Drill",
         subtitle: "Last seen: Boiler Room\nZone 3 (Garage)",
       },
       {
         severity: "warning",
+        priority: "high",
         title: "Zone 3 (Garage) Offline",
         subtitle: "Status: Planned",
       },
       {
         severity: "warning",
+        priority: "medium",
         title: "Low Beacon Battery",
         subtitle: "Zone 2 anchor · swap pack before next shift",
       },
@@ -663,6 +803,7 @@ function buildLiveModel(
   for (const t of missingTools.slice(0, 3)) {
     alerts.push({
       severity: "critical",
+      priority: "critical",
       title: `Missing · ${t.name}`,
       subtitle: `Last known zone: ${zoneName(t.zone_id)}`,
     });
@@ -670,6 +811,7 @@ function buildLiveModel(
   for (const t of oos.slice(0, 2)) {
     alerts.push({
       severity: "warning",
+      priority: "high",
       title: `Out of service · ${t.name}`,
       subtitle: `Zone: ${zoneName(t.zone_id)}`,
     });
@@ -677,19 +819,22 @@ function buildLiveModel(
   for (const row of lowStock.slice(0, 3)) {
     alerts.push({
       severity: "warning",
+      priority: "low",
       title: `Low stock · ${row.name}`,
       subtitle: `Qty ${row.quantity} at or below threshold (${row.low_stock_threshold} ${"units"})`,
     });
   }
   for (const msg of dashboard.alerts) {
     if (alerts.length >= 8) break;
-    alerts.push({ severity: "warning", title: msg });
+    alerts.push({ severity: "warning", priority: "medium", title: msg });
   }
   if (alerts.length === 0) {
     alerts.push({
       severity: "warning",
-      title: "No active alerts",
+      priority: "low",
+      title: NO_ACTIVE_ALERTS_TITLE,
       subtitle: "Operations look clear. New exceptions will surface here.",
+      countsTowardTotals: false,
     });
   }
 
@@ -851,6 +996,8 @@ function DashboardBody({
   const [layoutHydrated, setLayoutHydrated] = useState(false);
   const { width, containerRef, mounted } = useContainerWidth({ initialWidth: 1200 });
 
+  const activeAlertRows = useMemo(() => activeAlertCardRows(model.alerts), [model.alerts]);
+
   const widgetRegistry = useMemo(() => {
     return {
       alerts: {
@@ -858,27 +1005,8 @@ function DashboardBody({
         accent: "yellow" as const,
         render: () => (
           <ul className="flex flex-1 flex-col gap-3">
-            {model.alerts.map((a, idx) => (
-              <li
-                key={`${a.title}-${idx}`}
-                className={`ds-notification flex gap-3 p-4 ${
-                  a.severity === "critical" ? "ds-notification-critical" : "ds-notification-warning"
-                }`}
-              >
-                {a.severity === "critical" ? (
-                  <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-ds-danger" aria-hidden />
-                ) : (
-                  <Radio className="mt-0.5 h-5 w-5 shrink-0 text-ds-warning" aria-hidden />
-                )}
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-bold text-ds-foreground">{a.title}</p>
-                  {a.subtitle ? (
-                    <p className="mt-1 whitespace-pre-line text-xs leading-relaxed text-ds-muted">
-                      {a.subtitle}
-                    </p>
-                  ) : null}
-                </div>
-              </li>
+            {activeAlertRows.map((a, idx) => (
+              <ActiveAlertsRow key={`${a.title}-${idx}`} alert={a} />
             ))}
           </ul>
         ),
@@ -1215,7 +1343,15 @@ function DashboardBody({
           }
         : null,
     } as const;
-  }, [facilitySetupChecklist, model, onDismissZonePrompt, pulseTenantNav, workOrdersHref, zonePromptDismissed]);
+  }, [
+    activeAlertRows,
+    facilitySetupChecklist,
+    model,
+    onDismissZonePrompt,
+    pulseTenantNav,
+    workOrdersHref,
+    zonePromptDismissed,
+  ]);
 
   const allWidgetKeys = useMemo(() => {
     return Object.keys(widgetRegistry).filter((k) => (widgetRegistry as Record<string, unknown>)[k] != null);
@@ -1488,8 +1624,18 @@ function DashboardBody({
               | null
               | undefined;
             if (!w) return <div key={item.i} />;
+            const alertsPeek =
+              item.i === "alerts" ? (
+                <Link
+                  href={pulseRoutes.monitoring}
+                  className="mr-1 text-xs font-semibold text-ds-foreground underline decoration-ds-border decoration-1 underline-offset-4 hover:decoration-ds-foreground"
+                >
+                  View all
+                </Link>
+              ) : null;
             const headerRight = (
               <div className="flex items-center gap-2">
+                {alertsPeek}
                 {editMode ? (
                   <span className="dashboard-drag-handle select-none rounded-md border border-black/10 bg-slate-900/90 px-2 py-1 text-[11px] font-semibold text-white shadow-sm dark:bg-white/85 dark:text-slate-900">
                     Drag

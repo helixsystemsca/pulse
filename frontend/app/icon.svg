@@ -1,10 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="Pulse">
-  <rect width="32" height="32" rx="8" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1" />
+  <!-- Dark-mode favicon: dusk shell + aquamarine pulse -->
+  <rect width="32" height="32" rx="8" fill="#2c3a55" />
   <g transform="translate(4 4)">
     <path
       d="M22 12h-4l-3 9L9 3l-3 9H2"
       fill="none"
-      stroke="#2563eb"
+      stroke="#36f1cd"
       stroke-width="2"
       stroke-linecap="round"
       stroke-linejoin="round"
