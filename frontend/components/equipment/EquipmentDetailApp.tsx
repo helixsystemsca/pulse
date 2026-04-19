@@ -4,6 +4,7 @@ import { ArrowLeft, Bluetooth, Camera, ClipboardList, History, Loader2, Wrench }
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { EquipmentPartsPanel } from "@/components/equipment/EquipmentPartsPanel";
+import { EquipmentPmTasksSection } from "@/components/equipment/EquipmentPmTasksSection";
 import { Card } from "@/components/pulse/Card";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
@@ -477,6 +478,15 @@ export function EquipmentDetailApp({ equipmentId }: Props) {
         equipmentName={data.name}
         canMutate={canMutate}
         onPartsChanged={() => {
+          setMaintenanceHistoryRevision((n) => n + 1);
+          void load();
+        }}
+      />
+
+      <EquipmentPmTasksSection
+        equipmentId={equipmentId}
+        canMutate={canMutate}
+        onTasksChanged={() => {
           setMaintenanceHistoryRevision((n) => n + 1);
           void load();
         }}

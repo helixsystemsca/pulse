@@ -194,3 +194,49 @@ export async function deleteEquipmentPart(partId: string): Promise<void> {
 export async function uploadEquipmentPartImage(partId: string, file: File): Promise<{ image_url: string }> {
   return uploadImageForm(`/api/v1/equipment/parts/${encodeURIComponent(partId)}/image`, file);
 }
+
+/** Preventive maintenance — `/api/v1/equipment/{id}/pm-tasks` */
+export type PmTaskRow = {
+  id: string;
+  asset_id: string;
+  name: string;
+  description: string | null;
+  frequency_type: string;
+  frequency_value: number;
+  last_completed_at: string | null;
+  next_due_at: string;
+  estimated_duration_minutes: number | null;
+  auto_create_work_order: boolean;
+  parts_count: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export type PmTaskCreatePayload = {
+  name: string;
+  description?: string | null;
+  frequency_type: string;
+  frequency_value: number;
+  estimated_duration_minutes?: number;
+  auto_create_work_order?: boolean;
+  parts?: { part_id: string; quantity: number }[];
+  checklist?: { label: string; sort_order: number }[];
+};
+
+export async function fetchPmTasks(equipmentId: string): Promise<PmTaskRow[]> {
+  return apiFetch<PmTaskRow[]>(`/api/v1/equipment/${encodeURIComponent(equipmentId)}/pm-tasks`);
+}
+
+export async function createPmTask(equipmentId: string, body: PmTaskCreatePayload): Promise<PmTaskRow> {
+  return apiFetch<PmTaskRow>(`/api/v1/equipment/${encodeURIComponent(equipmentId)}/pm-tasks`, {
+    method: "POST",
+    json: body,
+  });
+}
+
+export async function deletePmTask(equipmentId: string, pmTaskId: string): Promise<void> {
+  await apiFetch<undefined>(
+    `/api/v1/equipment/${encodeURIComponent(equipmentId)}/pm-tasks/${encodeURIComponent(pmTaskId)}`,
+    { method: "DELETE" },
+  );
+}

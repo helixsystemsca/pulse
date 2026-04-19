@@ -17,6 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import get_current_user, get_db, require_manager_or_above
 from app.core.user_roles import is_field_worker_like, user_has_any_role
 from app.services.onboarding_service import try_mark_onboarding_step
+from app.services.pm_task_service import sync_pm_task_after_work_order_completed
 from app.models.domain import EquipmentPart, FacilityEquipment, Tool, User, UserRole, Zone
 from app.core.org_module_settings_merge import merge_org_module_settings
 from app.models.pulse_models import (
@@ -649,6 +650,7 @@ async def patch_wr(
         and data["status"] == PulseWorkRequestStatus.completed
         and old_status != PulseWorkRequestStatus.completed
     ):
+        await sync_pm_task_after_work_order_completed(db, wr)
         await try_mark_onboarding_step(db, user.id, "complete_work_order")
     await db.commit()
     await db.refresh(wr)

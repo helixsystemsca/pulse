@@ -52,6 +52,14 @@ from app.models.domain import (
     UserAccountStatus,
     Zone,
 )
+from app.models.pm_models import (
+    PmFrequencyType,
+    PmTask,
+    PmTaskChecklistItem,
+    PmTaskPart,
+    PulseWorkRequestChecklistItem,
+    PulseWorkRequestPartLine,
+)
 from app.models.pulse_models import (
     PulseBeaconEquipment,
     PulsePreventativeRule,
@@ -63,6 +71,7 @@ from app.models.pulse_models import (
     PulseUserPerformanceSnapshot,
     PulseScheduleShift,
     PulseTaskDependency,
+    PulseWorkOrderSource,
     PulseWorkOrderType,
     PulseWorkRequest,
     PulseWorkerProfile,
@@ -115,8 +124,15 @@ __all__ = [
     "RolePermission",
     "SystemLog",
     "SystemSecureToken",
+    "PmFrequencyType",
+    "PmTask",
+    "PmTaskChecklistItem",
+    "PmTaskPart",
+    "PulseWorkRequestChecklistItem",
+    "PulseWorkRequestPartLine",
     "PulsePreventativeRule",
     "PulseProcedure",
+    "PulseWorkOrderSource",
     "PulseWorkOrderType",
     "PulseWorkRequest",
     "PulseWorkerProfile",

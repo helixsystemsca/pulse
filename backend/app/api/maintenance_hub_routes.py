@@ -23,6 +23,7 @@ from app.models.pulse_models import (
     PulseWorkRequestStatus,
 )
 from app.modules.pulse import service as pulse_svc
+from app.services.pm_task_service import sync_pm_task_after_work_order_completed
 from app.schemas.maintenance_hub import (
     PreventativeRuleCreate,
     PreventativeRuleOut,
@@ -105,6 +106,7 @@ def _parse_wo_status(v: str) -> PulseWorkRequestStatus:
 
 
 def row_to_work_order_out(wr: PulseWorkRequest) -> WorkOrderOut:
+    src = wr.work_order_source.value if hasattr(wr.work_order_source, "value") else str(wr.work_order_source)
     return WorkOrderOut(
         id=str(wr.id),
         type=_wo_type_str(wr.work_order_type),
@@ -118,6 +120,8 @@ def row_to_work_order_out(wr: PulseWorkRequest) -> WorkOrderOut:
         zone_id=str(wr.zone_id) if wr.zone_id else None,
         equipment_id=str(wr.equipment_id) if wr.equipment_id else None,
         tool_id=str(wr.tool_id) if wr.tool_id else None,
+        pm_task_id=str(wr.pm_task_id) if wr.pm_task_id else None,
+        source=src if src in ("manual", "auto_pm", "downtime_detected") else "manual",
     )
 
 
@@ -227,6 +231,7 @@ async def update_work_order(
     wr = await db.get(PulseWorkRequest, work_order_id)
     if not wr or wr.company_id != cid:
         raise HTTPException(status_code=404, detail="Not found")
+    old_status = wr.status
     data = body.model_dump(exclude_unset=True)
     if "type" in data:
         wr.work_order_type = PulseWorkOrderType(data["type"])
@@ -261,6 +266,12 @@ async def update_work_order(
             wr.completed_at = datetime.now(timezone.utc)
         elif st != PulseWorkRequestStatus.completed:
             wr.completed_at = None
+    if (
+        "status" in data
+        and wr.status == PulseWorkRequestStatus.completed
+        and old_status != PulseWorkRequestStatus.completed
+    ):
+        await sync_pm_task_after_work_order_completed(db, wr)
     wr.updated_at = datetime.now(timezone.utc)
     await db.commit()
     await db.refresh(wr)

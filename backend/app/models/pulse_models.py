@@ -44,6 +44,12 @@ class PulseWorkOrderType(str, enum.Enum):
     request = "request"
 
 
+class PulseWorkOrderSource(str, enum.Enum):
+    manual = "manual"
+    auto_pm = "auto_pm"
+    downtime_detected = "downtime_detected"
+
+
 class PulseWorkRequestPriority(str, enum.Enum):
     low = "low"
     medium = "medium"
@@ -126,6 +132,12 @@ class PulseWorkRequest(Base):
     equipment_id: Mapped[Optional[str]] = mapped_column(
         UUID(as_uuid=False), ForeignKey("facility_equipment.id", ondelete="SET NULL"), nullable=True, index=True
     )
+    pm_task_id: Mapped[Optional[str]] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("pm_tasks.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     part_id: Mapped[Optional[str]] = mapped_column(
         UUID(as_uuid=False), ForeignKey("equipment_parts.id", ondelete="SET NULL"), nullable=True, index=True
     )
@@ -157,6 +169,11 @@ class PulseWorkRequest(Base):
         default=PulseWorkOrderType.issue,
         nullable=False,
         index=True,
+    )
+    work_order_source: Mapped[PulseWorkOrderSource] = mapped_column(
+        Enum(PulseWorkOrderSource, values_callable=lambda x: [e.value for e in x], native_enum=False, length=32),
+        default=PulseWorkOrderSource.manual,
+        nullable=False,
     )
     procedure_id: Mapped[Optional[str]] = mapped_column(
         UUID(as_uuid=False),

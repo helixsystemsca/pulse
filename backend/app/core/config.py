@@ -182,6 +182,11 @@ class Settings(BaseSettings):
         default="",
         validation_alias=AliasChoices("GATEWAY_REGISTER_TOKEN", "gateway_register_token"),
     )
+    #: Shared secret for `POST /api/v1/internal/pm-tasks/run-due-scan` (daily cron). Env: PM_CRON_SECRET.
+    pm_cron_secret: str = Field(
+        default="",
+        validation_alias=AliasChoices("PM_CRON_SECRET", "pm_cron_secret"),
+    )
 
     @property
     def cors_origin_list(self) -> List[str]:

@@ -5,6 +5,8 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Literal, Optional
 
+WorkOrderSourceApi = Literal["manual", "auto_pm", "downtime_detected"]
+
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 WorkOrderType = Literal["preventative", "issue", "request"]
@@ -147,6 +149,8 @@ class WorkOrderOut(BaseModel):
     zone_id: Optional[str] = None
     equipment_id: Optional[str] = None
     tool_id: Optional[str] = None
+    pm_task_id: Optional[str] = None
+    source: WorkOrderSourceApi = "manual"
 
 
 class WorkOrderDetailOut(WorkOrderOut):

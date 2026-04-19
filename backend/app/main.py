@@ -46,6 +46,8 @@ from app.api.realtime import router as realtime_router
 from app.api.system_routes import router as system_router
 from app.api.users_routes import router as users_router
 from app.api.maintenance_hub_routes import router as maintenance_hub_router
+from app.api.pm_task_routes import internal_router as pm_internal_router
+from app.api.pm_task_routes import router as pm_task_router
 from app.api.work_requests_routes import router as work_requests_router
 from app.api.workers_routes import router as workers_router
 from app.api.inventory_portal_routes import router as inventory_portal_router
@@ -146,6 +148,8 @@ app.include_router(core_router, prefix="/api/v1")
 app.include_router(realtime_router, prefix="/api/v1")
 app.include_router(pulse_router, prefix="/api/v1")
 app.include_router(maintenance_hub_router, prefix="/api/v1")
+app.include_router(pm_task_router, prefix="/api/v1")
+app.include_router(pm_internal_router, prefix="/api/v1")
 app.include_router(projects_router, prefix="/api/v1")
 app.include_router(projects_tasks_router, prefix="/api/v1")
 app.include_router(proximity_router, prefix="/api/v1")
