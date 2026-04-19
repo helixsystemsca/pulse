@@ -55,6 +55,7 @@ export function EquipmentPmTasksSection({ equipmentId, canMutate, onTasksChanged
   const [saving, setSaving] = useState(false);
   const [parts, setParts] = useState<EquipmentPartRow[]>([]);
   const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
   const [freqValue, setFreqValue] = useState(30);
   const [freqType, setFreqType] = useState<"days" | "weeks" | "months">("days");
   const [duration, setDuration] = useState<string>("");
@@ -82,6 +83,7 @@ export function EquipmentPmTasksSection({ equipmentId, canMutate, onTasksChanged
   const openModal = () => {
     setError(null);
     setName("");
+    setDescription("");
     setFreqValue(30);
     setFreqType("days");
     setDuration("");
@@ -115,8 +117,10 @@ export function EquipmentPmTasksSection({ equipmentId, canMutate, onTasksChanged
       setError("Estimated duration must be a positive number of minutes.");
       return;
     }
+    const descTrim = description.trim();
     const payload: PmTaskCreatePayload = {
       name: trimmed,
+      description: descTrim ? descTrim : null,
       frequency_type: freqType,
       frequency_value: Math.max(1, Math.min(3650, freqValue)),
       estimated_duration_minutes: dur,
@@ -185,6 +189,9 @@ export function EquipmentPmTasksSection({ equipmentId, canMutate, onTasksChanged
               <li key={t.id} className="flex flex-wrap items-start justify-between gap-3 px-4 py-3">
                 <div className="min-w-0 flex-1">
                   <p className="font-semibold text-pulse-navy">{t.name}</p>
+                  {t.description?.trim() ? (
+                    <p className="mt-1 line-clamp-2 text-xs text-pulse-navy/90">{t.description.trim()}</p>
+                  ) : null}
                   <p className="mt-0.5 text-xs text-pulse-muted">
                     {formatFrequency(t)} · Next due {formatDate(t.next_due_at)}
                     {t.parts_count > 0 ? ` · ${t.parts_count} part${t.parts_count === 1 ? "" : "s"}` : ""}
@@ -240,6 +247,19 @@ export function EquipmentPmTasksSection({ equipmentId, canMutate, onTasksChanged
                   onChange={(e) => setName(e.target.value)}
                   placeholder="e.g. Grease bearings"
                   autoFocus
+                />
+              </div>
+              <div>
+                <label className={dsLabelClass} htmlFor="pm-description">
+                  Description (optional)
+                </label>
+                <textarea
+                  id="pm-description"
+                  className={`${dsInputStackedClass} min-h-[88px] resize-y py-2`}
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="Scope, safety notes, or links for technicians…"
+                  rows={3}
                 />
               </div>
               <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
