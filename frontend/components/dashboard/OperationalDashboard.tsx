@@ -36,6 +36,12 @@ import {
   DASHBOARD_LAYOUT_STORAGE_V2,
   type CustomDashboardWidgetConfig,
 } from "@/lib/dashboardPageWidgetCatalog";
+import {
+  localScheduleDateKey,
+  mergedScheduleShiftsForCalendarDate,
+  shiftIntervalBoundsMs,
+} from "@/lib/schedule/dashboardScheduleDay";
+import type { PulseShiftApi, PulseWorkerApi } from "@/lib/schedule/pulse-bridge";
 
 import "react-grid-layout/css/styles.css";
 import "react-resizable/css/styles.css";
@@ -226,8 +232,10 @@ export type DashboardViewModel = {
     onSite: WorkforceBubble[];
     onShiftNow: WorkforceBubble[];
     upcomingToday: WorkforceBubble[];
+    /** On the month grid for today but not in on-site / on-shift / upcoming / off-site buckets (e.g. finished shift, PTO chip). */
+    onScheduleToday: WorkforceBubble[];
     offSite: WorkforceBubble[];
-    counts: { onSite: number; onShiftNow: number; upcomingToday: number; offSite: number };
+    counts: { onSite: number; onShiftNow: number; upcomingToday: number; onScheduleToday: number; offSite: number };
   };
   workRequests: {
     awaitingCount: number;
@@ -461,6 +469,7 @@ function demoModel(): DashboardViewModel {
           roleSortRank: 2,
         },
       ],
+      onScheduleToday: [],
       offSite: [
         {
           id: "7",
@@ -473,7 +482,7 @@ function demoModel(): DashboardViewModel {
           roleSortRank: 3,
         },
       ],
-      counts: { onSite: 1, onShiftNow: 1, upcomingToday: 1, offSite: 1 },
+      counts: { onSite: 1, onShiftNow: 1, upcomingToday: 1, onScheduleToday: 0, offSite: 1 },
     },
     workRequests: {
       awaitingCount: 7,
@@ -538,7 +547,10 @@ type WorkerOut = {
   email: string;
   full_name: string | null;
   role: string;
+  roles?: string[];
   avatar_url?: string | null;
+  employment_type?: string | null;
+  recurring_shifts?: PulseWorkerApi["recurring_shifts"] | null;
   /**
    * Future BLE / RTLS integration.
    * Not currently returned by the API in most environments, so treated as optional.
@@ -559,7 +571,7 @@ type ShiftOut = {
   assigned_user_id: string;
   starts_at: string;
   ends_at: string;
-};
+} & Partial<Omit<PulseShiftApi, "id" | "assigned_user_id" | "starts_at" | "ends_at">>;
 
 type AssetOut = {
   id: string;
@@ -630,42 +642,39 @@ function buildLiveModel(
   const zoneName = (id: string | null) => (id ? zones.find((z) => z.id === id)?.name ?? "Unknown zone" : "Unassigned");
 
   const now = getServerNow();
-  const { dayStartMs, dayEndMsExclusive } = localCalendarDayBoundsMs(now);
+  const { dayEndMsExclusive } = localCalendarDayBoundsMs(now);
+  const dateKey = localScheduleDateKey(now);
 
-  const shiftsToday = shifts.filter((s) => {
-    const a = new Date(s.starts_at).getTime();
-    const b = new Date(s.ends_at).getTime();
-    return a < dayEndMsExclusive && b > dayStartMs;
-  });
-
-  const rosterWorkers = workers.filter((w) =>
-    ["worker", "manager", "company_admin", "supervisor", "lead"].includes(w.role),
-  );
-
-  const shiftByWorker = new Map<string, ShiftOut[]>();
-  for (const s of shiftsToday) {
-    if (!shiftByWorker.has(s.assigned_user_id)) shiftByWorker.set(s.assigned_user_id, []);
-    shiftByWorker.get(s.assigned_user_id)!.push(s);
+  const apiBoundsById = new Map<string, Pick<PulseShiftApi, "starts_at" | "ends_at">>();
+  for (const s of shifts) {
+    apiBoundsById.set(s.id, { starts_at: s.starts_at, ends_at: s.ends_at });
   }
 
-  const scheduledWorkers = rosterWorkers.filter((w) => (shiftByWorker.get(w.id)?.length ?? 0) > 0);
+  const dayMerged = mergedScheduleShiftsForCalendarDate({
+    dateStr: dateKey,
+    pulseShifts: shifts as PulseShiftApi[],
+    pulseWorkers: workers as PulseWorkerApi[],
+    pulseZones: zones,
+  });
+
+  const workerById = new Map(workers.map((w) => [w.id, w]));
+  const scheduledIdsOnCalendar = new Set(
+    dayMerged.map((s) => s.workerId).filter((id): id is string => Boolean(id)),
+  );
+  /** Same people as month cells: anyone assigned that day who exists in the Pulse workers list. */
+  const scheduledWorkers = [...scheduledIdsOnCalendar]
+    .map((id) => workerById.get(id))
+    .filter((w): w is WorkerOut => w != null);
 
   const bubbles: WorkforceBubble[] = scheduledWorkers.map((w) => {
     const initials = initialsFromUser(w.email, w.full_name);
-    const mine = shiftByWorker.get(w.id) ?? [];
-    const active = mine.some((s) => {
-      const a = new Date(s.starts_at).getTime();
-      const b = new Date(s.ends_at).getTime();
-      return a <= now && now < b;
-    });
+    const mineRows = dayMerged.filter((s) => s.workerId === w.id);
+    const intervals = mineRows
+      .map((s) => shiftIntervalBoundsMs(s, apiBoundsById))
+      .filter((iv): iv is { startMs: number; endMs: number } => iv != null);
+    const active = intervals.some((iv) => iv.startMs <= now && now < iv.endMs);
     const nextStart =
-      mine.length === 0
-        ? null
-        : Math.min(
-            ...mine.map((s) => {
-              return new Date(s.starts_at).getTime();
-            }),
-          );
+      intervals.length === 0 ? null : Math.min(...intervals.map((iv) => iv.startMs));
 
     const parseTs = (value: string | number | null | undefined): number | null => {
       if (value == null) return null;
@@ -749,7 +758,16 @@ function buildLiveModel(
     .filter((b) => b.presence.status === "off_site" || b.lastEvent?.type === "exit")
     .sort(sortWorkforceByRoleThenName);
 
-  const scheduledCount = new Set(shiftsToday.map((s) => s.assigned_user_id)).size;
+  const onScheduleToday = bubbles
+    .filter(
+      (b) =>
+        b.scheduleBucket === null &&
+        b.presence.status !== "off_site" &&
+        b.lastEvent?.type !== "exit",
+    )
+    .sort(sortWorkforceByRoleThenName);
+
+  const scheduledCount = scheduledIdsOnCalendar.size;
 
   const summaryLine = `${scheduledCount} scheduled today`;
 
@@ -869,11 +887,13 @@ function buildLiveModel(
       onSite,
       onShiftNow,
       upcomingToday,
+      onScheduleToday,
       offSite,
       counts: {
         onSite: onSite.length,
         onShiftNow: onShiftNow.length,
         upcomingToday: upcomingToday.length,
+        onScheduleToday: onScheduleToday.length,
         offSite: offSite.length,
       },
     },
@@ -1092,6 +1112,29 @@ function DashboardBody({
                           <>
                             {b.badge ? <WorkforceRoleLetterBadge letter={b.badge} /> : null}
                             <WorkforceUpcomingPill />
+                          </>
+                        }
+                      />
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+
+              {model.workforce.onScheduleToday.length > 0 ? (
+                <div className="space-y-3">
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">
+                    On today&apos;s schedule
+                  </p>
+                  <div className="flex flex-wrap gap-3">
+                    {model.workforce.onScheduleToday.map((b) => (
+                      <WorkforceBubbleStack
+                        key={b.id}
+                        bubble={b}
+                        faceClassName={scheduledAvatarClass()}
+                        badges={
+                          <>
+                            {b.badge ? <WorkforceRoleLetterBadge letter={b.badge} /> : null}
+                            <WorkforceStatusDot color="yellow" />
                           </>
                         }
                       />
