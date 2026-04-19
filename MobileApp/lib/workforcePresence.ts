@@ -1,6 +1,6 @@
 /**
  * Mirrors `OperationalDashboard` `buildLiveModel` workforce bubble rules:
- * - On-site: assigned shift overlaps "now" (UTC day window for listing, server-aligned instant for active check).
+ * - On-site: assigned shift overlaps "now" (local calendar day for listing, server-aligned instant for active check).
  * - Scheduled (off shift): shift today but none active.
  * - Unscheduled today: no shifts today.
  */
@@ -23,20 +23,21 @@ export type MyShiftPresence = {
   dot: "on_shift" | "scheduled_off" | "unscheduled" | "unknown";
 };
 
-function utcDayRangeIso(nowMs: number): { from: string; to: string } {
-  const now = new Date(nowMs);
-  const dayStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0));
-  const dayEnd = new Date(dayStart);
-  dayEnd.setUTCDate(dayEnd.getUTCDate() + 1);
-  return { from: dayStart.toISOString(), to: dayEnd.toISOString() };
+function localCalendarDayBoundsIso(nowMs: number): { from: string; to: string } {
+  const anchor = new Date(nowMs);
+  const dayStart = new Date(anchor);
+  dayStart.setHours(0, 0, 0, 0);
+  const dayEndExclusive = new Date(dayStart);
+  dayEndExclusive.setDate(dayEndExclusive.getDate() + 1);
+  return { from: dayStart.toISOString(), to: dayEndExclusive.toISOString() };
 }
 
 export async function fetchPulseZones(token: string): Promise<PulseZoneOut[]> {
   return apiFetch<PulseZoneOut[]>("/api/v1/pulse/zones", { token });
 }
 
-export async function fetchPulseShiftsForUtcDay(token: string, nowMs: number): Promise<PulseShiftOut[]> {
-  const { from, to } = utcDayRangeIso(nowMs);
+export async function fetchPulseShiftsForLocalCalendarDay(token: string, nowMs: number): Promise<PulseShiftOut[]> {
+  const { from, to } = localCalendarDayBoundsIso(nowMs);
   const q = `from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`;
   return apiFetch<PulseShiftOut[]>(`/api/v1/pulse/schedule/shifts?${q}`, { token });
 }
@@ -49,15 +50,18 @@ export function computeMyShiftPresence(
 ): MyShiftPresence {
   const zoneName = (id: string | null) => (id ? zones.find((z) => z.id === id)?.name ?? "Unknown zone" : "Unassigned");
 
-  const dayStart = new Date(nowMs);
-  dayStart.setUTCHours(0, 0, 0, 0);
-  const dayEnd = new Date(dayStart);
-  dayEnd.setUTCDate(dayEnd.getUTCDate() + 1);
+  const anchor = new Date(nowMs);
+  const dayStart = new Date(anchor);
+  dayStart.setHours(0, 0, 0, 0);
+  const dayEndExclusive = new Date(dayStart);
+  dayEndExclusive.setDate(dayEndExclusive.getDate() + 1);
+  const dayStartMs = dayStart.getTime();
+  const dayEndMsExclusive = dayEndExclusive.getTime();
 
   const shiftsToday = shifts.filter((s) => {
     const a = new Date(s.starts_at).getTime();
     const b = new Date(s.ends_at).getTime();
-    return a < dayEnd.getTime() && b > dayStart.getTime();
+    return a < dayEndMsExclusive && b > dayStartMs;
   });
 
   const mine = shiftsToday.filter((s) => s.assigned_user_id === userId);
@@ -95,7 +99,7 @@ export async function loadMyShiftPresence(token: string, userId: string): Promis
   try {
     const [zones, shifts] = await Promise.all([
       fetchPulseZones(token),
-      fetchPulseShiftsForUtcDay(token, nowMs),
+      fetchPulseShiftsForLocalCalendarDay(token, nowMs),
     ]);
     return computeMyShiftPresence(userId, shifts, zones, nowMs);
   } catch {

@@ -607,6 +607,16 @@ function workRequestTag(w: WorkRequestOut): WorkTag {
   return { kind: "progress", label: st.replace(/_/g, " ") };
 }
 
+/** Local calendar day [start, end) in ms, aligned with schedule fetch and `dateLabel` (not UTC midnight). */
+function localCalendarDayBoundsMs(nowMs: number): { dayStartMs: number; dayEndMsExclusive: number } {
+  const anchor = new Date(nowMs);
+  const dayStart = new Date(anchor);
+  dayStart.setHours(0, 0, 0, 0);
+  const dayEndExclusive = new Date(dayStart);
+  dayEndExclusive.setDate(dayEndExclusive.getDate() + 1);
+  return { dayStartMs: dayStart.getTime(), dayEndMsExclusive: dayEndExclusive.getTime() };
+}
+
 function buildLiveModel(
   dashboard: DashboardPayload,
   wr: WorkRequestListOut,
@@ -620,15 +630,12 @@ function buildLiveModel(
   const zoneName = (id: string | null) => (id ? zones.find((z) => z.id === id)?.name ?? "Unknown zone" : "Unassigned");
 
   const now = getServerNow();
-  const dayStart = new Date(now);
-  dayStart.setUTCHours(0, 0, 0, 0);
-  const dayEnd = new Date(dayStart);
-  dayEnd.setUTCDate(dayEnd.getUTCDate() + 1);
+  const { dayStartMs, dayEndMsExclusive } = localCalendarDayBoundsMs(now);
 
   const shiftsToday = shifts.filter((s) => {
     const a = new Date(s.starts_at).getTime();
     const b = new Date(s.ends_at).getTime();
-    return a < dayEnd.getTime() && b > dayStart.getTime();
+    return a < dayEndMsExclusive && b > dayStartMs;
   });
 
   const rosterWorkers = workers.filter((w) =>
@@ -681,7 +688,7 @@ function buildLiveModel(
           }
         : null;
 
-    const isUpcomingToday = nextStart != null && now < nextStart && nextStart < dayEnd.getTime();
+    const isUpcomingToday = nextStart != null && now < nextStart && nextStart < dayEndMsExclusive;
 
     const isOffSite = presence.status === "off_site" || lastEvent?.type === "exit";
 
@@ -1804,15 +1811,10 @@ export function OperationalDashboard({
 
     setLoading(true);
     setError(null);
-    // Align "today" with the schedule module: use local day bounds, not UTC midnight.
-    // This avoids excluding shifts for tenants in non-UTC timezones.
-    const now = new Date(getServerNow());
-    const start = new Date(now);
-    start.setHours(0, 0, 0, 0);
-    const end = new Date(start);
-    end.setHours(23, 59, 59, 999);
-    const from = start.toISOString();
-    const to = end.toISOString();
+    // Same local calendar day as `buildLiveModel` / schedule module (exclusive end = next local midnight).
+    const { dayStartMs, dayEndMsExclusive } = localCalendarDayBoundsMs(getServerNow());
+    const from = new Date(dayStartMs).toISOString();
+    const to = new Date(dayEndMsExclusive).toISOString();
 
     try {
       const [dash, wrList, workers, assetList, lowStock, zoneList, beaconList, setupProgress] = await Promise.all([
