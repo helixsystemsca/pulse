@@ -326,18 +326,30 @@ export async function loginWithBackend(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email: email.trim(), password }),
   });
+  const loginText = await loginRes.text();
   if (!loginRes.ok) {
     return { ok: false, reason: "invalid_credentials" };
   }
-  const tokenJson = (await loginRes.json()) as TokenResponse;
+  let tokenJson: TokenResponse;
+  try {
+    tokenJson = JSON.parse(loginText) as TokenResponse;
+  } catch {
+    return { ok: false, reason: "api_config" };
+  }
   const token = tokenJson.access_token;
   const meRes = await fetch(`${base}/api/v1/auth/me`, {
     headers: { Authorization: `Bearer ${token}` },
   });
+  const meText = await meRes.text();
   if (!meRes.ok) {
     return { ok: false, reason: "invalid_credentials" };
   }
-  const user = (await meRes.json()) as UserOut;
+  let user: UserOut;
+  try {
+    user = JSON.parse(meText) as UserOut;
+  } catch {
+    return { ok: false, reason: "api_config" };
+  }
   applyServerTimeFromUserOut(user);
   return { ok: true, token, user };
 }

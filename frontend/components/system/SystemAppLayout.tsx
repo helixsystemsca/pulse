@@ -3,6 +3,7 @@
 import { type ReactNode, useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { apiFetch, getApiBaseUrl, refreshSessionWithToken } from "@/lib/api";
+import { parseApiResponseJson } from "@/lib/parse-api-json-response";
 import { navigateToPulseLogin, pulsePostLoginPath } from "@/lib/pulse-app";
 import { clearSession, readSession, type UserOut } from "@/lib/pulse-session";
 import { applyServerTimeFromUserOut } from "@/lib/serverTime";
@@ -54,12 +55,16 @@ export function SystemAppLayout({ children }: { children: ReactNode }) {
     const s = readSession();
     if (!s?.access_token) return;
     const base = getApiBaseUrl();
-    const res = await fetch(`${base}/api/v1/auth/impersonation/exit`, {
+    const exitUrl = `${base}/api/v1/auth/impersonation/exit`;
+    const res = await fetch(exitUrl, {
       method: "POST",
       headers: { Authorization: `Bearer ${s.access_token}` },
     });
     if (!res.ok) return;
-    const data = (await res.json()) as { access_token: string };
+    const raw = await res.text();
+    const data = parseApiResponseJson(raw, { ok: true, status: res.status, url: exitUrl }) as {
+      access_token: string;
+    };
     await refreshSessionWithToken(data.access_token, s.remember);
     await loadMe();
   };

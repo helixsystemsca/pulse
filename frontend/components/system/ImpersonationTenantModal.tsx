@@ -8,6 +8,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { OperationalDashboard } from "@/components/dashboard/OperationalDashboard";
 import { getApiBaseUrl, isApiMode, refreshSessionWithToken } from "@/lib/api";
+import { parseApiResponseJson } from "@/lib/parse-api-json-response";
 import { setImpersonationOverlayAccessToken } from "@/lib/impersonation-overlay-token";
 import { readSession } from "@/lib/pulse-session";
 
@@ -38,12 +39,16 @@ export function ImpersonationTenantModal({
     try {
       const base = getApiBaseUrl();
       if (base) {
-        const res = await fetch(`${base}/api/v1/auth/impersonation/exit`, {
+        const exitUrl = `${base}/api/v1/auth/impersonation/exit`;
+        const res = await fetch(exitUrl, {
           method: "POST",
           headers: { Authorization: `Bearer ${accessToken}` },
         });
         if (res.ok) {
-          const data = (await res.json()) as { access_token: string };
+          const raw = await res.text();
+          const data = parseApiResponseJson(raw, { ok: true, status: res.status, url: exitUrl }) as {
+            access_token: string;
+          };
           const remember = readSession()?.remember ?? false;
           await refreshSessionWithToken(data.access_token, remember);
         }

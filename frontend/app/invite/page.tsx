@@ -7,6 +7,7 @@ import { AuthBrandLink } from "@/components/auth/AuthBrandLink";
 import { AuthScreenShell } from "@/components/auth/AuthScreenShell";
 import { dsInputClass, dsLabelClass } from "@/components/ui/ds-form-classes";
 import { getApiBaseUrl } from "@/lib/api";
+import { parseApiResponseJson } from "@/lib/parse-api-json-response";
 import { navigateAfterPulseLogin, pulseApp } from "@/lib/pulse-app";
 import { writeApiSession } from "@/lib/pulse-session";
 import type { UserOut } from "@/lib/pulse-session";
@@ -38,13 +39,21 @@ function InviteForm() {
         return;
       }
       const access_token = (data as { access_token: string }).access_token;
-      const meRes = await fetch(`${base}/api/v1/auth/me`, {
+      const meUrl = `${base}/api/v1/auth/me`;
+      const meRes = await fetch(meUrl, {
         headers: { Authorization: `Bearer ${access_token}` },
       });
-      const user = (await meRes.json()) as UserOut;
+      const meText = await meRes.text();
+      if (!meRes.ok) {
+        setErr("Could not load your profile after sign-up.");
+        return;
+      }
+      const user = parseApiResponseJson(meText, { ok: true, status: meRes.status, url: meUrl }) as UserOut;
       applyServerTimeFromUserOut(user);
       writeApiSession(access_token, user, false);
       navigateAfterPulseLogin(user);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Something went wrong.");
     } finally {
       setBusy(false);
     }

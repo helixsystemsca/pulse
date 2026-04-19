@@ -3,6 +3,7 @@
  * attaches the Pulse session bearer token, and throws structured errors for non-OK responses.
  */
 import { normalizeApiBaseUrl } from "@/lib/api-base-url";
+import { parseApiResponseJson } from "@/lib/parse-api-json-response";
 import { getImpersonationOverlayAccessToken, setImpersonationOverlayAccessToken } from "@/lib/impersonation-overlay-token";
 import { navigateToPulseLogin } from "@/lib/pulse-app";
 import {
@@ -118,11 +119,7 @@ export async function apiFetch<T>(
   const text = await res.text();
   let data: unknown = null;
   if (text) {
-    try {
-      data = JSON.parse(text);
-    } catch {
-      data = text;
-    }
+    data = parseApiResponseJson(text, { ok: res.ok, status: res.status, url });
   }
   if (!res.ok) {
     handleSessionExpiredFromApiResponse(url, res.status, Boolean(bearer));
@@ -155,11 +152,7 @@ export async function apiPostFormData<T>(path: string, formData: FormData): Prom
   const text = await res.text();
   let data: unknown = null;
   if (text) {
-    try {
-      data = JSON.parse(text);
-    } catch {
-      data = text;
-    }
+    data = parseApiResponseJson(text, { ok: res.ok, status: res.status, url });
   }
   if (!res.ok) {
     handleSessionExpiredFromApiResponse(url, res.status, Boolean(bearer));
@@ -175,11 +168,13 @@ export async function apiPostFormData<T>(path: string, formData: FormData): Prom
 export async function refreshSessionWithToken(token: string, remember: boolean): Promise<void> {
   const base = getApiBaseUrl();
   if (!base) throw new Error("NEXT_PUBLIC_API_URL is not configured");
-  const meRes = await fetch(`${base}/api/v1/auth/me`, {
+  const meUrl = `${base}/api/v1/auth/me`;
+  const meRes = await fetch(meUrl, {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!meRes.ok) throw new Error("Session refresh failed");
-  const user = (await meRes.json()) as UserOut;
+  const meText = await meRes.text();
+  const user = parseApiResponseJson(meText, { ok: true, status: meRes.status, url: meUrl }) as UserOut;
   applyServerTimeFromUserOut(user);
   writeApiSession(token, user, remember);
 }
@@ -191,16 +186,18 @@ export async function refreshPulseUserFromServer(): Promise<void> {
   if (!base) return;
   const s = readSession();
   if (!s?.access_token) return;
-  const meRes = await fetch(`${base}/api/v1/auth/me`, {
+  const meUrl = `${base}/api/v1/auth/me`;
+  const meRes = await fetch(meUrl, {
     headers: { Authorization: `Bearer ${s.access_token}` },
   });
   if (!meRes.ok) {
     if (meRes.status === 401) {
-      handleSessionExpiredFromApiResponse(`${base}/api/v1/auth/me`, 401, Boolean(s.access_token));
+      handleSessionExpiredFromApiResponse(meUrl, 401, Boolean(s.access_token));
     }
     return;
   }
-  const user = (await meRes.json()) as UserOut;
+  const meText = await meRes.text();
+  const user = parseApiResponseJson(meText, { ok: true, status: meRes.status, url: meUrl }) as UserOut;
   applyServerTimeFromUserOut(user);
   writeApiSession(s.access_token, user, s.remember);
 }

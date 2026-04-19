@@ -2,6 +2,7 @@
  * Maintenance hub API — `/api/v1/cmms/*` (tenant-scoped, feature: work_orders).
  */
 import { apiFetch, getApiBaseUrl } from "@/lib/api";
+import { parseApiResponseJson } from "@/lib/parse-api-json-response";
 import { readSession } from "@/lib/pulse-session";
 
 export type WorkOrderType = "preventative" | "issue" | "request";
@@ -146,11 +147,11 @@ export async function uploadProcedureStepImage(
     headers: { Authorization: `Bearer ${token}` },
     body: fd,
   });
+  const t = await res.text();
   if (!res.ok) {
-    const t = await res.text();
     throw new Error(t || res.statusText);
   }
-  return res.json() as Promise<{ image_url: string }>;
+  return parseApiResponseJson(t, { ok: true, status: res.status, url }) as { image_url: string };
 }
 
 export async function fetchPreventativeRules(): Promise<PreventativeRuleRow[]> {
