@@ -8,13 +8,14 @@ import {
   Check,
   CheckCircle2,
   Copy,
+  Link2,
   Loader2,
   Search,
   Shield,
   Trash2,
 } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Card } from "@/components/pulse/Card";
 import { PulseDrawer } from "@/components/schedule/PulseDrawer";
 import { dataTableBodyRow, dataTableHeadRowClass } from "@/components/ui/DataTable";
@@ -39,9 +40,12 @@ import {
   sessionHasAnyRole,
   sortRolesForDisplay,
 } from "@/lib/pulse-roles";
+import { parseTimeToMinutes } from "@/lib/schedule/calendar";
 import {
   buildRecurringRowsForDays,
   canonicalRecurringJson,
+  editableShiftWindowFromProfile,
+  padHm,
   recurringRowsFromApi,
   rotationDaysFromRecurring,
   ROTATION_WEEKDAY_SHORT,
@@ -109,7 +113,7 @@ type SettingsTab = (typeof SETTINGS_TABS)[number];
 /** Shown when the invite exists but email delivery is uncertain or disabled — share link manually. */
 type InviteLinkBanner = {
   inviteUrl: string;
-  variant: "no_email" | "email_maybe";
+  variant: "no_email" | "email_maybe" | "link_only";
 };
 
 const PROFILE_ROLE_OPTIONS = ["worker", "lead", "supervisor", "manager"] as const;
@@ -330,9 +334,12 @@ export function WorkersApp() {
     supervisor_id: "",
   });
   const [rotationDaysDraft, setRotationDaysDraft] = useState<boolean[]>(() => [...EMPTY_ROTATION_DAYS]);
+  const [shiftTimeDraft, setShiftTimeDraft] = useState({ start: "07:00", end: "15:00" });
 
   const [inviteNotice, setInviteNotice] = useState<InviteLinkBanner | null>(null);
   const [inviteLinkCopied, setInviteLinkCopied] = useState(false);
+  const [inviteLinkBusyId, setInviteLinkBusyId] = useState<string | null>(null);
+  const joinLinkRequestLock = useRef(false);
 
   useEffect(() => {
     setInviteLinkCopied(false);
@@ -483,7 +490,8 @@ export function WorkersApp() {
       supervisor_id: profile.supervisor_id ?? "",
     });
     setRotationDaysDraft(rotationDaysFromRecurring(recurringRowsFromApi(profile.recurring_shifts ?? [])));
-  }, [profile]);
+    setShiftTimeDraft(editableShiftWindowFromProfile(profile, fullSettings.shifts ?? []));
+  }, [profile, fullSettings.shifts]);
 
   /** HR fields (not roles/modules): company admin, or manager/supervisor for non-admin profiles, or lead for workers. */
   const canEditWorkerBasics = useMemo(() => {
@@ -520,6 +528,45 @@ export function WorkersApp() {
     const qs = q.toString();
     router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
   }, [searchParams, router, pathname]);
+
+  /** `sendEmail: false` issues a fresh join token and returns the URL without sending another invite email. */
+  const obtainInvitedWorkerJoinLink = useCallback(
+    async (workerId: string, sendEmail: boolean) => {
+      if (joinLinkRequestLock.current) return;
+      joinLinkRequestLock.current = true;
+      setInviteLinkBusyId(workerId);
+      try {
+        const r = await resendWorkerInvite(apiCompany, workerId, { sendEmail });
+        const origin = typeof window !== "undefined" ? window.location.origin : "";
+        const url = `${origin}${r.invite_link_path}`;
+        if (!sendEmail) {
+          try {
+            await navigator.clipboard.writeText(url);
+            setInviteLinkCopied(true);
+            window.setTimeout(() => setInviteLinkCopied(false), 2000);
+          } catch {
+            // Banner still lists the URL for manual copy.
+          }
+          setInviteNotice({ inviteUrl: url, variant: "link_only" });
+          setCreateToast({
+            variant: "success",
+            message: "Join link copied. Send it manually if the invite email did not arrive.",
+          });
+        } else {
+          setInviteNotice({
+            inviteUrl: url,
+            variant: r.invite_email_sent === false ? "no_email" : "email_maybe",
+          });
+        }
+      } catch (e: unknown) {
+        setCreateToast({ variant: "error", message: parseClientApiError(e).message });
+      } finally {
+        joinLinkRequestLock.current = false;
+        setInviteLinkBusyId(null);
+      }
+    },
+    [apiCompany],
+  );
 
   const grouped = useMemo(() => {
     const order = ["company_admin", "manager", "supervisor", "lead", "worker"] as const;
@@ -740,11 +787,11 @@ export function WorkersApp() {
       payload.supervisor_id = sid || null;
     }
     const rotationSelected = rotationDaysDraft.some(Boolean);
-    if (rotationSelected && !trim(positionDraft.shift)) {
-      window.alert("Choose a shift above so the schedule knows which hours to use on rotation days.");
+    const win = { start: padHm(shiftTimeDraft.start), end: padHm(shiftTimeDraft.end) };
+    if (rotationSelected && parseTimeToMinutes(win.start) === parseTimeToMinutes(win.end)) {
+      window.alert("Shift start and end cannot be the same. For overnight shifts use a later start and earlier end (e.g. 22:00–06:00).");
       return;
     }
-    const win = shiftWindowFromRosterKey(trim(positionDraft.shift), fullSettings.shifts ?? []);
     const nextRotation = buildRecurringRowsForDays(rotationDaysDraft, win);
     const prevRotation = recurringRowsFromApi(profile.recurring_shifts ?? []);
     if (canonicalRecurringJson(prevRotation) !== canonicalRecurringJson(nextRotation)) {
@@ -909,6 +956,15 @@ export function WorkersApp() {
         }
       />
 
+      {dataEnabled ? (
+        <p className="max-w-3xl text-sm leading-relaxed text-ds-muted">
+          If noreply invite emails are delayed or blocked, use{" "}
+          <span className="font-semibold text-ds-foreground">Join link</span> on someone with{" "}
+          <span className="font-semibold text-ds-foreground">Invited</span> status to copy a fresh activation URL
+          without sending another email from Pulse.
+        </p>
+      ) : null}
+
       {createToast ? (
         <div
           role="status"
@@ -939,12 +995,16 @@ export function WorkersApp() {
                   <p className="text-base font-bold leading-snug tracking-tight text-ds-foreground">
                     {inviteNotice.variant === "no_email"
                       ? "Invite created — email not sent from server"
-                      : "Invite queued"}
+                      : inviteNotice.variant === "link_only"
+                        ? "Join link ready"
+                        : "Invite queued"}
                   </p>
                   <p className="text-sm leading-relaxed text-ds-muted">
                     {inviteNotice.variant === "no_email"
                       ? "Outbound email is not configured. Copy the join link below and send it to the person directly."
-                      : "If outbound email is configured, they should receive the invite shortly. You can still share the link below as a backup."}
+                      : inviteNotice.variant === "link_only"
+                        ? "No invite email was sent for this action. Copy the URL below and send it yourself (personal email, SMS, etc.). This is a new activation link—any older link for this person no longer works."
+                        : "If outbound email is configured, they should receive the invite shortly. You can still share the link below as a backup."}
                   </p>
                   <div className="pt-1">
                     <p className="text-[11px] font-semibold uppercase tracking-wider text-ds-muted">Join link</p>
@@ -1224,21 +1284,42 @@ export function WorkersApp() {
                                       <p className="truncate text-xs text-ds-muted">{row.email}</p>
                                     </div>
                                     </div>
-                                    {canDeleteInvitedFromList && (row.account_status ?? "active") === "invited" ? (
-                                      <button
-                                        type="button"
-                                        className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-ds-danger/40 bg-[color-mix(in_srgb,var(--ds-danger)_8%,transparent)] text-ds-danger transition-colors hover:bg-[color-mix(in_srgb,var(--ds-danger)_14%,transparent)] disabled:opacity-50"
-                                        aria-label="Delete invited worker"
-                                        title="Delete invited worker"
-                                        disabled={profileBusy}
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          void deleteInvitedWorkerFromList(row);
-                                        }}
-                                      >
-                                        <Trash2 className="h-4 w-4" aria-hidden />
-                                      </button>
-                                    ) : null}
+                                    <div className="flex shrink-0 items-center gap-1">
+                                      {(row.account_status ?? "active") === "invited" ? (
+                                        <button
+                                          type="button"
+                                          className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-ds-border bg-ds-primary text-ds-foreground transition-colors hover:bg-ds-secondary disabled:opacity-50 dark:bg-ds-secondary"
+                                          aria-label="Copy join link without sending email"
+                                          title="Copy join link (no email). New link; older invite links stop working."
+                                          disabled={Boolean(inviteLinkBusyId) || profileBusy}
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            void obtainInvitedWorkerJoinLink(row.id, false);
+                                          }}
+                                        >
+                                          {inviteLinkBusyId === row.id ? (
+                                            <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                                          ) : (
+                                            <Link2 className="h-4 w-4" aria-hidden />
+                                          )}
+                                        </button>
+                                      ) : null}
+                                      {canDeleteInvitedFromList && (row.account_status ?? "active") === "invited" ? (
+                                        <button
+                                          type="button"
+                                          className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-ds-danger/40 bg-[color-mix(in_srgb,var(--ds-danger)_8%,transparent)] text-ds-danger transition-colors hover:bg-[color-mix(in_srgb,var(--ds-danger)_14%,transparent)] disabled:opacity-50"
+                                          aria-label="Delete invited worker"
+                                          title="Delete invited worker"
+                                          disabled={profileBusy}
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            void deleteInvitedWorkerFromList(row);
+                                          }}
+                                        >
+                                          <Trash2 className="h-4 w-4" aria-hidden />
+                                        </button>
+                                      ) : null}
+                                    </div>
                                   </div>
                                 </td>
                                 <td className="px-4 py-3">
@@ -1482,30 +1563,39 @@ export function WorkersApp() {
         footer={
           <div className="flex flex-wrap items-center justify-end gap-3">
             {(profile?.account_status ?? "active") === "invited" ? (
-              <button
-                type="button"
-                className="ds-btn-secondary px-4 py-2.5 text-sm"
-                disabled={profileBusy}
-                onClick={() => {
-                  if (!profileId || !profile) return;
-                  void (async () => {
-                    setProfileBusy(true);
-                    try {
-                      const r = await resendWorkerInvite(apiCompany, profileId);
-                      const origin = typeof window !== "undefined" ? window.location.origin : "";
-                      const url = `${origin}${r.invite_link_path}`;
-                      setInviteNotice({
-                        inviteUrl: url,
-                        variant: r.invite_email_sent === false ? "no_email" : "email_maybe",
-                      });
-                    } finally {
-                      setProfileBusy(false);
-                    }
-                  })();
-                }}
-              >
-                Resend invite
-              </button>
+              <>
+                <button
+                  type="button"
+                  className="ds-btn-secondary px-4 py-2.5 text-sm"
+                  disabled={profileBusy || inviteLinkBusyId === profileId}
+                  onClick={() => {
+                    if (!profileId) return;
+                    void obtainInvitedWorkerJoinLink(profileId, true);
+                  }}
+                >
+                  {inviteLinkBusyId === profileId ? (
+                    <span className="inline-flex items-center gap-2">
+                      <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                      Working…
+                    </span>
+                  ) : (
+                    "Resend invite"
+                  )}
+                </button>
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-2 rounded-md border border-ds-border bg-ds-primary px-4 py-2.5 text-sm font-semibold text-ds-foreground shadow-sm hover:bg-ds-secondary disabled:opacity-50 dark:bg-ds-secondary"
+                  disabled={profileBusy || inviteLinkBusyId === profileId}
+                  onClick={() => {
+                    if (!profileId) return;
+                    void obtainInvitedWorkerJoinLink(profileId, false);
+                  }}
+                  title="Copy a join link without sending email. Creates a new link; older links stop working."
+                >
+                  <Link2 className="h-4 w-4 shrink-0" aria-hidden />
+                  Copy join link
+                </button>
+              </>
             ) : null}
             {canEditWorkerBasics ? (
               <button
@@ -1784,7 +1874,12 @@ export function WorkersApp() {
                       id="worker-profile-shift"
                       className={FIELD}
                       value={positionDraft.shift}
-                      onChange={(e) => setPositionDraft((d) => ({ ...d, shift: e.target.value }))}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        setPositionDraft((d) => ({ ...d, shift: v }));
+                        const preset = shiftWindowFromRosterKey(v, fullSettings.shifts ?? []);
+                        setShiftTimeDraft({ start: padHm(preset.start), end: padHm(preset.end) });
+                      }}
                     >
                       <option value="">—</option>
                       {(fullSettings.shifts ?? []).map((s) => (
@@ -1793,6 +1888,9 @@ export function WorkersApp() {
                         </option>
                       ))}
                     </select>
+                    <p className="mt-1 text-[11px] text-pulse-muted">
+                      Choosing a shift preset fills typical start/end below; adjust the times for an exact window.
+                    </p>
                   </div>
                   <div>
                     <label className={LABEL} htmlFor="worker-profile-supervisor">
@@ -1821,11 +1919,41 @@ export function WorkersApp() {
                       ))}
                     </select>
                   </div>
+                  <div className="grid gap-3 sm:col-span-2 sm:grid-cols-2">
+                    <div>
+                      <label className={LABEL} htmlFor="worker-profile-shift-start">
+                        Shift start
+                      </label>
+                      <input
+                        id="worker-profile-shift-start"
+                        type="time"
+                        className={FIELD}
+                        value={shiftTimeDraft.start}
+                        onChange={(e) => setShiftTimeDraft((t) => ({ ...t, start: e.target.value }))}
+                      />
+                    </div>
+                    <div>
+                      <label className={LABEL} htmlFor="worker-profile-shift-end">
+                        Shift end
+                      </label>
+                      <input
+                        id="worker-profile-shift-end"
+                        type="time"
+                        className={FIELD}
+                        value={shiftTimeDraft.end}
+                        onChange={(e) => setShiftTimeDraft((t) => ({ ...t, end: e.target.value }))}
+                      />
+                    </div>
+                    <p className="text-xs text-pulse-muted sm:col-span-2">
+                      Used for weekly rotation blocks and schedule labels (same clock times group as D1, D2, A1… on
+                      each day). Overnight: end earlier on the clock than start (e.g. 22:00 → 06:00).
+                    </p>
+                  </div>
                   <div className="sm:col-span-2">
                     <span className={LABEL}>Weekly rotation (schedule)</span>
                     <p className="mt-1 text-xs text-pulse-muted">
-                      Choose weekdays for this worker&apos;s repeating pattern. Hours follow the shift above (day /
-                      afternoon / night). Fills the schedule when they have no other assignment that day.
+                      Choose weekdays for this worker&apos;s repeating pattern. Hours use the shift start/end above.
+                      Fills the schedule when they have no other assignment that day.
                     </p>
                     <div className="mt-2 flex flex-wrap gap-2">
                       {ROTATION_PRESET_BUTTONS.map((p) => (
@@ -1883,6 +2011,17 @@ export function WorkersApp() {
                   <p>
                     <span className="text-pulse-muted">Shift: </span>
                     {shiftRosterLabel(profile.shift, fullSettings.shifts)}
+                  </p>
+                  <p className="sm:col-span-2">
+                    <span className="text-pulse-muted">Shift hours: </span>
+                    {(() => {
+                      const rows = recurringRowsFromApi(profile.recurring_shifts ?? []);
+                      if (rows.length && rows.every((r) => r.start === rows[0]!.start && r.end === rows[0]!.end)) {
+                        return `${padHm(rows[0]!.start)}–${padHm(rows[0]!.end)}`;
+                      }
+                      const w = shiftWindowFromRosterKey(profile.shift ?? "", fullSettings.shifts ?? []);
+                      return `${padHm(w.start)}–${padHm(w.end)} (preset from roster shift)`;
+                    })()}
                   </p>
                   <p>
                     <span className="text-pulse-muted">Supervisor: </span>

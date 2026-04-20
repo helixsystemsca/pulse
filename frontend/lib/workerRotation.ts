@@ -46,6 +46,16 @@ export function shiftWindowFromRosterKey(
   return { start: "07:00", end: "15:00" };
 }
 
+/** Normalize HH:mm for `<input type="time" />` and API payloads. */
+export function padHm(t: string): string {
+  const raw = String(t).trim();
+  const m = raw.match(/^(\d{1,2}):(\d{2})$/);
+  if (!m) return "07:00";
+  const h = Math.min(23, Math.max(0, parseInt(m[1]!, 10)));
+  const min = Math.min(59, Math.max(0, parseInt(m[2]!, 10)));
+  return `${String(h).padStart(2, "0")}:${String(min).padStart(2, "0")}`;
+}
+
 export function buildRecurringRowsForDays(
   days: boolean[],
   window: { start: string; end: string },
@@ -55,8 +65,8 @@ export function buildRecurringRowsForDays(
     if (!days[i]) continue;
     rows.push({
       day_of_week: ROTATION_WEEKDAY_KEYS[i],
-      start: window.start,
-      end: window.end,
+      start: padHm(window.start),
+      end: padHm(window.end),
     });
   }
   return rows;
@@ -97,4 +107,19 @@ export function recurringRowsFromApi(raw: unknown[] | null | undefined): WorkerR
     });
   }
   return out;
+}
+
+/** Prefer saved recurring hours when uniform; otherwise roster shift preset. */
+export function editableShiftWindowFromProfile(
+  profile: { shift?: string | null; recurring_shifts?: unknown[] | null },
+  rosterShifts: { key: string; label: string }[],
+): { start: string; end: string } {
+  const rows = recurringRowsFromApi(profile.recurring_shifts ?? []);
+  if (rows.length) {
+    const r0 = rows[0]!;
+    const same = rows.every((r) => r.start === r0.start && r.end === r0.end);
+    if (same) return { start: padHm(r0.start), end: padHm(r0.end) };
+  }
+  const w = shiftWindowFromRosterKey(profile.shift ?? "", rosterShifts);
+  return { start: padHm(w.start), end: padHm(w.end) };
 }

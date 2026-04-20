@@ -162,9 +162,12 @@ export async function createWorker(
 export async function resendWorkerInvite(
   companyId: string | null,
   userId: string,
+  options?: { sendEmail?: boolean },
 ): Promise<{ invite_link_path: string; invite_email_sent: boolean | null; message: string }> {
+  const send_email = options?.sendEmail === false ? false : true;
   return apiFetch(withCompany(`/api/workers/${userId}/resend-invite`, companyId), {
     method: "POST",
+    json: { send_email },
   });
 }
 

@@ -11,7 +11,7 @@ from typing import Annotated, Any, Optional
 from urllib.parse import quote
 from uuid import uuid4
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, status
 from sqlalchemy import delete, func, or_, select
 from sqlalchemy.dialects.postgresql import array as pg_array
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -60,6 +60,7 @@ from app.schemas.pulse_workers import (
     WorkerCreateIn,
     WorkerCreateResultOut,
     WorkerDetailOut,
+    WorkerResendInviteIn,
     WorkerListOut,
     WorkerPatchIn,
     WorkerRowOut,
@@ -810,6 +811,7 @@ async def resend_worker_invite(
     actor: RosterPageUser,
     cid: CompanyId,
     user_id: str,
+    body: WorkerResendInviteIn | None = Body(default=None),
 ) -> dict[str, Any]:
     target = await _roster_user_in_company_any_status(db, cid, user_id)
     if not target:
@@ -827,16 +829,21 @@ async def resend_worker_invite(
     co_name = company.name if company else "your organization"
     link_path = _employee_join_path(raw)
     invite_url = _pulse_public_link(link_path)
-    invite_email_sent = False
-    if settings.smtp_configured:
+    send_email = True if body is None else body.send_email
+    invite_email_sent: bool | None = False
+    if send_email and settings.smtp_configured:
         invite_email_sent = await send_employee_invite(
             settings,
             to_email=target.email,
             company_name=co_name,
             invite_url=invite_url,
         )
+    elif not send_email:
+        invite_email_sent = None
 
-    if invite_email_sent:
+    if not send_email:
+        resend_msg = "Join link ready — share manually (no invite email sent for this action)"
+    elif invite_email_sent:
         resend_msg = "Invite resent"
     elif settings.smtp_configured:
         resend_msg = "Token updated — email failed to send; share the activation link"

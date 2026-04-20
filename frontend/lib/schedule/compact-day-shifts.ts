@@ -1,4 +1,4 @@
-import { shiftCodeForWindow } from "./shift-codes";
+import { buildShiftCodeMapForDay, shiftCodeForWindowFromMap } from "./shift-codes";
 import type { Shift, Worker } from "./types";
 
 export type CompactDayShiftRow = {
@@ -18,14 +18,14 @@ export type CompactDayShiftRow = {
   subtitle?: string;
 };
 
-function partForShift(s: Shift): string {
+function partForShift(s: Shift, codeMap: Map<string, string>): string {
   if (s.eventType === "vacation") return "Vac";
   if (s.eventType === "sick") return "Sick";
   if (s.shiftKind === "project_task") {
     const t = (s.taskTitle || "Task").trim();
     return t.length > 22 ? `${t.slice(0, 20)}…` : t;
   }
-  return shiftCodeForWindow(s.startTime, s.endTime);
+  return shiftCodeForWindowFromMap(s.startTime, s.endTime, codeMap);
 }
 
 /**
@@ -35,6 +35,7 @@ function partForShift(s: Shift): string {
 export function buildCompactDayShiftRows(dayShifts: Shift[], workers: Worker[]): CompactDayShiftRow[] {
   const sorted = [...dayShifts].sort((a, b) => a.startTime.localeCompare(b.startTime));
   const workerMap = new Map(workers.map((w) => [w.id, w]));
+  const codeMap = buildShiftCodeMapForDay(dayShifts);
 
   const projectRows: CompactDayShiftRow[] = [];
   const openRows: CompactDayShiftRow[] = [];
@@ -47,11 +48,11 @@ export function buildCompactDayShiftRows(dayShifts: Shift[], workers: Worker[]):
         shifts: [s],
         primaryShift: s,
         name: s.workerId && workerMap.get(s.workerId) ? workerMap.get(s.workerId)!.name : "Project",
-        code: partForShift(s),
+        code: partForShift(s, codeMap),
         title:
           s.workerId && workerMap.get(s.workerId)
-            ? `${workerMap.get(s.workerId)!.name} · ${partForShift(s)}`
-            : `Project · ${partForShift(s)}`,
+            ? `${workerMap.get(s.workerId)!.name} · ${partForShift(s, codeMap)}`
+            : `Project · ${partForShift(s, codeMap)}`,
       });
       continue;
     }
@@ -61,8 +62,8 @@ export function buildCompactDayShiftRows(dayShifts: Shift[], workers: Worker[]):
         shifts: [s],
         primaryShift: s,
         name: "Open",
-        code: partForShift(s),
-        title: `Open · ${partForShift(s)}`,
+        code: partForShift(s, codeMap),
+        title: `Open · ${partForShift(s, codeMap)}`,
       });
       continue;
     }
@@ -76,7 +77,7 @@ export function buildCompactDayShiftRows(dayShifts: Shift[], workers: Worker[]):
     list.sort((a, b) => a.startTime.localeCompare(b.startTime));
     const w = workerMap.get(wid);
     const name = w?.name ?? "Unknown";
-    const parts = list.map(partForShift);
+    const parts = list.map((x) => partForShift(x, codeMap));
     const uniq = [...new Set(parts)];
     const primary = list[0]!;
     workerRows.push({

@@ -225,3 +225,9 @@ class WorkerCreateResultOut(BaseModel):
     invite_link_path: str
     invite_email_sent: Optional[bool] = None
     message: str = "Invite sent"
+
+
+class WorkerResendInviteIn(BaseModel):
+    """When `send_email` is false, a fresh join token is issued but no invite email is sent (manual share)."""
+
+    send_email: bool = True

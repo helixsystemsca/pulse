@@ -1,7 +1,8 @@
 "use client";
 
-import { ImagePlus, Loader2, Plus, Trash2 } from "lucide-react";
+import { ClipboardList, ImagePlus, Loader2, Plus, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useId, useMemo, useState, type Dispatch, type SetStateAction } from "react";
+import { PageHeader } from "@/components/ui/PageHeader";
 import {
   createProcedure,
   fetchProcedures,
@@ -15,6 +16,9 @@ import { sessionHasAnyRole } from "@/lib/pulse-roles";
 import { readSession } from "@/lib/pulse-session";
 import { acknowledgeProcedure, hasAcknowledgedProcedure } from "@/lib/procedureAcknowledgments";
 import { fetchWorkerSettings } from "@/lib/workersService";
+
+const PROCEDURES_HEADER_BTN =
+  "rounded-[10px] bg-[#4C6085] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#405574] disabled:opacity-50";
 
 type DraftStep = {
   key: string;
@@ -409,51 +413,51 @@ export function ProceduresApp() {
   );
 
   return (
-    <div className="mx-auto w-full max-w-6xl px-4 py-6">
-      <div className="overflow-hidden rounded-2xl border border-ds-border shadow-[var(--ds-shadow-card)]">
-        <div className="bg-[#4C6085] px-5 py-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <h1 className="font-headline text-xl font-bold tracking-tight text-white sm:text-2xl">
-              Procedures
-            </h1>
-            {isCreating ? (
-              <button
-                type="button"
-                className="rounded-md border border-white/25 bg-white/10 px-4 py-2.5 text-sm font-semibold text-white hover:bg-white/15"
-                onClick={() => {
-                  setIsCreating(false);
-                  setErr(null);
-                }}
-                disabled={saving}
-              >
-                Cancel
-              </button>
-            ) : (
-              <button
-                type="button"
-                className="ds-btn-solid-primary inline-flex items-center gap-2 px-4 py-2.5 text-sm"
-                onClick={() => {
-                  setIsCreating(true);
-                  setSelectedId(null);
-                  setEditing(false);
-                  setErr(null);
-                }}
-              >
-                <Plus className="h-4 w-4" aria-hidden />
+    <div className="mx-auto w-full max-w-6xl space-y-6 px-4 py-6">
+      <PageHeader
+        title="Procedures"
+        description="Reusable maintenance procedures with numbered steps, optional photos, and acknowledgments."
+        icon={ClipboardList}
+        actions={
+          isCreating ? (
+            <button
+              type="button"
+              className="rounded-[10px] border border-ds-border bg-ds-primary px-5 py-2.5 text-sm font-semibold text-ds-foreground shadow-sm transition-colors hover:bg-ds-secondary disabled:opacity-50 dark:bg-ds-secondary"
+              onClick={() => {
+                setIsCreating(false);
+                setErr(null);
+              }}
+              disabled={saving}
+            >
+              Cancel
+            </button>
+          ) : (
+            <button
+              type="button"
+              className={PROCEDURES_HEADER_BTN}
+              onClick={() => {
+                setIsCreating(true);
+                setSelectedId(null);
+                setEditing(false);
+                setErr(null);
+              }}
+            >
+              <span className="inline-flex items-center gap-2">
+                <Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />
                 Create procedure
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
+              </span>
+            </button>
+          )
+        }
+      />
 
       {err ? (
-        <div className="mt-6 rounded-xl border border-ds-border bg-ds-primary px-4 py-3 text-sm font-medium text-ds-danger shadow-sm">
+        <div className="rounded-xl border border-ds-border bg-ds-primary px-4 py-3 text-sm font-medium text-ds-danger shadow-sm">
           {err}
         </div>
       ) : null}
 
-      <div className={`mt-6 ${isCreating ? "grid gap-6 lg:grid-cols-2" : "space-y-6"}`}>
+      <div className={isCreating ? "grid gap-6 lg:grid-cols-2" : "space-y-6"}>
         {isCreating ? (
           <section className="rounded-xl border border-ds-border bg-ds-primary p-6 shadow-[var(--ds-shadow-card)]">
             <h2 className="text-base font-semibold text-ds-foreground" id={`${formId}-new-title`}>
@@ -508,19 +512,17 @@ export function ProceduresApp() {
           </section>
         ) : null}
 
-        <section
-          className={`rounded-xl border border-ds-border bg-ds-primary p-6 shadow-[var(--ds-shadow-card)] ${
-            isCreating ? "opacity-50 pointer-events-none" : ""
-          }`}
-          aria-hidden={isCreating}
-        >
-          <h2 className="text-base font-semibold text-ds-foreground">Library</h2>
+        <section className="overflow-hidden rounded-xl border border-ds-border bg-ds-primary shadow-[var(--ds-shadow-card)]">
+          <div className="bg-[#4C6085] px-4 py-2.5">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-white">Library</h2>
+          </div>
+          <div className={`p-6 ${isCreating ? "pointer-events-none opacity-50" : ""}`} aria-hidden={isCreating}>
           {loading ? (
-            <p className="mt-3 text-sm text-ds-muted">Loading…</p>
+            <p className="text-sm text-ds-muted">Loading…</p>
           ) : rows.length === 0 ? (
-            <p className="mt-3 text-sm text-ds-muted">No procedures yet.</p>
+            <p className="text-sm text-ds-muted">No procedures yet.</p>
           ) : (
-            <ul className="mt-3 max-h-[min(50vh,24rem)] divide-y divide-ds-border overflow-auto">
+            <ul className="max-h-[min(50vh,24rem)] divide-y divide-ds-border overflow-auto">
               {rows.map((r) => (
                 <li key={r.id}>
                   <button
@@ -553,6 +555,7 @@ export function ProceduresApp() {
               ))}
             </ul>
           )}
+          </div>
         </section>
 
         {!isCreating && selected ? (

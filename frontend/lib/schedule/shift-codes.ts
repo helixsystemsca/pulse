@@ -1,33 +1,82 @@
 /**
- * Short labels for common shift windows (month/week calendar density).
- * Extend the table as your org adds standard patterns.
+ * Short labels for shift windows (month/week calendar density).
+ * Within a single calendar day, unique (start,end) work windows are grouped into
+ * D1… (day), A1… (afternoon), N1… (overnight / crosses midnight) by band, then numbered
+ * in sorted order so identical hours always share the same code.
  */
-import type { TimeFormat } from "./types";
+import { parseTimeToMinutes } from "./calendar";
+import type { Shift, TimeFormat } from "./types";
 import { formatTimeString } from "./time-format";
 
-const _pad = (t: string) => {
+const _padHm = (t: string) => {
   const [h, m] = t.split(":").map(Number);
   if (!Number.isFinite(h) || !Number.isFinite(m)) return t;
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
 };
 
-/** Known (start, end) → code. Times are HH:mm 24h. */
-const KNOWN_WINDOWS: readonly [string, string, string][] = [
-  ["06:00", "16:00", "D1"], // day 6–4
-  ["06:00", "14:00", "D2"],
-  ["08:00", "16:00", "D3"],
-  ["07:00", "15:00", "D4"],
-  ["14:00", "22:00", "A1"], // afternoon
-  ["15:00", "23:00", "A2"],
-  ["22:00", "06:00", "N1"], // overnight (end next calendar day not modeled; match literal end)
-];
+export type ShiftCodeBand = "D" | "A" | "N";
 
-export function shiftCodeForWindow(startTime: string, endTime: string): string {
-  const s = _pad(startTime);
-  const e = _pad(endTime);
-  for (const [a, b, code] of KNOWN_WINDOWS) {
-    if (a === s && b === e) return code;
+function windowKey(start: string, end: string): string {
+  return `${_padHm(start)}|${_padHm(end)}`;
+}
+
+/** Same calendar-day minutes; overnight windows have end <= start. */
+export function shiftBandForWindow(startTime: string, endTime: string): ShiftCodeBand {
+  const a = parseTimeToMinutes(_padHm(startTime));
+  const b = parseTimeToMinutes(_padHm(endTime));
+  if (b <= a) return "N";
+  const startHour = Math.floor(a / 60);
+  if (startHour >= 14) return "A";
+  return "D";
+}
+
+/**
+ * One map per calendar day: each distinct workforce work (start,end) → D1/A2/N1…
+ * Vacation/sick/project rows are excluded (handled separately in compact rows).
+ */
+export function buildShiftCodeMapForDay(dayShifts: Shift[]): Map<string, string> {
+  const uniq = new Map<string, { start: string; end: string }>();
+  for (const s of dayShifts) {
+    if (s.shiftKind === "project_task") continue;
+    if (s.eventType !== "work") continue;
+    const start = _padHm(s.startTime);
+    const end = _padHm(s.endTime);
+    const k = windowKey(start, end);
+    if (!uniq.has(k)) uniq.set(k, { start, end });
   }
+  const byBand: Record<ShiftCodeBand, { start: string; end: string }[]> = { D: [], A: [], N: [] };
+  for (const w of uniq.values()) {
+    byBand[shiftBandForWindow(w.start, w.end)].push(w);
+  }
+  const out = new Map<string, string>();
+  for (const band of ["D", "A", "N"] as const) {
+    const list = byBand[band];
+    list.sort((x, y) => x.start.localeCompare(y.start) || x.end.localeCompare(y.end));
+    for (let i = 0; i < list.length; i++) {
+      const w = list[i]!;
+      out.set(windowKey(w.start, w.end), `${band}${i + 1}`);
+    }
+  }
+  return out;
+}
+
+export function shiftCodeForWindowFromMap(
+  startTime: string,
+  endTime: string,
+  map: Map<string, string>,
+): string {
+  const k = windowKey(startTime, endTime);
+  const hit = map.get(k);
+  if (hit) return hit;
+  const s = _padHm(startTime);
+  const e = _padHm(endTime);
+  return compactTimeSpan(s, e, "12h");
+}
+
+/** Fallback when no day-level map is available (e.g. previews outside a day aggregate). */
+export function shiftCodeForWindow(startTime: string, endTime: string): string {
+  const s = _padHm(startTime);
+  const e = _padHm(endTime);
   return compactTimeSpan(s, e, "12h");
 }
 
@@ -39,13 +88,10 @@ function compactTimeSpan(start: string, end: string, fmt: TimeFormat): string {
 
 export function shiftCodesLegendLines(): string[] {
   return [
-    "D1 — 6:00 AM – 4:00 PM",
-    "D2 — 6:00 AM – 2:00 PM",
-    "D3 — 8:00 AM – 4:00 PM",
-    "D4 — 7:00 AM – 3:00 PM",
-    "A1 — 2:00 PM – 10:00 PM",
-    "A2 — 3:00 PM – 11:00 PM",
-    "N1 — 10:00 PM – 6:00 AM",
-    "Other windows show as short times (e.g. 9a–5p).",
+    "D1, D2, … — day shifts (start before 2:00 PM, same calendar day); numbered by distinct start/end that day.",
+    "A1, A2, … — afternoon (start from 2:00 PM onward, end same calendar day).",
+    "N1, N2, … — overnight (end time on or before start = crosses midnight).",
+    "Identical hours always share the same letter+number on that day.",
+    "If a window is not on the day aggregate, the chip may show a compact time range instead.",
   ];
 }
