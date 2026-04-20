@@ -20,6 +20,7 @@ import { GridLayout, noCompactor, useContainerWidth, type Layout, type LayoutIte
 import { DashboardAddWidgetWizard } from "@/components/dashboard/DashboardAddWidgetWizard";
 import { DashboardCustomPeekWidget } from "@/components/dashboard/DashboardCustomPeekWidget";
 import { DashboardCard } from "@/components/dashboard/DashboardCard";
+import { XpTasksWidget } from "@/components/gamification/XpTasksWidget";
 import { AdminOnboardingChecklist } from "@/components/onboarding/AdminOnboardingChecklist";
 import { apiFetch, isApiMode } from "@/lib/api";
 import { fetchOnboarding, fetchSetupProgress } from "@/lib/onboardingService";
@@ -1385,6 +1386,11 @@ function DashboardBody({
           </div>
         ),
       },
+      xp: {
+        title: "My XP + Tasks",
+        accent: "none" as const,
+        render: () => <XpTasksWidget />,
+      },
       setup: facilitySetupChecklist
         ? {
             title: "Setup checklist",
@@ -1416,6 +1422,7 @@ function DashboardBody({
       { i: "equipment", x: 8, y: 3, w: 4, h: 4, minW: 3, minH: 3 },
       // Full-width row for the detailed list card.
       { i: "workRequests", x: 0, y: 7, w: 12, h: 4, minW: 6, minH: 3 },
+      { i: "xp", x: 0, y: 11, w: 12, h: 3, minW: 6, minH: 2 },
     ];
     return widgetRegistry.setup
       ? ([{ i: "setup", x: 0, y: 0, w: 12, h: 3, minW: 6, minH: 2 }, ...base] as const)

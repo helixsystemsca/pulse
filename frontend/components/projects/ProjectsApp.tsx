@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { CalendarRange, FolderKanban, Plus } from "lucide-react";
+import { CalendarRange, FolderKanban, Pencil, Plus } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Card } from "@/components/pulse/Card";
 import { ModuleOnboardingHint } from "@/components/onboarding/ModuleOnboardingHint";
@@ -41,6 +41,8 @@ export function ProjectsApp() {
   const [err, setErr] = useState<string | null>(null);
   const [filter, setFilter] = useState<"active" | "completed">("active");
   const [createOpen, setCreateOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editFor, setEditFor] = useState<ProjectRow | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [completingId, setCompletingId] = useState<string | null>(null);
@@ -51,6 +53,7 @@ export function ProjectsApp() {
   const [formEnd, setFormEnd] = useState("");
   const [formScope, setFormScope] = useState("");
   const [formOwner, setFormOwner] = useState("");
+  const [formStatus, setFormStatus] = useState<"active" | "on_hold" | "completed">("active");
 
   const workerById = useMemo(() => new Map(workers.map((w) => [w.id, w])), [workers]);
 
@@ -171,6 +174,59 @@ export function ProjectsApp() {
     }
   }
 
+  function openEdit(p: ProjectRow) {
+    setEditFor(p);
+    setFormName(p.name ?? "");
+    setFormStart(p.start_date ?? "");
+    setFormEnd(p.end_date ?? "");
+    setFormScope(p.description ?? "");
+    setFormOwner((p.owner_user_id ?? "") || "");
+    const st = (p.status ?? "active") as any;
+    setFormStatus(st === "completed" ? "completed" : st === "on_hold" ? "on_hold" : "active");
+    setEditOpen(true);
+  }
+
+  async function submitEdit() {
+    if (!editFor || !formName.trim() || !formStart || !formEnd || saving) return;
+    if (formEnd < formStart) {
+      setToast("End date must be on or after start date.");
+      return;
+    }
+    setSaving(true);
+    try {
+      const out = await patchProject(editFor.id, {
+        name: formName.trim(),
+        description: formScope.trim() || null,
+        start_date: formStart,
+        end_date: formEnd,
+        owner_user_id: formOwner.trim() || null,
+        status: formStatus,
+      });
+      setRows((prev) =>
+        prev?.map((r) =>
+          r.id === editFor.id
+            ? {
+                ...r,
+                ...out,
+                task_total: r.task_total,
+                task_completed: r.task_completed,
+                progress_pct: r.progress_pct,
+                assignee_user_ids: r.assignee_user_ids,
+              }
+            : r,
+        ) ?? null,
+      );
+      setEditOpen(false);
+      setEditFor(null);
+      setToast("Project updated.");
+    } catch (e) {
+      const { message } = parseClientApiError(e);
+      setToast(message || "Could not update project.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   if (err) {
     return <p className="text-sm font-medium text-red-700 dark:text-red-400">{err}</p>;
   }
@@ -282,6 +338,17 @@ export function ProjectsApp() {
                     <div className="mt-4 flex flex-col gap-2">
                       {creatorIsYou ? (
                         <div className="flex flex-col gap-2 sm:flex-row">
+                          <button
+                            type="button"
+                            className={`${SECONDARY_BTN} w-full sm:flex-1`}
+                            disabled={saving || completingId === p.id || deletingId === p.id}
+                            onClick={() => openEdit(p)}
+                          >
+                            <span className="inline-flex items-center justify-center gap-2">
+                              <Pencil className="h-4 w-4" aria-hidden />
+                              Edit
+                            </span>
+                          </button>
                           {creatorCanComplete ? (
                             <button
                               type="button"
@@ -404,6 +471,105 @@ export function ProjectsApp() {
                 onClick={() => void submitCreate()}
               >
                 {saving ? "Creating…" : "Create"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {editOpen && editFor ? (
+        <div className="ds-modal-backdrop fixed inset-0 z-[140] flex items-center justify-center p-4 backdrop-blur-[2px]">
+          <div
+            className="max-h-[min(90vh,680px)] w-full max-w-lg overflow-y-auto rounded-xl border border-slate-200/90 bg-white p-6 shadow-2xl dark:border-ds-border dark:bg-ds-primary"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="edit-project-title"
+          >
+            <h2 id="edit-project-title" className="text-lg font-bold text-pulse-navy dark:text-slate-100">
+              Edit project
+            </h2>
+            <p className="mt-1 text-xs text-pulse-muted">Update name, dates, owner, scope, or status.</p>
+            <div className="mt-5 space-y-4">
+              <div>
+                <label className={LABEL} htmlFor="ep-name">
+                  Project name
+                </label>
+                <input id="ep-name" className={FIELD} value={formName} onChange={(e) => setFormName(e.target.value)} autoFocus />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className={LABEL} htmlFor="ep-start">
+                    Start date
+                  </label>
+                  <input id="ep-start" type="date" className={FIELD} value={formStart} onChange={(e) => setFormStart(e.target.value)} />
+                </div>
+                <div>
+                  <label className={LABEL} htmlFor="ep-end">
+                    End date
+                  </label>
+                  <input id="ep-end" type="date" className={FIELD} value={formEnd} onChange={(e) => setFormEnd(e.target.value)} />
+                </div>
+              </div>
+              <div>
+                <label className={LABEL} htmlFor="ep-owner">
+                  Project owner
+                </label>
+                <select id="ep-owner" className={FIELD} value={formOwner} onChange={(e) => setFormOwner(e.target.value)}>
+                  <option value="">— Select user —</option>
+                  {workers.map((w) => (
+                    <option key={w.id} value={w.id}>
+                      {displayName(w)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className={LABEL} htmlFor="ep-status">
+                  Status
+                </label>
+                <select id="ep-status" className={FIELD} value={formStatus} onChange={(e) => setFormStatus(e.target.value as any)}>
+                  <option value="active">Active</option>
+                  <option value="on_hold">On hold</option>
+                  <option value="completed">Completed</option>
+                </select>
+                {formStatus === "completed" ? (
+                  <p className="mt-1 text-xs text-pulse-muted">
+                    Note: the backend only allows the project creator to mark a project complete.
+                  </p>
+                ) : null}
+              </div>
+              <div>
+                <label className={LABEL} htmlFor="ep-scope">
+                  Scope description
+                </label>
+                <textarea
+                  id="ep-scope"
+                  rows={3}
+                  className={FIELD}
+                  value={formScope}
+                  onChange={(e) => setFormScope(e.target.value)}
+                  placeholder="Optional summary for your team"
+                />
+              </div>
+            </div>
+            <div className="mt-6 flex flex-wrap justify-end gap-3">
+              <button
+                type="button"
+                className="rounded-lg px-4 py-2.5 text-sm font-semibold text-pulse-muted transition-colors hover:text-pulse-navy dark:hover:text-slate-200"
+                onClick={() => {
+                  setEditOpen(false);
+                  setEditFor(null);
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className={PRIMARY_BTN}
+                disabled={saving || !formName.trim() || !formStart || !formEnd}
+                onClick={() => void submitEdit()}
+              >
+                {saving ? "Saving…" : "Save changes"}
               </button>
             </div>
           </div>

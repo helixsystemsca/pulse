@@ -27,6 +27,7 @@ from app.models.pulse_models import (
     PulseWorkRequestPriority,
     PulseWorkRequestStatus,
 )
+from app.services.gamification_service import ensure_task_for_pm_due
 
 _log = logging.getLogger(__name__)
 
@@ -174,6 +175,17 @@ async def create_auto_pm_work_order(db: AsyncSession, task: PmTask, *, company_i
     )
     db.add(wr)
     await db.flush()
+    # Auto task generation: PM due -> gamified task.
+    # We link the task to the PM template id (source_id), not the work order, so repeated scans don't spam.
+    await ensure_task_for_pm_due(
+        db,
+        company_id=str(company_id),
+        pm_task_id=str(task.id),
+        title=task.name,
+        description=task.description,
+        equipment_id=task.equipment_id,
+        due_at=task.next_due_at,
+    )
     await _copy_pm_template_to_work_order(db, work_request_id=wr.id, pm_task_id=task.id)
     return wr
 

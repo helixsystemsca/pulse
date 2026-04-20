@@ -27,6 +27,7 @@ export type Organization = {
   id: string;
   name: string;
   logo_url?: string | null;
+  header_image_url?: string | null;
   background_image_url?: string | null;
   theme?: Record<string, unknown>;
 };

@@ -409,41 +409,42 @@ export function ProceduresApp() {
   );
 
   return (
-    <div className="mx-auto w-full max-w-6xl p-6">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="font-headline text-2xl font-bold tracking-tight text-ds-foreground">Procedures</h1>
-          <p className="mt-1 text-sm text-ds-muted">
-            Build reusable checklists with numbered steps and optional reference photos.
-          </p>
+    <div className="mx-auto w-full max-w-6xl px-4 py-6">
+      <div className="overflow-hidden rounded-2xl border border-ds-border shadow-[var(--ds-shadow-card)]">
+        <div className="bg-[#4C6085] px-5 py-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h1 className="font-headline text-xl font-bold tracking-tight text-white sm:text-2xl">
+              Procedures
+            </h1>
+            {isCreating ? (
+              <button
+                type="button"
+                className="rounded-md border border-white/25 bg-white/10 px-4 py-2.5 text-sm font-semibold text-white hover:bg-white/15"
+                onClick={() => {
+                  setIsCreating(false);
+                  setErr(null);
+                }}
+                disabled={saving}
+              >
+                Cancel
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="ds-btn-solid-primary inline-flex items-center gap-2 px-4 py-2.5 text-sm"
+                onClick={() => {
+                  setIsCreating(true);
+                  setSelectedId(null);
+                  setEditing(false);
+                  setErr(null);
+                }}
+              >
+                <Plus className="h-4 w-4" aria-hidden />
+                Create procedure
+              </button>
+            )}
+          </div>
         </div>
-        {isCreating ? (
-          <button
-            type="button"
-            className="ds-btn-secondary px-4 py-2.5 text-sm"
-            onClick={() => {
-              setIsCreating(false);
-              setErr(null);
-            }}
-            disabled={saving}
-          >
-            Cancel
-          </button>
-        ) : (
-          <button
-            type="button"
-            className="ds-btn-solid-primary inline-flex items-center gap-2 px-4 py-2.5 text-sm"
-            onClick={() => {
-              setIsCreating(true);
-              setSelectedId(null);
-              setEditing(false);
-              setErr(null);
-            }}
-          >
-            <Plus className="h-4 w-4" aria-hidden />
-            Create procedure
-          </button>
-        )}
       </div>
 
       {err ? (

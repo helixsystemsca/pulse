@@ -42,6 +42,7 @@ from app.models.pulse_models import (
 )
 from app.modules.pulse import project_service as proj_task_svc
 from app.modules.pulse import service as pulse_svc
+from app.services.gamification_service import ensure_task_for_work_request
 from app.schemas.pulse import (
     AssetOut,
     AssetPatch,
@@ -253,6 +254,9 @@ async def create_work_request(
     )
     db.add(wr)
     await db.flush()
+    # Auto task generation: work order -> gamified task (XP system).
+    # Safe to call multiple times; DB uniqueness prevents dupes.
+    await ensure_task_for_work_request(db, work_request=wr, created_by_user_id=user.id)
     if not is_field_worker_like(user):
         await try_mark_onboarding_step(db, user.id, "create_work_order")
         await try_mark_onboarding_step(db, user.id, "customize_workflow")
