@@ -1678,7 +1678,7 @@ function DashboardBody({
               item.i === "alerts" ? (
                 <Link
                   href={pulseRoutes.monitoring}
-                  className="mr-1 text-xs font-semibold text-ds-foreground underline decoration-ds-border decoration-1 underline-offset-4 hover:decoration-ds-foreground"
+                  className="mr-1 text-xs font-semibold text-ds-on-accent underline decoration-ds-on-accent/60 decoration-1 underline-offset-4 hover:decoration-ds-on-accent"
                 >
                   View all
                 </Link>

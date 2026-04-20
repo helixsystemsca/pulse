@@ -2,32 +2,18 @@ import type { ReactNode } from "react";
 
 export type DashboardAccent = "yellow" | "red" | "blue" | "green" | "none";
 
-const ACCENT_HEADER: Record<DashboardAccent, { bar: string; header: string; title: string }> = {
-  yellow: {
-    bar: "bg-amber-400/70 dark:bg-amber-300/50",
-    header: "bg-gradient-to-b from-amber-50 to-white dark:from-amber-950/35 dark:to-ds-primary",
-    title: "text-slate-900 dark:text-ds-foreground",
-  },
-  red: {
-    bar: "bg-rose-400/70 dark:bg-rose-300/50",
-    header: "bg-gradient-to-b from-rose-50 to-white dark:from-rose-950/30 dark:to-ds-primary",
-    title: "text-slate-900 dark:text-ds-foreground",
-  },
-  blue: {
-    bar: "bg-sky-400/70 dark:bg-sky-300/50",
-    header: "bg-gradient-to-b from-sky-50 to-white dark:from-sky-950/30 dark:to-ds-primary",
-    title: "text-slate-900 dark:text-ds-foreground",
-  },
-  green: {
-    bar: "bg-emerald-400/70 dark:bg-emerald-300/50",
-    header: "bg-gradient-to-b from-emerald-50 to-white dark:from-emerald-950/30 dark:to-ds-primary",
-    title: "text-slate-900 dark:text-ds-foreground",
-  },
-  none: {
-    bar: "bg-transparent",
-    header: "bg-transparent",
-    title: "text-slate-900 dark:text-ds-foreground",
-  },
+/**
+ * Dashboard cards should match the Pulse theme.
+ * We use a solid, token-backed header bar (aquamarine / `--ds-success`) instead of pastel gradients.
+ *
+ * `accent` is kept for API compatibility; it's currently used only for subtle header meta styling.
+ */
+const ACCENT_HEADER: Record<DashboardAccent, { headerMeta: string }> = {
+  yellow: { headerMeta: "text-ds-on-accent/80" },
+  red: { headerMeta: "text-ds-on-accent/80" },
+  blue: { headerMeta: "text-ds-on-accent/80" },
+  green: { headerMeta: "text-ds-on-accent/80" },
+  none: { headerMeta: "text-ds-on-accent/80" },
 };
 
 export function DashboardCard({
@@ -56,11 +42,14 @@ export function DashboardCard({
       ].join(" ")}
     >
       {title || headerRight ? (
-        <div className={["relative", a.header].join(" ")}>
-          <div className={["absolute left-0 top-0 h-full w-1", a.bar].join(" ")} aria-hidden />
-          <div className="flex items-start justify-between gap-3 px-5 pb-3 pt-4">
-            {title ? <h3 className={["text-[18px] font-semibold leading-tight", a.title].join(" ")}>{title}</h3> : <span />}
-            {headerRight ? <div className="shrink-0">{headerRight}</div> : null}
+        <div className="relative bg-ds-success">
+          <div className="flex items-center justify-between gap-3 px-5 py-3">
+            {title ? (
+              <h3 className="text-[15px] font-bold leading-tight tracking-tight text-ds-on-accent">{title}</h3>
+            ) : (
+              <span />
+            )}
+            {headerRight ? <div className={["shrink-0", a.headerMeta].join(" ")}>{headerRight}</div> : null}
           </div>
         </div>
       ) : null}
