@@ -140,6 +140,11 @@ export interface ScheduleSettings {
     minWorkersPerShift: number;
     requireSupervisor: boolean;
     maxHoursPerWorkerPerWeek: number;
+    /**
+     * When false (default), OT risk shows as “No OT risk” and no elevated/moderate levels are shown.
+     * Managers may enable to evaluate scheduled work hours vs `maxHoursPerWorkerPerWeek` per Mon–Sun week.
+     */
+    otRiskMonitoringEnabled?: boolean;
   };
   /** Approximate slots per day for fill % (mock capacity until headcount API exists). */
   requiredShiftsPerDay: number;
@@ -162,7 +167,8 @@ export interface ScheduleAlerts {
 export interface WorkforceSummary {
   activeWorkers: number;
   activeTarget: number;
-  otRiskLabel: "Low" | "Moderate" | "Elevated";
+  /** `None` = no OT risk surfaced (monitoring off or no workers over weekly cap). */
+  otRiskLabel: "None" | "Low" | "Moderate" | "Elevated";
   fillPercent: number;
   pendingRequests: number;
 }

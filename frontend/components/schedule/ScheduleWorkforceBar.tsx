@@ -23,10 +23,14 @@ export function ScheduleWorkforceBar({ summary }: { summary: WorkforceSummary })
                   ? "text-red-700 dark:text-red-400"
                   : summary.otRiskLabel === "Moderate"
                     ? "text-amber-800 dark:text-amber-300"
-                    : "text-emerald-800 dark:text-emerald-400"
+                    : summary.otRiskLabel === "Low"
+                      ? "text-emerald-800 dark:text-emerald-400"
+                      : "text-gray-700 dark:text-gray-300"
               }`}
             >
-              {summary.otRiskLabel}
+              {summary.otRiskLabel === "None" || summary.otRiskLabel === "Low"
+                ? "No OT risk"
+                : summary.otRiskLabel}
             </p>
           </div>
           <div className="h-8 w-px bg-pulseShell-border" aria-hidden />

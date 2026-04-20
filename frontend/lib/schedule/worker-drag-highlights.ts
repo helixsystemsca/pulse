@@ -1,4 +1,4 @@
-import { parseLocalDate } from "@/lib/schedule/calendar";
+import { mondayOfCalendarWeek, parseLocalDate } from "@/lib/schedule/calendar";
 import { approvedTimeOffKind, normalizeWeekdayKey, weekdayKeyFromIso } from "@/lib/schedule/recurring";
 import type { ScheduleSettings, Shift, TimeOffBlock, Worker } from "@/lib/schedule/types";
 
@@ -16,17 +16,6 @@ function shiftLengthHours(startTime: string, endTime: string): number {
   let mins = ehh * 60 + emm - (shh * 60 + smm);
   if (mins < 0) mins += 24 * 60;
   return mins / 60;
-}
-
-function mondayOfCalendarWeek(iso: string): string {
-  const d = parseLocalDate(iso);
-  const dow = d.getDay();
-  const delta = dow === 0 ? -6 : 1 - dow;
-  const mon = new Date(d.getFullYear(), d.getMonth(), d.getDate() + delta);
-  const y = mon.getFullYear();
-  const m = String(mon.getMonth() + 1).padStart(2, "0");
-  const day = String(mon.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
 }
 
 function weeklyWorkHoursForWorker(

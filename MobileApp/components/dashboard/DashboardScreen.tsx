@@ -2,6 +2,8 @@ import { useIsFocused } from "@react-navigation/native";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import type { ImageSourcePropType } from "react-native";
 import { Alert, Image, ImageBackground, Pressable, ScrollView, Text, View } from "react-native";
+import type { Href } from "expo-router";
+import { useRouter } from "expo-router";
 import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
 import FontAwesome from "@expo/vector-icons/FontAwesome";
@@ -12,6 +14,8 @@ import { getOrganization, type Organization } from "@/lib/api/pulse";
 import { fetchAuthenticatedImageAsDataUri } from "@/lib/fetchAuthenticatedImageDataUri";
 import { uploadProfileAvatar } from "@/lib/api/profileAvatar";
 import { loadMyShiftPresence, type MyShiftPresence } from "@/lib/workforcePresence";
+import { getNextTask, getUpcomingTasks, type Task } from "@/lib/api/tasks";
+import { subscribePulseWs } from "@/lib/realtime/pulseWs";
 
 /** Bundled hero (same asset as web `public/images/panorama.jpg`) until org background from the API is reliable. */
 const HOME_HERO_PANORAMA = require("../../assets/images/panorama.jpg") as ImageSourcePropType;
@@ -89,83 +93,19 @@ function Avatar({
   );
 }
 
-function ToolboxCard({
-  name,
-  line1,
-  line2,
-  batteryPct,
-}: {
-  name: string;
-  line1: string;
-  line2?: string;
-  batteryPct?: number;
-}) {
-  const { colors, radii } = useTheme();
-  return (
-    <View
-      style={{
-        backgroundColor: "rgba(255,255,255,0.78)",
-        borderRadius: radii.md,
-        padding: 14,
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 12,
-      }}
-    >
-      <View
-        style={{
-          width: 38,
-          height: 38,
-          borderRadius: 12,
-          backgroundColor: "rgba(76,96,133,0.10)",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: "rgba(76,96,133,0.35)" }} />
-      </View>
-      <View style={{ flex: 1, minWidth: 0 }}>
-        <Text style={{ fontWeight: "800", color: "#1B2B44" }} numberOfLines={1}>
-          {name}
-        </Text>
-        <Text style={{ marginTop: 2, color: "#516B90", fontWeight: "700" }} numberOfLines={1}>
-          {line1}
-        </Text>
-        {line2 ? (
-          <Text style={{ marginTop: 1, color: "#6B7F9B", fontWeight: "600" }} numberOfLines={1}>
-            {line2}
-          </Text>
-        ) : null}
-        {batteryPct != null ? (
-          <View style={{ marginTop: 8, flexDirection: "row", alignItems: "center", gap: 10 }}>
-            <View
-              style={{
-                flex: 1,
-                height: 4,
-                borderRadius: 999,
-                backgroundColor: "rgba(27,43,68,0.12)",
-                overflow: "hidden",
-              }}
-            >
-              <View
-                style={{
-                  width: `${Math.max(0, Math.min(100, batteryPct))}%`,
-                  height: 4,
-                  backgroundColor: colors.success,
-                }}
-              />
-            </View>
-            <Text style={{ color: "#6B7F9B", fontWeight: "700", fontSize: 12 }}>{batteryPct}%</Text>
-          </View>
-        ) : null}
-      </View>
-    </View>
-  );
+function formatTaskDue(due: string | null | undefined): string {
+  if (!due) return "No due date";
+  try {
+    return new Date(due).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+  } catch {
+    return "—";
+  }
 }
 
 export function DashboardScreen() {
+  const router = useRouter();
   const { colors, spacing, radii, text } = useTheme();
-  const { session, has, refreshProfile } = useSession();
+  const { session, refreshProfile } = useSession();
   const token = session?.token ?? "";
   const isFocused = useIsFocused();
 
@@ -177,6 +117,27 @@ export function DashboardScreen() {
   const [avatarReloadKey, setAvatarReloadKey] = useState(0);
   const [avatarPhotoUri, setAvatarPhotoUri] = useState<string | null>(null);
   const [avatarUploadBusy, setAvatarUploadBusy] = useState(false);
+  const [nextTask, setNextTask] = useState<Task | null>(null);
+  const [upcomingTasks, setUpcomingTasks] = useState<Task[]>([]);
+  const [tasksErr, setTasksErr] = useState<string | null>(null);
+
+  const loadTaskQueue = useCallback(async () => {
+    if (!token) {
+      setNextTask(null);
+      setUpcomingTasks([]);
+      return;
+    }
+    setTasksErr(null);
+    try {
+      const [n, u] = await Promise.all([getNextTask(token), getUpcomingTasks(token, 3)]);
+      setNextTask(n);
+      setUpcomingTasks(u);
+    } catch (e) {
+      setNextTask(null);
+      setUpcomingTasks([]);
+      setTasksErr(e instanceof Error ? e.message : "Could not load tasks");
+    }
+  }, [token]);
 
   const pickAndUploadAvatar = useCallback(async () => {
     if (!token || avatarUploadBusy) return;
@@ -297,6 +258,20 @@ export function DashboardScreen() {
     };
   }, [token, isFocused, session?.user.id]);
 
+  useEffect(() => {
+    if (!token || !isFocused) return;
+    void loadTaskQueue();
+  }, [token, isFocused, loadTaskQueue]);
+
+  useEffect(() => {
+    if (!token || !isFocused) return;
+    const unsub = subscribePulseWs(token, (evt) => {
+      const t = evt.event_type ?? "";
+      if (t.startsWith("gamification.task_")) void loadTaskQueue();
+    });
+    return unsub;
+  }, [token, isFocused, loadTaskQueue]);
+
   const displayShiftPresence: MyShiftPresence = useMemo(() => {
     if (shiftPresence) return shiftPresence;
     if (token && session?.user.id) {
@@ -348,13 +323,6 @@ export function DashboardScreen() {
     if (headerBgUri) return { uri: headerBgUri };
     return HOME_HERO_PANORAMA;
   }, [headerBgUri]);
-
-  // Temporary, mock toolbox content until tools API is aligned to backend.
-  const toolbox = [
-    { name: "Circular Saw", line1: "Ready · Blade guard", line2: "OK" },
-    { name: "Drill", line1: "Charged · 18V pack" },
-    { name: "Batteries (×2)", line1: "Charged", batteryPct: 80 },
-  ] as const;
 
   /** Header band only — subtle frosted glass; dusk bar with welcome + location (left) and schedule (right). */
   const HEADER_BG_HEIGHT = 178;
@@ -520,30 +488,80 @@ export function DashboardScreen() {
             borderWidth: 1,
             borderColor: colors.border,
             borderRadius: radii.lg,
-            padding: spacing.md,
+            padding: spacing.lg,
           }}
         >
-          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-            <Text style={{ color: colors.text, fontWeight: "900" }}>Current Toolbox</Text>
-            <Text style={{ color: colors.success, fontWeight: "900" }}>View All</Text>
-          </View>
+          <Text style={{ color: colors.muted, fontSize: 12, fontWeight: "900", letterSpacing: 0.6 }}>NEXT UP</Text>
+          {nextTask ? (
+            <Pressable
+              onPress={() =>
+                router.push(`/task-detail?id=${encodeURIComponent(nextTask.id)}` as Href)
+              }
+              style={{ marginTop: spacing.sm }}
+              accessibilityRole="button"
+              accessibilityLabel={`Open next task: ${nextTask.title}`}
+            >
+              <Text style={{ color: colors.text, fontSize: 22, fontWeight: "900", lineHeight: 28 }} numberOfLines={3}>
+                {nextTask.title}
+              </Text>
+              <Text style={{ color: colors.muted, marginTop: 8, fontWeight: "700" }}>
+                {formatTaskDue(nextTask.due_date ?? null)} · Priority {nextTask.priority ?? 1}
+              </Text>
+              <Text style={{ color: colors.success, marginTop: 12, fontWeight: "900" }}>Open details →</Text>
+            </Pressable>
+          ) : (
+            <Text style={{ ...text.body, color: colors.text, marginTop: spacing.sm, fontWeight: "700" }}>
+              No assigned tasks right now.
+            </Text>
+          )}
         </View>
 
-        <View style={{ height: spacing.sm }} />
+        {upcomingTasks.length ? (
+          <>
+            <View style={{ height: spacing.md }} />
+            <Text style={{ color: colors.muted, fontSize: 12, fontWeight: "900", letterSpacing: 0.6, marginBottom: spacing.sm }}>
+              COMING UP
+            </Text>
+            <View style={{ gap: spacing.sm }}>
+              {upcomingTasks.map((t) => (
+                <Pressable
+                  key={t.id}
+                  onPress={() => router.push(`/task-detail?id=${encodeURIComponent(t.id)}` as Href)}
+                  style={{
+                    backgroundColor: colors.surface,
+                    borderWidth: 1,
+                    borderColor: colors.border,
+                    borderRadius: radii.md,
+                    padding: spacing.md,
+                  }}
+                >
+                  <Text style={{ color: colors.text, fontWeight: "800" }} numberOfLines={2}>
+                    {t.title}
+                  </Text>
+                  <Text style={{ color: colors.muted, marginTop: 4, fontSize: 12, fontWeight: "700" }}>
+                    {formatTaskDue(t.due_date ?? null)}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          </>
+        ) : null}
 
-        {(has("module.tool_tracking.read") || true) && (
-          <View style={{ gap: 10 }}>
-            {toolbox.map((t) => (
-              <ToolboxCard
-                key={t.name}
-                name={t.name}
-                line1={t.line1}
-                line2={"line2" in t ? (t as any).line2 : undefined}
-                batteryPct={"batteryPct" in t ? (t as any).batteryPct : undefined}
-              />
-            ))}
+        {tasksErr ? (
+          <View
+            style={{
+              marginTop: spacing.md,
+              backgroundColor: "rgba(235,81,96,0.14)",
+              borderColor: "rgba(235,81,96,0.35)",
+              borderWidth: 1,
+              borderRadius: radii.md,
+              padding: 12,
+            }}
+          >
+            <Text style={{ color: colors.text, fontWeight: "800" }}>Tasks</Text>
+            <Text style={{ marginTop: 4, color: colors.muted }}>{tasksErr}</Text>
           </View>
-        )}
+        ) : null}
 
         {orgErr ? (
           <View

@@ -82,6 +82,15 @@ export function addDaysToIso(iso: string, deltaDays: number): string {
   return formatLocalDate(d);
 }
 
+/** Monday (YYYY-MM-DD) of the Mon–Sun week containing `anchorIso`. */
+export function mondayOfCalendarWeek(anchorIso: string): string {
+  const d = parseLocalDate(anchorIso);
+  const dow = d.getDay();
+  const delta = dow === 0 ? -6 : 1 - dow;
+  const mon = new Date(d.getFullYear(), d.getMonth(), d.getDate() + delta);
+  return formatLocalDate(mon);
+}
+
 /** Sunday-first list of seven YYYY-MM-DD strings for the week containing `anchorIso`. */
 export function weekDatesFromSunday(anchorIso: string): string[] {
   const d = parseLocalDate(anchorIso);

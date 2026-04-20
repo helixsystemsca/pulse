@@ -57,6 +57,15 @@ function RootLayoutNav() {
           <Stack screenOptions={{ headerShown: false }}>
             <Stack.Screen name="login" />
             <Stack.Screen name="(tabs)" />
+            <Stack.Screen
+              name="task-detail"
+              options={{
+                headerShown: true,
+                title: "Task",
+                headerStyle: { backgroundColor: "#556B8E" },
+                headerTintColor: "#FFFFFF",
+              }}
+            />
           </Stack>
         </SessionProvider>
       </SafeAreaProvider>

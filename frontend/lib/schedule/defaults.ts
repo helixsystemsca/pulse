@@ -59,6 +59,7 @@ export const defaultSettings: ScheduleSettings = {
     minWorkersPerShift: 2,
     requireSupervisor: true,
     maxHoursPerWorkerPerWeek: 48,
+    otRiskMonitoringEnabled: false,
   },
   requiredShiftsPerDay: 8,
   activeWorkerTarget: 150,

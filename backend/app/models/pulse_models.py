@@ -297,6 +297,7 @@ class PulseWorkerProfile(Base):
 
 class PulseProjectStatus(str, enum.Enum):
     active = "active"
+    future = "future"
     completed = "completed"
     on_hold = "on_hold"
 

@@ -1397,7 +1397,7 @@ function SchedulingCalendarMock() {
               <div className="mt-3 grid grid-cols-2 gap-1.5 border-t border-slate-100 pt-2 sm:grid-cols-4">
                 {[
                   { label: "Active", value: "124 / 150", icon: Users },
-                  { label: "OT risk", value: "12", icon: AlertTriangle, warn: true },
+                  { label: "OT risk", value: "No OT risk", icon: Check, warn: false },
                   { label: "Fill", value: "98.2%", icon: Check },
                   { label: "Requests", value: "4 new", icon: Inbox, highlight: true },
                 ].map((kpi) => (

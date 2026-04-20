@@ -30,6 +30,7 @@ function displayName(w: PulseWorkerApi): string {
 function statusLabel(st: string): string {
   if (st === "on_hold") return "On hold";
   if (st === "completed") return "Completed";
+  if (st === "future") return "Future";
   return "Active";
 }
 
@@ -53,7 +54,7 @@ export function ProjectsApp() {
   const [formEnd, setFormEnd] = useState("");
   const [formScope, setFormScope] = useState("");
   const [formOwner, setFormOwner] = useState("");
-  const [formStatus, setFormStatus] = useState<"active" | "on_hold" | "completed">("active");
+  const [formStatus, setFormStatus] = useState<"active" | "future" | "on_hold" | "completed">("active");
 
   const workerById = useMemo(() => new Map(workers.map((w) => [w.id, w])), [workers]);
 
@@ -181,8 +182,16 @@ export function ProjectsApp() {
     setFormEnd(p.end_date ?? "");
     setFormScope(p.description ?? "");
     setFormOwner((p.owner_user_id ?? "") || "");
-    const st = (p.status ?? "active") as any;
-    setFormStatus(st === "completed" ? "completed" : st === "on_hold" ? "on_hold" : "active");
+    const st = (p.status ?? "active") as string;
+    setFormStatus(
+      st === "completed"
+        ? "completed"
+        : st === "on_hold"
+          ? "on_hold"
+          : st === "future"
+            ? "future"
+            : "active",
+    );
     setEditOpen(true);
   }
 
@@ -527,8 +536,14 @@ export function ProjectsApp() {
                 <label className={LABEL} htmlFor="ep-status">
                   Status
                 </label>
-                <select id="ep-status" className={FIELD} value={formStatus} onChange={(e) => setFormStatus(e.target.value as any)}>
+                <select
+                  id="ep-status"
+                  className={FIELD}
+                  value={formStatus}
+                  onChange={(e) => setFormStatus(e.target.value as typeof formStatus)}
+                >
                   <option value="active">Active</option>
+                  <option value="future">Future</option>
                   <option value="on_hold">On hold</option>
                   <option value="completed">Completed</option>
                 </select>

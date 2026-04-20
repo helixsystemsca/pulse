@@ -15,11 +15,33 @@ from app.core.events.types import DomainEvent
 from app.core.database import get_db
 from app.models.gamification_models import Task, TaskEvent, UserStats
 from app.models.domain import User
-from app.schemas.gamification import CompleteTaskResult, TaskOut, UserAnalyticsOut
+from app.schemas.gamification import CompleteTaskResult, TaskFullOut, TaskOut, UserAnalyticsOut
+from app.services.gamification_task_full import build_task_full_payload
 
 router = APIRouter(tags=["gamification"])
 
 Db = Annotated[AsyncSession, Depends(get_db)]
+
+
+async def _open_assigned_task_rows(
+    db: AsyncSession, company_id: str, user_id: str, *, limit: int, offset: int
+) -> list[Task]:
+    stmt = (
+        select(Task)
+        .where(
+            Task.company_id == company_id,
+            Task.assigned_to == user_id,
+            Task.status.in_(("todo", "in_progress")),
+        )
+        .order_by(
+            Task.priority.desc(),
+            Task.due_date.asc().nulls_last(),
+            Task.created_at.asc(),
+        )
+        .offset(offset)
+        .limit(limit)
+    )
+    return list((await db.execute(stmt)).scalars().all())
 
 
 def calculate_xp(task: Task, completed_on_time: bool) -> int:
@@ -52,6 +74,45 @@ async def list_my_tasks(
         .all()
     )
     return [TaskOut.model_validate(r) for r in rows]
+
+
+@router.get("/tasks/next", response_model=TaskOut | None)
+async def get_next_task(db: Db, user: User = Depends(require_tenant_user)) -> TaskOut | None:
+    cid = str(user.company_id)
+    rows = await _open_assigned_task_rows(db, cid, user.id, limit=1, offset=0)
+    if not rows:
+        return None
+    return TaskOut.model_validate(rows[0])
+
+
+@router.get("/tasks/upcoming", response_model=list[TaskOut])
+async def get_upcoming_tasks(
+    db: Db,
+    user: User = Depends(require_tenant_user),
+    limit: int = Query(3, ge=0, le=10),
+) -> list[TaskOut]:
+    """Open tasks assigned to the worker after the current `next` task (same ordering)."""
+    cid = str(user.company_id)
+    if limit == 0:
+        return []
+    rows = await _open_assigned_task_rows(db, cid, user.id, limit=limit, offset=1)
+    return [TaskOut.model_validate(r) for r in rows]
+
+
+@router.get("/tasks/{task_id}/full", response_model=TaskFullOut)
+async def get_task_full(
+    task_id: str,
+    db: Db,
+    user: User = Depends(require_tenant_user),
+) -> TaskFullOut:
+    cid = str(user.company_id)
+    task = await db.get(Task, task_id)
+    if not task or str(task.company_id) != cid:
+        raise HTTPException(status_code=404, detail="Task not found")
+    if not task.assigned_to or str(task.assigned_to) != str(user.id):
+        raise HTTPException(status_code=403, detail="Not assigned to you")
+    payload = await build_task_full_payload(db, task=task, company_id=cid)
+    return TaskFullOut.model_validate(payload)
 
 
 @router.post("/tasks/{task_id}/complete", response_model=CompleteTaskResult)

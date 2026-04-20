@@ -15,6 +15,43 @@ from app.models.gamification_models import Task
 from app.models.pulse_models import PulseWorkRequest, PulseWorkRequestPriority
 
 
+async def sync_linked_task_assignee_from_work_request(
+    db: AsyncSession,
+    *,
+    work_request: PulseWorkRequest,
+) -> None:
+    """Keep gamified Task.assignee in sync when a work order assignee changes (WS push for mobile)."""
+    q = await db.execute(
+        select(Task).where(
+            Task.company_id == str(work_request.company_id),
+            Task.source_type == "work_order",
+            Task.source_id == str(work_request.id),
+        )
+    )
+    t = q.scalar_one_or_none()
+    if not t:
+        return
+    new_assignee = work_request.assigned_user_id
+    if str(t.assigned_to or "") == str(new_assignee or ""):
+        return
+    t.assigned_to = new_assignee
+    await db.flush()
+    await event_engine.publish(
+        DomainEvent(
+            event_type="gamification.task_assigned",
+            company_id=str(work_request.company_id),
+            entity_id=str(t.id),
+            source_module="gamification",
+            metadata={
+                "task_id": str(t.id),
+                "assigned_to": str(new_assignee) if new_assignee else None,
+                "source_type": "work_order",
+                "source_id": str(work_request.id),
+            },
+        )
+    )
+
+
 def _priority_to_int(p: Optional[PulseWorkRequestPriority]) -> int:
     if not p:
         return 1

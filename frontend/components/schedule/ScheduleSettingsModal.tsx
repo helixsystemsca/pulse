@@ -3,6 +3,8 @@
 import { Plus, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { ModuleSettingsForm } from "@/components/module-settings/ModuleSettingsModal";
+import { usePulseAuth } from "@/hooks/usePulseAuth";
+import { sessionHasAnyRole } from "@/lib/pulse-roles";
 import { useScheduleStore } from "@/lib/schedule/schedule-store";
 import type { ShiftTypeConfig } from "@/lib/schedule/types";
 import { PulseDrawer } from "./PulseDrawer";
@@ -27,6 +29,8 @@ const PRIMARY_BTN =
   "rounded-[10px] bg-[#2B4C7E] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#234066]";
 
 export function ScheduleSettingsModal({ open, onClose }: Props) {
+  const { session } = usePulseAuth();
+  const canEnableOtRiskMonitoring = sessionHasAnyRole(session, "manager", "company_admin");
   const settings = useScheduleStore((s) => s.settings);
   const roles = useScheduleStore((s) => s.roles);
   const shiftTypes = useScheduleStore((s) => s.shiftTypes);
@@ -406,6 +410,30 @@ export function ScheduleSettingsModal({ open, onClose }: Props) {
                   }
                 />
               </div>
+              <label className="flex cursor-pointer items-start gap-2 text-sm text-gray-900 dark:text-gray-100">
+                <input
+                  type="checkbox"
+                  className="mt-0.5 rounded border-pulseShell-border"
+                  disabled={!canEnableOtRiskMonitoring && !settings.staffing.otRiskMonitoringEnabled}
+                  checked={settings.staffing.otRiskMonitoringEnabled === true}
+                  onChange={(e) => {
+                    const v = e.target.checked;
+                    if (v && !canEnableOtRiskMonitoring) return;
+                    setSettings({
+                      staffing: { ...settings.staffing, otRiskMonitoringEnabled: v },
+                    });
+                  }}
+                />
+                <span>
+                  <span className="font-semibold">Show OT risk in the schedule bar</span>
+                  <span className="mt-0.5 block text-xs font-normal text-gray-500 dark:text-gray-400">
+                    Off by default: the bar shows &quot;No OT risk&quot;. When enabled (managers and company admins
+                    only), scheduled work hours are compared to the weekly cap above for each Mon–Sun week that touches
+                    the month; one worker over the cap shows Moderate, two or more shows Elevated. Anyone can turn this
+                    off again.
+                  </span>
+                </span>
+              </label>
               <div>
                 <label className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
                   Required shifts per day (for fill %)

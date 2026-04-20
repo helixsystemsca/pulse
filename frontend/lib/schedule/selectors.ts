@@ -1,4 +1,4 @@
-import { monthGrid, parseLocalDate, shiftHours } from "./calendar";
+import { addDaysToIso, monthGrid, mondayOfCalendarWeek, parseLocalDate, shiftHours } from "./calendar";
 import type { ScheduleAlerts, Shift, WorkforceSummary, Worker, ScheduleSettings } from "./types";
 
 function shiftsForMonth(shifts: Shift[], year: number, monthIndex: number): Shift[] {
@@ -54,6 +54,18 @@ export function computeAlerts(
   };
 }
 
+function workerWeekWorkHours(shifts: Shift[], workerId: string, weekStartMonday: string): number {
+  const weekEnd = addDaysToIso(weekStartMonday, 6);
+  let total = 0;
+  for (const s of shifts) {
+    if (s.shiftKind === "project_task" || !s.workerId || s.workerId !== workerId) continue;
+    if (s.eventType === "vacation" || s.eventType === "sick") continue;
+    if (s.date < weekStartMonday || s.date > weekEnd) continue;
+    total += shiftHours(s.startTime, s.endTime);
+  }
+  return total;
+}
+
 export function computeWorkforceSummary(
   workers: Worker[],
   shifts: Shift[],
@@ -72,17 +84,32 @@ export function computeWorkforceSummary(
   const activeWorkers = workers.filter((w) => w.active).length;
   const target = settings.activeWorkerTarget;
 
-  let otHours = 0;
-  for (const w of workers) {
-    if (!w.active) continue;
-    const mine = inMonth.filter(
-      (s) => s.workerId === w.id && s.eventType === "work" && s.shiftKind !== "project_task",
-    );
-    const hrs = mine.reduce((acc, s) => acc + shiftHours(s.startTime, s.endTime), 0);
-    if (hrs > settings.staffing.maxHoursPerWorkerPerWeek * 1.1) otHours += 1;
+  const monitoring = settings.staffing.otRiskMonitoringEnabled === true;
+  const weeklyCap = settings.staffing.maxHoursPerWorkerPerWeek || 48;
+  let otRiskLabel: WorkforceSummary["otRiskLabel"] = "None";
+
+  if (monitoring) {
+    const mondays = new Set<string>();
+    for (const cell of monthGrid(year, monthIndex)) {
+      if (!cell.inMonth) continue;
+      mondays.add(mondayOfCalendarWeek(cell.date));
+    }
+    let workersOverCap = 0;
+    for (const w of workers) {
+      if (!w.active) continue;
+      let over = false;
+      for (const mon of mondays) {
+        if (workerWeekWorkHours(shifts, w.id, mon) > weeklyCap + 1e-6) {
+          over = true;
+          break;
+        }
+      }
+      if (over) workersOverCap += 1;
+    }
+    if (workersOverCap >= 2) otRiskLabel = "Elevated";
+    else if (workersOverCap === 1) otRiskLabel = "Moderate";
+    else otRiskLabel = "Low";
   }
-  const otRiskLabel: WorkforceSummary["otRiskLabel"] =
-    otHours >= 4 ? "Elevated" : otHours >= 2 ? "Moderate" : "Low";
 
   return {
     activeWorkers,

@@ -21,6 +21,7 @@ import { patchOnboarding } from "@/lib/onboardingService";
 import {
   addDaysToIso,
   formatLocalDate,
+  mondayOfCalendarWeek,
   monthGrid,
   parseLocalDate,
   weekDatesFromSunday,
@@ -68,14 +69,6 @@ import { TimeOffRequestModal } from "./TimeOffRequestModal";
 type View = "calendar" | "personnel" | "reports";
 type CalendarScale = "month" | "week" | "day";
 type ScheduleContentFilter = "workers" | "projects" | "combined";
-
-function mondayOfCalendarWeek(iso: string): string {
-  const d = parseLocalDate(iso);
-  const dow = d.getDay();
-  const delta = dow === 0 ? -6 : 1 - dow;
-  const mon = new Date(d.getFullYear(), d.getMonth(), d.getDate() + delta);
-  return formatLocalDate(mon);
-}
 
 function shiftLengthHours(sh: Pick<Shift, "startTime" | "endTime">): number {
   const [shh, smm] = sh.startTime.split(":").map(Number);
