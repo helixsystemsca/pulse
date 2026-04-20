@@ -13,10 +13,21 @@ from app.api.deps import require_tenant_user
 from app.core.events.engine import event_engine
 from app.core.events.types import DomainEvent
 from app.core.database import get_db
+from app.core.user_roles import user_has_any_role
 from app.models.gamification_models import Task, TaskEvent, UserStats
-from app.models.domain import User
-from app.schemas.gamification import CompleteTaskResult, TaskFullOut, TaskOut, UserAnalyticsOut
+from app.models.domain import User, UserRole
+from app.schemas.gamification import (
+    CompleteTaskResult,
+    SupervisorOneOnOneIn,
+    SupervisorOneOnOneOut,
+    TaskFullOut,
+    TaskOut,
+    UserAnalyticsOut,
+)
 from app.services.gamification_task_full import build_task_full_payload
+from app.services.xp_grant import try_grant_xp
+from app.services.xp_role_policy import is_xp_excluded_admin, task_completion_role_multiplier
+from app.services.xp_worker_task import compute_worker_task_completion_xp
 
 router = APIRouter(tags=["gamification"])
 
@@ -42,19 +53,6 @@ async def _open_assigned_task_rows(
         .limit(limit)
     )
     return list((await db.execute(stmt)).scalars().all())
-
-
-def calculate_xp(task: Task, completed_on_time: bool) -> int:
-    base = {
-        "routine": 5,
-        "pm": 10,
-        "work_order": 15,
-        "project": 25,
-        "self": 3,
-    }.get(str(task.source_type), 5)
-    xp = base * int(task.difficulty or 1) * int(task.priority or 1)
-    xp = xp * (1.2 if completed_on_time else 0.8)
-    return int(xp)
 
 
 @router.get("/tasks/my", response_model=list[TaskOut])
@@ -140,7 +138,16 @@ async def complete_task(
     if task.due_date is not None:
         completed_on_time = now <= task.due_date
 
-    raw_xp = calculate_xp(task, completed_on_time)
+    completion_time_hours = max(0.0, (now - task.created_at).total_seconds() / 3600.0)
+    was_late = bool(task.due_date is not None and now > task.due_date)
+
+    role_mult = task_completion_role_multiplier(user)
+    raw_xp = compute_worker_task_completion_xp(
+        task,
+        completed_on_time=completed_on_time,
+        completion_time_hours=completion_time_hours,
+        role_multiplier=role_mult,
+    )
 
     # Anti-gaming: cap XP from self tasks per day (max 20).
     xp = raw_xp
@@ -164,13 +171,12 @@ async def complete_task(
         remaining = max(0, 20 - int(earned_today or 0))
         xp = min(raw_xp, remaining)
 
-    completion_time_hours = max(0.0, (now - task.created_at).total_seconds() / 3600.0)
-    was_late = bool(task.due_date is not None and now > task.due_date)
+    if is_xp_excluded_admin(user):
+        xp = 0
 
     async with db.begin_nested():
         task.status = "done"
         task.completed_at = now
-        task.xp_awarded = int(xp)
 
         stats = await db.get(UserStats, user.id)
         if not stats:
@@ -179,8 +185,6 @@ async def complete_task(
             await db.flush()
 
         prev_completed = int(stats.tasks_completed or 0)
-        prev_total = int(stats.total_xp or 0)
-        new_total = prev_total + int(xp)
         new_completed = prev_completed + 1
 
         # Running aggregates: avoid heavy joins for analytics.
@@ -192,20 +196,31 @@ async def complete_task(
         prev_avg = float(stats.avg_completion_time or 0.0)
         stats.avg_completion_time = float(((prev_avg * prev_completed) + completion_time_hours) / max(1, new_completed))
 
-        stats.total_xp = int(new_total)
         stats.tasks_completed = int(new_completed)
-        stats.level = int(max(1, new_total // 100 + 1))
 
-        db.add(
-            TaskEvent(
-                company_id=cid,
-                task_id=task.id,
-                user_id=user.id,
-                xp_earned=int(xp),
-                completion_time=float(completion_time_hours),
-                was_late=was_late,
-            )
+    granted = 0
+    if xp > 0:
+        granted = await try_grant_xp(
+            db,
+            company_id=cid,
+            user_id=str(user.id),
+            track="worker",
+            amount=int(xp),
+            reason_code="task_completed",
+            dedupe_key=f"task_completion:{task.id}",
+            meta={"task_id": str(task.id), "source_type": str(task.source_type)},
         )
+    task.xp_awarded = int(granted)
+    db.add(
+        TaskEvent(
+            company_id=cid,
+            task_id=task.id,
+            user_id=user.id,
+            xp_earned=int(granted),
+            completion_time=float(completion_time_hours),
+            was_late=was_late,
+        )
+    )
 
     await db.commit()
     await db.refresh(stats)
@@ -249,6 +264,9 @@ async def user_analytics(
             avgCompletionTime=0.0,
             reviewScore=0.0,
             initiativeScore=0.0,
+            xpWorker=0,
+            xpLead=0,
+            xpSupervisor=0,
         )
 
     # Quality: average review rating (0..5). (Reviews model is in the DB; keep this lightweight.)
@@ -286,5 +304,38 @@ async def user_analytics(
         avgCompletionTime=float(stats.avg_completion_time),
         reviewScore=review_score,
         initiativeScore=initiative_score,
+        xpWorker=int(getattr(stats, "xp_worker", 0) or 0),
+        xpLead=int(getattr(stats, "xp_lead", 0) or 0),
+        xpSupervisor=int(getattr(stats, "xp_supervisor", 0) or 0),
     )
+
+
+@router.post("/supervisor/one-on-one", response_model=SupervisorOneOnOneOut)
+async def log_supervisor_one_on_one(
+    db: Db,
+    body: SupervisorOneOnOneIn,
+    user: User = Depends(require_tenant_user),
+) -> SupervisorOneOnOneOut:
+    if not user_has_any_role(user, UserRole.supervisor):
+        raise HTTPException(status_code=403, detail="Supervisor role required")
+    cid = str(user.company_id)
+    emp = await db.get(User, body.employee_user_id.strip())
+    if not emp or str(emp.company_id) != cid:
+        raise HTTPException(status_code=400, detail="Unknown employee for this organization")
+    iso = datetime.now(timezone.utc).isocalendar()
+    week_key = f"{iso.year}-W{iso.week:02d}"
+    await event_engine.publish(
+        DomainEvent(
+            event_type="ops.supervisor_one_on_one",
+            company_id=cid,
+            entity_id=str(user.id),
+            source_module="gamification",
+            metadata={
+                "supervisor_user_id": str(user.id),
+                "employee_user_id": str(emp.id),
+                "iso_week_key": week_key,
+            },
+        )
+    )
+    return SupervisorOneOnOneOut()
 

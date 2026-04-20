@@ -24,6 +24,9 @@ export type UserAnalytics = {
   avgCompletionTime: number;
   reviewScore: number;
   initiativeScore: number;
+  xpWorker?: number;
+  xpLead?: number;
+  xpSupervisor?: number;
 };
 
 export async function listMyTasks(status?: "todo" | "in_progress" | "done"): Promise<GamifiedTask[]> {

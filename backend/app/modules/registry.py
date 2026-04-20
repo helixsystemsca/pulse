@@ -8,6 +8,7 @@ so disabled modules return 404 and never run module logic.
 from fastapi import FastAPI
 
 from app.api.realtime import attach_event_bridge
+from app.services.xp_event_subscribers import attach_xp_event_subscribers
 from app.core.events.persist_subscriber import attach_persist_subscriber
 from app.core.inference.bootstrap import attach_inference_orchestrator
 
@@ -31,3 +32,4 @@ def register_modules(app: FastAPI) -> None:
     app.include_router(analytics_router, prefix="/api/v1")
 
     attach_event_bridge()
+    attach_xp_event_subscribers()

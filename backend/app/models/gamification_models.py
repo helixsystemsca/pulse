@@ -5,8 +5,10 @@ from __future__ import annotations
 from datetime import datetime
 from uuid import uuid4
 
-from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Text, text
-from sqlalchemy.dialects.postgresql import UUID
+from typing import Any
+
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint, text
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base
@@ -53,6 +55,9 @@ class UserStats(Base):
     company_id: Mapped[str] = mapped_column(UUID(as_uuid=False), ForeignKey("companies.id", ondelete="CASCADE"), index=True)
 
     total_xp: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
+    xp_worker: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
+    xp_lead: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
+    xp_supervisor: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
     level: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("1"))
     tasks_completed: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
     on_time_rate: Mapped[float] = mapped_column(Float, nullable=False, server_default=text("1"))
@@ -72,6 +77,23 @@ class TaskEvent(Base):
     xp_earned: Mapped[int] = mapped_column(Integer, nullable=False)
     completion_time: Mapped[float] = mapped_column(Float, nullable=False)
     was_late: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=text("now()"), index=True)
+
+
+class XpLedger(Base):
+    """Append-only idempotent XP awards (dedupe_key prevents double-crediting)."""
+
+    __tablename__ = "xp_ledger"
+    __table_args__ = (UniqueConstraint("user_id", "dedupe_key", name="uq_xp_ledger_user_dedupe"),)
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    company_id: Mapped[str] = mapped_column(UUID(as_uuid=False), ForeignKey("companies.id", ondelete="CASCADE"), index=True)
+    user_id: Mapped[str] = mapped_column(UUID(as_uuid=False), ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    track: Mapped[str] = mapped_column(String(32), nullable=False)
+    reason_code: Mapped[str] = mapped_column(String(64), nullable=False)
+    dedupe_key: Mapped[str] = mapped_column(String(512), nullable=False)
+    xp_delta: Mapped[int] = mapped_column(Integer, nullable=False)
+    meta: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=text("now()"), index=True)
 
 

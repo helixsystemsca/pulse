@@ -15,6 +15,8 @@ from sqlalchemy import and_, delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user, get_db, require_manager_or_above
+from app.core.events.engine import event_engine
+from app.core.events.types import DomainEvent
 from app.core.user_roles import is_field_worker_like, user_has_any_role
 from app.services.onboarding_service import try_mark_onboarding_step
 from app.services.gamification_service import sync_linked_task_assignee_from_work_request
@@ -32,6 +34,28 @@ from app.models.pulse_models import (
     PulseWorkRequestStatus,
 )
 from app.modules.pulse import service as pulse_svc
+
+
+async def _publish_wr_assigned_xp_event(*, cid: str, wr: PulseWorkRequest, assigned_by_user_id: str) -> None:
+    """Event-driven XP for leads/supervisors (deduped in xp_event_subscribers)."""
+    if not wr.assigned_user_id or str(wr.assigned_user_id) == str(assigned_by_user_id):
+        return
+    now = datetime.now(timezone.utc)
+    await event_engine.publish(
+        DomainEvent(
+            event_type="ops.work_request_assigned",
+            company_id=str(cid),
+            entity_id=str(wr.id),
+            source_module="work_requests",
+            metadata={
+                "work_request_id": str(wr.id),
+                "assigned_user_id": str(wr.assigned_user_id),
+                "assigned_by_user_id": str(assigned_by_user_id),
+                "work_request_created_at": wr.created_at.isoformat(),
+                "assigned_at": now.isoformat(),
+            },
+        )
+    )
 from app.modules.work_requests.helpers import (
     default_due_date_for_priority,
     display_status,
@@ -499,6 +523,8 @@ async def create_wr(
         await try_mark_onboarding_step(db, user.id, "customize_workflow")
     await db.commit()
     await db.refresh(wr)
+    if wr.assigned_user_id and str(wr.assigned_user_id) != str(user.id):
+        await _publish_wr_assigned_xp_event(cid=cid, wr=wr, assigned_by_user_id=str(user.id))
     return await _detail(db, cid, wr.id, user.id)
 
 
@@ -657,6 +683,8 @@ async def patch_wr(
         await sync_linked_task_assignee_from_work_request(db, work_request=wr)
     await db.commit()
     await db.refresh(wr)
+    if "assigned_user_id" in data and wr.assigned_user_id:
+        await _publish_wr_assigned_xp_event(cid=cid, wr=wr, assigned_by_user_id=str(user.id))
     return await _detail(db, cid, wr_id)
 
 
@@ -707,6 +735,8 @@ async def post_assign(
     await sync_linked_task_assignee_from_work_request(db, work_request=wr)
     await db.commit()
     await db.refresh(wr)
+    if wr.assigned_user_id:
+        await _publish_wr_assigned_xp_event(cid=cid, wr=wr, assigned_by_user_id=str(user.id))
     return await _detail(db, cid, wr_id)
 
 

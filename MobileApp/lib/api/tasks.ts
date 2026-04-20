@@ -91,6 +91,9 @@ export type UserAnalytics = {
   avgCompletionTime: number;
   reviewScore: number;
   initiativeScore: number;
+  xpWorker?: number;
+  xpLead?: number;
+  xpSupervisor?: number;
 };
 
 export async function getUserAnalytics(token: string, userId: string): Promise<UserAnalytics> {

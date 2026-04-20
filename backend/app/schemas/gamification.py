@@ -44,6 +44,17 @@ class UserAnalyticsOut(BaseModel):
     avgCompletionTime: float
     reviewScore: float
     initiativeScore: float
+    xpWorker: int = Field(0, description="Cumulative worker-track XP")
+    xpLead: int = Field(0, description="Cumulative lead-track XP")
+    xpSupervisor: int = Field(0, description="Cumulative supervisor-track XP")
+
+
+class SupervisorOneOnOneIn(BaseModel):
+    employee_user_id: str = Field(min_length=1)
+
+
+class SupervisorOneOnOneOut(BaseModel):
+    ok: bool = True
 
 
 class WorkOrderBriefOut(BaseModel):

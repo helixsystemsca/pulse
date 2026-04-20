@@ -1,3 +1,5 @@
+import { normalizeApiBaseUrl } from "./api-base-url";
+
 export type ApiConfig = {
   baseUrl: string;
 };
@@ -14,7 +16,7 @@ export function configureApi(next: Partial<ApiConfig>) {
 
 /** Sync `EXPO_PUBLIC_API_BASE_URL` into the client (call before any authenticated request). */
 export function ensureApiConfiguredFromEnv() {
-  const base = (process.env.EXPO_PUBLIC_API_BASE_URL ?? "").trim();
+  const base = normalizeApiBaseUrl(process.env.EXPO_PUBLIC_API_BASE_URL);
   if (base) configureApi({ baseUrl: base });
 }
 

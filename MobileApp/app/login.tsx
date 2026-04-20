@@ -14,6 +14,7 @@ import type { Href } from "expo-router";
 import { Redirect } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
+import { expandLoginEmail, isEmailShape, validateIdentifier } from "@/lib/authIdentifier";
 import { useSession } from "@/store/session";
 import { useTheme } from "@/theme/ThemeProvider";
 
@@ -21,7 +22,7 @@ export default function LoginScreen() {
   const { height: windowHeight } = useWindowDimensions();
   const { colors, radii, spacing, text } = useTheme();
   const { session, authReady, signIn } = useSession();
-  const [email, setEmail] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -31,28 +32,43 @@ export default function LoginScreen() {
 
   const onSubmit = useCallback(async () => {
     setError(null);
-    const e = email.trim().toLowerCase();
-    if (!e) {
-      setError("Enter your email");
+    const raw = identifier.trim();
+    if (!raw) {
+      setError("Enter your email or username");
+      return;
+    }
+    if (!validateIdentifier(raw)) {
+      setError("Enter a valid email or a username (3+ characters, letters/numbers._- only).");
+      return;
+    }
+    const loginEmail = expandLoginEmail(raw);
+    if (!isEmailShape(loginEmail)) {
+      setError(
+        "Use a full email address, or set EXPO_PUBLIC_PULSE_LOGIN_EMAIL_DOMAIN in .env (same value as web NEXT_PUBLIC_PULSE_LOGIN_EMAIL_DOMAIN) so short usernames work.",
+      );
       return;
     }
     if (!password) {
       setError("Enter your password");
       return;
     }
+    if (password.length < 8) {
+      setError("Password must be at least 8 characters.");
+      return;
+    }
     if (!apiConfigured) {
-      setError("Set EXPO_PUBLIC_API_BASE_URL to your Pulse API (same host as the web app).");
+      setError("Set EXPO_PUBLIC_API_BASE_URL to your Pulse API (same origin as web NEXT_PUBLIC_API_URL).");
       return;
     }
     setBusy(true);
     try {
-      await signIn(e, password);
+      await signIn(loginEmail, password);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Sign-in failed");
     } finally {
       setBusy(false);
     }
-  }, [apiConfigured, email, password, signIn]);
+  }, [apiConfigured, identifier, password, signIn]);
 
   if (!authReady) {
     return (
@@ -86,7 +102,8 @@ export default function LoginScreen() {
         >
           <Text style={{ color: colors.text, ...text.h1 }}>Pulse</Text>
           <Text style={{ color: colors.muted, marginTop: spacing.sm, ...text.body }}>
-            Sign in with the same email and password as the web app.
+            Same backend as the web app: use the same API URL env as NEXT_PUBLIC_API_URL, and the same login domain
+            env if you sign in with a short username on web.
           </Text>
 
           {!apiConfigured ? (
@@ -102,16 +119,17 @@ export default function LoginScreen() {
             >
               <Text style={{ color: colors.text, fontWeight: "700" }}>API URL missing</Text>
               <Text style={{ color: colors.muted, marginTop: 6, ...text.small }}>
-                Add EXPO_PUBLIC_API_BASE_URL in `.env` (e.g. https://your-api.example.com) and restart Expo.
+                Set EXPO_PUBLIC_API_BASE_URL to the same API origin as the web app’s NEXT_PUBLIC_API_URL (no /api/v1
+                suffix). Restart Expo after changing .env.
               </Text>
             </View>
           ) : null}
 
           <View style={{ marginTop: spacing.xl, gap: spacing.md }}>
-            <Text style={{ color: colors.muted, ...text.small }}>Email</Text>
+            <Text style={{ color: colors.muted, ...text.small }}>Email or username</Text>
             <TextInput
-              value={email}
-              onChangeText={setEmail}
+              value={identifier}
+              onChangeText={setIdentifier}
               autoCapitalize="none"
               autoCorrect={false}
               keyboardType="email-address"

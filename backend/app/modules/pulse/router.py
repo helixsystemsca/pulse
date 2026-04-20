@@ -13,6 +13,8 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import require_tenant_user
+from app.core.events.engine import event_engine
+from app.core.events.types import DomainEvent
 from app.core.pulse_storage import read_user_avatar_bytes
 from app.core.user_avatar_upload import INTERNAL_AVATAR_PATH, co_worker_avatar_url
 from app.core.user_roles import is_field_worker_like, primary_jwt_role
@@ -615,7 +617,12 @@ async def delete_schedule_assignment(db: Db, cid: CompanyId, assignment_id: str)
 
 
 @router.post("/schedule/shifts", response_model=ShiftCreateResult)
-async def create_shift(db: Db, cid: CompanyId, body: ShiftCreate) -> ShiftCreateResult:
+async def create_shift(
+    db: Db,
+    cid: CompanyId,
+    body: ShiftCreate,
+    user: User = Depends(require_tenant_user),
+) -> ShiftCreateResult:
     if body.zone_id and not await _zone_in_company(db, cid, body.zone_id):
         raise HTTPException(status_code=400, detail="Unknown zone")
     errs, warnings = await pulse_svc.validate_shift_assignment(
@@ -646,6 +653,20 @@ async def create_shift(db: Db, cid: CompanyId, body: ShiftCreate) -> ShiftCreate
     db.add(sh)
     await db.commit()
     await db.refresh(sh)
+    await event_engine.publish(
+        DomainEvent(
+            event_type="pulse.schedule_shift_created",
+            company_id=str(cid),
+            entity_id=str(sh.id),
+            source_module="pulse",
+            metadata={
+                "shift_id": str(sh.id),
+                "created_by_user_id": str(user.id),
+                "starts_at": sh.starts_at.isoformat(),
+                "created_at": sh.created_at.isoformat(),
+            },
+        )
+    )
     return ShiftCreateResult(shift=_shift_to_out(sh), warnings=warnings)
 
 
