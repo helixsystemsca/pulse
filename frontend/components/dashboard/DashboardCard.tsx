@@ -9,11 +9,11 @@ export type DashboardAccent = "yellow" | "red" | "blue" | "green" | "none";
  * `accent` is kept for API compatibility; it's currently used only for subtle header meta styling.
  */
 const ACCENT_HEADER: Record<DashboardAccent, { headerMeta: string }> = {
-  yellow: { headerMeta: "text-ds-on-accent/80" },
-  red: { headerMeta: "text-ds-on-accent/80" },
-  blue: { headerMeta: "text-ds-on-accent/80" },
-  green: { headerMeta: "text-ds-on-accent/80" },
-  none: { headerMeta: "text-ds-on-accent/80" },
+  yellow: { headerMeta: "text-white/90" },
+  red: { headerMeta: "text-white/90" },
+  blue: { headerMeta: "text-white/90" },
+  green: { headerMeta: "text-white/90" },
+  none: { headerMeta: "text-white/90" },
 };
 
 export function DashboardCard({
@@ -42,10 +42,10 @@ export function DashboardCard({
       ].join(" ")}
     >
       {title || headerRight ? (
-        <div className="relative bg-ds-success">
+        <div className="relative bg-[#4C6085]">
           <div className="flex items-center justify-between gap-3 px-5 py-3">
             {title ? (
-              <h3 className="text-[15px] font-bold leading-tight tracking-tight text-ds-on-accent">{title}</h3>
+              <h3 className="text-[15px] font-bold leading-tight tracking-tight text-white">{title}</h3>
             ) : (
               <span />
             )}
