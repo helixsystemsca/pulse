@@ -16,6 +16,7 @@ import { ModuleSettingsProvider } from "@/providers/ModuleSettingsProvider";
 import { ProximityPromptHost } from "./ProximityPromptHost";
 import { AppLayoutFooter } from "./AppLayoutFooter";
 import { PulseThemedBackground } from "./PulseThemedBackground";
+import { GamificationProvider } from "@/components/gamification/GamificationProvider";
 
 type AppLayoutProps = {
   children: ReactNode;
@@ -38,6 +39,7 @@ export function AppLayout({
       <PulseThemedBackground />
       <OnboardingProvider>
         <ModuleSettingsProvider>
+        <GamificationProvider>
         <InactivitySessionGuard />
         <ServerTimeSync />
         <ProximityPromptHost />
@@ -53,6 +55,7 @@ export function AppLayout({
           </AppMain>
           <AppLayoutFooter />
         </div>
+        </GamificationProvider>
         </ModuleSettingsProvider>
       </OnboardingProvider>
     </div>

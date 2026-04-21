@@ -76,7 +76,7 @@ from app.models.pulse_models import (
     PulseWorkRequest,
     PulseWorkerProfile,
 )
-from app.models.gamification_models import Review, Task, TaskEvent, UserStats, XpLedger
+from app.models.gamification_models import BadgeDefinition, Review, Task, TaskEvent, UserBadge, UserStats, XpLedger
 
 __all__ = [
     "AlertSeverity",
@@ -150,4 +150,6 @@ __all__ = [
     "TaskEvent",
     "Review",
     "XpLedger",
+    "BadgeDefinition",
+    "UserBadge",
 ]

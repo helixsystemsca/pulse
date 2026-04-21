@@ -14,19 +14,58 @@ export type GamifiedTask = {
   xp_awarded: number;
 };
 
-export type CompleteTaskResponse = { xp: number; totalXp: number; level: number };
+export type BadgeDto = {
+  id: string;
+  name: string;
+  description: string;
+  iconKey?: string;
+  category?: string;
+  unlockedAt?: string | null;
+};
+
+export type XpLedgerRowDto = {
+  id: string;
+  amount: number;
+  reasonCode: string;
+  reason?: string | null;
+  track: string;
+  createdAt: string;
+};
 
 export type UserAnalytics = {
   totalXp: number;
   level: number;
+  xpIntoLevel?: number;
+  xpToNextLevel?: number;
   tasksCompleted: number;
   onTimeRate: number;
   avgCompletionTime: number;
   reviewScore: number;
   initiativeScore: number;
+  streak?: number;
+  avatarBorder?: string | null;
+  unlockedAvatarBorders?: string[];
   xpWorker?: number;
   xpLead?: number;
   xpSupervisor?: number;
+};
+
+export type GamificationMe = {
+  analytics: UserAnalytics;
+  unlockedBadges: BadgeDto[];
+  badgeCatalog: BadgeDto[];
+  recentXp: XpLedgerRowDto[];
+};
+
+export type CompleteTaskResponse = {
+  xp: number;
+  totalXp: number;
+  level: number;
+  xpIntoLevel?: number;
+  xpToNextLevel?: number;
+  leveledUp?: boolean;
+  newBadges?: BadgeDto[];
+  reason?: string | null;
 };
 
 export async function listMyTasks(status?: "todo" | "in_progress" | "done"): Promise<GamifiedTask[]> {
@@ -42,6 +81,24 @@ export async function getUserAnalytics(userId: string): Promise<UserAnalytics> {
   return apiFetch<UserAnalytics>(`/api/v1/users/${encodeURIComponent(userId)}/analytics`);
 }
 
+export async function getGamificationMe(): Promise<GamificationMe> {
+  return apiFetch<GamificationMe>("/api/v1/gamification/me");
+}
+
+export async function patchAvatarBorder(avatarBorder: string | null): Promise<UserAnalytics> {
+  return apiFetch<UserAnalytics>("/api/v1/gamification/me/avatar-border", {
+    method: "PATCH",
+    json: { avatarBorder },
+  });
+}
+
+export async function managerAwardXp(targetUserId: string, amount: number, reason: string): Promise<{ ok: boolean; applied: number; totalXp: number; level: number }> {
+  return apiFetch("/api/v1/gamification/manager/award-xp", {
+    method: "POST",
+    json: { targetUserId, amount, reason },
+  });
+}
+
 export function previewXp(task: Pick<GamifiedTask, "source_type" | "difficulty" | "priority">): number {
   const base =
     (
@@ -55,4 +112,3 @@ export function previewXp(task: Pick<GamifiedTask, "source_type" | "difficulty" 
     )[task.source_type] ?? 5;
   return Math.max(0, Math.floor(base * Math.max(1, task.difficulty) * Math.max(1, task.priority)));
 }
-

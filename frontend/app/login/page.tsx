@@ -1,9 +1,19 @@
 "use client";
 
-import { AlertCircle, Eye, EyeOff, Loader2, Moon, Sun } from "lucide-react";
+import {
+  AlertCircle,
+  Eye,
+  EyeOff,
+  Globe,
+  HelpCircle,
+  Loader2,
+  Lock,
+  Mail,
+  Moon,
+  Sun,
+} from "lucide-react";
 import Link from "next/link";
 import { FormEvent, useEffect, useId, useState } from "react";
-import { AuthBrandLink } from "@/components/auth/AuthBrandLink";
 import { AuthScreenShell } from "@/components/auth/AuthScreenShell";
 import { isApiMode } from "@/lib/api";
 import {
@@ -19,8 +29,27 @@ import {
 } from "@/lib/pulse-session";
 import { helixMarketingHref, navigateAfterPulseLogin, pulseRoutes } from "@/lib/pulse-app";
 import { PULSE_BUILD_VERSION } from "@/lib/pulse-build-version";
-import { mailtoInfo } from "@/lib/helix-emails";
+import { mailtoInfo, mailtoSupport } from "@/lib/helix-emails";
 import { useTheme } from "@/components/theme/ThemeProvider";
+
+function LoginRipples() {
+  const rings = [520, 640, 760, 880, 1000, 1120];
+  return (
+    <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
+      {rings.map((size, i) => (
+        <div
+          key={size}
+          className="absolute left-1/2 top-[22%] -translate-x-1/2 -translate-y-1/2 rounded-full border border-[color-mix(in_srgb,var(--ds-text-primary)_8%,transparent)] dark:border-white/10"
+          style={{
+            width: size,
+            height: size,
+            opacity: 0.22 - i * 0.025,
+          }}
+        />
+      ))}
+    </div>
+  );
+}
 
 export default function LoginPage() {
   const { theme, toggleTheme } = useTheme();
@@ -114,140 +143,215 @@ export default function LoginPage() {
     }
   }
 
-  const inputBase =
-    "mt-1.5 w-full rounded-lg border bg-ds-primary px-3 py-2.5 text-sm text-ds-foreground shadow-sm outline-none transition-[border-color,box-shadow,background-color] duration-200 placeholder:text-ds-muted focus:border-[color-mix(in_srgb,var(--ds-success)_38%,var(--ds-border))] focus:ring-2 focus:ring-[var(--ds-focus-ring)] disabled:opacity-60";
+  const labelClass =
+    "mb-1.5 block text-[11px] font-bold uppercase tracking-[0.14em] text-[color-mix(in_srgb,var(--ds-text-primary)_72%,transparent)] dark:text-ds-muted";
+  const inputShell =
+    "relative flex w-full items-center gap-2 rounded-xl border border-[color-mix(in_srgb,#4c6085_12%,transparent)] bg-[color-mix(in_srgb,#cfe8ff_38%,#ffffff)] px-3 py-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.65)] dark:border-ds-border dark:bg-ds-primary/80 dark:shadow-none";
+  const inputInner =
+    "min-w-0 flex-1 border-0 bg-transparent p-0 text-sm font-medium text-[color-mix(in_srgb,var(--ds-text-primary)_92%,transparent)] outline-none ring-0 placeholder:text-[color-mix(in_srgb,var(--ds-text-primary)_45%,transparent)] dark:text-ds-foreground dark:placeholder:text-ds-muted";
 
   return (
-    <AuthScreenShell className="flex flex-1 flex-col">
-      <div className="flex min-h-0 flex-1 flex-col justify-center py-10 md:py-14">
-        <div className="relative mx-auto flex w-full max-w-[480px] flex-col px-4 sm:px-0">
-          <div className="auth-card-host ds-card-elevated w-full rounded-2xl border border-ds-border p-6 sm:p-8">
-            <div className="flex flex-col items-center text-center">
-              <AuthBrandLink />
-              <p className="mt-4 text-sm text-ds-muted">Sign in to your operational dashboard</p>
+    <AuthScreenShell className="login-web-canvas relative flex min-h-0 flex-1 flex-col">
+      <div className="auth-shell-inner relative flex min-h-0 flex-1 flex-col">
+        <LoginRipples />
+
+        <header className="relative z-10 flex w-full items-center justify-between gap-4 px-5 py-4 sm:px-8 lg:px-12">
+          <Link
+            href={pulseRoutes.pulseLanding}
+            className="flex items-center gap-2.5 no-underline transition-opacity hover:opacity-90"
+          >
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-[color-mix(in_srgb,#4c6085_18%,transparent)] bg-white shadow-sm dark:border-ds-border dark:bg-ds-secondary">
+              <img src="/images/pulse-mark.svg" width={36} height={36} alt="" className="h-9 w-9" />
+            </span>
+            <span className="font-headline text-lg font-extrabold tracking-tight text-[#3f5274] dark:text-ds-foreground sm:text-xl">
+              Pulse
+            </span>
+          </Link>
+          <nav className="flex items-center gap-1 sm:gap-2" aria-label="Login header">
+            <button
+              type="button"
+              onClick={toggleTheme}
+              title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+              aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+              className="ds-btn-auth-icon h-10 w-10 border border-transparent text-[#4c6085] hover:border-[color-mix(in_srgb,#4c6085_22%,transparent)] dark:text-ds-muted"
+            >
+              {theme === "dark" ? <Sun className="h-5 w-5" strokeWidth={2} aria-hidden /> : <Moon className="h-5 w-5" strokeWidth={2} aria-hidden />}
+            </button>
+            <span
+              className="flex h-10 w-10 items-center justify-center rounded-full text-[#4c6085] opacity-50 dark:text-ds-muted"
+              title="Language"
+              aria-hidden
+            >
+              <Globe className="h-5 w-5" strokeWidth={2} />
+            </span>
+            <a
+              href={helixMarketingHref("/pulse")}
+              className="flex h-10 w-10 items-center justify-center rounded-full text-[#4c6085] transition-colors hover:bg-[color-mix(in_srgb,#4c6085_10%,transparent)] dark:text-ds-muted dark:hover:bg-ds-interactive-hover"
+              aria-label="Help"
+            >
+              <HelpCircle className="h-5 w-5" strokeWidth={2} />
+            </a>
+            <a
+              href={mailtoSupport("Pulse — Support")}
+              className="inline-flex rounded-full bg-[#4c6085] px-3 py-2 text-[11px] font-bold uppercase tracking-wide text-white shadow-sm transition-colors hover:bg-[#3f5274] sm:px-4 sm:py-2.5 sm:text-xs dark:bg-[#556b8e] dark:hover:bg-[#4c6085]"
+            >
+              Support
+            </a>
+          </nav>
+        </header>
+
+        <main className="relative z-10 flex min-h-0 flex-1 flex-col justify-center px-4 pb-10 pt-2 sm:px-6 md:px-8">
+          <div className="mx-auto w-full max-w-[440px]">
+            <div className="flex justify-center">
+              <div
+                className="rounded-full p-[3px] shadow-[0_0_0_1px_rgba(207,227,245,0.9),0_12px_40px_rgba(76,96,133,0.18)] dark:shadow-[0_0_0_1px_rgba(255,255,255,0.08),0_16px_48px_rgba(0,0,0,0.35)]"
+                style={{
+                  background: "linear-gradient(145deg, rgba(54,241,205,0.35) 0%, #4c6085 42%, #354766 100%)",
+                }}
+              >
+                <div className="flex h-[88px] w-[88px] items-center justify-center rounded-full bg-white dark:bg-ds-surface-secondary">
+                  <img src="/images/pulse-mark.svg" width={64} height={64} alt="Pulse" className="h-16 w-16 rounded-xl" />
+                </div>
+              </div>
             </div>
 
-            <form className="mt-8 space-y-5" onSubmit={onSubmit} noValidate>
-              {formError ? (
-                <div
-                  className="ds-notification ds-notification-critical flex items-start justify-center gap-2 px-3 py-2 text-sm font-medium text-ds-foreground"
-                  role="alert"
-                >
-                  <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-ds-danger" aria-hidden />
-                  <span className="text-center">{formError}</span>
-                </div>
-              ) : null}
+            <h1 className="mt-7 text-center font-headline text-[1.65rem] font-extrabold leading-tight tracking-tight text-[#2f3d52] dark:text-ds-foreground sm:text-3xl">
+              Enhance your daily operations.
+            </h1>
+            <p className="mt-2 text-center text-sm font-medium text-[#5a6d82] dark:text-ds-muted">
+              Invite-only access for verified operators.
+            </p>
 
-              <div>
-                <label htmlFor={emailFieldId} className="block text-sm font-semibold text-ds-foreground">
-                  Email or Username
-                </label>
-                <input
-                  id={emailFieldId}
-                  name="identifier"
-                  type="text"
-                  autoComplete="username"
-                  placeholder="name@company.com"
-                  value={identifier}
-                  onChange={(e) => setIdentifier(e.target.value)}
-                  disabled={submitting}
-                  aria-invalid={Boolean(fieldErrors.identifier)}
-                  className={`${inputBase} ${
-                    fieldErrors.identifier ? "border-ds-danger ring-1 ring-ds-danger/35" : "border-ds-border"
-                  }`}
-                />
-                {fieldErrors.identifier ? (
-                  <p className="mt-1 text-xs font-medium text-ds-danger">{fieldErrors.identifier}</p>
-                ) : null}
-              </div>
+            <div className="mt-9 rounded-[1.35rem] bg-[linear-gradient(180deg,rgba(207,231,255,0.85)_0%,rgba(230,236,245,0.55)_100%)] p-[1px] shadow-[0_20px_50px_rgba(76,96,133,0.12)] dark:bg-ds-border dark:p-px dark:shadow-[0_16px_40px_rgba(0,0,0,0.25)]">
+              <div className="rounded-[1.3rem] border border-white/80 bg-white px-6 py-7 dark:border-ds-border dark:bg-ds-surface-primary sm:px-8 sm:py-8">
+                <form className="space-y-5" onSubmit={onSubmit} noValidate>
+                  {formError ? (
+                    <div
+                      className="ds-notification ds-notification-critical flex items-start justify-center gap-2 px-3 py-2 text-sm font-medium text-ds-foreground"
+                      role="alert"
+                    >
+                      <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-ds-danger" aria-hidden />
+                      <span className="text-center">{formError}</span>
+                    </div>
+                  ) : null}
 
-              <div>
-                <label htmlFor={passwordFieldId} className="block text-sm font-semibold text-ds-foreground">
-                  Password
-                </label>
-                <div className="relative mt-1.5">
-                  <input
-                    id={passwordFieldId}
-                    name="password"
-                    type={showPassword ? "text" : "password"}
-                    autoComplete="current-password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    disabled={submitting}
-                    aria-invalid={Boolean(fieldErrors.password)}
-                    className={`w-full rounded-lg border bg-ds-primary py-2.5 pl-3 pr-11 text-sm text-ds-foreground shadow-sm outline-none transition-[border-color,box-shadow] duration-200 focus:border-[color-mix(in_srgb,var(--ds-success)_38%,var(--ds-border))] focus:ring-2 focus:ring-[var(--ds-focus-ring)] disabled:opacity-60 ${
-                      fieldErrors.password ? "border-ds-danger ring-1 ring-ds-danger/35" : "border-ds-border"
-                    }`}
-                  />
+                  <div>
+                    <label htmlFor={emailFieldId} className={labelClass}>
+                      Work email
+                    </label>
+                    <div className={inputShell}>
+                      <input
+                        id={emailFieldId}
+                        name="identifier"
+                        type="text"
+                        autoComplete="username"
+                        placeholder="operator@company.com"
+                        value={identifier}
+                        onChange={(e) => setIdentifier(e.target.value)}
+                        disabled={submitting}
+                        aria-invalid={Boolean(fieldErrors.identifier)}
+                        className={`${inputInner} ${fieldErrors.identifier ? "text-ds-danger placeholder:text-ds-danger/70" : ""}`}
+                      />
+                      <Mail className="h-4 w-4 shrink-0 text-[#4c6085]/55 dark:text-ds-muted" aria-hidden />
+                    </div>
+                    {fieldErrors.identifier ? (
+                      <p className="mt-1 text-xs font-medium text-ds-danger">{fieldErrors.identifier}</p>
+                    ) : null}
+                  </div>
+
+                  <div>
+                    <label htmlFor={passwordFieldId} className={labelClass}>
+                      Password
+                    </label>
+                    <div className={inputShell}>
+                      <input
+                        id={passwordFieldId}
+                        name="password"
+                        type={showPassword ? "text" : "password"}
+                        autoComplete="current-password"
+                        placeholder="••••••••"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        disabled={submitting}
+                        aria-invalid={Boolean(fieldErrors.password)}
+                        className={`${inputInner} pr-1 ${fieldErrors.password ? "text-ds-danger" : ""}`}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword((s) => !s)}
+                        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-[#4c6085]/70 transition-colors hover:bg-[color-mix(in_srgb,#4c6085_12%,transparent)] hover:text-[#3f5274] dark:text-ds-muted dark:hover:bg-ds-interactive-hover dark:hover:text-ds-foreground"
+                        aria-label={showPassword ? "Hide password" : "Show password"}
+                        disabled={submitting}
+                      >
+                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                      <Lock className="h-4 w-4 shrink-0 text-[#4c6085]/55 dark:text-ds-muted" aria-hidden />
+                    </div>
+                    {fieldErrors.password ? (
+                      <p className="mt-1 text-xs font-medium text-ds-danger">{fieldErrors.password}</p>
+                    ) : null}
+                  </div>
+
                   <button
-                    type="button"
-                    onClick={() => setShowPassword((s) => !s)}
-                    className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-md text-ds-muted transition-colors duration-150 hover:bg-ds-interactive-hover hover:text-ds-foreground"
-                    aria-label={showPassword ? "Hide password" : "Show password"}
+                    type="submit"
                     disabled={submitting}
+                    className="flex w-full items-center justify-center gap-2 rounded-full bg-[#4c6085] py-3.5 text-xs font-extrabold uppercase tracking-[0.18em] text-white shadow-sm transition-colors hover:bg-[#3f5274] disabled:opacity-60 dark:bg-[#556b8e] dark:hover:bg-[#4c6085]"
                   >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    {submitting ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                        Authenticating…
+                      </>
+                    ) : (
+                      "Authenticate"
+                    )}
                   </button>
-                </div>
-                {fieldErrors.password ? (
-                  <p className="mt-1 text-xs font-medium text-ds-danger">{fieldErrors.password}</p>
-                ) : null}
+
+                  <div className="flex flex-wrap items-center justify-between gap-3 pt-1 text-[11px] font-semibold uppercase tracking-wide">
+                    <a
+                      href={mailtoInfo("Pulse — credentials help")}
+                      className="text-[color-mix(in_srgb,var(--ds-success)_78%,#1a4d44)] no-underline hover:underline dark:text-ds-success"
+                    >
+                      Forgot credentials?
+                    </a>
+                    <span className="tabular-nums text-[color-mix(in_srgb,var(--ds-text-primary)_45%,transparent)] dark:text-ds-muted">
+                      Terminal {PULSE_BUILD_VERSION}
+                    </span>
+                  </div>
+                </form>
               </div>
+            </div>
 
-              <div className="flex flex-wrap items-center justify-end gap-3">
-                <a href={mailtoInfo("Pulse — password help")} className="ds-link text-sm">
-                  Forgot password?
-                </a>
-              </div>
-
-              <button
-                type="submit"
-                disabled={submitting}
-                className="ds-btn-gradient-primary flex w-full items-center justify-center gap-2 py-3 text-sm"
-              >
-                {submitting ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-                    Signing in…
-                  </>
-                ) : (
-                  "Sign In"
-                )}
-              </button>
-
-              <div className="flex justify-center pt-1">
-                <button
-                  type="button"
-                  onClick={toggleTheme}
-                  title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-                  aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-                  className="ds-btn-auth-icon"
-                >
-                  {theme === "dark" ? (
-                    <Sun className="h-5 w-5" strokeWidth={2} aria-hidden />
-                  ) : (
-                    <Moon className="h-5 w-5" strokeWidth={2} aria-hidden />
-                  )}
-                </button>
-              </div>
-            </form>
-
-            <div className="mt-8 border-t border-ds-border pt-6">
-              <p className="text-center text-xs text-ds-muted">Need help?</p>
-              <p className="mt-1 text-center text-xs text-ds-muted">
-                <Link href={helixMarketingHref("/#contact")} className="ds-link">
-                  Contact support
-                </Link>
+            <div className="relative mt-10">
+              <div className="h-px w-full bg-[color-mix(in_srgb,#4c6085_14%,transparent)] dark:bg-ds-border" />
+              <p className="absolute left-1/2 top-1/2 w-max -translate-x-1/2 -translate-y-1/2 bg-[#fafbfd] px-3 text-[10px] font-bold uppercase tracking-[0.2em] text-[color-mix(in_srgb,var(--ds-text-primary)_38%,transparent)] dark:bg-[var(--ds-bg)] dark:text-ds-muted">
+                Secure link
               </p>
             </div>
           </div>
+        </main>
 
-          <p className="mt-8 text-center text-xs text-ds-muted">
-            © 2026 Helix Systems
-            <span className="mx-1.5 text-ds-muted/70">·</span>
-            <span className="tabular-nums">{PULSE_BUILD_VERSION}</span>
-          </p>
-        </div>
+        <footer className="relative z-10 mt-auto border-t border-[color-mix(in_srgb,#4c6085_10%,transparent)] bg-[color-mix(in_srgb,#ffffff_70%,transparent)] px-5 py-4 dark:border-ds-border dark:bg-ds-surface-primary/40 sm:px-8 lg:px-12">
+          <div className="mx-auto flex max-w-6xl flex-col gap-3 text-[10px] font-bold uppercase tracking-wide text-[color-mix(in_srgb,var(--ds-text-primary)_48%,transparent)] sm:flex-row sm:items-center sm:justify-between dark:text-ds-muted">
+            <Link href={pulseRoutes.pulseLanding} className="text-[#3f5274] no-underline hover:underline dark:text-ds-foreground">
+              Pulse
+            </Link>
+            <nav className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 sm:gap-x-6" aria-label="Footer">
+              <a href="#" className="no-underline hover:text-[#4c6085] dark:hover:text-ds-foreground">
+                Privacy policy
+              </a>
+              <a href="#" className="no-underline hover:text-[#4c6085] dark:hover:text-ds-foreground">
+                Terms of service
+              </a>
+              <Link href={pulseRoutes.overview} className="no-underline hover:text-[#4c6085] dark:hover:text-ds-foreground">
+                System status
+              </Link>
+            </nav>
+            <p className="text-center sm:text-right">
+              © {new Date().getFullYear()} Helix Systems · Pulse operations
+            </p>
+          </div>
+        </footer>
       </div>
     </AuthScreenShell>
   );

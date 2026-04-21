@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Literal, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 TaskStatus = Literal["todo", "in_progress", "done"]
@@ -30,23 +30,91 @@ class TaskOut(BaseModel):
     xp_awarded: int = 0
 
 
+class BadgeOut(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    id: str
+    name: str
+    description: str
+    icon_key: str = Field(alias="iconKey")
+    category: str
+    unlocked_at: datetime | None = Field(None, alias="unlockedAt")
+
+
 class CompleteTaskResult(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
     xp: int
     totalXp: int = Field(alias="totalXp")
     level: int
+    xp_into_level: int = Field(0, alias="xpIntoLevel")
+    xp_to_next_level: int = Field(0, alias="xpToNextLevel")
+    leveled_up: bool = Field(False, alias="leveledUp")
+    new_badges: list[BadgeOut] = Field(default_factory=list, alias="newBadges")
+    reason: str | None = None
 
 
 class UserAnalyticsOut(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
     totalXp: int
     level: int
+    xp_into_level: int = Field(0, alias="xpIntoLevel")
+    xp_to_next_level: int = Field(0, alias="xpToNextLevel")
     tasksCompleted: int
     onTimeRate: float
     avgCompletionTime: float
     reviewScore: float
     initiativeScore: float
+    streak: int = 0
+    avatar_border: str | None = Field(None, alias="avatarBorder")
+    unlocked_avatar_borders: list[str] = Field(default_factory=list, alias="unlockedAvatarBorders")
     xpWorker: int = Field(0, description="Cumulative worker-track XP")
     xpLead: int = Field(0, description="Cumulative lead-track XP")
     xpSupervisor: int = Field(0, description="Cumulative supervisor-track XP")
+
+
+class XpLedgerRowOut(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    id: str
+    amount: int
+    reason_code: str = Field(alias="reasonCode")
+    reason: str | None = None
+    track: str
+    created_at: datetime = Field(alias="createdAt")
+
+
+class GamificationMeOut(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    analytics: UserAnalyticsOut
+    unlocked_badges: list[BadgeOut] = Field(default_factory=list, alias="unlockedBadges")
+    badge_catalog: list[BadgeOut] = Field(default_factory=list, alias="badgeCatalog")
+    recent_xp: list[XpLedgerRowOut] = Field(default_factory=list, alias="recentXp")
+
+
+class ManagerAwardXpIn(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    target_user_id: str = Field(min_length=1, alias="targetUserId")
+    amount: int = Field(ge=1, le=500)
+    reason: str = Field(min_length=1, max_length=500)
+
+
+class ManagerAwardXpOut(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    ok: bool = True
+    applied: int = 0
+    total_xp: int = Field(0, alias="totalXp")
+    level: int = 1
+
+
+class AvatarBorderIn(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    avatar_border: str | None = Field(None, alias="avatarBorder", description="bronze|silver|gold|elite|null")
 
 
 class SupervisorOneOnOneIn(BaseModel):

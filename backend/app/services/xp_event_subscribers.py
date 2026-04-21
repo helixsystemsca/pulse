@@ -71,6 +71,7 @@ async def _on_work_request_assigned(ev: DomainEvent) -> None:
             reason_code="work_request_assigned",
             dedupe_key=f"wr_assign:{wr_id}",
             meta={"work_request_id": str(wr_id), "assignee": str(assignee)},
+            reason="Work request assigned",
         )
         created = _parse_ts(md.get("work_request_created_at"))
         assigned_at = _parse_ts(md.get("assigned_at")) or datetime.now(timezone.utc)
@@ -84,6 +85,7 @@ async def _on_work_request_assigned(ev: DomainEvent) -> None:
                 reason_code="assignment_responsive_24h",
                 dedupe_key=f"wr_assign_resp:{wr_id}",
                 meta={"work_request_id": str(wr_id)},
+                reason="Assignment within 24 hours",
             )
         await db.commit()
 
@@ -115,6 +117,7 @@ async def _on_schedule_shift_created(ev: DomainEvent) -> None:
             reason_code="schedule_shift_planned_ahead",
             dedupe_key=f"shift_plan:{shift_id}",
             meta={"shift_id": str(shift_id)},
+            reason="Shift scheduled 48h+ ahead",
         )
         await db.commit()
 
@@ -147,6 +150,7 @@ async def _on_supervisor_one_on_one(ev: DomainEvent) -> None:
             reason_code="supervisor_one_on_one",
             dedupe_key=f"121:{sup}:{emp}:{week}",
             meta={"employee_user_id": str(emp)},
+            reason="Supervisor 1-on-1 logged",
         )
         await db.commit()
 
@@ -179,6 +183,7 @@ async def _on_review_submitted(ev: DomainEvent) -> None:
             reason_code="employee_feedback_score",
             dedupe_key=f"review:{review_id}",
             meta={"rating": r},
+            reason=f"Strong employee feedback (rating {r})",
         )
         await db.commit()
 

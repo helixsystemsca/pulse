@@ -398,6 +398,22 @@ html.pulse-welcome-blur [data-pulse-app-shell] {
     background: radial-gradient(circle at 30% 30%, rgba(54, 241, 205, 0.12), transparent 58%);
   }
 
+  /**
+   * Web login (marketing-style): cool off-white canvas + dusk ripples; keeps aquamarine glow subtle.
+   */
+  html:not(.dark) .login-web-canvas.auth-background {
+    background-color: #fafbfd;
+    background-image: linear-gradient(180deg, #ffffff 0%, #f4f7fb 48%, #eef2f7 100%);
+  }
+
+  html:not(.dark) .login-web-canvas.auth-background::before {
+    background: radial-gradient(circle at 50% 22%, rgba(76, 96, 133, 0.11), transparent 42%);
+  }
+
+  html:not(.dark) .login-web-canvas.auth-background::after {
+    background: radial-gradient(ellipse 120% 90% at 50% 88%, rgba(54, 241, 205, 0.055), transparent 52%);
+  }
+
   .auth-shell-inner {
     position: relative;
     z-index: 1;

@@ -4,9 +4,10 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 from typing import Annotated
+from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import func, select
+from sqlalchemy import desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import require_tenant_user
@@ -14,19 +15,29 @@ from app.core.events.engine import event_engine
 from app.core.events.types import DomainEvent
 from app.core.database import get_db
 from app.core.user_roles import user_has_any_role
-from app.models.gamification_models import Task, TaskEvent, UserStats
+from app.models.gamification_models import BadgeDefinition, Task, TaskEvent, UserBadge, UserStats, XpLedger
 from app.models.domain import User, UserRole
 from app.schemas.gamification import (
+    AvatarBorderIn,
+    BadgeOut,
     CompleteTaskResult,
+    GamificationMeOut,
+    ManagerAwardXpIn,
+    ManagerAwardXpOut,
     SupervisorOneOnOneIn,
     SupervisorOneOnOneOut,
     TaskFullOut,
     TaskOut,
     UserAnalyticsOut,
+    XpLedgerRowOut,
 )
 from app.services.gamification_task_full import build_task_full_payload
+from app.config.xp_rules import MANAGER_BONUS_XP_MAX, MANAGER_BONUS_XP_MIN
+from app.services.badge_engine import evaluate_new_badges
+from app.services.streak_service import touch_streak_and_award_milestones
 from app.services.xp_grant import try_grant_xp
-from app.services.xp_role_policy import is_xp_excluded_admin, task_completion_role_multiplier
+from app.services.xp_level_curve import xp_progress, xp_to_next_level
+from app.services.xp_role_policy import assigner_operational_track, is_xp_excluded_admin, task_completion_role_multiplier
 from app.services.xp_worker_task import compute_worker_task_completion_xp
 
 router = APIRouter(tags=["gamification"])
@@ -128,11 +139,19 @@ async def complete_task(
     if task.assigned_to and str(task.assigned_to) != str(user.id):
         raise HTTPException(status_code=403, detail="Not assigned to you")
     if task.status == "done":
-        # Idempotent response: return current stats
         st = await db.get(UserStats, user.id)
         total = int(st.total_xp) if st else 0
-        lvl = int(st.level) if st else 1
-        return CompleteTaskResult(xp=int(task.xp_awarded or 0), totalXp=total, level=lvl)  # type: ignore[arg-type]
+        lvl, into, _seg = xp_progress(total)
+        return CompleteTaskResult(
+            xp=int(task.xp_awarded or 0),
+            totalXp=total,
+            level=lvl,
+            xp_into_level=into,
+            xp_to_next_level=xp_to_next_level(total),
+            leveled_up=False,
+            new_badges=[],
+            reason=None,
+        )
 
     completed_on_time = True
     if task.due_date is not None:
@@ -198,19 +217,35 @@ async def complete_task(
 
         stats.tasks_completed = int(new_completed)
 
-    granted = 0
-    if xp > 0:
-        granted = await try_grant_xp(
-            db,
-            company_id=cid,
-            user_id=str(user.id),
-            track="worker",
-            amount=int(xp),
-            reason_code="task_completed",
-            dedupe_key=f"task_completion:{task.id}",
-            meta={"task_id": str(task.id), "source_type": str(task.source_type)},
-        )
+    reason_human = f"Task completed ({str(task.source_type).replace('_', ' ')})"
+    if completed_on_time:
+        reason_human += " — on time"
+    grant_res = await try_grant_xp(
+        db,
+        company_id=cid,
+        user_id=str(user.id),
+        track="worker",
+        amount=int(xp),
+        reason_code="task_completed",
+        dedupe_key=f"task_completion:{task.id}",
+        meta={"task_id": str(task.id), "source_type": str(task.source_type), "task_title": task.title},
+        reason=reason_human,
+    )
+    granted = int(grant_res.applied)
     task.xp_awarded = int(granted)
+
+    badge_accum: list[dict] = list(grant_res.new_badges)
+    if not is_xp_excluded_admin(user) and xp <= 0:
+        await touch_streak_and_award_milestones(db, company_id=cid, user_id=str(user.id), activity_day=now.date())
+        badge_accum.extend(await evaluate_new_badges(db, company_id=cid, user_id=str(user.id)))
+    seen_b: set[str] = set()
+    dedup_badges: list[dict] = []
+    for b in badge_accum:
+        bid = str(b.get("id", ""))
+        if bid and bid not in seen_b:
+            seen_b.add(bid)
+            dedup_badges.append(b)
+
     db.add(
         TaskEvent(
             company_id=cid,
@@ -224,6 +259,8 @@ async def complete_task(
 
     await db.commit()
     await db.refresh(stats)
+    tot = int(stats.total_xp)
+    lv, into, _ = xp_progress(tot)
     await event_engine.publish(
         DomainEvent(
             event_type="gamification.task_completed",
@@ -233,13 +270,22 @@ async def complete_task(
             metadata={
                 "task_id": str(task.id),
                 "user_id": str(user.id),
-                "xp": int(xp),
-                "total_xp": int(stats.total_xp),
-                "level": int(stats.level),
+                "xp": int(granted),
+                "total_xp": tot,
+                "level": lv,
             },
         )
     )
-    return CompleteTaskResult(xp=int(xp), totalXp=int(stats.total_xp), level=int(stats.level))  # type: ignore[arg-type]
+    return CompleteTaskResult(
+        xp=int(granted),
+        totalXp=tot,
+        level=lv,
+        xp_into_level=into,
+        xp_to_next_level=xp_to_next_level(tot),
+        leveled_up=bool(grant_res.leveled_up) if xp > 0 else False,
+        new_badges=[BadgeOut.model_validate(b) for b in dedup_badges],
+        reason=grant_res.reason_label or None,
+    )
 
 
 @router.get("/users/{user_id}/analytics", response_model=UserAnalyticsOut)
@@ -259,11 +305,16 @@ async def user_analytics(
         return UserAnalyticsOut(
             totalXp=0,
             level=1,
+            xp_into_level=0,
+            xp_to_next_level=xp_to_next_level(0),
             tasksCompleted=0,
             onTimeRate=1.0,
             avgCompletionTime=0.0,
             reviewScore=0.0,
             initiativeScore=0.0,
+            streak=0,
+            avatar_border=None,
+            unlocked_avatar_borders=[],
             xpWorker=0,
             xpLead=0,
             xpSupervisor=0,
@@ -296,18 +347,151 @@ async def user_analytics(
     ).scalar_one()
     initiative_score = min(1.0, float(int(self_done_30d or 0)) / 20.0)
 
+    tot = int(stats.total_xp)
+    lv, into, _ = xp_progress(tot)
+    borders = [str(x) for x in (stats.unlocked_avatar_borders or []) if isinstance(x, str)]
     return UserAnalyticsOut(
-        totalXp=int(stats.total_xp),
-        level=int(stats.level),
+        totalXp=tot,
+        level=lv,
+        xp_into_level=into,
+        xp_to_next_level=xp_to_next_level(tot),
         tasksCompleted=int(stats.tasks_completed),
         onTimeRate=float(stats.on_time_rate),
         avgCompletionTime=float(stats.avg_completion_time),
         reviewScore=review_score,
         initiativeScore=initiative_score,
+        streak=int(stats.streak or 0),
+        avatar_border=stats.avatar_border,
+        unlocked_avatar_borders=borders,
         xpWorker=int(getattr(stats, "xp_worker", 0) or 0),
         xpLead=int(getattr(stats, "xp_lead", 0) or 0),
         xpSupervisor=int(getattr(stats, "xp_supervisor", 0) or 0),
     )
+
+
+@router.get("/gamification/me", response_model=GamificationMeOut)
+async def gamification_me(db: Db, user: User = Depends(require_tenant_user)) -> GamificationMeOut:
+    """Aggregated gamification payload for the signed-in user (profile + HUD)."""
+    cid = str(user.company_id)
+    uid = str(user.id)
+    analytics = await user_analytics(uid, db, user)
+
+    unlock_rows = (
+        (
+            await db.execute(
+                select(UserBadge, BadgeDefinition)
+                .join(BadgeDefinition, BadgeDefinition.id == UserBadge.badge_id)
+                .where(UserBadge.user_id == uid)
+            )
+        )
+        .all()
+    )
+    unlock_map = {str(d.id): ub.unlocked_at for ub, d in unlock_rows}
+
+    defs = list((await db.execute(select(BadgeDefinition).order_by(BadgeDefinition.category, BadgeDefinition.id))).scalars().all())
+    catalog: list[BadgeOut] = []
+    for d in defs:
+        uat = unlock_map.get(str(d.id))
+        catalog.append(
+            BadgeOut(
+                id=str(d.id),
+                name=d.name,
+                description=d.description,
+                icon_key=d.icon_key,
+                category=d.category,
+                unlocked_at=uat,
+            )
+        )
+    unlocked_badges = [b for b in catalog if b.unlocked_at is not None]
+
+    rows = (
+        (
+            await db.execute(
+                select(XpLedger)
+                .where(XpLedger.user_id == uid, XpLedger.company_id == cid)
+                .order_by(desc(XpLedger.created_at))
+                .limit(30)
+            )
+        )
+        .scalars()
+        .all()
+    )
+    recent = [
+        XpLedgerRowOut(
+            id=str(r.id),
+            amount=int(r.xp_delta),
+            reason_code=str(r.reason_code),
+            reason=r.reason,
+            track=str(r.track),
+            created_at=r.created_at,
+        )
+        for r in rows
+    ]
+
+    return GamificationMeOut(
+        analytics=analytics,
+        unlocked_badges=unlocked_badges,
+        badge_catalog=catalog,
+        recent_xp=recent,
+    )
+
+
+@router.patch("/gamification/me/avatar-border", response_model=UserAnalyticsOut)
+async def patch_avatar_border(
+    body: AvatarBorderIn,
+    db: Db,
+    user: User = Depends(require_tenant_user),
+) -> UserAnalyticsOut:
+    cid = str(user.company_id)
+    uid = str(user.id)
+    stats = await db.get(UserStats, uid)
+    if not stats or str(stats.company_id) != cid:
+        raise HTTPException(status_code=400, detail="No stats row yet")
+    borders = [str(x) for x in (stats.unlocked_avatar_borders or []) if isinstance(x, str)]
+    want = (body.avatar_border or "").strip().lower() or None
+    if want is not None and want not in borders:
+        raise HTTPException(status_code=400, detail="Border not unlocked")
+    stats.avatar_border = want
+    await db.commit()
+    return await user_analytics(uid, db, user)
+
+
+@router.post("/gamification/manager/award-xp", response_model=ManagerAwardXpOut)
+async def manager_award_xp(
+    body: ManagerAwardXpIn,
+    db: Db,
+    user: User = Depends(require_tenant_user),
+) -> ManagerAwardXpOut:
+    if not (
+        user_has_any_role(user, UserRole.manager, UserRole.company_admin)
+        or getattr(user, "is_system_admin", False)
+    ):
+        raise HTTPException(status_code=403, detail="Manager or company admin required")
+    amt = int(body.amount)
+    if amt < MANAGER_BONUS_XP_MIN or amt > MANAGER_BONUS_XP_MAX:
+        raise HTTPException(status_code=400, detail=f"Amount must be {MANAGER_BONUS_XP_MIN}-{MANAGER_BONUS_XP_MAX}")
+
+    cid = str(user.company_id)
+    target = await db.get(User, str(body.target_user_id).strip())
+    if not target or str(target.company_id) != cid:
+        raise HTTPException(status_code=400, detail="Unknown user for this organization")
+    if is_xp_excluded_admin(target):
+        raise HTTPException(status_code=400, detail="XP is not tracked for this user")
+
+    track = assigner_operational_track(target) or "worker"
+    res = await try_grant_xp(
+        db,
+        company_id=cid,
+        user_id=str(target.id),
+        track=track,  # type: ignore[arg-type]
+        amount=amt,
+        reason_code="manager_bonus",
+        dedupe_key=f"mgr_award:{uuid4()}",
+        meta={"awarded_by": str(user.id)},
+        reason=body.reason.strip()[:500],
+    )
+    await db.commit()
+    return ManagerAwardXpOut(applied=int(res.applied), total_xp=int(res.total_xp), level=int(res.level))
 
 
 @router.post("/supervisor/one-on-one", response_model=SupervisorOneOnOneOut)
