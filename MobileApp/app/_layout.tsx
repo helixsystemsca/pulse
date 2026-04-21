@@ -66,6 +66,15 @@ function RootLayoutNav() {
                 headerTintColor: "#FFFFFF",
               }}
             />
+            <Stack.Screen
+              name="blueprint"
+              options={{
+                headerShown: true,
+                title: "Drawing",
+                headerStyle: { backgroundColor: "#556B8E" },
+                headerTintColor: "#FFFFFF",
+              }}
+            />
           </Stack>
         </SessionProvider>
       </SafeAreaProvider>

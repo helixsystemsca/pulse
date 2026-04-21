@@ -7,14 +7,20 @@ export type ProximityEvent = {
   label: string;
 };
 
+function mockBleEnabled(): boolean {
+  // Default OFF so the app doesn't spam proximity prompts/notifications.
+  return String(process.env.EXPO_PUBLIC_MOCK_BLE ?? "").trim() === "true";
+}
+
 /**
  * BLE proximity scaffold (simulated).
- * Replace this with real BLE scanning later; keep UX behavior stable.
+ * Set `EXPO_PUBLIC_MOCK_BLE=true` to enable local fake proximity prompts.
  */
 export function useBLE() {
   const [event, setEvent] = useState<ProximityEvent | null>(null);
 
   useEffect(() => {
+    if (!mockBleEnabled()) return;
     const labels: ProximityEvent[] = [
       { kind: "equipment", label: "Pump Skid 7" },
       { kind: "vehicle", label: "Forklift #2" },

@@ -1,121 +1,124 @@
-import React, { useMemo, useState } from "react";
-import { Pressable, ScrollView, Text, View } from "react-native";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { useTheme } from "@/theme/ThemeProvider";
 import { Screen } from "@/components/Screen";
-
-type Zone = { id: string; name: string; x: number; y: number; w: number; h: number };
+import type { Href } from "expo-router";
+import { useRouter } from "expo-router";
+import { useSession } from "@/store/session";
+import { listBlueprints, type BlueprintSummary } from "@/lib/api/blueprints";
 
 export default function DrawingsScreen() {
+  const router = useRouter();
+  const { session } = useSession();
+  const token = session?.token ?? "";
   const { colors, radii, spacing, text } = useTheme();
-  const [scale, setScale] = useState(1);
-  const [selectedZoneId, setSelectedZoneId] = useState<string | null>("z2");
 
-  const zones = useMemo<Zone[]>(
-    () => [
-      { id: "z1", name: "Garage", x: 20, y: 20, w: 220, h: 120 },
-      { id: "z2", name: "Boiler Room", x: 260, y: 40, w: 220, h: 180 },
-      { id: "z3", name: "Equipment Storage", x: 40, y: 170, w: 200, h: 140 },
-    ],
-    [],
-  );
+  const [q, setQ] = useState("");
+  const [rows, setRows] = useState<BlueprintSummary[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    if (!token) return;
+    setBusy(true);
+    setErr(null);
+    try {
+      const bps = await listBlueprints(token);
+      setRows(bps);
+    } catch (e) {
+      setRows([]);
+      setErr(e instanceof Error ? e.message : "Failed to load drawings");
+    } finally {
+      setBusy(false);
+    }
+  }, [token]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const filtered = useMemo(() => {
+    const s = q.trim().toLowerCase();
+    if (!s) return rows;
+    return rows.filter((r) => String(r.name || "").toLowerCase().includes(s));
+  }, [q, rows]);
 
   return (
     <Screen>
       <View style={{ padding: spacing.lg, paddingBottom: spacing.sm }}>
         <Text style={{ color: colors.text, ...text.h1 }}>Drawings</Text>
         <Text style={{ color: colors.muted, marginTop: 6, ...text.body }}>
-          Read-only floor plans. Pan and zoom, and highlight zones.
+          Choose a saved drawing, then open a mobile-friendly view.
         </Text>
 
-        <View style={{ flexDirection: "row", marginTop: spacing.md }}>
-          <Pressable
-            onPress={() => setScale((s) => Math.max(0.6, Number((s - 0.1).toFixed(2))))}
+        <View style={{ marginTop: spacing.md }}>
+          <TextInput
+            value={q}
+            onChangeText={setQ}
+            placeholder="Search drawings…"
+            placeholderTextColor={colors.muted}
             style={{
-              flex: 1,
-              paddingVertical: 12,
-              borderRadius: radii.md,
-              backgroundColor: colors.surface,
+              padding: spacing.md,
+              borderRadius: radii.lg,
               borderWidth: 1,
               borderColor: colors.border,
-              alignItems: "center",
-              marginRight: 10,
+              backgroundColor: colors.surface,
+              color: colors.text,
             }}
-          >
-            <Text style={{ color: colors.text, fontWeight: "900" }}>−</Text>
-          </Pressable>
-          <Pressable
-            onPress={() => setScale((s) => Math.min(2.4, Number((s + 0.1).toFixed(2))))}
-            style={{
-              flex: 1,
-              paddingVertical: 12,
-              borderRadius: radii.md,
-              backgroundColor: colors.success,
-              alignItems: "center",
-            }}
-          >
-            <Text style={{ color: "#0A0A0A", fontWeight: "900" }}>+</Text>
-          </Pressable>
+          />
         </View>
       </View>
 
-      <ScrollView
-        horizontal
-        style={{ flex: 1 }}
-        contentContainerStyle={{ padding: spacing.lg, paddingBottom: 110 }}
-        showsHorizontalScrollIndicator={false}
-      >
-        <ScrollView
-          style={{ flex: 1 }}
-          contentContainerStyle={{ paddingRight: spacing.lg }}
-          showsVerticalScrollIndicator={false}
-        >
+      <ScrollView contentContainerStyle={{ padding: spacing.lg, paddingTop: 0, paddingBottom: 110 }}>
+        {busy ? (
+          <View style={{ paddingVertical: 20 }}>
+            <ActivityIndicator color={colors.success} />
+          </View>
+        ) : null}
+        {err ? (
           <View
             style={{
-              width: 560,
-              height: 420,
-              backgroundColor: colors.surface,
-              borderColor: colors.border,
+              backgroundColor: "rgba(235,81,96,0.14)",
+              borderColor: "rgba(235,81,96,0.35)",
               borderWidth: 1,
-              borderRadius: radii.lg,
-              overflow: "hidden",
+              borderRadius: radii.md,
+              padding: 12,
+              marginBottom: spacing.md,
             }}
           >
-            <View style={{ transform: [{ scale }], alignSelf: "flex-start" }}>
-              <View style={{ width: 560, height: 420, backgroundColor: colors.surface }}>
-                {zones.map((z) => {
-                  const selected = z.id === selectedZoneId;
-                  return (
-                    <Pressable
-                      key={z.id}
-                      onPress={() => setSelectedZoneId(z.id)}
-                      style={{
-                        position: "absolute",
-                        left: z.x,
-                        top: z.y,
-                        width: z.w,
-                        height: z.h,
-                        borderRadius: 14,
-                        borderWidth: 2,
-                        borderColor: selected ? colors.success : "rgba(255,255,255,0.18)",
-                        backgroundColor: selected ? "rgba(54,241,205,0.08)" : "rgba(255,255,255,0.04)",
-                      }}
-                    >
-                      <Text style={{ color: colors.text, fontWeight: "900", fontSize: 12, margin: 10 }}>
-                        {z.name}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
-            </View>
+            <Text style={{ color: colors.text, fontWeight: "800" }}>Drawings</Text>
+            <Text style={{ marginTop: 4, color: colors.muted }}>{err}</Text>
+            <Pressable onPress={() => void load()} style={{ marginTop: 10 }}>
+              <Text style={{ color: colors.success, fontWeight: "900" }}>Retry</Text>
+            </Pressable>
           </View>
+        ) : null}
 
-          <View style={{ marginTop: spacing.md }}>
-            <Text style={{ color: colors.muted, fontSize: 12 }}>
-              Tip: Pan with one finger (scroll). Zoom with +/− (pinch can be added later).
-            </Text>
-          </View>
-        </ScrollView>
+        <View style={{ gap: spacing.sm }}>
+          {filtered.map((bp) => (
+            <Pressable
+              key={bp.id}
+              onPress={() => router.push(`/blueprint?id=${encodeURIComponent(bp.id)}` as Href)}
+              style={{
+                backgroundColor: colors.card,
+                borderColor: colors.border,
+                borderWidth: 1,
+                borderRadius: radii.lg,
+                padding: spacing.lg,
+              }}
+            >
+              <Text style={{ color: colors.text, fontWeight: "900" }} numberOfLines={2}>
+                {bp.name}
+              </Text>
+              <Text style={{ color: colors.muted, marginTop: 6, fontSize: 12, fontWeight: "700" }}>
+                Saved {new Date(bp.created_at).toLocaleDateString()}
+              </Text>
+            </Pressable>
+          ))}
+          {!busy && !filtered.length ? (
+            <Text style={{ color: colors.muted, marginTop: 8 }}>No drawings found.</Text>
+          ) : null}
+        </View>
       </ScrollView>
     </Screen>
   );

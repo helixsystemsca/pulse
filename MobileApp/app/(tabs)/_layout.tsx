@@ -53,6 +53,8 @@ export default function TabLayout() {
               tabBarIcon: ({ color }) => <TabBarIcon name="home" color={color} />,
             }}
           />
+          {/* Internal route used by BLEPromptHost. Hide from tab bar. */}
+          <Tabs.Screen name="_ble" options={{ href: null }} />
           <Tabs.Screen
             name="toolbox"
             options={{
