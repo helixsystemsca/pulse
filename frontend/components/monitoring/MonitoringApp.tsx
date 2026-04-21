@@ -40,8 +40,25 @@ const ROSTER_SHIFT_LABEL: Record<WorkforceShiftBucket, string> = {
   night: "Nights",
 };
 
-function rosterNameSort(a: PeopleMonitorRow, b: PeopleMonitorRow): number {
+/** Highest XP first; ties broken by name so top-three medals are stable. */
+function rosterXpSortDesc(a: PeopleMonitorRow, b: PeopleMonitorRow): number {
+  const xpA = a.xp?.total_xp ?? 0;
+  const xpB = b.xp?.total_xp ?? 0;
+  if (xpB !== xpA) return xpB - xpA;
   return a.full_name.localeCompare(b.full_name, undefined, { sensitivity: "base" });
+}
+
+function rosterCardBorderClass(rankIndex: number): string {
+  if (rankIndex === 0) {
+    return "border-2 border-amber-500/95 shadow-[0_0_0_1px_rgba(245,158,11,0.22),var(--ds-shadow-card)] dark:border-amber-400/90 dark:shadow-[0_0_0_1px_rgba(251,191,36,0.2),var(--ds-shadow-card)]";
+  }
+  if (rankIndex === 1) {
+    return "border-2 border-slate-300 shadow-[var(--ds-shadow-card)] dark:border-slate-400";
+  }
+  if (rankIndex === 2) {
+    return "border-2 border-amber-900/55 shadow-[var(--ds-shadow-card)] dark:border-amber-700/85";
+  }
+  return "border border-ds-border shadow-[var(--ds-shadow-card)]";
 }
 
 function groupPeopleByWorkforceShift(rows: PeopleMonitorRow[]): Record<WorkforceShiftBucket, PeopleMonitorRow[]> {
@@ -57,7 +74,7 @@ function groupPeopleByWorkforceShift(rows: PeopleMonitorRow[]): Record<Workforce
     grouped[k].push(row);
   }
   for (const key of ROSTER_SHIFT_ORDER) {
-    grouped[key].sort(rosterNameSort);
+    grouped[key].sort(rosterXpSortDesc);
   }
   return grouped;
 }
@@ -79,12 +96,12 @@ function WorkforceRosterByShift({ rows }: { rows: PeopleMonitorRow[] }) {
             {byShift[shift].length === 0 ? (
               <p className="text-xs text-ds-muted">No one on this shift.</p>
             ) : null}
-            {byShift[shift].map((row) => {
+            {byShift[shift].map((row, rankIndex) => {
               const openCount = row.recent_tasks?.length ?? 0;
               return (
                 <div
                   key={row.user_id}
-                  className="rounded-xl border border-ds-border bg-ds-secondary/20 p-3 shadow-[var(--ds-shadow-card)]"
+                  className={`rounded-xl bg-ds-secondary/20 p-3 ${rosterCardBorderClass(rankIndex)}`}
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
