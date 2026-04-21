@@ -7,7 +7,8 @@ from alembic import op
 from sqlalchemy import text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 
-revision = "0065_gamification_badges_level_curve"
+# Must fit alembic_version.version_num (varchar(32)); keep ≤ 32 chars.
+revision = "0065_gam_badges_xp"
 down_revision = "0064_xp_ledger_role_tracks"
 branch_labels = None
 depends_on = None
