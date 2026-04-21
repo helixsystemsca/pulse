@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Workers & Roles: role permissions, roster by role, profile drawer, create user, settings.
+ * Team Management (formerly Workers & Roles): role permissions, roster, profile drawer, create user, settings.
  */
 import {
   AlertCircle,
@@ -262,13 +262,8 @@ export function WorkersApp() {
   const sessionCompanyId = session?.company_id ?? null;
   const createRoleLimited = isCreateRoleLimitedSession(session);
   const isCompanyAdmin = sessionHasAnyRole(session, "company_admin");
-  const canOpenWorkers =
-    isSystemAdmin ||
-    (session?.workers_roster_access === false
-      ? false
-      : session?.workers_roster_access === true
-        ? true
-        : managerOrAbove(session ?? undefined));
+  // Team Management is administrative control only (no gamification UI).
+  const canOpenWorkers = isSystemAdmin || isCompanyAdmin;
 
   const [contractFeatureNamesFromApi, setContractFeatureNamesFromApi] = useState<string[]>([]);
   const contractCatalog = useMemo(
@@ -915,7 +910,7 @@ export function WorkersApp() {
   if (!canOpenWorkers) {
     return (
       <p className="text-sm text-pulse-muted">
-        You do not have access to Workers & Roles. Company administrators can open this page and, when needed, delegate
+        You do not have access to Team Management. Company administrators can open this page and, when needed, delegate
         access to managers, supervisors, or leads.
       </p>
     );
@@ -924,7 +919,7 @@ export function WorkersApp() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Workers & Roles"
+        title="Team Management"
         description="Manage personnel, roles, permissions, and operational readiness."
         icon={Shield}
         actions={

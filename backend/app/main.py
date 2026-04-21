@@ -49,6 +49,8 @@ from app.api.maintenance_hub_routes import router as maintenance_hub_router
 from app.api.pm_task_routes import internal_router as pm_internal_router
 from app.api.pm_task_routes import router as pm_task_router
 from app.api.gamification_routes import router as gamification_router
+from app.api.team_insights_routes import router as team_insights_router
+from app.api.worker_profile_routes import router as worker_profile_router
 from app.api.work_requests_routes import router as work_requests_router
 from app.api.workers_routes import router as workers_router
 from app.api.inventory_portal_routes import router as inventory_portal_router
@@ -152,6 +154,8 @@ app.include_router(maintenance_hub_router, prefix="/api/v1")
 app.include_router(pm_task_router, prefix="/api/v1")
 app.include_router(pm_internal_router, prefix="/api/v1")
 app.include_router(gamification_router, prefix="/api/v1")
+app.include_router(team_insights_router, prefix="/api/v1")
+app.include_router(worker_profile_router, prefix="/api/v1")
 app.include_router(projects_router, prefix="/api/v1")
 app.include_router(projects_tasks_router, prefix="/api/v1")
 app.include_router(proximity_router, prefix="/api/v1")

@@ -17,6 +17,9 @@ export function permissionRequiredForTenantNavHref(href: string): string | null 
   if (href === "/dashboard/procedures" || href.startsWith("/dashboard/procedures")) {
     return "module.maintenance.read";
   }
+  if (href === "/dashboard/team-insights" || href.startsWith("/dashboard/team-insights")) {
+    return "module.jobs.read";
+  }
   if (href === "/dashboard/workers" || href.startsWith("/dashboard/workers")) return "module.jobs.read";
   if (href === "/dashboard/inventory") return "module.inventory.read";
   if (href === "/equipment" || href.includes("tool-tracking")) return "module.tool_tracking.read";

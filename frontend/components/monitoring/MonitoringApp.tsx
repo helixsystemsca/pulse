@@ -1,18 +1,14 @@
 "use client";
 
-import { Activity, Server, Users } from "lucide-react";
+import { Activity, ExternalLink, Server } from "lucide-react";
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { Card } from "@/components/pulse/Card";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { isApiMode, refreshPulseUserFromServer } from "@/lib/api";
 import { emitOnboardingMaybeUpdated } from "@/lib/onboarding-events";
 import { fetchSetupProgress, patchOnboarding } from "@/lib/onboardingService";
-import { readSession } from "@/lib/pulse-session";
-import {
-  fetchPeopleMonitoring,
-  type PeopleMonitorRow,
-  type WorkforceShiftBucket,
-} from "@/lib/monitoringPeopleService";
+import { pulseAppHref } from "@/lib/pulse-app";
 import {
   co2StatusLabel,
   co2Tanks,
@@ -20,7 +16,6 @@ import {
   poolControllers,
   type Co2TankStatus,
 } from "@/lib/monitoringMockData";
-import { WowXpBar } from "@/components/gamification/WowXpBar";
 
 function EmptyMonitoringPanel({ message }: { message: string }) {
   return (
@@ -32,111 +27,6 @@ function EmptyMonitoringPanel({ message }: { message: string }) {
 
 const LABEL = "text-[11px] font-semibold uppercase tracking-wider text-ds-muted";
 
-const ROSTER_SHIFT_ORDER: readonly WorkforceShiftBucket[] = ["day", "afternoon", "night"];
-
-const ROSTER_SHIFT_LABEL: Record<WorkforceShiftBucket, string> = {
-  day: "Days",
-  afternoon: "Afternoons",
-  night: "Nights",
-};
-
-/** Highest XP first; ties broken by name so top-three medals are stable. */
-function rosterXpSortDesc(a: PeopleMonitorRow, b: PeopleMonitorRow): number {
-  const xpA = a.xp?.total_xp ?? 0;
-  const xpB = b.xp?.total_xp ?? 0;
-  if (xpB !== xpA) return xpB - xpA;
-  return a.full_name.localeCompare(b.full_name, undefined, { sensitivity: "base" });
-}
-
-function rosterCardBorderClass(rankIndex: number): string {
-  if (rankIndex === 0) {
-    return "border-2 border-amber-500/95 shadow-[0_0_0_1px_rgba(245,158,11,0.22),var(--ds-shadow-card)] dark:border-amber-400/90 dark:shadow-[0_0_0_1px_rgba(251,191,36,0.2),var(--ds-shadow-card)]";
-  }
-  if (rankIndex === 1) {
-    return "border-2 border-slate-300 shadow-[var(--ds-shadow-card)] dark:border-slate-400";
-  }
-  if (rankIndex === 2) {
-    return "border-2 border-amber-900/55 shadow-[var(--ds-shadow-card)] dark:border-amber-700/85";
-  }
-  return "border border-ds-border shadow-[var(--ds-shadow-card)]";
-}
-
-function groupPeopleByWorkforceShift(rows: PeopleMonitorRow[]): Record<WorkforceShiftBucket, PeopleMonitorRow[]> {
-  const grouped: Record<WorkforceShiftBucket, PeopleMonitorRow[]> = {
-    day: [],
-    afternoon: [],
-    night: [],
-  };
-  for (const row of rows) {
-    const raw = row.workforce_shift ?? "day";
-    const k: WorkforceShiftBucket =
-      raw === "afternoon" || raw === "night" || raw === "day" ? raw : "day";
-    grouped[k].push(row);
-  }
-  for (const key of ROSTER_SHIFT_ORDER) {
-    grouped[key].sort(rosterXpSortDesc);
-  }
-  return grouped;
-}
-
-function WorkforceRosterByShift({ rows }: { rows: PeopleMonitorRow[] }) {
-  const byShift = groupPeopleByWorkforceShift(rows);
-
-  return (
-    <div className="grid gap-8 lg:grid-cols-3">
-      {ROSTER_SHIFT_ORDER.map((shift) => (
-        <div key={shift} className="flex min-h-0 flex-col gap-3">
-          <div className="border-b border-ds-border pb-2">
-            <h3 className="font-headline text-xs font-bold uppercase tracking-[0.14em] text-ds-muted">
-              {ROSTER_SHIFT_LABEL[shift]}
-              <span className="ml-2 tabular-nums font-semibold text-ds-foreground/80">({byShift[shift].length})</span>
-            </h3>
-          </div>
-          <div className="flex flex-col gap-3">
-            {byShift[shift].length === 0 ? (
-              <p className="text-xs text-ds-muted">No one on this shift.</p>
-            ) : null}
-            {byShift[shift].map((row, rankIndex) => {
-              const openCount = row.recent_tasks?.length ?? 0;
-              return (
-                <div
-                  key={row.user_id}
-                  className={`rounded-xl bg-ds-secondary/20 p-3 ${rosterCardBorderClass(rankIndex)}`}
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold text-ds-foreground">{row.full_name}</p>
-                      <p className="mt-0.5 truncate text-xs text-ds-muted">{row.role}</p>
-                    </div>
-                    <span className="shrink-0 rounded-lg border border-ds-border bg-ds-primary px-2 py-1 text-[11px] font-semibold text-ds-muted">
-                      {openCount} task{openCount === 1 ? "" : "s"}
-                    </span>
-                  </div>
-
-                  <div className="mt-3">
-                    <WowXpBar totalXp={row.xp.total_xp} level={row.xp.level} size="sm" />
-                  </div>
-
-                  {openCount ? (
-                    <div className="mt-3 space-y-1">
-                      {row.recent_tasks.slice(0, 2).map((t) => (
-                        <p key={t.id} className="truncate text-xs font-medium text-ds-foreground/90">
-                          • {t.title}
-                        </p>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="mt-3 text-xs text-ds-muted">No open tasks.</p>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
 
 function co2BarColor(status: Co2TankStatus): string {
   if (status === "change_now") return "bg-ds-danger";
@@ -150,23 +40,15 @@ function co2BadgeClass(status: Co2TankStatus): string {
   return "app-badge-emerald";
 }
 
-function peopleStatusBadge(status: "active" | "idle" | "offline"): string {
-  if (status === "active") return "app-badge-emerald";
-  if (status === "idle") return "app-badge-amber";
-  return "app-badge-slate";
-}
-
 function feederDot(active: boolean): string {
   return active ? "bg-ds-success" : "bg-ds-muted";
 }
 
-type MainTab = "systems" | "people";
+type MainTab = "systems";
 
 export function MonitoringApp() {
   const [tab, setTab] = useState<MainTab>("systems");
   const [demoSensors, setDemoSensors] = useState(false);
-  const [peopleRows, setPeopleRows] = useState<PeopleMonitorRow[] | null>(null);
-  const [peopleErr, setPeopleErr] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isApiMode()) return;
@@ -187,30 +69,6 @@ export function MonitoringApp() {
 
   useEffect(() => {
     if (!isApiMode()) return;
-    let cancelled = false;
-    void (async () => {
-      try {
-        const rows = await fetchPeopleMonitoring();
-        if (!cancelled) {
-          setPeopleRows(rows);
-          setPeopleErr(null);
-        }
-      } catch (e) {
-        if (!cancelled) {
-          setPeopleRows([]);
-          setPeopleErr(e instanceof Error ? e.message : "Failed to load people");
-        }
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!isApiMode()) return;
-    const s = readSession();
-    if (!s?.access_token) return;
     let cancelled = false;
     void (async () => {
       try {
@@ -245,7 +103,7 @@ export function MonitoringApp() {
     <div className="space-y-6">
       <PageHeader
         title="Monitoring"
-        description="Real-time visibility into people and systems"
+        description="Real-time visibility into systems"
         icon={Activity}
       />
 
@@ -260,7 +118,6 @@ export function MonitoringApp() {
         aria-label="Monitoring sections"
       >
         {tabBtn("systems", "Systems", Server)}
-        {tabBtn("people", "People", Users)}
       </nav>
 
       {tab === "systems" ? (
@@ -359,32 +216,29 @@ export function MonitoringApp() {
         ) : (
           <EmptyMonitoringPanel message="No system telemetry here yet. When your organization turns on sample monitoring during onboarding, preview tiles appear in this tab. Otherwise this stays empty until your own sensors and controllers are connected." />
         )
-      ) : (
-        <section aria-labelledby="people-heading">
-          <h2 id="people-heading" className="sr-only">
-            People monitoring
-          </h2>
-          <Card padding="md">
-            <p className="mb-4 text-sm text-ds-muted">
-              Roster by default shift from Workers and Roles (HR), with XP and open tasks. Unset shifts appear under Days.
-            </p>
+      ) : null}
 
-            {peopleErr ? (
-              <div className="mb-4 rounded-md border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900 dark:border-rose-900/50 dark:bg-rose-950/40 dark:text-rose-100">
-                {peopleErr}
-              </div>
-            ) : null}
-
-            {!peopleRows ? (
-              <p className="text-sm text-ds-muted">Loading…</p>
-            ) : peopleRows.length === 0 ? (
-              <p className="text-sm text-ds-muted">No participating employees yet. Ask users to enable workforce participation in Profile.</p>
-            ) : (
-              <WorkforceRosterByShift rows={peopleRows} />
-            )}
-          </Card>
-        </section>
-      )}
+      <section aria-labelledby="team-insights-callout">
+        <Card padding="md">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 id="team-insights-callout" className="font-headline text-base font-bold text-ds-foreground">
+                Team Insights
+              </h2>
+              <p className="mt-1 text-sm text-ds-muted">
+                People + XP + streaks live in <span className="font-medium text-ds-foreground">Team Insights</span>.
+              </p>
+            </div>
+            <Link
+              href={pulseAppHref("/dashboard/team-insights")}
+              className="inline-flex items-center gap-2 rounded-[10px] bg-[#4C6085] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#405574]"
+            >
+              <ExternalLink className="h-4 w-4" aria-hidden />
+              Open Team Insights
+            </Link>
+          </div>
+        </Card>
+      </section>
     </div>
   );
 }
