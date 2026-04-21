@@ -268,38 +268,43 @@ export function MonitoringApp() {
             ) : peopleRows.length === 0 ? (
               <p className="text-sm text-ds-muted">No participating employees yet. Ask users to enable workforce participation in Profile.</p>
             ) : (
-              <ul className="divide-y divide-ds-border">
-                {peopleRows.map((row) => (
-                  <li key={row.user_id} className="py-3 first:pt-0 last:pb-0">
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="font-medium text-ds-foreground">{row.full_name}</p>
-                        <p className="text-sm text-ds-muted">{row.role}</p>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+                {peopleRows.map((row) => {
+                  const openCount = row.recent_tasks?.length ?? 0;
+                  return (
+                    <div
+                      key={row.user_id}
+                      className="rounded-xl border border-ds-border bg-ds-secondary/20 p-3 shadow-[var(--ds-shadow-card)]"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold text-ds-foreground">{row.full_name}</p>
+                          <p className="mt-0.5 truncate text-xs text-ds-muted">{row.role}</p>
+                        </div>
+                        <span className="shrink-0 rounded-lg border border-ds-border bg-ds-primary px-2 py-1 text-[11px] font-semibold text-ds-muted">
+                          {openCount} task{openCount === 1 ? "" : "s"}
+                        </span>
                       </div>
-                      <div className="w-full max-w-md">
-                        <WowXpBar totalXp={row.xp.total_xp} level={row.xp.level} />
-                      </div>
-                    </div>
-                    {row.recent_tasks?.length ? (
+
                       <div className="mt-3">
-                        <p className="text-[11px] font-semibold uppercase tracking-wider text-ds-muted">Recent tasks</p>
-                        <ul className="mt-2 space-y-2">
-                          {row.recent_tasks.slice(0, 3).map((t) => (
-                            <li key={t.id} className="rounded-lg border border-ds-border bg-ds-secondary/40 px-3 py-2">
-                              <p className="truncate text-sm font-semibold text-ds-foreground">{t.title}</p>
-                              <p className="mt-0.5 text-xs text-ds-muted">
-                                {t.status} · Priority {t.priority}
-                              </p>
-                            </li>
-                          ))}
-                        </ul>
+                        <WowXpBar totalXp={row.xp.total_xp} level={row.xp.level} size="sm" />
                       </div>
-                    ) : (
-                      <p className="mt-3 text-sm text-ds-muted">No open tasks assigned.</p>
-                    )}
-                  </li>
-                ))}
-              </ul>
+
+                      {openCount ? (
+                        <div className="mt-3 space-y-1">
+                          {row.recent_tasks.slice(0, 2).map((t) => (
+                            <p key={t.id} className="truncate text-xs font-medium text-ds-foreground/90">
+                              • {t.title}
+                            </p>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="mt-3 text-xs text-ds-muted">No open tasks.</p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             )}
           </Card>
         </section>
