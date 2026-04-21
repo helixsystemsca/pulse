@@ -70,6 +70,9 @@ class ProcedureOut(BaseModel):
     reviewed_by_user_id: Optional[str] = None
     reviewed_by_name: Optional[str] = None
     reviewed_at: Optional[datetime] = None
+    revised_by_user_id: Optional[str] = None
+    revised_by_name: Optional[str] = None
+    revised_at: Optional[datetime] = None
     created_at: datetime
     updated_at: datetime
 
@@ -85,7 +88,7 @@ class ProcedureOut(BaseModel):
     def _coerce_uuids(cls, data: Any) -> Any:
         if not isinstance(data, dict):
             return data
-        for k in ("created_by_user_id", "reviewed_by_user_id"):
+        for k in ("created_by_user_id", "reviewed_by_user_id", "revised_by_user_id"):
             uid = data.get(k)
             if uid is not None and not isinstance(uid, str):
                 data[k] = str(uid)
@@ -130,10 +133,58 @@ class ProcedureUpdate(BaseModel):
     reviewed_by_user_id: Optional[str] = None
     reviewed_by_name: Optional[str] = Field(None, max_length=255)
     reviewed_at: Optional[datetime] = None
+    revised_by_user_id: Optional[str] = None
+    revised_by_name: Optional[str] = Field(None, max_length=255)
+    revised_at: Optional[datetime] = None
 
 
 class ProcedureStepImageOut(BaseModel):
     image_url: str
+
+
+ProcedureAssignmentStatusApi = Literal["pending", "in_progress", "completed"]
+ProcedureAssignmentKindApi = Literal["complete", "revise", "create"]
+
+
+class ProcedureAssignmentCreate(BaseModel):
+    procedure_id: str
+    assigned_to_user_id: str
+    kind: ProcedureAssignmentKindApi = "complete"
+    notes: Optional[str] = Field(None, max_length=8000)
+    due_at: Optional[datetime] = None
+
+
+class ProcedureAssignmentOut(BaseModel):
+    id: str
+    company_id: str
+    procedure_id: str
+    procedure_title: str
+    assigned_to_user_id: str
+    assigned_by_user_id: Optional[str] = None
+    kind: ProcedureAssignmentKindApi = "complete"
+    status: ProcedureAssignmentStatusApi
+    notes: Optional[str] = None
+    due_at: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
+    created_at: datetime
+    updated_at: datetime
+
+
+class ProcedureAssignmentPhotoOut(BaseModel):
+    id: str
+    url: str
+    created_at: datetime
+
+
+class ProcedureAssignmentDetailOut(ProcedureAssignmentOut):
+    procedure: ProcedureOut
+    photos: list[ProcedureAssignmentPhotoOut] = Field(default_factory=list)
+
+
+class ProcedureAssignmentCompleteOut(BaseModel):
+    ok: bool = True
+    assignment_id: str
+    completed_at: datetime
 
 
 class WorkOrderOut(BaseModel):

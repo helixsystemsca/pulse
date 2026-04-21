@@ -1,12 +1,11 @@
 "use client";
 
 /**
- * Full-screen welcome overlay after sign-in: matches web login canvas + frosted card, with calm progress + status.
+ * Full-screen welcome overlay after sign-in: centered, minimal loading card + pulse animation.
  * Shown at most once per browser tab session (`sessionStorage`), so refreshes skip the animation.
  */
 
 import { AnimatePresence, motion } from "framer-motion";
-import { AlertCircle, AlertTriangle, Check } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { PULSE_WELCOME_SESSION_KEY } from "@/lib/pulse-session";
@@ -26,139 +25,54 @@ export type WelcomeLoaderModalProps = {
   storageKey?: string;
 };
 
-const WELCOME_HOLD_MS = 4000;
-const EXIT_MS = 300;
+const WELCOME_HOLD_MS = 2500;
+const EXIT_MS = 250;
 
-/** Minimum counts for alert-aware status row copy. */
-const CRITICAL_GREETING_THRESHOLD = 1;
-const WARNING_GREETING_THRESHOLD = 1;
-
-type WelcomeTimeBand = "morning" | "afternoon" | "evening";
-
-function welcomeTimeBand(date = new Date()): WelcomeTimeBand {
-  const h = date.getHours();
-  if (h < 12) return "morning";
-  if (h < 17) return "afternoon";
-  return "evening";
-}
-
-/** Short second-line copy under the time-based greeting; tone leans by local time of day. */
-const welcomeMessages: Record<WelcomeTimeBand, readonly string[]> = {
-  morning: [
-    "Let's make today count.",
-    "Focus mode: on.",
-    "You've got momentum—keep it going.",
-    "Let's get after it.",
-    "Today's a good day to win.",
-    "Let's build something great.",
-    "Another step forward.",
-    "Locked in.",
-  ],
-  afternoon: [
-    "You're in control today.",
-    "Small wins add up.",
-    "Let's build something great.",
-    "Progress over perfection.",
-    "Execute with intent.",
-    "Stay sharp.",
-    "Make it happen.",
-    "Keep pushing forward.",
-    "Locked in.",
-    "Focus mode: on.",
-  ],
-  evening: [
-    "Progress over perfection.",
-    "Another step forward.",
-    "Small wins add up.",
-    "Keep pushing forward.",
-    "You're in control today.",
-    "Let's build something great.",
-  ],
-};
-
-export function pickWelcomeMessage(date = new Date()): string {
-  const band = welcomeTimeBand(date);
-  const list = welcomeMessages[band];
-  const i = Math.floor(Math.random() * list.length);
-  return list[i] ?? "Let's make today count.";
-}
-
-function firstNameOnly(displayName: string): string {
-  const t = displayName.trim();
-  if (!t) return "there";
-  return t.split(/\s+/)[0] ?? t;
-}
-
-/** Local time-of-day line for the welcome overlay (not UTC). */
-export function timeOfDayGreeting(date = new Date()): string {
-  const h = date.getHours();
-  if (h < 12) return "Good morning";
-  if (h < 17) return "Good afternoon";
-  return "Good evening";
-}
-
-function WelcomeRipples() {
-  const rings = [520, 640, 760, 880, 1000, 1120];
+function PulseLine() {
   return (
-    <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
-      {rings.map((size, i) => (
-        <div
-          key={size}
-          className="absolute left-1/2 top-[22%] -translate-x-1/2 -translate-y-1/2 rounded-full border border-[color-mix(in_srgb,var(--ds-text-primary)_8%,transparent)] dark:border-white/10"
-          style={{
-            width: size,
-            height: size,
-            opacity: 0.22 - i * 0.025,
-          }}
-        />
-      ))}
-    </div>
+    <svg
+      width="96"
+      height="24"
+      viewBox="0 0 96 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className="block"
+      aria-hidden
+    >
+      <defs>
+        <linearGradient id="pulseStroke" x1="0" y1="0" x2="96" y2="0" gradientUnits="userSpaceOnUse">
+          <stop offset="0" stopColor="#36F1CD" stopOpacity="0.1" />
+          <stop offset="0.45" stopColor="#36F1CD" stopOpacity="1" />
+          <stop offset="1" stopColor="#36F1CD" stopOpacity="0.1" />
+        </linearGradient>
+        <filter id="pulseGlow" x="-20%" y="-100%" width="140%" height="300%">
+          <feGaussianBlur stdDeviation="1.6" result="blur" />
+          <feColorMatrix
+            in="blur"
+            type="matrix"
+            values="0 0 0 0 0.21  0 0 0 0 0.95  0 0 0 0 0.80  0 0 0 0.55 0"
+          />
+          <feMerge>
+            <feMergeNode />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
+      </defs>
+
+      <motion.path
+        d="M3 12 H24 L30 12 L34 6 L38 20 L42 10 L46 12 H93"
+        stroke="url(#pulseStroke)"
+        strokeWidth="2.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        filter="url(#pulseGlow)"
+        strokeDasharray="120"
+        strokeDashoffset="120"
+        animate={{ strokeDashoffset: [120, 0, -40] }}
+        transition={{ duration: 1.25, repeat: Infinity, ease: "easeInOut" }}
+      />
+    </svg>
   );
-}
-
-function MiniDotLoader() {
-  return (
-    <div className="flex shrink-0 items-center gap-1.5" aria-hidden>
-      {[0, 1, 2].map((i) => (
-        <motion.span
-          key={i}
-          className="h-2 w-2 rounded-full bg-[color-mix(in_srgb,#4c6085_35%,transparent)] dark:bg-ds-muted/70"
-          animate={{ opacity: [0.25, 0.95, 0.25], scale: [0.92, 1, 0.92] }}
-          transition={{
-            duration: 1.4,
-            repeat: Infinity,
-            delay: i * 0.2,
-            ease: "easeInOut",
-          }}
-        />
-      ))}
-    </div>
-  );
-}
-
-type StatusKind = "ok" | "warning" | "critical" | "loading";
-
-function statusForPhase(
-  phase: "loading" | "ready",
-  criticalCount: number,
-  warningCount: number,
-): { kind: StatusKind; message: string } {
-  if (phase === "loading") {
-    return { kind: "loading", message: "Connecting to your workspace…" };
-  }
-  if (criticalCount >= CRITICAL_GREETING_THRESHOLD) {
-    return {
-      kind: "critical",
-      message: "Some items need attention before you dive in",
-    };
-  }
-  if (warningCount >= WARNING_GREETING_THRESHOLD) {
-    return {
-      kind: "warning",
-      message: "A few alerts are worth a quick look",
-    };
-  }
-  return { kind: "ok", message: "All systems running smoothly" };
 }
 
 export function WelcomeLoaderModal({
@@ -171,9 +85,7 @@ export function WelcomeLoaderModal({
   const [hydrated, setHydrated] = useState(false);
   const [skipEntirely, setSkipEntirely] = useState(false);
   const [open, setOpen] = useState(true);
-  const [content, setContent] = useState<"loading" | "ready">("loading");
-  const [welcomeSubline, setWelcomeSubline] = useState("");
-  const welcomeLinePickedRef = useRef(false);
+  const holdTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     setHydrated(true);
@@ -196,14 +108,8 @@ export function WelcomeLoaderModal({
 
   useEffect(() => {
     if (!hydrated || skipEntirely || !isReady) return;
-
-    if (!welcomeLinePickedRef.current) {
-      welcomeLinePickedRef.current = true;
-      setWelcomeSubline(pickWelcomeMessage());
-    }
-
-    setContent("ready");
-    const t = setTimeout(() => {
+    if (holdTimerRef.current) clearTimeout(holdTimerRef.current);
+    holdTimerRef.current = setTimeout(() => {
       try {
         sessionStorage.setItem(storageKey, "true");
       } catch {
@@ -212,27 +118,18 @@ export function WelcomeLoaderModal({
       setOpen(false);
     }, WELCOME_HOLD_MS);
 
-    return () => clearTimeout(t);
+    return () => {
+      if (holdTimerRef.current) clearTimeout(holdTimerRef.current);
+      holdTimerRef.current = null;
+    };
   }, [hydrated, isReady, skipEntirely, storageKey]);
 
   if (!hydrated || skipEntirely) {
     return null;
   }
-
-  const firstName = firstNameOnly(userName);
-  const greeting = timeOfDayGreeting();
-  const phase = content;
-  const status = statusForPhase(phase, criticalCount, warningCount);
-
-  /** Severity tint on the icon only; body copy stays neutral like the rest of the card. */
-  const statusIconClass =
-    status.kind === "critical"
-      ? "text-ds-danger"
-      : status.kind === "warning"
-        ? "text-ds-warning"
-        : status.kind === "loading"
-          ? "text-ds-muted"
-          : "text-ds-success";
+  void userName;
+  void criticalCount;
+  void warningCount;
 
   const overlay = (
     <AnimatePresence>
@@ -242,151 +139,63 @@ export function WelcomeLoaderModal({
           role="dialog"
           aria-modal="true"
           aria-labelledby="welcome-loader-title"
-          aria-busy={content === "loading"}
-          className="pointer-events-none fixed inset-0 z-[200] min-h-0 min-w-0"
+          aria-busy
+          className="pointer-events-none fixed inset-0 z-[200]"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: EXIT_MS / 1000, ease: [0.4, 0, 0.2, 1] }}
         >
-          {/* Full-bleed canvas (separate from flex centering layer below). */}
           <div
-            className="auth-background login-web-canvas pointer-events-none absolute inset-0 z-0 min-h-[100dvh] min-w-0"
+            className="pointer-events-none absolute inset-0 z-0"
+            style={{
+              background: "linear-gradient(180deg, #f1f5f9 0%, #eaf1fb 60%, #eef2f7 100%)",
+            }}
             aria-hidden
-          >
-            <div className="auth-shell-inner relative h-full min-h-[100dvh] min-w-0 w-full">
-              <WelcomeRipples />
-            </div>
-          </div>
+          />
 
-          {/* Dedicated centering layer: only the card participates in flex layout. */}
-          <div className="pointer-events-none absolute inset-0 z-[1] flex min-h-[100dvh] min-w-0 items-center justify-center p-5 sm:p-8">
+          <div className="pointer-events-none absolute inset-0 z-[1] flex min-h-[100dvh] items-center justify-center p-6">
             <motion.div
-              className="pointer-events-none relative w-full max-w-xl shrink-0 rounded-[1.35rem] bg-[linear-gradient(180deg,rgba(207,231,255,0.85)_0%,rgba(230,236,245,0.55)_100%)] p-[1px] shadow-[0_20px_50px_rgba(76,96,133,0.12)] dark:bg-ds-border dark:p-px dark:shadow-[0_16px_40px_rgba(0,0,0,0.25)]"
-              initial={{ opacity: 0, scale: 0.96, y: 8 }}
+              className="pointer-events-none w-full max-w-2xl rounded-[22px] border border-[rgba(76,96,133,0.18)] bg-[#f8fafc] px-10 py-12 text-center shadow-[0_20px_55px_rgba(76,96,133,0.14)] sm:px-14 sm:py-14"
+              initial={{ opacity: 0, scale: 0.985, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.98, y: 4 }}
+              exit={{ opacity: 0, scale: 0.99, y: 6 }}
               transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
             >
-              <div className="rounded-[1.3rem] border border-white/80 bg-white px-7 py-8 text-ds-foreground dark:border-ds-border dark:bg-ds-surface-primary sm:px-9 sm:py-9">
-                <div className="flex items-center gap-5">
-                  <div
-                    className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-[color-mix(in_srgb,#4c6085_18%,transparent)] bg-white shadow-sm dark:border-ds-border dark:bg-ds-secondary"
-                    aria-hidden
-                  >
-                    <img src="/images/pulse-mark.svg" width={56} height={56} alt="" className="h-14 w-14" />
-                  </div>
-
-                  <div className="min-w-0 flex-1 text-left">
-                    <AnimatePresence mode="wait" initial={false}>
-                      {content === "loading" ? (
-                        <motion.div
-                          key="loading-copy"
-                          initial={{ opacity: 0, y: 4 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -3 }}
-                          transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-                        >
-                          <p
-                            id="welcome-loader-title"
-                            className="font-headline text-base font-extrabold leading-snug tracking-tight text-[#3f5274] dark:text-ds-foreground sm:text-lg"
-                          >
-                            Preparing your workspace…
-                          </p>
-                          <p className="mt-1.5 text-sm font-medium leading-relaxed text-[#5a6d82] dark:text-ds-muted sm:text-[15px]">
-                            Gathering the latest from your operation
-                          </p>
-                        </motion.div>
-                      ) : (
-                        <motion.div
-                          key="ready-copy"
-                          initial={{ opacity: 0, y: 4 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -3 }}
-                          transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
-                        >
-                          <h2
-                            id="welcome-loader-title"
-                            className="font-headline text-xl font-extrabold leading-snug tracking-tight text-[#2f3d52] dark:text-ds-foreground sm:text-2xl"
-                          >
-                            {greeting}, {firstName}
-                          </h2>
-                          <p className="mt-2 font-headline text-base font-medium text-[#5a6d82] dark:text-ds-muted sm:text-[17px]">
-                            {welcomeSubline || "Let's make today count."}
-                          </p>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
-
-                  <MiniDotLoader />
-                </div>
-
-                <div className="mt-8">
-                  <p className="mb-2.5 text-[11px] font-bold uppercase tracking-[0.14em] text-[color-mix(in_srgb,var(--ds-text-primary)_72%,transparent)] dark:text-ds-muted sm:text-xs">
-                    {content === "loading" ? "Loading" : "Ready"}
-                  </p>
-                  <div className="h-1.5 overflow-hidden rounded-full bg-[color-mix(in_srgb,#4c6085_12%,transparent)] dark:bg-white/15">
-                    <motion.div
-                      className="h-full rounded-full bg-[#4c6085] dark:bg-[#556b8e]"
-                      initial={false}
-                      animate={
-                        content === "loading"
-                          ? { width: ["30%", "68%", "38%", "62%", "30%"] }
-                          : { width: "100%" }
-                      }
-                      transition={
-                        content === "loading"
-                          ? {
-                              duration: 4.2,
-                              repeat: Infinity,
-                              ease: [0.45, 0, 0.55, 1],
-                            }
-                          : {
-                              duration: 0.9,
-                              ease: [0.22, 1, 0.36, 1],
-                            }
-                      }
-                      style={{ originX: 0 }}
-                    />
-                  </div>
-                </div>
-
-                <motion.div
-                  className="mt-6 flex items-start gap-2.5 text-left text-sm font-medium leading-relaxed text-[#5a6d82] dark:text-ds-muted"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.12, duration: 0.35 }}
-                >
-                  {status.kind === "critical" ? (
-                    <AlertTriangle
-                      className={`mt-0.5 h-4 w-4 shrink-0 opacity-90 ${statusIconClass}`}
-                      strokeWidth={2}
-                      aria-hidden
-                    />
-                  ) : status.kind === "warning" ? (
-                    <AlertCircle
-                      className={`mt-0.5 h-4 w-4 shrink-0 opacity-90 ${statusIconClass}`}
-                      strokeWidth={2}
-                      aria-hidden
-                    />
-                  ) : status.kind === "loading" ? (
-                    <motion.span
-                      className="mt-0.5 block h-4 w-4 shrink-0 rounded-full border-2 border-[color-mix(in_srgb,#4c6085_22%,transparent)] border-t-[#4c6085] dark:border-ds-border dark:border-t-[color-mix(in_srgb,var(--ds-text-primary)_70%,transparent)]"
-                      animate={{ rotate: 360 }}
-                      transition={{ duration: 1.8, repeat: Infinity, ease: "linear" }}
-                      aria-hidden
-                    />
-                  ) : (
-                    <Check
-                      className={`mt-0.5 h-4 w-4 shrink-0 opacity-90 ${statusIconClass}`}
-                      strokeWidth={2.5}
-                      aria-hidden
-                    />
-                  )}
-                  <span>{status.message}</span>
-                </motion.div>
+              <div
+                className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl border border-[rgba(54,241,205,0.25)] bg-[linear-gradient(145deg,rgba(54,241,205,0.22)_0%,rgba(76,96,133,0.18)_45%,rgba(53,71,102,0.10)_100%)] shadow-[0_10px_26px_rgba(76,96,133,0.16)]"
+                aria-hidden
+              >
+                <svg width="34" height="34" viewBox="0 0 34 34" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <rect x="1" y="1" width="32" height="32" rx="10" stroke="rgba(255,255,255,0.55)" />
+                  <path
+                    d="M6 17 H12 L14.5 12 L18 22 L20.5 15.5 L22.5 17 H28"
+                    stroke="#36F1CD"
+                    strokeWidth="2.4"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
               </div>
+
+              <h1
+                id="welcome-loader-title"
+                className="mt-8 font-headline text-2xl font-extrabold tracking-tight text-[#1f2a44] sm:text-3xl"
+              >
+                Preparing your workspace...
+              </h1>
+              <p className="mt-2 text-sm font-medium text-[#51647a] sm:text-base">
+                Gathering the latest from your operation
+              </p>
+
+              <motion.div
+                className="mt-8 flex justify-center"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.12, duration: 0.35 }}
+              >
+                <PulseLine />
+              </motion.div>
             </motion.div>
           </div>
         </motion.div>

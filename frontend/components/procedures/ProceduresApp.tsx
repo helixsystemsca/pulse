@@ -5,6 +5,7 @@ import { useCallback, useEffect, useId, useMemo, useState, type Dispatch, type S
 import { PageHeader } from "@/components/ui/PageHeader";
 import {
   createProcedure,
+  createProcedureAssignment,
   fetchProcedures,
   patchProcedure,
   uploadProcedureStepImage,
@@ -15,10 +16,12 @@ import { parseClientApiError } from "@/lib/parse-client-api-error";
 import { sessionHasAnyRole } from "@/lib/pulse-roles";
 import { readSession } from "@/lib/pulse-session";
 import { acknowledgeProcedure, hasAcknowledgedProcedure } from "@/lib/procedureAcknowledgments";
-import { fetchWorkerSettings } from "@/lib/workersService";
+import { fetchWorkerList, fetchWorkerSettings } from "@/lib/workersService";
 
 const PROCEDURES_HEADER_BTN =
   "rounded-[10px] bg-[#4C6085] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#405574] disabled:opacity-50";
+const PROCEDURES_HEADER_BTN_OUTLINE =
+  "rounded-[10px] border border-ds-border bg-white px-5 py-2.5 text-sm font-semibold text-[#3f5274] shadow-sm transition-colors hover:bg-ds-interactive-hover disabled:opacity-50 dark:bg-ds-surface-secondary dark:text-ds-foreground";
 
 type DraftStep = {
   key: string;
@@ -73,6 +76,12 @@ export function ProceduresApp() {
   const [readerStep, setReaderStep] = useState(0);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [assignOpen, setAssignOpen] = useState(false);
+  const [assignKind, setAssignKind] = useState<"complete" | "revise" | "create">("complete");
+  const [assignWorkerId, setAssignWorkerId] = useState("");
+  const [assignNote, setAssignNote] = useState("");
+  const [workerOptions, setWorkerOptions] = useState<{ id: string; label: string }[]>([]);
+  const [assigning, setAssigning] = useState(false);
   const session = readSession();
   const canReview = sessionHasAnyRole(session, "lead", "supervisor", "manager", "company_admin");
   const userId = session?.sub ?? null;
@@ -86,6 +95,7 @@ export function ProceduresApp() {
   }, [session?.role, session?.roles]);
 
   const isCompanyAdmin = sessionHasAnyRole(session, "company_admin");
+  const canAssign = sessionHasAnyRole(session, "lead", "supervisor", "manager", "company_admin");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -218,6 +228,80 @@ export function ProceduresApp() {
     }
   };
 
+  const openAssign = async (kind: "complete" | "revise" | "create") => {
+    if (!canAssign) return;
+    setAssignKind(kind);
+    setAssignWorkerId("");
+    setAssignNote("");
+    setAssignOpen(true);
+    setErr(null);
+    try {
+      const companyId = session?.company_id ?? null;
+      const list = await fetchWorkerList(companyId, { include_inactive: false });
+      setWorkerOptions(
+        (list.items ?? [])
+          .filter((w) => w.is_active)
+          .map((w) => ({
+            id: w.id,
+            label: `${w.full_name?.trim() || w.email}${w.role ? ` — ${w.role}` : ""}`,
+          })),
+      );
+    } catch {
+      setWorkerOptions([]);
+    }
+  };
+
+  const doAssign = async () => {
+    if (!canAssign) return;
+    const wid = assignWorkerId.trim();
+    if (!wid) return;
+    setAssigning(true);
+    setErr(null);
+    try {
+      if (assignKind === "create") {
+        const t = title.trim();
+        if (!t) {
+          setErr("Enter a title first.");
+          return;
+        }
+        const creatorName = (session?.full_name?.trim() || session?.email?.trim() || "Unknown").slice(0, 80);
+        const creatorId = session?.sub ?? null;
+        const proc = await createProcedure({
+          title: t,
+          steps: [],
+          created_by_user_id: creatorId,
+          created_by_name: creatorName,
+          review_required: false,
+        });
+        await createProcedureAssignment({
+          procedure_id: proc.id,
+          assigned_to_user_id: wid,
+          kind: "create",
+          notes: assignNote.trim() || null,
+        });
+        setTitle("");
+        await load();
+        setSelectedId(proc.id);
+      } else {
+        if (!selected?.id) {
+          setErr("Select a procedure to assign.");
+          return;
+        }
+        await createProcedureAssignment({
+          procedure_id: selected.id,
+          assigned_to_user_id: wid,
+          kind: assignKind,
+          notes: assignNote.trim() || null,
+        });
+      }
+      setAssignOpen(false);
+    } catch (e) {
+      setErr(parseClientApiError(e).message);
+    } finally {
+      setAssigning(false);
+    }
+  };
+
   const saveEdit = async () => {
     if (!selectedId) return;
     const t = editTitle.trim();
@@ -241,9 +325,13 @@ export function ProceduresApp() {
     setSaving(true);
     setErr(null);
     try {
+      const reviserName = (session?.full_name?.trim() || session?.email?.trim() || "Supervisor").slice(0, 80);
+      const reviserId = session?.sub ?? null;
       await patchProcedure(selectedId, {
         title: t,
         steps: normalized,
+        revised_by_user_id: reviserId,
+        revised_by_name: reviserName,
         ...(canReview
           ? {
               created_by_name: editCreatorName.trim() || null,
@@ -432,24 +520,107 @@ export function ProceduresApp() {
               Cancel
             </button>
           ) : (
-            <button
-              type="button"
-              className={PROCEDURES_HEADER_BTN}
-              onClick={() => {
-                setIsCreating(true);
-                setSelectedId(null);
-                setEditing(false);
-                setErr(null);
-              }}
-            >
-              <span className="inline-flex items-center gap-2">
-                <Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />
-                Create procedure
-              </span>
-            </button>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                className={PROCEDURES_HEADER_BTN}
+                onClick={() => {
+                  setIsCreating(true);
+                  setSelectedId(null);
+                  setEditing(false);
+                  setErr(null);
+                }}
+              >
+                <span className="inline-flex items-center gap-2">
+                  <Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />
+                  Create procedure
+                </span>
+              </button>
+              {canAssign ? (
+                <>
+                  <button type="button" className={PROCEDURES_HEADER_BTN_OUTLINE} onClick={() => void openAssign("complete")}>
+                    Assign
+                  </button>
+                  <button type="button" className={PROCEDURES_HEADER_BTN_OUTLINE} onClick={() => void openAssign("revise")}>
+                    Assign for revision
+                  </button>
+                  <button type="button" className={PROCEDURES_HEADER_BTN_OUTLINE} onClick={() => void openAssign("create")}>
+                    Create &amp; assign
+                  </button>
+                </>
+              ) : null}
+            </div>
           )
         }
       />
+
+      {assignOpen ? (
+        <div className="rounded-xl border border-ds-border bg-white p-4 shadow-[var(--ds-shadow-card)] dark:bg-ds-surface-primary">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold text-ds-foreground">
+                {assignKind === "create"
+                  ? "Create and assign a new procedure"
+                  : assignKind === "revise"
+                    ? "Assign procedure for revision"
+                    : "Assign procedure for completion"}
+              </p>
+              <p className="mt-1 text-xs text-ds-muted">
+                {assignKind === "create"
+                  ? "This creates a blank procedure with only a title, then assigns it to a worker."
+                  : "This creates an assignment that will appear in the worker’s Procedures list as Attention required."}
+              </p>
+            </div>
+            <button
+              type="button"
+              className="text-sm font-semibold text-ds-muted hover:text-ds-foreground"
+              onClick={() => setAssignOpen(false)}
+              disabled={assigning}
+            >
+              Close
+            </button>
+          </div>
+
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <div>
+              <label className="block text-[11px] font-bold uppercase tracking-[0.14em] text-ds-muted">Worker</label>
+              <select
+                className="mt-1 w-full rounded-lg border border-ds-border bg-white px-3 py-2 text-sm font-medium text-ds-foreground dark:bg-ds-surface-secondary"
+                value={assignWorkerId}
+                onChange={(e) => setAssignWorkerId(e.target.value)}
+                disabled={assigning}
+              >
+                <option value="">Select a worker…</option>
+                {workerOptions.map((w) => (
+                  <option key={w.id} value={w.id}>
+                    {w.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-bold uppercase tracking-[0.14em] text-ds-muted">Note (optional)</label>
+              <input
+                className="mt-1 w-full rounded-lg border border-ds-border bg-white px-3 py-2 text-sm font-medium text-ds-foreground dark:bg-ds-surface-secondary"
+                value={assignNote}
+                onChange={(e) => setAssignNote(e.target.value)}
+                placeholder="e.g. Take photos of before/after."
+                disabled={assigning}
+              />
+            </div>
+          </div>
+
+          <div className="mt-4 flex flex-wrap items-center justify-end gap-2">
+            <button type="button" className={PROCEDURES_HEADER_BTN_OUTLINE} onClick={() => setAssignOpen(false)} disabled={assigning}>
+              Cancel
+            </button>
+            <button type="button" className={PROCEDURES_HEADER_BTN} onClick={() => void doAssign()} disabled={assigning || !assignWorkerId}>
+              {assigning ? "Assigning…" : "Send to worker"}
+            </button>
+          </div>
+        </div>
+      ) : null}
 
       {err ? (
         <div className="rounded-xl border border-ds-border bg-ds-primary px-4 py-3 text-sm font-medium text-ds-danger shadow-sm">

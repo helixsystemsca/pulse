@@ -78,6 +78,11 @@ class PulseProcedure(Base):
     )
     reviewed_by_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     reviewed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    revised_by_user_id: Mapped[Optional[str]] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    revised_by_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    revised_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
@@ -85,6 +90,86 @@ class PulseProcedure(Base):
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
         onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+
+class PulseProcedureAssignmentStatus(str, enum.Enum):
+    pending = "pending"
+    in_progress = "in_progress"
+    completed = "completed"
+
+
+class PulseProcedureAssignmentKind(str, enum.Enum):
+    complete = "complete"
+    revise = "revise"
+    create = "create"
+
+
+class PulseProcedureAssignment(Base):
+    """Assign a procedure to a worker for completion (mobile-first)."""
+
+    __tablename__ = "pulse_procedure_assignments"
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    company_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    procedure_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("pulse_procedures.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    assigned_to_user_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    assigned_by_user_id: Mapped[Optional[str]] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    kind: Mapped[PulseProcedureAssignmentKind] = mapped_column(
+        Enum(PulseProcedureAssignmentKind),
+        nullable=False,
+        default=PulseProcedureAssignmentKind.complete,
+        index=True,
+    )
+    status: Mapped[PulseProcedureAssignmentStatus] = mapped_column(
+        Enum(PulseProcedureAssignmentStatus),
+        nullable=False,
+        default=PulseProcedureAssignmentStatus.pending,
+        index=True,
+    )
+    notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    due_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+
+class PulseProcedureAssignmentPhoto(Base):
+    """Photo evidence attached to a procedure assignment (worker upload)."""
+
+    __tablename__ = "pulse_procedure_assignment_photos"
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    company_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    assignment_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("pulse_procedure_assignments.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    uploaded_by_user_id: Mapped[Optional[str]] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    photo_path: Mapped[str] = mapped_column(String(512), nullable=False)
+    content_type: Mapped[str] = mapped_column(String(64), nullable=False, server_default=text("'image/jpeg'"))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True
     )
 
 

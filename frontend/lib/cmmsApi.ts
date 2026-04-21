@@ -44,8 +44,37 @@ export type ProcedureRow = {
   reviewed_by_user_id?: string | null;
   reviewed_by_name?: string | null;
   reviewed_at?: string | null;
+  revised_by_user_id?: string | null;
+  revised_by_name?: string | null;
+  revised_at?: string | null;
   created_at: string;
   updated_at: string;
+};
+
+export type ProcedureAssignmentKind = "complete" | "revise" | "create";
+export type ProcedureAssignmentStatus = "pending" | "in_progress" | "completed";
+
+export type ProcedureAssignmentRow = {
+  id: string;
+  company_id: string;
+  procedure_id: string;
+  procedure_title: string;
+  assigned_to_user_id: string;
+  assigned_by_user_id?: string | null;
+  kind: ProcedureAssignmentKind;
+  status: ProcedureAssignmentStatus;
+  notes?: string | null;
+  due_at?: string | null;
+  completed_at?: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ProcedureAssignmentPhoto = { id: string; url: string; created_at: string };
+
+export type ProcedureAssignmentDetail = ProcedureAssignmentRow & {
+  procedure: ProcedureRow;
+  photos: ProcedureAssignmentPhoto[];
 };
 
 export type PreventativeRuleRow = {
@@ -122,12 +151,25 @@ export async function patchProcedure(
         | "reviewed_by_user_id"
         | "reviewed_by_name"
         | "reviewed_at"
+        | "revised_by_user_id"
+        | "revised_by_name"
+        | "revised_at"
         | "created_by_user_id"
         | "created_by_name"
       >
   >,
 ): Promise<ProcedureRow> {
   return apiFetch<ProcedureRow>(`/api/v1/cmms/procedures/${id}`, { method: "PATCH", json: body });
+}
+
+export async function createProcedureAssignment(body: {
+  procedure_id: string;
+  assigned_to_user_id: string;
+  kind?: ProcedureAssignmentKind;
+  notes?: string | null;
+  due_at?: string | null;
+}): Promise<ProcedureAssignmentRow> {
+  return apiFetch<ProcedureAssignmentRow>("/api/v1/cmms/procedure-assignments", { method: "POST", json: body });
 }
 
 export async function uploadProcedureStepImage(

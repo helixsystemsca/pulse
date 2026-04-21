@@ -376,6 +376,55 @@ async def write_procedure_step_image_bytes(
         await _run_sync(_local)
 
 
+# --- Procedure assignment photos (stem = assignment_id + "_" + photo_id) ---
+
+
+def _procedure_assignment_photo_stem(assignment_id: str, photo_id: str) -> str:
+    return f"{assignment_id}_{photo_id}"
+
+
+async def read_procedure_assignment_photo_bytes(
+    company_id: str, assignment_id: str, photo_id: str
+) -> Optional[tuple[bytes, str]]:
+    sub = f"procedure_assignment_photos/{company_id}"
+    stem = _procedure_assignment_photo_stem(assignment_id, photo_id)
+
+    def _local() -> Optional[tuple[bytes, str]]:
+        return _local_read_stem(sub, stem, _EQUIP_EXTS)
+
+    if _backend() == "s3":
+        return await _run_sync(lambda: _s3_read_stem(sub, stem, _EQUIP_EXTS))
+    return _local()
+
+
+async def write_procedure_assignment_photo_bytes(
+    company_id: str,
+    assignment_id: str,
+    photo_id: str,
+    ext_with_dot: str,
+    raw: bytes,
+    content_type: str,
+) -> str:
+    """
+    Store assignment photo bytes and return the stable storage path.
+
+    The API returns a URL that streams bytes through the app for auth.
+    """
+    sub = f"procedure_assignment_photos/{company_id}"
+    stem = _procedure_assignment_photo_stem(assignment_id, photo_id)
+    ct = (content_type or "").split(";")[0].strip() or media_type_for_ext(ext_with_dot)
+
+    def _local() -> None:
+        _local_write_stem(sub, stem, ext_with_dot, raw)
+
+    if _backend() == "s3":
+        await _run_sync(lambda: _s3_write_stem(sub, stem, ext_with_dot, ct, raw))
+    else:
+        await _run_sync(_local)
+
+    return f"{sub}/{stem}{ext_with_dot}"
+
+
 __all__ = [
     "delete_user_avatar_pending_files",
     "media_type_for_ext",
@@ -385,6 +434,7 @@ __all__ = [
     "read_equipment_image_bytes",
     "read_part_image_bytes",
     "read_procedure_step_image_bytes",
+    "read_procedure_assignment_photo_bytes",
     "read_user_avatar_bytes",
     "read_user_avatar_pending_bytes",
     "write_company_background_bytes",
@@ -392,6 +442,7 @@ __all__ = [
     "write_equipment_image_bytes",
     "write_part_image_bytes",
     "write_procedure_step_image_bytes",
+    "write_procedure_assignment_photo_bytes",
     "write_user_avatar_bytes",
     "write_user_avatar_pending_bytes",
 ]

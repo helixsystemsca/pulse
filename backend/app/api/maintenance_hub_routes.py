@@ -5,6 +5,8 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Annotated, Optional
 
+from uuid import uuid4
+
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 from sqlalchemy import and_, delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,11 +14,20 @@ from starlette.responses import Response
 
 from app.api.deps import require_tenant_user
 from app.core.database import get_db
-from app.core.pulse_storage import read_procedure_step_image_bytes, write_procedure_step_image_bytes
+from app.core.pulse_storage import (
+    read_procedure_assignment_photo_bytes,
+    read_procedure_step_image_bytes,
+    write_procedure_assignment_photo_bytes,
+    write_procedure_step_image_bytes,
+)
 from app.models.domain import User, Zone
 from app.models.pulse_models import (
     PulsePreventativeRule,
     PulseProcedure,
+    PulseProcedureAssignment,
+    PulseProcedureAssignmentPhoto,
+    PulseProcedureAssignmentKind,
+    PulseProcedureAssignmentStatus,
     PulseWorkOrderType,
     PulseWorkRequest,
     PulseWorkRequestPriority,
@@ -32,6 +43,11 @@ from app.schemas.maintenance_hub import (
     ProcedureOut,
     ProcedureStepImageOut,
     ProcedureStepIn,
+    ProcedureAssignmentCompleteOut,
+    ProcedureAssignmentCreate,
+    ProcedureAssignmentDetailOut,
+    ProcedureAssignmentOut,
+    ProcedureAssignmentPhotoOut,
     ProcedureUpdate,
     WorkOrderCreate,
     WorkOrderDetailOut,
@@ -52,9 +68,34 @@ _STEP_IMAGE_CT_EXT = {
     "image/webp": ".webp",
 }
 
+_MAX_ASSIGN_PHOTO_BYTES = 8 * 1024 * 1024
+_ASSIGN_PHOTO_CT_EXT = dict(_STEP_IMAGE_CT_EXT)
+
 
 def _procedure_step_image_url(procedure_id: str, step_index: int) -> str:
     return f"/api/v1/cmms/procedures/{procedure_id}/steps/{step_index}/image"
+
+
+def _procedure_assignment_photo_url(assignment_id: str, photo_id: str) -> str:
+    return f"/api/v1/cmms/procedure-assignments/{assignment_id}/photos/{photo_id}"
+
+
+def _assignment_row_to_out(a: PulseProcedureAssignment, proc: PulseProcedure) -> ProcedureAssignmentOut:
+    return ProcedureAssignmentOut(
+        id=str(a.id),
+        company_id=str(a.company_id),
+        procedure_id=str(a.procedure_id),
+        procedure_title=str(proc.title),
+        assigned_to_user_id=str(a.assigned_to_user_id),
+        assigned_by_user_id=str(a.assigned_by_user_id) if a.assigned_by_user_id else None,
+        kind=str(a.kind.value if hasattr(a.kind, "value") else a.kind),
+        status=str(a.status.value if hasattr(a.status, "value") else a.status),
+        notes=a.notes,
+        due_at=a.due_at,
+        completed_at=a.completed_at,
+        created_at=a.created_at,
+        updated_at=a.updated_at,
+    )
 
 
 async def _company_id(user: User = Depends(require_tenant_user)) -> str:
@@ -299,14 +340,16 @@ async def list_procedures(db: Db, cid: CompanyId) -> list[ProcedureOut]:
 
 
 @router.post("/procedures", response_model=ProcedureOut, status_code=status.HTTP_201_CREATED)
-async def create_procedure(db: Db, cid: CompanyId, body: ProcedureCreate) -> ProcedureOut:
+async def create_procedure(
+    db: Db, cid: CompanyId, body: ProcedureCreate, user: Annotated[User, Depends(require_tenant_user)]
+) -> ProcedureOut:
     payload = procedure_steps_to_storage(body.steps) if body.steps else []
     row = PulseProcedure(
         company_id=cid,
         title=body.title.strip(),
         steps=payload,
-        created_by_user_id=body.created_by_user_id,
-        created_by_name=(body.created_by_name or "").strip() or None,
+        created_by_user_id=body.created_by_user_id or str(user.id),
+        created_by_name=(body.created_by_name or "").strip() or (str(user.full_name or "").strip() or str(user.email)),
         review_required=bool(body.review_required),
     )
     db.add(row)
@@ -325,18 +368,25 @@ async def get_procedure(db: Db, cid: CompanyId, procedure_id: str) -> ProcedureO
 
 @router.patch("/procedures/{procedure_id}", response_model=ProcedureOut)
 async def update_procedure(
-    db: Db, cid: CompanyId, procedure_id: str, body: ProcedureUpdate
+    db: Db,
+    cid: CompanyId,
+    procedure_id: str,
+    body: ProcedureUpdate,
+    user: Annotated[User, Depends(require_tenant_user)],
 ) -> ProcedureOut:
     row = await db.get(PulseProcedure, procedure_id)
     if not row or row.company_id != cid:
         raise HTTPException(status_code=404, detail="Not found")
     patch = body.model_dump(exclude_unset=True)
+    mutated = False
     if "title" in patch and patch["title"] is not None:
         row.title = patch["title"].strip()
+        mutated = True
     if "steps" in patch and patch["steps"] is not None:
         raw_steps = patch["steps"]
         parsed = [ProcedureStepIn.model_validate(s) for s in raw_steps]
         row.steps = procedure_steps_to_storage(parsed)
+        mutated = True
     if "created_by_user_id" in patch:
         row.created_by_user_id = patch["created_by_user_id"]
     if "created_by_name" in patch:
@@ -351,6 +401,11 @@ async def update_procedure(
         row.reviewed_by_name = None if rn is None else (str(rn).strip() or None)
     if "reviewed_at" in patch:
         row.reviewed_at = patch["reviewed_at"]
+    if mutated:
+        row.revised_by_user_id = patch.get("revised_by_user_id") or str(user.id)
+        rn = patch.get("revised_by_name") or (str(user.full_name or "").strip() or str(user.email))
+        row.revised_by_name = (str(rn).strip() or None) if rn is not None else None
+        row.revised_at = patch.get("revised_at") or datetime.now(timezone.utc)
     row.updated_at = datetime.now(timezone.utc)
     await db.commit()
     await db.refresh(row)
@@ -424,6 +479,219 @@ async def delete_procedure(db: Db, cid: CompanyId, procedure_id: str) -> None:
         raise HTTPException(status_code=404, detail="Not found")
     await db.execute(delete(PulseProcedure).where(PulseProcedure.id == row.id))
     await db.commit()
+
+
+# —— Procedure assignments (mobile completion) ——
+
+
+@router.post("/procedure-assignments", response_model=ProcedureAssignmentOut, status_code=status.HTTP_201_CREATED)
+async def create_procedure_assignment(
+    body: ProcedureAssignmentCreate,
+    db: Db,
+    cid: CompanyId,
+    user: Annotated[User, Depends(require_tenant_user)],
+) -> ProcedureAssignmentOut:
+    proc = await db.get(PulseProcedure, body.procedure_id)
+    if not proc or proc.company_id != cid:
+        raise HTTPException(status_code=400, detail="Unknown procedure")
+    if not await pulse_svc._user_in_company(db, cid, body.assigned_to_user_id):
+        raise HTTPException(status_code=400, detail="Unknown assigned_to_user_id")
+    kind_raw = str(body.kind).strip().lower()
+    if kind_raw not in ("complete", "revise", "create"):
+        raise HTTPException(status_code=400, detail="Invalid assignment kind")
+    row = PulseProcedureAssignment(
+        company_id=cid,
+        procedure_id=str(proc.id),
+        assigned_to_user_id=str(body.assigned_to_user_id),
+        assigned_by_user_id=str(user.id),
+        kind=PulseProcedureAssignmentKind(kind_raw),
+        status=PulseProcedureAssignmentStatus.pending,
+        notes=(body.notes or "").strip() or None,
+        due_at=body.due_at,
+    )
+    db.add(row)
+    await db.commit()
+    await db.refresh(row)
+    return _assignment_row_to_out(row, proc)
+
+
+@router.get("/procedure-assignments/my", response_model=list[ProcedureAssignmentOut])
+async def list_my_procedure_assignments(
+    db: Db,
+    cid: CompanyId,
+    user: Annotated[User, Depends(require_tenant_user)],
+    status_filter: Optional[str] = Query(None, alias="status"),
+    limit: int = Query(200, ge=1, le=500),
+) -> list[ProcedureAssignmentOut]:
+    stmt = (
+        select(PulseProcedureAssignment, PulseProcedure)
+        .join(PulseProcedure, PulseProcedureAssignment.procedure_id == PulseProcedure.id)
+        .where(
+            PulseProcedureAssignment.company_id == cid,
+            PulseProcedureAssignment.assigned_to_user_id == str(user.id),
+        )
+        .order_by(PulseProcedureAssignment.created_at.desc())
+        .limit(limit)
+    )
+    if status_filter:
+        sf = str(status_filter).strip().lower()
+        if sf in ("pending", "in_progress", "completed"):
+            stmt = stmt.where(PulseProcedureAssignment.status == sf)
+    q = await db.execute(stmt)
+    rows = q.all()
+    return [_assignment_row_to_out(a, p) for (a, p) in rows]
+
+
+@router.get("/procedure-assignments/{assignment_id}", response_model=ProcedureAssignmentDetailOut)
+async def get_procedure_assignment(
+    assignment_id: str,
+    db: Db,
+    cid: CompanyId,
+    user: Annotated[User, Depends(require_tenant_user)],
+) -> ProcedureAssignmentDetailOut:
+    q = await db.execute(
+        select(PulseProcedureAssignment, PulseProcedure)
+        .join(PulseProcedure, PulseProcedureAssignment.procedure_id == PulseProcedure.id)
+        .where(PulseProcedureAssignment.id == assignment_id, PulseProcedureAssignment.company_id == cid)
+        .limit(1)
+    )
+    row = q.first()
+    if not row:
+        raise HTTPException(status_code=404, detail="Not found")
+    a, proc = row
+    if str(a.assigned_to_user_id) != str(user.id) and str(a.assigned_by_user_id) != str(user.id):
+        # MVP: only assignee or assigner can view. Elevated checks can be added later.
+        raise HTTPException(status_code=403, detail="Not your assignment")
+    pq = await db.execute(
+        select(PulseProcedureAssignmentPhoto)
+        .where(
+            PulseProcedureAssignmentPhoto.company_id == cid,
+            PulseProcedureAssignmentPhoto.assignment_id == assignment_id,
+        )
+        .order_by(PulseProcedureAssignmentPhoto.created_at.desc())
+        .limit(200)
+    )
+    photos = pq.scalars().all()
+    out = _assignment_row_to_out(a, proc)
+    return ProcedureAssignmentDetailOut(
+        **out.model_dump(),
+        procedure=ProcedureOut.model_validate(proc),
+        photos=[
+            ProcedureAssignmentPhotoOut(
+                id=str(ph.id),
+                url=_procedure_assignment_photo_url(assignment_id, str(ph.id)),
+                created_at=ph.created_at,
+            )
+            for ph in photos
+        ],
+    )
+
+
+@router.get("/procedure-assignments/{assignment_id}/photos/{photo_id}")
+async def get_procedure_assignment_photo(
+    assignment_id: str,
+    photo_id: str,
+    db: Db,
+    cid: CompanyId,
+    user: Annotated[User, Depends(require_tenant_user)],
+) -> Response:
+    aq = await db.execute(
+        select(PulseProcedureAssignment).where(
+            PulseProcedureAssignment.id == assignment_id,
+            PulseProcedureAssignment.company_id == cid,
+        )
+    )
+    a = aq.scalar_one_or_none()
+    if a is None:
+        raise HTTPException(status_code=404, detail="Not found")
+    if str(a.assigned_to_user_id) != str(user.id) and str(a.assigned_by_user_id) != str(user.id):
+        raise HTTPException(status_code=403, detail="Not your assignment")
+    blob = await read_procedure_assignment_photo_bytes(cid, assignment_id, photo_id)
+    if not blob:
+        raise HTTPException(status_code=404, detail="No photo")
+    data, media_type = blob
+    return Response(content=data, media_type=media_type)
+
+
+@router.post(
+    "/procedure-assignments/{assignment_id}/photos",
+    response_model=ProcedureAssignmentPhotoOut,
+    status_code=status.HTTP_201_CREATED,
+)
+async def upload_procedure_assignment_photo(
+    assignment_id: str,
+    db: Db,
+    cid: CompanyId,
+    user: Annotated[User, Depends(require_tenant_user)],
+    file: UploadFile = File(...),
+) -> ProcedureAssignmentPhotoOut:
+    aq = await db.execute(
+        select(PulseProcedureAssignment).where(
+            PulseProcedureAssignment.id == assignment_id,
+            PulseProcedureAssignment.company_id == cid,
+        )
+    )
+    a = aq.scalar_one_or_none()
+    if a is None:
+        raise HTTPException(status_code=404, detail="Not found")
+    if str(a.assigned_to_user_id) != str(user.id):
+        raise HTTPException(status_code=403, detail="Only assignee can upload photos")
+
+    ct = (file.content_type or "").split(";")[0].strip().lower()
+    if ct not in _ASSIGN_PHOTO_CT_EXT:
+        raise HTTPException(status_code=400, detail="Upload a JPEG, PNG, or WebP image (max 8MB)")
+    raw = await file.read()
+    if len(raw) > _MAX_ASSIGN_PHOTO_BYTES:
+        raise HTTPException(status_code=400, detail="Image too large (max 8MB)")
+
+    ext = _ASSIGN_PHOTO_CT_EXT[ct]
+    photo_id = str(uuid4())
+    try:
+        path = await write_procedure_assignment_photo_bytes(cid, assignment_id, photo_id, ext, raw, ct)
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e)) from e
+
+    ph = PulseProcedureAssignmentPhoto(
+        id=photo_id,
+        company_id=cid,
+        assignment_id=assignment_id,
+        uploaded_by_user_id=str(user.id),
+        photo_path=path,
+        content_type=ct,
+    )
+    db.add(ph)
+    if a.status == PulseProcedureAssignmentStatus.pending:
+        a.status = PulseProcedureAssignmentStatus.in_progress
+    a.updated_at = datetime.now(timezone.utc)
+    await db.commit()
+    await db.refresh(ph)
+    return ProcedureAssignmentPhotoOut(id=str(ph.id), url=_procedure_assignment_photo_url(assignment_id, str(ph.id)), created_at=ph.created_at)
+
+
+@router.post("/procedure-assignments/{assignment_id}/complete", response_model=ProcedureAssignmentCompleteOut)
+async def complete_procedure_assignment(
+    assignment_id: str,
+    db: Db,
+    cid: CompanyId,
+    user: Annotated[User, Depends(require_tenant_user)],
+) -> ProcedureAssignmentCompleteOut:
+    aq = await db.execute(
+        select(PulseProcedureAssignment).where(
+            PulseProcedureAssignment.id == assignment_id,
+            PulseProcedureAssignment.company_id == cid,
+        )
+    )
+    a = aq.scalar_one_or_none()
+    if a is None:
+        raise HTTPException(status_code=404, detail="Not found")
+    if str(a.assigned_to_user_id) != str(user.id):
+        raise HTTPException(status_code=403, detail="Only assignee can complete")
+    a.status = PulseProcedureAssignmentStatus.completed
+    now = datetime.now(timezone.utc)
+    a.completed_at = now
+    a.updated_at = now
+    await db.commit()
+    return ProcedureAssignmentCompleteOut(assignment_id=str(a.id), completed_at=now)
 
 
 # —— Preventative ——
