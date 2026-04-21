@@ -62,8 +62,9 @@ def upgrade() -> None:
         "INSERT INTO badge_definitions (id, name, description, icon_key, category) "
         "VALUES (:id, :name, :description, :icon_key, :category) ON CONFLICT (id) DO NOTHING"
     )
+    bind = op.get_bind()
     for bid, name, desc, icon, cat in badges:
-        op.execute(
+        bind.execute(
             ins,
             {"id": bid, "name": name, "description": desc, "icon_key": icon, "category": cat},
         )
