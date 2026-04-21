@@ -125,3 +125,31 @@ class SensorDetailOut(BaseModel):
     sensor: SensorOut
     latest_reading: Optional[SensorReadingOut]
     freshness: FreshnessLiteral
+
+
+# --- People monitoring (workforce + XP + tasks) ---
+
+
+class PeopleTaskMiniOut(BaseModel):
+    id: str
+    title: str
+    status: str
+    due_date: Optional[datetime] = None
+    priority: int = 1
+
+
+class PeopleXpMiniOut(BaseModel):
+    level: int = 1
+    total_xp: int = 0
+    into_level: int = 0
+    pct: float = 0.0
+
+
+class PeopleMonitorRowOut(BaseModel):
+    user_id: str
+    full_name: str
+    email: str
+    role: str
+    roles: list[str] = []
+    xp: PeopleXpMiniOut
+    recent_tasks: list[PeopleTaskMiniOut] = Field(default_factory=list)

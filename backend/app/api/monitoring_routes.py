@@ -13,8 +13,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.api.deps import require_tenant_user
+from app.core.tenant_feature_access import load_merged_workers_settings, user_has_workers_roster_page_access
+from app.core.user_roles import user_has_any_role, user_participates_in_workforce_operations
 from app.core.database import get_db
-from app.models.domain import User
+from app.models.domain import User, UserRole
+from app.models.gamification_models import Task, UserStats
 from app.models.monitoring_models import (
     AlertStatus,
     MonitoredSystem,
@@ -27,6 +30,9 @@ from app.modules.monitoring.freshness import sensor_freshness
 from app.modules.monitoring.thresholds import evaluate_thresholds_for_reading
 from app.schemas.monitoring import (
     MonitoringAlertOut,
+    PeopleMonitorRowOut,
+    PeopleTaskMiniOut,
+    PeopleXpMiniOut,
     ReadingBatchIn,
     ReadingBatchOut,
     SensorDetailOut,
@@ -44,6 +50,23 @@ async def _company_id(user: User = Depends(require_tenant_user)) -> str:
 
 CompanyId = Annotated[str, Depends(_company_id)]
 Db = Annotated[AsyncSession, Depends(get_db)]
+
+
+async def require_people_monitoring_access(
+    user: Annotated[User, Depends(require_tenant_user)],
+    db: Db,
+    cid: CompanyId,
+) -> User:
+    # Company admins always allowed; otherwise follow Workers delegation rules (manager/supervisor/lead).
+    if user_has_any_role(user, UserRole.company_admin):
+        return user
+    merged = await load_merged_workers_settings(db, cid)
+    if not user_has_workers_roster_page_access(user, merged):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="People monitoring is limited to delegated staff.",
+        )
+    return user
 
 
 @router.get("/alerts", response_model=list[MonitoringAlertOut])
@@ -71,6 +94,79 @@ async def list_monitoring_alerts(
     rq = await db.execute(stmt)
     rows = list(rq.scalars().all())
     return [MonitoringAlertOut.model_validate(r) for r in rows]
+
+
+@router.get("/people", response_model=list[PeopleMonitorRowOut])
+async def list_people_monitoring(
+    db: Db,
+    company_id: CompanyId,
+    _: Annotated[User, Depends(require_people_monitoring_access)],
+    limit: int = Query(200, ge=1, le=500),
+) -> list[PeopleMonitorRowOut]:
+    """Workforce roster + XP summary + recent assigned tasks."""
+    uq = await db.execute(
+        select(User)
+        .where(User.company_id == company_id, User.is_active.is_(True))
+        .order_by(User.full_name.asc().nulls_last(), User.email.asc())
+        .limit(limit)
+    )
+    users = [u for u in uq.scalars().all() if user_participates_in_workforce_operations(u)]
+    if not users:
+        return []
+
+    ids = [str(u.id) for u in users]
+    sq = await db.execute(select(UserStats).where(UserStats.company_id == company_id, UserStats.user_id.in_(ids)))
+    stats_by_uid = {str(s.user_id): s for s in sq.scalars().all()}
+
+    tq = await db.execute(
+        select(Task)
+        .where(
+            Task.company_id == company_id,
+            Task.assigned_to.in_(ids),
+            Task.status.in_(("todo", "in_progress")),
+        )
+        .order_by(Task.priority.desc(), Task.due_date.asc().nulls_last(), Task.created_at.desc())
+        .limit(3000)
+    )
+    tasks = tq.scalars().all()
+    tasks_by_uid: dict[str, list[Task]] = {}
+    for t in tasks:
+        uid = str(t.assigned_to or "")
+        if not uid:
+            continue
+        bucket = tasks_by_uid.setdefault(uid, [])
+        if len(bucket) < 5:
+            bucket.append(t)
+
+    out: list[PeopleMonitorRowOut] = []
+    for u in users:
+        st = stats_by_uid.get(str(u.id))
+        total = int(st.total_xp) if st else 0
+        lvl = int(st.level) if st else 1
+        into = max(0, total % 100)
+        pct = float(into) / 100.0 if into > 0 else 0.0
+        rt = tasks_by_uid.get(str(u.id), [])[:3]
+        out.append(
+            PeopleMonitorRowOut(
+                user_id=str(u.id),
+                full_name=str(u.full_name or "").strip() or str(u.email),
+                email=str(u.email),
+                role=str(u.roles[0] if u.roles else "worker"),
+                roles=list(u.roles or []),
+                xp=PeopleXpMiniOut(level=lvl, total_xp=total, into_level=into, pct=pct),
+                recent_tasks=[
+                    PeopleTaskMiniOut(
+                        id=str(t.id),
+                        title=str(t.title),
+                        status=str(t.status),
+                        due_date=t.due_date,
+                        priority=int(t.priority or 1),
+                    )
+                    for t in rt
+                ],
+            )
+        )
+    return out
 
 
 async def _sensor_for_company(db: AsyncSession, sensor_id: str, company_id: str) -> Sensor:

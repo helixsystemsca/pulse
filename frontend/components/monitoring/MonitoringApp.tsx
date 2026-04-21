@@ -8,14 +8,15 @@ import { isApiMode, refreshPulseUserFromServer } from "@/lib/api";
 import { emitOnboardingMaybeUpdated } from "@/lib/onboarding-events";
 import { fetchSetupProgress, patchOnboarding } from "@/lib/onboardingService";
 import { readSession } from "@/lib/pulse-session";
+import { fetchPeopleMonitoring, type PeopleMonitorRow } from "@/lib/monitoringPeopleService";
 import {
   co2StatusLabel,
   co2Tanks,
   getCo2TankStatus,
-  mockPeopleRows,
   poolControllers,
   type Co2TankStatus,
 } from "@/lib/monitoringMockData";
+import { WowXpBar } from "@/components/gamification/WowXpBar";
 
 function EmptyMonitoringPanel({ message }: { message: string }) {
   return (
@@ -54,6 +55,8 @@ type MainTab = "systems" | "people";
 export function MonitoringApp() {
   const [tab, setTab] = useState<MainTab>("systems");
   const [demoSensors, setDemoSensors] = useState(false);
+  const [peopleRows, setPeopleRows] = useState<PeopleMonitorRow[] | null>(null);
+  const [peopleErr, setPeopleErr] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isApiMode()) return;
@@ -65,6 +68,28 @@ export function MonitoringApp() {
         if (!cancelled) emitOnboardingMaybeUpdated();
       } catch {
         /* worker / 403 / offline */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isApiMode()) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const rows = await fetchPeopleMonitoring();
+        if (!cancelled) {
+          setPeopleRows(rows);
+          setPeopleErr(null);
+        }
+      } catch (e) {
+        if (!cancelled) {
+          setPeopleRows([]);
+          setPeopleErr(e instanceof Error ? e.message : "Failed to load people");
+        }
       }
     })();
     return () => {
@@ -224,32 +249,60 @@ export function MonitoringApp() {
         ) : (
           <EmptyMonitoringPanel message="No system telemetry here yet. When your organization turns on sample monitoring during onboarding, preview tiles appear in this tab. Otherwise this stays empty until your own sensors and controllers are connected." />
         )
-      ) : demoSensors ? (
+      ) : (
         <section aria-labelledby="people-heading">
           <h2 id="people-heading" className="sr-only">
             People monitoring
           </h2>
           <Card padding="md">
-            <p className="mb-4 text-sm text-ds-muted">
-              Sample roster for onboarding — connect HR / attendance and presence feeds when ready.
-            </p>
-            <ul className="divide-y divide-ds-border">
-              {mockPeopleRows.map((row) => (
-                <li key={row.id} className="flex flex-wrap items-center justify-between gap-2 py-3 first:pt-0 last:pb-0">
-                  <div>
-                    <p className="font-medium text-ds-foreground">{row.name}</p>
-                    <p className="text-sm text-ds-muted">{row.role}</p>
-                  </div>
-                  <span className={`rounded-lg px-2.5 py-1 text-xs font-semibold capitalize ${peopleStatusBadge(row.status)}`}>
-                    {row.status}
-                  </span>
-                </li>
-              ))}
-            </ul>
+            <p className="mb-4 text-sm text-ds-muted">Workforce roster with XP progress and recently assigned tasks.</p>
+
+            {peopleErr ? (
+              <div className="mb-4 rounded-md border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900 dark:border-rose-900/50 dark:bg-rose-950/40 dark:text-rose-100">
+                {peopleErr}
+              </div>
+            ) : null}
+
+            {!peopleRows ? (
+              <p className="text-sm text-ds-muted">Loading…</p>
+            ) : peopleRows.length === 0 ? (
+              <p className="text-sm text-ds-muted">No participating employees yet. Ask users to enable workforce participation in Profile.</p>
+            ) : (
+              <ul className="divide-y divide-ds-border">
+                {peopleRows.map((row) => (
+                  <li key={row.user_id} className="py-3 first:pt-0 last:pb-0">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="font-medium text-ds-foreground">{row.full_name}</p>
+                        <p className="text-sm text-ds-muted">{row.role}</p>
+                      </div>
+                      <div className="w-full max-w-md">
+                        <WowXpBar totalXp={row.xp.total_xp} level={row.xp.level} />
+                      </div>
+                    </div>
+                    {row.recent_tasks?.length ? (
+                      <div className="mt-3">
+                        <p className="text-[11px] font-semibold uppercase tracking-wider text-ds-muted">Recent tasks</p>
+                        <ul className="mt-2 space-y-2">
+                          {row.recent_tasks.slice(0, 3).map((t) => (
+                            <li key={t.id} className="rounded-lg border border-ds-border bg-ds-secondary/40 px-3 py-2">
+                              <p className="truncate text-sm font-semibold text-ds-foreground">{t.title}</p>
+                              <p className="mt-0.5 text-xs text-ds-muted">
+                                {t.status} · Priority {t.priority}
+                              </p>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ) : (
+                      <p className="mt-3 text-sm text-ds-muted">No open tasks assigned.</p>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
           </Card>
         </section>
-      ) : (
-        <EmptyMonitoringPanel message="No people presence data here yet. This section fills in when attendance or on-site feeds are integrated." />
       )}
     </div>
   );
