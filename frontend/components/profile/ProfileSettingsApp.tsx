@@ -16,6 +16,8 @@ import { uploadProfileAvatarFile } from "@/lib/profileAvatarUpload";
 import { sessionHasAnyRole } from "@/lib/pulse-roles";
 import type { CompanySummary } from "@/lib/pulse-session";
 import { listProcedureAcknowledgments } from "@/lib/procedureAcknowledgments";
+import { WowXpBar } from "@/components/gamification/WowXpBar";
+import { getUserAnalytics } from "@/lib/gamificationService";
 
 const FIELD =
   "mt-1.5 w-full rounded-[10px] border border-slate-200/90 bg-white px-3 py-2.5 text-sm text-pulse-navy shadow-sm focus:border-[#2B4C7E]/35 focus:outline-none focus:ring-1 focus:ring-[#2B4C7E]/25 dark:border-ds-border dark:bg-ds-secondary dark:text-gray-100 dark:placeholder:text-gray-500";
@@ -57,6 +59,7 @@ export function ProfileSettingsApp() {
   const [procedureAcks, setProcedureAcks] = useState<{ procedure_id: string; procedure_title: string; signed_at: string }[]>(
     [],
   );
+  const [xp, setXp] = useState<{ totalXp: number; level: number } | null>(null);
 
   const syncFromSession = useCallback(() => {
     if (!session) return;
@@ -83,6 +86,22 @@ export function ProfileSettingsApp() {
   useEffect(() => {
     if (!session?.sub) return;
     setProcedureAcks(listProcedureAcknowledgments(session.sub));
+  }, [session?.sub]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!session?.sub) return;
+    void (async () => {
+      try {
+        const a = await getUserAnalytics(session.sub);
+        if (!cancelled) setXp({ totalXp: a.totalXp, level: a.level });
+      } catch {
+        if (!cancelled) setXp(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [session?.sub]);
 
   useEffect(() => {
@@ -209,6 +228,14 @@ export function ProfileSettingsApp() {
           </button>
         </section>
       ) : null}
+
+      <section className="ds-card-elevated border border-ds-border p-5 shadow-[var(--ds-shadow-card)]">
+        <h2 className="text-sm font-bold text-ds-foreground">Experience</h2>
+        <p className="mt-1 text-sm text-ds-muted">A subtle progress bar that tracks real work outcomes.</p>
+        <div className="mt-4">
+          <WowXpBar totalXp={xp?.totalXp ?? 0} level={xp?.level ?? 1} />
+        </div>
+      </section>
 
       <section className={CARD}>
         <h2 className="text-sm font-bold tracking-tight text-pulse-navy dark:text-slate-100">Profile</h2>

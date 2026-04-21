@@ -1387,8 +1387,9 @@ function DashboardBody({
         ),
       },
       xp: {
-        title: "My XP + Tasks",
+        title: "Tasks",
         accent: "none" as const,
+        // XP is shown in Profile (subtle WoW-style bar); keep tasks here for quick action.
         render: () => <XpTasksWidget />,
       },
       setup: facilitySetupChecklist
