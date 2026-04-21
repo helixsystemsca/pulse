@@ -137,7 +137,7 @@ export function ScheduleCompactCellRows({
             data-schedule-interactive
             draggable={canDrag}
             className={`w-full rounded-lg text-left shadow-sm transition-colors hover:brightness-[0.97] ${
-              summary ? "px-1 py-0.5 text-[10px] leading-tight" : "px-1.5 py-1.5 text-[11px] leading-snug"
+              summary ? "px-1 py-px text-[10px] leading-tight" : "px-1.5 py-1.5 text-[11px] leading-snug"
             } ${anyAuto ? "opacity-[0.92]" : ""} ${canDrag ? "cursor-grab active:cursor-grabbing" : "cursor-default"} ${chipLocked ? "pointer-events-none" : ""} ${cardCls} ${openCls}`}
             onClick={(e) => {
               e.stopPropagation();
@@ -165,45 +165,78 @@ export function ScheduleCompactCellRows({
             onDragEnd={onShiftDragSessionEnd}
           >
             <div className="min-w-0">
-              <p className="truncate font-semibold leading-tight">{row.name}</p>
-
-              <div className={`mt-0.5 flex items-center gap-1 ${summary ? "flex-nowrap" : "flex-wrap"}`}>
-                {/* Shift chip (colored by shift type) */}
-                <span
-                  className={`inline-flex shrink-0 items-center rounded-md border px-1.5 py-0.5 text-[10px] font-bold leading-none ${
-                    st ? `${st.bg} ${st.border} ${st.text}` : "border-pulseShell-border bg-pulseShell-elevated text-ds-foreground"
-                  }`}
-                >
-                  {row.code}
-                </span>
-
-                {/* Location chip (neutral, non-competitive) */}
-                {bld ? (
-                  <span className="inline-flex shrink-0 items-center rounded-md border border-pulseShell-border bg-pulseShell-elevated/40 px-1.5 py-0.5 text-[10px] font-bold leading-none text-ds-muted">
-                    {bld.code}
+              {summary ? (
+                <div className="flex min-w-0 items-center gap-0.5">
+                  <span className="min-w-0 flex-1 truncate font-semibold leading-tight">{row.name}</span>
+                  <span
+                    className={`inline-flex shrink-0 items-center rounded border px-1 py-px text-[9px] font-bold leading-none ${
+                      st ? `${st.bg} ${st.border} ${st.text}` : "border-pulseShell-border bg-pulseShell-elevated text-ds-foreground"
+                    }`}
+                  >
+                    {row.code}
                   </span>
-                ) : null}
-
-                <span className="flex-1" />
-
-                {/* Status dot at end of chip row */}
-                <span className="flex shrink-0 items-center gap-0.5">
-                  {anyCert ? (
-                    <span title={tip} className="inline-flex">
-                      <Award className={`shrink-0 text-ds-muted ${summary ? "h-2.5 w-2.5" : "h-3 w-3"}`} strokeWidth={2} aria-hidden />
+                  {bld ? (
+                    <span className="inline-flex shrink-0 items-center rounded border border-pulseShell-border bg-pulseShell-elevated/40 px-1 py-px text-[9px] font-bold leading-none text-ds-muted">
+                      {bld.code}
                     </span>
                   ) : null}
-                  {worst ? (
+                  <span className="flex shrink-0 items-center gap-0.5">
+                    {anyCert ? (
+                      <span title={tip} className="inline-flex">
+                        <Award className="h-2.5 w-2.5 shrink-0 text-ds-muted" strokeWidth={2} aria-hidden />
+                      </span>
+                    ) : null}
+                    {worst ? (
+                      <span
+                        title={tip}
+                        className={`inline-block shrink-0 rounded-full h-1.5 w-1.5 ${
+                          worst === "critical" ? "bg-ds-danger" : "bg-ds-warning"
+                        }`}
+                        aria-label={tip}
+                      />
+                    ) : null}
+                  </span>
+                </div>
+              ) : (
+                <>
+                  <p className="truncate font-semibold leading-tight">{row.name}</p>
+
+                  <div className="mt-0.5 flex flex-wrap items-center gap-1">
                     <span
-                      title={tip}
-                      className={`inline-block shrink-0 rounded-full ${summary ? "h-1.5 w-1.5" : "h-2 w-2"} ${
-                        worst === "critical" ? "bg-ds-danger" : "bg-ds-warning"
+                      className={`inline-flex shrink-0 items-center rounded-md border px-1.5 py-0.5 text-[10px] font-bold leading-none ${
+                        st ? `${st.bg} ${st.border} ${st.text}` : "border-pulseShell-border bg-pulseShell-elevated text-ds-foreground"
                       }`}
-                      aria-label={tip}
-                    />
-                  ) : null}
-                </span>
-              </div>
+                    >
+                      {row.code}
+                    </span>
+
+                    {bld ? (
+                      <span className="inline-flex shrink-0 items-center rounded-md border border-pulseShell-border bg-pulseShell-elevated/40 px-1.5 py-0.5 text-[10px] font-bold leading-none text-ds-muted">
+                        {bld.code}
+                      </span>
+                    ) : null}
+
+                    <span className="flex-1" />
+
+                    <span className="flex shrink-0 items-center gap-0.5">
+                      {anyCert ? (
+                        <span title={tip} className="inline-flex">
+                          <Award className="h-3 w-3 shrink-0 text-ds-muted" strokeWidth={2} aria-hidden />
+                        </span>
+                      ) : null}
+                      {worst ? (
+                        <span
+                          title={tip}
+                          className={`inline-block shrink-0 rounded-full h-2 w-2 ${
+                            worst === "critical" ? "bg-ds-danger" : "bg-ds-warning"
+                          }`}
+                          aria-label={tip}
+                        />
+                      ) : null}
+                    </span>
+                  </div>
+                </>
+              )}
 
               {!summary ? (
                 <>
@@ -218,7 +251,7 @@ export function ScheduleCompactCellRows({
                   )}
                 </>
               ) : row.shifts.length > 1 ? (
-                <p className="truncate text-[9px] opacity-75">{row.shifts.length} blocks</p>
+                <p className="mt-0.5 truncate text-[9px] opacity-75">{row.shifts.length} blocks</p>
               ) : null}
             </div>
           </div>

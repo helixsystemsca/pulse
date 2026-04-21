@@ -111,56 +111,6 @@ html.pulse-welcome-blur [data-pulse-app-shell] {
  * Level 1: `app-surface-inset` · Level 2: `app-glass-card` · Level 3: `app-glass-elevated` (modals, emphasis).
  */
 @layer components {
-  /**
-   * Welcome overlay card (operations dashboard): white → aquamarine tints → dusk blue (light),
-   * dusk shell → aquamarine glow → deeper dusk (dark).
-   */
-  .welcome-loader-card {
-    isolation: isolate;
-    box-shadow: var(--ds-shadow-diffuse);
-    background:
-      radial-gradient(
-        ellipse 110% 78% at 92% 6%,
-        color-mix(in srgb, var(--ds-success) 38%, transparent),
-        transparent 52%
-      ),
-      radial-gradient(
-        ellipse 88% 58% at 4% 96%,
-        color-mix(in srgb, #4c6085 22%, transparent),
-        transparent 56%
-      ),
-      linear-gradient(
-        128deg,
-        #ffffff 0%,
-        #f8fffd 12%,
-        #e6fcf7 28%,
-        color-mix(in srgb, var(--ds-success) 42%, #ffffff) 48%,
-        color-mix(in srgb, #5a7d94 35%, #c8f5ec) 74%,
-        color-mix(in srgb, #3f5274 52%, #b8f0e6) 100%
-      );
-  }
-  .dark .welcome-loader-card {
-    background:
-      radial-gradient(
-        ellipse 100% 72% at 86% 10%,
-        color-mix(in srgb, var(--ds-success) 34%, transparent),
-        transparent 50%
-      ),
-      radial-gradient(
-        ellipse 72% 48% at 6% 94%,
-        color-mix(in srgb, var(--ds-success) 16%, transparent),
-        transparent 54%
-      ),
-      linear-gradient(
-        140deg,
-        var(--ds-surface-elevated) 0%,
-        var(--ds-surface-secondary) 22%,
-        var(--ds-surface-primary) 48%,
-        color-mix(in srgb, var(--ds-success) 18%, var(--ds-surface-primary)) 72%,
-        color-mix(in srgb, var(--ds-bg) 55%, var(--ds-surface-elevated)) 100%
-      );
-  }
-
   .app-glass-frame {
     border-radius: 0.375rem;
     border: 1px solid rgb(255 255 255 / 0.14);

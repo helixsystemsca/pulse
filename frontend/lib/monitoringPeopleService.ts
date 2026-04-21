@@ -15,12 +15,15 @@ export type PeopleXpMini = {
   pct: number;
 };
 
+export type WorkforceShiftBucket = "day" | "afternoon" | "night";
+
 export type PeopleMonitorRow = {
   user_id: string;
   full_name: string;
   email: string;
   role: string;
   roles: string[];
+  workforce_shift?: WorkforceShiftBucket;
   xp: PeopleXpMini;
   recent_tasks: PeopleTaskMini[];
 };

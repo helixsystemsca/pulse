@@ -145,11 +145,15 @@ class PeopleXpMiniOut(BaseModel):
     pct: float = 0.0
 
 
+WorkforceShiftBucket = Literal["day", "afternoon", "night"]
+
+
 class PeopleMonitorRowOut(BaseModel):
     user_id: str
     full_name: str
     email: str
     role: str
     roles: list[str] = []
+    workforce_shift: WorkforceShiftBucket = "day"
     xp: PeopleXpMiniOut
     recent_tasks: list[PeopleTaskMiniOut] = Field(default_factory=list)

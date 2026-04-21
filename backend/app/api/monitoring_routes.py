@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Annotated, Optional
+from typing import Annotated, Literal, Optional
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -26,6 +26,7 @@ from app.models.monitoring_models import (
     Sensor,
     SensorReading,
 )
+from app.models.pulse_models import PulseWorkerHR
 from app.modules.monitoring.freshness import sensor_freshness
 from app.modules.monitoring.thresholds import evaluate_thresholds_for_reading
 from app.schemas.monitoring import (
@@ -50,6 +51,20 @@ async def _company_id(user: User = Depends(require_tenant_user)) -> str:
 
 CompanyId = Annotated[str, Depends(_company_id)]
 Db = Annotated[AsyncSession, Depends(get_db)]
+
+
+def _normalize_workforce_shift(raw: Optional[str]) -> Literal["day", "afternoon", "night"]:
+    """Map HR `pulse_worker_hr.shift` (or similar free text) onto roster columns."""
+    if raw is None or str(raw).strip() == "":
+        return "day"
+    k = str(raw).strip().lower()
+    if k in ("night", "graveyard", "noc", "overnight") or "night" in k:
+        return "night"
+    if k in ("afternoon", "swing", "evening") or "afternoon" in k or "swing" in k:
+        return "afternoon"
+    if k in ("day", "morning", "am", "days", "custom") or "morning" in k:
+        return "day"
+    return "day"
 
 
 async def require_people_monitoring_access(
@@ -115,6 +130,11 @@ async def list_people_monitoring(
         return []
 
     ids = [str(u.id) for u in users]
+    hrq = await db.execute(
+        select(PulseWorkerHR).where(PulseWorkerHR.company_id == company_id, PulseWorkerHR.user_id.in_(ids))
+    )
+    hr_by_uid = {str(h.user_id): h for h in hrq.scalars().all()}
+
     sq = await db.execute(select(UserStats).where(UserStats.company_id == company_id, UserStats.user_id.in_(ids)))
     stats_by_uid = {str(s.user_id): s for s in sq.scalars().all()}
 
@@ -141,6 +161,8 @@ async def list_people_monitoring(
     out: list[PeopleMonitorRowOut] = []
     for u in users:
         st = stats_by_uid.get(str(u.id))
+        hr = hr_by_uid.get(str(u.id))
+        shift_bucket = _normalize_workforce_shift(hr.shift if hr else None)
         total = int(st.total_xp) if st else 0
         lvl = int(st.level) if st else 1
         into = max(0, total % 100)
@@ -153,6 +175,7 @@ async def list_people_monitoring(
                 email=str(u.email),
                 role=str(u.roles[0] if u.roles else "worker"),
                 roles=list(u.roles or []),
+                workforce_shift=shift_bucket,
                 xp=PeopleXpMiniOut(level=lvl, total_xp=total, into_level=into, pct=pct),
                 recent_tasks=[
                     PeopleTaskMiniOut(
