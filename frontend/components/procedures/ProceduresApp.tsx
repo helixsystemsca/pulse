@@ -19,9 +19,9 @@ import { acknowledgeProcedure, hasAcknowledgedProcedure } from "@/lib/procedureA
 import { fetchWorkerList, fetchWorkerSettings } from "@/lib/workersService";
 
 const PROCEDURES_HEADER_BTN =
-  "rounded-[10px] bg-[#4C6085] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#405574] disabled:opacity-50";
+  "ds-btn-solid-primary inline-flex items-center justify-center gap-2 rounded-lg px-5 py-2.5 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50";
 const PROCEDURES_HEADER_BTN_OUTLINE =
-  "rounded-[10px] border border-ds-border bg-white px-5 py-2.5 text-sm font-semibold text-[#3f5274] shadow-sm transition-colors hover:bg-ds-interactive-hover disabled:opacity-50 dark:bg-ds-surface-secondary dark:text-ds-foreground";
+  "app-btn-secondary inline-flex items-center justify-center gap-2 rounded-lg px-5 py-2.5 text-sm font-semibold shadow-sm disabled:cursor-not-allowed disabled:opacity-50";
 
 type DraftStep = {
   key: string;
@@ -684,8 +684,8 @@ export function ProceduresApp() {
         ) : null}
 
         <section className="overflow-hidden rounded-xl border border-ds-border bg-ds-primary shadow-[var(--ds-shadow-card)]">
-          <div className="bg-[#4C6085] px-4 py-2.5">
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-white">Library</h2>
+          <div className="border-b border-ds-border bg-ds-surface-secondary px-4 py-2.5">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-ds-foreground">Library</h2>
           </div>
           <div className={`p-6 ${isCreating ? "pointer-events-none opacity-50" : ""}`} aria-hidden={isCreating}>
           {loading ? (

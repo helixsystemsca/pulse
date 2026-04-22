@@ -952,9 +952,6 @@ function headerInitials(welcomeName: string): string {
   return t.slice(0, 2).toUpperCase();
 }
 
-/** Dusk blue brand stroke (matches `--ds-bg` dark / design token). */
-const OPS_HEADER_LOGO_RING = "#4C6085";
-
 const ADMIN_SETUP_BANNER_DISMISS_KEY = "pulse_admin_setup_banner_dismissed";
 
 function OperationsHeaderLogoMark({
@@ -976,8 +973,7 @@ function OperationsHeaderLogoMark({
 
   return (
     <div
-      className="flex h-[4.5rem] w-[4.5rem] shrink-0 items-center justify-center overflow-hidden rounded-full border-2 bg-white shadow-[var(--ds-shadow-card)]"
-      style={{ borderColor: OPS_HEADER_LOGO_RING }}
+      className="flex h-[4.5rem] w-[4.5rem] shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-ds-border bg-ds-surface-primary shadow-[var(--ds-shadow-card)]"
       title={(companyName?.trim() || "Company").slice(0, 48)}
     >
       {src ? (
@@ -986,7 +982,7 @@ function OperationsHeaderLogoMark({
       ) : waiting ? (
         <span className="h-8 w-8 animate-pulse rounded-md bg-ds-secondary" aria-hidden />
       ) : (
-        <span className="px-1 text-center text-xs font-bold leading-tight" style={{ color: OPS_HEADER_LOGO_RING }}>
+        <span className="px-1 text-center text-xs font-bold leading-tight text-ds-foreground">
           {initials}
         </span>
       )}
@@ -1532,7 +1528,7 @@ function DashboardBody({
 
   return (
     <div className="ds-dashboard-shell">
-      <header className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 border-b border-ds-border bg-ds-primary px-4 py-4 sm:px-6">
+      <header className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 border-b border-ds-border bg-ds-header px-4 py-4 shadow-[var(--ds-shadow-card)] backdrop-blur-md sm:px-6">
         <span className="min-w-0 text-base font-bold leading-tight tracking-tight text-ds-foreground sm:text-lg md:text-xl lg:text-2xl">
           {model.title}
         </span>
@@ -1583,8 +1579,8 @@ function DashboardBody({
               className={[
                 "inline-flex h-10 w-10 cursor-pointer items-center justify-center rounded-lg transition-colors",
                 editMode
-                  ? "bg-[#2B4C7E] text-white shadow-sm dark:bg-white/20 dark:text-white"
-                  : "text-[#2B4C7E] hover:bg-slate-100 dark:text-white dark:hover:bg-white/10",
+                  ? "bg-ds-success text-ds-on-accent shadow-sm"
+                  : "text-ds-foreground hover:bg-ds-surface-elevated dark:hover:bg-white/10",
               ].join(" ")}
             >
               {editMode ? (
@@ -1607,8 +1603,8 @@ function DashboardBody({
               className={[
                 "inline-flex h-10 w-10 items-center justify-center rounded-lg transition-colors",
                 editMode
-                  ? "cursor-pointer text-[#2B4C7E] hover:bg-slate-100 dark:text-white dark:hover:bg-white/10"
-                  : "cursor-not-allowed text-[#2B4C7E]/35 dark:text-white/35",
+                  ? "cursor-pointer text-ds-foreground hover:bg-ds-surface-elevated dark:hover:bg-white/10"
+                  : "cursor-not-allowed text-ds-muted/50",
               ].join(" ")}
             >
               <Plus className="h-[1.125rem] w-[1.125rem] shrink-0" strokeWidth={2.5} aria-hidden />

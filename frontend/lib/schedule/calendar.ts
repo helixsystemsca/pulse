@@ -11,6 +11,11 @@ export function formatLocalDate(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
+/** True when `iso` (YYYY-MM-DD) is today in the browser’s local calendar. */
+export function isLocalDateToday(iso: string): boolean {
+  return formatLocalDate(new Date()) === iso;
+}
+
 export function startOfMonth(year: number, monthIndex: number): Date {
   return new Date(year, monthIndex, 1);
 }

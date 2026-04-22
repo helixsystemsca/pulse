@@ -2,10 +2,13 @@
 
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { useMemo, useState } from "react";
-import { shiftCodesLegendLines } from "@/lib/schedule/shift-codes";
-import type { Shift, ShiftTypeConfig } from "@/lib/schedule/types";
+import {
+  recurringWindowLegendFromWorkers,
+  shiftCodesLegendBlurb,
+} from "@/lib/schedule/shift-codes";
+import type { Shift, ShiftTypeConfig, Worker } from "@/lib/schedule/types";
 
-/** Stable pseudo-color from string (for worker / project rows). */
+/** Stable pseudo-color from string (fallback when no project id tint). */
 function colorFromKey(key: string): { bg: string; border: string } {
   let h = 0;
   for (let i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) >>> 0;
@@ -17,16 +20,28 @@ function colorFromKey(key: string): { bg: string; border: string } {
   };
 }
 
+export type ScheduleProjectLegendItem = {
+  id: string;
+  name: string;
+  /** Tailwind classes for the legend swatch (same as month/week top bar). */
+  tintClass: string;
+};
+
 type Props = {
   shiftTypes: ShiftTypeConfig[];
   shifts: Shift[];
+  workers: Worker[];
   contentFilter: "workers" | "projects" | "combined";
+  /** When set, lists projects (e.g. from the Projects page) with schedule overlay colors. */
+  projectLegendItems: ScheduleProjectLegendItem[] | null;
 };
 
-export function ScheduleLegendPanel({ shiftTypes, shifts, contentFilter }: Props) {
+export function ScheduleLegendPanel({ shiftTypes, shifts, workers, contentFilter, projectLegendItems }: Props) {
   const [open, setOpen] = useState(true);
 
-  const projects = useMemo(() => {
+  const recurringWindows = useMemo(() => recurringWindowLegendFromWorkers(workers), [workers]);
+
+  const projectsFromShifts = useMemo(() => {
     const names = new Set<string>();
     for (const s of shifts) {
       if (s.shiftKind === "project_task" && s.projectName?.trim()) names.add(s.projectName.trim());
@@ -52,14 +67,27 @@ export function ScheduleLegendPanel({ shiftTypes, shifts, contentFilter }: Props
       </button>
       <div className={`space-y-5 px-4 pb-4 pt-2 ${open ? "" : "hidden lg:block"}`}>
         <section>
-          <h3 className="text-[11px] font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-            Month / week abbreviations
-          </h3>
-          <ul className="mt-2 space-y-1 text-[11px] text-gray-600 dark:text-gray-300">
-            {shiftCodesLegendLines().map((line) => (
+          <h3 className="text-[11px] font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400">Shift codes</h3>
+          <ul className="mt-2 space-y-1.5 text-[11px] leading-snug text-gray-600 dark:text-gray-300">
+            {shiftCodesLegendBlurb().map((line) => (
               <li key={line}>{line}</li>
             ))}
           </ul>
+          {recurringWindows.length > 0 ? (
+            <ul className="mt-2 flex flex-wrap gap-1.5" aria-label="Recurring shift windows from worker profiles">
+              {recurringWindows.map((r) => (
+                <li key={r.code}>
+                  <span className="inline-flex items-center rounded-md border border-pulseShell-border bg-pulseShell-elevated px-2 py-0.5 font-mono text-[11px] font-bold tabular-nums text-gray-900 dark:text-gray-100">
+                    {r.code}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="mt-2 text-[11px] text-gray-500 dark:text-gray-400">
+              Add recurring hours in worker profiles to list standard shift codes (D1, A1, …) here.
+            </p>
+          )}
         </section>
 
         <section>
@@ -74,14 +102,33 @@ export function ScheduleLegendPanel({ shiftTypes, shifts, contentFilter }: Props
           </ul>
         </section>
 
-        {(contentFilter === "projects" || contentFilter === "combined") && projects.length > 0 ? (
+        {(contentFilter === "projects" || contentFilter === "combined") &&
+        projectLegendItems &&
+        projectLegendItems.length > 0 ? (
           <section>
             <h3 className="text-[11px] font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400">Projects</h3>
             <ul className="mt-2 max-h-36 space-y-1.5 overflow-y-auto pr-1">
-              {projects.map((p) => {
+              {projectLegendItems.map((p) => (
+                <li key={p.id} className="flex min-w-0 items-center gap-2 text-xs text-gray-900 dark:text-gray-100">
+                  <span
+                    className={`h-3 w-3 shrink-0 rounded-sm border border-black/10 dark:border-white/10 ${p.tintClass}`}
+                    aria-hidden
+                  />
+                  <span className="truncate" title={p.name}>
+                    {p.name}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : (contentFilter === "projects" || contentFilter === "combined") && projectsFromShifts.length > 0 ? (
+          <section>
+            <h3 className="text-[11px] font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400">Projects</h3>
+            <ul className="mt-2 max-h-36 space-y-1.5 overflow-y-auto pr-1">
+              {projectsFromShifts.map((p) => {
                 const c = colorFromKey(p);
                 return (
-                  <li key={p} className="flex items-center gap-2 text-xs text-gray-900 dark:text-gray-100">
+                  <li key={p} className="flex min-w-0 items-center gap-2 text-xs text-gray-900 dark:text-gray-100">
                     <span
                       className="h-3 w-3 shrink-0 rounded-sm border"
                       style={{ backgroundColor: c.bg, borderColor: c.border }}

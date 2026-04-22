@@ -2,7 +2,7 @@
 
 import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
-import { monthGrid, monthLabel } from "@/lib/schedule/calendar";
+import { isLocalDateToday, monthGrid, monthLabel } from "@/lib/schedule/calendar";
 import { workerHighlightOverlayClass } from "@/lib/schedule/drag-highlight-classes";
 import {
   readShiftDragPayload,
@@ -180,16 +180,22 @@ export function ScheduleCalendarGrid({
           const fullDay = dayShiftsFullDay.get(c.date) ?? [];
           const projectTint = projectDayTint?.[c.date];
           const isOver = dragOverDate === c.date;
+          const isToday = isLocalDateToday(c.date);
           const hl = dragSession?.kind === "worker" ? workerHighlightByDate?.[c.date] : undefined;
           const hlLayer = hl ? workerHighlightOverlayClass(hl.tone) : "";
           return (
             <div
               key={c.date}
               title={dragSession?.kind === "worker" && hl?.tooltip ? hl.tooltip : undefined}
+              aria-current={isToday ? "date" : undefined}
               className={`relative flex h-full min-h-0 flex-col bg-pulseShell-cell ${cellPointer} ${
                 c.inMonth ? "" : "bg-pulseShell-cell-muted opacity-80"
               } ${c.inMonth && onOpenDay && !scheduleDragLock ? "cursor-pointer" : ""} ${
-                isOver && !calendarDropsDisabled ? "ring-2 ring-inset ring-ds-success/40" : ""
+                isOver && !calendarDropsDisabled
+                  ? "z-[1] ring-2 ring-inset ring-ds-success/50"
+                  : isToday
+                    ? "ring-2 ring-inset ring-ds-success/90"
+                    : ""
               } ${shakeDate === c.date ? "schedule-cell-shake" : ""}`}
               onClick={(e) => {
                 if (!c.inMonth || !onOpenDay || scheduleDragLock) return;

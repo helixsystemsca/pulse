@@ -36,49 +36,31 @@ const COVERAGE_COLORS: Record<
   },
 };
 
-type Props = {
+type CoverageProps = {
   devices: Device[];
   effectiveMpp: number;
   coverageEnabled: boolean;
   showGaps: boolean;
   gapPoints: { x: number; y: number }[];
-  iotTool: IotTool;
-  selectedId: string | null;
-  hoveredId: string | null;
   scaleP1: { x: number; y: number } | null;
   scaleP2: { x: number; y: number } | null;
-  canEdit: boolean;
-  isPublish: boolean;
   stageScale: number;
-  onSelectDevice: (id: string) => void;
-  onHoverDevice: (id: string | null) => void;
-  onDeviceDragEnd: (id: string, x: number, y: number) => void;
 };
 
-export function IotPlannerKonva({
+export function IotCoverageKonva({
   devices,
   effectiveMpp,
   coverageEnabled,
   showGaps,
   gapPoints,
-  iotTool,
-  selectedId,
-  hoveredId,
   scaleP1,
   scaleP2,
-  canEdit,
-  isPublish,
   stageScale,
-  onSelectDevice,
-  onHoverDevice,
-  onDeviceDragEnd,
-}: Props) {
+}: CoverageProps) {
   const mpp = effectiveMpp > 0 ? effectiveMpp : IOT_DEFAULT_METERS_PER_PIXEL;
   const sw = Math.max(1, 1.4 / stageScale);
-  const dragEnabled = canEdit && !isPublish && iotTool === "select";
-
   return (
-    <Group listening>
+    <Group listening={false}>
       {coverageEnabled
         ? devices.map((d) => {
             const r = d.rangeMeters / mpp;
@@ -103,7 +85,6 @@ export function IotPlannerKonva({
             );
           })
         : null}
-
       {coverageEnabled && showGaps
         ? gapPoints.map((p, i) => (
             <Circle
@@ -119,7 +100,6 @@ export function IotPlannerKonva({
             />
           ))
         : null}
-
       {scaleP1 && scaleP2 ? (
         <Line
           points={[scaleP1.x, scaleP1.y, scaleP2.x, scaleP2.y]}
@@ -142,7 +122,38 @@ export function IotPlannerKonva({
           zIndex={Z_SCALE + 1}
         />
       ) : null}
+    </Group>
+  );
+}
 
+type DeviceProps = {
+  devices: Device[];
+  iotTool: IotTool;
+  selectedId: string | null;
+  hoveredId: string | null;
+  canEdit: boolean;
+  isPublish: boolean;
+  stageScale: number;
+  onSelectDevice: (id: string) => void;
+  onHoverDevice: (id: string | null) => void;
+  onDeviceDragEnd: (id: string, x: number, y: number) => void;
+};
+
+export function IotDeviceMarkersKonva({
+  devices,
+  iotTool,
+  selectedId,
+  hoveredId,
+  canEdit,
+  isPublish,
+  stageScale,
+  onSelectDevice,
+  onHoverDevice,
+  onDeviceDragEnd,
+}: DeviceProps) {
+  const dragEnabled = canEdit && !isPublish && iotTool === "select";
+  return (
+    <Group>
       {devices.map((d) => {
         const col = COVERAGE_COLORS[d.type];
         const sel = d.id === selectedId;

@@ -63,6 +63,13 @@ import { BlueprintToolRail } from "./BlueprintToolRail";
 import type { SymbolLibraryId } from "./blueprint-symbols-shared";
 export { SYMBOL_LIBRARY, type SymbolLibraryId } from "./blueprint-symbols-shared";
 import { useBlueprintHistory } from "./useBlueprintHistory";
+import { IotCoverageKonva, IotDeviceMarkersKonva } from "./IotPlannerKonva";
+import { IotLeftToolPalette } from "./IotLeftToolPalette";
+import { IotScaleModal } from "./IotScaleModal";
+import { IotSummaryPanel } from "./IotSummaryPanel";
+import { IotDeviceInspectorBar } from "./IotDeviceInspectorBar";
+import { useIotDeploymentPlanner } from "./useIotDeploymentPlanner";
+import { IOT_DEFAULT_METERS_PER_PIXEL, type IotTool } from "./iot-deployment-types";
 import "./blueprint-designer.css";
 
 type Tool = BlueprintDesignerTool;
@@ -1660,6 +1667,14 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
 
   const isPublish = designerMode === "publish";
   const canEdit = !isPublish;
+  const iot = useIotDeploymentPlanner();
+  const { clearSelection: iotClearSelection, cancelScale: iotCancelScale } = iot;
+
+  useEffect(() => {
+    if (selectedIds.length > 0) {
+      iotClearSelection();
+    }
+  }, [selectedIds, iotClearSelection]);
 
   useEffect(() => {
     if (!canEdit) setSymbolPanelOpen(false);
@@ -2962,6 +2977,7 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
         if (!ev.shiftKey) {
           setSelectedIds([]);
           setSnapGuides([]);
+          iotClearSelection();
         }
         return;
       }
@@ -3490,6 +3506,54 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
     batchLayer();
   }, [selectedSingleId, commitElements, checkpointBlueprint, batchLayer]);
 
+  const iotUiEnabled = canEdit && tool === "select";
+  /** Show deployment overlay whenever editing (so coverage stays visible when using other tools). */
+  const iotLayerActive = canEdit && !isPublish;
+  const {
+    iotTool: iotActiveTool,
+    beginScalePoint: iotBeginScale,
+    addDeviceAt: iotAddDevice,
+  } = iot;
+  const onIotOverlayClick = useCallback(
+    (e: Konva.KonvaEventObject<MouseEvent>) => {
+      if (e.evt.button !== 0) return;
+      if (!iotUiEnabled) return;
+      const w = getWorldFromStage(e.target.getStage());
+      if (!w) return;
+      if (iotActiveTool === "setScale") {
+        iotBeginScale(w.x, w.y);
+        return;
+      }
+      if (iotActiveTool === "node") {
+        iotAddDevice("node", w.x, w.y);
+        return;
+      }
+      if (iotActiveTool === "gateway") {
+        iotAddDevice("gateway", w.x, w.y);
+        return;
+      }
+      if (iotActiveTool === "lteHub") {
+        iotAddDevice("lteHub", w.x, w.y);
+        return;
+      }
+    },
+    [iotUiEnabled, iotActiveTool, iotBeginScale, iotAddDevice],
+  );
+
+  const onIotToolFromPalette = useCallback(
+    (t: IotTool) => {
+      iot.setIotTool(t);
+      if (t !== "setScale") {
+        iotCancelScale();
+      }
+    },
+    [iot.setIotTool, iotCancelScale],
+  );
+
+  const selectedIotDevice = iot.selectedId
+    ? iot.devices.find((d) => d.id === iot.selectedId) ?? null
+    : null;
+
   const wrapPulseFrame = (node: ReactNode) => {
     if (standalone) return node;
     if (fullscreen) {
@@ -3586,6 +3650,19 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
       </motion.aside>
 
       <div className="bp-workspace">
+        {canEdit && !isPublish ? (
+          <IotLeftToolPalette
+            active={iot.iotTool}
+            onChange={onIotToolFromPalette}
+            coverageEnabled={iot.coverageEnabled}
+            onToggleCoverage={iot.setCoverageEnabled}
+            showGaps={iot.showGaps}
+            onToggleGaps={iot.setShowGaps}
+            snapGrid={iot.snapGrid}
+            onToggleSnap={iot.setSnapGrid}
+            disabled={!iotUiEnabled}
+          />
+        ) : null}
       <motion.div
         className={`bp-canvas-wrap bp-canvas-wrap--with-float${isPublish ? " bp-canvas-wrap--publish" : ""}`}
         initial={false}
@@ -5187,6 +5264,47 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
                   listening={false}
                 />
               ) : null}
+              {iotLayerActive ? (
+                <Group listening>
+                  <IotCoverageKonva
+                    devices={iot.devices}
+                    effectiveMpp={iot.effectiveMpp}
+                    coverageEnabled={iot.coverageEnabled}
+                    showGaps={iot.showGaps}
+                    gapPoints={iot.gapPoints}
+                    scaleP1={iot.scaleP1}
+                    scaleP2={iot.scaleP2}
+                    stageScale={stageScale}
+                  />
+                  <IotDeviceMarkersKonva
+                    devices={iot.devices}
+                    iotTool={iot.iotTool}
+                    selectedId={iot.selectedId}
+                    hoveredId={iot.hoveredId}
+                    canEdit={canEdit}
+                    isPublish={isPublish}
+                    stageScale={stageScale}
+                    onSelectDevice={(id) => {
+                      setSelectedIds([]);
+                      iot.setSelectedId(id);
+                    }}
+                    onHoverDevice={iot.setHoveredId}
+                    onDeviceDragEnd={iot.onDeviceDragEnd}
+                  />
+                </Group>
+              ) : null}
+              {canEdit && iotUiEnabled && (iotActiveTool === "node" || iotActiveTool === "gateway" || iotActiveTool === "lteHub" || iotActiveTool === "setScale") ? (
+                <Rect
+                  x={-8000}
+                  y={-8000}
+                  zIndex={44_998_400}
+                  width={20000}
+                  height={20000}
+                  fill="rgba(0,0,0,0.001)"
+                  listening
+                  onClick={onIotOverlayClick}
+                />
+              ) : null}
               {canEdit && tool === "place-device" ? (
                 <Rect
                   x={-8000}
@@ -5454,6 +5572,24 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
         </div>
         {canEdit && !isPublish ? (
           <div className="bp-float-stack">
+            {selectedIotDevice ? (
+              <IotDeviceInspectorBar
+                device={selectedIotDevice}
+                canEdit={canEdit}
+                onUpdateRange={(m) => {
+                  if (!iot.selectedId) return;
+                  iot.updateDevice(iot.selectedId, { rangeMeters: m });
+                }}
+                onUpdatePosition={(x, y) => {
+                  if (!iot.selectedId) return;
+                  iot.updateDevice(iot.selectedId, { x, y });
+                }}
+                onDelete={() => {
+                  if (iot.selectedId) iot.removeDevice(iot.selectedId);
+                }}
+                onClose={() => iot.setSelectedId(null)}
+              />
+            ) : null}
             {tool === "draw-pen" ? (
               <div className="bp-float-context">
                 <span className="bp-float-context__hint">
@@ -5799,6 +5935,12 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
           }}
           disabled={!canEdit}
         />
+        <IotScaleModal
+          open={iot.scaleModalOpen}
+          pixelDistance={iot.scalePixelDistance}
+          onConfirm={iot.confirmScaleMeters}
+          onCancel={iot.cancelScale}
+        />
       </motion.div>
       </div>
 
@@ -5809,6 +5951,17 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
         animate={{ opacity: 1, x: 0 }}
         transition={bpTransition.med}
       >
+        {canEdit && !isPublish ? (
+          <IotSummaryPanel
+            percent={iot.coverageStats.percent}
+            deviceCount={iot.devices.length}
+            uncoveredCells={iot.coverageStats.uncoveredCells}
+            totalCells={iot.coverageStats.totalCells}
+            metersPerPixel={iot.metersPerPixel}
+            suggestedDefaultMpp={IOT_DEFAULT_METERS_PER_PIXEL}
+            suggestion={iot.suggestion}
+          />
+        ) : null}
         <BlueprintLayersPanel
           layers={layers}
           activeLayerId={activeLayerId}

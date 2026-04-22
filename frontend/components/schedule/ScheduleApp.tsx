@@ -12,12 +12,15 @@ import {
   Settings,
   Users,
 } from "lucide-react";
+import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { apiFetch, isApiMode, refreshPulseUserFromServer } from "@/lib/api";
 import { getServerDate } from "@/lib/serverTime";
 import { emitOnboardingMaybeUpdated } from "@/lib/onboarding-events";
 import { patchOnboarding } from "@/lib/onboardingService";
+import { listProjects, type ProjectRow } from "@/lib/projectsService";
+import { getOrAssignProjectTintClass } from "@/lib/schedule/project-overlay-tints";
 import {
   addDaysToIso,
   formatLocalDate,
@@ -53,7 +56,7 @@ import { ScheduleAlertsBanner } from "./ScheduleAlertsBanner";
 import { useModuleSettings } from "@/providers/ModuleSettingsProvider";
 import { ScheduleCalendarGrid } from "./ScheduleCalendarGrid";
 import { ScheduleDayView } from "./ScheduleDayView";
-import { ScheduleLegendPanel } from "./ScheduleLegendPanel";
+import { ScheduleLegendPanel, type ScheduleProjectLegendItem } from "./ScheduleLegendPanel";
 import { SchedulePersonnel } from "./SchedulePersonnel";
 import { ScheduleReports } from "./ScheduleReports";
 import { ScheduleSettingsModal } from "./ScheduleSettingsModal";
@@ -119,6 +122,8 @@ export function ScheduleApp() {
   const [trashHovering, setTrashHovering] = useState(false);
   const [deleteToast, setDeleteToast] = useState<string | null>(null);
   const [saveBusy, setSaveBusy] = useState(false);
+  const [scheduleProjects, setScheduleProjects] = useState<ProjectRow[] | null>(null);
+  const schedulePath = usePathname() ?? "";
   const [shiftModal, setShiftModal] = useState<{
     shift: Shift | null;
     defaultDate: string;
@@ -166,6 +171,22 @@ export function ScheduleApp() {
       cancelled = true;
     };
   }, [hydrated]);
+
+  useEffect(() => {
+    if (!hydrated || !isApiMode() || !schedulePath.includes("schedule")) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const data = await listProjects();
+        if (!cancelled) setScheduleProjects(data);
+      } catch {
+        if (!cancelled) setScheduleProjects([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [hydrated, schedulePath]);
 
   const reloadPulseSchedule = useCallback(async () => {
     if (!isApiMode()) return;
@@ -592,19 +613,42 @@ export function ScheduleApp() {
     setCursor({ y: td.getFullYear(), m: td.getMonth() });
   }
 
+  const projectLegendItems: ScheduleProjectLegendItem[] | null = useMemo(() => {
+    if (!scheduleProjects || scheduleProjects.length === 0) return null;
+    const active = scheduleProjects
+      .filter((p) => p.status !== "completed")
+      .sort((a, b) => a.name.localeCompare(b.name));
+    if (active.length === 0) return null;
+    return active.map((p) => ({
+      id: p.id,
+      name: p.name,
+      tintClass: getOrAssignProjectTintClass(p.id),
+    }));
+  }, [scheduleProjects]);
+
   const projectDayTint = useMemo(() => {
     const tint: Record<string, string> = {};
-    if (calendarScale === "month") {
-      for (const c of monthGrid(cursor.y, cursor.m)) {
-        if (c.inMonth && c.dayOfMonth % 6 === 1) tint[c.date] = "bg-indigo-200/40 dark:bg-indigo-500/20";
+    if (!scheduleProjects || scheduleProjects.length === 0) return tint;
+    const active = scheduleProjects
+      .filter((p) => p.status !== "completed")
+      .sort((a, b) => a.name.localeCompare(b.name));
+    const applyForDates = (dates: string[]) => {
+      for (const date of dates) {
+        for (const p of active) {
+          if (date >= p.start_date && date <= p.end_date) {
+            tint[date] = getOrAssignProjectTintClass(p.id);
+            break;
+          }
+        }
       }
+    };
+    if (calendarScale === "month") {
+      applyForDates(monthGrid(cursor.y, cursor.m).map((c) => c.date));
     } else if (calendarScale === "week") {
-      weekDates.forEach((date, i) => {
-        if (i % 2 === 0) tint[date] = "bg-indigo-200/40 dark:bg-indigo-500/20";
-      });
+      applyForDates(weekDates);
     }
     return tint;
-  }, [calendarScale, cursor.y, cursor.m, weekDates]);
+  }, [scheduleProjects, calendarScale, cursor.y, cursor.m, weekDates]);
 
   const dayDisplayShifts = useMemo(
     () => displayShifts.filter((s) => s.date === focusDate),
@@ -824,7 +868,9 @@ export function ScheduleApp() {
                 <ScheduleLegendPanel
                   shiftTypes={shiftTypes}
                   shifts={displayShifts}
+                  workers={workers}
                   contentFilter={contentFilter}
+                  projectLegendItems={projectLegendItems}
                 />
               </div>
               <div className="min-w-0 flex-1 space-y-4">

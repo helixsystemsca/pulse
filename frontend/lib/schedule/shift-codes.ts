@@ -5,7 +5,7 @@
  * in sorted order so identical hours always share the same code.
  */
 import { parseTimeToMinutes } from "./calendar";
-import type { Shift, TimeFormat } from "./types";
+import type { Shift, TimeFormat, Worker } from "./types";
 import { formatTimeString } from "./time-format";
 
 const _padHm = (t: string) => {
@@ -86,12 +86,48 @@ function compactTimeSpan(start: string, end: string, fmt: TimeFormat): string {
   return `${a}–${b}`;
 }
 
-export function shiftCodesLegendLines(): string[] {
+/** Short help lines for the schedule legend (no per-window time spam). */
+export function shiftCodesLegendBlurb(): string[] {
   return [
-    "D1, D2, … — day shifts (start before 2:00 PM, same calendar day); numbered by distinct start/end that day.",
-    "A1, A2, … — afternoon (start from 2:00 PM onward, end same calendar day).",
-    "N1, N2, … — overnight (end time on or before start = crosses midnight).",
-    "Identical hours always share the same letter+number on that day.",
-    "If a window is not on the day aggregate, the chip may show a compact time range instead.",
+    "D = day, A = afternoon, N = overnight. Numbers mark distinct work windows (D1, D2, …).",
+    "On the grid, the same code always means the same start/end hours that day.",
   ];
+}
+
+/**
+ * Build global D1/A1/N1… labels from all recurring templates in worker profiles
+ * (unique start/end windows across the roster).
+ */
+export type RecurringWindowLegendItem = { code: string; start: string; end: string };
+
+export function recurringWindowLegendFromWorkers(workers: Worker[]): RecurringWindowLegendItem[] {
+  const uniq = new Map<string, { start: string; end: string }>();
+  for (const w of workers) {
+    for (const r of w.recurringShifts ?? []) {
+      const start = _padHm(r.start);
+      const end = _padHm(r.end);
+      const k = windowKey(start, end);
+      if (!uniq.has(k)) uniq.set(k, { start, end });
+    }
+  }
+  if (uniq.size === 0) return [];
+  const byBand: Record<ShiftCodeBand, { start: string; end: string }[]> = { D: [], A: [], N: [] };
+  for (const w of uniq.values()) {
+    byBand[shiftBandForWindow(w.start, w.end)].push(w);
+  }
+  const out: RecurringWindowLegendItem[] = [];
+  for (const band of ["D", "A", "N"] as const) {
+    const list = byBand[band];
+    list.sort((x, y) => x.start.localeCompare(y.start) || x.end.localeCompare(y.end));
+    for (let i = 0; i < list.length; i++) {
+      const w = list[i]!;
+      out.push({ code: `${band}${i + 1}`, start: w.start, end: w.end });
+    }
+  }
+  return out;
+}
+
+/** @deprecated Prefer {@link shiftCodesLegendBlurb} */
+export function shiftCodesLegendLines(): string[] {
+  return shiftCodesLegendBlurb();
 }
