@@ -124,10 +124,42 @@ export function weekRangeLabel(dates: string[]): string {
   return `${a.toLocaleDateString("en-US", optA)} – ${b.toLocaleDateString("en-US", optB)}, ${b.getFullYear()}`;
 }
 
-/** Minutes from midnight for HH:mm */
+/**
+ * Minutes from midnight.
+ *
+ * Accepts:
+ * - 24h: "HH:mm" / "H:mm"
+ * - 12h: "h am", "hpm", "h:mm AM", "h:mmpm"
+ */
 export function parseTimeToMinutes(t: string): number {
-  const [h, m] = t.split(":").map(Number);
-  return h * 60 + m;
+  const raw = (t ?? "").trim();
+  if (!raw) return 0;
+
+  // Fast path: HH:mm (no meridiem)
+  if (/^\d{1,2}:\d{2}$/.test(raw)) {
+    const [h, m] = raw.split(":").map(Number);
+    if (!Number.isFinite(h) || !Number.isFinite(m)) return 0;
+    return Math.max(0, Math.min(23, h)) * 60 + Math.max(0, Math.min(59, m));
+  }
+
+  const s = raw.toLowerCase().replace(/\s+/g, "");
+  const m = s.match(/^(\d{1,2})(?::(\d{2}))?(am|pm)?$/);
+  if (!m) return 0;
+
+  let hh = Number(m[1]);
+  const mm = Number(m[2] ?? "0");
+  const mer = m[3] as "am" | "pm" | undefined;
+  if (!Number.isFinite(hh) || !Number.isFinite(mm)) return 0;
+
+  if (mer) {
+    // 12-hour clock conversion
+    hh = hh % 12;
+    if (mer === "pm") hh += 12;
+  }
+
+  hh = Math.max(0, Math.min(23, hh));
+  const min = Math.max(0, Math.min(59, mm));
+  return hh * 60 + min;
 }
 
 export function shiftHours(start: string, end: string): number {

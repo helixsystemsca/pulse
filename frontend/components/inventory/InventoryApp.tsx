@@ -90,7 +90,6 @@ const SETTINGS_TABS = [
   "Status rules",
   "Thresholds",
   "Locations",
-  "Assignment",
   "Alerts",
 ] as const;
 type SettingsTab = (typeof SETTINGS_TABS)[number];
@@ -231,7 +230,6 @@ export function InventoryApp() {
   const [typeFilter, setTypeFilter] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
   const [zoneFilter, setZoneFilter] = useState("");
-  const [workerFilter, setWorkerFilter] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [page, setPage] = useState(0);
@@ -375,7 +373,6 @@ export function InventoryApp() {
         item_type: typeFilter || undefined,
         category: categoryFilter || undefined,
         zone_id: zoneFilter || undefined,
-        assigned_user_id: workerFilter || undefined,
         date_from,
         date_to,
         limit: pageSize,
@@ -401,7 +398,6 @@ export function InventoryApp() {
     typeFilter,
     categoryFilter,
     zoneFilter,
-    workerFilter,
     dateFrom,
     dateTo,
     page,
@@ -498,7 +494,6 @@ export function InventoryApp() {
     setTypeFilter("");
     setCategoryFilter("");
     setZoneFilter("");
-    setWorkerFilter("");
     setDateFrom("");
     setDateTo("");
     setPage(0);
@@ -954,8 +949,6 @@ export function InventoryApp() {
               { id: "in_stock", label: "In stock" },
               { id: "assigned", label: "Assigned" },
               { id: "low_stock", label: "Low stock" },
-              { id: "maintenance", label: "Maintenance" },
-              { id: "missing", label: "Missing" },
             ].map((t) => (
               <button
                 key={t.label}
@@ -992,31 +985,35 @@ export function InventoryApp() {
               </div>
               <select
                 className="rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2 text-sm font-medium text-pulse-navy outline-none focus:border-pulse-accent focus:ring-2 focus:ring-pulse-accent/25 dark:border-ds-border dark:bg-ds-secondary dark:text-gray-100"
-                value={typeFilter}
+                value={typeFilter ? `type:${typeFilter}` : categoryFilter ? `cat:${categoryFilter}` : ""}
                 onChange={(e) => {
-                  setTypeFilter(e.target.value);
+                  const v = e.target.value;
+                  if (!v) {
+                    setTypeFilter("");
+                    setCategoryFilter("");
+                  } else if (v.startsWith("type:")) {
+                    setTypeFilter(v.slice("type:".length));
+                    setCategoryFilter("");
+                  } else if (v.startsWith("cat:")) {
+                    setCategoryFilter(v.slice("cat:".length));
+                    setTypeFilter("");
+                  }
                   setPage(0);
                 }}
               >
-                <option value="">Type</option>
-                <option value="tool">Tool</option>
-                <option value="part">Part</option>
-                <option value="consumable">Consumable</option>
-              </select>
-              <select
-                className="rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2 text-sm font-medium text-pulse-navy outline-none focus:border-pulse-accent focus:ring-2 focus:ring-pulse-accent/25 dark:border-ds-border dark:bg-ds-secondary dark:text-gray-100"
-                value={categoryFilter}
-                onChange={(e) => {
-                  setCategoryFilter(e.target.value);
-                  setPage(0);
-                }}
-              >
-                <option value="">Category</option>
-                {mergedSettings.categories.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
+                <option value="">Type / category</option>
+                <optgroup label="Type">
+                  <option value="type:tool">Tool</option>
+                  <option value="type:part">Part</option>
+                  <option value="type:consumable">Consumable</option>
+                </optgroup>
+                <optgroup label="Category">
+                  {mergedSettings.categories.map((c) => (
+                    <option key={c} value={`cat:${c}`}>
+                      {c}
+                    </option>
+                  ))}
+                </optgroup>
               </select>
               <select
                 className="rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2 text-sm font-medium text-pulse-navy outline-none focus:border-pulse-accent focus:ring-2 focus:ring-pulse-accent/25 dark:border-ds-border dark:bg-ds-secondary dark:text-gray-100"
@@ -1030,21 +1027,6 @@ export function InventoryApp() {
                 {zones.map((z) => (
                   <option key={z.id} value={z.id}>
                     {z.name}
-                  </option>
-                ))}
-              </select>
-              <select
-                className="rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2 text-sm font-medium text-pulse-navy outline-none focus:border-pulse-accent focus:ring-2 focus:ring-pulse-accent/25 dark:border-ds-border dark:bg-ds-secondary dark:text-gray-100"
-                value={workerFilter}
-                onChange={(e) => {
-                  setWorkerFilter(e.target.value);
-                  setPage(0);
-                }}
-              >
-                <option value="">Assigned worker</option>
-                {workers.map((w) => (
-                  <option key={w.id} value={w.id}>
-                    {w.full_name || w.email}
                   </option>
                 ))}
               </select>
@@ -1770,21 +1752,6 @@ export function InventoryApp() {
                     Informational labels for crews; physical zones still map to Pulse zone records when moving stock.
                   </p>
                 </div>
-              ) : null}
-              {settingsTab === "Assignment" ? (
-                <label className="flex items-center gap-2 text-sm font-semibold text-pulse-navy">
-                  <input
-                    type="checkbox"
-                    checked={settingsDraft.assignment_rules.checkout_required !== false}
-                    onChange={(e) =>
-                      setSettingsDraft((d) => ({
-                        ...d,
-                        assignment_rules: { ...d.assignment_rules, checkout_required: e.target.checked },
-                      }))
-                    }
-                  />
-                  Require check-out / check-in tracking for tools
-                </label>
               ) : null}
               {settingsTab === "Alerts" ? (
                 <div className="space-y-2">

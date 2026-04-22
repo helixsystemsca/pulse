@@ -24,9 +24,13 @@ function windowKey(start: string, end: string): string {
 export function shiftBandForWindow(startTime: string, endTime: string): ShiftCodeBand {
   const a = parseTimeToMinutes(_padHm(startTime));
   const b = parseTimeToMinutes(_padHm(endTime));
-  if (b <= a) return "N";
   const startHour = Math.floor(a / 60);
-  if (startHour >= 14) return "A";
+  // Overnight (crosses midnight) or explicit night starts (10pm+).
+  if (b <= a || startHour >= 22) return "N";
+  // Afternoon starts: 2pm–4pm (inclusive of 4pm start).
+  if (startHour >= 14 && startHour <= 16) return "A";
+  // Day starts: 5am–8am. (Everything else defaults to Day for compact labeling.)
+  if (startHour >= 5 && startHour <= 8) return "D";
   return "D";
 }
 
@@ -89,7 +93,7 @@ function compactTimeSpan(start: string, end: string, fmt: TimeFormat): string {
 /** Short help lines for the schedule legend (no per-window time spam). */
 export function shiftCodesLegendBlurb(): string[] {
   return [
-    "D = day, A = afternoon, N = overnight. Numbers mark distinct work windows (D1, D2, …).",
+    "D = day, A = afternoon, N = night/overnight. Numbers mark distinct work windows (D1, D2, …).",
     "On the grid, the same code always means the same start/end hours that day.",
   ];
 }
