@@ -25,8 +25,28 @@ export type WelcomeLoaderModalProps = {
   storageKey?: string;
 };
 
-const WELCOME_HOLD_MS = 2500;
+/** How long the pulse/“preparing” state runs before the personalized line appears. */
+const LOADING_PHASE_MS = 2200;
+/** How long the personalized welcome is visible before the overlay dismisses. */
+const WELCOME_PHASE_MS = 2000;
 const EXIT_MS = 250;
+
+type WelcomePhase = "loading" | "welcome";
+
+function firstNameOnly(displayName: string): string {
+  const t = displayName.trim();
+  if (!t) return "there";
+  const part = t.split(/\s+/)[0] ?? t;
+  return part.replace(/[.,:;!?$]+$/, "");
+}
+
+function timeOfDayGreeting(): string {
+  const h = new Date().getHours();
+  if (h < 5) return "Good evening";
+  if (h < 12) return "Good morning";
+  if (h < 17) return "Good afternoon";
+  return "Good evening";
+}
 
 function PulseLine() {
   return (
@@ -85,7 +105,9 @@ export function WelcomeLoaderModal({
   const [hydrated, setHydrated] = useState(false);
   const [skipEntirely, setSkipEntirely] = useState(false);
   const [open, setOpen] = useState(true);
-  const holdTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [phase, setPhase] = useState<WelcomePhase>("loading");
+  const loadingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const welcomeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     setHydrated(true);
@@ -106,28 +128,46 @@ export function WelcomeLoaderModal({
     return () => root.classList.remove("pulse-welcome-blur");
   }, [hydrated, open, skipEntirely]);
 
+  // After the dashboard is ready: show the loading/pulse state, then switch to personalized welcome.
   useEffect(() => {
     if (!hydrated || skipEntirely || !isReady) return;
-    if (holdTimerRef.current) clearTimeout(holdTimerRef.current);
-    holdTimerRef.current = setTimeout(() => {
+    if (loadingTimerRef.current) clearTimeout(loadingTimerRef.current);
+    setPhase("loading");
+    loadingTimerRef.current = setTimeout(() => {
+      setPhase("welcome");
+    }, LOADING_PHASE_MS);
+    return () => {
+      if (loadingTimerRef.current) clearTimeout(loadingTimerRef.current);
+      loadingTimerRef.current = null;
+    };
+  }, [hydrated, isReady, skipEntirely]);
+
+  // After the welcome line is shown, dismiss and mark session so we do not show again.
+  useEffect(() => {
+    if (!hydrated || skipEntirely || !isReady || phase !== "welcome") return;
+    if (welcomeTimerRef.current) clearTimeout(welcomeTimerRef.current);
+    welcomeTimerRef.current = setTimeout(() => {
       try {
         sessionStorage.setItem(storageKey, "true");
       } catch {
         /* ignore */
       }
       setOpen(false);
-    }, WELCOME_HOLD_MS);
-
+    }, WELCOME_PHASE_MS);
     return () => {
-      if (holdTimerRef.current) clearTimeout(holdTimerRef.current);
-      holdTimerRef.current = null;
+      if (welcomeTimerRef.current) clearTimeout(welcomeTimerRef.current);
+      welcomeTimerRef.current = null;
     };
-  }, [hydrated, isReady, skipEntirely, storageKey]);
+  }, [hydrated, isReady, skipEntirely, storageKey, phase]);
 
   if (!hydrated || skipEntirely) {
     return null;
   }
-  void userName;
+
+  const first = firstNameOnly(userName);
+  const welcomeLine = `${timeOfDayGreeting()}, ${first}`;
+  const welcomeSub = "You’re all set to jump back in.";
+
   void criticalCount;
   void warningCount;
 
@@ -139,7 +179,7 @@ export function WelcomeLoaderModal({
           role="dialog"
           aria-modal="true"
           aria-labelledby="welcome-loader-title"
-          aria-busy
+          aria-busy={phase === "loading"}
           className="pointer-events-none fixed inset-0 z-[200]"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -178,24 +218,44 @@ export function WelcomeLoaderModal({
                 </svg>
               </div>
 
-              <h1
-                id="welcome-loader-title"
-                className="mt-8 font-headline text-2xl font-extrabold tracking-tight text-[#1f2a44] sm:text-3xl"
-              >
-                Preparing your workspace...
-              </h1>
-              <p className="mt-2 text-sm font-medium text-[#51647a] sm:text-base">
-                Gathering the latest from your operation
-              </p>
+              {phase === "loading" ? (
+                <>
+                  <h1
+                    id="welcome-loader-title"
+                    className="mt-8 font-headline text-2xl font-extrabold tracking-tight text-[#1f2a44] sm:text-3xl"
+                  >
+                    Preparing your workspace...
+                  </h1>
+                  <p className="mt-2 text-sm font-medium text-[#51647a] sm:text-base">
+                    Gathering the latest from your operation
+                  </p>
 
-              <motion.div
-                className="mt-8 flex justify-center"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.12, duration: 0.35 }}
-              >
-                <PulseLine />
-              </motion.div>
+                  <motion.div
+                    className="mt-8 flex justify-center"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.12, duration: 0.35 }}
+                  >
+                    <PulseLine />
+                  </motion.div>
+                </>
+              ) : (
+                <motion.div
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+                >
+                  <h1
+                    id="welcome-loader-title"
+                    className="mt-8 font-headline text-2xl font-extrabold tracking-tight text-[#1f2a44] sm:text-3xl"
+                  >
+                    {welcomeLine}
+                  </h1>
+                  <p className="mt-2 text-sm font-medium text-[#51647a] sm:text-base">
+                    {welcomeSub}
+                  </p>
+                </motion.div>
+              )}
             </motion.div>
           </div>
         </motion.div>
