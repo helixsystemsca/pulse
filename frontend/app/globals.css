@@ -403,6 +403,10 @@ html.pulse-welcome-blur [data-pulse-app-shell] {
   .bg-dashboard-canvas {
     background-color: #f5f7fb;
   }
+  .dark .bg-dashboard-canvas {
+    /* Match `bg-pulse-bg` and other app surfaces (light rule above is not tokenized). */
+    background-color: var(--ds-bg);
+  }
 
   /** Primary surfaces */
   .app-canvas {
