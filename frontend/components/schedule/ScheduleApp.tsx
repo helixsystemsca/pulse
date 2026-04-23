@@ -21,6 +21,7 @@ import { emitOnboardingMaybeUpdated } from "@/lib/onboarding-events";
 import { patchOnboarding } from "@/lib/onboardingService";
 import { listProjects, type ProjectRow } from "@/lib/projectsService";
 import { getOrAssignProjectTintClass } from "@/lib/schedule/project-overlay-tints";
+import type { ProjectBarItem } from "@/lib/schedule/project-schedule-bars";
 import {
   addDaysToIso,
   formatLocalDate,
@@ -357,13 +358,16 @@ export function ScheduleApp() {
 
   const displayShifts = useMemo(() => {
     const base = shiftsForView;
+    let v: typeof base;
     if (contentFilter === "workers") {
-      return base.filter((s) => s.shiftKind !== "project_task");
+      v = base.filter((s) => s.shiftKind !== "project_task");
+    } else if (contentFilter === "projects") {
+      v = base.filter((s) => s.shiftKind === "project_task");
+    } else {
+      v = base;
     }
-    if (contentFilter === "projects") {
-      return base.filter((s) => s.shiftKind === "project_task");
-    }
-    return base;
+    // Assigned project tasks are shown under Assignments, not on the main shift grid.
+    return v.filter((s) => !(s.shiftKind === "project_task" && s.workerId));
   }, [shiftsForView, contentFilter]);
 
   const workerHighlightMap = useMemo(() => {
@@ -626,29 +630,27 @@ export function ScheduleApp() {
     }));
   }, [scheduleProjects]);
 
-  const projectDayTint = useMemo(() => {
-    const tint: Record<string, string> = {};
-    if (!scheduleProjects || scheduleProjects.length === 0) return tint;
+  const projectBarItems: ProjectBarItem[] | null = useMemo(() => {
+    if (!scheduleProjects || scheduleProjects.length === 0) return null;
     const active = scheduleProjects
       .filter((p) => p.status !== "completed")
       .sort((a, b) => a.name.localeCompare(b.name));
-    const applyForDates = (dates: string[]) => {
-      for (const date of dates) {
-        for (const p of active) {
-          if (date >= p.start_date && date <= p.end_date) {
-            tint[date] = getOrAssignProjectTintClass(p.id);
-            break;
-          }
-        }
-      }
-    };
-    if (calendarScale === "month") {
-      applyForDates(monthGrid(cursor.y, cursor.m).map((c) => c.date));
-    } else if (calendarScale === "week") {
-      applyForDates(weekDates);
-    }
-    return tint;
-  }, [scheduleProjects, calendarScale, cursor.y, cursor.m, weekDates]);
+    if (active.length === 0) return null;
+    return active.map((p) => ({
+      id: p.id,
+      name: p.name,
+      start_date: p.start_date,
+      end_date: p.end_date,
+      tintClass: getOrAssignProjectTintClass(p.id),
+    }));
+  }, [scheduleProjects]);
+
+  const dayProjectBar = useMemo(() => {
+    if (calendarScale !== "day" || !projectBarItems) return null;
+    return projectBarItems
+      .filter((p) => focusDate >= p.start_date && focusDate <= p.end_date)
+      .map((p) => ({ id: p.id, name: p.name, tintClass: p.tintClass }));
+  }, [calendarScale, focusDate, projectBarItems]);
 
   const dayDisplayShifts = useMemo(
     () => displayShifts.filter((s) => s.date === focusDate),
@@ -933,6 +935,7 @@ export function ScheduleApp() {
                       nightAssignmentsEnabled={
                         (scheduleMod.settings as { enableNightAssignments?: boolean }).enableNightAssignments !== false
                       }
+                      dayProjectBar={dayProjectBar}
                     />
                   </div>
                 ) : null}
@@ -957,7 +960,7 @@ export function ScheduleApp() {
                       setFocusDate(iso);
                       setCalendarScale("day");
                     }}
-                    projectDayTint={projectDayTint}
+                    projectBarItems={projectBarItems}
                     scheduleDragLock={scheduleDragLock}
                     dragSession={dragSession}
                     calendarDropsDisabled={calendarDropsDisabled}
@@ -991,7 +994,7 @@ export function ScheduleApp() {
                       setFocusDate(iso);
                       setCalendarScale("day");
                     }}
-                    projectDayTint={projectDayTint}
+                    projectBarItems={projectBarItems}
                     scheduleDragLock={scheduleDragLock}
                     dragSession={dragSession}
                     calendarDropsDisabled={calendarDropsDisabled}

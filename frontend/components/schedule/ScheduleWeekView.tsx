@@ -24,7 +24,9 @@ import type {
 } from "@/lib/schedule/types";
 
 import { buildCompactDayShiftRows } from "@/lib/schedule/compact-day-shifts";
+import type { ProjectBarItem } from "@/lib/schedule/project-schedule-bars";
 import { ScheduleCompactCellRows } from "./ScheduleCompactCellRows";
+import { ScheduleProjectBarRow } from "./ScheduleProjectBarRow";
 
 const WEEK = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -45,7 +47,7 @@ type Props = {
   onShiftMove: (shiftId: string, targetDate: string, mode: "move" | "duplicate") => void;
   onWorkerDrop: (workerId: string, targetDate: string) => void;
   onOpenDay?: (iso: string) => void;
-  projectDayTint?: Record<string, string>;
+  projectBarItems?: ProjectBarItem[] | null;
   scheduleDragLock: boolean;
   dragSession: ScheduleDragSession | null;
   calendarDropsDisabled: boolean;
@@ -72,7 +74,7 @@ export function ScheduleWeekView({
   onShiftMove,
   onWorkerDrop,
   onOpenDay,
-  projectDayTint,
+  projectBarItems = null,
   scheduleDragLock,
   dragSession,
   calendarDropsDisabled,
@@ -186,11 +188,11 @@ export function ScheduleWeekView({
           );
         })}
       </div>
+      <ScheduleProjectBarRow weekDates={weekDates} projects={projectBarItems} />
       <div className="grid min-w-[640px] grid-cols-7 gap-px bg-pulseShell-grid">
         {weekDates.map((date) => {
           const dayShifts = byDate.get(date) ?? [];
           const fullDay = dayShiftsFullDay.get(date) ?? [];
-          const projectTint = projectDayTint?.[date];
           const isOver = dragOverDate === date;
           const hl = dragSession?.kind === "worker" ? workerHighlightByDate?.[date] : undefined;
           const hlLayer = hl ? workerHighlightOverlayClass(hl.tone) : "";
@@ -254,12 +256,6 @@ export function ScheduleWeekView({
             >
               {hlLayer ? (
                 <div className={`pointer-events-none absolute inset-0 z-0 rounded-sm ${hlLayer}`} aria-hidden />
-              ) : null}
-              {projectTint ? (
-                <div
-                  className={`pointer-events-none absolute inset-x-0 top-0 z-[1] h-1.5 rounded-sm ${projectTint}`}
-                  aria-hidden
-                />
               ) : null}
               <div
                 className={`relative z-[2] flex items-center justify-between gap-1 border-b border-transparent px-1.5 pt-1.5 ${scheduleDragLock ? "pointer-events-none" : ""}`}

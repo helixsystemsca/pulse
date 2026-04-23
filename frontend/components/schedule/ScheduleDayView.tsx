@@ -1,12 +1,11 @@
 "use client";
 
-import { AlertTriangle, ArrowLeft, Award, Plus, ClipboardList, Trash2 } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Plus, ClipboardList, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   formatCertCodesShort,
   formatCertCodesWithLabels,
   scheduleShiftHoverSummary,
-  shiftHasCertificationFlag,
 } from "@/lib/schedule/certifications";
 import { getShiftConflicts, worstConflictSeverity } from "@/lib/schedule/conflicts";
 import { workerHighlightOverlayClass } from "@/lib/schedule/drag-highlight-classes";
@@ -36,6 +35,9 @@ import {
   fetchScheduleAssignments,
   patchScheduleAssignment,
 } from "@/lib/schedule/assignments";
+import { shiftDisplayCode } from "@/lib/schedule/compact-day-shifts";
+import { buildShiftCodeMapForDay } from "@/lib/schedule/shift-codes";
+import { ScheduleShiftCertChips } from "./ScheduleShiftCertChips";
 
 type Props = {
   date: string;
@@ -61,6 +63,8 @@ type Props = {
   onShiftDragSessionStart: (payload: ScheduleDragSession) => void;
   onShiftDragSessionEnd: () => void;
   nightAssignmentsEnabled?: boolean;
+  /** Projects that cover this calendar day (coloured top strip, same tints as month view). */
+  dayProjectBar?: { id: string; name: string; tintClass: string }[] | null;
 };
 
 /**
@@ -89,6 +93,7 @@ export function ScheduleDayView({
   onShiftDragSessionStart,
   onShiftDragSessionEnd,
   nightAssignmentsEnabled = false,
+  dayProjectBar = null,
 }: Props) {
   const [shake, setShake] = useState(false);
   const shakeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -116,6 +121,7 @@ export function ScheduleDayView({
   const workerMap = useMemo(() => new Map(workers.map((w) => [w.id, w])), [workers]);
 
   const sorted = useMemo(() => [...shifts].sort((a, b) => a.startTime.localeCompare(b.startTime)), [shifts]);
+  const codeMap = useMemo(() => buildShiftCodeMapForDay(dayShiftsAll), [dayShiftsAll]);
 
   const label = useMemo(() => {
     const d = new Date(date + "T12:00:00");
@@ -200,6 +206,17 @@ export function ScheduleDayView({
           </button>
         </div>
       </div>
+      {dayProjectBar && dayProjectBar.length > 0 ? (
+        <div className="flex h-1.5 w-full overflow-hidden border-b border-pulseShell-border" aria-hidden>
+          {dayProjectBar.map((p) => (
+            <div
+              key={p.id}
+              className={`min-w-0 flex-1 ${p.tintClass}`}
+              title={p.name}
+            />
+          ))}
+        </div>
+      ) : null}
 
       <div className="grid gap-0 lg:grid-cols-[minmax(0,1fr)_280px]">
         <div
@@ -250,7 +267,7 @@ export function ScheduleDayView({
                 const conflicts = getShiftConflicts(s, dayShiftsAll, workers, settings, timeOffBlocks, zones);
                 const sev = worstConflictSeverity(conflicts);
                 const hoverTip = scheduleShiftHoverSummary(s, w, conflicts);
-                const certFlag = shiftHasCertificationFlag(conflicts);
+                const shiftCode = shiftDisplayCode(s, codeMap);
                 const certRows = conflicts.filter((c) => c.type === "certification");
                 const otherRows = conflicts.filter((c) => c.type !== "certification");
                 const req = s.required_certifications?.filter(Boolean) ?? [];
@@ -397,16 +414,29 @@ export function ScheduleDayView({
                             Updated
                           </span>
                         ) : null}
-                        <div className="flex items-center gap-1">
-                          {certFlag ? (
-                            <span title={hoverTip} className="inline-flex">
-                              <Award className="h-3.5 w-3.5 text-ds-muted" strokeWidth={2} aria-hidden />
+                        <div className="flex min-w-0 max-w-full flex-wrap items-center justify-end gap-1">
+                          {req.length ? <ScheduleShiftCertChips shift={s} size="day" /> : null}
+                          {st ? (
+                            <span
+                              className={`inline-flex items-center rounded-md border px-1.5 py-0.5 text-[10px] font-extrabold leading-none ${
+                                !ptoCls
+                                  ? `${st.bg} ${st.border} ${st.text} border`
+                                  : "border border-ds-border bg-pulseShell-elevated/60 text-ds-foreground"
+                              }`}
+                            >
+                              {shiftCode}
                             </span>
-                          ) : null}
+                          ) : (
+                            <span className="inline-flex items-center rounded-md border border-pulseShell-border bg-pulseShell-elevated px-1.5 py-0.5 text-[10px] font-extrabold text-ds-foreground">
+                              {shiftCode}
+                            </span>
+                          )}
                           {sev ? (
                             <span
                               title={hoverTip}
-                              className={`h-2.5 w-2.5 rounded-full ${sev === "critical" ? "bg-ds-danger" : "bg-ds-warning"}`}
+                              className={`h-2.5 w-2.5 shrink-0 rounded-full ${
+                                sev === "critical" ? "bg-ds-danger" : "bg-ds-warning"
+                              }`}
                               aria-label={hoverTip}
                             />
                           ) : null}

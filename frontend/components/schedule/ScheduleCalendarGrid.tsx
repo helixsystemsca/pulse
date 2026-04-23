@@ -22,7 +22,9 @@ import type {
 } from "@/lib/schedule/types";
 
 import { buildCompactDayShiftRows } from "@/lib/schedule/compact-day-shifts";
+import type { ProjectBarItem } from "@/lib/schedule/project-schedule-bars";
 import { ScheduleCompactCellRows } from "./ScheduleCompactCellRows";
+import { ScheduleProjectBarRow } from "./ScheduleProjectBarRow";
 
 const WEEK = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -43,8 +45,8 @@ type Props = {
   onShiftMove: (shiftId: string, targetDate: string, mode: "move" | "duplicate") => void;
   onWorkerDrop: (workerId: string, targetDate: string) => void;
   onOpenDay?: (iso: string) => void;
-  /** Optional per-day background tint for lightweight project overlay (Tailwind classes). */
-  projectDayTint?: Record<string, string>;
+  /** Active projects for the top-of-week colour bars (span across days). */
+  projectBarItems?: ProjectBarItem[] | null;
   /** While true, chrome is non-interactive; only day cells (drops) and shift chips respond as configured. */
   scheduleDragLock: boolean;
   dragSession: ScheduleDragSession | null;
@@ -74,7 +76,6 @@ export function ScheduleCalendarGrid({
   onShiftMove,
   onWorkerDrop,
   onOpenDay,
-  projectDayTint,
   scheduleDragLock,
   dragSession,
   calendarDropsDisabled,
@@ -82,8 +83,14 @@ export function ScheduleCalendarGrid({
   workerHighlightByDate = null,
   onShiftDragSessionStart,
   onShiftDragSessionEnd,
+  projectBarItems = null,
 }: Props) {
   const cells = useMemo(() => monthGrid(year, monthIndex), [year, monthIndex]);
+  const weeks = useMemo(() => {
+    const w: (typeof cells)[] = [];
+    for (let i = 0; i < cells.length; i += 7) w.push(cells.slice(i, i + 7));
+    return w;
+  }, [cells]);
   const [dragOverDate, setDragOverDate] = useState<string | null>(null);
   const [shakeDate, setShakeDate] = useState<string | null>(null);
   const shakeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -174,11 +181,16 @@ export function ScheduleCalendarGrid({
           </div>
         ))}
       </div>
-      <div className="grid grid-cols-7 gap-px bg-pulseShell-grid">
-        {cells.map((c) => {
+      <div
+        className={`flex flex-col gap-px bg-pulseShell-grid ${scheduleDragLock ? "pointer-events-none" : ""}`}
+      >
+        {weeks.map((week) => (
+          <div key={week[0]!.date} className="flex flex-col gap-px">
+            <ScheduleProjectBarRow weekDates={week.map((c) => c.date)} projects={projectBarItems} />
+            <div className="grid grid-cols-7 gap-px">
+              {week.map((c) => {
           const dayShifts = byDate.get(c.date) ?? [];
           const fullDay = dayShiftsFullDay.get(c.date) ?? [];
-          const projectTint = projectDayTint?.[c.date];
           const isOver = dragOverDate === c.date;
           const isToday = isLocalDateToday(c.date);
           const hl = dragSession?.kind === "worker" ? workerHighlightByDate?.[c.date] : undefined;
@@ -251,13 +263,6 @@ export function ScheduleCalendarGrid({
               {hlLayer ? (
                 <div className={`pointer-events-none absolute inset-0 z-0 rounded-sm ${hlLayer}`} aria-hidden />
               ) : null}
-              {projectTint ? (
-                <div
-                  className={`pointer-events-none absolute inset-x-0 top-0 z-[1] h-1.5 rounded-sm ${projectTint}`}
-                  aria-hidden
-                  title="Project block"
-                />
-              ) : null}
               <div
                 className={`relative z-[2] flex items-center justify-between gap-1 border-b border-transparent px-1.5 pt-1.5 ${scheduleDragLock ? "pointer-events-none" : ""}`}
               >
@@ -315,6 +320,9 @@ export function ScheduleCalendarGrid({
             </div>
           );
         })}
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );

@@ -1,8 +1,7 @@
 "use client";
 
-import { Award } from "lucide-react";
 import { flushSync } from "react-dom";
-import { scheduleShiftHoverSummary, shiftHasCertificationFlag } from "@/lib/schedule/certifications";
+import { scheduleShiftHoverSummary } from "@/lib/schedule/certifications";
 import { getShiftConflicts, worstConflictSeverity } from "@/lib/schedule/conflicts";
 import type { CompactDayShiftRow } from "@/lib/schedule/compact-day-shifts";
 import {
@@ -10,6 +9,7 @@ import {
   setShiftDragData,
 } from "@/lib/schedule/drag";
 import { buildingIndicatorForZone } from "@/lib/schedule/building-indicators";
+import { ScheduleShiftCertChips } from "./ScheduleShiftCertChips";
 import type {
   ScheduleDragSession,
   ScheduleRoleDefinition,
@@ -55,17 +55,15 @@ function aggregateConflictUi(
   workerMap: Map<string, Worker>,
 ) {
   let worst: ReturnType<typeof worstConflictSeverity> = null;
-  let anyCert = false;
   const tips: string[] = [];
   for (const s of row.shifts) {
     const w = s.workerId ? workerMap.get(s.workerId) : null;
     const c = getShiftConflicts(s, fullDay, workers, settings, timeOffBlocks, zones);
     const sev = worstConflictSeverity(c);
     if (sev === "critical" || (sev === "warning" && worst !== "critical")) worst = sev;
-    if (shiftHasCertificationFlag(c)) anyCert = true;
     tips.push(scheduleShiftHoverSummary(s, w ?? null, c));
   }
-  return { worst, anyCert, tip: tips.filter(Boolean).join("\n---\n") };
+  return { worst, tip: tips.filter(Boolean).join("\n---\n") };
 }
 
 export function ScheduleCompactCellRows({
@@ -109,7 +107,7 @@ export function ScheduleCompactCellRows({
         const openCls = isOpen
           ? "ring-2 ring-dashed ring-ds-success/45 ring-offset-1 ring-offset-pulse-shell-cell dark:ring-offset-pulse-shell-cell"
           : "";
-        const { worst, anyCert, tip } = aggregateConflictUi(
+        const { worst, tip } = aggregateConflictUi(
           row,
           fullDayShifts,
           workers,
@@ -128,6 +126,12 @@ export function ScheduleCompactCellRows({
           !anyAuto &&
           row.shifts.length === 1 &&
           (!scheduleDragLock || (dragSession?.kind === "shift" && dragSession.shiftId === s.id));
+
+        const certUnion = [
+          ...new Set(
+            row.shifts.flatMap((x) => (x.required_certifications?.filter(Boolean) as string[] | undefined) ?? []),
+          ),
+        ] as string[];
 
         return (
           <div
@@ -168,24 +172,22 @@ export function ScheduleCompactCellRows({
               {summary ? (
                 <div className="flex min-w-0 items-center gap-0.5">
                   <span className="min-w-0 flex-1 truncate font-semibold leading-tight">{row.name}</span>
-                  <span
-                    className={`inline-flex shrink-0 items-center rounded border px-1 py-px text-[9px] font-bold leading-none ${
-                      st ? `${st.bg} ${st.border} ${st.text}` : "border-pulseShell-border bg-pulseShell-elevated text-ds-foreground"
-                    }`}
-                  >
-                    {row.code}
-                  </span>
-                  {bld ? (
-                    <span className="inline-flex shrink-0 items-center rounded border border-pulseShell-border bg-pulseShell-elevated/40 px-1 py-px text-[9px] font-bold leading-none text-ds-muted">
-                      {bld.code}
-                    </span>
-                  ) : null}
-                  <span className="flex shrink-0 items-center gap-0.5">
-                    {anyCert ? (
-                      <span title={tip} className="inline-flex">
-                        <Award className="h-2.5 w-2.5 shrink-0 text-ds-muted" strokeWidth={2} aria-hidden />
+                  <span className="flex min-w-0 shrink-0 items-center gap-0.5">
+                    {certUnion.length ? (
+                      <ScheduleShiftCertChips shift={s} size="compact" requiredOverride={certUnion} />
+                    ) : null}
+                    {bld ? (
+                      <span className="inline-flex shrink-0 items-center rounded border border-pulseShell-border bg-pulseShell-elevated/40 px-1 py-px text-[9px] font-bold leading-none text-ds-muted">
+                        {bld.code}
                       </span>
                     ) : null}
+                    <span
+                      className={`ml-auto inline-flex shrink-0 items-center rounded border px-1 py-px text-[9px] font-bold leading-none ${
+                        st ? `${st.bg} ${st.border} ${st.text}` : "border-pulseShell-border bg-pulseShell-elevated text-ds-foreground"
+                      }`}
+                    >
+                      {row.code}
+                    </span>
                     {worst ? (
                       <span
                         title={tip}
@@ -201,39 +203,29 @@ export function ScheduleCompactCellRows({
                 <>
                   <p className="truncate font-semibold leading-tight">{row.name}</p>
 
-                  <div className="mt-0.5 flex flex-wrap items-center gap-1">
-                    <span
-                      className={`inline-flex shrink-0 items-center rounded-md border px-1.5 py-0.5 text-[10px] font-bold leading-none ${
-                        st ? `${st.bg} ${st.border} ${st.text}` : "border-pulseShell-border bg-pulseShell-elevated text-ds-foreground"
-                      }`}
-                    >
-                      {row.code}
-                    </span>
-
+                  <div className="mt-0.5 flex w-full min-w-0 flex-wrap items-center justify-end gap-1">
+                    {certUnion.length ? <ScheduleShiftCertChips shift={s} size="day" requiredOverride={certUnion} /> : null}
                     {bld ? (
                       <span className="inline-flex shrink-0 items-center rounded-md border border-pulseShell-border bg-pulseShell-elevated/40 px-1.5 py-0.5 text-[10px] font-bold leading-none text-ds-muted">
                         {bld.code}
                       </span>
                     ) : null}
-
-                    <span className="flex-1" />
-
-                    <span className="flex shrink-0 items-center gap-0.5">
-                      {anyCert ? (
-                        <span title={tip} className="inline-flex">
-                          <Award className="h-3 w-3 shrink-0 text-ds-muted" strokeWidth={2} aria-hidden />
-                        </span>
-                      ) : null}
-                      {worst ? (
-                        <span
-                          title={tip}
-                          className={`inline-block shrink-0 rounded-full h-2 w-2 ${
-                            worst === "critical" ? "bg-ds-danger" : "bg-ds-warning"
-                          }`}
-                          aria-label={tip}
-                        />
-                      ) : null}
+                    <span
+                      className={`ml-auto inline-flex shrink-0 items-center rounded-md border px-1.5 py-0.5 text-[10px] font-bold leading-none ${
+                        st ? `${st.bg} ${st.border} ${st.text}` : "border-pulseShell-border bg-pulseShell-elevated text-ds-foreground"
+                      }`}
+                    >
+                      {row.code}
                     </span>
+                    {worst ? (
+                      <span
+                        title={tip}
+                        className={`inline-block shrink-0 rounded-full h-2 w-2 ${
+                          worst === "critical" ? "bg-ds-danger" : "bg-ds-warning"
+                        }`}
+                        aria-label={tip}
+                      />
+                    ) : null}
                   </div>
                 </>
               )}
