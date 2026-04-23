@@ -9,6 +9,7 @@ import {
   AlertTriangle,
   ArrowRightLeft,
   Box,
+  ChevronDown,
   ClipboardList,
   Download,
   Loader2,
@@ -89,7 +90,6 @@ const SETTINGS_TABS = [
   "Categories",
   "Status rules",
   "Thresholds",
-  "Locations",
   "Alerts",
 ] as const;
 type SettingsTab = (typeof SETTINGS_TABS)[number];
@@ -269,6 +269,7 @@ export function InventoryApp() {
   const [detailId, setDetailId] = useState<string | null>(null);
   const [detail, setDetail] = useState<InventoryDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
+  const [movementOpen, setMovementOpen] = useState(true);
 
   const [editOpen, setEditOpen] = useState(false);
   const [editMode, setEditMode] = useState<"create" | "edit">("create");
@@ -426,6 +427,10 @@ export function InventoryApp() {
     if (detailId) void loadDetail();
     else setDetail(null);
   }, [detailId, loadDetail]);
+
+  useEffect(() => {
+    if (detailId) setMovementOpen(true);
+  }, [detailId]);
 
   useEffect(() => {
     if (!detailId || !dataEnabled) return;
@@ -641,8 +646,6 @@ export function InventoryApp() {
         categories: normalizeNonEmptyLines(settingsDraft.categories),
         status_rules: settingsDraft.status_rules,
         threshold_defaults: settingsDraft.threshold_defaults,
-        locations: normalizeNonEmptyLines(settingsDraft.locations ?? []),
-        assignment_rules: settingsDraft.assignment_rules,
         alerts: settingsDraft.alerts,
       });
       setSettingsOpen(false);
@@ -1439,32 +1442,45 @@ export function InventoryApp() {
             </div>
 
             <div className="rounded-md border border-slate-200 bg-white p-4 shadow-sm dark:border-ds-border dark:bg-ds-primary dark:shadow-[0_2px_8px_rgba(0,0,0,0.35)]">
-              <p className="text-xs font-bold uppercase text-pulse-muted">Movement timeline</p>
-              <ul className="mt-3 space-y-3 text-sm">
-                {detail.movements.length === 0 ? (
-                  <li className="text-pulse-muted">No movements.</li>
-                ) : (
-                  detail.movements.map((m) => (
-                    <li key={m.id} className="flex gap-3 border-l-2 border-slate-200 pl-3">
-                      <div className="min-w-0 flex-1">
-                        <p className="font-semibold capitalize text-pulse-navy">
-                          {m.action.replace(/_/g, " ")}
-                          {m.work_request_label ? (
-                            <span className="ml-1 text-xs font-normal text-[#2B4C7E]">
-                              ({m.work_request_label})
-                            </span>
-                          ) : null}
-                        </p>
-                        <p className="text-xs text-pulse-muted">
-                          {m.performer_name ?? "System"} · {m.zone_name ?? "—"}
-                          {m.quantity != null ? ` · qty ${m.quantity}` : ""}
-                        </p>
-                        <p className="text-[11px] text-pulse-muted">{formatTs(m.created_at)}</p>
-                      </div>
-                    </li>
-                  ))
-                )}
-              </ul>
+              <button
+                type="button"
+                className="flex w-full items-center justify-between gap-3 text-left"
+                onClick={() => setMovementOpen((o) => !o)}
+                aria-expanded={movementOpen}
+              >
+                <span className="text-xs font-bold uppercase text-pulse-muted">Movement timeline</span>
+                <ChevronDown
+                  className={`h-4 w-4 shrink-0 text-pulse-muted transition-transform ${movementOpen ? "rotate-180" : ""}`}
+                  aria-hidden
+                />
+              </button>
+              {movementOpen ? (
+                <ul className="mt-3 space-y-3 text-sm">
+                  {detail.movements.length === 0 ? (
+                    <li className="text-pulse-muted">No movements.</li>
+                  ) : (
+                    detail.movements.map((m) => (
+                      <li key={m.id} className="flex gap-3 border-l-2 border-slate-200 pl-3">
+                        <div className="min-w-0 flex-1">
+                          <p className="font-semibold capitalize text-pulse-navy">
+                            {m.action.replace(/_/g, " ")}
+                            {m.work_request_label ? (
+                              <span className="ml-1 text-xs font-normal text-[#2B4C7E]">
+                                ({m.work_request_label})
+                              </span>
+                            ) : null}
+                          </p>
+                          <p className="text-xs text-pulse-muted">
+                            {m.performer_name ?? "System"} · {m.zone_name ?? "—"}
+                            {m.quantity != null ? ` · qty ${m.quantity}` : ""}
+                          </p>
+                          <p className="text-[11px] text-pulse-muted">{formatTs(m.created_at)}</p>
+                        </div>
+                      </li>
+                    ))
+                  )}
+                </ul>
+              ) : null}
             </div>
           </div>
         )}
@@ -1733,24 +1749,6 @@ export function InventoryApp() {
                       }))
                     }
                   />
-                </div>
-              ) : null}
-              {settingsTab === "Locations" ? (
-                <div>
-                  <p className={LABEL}>Storage zones / labels (one per line)</p>
-                  <textarea
-                    className={`${FIELD} min-h-[140px] font-mono text-xs`}
-                    value={(settingsDraft.locations ?? []).join("\n")}
-                    onChange={(e) =>
-                      setSettingsDraft((d) => ({
-                        ...d,
-                        locations: draftLinesFromTextarea(e.target.value),
-                      }))
-                    }
-                  />
-                  <p className="mt-2 text-xs text-pulse-muted">
-                    Informational labels for crews; physical zones still map to Pulse zone records when moving stock.
-                  </p>
                 </div>
               ) : null}
               {settingsTab === "Alerts" ? (
