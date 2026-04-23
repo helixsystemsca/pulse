@@ -7,6 +7,7 @@ import {
   Check,
   Info,
   MapPin,
+  Maximize2,
   Minus,
   Package,
   Pencil,
@@ -15,6 +16,7 @@ import {
   Settings,
 } from "lucide-react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { GridLayout, noCompactor, useContainerWidth, type Layout, type LayoutItem } from "react-grid-layout";
 import { DashboardAddWidgetWizard } from "@/components/dashboard/DashboardAddWidgetWizard";
@@ -1010,6 +1012,12 @@ function DashboardBody({
   headerCompanyName?: string | null;
   facilitySetupChecklist?: ReactNode;
 }) {
+  const pathname = usePathname();
+  const isKiosk = pathname.startsWith("/kiosk/");
+  const openKiosk = useCallback(() => {
+    if (typeof window === "undefined") return;
+    window.open(`${window.location.origin}/kiosk/overview`, "_blank", "noopener,noreferrer");
+  }, []);
   const userInitials = headerInitials(model.welcomeName);
   const [editMode, setEditMode] = useState(false);
   const [showAddWidget, setShowAddWidget] = useState(false);
@@ -1537,6 +1545,16 @@ function DashboardBody({
         </div>
         {!hideHeaderWelcome ? (
           <div className="flex min-w-0 items-center justify-end gap-2 sm:gap-3">
+            {!isKiosk ? (
+              <button
+                type="button"
+                className="inline-flex h-10 items-center gap-2 rounded-lg border border-ds-border bg-ds-secondary px-3 text-sm font-semibold text-ds-foreground shadow-[var(--ds-shadow-card)] transition-colors hover:bg-ds-surface-elevated dark:hover:bg-white/10"
+                onClick={openKiosk}
+              >
+                <Maximize2 className="h-4 w-4" aria-hidden />
+                Fullscreen
+              </button>
+            ) : null}
             <p className="min-w-0 truncate text-xs text-ds-muted sm:text-sm">
               Welcome,{" "}
               <span className="font-semibold text-ds-foreground">{model.welcomeName}</span>

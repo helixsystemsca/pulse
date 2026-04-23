@@ -67,6 +67,7 @@ export const pulseTenantSidebarNav = [
   { href: "/dashboard/maintenance", label: "Work Requests", icon: "clipboard" as const },
   { href: "/dashboard/procedures", label: "Procedures", icon: "list-checks" as const },
   { href: "/dashboard/team-insights", label: "Team Insights", icon: "sparkles" as const },
+  { href: "/dashboard/break-room", label: "Break Room", icon: "layout" as const },
   { href: "/dashboard/workers", label: "Team Management", icon: "user-cog" as const },
   { href: "/dashboard/inventory", label: "Inventory", icon: "package" as const },
   { href: "/equipment", label: "Equipment", icon: "wrench" as const },

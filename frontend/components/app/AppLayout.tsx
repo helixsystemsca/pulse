@@ -26,6 +26,8 @@ type AppLayoutProps = {
   mainContentClassName?: string;
   /** When false, children render without the unified page card (login, invite, etc.). */
   pageShell?: boolean;
+  /** When false, hides navbar/sidebar/footer chrome (kiosk / external display pages). */
+  chrome?: boolean;
 };
 
 export function AppLayout({
@@ -33,6 +35,7 @@ export function AppLayout({
   mainClassName = "",
   mainContentClassName = "",
   pageShell = true,
+  chrome = true,
 }: AppLayoutProps) {
   return (
     <div className="relative min-h-screen">
@@ -44,16 +47,16 @@ export function AppLayout({
         <ServerTimeSync />
         <ProximityPromptHost />
         <div data-pulse-app-shell className="flex min-h-screen min-w-0 flex-col">
-          <AppSideNav />
-          <AppNavbar />
-          <ImpersonationBanner />
-          <AppMain className={mainClassName}>
+          {chrome ? <AppSideNav /> : null}
+          {chrome ? <AppNavbar /> : null}
+          {chrome ? <ImpersonationBanner /> : null}
+          <AppMain className={mainClassName} reserveRail={chrome}>
             <MainContentWidth className={mainContentClassName}>
               {pageShell ? <PageShell>{children}</PageShell> : children}
             </MainContentWidth>
             <OnboardingChrome />
           </AppMain>
-          <AppLayoutFooter />
+          {chrome ? <AppLayoutFooter /> : null}
         </div>
         </GamificationProvider>
         </ModuleSettingsProvider>
