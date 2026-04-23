@@ -8,7 +8,8 @@ import { WelcomeLoaderModal } from "@/components/ui/WelcomeLoaderModal";
 import { isApiMode } from "@/lib/api";
 import { navigateToPulseLogin, pulsePostLoginPath } from "@/lib/pulse-app";
 import { readSession } from "@/lib/pulse-session";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 function welcomeFromSession(email: string | null | undefined, fullName: string | null | undefined): string {
@@ -25,6 +26,7 @@ function welcomeFromSession(email: string | null | undefined, fullName: string |
  */
 export default function OverviewPage() {
   const router = useRouter();
+  const pathname = usePathname();
   const [ready, setReady] = useState(false);
   const [dashboardDataReady, setDashboardDataReady] = useState(false);
   const [welcomeAlertContext, setWelcomeAlertContext] = useState<OperationalDashboardReadyPayload>({
@@ -62,8 +64,31 @@ export default function OverviewPage() {
     );
   }
 
+  const tabClass = (active: boolean) =>
+    `rounded-lg px-3.5 py-2 text-sm font-semibold transition-colors ${
+      active
+        ? "border-b-2 border-ds-success bg-ds-primary text-ds-foreground"
+        : "border-b-2 border-transparent text-ds-muted hover:bg-ds-interactive-hover hover:text-ds-foreground"
+    }`;
+
   return (
     <div className="relative">
+      <nav
+        className="mx-auto mb-4 inline-flex flex-wrap gap-1 rounded-md border border-ds-border bg-ds-secondary p-1"
+        aria-label="Dashboards"
+      >
+        <Link href="/overview" className={tabClass(pathname === "/overview")} prefetch={false} aria-current={pathname === "/overview" ? "page" : undefined}>
+          Supervisor dashboard
+        </Link>
+        <Link
+          href="/dashboard/break-room"
+          className={tabClass(pathname.startsWith("/dashboard/break-room"))}
+          prefetch={false}
+          aria-current={pathname.startsWith("/dashboard/break-room") ? "page" : undefined}
+        >
+          Break room
+        </Link>
+      </nav>
       <OperationalDashboard
         variant={isApiMode() ? "live" : "demo"}
         onReady={onDashboardReady}
