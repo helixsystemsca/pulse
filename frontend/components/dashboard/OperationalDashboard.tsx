@@ -5,6 +5,7 @@ import {
   AlertTriangle,
   Battery,
   Check,
+  Cloud,
   Info,
   MapPin,
   Maximize2,
@@ -14,6 +15,7 @@ import {
   Plus,
   Radio,
   Settings,
+  Sparkles,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -60,6 +62,56 @@ type AlertItem = {
   /** When false, excluded from welcome / severity totals (padding rows, “all clear”, etc.). */
   countsTowardTotals?: boolean;
 };
+
+const BC_TZ = "America/Vancouver";
+const NORTH_SAANICH = { lat: 48.6548, lon: -123.4207 };
+
+type Weather = { tempC: number | null; code: number | null; windKph: number | null };
+
+function weatherLabelFromCode(code: number | null): string {
+  if (code === null) return "—";
+  if (code === 0) return "Clear";
+  if (code === 1 || code === 2) return "Partly cloudy";
+  if (code === 3) return "Overcast";
+  if (code === 45 || code === 48) return "Fog";
+  if (code === 51 || code === 53 || code === 55) return "Drizzle";
+  if (code === 56 || code === 57) return "Freezing drizzle";
+  if (code === 61 || code === 63 || code === 65) return "Rain";
+  if (code === 66 || code === 67) return "Freezing rain";
+  if (code === 71 || code === 73 || code === 75) return "Snow";
+  if (code === 77) return "Snow grains";
+  if (code === 80 || code === 81 || code === 82) return "Showers";
+  if (code === 85 || code === 86) return "Snow showers";
+  if (code === 95) return "Thunderstorm";
+  if (code === 96 || code === 99) return "Thunderstorm (hail)";
+  return `Code ${code}`;
+}
+
+async function fetchNorthSaanichWeather(): Promise<Weather> {
+  const url =
+    `https://api.open-meteo.com/v1/forecast?latitude=${NORTH_SAANICH.lat}` +
+    `&longitude=${NORTH_SAANICH.lon}` +
+    `&current=temperature_2m,weather_code,wind_speed_10m` +
+    `&temperature_unit=celsius&wind_speed_unit=kmh&timezone=${encodeURIComponent(BC_TZ)}`;
+  const res = await fetch(url, { cache: "no-store" });
+  if (!res.ok) throw new Error("Weather fetch failed");
+  const data = (await res.json()) as {
+    current?: { temperature_2m?: number; weather_code?: number; wind_speed_10m?: number };
+  };
+  return {
+    tempC: typeof data.current?.temperature_2m === "number" ? data.current.temperature_2m : null,
+    code: typeof data.current?.weather_code === "number" ? data.current.weather_code : null,
+    windKph: typeof data.current?.wind_speed_10m === "number" ? data.current.wind_speed_10m : null,
+  };
+}
+
+function timeInBc(d: Date): string {
+  return d.toLocaleTimeString(undefined, { timeZone: BC_TZ, hour: "2-digit", minute: "2-digit" });
+}
+
+function dateInBc(d: Date): string {
+  return d.toLocaleDateString(undefined, { timeZone: BC_TZ, weekday: "long", month: "short", day: "numeric" });
+}
 
 /** Passed to `OperationalDashboard` `onReady` for welcome modal / other consumers. */
 export type OperationalDashboardReadyPayload = {
@@ -1001,6 +1053,7 @@ function DashboardBody({
   headerLogoUrl,
   headerCompanyName,
   facilitySetupChecklist,
+  readOnly = false,
 }: {
   model: DashboardViewModel;
   workOrdersHref: string;
@@ -1011,6 +1064,7 @@ function DashboardBody({
   headerLogoUrl?: string | null;
   headerCompanyName?: string | null;
   facilitySetupChecklist?: ReactNode;
+  readOnly?: boolean;
 }) {
   const pathname = usePathname();
   const isKiosk = pathname.startsWith("/kiosk/");
@@ -1018,8 +1072,36 @@ function DashboardBody({
     if (typeof window === "undefined") return;
     window.open(`${window.location.origin}/kiosk/overview`, "_blank", "noopener,noreferrer");
   }, []);
+  const [now, setNow] = useState(() => new Date());
+  const [weather, setWeather] = useState<Weather>({ tempC: null, code: null, windKph: null });
+
+  useEffect(() => {
+    const t = window.setInterval(() => setNow(new Date()), 1000);
+    return () => window.clearInterval(t);
+  }, []);
+
+  useEffect(() => {
+    let cancel = false;
+    const load = async () => {
+      try {
+        const w = await fetchNorthSaanichWeather();
+        if (!cancel) setWeather(w);
+      } catch {
+        if (!cancel) setWeather({ tempC: null, code: null, windKph: null });
+      }
+    };
+    void load();
+    const t = window.setInterval(load, 10 * 60 * 1000);
+    return () => {
+      cancel = true;
+      window.clearInterval(t);
+    };
+  }, []);
   const userInitials = headerInitials(model.welcomeName);
   const [editMode, setEditMode] = useState(false);
+  useEffect(() => {
+    if (readOnly) setEditMode(false);
+  }, [readOnly]);
   const [showAddWidget, setShowAddWidget] = useState(false);
   const [showPeekWizard, setShowPeekWizard] = useState(false);
   const [peekWizardMode, setPeekWizardMode] = useState<"create" | "edit">("create");
@@ -1534,55 +1616,73 @@ function DashboardBody({
     if (layoutItem) setLayout((prev) => [...prev, layoutItem]);
   }, []);
 
+  const weatherLabel = useMemo(() => weatherLabelFromCode(weather.code), [weather.code]);
+  const weatherTemp = useMemo(() => (weather.tempC == null ? "—" : `${Math.round(weather.tempC)}°C`), [weather.tempC]);
+  const marqueeItems = useMemo(() => {
+    const notes: string[] = [];
+    if (model.bannerNote) notes.push(model.bannerNote);
+    const top = model.alerts
+      .filter((a) => a.countsTowardTotals !== false)
+      .slice(0, 6)
+      .map((a) => a.title);
+    return [...notes, ...top].filter(Boolean);
+  }, [model.alerts, model.bannerNote]);
+
   return (
-    <div className="ds-dashboard-shell">
-      <header className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 border-b border-ds-border bg-ds-header px-4 py-4 shadow-[var(--ds-shadow-card)] backdrop-blur-md sm:px-6">
-        <span className="min-w-0 text-base font-bold leading-tight tracking-tight text-ds-foreground sm:text-lg md:text-xl lg:text-2xl">
-          {model.title}
-        </span>
-        <div className="flex min-h-0 min-w-0 justify-center">
-          <OperationsHeaderLogoMark logoUrl={headerLogoUrl} companyName={headerCompanyName} />
-        </div>
-        {!hideHeaderWelcome ? (
-          <div className="flex min-w-0 items-center justify-end gap-2 sm:gap-3">
+    <div className="mx-auto w-full max-w-6xl space-y-6 px-4 py-6">
+      <div className="rounded-2xl border border-ds-border bg-ds-primary shadow-[var(--ds-shadow-card)]">
+        <div className="flex flex-wrap items-center justify-between gap-4 px-5 py-4">
+          <div className="min-w-0">
+            <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-ds-muted">Operations dashboard</p>
+            <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm font-semibold text-ds-foreground">
+              <span>{dateInBc(now)}</span>
+              <span className="text-ds-muted">•</span>
+              <span className="tabular-nums">{timeInBc(now)}</span>
+              <span className="text-ds-muted">•</span>
+              <span className="inline-flex items-center gap-1.5 text-ds-muted">
+                <Cloud className="h-4 w-4" aria-hidden />
+                {weatherTemp} · {weatherLabel}
+              </span>
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
             {!isKiosk ? (
               <button
                 type="button"
-                className="inline-flex h-10 items-center gap-2 rounded-lg border border-ds-border bg-ds-secondary px-3 text-sm font-semibold text-ds-foreground shadow-[var(--ds-shadow-card)] transition-colors hover:bg-ds-surface-elevated dark:hover:bg-white/10"
+                className="ds-btn-secondary inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold"
                 onClick={openKiosk}
               >
                 <Maximize2 className="h-4 w-4" aria-hidden />
                 Fullscreen
               </button>
             ) : null}
-            <p className="min-w-0 truncate text-xs text-ds-muted sm:text-sm">
-              Welcome,{" "}
-              <span className="font-semibold text-ds-foreground">{model.welcomeName}</span>
-            </p>
-            <span className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-ds-success text-xs font-bold text-ds-on-accent ring-2 ring-ds-border">
-              {userInitials.slice(0, 2)}
-              <span
-                className="pointer-events-none absolute -right-0.5 -top-0.5 z-10 flex h-[18px] w-[18px] items-center justify-center rounded-full bg-ds-success text-[9px] font-bold leading-none text-ds-on-accent shadow-[var(--ds-shadow-card)] ring-2 ring-[var(--ds-surface-primary)]"
-                aria-hidden
-              >
-                M
+            {!hideHeaderWelcome ? (
+              <span className="inline-flex items-center gap-2 rounded-xl border border-ds-border bg-ds-secondary/40 px-3 py-2 text-sm font-semibold text-ds-foreground">
+                <span className="hidden sm:inline">Welcome,</span> {model.welcomeName}
               </span>
-            </span>
+            ) : null}
           </div>
-        ) : (
-          <div className="min-w-0" aria-hidden />
-        )}
-      </header>
-
-      {model.bannerNote ? (
-        <div className="ds-notification ds-notification-warning flex flex-wrap items-center justify-center gap-2 border-x-0 border-t-0 rounded-none px-4 py-3 text-sm font-medium text-ds-foreground">
-          <Info className="h-4 w-4 shrink-0 text-ds-warning" aria-hidden />
-          <span>{model.bannerNote}</span>
         </div>
-      ) : null}
 
-      <div className="p-5 lg:p-6">
-        <div className="mb-5 flex flex-wrap items-center gap-2">
+        {marqueeItems.length ? (
+          <div className="border-t border-ds-border bg-ds-secondary/40">
+            <div className="relative overflow-hidden px-5 py-2">
+              <div className="ops-marquee whitespace-nowrap text-sm font-semibold text-ds-foreground">
+                {marqueeItems.map((m, idx) => (
+                  <span key={`${m}-${idx}`} className="mr-10">
+                    <Sparkles className="mr-2 inline-block h-4 w-4 opacity-80" aria-hidden />
+                    {m}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+        ) : null}
+      </div>
+
+      <div className="rounded-2xl border border-ds-border bg-white p-5 shadow-[var(--ds-shadow-card)] dark:bg-ds-primary">
+        {!readOnly ? (
+          <div className="mb-5 flex flex-wrap items-center gap-2">
           <div
             className="inline-flex items-center rounded-xl border border-slate-200/90 bg-white p-1 shadow-[var(--ds-shadow-card)] dark:border-ds-border dark:bg-ds-secondary"
             role="group"
@@ -1628,7 +1728,8 @@ function DashboardBody({
               <Plus className="h-[1.125rem] w-[1.125rem] shrink-0" strokeWidth={2.5} aria-hidden />
             </button>
           </div>
-        </div>
+          </div>
+        ) : null}
 
         <div ref={containerRef as any}>
           {mounted ? (
@@ -1636,10 +1737,13 @@ function DashboardBody({
               layout={layout}
               width={width}
               gridConfig={{ cols: 12, rowHeight: 100, margin: [24, 24], containerPadding: [0, 0] }}
-              dragConfig={{ enabled: editMode, bounded: false, handle: ".dashboard-drag-handle" }}
-              resizeConfig={{ enabled: editMode, handles: ["se"] }}
+              dragConfig={{ enabled: !readOnly && editMode, bounded: false, handle: ".dashboard-drag-handle" }}
+              resizeConfig={{ enabled: !readOnly && editMode, handles: ["se"] }}
               compactor={noCompactor}
-              onLayoutChange={(next) => setLayout(next)}
+              onLayoutChange={(next) => {
+                if (readOnly) return;
+                setLayout(next);
+              }}
             >
           {layout.map((item) => {
             if (item.i.startsWith("cw_")) {
@@ -1647,7 +1751,7 @@ function DashboardBody({
               if (!cfg) return <div key={item.i} />;
               const headerRight = (
                 <div className="flex items-center gap-2">
-                  {editMode ? (
+                  {!readOnly && editMode ? (
                     <button
                       type="button"
                       onClick={() => {
@@ -1662,12 +1766,12 @@ function DashboardBody({
                       <Settings className="h-3.5 w-3.5" aria-hidden />
                     </button>
                   ) : null}
-                  {editMode ? (
+                  {!readOnly && editMode ? (
                     <span className="dashboard-drag-handle select-none rounded-md border border-black/10 bg-slate-900/90 px-2 py-1 text-[11px] font-semibold text-white shadow-sm dark:bg-white/85 dark:text-slate-900">
                       Drag
                     </span>
                   ) : null}
-                  {editMode ? (
+                  {!readOnly && editMode ? (
                     <button
                       type="button"
                       onClick={() => removeWidget(item.i)}
@@ -1708,12 +1812,12 @@ function DashboardBody({
             const headerRight = (
               <div className="flex items-center gap-2">
                 {alertsPeek}
-                {editMode ? (
+                {!readOnly && editMode ? (
                   <span className="dashboard-drag-handle select-none rounded-md border border-black/10 bg-slate-900/90 px-2 py-1 text-[11px] font-semibold text-white shadow-sm dark:bg-white/85 dark:text-slate-900">
                     Drag
                   </span>
                 ) : null}
-                {editMode ? (
+                {!readOnly && editMode ? (
                   <button
                     type="button"
                     onClick={() => removeWidget(item.i)}
@@ -1813,17 +1917,42 @@ function DashboardBody({
           </div>
         ) : null}
 
-        <DashboardAddWidgetWizard
-          open={showPeekWizard}
-          mode={peekWizardMode}
-          initialConfig={peekWizardInitial}
-          onClose={() => {
-            setShowPeekWizard(false);
-            setPeekWizardInitial(null);
-          }}
-          onSave={saveCustomPeek}
-        />
+        {!readOnly ? (
+          <DashboardAddWidgetWizard
+            open={showPeekWizard}
+            mode={peekWizardMode}
+            initialConfig={peekWizardInitial}
+            onClose={() => {
+              setShowPeekWizard(false);
+              setPeekWizardInitial(null);
+            }}
+            onSave={saveCustomPeek}
+          />
+        ) : null}
       </div>
+
+      <style jsx>{`
+        .ops-marquee {
+          display: inline-block;
+          padding-left: 100%;
+          animation: marquee 38s linear infinite;
+        }
+        @keyframes marquee {
+          0% {
+            transform: translate3d(0, 0, 0);
+          }
+          100% {
+            transform: translate3d(-100%, 0, 0);
+          }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .ops-marquee {
+            animation: none;
+            padding-left: 0;
+            white-space: normal;
+          }
+        }
+      `}</style>
     </div>
   );
 }
@@ -1833,10 +1962,16 @@ export type OperationalDashboardVariant = "demo" | "live";
 export function OperationalDashboard({
   variant,
   onReady,
+  readOnly = false,
+  tokenOverride = null,
 }: {
   variant: OperationalDashboardVariant;
   /** Fires once when the dashboard has finished its initial load (live fetch done or demo mounted). */
   onReady?: (payload?: OperationalDashboardReadyPayload) => void;
+  /** Kiosk / read-only mode disables layout editing and widget add/remove. */
+  readOnly?: boolean;
+  /** Optional bearer token for kiosk links (`?token=`) when no session exists. */
+  tokenOverride?: string | null;
 }) {
   const { session } = usePulseAuth();
   const [liveModel, setLiveModel] = useState<DashboardViewModel | null>(null);
@@ -1858,9 +1993,21 @@ export function OperationalDashboard({
     [onReady],
   );
 
+  const fetchJson = useCallback(
+    async <T,>(path: string): Promise<T> => {
+      if (tokenOverride) {
+        const res = await fetch(path, { headers: { Authorization: `Bearer ${tokenOverride}` }, cache: "no-store" });
+        if (!res.ok) throw new Error(`http_${res.status}`);
+        return (await res.json()) as T;
+      }
+      return await apiFetch<T>(path);
+    },
+    [tokenOverride],
+  );
+
   const fetchLive = useCallback(async () => {
     const sess = readSession();
-    if (!canAccessPulseTenantApis(sess)) {
+    if (!tokenOverride && !canAccessPulseTenantApis(sess)) {
       setLoading(false);
       setError(
         sess && (sess.is_system_admin === true || sess.role === "system_admin")
@@ -1883,18 +2030,18 @@ export function OperationalDashboard({
 
     try {
       const [dash, wrList, workers, assetList, lowStock, zoneList, beaconList, setupProgress] = await Promise.all([
-        apiFetch<DashboardPayload>("/api/v1/pulse/dashboard"),
-        apiFetch<WorkRequestListOut>("/api/v1/pulse/work-requests?limit=40&offset=0"),
-        apiFetch<WorkerOut[]>("/api/v1/pulse/workers"),
-        apiFetch<AssetOut[]>("/api/v1/pulse/assets"),
-        apiFetch<InventoryItemOut[]>("/api/v1/pulse/inventory/low-stock"),
-        apiFetch<ZoneOut[]>("/api/v1/pulse/zones"),
-        apiFetch<BeaconEquipmentOut[]>("/api/v1/pulse/equipment"),
+        fetchJson<DashboardPayload>("/api/v1/pulse/dashboard"),
+        fetchJson<WorkRequestListOut>("/api/v1/pulse/work-requests?limit=40&offset=0"),
+        fetchJson<WorkerOut[]>("/api/v1/pulse/workers"),
+        fetchJson<AssetOut[]>("/api/v1/pulse/assets"),
+        fetchJson<InventoryItemOut[]>("/api/v1/pulse/inventory/low-stock"),
+        fetchJson<ZoneOut[]>("/api/v1/pulse/zones"),
+        fetchJson<BeaconEquipmentOut[]>("/api/v1/pulse/equipment"),
         fetchSetupProgress().catch(() => null),
       ]);
       let shiftList: ShiftOut[] = [];
       try {
-        shiftList = await apiFetch<ShiftOut[]>(
+        shiftList = await fetchJson<ShiftOut[]>(
           `/api/v1/pulse/schedule/shifts?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`,
         );
       } catch (se) {
@@ -1932,7 +2079,7 @@ export function OperationalDashboard({
     }
     // Intentionally omit session from deps: usePulseAuth hydrates after mount and would re-run this eight-way
     // fetch. Welcome uses readSession() inside the try block above.
-  }, [variant, notifyReady]);
+  }, [fetchJson, notifyReady, tokenOverride, variant]);
 
   useEffect(() => {
     if (variant !== "live" || !isApiMode()) return;
@@ -1997,7 +2144,12 @@ export function OperationalDashboard({
 
   if (variant === "demo") {
     return (
-      <DashboardBody model={demoModel()} workOrdersHref={workOrdersHref} facilitySetupChecklist={null} />
+      <DashboardBody
+        model={demoModel()}
+        workOrdersHref={workOrdersHref}
+        facilitySetupChecklist={null}
+        readOnly={readOnly}
+      />
     );
   }
 
@@ -2045,6 +2197,7 @@ export function OperationalDashboard({
       headerLogoUrl="/images/panologo.png"
       headerCompanyName={session?.company?.name ?? null}
       facilitySetupChecklist={facilitySetupSlot}
+      readOnly={readOnly}
     />
   );
 }

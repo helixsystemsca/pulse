@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AlertTriangle, Cloud, Maximize2, ShieldAlert, Sparkles } from "lucide-react";
-import { apiFetch, isApiMode } from "@/lib/api";
+import { isApiMode } from "@/lib/api";
 import { readSession } from "@/lib/pulse-session";
 import type { PulseShiftApi, PulseWorkerApi } from "@/lib/schedule/pulse-bridge";
 import { pulseShiftsToSchedule, pulseWorkersToSchedule, type PulseZoneApi } from "@/lib/schedule/pulse-bridge";
@@ -16,25 +16,71 @@ type Props = {
 type Notification = { id: string; message: string; tone?: "info" | "warning" };
 type CriticalAlert = { id: string; title: string; detail?: string; source?: string; happenedAt?: string };
 
-function nowString(d: Date): string {
-  return d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+const BC_TZ = "America/Vancouver";
+const NORTH_SAANICH = { lat: 48.6548, lon: -123.4207 };
+
+function timeInBc(d: Date): string {
+  return d.toLocaleTimeString(undefined, { timeZone: BC_TZ, hour: "2-digit", minute: "2-digit" });
 }
 
-function dateString(d: Date): string {
-  return d.toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" });
+function dateInBc(d: Date): string {
+  return d.toLocaleDateString(undefined, {
+    timeZone: BC_TZ,
+    weekday: "long",
+    month: "short",
+    day: "numeric",
+  });
 }
 
-function startOfLocalDayIso(d: Date): Date {
-  const x = new Date(d);
-  x.setHours(0, 0, 0, 0);
-  return x;
+function bcDayBoundsIso(now: Date): { fromIso: string; toIso: string } {
+  // Compute local YYYY-MM-DD in BC, then anchor boundaries in BC by using the offset in ISO strings.
+  const ymd = new Intl.DateTimeFormat("en-CA", { timeZone: BC_TZ, year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
+  // ymd is "YYYY-MM-DD" in en-CA
+  const fromIso = `${ymd}T00:00:00`;
+  const toIso = `${ymd}T23:59:59.999`;
+  return { fromIso, toIso };
 }
 
-function endOfLocalDayIso(d: Date): Date {
-  const x = new Date(d);
-  x.setHours(23, 59, 59, 999);
-  return x;
+type Weather = { tempC: number | null; code: number | null; windKph: number | null };
+
+function weatherLabelFromCode(code: number | null): string {
+  if (code === null) return "—";
+  if (code === 0) return "Clear";
+  if (code === 1 || code === 2) return "Partly cloudy";
+  if (code === 3) return "Overcast";
+  if (code === 45 || code === 48) return "Fog";
+  if (code === 51 || code === 53 || code === 55) return "Drizzle";
+  if (code === 56 || code === 57) return "Freezing drizzle";
+  if (code === 61 || code === 63 || code === 65) return "Rain";
+  if (code === 66 || code === 67) return "Freezing rain";
+  if (code === 71 || code === 73 || code === 75) return "Snow";
+  if (code === 77) return "Snow grains";
+  if (code === 80 || code === 81 || code === 82) return "Showers";
+  if (code === 85 || code === 86) return "Snow showers";
+  if (code === 95) return "Thunderstorm";
+  if (code === 96 || code === 99) return "Thunderstorm (hail)";
+  return `Code ${code}`;
 }
+
+async function fetchNorthSaanichWeather(): Promise<Weather> {
+  const url =
+    `https://api.open-meteo.com/v1/forecast?latitude=${NORTH_SAANICH.lat}` +
+    `&longitude=${NORTH_SAANICH.lon}` +
+    `&current=temperature_2m,weather_code,wind_speed_10m` +
+    `&temperature_unit=celsius&wind_speed_unit=kmh&timezone=${encodeURIComponent(BC_TZ)}`;
+  const res = await fetch(url, { cache: "no-store" });
+  if (!res.ok) throw new Error("Weather fetch failed");
+  const data = (await res.json()) as {
+    current?: { temperature_2m?: number; weather_code?: number; wind_speed_10m?: number };
+  };
+  return {
+    tempC: typeof data.current?.temperature_2m === "number" ? data.current.temperature_2m : null,
+    code: typeof data.current?.weather_code === "number" ? data.current.weather_code : null,
+    windKph: typeof data.current?.wind_speed_10m === "number" ? data.current.wind_speed_10m : null,
+  };
+}
+
+// Note: local-day helpers removed in favor of `bcDayBoundsIso`.
 
 function bandLabel(b: "D" | "A" | "N"): string {
   if (b === "D") return "Day";
@@ -100,6 +146,7 @@ export function WorkerBreakRoomDashboard({ kiosk = false }: Props) {
   const [workers, setWorkers] = useState<Worker[]>([]);
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [criticalAlert, setCriticalAlert] = useState<CriticalAlert | null>(null);
+  const [weather, setWeather] = useState<Weather>({ tempC: null, code: null, windKph: null });
 
   const notifications: Notification[] = useMemo(
     () => [
@@ -115,11 +162,52 @@ export function WorkerBreakRoomDashboard({ kiosk = false }: Props) {
     return () => window.clearInterval(t);
   }, []);
 
+  useEffect(() => {
+    let cancel = false;
+    const load = async () => {
+      try {
+        const w = await fetchNorthSaanichWeather();
+        if (!cancel) setWeather(w);
+      } catch {
+        if (!cancel) setWeather({ tempC: null, code: null, windKph: null });
+      }
+    };
+    void load();
+    const t = window.setInterval(load, 10 * 60 * 1000);
+    return () => {
+      cancel = true;
+      window.clearInterval(t);
+    };
+  }, []);
+
+  const kioskToken = useMemo(() => {
+    if (typeof window === "undefined") return null;
+    try {
+      const u = new URL(window.location.href);
+      const t = u.searchParams.get("token");
+      return t && t.length > 10 ? t : null;
+    } catch {
+      return null;
+    }
+  }, []);
+
+  const apiFetchWorker = useCallback(
+    async <T,>(path: string): Promise<T> => {
+      const sess = readSession();
+      const token = sess?.access_token ?? kioskToken;
+      if (!token) throw new Error("no_token");
+      const res = await fetch(path, { headers: { Authorization: `Bearer ${token}` } });
+      if (!res.ok) throw new Error(`http_${res.status}`);
+      return (await res.json()) as T;
+    },
+    [kioskToken],
+  );
+
   const loadToday = useCallback(async () => {
     // Public worker dashboard must render without auth. When not authenticated,
     // fall back to kiosk demo content (placeholders).
     const sess = readSession();
-    const canLoadLive = isApiMode() && Boolean(sess?.access_token);
+    const canLoadLive = isApiMode() && (Boolean(sess?.access_token) || Boolean(kioskToken));
     if (!canLoadLive) {
       setWorkers([
         { id: "wk-1", name: "Jordan Lee", role: "lead", active: true },
@@ -138,13 +226,12 @@ export function WorkerBreakRoomDashboard({ kiosk = false }: Props) {
     }
     setLoading(true);
     try {
-      const from = startOfLocalDayIso(new Date());
-      const to = endOfLocalDayIso(new Date());
+      const { fromIso, toIso } = bcDayBoundsIso(new Date());
       const [w, z, sh] = await Promise.all([
-        apiFetch<PulseWorkerApi[]>("/api/v1/pulse/workers"),
-        apiFetch<PulseZoneApi[]>("/api/v1/pulse/zones"),
-        apiFetch<PulseShiftApi[]>(
-          `/api/v1/pulse/schedule/shifts?from=${encodeURIComponent(from.toISOString())}&to=${encodeURIComponent(to.toISOString())}`,
+        apiFetchWorker<PulseWorkerApi[]>("/api/v1/pulse/workers"),
+        apiFetchWorker<PulseZoneApi[]>("/api/v1/pulse/zones"),
+        apiFetchWorker<PulseShiftApi[]>(
+          `/api/v1/pulse/schedule/shifts?from=${encodeURIComponent(fromIso)}&to=${encodeURIComponent(toIso)}`,
         ),
       ]);
       const zonesMapped = z;
@@ -157,7 +244,7 @@ export function WorkerBreakRoomDashboard({ kiosk = false }: Props) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [apiFetchWorker, kioskToken]);
 
   useEffect(() => {
     void loadToday();
@@ -193,10 +280,11 @@ export function WorkerBreakRoomDashboard({ kiosk = false }: Props) {
 
   const openKiosk = useCallback(() => {
     if (typeof window === "undefined") return;
-    window.open(`${window.location.origin}/worker`, "_blank", "noopener,noreferrer");
+    window.open(`${window.location.origin}/kiosk/worker`, "_blank", "noopener,noreferrer");
   }, []);
 
-  const weather = useMemo(() => ({ temp: "—", condition: "Weather TBD" }), []);
+  const weatherLabel = useMemo(() => weatherLabelFromCode(weather.code), [weather.code]);
+  const weatherTemp = useMemo(() => (weather.tempC == null ? "—" : `${Math.round(weather.tempC)}°C`), [weather.tempC]);
 
   return (
     <div className={`mx-auto w-full max-w-6xl space-y-6 px-4 py-6 ${kiosk ? "max-w-none px-6 py-6" : ""}`}>
@@ -207,13 +295,13 @@ export function WorkerBreakRoomDashboard({ kiosk = false }: Props) {
           <div className="min-w-0">
             <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-ds-muted">Worker dashboard</p>
             <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm font-semibold text-ds-foreground">
-              <span>{dateString(now)}</span>
+              <span>{dateInBc(now)}</span>
               <span className="text-ds-muted">•</span>
-              <span className="tabular-nums">{nowString(now)}</span>
+              <span className="tabular-nums">{timeInBc(now)}</span>
               <span className="text-ds-muted">•</span>
               <span className="inline-flex items-center gap-1.5 text-ds-muted">
                 <Cloud className="h-4 w-4" aria-hidden />
-                {weather.temp} · {weather.condition}
+                {weatherTemp} · {weatherLabel}
               </span>
             </p>
           </div>
@@ -347,7 +435,7 @@ export function WorkerBreakRoomDashboard({ kiosk = false }: Props) {
           <div className="rounded-2xl border border-ds-border bg-white p-5 shadow-[var(--ds-shadow-card)] dark:bg-ds-primary">
             <div className="flex items-center justify-between gap-3">
               <p className="font-headline text-base font-extrabold text-ds-foreground">Today’s cadence</p>
-              <span className="text-xs font-semibold text-ds-muted tabular-nums">{nowString(now)}</span>
+              <span className="text-xs font-semibold text-ds-muted tabular-nums">{timeInBc(now)}</span>
             </div>
             <ul className="mt-4 space-y-2 text-sm">
               {[

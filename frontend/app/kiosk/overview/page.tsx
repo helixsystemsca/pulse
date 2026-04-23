@@ -2,28 +2,25 @@
 
 import { OperationalDashboard } from "@/components/dashboard/OperationalDashboard";
 import { isApiMode } from "@/lib/api";
-import { navigateToPulseLogin } from "@/lib/pulse-app";
-import { readSession } from "@/lib/pulse-session";
-import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 export default function KioskOverviewPage() {
-  const router = useRouter();
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    const s = readSession();
-    if (!s) {
-      navigateToPulseLogin();
-      return;
-    }
-    // Kiosk view is tenant-only; system admins should use impersonation.
-    if (isApiMode() && (s.is_system_admin === true || s.role === "system_admin")) {
-      router.replace("/system");
-      return;
-    }
     setReady(true);
-  }, [router]);
+  }, []);
+
+  const token = useMemo(() => {
+    if (typeof window === "undefined") return null;
+    try {
+      const u = new URL(window.location.href);
+      const t = u.searchParams.get("token");
+      return t && t.length > 10 ? t : null;
+    } catch {
+      return null;
+    }
+  }, []);
 
   if (!ready) {
     return (
@@ -33,6 +30,12 @@ export default function KioskOverviewPage() {
     );
   }
 
-  return <OperationalDashboard variant={isApiMode() ? "live" : "demo"} />;
+  return (
+    <OperationalDashboard
+      variant={isApiMode() && token ? "live" : "demo"}
+      readOnly
+      tokenOverride={token}
+    />
+  );
 }
 
