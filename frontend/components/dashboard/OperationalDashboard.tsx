@@ -15,7 +15,6 @@ import {
   Plus,
   Radio,
   Settings,
-  Sparkles,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -1618,22 +1617,13 @@ function DashboardBody({
 
   const weatherLabel = useMemo(() => weatherLabelFromCode(weather.code), [weather.code]);
   const weatherTemp = useMemo(() => (weather.tempC == null ? "—" : `${Math.round(weather.tempC)}°C`), [weather.tempC]);
-  const marqueeItems = useMemo(() => {
-    const notes: string[] = [];
-    if (model.bannerNote) notes.push(model.bannerNote);
-    const top = model.alerts
-      .filter((a) => a.countsTowardTotals !== false)
-      .slice(0, 6)
-      .map((a) => a.title);
-    return [...notes, ...top].filter(Boolean);
-  }, [model.alerts, model.bannerNote]);
 
   return (
     <div className="mx-auto w-full max-w-6xl space-y-6 px-4 py-6">
       <div className="rounded-2xl border border-ds-border bg-ds-primary shadow-[var(--ds-shadow-card)]">
         <div className="flex flex-wrap items-center justify-between gap-4 px-5 py-4">
           <div className="min-w-0">
-            <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-ds-muted">Operations dashboard</p>
+            <p className="text-[11px] font-extrabold uppercase tracking-[0.18em] text-ds-muted">Operations dashboard</p>
             <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm font-semibold text-ds-foreground">
               <span>{dateInBc(now)}</span>
               <span className="text-ds-muted">•</span>
@@ -1664,18 +1654,9 @@ function DashboardBody({
           </div>
         </div>
 
-        {marqueeItems.length ? (
-          <div className="border-t border-ds-border bg-ds-secondary/40">
-            <div className="relative overflow-hidden px-5 py-2">
-              <div className="ops-marquee whitespace-nowrap text-sm font-semibold text-ds-foreground">
-                {marqueeItems.map((m, idx) => (
-                  <span key={`${m}-${idx}`} className="mr-10">
-                    <Sparkles className="mr-2 inline-block h-4 w-4 opacity-80" aria-hidden />
-                    {m}
-                  </span>
-                ))}
-              </div>
-            </div>
+        {model.bannerNote ? (
+          <div className="border-t border-ds-border bg-ds-secondary/40 px-5 py-2.5 text-sm font-semibold text-ds-foreground">
+            {model.bannerNote}
           </div>
         ) : null}
       </div>
@@ -1684,7 +1665,7 @@ function DashboardBody({
         {!readOnly ? (
           <div className="mb-5 flex flex-wrap items-center gap-2">
           <div
-            className="inline-flex items-center rounded-xl border border-slate-200/90 bg-white p-1 shadow-[var(--ds-shadow-card)] dark:border-ds-border dark:bg-ds-secondary"
+            className="inline-flex items-center rounded-xl border border-ds-border bg-ds-secondary p-1 shadow-[var(--ds-shadow-card)] dark:bg-ds-secondary"
             role="group"
             aria-label="Dashboard layout"
           >
@@ -1707,7 +1688,7 @@ function DashboardBody({
                 <Pencil className="h-[1.125rem] w-[1.125rem] shrink-0" strokeWidth={2.5} aria-hidden />
               )}
             </button>
-            <span className="mx-0.5 h-6 w-px shrink-0 bg-slate-200 dark:bg-ds-border" aria-hidden />
+            <span className="mx-0.5 h-6 w-px shrink-0 bg-ds-border" aria-hidden />
             <button
               type="button"
               disabled={!editMode}
@@ -1930,29 +1911,6 @@ function DashboardBody({
           />
         ) : null}
       </div>
-
-      <style jsx>{`
-        .ops-marquee {
-          display: inline-block;
-          padding-left: 100%;
-          animation: marquee 38s linear infinite;
-        }
-        @keyframes marquee {
-          0% {
-            transform: translate3d(0, 0, 0);
-          }
-          100% {
-            transform: translate3d(-100%, 0, 0);
-          }
-        }
-        @media (prefers-reduced-motion: reduce) {
-          .ops-marquee {
-            animation: none;
-            padding-left: 0;
-            white-space: normal;
-          }
-        }
-      `}</style>
     </div>
   );
 }

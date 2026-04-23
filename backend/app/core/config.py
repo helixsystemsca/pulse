@@ -188,6 +188,19 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("PM_CRON_SECRET", "pm_cron_secret"),
     )
 
+    # --- Xplor Recreation (facility schedules)
+    xplor_api_key: str = Field(default="", validation_alias=AliasChoices("XPLOR_API_KEY", "xplor_api_key"))
+    xplor_base_url: str = Field(
+        default="https://api.xplorrecreation.example",
+        validation_alias=AliasChoices("XPLOR_BASE_URL", "xplor_base_url"),
+    )
+    use_mock_data: bool = Field(default=True, validation_alias=AliasChoices("USE_MOCK_DATA", "use_mock_data"))
+    # Cache TTL for schedule pulls (seconds).
+    schedule_cache_ttl_seconds: int = Field(
+        default=45,
+        validation_alias=AliasChoices("SCHEDULE_CACHE_TTL_SECONDS", "schedule_cache_ttl_seconds"),
+    )
+
     @property
     def cors_origin_list(self) -> List[str]:
         """Browser Origin values: comma- or semicolon-separated, no paths or trailing slashes."""

@@ -62,6 +62,16 @@ function weatherLabelFromCode(code: number | null): string {
   return `Code ${code}`;
 }
 
+type ScheduleEvent = {
+  id: string;
+  program_name: string;
+  start_time: string;
+  end_time: string;
+  location: string;
+  staff: string[];
+  status?: string | null;
+};
+
 async function fetchNorthSaanichWeather(): Promise<Weather> {
   const url =
     `https://api.open-meteo.com/v1/forecast?latitude=${NORTH_SAANICH.lat}` +
@@ -147,6 +157,7 @@ export function WorkerBreakRoomDashboard({ kiosk = false }: Props) {
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [criticalAlert, setCriticalAlert] = useState<CriticalAlert | null>(null);
   const [weather, setWeather] = useState<Weather>({ tempC: null, code: null, windKph: null });
+  const [facilitySchedule, setFacilitySchedule] = useState<ScheduleEvent[]>([]);
 
   const notifications: Notification[] = useMemo(
     () => [
@@ -160,6 +171,26 @@ export function WorkerBreakRoomDashboard({ kiosk = false }: Props) {
   useEffect(() => {
     const t = window.setInterval(() => setNow(new Date()), 1000);
     return () => window.clearInterval(t);
+  }, []);
+
+  useEffect(() => {
+    let cancel = false;
+    const load = async () => {
+      try {
+        const res = await fetch("/api/schedule", { cache: "no-store" });
+        if (!res.ok) throw new Error("schedule_fetch_failed");
+        const data = (await res.json()) as ScheduleEvent[];
+        if (!cancel) setFacilitySchedule(Array.isArray(data) ? data : []);
+      } catch {
+        if (!cancel) setFacilitySchedule([]);
+      }
+    };
+    void load();
+    const t = window.setInterval(load, 30_000);
+    return () => {
+      cancel = true;
+      window.clearInterval(t);
+    };
   }, []);
 
   useEffect(() => {
@@ -434,23 +465,48 @@ export function WorkerBreakRoomDashboard({ kiosk = false }: Props) {
 
           <div className="rounded-2xl border border-ds-border bg-white p-5 shadow-[var(--ds-shadow-card)] dark:bg-ds-primary">
             <div className="flex items-center justify-between gap-3">
-              <p className="font-headline text-base font-extrabold text-ds-foreground">Today’s cadence</p>
+              <p className="font-headline text-base font-extrabold text-ds-foreground">Facility schedule</p>
               <span className="text-xs font-semibold text-ds-muted tabular-nums">{timeInBc(now)}</span>
             </div>
-            <ul className="mt-4 space-y-2 text-sm">
-              {[
-                { t: "06:00", label: "Morning setup" },
-                { t: "09:30", label: "Ice clean" },
-                { t: "12:00", label: "Midday reset" },
-                { t: "15:30", label: "Ice clean" },
-                { t: "19:00", label: "Evening takedown" },
-              ].map((x) => (
-                <li key={x.t} className="flex items-center justify-between gap-3 rounded-xl border border-ds-border bg-ds-secondary/25 px-4 py-3">
-                  <span className="font-semibold text-ds-foreground">{x.label}</span>
-                  <span className="text-xs font-bold text-ds-muted tabular-nums">{x.t}</span>
-                </li>
-              ))}
-            </ul>
+            <div className="mt-4 space-y-4">
+              {facilitySchedule.length === 0 ? (
+                <p className="text-sm text-ds-muted">Loading schedule…</p>
+              ) : (
+                Object.entries(
+                  facilitySchedule.reduce<Record<string, ScheduleEvent[]>>((acc, ev) => {
+                    (acc[ev.location] ||= []).push(ev);
+                    return acc;
+                  }, {}),
+                ).map(([loc, events]) => (
+                  <div key={loc} className="space-y-2">
+                    <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-ds-muted">{loc}</p>
+                    <ul className="space-y-2 text-sm">
+                      {events
+                        .slice()
+                        .sort((a, b) => a.start_time.localeCompare(b.start_time))
+                        .slice(0, kiosk ? 10 : 8)
+                        .map((ev) => (
+                          <li
+                            key={ev.id}
+                            className="flex items-start justify-between gap-3 rounded-xl border border-ds-border bg-ds-secondary/25 px-4 py-3"
+                          >
+                            <div className="min-w-0">
+                              <p className="truncate font-semibold text-ds-foreground">{ev.program_name}</p>
+                              {ev.staff?.length ? (
+                                <p className="mt-0.5 truncate text-xs text-ds-muted">{ev.staff.join(", ")}</p>
+                              ) : null}
+                            </div>
+                            <span className="shrink-0 text-xs font-bold text-ds-muted tabular-nums">
+                              {new Date(ev.start_time).toLocaleTimeString(undefined, { timeZone: BC_TZ, hour: "2-digit", minute: "2-digit" })}–
+                              {new Date(ev.end_time).toLocaleTimeString(undefined, { timeZone: BC_TZ, hour: "2-digit", minute: "2-digit" })}
+                            </span>
+                          </li>
+                        ))}
+                    </ul>
+                  </div>
+                ))
+              )}
+            </div>
           </div>
 
           <div className="rounded-2xl border border-ds-border bg-white p-5 shadow-[var(--ds-shadow-card)] dark:bg-ds-primary">

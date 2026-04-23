@@ -54,6 +54,7 @@ from app.api.worker_profile_routes import router as worker_profile_router
 from app.api.work_requests_routes import router as work_requests_router
 from app.api.workers_routes import router as workers_router
 from app.api.inventory_portal_routes import router as inventory_portal_router
+from app.api.routes_schedule import router as schedule_router
 from app.core.bootstrap import ensure_bootstrap_system_admin
 from app.core.config import get_settings
 from app.core.database import AsyncSessionLocal
@@ -129,6 +130,7 @@ app.include_router(compliance_router, prefix="/api")
 app.include_router(work_requests_router, prefix="/api")
 app.include_router(workers_router, prefix="/api")
 app.include_router(inventory_portal_router, prefix="/api")
+app.include_router(schedule_router, prefix="/api")
 app.include_router(auth_router, prefix="/api/v1")
 app.include_router(onboarding_router, prefix="/api/v1")
 app.include_router(setup_progress_router, prefix="/api/v1")
