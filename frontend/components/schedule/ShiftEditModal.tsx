@@ -98,7 +98,7 @@ function coverageMessage(
   const draftIsSup = draft.role === "supervisor" || draft.role === "lead";
   if (draftIsSup && draft.workerId) return null;
   if (!hasSup && dayInZone.length > 0 && draft.role === "worker") {
-    return `This shift may create a coverage gap in ${zoneLabel}. Recommended: assign a lead or supervisor for this zone, or adjust times.`;
+    return `This shift may create a coverage gap at ${zoneLabel}. Recommended: assign a lead or supervisor for this facility, or adjust times.`;
   }
   if (!hasSup && draft.role === "worker") {
     return `No supervisor or lead is currently assigned to ${zoneLabel} on this date. Confirm staffing before publishing.`;
@@ -165,7 +165,7 @@ export function ShiftEditModal({
   }, [open, shift, empty]);
 
   const zone = zones.find((z) => z.id === draft.zoneId);
-  const zoneLabel = zone?.label ?? "this zone";
+  const zoneLabel = zone?.label ?? "this facility";
   const subtitle = `Configure workforce allocation for ${zoneLabel}`;
   const badge = workerBadge(draft.workerId, draft.date, allShifts, draft.id);
   const warnText = coverageMessage(draft, allShifts, settings, zoneLabel);
@@ -442,11 +442,11 @@ export function ShiftEditModal({
                 checked={draft.requires_supervisor === true}
                 onChange={(e) => setDraft((d) => ({ ...d, requires_supervisor: e.target.checked }))}
               />
-              Require supervisor / lead in zone (stricter check for this shift)
+              Require supervisor / lead at this facility (stricter check for this shift)
             </label>
             <div>
               <label className={LABEL} htmlFor="shift-min-workers">
-                Minimum workers in zone (empty = use org default)
+                Minimum workers at this facility (empty = use org default)
               </label>
               <input
                 id="shift-min-workers"
@@ -468,8 +468,8 @@ export function ShiftEditModal({
         </div>
 
         <div>
-          <label className={LABEL} htmlFor="shift-zone">
-            Location
+          <label className={LABEL} htmlFor="shift-facility">
+            Facility
           </label>
           <div className="mt-1.5 rounded-[10px] border border-pulseShell-border bg-pulseShell-surface p-4 shadow-[var(--pulse-shell-shadow)]">
             <div className="flex gap-3">
@@ -477,9 +477,9 @@ export function ShiftEditModal({
                 <MapPin className="h-4 w-4" strokeWidth={2} />
               </span>
               <div className="min-w-0 flex-1">
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Selected location</p>
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Selected facility</p>
                 <select
-                  id="shift-zone"
+                  id="shift-facility"
                   className="mt-1 w-full border-0 bg-transparent p-0 text-base font-semibold text-gray-900 dark:text-gray-100 focus:ring-0"
                   value={draft.zoneId}
                   onChange={(e) => setDraft((d) => ({ ...d, zoneId: e.target.value }))}

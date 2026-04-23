@@ -55,10 +55,6 @@ type ScheduleState = {
   setSettings: (patch: Partial<ScheduleSettings>) => void;
   setPendingRequests: (n: number) => void;
 
-  addZone: (label: string) => void;
-  updateZone: (id: string, label: string) => void;
-  removeZone: (id: string) => void;
-
   resetDemo: () => void;
 
   /** Replace roster + grid from Pulse API (live schedule). */
@@ -76,9 +72,6 @@ function initialState(): Omit<
   | "setShiftTypes"
   | "setSettings"
   | "setPendingRequests"
-  | "addZone"
-  | "updateZone"
-  | "removeZone"
   | "addTimeOffBlock"
   | "removeTimeOffBlock"
   | "resetDemo"
@@ -144,26 +137,6 @@ export const useScheduleStore = create<ScheduleState>()(
               : s.settings.staffing,
           },
         })),
-
-      addZone: (label) =>
-        set((s) => ({
-          zones: [...s.zones, { id: newId("zone"), label: label.trim() || "Zone" }],
-        })),
-
-      updateZone: (id, label) =>
-        set((s) => ({
-          zones: s.zones.map((z) => (z.id === id ? { ...z, label: label.trim() || z.label } : z)),
-        })),
-
-      removeZone: (id) =>
-        set((s) => {
-          const remaining = s.zones.filter((z) => z.id !== id);
-          const fallback = remaining[0]?.id ?? "";
-          return {
-            zones: remaining,
-            shifts: s.shifts.map((sh) => (sh.zoneId === id ? { ...sh, zoneId: fallback } : sh)),
-          };
-        }),
 
       resetDemo: () => set(initialState()),
 

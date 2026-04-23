@@ -21,6 +21,10 @@ DEFAULT_ORG_MODULE_SETTINGS: dict[str, Any] = {
         "coverageRules": [],
         # Optional: enable the night-shift assignments panel in the day view.
         "enableNightAssignments": True,
+        # How many physical facilities appear on the schedule (not equipment/zone maps).
+        "facilityCount": 3,
+        # Optional custom labels, same length as facilityCount (extra entries ignored, missing use "Facility n").
+        "facilityLabels": [],
     },
     "assets": {
         "requireSerialNumber": False,

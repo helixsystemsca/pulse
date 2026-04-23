@@ -90,6 +90,7 @@ export interface Shift {
   /** Work, training block, or PTO-style entry. */
   eventType: ShiftEventType;
   role: ScheduleDutyRole;
+  /** Pulse `zone_id` — always a **schedule facility** (org Settings → Schedule → Facilities), not equipment/blueprint zones. */
   zoneId: string;
   /** Pulse API: workforce vs linked project task (calendar line). */
   shiftKind?: ShiftKind;

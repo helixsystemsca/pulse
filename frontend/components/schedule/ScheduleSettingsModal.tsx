@@ -9,7 +9,7 @@ import { useScheduleStore } from "@/lib/schedule/schedule-store";
 import type { ShiftTypeConfig } from "@/lib/schedule/types";
 import { PulseDrawer } from "./PulseDrawer";
 
-const TABS = ["Organization", "General", "Roles", "Shift types", "Zones", "Staffing"] as const;
+const TABS = ["Organization", "General", "Roles", "Shift types", "Staffing"] as const;
 type Tab = (typeof TABS)[number];
 
 type Props = {
@@ -34,20 +34,15 @@ export function ScheduleSettingsModal({ open, onClose }: Props) {
   const settings = useScheduleStore((s) => s.settings);
   const roles = useScheduleStore((s) => s.roles);
   const shiftTypes = useScheduleStore((s) => s.shiftTypes);
-  const zones = useScheduleStore((s) => s.zones);
   const shifts = useScheduleStore((s) => s.shifts);
   const setSettings = useScheduleStore((s) => s.setSettings);
   const setRoles = useScheduleStore((s) => s.setRoles);
   const setShiftTypes = useScheduleStore((s) => s.setShiftTypes);
-  const addZone = useScheduleStore((s) => s.addZone);
-  const updateZone = useScheduleStore((s) => s.updateZone);
-  const removeZone = useScheduleStore((s) => s.removeZone);
   const setPendingRequests = useScheduleStore((s) => s.setPendingRequests);
   const pendingRequests = useScheduleStore((s) => s.pendingRequests);
   const resetDemo = useScheduleStore((s) => s.resetDemo);
 
   const [tab, setTab] = useState<Tab>("Organization");
-  const [zoneInput, setZoneInput] = useState("");
   const [roleError, setRoleError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -84,7 +79,7 @@ export function ScheduleSettingsModal({ open, onClose }: Props) {
     <PulseDrawer
       open={open}
       title="Schedule settings"
-      subtitle="Organization rules, calendar defaults, roles, zones, and staffing"
+      subtitle="Organization rules, calendar defaults, roles, and staffing. Facilities are set under Organization."
       onClose={onClose}
       wide
       elevated
@@ -317,46 +312,6 @@ export function ScheduleSettingsModal({ open, onClose }: Props) {
                   </div>
                 </div>
               ))}
-            </div>
-          ) : null}
-
-          {tab === "Zones" ? (
-            <div className="space-y-3">
-              {zones.map((z) => (
-                <div key={z.id} className="flex items-center gap-2">
-                  <input
-                    className="flex-1 rounded-lg border border-pulseShell-border px-3 py-2 text-sm"
-                    value={z.label}
-                    onChange={(e) => updateZone(z.id, e.target.value)}
-                  />
-                  <button
-                    type="button"
-                    className="rounded-lg p-2 text-gray-500 dark:text-gray-400 hover:bg-red-50 hover:text-red-700"
-                    onClick={() => removeZone(z.id)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                </div>
-              ))}
-              <div className="flex gap-2">
-                <input
-                  className="flex-1 rounded-lg border border-pulseShell-border px-3 py-2 text-sm"
-                  placeholder="New zone name"
-                  value={zoneInput}
-                  onChange={(e) => setZoneInput(e.target.value)}
-                />
-                <button
-                  type="button"
-                  className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 dark:bg-[#3B82F6] dark:hover:bg-blue-500"
-                  onClick={() => {
-                    if (!zoneInput.trim()) return;
-                    addZone(zoneInput.trim());
-                    setZoneInput("");
-                  }}
-                >
-                  Add
-                </button>
-              </div>
             </div>
           ) : null}
 

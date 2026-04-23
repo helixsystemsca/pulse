@@ -214,7 +214,7 @@ export function ScheduleApp() {
     }
     const [w, z] = await Promise.all([
       apiFetch<PulseWorkerApi[]>("/api/v1/pulse/workers"),
-      apiFetch<PulseZoneApi[]>("/api/v1/pulse/zones"),
+      apiFetch<PulseZoneApi[]>("/api/v1/pulse/schedule-facilities"),
     ]);
     let sh: PulseShiftApi[] = [];
     try {
@@ -241,10 +241,15 @@ export function ScheduleApp() {
     applyPulseScheduleSnapshot(workersMapped, zonesMapped, shiftsMapped);
   }, [applyPulseScheduleSnapshot, calendarScale, cursor.m, cursor.y, focusDate]);
 
+  const scheduleFacilitySettingsKey = useMemo(() => {
+    const s = scheduleMod.settings as { facilityCount?: number; facilityLabels?: string[] };
+    return `${s.facilityCount ?? ""}:${JSON.stringify(s.facilityLabels ?? [])}`;
+  }, [scheduleMod.settings]);
+
   useEffect(() => {
     if (!hydrated || !isApiMode()) return;
     void reloadPulseSchedule();
-  }, [hydrated, reloadPulseSchedule]);
+  }, [hydrated, reloadPulseSchedule, scheduleFacilitySettingsKey]);
 
   const hasPendingServerSave = useMemo(() => {
     if (!isApiMode()) return false;
@@ -708,7 +713,7 @@ export function ScheduleApp() {
         <div className={scheduleDragLock ? "pointer-events-none" : ""}>
           <PageHeader
             title="Schedule"
-            description="Plan shifts, zones, and coverage across your operation."
+            description="Plan shifts by facility and coverage across your operation (facilities are configured under Schedule organization settings)."
             icon={CalendarDays}
             actions={
               <>

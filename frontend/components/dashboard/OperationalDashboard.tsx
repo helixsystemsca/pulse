@@ -1993,7 +1993,7 @@ export function OperationalDashboard({
         fetchJson<WorkerOut[]>("/api/v1/pulse/workers"),
         fetchJson<AssetOut[]>("/api/v1/pulse/assets"),
         fetchJson<InventoryItemOut[]>("/api/v1/pulse/inventory/low-stock"),
-        fetchJson<ZoneOut[]>("/api/v1/pulse/zones"),
+        fetchJson<ZoneOut[]>("/api/v1/pulse/schedule-facilities"),
         fetchJson<BeaconEquipmentOut[]>("/api/v1/pulse/equipment"),
         fetchSetupProgress().catch(() => null),
       ]);

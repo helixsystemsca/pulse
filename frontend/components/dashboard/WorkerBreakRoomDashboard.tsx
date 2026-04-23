@@ -260,7 +260,7 @@ export function WorkerBreakRoomDashboard({ kiosk = false }: Props) {
       const { fromIso, toIso } = bcDayBoundsIso(new Date());
       const [w, z, sh] = await Promise.all([
         apiFetchWorker<PulseWorkerApi[]>("/api/v1/pulse/workers"),
-        apiFetchWorker<PulseZoneApi[]>("/api/v1/pulse/zones"),
+        apiFetchWorker<PulseZoneApi[]>("/api/v1/pulse/schedule-facilities"),
         apiFetchWorker<PulseShiftApi[]>(
           `/api/v1/pulse/schedule/shifts?from=${encodeURIComponent(fromIso)}&to=${encodeURIComponent(toIso)}`,
         ),

@@ -39,7 +39,7 @@ export function getShiftConflicts(
     out.push({
       severity: "warning",
       code: "understaffed",
-      label: `Understaffed in zone (${assignedInZone}/${minWorkers} assigned)`,
+      label: `Understaffed at this facility (${assignedInZone}/${minWorkers} assigned)`,
       type: "staffing",
     });
   }
@@ -50,7 +50,7 @@ export function getShiftConflicts(
       out.push({
         severity: "warning",
         code: "missing_supervisor",
-        label: "Missing supervisor or lead in zone",
+        label: "Missing supervisor or lead at this facility",
         type: "staffing",
       });
     }
@@ -105,7 +105,7 @@ export function getShiftConflicts(
       out.push({
         severity: "warning",
         code: "pool_cert_recommend",
-        label: "Pool zone: consider Pool Operator certification (P1 or P2)",
+        label: "Pool facility: consider Pool Operator certification (P1 or P2)",
         type: "certification",
       });
     }

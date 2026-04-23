@@ -76,6 +76,28 @@ export const MODULE_SETTINGS_UI: Record<ModuleId, { title: string; sections: Set
     title: "Scheduling",
     sections: [
       {
+        id: "facilities",
+        title: "Facilities (schedule)",
+        description:
+          "How many physical sites or buildings appear on the workforce schedule. (Equipment and drawings still use the separate Zones & Devices system.)",
+        fields: [
+          {
+            key: "facilityCount",
+            type: "number",
+            label: "Number of facilities to track (1–20)",
+            description: "Saves a matching list of places schedulers can assign to each shift. You can name them in the list below.",
+          },
+          {
+            key: "facilityLabels",
+            type: "json",
+            label: "Custom facility names (optional JSON array of strings)",
+            description:
+              'e.g. ["Pool","Arena","Curling Rink"] — if shorter than the number above, remaining names default to "Facility 2", etc.',
+            placeholder: '["Pool", "Rink 1", "Gym"]',
+          },
+        ],
+      },
+      {
         id: "general",
         title: "General",
         fields: [

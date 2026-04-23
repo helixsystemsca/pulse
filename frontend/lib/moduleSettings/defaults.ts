@@ -15,6 +15,10 @@ export const DEFAULT_ORG_MODULE_SETTINGS = {
     autoGenerateShifts: false,
     coverageRules: [] as unknown[],
     enableNightAssignments: true,
+    /** Tracked physical facilities for the schedule (1–20). Labels optional; see `facilityLabels`. */
+    facilityCount: 3,
+    /** Optional: one label per row; missing entries default to "Facility n". */
+    facilityLabels: [] as string[],
   },
   assets: {
     requireSerialNumber: false,

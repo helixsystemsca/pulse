@@ -8,12 +8,11 @@ import type {
 } from "./types";
 import { formatLocalDate } from "./calendar";
 
+/** Demo / offline schedule locations (not equipment “zones” — use org Settings → Schedule → Facilities in production). */
 export const defaultZones: Zone[] = [
-  { id: "z-pano", label: "Pano" },
-  { id: "z-pano-s", label: "Pano S" },
-  { id: "z-garage", label: "Garage" },
-  { id: "z-boiler", label: "Boiler Room" },
-  { id: "z-pool", label: "Aquatics / Pool Deck" },
+  { id: "demo-fac-0", label: "Facility 1" },
+  { id: "demo-fac-1", label: "Facility 2" },
+  { id: "demo-fac-2", label: "Facility 3" },
 ];
 
 export const defaultRoles: ScheduleRoleDefinition[] = [
@@ -161,7 +160,7 @@ export function buildSeedShifts(now = new Date()): Shift[] {
         shiftType: "day",
         eventType: "work",
         role: "worker",
-        zoneId: "z-pano",
+        zoneId: "demo-fac-0",
       });
       if (offset % 2 === 0) {
         shifts.push({
@@ -173,7 +172,7 @@ export function buildSeedShifts(now = new Date()): Shift[] {
           shiftType: "afternoon",
           eventType: "work",
           role: "supervisor",
-          zoneId: "z-garage",
+          zoneId: "demo-fac-1",
         });
       }
       continue;
@@ -188,7 +187,7 @@ export function buildSeedShifts(now = new Date()): Shift[] {
       shiftType: "day",
       eventType: "work",
       role: offset % 5 === 0 ? "supervisor" : "lead",
-      zoneId: "z-pano",
+      zoneId: "demo-fac-0",
     });
     shifts.push({
       id: mkId(),
@@ -199,7 +198,7 @@ export function buildSeedShifts(now = new Date()): Shift[] {
       shiftType: "day",
       eventType: "work",
       role: "worker",
-      zoneId: "z-pano-s",
+      zoneId: "demo-fac-1",
       // Demo: Riley has no Forklift cert on these days — strict requirement conflict.
       required_certifications: offset % 9 === 0 ? ["Forklift"] : undefined,
     });
@@ -213,7 +212,7 @@ export function buildSeedShifts(now = new Date()): Shift[] {
         shiftType: "day",
         eventType: "work",
         role: "worker",
-        zoneId: "z-pool",
+        zoneId: "demo-fac-2",
         required_certifications: ["P1", "P2"],
         accepts_any_certification: true,
       });
@@ -228,7 +227,7 @@ export function buildSeedShifts(now = new Date()): Shift[] {
         shiftType: "day",
         eventType: "work",
         role: "worker",
-        zoneId: "z-boiler",
+        zoneId: "demo-fac-2",
         required_certifications: ["RO"],
       });
     }
@@ -241,7 +240,7 @@ export function buildSeedShifts(now = new Date()): Shift[] {
       shiftType: "afternoon",
       eventType: "work",
       role: "worker",
-      zoneId: "z-garage",
+      zoneId: "demo-fac-1",
     });
 
     if (offset % 4 === 0) {
@@ -254,7 +253,7 @@ export function buildSeedShifts(now = new Date()): Shift[] {
         shiftType: "night",
         eventType: "work",
         role: "supervisor",
-        zoneId: "z-boiler",
+        zoneId: "demo-fac-2",
       });
     } else if (offset % 5 === 0) {
       shifts.push({
@@ -266,7 +265,7 @@ export function buildSeedShifts(now = new Date()): Shift[] {
         shiftType: "night",
         eventType: "work",
         role: "supervisor",
-        zoneId: "z-pano",
+        zoneId: "demo-fac-0",
       });
     }
   }

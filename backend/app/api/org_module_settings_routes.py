@@ -18,6 +18,10 @@ from app.core.user_roles import user_has_any_role
 from app.models.domain import User, UserRole
 from app.models.pulse_models import PulseOrgModuleSettings
 from app.schemas.org_module_settings import OrgModuleSettingsOut, OrgModuleSettingsPatchIn
+from app.services.schedule_facility_zones import (
+    schedule_facility_plan_from_merged,
+    sync_schedule_facility_zones,
+)
 
 router = APIRouter(prefix="/org/module-settings", tags=["org-module-settings"])
 
@@ -106,6 +110,8 @@ async def patch_org_module_settings(
                 settings=merged,
             )
         )
+    fc, fnames = schedule_facility_plan_from_merged(merged)
+    await sync_schedule_facility_zones(db, cid, fc, fnames)
     await db.commit()
     row2 = await _get_row(db, cid)
     return OrgModuleSettingsOut(settings=merge_org_module_settings(row2.settings if row2 else merged))

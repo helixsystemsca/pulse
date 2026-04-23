@@ -39,8 +39,8 @@ type Props = {
   /** Outer scroll area (month vs week cell height). */
   scrollClassName?: string;
   /**
-   * `summary` — one line per chip (name · shift code only); full role/zone/time open in day view or shift editor.
-   * `full` — second line with role · zone (or project line).
+   * `summary` — one line per chip (name · shift code only); full role/facility/time open in day view or shift editor.
+   * `full` — second line with role · facility (or project line).
    */
   chipDetailLevel?: "summary" | "full";
 };

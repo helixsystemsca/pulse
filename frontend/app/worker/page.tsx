@@ -1,5 +1,6 @@
 "use client";
 
+import { DashboardViewTabs } from "@/components/dashboard/DashboardViewTabs";
 import { WorkerDashboard } from "@/components/dashboard/WorkerBreakRoomDashboard";
 import { navigateToPulseLogin } from "@/lib/pulse-app";
 import { readSession } from "@/lib/pulse-session";
@@ -9,6 +10,11 @@ export default function WorkerDashboardPage() {
   useEffect(() => {
     if (!readSession()) navigateToPulseLogin();
   }, []);
-  return <WorkerDashboard kiosk={false} />;
+  return (
+    <div className="relative">
+      <DashboardViewTabs />
+      <WorkerDashboard kiosk={false} />
+    </div>
+  );
 }
 

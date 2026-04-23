@@ -7,7 +7,8 @@ export function isPulseNavActive(href: string, pathname: string): boolean {
     const [path] = href.split("#");
     return pathname === path;
   }
-  if (href === "/overview") return pathname === "/overview";
+  if (href === "/overview")
+    return pathname === "/overview" || pathname === "/worker" || pathname.startsWith("/worker/");
   if (href === "/dashboard/compliance") return pathname === "/dashboard/compliance";
   if (href === "/dashboard/maintenance")
     return pathname === "/dashboard/maintenance" || pathname.startsWith("/dashboard/maintenance/");

@@ -44,6 +44,7 @@ from app.models.pulse_models import (
 )
 from app.modules.pulse import project_service as proj_task_svc
 from app.modules.pulse import service as pulse_svc
+from app.services.schedule_facility_zones import ensure_schedule_facility_zones
 from app.services.gamification_service import ensure_task_for_work_request
 from app.schemas.pulse import (
     AssetOut,
@@ -723,6 +724,17 @@ async def list_zones(db: Db, cid: CompanyId) -> list[ZoneOut]:
     zq = await db.execute(select(Zone).where(Zone.company_id == cid).order_by(Zone.name))
     zones = zq.scalars().all()
     return [ZoneOut(id=z.id, name=z.name, meta=dict(z.meta or {})) for z in zones]
+
+
+@router.get("/schedule-facilities", response_model=list[ZoneOut])
+async def list_schedule_facilities(db: Db, cid: CompanyId) -> list[ZoneOut]:
+    """
+    Facilities used for workforce scheduling (subset of `zones` with `meta.schedule_facility`).
+    Auto-seeded from org module settings the first time a tenant opens the schedule.
+    """
+    rows = await ensure_schedule_facility_zones(db, cid)
+    await db.commit()
+    return [ZoneOut(id=z.id, name=z.name, meta=dict(z.meta or {})) for z in rows]
 
 
 @router.get("/assets", response_model=list[AssetOut])
