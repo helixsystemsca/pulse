@@ -80,13 +80,8 @@ export default function OverviewPage() {
         <Link href="/overview" className={tabClass(pathname === "/overview")} prefetch={false} aria-current={pathname === "/overview" ? "page" : undefined}>
           Supervisor dashboard
         </Link>
-        <Link
-          href="/dashboard/break-room"
-          className={tabClass(pathname.startsWith("/dashboard/break-room"))}
-          prefetch={false}
-          aria-current={pathname.startsWith("/dashboard/break-room") ? "page" : undefined}
-        >
-          Break room
+        <Link href="/worker" className={tabClass(pathname.startsWith("/worker"))} prefetch={false} aria-current={pathname.startsWith("/worker") ? "page" : undefined}>
+          Worker dashboard
         </Link>
       </nav>
       <OperationalDashboard

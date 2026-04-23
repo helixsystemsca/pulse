@@ -116,9 +116,26 @@ export function WorkerBreakRoomDashboard({ kiosk = false }: Props) {
   }, []);
 
   const loadToday = useCallback(async () => {
-    if (!isApiMode()) return;
-    const s = readSession();
-    if (!s?.access_token) return;
+    // Public worker dashboard must render without auth. When not authenticated,
+    // fall back to kiosk demo content (placeholders).
+    const sess = readSession();
+    const canLoadLive = isApiMode() && Boolean(sess?.access_token);
+    if (!canLoadLive) {
+      setWorkers([
+        { id: "wk-1", name: "Jordan Lee", role: "lead", active: true },
+        { id: "wk-2", name: "Sam Rivera", role: "supervisor", active: true },
+        { id: "wk-3", name: "Alex Chen", role: "worker", active: true },
+        { id: "wk-4", name: "Riley Brooks", role: "worker", active: true },
+      ]);
+      setShifts([
+        { id: "sh-1", workerId: "wk-1", date: "today", startTime: "06:00", endTime: "14:00", shiftType: "day", eventType: "work", role: "lead", zoneId: "z1" },
+        { id: "sh-2", workerId: "wk-3", date: "today", startTime: "06:00", endTime: "14:00", shiftType: "day", eventType: "work", role: "worker", zoneId: "z1" },
+        { id: "sh-3", workerId: "wk-4", date: "today", startTime: "14:00", endTime: "22:00", shiftType: "afternoon", eventType: "work", role: "worker", zoneId: "z2" },
+        { id: "sh-4", workerId: "wk-2", date: "today", startTime: "22:00", endTime: "06:00", shiftType: "night", eventType: "work", role: "supervisor", zoneId: "z3" },
+      ]);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
       const from = startOfLocalDayIso(new Date());
@@ -176,7 +193,7 @@ export function WorkerBreakRoomDashboard({ kiosk = false }: Props) {
 
   const openKiosk = useCallback(() => {
     if (typeof window === "undefined") return;
-    window.open(`${window.location.origin}/kiosk/break-room`, "_blank", "noopener,noreferrer");
+    window.open(`${window.location.origin}/worker`, "_blank", "noopener,noreferrer");
   }, []);
 
   const weather = useMemo(() => ({ temp: "—", condition: "Weather TBD" }), []);
@@ -188,7 +205,7 @@ export function WorkerBreakRoomDashboard({ kiosk = false }: Props) {
       <div className="rounded-2xl border border-ds-border bg-ds-primary shadow-[var(--ds-shadow-card)]">
         <div className="flex flex-wrap items-center justify-between gap-4 px-5 py-4">
           <div className="min-w-0">
-            <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-ds-muted">Break room dashboard</p>
+            <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-ds-muted">Worker dashboard</p>
             <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm font-semibold text-ds-foreground">
               <span>{dateString(now)}</span>
               <span className="text-ds-muted">•</span>
@@ -383,4 +400,7 @@ export function WorkerBreakRoomDashboard({ kiosk = false }: Props) {
     </div>
   );
 }
+
+/** Alias name matching route intent (`/worker`). */
+export const WorkerDashboard = WorkerBreakRoomDashboard;
 

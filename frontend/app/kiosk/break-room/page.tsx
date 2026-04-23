@@ -1,6 +1,6 @@
-import { WorkerBreakRoomDashboard } from "@/components/dashboard/WorkerBreakRoomDashboard";
+import { redirect } from "next/navigation";
 
 export default function BreakRoomKioskPage() {
-  return <WorkerBreakRoomDashboard kiosk />;
+  redirect("/worker");
 }
 
