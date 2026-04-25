@@ -205,7 +205,7 @@ Commit: `task-10: add unknown device functions to setup-api`
 
 ---
 
-### Task 11 — Wire UnknownDevicesPanel [ ]
+### Task 11 — Wire UnknownDevicesPanel [x]
 **File:** `frontend/components/setup/SetupApp.tsx`
 Five changes in one pass:
 1. Import `UnknownDevicesPanel` from `@/components/setup/UnknownDevicesPanel`

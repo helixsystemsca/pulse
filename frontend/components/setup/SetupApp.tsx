@@ -48,6 +48,7 @@ import { LiveActivityFeed } from "@/components/setup/LiveActivityFeed";
 import { SetupProgress } from "@/components/setup/SetupProgress";
 import { ZoneCard } from "@/components/setup/ZoneCard";
 import { ZoneMapSection } from "@/components/setup/ZoneMapSection";
+import { UnknownDevicesPanel } from "@/components/setup/UnknownDevicesPanel";
 
 type CompanyOption = { id: string; name: string };
 
@@ -220,6 +221,7 @@ export function SetupApp({ defaultTab }: { defaultTab?: TabId }) {
     payload: Record<string, unknown>;
     timestamp: number;
   } | null>(null);
+  const registerTagFormRef = useRef<HTMLDivElement>(null);
 
   const statusByGatewayId = useMemo(() => {
     const m = new Map<string, GatewayStatusRow>();
@@ -580,6 +582,13 @@ export function SetupApp({ defaultTab }: { defaultTab?: TabId }) {
       setError(e instanceof Error ? e.message : "Could not assign gateway");
     }
   };
+
+  const onDiscoveredDeviceRegister = useCallback((mac: string) => {
+    setBleMac(mac);
+    setTimeout(() => {
+      registerTagFormRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 50);
+  }, []);
 
   const onAddGateway = async () => {
     if (!gwName.trim() || !gwIdent.trim()) return;
@@ -1046,6 +1055,11 @@ export function SetupApp({ defaultTab }: { defaultTab?: TabId }) {
 
           <div className="space-y-4">
             <h2 className="text-lg font-semibold text-ds-foreground">Tags</h2>
+            <UnknownDevicesPanel
+              companyId={isSystemAdmin ? effectiveCompanyId : null}
+              isSystemAdmin={isSystemAdmin}
+              onRegister={onDiscoveredDeviceRegister}
+            />
             {unassignedBle.length > 0 ? (
               <div className="rounded-md border border-amber-200/90 bg-amber-50/50 p-4 ring-1 ring-amber-200/60 md:p-5">
                 <div className="flex flex-wrap items-center justify-between gap-2">
@@ -1171,7 +1185,10 @@ export function SetupApp({ defaultTab }: { defaultTab?: TabId }) {
                 </p>
               ) : null}
             </div>
-            <div className="rounded-md border border-ds-border bg-ds-primary p-5 shadow-[var(--ds-shadow-card)]">
+            <div
+              ref={registerTagFormRef}
+              className="rounded-md border border-ds-border bg-ds-primary p-5 shadow-[var(--ds-shadow-card)]"
+            >
               <h3 className="font-semibold text-ds-foreground">Register tag</h3>
               <div className="mt-4 grid gap-3">
                 <div>
