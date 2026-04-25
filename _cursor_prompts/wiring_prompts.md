@@ -225,7 +225,7 @@ Commit: `task-12: add settings and demo page routes`
 
 ---
 
-### Task 13 — Settings nav item [ ]
+### Task 13 — Settings nav item [x]
 **File:** `frontend/lib/pulse-app.ts`
 Add to `pulseTenantSidebarNav`:
 ```ts
