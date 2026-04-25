@@ -293,7 +293,7 @@ Commit: `task-17: import check passed`
 
 ---
 
-### Task 18 — Push [ ]
+### Task 18 — Push [x]
 ```bash
 git push origin Claude
 ```
