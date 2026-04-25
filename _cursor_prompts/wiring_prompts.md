@@ -236,7 +236,7 @@ Commit: `task-13: add settings to sidebar nav`
 
 ---
 
-### Task 14 — SettingsGear on module pages [ ]
+### Task 14 — SettingsGear on module pages [x]
 **Files:** `ScheduleApp.tsx`, `WorkRequestsApp.tsx`
 In each: import `SettingsGear`, add to page header:
 ```tsx
