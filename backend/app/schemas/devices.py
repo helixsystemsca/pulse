@@ -38,6 +38,18 @@ class GatewayOut(BaseModel):
     ingest_enabled: bool = False
 
 
+class UnknownDeviceOut(BaseModel):
+    """A BLE MAC address seen by a gateway but not yet registered as a BleDevice."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    mac_address: str
+    first_seen_at: datetime
+    last_seen_at: datetime
+    seen_count: int
+
+
 class GatewayIngestSecretRotateOut(BaseModel):
     """Returned once when rotating; store only on the gateway device (ESP32), never re-displayed."""
 

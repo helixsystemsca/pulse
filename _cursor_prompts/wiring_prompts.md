@@ -145,7 +145,7 @@ Commit: `task-05: register telemetry config demo routers`
 
 ---
 
-### Task 06 — Unknown device routes [ ]
+### Task 06 — Unknown device routes [x]
 **File:** `backend/app/api/devices_routes.py`
 **Reference:** `backend/app/api/devices_routes_unknown_additions.py`
 

@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Annotated, Any, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from sqlalchemy import delete, desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_db, require_manager_or_above
@@ -23,12 +24,14 @@ from app.schemas.devices import (
     GatewayIngestSecretRotateOut,
     GatewayOut,
     GatewayPatchIn,
+    UnknownDeviceOut,
     ZoneCreateIn,
     ZoneOut,
     ZoneUpdateIn,
 )
+from app.models.device_hub import AutomationUnknownDevice
 from app.services.automation.operational_service import list_gateway_operational_status
-from app.services.devices.device_service import DeviceService
+from app.services.devices.device_service import DeviceService, normalize_mac
 
 router = APIRouter(tags=["devices"])
 
@@ -386,4 +389,40 @@ async def delete_zone(
     except LookupError:
         await db.rollback()
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="zone not found") from None
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.get("/ble-devices/unknown", response_model=list[UnknownDeviceOut])
+async def list_unknown_devices(
+    db: Db,
+    company_id: CompanyId,
+    limit: int = 50,
+) -> list[UnknownDeviceOut]:
+    result = await db.execute(
+        select(AutomationUnknownDevice)
+        .where(AutomationUnknownDevice.company_id == company_id)
+        .order_by(desc(AutomationUnknownDevice.last_seen_at))
+        .limit(limit)
+    )
+    return [UnknownDeviceOut.model_validate(r) for r in result.scalars().all()]
+
+
+@router.delete("/ble-devices/unknown/{mac_address}", status_code=status.HTTP_204_NO_CONTENT)
+async def dismiss_unknown_device(
+    mac_address: str,
+    db: Db,
+    company_id: CompanyId,
+) -> Response:
+    try:
+        norm = normalize_mac(mac_address)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="invalid_mac_address") from e
+
+    await db.execute(
+        delete(AutomationUnknownDevice).where(
+            AutomationUnknownDevice.company_id == company_id,
+            AutomationUnknownDevice.mac_address == norm,
+        )
+    )
+    await db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
