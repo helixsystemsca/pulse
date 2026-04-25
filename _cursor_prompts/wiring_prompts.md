@@ -129,7 +129,7 @@ Commit: `task-04: add latitude longitude to Company`
 
 ## PHASE 2 · Backend Wiring
 
-### Task 05 — Register routers [ ]
+### Task 05 — Register routers [x]
 **File:** `backend/app/main.py`
 Add imports + includes for all three new routers, following existing pattern:
 ```python
