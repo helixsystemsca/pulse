@@ -20,9 +20,9 @@ DEFAULT_ORG_MODULE_SETTINGS: dict[str, Any] = {
         # Custom staffing / coverage validation rules (UI-managed; evaluated client-side).
         "coverageRules": [],
         # Optional: enable the night-shift assignments panel in the day view.
-        "enableNightAssignments": True,
+        "enableNightAssignments": False,
         # How many physical facilities appear on the schedule (not equipment/zone maps).
-        "facilityCount": 3,
+        "facilityCount": 1,
         # Optional custom labels, same length as facilityCount (extra entries ignored, missing use "Facility n").
         "facilityLabels": [],
     },

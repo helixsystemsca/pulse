@@ -249,7 +249,7 @@ Commit: `task-14: add SettingsGear to schedule and work requests`
 
 ## PHASE 4 · Config & Defaults
 
-### Task 15 — Fix hardcoded defaults [ ]
+### Task 15 — Fix hardcoded defaults [x]
 **Files:**
 - `backend/app/core/org_module_settings_merge.py`
 - `frontend/lib/moduleSettings/defaults.ts`
