@@ -124,6 +124,8 @@ class Company(Base):
     background_image_url: Mapped[Optional[str]] = mapped_column(String(2048), nullable=True)
     theme: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
     timezone: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    latitude: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    longitude: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     industry: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     owner_admin_id: Mapped[Optional[str]] = mapped_column(
         UUID(as_uuid=False),

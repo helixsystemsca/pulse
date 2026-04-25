@@ -116,7 +116,7 @@ Commit: `task-03: add polygon to Zone`
 
 ---
 
-### Task 04 — Company location fields [ ]
+### Task 04 — Company location fields [x]
 **File:** `backend/app/models/domain.py`
 In `Company` class, after `timezone`:
 ```python
