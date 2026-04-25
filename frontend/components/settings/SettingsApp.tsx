@@ -33,7 +33,8 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { useAllConfig, type ConfigModule, type ModuleConfig } from "@/lib/config/service";
+import { useAllConfig } from "@/lib/config/useConfig";
+import type { ConfigModule, ModuleConfig } from "@/lib/config/service";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
 
 // ── Tab definitions ───────────────────────────────────────────────────────────

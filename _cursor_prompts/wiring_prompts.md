@@ -184,7 +184,7 @@ Commit: `task-08: implement maintenance inference engine`
 
 ## PHASE 3 · Frontend Wiring
 
-### Task 09 — Config lib files [ ]
+### Task 09 — Config lib files [x]
 **Source:** `frontend/lib/config/config_service_frontend.ts`
 Split into two files:
 - `frontend/lib/config/service.ts` — types + `configApi` object
