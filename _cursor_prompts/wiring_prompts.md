@@ -82,7 +82,7 @@ Commit: `task-01: apply migrations 0068 0069 0070`
 
 ---
 
-### Task 02 — BeaconPosition model [ ]
+### Task 02 — BeaconPosition model [x]
 **File:** `backend/app/models/device_hub.py`
 Add after `AutomationUnknownDevice`:
 ```python
