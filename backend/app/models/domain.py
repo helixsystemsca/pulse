@@ -339,6 +339,7 @@ class Zone(Base):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     meta: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
+    polygon: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
 
 
 class FacilityEquipment(Base):

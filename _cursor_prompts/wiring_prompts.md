@@ -105,7 +105,7 @@ Commit: `task-02: add BeaconPosition model and gateway position fields`
 
 ---
 
-### Task 03 — Zone polygon field [ ]
+### Task 03 — Zone polygon field [x]
 **File:** `backend/app/models/domain.py`
 In `Zone` class, after `meta`:
 ```python
