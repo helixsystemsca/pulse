@@ -217,7 +217,7 @@ Commit: `task-11: wire UnknownDevicesPanel into SetupApp`
 
 ---
 
-### Task 12 — Settings + Demo page routes [ ]
+### Task 12 — Settings + Demo page routes [x]
 Create if not exist:
 - `frontend/app/settings/page.tsx` → imports + renders `SettingsApp`
 - `frontend/app/demo/page.tsx` → imports + renders demo content

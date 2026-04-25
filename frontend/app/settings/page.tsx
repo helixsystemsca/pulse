@@ -1,13 +1,6 @@
-"use client";
-
 /**
- * frontend/app/settings/page.tsx
- * ════════════════════════════════════════════════════════════════════════════
  * Dedicated settings page. All module config in one place.
- * Deep-link to a tab with: /settings?tab=schedule
- * Each module page gear icon links here with ?tab=<module>.
- *
- * Drop at: frontend/app/settings/page.tsx
+ * Deep-link: /settings?tab=schedule
  */
 
 import { SettingsApp } from "@/components/settings/SettingsApp";
