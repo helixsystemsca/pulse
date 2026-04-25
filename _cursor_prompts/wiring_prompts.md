@@ -261,19 +261,20 @@ Commit: `task-15: fix facilityCount and enableNightAssignments defaults`
 
 ---
 
-### Task 16 — Run config migration [ ]
+### Task 16 — Run config migration [!]
 ```bash
 cd backend
 python -m scripts.migrate_config_to_pulse_config
 ```
 Non-destructive. On Python error mark BLOCKED. On empty DB mark DONE.
+BLOCKED: Script reached DB but failed with `column companies.latitude does not exist` (migrations not applied — see Task 01). Fixed `PulseConfig` model to import `Base` from `app.models.base`.
 Commit: `task-16: run config migration script`
 
 ---
 
 ## PHASE 5 · Final
 
-### Task 17 — Import check [ ]
+### Task 17 — Import check [x]
 ```bash
 cd backend
 python -c "
