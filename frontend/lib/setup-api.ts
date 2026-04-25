@@ -45,6 +45,14 @@ export type ZoneOut = {
   meta: Record<string, unknown>;
 };
 
+export type UnknownDeviceOut = {
+  id: string;
+  mac_address: string;
+  first_seen_at: string;
+  last_seen_at: string;
+  seen_count: number;
+};
+
 export type GatewayStatusRow = {
   id: string;
   name: string;
@@ -250,4 +258,20 @@ export async function deleteZone(companyId: string | null, zoneId: string): Prom
   await apiFetch<void>(withCompany(`/api/v1/zones/${zoneId}`, companyId), {
     method: "DELETE",
   });
+}
+
+export async function fetchUnknownDevices(
+  companyId: string | null,
+  limit = 50,
+): Promise<UnknownDeviceOut[]> {
+  const base = withCompany("/api/v1/ble-devices/unknown", companyId);
+  const qs = base.includes("?") ? `${base}&limit=${limit}` : `${base}?limit=${limit}`;
+  return apiFetch<UnknownDeviceOut[]>(qs);
+}
+
+export async function dismissUnknownDevice(companyId: string | null, mac: string): Promise<void> {
+  await apiFetch<void>(
+    withCompany(`/api/v1/ble-devices/unknown/${encodeURIComponent(mac)}`, companyId),
+    { method: "DELETE" },
+  );
 }

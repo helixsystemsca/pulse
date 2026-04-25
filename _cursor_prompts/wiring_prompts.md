@@ -195,7 +195,7 @@ Commit: `task-09: add frontend config service and hooks`
 
 ---
 
-### Task 10 — Setup-api additions [ ]
+### Task 10 — Setup-api additions [x]
 **File:** `frontend/lib/setup-api.ts`
 **Reference:** `frontend/lib/D_wiring_instructions.ts`
 
