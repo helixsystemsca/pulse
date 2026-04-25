@@ -173,7 +173,7 @@ Commit: `task-07: add x_norm y_norm to gateway schema and handler`
 
 ---
 
-### Task 08 — Replace maintenance_logic stub [ ]
+### Task 08 — Replace maintenance_logic stub [x]
 **File:** `backend/app/services/automation/logic/maintenance_logic.py`
 Replace entire file with new implementation.
 Verify `handle(db, event)` signature unchanged.
