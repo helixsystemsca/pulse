@@ -156,7 +156,7 @@ Commit: `task-06: add unknown device routes`
 
 ---
 
-### Task 07 — Gateway position fields in schema [ ]
+### Task 07 — Gateway position fields in schema [x]
 **File:** `backend/app/api/devices_routes.py`
 Find `GatewayOut` schema. Add:
 ```python

@@ -22,6 +22,8 @@ class GatewayPatchIn(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=255)
     status: Optional[str] = Field(None, max_length=32)
     assigned: Optional[bool] = None
+    x_norm: Optional[float] = None
+    y_norm: Optional[float] = None
 
 
 class GatewayOut(BaseModel):
@@ -36,6 +38,8 @@ class GatewayOut(BaseModel):
     zone_id: Optional[str] = None
     last_seen_at: Optional[datetime] = None
     ingest_enabled: bool = False
+    x_norm: Optional[float] = None
+    y_norm: Optional[float] = None
 
 
 class UnknownDeviceOut(BaseModel):
