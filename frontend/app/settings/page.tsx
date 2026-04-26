@@ -9,7 +9,7 @@ export default function SettingsPage() {
   return (
     <Suspense
       fallback={
-        <div className="flex items-center justify-center min-h-screen">
+        <div className="flex items-center justify-center min-h-[60vh]">
           <div className="h-5 w-5 animate-spin rounded-full border-2 border-ds-accent border-t-transparent" />
         </div>
       }

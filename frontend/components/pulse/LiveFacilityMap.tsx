@@ -210,7 +210,7 @@ export function LiveFacilityMap({ className = "", compact = false, pollMs = 5000
         </div>
 
         <div
-          className="relative w-full overflow-hidden rounded border border-ds-border bg-slate-950/40"
+          className="relative w-full overflow-hidden rounded border border-ds-border bg-ds-secondary/50 dark:bg-slate-950/40"
           style={{ aspectRatio: "16/9" }}
         >
           {loading && (
@@ -244,7 +244,7 @@ export function LiveFacilityMap({ className = "", compact = false, pollMs = 5000
             return (
               <div
                 key={zone.id}
-                className="absolute border border-slate-400/20 bg-slate-400/5 hover:bg-slate-400/10 transition-colors"
+                className="absolute border border-ds-border/60 bg-ds-primary/20 hover:bg-ds-primary/30 transition-colors"
                 style={{
                   left: `${(col / cols) * 100}%`,
                   top: `${(row / rows) * 100}%`,
@@ -252,7 +252,7 @@ export function LiveFacilityMap({ className = "", compact = false, pollMs = 5000
                   height: `${100 / rows}%`,
                 }}
               >
-                <span className="absolute left-1.5 top-1 text-[8px] font-bold uppercase tracking-wide text-slate-400/70 truncate max-w-full pr-1">
+                <span className="absolute left-1.5 top-1 text-[8px] font-bold uppercase tracking-wide text-ds-muted/80 truncate max-w-full pr-1">
                   {zone.name}
                 </span>
               </div>
