@@ -4,6 +4,7 @@ import { Radio } from "lucide-react";
 import { useEffect, useState } from "react";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { LiveFacilityMap } from "@/components/pulse/LiveFacilityMap";
+import { DemoLiveMap } from "@/components/demo/DemoLiveMap";
 import { isApiMode } from "@/lib/api";
 import { navigateToPulseLogin } from "@/lib/pulse-app";
 import { readSession } from "@/lib/pulse-session";
@@ -79,7 +80,7 @@ export default function LiveMapPage() {
             confirmation prompt fires at 90%. Press{" "}
             <span className="font-semibold text-ds-foreground">Start Demo</span> to run.
           </p>
-          <LiveFacilityMap demoMode showControls pollMs={1000} />
+          <DemoLiveMap />
         </div>
       )}
     </div>
