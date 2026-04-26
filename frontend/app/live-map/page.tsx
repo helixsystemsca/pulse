@@ -2,8 +2,7 @@
 
 import { Radio } from "lucide-react";
 import { Suspense, useState } from "react";
-import { DemoLiveMap } from "@/components/demo/DemoLiveMap";
-import { LiveFacilityMap } from "@/components/pulse/LiveFacilityMap";
+import { UnifiedFacilityMap } from "@/components/pulse/UnifiedFacilityMap";
 import { PageHeader } from "@/components/ui/PageHeader";
 
 export default function LiveMapPage() {
@@ -62,7 +61,7 @@ function LiveMapContent() {
                 className="font-semibold text-ds-success underline underline-offset-2">Demo Scenario</button> tab.
             </span>
           </div>
-          <LiveFacilityMap pollMs={3000} />
+          <UnifiedFacilityMap pollMs={3000} />
         </div>
       )}
 
@@ -74,7 +73,7 @@ function LiveMapContent() {
             Simulates the full inference pipeline — Daniel approaches the Hot Tub Boiler,
             confidence builds, and a confirmation prompt fires at 90%. Press Start to run.
           </div>
-          <DemoLiveMap />
+          <UnifiedFacilityMap demoMode showControls pollMs={1000} />
         </div>
       )}
 
