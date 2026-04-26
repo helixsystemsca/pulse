@@ -456,28 +456,245 @@ Commit: `feat(blueprint): show task instructions in read-only view when element 
 
 ---
 
+---
+
+## PHASE 6 — Lock Persistence + Unlock All Button
+**Effort: 30min | Root cause: lock only toggled via selectedIds which clears on deselect**
+
+### Root cause
+`toggleLockSelection` only operates on `selectedIds`. Once you click away
+selectedIds clears and there is no way to unlock without re-selecting the element.
+Locked elements resist re-selection. Need: (a) locked elements still selectable
+in select mode, and (b) a global Unlock All button.
+
+=== MODIFY: frontend/components/zones-devices/BlueprintDesigner.tsx ===
+
+Change A — Add unlockAll callback near toggleLockSelection (~line 1887):
+```tsx
+const unlockAll = useCallback(() => {
+  commitElements((prev) => prev.map((e) => ({ ...e, locked: undefined })));
+  batchLayer();
+}, [commitElements, batchLayer]);
+```
+
+Change B — Allow selecting locked elements in select mode.
+Find the pointer-down hit detection where locked elements are skipped.
+Find this pattern:
+```tsx
+if (hitEl && isBlueprintElementEffectivelyLocked(cur, hitEl)) return;
+```
+Change to allow selection but not transform:
+```tsx
+if (hitEl && isBlueprintElementEffectivelyLocked(cur, hitEl)) {
+  setSelectedIds([hitEl.id]);
+  return;
+}
+```
+
+Change C — Add Unlock All button to immersive topbar near line 3577.
+Find the bp-immersive-topbar div. Add after the title span:
+```tsx
+{elements.some(e => e.locked) && (
+  <button
+    type="button"
+    className="bp-btn bp-btn--ghost"
+    onClick={unlockAll}
+    title="Unlock all locked elements"
+  >
+    Unlock All
+  </button>
+)}
+```
+
+Commit: `fix(blueprint): lock persists after deselect, add Unlock All button`
+
+---
+
+## PHASE 7 — Finer Grid for Pen + Free Draw Tools
+**Effort: 20min | GRID=32px too coarse for tracing underlay drawings**
+
+=== MODIFY: frontend/components/zones-devices/BlueprintDesigner.tsx ===
+
+Change A — Add fine grid constant and state near line 150:
+```tsx
+const GRID = 32;
+const GRID_FINE = 8;
+```
+Add state near other useState declarations:
+```tsx
+const [fineGrid, setFineGrid] = useState(false);
+```
+
+Change B — Use fineGrid for pen path snapping (~lines 2610-2611).
+FIND:
+```tsx
+const wx = Math.round(w0.x / GRID) * GRID;
+const wy = Math.round(w0.y / GRID) * GRID;
+```
+REPLACE WITH:
+```tsx
+const activeGrid = fineGrid ? GRID_FINE : GRID;
+const wx = Math.round(w0.x / activeGrid) * activeGrid;
+const wy = Math.round(w0.y / activeGrid) * activeGrid;
+```
+
+Change C — Use fineGrid for pen anchor snapping (~lines 2746-2756).
+Find the two instances of:
+```tsx
+x: Math.round(w.x / GRID) * GRID,
+y: Math.round(w.y / GRID) * GRID,
+```
+Inside the draw-pen tool handler blocks, replace with:
+```tsx
+x: Math.round(w.x / (fineGrid ? GRID_FINE : GRID)) * (fineGrid ? GRID_FINE : GRID),
+y: Math.round(w.y / (fineGrid ? GRID_FINE : GRID)) * (fineGrid ? GRID_FINE : GRID),
+```
+
+Change D — Add grid toggle button in topbar near Unlock All:
+```tsx
+<button
+  type="button"
+  className="bp-btn bp-btn--ghost"
+  onClick={() => setFineGrid(f => !f)}
+  title={fineGrid ? "Switch to coarse grid (32px)" : "Switch to fine grid (8px)"}
+>
+  {fineGrid ? "Grid: Fine (8px)" : "Grid: Coarse (32px)"}
+</button>
+```
+
+Commit: `feat(blueprint): add fine grid toggle (8px) for pen and free-draw tracing`
+
+---
+
+## PHASE 8 — Remove Room Tool, All Shapes Are Rooms by Default
+**Effort: 45min | rectangle/ellipse/polygon should have same door-snap as zones**
+
+### What makes zone different from rectangle/ellipse/polygon
+- type zone enables wall attachment for doors
+- type zone enables door snapping via ZONE_EDGE_HIT_PX logic
+- type zone renders with special zone fill + outline style
+- rectangle/ellipse/polygon are generic with no door snap
+
+### Strategy
+- Remove draw-room from tool rail
+- Make draw-rectangle, draw-ellipse, draw-polygon create type zone by default
+- All drawn shapes get room interactivity automatically
+- Add is_room boolean to allow decorative-only shapes when needed
+
+=== MODIFY: frontend/components/zones-devices/blueprint-types.ts ===
+
+In BlueprintElement add after locked field:
+```ts
+is_room?: boolean;
+```
+
+In BlueprintDesignerTool remove "draw-room":
+```ts
+export type BlueprintDesignerTool =
+  | "select"
+  | "draw-rectangle"
+  | "draw-ellipse"
+  | "draw-polygon"
+  | "place-device"
+  | "place-door"
+  | "free-draw"
+  | "draw-pen"
+  | "place-symbol";
+```
+
+=== MODIFY: frontend/components/zones-devices/BlueprintToolRail.tsx ===
+
+FIND and DELETE from RAIL_ITEMS:
+```tsx
+{ kind: "tool", tool: "draw-room", label: "Draw room", Icon: LayoutGrid },
+```
+Remove LayoutGrid from lucide-react import if no longer used.
+
+=== MODIFY: frontend/components/zones-devices/BlueprintDesigner.tsx ===
+
+Change A — All drawn shapes create type zone.
+Find (~line 4009):
+```tsx
+const mode = tool === "draw-room" ? "zone" : tool === "draw-rectangle" ? "rectangle" : "ellipse";
+```
+Replace with:
+```tsx
+const mode = "zone";
+```
+
+Find where draw-rectangle creates element with type: "rectangle" (~line 2540).
+Replace with type: "zone".
+Find where draw-ellipse creates element. Replace type with "zone".
+
+Change B — Add Is room toggle in float context panel for zone elements.
+After the name input in the float context panel, add:
+```tsx
+{selected.type === "zone" && (
+  <label className="bp-float-context__compact">
+    <span>Is a room</span>
+    <input
+      type="checkbox"
+      checked={selected.is_room !== false}
+      onChange={(e) => updateSelectedField({ is_room: e.target.checked })}
+    />
+  </label>
+)}
+```
+
+Change C — Door snap respects is_room flag.
+Find the door snapping zone check (~line 443):
+```tsx
+if (z.type !== "zone") continue;
+```
+Replace with:
+```tsx
+if (z.type !== "zone" || z.is_room === false) continue;
+```
+
+Change D — Replace all tool === "draw-room" occurrences.
+Search the entire file for tool === "draw-room".
+Replace each occurrence with tool === "draw-rectangle".
+There are approximately 8-10 occurrences. Replace ALL of them.
+
+Commit: `feat(blueprint): all shapes are rooms by default, remove redundant draw-room tool`
+
+---
+
 ## EXECUTION STEPS
 1. Modify BlueprintToolRail.tsx + blueprint-designer.css (Phase 1)
 2. Modify blueprint-symbols-shared.ts (Phase 2)
-3. Modify BlueprintDesigner.tsx — add elementTaskCount and canvas indicators (Phase 3)
+3. Modify BlueprintDesigner.tsx — elementTaskCount + canvas indicators (Phase 3)
 4. Create BlueprintTemplates.ts (Phase 4)
 5. Create BlueprintTemplateModal.tsx (Phase 4)
 6. Modify BlueprintDesigner.tsx — wire template modal (Phase 4)
 7. Modify FloorPlanBlueprintSection.tsx — read-only task panel (Phase 5)
-8. git add -A && git commit -m "feat(blueprint): tool labels, expanded symbols, templates, task indicators, read-only instructions"
-9. git push origin main
+8. Modify BlueprintDesigner.tsx — unlockAll + lock select fix (Phase 6)
+9. Modify BlueprintDesigner.tsx — GRID_FINE + fineGrid toggle (Phase 7)
+10. Modify blueprint-types.ts — add is_room, remove draw-room tool type (Phase 8)
+11. Modify BlueprintToolRail.tsx — remove draw-room from RAIL_ITEMS (Phase 8)
+12. Modify BlueprintDesigner.tsx — all shapes to zone type + door snap fix (Phase 8)
+13. git add -A && git commit -m "feat(blueprint): tool labels, symbols, templates, task indicators, lock fix, fine grid, unified room shapes"
+14. git push origin main
 
 ---
 
 ## VALIDATION
 - [ ] Tool rail shows text labels under each icon
 - [ ] Symbol panel has 7 categories with new symbols
-- [ ] "Templates" button visible in blueprint topbar
-- [ ] Template modal opens and selecting a template populates canvas
-- [ ] Elements with linked tasks show a blue dot indicator
+- [ ] Templates button visible in blueprint topbar
+- [ ] Template modal opens and selecting populates canvas
+- [ ] Elements with linked tasks show blue dot indicator
 - [ ] Read-only view shows instruction panel below canvas
-- [ ] Tapping an element in read-only view shows its linked tasks
-- [ ] Vercel build passes (no TypeScript errors)
+- [ ] Tapping element in read-only view shows linked tasks
+- [ ] Unlock All button appears in topbar when locked elements exist
+- [ ] Locked elements can be selected (to unlock via context panel)
+- [ ] Grid toggle button switches between 32px and 8px snap
+- [ ] Pen tool snaps to 8px grid when fine mode active
+- [ ] draw-room tool no longer appears in tool rail
+- [ ] Drawing a rectangle/ellipse/polygon creates a zone (door-snappable)
+- [ ] Is room checkbox visible in context panel for zone elements
+- [ ] Unchecking Is room disables door snapping for that shape
+- [ ] Vercel build passes
 
 ---
 
