@@ -76,7 +76,8 @@ export function BlueprintToolRail({
                 whileTap={disabled ? undefined : { scale: 0.96 }}
                 transition={bpTransition.fast}
               >
-                <item.Icon className="bp-tool-rail__icon" strokeWidth={1.75} size={22} aria-hidden />
+                <item.Icon className="bp-tool-rail__icon" strokeWidth={1.75} size={18} aria-hidden />
+                <span className="bp-tool-rail__label">{item.label}</span>
               </motion.button>
             );
           }
@@ -94,7 +95,8 @@ export function BlueprintToolRail({
               whileTap={disabled ? undefined : { scale: 0.96 }}
               transition={bpTransition.fast}
             >
-              <item.Icon className="bp-tool-rail__icon" strokeWidth={1.75} size={22} aria-hidden />
+              <item.Icon className="bp-tool-rail__icon" strokeWidth={1.75} size={18} aria-hidden />
+              <span className="bp-tool-rail__label">{item.label}</span>
             </motion.button>
           );
         })}

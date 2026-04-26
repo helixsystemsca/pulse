@@ -321,6 +321,35 @@
   opacity: 0.92;
 }
 
+.bp-tool-rail__label {
+  display: block;
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: var(--bp-muted);
+  text-align: center;
+  line-height: 1.2;
+  margin-top: 2px;
+  pointer-events: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 48px;
+}
+
+.bp-tool-rail__btn.is-active .bp-tool-rail__label {
+  color: var(--bp-text);
+}
+
+.bp-tool-rail__btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 4px 6px;
+  min-width: 52px;
+}
+
 .bp-tool-rail--horizontal {
   width: auto;
   align-self: center;
