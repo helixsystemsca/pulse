@@ -1,59 +1,61 @@
-# Fix Missing UnifiedFacilityMap — integration.md
+# Fix LiveFacilityMap Prop Error — integration.md
 
 ## CURSOR PROMPT
-"Read handoff/integration.md. Execute the single fix. Commit when done."
+"Read handoff/integration.md. Execute the fix. Commit when done."
 
 ---
 
 ## ROOT CAUSE
-frontend/app/live-map/page.tsx imports UnifiedFacilityMap but that file
-does not exist. Cursor previously wired the page to use existing components
-LiveFacilityMap and DemoLiveMap instead of creating UnifiedFacilityMap.
+live-map/page.tsx uses LiveFacilityMap with demoMode and showControls props
+but LiveFacilityMap doesn't have those props — they belong to UnifiedFacilityMap.
 
-Fix: check which map components actually exist and update the import.
-
----
-
-=== MODIFY: frontend/app/live-map/page.tsx ===
-
-ACTION: fix the import to use whatever map components actually exist
-
-Step 1 — Check which files exist:
-```bash
-ls frontend/components/pulse/ | grep -i "map\|Map"
-ls frontend/components/demo/ | grep -i "map\|Map"
-```
-
-Step 2 — Based on what exists, update the import in live-map/page.tsx:
-
-IF LiveFacilityMap.tsx exists at frontend/components/pulse/LiveFacilityMap.tsx:
-  Replace the two UnifiedFacilityMap usages with:
-  - Live tab: <LiveFacilityMap pollMs={3000} />
-  - Demo tab: <DemoLiveMap /> (import from "@/components/demo/DemoLiveMap")
-
-IF UnifiedFacilityMap.tsx exists at frontend/components/pulse/UnifiedFacilityMap.tsx:
-  The import path is correct — no change needed, something else is wrong.
-
-Step 3 — Remove the UnifiedFacilityMap import line entirely and replace with
-the correct imports for whichever components exist.
-
-Step 4 — Adjust JSX usage to match the props the actual components accept.
-  LiveFacilityMap accepts: className, compact, pollMs
-  DemoLiveMap accepts: (check its props — likely no required props)
+Cursor resolved the import to LiveFacilityMap instead of UnifiedFacilityMap.
 
 ---
 
 ## EXECUTION STEPS
-1. Check which map component files actually exist in the repo
-2. Fix the import in frontend/app/live-map/page.tsx
-3. Replace UnifiedFacilityMap JSX with correct component names and props
-4. git add -A && git commit -m "fix: resolve missing UnifiedFacilityMap import in live-map page"
-5. git push origin main
+
+Step 1 — Find all map component files:
+```bash
+find frontend/components -name "*Map*" -o -name "*map*" | grep "\.tsx$"
+```
+
+Step 2 — Check if UnifiedFacilityMap exists anywhere:
+```bash
+find frontend -name "UnifiedFacilityMap.tsx"
+```
+
+Step 3A — IF UnifiedFacilityMap.tsx EXISTS:
+  Fix frontend/app/live-map/page.tsx:
+  - Update the import to point to the correct path
+  - Keep demoMode and showControls props as-is
+
+Step 3B — IF UnifiedFacilityMap.tsx does NOT exist:
+  Fix frontend/app/live-map/page.tsx by removing the unsupported props:
+
+  FIND:
+    <LiveFacilityMap demoMode showControls pollMs={1000} />
+  REPLACE WITH:
+    <DemoLiveMap />
+
+  Then add the DemoLiveMap import at the top of live-map/page.tsx.
+  Find where DemoLiveMap.tsx lives first:
+  ```bash
+  find frontend/components -name "DemoLiveMap.tsx"
+  ```
+  Then import from that path.
+
+Step 4 — Verify no other TypeScript errors in the file:
+```bash
+cd frontend && npx tsc --noEmit 2>&1 | grep "live-map"
+```
+
+Step 5 — git add -A && git commit -m "fix: remove invalid demoMode prop from LiveFacilityMap usage"
+Step 6 — git push origin main
 
 ---
 
 ## VALIDATION
-- [ ] npm run build passes locally
-- [ ] No module not found errors
-- [ ] /live-map page loads with Live Hardware and Demo Scenario tabs
+- [ ] npm run build passes
+- [ ] /live-map Demo Scenario tab renders correctly
 - [ ] Vercel deploys successfully
