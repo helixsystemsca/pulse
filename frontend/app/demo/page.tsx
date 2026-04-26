@@ -59,33 +59,3 @@ export default function DemoPage() {
     </div>
   );
 }
-
-
-// ══════════════════════════════════════════════════════════════════════════
-// CURSOR PROMPT — paste this on May 4 (or now if tokens allow)
-// ══════════════════════════════════════════════════════════════════════════
-
-export const CURSOR_PROMPT = `
-I've added two new files for a demo mode feature. Please wire them in:
-
-FILES ADDED:
-  backend/app/api/demo_routes.py
-  frontend/components/demo/DemoLiveMap.tsx
-  frontend/app/(pulse)/demo/page.tsx
-
-BACKEND WIRING — in backend/app/main.py:
-  1. Add import: from app.api.demo_routes import router as demo_router
-  2. Add include: app.include_router(demo_router, prefix="/api/v1")
-  Place it near the other router includes. Don't change anything else.
-
-FRONTEND WIRING — no changes needed. The page.tsx imports DemoLiveMap
-directly and the route works automatically via Next.js App Router.
-
-OPTIONAL — add a "Demo" link to the nav:
-  In frontend/lib/pulse-app.ts (or wherever pulseTenantNav is defined),
-  add a nav item: { label: "Demo", href: "/demo", icon: "Activity" }
-  Only add this if there's an obvious place for it — don't restructure the nav.
-
-After wiring, the demo is accessible at: /demo (when logged into Pulse).
-Test by navigating there and pressing Start Demo.
-`;
