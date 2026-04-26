@@ -3,7 +3,7 @@
 import { Radio } from "lucide-react";
 import { useEffect, useState } from "react";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { UnifiedFacilityMap } from "@/components/pulse/UnifiedFacilityMap";
+import { LiveFacilityMap } from "@/components/pulse/LiveFacilityMap";
 import { isApiMode } from "@/lib/api";
 import { navigateToPulseLogin } from "@/lib/pulse-app";
 import { readSession } from "@/lib/pulse-session";
@@ -68,7 +68,7 @@ export default function LiveMapPage() {
               No hardware yet? Try the Demo Scenario.
             </button>
           </p>
-          <UnifiedFacilityMap pollMs={3000} />
+          <LiveFacilityMap pollMs={3000} />
         </div>
       )}
 
@@ -79,7 +79,7 @@ export default function LiveMapPage() {
             confirmation prompt fires at 90%. Press{" "}
             <span className="font-semibold text-ds-foreground">Start Demo</span> to run.
           </p>
-          <UnifiedFacilityMap demoMode showControls pollMs={1000} />
+          <LiveFacilityMap demoMode showControls pollMs={1000} />
         </div>
       )}
     </div>
