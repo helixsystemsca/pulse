@@ -5,6 +5,8 @@
 
 import { SettingsApp } from "@/components/settings/SettingsApp";
 
+export const dynamic = "force-dynamic";
+
 export const metadata = {
   title: "Settings · Pulse",
 };
