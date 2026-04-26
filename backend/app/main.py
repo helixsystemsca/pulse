@@ -32,6 +32,8 @@ from app.api.setup_progress_routes import router as setup_progress_router
 from app.api.auth_routes import router as auth_router
 from app.api.blueprint_routes import router as blueprint_router
 from app.api.company_routes import router as company_router
+from app.api.config_routes import router as config_router
+from app.api.demo_routes import router as demo_router
 from app.api.organization_routes import router as organization_router
 from app.api.profile_routes import router as profile_router
 from app.api.compliance_routes import router as compliance_router
@@ -55,6 +57,7 @@ from app.api.work_requests_routes import router as work_requests_router
 from app.api.workers_routes import router as workers_router
 from app.api.inventory_portal_routes import router as inventory_portal_router
 from app.api.routes_schedule import router as schedule_router
+from app.api.telemetry_ingest_routes import router as telemetry_ingest_router
 from app.core.bootstrap import ensure_bootstrap_system_admin
 from app.core.config import get_settings
 from app.core.database import AsyncSessionLocal
@@ -137,6 +140,9 @@ app.include_router(setup_progress_router, prefix="/api/v1")
 app.include_router(company_router, prefix="/api/v1")
 app.include_router(organization_router, prefix="/api/v1")
 app.include_router(org_module_settings_router, prefix="/api/v1")
+app.include_router(telemetry_ingest_router, prefix="/api/v1")
+app.include_router(config_router, prefix="/api/v1")
+app.include_router(demo_router, prefix="/api/v1")
 app.include_router(profile_router, prefix="/api/v1")
 app.include_router(automation_events_router, prefix="/api/v1")
 app.include_router(automation_debug_router, prefix="/api/v1")

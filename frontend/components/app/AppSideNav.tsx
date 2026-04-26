@@ -20,6 +20,7 @@ import {
   MapPin,
   Package,
   ScrollText,
+  Settings,
   Sparkles,
   UserCog,
   Wrench,
@@ -53,6 +54,7 @@ const ICONS: Record<PulseSidebarIcon, LucideIcon> = {
   building: Building2,
   "user-cog": UserCog,
   "scroll-text": ScrollText,
+  settings: Settings,
 };
 
 export function AppSideNav() {

@@ -72,6 +72,7 @@ export const pulseTenantSidebarNav = [
   { href: "/equipment", label: "Equipment", icon: "wrench" as const },
   { href: "/zones-devices/zones", label: "Drawings", icon: "layers" as const },
   { href: "/devices", label: "Zones & Devices", icon: "map-pin" as const },
+  { href: "/settings", label: "Settings", icon: "settings" as const },
 ] as const;
 
 /** System admin rail — platform tooling only; product modules live on the tenant rail. */

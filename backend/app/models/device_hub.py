@@ -6,7 +6,7 @@ from datetime import datetime
 from typing import Optional
 from uuid import uuid4
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, UniqueConstraint, text
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, UniqueConstraint, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -36,6 +36,8 @@ class AutomationGateway(Base):
     )
     #: Bcrypt hash of a one-time device ingest secret; ESP32 uses gateway UUID + secret on POST /api/v1/device/events.
     ingest_secret_hash: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    x_norm: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    y_norm: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
 
     @property
     def ingest_enabled(self) -> bool:
@@ -77,3 +79,28 @@ class AutomationUnknownDevice(Base):
     last_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
     seen_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("1"))
 
+
+class BeaconPosition(Base):
+    __tablename__ = "beacon_positions"
+
+    beacon_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("automation_ble_devices.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    company_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("companies.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    x_norm: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    y_norm: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    zone_id: Mapped[Optional[str]] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("zones.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    position_confidence: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    computed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=text("now()"))

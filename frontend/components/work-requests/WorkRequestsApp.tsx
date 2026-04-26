@@ -25,6 +25,7 @@ import { apiFetch } from "@/lib/api";
 import { fetchEquipmentList, fetchEquipmentParts } from "@/lib/equipmentService";
 import { emitOnboardingMaybeUpdated } from "@/lib/onboarding-events";
 import { PulseDrawer } from "@/components/schedule/PulseDrawer";
+import { SettingsGear } from "@/components/settings/SettingsGear";
 import { ModuleSettingsGear } from "@/components/module-settings/ModuleSettingsGear";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { managerOrAbove } from "@/lib/pulse-roles";
@@ -816,6 +817,7 @@ export function WorkRequestsApp(props?: WorkRequestsAppProps) {
         icon={ClipboardList}
         actions={
           <>
+            <SettingsGear module="workRequests" />
             <ModuleSettingsGear moduleId="workRequests" label="Work requests organization settings" />
             <button
               type="button"

@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { SettingsGear } from "@/components/settings/SettingsGear";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { apiFetch, isApiMode, refreshPulseUserFromServer } from "@/lib/api";
 import { getServerDate } from "@/lib/serverTime";
@@ -717,6 +718,7 @@ export function ScheduleApp() {
             icon={CalendarDays}
             actions={
               <>
+                <SettingsGear module="schedule" />
                 <nav
                   className="flex rounded-md border border-pulseShell-border bg-pulseShell-surface p-1 shadow-[var(--pulse-shell-shadow)]"
                   aria-label="Schedule views"

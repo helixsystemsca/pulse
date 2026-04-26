@@ -11,3 +11,7 @@ dist/
 .pytest_cache/
 .vercel
 .env*.local
+
+# Claude extraction artifacts (kept local, not tracked)
+pulse_extracted/
+pulse_claude_branch.zip

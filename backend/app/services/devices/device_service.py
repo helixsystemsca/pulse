@@ -146,6 +146,10 @@ class DeviceService:
             gw.name = str(updates["name"]).strip()
         if "status" in updates:
             gw.status = str(updates["status"]).strip().lower()
+        if "x_norm" in updates:
+            gw.x_norm = updates["x_norm"]
+        if "y_norm" in updates:
+            gw.y_norm = updates["y_norm"]
         await self._db.flush()
         return gw
 
