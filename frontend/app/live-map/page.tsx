@@ -1,7 +1,8 @@
 "use client";
 
 import { Suspense, useState } from "react";
-import { UnifiedFacilityMap } from "@/components/pulse/UnifiedFacilityMap";
+import { DemoLiveMap } from "@/components/demo/DemoLiveMap";
+import { LiveFacilityMap } from "@/components/pulse/LiveFacilityMap";
 
 export default function LiveMapPage() {
   return (
@@ -62,7 +63,7 @@ function LiveMapContent() {
                 className="text-ds-accent underline">Demo Scenario</button> tab.
             </span>
           </div>
-          <UnifiedFacilityMap pollMs={3000} />
+          <LiveFacilityMap pollMs={3000} />
         </div>
       )}
 
@@ -74,7 +75,7 @@ function LiveMapContent() {
             Simulates the full inference pipeline — Daniel approaches the Hot Tub Boiler,
             confidence builds, and a confirmation prompt fires at 90%. Press Start to run.
           </div>
-          <UnifiedFacilityMap demoMode showControls pollMs={1000} />
+          <DemoLiveMap />
         </div>
       )}
 
