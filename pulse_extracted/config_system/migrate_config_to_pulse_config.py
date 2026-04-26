@@ -78,7 +78,7 @@ async def _main() -> None:
                                 INSERT INTO pulse_config
                                     (id, company_id, module, scope_type, scope_id, key, value)
                                 VALUES
-                                    (:id, :cid, :mod, 'company', NULL, :key, CAST(:val AS JSONB))
+                                    (:id, :cid, :mod, 'company', NULL, :key, :val::jsonb)
                                 ON CONFLICT ON CONSTRAINT uq_pulse_config_company_module_scope_key
                                 DO NOTHING
                             """),
@@ -107,7 +107,7 @@ async def _main() -> None:
                             INSERT INTO pulse_config
                                 (id, company_id, module, scope_type, scope_id, key, value)
                             VALUES
-                                (:id, :cid, 'workRequests', 'company', NULL, :key, CAST(:val AS JSONB))
+                                (:id, :cid, 'workRequests', 'company', NULL, :key, :val::jsonb)
                             ON CONFLICT ON CONSTRAINT uq_pulse_config_company_module_scope_key
                             DO NOTHING
                         """),
@@ -170,7 +170,7 @@ async def _main() -> None:
                             INSERT INTO pulse_config
                                 (id, company_id, module, scope_type, scope_id, key, value)
                             VALUES
-                                (:id, :cid, 'automation', 'company', NULL, :key, CAST(:val AS JSONB))
+                                (:id, :cid, 'automation', 'company', NULL, :key, :val::jsonb)
                             ON CONFLICT ON CONSTRAINT uq_pulse_config_company_module_scope_key
                             DO NOTHING
                         """),
@@ -196,7 +196,7 @@ async def _main() -> None:
                         INSERT INTO pulse_config
                             (id, company_id, module, scope_type, scope_id, key, value)
                         VALUES
-                            (:id, :cid, 'global', 'company', NULL, :key, CAST(:val AS JSONB))
+                            (:id, :cid, 'global', 'company', NULL, :key, :val::jsonb)
                         ON CONFLICT ON CONSTRAINT uq_pulse_config_company_module_scope_key
                         DO NOTHING
                     """),

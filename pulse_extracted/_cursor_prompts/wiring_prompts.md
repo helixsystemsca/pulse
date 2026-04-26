@@ -20,7 +20,7 @@ Do not stop between tasks. When all done: git push origin Claude."
 
 ## PHASE 0 · Setup
 
-### Task 00 — Extract zip and place files [x]
+### Task 00 — Extract zip and place files [ ]
 **Always runs first — even if files appear to already exist.**
 
 Find the zip file in the repo root (named `pulse_claude_branch.zip` or similar).
@@ -72,23 +72,16 @@ Commit: `task-00: extract and place all Claude session files`
 
 ## PHASE 1 · Migrations
 
-### Task 01 — Apply migrations [x]
+### Task 01 — Apply migrations [ ]
 ```bash
 cd backend && alembic upgrade head && alembic current
 # Expected head: 0070_pulse_config
 ```
-DONE via `python -m alembic` (see integration steps below).
 Commit: `task-01: apply migrations 0068 0069 0070`
-
-## Integration handoff steps (from `handoff/integration.md`)
-- Step 1 — Find alembic: DONE (`python -m alembic --version` → `alembic 1.18.4`)
-- Step 2 — Apply migrations: DONE (`python -m alembic upgrade head`)
-- Step 3 — Verify head: DONE (`python -m alembic current` → `0070_pulse_config (head)`)
-- Step 4 — Run config migration: DONE (`python -m scripts.migrate_config_to_pulse_config` → 19 rows written)
 
 ---
 
-### Task 02 — BeaconPosition model [x]
+### Task 02 — BeaconPosition model [ ]
 **File:** `backend/app/models/device_hub.py`
 Add after `AutomationUnknownDevice`:
 ```python
@@ -111,7 +104,7 @@ Commit: `task-02: add BeaconPosition model and gateway position fields`
 
 ---
 
-### Task 03 — Zone polygon field [x]
+### Task 03 — Zone polygon field [ ]
 **File:** `backend/app/models/domain.py`
 In `Zone` class, after `meta`:
 ```python
@@ -122,7 +115,7 @@ Commit: `task-03: add polygon to Zone`
 
 ---
 
-### Task 04 — Company location fields [x]
+### Task 04 — Company location fields [ ]
 **File:** `backend/app/models/domain.py`
 In `Company` class, after `timezone`:
 ```python
@@ -135,7 +128,7 @@ Commit: `task-04: add latitude longitude to Company`
 
 ## PHASE 2 · Backend Wiring
 
-### Task 05 — Register routers [x]
+### Task 05 — Register routers [ ]
 **File:** `backend/app/main.py`
 Add imports + includes for all three new routers, following existing pattern:
 ```python
@@ -151,7 +144,7 @@ Commit: `task-05: register telemetry config demo routers`
 
 ---
 
-### Task 06 — Unknown device routes [x]
+### Task 06 — Unknown device routes [ ]
 **File:** `backend/app/api/devices_routes.py`
 **Reference:** `backend/app/api/devices_routes_unknown_additions.py`
 
@@ -162,7 +155,7 @@ Commit: `task-06: add unknown device routes`
 
 ---
 
-### Task 07 — Gateway position fields in schema [x]
+### Task 07 — Gateway position fields in schema [ ]
 **File:** `backend/app/api/devices_routes.py`
 Find `GatewayOut` schema. Add:
 ```python
@@ -179,7 +172,7 @@ Commit: `task-07: add x_norm y_norm to gateway schema and handler`
 
 ---
 
-### Task 08 — Replace maintenance_logic stub [x]
+### Task 08 — Replace maintenance_logic stub [ ]
 **File:** `backend/app/services/automation/logic/maintenance_logic.py`
 Replace entire file with new implementation.
 Verify `handle(db, event)` signature unchanged.
@@ -190,7 +183,7 @@ Commit: `task-08: implement maintenance inference engine`
 
 ## PHASE 3 · Frontend Wiring
 
-### Task 09 — Config lib files [x]
+### Task 09 — Config lib files [ ]
 **Source:** `frontend/lib/config/config_service_frontend.ts`
 Split into two files:
 - `frontend/lib/config/service.ts` — types + `configApi` object
@@ -201,7 +194,7 @@ Commit: `task-09: add frontend config service and hooks`
 
 ---
 
-### Task 10 — Setup-api additions [x]
+### Task 10 — Setup-api additions [ ]
 **File:** `frontend/lib/setup-api.ts`
 **Reference:** `frontend/lib/D_wiring_instructions.ts`
 
@@ -211,7 +204,7 @@ Commit: `task-10: add unknown device functions to setup-api`
 
 ---
 
-### Task 11 — Wire UnknownDevicesPanel [x]
+### Task 11 — Wire UnknownDevicesPanel [ ]
 **File:** `frontend/components/setup/SetupApp.tsx`
 Five changes in one pass:
 1. Import `UnknownDevicesPanel` from `@/components/setup/UnknownDevicesPanel`
@@ -223,7 +216,7 @@ Commit: `task-11: wire UnknownDevicesPanel into SetupApp`
 
 ---
 
-### Task 12 — Settings + Demo page routes [x]
+### Task 12 — Settings + Demo page routes [ ]
 Create if not exist:
 - `frontend/app/settings/page.tsx` → imports + renders `SettingsApp`
 - `frontend/app/demo/page.tsx` → imports + renders demo content
@@ -231,7 +224,7 @@ Commit: `task-12: add settings and demo page routes`
 
 ---
 
-### Task 13 — Settings nav item [x]
+### Task 13 — Settings nav item [ ]
 **File:** `frontend/lib/pulse-app.ts`
 Add to `pulseTenantSidebarNav`:
 ```ts
@@ -242,7 +235,7 @@ Commit: `task-13: add settings to sidebar nav`
 
 ---
 
-### Task 14 — SettingsGear on module pages [x]
+### Task 14 — SettingsGear on module pages [ ]
 **Files:** `ScheduleApp.tsx`, `WorkRequestsApp.tsx`
 In each: import `SettingsGear`, add to page header:
 ```tsx
@@ -255,7 +248,7 @@ Commit: `task-14: add SettingsGear to schedule and work requests`
 
 ## PHASE 4 · Config & Defaults
 
-### Task 15 — Fix hardcoded defaults [x]
+### Task 15 — Fix hardcoded defaults [ ]
 **Files:**
 - `backend/app/core/org_module_settings_merge.py`
 - `frontend/lib/moduleSettings/defaults.ts`
@@ -267,20 +260,19 @@ Commit: `task-15: fix facilityCount and enableNightAssignments defaults`
 
 ---
 
-### Task 16 — Run config migration [x]
+### Task 16 — Run config migration [ ]
 ```bash
 cd backend
 python -m scripts.migrate_config_to_pulse_config
 ```
 Non-destructive. On Python error mark BLOCKED. On empty DB mark DONE.
-DONE after applying migrations; fixed SQL bind cast in script (`CAST(:val AS JSONB)`).
 Commit: `task-16: run config migration script`
 
 ---
 
 ## PHASE 5 · Final
 
-### Task 17 — Import check [x]
+### Task 17 — Import check [ ]
 ```bash
 cd backend
 python -c "
@@ -299,7 +291,7 @@ Commit: `task-17: import check passed`
 
 ---
 
-### Task 18 — Push [x]
+### Task 18 — Push [ ]
 ```bash
 git push origin Claude
 ```
@@ -318,4 +310,3 @@ Commit: `task-18: push complete`
 | 5 · Final | 17–18 | Verify + push |
 
 **19 tasks · Claude branch · 2026-04-25**
-
