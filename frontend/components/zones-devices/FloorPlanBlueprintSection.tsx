@@ -25,6 +25,7 @@ type BlueprintDetail = {
   updated_at: string;
   elements: ApiBlueprintElement[];
   layers?: unknown;
+  tasks?: Array<{ id: string; title: string; mode: string; content: string | string[]; linked_element_ids: string[] }>;
 };
 
 function blueprintLoadMessage(err: unknown): string {
@@ -64,6 +65,7 @@ export function FloorPlanBlueprintSection() {
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [selectedElementId, setSelectedElementId] = useState<string | null>(null);
 
   const refreshList = useCallback(async () => {
     if (!tenantOk) {
@@ -101,6 +103,7 @@ export function FloorPlanBlueprintSection() {
     if (!tenantOk || !selectedId) {
       setDetail(null);
       setLoadingDetail(false);
+      setSelectedElementId(null);
       return;
     }
     let cancel = false;
@@ -247,7 +250,39 @@ export function FloorPlanBlueprintSection() {
                 layers={blueprintLayers}
                 theme={theme}
                 fitResetKey={detail.id}
+                onSelectElementId={(id) => setSelectedElementId(id)}
               />
+              {detail.tasks && detail.tasks.length > 0 ? (
+                <div className="mt-3 rounded-md border border-ds-border bg-ds-primary p-3">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-ds-muted mb-2">
+                    Instructions — tap an element to see its tasks
+                  </p>
+                  {selectedElementId ? (
+                    <>
+                      {detail.tasks
+                        .filter((t) => t.linked_element_ids.includes(selectedElementId))
+                        .map((task) => (
+                          <div key={task.id} className="mb-3 last:mb-0">
+                            <p className="text-xs font-semibold text-ds-foreground mb-1">{task.title}</p>
+                            {task.mode === "steps" && Array.isArray(task.content)
+                              ? (task.content as string[]).map((step, i) => (
+                                  <div key={i} className="flex gap-2 text-xs text-ds-muted mb-1">
+                                    <span className="shrink-0 font-bold text-ds-accent">{i + 1}.</span>
+                                    <span>{step}</span>
+                                  </div>
+                                ))
+                              : <p className="text-xs text-ds-muted">{task.content as string}</p>}
+                          </div>
+                        ))}
+                      {detail.tasks.filter((t) => t.linked_element_ids.includes(selectedElementId)).length === 0 ? (
+                        <p className="text-xs text-ds-muted">No instructions for this element.</p>
+                      ) : null}
+                    </>
+                  ) : (
+                    <p className="text-xs text-ds-muted">Tap any room or element on the map above.</p>
+                  )}
+                </div>
+              ) : null}
             </>
           ) : null}
         </div>

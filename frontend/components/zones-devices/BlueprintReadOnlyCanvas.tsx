@@ -195,6 +195,7 @@ export type BlueprintReadOnlyCanvasProps = {
   theme: BlueprintReadOnlyTheme;
   /** Min height of the preview region */
   minHeight?: number;
+  onSelectElementId?: (id: string) => void;
   /**
    * When this value changes (e.g. selected blueprint id), the view is auto-fitted again
    * and any manual zoom from the wheel is cleared.
@@ -210,6 +211,7 @@ export function BlueprintReadOnlyCanvas({
   layers = [],
   theme: themeName,
   minHeight = 420,
+  onSelectElementId,
   fitResetKey,
 }: BlueprintReadOnlyCanvasProps) {
   const hostRef = useRef<HTMLDivElement | null>(null);
@@ -320,6 +322,7 @@ export function BlueprintReadOnlyCanvas({
   const swBase = Math.max(0.75, 1.05 / scale);
   const isDark = themeName === "dark";
   const symScale = 1.08;
+  const canPick = Boolean(onSelectElementId);
 
   return (
     <div
@@ -360,7 +363,9 @@ export function BlueprintReadOnlyCanvas({
                       shadowColor={theme.zoneShadow}
                       shadowBlur={6}
                       shadowOpacity={0.12}
-                      listening={false}
+                      listening={canPick}
+                      onClick={() => onSelectElementId?.(el.id)}
+                      onTap={() => onSelectElementId?.(el.id)}
                     />
                     <Text
                       text={(el.name ?? "ROOM").toUpperCase()}
@@ -420,7 +425,9 @@ export function BlueprintReadOnlyCanvas({
                     shadowColor={theme.zoneShadow}
                     shadowBlur={6}
                     shadowOpacity={0.12}
-                    listening={false}
+                    listening={canPick}
+                    onClick={() => onSelectElementId?.(el.id)}
+                    onTap={() => onSelectElementId?.(el.id)}
                   />
                   <Text
                     text={(el.name ?? "ROOM").toUpperCase()}
@@ -529,7 +536,17 @@ export function BlueprintReadOnlyCanvas({
               const labelBand = Math.ceil(symLabelFs + SYMBOL_LABEL_BAND_GAP);
               const iconSlotH = Math.max(4, h - labelBand);
               return (
-                <Group key={el.id} {...ez(el.id)} x={el.x} y={el.y} rotation={el.rotation ?? 0} opacity={0.98} listening={false}>
+                <Group
+                  key={el.id}
+                  {...ez(el.id)}
+                  x={el.x}
+                  y={el.y}
+                  rotation={el.rotation ?? 0}
+                  opacity={0.98}
+                  listening={canPick}
+                  onClick={() => onSelectElementId?.(el.id)}
+                  onTap={() => onSelectElementId?.(el.id)}
+                >
                   <Rect width={w} height={h} cornerRadius={8} fill={theme.symbolPlate} strokeEnabled={false} listening={false} />
                   <Group x={w / 2} y={iconSlotH / 2 - SYMBOL_ICON_Y_NUDGE} scaleX={symScale} scaleY={symScale} listening={false}>
                     <SymbolGlyphRo symbolType={st} isDark={isDark} />
@@ -562,7 +579,16 @@ export function BlueprintReadOnlyCanvas({
               const st = mockLinkStatus(el.linked_device_id);
               const dStroke = Math.max(0.65, 0.92 / scale);
               return (
-                <Group key={el.id} {...ez(el.id)} x={el.x} y={el.y} rotation={el.rotation ?? 0} listening={false}>
+                <Group
+                  key={el.id}
+                  {...ez(el.id)}
+                  x={el.x}
+                  y={el.y}
+                  rotation={el.rotation ?? 0}
+                  listening={canPick}
+                  onClick={() => onSelectElementId?.(el.id)}
+                  onTap={() => onSelectElementId?.(el.id)}
+                >
                   <Rect
                     width={w}
                     height={h}
