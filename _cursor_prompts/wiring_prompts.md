@@ -85,6 +85,9 @@ Commit: `task-01: apply migrations 0068 0069 0070`
 - Step 2 — Apply migrations: DONE (`python -m alembic upgrade head`)
 - Step 3 — Verify head: DONE (`python -m alembic current` → `0070_pulse_config (head)`)
 - Step 4 — Run config migration: DONE (`python -m scripts.migrate_config_to_pulse_config` → 19 rows written)
+- Step 5 — Update wiring queue: DONE (Tasks 01 + 16 marked `[x]`)
+- Step 6 — Commit: DONE (`task-01+16: apply migrations and run config migration`)
+- Step 7 — Continue queue: DONE (no remaining PENDING tasks; queue complete)
 
 ---
 
