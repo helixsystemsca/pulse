@@ -9,12 +9,15 @@ import { Activity, ChevronDown, Image as ImageIcon, LogOut, ScrollText, Settings
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useOnboardingOptional } from "@/components/onboarding/OnboardingProvider";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
-import { navigateToPulseLogin, pulseApp, pulseRoutes } from "@/lib/pulse-app";
+import { navigateToPulseLogin, pulseApp, pulseRoutes, pulseTenantNav } from "@/lib/pulse-app";
+import { isPulseNavActive } from "@/lib/pulse-nav-active";
+import { isTenantNavFeatureEnabled } from "@/lib/pulse-nav-features";
+import { isTenantNavPermissionGranted } from "@/lib/pulse-nav-permissions";
 import { clearSession } from "@/lib/pulse-session";
 import { UserProfileAvatarPreview } from "@/components/profile/UserProfileAvatarPreview";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { replayNonAdminOnboardingTour } from "@/lib/onboarding-events";
-import { sessionHasAnyRole } from "@/lib/pulse-roles";
+import { sessionHasAnyRole, sessionPrimaryRole } from "@/lib/pulse-roles";
 
 /** Top bar uses mint cream (`bg-ds-header`) in light theme; token-driven in dark. */
 const HEADER =
@@ -66,7 +69,41 @@ export function AppNavbar() {
           </Link>
         </div>
 
-        <div className="flex items-center gap-2">
+        {authed ? (
+          <div className="hidden min-w-0 flex-1 items-center justify-center px-2 xl:flex">
+            <div
+              className="flex max-w-full items-center gap-1 overflow-x-auto rounded-md border border-ds-border bg-ds-secondary/70 p-1 shadow-[var(--ds-shadow-card)]"
+              aria-label="Primary app navigation"
+            >
+              {pulseTenantNav
+                .filter((item) => {
+                  if (sessionPrimaryRole(session) === "worker" && item.href === "/monitoring") return false;
+                  if (!session) return true;
+                  if (!isTenantNavFeatureEnabled(item.href, session.enabled_features)) return false;
+                  return isTenantNavPermissionGranted(item.href, session.permissions);
+                })
+                .map((item) => {
+                  const active = isPulseNavActive(item.href, pathname);
+                  return (
+                    <Link
+                      key={`${item.href}-${item.label}`}
+                      href={item.href}
+                      className={`whitespace-nowrap rounded px-2.5 py-1.5 text-xs font-semibold transition-colors ${
+                        active
+                          ? "bg-ds-primary text-ds-success shadow-sm ring-1 ring-[color-mix(in_srgb,var(--ds-success)_24%,transparent)]"
+                          : "text-ds-muted hover:bg-ds-primary hover:text-ds-foreground"
+                      }`}
+                      aria-current={active ? "page" : undefined}
+                    >
+                      {item.label}
+                    </Link>
+                  );
+                })}
+            </div>
+          </div>
+        ) : null}
+
+        <div className="flex shrink-0 items-center gap-2">
           {authed ? <ThemeToggle /> : null}
           {authed &&
           session &&

@@ -1,8 +1,9 @@
 "use client";
 
+import { Radio } from "lucide-react";
 import { Suspense, useState } from "react";
-import { DemoLiveMap } from "@/components/demo/DemoLiveMap";
-import { LiveFacilityMap } from "@/components/pulse/LiveFacilityMap";
+import { UnifiedFacilityMap } from "@/components/pulse/UnifiedFacilityMap";
+import { PageHeader } from "@/components/ui/PageHeader";
 
 export default function LiveMapPage() {
   return (
@@ -20,31 +21,27 @@ function LiveMapContent() {
   const [tab, setTab] = useState<"live" | "demo">("live");
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6 space-y-4">
-
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-base font-bold text-ds-foreground">Live Map</h1>
-          <p className="text-xs text-ds-muted mt-0.5">
-            Real-time beacon positions across your facility
-          </p>
-        </div>
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        title="Live Map"
+        description="Real-time beacon positions across your facility."
+        icon={Radio}
+      />
 
       {/* Tabs */}
-      <div className="flex border-b border-ds-border gap-0">
+      <div className="flex flex-wrap gap-1 rounded-md border border-ds-border bg-ds-secondary p-1">
         {([
           { id: "live", label: "Live Hardware" },
           { id: "demo", label: "Demo Scenario" },
         ] as const).map(t => (
           <button
             key={t.id}
+            type="button"
             onClick={() => setTab(t.id)}
-            className={`px-4 py-2 text-xs font-semibold border-b-2 transition-colors ${
+            className={`inline-flex items-center rounded-lg border-b-2 px-3 py-2 text-sm font-semibold transition-colors ${
               tab === t.id
-                ? "border-ds-accent text-ds-accent"
-                : "border-transparent text-ds-muted hover:text-ds-foreground"
+                ? "border-ds-success bg-ds-primary text-ds-foreground shadow-sm"
+                : "border-transparent text-ds-muted hover:bg-ds-primary hover:text-ds-foreground"
             }`}
           >
             {t.label}
@@ -55,27 +52,28 @@ function LiveMapContent() {
       {/* Live tab */}
       {tab === "live" && (
         <div className="space-y-3">
-          <div className="rounded-md border border-ds-border bg-ds-primary px-4 py-3 text-xs text-ds-muted leading-relaxed">
+          <div className="rounded-md border border-ds-border bg-ds-primary px-4 py-3 text-sm leading-relaxed text-ds-muted shadow-[var(--ds-shadow-card)]">
             Showing live beacon positions from connected ESP32 gateways.
             Connect hardware and positions will appear automatically.
-            <span className="block mt-1 text-ds-muted/70">
+            <span className="mt-1 block text-ds-muted/70">
               No hardware yet? Switch to the <button onClick={() => setTab("demo")}
-                className="text-ds-accent underline">Demo Scenario</button> tab.
+                type="button"
+                className="font-semibold text-ds-success underline underline-offset-2">Demo Scenario</button> tab.
             </span>
           </div>
-          <LiveFacilityMap pollMs={3000} />
+          <UnifiedFacilityMap pollMs={3000} />
         </div>
       )}
 
       {/* Demo tab */}
       {tab === "demo" && (
         <div className="space-y-3">
-          <div className="rounded-md border border-ds-accent/30 bg-ds-accent/5 px-4 py-3 text-xs text-ds-foreground leading-relaxed">
-            <span className="font-semibold text-ds-accent block mb-1">Demo Scenario · Pool Zone</span>
+          <div className="rounded-md border border-ds-success/30 bg-[color-mix(in_srgb,var(--ds-success)_8%,var(--ds-primary))] px-4 py-3 text-sm leading-relaxed text-ds-foreground shadow-[var(--ds-shadow-card)]">
+            <span className="mb-1 block font-semibold text-ds-success">Demo Scenario · Pool Zone</span>
             Simulates the full inference pipeline — Daniel approaches the Hot Tub Boiler,
             confidence builds, and a confirmation prompt fires at 90%. Press Start to run.
           </div>
-          <DemoLiveMap />
+          <UnifiedFacilityMap demoMode showControls pollMs={1000} />
         </div>
       )}
 
