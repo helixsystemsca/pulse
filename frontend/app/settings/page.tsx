@@ -1,16 +1,20 @@
-/**
- * Dedicated settings page. All module config in one place.
- * Deep-link: /settings?tab=schedule
- */
-
+import { Suspense } from "react";
 import { SettingsApp } from "@/components/settings/SettingsApp";
-
-export const dynamic = "force-dynamic";
 
 export const metadata = {
   title: "Settings · Pulse",
 };
 
 export default function SettingsPage() {
-  return <SettingsApp />;
+  return (
+    <Suspense
+      fallback={
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="h-5 w-5 animate-spin rounded-full border-2 border-ds-accent border-t-transparent" />
+        </div>
+      }
+    >
+      <SettingsApp />
+    </Suspense>
+  );
 }
