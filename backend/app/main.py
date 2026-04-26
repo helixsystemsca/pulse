@@ -58,6 +58,7 @@ from app.api.workers_routes import router as workers_router
 from app.api.inventory_portal_routes import router as inventory_portal_router
 from app.api.routes_schedule import router as schedule_router
 from app.api.telemetry_ingest_routes import router as telemetry_ingest_router
+from app.api.telemetry_positions_routes import router as telemetry_positions_router
 from app.core.bootstrap import ensure_bootstrap_system_admin
 from app.core.config import get_settings
 from app.core.database import AsyncSessionLocal
@@ -169,5 +170,6 @@ app.include_router(projects_tasks_router, prefix="/api/v1")
 app.include_router(proximity_router, prefix="/api/v1")
 app.include_router(operations_router, prefix="/api/v1")
 app.include_router(monitoring_router, prefix="/api/v1")
+app.include_router(telemetry_positions_router, prefix="/api/v1")
 
 register_modules(app)

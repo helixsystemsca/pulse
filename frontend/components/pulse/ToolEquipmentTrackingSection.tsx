@@ -1,5 +1,5 @@
 import { MapPin, Package, Radar, Wrench } from "lucide-react";
-import { FacilityMap } from "./FacilityMap";
+import { LiveFacilityMap } from "./LiveFacilityMap";
 import { FeatureCard } from "./FeatureCard";
 import { SectionWrapper } from "./SectionWrapper";
 
@@ -17,7 +17,7 @@ export function ToolEquipmentTrackingSection() {
             </p>
           </div>
           <div className="w-full max-w-xl origin-top max-md:mx-auto max-md:scale-[0.82] sm:max-md:scale-[0.9] md:scale-100">
-            <FacilityMap compact className="w-full" />
+            <LiveFacilityMap compact className="w-full" pollMs={5000} />
           </div>
         </div>
 
