@@ -13,7 +13,6 @@ import {
   Activity,
   Bell,
   Building2,
-  ChevronRight,
   Globe,
   Layers,
   LayoutGrid,
@@ -36,6 +35,7 @@ import {
 import { useAllConfig } from "@/lib/config/useConfig";
 import type { ConfigModule, ModuleConfig } from "@/lib/config/service";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
+import { PageHeader } from "@/components/ui/PageHeader";
 
 // ── Tab definitions ───────────────────────────────────────────────────────────
 
@@ -404,47 +404,28 @@ export function SettingsApp() {
   const activeConfig = config?.[activeTab as ConfigModule];
 
   return (
-    <div className="min-h-screen bg-ds-bg">
-      {/* Header */}
-      <div className="border-b border-ds-border bg-ds-primary px-6 py-5">
-        <div className="max-w-5xl mx-auto flex items-center gap-3">
-          <Settings className="h-5 w-5 text-ds-accent" />
-          <div>
-            <h1 className="text-base font-bold text-ds-foreground">Settings</h1>
-            <p className="text-xs text-ds-muted mt-0.5">Configure Pulse for your facility</p>
-          </div>
-        </div>
-      </div>
+    <div className="space-y-6">
+      <PageHeader title="Settings" description="Configure Pulse for your facility." icon={Settings} />
 
-      <div className="max-w-5xl mx-auto px-6 py-6 flex gap-6">
+      <nav className="flex flex-wrap gap-1 rounded-md border border-ds-border bg-ds-secondary p-1" aria-label="Settings sections">
+        {TABS.map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            onClick={() => switchTab(tab.id)}
+            className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${
+              activeTab === tab.id
+                ? "border-b-2 border-ds-success bg-ds-primary text-ds-foreground"
+                : "border-b-2 border-transparent text-ds-muted hover:bg-ds-primary hover:text-ds-foreground"
+            }`}
+          >
+            {tab.icon}
+            {tab.label}
+          </button>
+        ))}
+      </nav>
 
-        {/* Sidebar nav */}
-        <nav className="w-48 shrink-0">
-          <ul className="space-y-0.5">
-            {TABS.map(tab => (
-              <li key={tab.id}>
-                <button
-                  type="button"
-                  onClick={() => switchTab(tab.id)}
-                  className={`w-full flex items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-colors text-left ${
-                    activeTab === tab.id
-                      ? "bg-ds-accent/10 text-ds-accent font-semibold"
-                      : "text-ds-muted hover:text-ds-foreground hover:bg-ds-interactive-hover"
-                  }`}
-                >
-                  {tab.icon}
-                  {tab.label}
-                  {activeTab === tab.id && (
-                    <ChevronRight className="h-3 w-3 ml-auto" />
-                  )}
-                </button>
-              </li>
-            ))}
-          </ul>
-        </nav>
-
-        {/* Content */}
-        <div className="flex-1 min-w-0">
+      <div>
           {!canEdit && (
             <div className="mb-4 rounded-md border border-ds-border bg-ds-primary px-4 py-3 text-xs text-ds-muted">
               You have read-only access to settings. Contact your administrator to make changes.
@@ -493,7 +474,6 @@ export function SettingsApp() {
               )}
             </>
           )}
-        </div>
       </div>
     </div>
   );
