@@ -1192,6 +1192,16 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
   const tasks = blueprint.tasks;
   const layers = blueprint.layers;
 
+  const elementTaskCount = useMemo(() => {
+    const map = new Map<string, number>();
+    tasks.forEach((task) => {
+      task.linked_element_ids.forEach((id) => {
+        map.set(id, (map.get(id) ?? 0) + 1);
+      });
+    });
+    return map;
+  }, [tasks]);
+
   const activePaintLayerIdRef = useRef<string | null>(null);
   const [activeLayerId, setActiveLayerId] = useState<string | null>(null);
 
@@ -4028,6 +4038,7 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
                   if (polyPts) {
                     const bb = bboxFromPathPoints(polyPts);
                     const labelSize = pubFs(Math.min(11, Math.max(9, Math.min(bb.w, bb.h) / 7)));
+                    const taskCount = elementTaskCount.get(el.id) ?? 0;
                     return (
                       <Group key={el.id} {...ez(el.id)}>
                         <Line
@@ -4145,6 +4156,29 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
                           wrap="none"
                           ellipsis
                         />
+                        {taskCount > 0 ? (
+                          <Group listening={false}>
+                            <Circle
+                              x={bb.minX + bb.w - 10}
+                              y={bb.minY + 10}
+                              radius={5}
+                              fill="#3b82f6"
+                              opacity={0.95}
+                              listening={false}
+                            />
+                            <Text
+                              text={`${taskCount}`}
+                              x={bb.minX + bb.w - 18}
+                              y={bb.minY + 3}
+                              width={16}
+                              align="center"
+                              fontSize={pubFs(9)}
+                              fill="#dbeafe"
+                              opacity={0.98}
+                              listening={false}
+                            />
+                          </Group>
+                        ) : null}
                       </Group>
                     );
                   }
@@ -4154,6 +4188,7 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
                   const { dx, dy } = wallDropOffset(rot);
                   const ins = Math.max(0.6, pubLine(1.05 / stageScale));
                   const labelSize = pubFs(Math.min(11, Math.max(9, Math.min(w, h) / 7)));
+                  const taskCount = elementTaskCount.get(el.id) ?? 0;
                   return (
                     <Group key={el.id} {...ez(el.id)}>
                       {/* Elevation mass — offset duplicate (under room face) */}
@@ -4339,6 +4374,29 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
                         wrap="none"
                         ellipsis
                       />
+                      {taskCount > 0 ? (
+                        <Group listening={false}>
+                          <Circle
+                            x={el.x + w - 10}
+                            y={el.y + 10}
+                            radius={5}
+                            fill="#3b82f6"
+                            opacity={0.95}
+                            listening={false}
+                          />
+                          <Text
+                            text={`${taskCount}`}
+                            x={el.x + w - 18}
+                            y={el.y + 3}
+                            width={16}
+                            align="center"
+                            fontSize={pubFs(9)}
+                            fill="#dbeafe"
+                            opacity={0.98}
+                            listening={false}
+                          />
+                        </Group>
+                      ) : null}
                     </Group>
                   );
                 })}
@@ -4825,6 +4883,26 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
                       }}
                       opacity={effLocked ? 0.74 : 0.98}
                     >
+                      {(() => {
+                        const taskCount = elementTaskCount.get(el.id) ?? 0;
+                        if (taskCount <= 0) return null;
+                        return (
+                          <Group listening={false}>
+                            <Circle x={w - 10} y={10} radius={5} fill="#3b82f6" opacity={0.95} listening={false} />
+                            <Text
+                              text={`${taskCount}`}
+                              x={w - 18}
+                              y={3}
+                              width={16}
+                              align="center"
+                              fontSize={pubFs(9)}
+                              fill="#dbeafe"
+                              opacity={0.98}
+                              listening={false}
+                            />
+                          </Group>
+                        );
+                      })()}
                       <Rect
                         width={w}
                         height={h}
@@ -4973,6 +5051,26 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
                       }}
                       opacity={isPublish ? 1 : effLocked ? 0.74 : 0.97}
                     >
+                      {(() => {
+                        const taskCount = elementTaskCount.get(el.id) ?? 0;
+                        if (taskCount <= 0) return null;
+                        return (
+                          <Group listening={false}>
+                            <Circle x={w - 10} y={10} radius={5} fill="#3b82f6" opacity={0.95} listening={false} />
+                            <Text
+                              text={`${taskCount}`}
+                              x={w - 18}
+                              y={3}
+                              width={16}
+                              align="center"
+                              fontSize={pubFs(9)}
+                              fill="#dbeafe"
+                              opacity={0.98}
+                              listening={false}
+                            />
+                          </Group>
+                        );
+                      })()}
                       {pulse ? (
                         <DevicePulseHalo
                           cx={w / 2}
