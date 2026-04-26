@@ -299,7 +299,6 @@ async def _run_scenario(company_id: str) -> None:
 
                 # Broadcast through existing WS event engine
                 await event_engine.publish(DomainEvent(
-                    id=str(uuid4()),
                     company_id=company_id,
                     event_type="demo_inference_fired",
                     entity_id=DEMO_INFERENCE_ID,
@@ -319,7 +318,6 @@ async def _run_scenario(company_id: str) -> None:
 
             # Broadcast position update every tick
             await event_engine.publish(DomainEvent(
-                id=str(uuid4()),
                 company_id=company_id,
                 event_type="demo_position_update",
                 entity_id=DEMO_COMPANY_ID,
@@ -406,7 +404,6 @@ async def confirm_inference(
     state.inference_status = "confirmed"
 
     await event_engine.publish(DomainEvent(
-        id=str(uuid4()),
         company_id=str(user.company_id),
         event_type="demo_inference_confirmed",
         entity_id=DEMO_INFERENCE_ID,
@@ -441,7 +438,6 @@ async def dismiss_inference(
     state.inference_status = "dismissed"
 
     await event_engine.publish(DomainEvent(
-        id=str(uuid4()),
         company_id=str(user.company_id),
         event_type="demo_inference_dismissed",
         entity_id=DEMO_INFERENCE_ID,
