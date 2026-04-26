@@ -24,13 +24,13 @@ type RailItem =
 const RAIL_ITEMS: RailItem[] = [
   { kind: "tool", tool: "select", label: "Select", Icon: MousePointer2 },
   { kind: "tool", tool: "draw-room", label: "Draw room", Icon: LayoutGrid },
-  { kind: "tool", tool: "draw-rectangle", label: "Rectangle", Icon: Square },
-  { kind: "tool", tool: "draw-ellipse", label: "Circle / ellipse", Icon: CircleIcon },
-  { kind: "tool", tool: "draw-polygon", label: "Polygon", Icon: Pentagon },
+  { kind: "tool", tool: "draw-rectangle", label: "Rectangle room", Icon: Square },
+  { kind: "tool", tool: "draw-ellipse", label: "Oval room", Icon: CircleIcon },
+  { kind: "tool", tool: "draw-polygon", label: "Polygon room", Icon: Pentagon },
   { kind: "tool", tool: "place-door", label: "Door", Icon: DoorClosed },
   { kind: "tool", tool: "place-device", label: "Place device", Icon: Radio },
-  { kind: "tool", tool: "free-draw", label: "Free draw", Icon: PencilLine },
-  { kind: "tool", tool: "draw-pen", label: "Pen", Icon: Pen },
+  { kind: "tool", tool: "free-draw", label: "Freehand room", Icon: PencilLine },
+  { kind: "tool", tool: "draw-pen", label: "Curved pen room", Icon: Pen },
   { kind: "symbols", label: "Symbols", Icon: Shapes },
 ];
 

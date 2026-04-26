@@ -57,7 +57,6 @@ export type {
   TaskOverlay,
 } from "./blueprint-types";
 import { BlueprintSymbolPanel } from "./BlueprintSymbolPanel";
-import { BlueprintLayersPanel } from "./BlueprintLayersPanel";
 import { BlueprintTasksPanel } from "./BlueprintTasksPanel";
 import { BlueprintToolRail } from "./BlueprintToolRail";
 import type { SymbolLibraryId } from "./blueprint-symbols-shared";
@@ -635,6 +634,20 @@ function bboxFromPathPoints(flat: number[]) {
   return { minX, minY, w: Math.max(1, maxX - minX), h: Math.max(1, maxY - minY) };
 }
 
+function ellipseToPathPoints(x: number, y: number, w: number, h: number): number[] {
+  const segs = 48;
+  const cx = x + w / 2;
+  const cy = y + h / 2;
+  const rx = w / 2;
+  const ry = h / 2;
+  const flat: number[] = [];
+  for (let i = 0; i < segs; i++) {
+    const t = (i / segs) * Math.PI * 2;
+    flat.push(cx + rx * Math.cos(t), cy + ry * Math.sin(t));
+  }
+  return flat;
+}
+
 /** Rotate flat path x,y pairs 90° clockwise around (cx, cy); Y-down canvas coords (matches Konva rotation sense). */
 function rotatePathFlat90Cw(flat: number[], cx: number, cy: number): number[] {
   const out: number[] = [];
@@ -713,6 +726,68 @@ function getWorldFromClient(stage: Konva.Stage | null, clientX: number, clientY:
     x: (sx - stage.x()) / stage.scaleX(),
     y: (sy - stage.y()) / stage.scaleY(),
   };
+}
+
+function angleSnappedPoint(
+  raw: { x: number; y: number },
+  prev: { x: number; y: number } | null,
+  snap: boolean,
+): { x: number; y: number } {
+  if (!snap || !prev) return raw;
+  const dx = raw.x - prev.x;
+  const dy = raw.y - prev.y;
+  const len = Math.hypot(dx, dy);
+  if (len < 0.001) return raw;
+  const step = Math.PI / 12; // 15° increments, Illustrator-style constraint while holding Shift.
+  const a = Math.round(Math.atan2(dy, dx) / step) * step;
+  return { x: prev.x + Math.cos(a) * len, y: prev.y + Math.sin(a) * len };
+}
+
+function appendLinePreview(ax: number, ay: number, bx: number, by: number, out: number[]) {
+  const steps = Math.max(2, Math.ceil(Math.hypot(bx - ax, by - ay) / 5));
+  for (let i = 0; i <= steps; i++) {
+    const t = i / steps;
+    const x = ax + (bx - ax) * t;
+    const y = ay + (by - ay) * t;
+    if (out.length >= 2 && i === 0) continue;
+    out.push(x, y);
+  }
+}
+
+function appendQuadPreview(
+  ax: number,
+  ay: number,
+  cx: number,
+  cy: number,
+  bx: number,
+  by: number,
+  out: number[],
+) {
+  const steps = Math.max(8, Math.ceil(Math.hypot(bx - ax, by - ay) / 5));
+  for (let i = 0; i <= steps; i++) {
+    const t = i / steps;
+    const omt = 1 - t;
+    const x = omt * omt * ax + 2 * omt * t * cx + t * t * bx;
+    const y = omt * omt * ay + 2 * omt * t * cy + t * t * by;
+    if (out.length >= 2 && i === 0) continue;
+    out.push(x, y);
+  }
+}
+
+function flattenPenDraftPreview(anchors: PenDraftAnchor[], hover: { x: number; y: number } | null): number[] {
+  if (anchors.length === 0) return [];
+  const out = [anchors[0]!.x, anchors[0]!.y];
+  for (let i = 1; i < anchors.length; i++) {
+    const from = anchors[i - 1]!;
+    const to = anchors[i]!;
+    if (to.qc) appendQuadPreview(from.x, from.y, to.qc.x, to.qc.y, to.x, to.y, out);
+    else appendLinePreview(from.x, from.y, to.x, to.y, out);
+  }
+  if (hover) {
+    const from = anchors[anchors.length - 1]!;
+    appendLinePreview(from.x, from.y, hover.x, hover.y, out);
+  }
+  return out;
 }
 
 const ZOOM_MIN = 0.5;
@@ -1897,6 +1972,14 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
     commitElements((prev) => prev.map((e) => (ids.includes(e.id) ? { ...e, locked: nextLocked } : e)));
   }, [checkpointBlueprint, commitElements]);
 
+  const unlockAllElements = useCallback(() => {
+    const locked = elementsRef.current.filter((e) => e.locked);
+    if (locked.length === 0) return;
+    checkpointBlueprint();
+    commitElements((prev) => prev.map((e) => (e.locked ? { ...e, locked: undefined } : e)));
+    setSelectedIds(locked.map((e) => e.id));
+  }, [checkpointBlueprint, commitElements]);
+
   const connectSelectedEndpoints = useCallback(() => {
     const cur = elementsRef.current;
     const ordered = blueprintConnectEndpointIdsInOrder(selectedIdsRef.current, cur, true);
@@ -1949,13 +2032,13 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
         ...prev,
         {
           id,
-          type: "path" as const,
+          type: "zone" as const,
           x: minX,
           y: minY,
           width: w,
           height: h,
           rotation: 0,
-          name: "Pen",
+          name: nextRoomLabel(prev),
           path_points: processed,
           ...layerIdForNewGeometry(),
         },
@@ -1977,11 +2060,6 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
     if (!stage) return;
     const w0 = getWorldFromStage(stage);
     if (!w0) return;
-    const snap = (x: number, y: number) => ({
-      x: Math.round(x / GRID) * GRID,
-      y: Math.round(y / GRID) * GRID,
-    });
-
     const anchors = penDraftRef.current?.anchors ?? [];
     const me = e.evt as PointerEvent & { detail?: number };
     if ((me.detail ?? 0) >= 2 && anchors.length >= 3) {
@@ -1989,7 +2067,8 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
       return;
     }
 
-    const wPress = snap(w0.x, w0.y);
+    const prevAnchor = anchors[anchors.length - 1] ?? null;
+    const wPress = angleSnappedPoint(w0, prevAnchor, Boolean(e.evt.shiftKey || shiftKeyHeldRef.current));
     penWinCleanupRef.current?.();
     penWinCleanupRef.current = null;
 
@@ -2001,7 +2080,9 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
       const sy = ev.clientY - rect.top;
       const wx = (sx - st.x()) / st.scaleX();
       const wy = (sy - st.y()) / st.scaleY();
-      setPenHover(snap(wx, wy));
+      const cur = penDraftRef.current?.anchors ?? [];
+      const prev = cur[cur.length - 1] ?? null;
+      setPenHover(angleSnappedPoint({ x: wx, y: wy }, prev, Boolean(ev.shiftKey || shiftKeyHeldRef.current)));
     };
 
     const onUp = (ev: PointerEvent) => {
@@ -2018,9 +2099,10 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
       const sy = ev.clientY - rect.top;
       const wx = (sx - st.x()) / st.scaleX();
       const wy = (sy - st.y()) / st.scaleY();
-      const wRelease = snap(wx, wy);
-
       const cur = penDraftRef.current?.anchors ?? [];
+      const prev = cur[cur.length - 1] ?? null;
+      const wRelease = angleSnappedPoint({ x: wx, y: wy }, prev, Boolean(ev.shiftKey || shiftKeyHeldRef.current));
+
       if (cur.length >= 3) {
         const first = cur[0]!;
         if (Math.hypot(wRelease.x - first.x, wRelease.y - first.y) <= POLY_CLOSE_PX) {
@@ -2332,14 +2414,11 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
       const d = await apiFetch<BlueprintDetail>(`/api/blueprints/${id}`);
       setBlueprintId(d.id);
       setBlueprintName(d.name);
-      const loadedLayers = parseApiBlueprintLayers(d.layers);
+    const loadedLayers = parseApiBlueprintLayers(d.layers);
       resetBlueprint({
         elements: relayoutAllDoors(d.elements.map(mapApiElement)),
         tasks: mapApiTasks(d.tasks),
-        layers:
-          loadedLayers.length > 0
-            ? loadedLayers
-            : [{ id: crypto.randomUUID(), name: "Layer 1" }],
+        layers: loadedLayers.length > 0 ? loadedLayers : [{ id: crypto.randomUUID(), name: "Layer 1" }],
       });
       setSelectedIds([]);
       setError(null);
@@ -2399,10 +2478,7 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
         resetBlueprint({
           elements: relayoutAllDoors(d.elements.map(mapApiElement)),
           tasks: mapApiTasks(d.tasks),
-          layers:
-            savedLayers.length > 0
-              ? savedLayers
-              : [{ id: crypto.randomUUID(), name: "Layer 1" }],
+          layers: savedLayers.length > 0 ? savedLayers : [{ id: crypto.randomUUID(), name: "Layer 1" }],
         });
       } else {
         const d = await apiFetch<BlueprintDetail>("/api/blueprints", { method: "POST", json: payload });
@@ -2411,10 +2487,7 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
         resetBlueprint({
           elements: relayoutAllDoors(d.elements.map(mapApiElement)),
           tasks: mapApiTasks(d.tasks),
-          layers:
-            savedLayers.length > 0
-              ? savedLayers
-              : [{ id: crypto.randomUUID(), name: "Layer 1" }],
+          layers: savedLayers.length > 0 ? savedLayers : [{ id: crypto.randomUUID(), name: "Layer 1" }],
         });
       }
       await refreshList();
@@ -2517,7 +2590,7 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
     drawDraftRef.current = null;
     if (!o || !d || d.w < MIN_ZONE || d.h < MIN_ZONE) return;
     const id = crypto.randomUUID();
-    if (mode === "zone") {
+    if (mode === "zone" || mode === "rectangle") {
       commitElements((prev) => [
         ...prev,
         {
@@ -2532,34 +2605,20 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
           ...layerIdForNewGeometry(),
         },
       ]);
-    } else if (mode === "rectangle") {
-      commitElements((prev) => [
-        ...prev,
-        {
-          id,
-          type: "rectangle",
-          x: d.x,
-          y: d.y,
-          width: d.w,
-          height: d.h,
-          rotation: 0,
-          name: "Rectangle",
-          cornerRadius: 0,
-          ...layerIdForNewGeometry(),
-        },
-      ]);
     } else if (mode === "ellipse") {
+      const flat = ellipseToPathPoints(d.x, d.y, d.w, d.h);
       commitElements((prev) => [
         ...prev,
         {
           id,
-          type: "ellipse",
+          type: "zone",
           x: d.x,
           y: d.y,
           width: d.w,
           height: d.h,
           rotation: 0,
-          name: "Ellipse",
+          name: nextRoomLabel(prev),
+          path_points: flat,
           ...layerIdForNewGeometry(),
         },
       ]);
@@ -2582,13 +2641,13 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
       ...prev,
       {
         id,
-        type: "polygon",
+        type: "zone",
         x: minX,
         y: minY,
         width: w,
         height: h,
         rotation: 0,
-        name: "Polygon",
+        name: nextRoomLabel(prev),
         path_points: flat,
         ...layerIdForNewGeometry(),
       },
@@ -2607,11 +2666,9 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
     const st = e.target.getStage();
     const w0 = getWorldFromStage(st);
     if (!w0) return;
-    const wx = Math.round(w0.x / GRID) * GRID;
-    const wy = Math.round(w0.y / GRID) * GRID;
-    const w = { x: wx, y: wy };
-
     const pts = polygonDraftRef.current?.points ?? [];
+    const prev = pts[pts.length - 1] ?? null;
+    const w = angleSnappedPoint(w0, prev, Boolean(e.evt.shiftKey || shiftKeyHeldRef.current));
     const detail = "detail" in e.evt ? (e.evt as MouseEvent).detail : 1;
     if (detail >= 2) {
       if (pts.length >= 3) commitPolygonFromPoints(pts);
@@ -2742,19 +2799,17 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
     if (tool === "draw-polygon" && polygonDraftRef.current) {
       const w = getWorldFromStage(e.target.getStage());
       if (w) {
-        setPolygonHover({
-          x: Math.round(w.x / GRID) * GRID,
-          y: Math.round(w.y / GRID) * GRID,
-        });
+        const pts = polygonDraftRef.current.points;
+        const prev = pts[pts.length - 1] ?? null;
+        setPolygonHover(angleSnappedPoint(w, prev, shiftKeyHeldRef.current));
       }
     }
     if (tool === "draw-pen" && penDraftRef.current) {
       const w = getWorldFromStage(e.target.getStage());
       if (w) {
-        setPenHover({
-          x: Math.round(w.x / GRID) * GRID,
-          y: Math.round(w.y / GRID) * GRID,
-        });
+        const anchors = penDraftRef.current.anchors;
+        const prev = anchors[anchors.length - 1] ?? null;
+        setPenHover(angleSnappedPoint(w, prev, shiftKeyHeldRef.current));
       }
     }
   };
@@ -2838,13 +2893,13 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
           ...prev,
           {
             id,
-            type: "path" as const,
+            type: "zone" as const,
             x: minX,
             y: minY,
             width: w,
             height: h,
             rotation: 0,
-            name: "Shape",
+            name: nextRoomLabel(prev),
             path_points: processed,
             ...layerIdForNewGeometry(),
           },
@@ -3642,9 +3697,9 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
         />
         <p className="bp-hint">
           Zoom: scroll wheel. Pan: Space+drag or right-drag. Tools and selection actions sit on the floating bar below the
-          canvas. Free draw uses simplify-js + Catmull–Rom smoothing (adjust right after drawing). Pen tool: click/drag
-          for Bézier-like segments, then close the path. Merge shapes: select two or more paths, polygons, rectangles, or
-          ellipses (Shift or box) then Merge shapes for a boolean union. Merge rooms: select multiple zones then Merge.
+          canvas. Free draw uses simplify-js + Catmull–Rom smoothing (adjust right after drawing). Pen tool: click for
+          corners, drag for curve handles, then close the room. Rectangle, oval, polygon, freehand, and pen tools all create
+          room geometry so doors, names, and procedure links work consistently. Merge rooms: select multiple rooms then Merge.
           Duplicate: hold Shift and drag a selection to clone it (one undo reverses the copy and move). Doors: use handles or type width (32 px ≈ 1 m).
         </p>
       </motion.aside>
@@ -5372,7 +5427,7 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
                 />
               ) : null}
               {canEdit && tool === "draw-pen" && penDraft && penDraft.anchors.length > 0 ? (
-                <Group listening={false}>
+                <Group listening>
                   {(() => {
                     const pts0 = penDraft.anchors;
                     const flatOpen = [...pts0.flatMap((p) => [p.x, p.y])];
@@ -5392,6 +5447,40 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
                           lineCap="round"
                           listening={false}
                         />
+                        {pts0.map((p, i) =>
+                          p.qc ? (
+                            <Group key={`pen-qc-${i}`} listening>
+                              <Line
+                                points={[pts0[(i - 1 + pts0.length) % pts0.length]!.x, pts0[(i - 1 + pts0.length) % pts0.length]!.y, p.qc.x, p.qc.y, p.x, p.y]}
+                                stroke="rgba(125, 211, 252, 0.45)"
+                                strokeWidth={Math.max(0.65, 0.9 / stageScale)}
+                                dash={[3, 4]}
+                                listening={false}
+                              />
+                              <Circle
+                                x={p.qc.x}
+                                y={p.qc.y}
+                                radius={Math.max(4, 5 / stageScale)}
+                                fill="rgba(15, 23, 42, 0.96)"
+                                stroke="rgba(56, 189, 248, 0.95)"
+                                strokeWidth={Math.max(1, 1.1 / stageScale)}
+                                draggable
+                                onDragMove={(e) => {
+                                  e.cancelBubble = true;
+                                  const nx = e.target.x();
+                                  const ny = e.target.y();
+                                  const next = {
+                                    anchors: penDraftRef.current!.anchors.map((a, ai) =>
+                                      ai === i ? { ...a, qc: { x: nx, y: ny } } : a,
+                                    ),
+                                  };
+                                  penDraftRef.current = next;
+                                  setPenDraft(next);
+                                }}
+                              />
+                            </Group>
+                          ) : null,
+                        )}
                         {pts0.length >= 3 && penHover ? (
                           <Line
                             points={[...pts0.flatMap((p) => [p.x, p.y]), first.x, first.y]}
@@ -5410,7 +5499,19 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
                             fill={i === 0 ? "rgba(56, 189, 248, 0.4)" : "rgba(148, 163, 184, 0.35)"}
                             stroke="rgba(125, 211, 252, 0.9)"
                             strokeWidth={Math.max(1, 1.1 / stageScale)}
-                            listening={false}
+                            draggable
+                            onDragMove={(e) => {
+                              e.cancelBubble = true;
+                              const nx = e.target.x();
+                              const ny = e.target.y();
+                              const next = {
+                                anchors: penDraftRef.current!.anchors.map((a, ai) =>
+                                  ai === i ? { ...a, x: nx, y: ny } : a,
+                                ),
+                              };
+                              penDraftRef.current = next;
+                              setPenDraft(next);
+                            }}
                           />
                         ))}
                       </>
@@ -5946,7 +6047,7 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
 
       <motion.aside
         className={`bp-sidebar bp-sidebar--right${isPublish ? " bp-sidebar--disabled" : ""}`}
-        aria-label="Blueprint layers"
+        aria-label="Blueprint IoT summary"
         initial={false}
         animate={{ opacity: 1, x: 0 }}
         transition={bpTransition.med}
@@ -5962,16 +6063,6 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
             suggestion={iot.suggestion}
           />
         ) : null}
-        <BlueprintLayersPanel
-          layers={layers}
-          activeLayerId={activeLayerId}
-          onSelectLayer={(id) => setActiveLayerId(id)}
-          onAddLayer={addBlueprintLayer}
-          onDeleteLayer={deleteBlueprintLayer}
-          onReorderLayers={reorderLayers}
-          onRenameLayer={renameBlueprintLayer}
-          disabled={isPublish}
-        />
       </motion.aside>
     </div>
       )}
