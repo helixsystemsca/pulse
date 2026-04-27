@@ -203,6 +203,7 @@ async def run_pm_due_scan(db: AsyncSession) -> dict[str, int]:
                 .join(FacilityEquipment, FacilityEquipment.id == PmTask.equipment_id)
                 .where(
                     PmTask.auto_create_work_order.is_(True),
+                    PmTask.tool_id.is_(None),
                     PmTask.next_due_at <= horizon,
                 )
             )

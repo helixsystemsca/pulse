@@ -32,13 +32,23 @@ class PmTask(Base):
             "frequency_type IN ('days','weeks','months')",
             name="ck_pm_tasks_frequency_type",
         ),
+        CheckConstraint(
+            "(equipment_id IS NOT NULL AND tool_id IS NULL) OR (equipment_id IS NULL AND tool_id IS NOT NULL)",
+            name="ck_pm_tasks_one_asset",
+        ),
     )
 
     id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
-    equipment_id: Mapped[str] = mapped_column(
+    equipment_id: Mapped[Optional[str]] = mapped_column(
         UUID(as_uuid=False),
         ForeignKey("facility_equipment.id", ondelete="CASCADE"),
-        nullable=False,
+        nullable=True,
+        index=True,
+    )
+    tool_id: Mapped[Optional[str]] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("tools.id", ondelete="CASCADE"),
+        nullable=True,
         index=True,
     )
     name: Mapped[str] = mapped_column(String(255), nullable=False)

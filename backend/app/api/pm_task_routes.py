@@ -11,12 +11,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_company_user, get_db, require_manager_or_above
 from app.core.config import get_settings
-from app.models.domain import User
+from app.models.domain import Tool, User
 from app.models.pm_models import PmTask, PmTaskChecklistItem, PmTaskPart
 from app.schemas.pm_task import PmDueScanResultOut, PmTaskCreateIn, PmTaskOut
 from app.services import pm_task_service as pm_svc
 
 router = APIRouter(prefix="/equipment", tags=["pm-tasks"])
+tools_router = APIRouter(prefix="/tools", tags=["pm-tasks"])
 
 Db = Annotated[AsyncSession, Depends(get_db)]
 TenantUser = Annotated[User, Depends(get_current_company_user)]
@@ -31,10 +32,19 @@ async def _equipment_company_or_404(db: AsyncSession, company_id: str, equipment
         raise HTTPException(status_code=404, detail="Equipment not found")
 
 
+async def _tool_company_or_404(db: AsyncSession, company_id: str, tool_id: str) -> None:
+    row = await db.get(Tool, tool_id)
+    if not row or str(row.company_id) != str(company_id):
+        raise HTTPException(status_code=404, detail="Tool not found")
+
+
 def _task_to_out(task: PmTask, parts_count: int) -> PmTaskOut:
+    asset_id = task.equipment_id or task.tool_id or ""
     return PmTaskOut(
         id=task.id,
-        asset_id=task.equipment_id,
+        asset_id=asset_id,
+        equipment_id=task.equipment_id,
+        tool_id=task.tool_id,
         name=task.name,
         description=task.description,
         frequency_type=task.frequency_type,
@@ -76,6 +86,32 @@ async def list_pm_tasks(
         .scalars()
         .all()
     )
+    return [_task_to_out(t, count_map.get(t.id, 0)) for t in tasks]
+
+
+@tools_router.get("/{tool_id}/pm-tasks", response_model=list[PmTaskOut])
+async def list_tool_pm_tasks(
+    db: Db,
+    user: TenantUser,
+    tool_id: str,
+) -> list[PmTaskOut]:
+    cid = str(user.company_id) if user.company_id else ""
+    if not cid:
+        raise HTTPException(status_code=403, detail="Company context required")
+    await _tool_company_or_404(db, cid, tool_id)
+    counts = (
+        (
+            await db.execute(
+                select(PmTaskPart.pm_task_id, func.count())
+                .join(PmTask, PmTask.id == PmTaskPart.pm_task_id)
+                .where(PmTask.tool_id == tool_id)
+                .group_by(PmTaskPart.pm_task_id)
+            )
+        )
+        .all()
+    )
+    count_map = {str(r[0]): int(r[1]) for r in counts}
+    tasks = (await db.execute(select(PmTask).where(PmTask.tool_id == tool_id).order_by(PmTask.name))).scalars().all()
     return [_task_to_out(t, count_map.get(t.id, 0)) for t in tasks]
 
 
@@ -136,6 +172,42 @@ async def create_pm_task(
     await db.commit()
     await db.refresh(task)
     return _task_to_out(task, len(merged_parts))
+
+
+@tools_router.post("/{tool_id}/pm-tasks", response_model=PmTaskOut, status_code=status.HTTP_201_CREATED)
+async def create_tool_pm_task(
+    db: Db,
+    user: MutatorUser,
+    tool_id: str,
+    body: PmTaskCreateIn,
+) -> PmTaskOut:
+    cid = str(user.company_id) if user.company_id else ""
+    if not cid:
+        raise HTTPException(status_code=403, detail="Company context required")
+    await _tool_company_or_404(db, cid, tool_id)
+    try:
+        ft, fv = pm_svc.validate_pm_frequency(body.frequency_type, body.frequency_value)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+    now = datetime.now(timezone.utc)
+    next_due = pm_svc.compute_next_due_at(baseline=now, frequency_type=ft, frequency_value=fv)
+    task = PmTask(
+        tool_id=tool_id,
+        equipment_id=None,
+        name=body.name.strip(),
+        description=(body.description or "").strip() or None,
+        frequency_type=ft,
+        frequency_value=fv,
+        last_completed_at=None,
+        next_due_at=next_due,
+        estimated_duration_minutes=body.estimated_duration_minutes,
+        auto_create_work_order=bool(body.auto_create_work_order),
+    )
+    db.add(task)
+    await db.commit()
+    await db.refresh(task)
+    return _task_to_out(task, 0)
 
 
 @router.delete("/{equipment_id}/pm-tasks/{pm_task_id}", status_code=status.HTTP_204_NO_CONTENT)

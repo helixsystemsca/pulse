@@ -205,22 +205,35 @@ async def _load_context(db: AsyncSession, ctx: _InferenceContext) -> bool:
         ctx.facility_equipment = facility_equip_list[0]
 
     # Open PM tasks for this facility equipment
+    now = datetime.now(timezone.utc)
+    all_pms: list[PmTask] = []
+
+    # 1) Preferred: PM tasks linked directly to the BLE-tracked tool id.
+    # This avoids fuzzy matching as asset counts grow.
+    pm_tool_q = await db.execute(
+        select(PmTask)
+        .where(PmTask.tool_id == ctx.tool.id)
+        .order_by(PmTask.next_due_at.asc())
+    )
+    all_pms.extend(pm_tool_q.scalars().all())
+
+    # 2) Also include PM tasks linked to matched facility equipment (fixed asset model).
     if ctx.facility_equipment is not None:
-        now = datetime.now(timezone.utc)
-        pm_q = await db.execute(
-            select(PmTask).where(
-                PmTask.equipment_id == ctx.facility_equipment.id,
-            ).order_by(PmTask.next_due_at.asc())
+        pm_fe_q = await db.execute(
+            select(PmTask)
+            .where(PmTask.equipment_id == ctx.facility_equipment.id)
+            .order_by(PmTask.next_due_at.asc())
         )
-        all_pms = pm_q.scalars().all()
+        all_pms.extend(pm_fe_q.scalars().all())
 
-        # Only care about tasks that are due or overdue (next_due_at ≤ now + 7 days buffer)
-        from datetime import timedelta
-        window = now + timedelta(days=7)
-        ctx.open_pm_tasks = [t for t in all_pms if t.next_due_at <= window]
+    # Only care about tasks that are due or overdue (next_due_at ≤ now + 7 days buffer)
+    from datetime import timedelta
+    window = now + timedelta(days=7)
+    ctx.open_pm_tasks = [t for t in all_pms if t.next_due_at <= window]
 
-        if ctx.open_pm_tasks:
-            ctx.most_urgent_pm = ctx.open_pm_tasks[0]  # already sorted by next_due_at asc
+    if ctx.open_pm_tasks:
+        ctx.open_pm_tasks.sort(key=lambda t: t.next_due_at)
+        ctx.most_urgent_pm = ctx.open_pm_tasks[0]
 
     # Active shift check — is this worker scheduled right now?
     from app.models.pulse_models import PulseScheduleShift

@@ -31,7 +31,9 @@ class PmTaskCreateIn(BaseModel):
 
 class PmTaskOut(BaseModel):
     id: str
-    asset_id: str = Field(..., description="facility_equipment.id")
+    asset_id: str = Field(..., description="facility_equipment.id or tools.id")
+    equipment_id: Optional[str] = Field(None, description="facility_equipment.id (fixed asset)")
+    tool_id: Optional[str] = Field(None, description="tools.id (BLE-tracked tool/equipment)")
     name: str
     description: Optional[str] = None
     frequency_type: str
