@@ -852,6 +852,76 @@ async def delete_shift(db: Db, cid: CompanyId, shift_id: str) -> None:
     await db.commit()
 
 
+@router.get("/schedule/shifts/{shift_id}/work-queue")
+async def get_shift_work_queue(
+    shift_id: str,
+    db: Db,
+    cid: CompanyId,
+    user: User = Depends(require_tenant_user),
+) -> dict:
+    """
+    Returns open work requests and overdue PMs relevant to this shift.
+    Used by the assignment builder in ScheduleDayView.
+    """
+    # Load the shift to get facility_id (zone)
+    shift = await db.get(PulseScheduleShift, shift_id)
+    if not shift or shift.company_id != cid:
+        raise HTTPException(status_code=404, detail="shift_not_found")
+
+    # Open work requests — optionally filter by zone if facility_id set
+    wr_q = select(PulseWorkRequest).where(
+        PulseWorkRequest.company_id == cid,
+        PulseWorkRequest.status.in_(
+            [
+                PulseWorkRequestStatus.open,
+                PulseWorkRequestStatus.in_progress,
+            ]
+        ),
+    )
+    if shift.facility_id:
+        wr_q = wr_q.where(
+            func.coalesce(PulseWorkRequest.zone_id, shift.facility_id) == shift.facility_id
+        )
+    wr_result = await db.execute(wr_q.limit(20).order_by(PulseWorkRequest.created_at.asc()))
+    work_requests = wr_result.scalars().all()
+
+    # Overdue PM tasks for this company
+    now = datetime.now(timezone.utc)
+    pm_result = await db.execute(
+        select(PmTask)
+        .where(
+            PmTask.company_id == cid,
+            PmTask.next_due_at <= now,
+        )
+        .limit(10)
+        .order_by(PmTask.next_due_at.asc())
+    )
+    overdue_pms = pm_result.scalars().all()
+
+    return {
+        "shift_id": shift_id,
+        "work_requests": [
+            {
+                "id": str(wr.id),
+                "title": wr.title,
+                "status": getattr(wr.status, "value", wr.status),
+                "priority": getattr(wr.priority, "value", wr.priority),
+                "zone_id": str(wr.zone_id) if wr.zone_id else None,
+            }
+            for wr in work_requests
+        ],
+        "overdue_pms": [
+            {
+                "id": str(pm.id),
+                "name": pm.name,
+                "next_due_at": pm.next_due_at.isoformat(),
+                "days_overdue": max(0, (now - pm.next_due_at).days),
+            }
+            for pm in overdue_pms
+        ],
+    }
+
+
 @router.get("/zones", response_model=list[ZoneOut])
 async def list_zones(db: Db, cid: CompanyId) -> list[ZoneOut]:
     zq = await db.execute(select(Zone).where(Zone.company_id == cid).order_by(Zone.name))

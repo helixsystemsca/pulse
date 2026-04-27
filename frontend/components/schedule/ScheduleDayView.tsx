@@ -2,6 +2,7 @@
 
 import { AlertTriangle, ArrowLeft, Plus, ClipboardList, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { apiFetch } from "@/lib/api";
 import {
   formatCertCodesShort,
   formatCertCodesWithLabels,
@@ -106,6 +107,12 @@ export function ScheduleDayView({
   const [newWorkerId, setNewWorkerId] = useState<string>("");
   const [newNotes, setNewNotes] = useState("");
 
+  const [workQueue, setWorkQueue] = useState<{
+    work_requests: Array<{ id: string; title: string; priority: string; status: string }>;
+    overdue_pms: Array<{ id: string; name: string; days_overdue: number }>;
+  } | null>(null);
+  const [loadingWQ, setLoadingWQ] = useState(false);
+
   const triggerShake = () => {
     if (shakeTimer.current) clearTimeout(shakeTimer.current);
     setShake(true);
@@ -122,6 +129,17 @@ export function ScheduleDayView({
 
   const sorted = useMemo(() => [...shifts].sort((a, b) => a.startTime.localeCompare(b.startTime)), [shifts]);
   const codeMap = useMemo(() => buildShiftCodeMapForDay(dayShiftsAll), [dayShiftsAll]);
+
+  const assignShiftTypeDefault = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const s of shifts) counts[s.shiftType] = (counts[s.shiftType] ?? 0) + 1;
+    const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+    return sorted[0]?.[0] ?? "night";
+  }, [shifts]);
+
+  useEffect(() => {
+    setAssignShiftType(assignShiftTypeDefault);
+  }, [assignShiftTypeDefault, date]);
 
   const label = useMemo(() => {
     const d = new Date(date + "T12:00:00");
@@ -148,7 +166,6 @@ export function ScheduleDayView({
   }, [sorted, dayShiftsAll, workers, settings, timeOffBlocks, zones]);
 
   useEffect(() => {
-    if (!nightAssignmentsEnabled) return;
     let cancelled = false;
     setAssignLoading(true);
     setAssignError(null);
@@ -165,10 +182,25 @@ export function ScheduleDayView({
         if (!cancelled) setAssignLoading(false);
       }
     })();
+
+    const dayShift = shifts.find((s) => s.shiftKind !== "project_task");
+    if (dayShift) {
+      setLoadingWQ(true);
+      apiFetch<typeof workQueue>(`/api/v1/pulse/schedule/shifts/${dayShift.id}/work-queue`)
+        .then((data) => {
+          if (!cancelled) setWorkQueue(data);
+        })
+        .catch(() => {})
+        .finally(() => {
+          if (!cancelled) setLoadingWQ(false);
+        });
+    } else {
+      setWorkQueue(null);
+    }
     return () => {
       cancelled = true;
     };
-  }, [nightAssignmentsEnabled, date, assignShiftType]);
+  }, [date, assignShiftType, shifts]);
 
   return (
     <div className="overflow-hidden rounded-md border border-pulseShell-border bg-pulseShell-surface shadow-[var(--pulse-shell-shadow)]">
@@ -492,8 +524,7 @@ export function ScheduleDayView({
             )}
           </div>
 
-          {nightAssignmentsEnabled ? (
-            <div className="rounded-md border border-pulseShell-border bg-pulseShell-surface p-4 shadow-[var(--pulse-shell-shadow)]">
+          <div className="rounded-md border border-pulseShell-border bg-pulseShell-surface p-4 shadow-[var(--pulse-shell-shadow)]">
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="flex items-center gap-2 font-headline text-sm font-bold text-ds-foreground">
@@ -658,8 +689,57 @@ export function ScheduleDayView({
                   </div>
                 ))}
               </div>
+
+              {loadingWQ ? <p className="mt-3 text-sm text-ds-muted">Loading work queue…</p> : null}
+              {workQueue &&
+              (workQueue.work_requests.length > 0 || workQueue.overdue_pms.length > 0) ? (
+                <div className="mt-4 space-y-3 border-t border-ds-border pt-4">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-ds-muted">Work queue for this shift</p>
+
+                  {workQueue.overdue_pms.length > 0 ? (
+                    <div className="space-y-1.5">
+                      <p className="text-[11px] font-semibold text-ds-muted">Overdue PMs</p>
+                      {workQueue.overdue_pms.map((pm) => (
+                        <div
+                          key={pm.id}
+                          className="flex items-center justify-between gap-2 rounded-md border border-ds-border bg-ds-primary px-3 py-2"
+                        >
+                          <span className="truncate text-xs text-ds-foreground">{pm.name}</span>
+                          <span className="shrink-0 text-[10px] font-bold text-red-600 dark:text-red-400">
+                            {pm.days_overdue}d overdue
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+
+                  {workQueue.work_requests.length > 0 ? (
+                    <div className="space-y-1.5">
+                      <p className="text-[11px] font-semibold text-ds-muted">Open work requests</p>
+                      {workQueue.work_requests.map((wr) => (
+                        <div
+                          key={wr.id}
+                          className="flex items-center justify-between gap-2 rounded-md border border-ds-border bg-ds-primary px-3 py-2"
+                        >
+                          <span className="truncate text-xs text-ds-foreground">{wr.title}</span>
+                          <span
+                            className={`shrink-0 text-[10px] font-bold uppercase ${
+                              wr.priority === "critical"
+                                ? "text-red-600 dark:text-red-400"
+                                : wr.priority === "high"
+                                  ? "text-amber-600 dark:text-amber-400"
+                                  : "text-ds-muted"
+                            }`}
+                          >
+                            {wr.priority}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
             </div>
-          ) : null}
         </aside>
       </div>
     </div>
