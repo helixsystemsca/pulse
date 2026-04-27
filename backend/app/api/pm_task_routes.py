@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from typing import Annotated, Optional
 
 from fastapi import APIRouter, Depends, Header, HTTPException, status
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_company_user, get_db, require_manager_or_above
@@ -172,3 +172,34 @@ async def internal_run_pm_due_scan(
         raise HTTPException(status_code=401, detail="Invalid cron key")
     out = await pm_svc.run_pm_due_scan(db)
     return PmDueScanResultOut(work_orders_created=out["work_orders_created"])
+
+
+@internal_router.post("/maintenance-inferences/cleanup")
+async def internal_cleanup_maintenance_inferences(
+    db: Db,
+    x_pm_cron_key: Annotated[Optional[str], Header(alias="X-PM-Cron-Key")] = None,
+) -> dict:
+    """
+    Nightly TTL cleanup for maintenance inference rows.
+
+    Deletes dismissed / auto_logged / expired rows older than 90 days.
+    Protected by the same cron secret as PM due-scan.
+    """
+    settings = get_settings()
+    secret = (settings.pm_cron_secret or "").strip()
+    if not secret:
+        raise HTTPException(status_code=503, detail="PM_CRON_SECRET is not configured")
+    if (x_pm_cron_key or "").strip() != secret:
+        raise HTTPException(status_code=401, detail="Invalid cron key")
+
+    stmt = text(
+        """
+        DELETE FROM maintenance_inferences
+        WHERE created_at < (now() AT TIME ZONE 'utc') - interval '90 days'
+          AND status IN ('dismissed', 'auto_logged', 'expired');
+        """
+    )
+    res = await db.execute(stmt)
+    await db.commit()
+    deleted = int(res.rowcount or 0)
+    return {"deleted": deleted}
