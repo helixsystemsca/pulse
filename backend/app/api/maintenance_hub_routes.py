@@ -709,6 +709,10 @@ async def list_preventative(db: Db, cid: CompanyId) -> list[PreventativeRuleOut]
 
 @router.post("/preventative", response_model=PreventativeRuleOut, status_code=status.HTTP_201_CREATED)
 async def create_preventative(db: Db, cid: CompanyId, body: PreventativeRuleCreate) -> PreventativeRuleOut:
+    raise HTTPException(
+        status_code=410,
+        detail="Preventative rules are deprecated. Use PM tasks (pm_tasks) instead.",
+    )
     if not await pulse_svc.facility_equipment_in_company(db, cid, body.asset_id):
         raise HTTPException(status_code=400, detail="Unknown asset_id (equipment)")
     if body.procedure_id:
@@ -739,6 +743,10 @@ async def get_preventative(db: Db, cid: CompanyId, rule_id: str) -> Preventative
 async def update_preventative(
     db: Db, cid: CompanyId, rule_id: str, body: PreventativeRuleUpdate
 ) -> PreventativeRuleOut:
+    raise HTTPException(
+        status_code=410,
+        detail="Preventative rules are deprecated. Use PM tasks (pm_tasks) instead.",
+    )
     row = await db.get(PulsePreventativeRule, rule_id)
     if not row or row.company_id != cid:
         raise HTTPException(status_code=404, detail="Not found")
@@ -762,6 +770,10 @@ async def update_preventative(
 
 @router.delete("/preventative/{rule_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_preventative(db: Db, cid: CompanyId, rule_id: str) -> None:
+    raise HTTPException(
+        status_code=410,
+        detail="Preventative rules are deprecated. Use PM tasks (pm_tasks) instead.",
+    )
     row = await db.get(PulsePreventativeRule, rule_id)
     if not row or row.company_id != cid:
         raise HTTPException(status_code=404, detail="Not found")

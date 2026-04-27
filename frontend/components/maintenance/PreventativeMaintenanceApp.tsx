@@ -93,6 +93,14 @@ export function PreventativeMaintenanceApp() {
 
   return (
     <div className="space-y-6">
+      <section className="rounded-md border border-ds-border bg-ds-secondary p-4 shadow-[var(--ds-shadow-card)]">
+        <h2 className="text-sm font-semibold text-ds-foreground">Preventative rules (deprecated)</h2>
+        <p className="mt-1 text-xs text-ds-muted">
+          Preventative rules have been deprecated in favor of PM Tasks. Existing rules are shown for reference only.
+          Create new preventative schedules using PM Tasks on the Equipment/Tools screens.
+        </p>
+      </section>
+
       <section className="rounded-md border border-ds-border bg-ds-primary p-4 shadow-[var(--ds-shadow-card)]">
         <h2 className="text-sm font-semibold text-pulse-navy dark:text-slate-100">Add rule</h2>
         <p className="mt-1 text-xs text-pulse-muted">
@@ -124,7 +132,7 @@ export function PreventativeMaintenanceApp() {
           </select>
           <button
             type="button"
-            disabled={saving || !assetId.trim()}
+            disabled
             onClick={() => void addRule()}
             className="rounded-lg bg-pulse-accent px-3 py-2 text-sm font-semibold text-white disabled:opacity-50"
           >
@@ -162,6 +170,7 @@ export function PreventativeMaintenanceApp() {
                 </div>
                 <button
                   type="button"
+                  disabled
                   onClick={() => setEditing(r)}
                   className="shrink-0 rounded-lg border border-pulse-border px-2 py-1 text-xs font-semibold dark:border-slate-600"
                 >
