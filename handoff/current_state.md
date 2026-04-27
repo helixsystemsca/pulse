@@ -6,7 +6,7 @@
 ---
 
 ## Last Updated
-2026-04-27 — mobile M2: inference confirmation screen, WS-driven banner, tasks rebuild
+2026-04-27 — mobile M3: unified Documents tab (procedures, drawings, logs)
 
 ---
 
@@ -33,7 +33,7 @@
 - Blueprint designer polish shipped (tools/templates/indicators/read-only UX)
 - Schedule phases 4+5 shipped (My Shifts, project overlay toggle, assignment work queue, publish button)
 - Preventative rules UI is read-only (deprecated; use PM tasks)
-- Mobile M2 shipped: inference confirmation screen, WS-driven inference banner, tasks rebuild
+- Mobile M2+M3 shipped: inference confirm screen + WS banner + tasks rebuild + unified Documents tab
 
 ### Known Issues / TODOs
 - Blueprint designer remaining phases still pending: lock/unlock-all, fine grid toggle, default shape behavior tweaks
@@ -56,7 +56,7 @@
 - Phase 6: swap requests (deferred to Expo session)
 
 ### Mobile
-- M3–M6 still pending (Documents tab, plus remaining mobile phases)
+- M4–M6 still pending (remaining mobile phases)
 
 ---
 
