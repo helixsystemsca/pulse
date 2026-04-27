@@ -1,61 +1,56 @@
-# Fix LiveFacilityMap Prop Error — integration.md
+# Fix Blueprint Toolbar Border Lines — integration.md
 
 ## CURSOR PROMPT
-"Read handoff/integration.md. Execute the fix. Commit when done."
+"Read handoffs/integration.md. Execute the fix. Commit when done."
 
 ---
 
 ## ROOT CAUSE
-live-map/page.tsx uses LiveFacilityMap with demoMode and showControls props
-but LiveFacilityMap doesn't have those props — they belong to UnifiedFacilityMap.
+BlueprintToolRail.tsx buttons have `border-b-2` class applied either
+directly or inherited from a shared button style. This shows as
+underline marks on every tool button in the toolbar.
 
-Cursor resolved the import to LiveFacilityMap instead of UnifiedFacilityMap.
+---
+
+=== MODIFY: frontend/components/zones-devices/BlueprintToolRail.tsx ===
+
+Step 1 — Find every button or motion.button in the file that has:
+  `border-b-2`
+Remove that class from all tool rail buttons.
+
+Step 2 — Find the bp-tool-rail__btn CSS class definition.
+Check if it inherits from any tab button class that adds border-b.
+Remove any `border-bottom` or `border-b` rules from:
+  `.bp-tool-rail__btn`
+  `.bp-tool-rail__btn.is-active`
+
+Step 3 — Check blueprint-designer.css for:
+```css
+.bp-tool-rail__btn {
+```
+Remove any `border-bottom` property from this rule.
+The active state should use background-color only, not a border indicator.
 
 ---
 
 ## EXECUTION STEPS
-
-Step 1 — Find all map component files:
-```bash
-find frontend/components -name "*Map*" -o -name "*map*" | grep "\.tsx$"
-```
-
-Step 2 — Check if UnifiedFacilityMap exists anywhere:
-```bash
-find frontend -name "UnifiedFacilityMap.tsx"
-```
-
-Step 3A — IF UnifiedFacilityMap.tsx EXISTS:
-  Fix frontend/app/live-map/page.tsx:
-  - Update the import to point to the correct path
-  - Keep demoMode and showControls props as-is
-
-Step 3B — IF UnifiedFacilityMap.tsx does NOT exist:
-  Fix frontend/app/live-map/page.tsx by removing the unsupported props:
-
-  FIND:
-    <LiveFacilityMap demoMode showControls pollMs={1000} />
-  REPLACE WITH:
-    <DemoLiveMap />
-
-  Then add the DemoLiveMap import at the top of live-map/page.tsx.
-  Find where DemoLiveMap.tsx lives first:
-  ```bash
-  find frontend/components -name "DemoLiveMap.tsx"
-  ```
-  Then import from that path.
-
-Step 4 — Verify no other TypeScript errors in the file:
-```bash
-cd frontend && npx tsc --noEmit 2>&1 | grep "live-map"
-```
-
-Step 5 — git add -A && git commit -m "fix: remove invalid demoMode prop from LiveFacilityMap usage"
-Step 6 — git push origin main
+1. Remove border-b-2 from tool rail button classes in BlueprintToolRail.tsx
+2. Remove border-bottom from .bp-tool-rail__btn in blueprint-designer.css
+3. git add -A && git commit -m "fix: remove border-b artifact from blueprint toolbar buttons"
+4. git push origin main
 
 ---
 
 ## VALIDATION
-- [ ] npm run build passes
-- [ ] /live-map Demo Scenario tab renders correctly
-- [ ] Vercel deploys successfully
+- [ ] Blueprint toolbar shows no underline marks under icons
+- [ ] Active tool still has visible highlight (background, not border)
+- [ ] Module tab navs elsewhere unaffected
+- [ ] Vercel build passes
+
+---
+
+## UPDATE architecture/current_state.md
+- Add to Known Issues resolved: blueprint toolbar border artifact fixed
+- Update Last Updated date
+git add architecture/current_state.md
+git commit -m "chore: update current_state after blueprint toolbar fix"
