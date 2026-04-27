@@ -6,7 +6,7 @@
 ---
 
 ## Last Updated
-2026-04-26 — perf + security hardening (pm_tasks scoping/indexes), telemetry ingest rate-limit, demo lockdown, schedule facility_id rename
+2026-04-27 — schedule phases 4+5: My Shifts view, project overlay toggle, assignment work queue, publish button
 
 ---
 
@@ -26,6 +26,7 @@
 - Maintenance inference TTL cleanup: POST `/api/v1/internal/maintenance-inferences/cleanup` (90d delete for dismissed/auto_logged/expired)
 - PM tasks now support fixed assets **and** BLE tools (pm_tasks.equipment_id OR pm_tasks.tool_id)
 - PM tasks now include `company_id` (no join required for tenant scoping + due queries)
+- Schedule work queue endpoint: GET `/api/v1/pulse/schedule/shifts/{shift_id}/work-queue` (open WRs + overdue PMs)
 - Telemetry ingest is rate-limited per gateway (readings/sec) to mitigate leaked secrets
 - Pulse schedule shifts are protected from double-booking (DB exclusion constraint)
 - Demo routes that reset global singleton state are restricted to the demo tenant (or system admin)
@@ -36,13 +37,15 @@
 - `/live-map`: DS header/tabs + LiveHardware (LiveFacilityMap) + DemoScenario (DemoLiveMap)
 - Blueprint designer polish shipped: tool labels, expanded symbols, templates, task indicators, read-only instructions
 - Preventative rules UI is now read-only with deprecation notice (use PM tasks instead)
-- Architecture contracts live at `architecture/contracts.md`
+- Schedule phases 4+5 shipped: My Shifts tab, Projects overlay toggle, Day view assignments for all shifts + work queue, publish button
+- Architecture contracts live at `handoff/contracts.md`
 
 ### Known Issues / TODOs
 - Blueprint designer remaining phases still pending: lock/unlock-all, fine grid toggle, default shape behavior tweaks
 - PM auto-generated work order priority still hardcoded (needs config)
 - Settings remaining tabs (Compliance, Notifications, Gamification, Zones): placeholder content only
 - Procedure steps schema is now validated on write; legacy malformed steps are ignored on read
+- Schedule time-off persistence still local-only (no DB table yet)
 - Telemetry ingest rate limit is best-effort in-process; consider Redis/edge enforcement for multi-instance deployments
 
 ---
@@ -53,6 +56,9 @@
 - Phase 6: Lock fix + Unlock All button
 - Phase 7: Fine grid toggle (8px)
 - Phase 8: All shapes → rooms by default, remove draw-room tool
+
+### Schedule
+- Phase 6: swap requests (deferred to Expo session)
 
 ---
 
