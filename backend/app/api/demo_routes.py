@@ -47,7 +47,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import get_db, require_company_admin
 from app.core.events.engine import event_engine
 from app.core.events.types import DomainEvent
+from app.core.user_roles import user_has_any_role
 from app.models.domain import User
+from app.models.domain import UserRole
 
 log = logging.getLogger("pulse.demo")
 router = APIRouter(prefix="/demo", tags=["demo"])
@@ -201,6 +203,17 @@ class DemoState:
 
 
 _demo_state = DemoState()
+
+
+def _require_demo_tenant_or_system_admin(user: User) -> None:
+    """
+    Demo state is a global singleton. Until we make it per-company, restrict
+    destructive demo actions to the demo tenant (or system admins).
+    """
+    if user.is_system_admin or user_has_any_role(user, UserRole.system_admin):
+        return
+    if str(user.company_id) != str(DEMO_COMPANY_ID):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="demo_admin_only")
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -359,6 +372,7 @@ async def start_demo(
     user: User = Depends(require_company_admin),
 ) -> dict:
     """Start or restart the demo scenario."""
+    _require_demo_tenant_or_system_admin(user)
     state = _demo_state
 
     # Cancel any running scenario
@@ -381,6 +395,7 @@ async def reset_demo(
     user: User = Depends(require_company_admin),
 ) -> dict:
     """Reset to the beginning without starting."""
+    _require_demo_tenant_or_system_admin(user)
     state = _demo_state
     if state._task and not state._task.done():
         state._task.cancel()
@@ -397,6 +412,7 @@ async def confirm_inference(
     Simulate the worker tapping 'Confirm' on the ProximityPromptBanner.
     Updates demo state and fires a WS event so the dashboard reacts.
     """
+    _require_demo_tenant_or_system_admin(user)
     state = _demo_state
     if state.inference_status != "pending":
         raise HTTPException(status_code=400, detail="no_pending_inference")
@@ -431,6 +447,7 @@ async def dismiss_inference(
     user: User = Depends(require_company_admin),
 ) -> dict:
     """Simulate the worker tapping 'Not right now'."""
+    _require_demo_tenant_or_system_admin(user)
     state = _demo_state
     if state.inference_status != "pending":
         raise HTTPException(status_code=400, detail="no_pending_inference")
