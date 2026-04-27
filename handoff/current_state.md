@@ -37,7 +37,7 @@
 - /demo redirects to /live-map
 - UnknownDevicesPanel wired into SetupApp devices tab
 - Settings + Live Map nav items added to sidebar
-- Architecture contracts file: architecture/contracts.md
+- Architecture contracts file: handoff/contracts.md
 
 ### Known Issues / TODOs
 - UnifiedFacilityMap.tsx: created by Cursor but has unresolved import path issues — live-map uses LiveFacilityMap + DemoLiveMap separately instead
