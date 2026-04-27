@@ -53,13 +53,13 @@ export default function TabLayout() {
               tabBarIcon: ({ color }) => <TabBarIcon name="home" color={color} />,
             }}
           />
-          {/* Internal route used by BLEPromptHost. Hide from tab bar. */}
           <Tabs.Screen name="_ble" options={{ href: null }} />
+          <Tabs.Screen name="two" options={{ href: null }} />
           <Tabs.Screen
-            name="toolbox"
+            name="tasks"
             options={{
-              title: "Toolbox",
-              tabBarIcon: ({ color }) => <TabBarIcon name="wrench" color={color} />,
+              title: "Tasks",
+              tabBarIcon: ({ color }) => <TabBarIcon name="check-square-o" color={color} />,
             }}
           />
           <Tabs.Screen
@@ -70,27 +70,30 @@ export default function TabLayout() {
             }}
           />
           <Tabs.Screen
-            name="tasks"
+            name="documents"
             options={{
-              title: "Tasks",
-              tabBarIcon: ({ color }) => <TabBarIcon name="check-square" color={color} />,
+              title: "Documents",
+              tabBarIcon: ({ color }) => <TabBarIcon name="folder-o" color={color} />,
             }}
           />
           <Tabs.Screen
-            name="procedures"
+            name="search"
             options={{
-              title: "Procedures",
-              tabBarIcon: ({ color }) => <TabBarIcon name="list-alt" color={color} />,
+              title: "Search",
+              tabBarIcon: ({ color }) => <TabBarIcon name="search" color={color} />,
             }}
           />
           <Tabs.Screen
-            name="drawings"
+            name="profile"
             options={{
-              title: "Drawings",
-              tabBarIcon: ({ color }) => <TabBarIcon name="map-o" color={color} />,
+              title: "Profile",
+              tabBarIcon: ({ color }) => <TabBarIcon name="user-o" color={color} />,
             }}
           />
-          <Tabs.Screen name="two" options={{ href: null }} />
+
+          <Tabs.Screen name="procedures" options={{ href: null }} />
+          <Tabs.Screen name="drawings" options={{ href: null }} />
+          <Tabs.Screen name="toolbox" options={{ href: null }} />
         </Tabs>
       </SafeAreaView>
       <BLEPromptHost />

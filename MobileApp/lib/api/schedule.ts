@@ -7,6 +7,7 @@ export type ShiftOut = {
   company_id: string;
   assigned_user_id: string;
   zone_id?: string | null;
+  shift_code?: string | null;
   starts_at: string;
   ends_at: string;
   shift_type: string;

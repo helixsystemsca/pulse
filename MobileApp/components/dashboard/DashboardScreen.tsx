@@ -1,603 +1,318 @@
 import { useIsFocused } from "@react-navigation/native";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
-import type { ImageSourcePropType } from "react-native";
-import { Alert, Image, ImageBackground, Pressable, ScrollView, Text, View } from "react-native";
-import type { Href } from "expo-router";
+import React, { useCallback, useEffect, useState } from "react";
+import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-native";
 import { useRouter } from "expo-router";
-import { BlurView } from "expo-blur";
-import { LinearGradient } from "expo-linear-gradient";
-import FontAwesome from "@expo/vector-icons/FontAwesome";
-import * as ImagePicker from "expo-image-picker";
 import { useTheme } from "@/theme/ThemeProvider";
 import { useSession } from "@/store/session";
-import { getOrganization, type Organization } from "@/lib/api/pulse";
-import { fetchAuthenticatedImageAsDataUri } from "@/lib/fetchAuthenticatedImageDataUri";
-import { uploadProfileAvatar } from "@/lib/api/profileAvatar";
-import { loadMyShiftPresence, type MyShiftPresence } from "@/lib/workforcePresence";
-import { getNextTask, getUpcomingTasks, type Task } from "@/lib/api/tasks";
+import { listShifts, type ShiftOut } from "@/lib/api/schedule";
+import { listMyTasks, type Task } from "@/lib/api/tasks";
+import { listNotifications, type AppNotification } from "@/lib/api/notifications";
+import { listMyTools, type AssignedTool } from "@/lib/api/tools";
 import { subscribePulseWs } from "@/lib/realtime/pulseWs";
 
-/** Bundled hero (same asset as web `public/images/panorama.jpg`) until org background from the API is reliable. */
-const HOME_HERO_PANORAMA = require("../../assets/images/panorama.jpg") as ImageSourcePropType;
-
-function firstName(full: string | null | undefined): string {
-  const s = (full ?? "").trim();
-  if (!s) return "there";
-  const parts = s.split(/\s+/).filter(Boolean);
-  return parts[0] ?? "there";
+function isoNow() {
+  return new Date().toISOString();
+}
+function isoPlus(days: number) {
+  const d = new Date();
+  d.setDate(d.getDate() + days);
+  return d.toISOString();
+}
+function fmtTime(iso: string) {
+  return new Date(iso).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+}
+function fmtDate(iso: string) {
+  return new Date(iso).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+}
+function timeAgo(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const m = Math.floor(diff / 60000);
+  if (m < 1) return "just now";
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  return `${Math.floor(h / 24)}d ago`;
 }
 
-function presenceDotColor(dot: MyShiftPresence["dot"], colors: ReturnType<typeof useTheme>["colors"]): string {
-  if (dot === "on_shift") return colors.success;
-  if (dot === "scheduled_off") return colors.warning;
-  /** Readable on dusk bar */
-  return "rgba(255,255,255,0.55)";
-}
-
-function Avatar({
-  initials,
-  onPress,
-  colors,
-  size = 44,
-  imageSource,
-  imageReloadKey = 0,
-  profileOwnerKey,
-}: {
-  initials: string;
-  onPress?: () => void;
-  colors: { surface: string; border: string; text: string; muted: string };
-  size?: number;
-  imageSource?: ImageSourcePropType | null;
-  /** Bumps after a new upload so the same avatar URL still reloads from the server. */
-  imageReloadKey?: number;
-  /** When the signed-in user changes, remount the bitmap so RN cannot reuse the previous user's cached image. */
-  profileOwnerKey?: string;
-}) {
-  const [imageFailed, setImageFailed] = useState(false);
-
-  useEffect(() => {
-    setImageFailed(false);
-  }, [imageSource, profileOwnerKey]);
-
-  const showPhoto = Boolean(imageSource) && !imageFailed;
-  const imageMountKey = `${profileOwnerKey ?? "anon"}-${imageReloadKey}`;
-
+function SectionCard({ children, style }: { children: React.ReactNode; style?: object }) {
+  const { colors, radii, spacing } = useTheme();
   return (
-    <Pressable
-      onPress={onPress}
+    <View
       style={{
-        width: size,
-        height: size,
-        borderRadius: size / 2,
-        borderWidth: 1,
+        backgroundColor: colors.card,
         borderColor: colors.border,
-        backgroundColor: colors.surface,
-        alignItems: "center",
-        justifyContent: "center",
-        overflow: "hidden",
+        borderWidth: 1,
+        borderRadius: radii.lg,
+        padding: spacing.lg,
+        ...(style ?? {}),
       }}
     >
-      {showPhoto ? (
-        <Image
-          key={imageMountKey}
-          source={imageSource!}
-          style={{ width: size, height: size }}
-          resizeMode="cover"
-          accessibilityLabel="Profile photo"
-          onError={() => setImageFailed(true)}
-        />
-      ) : (
-        <Text style={{ color: colors.text, fontWeight: "800" }}>{initials}</Text>
-      )}
-    </Pressable>
+      {children}
+    </View>
   );
 }
 
-function formatTaskDue(due: string | null | undefined): string {
-  if (!due) return "No due date";
-  try {
-    return new Date(due).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
-  } catch {
-    return "—";
-  }
+function SectionLabel({ label }: { label: string }) {
+  const { colors } = useTheme();
+  return (
+    <Text style={{ color: colors.muted, fontSize: 11, fontWeight: "900", letterSpacing: 0.8, marginBottom: 10 }}>
+      {label}
+    </Text>
+  );
 }
 
 export function DashboardScreen() {
+  const { colors, spacing } = useTheme();
+  const { session } = useSession();
   const router = useRouter();
-  const { colors, spacing, radii, text } = useTheme();
-  const { session, refreshProfile } = useSession();
+  const focused = useIsFocused();
   const token = session?.token ?? "";
-  const isFocused = useIsFocused();
+  const userId = session?.user?.id ?? "";
+  const userName = session?.user?.fullName ?? session?.user?.email ?? "";
 
-  const [org, setOrg] = useState<Organization | null>(null);
-  const [orgErr, setOrgErr] = useState<string | null>(null);
-  const [brandingKey, setBrandingKey] = useState(0);
-  const [headerBgUri, setHeaderBgUri] = useState<string | null>(null);
-  const [shiftPresence, setShiftPresence] = useState<MyShiftPresence | null>(null);
-  const [avatarReloadKey, setAvatarReloadKey] = useState(0);
-  const [avatarPhotoUri, setAvatarPhotoUri] = useState<string | null>(null);
-  const [avatarUploadBusy, setAvatarUploadBusy] = useState(false);
-  const [nextTask, setNextTask] = useState<Task | null>(null);
-  const [upcomingTasks, setUpcomingTasks] = useState<Task[]>([]);
-  const [tasksErr, setTasksErr] = useState<string | null>(null);
+  const [upcomingShift, setUpcomingShift] = useState<ShiftOut | null>(null);
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [tools, setTools] = useState<AssignedTool[]>([]);
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const loadTaskQueue = useCallback(async () => {
-    if (!token) {
-      setNextTask(null);
-      setUpcomingTasks([]);
-      return;
-    }
-    setTasksErr(null);
+  const load = useCallback(async () => {
+    if (!token || !userId) return;
     try {
-      const [n, u] = await Promise.all([getNextTask(token), getUpcomingTasks(token, 3)]);
-      setNextTask(n);
-      setUpcomingTasks(u);
-    } catch (e) {
-      setNextTask(null);
-      setUpcomingTasks([]);
-      setTasksErr(e instanceof Error ? e.message : "Could not load tasks");
-    }
-  }, [token]);
-
-  const pickAndUploadAvatar = useCallback(async () => {
-    if (!token || avatarUploadBusy) return;
-    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!perm.granted) {
-      Alert.alert("Photos", "Allow photo access in Settings to set your profile picture.");
-      return;
-    }
-    const picked = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ["images"],
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.85,
-    });
-    if (picked.canceled || !picked.assets?.[0]) return;
-    const asset = picked.assets[0];
-    setAvatarUploadBusy(true);
-    try {
-      await uploadProfileAvatar(token, asset.uri, asset.mimeType ?? null, asset.fileName ?? null);
-      await refreshProfile();
-      setAvatarReloadKey(Date.now());
-    } catch (e) {
-      Alert.alert("Profile photo", e instanceof Error ? e.message : "Upload failed");
+      const [shifts, myTasks, myTools, notifs] = await Promise.allSettled([
+        listShifts(token, { from: isoNow(), to: isoPlus(7) }),
+        listMyTasks(token),
+        listMyTools(token, userId),
+        listNotifications(token),
+      ]);
+      if (shifts.status === "fulfilled") {
+        const mine = shifts.value.filter((s) => String(s.assigned_user_id) === String(userId));
+        setUpcomingShift(mine[0] ?? null);
+      }
+      if (myTasks.status === "fulfilled") setTasks(myTasks.value.filter((t) => t.status !== "done").slice(0, 5));
+      if (myTools.status === "fulfilled") setTools(myTools.value.slice(0, 3));
+      if (notifs.status === "fulfilled") setNotifications(notifs.value.slice(0, 3));
     } finally {
-      setAvatarUploadBusy(false);
+      setLoading(false);
     }
-  }, [token, avatarUploadBusy, refreshProfile]);
+  }, [token, userId]);
 
   useEffect(() => {
-    let cancelled = false;
-    if (!token || !isFocused) return;
-    void (async () => {
-      try {
-        const o = await getOrganization(token);
-        if (!cancelled) {
-          setOrg(o);
-          setOrgErr(null);
-          setBrandingKey((k) => k + 1);
-        }
-      } catch (e) {
-        if (!cancelled) setOrgErr(e instanceof Error ? e.message : "Failed to load organization");
+    if (focused) void load();
+  }, [focused, load]);
+
+  useEffect(() => {
+    if (!token) return;
+    return subscribePulseWs(token, (evt) => {
+      if (
+        evt.event_type === "schedule.period_published" ||
+        evt.event_type === "maintenance_inference_request" ||
+        evt.event_type === "demo_inference_fired"
+      ) {
+        void load();
       }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [token, isFocused]);
-
-  const effectiveCompanyName = useMemo(
-    () => (org?.name ?? session?.user.companyName ?? "").trim(),
-    [org?.name, session?.user.companyName],
-  );
-
-  const effectiveHeaderBgRaw = useMemo(
-    () => (org?.background_image_url ?? org?.header_image_url ?? "").trim(),
-    [org?.background_image_url, org?.header_image_url],
-  );
-
-  useEffect(() => {
-    let cancelled = false;
-    if (!effectiveHeaderBgRaw || !token) {
-      setHeaderBgUri(null);
-      return;
-    }
-    void (async () => {
-      try {
-        const uri = await fetchAuthenticatedImageAsDataUri(effectiveHeaderBgRaw, token);
-        if (cancelled) return;
-        setHeaderBgUri(uri);
-      } catch {
-        if (!cancelled) setHeaderBgUri(null);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [effectiveHeaderBgRaw, token, brandingKey]);
-
-  const avatarRaw = useMemo(() => (session?.user.avatarUrl ?? "").trim(), [session?.user.avatarUrl]);
-
-  useEffect(() => {
-    let cancelled = false;
-    if (!avatarRaw || !token) {
-      setAvatarPhotoUri(null);
-      return;
-    }
-    void (async () => {
-      try {
-        const uri = await fetchAuthenticatedImageAsDataUri(avatarRaw, token);
-        if (!cancelled) setAvatarPhotoUri(uri);
-      } catch {
-        if (!cancelled) setAvatarPhotoUri(null);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [avatarRaw, token, session?.user.id, avatarReloadKey]);
-
-  useEffect(() => {
-    let cancelled = false;
-    let interval: ReturnType<typeof setInterval> | undefined;
-    if (!token || !isFocused || !session?.user.id) {
-      setShiftPresence(null);
-      return () => {
-        cancelled = true;
-      };
-    }
-    const run = async () => {
-      const p = await loadMyShiftPresence(token, session.user.id);
-      if (!cancelled) setShiftPresence(p);
-    };
-    void run();
-    interval = setInterval(run, 45_000);
-    return () => {
-      cancelled = true;
-      if (interval) clearInterval(interval);
-    };
-  }, [token, isFocused, session?.user.id]);
-
-  useEffect(() => {
-    if (!token || !isFocused) return;
-    void loadTaskQueue();
-  }, [token, isFocused, loadTaskQueue]);
-
-  useEffect(() => {
-    if (!token || !isFocused) return;
-    const unsub = subscribePulseWs(token, (evt) => {
-      const t = evt.event_type ?? "";
-      if (t.startsWith("gamification.task_")) void loadTaskQueue();
     });
-    return unsub;
-  }, [token, isFocused, loadTaskQueue]);
+  }, [token, load]);
 
-  const displayShiftPresence: MyShiftPresence = useMemo(() => {
-    if (shiftPresence) return shiftPresence;
-    if (token && session?.user.id) {
-      return { primaryLabel: "Loading schedule…", detailLine: "", dot: "unknown" };
-    }
-    return { primaryLabel: "Sign in for schedule", detailLine: "", dot: "unknown" };
-  }, [shiftPresence, token, session?.user.id]);
+  const firstName = userName.trim().split(/\s+/)[0] ?? "there";
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
 
-  const headerAvatarColors = useMemo(
-    () => ({
-      surface: "rgba(255,255,255,0.94)",
-      border: "rgba(255,255,255,0.45)",
-      text: colors.headerGlassText,
-      muted: colors.headerGlassMuted,
-    }),
-    [colors.headerGlassMuted, colors.headerGlassText],
-  );
+  if (loading) {
+    return (
+      <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: colors.background }}>
+        <ActivityIndicator size="large" color={colors.success} />
+      </View>
+    );
+  }
 
-  /** Zone when on shift; otherwise company name for context. */
-  const headerLocationLine = useMemo(() => {
-    if (displayShiftPresence.dot === "on_shift" && displayShiftPresence.detailLine) {
-      return displayShiftPresence.detailLine;
-    }
-    return effectiveCompanyName;
-  }, [displayShiftPresence.detailLine, displayShiftPresence.dot, effectiveCompanyName]);
-
-  /** Extra schedule detail only when not using detail as location (on-site zone). */
-  const headerScheduleDetail = useMemo(() => {
-    if (displayShiftPresence.dot === "on_shift") return "";
-    return displayShiftPresence.detailLine ?? "";
-  }, [displayShiftPresence.detailLine, displayShiftPresence.dot]);
-
-  const greetingName = useMemo(() => firstName(session?.user.fullName ?? null), [session?.user.fullName]);
-  const initials = useMemo(() => {
-    const full = (session?.user.fullName ?? "").trim();
-    if (!full) return "U";
-    const parts = full.split(/\s+/).filter(Boolean);
-    const a = parts[0]?.[0] ?? "U";
-    const b = parts[1]?.[0] ?? "";
-    return `${a}${b}`.toUpperCase();
-  }, [session?.user.fullName]);
-
-  const avatarDisplaySource = useMemo((): ImageSourcePropType | null => {
-    if (!avatarPhotoUri) return null;
-    return { uri: avatarPhotoUri };
-  }, [avatarPhotoUri]);
-
-  const headerBackgroundSource = useMemo((): ImageSourcePropType => {
-    if (headerBgUri) return { uri: headerBgUri };
-    return HOME_HERO_PANORAMA;
-  }, [headerBgUri]);
-
-  /** Header band only — subtle frosted glass; dusk bar with welcome + location (left) and schedule (right). */
-  const HEADER_BG_HEIGHT = 178;
-  /** Dusk #4C6085 — gradient for bottom bar (~90% opacity feel). */
-  const duskBarGradient = ["rgba(76, 96, 133, 0.58)", "rgba(76, 96, 133, 0.9)"] as const;
-  const barScheduleText = { color: "#FFFFFF" as const, fontSize: 13, fontWeight: "700" as const, lineHeight: 18 };
+  const unreadCount = notifications.filter((n) => !n.read).length;
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.background }}>
-      <View
-        style={{
-          height: HEADER_BG_HEIGHT,
-          width: "100%",
-          overflow: "hidden",
-          borderBottomLeftRadius: radii.lg,
-          borderBottomRightRadius: radii.lg,
-        }}
-      >
-        <ImageBackground
-          source={headerBackgroundSource}
-          style={{ flex: 1, width: "100%", height: "100%" }}
-          blurRadius={5}
-          resizeMode="cover"
-        >
-          <BlurView intensity={14} tint="light" style={{ flex: 1, overflow: "hidden" }}>
-            <View style={{ flex: 1, backgroundColor: "rgba(255,255,255,0.14)" }}>
-              <View
-                style={{
-                  position: "absolute",
-                  top: spacing.md,
-                  right: spacing.lg,
-                  zIndex: 2,
-                }}
-              >
-                <Avatar
-                  initials={initials}
-                  colors={headerAvatarColors}
-                  imageSource={avatarDisplaySource}
-                  imageReloadKey={avatarReloadKey}
-                  profileOwnerKey={session?.user.id}
-                  onPress={token ? pickAndUploadAvatar : undefined}
-                />
-              </View>
-
-              <LinearGradient
-                colors={[...duskBarGradient]}
-                locations={[0, 1]}
-                start={{ x: 0.5, y: 0 }}
-                end={{ x: 0.5, y: 1 }}
-                style={{
-                  position: "absolute",
-                  bottom: 0,
-                  left: 0,
-                  right: 0,
-                  paddingHorizontal: spacing.md,
-                  paddingVertical: 8,
-                }}
-              >
-                <View
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    gap: 10,
-                  }}
-                  accessibilityRole="summary"
-                  accessibilityLabel={`Hi ${greetingName}. ${headerLocationLine ? `${headerLocationLine}. ` : ""}${displayShiftPresence.primaryLabel}${headerScheduleDetail ? `. ${headerScheduleDetail}` : ""}`}
-                >
-                  <View style={{ flex: 1, minWidth: 0, paddingRight: 4 }}>
-                    <Text
-                      style={{
-                        color: "#FFFFFF",
-                        fontSize: 20,
-                        fontWeight: "800",
-                        lineHeight: 24,
-                        letterSpacing: -0.2,
-                      }}
-                      numberOfLines={1}
-                      ellipsizeMode="tail"
-                      accessibilityRole="header"
-                    >
-                      Hi, {greetingName}!
-                    </Text>
-                    {headerLocationLine ? (
-                      <View
-                        style={{
-                          flexDirection: "row",
-                          alignItems: "center",
-                          gap: 5,
-                          marginTop: 3,
-                          minHeight: 18,
-                        }}
-                      >
-                        <FontAwesome
-                          name="map-marker"
-                          size={13}
-                          color="rgba(255,255,255,0.92)"
-                          style={{ marginTop: 1 }}
-                        />
-                        <Text
-                          style={{
-                            ...barScheduleText,
-                            flex: 1,
-                            minWidth: 0,
-                            color: "rgba(255,255,255,0.92)",
-                            fontWeight: "600",
-                          }}
-                          numberOfLines={1}
-                          ellipsizeMode="tail"
-                          accessibilityLabel={
-                            displayShiftPresence.dot === "on_shift" ? "Location" : "Organization"
-                          }
-                        >
-                          {headerLocationLine}
-                        </Text>
-                      </View>
-                    ) : null}
-                  </View>
-                  <View
-                    style={{
-                      flexDirection: "row",
-                      alignItems: "center",
-                      flexShrink: 0,
-                      gap: 6,
-                      maxWidth: "40%",
-                    }}
-                  >
-                    <View
-                      style={{
-                        width: 7,
-                        height: 7,
-                        borderRadius: 4,
-                        backgroundColor: presenceDotColor(displayShiftPresence.dot, colors),
-                      }}
-                    />
-                    <Text style={{ ...barScheduleText, flexShrink: 1 }} numberOfLines={1} ellipsizeMode="tail">
-                      {displayShiftPresence.primaryLabel}
-                      {headerScheduleDetail ? (
-                        <Text style={{ color: "rgba(255,255,255,0.85)", fontWeight: "600" }}>
-                          {` · ${headerScheduleDetail}`}
-                        </Text>
-                      ) : null}
-                    </Text>
-                  </View>
-                </View>
-              </LinearGradient>
-            </View>
-          </BlurView>
-        </ImageBackground>
-      </View>
-
-      <ScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={{
-          paddingHorizontal: spacing.lg,
-          paddingTop: spacing.lg,
-          paddingBottom: 110,
-        }}
-      >
-        <View
+    <ScrollView
+      style={{ flex: 1, backgroundColor: colors.background }}
+      contentContainerStyle={{ padding: spacing.lg, paddingBottom: 120 }}
+    >
+      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: spacing.lg }}>
+        <View>
+          <Text style={{ color: colors.muted, fontSize: 13, fontWeight: "700" }}>{greeting}</Text>
+          <Text style={{ color: colors.text, fontSize: 22, fontWeight: "900" }}>{firstName}</Text>
+        </View>
+        <Pressable
+          onPress={() => router.push("/notifications" as never)}
           style={{
+            width: 40,
+            height: 40,
+            borderRadius: 20,
             backgroundColor: colors.surface,
             borderWidth: 1,
             borderColor: colors.border,
-            borderRadius: radii.lg,
-            padding: spacing.lg,
+            alignItems: "center",
+            justifyContent: "center",
           }}
         >
-          <Text style={{ color: colors.muted, fontSize: 12, fontWeight: "900", letterSpacing: 0.6 }}>NEXT UP</Text>
-          {nextTask ? (
-            <Pressable
-              onPress={() =>
-                router.push(`/task-detail?id=${encodeURIComponent(nextTask.id)}` as Href)
-              }
-              style={{ marginTop: spacing.sm }}
-              accessibilityRole="button"
-              accessibilityLabel={`Open next task: ${nextTask.title}`}
+          <Text style={{ fontSize: 18 }}>🔔</Text>
+          {unreadCount > 0 ? (
+            <View
+              style={{
+                position: "absolute",
+                top: 4,
+                right: 4,
+                width: 16,
+                height: 16,
+                borderRadius: 8,
+                backgroundColor: colors.danger,
+                alignItems: "center",
+                justifyContent: "center",
+              }}
             >
-              <Text style={{ color: colors.text, fontSize: 22, fontWeight: "900", lineHeight: 28 }} numberOfLines={3}>
-                {nextTask.title}
-              </Text>
-              <Text style={{ color: colors.muted, marginTop: 8, fontWeight: "700" }}>
-                {formatTaskDue(nextTask.due_date ?? null)} · Priority {nextTask.priority ?? 1}
-              </Text>
-              <Text style={{ color: colors.success, marginTop: 12, fontWeight: "900" }}>Open details →</Text>
-            </Pressable>
-          ) : (
-            <Text style={{ ...text.body, color: colors.text, marginTop: spacing.sm, fontWeight: "700" }}>
-              No assigned tasks right now.
-            </Text>
-          )}
-        </View>
-
-        {upcomingTasks.length ? (
-          <>
-            <View style={{ height: spacing.md }} />
-            <Text style={{ color: colors.muted, fontSize: 12, fontWeight: "900", letterSpacing: 0.6, marginBottom: spacing.sm }}>
-              COMING UP
-            </Text>
-            <View style={{ gap: spacing.sm }}>
-              {upcomingTasks.map((t) => (
-                <Pressable
-                  key={t.id}
-                  onPress={() => router.push(`/task-detail?id=${encodeURIComponent(t.id)}` as Href)}
-                  style={{
-                    backgroundColor: colors.surface,
-                    borderWidth: 1,
-                    borderColor: colors.border,
-                    borderRadius: radii.md,
-                    padding: spacing.md,
-                  }}
-                >
-                  <Text style={{ color: colors.text, fontWeight: "800" }} numberOfLines={2}>
-                    {t.title}
-                  </Text>
-                  <Text style={{ color: colors.muted, marginTop: 4, fontSize: 12, fontWeight: "700" }}>
-                    {formatTaskDue(t.due_date ?? null)}
-                  </Text>
-                </Pressable>
-              ))}
+              <Text style={{ color: "#fff", fontSize: 9, fontWeight: "900" }}>{unreadCount}</Text>
             </View>
-          </>
-        ) : null}
+          ) : null}
+        </Pressable>
+      </View>
 
-        {tasksErr ? (
-          <View
-            style={{
-              marginTop: spacing.md,
-              backgroundColor: "rgba(235,81,96,0.14)",
-              borderColor: "rgba(235,81,96,0.35)",
-              borderWidth: 1,
-              borderRadius: radii.md,
-              padding: 12,
-            }}
-          >
-            <Text style={{ color: colors.text, fontWeight: "800" }}>Tasks</Text>
-            <Text style={{ marginTop: 4, color: colors.muted }}>{tasksErr}</Text>
-          </View>
-        ) : null}
-
-        {orgErr ? (
-          <View
-            style={{
-              marginTop: 14,
-              backgroundColor: "rgba(235,81,96,0.14)",
-              borderColor: "rgba(235,81,96,0.35)",
-              borderWidth: 1,
-              borderRadius: radii.md,
-              padding: 12,
-            }}
-          >
-            <Text style={{ color: colors.text, fontWeight: "800" }}>Org load failed</Text>
-            <Text style={{ marginTop: 4, color: colors.muted }}>{orgErr}</Text>
-          </View>
-        ) : null}
-
-        {!token ? (
-          <View
-            style={{
-              marginTop: 14,
-              backgroundColor: "rgba(255,255,255,0.12)",
-              borderColor: "rgba(255,255,255,0.18)",
-              borderWidth: 1,
-              borderRadius: radii.md,
-              padding: 12,
-            }}
-          >
-            <Text style={{ color: colors.text, fontWeight: "800" }}>Not signed in</Text>
-            <Text style={{ marginTop: 4, color: colors.muted }}>
-              Set a session token and configure `EXPO_PUBLIC_API_BASE_URL` to load live org/user data.
+      <SectionCard style={{ marginBottom: spacing.md }}>
+        <SectionLabel label="YOUR SHIFT" />
+        {upcomingShift ? (
+          <Pressable onPress={() => router.push("/(tabs)/schedule" as never)}>
+            <Text style={{ color: colors.text, fontSize: 16, fontWeight: "900" }}>{fmtDate(upcomingShift.starts_at)}</Text>
+            <Text style={{ color: colors.muted, marginTop: 4, fontWeight: "700" }}>
+              {fmtTime(upcomingShift.starts_at)} – {fmtTime(upcomingShift.ends_at)}
+              {upcomingShift.shift_code ? `  ·  ${upcomingShift.shift_code}` : ""}
             </Text>
-          </View>
-        ) : null}
-      </ScrollView>
-    </View>
+            <View style={{ flexDirection: "row", alignItems: "center", marginTop: 8, gap: 6 }}>
+              <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colors.success }} />
+              <Text style={{ color: colors.success, fontSize: 12, fontWeight: "900" }}>Upcoming</Text>
+            </View>
+          </Pressable>
+        ) : (
+          <Text style={{ color: colors.muted }}>No upcoming shifts scheduled.</Text>
+        )}
+      </SectionCard>
+
+      {tasks.length > 0 ? (
+        <SectionCard style={{ marginBottom: spacing.md }}>
+          <SectionLabel label="YOUR TASKS" />
+          {tasks.map((t, i) => (
+            <Pressable
+              key={t.id}
+              onPress={() => router.push("/(tabs)/tasks" as never)}
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                paddingVertical: 8,
+                borderTopWidth: i === 0 ? 0 : 1,
+                borderTopColor: colors.border,
+              }}
+            >
+              <View
+                style={{
+                  width: 18,
+                  height: 18,
+                  borderRadius: 4,
+                  borderWidth: 1.5,
+                  borderColor: colors.border,
+                  marginRight: 10,
+                  backgroundColor: colors.surface,
+                }}
+              />
+              <Text style={{ color: colors.text, flex: 1, fontWeight: "700" }} numberOfLines={1}>
+                {t.title}
+              </Text>
+              {t.due_date ? (
+                <Text style={{ color: colors.muted, fontSize: 11 }}>
+                  {new Date(t.due_date) < new Date() ? "⚠ Overdue" : fmtDate(t.due_date)}
+                </Text>
+              ) : null}
+            </Pressable>
+          ))}
+          <Pressable onPress={() => router.push("/(tabs)/tasks" as never)} style={{ marginTop: 8 }}>
+            <Text style={{ color: colors.success, fontWeight: "900", fontSize: 13 }}>View all tasks →</Text>
+          </Pressable>
+        </SectionCard>
+      ) : null}
+
+      {tools.length > 0 ? (
+        <SectionCard style={{ marginBottom: spacing.md }}>
+          <SectionLabel label="YOUR TOOLS" />
+          {tools.map((t, i) => (
+            <View
+              key={t.id}
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                paddingVertical: 8,
+                borderTopWidth: i === 0 ? 0 : 1,
+                borderTopColor: colors.border,
+              }}
+            >
+              <View
+                style={{
+                  width: 8,
+                  height: 8,
+                  borderRadius: 4,
+                  marginRight: 10,
+                  backgroundColor:
+                    t.status === "online" ? colors.success : t.status === "missing" ? colors.danger : colors.muted,
+                }}
+              />
+              <Text style={{ color: colors.text, flex: 1, fontWeight: "700" }} numberOfLines={1}>
+                {t.label}
+              </Text>
+              <Text style={{ color: colors.muted, fontSize: 11 }}>
+                {t.last_seen_zone ?? (t.status === "missing" ? "Missing" : "No beacon")}
+              </Text>
+            </View>
+          ))}
+          <Pressable onPress={() => router.push("/(tabs)/search" as never)} style={{ marginTop: 8 }}>
+            <Text style={{ color: colors.success, fontWeight: "900", fontSize: 13 }}>Find tools →</Text>
+          </Pressable>
+        </SectionCard>
+      ) : null}
+
+      {notifications.length > 0 ? (
+        <SectionCard style={{ marginBottom: spacing.md }}>
+          <SectionLabel label="RECENT" />
+          {notifications.map((n, i) => (
+            <View
+              key={n.id}
+              style={{
+                paddingVertical: 8,
+                borderTopWidth: i === 0 ? 0 : 1,
+                borderTopColor: colors.border,
+              }}
+            >
+              <Text style={{ color: colors.text, fontWeight: "700" }} numberOfLines={1}>
+                {n.title}
+              </Text>
+              <Text style={{ color: colors.muted, fontSize: 12, marginTop: 2 }}>{timeAgo(n.created_at)}</Text>
+            </View>
+          ))}
+        </SectionCard>
+      ) : null}
+
+      <Pressable
+        onPress={() => router.push("/new-work-request" as never)}
+        style={{
+          position: "absolute",
+          bottom: 100,
+          right: spacing.lg,
+          backgroundColor: colors.success,
+          width: 54,
+          height: 54,
+          borderRadius: 27,
+          alignItems: "center",
+          justifyContent: "center",
+          shadowColor: "#000",
+          shadowOpacity: 0.2,
+          shadowRadius: 8,
+          elevation: 6,
+        }}
+      >
+        <Text style={{ color: "#0A0A0A", fontSize: 28, fontWeight: "900", lineHeight: 32 }}>+</Text>
+      </Pressable>
+    </ScrollView>
   );
 }
 
