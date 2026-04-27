@@ -16,6 +16,10 @@ Represents a scheduled time window for one worker.
   - `company_id` (UUID, FK → `companies.id`, **required**, indexed)
   - `assigned_user_id` (UUID, FK → `users.id`, **required**, indexed)
   - `facility_id` (UUID, FK → `zones.id`, nullable, indexed)
+  - `shift_definition_id` (UUID, FK → `pulse_schedule_shift_definitions.id`, nullable, indexed)
+  - `shift_code` (string(16), nullable) (denormalized display code from definition)
+  - `is_draft` (bool, default `true`)
+  - `published_at` (timestamptz, nullable)
   - `starts_at` (timestamptz, required, indexed)
   - `ends_at` (timestamptz, required, indexed)
   - `shift_type` (string(64), default `"shift"`)
@@ -65,6 +69,63 @@ Stores worker scheduling hints (availability windows, certifications) keyed by u
     - observed keys used by API: `employment_type`, `recurring_shifts`
   - `updated_at` (timestamptz)
 
+#### `pulse_schedule_shift_definitions` (Phase 1)
+Tenant-scoped catalog of shift templates (codes + time window).
+
+- **Columns**
+  - `id` (UUID, PK)
+  - `company_id` (UUID, FK → `companies.id`)
+  - `code` (string(16), required) (e.g. `D1`, `PM2`)
+  - `name` (string(128), nullable)
+  - `start_min` / `end_min` (int minutes from midnight, 0–1439)
+  - `shift_type` (string(32))
+  - `color` (string(32), nullable)
+  - `cert_requirements` (JSONB array, default `[]`)
+  - `created_at`, `updated_at` (timestamptz)
+
+- **Constraints**
+  - unique `(company_id, code)`
+
+#### `pulse_schedule_periods` (Phase 1)
+Defines a scheduling “period” and deadlines (minimal workflow).
+
+- **Columns**
+  - `id` (UUID, PK)
+  - `company_id` (UUID, FK → `companies.id`)
+  - `start_date` / `end_date` (date)
+  - `availability_deadline` (timestamptz, nullable)
+  - `publish_deadline` (timestamptz, nullable)
+  - `status` (string; currently values like `draft`, `published`)
+  - `created_at` (timestamptz)
+
+#### `pulse_schedule_availability_submissions` (Phase 2)
+One submission per worker per period.
+
+- **Columns**
+  - `id` (UUID, PK)
+  - `company_id` (UUID, FK → `companies.id`)
+  - `worker_id` (UUID, FK → `users.id`)
+  - `period_id` (UUID, FK → `pulse_schedule_periods.id`)
+  - `submitted_at` (timestamptz)
+  - `windows` (JSONB; canonical weekday-keyed format)
+  - `exceptions` (JSONB; stored but not used yet)
+
+- **Constraints**
+  - unique `(worker_id, period_id)`
+
+#### `pulse_schedule_acknowledgements` (Phase 2)
+One acknowledgement per worker per period.
+
+- **Columns**
+  - `id` (UUID, PK)
+  - `company_id` (UUID, FK → `companies.id`)
+  - `worker_id` (UUID, FK → `users.id`)
+  - `period_id` (UUID, FK → `pulse_schedule_periods.id`)
+  - `acknowledged_at` (timestamptz)
+
+- **Constraints**
+  - unique `(worker_id, period_id)`
+
 #### `users` (only fields relevant to scheduling)
 - `id` (UUID, PK)
 - `company_id` (UUID, FK → `companies.id`)
@@ -98,6 +159,7 @@ Implemented in `backend/app/modules/pulse/router.py` under router prefix `/api/v
   - **Purpose**: create a workforce shift row.
   - **Key logic**:
     - validates `facility_id` belongs to tenant via `_zone_in_company` (note: “facility” is a zone row)
+    - optionally accepts `shift_definition_id` and auto-fills `shift_code`
     - calls `pulse_svc.validate_shift_assignment(...)` to return `(errors, warnings)`
     - errors block creation; warnings are returned in response
 
@@ -106,6 +168,7 @@ Implemented in `backend/app/modules/pulse/router.py` under router prefix `/api/v
   - **Key logic**:
     - loads shift by id and checks `company_id`
     - recomputes validation against the proposed values (with `exclude_shift_id` to allow self)
+    - if `shift_definition_id` changes, rewrites `shift_code`
     - then applies patch and calls `proj_task_svc.sync_task_from_linked_shift(db, sh)` to mirror updates back to a linked project task (only when `shift_kind == "project_task"`)
 
 - **DELETE** `/api/v1/pulse/schedule/shifts/{shift_id}`
@@ -133,6 +196,30 @@ Implemented in `backend/app/modules/pulse/router.py` under router prefix `/api/v
   - **Purpose**: returns schedule-facility “zones” for the schedule UI.
   - **Key logic**: `ensure_schedule_facility_zones(db, cid)` seeds them from org settings when missing.
 
+#### Shift definitions (Phase 1)
+- **GET** `/api/v1/pulse/schedule/shift-definitions`
+- **POST** `/api/v1/pulse/schedule/shift-definitions`
+- **PATCH** `/api/v1/pulse/schedule/shift-definitions/{id}`
+- **DELETE** `/api/v1/pulse/schedule/shift-definitions/{id}`
+  - **Purpose**: simple CRUD for tenant-scoped shift templates (no advanced business logic yet).
+
+#### Schedule periods (Phase 1)
+- **GET** `/api/v1/pulse/schedule/periods`
+- **POST** `/api/v1/pulse/schedule/periods`
+
+#### Availability + acknowledgement (Phase 2)
+- **POST** `/api/v1/pulse/schedule/availability`
+  - **Purpose**: submit/update the current user’s availability for a period.
+- **GET** `/api/v1/pulse/schedule/availability?period_id=...`
+  - **Purpose**: supervisor view of all submissions for a period (role-gated).
+- **POST** `/api/v1/pulse/schedule/acknowledge`
+  - **Purpose**: mark a user as having acknowledged a period (minimal stub UI exists).
+
+#### Reminder runner (internal) (Phase 2)
+- **POST** `/api/v1/internal/schedule/reminders/run`
+  - **Auth**: `X-PM-Cron-Key` (reuses `PM_CRON_SECRET`)
+  - **Purpose**: returns counts for “missing availability submissions soon” and “unacknowledged published periods” (no notification delivery yet).
+
 ### Shift validation rules (server-side)
 Implemented in `backend/app/modules/pulse/service.py`:
 
@@ -141,39 +228,11 @@ Implemented in `backend/app/modules/pulse/service.py`:
 - **Supervisor requirement**: if `requires_supervisor`, blocks unless user role is manager/company_admin/supervisor.
 - **Ticketed requirement**: if `requires_ticketed`, blocks unless `certifications` contains a string with `"ticketed"`.
 - **Availability**: does **not** block; returns a warning if shift start is outside saved windows.
+  - Supports both legacy v1 and Phase 2 v2 formats.
 
-Key non-trivial code (availability warning format is UTC-minutes based):
-
-```33:60:backend/app/modules/pulse/service.py
-def _availability_warnings(
-    availability: dict[str, Any],
-    starts_at: datetime,
-    ends_at: datetime,
-) -> list[str]:
-    warnings: list[str] = []
-    windows = availability.get("windows") if isinstance(availability, dict) else None
-    if not windows or not isinstance(windows, list):
-        return warnings
-    start_wd, start_min = _weekday_and_minutes_utc(starts_at)
-    ok = False
-    for w in windows:
-        if not isinstance(w, dict):
-            continue
-        try:
-            wd = int(w.get("weekday", -1))
-            sm = int(w.get("start_min", -1))
-            em = int(w.get("end_min", -1))
-        except (TypeError, ValueError):
-            continue
-        if wd != start_wd:
-            continue
-        if sm <= start_min < em:
-            ok = True
-            break
-    if not ok and windows:
-        warnings.append("Shift start is outside this worker's saved availability windows (UTC).")
-    return warnings
-```
+Key non-trivial behavior:
+- v2: `{"monday":[{"start":480,"end":1020}], ...}` (preferred)
+- v1: `{"windows":[{"weekday":0,"start_min":480,"end_min":1020}]}` (legacy)
 
 ### Worker scheduling fields API (availability + recurring templates)
 Scheduling-related worker fields are exposed in multiple places (not a single “availability module”):
@@ -193,11 +252,25 @@ Scheduling-related worker fields are exposed in multiple places (not a single �
 - `frontend/app/schedule/page.tsx`
   - **Purpose**: auth guard + renders `<ScheduleApp />`
 
+### Phase 1 builder page
+- `frontend/app/schedule/shift-definitions/page.tsx`
+  - **Purpose**: minimal CRUD UI for shift definitions
+  - **API**: `/api/v1/pulse/schedule/shift-definitions`
+
+### Phase 2 availability pages
+- `frontend/app/schedule/availability/page.tsx`
+  - **Purpose**: “My availability” submit + acknowledgement stub
+  - **API**: `/api/v1/pulse/schedule/periods`, `/api/v1/pulse/schedule/availability`, `/api/v1/pulse/schedule/acknowledge`
+- `frontend/app/schedule/availability-grid/page.tsx`
+  - **Purpose**: supervisor view of submissions + missing list (minimal)
+  - **API**: `/api/v1/pulse/schedule/availability?period_id=...`
+
 ### Main schedule app
 - `frontend/components/schedule/ScheduleApp.tsx`
   - **Purpose**: main schedule UI; fetches snapshot from Pulse API and syncs edits.
   - **Backend interactions**
     - GET `/api/v1/pulse/schedule-facilities`
+    - GET `/api/v1/pulse/schedule/shift-definitions` (legend + shift_code display)
     - GET `/api/v1/pulse/schedule/shifts?from=...&to=...`
     - PATCH `/api/v1/pulse/schedule/shifts/{id}` (writes `facility_id`)
     - POST `/api/v1/pulse/schedule/shifts` (writes `facility_id`)
@@ -302,8 +375,9 @@ export function mergeEphemeralSchedule(
 - **Facility modeling is overloaded**: schedule facilities are stored in `zones` and shifts point to `zones.id`. This is intentional but can be confusing; local schedule types still name it `zoneId`.
 - **Two “availability formats” exist**:
   - backend warnings expect `availability.windows[]` with `weekday/start_min/end_min` in UTC minutes
-  - frontend drag highlights expect a weekday-keyed object `{ monday: { available, start, end }, ... }`
-  - Both are stored as JSONB in `pulse_worker_profiles.availability` with no strict schema enforcement.
+  - Phase 2 introduces a new canonical weekday-keyed list format `{ monday: [{ start, end }], ... }`
+  - frontend drag highlights expect a different weekday-keyed object `{ monday: { available, start, end }, ... }`
+  - All are stored as JSONB in `pulse_worker_profiles.availability` with no strict schema enforcement yet.
 - **Time off is not persisted**: frontend has `TimeOffBlock` in zustand store; no corresponding DB table or API workflow in scope.
 - **Many constraints are soft in the UI**: staffing, certifications, long shifts are non-blocking hints; only overlap and role/ticketed are hard blocks.
 - **Assignments vs shifts are separate systems**:
