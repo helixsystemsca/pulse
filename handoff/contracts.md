@@ -5,6 +5,14 @@
 
 ---
 
+## Gamification Events (Required)
+
+inference_confirmed
+procedure_completed
+pm_completed_on_time
+attendance_clock_in
+inspection_sheet_completed
+
 ## 1. BACKEND — ROUTE RULES
 
 ## Event System (Global)
