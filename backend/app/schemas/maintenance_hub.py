@@ -14,10 +14,10 @@ WorkOrderStatusApi = Literal["open", "in_progress", "hold", "completed", "cancel
 
 
 class ProcedureStepOut(BaseModel):
-    text: str
-    image_url: Optional[str] = None
-    recommended_workers: Optional[int] = None
-    tools: Optional[list[str]] = None
+    id: str
+    type: Literal["instruction", "checklist", "photo", "warning"]
+    content: str
+    required: bool = False
 
 
 def normalize_procedure_steps(v: Any) -> list[ProcedureStepOut]:
@@ -27,35 +27,18 @@ def normalize_procedure_steps(v: Any) -> list[ProcedureStepOut]:
         return []
     out: list[ProcedureStepOut] = []
     for item in v:
-        if isinstance(item, str):
-            out.append(ProcedureStepOut(text=item.strip(), image_url=None))
-        elif isinstance(item, dict):
-            t = str(item.get("text") or "").strip()
-            img = item.get("image_url")
-            url = str(img).strip() if img else None
-            rw = item.get("recommended_workers")
-            rw_int: Optional[int] = None
-            if rw is not None and str(rw).strip() != "":
-                try:
-                    rw_int = max(1, int(rw))
-                except (TypeError, ValueError):
-                    rw_int = None
-            raw_tools = item.get("tools")
-            tools_list: Optional[list[str]] = None
-            if isinstance(raw_tools, list):
-                tools_list = [str(x).strip() for x in raw_tools if str(x).strip()]
-            elif isinstance(raw_tools, str) and raw_tools.strip():
-                tools_list = [x.strip() for x in raw_tools.split(",") if x.strip()]
-            out.append(
-                ProcedureStepOut(
-                    text=t,
-                    image_url=url or None,
-                    recommended_workers=rw_int,
-                    tools=tools_list,
-                )
-            )
-        else:
-            out.append(ProcedureStepOut(text=str(item).strip(), image_url=None))
+        if not isinstance(item, dict):
+            # Ignore bad legacy rows rather than crashing render paths.
+            continue
+        sid = str(item.get("id") or "").strip()
+        stype = str(item.get("type") or "").strip()
+        content = str(item.get("content") or "").strip()
+        required = bool(item.get("required") or False)
+        if not sid or not content:
+            continue
+        if stype not in ("instruction", "checklist", "photo", "warning"):
+            stype = "instruction"
+        out.append(ProcedureStepOut(id=sid, type=stype, content=content, required=required))
     return out
 
 
@@ -96,22 +79,22 @@ class ProcedureOut(BaseModel):
 
 
 class ProcedureStepIn(BaseModel):
-    text: str = Field(default="", max_length=8000)
-    image_url: Optional[str] = Field(None, max_length=2048)
-    recommended_workers: Optional[int] = Field(None, ge=1)
-    tools: Optional[list[str]] = None
+    id: str = Field(..., min_length=1, max_length=64)
+    type: Literal["instruction", "checklist", "photo", "warning"] = "instruction"
+    content: str = Field(..., min_length=1, max_length=8000)
+    required: bool = False
 
 
 def procedure_steps_to_storage(steps: list[ProcedureStepIn]) -> list[dict[str, Any]]:
     """Serialize API step payloads to JSONB dicts (preserves optional fields)."""
     out: list[dict[str, Any]] = []
     for s in steps:
-        img = (s.image_url or "").strip() or None
-        d: dict[str, Any] = {"text": (s.text or "").strip(), "image_url": img}
-        if s.recommended_workers is not None:
-            d["recommended_workers"] = s.recommended_workers
-        if s.tools:
-            d["tools"] = list(s.tools)
+        d: dict[str, Any] = {
+            "id": s.id,
+            "type": s.type,
+            "content": (s.content or "").strip(),
+            "required": bool(s.required),
+        }
         out.append(d)
     return out
 
