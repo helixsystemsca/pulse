@@ -605,6 +605,15 @@ class PulseScheduleShift(Base):
     facility_id: Mapped[Optional[str]] = mapped_column(
         UUID(as_uuid=False), ForeignKey("zones.id", ondelete="SET NULL"), nullable=True, index=True
     )
+    shift_definition_id: Mapped[Optional[str]] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("pulse_schedule_shift_definitions.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    shift_code: Mapped[Optional[str]] = mapped_column(String(16), nullable=True)
+    is_draft: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    published_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     starts_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
     ends_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
     shift_type: Mapped[str] = mapped_column(String(64), default="shift", nullable=False)
@@ -615,6 +624,44 @@ class PulseScheduleShift(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
+
+
+class PulseScheduleShiftDefinition(Base):
+    __tablename__ = "pulse_schedule_shift_definitions"
+    __table_args__ = (UniqueConstraint("company_id", "code", name="uq_sched_shift_def_company_code"),)
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    company_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    code: Mapped[str] = mapped_column(String(16), nullable=False)
+    name: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    start_min: Mapped[int] = mapped_column(Integer, nullable=False)
+    end_min: Mapped[int] = mapped_column(Integer, nullable=False)
+    shift_type: Mapped[str] = mapped_column(String(32), nullable=False, default="day")
+    color: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
+    cert_requirements: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, server_default=text("'[]'::jsonb"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+
+class PulseSchedulePeriod(Base):
+    __tablename__ = "pulse_schedule_periods"
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    company_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    start_date: Mapped[date] = mapped_column(Date, nullable=False, index=True)
+    end_date: Mapped[date] = mapped_column(Date, nullable=False)
+    availability_deadline: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    publish_deadline: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="draft")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
 
 class PulseScheduleAssignment(Base):

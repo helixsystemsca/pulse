@@ -1,6 +1,6 @@
 """Pulse REST API — tenant-scoped CMMS, scheduling, inventory, beacons."""
 
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from collections import defaultdict
 from typing import Annotated, Any, Optional
 
@@ -11,6 +11,7 @@ from sqlalchemy import and_, delete, func, select
 from sqlalchemy.dialects.postgresql import array as pg_array
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
+from pydantic import BaseModel, Field
 
 from app.api.deps import require_tenant_user
 from app.core.events.engine import event_engine
@@ -37,6 +38,8 @@ from app.models.pulse_models import (
     PulseProjectTask,
     PulseScheduleAssignment,
     PulseScheduleShift,
+    PulseSchedulePeriod,
+    PulseScheduleShiftDefinition,
     PulseWorkRequest,
     PulseWorkRequestStatus,
     PulseWorkerProfile,
@@ -72,6 +75,52 @@ from app.schemas.pulse import (
     WorkerSkillMiniOut,
     ZoneOut,
 )
+
+
+class ShiftDefinitionIn(BaseModel):
+    code: str = Field(..., min_length=1, max_length=16)
+    name: Optional[str] = Field(default=None, max_length=128)
+    start_min: int = Field(..., ge=0, lt=1440)
+    end_min: int = Field(..., ge=0, lt=1440)
+    shift_type: str = Field(default="day", min_length=1, max_length=32)
+    color: Optional[str] = Field(default=None, max_length=32)
+    cert_requirements: list[Any] = Field(default_factory=list)
+
+
+class ShiftDefinitionOut(BaseModel):
+    id: str
+    company_id: str
+    code: str
+    name: Optional[str] = None
+    start_min: int
+    end_min: int
+    shift_type: str
+    color: Optional[str] = None
+    cert_requirements: list[Any] = []
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class SchedulePeriodCreateIn(BaseModel):
+    start_date: date
+    end_date: date
+    availability_deadline: Optional[datetime] = None
+    publish_deadline: Optional[datetime] = None
+
+
+class SchedulePeriodOut(BaseModel):
+    id: str
+    company_id: str
+    start_date: date
+    end_date: date
+    availability_deadline: Optional[datetime] = None
+    publish_deadline: Optional[datetime] = None
+    status: str
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
 
 
 def _worker_scheduling_fields(prof: Optional[PulseWorkerProfile]) -> tuple[Optional[str], list[dict[str, Any]]]:
@@ -125,6 +174,10 @@ def _shift_to_out(
         shift_type=sh.shift_type,
         requires_supervisor=sh.requires_supervisor,
         requires_ticketed=sh.requires_ticketed,
+        shift_definition_id=getattr(sh, "shift_definition_id", None),
+        shift_code=getattr(sh, "shift_code", None),
+        is_draft=bool(getattr(sh, "is_draft", True)),
+        published_at=getattr(sh, "published_at", None),
         created_at=sh.created_at,
         shift_kind=sk,
         display_label=getattr(sh, "display_label", None),
@@ -626,6 +679,18 @@ async def create_shift(
 ) -> ShiftCreateResult:
     if body.facility_id and not await _zone_in_company(db, cid, body.facility_id):
         raise HTTPException(status_code=400, detail="Unknown schedule facility")
+    shift_code: Optional[str] = None
+    if body.shift_definition_id:
+        dq = await db.execute(
+            select(PulseScheduleShiftDefinition).where(
+                PulseScheduleShiftDefinition.id == body.shift_definition_id,
+                PulseScheduleShiftDefinition.company_id == cid,
+            )
+        )
+        drow = dq.scalar_one_or_none()
+        if not drow:
+            raise HTTPException(status_code=400, detail="Unknown shift definition")
+        shift_code = str(drow.code or "").strip() or None
     errs, warnings = await pulse_svc.validate_shift_assignment(
         db,
         cid,
@@ -643,6 +708,10 @@ async def create_shift(
         company_id=cid,
         assigned_user_id=body.assigned_user_id,
         facility_id=body.facility_id,
+        shift_definition_id=body.shift_definition_id,
+        shift_code=shift_code,
+        is_draft=True,
+        published_at=None,
         starts_at=body.starts_at,
         ends_at=body.ends_at,
         shift_type=body.shift_type,
@@ -684,6 +753,21 @@ async def patch_shift(db: Db, cid: CompanyId, shift_id: str, body: ShiftUpdate) 
     req_tick = data.get("requires_ticketed", sh.requires_ticketed)
     if "facility_id" in data and data["facility_id"] and not await _zone_in_company(db, cid, data["facility_id"]):
         raise HTTPException(status_code=400, detail="Unknown schedule facility")
+    if "shift_definition_id" in data:
+        sdid = data.get("shift_definition_id")
+        if sdid:
+            dq = await db.execute(
+                select(PulseScheduleShiftDefinition).where(
+                    PulseScheduleShiftDefinition.id == sdid,
+                    PulseScheduleShiftDefinition.company_id == cid,
+                )
+            )
+            drow = dq.scalar_one_or_none()
+            if not drow:
+                raise HTTPException(status_code=400, detail="Unknown shift definition")
+            data["shift_code"] = str(drow.code or "").strip() or None
+        else:
+            data["shift_code"] = None
 
     errs, warnings = await pulse_svc.validate_shift_assignment(
         db,
@@ -735,6 +819,109 @@ async def list_schedule_facilities(db: Db, cid: CompanyId) -> list[ZoneOut]:
     rows = await ensure_schedule_facility_zones(db, cid)
     await db.commit()
     return [ZoneOut(id=z.id, name=z.name, meta=dict(z.meta or {})) for z in rows]
+
+
+@router.get("/schedule/shift-definitions", response_model=list[ShiftDefinitionOut])
+async def list_shift_definitions(db: Db, cid: CompanyId) -> list[ShiftDefinitionOut]:
+    q = await db.execute(
+        select(PulseScheduleShiftDefinition)
+        .where(PulseScheduleShiftDefinition.company_id == cid)
+        .order_by(PulseScheduleShiftDefinition.code.asc())
+    )
+    return [ShiftDefinitionOut.model_validate(r) for r in q.scalars().all()]
+
+
+@router.post("/schedule/shift-definitions", response_model=ShiftDefinitionOut, status_code=status.HTTP_201_CREATED)
+async def create_shift_definition(db: Db, cid: CompanyId, body: ShiftDefinitionIn) -> ShiftDefinitionOut:
+    code = body.code.strip().upper()
+    row = PulseScheduleShiftDefinition(
+        company_id=cid,
+        code=code,
+        name=(body.name.strip() if body.name else None),
+        start_min=int(body.start_min),
+        end_min=int(body.end_min),
+        shift_type=str(body.shift_type or "day").strip().lower(),
+        color=(body.color.strip() if body.color else None),
+        cert_requirements=list(body.cert_requirements or []),
+    )
+    db.add(row)
+    try:
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(status_code=400, detail="Duplicate shift definition code") from None
+    await db.refresh(row)
+    return ShiftDefinitionOut.model_validate(row)
+
+
+@router.patch("/schedule/shift-definitions/{definition_id}", response_model=ShiftDefinitionOut)
+async def patch_shift_definition(db: Db, cid: CompanyId, definition_id: str, body: ShiftDefinitionIn) -> ShiftDefinitionOut:
+    q = await db.execute(
+        select(PulseScheduleShiftDefinition).where(
+            PulseScheduleShiftDefinition.id == definition_id,
+            PulseScheduleShiftDefinition.company_id == cid,
+        )
+    )
+    row = q.scalar_one_or_none()
+    if not row:
+        raise HTTPException(status_code=404, detail="Not found")
+    row.code = body.code.strip().upper()
+    row.name = body.name.strip() if body.name else None
+    row.start_min = int(body.start_min)
+    row.end_min = int(body.end_min)
+    row.shift_type = str(body.shift_type or "day").strip().lower()
+    row.color = body.color.strip() if body.color else None
+    row.cert_requirements = list(body.cert_requirements or [])
+    try:
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(status_code=400, detail="Duplicate shift definition code") from None
+    await db.refresh(row)
+    return ShiftDefinitionOut.model_validate(row)
+
+
+@router.delete("/schedule/shift-definitions/{definition_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_shift_definition(db: Db, cid: CompanyId, definition_id: str) -> None:
+    q = await db.execute(
+        select(PulseScheduleShiftDefinition).where(
+            PulseScheduleShiftDefinition.id == definition_id,
+            PulseScheduleShiftDefinition.company_id == cid,
+        )
+    )
+    row = q.scalar_one_or_none()
+    if not row:
+        return
+    await db.delete(row)
+    await db.commit()
+
+
+@router.get("/schedule/periods", response_model=list[SchedulePeriodOut])
+async def list_schedule_periods(db: Db, cid: CompanyId) -> list[SchedulePeriodOut]:
+    q = await db.execute(
+        select(PulseSchedulePeriod)
+        .where(PulseSchedulePeriod.company_id == cid)
+        .order_by(PulseSchedulePeriod.start_date.desc())
+    )
+    return [SchedulePeriodOut.model_validate(r) for r in q.scalars().all()]
+
+
+@router.post("/schedule/periods", response_model=SchedulePeriodOut, status_code=status.HTTP_201_CREATED)
+async def create_schedule_period(db: Db, cid: CompanyId, body: SchedulePeriodCreateIn) -> SchedulePeriodOut:
+    if body.start_date > body.end_date:
+        raise HTTPException(status_code=400, detail="start_date must be <= end_date")
+    row = PulseSchedulePeriod(
+        company_id=cid,
+        start_date=body.start_date,
+        end_date=body.end_date,
+        availability_deadline=body.availability_deadline,
+        publish_deadline=body.publish_deadline,
+        status="draft",
+    )
+    db.add(row)
+    await db.commit()
+    await db.refresh(row)
+    return SchedulePeriodOut.model_validate(row)
 
 
 @router.get("/assets", response_model=list[AssetOut])

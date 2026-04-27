@@ -168,6 +168,7 @@ class ShiftCreate(BaseModel):
         serialization_alias="facility_id",
     )
     shift_type: str = "shift"
+    shift_definition_id: Optional[str] = None
     requires_supervisor: bool = False
     requires_ticketed: bool = False
 
@@ -182,6 +183,7 @@ class ShiftUpdate(BaseModel):
         serialization_alias="facility_id",
     )
     shift_type: Optional[str] = None
+    shift_definition_id: Optional[str] = None
     requires_supervisor: Optional[bool] = None
     requires_ticketed: Optional[bool] = None
 
@@ -196,6 +198,10 @@ class ShiftOut(BaseModel):
     shift_type: str
     requires_supervisor: bool
     requires_ticketed: bool
+    shift_definition_id: Optional[str] = None
+    shift_code: Optional[str] = None
+    is_draft: bool = True
+    published_at: Optional[datetime] = None
     created_at: datetime
     shift_kind: str = "workforce"
     display_label: Optional[str] = None
