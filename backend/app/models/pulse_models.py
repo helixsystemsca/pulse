@@ -664,6 +664,42 @@ class PulseSchedulePeriod(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
 
+class PulseScheduleAvailabilitySubmission(Base):
+    __tablename__ = "pulse_schedule_availability_submissions"
+    __table_args__ = (UniqueConstraint("worker_id", "period_id", name="uq_sched_avail_worker_period"),)
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    company_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    worker_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    period_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("pulse_schedule_periods.id", ondelete="CASCADE"), nullable=False
+    )
+    submitted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    windows: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
+    exceptions: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, server_default=text("'[]'::jsonb"))
+
+
+class PulseScheduleAcknowledgement(Base):
+    __tablename__ = "pulse_schedule_acknowledgements"
+    __table_args__ = (UniqueConstraint("worker_id", "period_id", name="uq_sched_ack_worker_period"),)
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    company_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    worker_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    period_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("pulse_schedule_periods.id", ondelete="CASCADE"), nullable=False
+    )
+    acknowledged_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+
 class PulseScheduleAssignment(Base):
     """
     Per-day shift assignments (area + notes) that sit alongside workforce shifts.

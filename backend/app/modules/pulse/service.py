@@ -36,10 +36,35 @@ def _availability_warnings(
     ends_at: datetime,
 ) -> list[str]:
     warnings: list[str] = []
+    start_wd, start_min = _weekday_and_minutes_utc(starts_at)
+    day_keys = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
+    day_key = day_keys[start_wd] if 0 <= start_wd < 7 else None
+
+    # v2 format (Phase 2): {"monday":[{"start":480,"end":1020}], ...}
+    if day_key and isinstance(availability, dict) and day_key in availability:
+        wins = availability.get(day_key)
+        if not isinstance(wins, list):
+            return warnings
+        ok = False
+        for w in wins:
+            if not isinstance(w, dict):
+                continue
+            try:
+                sm = int(w.get("start", -1))
+                em = int(w.get("end", -1))
+            except (TypeError, ValueError):
+                continue
+            if sm <= start_min < em:
+                ok = True
+                break
+        if not ok and wins:
+            warnings.append("Shift start is outside this worker's saved availability windows (UTC minutes).")
+        return warnings
+
+    # legacy v1 format: {"windows":[{"weekday":0,"start_min":480,"end_min":1020}, ...]}
     windows = availability.get("windows") if isinstance(availability, dict) else None
     if not windows or not isinstance(windows, list):
         return warnings
-    start_wd, start_min = _weekday_and_minutes_utc(starts_at)
     ok = False
     for w in windows:
         if not isinstance(w, dict):

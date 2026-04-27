@@ -19,6 +19,7 @@ from app.core.events.types import DomainEvent
 from app.core.pulse_storage import read_user_avatar_bytes
 from app.core.user_avatar_upload import INTERNAL_AVATAR_PATH, co_worker_avatar_url
 from app.core.user_roles import is_field_worker_like, primary_jwt_role
+from app.core.user_roles import user_has_any_role
 from app.services.onboarding_service import try_mark_onboarding_step
 from app.core.database import get_db
 from app.models.domain import (
@@ -37,6 +38,8 @@ from app.models.pulse_models import (
     PulseProject,
     PulseProjectTask,
     PulseScheduleAssignment,
+    PulseScheduleAcknowledgement,
+    PulseScheduleAvailabilitySubmission,
     PulseScheduleShift,
     PulseSchedulePeriod,
     PulseScheduleShiftDefinition,
@@ -123,6 +126,46 @@ class SchedulePeriodOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class AvailabilityWindow(BaseModel):
+    start: int = Field(..., ge=0, lt=1440)
+    end: int = Field(..., ge=0, lt=1440)
+
+
+AvailabilityWindowsV2 = dict[str, list[AvailabilityWindow]]
+
+
+class AvailabilitySubmitIn(BaseModel):
+    period_id: str
+    windows: AvailabilityWindowsV2
+    exceptions: list[Any] = Field(default_factory=list)
+
+
+class AvailabilitySubmissionOut(BaseModel):
+    id: str
+    company_id: str
+    worker_id: str
+    period_id: str
+    submitted_at: datetime
+    windows: dict[str, Any]
+    exceptions: list[Any]
+
+    model_config = {"from_attributes": True}
+
+
+class AcknowledgeIn(BaseModel):
+    period_id: str
+
+
+class AcknowledgementOut(BaseModel):
+    id: str
+    company_id: str
+    worker_id: str
+    period_id: str
+    acknowledged_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
 def _worker_scheduling_fields(prof: Optional[PulseWorkerProfile]) -> tuple[Optional[str], list[dict[str, Any]]]:
     if not prof:
         return None, []
@@ -140,6 +183,12 @@ def _worker_scheduling_fields(prof: Optional[PulseWorkerProfile]) -> tuple[Optio
 
 
 router = APIRouter(prefix="/pulse", tags=["pulse"])
+
+
+def _require_schedule_supervisor(user: User) -> None:
+    if user_has_any_role(user, UserRole.manager, UserRole.supervisor, UserRole.company_admin):
+        return
+    raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="manager or above required")
 
 
 async def _resolve_pulse_wr_part_equipment(
@@ -922,6 +971,104 @@ async def create_schedule_period(db: Db, cid: CompanyId, body: SchedulePeriodCre
     await db.commit()
     await db.refresh(row)
     return SchedulePeriodOut.model_validate(row)
+
+
+@router.post("/schedule/availability", response_model=AvailabilitySubmissionOut, status_code=status.HTTP_201_CREATED)
+async def submit_availability(
+    db: Db,
+    cid: CompanyId,
+    body: AvailabilitySubmitIn,
+    user: User = Depends(require_tenant_user),
+) -> AvailabilitySubmissionOut:
+    # Ensure period belongs to company.
+    pq = await db.execute(
+        select(PulseSchedulePeriod).where(PulseSchedulePeriod.id == body.period_id, PulseSchedulePeriod.company_id == cid)
+    )
+    p = pq.scalar_one_or_none()
+    if not p:
+        raise HTTPException(status_code=400, detail="Unknown schedule period")
+
+    row_q = await db.execute(
+        select(PulseScheduleAvailabilitySubmission).where(
+            PulseScheduleAvailabilitySubmission.worker_id == user.id,
+            PulseScheduleAvailabilitySubmission.period_id == body.period_id,
+            PulseScheduleAvailabilitySubmission.company_id == cid,
+        )
+    )
+    row = row_q.scalar_one_or_none()
+    now = datetime.now(timezone.utc)
+    if row:
+        row.windows = {k: [w.model_dump() for w in v] for k, v in (body.windows or {}).items()}
+        row.exceptions = list(body.exceptions or [])
+        row.submitted_at = now
+    else:
+        row = PulseScheduleAvailabilitySubmission(
+            company_id=cid,
+            worker_id=str(user.id),
+            period_id=str(body.period_id),
+            submitted_at=now,
+            windows={k: [w.model_dump() for w in v] for k, v in (body.windows or {}).items()},
+            exceptions=list(body.exceptions or []),
+        )
+        db.add(row)
+    await db.commit()
+    await db.refresh(row)
+    return AvailabilitySubmissionOut.model_validate(row)
+
+
+@router.get("/schedule/availability", response_model=list[AvailabilitySubmissionOut])
+async def list_availability(db: Db, cid: CompanyId, period_id: str, user: User = Depends(require_tenant_user)) -> list[AvailabilitySubmissionOut]:
+    # Supervisor view
+    _require_schedule_supervisor(user)
+    pq = await db.execute(
+        select(PulseSchedulePeriod.id).where(PulseSchedulePeriod.id == period_id, PulseSchedulePeriod.company_id == cid)
+    )
+    if pq.scalar_one_or_none() is None:
+        raise HTTPException(status_code=400, detail="Unknown schedule period")
+    q = await db.execute(
+        select(PulseScheduleAvailabilitySubmission)
+        .where(PulseScheduleAvailabilitySubmission.company_id == cid, PulseScheduleAvailabilitySubmission.period_id == period_id)
+        .order_by(PulseScheduleAvailabilitySubmission.submitted_at.desc())
+    )
+    return [AvailabilitySubmissionOut.model_validate(r) for r in q.scalars().all()]
+
+
+@router.post("/schedule/acknowledge", response_model=AcknowledgementOut, status_code=status.HTTP_201_CREATED)
+async def acknowledge_schedule(
+    db: Db,
+    cid: CompanyId,
+    body: AcknowledgeIn,
+    user: User = Depends(require_tenant_user),
+) -> AcknowledgementOut:
+    pq = await db.execute(
+        select(PulseSchedulePeriod).where(PulseSchedulePeriod.id == body.period_id, PulseSchedulePeriod.company_id == cid)
+    )
+    p = pq.scalar_one_or_none()
+    if not p:
+        raise HTTPException(status_code=400, detail="Unknown schedule period")
+
+    q = await db.execute(
+        select(PulseScheduleAcknowledgement).where(
+            PulseScheduleAcknowledgement.company_id == cid,
+            PulseScheduleAcknowledgement.worker_id == user.id,
+            PulseScheduleAcknowledgement.period_id == body.period_id,
+        )
+    )
+    row = q.scalar_one_or_none()
+    now = datetime.now(timezone.utc)
+    if row:
+        row.acknowledged_at = now
+    else:
+        row = PulseScheduleAcknowledgement(
+            company_id=cid,
+            worker_id=str(user.id),
+            period_id=str(body.period_id),
+            acknowledged_at=now,
+        )
+        db.add(row)
+    await db.commit()
+    await db.refresh(row)
+    return AcknowledgementOut.model_validate(row)
 
 
 @router.get("/assets", response_model=list[AssetOut])
