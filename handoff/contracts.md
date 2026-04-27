@@ -7,6 +7,37 @@
 
 ## 1. BACKEND — ROUTE RULES
 
+## Event System (Global)
+
+All state-changing user actions must emit an event.
+
+Events are the single source of truth for:
+- logs
+- gamification
+- analytics
+
+Event structure:
+{
+  type: string
+  worker_id: string
+  reference_id?: string
+  metadata?: json
+  created_at: timestamp
+}
+
+## Required Events
+
+task_completed
+task_flagged
+task_reopened
+procedure_completed
+step_completed
+photo_uploaded
+inference_confirmed
+inference_dismissed
+shift_started
+shift_completed
+
 ### File naming
 - `backend/app/api/{resource}_routes.py`
 - One router per resource domain
