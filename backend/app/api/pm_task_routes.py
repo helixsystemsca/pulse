@@ -75,6 +75,7 @@ async def list_pm_tasks(
                 select(PmTaskPart.pm_task_id, func.count())
                 .join(PmTask, PmTask.id == PmTaskPart.pm_task_id)
                 .where(PmTask.equipment_id == equipment_id)
+                .where(PmTask.company_id == cid)
                 .group_by(PmTaskPart.pm_task_id)
             )
         )
@@ -82,7 +83,13 @@ async def list_pm_tasks(
     )
     count_map = {str(r[0]): int(r[1]) for r in counts}
     tasks = (
-        (await db.execute(select(PmTask).where(PmTask.equipment_id == equipment_id).order_by(PmTask.name)))
+        (
+            await db.execute(
+                select(PmTask)
+                .where(PmTask.company_id == cid, PmTask.equipment_id == equipment_id)
+                .order_by(PmTask.name)
+            )
+        )
         .scalars()
         .all()
     )
@@ -105,13 +112,18 @@ async def list_tool_pm_tasks(
                 select(PmTaskPart.pm_task_id, func.count())
                 .join(PmTask, PmTask.id == PmTaskPart.pm_task_id)
                 .where(PmTask.tool_id == tool_id)
+                .where(PmTask.company_id == cid)
                 .group_by(PmTaskPart.pm_task_id)
             )
         )
         .all()
     )
     count_map = {str(r[0]): int(r[1]) for r in counts}
-    tasks = (await db.execute(select(PmTask).where(PmTask.tool_id == tool_id).order_by(PmTask.name))).scalars().all()
+    tasks = (
+        (await db.execute(select(PmTask).where(PmTask.company_id == cid, PmTask.tool_id == tool_id).order_by(PmTask.name)))
+        .scalars()
+        .all()
+    )
     return [_task_to_out(t, count_map.get(t.id, 0)) for t in tasks]
 
 
@@ -223,10 +235,14 @@ async def delete_pm_task(
     if not cid:
         raise HTTPException(status_code=403, detail="Company context required")
     await _equipment_company_or_404(db, cid, equipment_id)
-    task = await db.get(PmTask, pm_task_id)
+    task = (
+        (await db.execute(select(PmTask).where(PmTask.company_id == cid, PmTask.id == pm_task_id)))
+        .scalars()
+        .one_or_none()
+    )
     if not task or task.equipment_id != equipment_id:
         raise HTTPException(status_code=404, detail="PM task not found")
-    await db.execute(delete(PmTask).where(PmTask.id == pm_task_id))
+    await db.execute(delete(PmTask).where(PmTask.company_id == cid, PmTask.id == pm_task_id))
     await db.commit()
 
 

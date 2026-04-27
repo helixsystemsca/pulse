@@ -82,7 +82,11 @@ async def sync_pm_task_after_work_order_completed(db: AsyncSession, wr: PulseWor
         return
     if wr.status != PulseWorkRequestStatus.completed:
         return
-    task = await db.get(PmTask, wr.pm_task_id)
+    task = (
+        (await db.execute(select(PmTask).where(PmTask.id == wr.pm_task_id, PmTask.company_id == str(wr.company_id))))
+        .scalars()
+        .one_or_none()
+    )
     if not task:
         return
     now = datetime.now(timezone.utc)
@@ -199,22 +203,21 @@ async def run_pm_due_scan(db: AsyncSession) -> dict[str, int]:
     rows = (
         (
             await db.execute(
-                select(PmTask, FacilityEquipment.company_id)
-                .join(FacilityEquipment, FacilityEquipment.id == PmTask.equipment_id)
-                .where(
+                select(PmTask).where(
                     PmTask.auto_create_work_order.is_(True),
                     PmTask.tool_id.is_(None),
                     PmTask.next_due_at <= horizon,
                 )
             )
         )
+        .scalars()
         .all()
     )
     created = 0
-    for task, company_id in rows:
+    for task in rows:
         try:
             async with db.begin_nested():
-                wr = await create_auto_pm_work_order(db, task, company_id=str(company_id))
+                wr = await create_auto_pm_work_order(db, task, company_id=str(task.company_id))
                 if wr:
                     created += 1
         except IntegrityError:

@@ -34,6 +34,7 @@ from __future__ import annotations
 
 import logging
 import time
+import asyncio
 from datetime import datetime, timezone
 from typing import Annotated, Optional
 from uuid import uuid4
@@ -46,6 +47,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_db
 from app.core.auth.security import verify_password
+from app.core.config import get_settings
 from app.models.device_hub import AutomationBleDevice, AutomationGateway, AutomationUnknownDevice
 from app.schemas.automation_engine import AutomationEventAccepted, AutomationEventIn
 from app.services.automation.ingest_pipeline import ingest_automation_event
@@ -54,6 +56,26 @@ from app.services.devices.device_service import DeviceService, normalize_mac
 logger = logging.getLogger("telemetry.ingest")
 
 router = APIRouter(prefix="/telemetry", tags=["telemetry-ingest"])
+
+# In-process token bucket (best-effort; per-worker). Caps total readings/sec per gateway.
+_rl_lock = asyncio.Lock()
+_rl_windows: dict[str, tuple[int, int]] = {}  # {gateway_id: (epoch_sec, used_readings)}
+
+
+async def _enforce_gateway_rate_limit(*, gateway_id: str, readings: int) -> None:
+    settings = get_settings()
+    limit = int(getattr(settings, "telemetry_ingest_max_readings_per_sec", 0) or 0)
+    if limit <= 0:
+        return
+    now_s = int(time.time())
+    async with _rl_lock:
+        win_s, used = _rl_windows.get(gateway_id, (now_s, 0))
+        if win_s != now_s:
+            win_s, used = now_s, 0
+        if used + readings > limit:
+            _rl_windows[gateway_id] = (win_s, used)
+            raise HTTPException(status_code=429, detail="rate_limited")
+        _rl_windows[gateway_id] = (win_s, used + readings)
 
 
 # ---------------------------------------------------------------------------
@@ -341,7 +363,7 @@ async def ingest_telemetry_batch(
     Called by the RPI5 position engine every ~2 seconds per gateway.
     Auth: X-Gateway-Id: <gateway_uuid>  +  Authorization: Bearer <ingest_secret>
     """
-    _ = request  # available for future rate limiting
+    _ = request
     company_id = str(gateway.company_id)
     result = TelemetryBatchAccepted()
 
@@ -350,6 +372,12 @@ async def ingest_telemetry_batch(
         await _update_gateway_last_seen(db, gateway.id)
         await db.commit()
         return result
+
+    # Best-effort mitigation for leaked gateway secret: cap readings/sec per gateway.
+    await _enforce_gateway_rate_limit(
+        gateway_id=str(gateway.id),
+        readings=len(body.readings) + len(body.computed_positions),
+    )
 
     # 1. Collect and normalize all MACs from this batch
     all_macs: set[str] = set()

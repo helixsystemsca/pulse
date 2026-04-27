@@ -188,6 +188,15 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("PM_CRON_SECRET", "pm_cron_secret"),
     )
 
+    # --- Telemetry ingest rate limiting (per gateway; best-effort in-process)
+    telemetry_ingest_max_readings_per_sec: int = Field(
+        default=500,
+        validation_alias=AliasChoices(
+            "TELEMETRY_INGEST_MAX_READINGS_PER_SEC",
+            "telemetry_ingest_max_readings_per_sec",
+        ),
+    )
+
     # --- Xplor Recreation (facility schedules)
     xplor_api_key: str = Field(default="", validation_alias=AliasChoices("XPLOR_API_KEY", "xplor_api_key"))
     xplor_base_url: str = Field(

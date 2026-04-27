@@ -150,7 +150,11 @@ async def build_task_full_payload(db: AsyncSession, *, task: Task, company_id: s
         return out
 
     if st == "pm":
-        pm = await db.get(PmTask, sid)
+        pm = (
+            (await db.execute(select(PmTask).where(PmTask.id == sid, PmTask.company_id == company_id)))
+            .scalars()
+            .one_or_none()
+        )
         if not pm:
             return out
         eq_id = str(pm.equipment_id) if pm.equipment_id else None
