@@ -118,6 +118,7 @@ export function ScheduleApp() {
   const [calendarScale, setCalendarScale] = useState<CalendarScale>("month");
   const [focusDate, setFocusDate] = useState(() => formatLocalDate(getServerDate()));
   const [contentFilter, setContentFilter] = useState<ScheduleContentFilter>("combined");
+  const [shiftDefinitions, setShiftDefinitions] = useState<{ id: string; code: string; name?: string | null }[]>([]);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [timeOffOpen, setTimeOffOpen] = useState(false);
   const [dragSession, setDragSession] = useState<ScheduleDragSession | null>(null);
@@ -213,9 +214,10 @@ export function ScheduleApp() {
       to = new Date(from);
       to.setHours(23, 59, 59, 999);
     }
-    const [w, z] = await Promise.all([
+    const [w, z, defs] = await Promise.all([
       apiFetch<PulseWorkerApi[]>("/api/v1/pulse/workers"),
       apiFetch<PulseZoneApi[]>("/api/v1/pulse/schedule-facilities"),
+      apiFetch<{ id: string; code: string; name?: string | null }[]>("/api/v1/pulse/schedule/shift-definitions"),
     ]);
     let sh: PulseShiftApi[] = [];
     try {
@@ -240,6 +242,7 @@ export function ScheduleApp() {
     const workersMapped = pulseWorkersToSchedule(w);
     const shiftsMapped = pulseShiftsToSchedule(sh, fallbackZ);
     applyPulseScheduleSnapshot(workersMapped, zonesMapped, shiftsMapped);
+    setShiftDefinitions(defs);
   }, [applyPulseScheduleSnapshot, calendarScale, cursor.m, cursor.y, focusDate]);
 
   const scheduleFacilitySettingsKey = useMemo(() => {
@@ -878,6 +881,7 @@ export function ScheduleApp() {
                   shiftTypes={shiftTypes}
                   shifts={displayShifts}
                   workers={workers}
+                  shiftDefinitions={shiftDefinitions}
                   contentFilter={contentFilter}
                   projectLegendItems={projectLegendItems}
                 />

@@ -31,12 +31,13 @@ type Props = {
   shiftTypes: ShiftTypeConfig[];
   shifts: Shift[];
   workers: Worker[];
+  shiftDefinitions?: { id: string; code: string; name?: string | null }[];
   contentFilter: "workers" | "projects" | "combined";
   /** When set, lists projects (e.g. from the Projects page) with schedule overlay colors. */
   projectLegendItems: ScheduleProjectLegendItem[] | null;
 };
 
-export function ScheduleLegendPanel({ shiftTypes, shifts, workers, contentFilter, projectLegendItems }: Props) {
+export function ScheduleLegendPanel({ shiftTypes, shifts, workers, shiftDefinitions, contentFilter, projectLegendItems }: Props) {
   const [open, setOpen] = useState(true);
 
   const recurringWindows = useMemo(() => recurringWindowLegendFromWorkers(workers), [workers]);
@@ -66,6 +67,25 @@ export function ScheduleLegendPanel({ shiftTypes, shifts, workers, contentFilter
         </span>
       </button>
       <div className={`space-y-5 px-4 pb-4 pt-2 ${open ? "" : "hidden lg:block"}`}>
+        {shiftDefinitions && shiftDefinitions.length > 0 ? (
+          <section>
+            <h3 className="text-[11px] font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+              Shift definitions
+            </h3>
+            <ul className="mt-2 flex flex-wrap gap-1.5" aria-label="Shift definitions">
+              {shiftDefinitions.map((d) => (
+                <li key={d.id}>
+                  <span
+                    className="inline-flex items-center rounded-md border border-pulseShell-border bg-pulseShell-elevated px-2 py-0.5 font-mono text-[11px] font-bold tabular-nums text-gray-900 dark:text-gray-100"
+                    title={d.name ?? d.code}
+                  >
+                    {d.code}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
         <section>
           <h3 className="text-[11px] font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400">Shift codes</h3>
           <ul className="mt-2 space-y-1.5 text-[11px] leading-snug text-gray-600 dark:text-gray-300">

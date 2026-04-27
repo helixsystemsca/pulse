@@ -25,6 +25,9 @@ export function shiftDisplayCode(s: Shift, codeMap: Map<string, string>): string
     const t = (s.taskTitle || "Task").trim();
     return t.length > 22 ? `${t.slice(0, 20)}…` : t;
   }
+  if (s.shiftCode && String(s.shiftCode).trim()) {
+    return String(s.shiftCode).trim().toUpperCase();
+  }
   return shiftCodeForWindowFromMap(s.startTime, s.endTime, codeMap);
 }
 
