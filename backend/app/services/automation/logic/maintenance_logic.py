@@ -212,7 +212,7 @@ async def _load_context(db: AsyncSession, ctx: _InferenceContext) -> bool:
     # This avoids fuzzy matching as asset counts grow.
     pm_tool_q = await db.execute(
         select(PmTask)
-        .where(PmTask.tool_id == ctx.tool.id)
+        .where(PmTask.company_id == ctx.company_id, PmTask.tool_id == ctx.tool.id)
         .order_by(PmTask.next_due_at.asc())
     )
     all_pms.extend(pm_tool_q.scalars().all())
@@ -221,7 +221,7 @@ async def _load_context(db: AsyncSession, ctx: _InferenceContext) -> bool:
     if ctx.facility_equipment is not None:
         pm_fe_q = await db.execute(
             select(PmTask)
-            .where(PmTask.equipment_id == ctx.facility_equipment.id)
+            .where(PmTask.company_id == ctx.company_id, PmTask.equipment_id == ctx.facility_equipment.id)
             .order_by(PmTask.next_due_at.asc())
         )
         all_pms.extend(pm_fe_q.scalars().all())

@@ -141,6 +141,7 @@ async def create_pm_task(
     baseline = now
     next_due = pm_svc.compute_next_due_at(baseline=baseline, frequency_type=ft, frequency_value=fv)
     task = PmTask(
+        company_id=cid,
         equipment_id=equipment_id,
         name=body.name.strip(),
         description=(body.description or "").strip() or None,
@@ -193,6 +194,7 @@ async def create_tool_pm_task(
     now = datetime.now(timezone.utc)
     next_due = pm_svc.compute_next_due_at(baseline=now, frequency_type=ft, frequency_value=fv)
     task = PmTask(
+        company_id=cid,
         tool_id=tool_id,
         equipment_id=None,
         name=body.name.strip(),
