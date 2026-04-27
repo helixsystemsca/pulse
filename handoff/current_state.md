@@ -6,7 +6,7 @@
 ---
 
 ## Last Updated
-2026-04-27 — schedule phases 4+5: My Shifts view, project overlay toggle, assignment work queue, publish button
+2026-04-27 — mobile M2: inference confirmation screen, WS-driven banner, tasks rebuild
 
 ---
 
@@ -22,23 +22,18 @@
 ## What's Live (main)
 
 ### Backend
-- Telemetry positions: GET `/api/v1/telemetry/positions` + inference confirm/dismiss endpoints
-- Maintenance inference TTL cleanup: POST `/api/v1/internal/maintenance-inferences/cleanup` (90d delete for dismissed/auto_logged/expired)
-- PM tasks now support fixed assets **and** BLE tools (pm_tasks.equipment_id OR pm_tasks.tool_id)
-- PM tasks now include `company_id` (no join required for tenant scoping + due queries)
-- Schedule work queue endpoint: GET `/api/v1/pulse/schedule/shifts/{shift_id}/work-queue` (open WRs + overdue PMs)
-- Telemetry ingest is rate-limited per gateway (readings/sec) to mitigate leaked secrets
-- Pulse schedule shifts are protected from double-booking (DB exclusion constraint)
-- Demo routes that reset global singleton state are restricted to the demo tenant (or system admin)
-- Preventative rules deprecated + migrated into PM tasks (pulse_preventative_rules → pm_tasks)
+- Telemetry positions + inference confirm/dismiss endpoints are live (`/api/v1/telemetry/*`)
+- Maintenance inference cleanup job is live (TTL cleanup endpoint)
+- PM tasks: tenant-safe (`company_id`) and support both fixed assets + BLE tools
+- Schedule: double-booking protected (DB constraint) + shift work queue endpoint for assignments
+- Security hardening: per-gateway ingest rate limit + demo-reset routes restricted
 
 ### Frontend
-- `/settings`: design system aligned + auth guard + Suspense boundary
-- `/live-map`: DS header/tabs + LiveHardware (LiveFacilityMap) + DemoScenario (DemoLiveMap)
-- Blueprint designer polish shipped: tool labels, expanded symbols, templates, task indicators, read-only instructions
-- Preventative rules UI is now read-only with deprecation notice (use PM tasks instead)
-- Schedule phases 4+5 shipped: My Shifts tab, Projects overlay toggle, Day view assignments for all shifts + work queue, publish button
-- Architecture contracts live at `handoff/contracts.md`
+- Web `/settings` + `/live-map` are DS-aligned and stable
+- Blueprint designer polish shipped (tools/templates/indicators/read-only UX)
+- Schedule phases 4+5 shipped (My Shifts, project overlay toggle, assignment work queue, publish button)
+- Preventative rules UI is read-only (deprecated; use PM tasks)
+- Mobile M2 shipped: inference confirmation screen, WS-driven inference banner, tasks rebuild
 
 ### Known Issues / TODOs
 - Blueprint designer remaining phases still pending: lock/unlock-all, fine grid toggle, default shape behavior tweaks
@@ -59,6 +54,9 @@
 
 ### Schedule
 - Phase 6: swap requests (deferred to Expo session)
+
+### Mobile
+- M3–M6 still pending (Documents tab, plus remaining mobile phases)
 
 ---
 
