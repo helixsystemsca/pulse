@@ -1,10 +1,12 @@
-"""Automation notification actions (acknowledgement → internal automation_event)."""
+"""Automation notification actions + app notification helpers (push tokens, inbox stub)."""
 
 from __future__ import annotations
 
-from typing import Annotated
+import logging
+from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -18,6 +20,76 @@ from app.services.automation.operational_service import acknowledge_notification
 router = APIRouter(prefix="/notifications", tags=["notifications"])
 
 Db = Annotated[AsyncSession, Depends(get_db)]
+
+log = logging.getLogger("pulse.app_notifications")
+
+# In-memory stores — replace with DB tables for production (see TODO in M6 handoff).
+_push_tokens: dict[str, list[dict[str, str]]] = {}
+_notifications_by_company: dict[str, list[dict[str, Any]]] = {}
+_notifications_by_user: dict[str, list[dict[str, Any]]] = {}
+
+
+class PushTokenIn(BaseModel):
+    token: str
+    platform: str
+
+
+class NotificationOut(BaseModel):
+    id: str
+    event_type: str
+    title: str
+    body: str
+    read: bool
+    created_at: str
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+@router.post("/push-token", status_code=status.HTTP_204_NO_CONTENT)
+async def register_push_token(
+    body: PushTokenIn,
+    user: Annotated[User, Depends(get_current_user)],
+) -> None:
+    uid = str(user.id)
+    lst = _push_tokens.setdefault(uid, [])
+    if not any(t["token"] == body.token for t in lst):
+        lst.append({"token": body.token, "platform": body.platform})
+    log.info("push_token registered user=%s platform=%s", uid[:8], body.platform)
+
+
+@router.get("", response_model=list[NotificationOut])
+async def list_app_notifications(
+    user: Annotated[User, Depends(get_current_user)],
+    limit: int = Query(30, ge=1, le=200),
+) -> list[NotificationOut]:
+    """Recent notifications for the signed-in user (stub until persisted inbox exists)."""
+    if user.company_id is None:
+        return []
+    cid = str(user.company_id)
+    uid = str(user.id)
+    company_rows = list(_notifications_by_company.get(cid, []))
+    user_rows = list(_notifications_by_user.get(uid, []))
+    merged = sorted(
+        company_rows + user_rows,
+        key=lambda n: n.get("created_at", ""),
+        reverse=True,
+    )[:limit]
+    return [NotificationOut(**n) for n in merged]
+
+
+@router.post("/{notification_id}/read", status_code=status.HTTP_204_NO_CONTENT)
+async def mark_notification_read_app(
+    notification_id: str,
+    user: Annotated[User, Depends(get_current_user)],
+) -> None:
+    if user.company_id is None:
+        return
+    cid = str(user.company_id)
+    uid = str(user.id)
+    for bucket in (_notifications_by_company.get(cid, []), _notifications_by_user.get(uid, [])):
+        for n in bucket:
+            if n.get("id") == notification_id:
+                n["read"] = True
+                return
 
 
 @router.post("/{notification_id}/acknowledge", response_model=ApiSuccess[dict])

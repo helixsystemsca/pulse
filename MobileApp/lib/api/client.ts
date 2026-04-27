@@ -75,7 +75,14 @@ export async function apiFetch<T>(
     const msg = await res.text().catch(() => "");
     throw new Error(parsePulseApiErrorMessage(msg) || `Request failed (${res.status})`);
   }
-  return (await res.json()) as T;
+  if (res.status === 204) {
+    return undefined as T;
+  }
+  const raw = await res.text();
+  if (!raw.trim()) {
+    return undefined as T;
+  }
+  return JSON.parse(raw) as T;
 }
 
 /** POST `multipart/form-data`. Do not set `Content-Type` — the runtime sets the boundary. */

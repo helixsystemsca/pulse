@@ -3,11 +3,41 @@ import { Alert, Pressable, ScrollView, Text, TextInput, View } from "react-nativ
 import { useTheme } from "@/theme/ThemeProvider";
 import { Screen } from "@/components/Screen";
 import { useSession } from "@/store/session";
+import { apiFetch } from "@/lib/api/client";
 import { listShifts, listZones, type ShiftOut, type Zone } from "@/lib/api/schedule";
 import { createWorkRequest } from "@/lib/api/workRequests";
 import { patchWorkerProfile } from "@/lib/api/workers";
 
 type AvailShiftKey = "morning" | "afternoon" | "night";
+
+type SchedulePeriodRow = {
+  id: string;
+  start_date: string;
+  end_date: string;
+  status: string;
+};
+
+const WEEKDAY_KEYS = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+
+function shiftToWindow(k: AvailShiftKey): { start: number; end: number } {
+  if (k === "morning") return { start: 7 * 60, end: 15 * 60 };
+  if (k === "afternoon") return { start: 15 * 60, end: 23 * 60 };
+  return { start: 0, end: 7 * 60 };
+}
+
+function buildAvailabilityWindows(payload: Record<string, AvailShiftKey[]>): Record<string, Array<{ start: number; end: number }>> {
+  const out: Record<string, Array<{ start: number; end: number }>> = {};
+  for (const [dateStr, shifts] of Object.entries(payload)) {
+    const wd = new Date(`${dateStr}T12:00:00`).getDay();
+    const key = WEEKDAY_KEYS[wd];
+    if (!out[key]) out[key] = [];
+    for (const s of shifts) {
+      out[key]!.push(shiftToWindow(s));
+    }
+  }
+  return out;
+}
+
 const AVAIL_SHIFT_LABELS: Record<AvailShiftKey, string> = {
   morning: "Morning",
   afternoon: "Afternoon",
@@ -54,11 +84,21 @@ export default function ScheduleScreen() {
   const [timeOffEnd, setTimeOffEnd] = useState("");
   const [timeOffReason, setTimeOffReason] = useState("");
 
+  const [schedulePeriods, setSchedulePeriods] = useState<SchedulePeriodRow[]>([]);
+  const [acknowledged, setAcknowledged] = useState(false);
+  const [ackBusy, setAckBusy] = useState(false);
+
   const zoneNameById = useMemo(() => {
     const m = new Map<string, string>();
     for (const z of zones) m.set(String(z.id), String(z.name));
     return m;
   }, [zones]);
+
+  const availabilityPeriod = useMemo(
+    () => schedulePeriods.find((p) => p.status === "draft" || p.status === "collecting_availability"),
+    [schedulePeriods],
+  );
+  const publishedPeriodForAck = useMemo(() => schedulePeriods.find((p) => p.status === "published"), [schedulePeriods]);
 
   const myUserId = session?.user.id ?? "";
 
@@ -71,6 +111,14 @@ export default function ScheduleScreen() {
       from.setDate(now.getDate() - 7);
       const to = new Date(now);
       to.setDate(now.getDate() + 21);
+      let periods: SchedulePeriodRow[] = [];
+      try {
+        periods = await apiFetch<SchedulePeriodRow[]>("/api/v1/pulse/schedule/periods", { token });
+      } catch {
+        periods = [];
+      }
+      setSchedulePeriods(periods);
+
       const [s, z] = await Promise.all([
         listShifts(token, { from: from.toISOString(), to: to.toISOString() }),
         listZones(token),
@@ -188,6 +236,53 @@ export default function ScheduleScreen() {
 
         {tab === "schedule" ? (
           <View style={{ marginTop: spacing.lg }}>
+            {!acknowledged && publishedPeriodForAck && myShifts.length > 0 ? (
+              <Pressable
+                disabled={ackBusy}
+                onPress={async () => {
+                  if (!session || !publishedPeriodForAck) return;
+                  setAckBusy(true);
+                  try {
+                    await apiFetch("/api/v1/pulse/schedule/acknowledge", {
+                      method: "POST",
+                      token: session.token,
+                      body: { period_id: publishedPeriodForAck.id },
+                    });
+                    setAcknowledged(true);
+                  } catch {
+                    /* non-fatal */
+                  } finally {
+                    setAckBusy(false);
+                  }
+                }}
+                style={{
+                  backgroundColor: "rgba(54,241,205,0.10)",
+                  borderColor: "rgba(54,241,205,0.35)",
+                  borderWidth: 1,
+                  borderRadius: radii.lg,
+                  padding: spacing.lg,
+                  marginBottom: spacing.md,
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 10,
+                }}
+              >
+                <Text style={{ fontSize: 18 }}>{ackBusy ? "⏳" : "📋"}</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: colors.text, fontWeight: "900" }}>
+                    {ackBusy ? "Acknowledging…" : "Acknowledge schedule"}
+                  </Text>
+                  <Text style={{ color: colors.muted, fontSize: 12, marginTop: 2 }}>
+                    Tap to confirm you have seen your shifts for this period.
+                  </Text>
+                </View>
+              </Pressable>
+            ) : null}
+            {acknowledged ? (
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: spacing.md }}>
+                <Text style={{ color: colors.success, fontWeight: "900" }}>✓ Schedule acknowledged</Text>
+              </View>
+            ) : null}
             <Text style={{ color: colors.muted, fontSize: 12, fontWeight: "900", letterSpacing: 0.6 }}>
               YOUR SHIFTS
             </Text>
@@ -457,12 +552,21 @@ export default function ScheduleScreen() {
                       setBusy(true);
                       void (async () => {
                         try {
-                          await patchWorkerProfile(session.token, session.user.id, {
-                            availability: {
-                              version: 1,
-                              dates: payload,
-                            },
-                          });
+                          if (availabilityPeriod) {
+                            const windows = buildAvailabilityWindows(payload);
+                            await apiFetch("/api/v1/pulse/schedule/availability", {
+                              method: "POST",
+                              token: session.token,
+                              body: { period_id: availabilityPeriod.id, windows, exceptions: [] },
+                            });
+                          } else {
+                            await patchWorkerProfile(session.token, session.user.id, {
+                              availability: {
+                                version: 1,
+                                dates: payload,
+                              },
+                            });
+                          }
                           Alert.alert("Availability", "Saved");
                         } catch (e) {
                           Alert.alert("Availability", e instanceof Error ? e.message : "Save failed");
