@@ -1,7 +1,7 @@
 ---
 
 ## UPDATE current_state.md
-ACTION: After all tasks complete, update architecture/current_state.md
+ACTION: After all tasks complete, update handoff/current_state.md
 
 Rules:
 - Max 5 bullets per section
@@ -22,5 +22,5 @@ FIND the relevant sections and update them:
 
 "Hardcoded Logic Fixes Status" → update any fixes applied
 
-git add architecture/current_state.md
+git add handoff/current_state.md
 git commit -m "chore: update current_state.md after [feature name]"
