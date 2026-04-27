@@ -6,7 +6,7 @@
 ---
 
 ## Last Updated
-2026-04-27 — mobile M3: unified Documents tab (procedures, drawings, logs)
+2026-04-27 — mobile M4–M6: unified search, profile/gamification, push token + WS→local notify, period availability + schedule acknowledgement
 
 ---
 
@@ -23,24 +23,23 @@
 
 ### Backend
 - Telemetry positions + inference confirm/dismiss endpoints are live (`/api/v1/telemetry/*`)
-- Maintenance inference cleanup job is live (TTL cleanup endpoint)
-- PM tasks: tenant-safe (`company_id`) and support both fixed assets + BLE tools
-- Schedule: double-booking protected (DB constraint) + shift work queue endpoint for assignments
-- Security hardening: per-gateway ingest rate limit + demo-reset routes restricted
+- PM tasks: tenant-safe (`company_id`) + BLE tools + facility equipment paths
+- Schedule: double-booking constraint + work queue endpoint + period availability + acknowledgement APIs
+- Security: per-gateway ingest rate limit + demo-reset routes restricted + maintenance inference TTL cleanup
+- Unified search: GET `/api/v1/search`; app notifications: push-token register + inbox stub on `/api/v1/notifications` (replace with DB for production)
 
 ### Frontend
 - Web `/settings` + `/live-map` are DS-aligned and stable
 - Blueprint designer polish shipped (tools/templates/indicators/read-only UX)
 - Schedule phases 4+5 shipped (My Shifts, project overlay toggle, assignment work queue, publish button)
 - Preventative rules UI is read-only (deprecated; use PM tasks)
-- Mobile M2+M3 shipped: inference confirm screen + WS banner + tasks rebuild + unified Documents tab
+- Mobile M1–M6 shipped: tab nav + home + documents + search + profile/XP + push token + WS→local notifications + period availability + schedule acknowledgement
 
 ### Known Issues / TODOs
 - Blueprint designer remaining phases still pending: lock/unlock-all, fine grid toggle, default shape behavior tweaks
-- PM auto-generated work order priority still hardcoded (needs config)
-- Settings remaining tabs (Compliance, Notifications, Gamification, Zones): placeholder content only
-- Procedure steps schema is now validated on write; legacy malformed steps are ignored on read
-- Schedule time-off persistence still local-only (no DB table yet)
+- PM auto-generated work order priority still hardcoded; settings tabs (Compliance, Notifications, Gamification, Zones) mostly placeholders
+- Schedule time-off persistence still local-only (no DB table yet); procedure steps validated on write but legacy malformed rows ignored on read
+- Mobile push requires real device/dev build (not Expo Go); notifications inbox + push-token backing store are in-memory until DB tables land
 - Telemetry ingest rate limit is best-effort in-process; consider Redis/edge enforcement for multi-instance deployments
 
 ---
@@ -56,7 +55,7 @@
 - Phase 6: swap requests (deferred to Expo session)
 
 ### Mobile
-- M4–M6 still pending (remaining mobile phases)
+- M1–M6 integration complete (see Frontend bullet)
 
 ---
 
