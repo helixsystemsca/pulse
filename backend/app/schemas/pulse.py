@@ -3,7 +3,7 @@
 from datetime import datetime
 from typing import Any, Optional, Union
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import AliasChoices, BaseModel, Field, field_validator
 
 from app.models.pulse_models import PulseWorkOrderType, PulseWorkRequestPriority, PulseWorkRequestStatus
 from app.modules.work_requests.helpers import priority_from_legacy_int
@@ -162,7 +162,11 @@ class ShiftCreate(BaseModel):
     assigned_user_id: str
     starts_at: datetime
     ends_at: datetime
-    zone_id: Optional[str] = None
+    facility_id: Optional[str] = Field(
+        default=None,
+        validation_alias=AliasChoices("facility_id", "zone_id"),
+        serialization_alias="facility_id",
+    )
     shift_type: str = "shift"
     requires_supervisor: bool = False
     requires_ticketed: bool = False
@@ -172,7 +176,11 @@ class ShiftUpdate(BaseModel):
     assigned_user_id: Optional[str] = None
     starts_at: Optional[datetime] = None
     ends_at: Optional[datetime] = None
-    zone_id: Optional[str] = None
+    facility_id: Optional[str] = Field(
+        default=None,
+        validation_alias=AliasChoices("facility_id", "zone_id"),
+        serialization_alias="facility_id",
+    )
     shift_type: Optional[str] = None
     requires_supervisor: Optional[bool] = None
     requires_ticketed: Optional[bool] = None
@@ -182,7 +190,7 @@ class ShiftOut(BaseModel):
     id: str
     company_id: str
     assigned_user_id: str
-    zone_id: Optional[str]
+    facility_id: Optional[str]
     starts_at: datetime
     ends_at: datetime
     shift_type: str

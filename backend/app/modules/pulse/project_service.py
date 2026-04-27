@@ -110,7 +110,7 @@ async def ensure_calendar_shift_for_task(
             await db.flush()
             return
 
-    zone_id = await _get_any_zone_id(db, company_id)
+    facility_id = await _get_any_zone_id(db, company_id)
     errs, _warn = await pulse_svc.validate_shift_assignment(
         db,
         company_id,
@@ -127,7 +127,7 @@ async def ensure_calendar_shift_for_task(
     sh = PulseScheduleShift(
         company_id=company_id,
         assigned_user_id=str(task.assigned_user_id),
-        zone_id=zone_id,
+        facility_id=facility_id,
         starts_at=starts_at,
         ends_at=ends_at,
         shift_type=stype,

@@ -10,7 +10,9 @@ export type PulseShiftApi = {
   id: string;
   company_id: string;
   assigned_user_id: string;
-  zone_id: string | null;
+  facility_id?: string | null;
+  /** Back-compat: older API used zone_id for schedule facilities. */
+  zone_id?: string | null;
   starts_at: string;
   ends_at: string;
   shift_type: string;
@@ -118,7 +120,7 @@ export function pulseShiftToSchedule(row: PulseShiftApi, fallbackZoneId: string)
     shiftType: toShiftType(row.shift_type),
     eventType: "work",
     role: "worker",
-    zoneId: row.zone_id ?? fallbackZoneId,
+    zoneId: row.facility_id ?? row.zone_id ?? fallbackZoneId,
     shiftKind: sk,
     projectTaskId: row.project_task_id ?? undefined,
     projectId: row.project_id ?? undefined,

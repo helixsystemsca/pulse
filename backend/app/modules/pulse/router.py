@@ -119,7 +119,7 @@ def _shift_to_out(
         id=str(sh.id),
         company_id=str(sh.company_id),
         assigned_user_id=str(sh.assigned_user_id),
-        zone_id=str(sh.zone_id) if sh.zone_id else None,
+        facility_id=str(sh.facility_id) if getattr(sh, "facility_id", None) else None,
         starts_at=sh.starts_at,
         ends_at=sh.ends_at,
         shift_type=sh.shift_type,
@@ -624,8 +624,8 @@ async def create_shift(
     body: ShiftCreate,
     user: User = Depends(require_tenant_user),
 ) -> ShiftCreateResult:
-    if body.zone_id and not await _zone_in_company(db, cid, body.zone_id):
-        raise HTTPException(status_code=400, detail="Unknown zone")
+    if body.facility_id and not await _zone_in_company(db, cid, body.facility_id):
+        raise HTTPException(status_code=400, detail="Unknown schedule facility")
     errs, warnings = await pulse_svc.validate_shift_assignment(
         db,
         cid,
@@ -642,7 +642,7 @@ async def create_shift(
     sh = PulseScheduleShift(
         company_id=cid,
         assigned_user_id=body.assigned_user_id,
-        zone_id=body.zone_id,
+        facility_id=body.facility_id,
         starts_at=body.starts_at,
         ends_at=body.ends_at,
         shift_type=body.shift_type,
@@ -682,8 +682,8 @@ async def patch_shift(db: Db, cid: CompanyId, shift_id: str, body: ShiftUpdate) 
     new_end = data.get("ends_at", sh.ends_at)
     req_sup = data.get("requires_supervisor", sh.requires_supervisor)
     req_tick = data.get("requires_ticketed", sh.requires_ticketed)
-    if "zone_id" in data and data["zone_id"] and not await _zone_in_company(db, cid, data["zone_id"]):
-        raise HTTPException(status_code=400, detail="Unknown zone")
+    if "facility_id" in data and data["facility_id"] and not await _zone_in_company(db, cid, data["facility_id"]):
+        raise HTTPException(status_code=400, detail="Unknown schedule facility")
 
     errs, warnings = await pulse_svc.validate_shift_assignment(
         db,

@@ -1,6 +1,6 @@
 """
 Schedule "facilities" for workforce planning, stored as `zones` rows with
-`meta.schedule_facility` + `meta.slot_index` so shift `zone_id` still satisfies
+`meta.schedule_facility` + `meta.slot_index` so shift `facility_id` still satisfies
 the existing FK. Equipment and drawings continue to use other zone rows
 (without this marker).
 """
@@ -104,8 +104,8 @@ async def sync_schedule_facility_zones(
         target = first_id
         await db.execute(
             update(PulseScheduleShift)
-            .where(PulseScheduleShift.zone_id == rid)
-            .values(zone_id=target)
+            .where(PulseScheduleShift.facility_id == rid)
+            .values(facility_id=target)
         )
         await db.delete(z)
 
