@@ -448,11 +448,16 @@ await event_engine.publish(DomainEvent(
 These rules apply to Claude, Cursor, and any AI tool working in this codebase.
 
 ### MUST follow:
-- Follow this file (`architecture/contracts.md`) over any assumption or training pattern
+- Follow this file (`handoff/contracts.md`) over any assumption or training pattern
 - Reuse existing patterns — do NOT invent new ones
 - Check if a utility/service/component exists before creating a new one
 - Write `# TODO: {reason}` instead of guessing at implementation details
 - Keep changes within the declared scope — no opportunistic refactoring
+- All user actions that affect system state must emit an event.
+- Events are the single source of truth for:
+ - logging
+ - gamification
+ - analytics
 
 ### MUST NOT do:
 - Modify `deps.py`, `base.py`, any existing migration, or `app/core/auth/`
