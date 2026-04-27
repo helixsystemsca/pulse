@@ -6,7 +6,7 @@
 ---
 
 ## Last Updated
-2026-04-26 — initial state captured from session history
+2026-04-26 — scheduling hardening, PM unification, blueprint polish, and telemetry cleanup
 
 ---
 
@@ -15,46 +15,37 @@
 - Claude branch merged into main
 - All telemetry pipeline work (A/B/C/D) is live
 - Config system (pulse_config table) is live
-- Blueprint designer polish integration.md pending Cursor execution
+- Cursor hardening passes merged to main (PM + schedule + blueprint + UI)
 
 ---
 
 ## What's Live (main)
 
 ### Backend
-- Telemetry ingest endpoint: POST /api/v1/telemetry/ingest
-- Beacon positions endpoint: GET /api/v1/telemetry/positions
-- Inference confirm/dismiss: POST /api/v1/telemetry/inferences/{id}/confirm|dismiss
-- PM inference engine: maintenance_logic.py fully implemented
-- Config system: pulse_config table + ConfigService + GET|PATCH /api/v1/config/{module}
-- Demo routes: POST /api/v1/demo/start|reset|confirm|dismiss + GET /api/v1/demo/state
-- Unknown device discovery: GET|DELETE /api/v1/ble-devices/unknown
-- Migrations live: 0068 (beacon_positions), 0069 (gateway x_norm/y_norm), 0070 (pulse_config)
+- Telemetry positions: GET `/api/v1/telemetry/positions` + inference confirm/dismiss endpoints
+- Maintenance inference TTL cleanup: POST `/api/v1/internal/maintenance-inferences/cleanup` (90d delete for dismissed/auto_logged/expired)
+- PM tasks now support fixed assets **and** BLE tools (pm_tasks.equipment_id OR pm_tasks.tool_id)
+- Pulse schedule shifts are protected from double-booking (DB exclusion constraint)
+- Preventative rules deprecated + migrated into PM tasks (pulse_preventative_rules → pm_tasks)
 
 ### Frontend
-- /settings page: 8-tab config UI, design system aligned
-- /live-map page: Live Hardware tab (LiveFacilityMap) + Demo Scenario tab (DemoLiveMap)
-- /demo redirects to /live-map
-- UnknownDevicesPanel wired into SetupApp devices tab
-- Settings + Live Map nav items added to sidebar
-- Architecture contracts file: handoff/contracts.md
+- `/settings`: design system aligned + auth guard + Suspense boundary
+- `/live-map`: DS header/tabs + LiveHardware (LiveFacilityMap) + DemoScenario (DemoLiveMap)
+- Blueprint designer polish shipped: tool labels, expanded symbols, templates, task indicators, read-only instructions
+- Preventative rules UI is now read-only with deprecation notice (use PM tasks instead)
+- Architecture contracts live at `architecture/contracts.md`
 
 ### Known Issues / TODOs
-- UnifiedFacilityMap.tsx: created by Cursor but has unresolved import path issues — live-map uses LiveFacilityMap + DemoLiveMap separately instead
-- Demo scenario: DomainEvent id= bug fixed — scenario now runs full 120s
-- Blueprint designer polish (phases 1-8): integration.md written, NOT YET executed by Cursor
+- Blueprint designer remaining phases still pending: lock/unlock-all, fine grid toggle, default shape behavior tweaks
+- PM auto-generated work order priority still hardcoded (needs config)
 - Settings remaining tabs (Compliance, Notifications, Gamification, Zones): placeholder content only
+- Procedure steps schema is now validated on write; legacy malformed steps are ignored on read
 
 ---
 
 ## Pending (integration.md written, not executed)
 
 ### Blueprint Designer Polish
-- Phase 1: Tool rail labels
-- Phase 2: Expanded symbol library (35+ symbols, 7 categories)
-- Phase 3: Task count indicator on canvas elements
-- Phase 4: Starter templates (pool, rink, maintenance, garden)
-- Phase 5: Read-only instruction panel
 - Phase 6: Lock fix + Unlock All button
 - Phase 7: Fine grid toggle (8px)
 - Phase 8: All shapes → rooms by default, remove draw-room tool
