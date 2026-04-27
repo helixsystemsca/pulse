@@ -6,7 +6,7 @@
 ---
 
 ## Last Updated
-2026-04-26 — scheduling hardening, PM unification, blueprint polish, and telemetry cleanup
+2026-04-26 — perf + security hardening (pm_tasks scoping/indexes), telemetry ingest rate-limit, demo lockdown, schedule facility_id rename
 
 ---
 
@@ -25,7 +25,10 @@
 - Telemetry positions: GET `/api/v1/telemetry/positions` + inference confirm/dismiss endpoints
 - Maintenance inference TTL cleanup: POST `/api/v1/internal/maintenance-inferences/cleanup` (90d delete for dismissed/auto_logged/expired)
 - PM tasks now support fixed assets **and** BLE tools (pm_tasks.equipment_id OR pm_tasks.tool_id)
+- PM tasks now include `company_id` (no join required for tenant scoping + due queries)
+- Telemetry ingest is rate-limited per gateway (readings/sec) to mitigate leaked secrets
 - Pulse schedule shifts are protected from double-booking (DB exclusion constraint)
+- Demo routes that reset global singleton state are restricted to the demo tenant (or system admin)
 - Preventative rules deprecated + migrated into PM tasks (pulse_preventative_rules → pm_tasks)
 
 ### Frontend
@@ -40,6 +43,7 @@
 - PM auto-generated work order priority still hardcoded (needs config)
 - Settings remaining tabs (Compliance, Notifications, Gamification, Zones): placeholder content only
 - Procedure steps schema is now validated on write; legacy malformed steps are ignored on read
+- Telemetry ingest rate limit is best-effort in-process; consider Redis/edge enforcement for multi-instance deployments
 
 ---
 
