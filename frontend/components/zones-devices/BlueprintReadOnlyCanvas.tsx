@@ -8,7 +8,7 @@
 import type Konva from "konva";
 import { useCallback, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Circle, Ellipse, Group, Layer, Line, Rect, Stage, Text } from "react-konva";
-import type { BlueprintElement, BlueprintLayer } from "./blueprint-types";
+import { isRoom, type BlueprintElement, type BlueprintLayer } from "./blueprint-types";
 import {
   bboxFromPathPoints,
   blueprintPaintZIndices,
@@ -343,7 +343,7 @@ export function BlueprintReadOnlyCanvas({
         <Layer listening={false} sortChildren>
           {gridLines}
           {laidOut
-            .filter((el) => el.type === "zone")
+            .filter((el) => isRoom(el))
             .map((el) => {
               const polyPts = zonePolygonFlat(el);
               const sw = swBase;
@@ -368,7 +368,7 @@ export function BlueprintReadOnlyCanvas({
                       onTap={() => onSelectElementId?.(el.id)}
                     />
                     <Text
-                      text={(el.name ?? "ROOM").toUpperCase()}
+                      text={(el.metadata?.name ?? el.name ?? "ROOM").toUpperCase()}
                       x={bb.minX}
                       y={bb.minY}
                       width={bb.w}

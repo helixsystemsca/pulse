@@ -23,7 +23,6 @@ type RailItem =
 
 const RAIL_ITEMS: RailItem[] = [
   { kind: "tool", tool: "select", label: "Select", Icon: MousePointer2 },
-  { kind: "tool", tool: "draw-room", label: "Draw room", Icon: LayoutGrid },
   { kind: "tool", tool: "draw-rectangle", label: "Rectangle", Icon: Square },
   { kind: "tool", tool: "draw-ellipse", label: "Circle / ellipse", Icon: CircleIcon },
   { kind: "tool", tool: "draw-polygon", label: "Polygon", Icon: Pentagon },

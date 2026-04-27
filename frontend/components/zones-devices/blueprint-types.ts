@@ -20,6 +20,10 @@ export type BlueprintElement = {
   /** Axis-aligned rectangle only; clamped to half the shorter side of width×height. */
   cornerRadius?: number;
   name?: string;
+  metadata?: {
+    isRoom?: boolean;
+    name?: string;
+  };
   rotation?: number;
   locked?: boolean;
   /** Child element ids when `type === "group"` (order preserved). */
@@ -41,6 +45,10 @@ export type BlueprintElement = {
   /** Which {@link BlueprintLayer} this element paints in (omit = bottom layer when layers exist). */
   layer_id?: string;
 };
+
+export function isRoom(el: BlueprintElement): boolean {
+  return el.type === "zone" || el.metadata?.isRoom === true;
+}
 
 /** Instruction overlay linked to canvas elements (maintenance / SOP-style). */
 export type TaskOverlay = {

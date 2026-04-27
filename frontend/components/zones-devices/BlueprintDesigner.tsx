@@ -56,6 +56,7 @@ export type {
   ConnectionStyle,
   TaskOverlay,
 } from "./blueprint-types";
+import { isRoom } from "./blueprint-types";
 import { BlueprintSymbolPanel } from "./BlueprintSymbolPanel";
 import { BlueprintLayersPanel } from "./BlueprintLayersPanel";
 import { BlueprintTasksPanel } from "./BlueprintTasksPanel";
@@ -440,7 +441,7 @@ function nearestWallHit(
 ): WallAttach | null {
   let best: { att: WallAttach; d: number } | null = null;
   for (const z of elements) {
-    if (z.type !== "zone") continue;
+    if (!isRoom(z)) continue;
     const poly = zonePolygonFlat(z);
     if (poly) {
       const n = poly.length / 2;
@@ -582,7 +583,7 @@ function doorAlongUpperBound(zone: BlueprintElement, att: WallAttach): number {
 function doorElementFromAttachment(door: BlueprintElement, elements: BlueprintElement[]): BlueprintElement | null {
   const p = parseWallAttach(door.wall_attachment);
   if (!p) return null;
-  const zone = elements.find((z) => z.id === p.zoneId && z.type === "zone");
+  const zone = elements.find((z) => z.id === p.zoneId && isRoom(z));
   if (!zone) return null;
   let along = door.width ?? DOOR_ALONG_DEFAULT;
   const maxAlong = doorAlongUpperBound(zone, p);
@@ -801,7 +802,7 @@ function elementWorldAabb(el: BlueprintElement): { L: number; R: number; T: numb
     const wy = corners.map(([lx, ly]) => el.y + lx * s + ly * c);
     return { L: Math.min(...wx), R: Math.max(...wx), T: Math.min(...wy), B: Math.max(...wy) };
   }
-  if (el.type === "zone") return zoneAabb(el);
+  if (isRoom(el)) return zoneAabb(el);
   if (el.type === "group") {
     const w = el.width ?? 1;
     const h = el.height ?? 1;
@@ -861,7 +862,7 @@ function unionSelectionAabb(ids: Set<string>, all: BlueprintElement[]): { L: num
 }
 
 function mapApiElement(e: ApiElement): BlueprintElement {
-  return {
+  const base: BlueprintElement = {
     id: e.id,
     type: e.type,
     x: e.x,
@@ -892,6 +893,13 @@ function mapApiElement(e: ApiElement): BlueprintElement {
         : undefined,
     layer_id: e.layer_id?.trim() || undefined,
   };
+  if (base.type === "zone") {
+    return {
+      ...base,
+      metadata: { ...(base.metadata ?? {}), isRoom: true, name: base.metadata?.name ?? base.name },
+    };
+  }
+  return base;
 }
 
 function toApiPayload(elements: BlueprintElement[], layers: BlueprintLayer[]) {
@@ -935,7 +943,7 @@ function cloneBlueprintElementForShiftDup(el: BlueprintElement, dx: number, dy: 
     path_points: el.path_points ? [...el.path_points] : undefined,
     symbol_tags: el.symbol_tags ? [...el.symbol_tags] : undefined,
   };
-  if ((el.type === "zone" || el.type === "path" || el.type === "polygon") && el.path_points && el.path_points.length >= 6) {
+  if ((isRoom(el) || el.type === "path" || el.type === "polygon") && el.path_points && el.path_points.length >= 6) {
     const flat = el.path_points.map((v, i) => (i % 2 === 0 ? v + dx : v + dy));
     const bb = bboxFromPathPoints(flat);
     return { ...base, path_points: flat, x: bb.minX, y: bb.minY, width: bb.w, height: bb.h };
@@ -949,7 +957,7 @@ function cloneBlueprintElementForShiftDup(el: BlueprintElement, dx: number, dy: 
 }
 
 function nextRoomLabel(elements: BlueprintElement[]): string {
-  const zones = elements.filter((z) => z.type === "zone");
+  const zones = elements.filter((z) => isRoom(z));
   const n = zones.length + 1;
   return `Room ${n}`;
 }
@@ -1783,7 +1791,7 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
   const zonesInSelection = useMemo(() => {
     return selectedIds
       .map((id) => elements.find((e) => e.id === id))
-      .filter((e): e is BlueprintElement => Boolean(e && e.type === "zone"));
+      .filter((e): e is BlueprintElement => Boolean(e && isRoom(e)));
   }, [selectedIds, elements]);
 
   const canMergeZones = zonesInSelection.length >= 2;
@@ -2162,7 +2170,7 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
             const bb = bboxFromPathPoints(flat);
             return { ...el, path_points: flat, x: bb.minX, y: bb.minY, width: bb.w, height: bb.h };
           }
-          if (el.type === "zone" && el.path_points && el.path_points.length >= 6) {
+          if (isRoom(el) && el.path_points && el.path_points.length >= 6) {
             const flat = el.path_points.map((v, i) => (i % 2 === 0 ? v + dx : v + dy));
             const bb = bboxFromPathPoints(flat);
             return { ...el, path_points: flat, x: bb.minX, y: bb.minY, width: bb.w, height: bb.h };
@@ -2171,7 +2179,7 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
         });
         let out = next;
         for (const el of next) {
-          if (idSet.has(el.id) && el.type === "zone") out = relayoutAttachedDoors(out, el.id);
+          if (idSet.has(el.id) && isRoom(el)) out = relayoutAttachedDoors(out, el.id);
         }
         return syncBlueprintGroupBounds(relayoutAllDoors(out));
       });
@@ -2528,20 +2536,24 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
     if (!o || !d || d.w < MIN_ZONE || d.h < MIN_ZONE) return;
     const id = crypto.randomUUID();
     if (mode === "zone") {
-      commitElements((prev) => [
-        ...prev,
-        {
-          id,
-          type: "zone",
-          x: d.x,
-          y: d.y,
-          width: d.w,
-          height: d.h,
-          name: nextRoomLabel(prev),
-          rotation: 0,
-          ...layerIdForNewGeometry(),
-        },
-      ]);
+      commitElements((prev) => {
+        const name = nextRoomLabel(prev);
+        return [
+          ...prev,
+          {
+            id,
+            type: "zone",
+            x: d.x,
+            y: d.y,
+            width: d.w,
+            height: d.h,
+            name,
+            metadata: { isRoom: true, name },
+            rotation: 0,
+            ...layerIdForNewGeometry(),
+          },
+        ];
+      });
     } else if (mode === "rectangle") {
       commitElements((prev) => [
         ...prev,
@@ -2693,7 +2705,7 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
     commitElements((prev) => {
       const hit = nearestWallHit(px, py, prev);
       if (!hit) return prev;
-      const zone = prev.find((z) => z.id === hit.zoneId && z.type === "zone");
+      const zone = prev.find((z) => z.id === hit.zoneId && isRoom(z));
       if (!zone) return prev;
       const id = crypto.randomUUID();
       const along = DOOR_ALONG_DEFAULT;
@@ -2896,7 +2908,7 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
       } else if (o.type === "polygon" && o.path_points && o.path_points.length >= 6) {
         starts.set(id, { x: 0, y: 0 });
         pathFlats.set(id, [...o.path_points]);
-      } else if (o.type === "zone" && zonePolygonFlat(o) && o.path_points) {
+      } else if (isRoom(o) && zonePolygonFlat(o) && o.path_points) {
         starts.set(id, { x: 0, y: 0 });
         pathFlats.set(id, [...o.path_points]);
       } else {
@@ -3022,7 +3034,7 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
     replaceElements((prev) => {
       let next = prev.map((row) => {
         if (!g.starts.has(row.id)) return row;
-        if ((row.type === "path" || row.type === "zone" || row.type === "polygon") && g.pathFlats.has(row.id)) {
+        if ((row.type === "path" || isRoom(row) || row.type === "polygon") && g.pathFlats.has(row.id)) {
           const flat = g.pathFlats.get(row.id)!;
           const nf = flat.map((v, i) => (i % 2 === 0 ? v + dx : v + dy));
           const bb = bboxFromPathPoints(nf);
@@ -3033,7 +3045,7 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
         return { ...row, x: s0.x + dx, y: s0.y + dy };
       });
       for (const z of prev) {
-        if (g.starts.has(z.id) && z.type === "zone") next = relayoutAttachedDoors(next, z.id);
+        if (g.starts.has(z.id) && isRoom(z)) next = relayoutAttachedDoors(next, z.id);
       }
       return syncBlueprintGroupBounds(next);
     });
@@ -3059,7 +3071,7 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
       let ndx = dx;
       let ndy = dy;
       let guides: SnapGuide[] = [];
-      if (prim?.type === "zone" && !zonePolygonFlat(prim)) {
+      if (prim && isRoom(prim) && !zonePolygonFlat(prim)) {
         const st0 = s.cloneStarts.get(s.primaryNew);
         if (st0 && st0.pathFlat === undefined) {
           const draft = { ...prim, x: st0.x + dx, y: st0.y + dy };
@@ -3085,7 +3097,7 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
             (row.type === "path" ||
               row.type === "connection" ||
               row.type === "polygon" ||
-              (row.type === "zone" && row.path_points && row.path_points.length >= 6))
+              (isRoom(row) && row.path_points && row.path_points.length >= 6))
           ) {
             const flat = st.pathFlat.map((v, i) => (i % 2 === 0 ? v + ndx : v + ndy));
             const bb = bboxFromPathPoints(flat);
@@ -3120,7 +3132,7 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
       if (!isGroupDup) {
         const polyPick = ids.filter((id) => {
           const row = cur.find((x) => x.id === id);
-          return row?.type === "zone" && Boolean(zonePolygonFlat(row));
+          return Boolean(row && isRoom(row) && zonePolygonFlat(row));
         });
         if (polyPick.length > 1) return false;
       }
@@ -3186,7 +3198,7 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
       const cloneStarts = new Map<string, { x: number; y: number; pathFlat?: number[] }>();
       for (const c of clones) {
         if (c.type === "group") continue;
-        if ((c.type === "path" || c.type === "zone" || c.type === "polygon") && c.path_points && c.path_points.length >= 6) {
+        if ((c.type === "path" || isRoom(c) || c.type === "polygon") && c.path_points && c.path_points.length >= 6) {
           cloneStarts.set(c.id, { x: 0, y: 0, pathFlat: [...c.path_points] });
         } else if (c.type === "connection" && c.path_points && c.path_points.length >= 4) {
           cloneStarts.set(c.id, { x: 0, y: 0, pathFlat: [...c.path_points] });
@@ -3237,7 +3249,7 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
           if (!d || d.type !== "door") return prev;
           let newAlong = Math.max(MIN_DOOR_ALONG, r.width() * scaleX);
           const p = parseWallAttach(d.wall_attachment);
-          const zone = p ? prev.find((z) => z.id === p.zoneId && z.type === "zone") : null;
+          const zone = p ? prev.find((z) => z.id === p.zoneId && isRoom(z)) : null;
           if (p && zone) newAlong = Math.min(newAlong, doorAlongUpperBound(zone, p), MAX_DOOR_ALONG);
           return relayoutAllDoors(prev.map((e) => (e.id === id ? { ...e, width: newAlong } : e)));
         });
@@ -3277,7 +3289,7 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
         return base;
       });
       const updated = next.find((e) => e.id === id);
-      if (updated?.type === "zone") next = relayoutAttachedDoors(next, id);
+      if (updated && isRoom(updated)) next = relayoutAttachedDoors(next, id);
       return next;
     });
     transformUndoPrimedRef.current = false;
@@ -3314,7 +3326,7 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
       return;
     }
     if (sel?.type === "door") n = doorInnerRefMap.current.get(selectedSingleId!) ?? null;
-    else if (sel?.type === "zone" && !zonePolygonFlat(sel)) n = selectedNodeRef.current;
+    else if (sel && isRoom(sel) && !zonePolygonFlat(sel)) n = selectedNodeRef.current;
     else if (sel?.type === "device" || sel?.type === "symbol" || sel?.type === "rectangle" || sel?.type === "ellipse")
       n = selectedNodeRef.current;
     if (n && selectedSingleId && tool === "select") {
@@ -3426,6 +3438,20 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
     commitElements((prev) => prev.map((el) => (el.id === selectedSingleId ? { ...el, ...patch } : el)));
   };
 
+  const updateSelectedMetadata = (patch: NonNullable<BlueprintElement["metadata"]>) => {
+    if (!selectedSingleId) return;
+    commitElements((prev) =>
+      prev.map((el) =>
+        el.id === selectedSingleId
+          ? {
+              ...el,
+              metadata: { ...(el.metadata ?? {}), ...patch },
+            }
+          : el,
+      ),
+    );
+  };
+
   const refineFreehandStroke = useCallback(
     (sliderVal: number) => {
       const v = Math.max(0, Math.min(100, sliderVal));
@@ -3493,7 +3519,7 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
             : x,
         );
       }
-      if (row.type === "zone" && row.path_points && row.path_points.length >= 6) {
+      if (isRoom(row) && row.path_points && row.path_points.length >= 6) {
         const flat = [...row.path_points];
         const { cx, cy } = polygonCentroidFlat(flat);
         const rotated = rotatePathFlat90Cw(flat, cx, cy);
@@ -3509,7 +3535,7 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
       const r = (row.rotation ?? 0) + 90;
       const norm = ((r % 360) + 360) % 360;
       let next = prev.map((x) => (x.id === selectedSingleId ? { ...x, rotation: norm } : x));
-      if (row.type === "zone") next = relayoutAttachedDoors(next, selectedSingleId);
+      if (isRoom(row)) next = relayoutAttachedDoors(next, selectedSingleId);
       return relayoutAllDoors(next);
     });
     transformUndoPrimedRef.current = false;
@@ -4024,7 +4050,7 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
                 }}
               />
               {elements
-                .filter((el) => el.type === "zone")
+                .filter((el) => isRoom(el))
                 .map((el) => {
                   const polyPts = zonePolygonFlat(el);
                   const sel = selectedIds.includes(el.id);
@@ -4139,7 +4165,7 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
                           }}
                         />
                         <Text
-                          text={(el.name ?? "ROOM").toUpperCase()}
+                          text={(el.metadata?.name ?? el.name ?? "ROOM").toUpperCase()}
                           x={bb.minX}
                           y={bb.minY}
                           width={bb.w}
@@ -4240,13 +4266,7 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
                       </Group>
                       <Rect
                         ref={(node) => {
-                          if (
-                            el.id === selectedSingleId &&
-                            tool === "select" &&
-                            canEdit &&
-                            selected?.type === "zone" &&
-                            !zonePolygonFlat(el)
-                          ) {
+                          if (el.id === selectedSingleId && tool === "select" && canEdit && selected && isRoom(selected) && !zonePolygonFlat(el)) {
                             selectedNodeRef.current = node;
                           }
                         }}
@@ -4356,7 +4376,7 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
                         }}
                       />
                       <Text
-                        text={(el.name ?? "ROOM").toUpperCase()}
+                        text={(el.metadata?.name ?? el.name ?? "ROOM").toUpperCase()}
                         x={el.x}
                         y={el.y}
                         width={w}
@@ -4401,7 +4421,7 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
                   );
                 })}
               {elements
-                .filter((el) => el.type === "rectangle")
+                .filter((el) => el.type === "rectangle" && !isRoom(el))
                 .map((el) => {
                   const w = el.width ?? MIN_ZONE;
                   const h = el.height ?? MIN_ZONE;
@@ -4481,7 +4501,7 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
                   );
                 })}
               {elements
-                .filter((el) => el.type === "ellipse")
+                .filter((el) => el.type === "ellipse" && !isRoom(el))
                 .map((el) => {
                   const w = el.width ?? MIN_ZONE;
                   const h = el.height ?? MIN_ZONE;
@@ -4564,7 +4584,7 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
                   );
                 })}
               {elements
-                .filter((el) => el.type === "polygon" && (el.path_points?.length ?? 0) >= 6)
+                .filter((el) => el.type === "polygon" && !isRoom(el) && (el.path_points?.length ?? 0) >= 6)
                 .map((el) => {
                   const pts = el.path_points ?? [];
                   const sel = selectedIds.includes(el.id);
@@ -5583,7 +5603,7 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
                   const sel = elements.find((u) => u.id === sid);
                   if (sel?.type === "door") {
                     const p = parseWallAttach(sel.wall_attachment);
-                    const z = p ? elements.find((u) => u.id === p.zoneId && u.type === "zone") : null;
+                    const z = p ? elements.find((u) => u.id === p.zoneId && isRoom(u)) : null;
                     const maxW = p && z ? Math.min(MAX_DOOR_ALONG, doorAlongUpperBound(z, p)) : MAX_DOOR_ALONG;
                     const w = Math.max(MIN_DOOR_ALONG, Math.min(maxW, newBox.width));
                     return {
@@ -5596,7 +5616,7 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
                     };
                   }
                   if (newBox.width < MIN_ZONE || newBox.height < MIN_ZONE) return oldBox;
-                  if (!sel || sel.type !== "zone") return newBox;
+                  if (!sel || !isRoom(sel)) return newBox;
                   const snapped = snapAxisAlignedBox(
                     {
                       x: newBox.x,
@@ -5796,11 +5816,28 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
                       <span>Name</span>
                       <input
                         type="text"
-                        value={selected.name ?? ""}
-                        onChange={(e) => updateSelectedField({ name: e.target.value })}
+                        value={(isRoom(selected) ? selected.metadata?.name : selected.name) ?? ""}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          if (isRoom(selected)) updateSelectedMetadata({ name: v });
+                          else updateSelectedField({ name: v });
+                        }}
                         aria-label="Name"
                       />
                     </label>
+                    {!isRoom(selected) &&
+                    (selected.type === "rectangle" || selected.type === "polygon" || selected.type === "path") ? (
+                      <button
+                        type="button"
+                        className="bp-btn"
+                        onClick={() => {
+                          const seed = (selected.name ?? "").trim() || "Room";
+                          updateSelectedMetadata({ isRoom: true, name: selected.metadata?.name ?? seed });
+                        }}
+                      >
+                        Convert to Room
+                      </button>
+                    ) : null}
                     {selected.type === "group" ? (
                       <>
                         <span className="bp-float-context__meta">
@@ -5845,7 +5882,7 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
                                 if (!d || d.type !== "door") return p;
                                 let px = Math.max(MIN_DOOR_ALONG, pxRaw);
                                 const att = parseWallAttach(d.wall_attachment);
-                                const z = att ? p.find((x) => x.id === att.zoneId && x.type === "zone") : null;
+                                const z = att ? p.find((x) => x.id === att.zoneId && isRoom(x)) : null;
                                 if (att && z) px = Math.min(px, doorAlongUpperBound(z, att), MAX_DOOR_ALONG);
                                 else px = Math.min(px, MAX_DOOR_ALONG);
                                 const next = p.map((x) => (x.id === selectedSingleId ? { ...x, width: px } : x));

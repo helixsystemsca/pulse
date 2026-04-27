@@ -3,7 +3,7 @@
  * Kept in sync with `BlueprintDesigner` floorplan semantics.
  */
 
-import type { BlueprintElement, BlueprintLayer } from "@/components/zones-devices/blueprint-types";
+import { isRoom, type BlueprintElement, type BlueprintLayer } from "@/components/zones-devices/blueprint-types";
 
 export type ApiBlueprintElement = {
   id: string;
@@ -54,7 +54,7 @@ export type WallAttach =
 type ZoneAabb = { L: number; R: number; T: number; B: number };
 
 export function zonePolygonFlat(el: BlueprintElement): number[] | null {
-  if (el.type !== "zone" || !el.path_points || el.path_points.length < 6) return null;
+  if (!isRoom(el) || !el.path_points || el.path_points.length < 6) return null;
   return el.path_points;
 }
 
@@ -256,7 +256,7 @@ export function serializeWallAttach(a: WallAttach): string {
 function doorElementFromAttachment(door: BlueprintElement, elements: BlueprintElement[]): BlueprintElement | null {
   const p = parseWallAttach(door.wall_attachment);
   if (!p) return null;
-  const zone = elements.find((z) => z.id === p.zoneId && z.type === "zone");
+  const zone = elements.find((z) => z.id === p.zoneId && isRoom(z));
   if (!zone) return null;
   let along = door.width ?? DOOR_ALONG_DEFAULT;
   const maxAlong = doorAlongUpperBound(zone, p);
@@ -357,7 +357,7 @@ export function elementWorldAabb(el: BlueprintElement): { L: number; R: number; 
     const wy = corners.map(([lx, ly]) => el.y + lx * s + ly * c);
     return { L: Math.min(...wx), R: Math.max(...wx), T: Math.min(...wy), B: Math.max(...wy) };
   }
-  if (el.type === "zone") return zoneAabb(el);
+  if (isRoom(el)) return zoneAabb(el);
   if (el.type === "group") {
     const w = el.width ?? 1;
     const h = el.height ?? 1;
@@ -539,7 +539,7 @@ function closestOnSegment(px: number, py: number, x1: number, y1: number, x2: nu
 export function nearestWallHit(px: number, py: number, elements: BlueprintElement[]): WallAttach | null {
   let best: { att: WallAttach; d: number } | null = null;
   for (const z of elements) {
-    if (z.type !== "zone") continue;
+    if (!isRoom(z)) continue;
     const poly = zonePolygonFlat(z);
     if (poly) {
       const n = poly.length / 2;
