@@ -6,7 +6,7 @@
 ---
 
 ## Last Updated
-2026-04-27 — mobile M4–M6: unified search, profile/gamification, push token + WS→local notify, period availability + schedule acknowledgement
+2026-04-27 — Schedule Phase 3: shift code chips, worker-panel cert filtering during shift drag, draft auto-populate + commit APIs, publish domain event
 
 ---
 
@@ -24,13 +24,14 @@
 ### Backend
 - Telemetry positions + inference confirm/dismiss endpoints are live (`/api/v1/telemetry/*`)
 - PM tasks: tenant-safe (`company_id`) + BLE tools + facility equipment paths
-- Schedule: double-booking constraint + work queue endpoint + period availability + acknowledgement APIs
+- Schedule: double-booking constraint + work queue endpoint + period availability + acknowledgement APIs + draft build/commit (`/pulse/schedule/draft`, `/draft/commit`) + publish event (`/pulse/schedule/publish`)
 - Security: per-gateway ingest rate limit + demo-reset routes restricted + maintenance inference TTL cleanup
 - Unified search: GET `/api/v1/search`; app notifications: push-token register + inbox stub on `/api/v1/notifications` (replace with DB for production)
 
 ### Frontend
 - Web `/settings` + `/live-map` are DS-aligned and stable
 - Blueprint designer polish shipped (tools/templates/indicators/read-only UX)
+- Schedule Phase 3 shipped (shift definition code on compact chips, cert filtering in worker roster during shift drag, Build Draft panel)
 - Schedule phases 4+5 shipped (My Shifts, project overlay toggle, assignment work queue, publish button)
 - Preventative rules UI is read-only (deprecated; use PM tasks)
 - Mobile M1–M6 shipped: tab nav + home + documents + search + profile/XP + push token + WS→local notifications + period availability + schedule acknowledgement
