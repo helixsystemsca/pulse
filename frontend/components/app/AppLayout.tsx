@@ -47,15 +47,17 @@ export function AppLayout({
         <ServerTimeSync />
         <ProximityPromptHost />
         <div data-pulse-app-shell className="flex min-h-screen min-w-0 flex-col">
-          {chrome ? <AppSideNav /> : null}
           {chrome ? <AppNavbar /> : null}
           {chrome ? <ImpersonationBanner /> : null}
-          <AppMain className={mainClassName} reserveRail={chrome}>
-            <MainContentWidth className={mainContentClassName}>
-              {pageShell ? <PageShell>{children}</PageShell> : children}
-            </MainContentWidth>
-            <OnboardingChrome />
-          </AppMain>
+          <div className="flex min-w-0 flex-1 items-start">
+            {chrome ? <AppSideNav /> : null}
+            <AppMain className={mainClassName} reserveRail={false}>
+              <MainContentWidth className={mainContentClassName}>
+                {pageShell ? <PageShell>{children}</PageShell> : children}
+              </MainContentWidth>
+              <OnboardingChrome />
+            </AppMain>
+          </div>
           {chrome ? <AppLayoutFooter /> : null}
         </div>
         </GamificationProvider>
