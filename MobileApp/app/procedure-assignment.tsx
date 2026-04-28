@@ -96,6 +96,25 @@ export default function ProcedureAssignmentScreen() {
   const steps = data?.procedure?.steps ?? [];
   const canComplete = Boolean(data && data.status !== "completed");
   const canEditSteps = Boolean(data && (data.kind === "revise" || data.kind === "create") && data.status !== "completed");
+  const isRunnerMode = Boolean(data && data.kind === "complete" && !canEditSteps);
+
+  const [runnerIndex, setRunnerIndex] = useState(0);
+  const [runnerDone, setRunnerDone] = useState<boolean[]>([]);
+
+  useEffect(() => {
+    if (!steps.length) {
+      setRunnerIndex(0);
+      setRunnerDone([]);
+      return;
+    }
+    setRunnerIndex(0);
+    setRunnerDone((prev) => (prev.length === steps.length ? prev : Array.from({ length: steps.length }, () => false)));
+  }, [data?.procedure?.id, data?.procedure?.updated_at, steps.length]);
+
+  const allStepsDone = useMemo(() => (steps.length ? runnerDone.length === steps.length && runnerDone.every(Boolean) : true), [
+    runnerDone,
+    steps.length,
+  ]);
 
   const statusLabel = useMemo(() => {
     if (!data) return "";
@@ -402,39 +421,145 @@ export default function ProcedureAssignmentScreen() {
               </View>
             ) : steps.length ? (
               <View style={{ marginTop: spacing.md }}>
-                {steps.map((s, idx) => (
-                  <View key={`${idx}-${s.text}`} style={{ marginBottom: spacing.md }}>
-                    <Text style={{ color: colors.muted, fontWeight: "900", fontSize: 12 }}>STEP {idx + 1}</Text>
-                    <Text style={{ color: colors.text, marginTop: 6, fontSize: 14, fontWeight: "700" }}>{s.text || "—"}</Text>
-                    {s.image_url ? (
-                      <View style={{ marginTop: 10 }}>
-                        <View
-                          style={{
-                            width: "100%",
-                            height: 160,
-                            borderRadius: radii.md,
-                            overflow: "hidden",
-                            borderWidth: 1,
-                            borderColor: colors.border,
-                            backgroundColor: colors.surface,
-                            alignItems: "center",
-                            justifyContent: "center",
-                          }}
-                        >
-                          {data?.procedure?.id && stepImageUris[`${data.procedure.id}:${idx}`] ? (
-                            <Image
-                              source={{ uri: stepImageUris[`${data.procedure.id}:${idx}`] }}
-                              style={{ width: "100%", height: "100%" }}
-                              resizeMode="cover"
-                            />
-                          ) : (
-                            <Text style={{ color: colors.muted, fontSize: 12, fontWeight: "800" }}>Loading photo…</Text>
-                          )}
+                {isRunnerMode ? (
+                  <View>
+                    <View
+                      style={{
+                        borderRadius: radii.lg,
+                        borderWidth: 1,
+                        borderColor: colors.border,
+                        backgroundColor: colors.card,
+                        padding: spacing.lg,
+                      }}
+                    >
+                      <Text style={{ color: colors.muted, fontWeight: "900", fontSize: 12, letterSpacing: 1 }}>
+                        STEP {runnerIndex + 1} OF {steps.length}
+                      </Text>
+                      <Text style={{ color: colors.text, marginTop: 10, fontSize: 18, fontWeight: "900" }}>
+                        {steps[runnerIndex]?.text?.trim() || "—"}
+                      </Text>
+
+                      {steps[runnerIndex]?.image_url ? (
+                        <View style={{ marginTop: spacing.md }}>
+                          <View
+                            style={{
+                              width: "100%",
+                              height: 200,
+                              borderRadius: radii.md,
+                              overflow: "hidden",
+                              borderWidth: 1,
+                              borderColor: colors.border,
+                              backgroundColor: colors.surface,
+                              alignItems: "center",
+                              justifyContent: "center",
+                            }}
+                          >
+                            {data?.procedure?.id && stepImageUris[`${data.procedure.id}:${runnerIndex}`] ? (
+                              <Image
+                                source={{ uri: stepImageUris[`${data.procedure.id}:${runnerIndex}`] }}
+                                style={{ width: "100%", height: "100%" }}
+                                resizeMode="cover"
+                              />
+                            ) : (
+                              <Text style={{ color: colors.muted, fontSize: 12, fontWeight: "800" }}>Loading photo…</Text>
+                            )}
+                          </View>
                         </View>
-                      </View>
-                    ) : null}
+                      ) : null}
+
+                      <Pressable
+                        onPress={() =>
+                          setRunnerDone((prev) => prev.map((v, i) => (i === runnerIndex ? !v : v)))
+                        }
+                        style={({ pressed }) => ({
+                          marginTop: spacing.md,
+                          borderRadius: radii.lg,
+                          paddingVertical: 12,
+                          alignItems: "center",
+                          backgroundColor: runnerDone[runnerIndex] ? "rgba(54,241,205,0.16)" : colors.surface,
+                          borderWidth: 1,
+                          borderColor: runnerDone[runnerIndex] ? "rgba(54,241,205,0.4)" : colors.border,
+                          opacity: pressed ? 0.92 : 1,
+                        })}
+                      >
+                        <Text style={{ color: runnerDone[runnerIndex] ? colors.success : colors.text, fontWeight: "900" }}>
+                          {runnerDone[runnerIndex] ? "✓ Done" : "Mark step done"}
+                        </Text>
+                      </Pressable>
+                    </View>
+
+                    <View style={{ flexDirection: "row", gap: 10, marginTop: spacing.md }}>
+                      <Pressable
+                        disabled={runnerIndex === 0}
+                        onPress={() => setRunnerIndex((i) => Math.max(0, i - 1))}
+                        style={{
+                          flex: 1,
+                          alignItems: "center",
+                          paddingVertical: 12,
+                          borderRadius: radii.lg,
+                          backgroundColor: colors.surface,
+                          borderWidth: 1,
+                          borderColor: colors.border,
+                          opacity: runnerIndex === 0 ? 0.5 : 1,
+                        }}
+                      >
+                        <Text style={{ color: colors.text, fontWeight: "900" }}>Prev</Text>
+                      </Pressable>
+                      <Pressable
+                        disabled={runnerIndex >= steps.length - 1}
+                        onPress={() => setRunnerIndex((i) => Math.min(steps.length - 1, i + 1))}
+                        style={{
+                          flex: 1,
+                          alignItems: "center",
+                          paddingVertical: 12,
+                          borderRadius: radii.lg,
+                          backgroundColor: colors.success,
+                          opacity: runnerIndex >= steps.length - 1 ? 0.6 : 1,
+                        }}
+                      >
+                        <Text style={{ color: "#0A0A0A", fontWeight: "900" }}>Next</Text>
+                      </Pressable>
+                    </View>
+
+                    <Text style={{ color: colors.muted, marginTop: 10, fontSize: 12, fontWeight: "700" }}>
+                      Progress: {runnerDone.filter(Boolean).length}/{steps.length} done
+                    </Text>
                   </View>
-                ))}
+                ) : (
+                  steps.map((s, idx) => (
+                    <View key={`${idx}-${s.text}`} style={{ marginBottom: spacing.md }}>
+                      <Text style={{ color: colors.muted, fontWeight: "900", fontSize: 12 }}>STEP {idx + 1}</Text>
+                      <Text style={{ color: colors.text, marginTop: 6, fontSize: 14, fontWeight: "700" }}>{s.text || "—"}</Text>
+                      {s.image_url ? (
+                        <View style={{ marginTop: 10 }}>
+                          <View
+                            style={{
+                              width: "100%",
+                              height: 160,
+                              borderRadius: radii.md,
+                              overflow: "hidden",
+                              borderWidth: 1,
+                              borderColor: colors.border,
+                              backgroundColor: colors.surface,
+                              alignItems: "center",
+                              justifyContent: "center",
+                            }}
+                          >
+                            {data?.procedure?.id && stepImageUris[`${data.procedure.id}:${idx}`] ? (
+                              <Image
+                                source={{ uri: stepImageUris[`${data.procedure.id}:${idx}`] }}
+                                style={{ width: "100%", height: "100%" }}
+                                resizeMode="cover"
+                              />
+                            ) : (
+                              <Text style={{ color: colors.muted, fontSize: 12, fontWeight: "800" }}>Loading photo…</Text>
+                            )}
+                          </View>
+                        </View>
+                      ) : null}
+                    </View>
+                  ))
+                )}
               </View>
             ) : (
               <Text style={{ color: colors.muted, marginTop: spacing.md }}>No steps yet.</Text>
@@ -501,20 +626,27 @@ export default function ProcedureAssignmentScreen() {
 
           <View style={{ marginTop: spacing.lg }}>
             <Pressable
-              disabled={!canComplete || busyComplete}
+              disabled={!canComplete || busyComplete || (isRunnerMode && steps.length > 0 && !allStepsDone)}
               onPress={() => void onComplete()}
               style={{
                 alignItems: "center",
                 paddingVertical: 14,
                 borderRadius: radii.lg,
-                backgroundColor: canComplete ? "#4C6085" : colors.surface,
+                backgroundColor:
+                  canComplete && !(isRunnerMode && steps.length > 0 && !allStepsDone) ? "#4C6085" : colors.surface,
                 borderWidth: 1,
                 borderColor: colors.border,
                 opacity: busyComplete ? 0.7 : 1,
               }}
             >
               <Text style={{ color: canComplete ? "#ffffff" : colors.muted, fontWeight: "900" }}>
-                {data?.status === "completed" ? "Completed" : busyComplete ? "Completing…" : "Mark complete"}
+                {data?.status === "completed"
+                  ? "Completed"
+                  : busyComplete
+                    ? "Completing…"
+                    : isRunnerMode && steps.length > 0 && !allStepsDone
+                      ? "Complete all steps to finish"
+                      : "Complete procedure"}
               </Text>
             </Pressable>
           </View>
