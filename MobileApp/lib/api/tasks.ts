@@ -19,7 +19,8 @@ export type Task = {
 };
 
 export async function listMyTasks(token: string): Promise<Task[]> {
-  return apiFetch<Task[]>("/api/v1/tasks/my?status=todo", { token });
+  // Include both todo + in_progress; the API supports filtering, but only one status at a time.
+  return apiFetch<Task[]>("/api/v1/tasks/my", { token });
 }
 
 export async function getNextTask(token: string): Promise<Task | null> {
@@ -77,7 +78,17 @@ export async function startTask(token: string, taskId: string): Promise<void> {
   return apiFetch<void>(`/api/v1/tasks/${taskId}/start`, { method: "POST", token });
 }
 
-export type CompleteTaskResult = { xp: number; totalXp: number; level: number };
+export type CompleteTaskResult = {
+  xp: number;
+  totalXp: number;
+  level: number;
+  xpIntoLevel?: number;
+  xpToNextLevel?: number;
+  leveledUp?: boolean;
+  newBadges?: Array<{ id: string; name: string; description: string; iconKey: string; category: string; unlockedAt?: string | null }>;
+  reason?: string | null;
+  xpBreakdown?: Record<string, number> | null;
+};
 
 export async function completeTask(token: string, taskId: string): Promise<CompleteTaskResult> {
   return apiFetch<CompleteTaskResult>(`/api/v1/tasks/${taskId}/complete`, { method: "POST", token });

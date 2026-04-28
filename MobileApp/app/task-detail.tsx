@@ -1,9 +1,9 @@
-import React, { useCallback, useEffect, useState } from "react";
-import { ActivityIndicator, Alert, Pressable, ScrollView, Text, View } from "react-native";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useTheme } from "@/theme/ThemeProvider";
 import { useSession } from "@/store/session";
-import { completeTask, getTaskFull, type TaskFullPayload } from "@/lib/api/tasks";
+import { completeTask, getTaskFull, startTask, type TaskFullPayload } from "@/lib/api/tasks";
 
 export default function TaskDetailScreen() {
   const { colors, radii, spacing, text } = useTheme();
@@ -16,6 +16,8 @@ export default function TaskDetailScreen() {
   const [data, setData] = useState<TaskFullPayload | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [notes, setNotes] = useState("");
+  const [xpToast, setXpToast] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!token || !id) return;
@@ -34,6 +36,22 @@ export default function TaskDetailScreen() {
   }, [load]);
 
   const t = data?.task;
+  const overdue = Boolean(t?.due_date && new Date(t.due_date) < new Date());
+
+  const priorityLabel = useMemo(() => {
+    const p = Number(t?.priority ?? 1);
+    if (p >= 3) return "Critical";
+    if (p === 2) return "High";
+    if (p === 1) return "Normal";
+    return "Low";
+  }, [t?.priority]);
+
+  const priorityColor = useMemo(() => {
+    const p = Number(t?.priority ?? 1);
+    if (p >= 3) return "rgba(235,81,96,0.18)";
+    if (p === 2) return "rgba(242,187,5,0.18)";
+    return "rgba(255,255,255,0.06)";
+  }, [t?.priority]);
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
@@ -54,18 +72,71 @@ export default function TaskDetailScreen() {
           </Pressable>
         </View>
       ) : (
-        <ScrollView contentContainerStyle={{ padding: spacing.lg, paddingBottom: 48 }}>
+        <ScrollView contentContainerStyle={{ padding: spacing.lg, paddingBottom: 140 }}>
           <Text style={{ color: colors.text, ...text.h1 }} numberOfLines={3}>
             {t?.title}
           </Text>
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: spacing.sm }}>
+            <View
+              style={{
+                paddingHorizontal: 10,
+                paddingVertical: 6,
+                borderRadius: 999,
+                backgroundColor: priorityColor,
+                borderWidth: 1,
+                borderColor: "rgba(255,255,255,0.10)",
+              }}
+            >
+              <Text style={{ color: colors.text, fontWeight: "900", fontSize: 12 }}>{priorityLabel}</Text>
+            </View>
+            {t?.status ? (
+              <View
+                style={{
+                  paddingHorizontal: 10,
+                  paddingVertical: 6,
+                  borderRadius: 999,
+                  backgroundColor: "rgba(255,255,255,0.06)",
+                  borderWidth: 1,
+                  borderColor: "rgba(255,255,255,0.10)",
+                }}
+              >
+                <Text style={{ color: colors.muted, fontWeight: "900", fontSize: 12 }}>
+                  {t.status === "in_progress" ? "In progress" : t.status === "done" ? "Done" : "To do"}
+                </Text>
+              </View>
+            ) : null}
+          </View>
           {t?.due_date ? (
-            <Text style={{ color: colors.muted, marginTop: 8, fontWeight: "700" }}>
+            <Text style={{ color: overdue ? colors.danger : colors.muted, marginTop: 8, fontWeight: "700" }}>
               Due {new Date(t.due_date).toLocaleString()}
+              {overdue ? "  ·  Overdue" : ""}
             </Text>
           ) : null}
           {t?.description ? (
             <Text style={{ color: colors.text, marginTop: spacing.md, ...text.body }}>{t.description}</Text>
           ) : null}
+
+          <View style={{ marginTop: spacing.lg }}>
+            <Text style={{ color: colors.text, fontWeight: "900", marginBottom: spacing.sm }}>Notes</Text>
+            <View
+              style={{
+                borderRadius: radii.lg,
+                borderWidth: 1,
+                borderColor: colors.border,
+                backgroundColor: colors.surface,
+                padding: spacing.md,
+              }}
+            >
+              <TextInput
+                value={notes}
+                onChangeText={setNotes}
+                placeholder="Add a note for yourself…"
+                placeholderTextColor={colors.muted}
+                multiline
+                style={{ color: colors.text, minHeight: 84 }}
+              />
+            </View>
+          </View>
 
           {data?.work_order ? (
             <View
@@ -144,35 +215,92 @@ export default function TaskDetailScreen() {
           ) : null}
 
           {t?.status !== "done" ? (
-            <Pressable
-              disabled={busy}
-              onPress={() => {
-                if (!session || !t) return;
-                setBusy(true);
-                void (async () => {
-                  try {
-                    await completeTask(session.token, t.id);
-                    Alert.alert("Done", "Task completed.", [{ text: "OK", onPress: () => router.back() }]);
-                  } catch (e) {
-                    Alert.alert("Complete", e instanceof Error ? e.message : "Failed");
-                  } finally {
-                    setBusy(false);
-                  }
-                })();
-              }}
-              style={{
-                marginTop: spacing.xl,
-                backgroundColor: colors.success,
-                paddingVertical: 14,
-                borderRadius: radii.lg,
-                alignItems: "center",
-              }}
-            >
-              <Text style={{ color: "#fff", fontWeight: "900" }}>{busy ? "Saving…" : "Mark complete"}</Text>
-            </Pressable>
+            <View style={{ marginTop: spacing.xl, gap: 10 }}>
+              {t?.status === "todo" ? (
+                <Pressable
+                  disabled={busy}
+                  onPress={() => {
+                    if (!session || !t) return;
+                    setBusy(true);
+                    void (async () => {
+                      try {
+                        await startTask(session.token, t.id);
+                        await load();
+                      } catch (e) {
+                        setErr(e instanceof Error ? e.message : "Could not start task");
+                      } finally {
+                        setBusy(false);
+                      }
+                    })();
+                  }}
+                  style={{
+                    backgroundColor: colors.surface,
+                    borderWidth: 1,
+                    borderColor: colors.border,
+                    paddingVertical: 14,
+                    borderRadius: radii.lg,
+                    alignItems: "center",
+                  }}
+                >
+                  <Text style={{ color: colors.text, fontWeight: "900" }}>{busy ? "Saving…" : "Start working"}</Text>
+                </Pressable>
+              ) : null}
+
+              <Pressable
+                disabled={busy}
+                onPress={() => {
+                  if (!session || !t) return;
+                  setBusy(true);
+                  void (async () => {
+                    try {
+                      const result = await completeTask(session.token, t.id);
+                      const breakdown = (result as any).xpBreakdown ?? (result as any).xp_breakdown ?? {};
+                      const parts = Object.entries(breakdown as Record<string, number>)
+                        .filter(([k, v]) => k !== "base" && Number(v) > 0)
+                        .map(([k, v]) => `+${v} ${k}`);
+                      const msg = `+${result.xp} XP${parts.length ? "  ·  " + parts.join("  ·  ") : ""}`;
+                      setXpToast(msg);
+                      setTimeout(() => {
+                        setXpToast(null);
+                        router.back();
+                      }, 2500);
+                    } catch (e) {
+                      setErr(e instanceof Error ? e.message : "Failed to complete task");
+                    } finally {
+                      setBusy(false);
+                    }
+                  })();
+                }}
+                style={{
+                  backgroundColor: colors.success,
+                  paddingVertical: 14,
+                  borderRadius: radii.lg,
+                  alignItems: "center",
+                }}
+              >
+                <Text style={{ color: "#0A0A0A", fontWeight: "900" }}>{busy ? "Saving…" : "Mark complete"}</Text>
+              </Pressable>
+            </View>
           ) : null}
         </ScrollView>
       )}
+
+      {xpToast ? (
+        <View
+          style={{
+            position: "absolute",
+            bottom: 100,
+            left: spacing.lg,
+            right: spacing.lg,
+            backgroundColor: colors.success,
+            borderRadius: radii.lg,
+            padding: spacing.md,
+            alignItems: "center",
+          }}
+        >
+          <Text style={{ color: "#0A0A0A", fontWeight: "900" }}>{xpToast}</Text>
+        </View>
+      ) : null}
     </View>
   );
 }

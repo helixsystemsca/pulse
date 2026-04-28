@@ -16,12 +16,15 @@ from app.core.events.types import DomainEvent
 from app.core.database import get_db
 from app.core.user_roles import user_has_any_role
 from app.models.gamification_models import BadgeDefinition, Task, TaskEvent, UserBadge, UserStats, XpLedger
-from app.models.domain import User, UserRole
+from app.models.domain import DomainEventRow, User, UserRole
+from app.models.pulse_models import PulseWorkerProfile, PulseWorkRequest
 from app.schemas.gamification import (
     AvatarBorderIn,
     BadgeOut,
+    CertificationOut,
     CompleteTaskResult,
     GamificationMeOut,
+    LeaderboardEntryOut,
     ManagerAwardXpIn,
     ManagerAwardXpOut,
     SupervisorOneOnOneIn,
@@ -64,6 +67,56 @@ async def _open_assigned_task_rows(
         .limit(limit)
     )
     return list((await db.execute(stmt)).scalars().all())
+
+
+async def _task_quality_signals(
+    db: AsyncSession,
+    company_id: str,
+    user_id: str,
+    task: Task,
+) -> tuple[bool, bool, bool]:
+    """
+    Returns (all_steps_completed, photo_attached, never_flagged).
+
+    On any failure, returns conservative (False, False, False) so bonuses are not granted by mistake.
+    """
+    try:
+        all_steps = False
+        photo = False
+
+        if str(task.source_type or "") == "work_order" and task.source_id:
+            wr = await db.get(PulseWorkRequest, str(task.source_id))
+            if wr and str(wr.company_id) == company_id:
+                atts = wr.attachments or []
+                if isinstance(atts, list) and len(atts) > 0:
+                    photo = True
+                if wr.procedure_id:
+                    pid = str(wr.procedure_id)
+                    dk = f"proc_allsteps:{pid}:{user_id}"
+                    rq = await db.execute(
+                        select(XpLedger.id).where(
+                            XpLedger.company_id == company_id,
+                            XpLedger.user_id == user_id,
+                            XpLedger.dedupe_key == dk,
+                        ).limit(1)
+                    )
+                    all_steps = rq.scalar_one_or_none() is not None
+
+        fq = await db.execute(
+            select(func.count())
+            .select_from(DomainEventRow)
+            .where(
+                DomainEventRow.company_id == company_id,
+                DomainEventRow.event_type == "ops.task_flagged",
+                DomainEventRow.payload.contains({"task_id": str(task.id)}),
+            )
+        )
+        flagged = int(fq.scalar_one() or 0)
+        never_flagged = flagged == 0
+
+        return all_steps, photo, never_flagged
+    except Exception:
+        return False, False, False
 
 
 @router.get("/tasks/my", response_model=list[TaskOut])
@@ -124,6 +177,26 @@ async def get_task_full(
     return TaskFullOut.model_validate(payload)
 
 
+@router.post("/tasks/{task_id}/start", response_model=TaskOut)
+async def start_task(
+    task_id: str,
+    db: Db,
+    user: User = Depends(require_tenant_user),
+) -> TaskOut:
+    """Mark a task in_progress for the assigned worker."""
+    cid = str(user.company_id)
+    task = await db.get(Task, task_id)
+    if not task or str(task.company_id) != cid:
+        raise HTTPException(status_code=404, detail="Task not found")
+    if task.assigned_to and str(task.assigned_to) != str(user.id):
+        raise HTTPException(status_code=403, detail="Not assigned to you")
+    if task.status != "done":
+        task.status = "in_progress"
+        await db.commit()
+        await db.refresh(task)
+    return TaskOut.model_validate(task)
+
+
 @router.post("/tasks/{task_id}/complete", response_model=CompleteTaskResult)
 async def complete_task(
     task_id: str,
@@ -151,6 +224,7 @@ async def complete_task(
             leveled_up=False,
             new_badges=[],
             reason=None,
+            xp_breakdown=None,
         )
 
     completed_on_time = True
@@ -161,11 +235,15 @@ async def complete_task(
     was_late = bool(task.due_date is not None and now > task.due_date)
 
     role_mult = task_completion_role_multiplier(user)
-    raw_xp = compute_worker_task_completion_xp(
+    all_steps, photo_ok, never_flagged = await _task_quality_signals(db, cid, str(user.id), task)
+    raw_xp, xp_breakdown = compute_worker_task_completion_xp(
         task,
         completed_on_time=completed_on_time,
         completion_time_hours=completion_time_hours,
         role_multiplier=role_mult,
+        all_steps_completed=all_steps,
+        photo_attached=photo_ok,
+        never_flagged=never_flagged,
     )
 
     # Anti-gaming: cap XP from self tasks per day (max 20).
@@ -228,11 +306,27 @@ async def complete_task(
         amount=int(xp),
         reason_code="task_completed",
         dedupe_key=f"task_completion:{task.id}",
-        meta={"task_id": str(task.id), "source_type": str(task.source_type), "task_title": task.title},
+        meta={
+            "task_id": str(task.id),
+            "source_type": str(task.source_type),
+            "task_title": task.title,
+            "xp_breakdown": xp_breakdown,
+        },
         reason=reason_human,
     )
     granted = int(grant_res.applied)
     task.xp_awarded = int(granted)
+
+    if never_flagged and not is_xp_excluded_admin(user):
+        from app.services.streak_service import apply_named_streak
+
+        await apply_named_streak(
+            db,
+            company_id=cid,
+            user_id=str(user.id),
+            streak_type="no_flags",
+            activity_day=now.date(),
+        )
 
     badge_accum: list[dict] = list(grant_res.new_badges)
     if not is_xp_excluded_admin(user) and xp <= 0:
@@ -273,9 +367,29 @@ async def complete_task(
                 "xp": int(granted),
                 "total_xp": tot,
                 "level": lv,
+                "xp_breakdown": xp_breakdown,
             },
         )
     )
+    if (
+        str(task.source_type) == "pm"
+        and completed_on_time
+        and task.source_id
+        and not is_xp_excluded_admin(user)
+    ):
+        await event_engine.publish(
+            DomainEvent(
+                event_type="ops.pm_completed_on_time",
+                company_id=cid,
+                entity_id=str(task.source_id),
+                source_module="gamification",
+                metadata={
+                    "pm_task_id": str(task.source_id),
+                    "completed_by": str(user.id),
+                    "task_id": str(task.id),
+                },
+            )
+        )
     return CompleteTaskResult(
         xp=int(granted),
         totalXp=tot,
@@ -285,23 +399,87 @@ async def complete_task(
         leveled_up=bool(grant_res.leveled_up) if xp > 0 else False,
         new_badges=[BadgeOut.model_validate(b) for b in dedup_badges],
         reason=grant_res.reason_label or None,
+        xp_breakdown=xp_breakdown,
     )
 
 
-@router.get("/users/{user_id}/analytics", response_model=UserAnalyticsOut)
-async def user_analytics(
-    user_id: str,
+@router.post("/tasks/{task_id}/reopen")
+async def reopen_completed_task(
+    task_id: str,
     db: Db,
     user: User = Depends(require_tenant_user),
-) -> UserAnalyticsOut:
+) -> dict[str, bool]:
+    """Supervisor/manager: move a completed task back to open work (emits ``ops.task_reopened``)."""
+    if not (
+        user_has_any_role(user, UserRole.supervisor, UserRole.manager, UserRole.company_admin)
+        or getattr(user, "is_system_admin", False)
+    ):
+        raise HTTPException(status_code=403, detail="Supervisor, manager, or company admin required")
     cid = str(user.company_id)
-    if str(user.id) != str(user_id):
-        # For now: only allow self-analytics (can expand to manager later).
-        raise HTTPException(status_code=403, detail="Forbidden")
+    task = await db.get(Task, task_id)
+    if not task or str(task.company_id) != cid:
+        raise HTTPException(status_code=404, detail="Task not found")
+    if task.status != "done":
+        raise HTTPException(status_code=400, detail="Task is not completed")
+    assignee = task.assigned_to
+    if not assignee:
+        raise HTTPException(status_code=400, detail="Task has no assignee")
+    task.status = "todo"
+    task.completed_at = None
+    await db.commit()
+    await event_engine.publish(
+        DomainEvent(
+            event_type="ops.task_reopened",
+            company_id=cid,
+            entity_id=str(task_id),
+            source_module="gamification",
+            metadata={
+                "task_id": str(task_id),
+                "assigned_to": str(assignee) if assignee else None,
+            },
+        )
+    )
+    return {"ok": True}
 
-    stats = await db.get(UserStats, user_id)
-    if not stats or str(stats.company_id) != cid:
-        # Default empty analytics
+
+@router.post("/tasks/{task_id}/flag")
+async def flag_task(
+    task_id: str,
+    db: Db,
+    user: User = Depends(require_tenant_user),
+) -> dict[str, bool]:
+    """Supervisor/manager: record that a task was flagged for quality review (emits ``ops.task_flagged``)."""
+    if not (
+        user_has_any_role(user, UserRole.supervisor, UserRole.manager, UserRole.company_admin)
+        or getattr(user, "is_system_admin", False)
+    ):
+        raise HTTPException(status_code=403, detail="Supervisor, manager, or company admin required")
+    cid = str(user.company_id)
+    task = await db.get(Task, task_id)
+    if not task or str(task.company_id) != cid:
+        raise HTTPException(status_code=404, detail="Task not found")
+    assignee = task.assigned_to
+    if not assignee:
+        raise HTTPException(status_code=400, detail="Task has no assignee")
+    await event_engine.publish(
+        DomainEvent(
+            event_type="ops.task_flagged",
+            company_id=cid,
+            entity_id=str(task_id),
+            source_module="gamification",
+            metadata={
+                "task_id": str(task_id),
+                "flagged_user_id": str(assignee),
+                "assigned_to": str(assignee),
+            },
+        )
+    )
+    return {"ok": True}
+
+
+async def _user_analytics_payload(db: AsyncSession, company_id: str, subject_user_id: str) -> UserAnalyticsOut:
+    stats = await db.get(UserStats, subject_user_id)
+    if not stats or str(stats.company_id) != company_id:
         return UserAnalyticsOut(
             totalXp=0,
             level=1,
@@ -318,26 +496,25 @@ async def user_analytics(
             xpWorker=0,
             xpLead=0,
             xpSupervisor=0,
+            named_streaks={},
         )
 
-    # Quality: average review rating (0..5). (Reviews model is in the DB; keep this lightweight.)
     from app.models.gamification_models import Review
 
     review_avg = (
         await db.execute(
-            select(func.avg(Review.rating)).where(Review.company_id == cid, Review.user_id == user_id)
+            select(func.avg(Review.rating)).where(Review.company_id == company_id, Review.user_id == subject_user_id)
         )
     ).scalar_one()
     review_score = float(review_avg or 0.0)
 
-    # Initiative: self-created tasks completed recently, capped weight.
     self_done_30d = (
         await db.execute(
             select(func.count())
             .select_from(Task)
             .where(
-                Task.company_id == cid,
-                Task.assigned_to == user_id,
+                Task.company_id == company_id,
+                Task.assigned_to == subject_user_id,
                 Task.source_type == "self",
                 Task.status == "done",
                 Task.completed_at.isnot(None),
@@ -366,22 +543,19 @@ async def user_analytics(
         xpWorker=int(getattr(stats, "xp_worker", 0) or 0),
         xpLead=int(getattr(stats, "xp_lead", 0) or 0),
         xpSupervisor=int(getattr(stats, "xp_supervisor", 0) or 0),
+        named_streaks=dict(getattr(stats, "streaks", None) or {}),
     )
 
 
-@router.get("/gamification/me", response_model=GamificationMeOut)
-async def gamification_me(db: Db, user: User = Depends(require_tenant_user)) -> GamificationMeOut:
-    """Aggregated gamification payload for the signed-in user (profile + HUD)."""
-    cid = str(user.company_id)
-    uid = str(user.id)
-    analytics = await user_analytics(uid, db, user)
+async def _gamification_me_payload(db: AsyncSession, company_id: str, subject_user_id: str) -> GamificationMeOut:
+    analytics = await _user_analytics_payload(db, company_id, subject_user_id)
 
     unlock_rows = (
         (
             await db.execute(
                 select(UserBadge, BadgeDefinition)
                 .join(BadgeDefinition, BadgeDefinition.id == UserBadge.badge_id)
-                .where(UserBadge.user_id == uid)
+                .where(UserBadge.user_id == subject_user_id)
             )
         )
         .all()
@@ -408,7 +582,7 @@ async def gamification_me(db: Db, user: User = Depends(require_tenant_user)) -> 
         (
             await db.execute(
                 select(XpLedger)
-                .where(XpLedger.user_id == uid, XpLedger.company_id == cid)
+                .where(XpLedger.user_id == subject_user_id, XpLedger.company_id == company_id)
                 .order_by(desc(XpLedger.created_at))
                 .limit(30)
             )
@@ -436,6 +610,108 @@ async def gamification_me(db: Db, user: User = Depends(require_tenant_user)) -> 
     )
 
 
+@router.get("/users/{user_id}/analytics", response_model=UserAnalyticsOut)
+async def user_analytics(
+    user_id: str,
+    db: Db,
+    user: User = Depends(require_tenant_user),
+) -> UserAnalyticsOut:
+    cid = str(user.company_id)
+    if str(user.id) != str(user_id):
+        raise HTTPException(status_code=403, detail="Forbidden")
+    return await _user_analytics_payload(db, cid, user_id)
+
+
+@router.get("/gamification/leaderboard", response_model=list[LeaderboardEntryOut])
+async def get_leaderboard(
+    db: Db,
+    user: User = Depends(require_tenant_user),
+    limit: int = Query(25, ge=1, le=100),
+) -> list[LeaderboardEntryOut]:
+    cid = str(user.company_id)
+    uid = str(user.id)
+    rows = (
+        (
+            await db.execute(
+                select(UserStats, User)
+                .join(User, User.id == UserStats.user_id)
+                .where(UserStats.company_id == cid, User.is_active.is_(True))
+                .order_by(UserStats.total_xp.desc())
+                .limit(limit)
+            )
+        )
+        .all()
+    )
+    result: list[LeaderboardEntryOut] = []
+    for rank, (stats, u) in enumerate(rows, start=1):
+        lv, _, _ = xp_progress(int(stats.total_xp))
+        result.append(
+            LeaderboardEntryOut(
+                rank=rank,
+                user_id=str(stats.user_id),
+                display_name=(u.full_name or u.email or "Worker"),
+                total_xp=int(stats.total_xp),
+                level=lv,
+                is_me=str(stats.user_id) == uid,
+            )
+        )
+    return result
+
+
+@router.get("/workers/{user_id}/gamification", response_model=GamificationMeOut)
+async def get_worker_gamification(
+    user_id: str,
+    db: Db,
+    user: User = Depends(require_tenant_user),
+) -> GamificationMeOut:
+    cid = str(user.company_id)
+    is_self = str(user.id) == user_id
+    is_manager = user_has_any_role(user, UserRole.manager, UserRole.company_admin) or getattr(
+        user, "is_system_admin", False
+    )
+    if not is_self and not is_manager:
+        raise HTTPException(status_code=403, detail="Cannot view another worker's gamification")
+    target = await db.get(User, user_id)
+    if not target or str(target.company_id) != cid:
+        raise HTTPException(status_code=404, detail="Worker not found")
+    return await _gamification_me_payload(db, cid, user_id)
+
+
+@router.get("/workers/me/certifications", response_model=list[CertificationOut])
+async def get_my_certifications(
+    db: Db,
+    user: User = Depends(require_tenant_user),
+) -> list[CertificationOut]:
+    cid = str(user.company_id)
+    profile = (
+        await db.execute(
+            select(PulseWorkerProfile).where(
+                PulseWorkerProfile.user_id == str(user.id),
+                PulseWorkerProfile.company_id == cid,
+            )
+        )
+    ).scalar_one_or_none()
+    raw = (profile.certifications if profile else None) or []
+    return [
+        CertificationOut(
+            code=str(c).strip().upper(),
+            label=str(c).strip().upper(),
+            expires_at=None,
+            days_until_expiry=None,
+        )
+        for c in raw
+        if c
+    ]
+
+
+@router.get("/gamification/me", response_model=GamificationMeOut)
+async def gamification_me(db: Db, user: User = Depends(require_tenant_user)) -> GamificationMeOut:
+    """Aggregated gamification payload for the signed-in user (profile + HUD)."""
+    cid = str(user.company_id)
+    uid = str(user.id)
+    return await _gamification_me_payload(db, cid, uid)
+
+
 @router.patch("/gamification/me/avatar-border", response_model=UserAnalyticsOut)
 async def patch_avatar_border(
     body: AvatarBorderIn,
@@ -453,7 +729,7 @@ async def patch_avatar_border(
         raise HTTPException(status_code=400, detail="Border not unlocked")
     stats.avatar_border = want
     await db.commit()
-    return await user_analytics(uid, db, user)
+    return await _user_analytics_payload(db, cid, uid)
 
 
 @router.post("/gamification/manager/award-xp", response_model=ManagerAwardXpOut)
