@@ -1077,9 +1077,6 @@ export function ScheduleApp() {
                         setDragSession(null);
                         setTrashHovering(false);
                       }}
-                      nightAssignmentsEnabled={
-                        (scheduleMod.settings as { enableNightAssignments?: boolean }).enableNightAssignments !== false
-                      }
                       dayProjectBar={dayProjectBar}
                     />
                   </div>

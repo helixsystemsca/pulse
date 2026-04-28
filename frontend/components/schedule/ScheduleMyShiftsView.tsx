@@ -7,9 +7,16 @@
  * No other workers' data shown.
  */
 
-import { CalendarDays, Clock } from "lucide-react";
+import { CalendarDays, CheckCircle, Clock } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { apiFetch, isApiMode } from "@/lib/api";
+import { firstOpenSchedulePeriodId } from "@/lib/schedule/period-utils";
 import type { Shift, Worker, ScheduleSettings } from "@/lib/schedule/types";
 import { formatTimeRange } from "@/lib/schedule/time-format";
+
+type PeriodRow = { id: string; start_date: string; end_date: string; status: string };
+
+type AckStatus = { acknowledged: boolean; acknowledged_at?: string | null };
 
 type Props = {
   shifts: Shift[];
@@ -53,6 +60,65 @@ function shiftTypeDot(type: string): string {
 }
 
 export function ScheduleMyShiftsView({ shifts, settings, onSelectShift }: Props) {
+  const [ackPeriodId, setAckPeriodId] = useState<string | null>(null);
+  const [ackPeriodLabel, setAckPeriodLabel] = useState<string>("");
+  const [ackStatus, setAckStatus] = useState<AckStatus | null>(null);
+  const [ackLoading, setAckLoading] = useState(false);
+  const [ackBusy, setAckBusy] = useState(false);
+  const [ackErr, setAckErr] = useState<string | null>(null);
+
+  const loadAckState = useCallback(async () => {
+    if (!isApiMode()) return;
+    setAckLoading(true);
+    setAckErr(null);
+    try {
+      const periods = await apiFetch<PeriodRow[]>("/api/v1/pulse/schedule/periods");
+      const pid = firstOpenSchedulePeriodId(periods);
+      if (!pid) {
+        setAckPeriodId(null);
+        setAckPeriodLabel("");
+        setAckStatus(null);
+        return;
+      }
+      const p = periods.find((x) => x.id === pid);
+      setAckPeriodId(pid);
+      setAckPeriodLabel(
+        p ? `${p.start_date} → ${p.end_date}` : "",
+      );
+      const st = await apiFetch<AckStatus>(
+        `/api/v1/pulse/schedule/acknowledgement/status?period_id=${encodeURIComponent(pid)}`,
+      );
+      setAckStatus(st);
+    } catch {
+      setAckPeriodId(null);
+      setAckStatus(null);
+      setAckErr("Could not load schedule acknowledgement status.");
+    } finally {
+      setAckLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadAckState();
+  }, [loadAckState]);
+
+  const acknowledgeSchedule = useCallback(async () => {
+    if (!ackPeriodId) return;
+    setAckBusy(true);
+    setAckErr(null);
+    try {
+      await apiFetch("/api/v1/pulse/schedule/acknowledge", {
+        method: "POST",
+        json: { period_id: ackPeriodId },
+      });
+      setAckStatus({ acknowledged: true });
+    } catch (e) {
+      setAckErr(e instanceof Error ? e.message : "Could not acknowledge.");
+    } finally {
+      setAckBusy(false);
+    }
+  }, [ackPeriodId]);
+
   const today = new Date().toISOString().slice(0, 10);
   const upcoming = shifts.filter((s) => s.date >= today);
   const past = shifts
@@ -60,9 +126,44 @@ export function ScheduleMyShiftsView({ shifts, settings, onSelectShift }: Props)
     .slice(-10)
     .reverse();
 
+  const AckBanner = () =>
+    isApiMode() && ackPeriodId ? (
+      <div className="mx-auto mb-6 w-full max-w-lg rounded-md border border-pulseShell-border bg-pulseShell-surface px-4 py-3 shadow-sm">
+        {ackLoading ? (
+          <p className="text-xs text-ds-muted">Loading schedule status…</p>
+        ) : ackErr ? (
+          <p className="text-xs text-ds-danger">{ackErr}</p>
+        ) : ackStatus?.acknowledged ? (
+          <div className="flex items-center gap-2 text-sm font-semibold text-emerald-700 dark:text-emerald-300">
+            <CheckCircle className="h-4 w-4 shrink-0" aria-hidden />
+            Schedule acknowledged
+            {ackPeriodLabel ? (
+              <span className="font-normal text-ds-muted">· {ackPeriodLabel}</span>
+            ) : null}
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <p className="text-sm text-ds-foreground">
+              When you have reviewed your shifts for{" "}
+              <span className="font-semibold">{ackPeriodLabel || "this period"}</span>, acknowledge the schedule.
+            </p>
+            <button
+              type="button"
+              disabled={ackBusy}
+              onClick={() => void acknowledgeSchedule()}
+              className="inline-flex items-center gap-2 rounded-md bg-ds-accent px-3 py-2 text-xs font-bold text-ds-accent-foreground hover:bg-ds-accent/90 disabled:opacity-60"
+            >
+              {ackBusy ? "Saving…" : "Acknowledge schedule"}
+            </button>
+          </div>
+        )}
+      </div>
+    ) : null;
+
   if (!upcoming.length && !past.length) {
     return (
-      <div className="flex flex-col items-center justify-center gap-3 py-20">
+      <div className="flex flex-col items-center justify-center gap-3 py-12">
+        <AckBanner />
         <CalendarDays className="h-8 w-8 text-ds-muted/40" />
         <p className="text-center text-sm text-ds-muted">
           No shifts scheduled yet.
@@ -105,6 +206,8 @@ export function ScheduleMyShiftsView({ shifts, settings, onSelectShift }: Props)
 
   return (
     <div className="mx-auto max-w-lg space-y-6 py-2">
+      <AckBanner />
+
       {Object.entries(upcomingByMonth).map(([month, monthShifts]) => (
         <div key={month}>
           <p className="mb-2 px-1 text-[10px] font-bold uppercase tracking-wider text-ds-muted">

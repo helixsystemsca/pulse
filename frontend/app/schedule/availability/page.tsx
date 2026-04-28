@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { apiFetch } from "@/lib/api";
 import { navigateToPulseLogin } from "@/lib/pulse-app";
 import { readSession } from "@/lib/pulse-session";
+import { firstOpenSchedulePeriodId, hasOpenAvailabilityPeriod } from "@/lib/schedule/period-utils";
 
 type Period = {
   id: string;
@@ -66,7 +67,7 @@ export default function MyAvailabilityPage() {
       try {
         const p = await apiFetch<Period[]>("/api/v1/pulse/schedule/periods");
         setPeriods(p);
-        setPeriodId(p[0]?.id ?? "");
+        setPeriodId(firstOpenSchedulePeriodId(p));
       } catch (e) {
         setErr(e instanceof Error ? e.message : "Could not load schedule periods.");
       }
@@ -151,6 +152,13 @@ export default function MyAvailabilityPage() {
         <div className="mt-4 rounded-md border border-ds-success/40 bg-ds-success/10 px-3 py-2 text-sm text-ds-foreground">{ok}</div>
       ) : null}
 
+      {periods.length > 0 && !hasOpenAvailabilityPeriod(periods) ? (
+        <div className="mt-4 rounded-md border border-amber-200/80 bg-amber-50/80 px-3 py-2 text-sm text-amber-950 dark:border-amber-500/30 dark:bg-amber-950/30 dark:text-amber-100">
+          No open availability window right now (no period in <span className="font-semibold">draft</span> or{" "}
+          <span className="font-semibold">open</span> status). Check back later or contact a supervisor.
+        </div>
+      ) : null}
+
       <div className="mt-6 rounded-md border border-pulseShell-border bg-pulseShell-surface p-4">
         <label className="text-xs font-semibold text-ds-muted">Schedule period</label>
         <select className={`${FIELD} mt-1.5`} value={periodId} onChange={(e) => setPeriodId(e.target.value)}>
@@ -220,7 +228,7 @@ export default function MyAvailabilityPage() {
             onClick={acknowledge}
             disabled={busy || !periodId}
           >
-            Acknowledge schedule (stub)
+            Acknowledge schedule
           </button>
           <a href="/schedule/availability-grid" className="text-sm font-semibold text-ds-accent underline">
             Supervisor view →

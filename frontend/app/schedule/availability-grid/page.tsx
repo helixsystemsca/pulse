@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { apiFetch } from "@/lib/api";
 import { navigateToPulseLogin } from "@/lib/pulse-app";
 import { readSession } from "@/lib/pulse-session";
+import { preferSchedulePeriodIdForSupervisor } from "@/lib/schedule/period-utils";
 
 type Period = {
   id: string;
@@ -55,7 +56,7 @@ export default function AvailabilityGridPage() {
         ]);
         setPeriods(p);
         setWorkers(w);
-        setPeriodId(p[0]?.id ?? "");
+        setPeriodId(preferSchedulePeriodIdForSupervisor(p));
       } catch (e) {
         setErr(e instanceof Error ? e.message : "Could not load schedule data.");
       }

@@ -63,7 +63,6 @@ type Props = {
   onWorkerDrop?: (workerId: string) => void;
   onShiftDragSessionStart: (payload: ScheduleDragSession) => void;
   onShiftDragSessionEnd: () => void;
-  nightAssignmentsEnabled?: boolean;
   /** Projects that cover this calendar day (coloured top strip, same tints as month view). */
   dayProjectBar?: { id: string; name: string; tintClass: string }[] | null;
 };
@@ -93,7 +92,6 @@ export function ScheduleDayView({
   onWorkerDrop,
   onShiftDragSessionStart,
   onShiftDragSessionEnd,
-  nightAssignmentsEnabled = false,
   dayProjectBar = null,
 }: Props) {
   const [shake, setShake] = useState(false);

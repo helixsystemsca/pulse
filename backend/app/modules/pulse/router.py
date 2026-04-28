@@ -166,6 +166,11 @@ class AcknowledgementOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class AcknowledgementStatusOut(BaseModel):
+    acknowledged: bool
+    acknowledged_at: datetime | None = None
+
+
 def _worker_scheduling_fields(prof: Optional[PulseWorkerProfile]) -> tuple[Optional[str], list[dict[str, Any]]]:
     if not prof:
         return None, []
@@ -1324,6 +1329,31 @@ async def list_availability(db: Db, cid: CompanyId, period_id: str, user: User =
         .order_by(PulseScheduleAvailabilitySubmission.submitted_at.desc())
     )
     return [AvailabilitySubmissionOut.model_validate(r) for r in q.scalars().all()]
+
+
+@router.get("/schedule/acknowledgement/status", response_model=AcknowledgementStatusOut)
+async def get_schedule_acknowledgement_status(
+    db: Db,
+    cid: CompanyId,
+    period_id: str,
+    user: User = Depends(require_tenant_user),
+) -> AcknowledgementStatusOut:
+    pq = await db.execute(
+        select(PulseSchedulePeriod.id).where(PulseSchedulePeriod.id == period_id, PulseSchedulePeriod.company_id == cid)
+    )
+    if pq.scalar_one_or_none() is None:
+        raise HTTPException(status_code=400, detail="Unknown schedule period")
+    q = await db.execute(
+        select(PulseScheduleAcknowledgement).where(
+            PulseScheduleAcknowledgement.company_id == cid,
+            PulseScheduleAcknowledgement.worker_id == user.id,
+            PulseScheduleAcknowledgement.period_id == period_id,
+        )
+    )
+    row = q.scalar_one_or_none()
+    if not row:
+        return AcknowledgementStatusOut(acknowledged=False, acknowledged_at=None)
+    return AcknowledgementStatusOut(acknowledged=True, acknowledged_at=row.acknowledged_at)
 
 
 @router.post("/schedule/acknowledge", response_model=AcknowledgementOut, status_code=status.HTTP_201_CREATED)
