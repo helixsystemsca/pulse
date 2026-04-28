@@ -265,6 +265,7 @@ export function WorkRequestsApp(props?: WorkRequestsAppProps) {
   const [overdueCritical, setOverdueCritical] = useState(0);
 
   const [menuFor, setMenuFor] = useState<string | null>(null);
+  const [menuAnchor, setMenuAnchor] = useState<{ top: number; right: number } | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsTab, setSettingsTab] = useState<SettingsTab>("Statuses");
@@ -1085,89 +1086,20 @@ export function WorkRequestsApp(props?: WorkRequestsAppProps) {
                               type="button"
                               className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-pulse-navy hover:bg-slate-50 dark:border-ds-border dark:bg-ds-secondary dark:text-gray-100 dark:hover:bg-ds-interactive-hover"
                               aria-label="Row actions"
-                              onClick={() => setMenuFor((m) => (m === row.id ? null : row.id))}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (menuFor === row.id) {
+                                  setMenuFor(null);
+                                  setMenuAnchor(null);
+                                  return;
+                                }
+                                const r = (e.currentTarget as HTMLButtonElement).getBoundingClientRect();
+                                setMenuAnchor({ top: r.bottom + 6, right: r.right });
+                                setMenuFor(row.id);
+                              }}
                             >
                               <MoreVertical className="h-4 w-4" />
                             </button>
-                            {menuFor === row.id ? (
-                              <div className="absolute right-4 z-30 mt-1 w-48 rounded-lg border border-slate-200 bg-white py-1 text-left shadow-lg dark:border-ds-border dark:bg-ds-elevated">
-                                {row.status === "pending_approval" && canApprove ? (
-                                  <>
-                                    <button
-                                      type="button"
-                                      className="block w-full px-3 py-2 text-left text-sm text-pulse-navy hover:bg-slate-50 dark:text-gray-100 dark:hover:bg-ds-interactive-hover"
-                                      onClick={() => void approveItem(row.id)}
-                                    >
-                                      Approve
-                                    </button>
-                                    <button
-                                      type="button"
-                                      className="block w-full px-3 py-2 text-left text-sm text-rose-700 hover:bg-slate-50 dark:text-rose-200 dark:hover:bg-ds-interactive-hover"
-                                      onClick={() => void rejectItem(row.id)}
-                                    >
-                                      Reject
-                                    </button>
-                                  </>
-                                ) : null}
-                                {row.status === "approved" && canAssign ? (
-                                  <button
-                                    type="button"
-                                    className="block w-full px-3 py-2 text-left text-sm text-pulse-navy hover:bg-slate-50 dark:text-gray-100 dark:hover:bg-ds-interactive-hover"
-                                    onClick={() => setDetailId(row.id)}
-                                  >
-                                    Assign…
-                                  </button>
-                                ) : null}
-                                {row.status === "assigned" ? (
-                                  <button
-                                    type="button"
-                                    className="block w-full px-3 py-2 text-left text-sm text-pulse-navy hover:bg-slate-50 dark:text-gray-100 dark:hover:bg-ds-interactive-hover"
-                                    onClick={() => void startItem(row.id)}
-                                  >
-                                    Start work
-                                  </button>
-                                ) : null}
-                                {row.status !== "pending_approval" && !terminalRowStatus(row.status) ? (
-                                  <button
-                                    type="button"
-                                    className="block w-full px-3 py-2 text-left text-sm text-pulse-navy hover:bg-slate-50 dark:text-gray-100 dark:hover:bg-ds-interactive-hover"
-                                    onClick={() => {
-                                      setMenuFor(null);
-                                      void completeItem(row.id);
-                                    }}
-                                  >
-                                    Complete
-                                  </button>
-                                ) : null}
-                                {!terminalRowStatus(row.status) ? (
-                                  <button
-                                    type="button"
-                                    className="block w-full px-3 py-2 text-left text-sm text-pulse-navy hover:bg-slate-50 dark:text-gray-100 dark:hover:bg-ds-interactive-hover"
-                                    onClick={() => {
-                                      setMenuFor(null);
-                                      setCloseReasonDraft("");
-                                      setCloseModalForId(row.id);
-                                    }}
-                                  >
-                                    Close
-                                  </button>
-                                ) : null}
-                                {!terminalRowStatus(row.status) && row.status !== "hold" ? (
-                                  <button
-                                    type="button"
-                                    className="block w-full px-3 py-2 text-left text-sm text-pulse-navy hover:bg-slate-50 dark:text-gray-100 dark:hover:bg-ds-interactive-hover"
-                                    onClick={() => {
-                                      setMenuFor(null);
-                                      setHoldReasonKey(WORK_REQUEST_HOLD_REASONS[0]!.id);
-                                      setHoldNoteDraft("");
-                                      setHoldModalForId(row.id);
-                                    }}
-                                  >
-                                    Hold
-                                  </button>
-                                ) : null}
-                              </div>
-                            ) : null}
                           </td>
                         </tr>
                       );
@@ -1240,9 +1172,104 @@ export function WorkRequestsApp(props?: WorkRequestsAppProps) {
           type="button"
           className="fixed inset-0 z-20 cursor-default bg-transparent"
           aria-label="Close menu"
-          onClick={() => setMenuFor(null)}
+          onClick={() => {
+            setMenuFor(null);
+            setMenuAnchor(null);
+          }}
         />
       ) : null}
+
+      {menuFor && menuAnchor ? (() => {
+        const row = rows.find((r) => r.id === menuFor) ?? null;
+        if (!row) return null;
+        const left = Math.max(12, menuAnchor.right - 192); // 192px = w-48
+        return (
+          <div
+            className="fixed z-[140] w-48 rounded-lg border border-slate-200 bg-white py-1 text-left shadow-lg dark:border-ds-border dark:bg-ds-elevated"
+            style={{ top: menuAnchor.top, left }}
+            role="menu"
+          >
+            {row.status === "pending_approval" && canApprove ? (
+              <>
+                <button
+                  type="button"
+                  className="block w-full px-3 py-2 text-left text-sm text-pulse-navy hover:bg-slate-50 dark:text-gray-100 dark:hover:bg-ds-interactive-hover"
+                  onClick={() => void approveItem(row.id)}
+                >
+                  Approve
+                </button>
+                <button
+                  type="button"
+                  className="block w-full px-3 py-2 text-left text-sm text-rose-700 hover:bg-slate-50 dark:text-rose-200 dark:hover:bg-ds-interactive-hover"
+                  onClick={() => void rejectItem(row.id)}
+                >
+                  Reject
+                </button>
+              </>
+            ) : null}
+            {row.status === "approved" && canAssign ? (
+              <button
+                type="button"
+                className="block w-full px-3 py-2 text-left text-sm text-pulse-navy hover:bg-slate-50 dark:text-gray-100 dark:hover:bg-ds-interactive-hover"
+                onClick={() => setDetailId(row.id)}
+              >
+                Assign…
+              </button>
+            ) : null}
+            {row.status === "assigned" ? (
+              <button
+                type="button"
+                className="block w-full px-3 py-2 text-left text-sm text-pulse-navy hover:bg-slate-50 dark:text-gray-100 dark:hover:bg-ds-interactive-hover"
+                onClick={() => void startItem(row.id)}
+              >
+                Start work
+              </button>
+            ) : null}
+            {row.status !== "pending_approval" && !terminalRowStatus(row.status) ? (
+              <button
+                type="button"
+                className="block w-full px-3 py-2 text-left text-sm text-pulse-navy hover:bg-slate-50 dark:text-gray-100 dark:hover:bg-ds-interactive-hover"
+                onClick={() => {
+                  setMenuFor(null);
+                  setMenuAnchor(null);
+                  void completeItem(row.id);
+                }}
+              >
+                Complete
+              </button>
+            ) : null}
+            {!terminalRowStatus(row.status) ? (
+              <button
+                type="button"
+                className="block w-full px-3 py-2 text-left text-sm text-pulse-navy hover:bg-slate-50 dark:text-gray-100 dark:hover:bg-ds-interactive-hover"
+                onClick={() => {
+                  setMenuFor(null);
+                  setMenuAnchor(null);
+                  setCloseReasonDraft("");
+                  setCloseModalForId(row.id);
+                }}
+              >
+                Close
+              </button>
+            ) : null}
+            {!terminalRowStatus(row.status) && row.status !== "hold" ? (
+              <button
+                type="button"
+                className="block w-full px-3 py-2 text-left text-sm text-pulse-navy hover:bg-slate-50 dark:text-gray-100 dark:hover:bg-ds-interactive-hover"
+                onClick={() => {
+                  setMenuFor(null);
+                  setMenuAnchor(null);
+                  setHoldReasonKey(WORK_REQUEST_HOLD_REASONS[0]!.id);
+                  setHoldNoteDraft("");
+                  setHoldModalForId(row.id);
+                }}
+              >
+                Hold
+              </button>
+            ) : null}
+          </div>
+        );
+      })() : null}
 
       <PulseDrawer
         open={createOpen}
