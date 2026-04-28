@@ -18,6 +18,14 @@ type PeriodRow = { id: string; start_date: string; end_date: string; status: str
 
 type AckStatus = { acknowledged: boolean; acknowledged_at?: string | null };
 
+type AssignmentRow = {
+  id: string;
+  area: string;
+  notes: string | null;
+  assigned_user_id: string | null;
+  shift_type: string;
+};
+
 type Props = {
   shifts: Shift[];
   workers: Worker[];
@@ -59,13 +67,35 @@ function shiftTypeDot(type: string): string {
   return "bg-blue-500";
 }
 
-export function ScheduleMyShiftsView({ shifts, settings, onSelectShift }: Props) {
+export function ScheduleMyShiftsView({ shifts, settings, currentUserId }: Props) {
   const [ackPeriodId, setAckPeriodId] = useState<string | null>(null);
   const [ackPeriodLabel, setAckPeriodLabel] = useState<string>("");
   const [ackStatus, setAckStatus] = useState<AckStatus | null>(null);
   const [ackLoading, setAckLoading] = useState(false);
   const [ackBusy, setAckBusy] = useState(false);
   const [ackErr, setAckErr] = useState<string | null>(null);
+
+  const [expandedShiftId, setExpandedShiftId] = useState<string | null>(null);
+  const [assignments, setAssignments] = useState<Record<string, AssignmentRow[]>>({});
+
+  const loadAssignments = useCallback(
+    async (shift: Shift) => {
+      if (!isApiMode() || !currentUserId) return;
+      if (assignments[shift.id]) return;
+      const dateStr = shift.date; // YYYY-MM-DD
+      const url = `/api/v1/pulse/schedule/assignments?from=${encodeURIComponent(dateStr)}&to=${encodeURIComponent(
+        dateStr,
+      )}&shift_type=${encodeURIComponent(shift.shiftType)}`;
+      try {
+        const rows = await apiFetch<AssignmentRow[]>(url);
+        const mine = rows.filter((r) => r.assigned_user_id === currentUserId);
+        setAssignments((prev) => ({ ...prev, [shift.id]: mine }));
+      } catch {
+        setAssignments((prev) => ({ ...prev, [shift.id]: [] }));
+      }
+    },
+    [assignments, currentUserId],
+  );
 
   const loadAckState = useCallback(async () => {
     if (!isApiMode()) return;
@@ -178,30 +208,51 @@ export function ScheduleMyShiftsView({ shifts, settings, onSelectShift }: Props)
   const pastByMonth = groupByMonth(past);
 
   const ShiftRow = ({ shift }: { shift: Shift }) => (
-    <button
-      type="button"
-      onClick={() => onSelectShift(shift)}
-      className="flex w-full items-center gap-3 rounded-md border border-ds-border bg-ds-primary px-4 py-3 text-left transition-colors hover:bg-ds-interactive-hover"
-    >
-      <div className={`h-2.5 w-2.5 shrink-0 rounded-full ${shiftTypeDot(shift.shiftType)}`} />
-      <div className="min-w-0 flex-1">
-        <p className="text-sm font-semibold text-ds-foreground">
-          {formatDayLabel(shift.date)}
-          {shift.shiftCode ? (
-            <span className="ml-2 rounded bg-ds-accent/10 px-1.5 py-0.5 text-[10px] font-bold text-ds-accent">
-              {shift.shiftCode}
-            </span>
-          ) : null}
-        </p>
-        <p className="mt-0.5 flex items-center gap-1 text-xs text-ds-muted">
-          <Clock className="h-3 w-3 shrink-0" />
-          {formatTimeRange(shift.startTime, shift.endTime, settings.timeFormat)}
-          {" · "}
-          {shiftTypeLabel(shift.shiftType)}
-        </p>
-      </div>
-      <span className="shrink-0 text-[10px] text-ds-muted">›</span>
-    </button>
+    <div>
+      <button
+        type="button"
+        onClick={() => {
+          setExpandedShiftId((id) => (id === shift.id ? null : shift.id));
+          void loadAssignments(shift);
+        }}
+        className="flex w-full items-center gap-3 rounded-md border border-ds-border bg-ds-primary px-4 py-3 text-left transition-colors hover:bg-ds-interactive-hover"
+      >
+        <div className={`h-2.5 w-2.5 shrink-0 rounded-full ${shiftTypeDot(shift.shiftType)}`} />
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold text-ds-foreground">
+            {formatDayLabel(shift.date)}
+            {shift.shiftCode ? (
+              <span className="ml-2 rounded bg-ds-accent/10 px-1.5 py-0.5 text-[10px] font-bold text-ds-accent">
+                {shift.shiftCode}
+              </span>
+            ) : null}
+          </p>
+          <p className="mt-0.5 flex items-center gap-1 text-xs text-ds-muted">
+            <Clock className="h-3 w-3 shrink-0" />
+            {formatTimeRange(shift.startTime, shift.endTime, settings.timeFormat)}
+            {" · "}
+            {shiftTypeLabel(shift.shiftType)}
+          </p>
+        </div>
+        <span className="shrink-0 text-[10px] text-ds-muted">{expandedShiftId === shift.id ? "⌄" : "›"}</span>
+      </button>
+
+      {expandedShiftId === shift.id ? (
+        <div className="mt-2 ml-4 space-y-1.5 border-l-2 border-ds-accent/30 pl-3">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-ds-muted">Your assignments</p>
+          {(assignments[shift.id] ?? []).length === 0 ? (
+            <p className="text-xs text-ds-muted">No assignments yet for this shift.</p>
+          ) : (
+            (assignments[shift.id] ?? []).map((a) => (
+              <div key={a.id} className="text-xs text-ds-foreground">
+                <span className="font-semibold">{a.area}</span>
+                {a.notes ? <span className="text-ds-muted"> — {a.notes}</span> : null}
+              </div>
+            ))
+          )}
+        </div>
+      ) : null}
+    </div>
   );
 
   return (
