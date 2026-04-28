@@ -52,6 +52,11 @@ class CompleteTaskResult(BaseModel):
     leveled_up: bool = Field(False, alias="leveledUp")
     new_badges: list[BadgeOut] = Field(default_factory=list, alias="newBadges")
     reason: str | None = None
+    xp_breakdown: dict[str, int] | None = Field(
+        None,
+        alias="xpBreakdown",
+        description="Approximate base/steps/photo/clean/speed buckets before daily caps",
+    )
 
 
 class UserAnalyticsOut(BaseModel):
@@ -72,6 +77,7 @@ class UserAnalyticsOut(BaseModel):
     xpWorker: int = Field(0, description="Cumulative worker-track XP")
     xpLead: int = Field(0, description="Cumulative lead-track XP")
     xpSupervisor: int = Field(0, description="Cumulative supervisor-track XP")
+    named_streaks: dict[str, Any] = Field(default_factory=dict, alias="namedStreaks")
 
 
 class XpLedgerRowOut(BaseModel):
@@ -92,6 +98,26 @@ class GamificationMeOut(BaseModel):
     unlocked_badges: list[BadgeOut] = Field(default_factory=list, alias="unlockedBadges")
     badge_catalog: list[BadgeOut] = Field(default_factory=list, alias="badgeCatalog")
     recent_xp: list[XpLedgerRowOut] = Field(default_factory=list, alias="recentXp")
+
+
+class LeaderboardEntryOut(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    rank: int
+    user_id: str = Field(alias="userId")
+    display_name: str = Field(alias="displayName")
+    total_xp: int = Field(alias="totalXp")
+    level: int
+    is_me: bool = Field(alias="isMe")
+
+
+class CertificationOut(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    code: str
+    label: str
+    expires_at: datetime | None = Field(None, alias="expiresAt")
+    days_until_expiry: int | None = Field(None, alias="daysUntilExpiry")
 
 
 class ManagerAwardXpIn(BaseModel):
