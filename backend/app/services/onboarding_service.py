@@ -18,6 +18,9 @@ ADMIN_CHECKLIST_KEYS: tuple[str, ...] = (
     "add_equipment",
     "invite_team",
     "customize_workflow",
+    "create_shift_definitions",
+    "create_schedule_period",
+    "publish_first_schedule",
 )
 
 ALL_ONBOARDING_STEP_KEYS: tuple[str, ...] = ADMIN_CHECKLIST_KEYS
@@ -34,6 +37,9 @@ STEP_LABELS: dict[str, str] = {
     "add_equipment": "Add an asset",
     "invite_team": "Invite your team",
     "customize_workflow": "Customize your workflow",
+    "create_shift_definitions": "Define your shifts",
+    "create_schedule_period": "Open availability collection",
+    "publish_first_schedule": "Publish your first schedule",
 }
 
 STEP_DESCRIPTIONS: dict[str, str] = {
@@ -41,6 +47,9 @@ STEP_DESCRIPTIONS: dict[str, str] = {
     "add_equipment": "Register equipment so maintenance and history stay organized.",
     "invite_team": "Add another user to your organization from Workers & roles.",
     "customize_workflow": "Add a procedure task or a second work order to shape how work flows.",
+    "create_shift_definitions": "Set up shift codes (D1, PM1, N1) with times and cert requirements.",
+    "create_schedule_period": "Create a period so workers can submit their availability.",
+    "publish_first_schedule": "Build and publish a schedule — workers will be notified automatically.",
 }
 
 STEP_HREFS: dict[str, str] = {
@@ -48,6 +57,9 @@ STEP_HREFS: dict[str, str] = {
     "add_equipment": "/equipment",
     "invite_team": "/dashboard/workers",
     "customize_workflow": "/dashboard/workers",
+    "create_shift_definitions": "/schedule/shift-definitions",
+    "create_schedule_period": "/schedule",
+    "publish_first_schedule": "/schedule",
 }
 
 OnboardingFlowOut = Literal["manager", "worker"]
@@ -183,6 +195,9 @@ async def sync_user_onboarding_from_reality(db: AsyncSession, user: User) -> boo
     m["customize_workflow"] = (
         m["customize_workflow"] or reality.procedure_task_count > 0 or reality.work_request_count >= 2
     )
+    m["create_shift_definitions"] = m["create_shift_definitions"] or reality.shift_definitions_created
+    m["create_schedule_period"] = m["create_schedule_period"] or reality.period_created
+    m["publish_first_schedule"] = m["publish_first_schedule"] or reality.schedule_published
 
     new_steps = [{"key": k, "completed": m[k]} for k in ALL_ONBOARDING_STEP_KEYS]
     if {s["key"]: s["completed"] for s in new_steps} == prev:

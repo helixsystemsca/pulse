@@ -15,7 +15,9 @@ from app.models.domain import Company, FacilityEquipment, User, UserRole, Zone
 from app.models.monitoring_models import MonitoringFacility, MonitoredSystem, Sensor, SensorReading
 from app.models.pulse_models import (
     PulseProjectTask,
+    PulseSchedulePeriod,
     PulseScheduleShift,
+    PulseScheduleShiftDefinition,
     PulseWorkRequest,
     PulseWorkRequestStatus,
 )
@@ -50,6 +52,9 @@ class OnboardingReality:
     user_completed_wr_count: int
     user_created_wr_count: int
     user_shift_count: int
+    shift_definitions_created: bool
+    period_created: bool
+    schedule_published: bool
 
 
 async def load_onboarding_reality(
@@ -110,6 +115,38 @@ async def load_onboarding_reality(
             select(func.count()).select_from(PulseWorkRequest).where(PulseWorkRequest.company_id == cid)
         )
         or 0
+    )
+
+    shift_definitions_created = bool(
+        int(
+            await db.scalar(
+                select(func.count())
+                .select_from(PulseScheduleShiftDefinition)
+                .where(PulseScheduleShiftDefinition.company_id == cid)
+            )
+            or 0
+        )
+        > 0
+    )
+    period_created = bool(
+        int(
+            await db.scalar(
+                select(func.count()).select_from(PulseSchedulePeriod).where(PulseSchedulePeriod.company_id == cid)
+            )
+            or 0
+        )
+        > 0
+    )
+    schedule_published = bool(
+        int(
+            await db.scalar(
+                select(func.count())
+                .select_from(PulseScheduleShift)
+                .where(PulseScheduleShift.company_id == cid, PulseScheduleShift.is_draft.is_(False))
+            )
+            or 0
+        )
+        > 0
     )
 
     reading_row = await db.execute(
@@ -180,4 +217,7 @@ async def load_onboarding_reality(
         user_completed_wr_count=user_completed_wr_count,
         user_created_wr_count=user_created_wr_count,
         user_shift_count=user_shift_count,
+        shift_definitions_created=shift_definitions_created,
+        period_created=period_created,
+        schedule_published=schedule_published,
     )

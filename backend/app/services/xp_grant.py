@@ -135,6 +135,9 @@ async def try_grant_xp(
     old_level = level_from_total_xp(prev_total)
 
     stats.total_xp = max(0, prev_total + delta)
+    if prev_total == 0 and int(stats.total_xp or 0) > 0 and not bool(getattr(user, "user_onboarding_tour_completed", False)):
+        user.user_onboarding_tour_completed = True
+        await db.flush()
     if track == "worker":
         stats.xp_worker = max(0, int(getattr(stats, "xp_worker", 0) or 0) + delta)
     elif track == "lead":

@@ -1064,7 +1064,7 @@ class PublishScheduleIn(BaseModel):
 @router.post("/schedule/publish")
 async def publish_schedule(
     body: PublishScheduleIn,
-    _db: Db,
+    db: Db,
     user: Annotated[User, Depends(require_manager_or_above)],
 ) -> dict:
     """Mark period as published. Fires domain event for push notification pipeline."""
@@ -1085,6 +1085,7 @@ async def publish_schedule(
         )
     )
 
+    await try_mark_onboarding_step(db, str(user.id), "publish_first_schedule")
     return {"ok": True, "period_start": body.period_start, "period_end": body.period_end}
 
 
@@ -1187,7 +1188,12 @@ async def list_shift_definitions(db: Db, cid: CompanyId) -> list[ShiftDefinition
 
 
 @router.post("/schedule/shift-definitions", response_model=ShiftDefinitionOut, status_code=status.HTTP_201_CREATED)
-async def create_shift_definition(db: Db, cid: CompanyId, body: ShiftDefinitionIn) -> ShiftDefinitionOut:
+async def create_shift_definition(
+    db: Db,
+    cid: CompanyId,
+    body: ShiftDefinitionIn,
+    user: Annotated[User, Depends(require_manager_or_above)],
+) -> ShiftDefinitionOut:
     code = body.code.strip().upper()
     row = PulseScheduleShiftDefinition(
         company_id=cid,
@@ -1206,6 +1212,7 @@ async def create_shift_definition(db: Db, cid: CompanyId, body: ShiftDefinitionI
         await db.rollback()
         raise HTTPException(status_code=400, detail="Duplicate shift definition code") from None
     await db.refresh(row)
+    await try_mark_onboarding_step(db, str(user.id), "create_shift_definitions")
     return ShiftDefinitionOut.model_validate(row)
 
 
@@ -1262,7 +1269,12 @@ async def list_schedule_periods(db: Db, cid: CompanyId) -> list[SchedulePeriodOu
 
 
 @router.post("/schedule/periods", response_model=SchedulePeriodOut, status_code=status.HTTP_201_CREATED)
-async def create_schedule_period(db: Db, cid: CompanyId, body: SchedulePeriodCreateIn) -> SchedulePeriodOut:
+async def create_schedule_period(
+    db: Db,
+    cid: CompanyId,
+    body: SchedulePeriodCreateIn,
+    user: Annotated[User, Depends(require_manager_or_above)],
+) -> SchedulePeriodOut:
     if body.start_date > body.end_date:
         raise HTTPException(status_code=400, detail="start_date must be <= end_date")
     row = PulseSchedulePeriod(
@@ -1276,6 +1288,7 @@ async def create_schedule_period(db: Db, cid: CompanyId, body: SchedulePeriodCre
     db.add(row)
     await db.commit()
     await db.refresh(row)
+    await try_mark_onboarding_step(db, str(user.id), "create_schedule_period")
     return SchedulePeriodOut.model_validate(row)
 
 
