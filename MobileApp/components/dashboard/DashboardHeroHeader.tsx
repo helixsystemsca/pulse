@@ -1,9 +1,8 @@
 "use client";
 
 import React, { useMemo } from "react";
-import { ImageBackground, Pressable, Text, View } from "react-native";
+import { ImageBackground, Text, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { useRouter } from "expo-router";
 import { useTheme } from "@/theme/ThemeProvider";
 
 type Props = {
@@ -12,7 +11,6 @@ type Props = {
 
 export function DashboardHeroHeader({ greetingName }: Props) {
   const { colors, spacing, radii } = useTheme();
-  const router = useRouter();
 
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
@@ -21,23 +19,6 @@ export function DashboardHeroHeader({ greetingName }: Props) {
     const s = greetingName.trim();
     return s ? s.split(/\s+/)[0] ?? "there" : "there";
   }, [greetingName]);
-
-  const Quick = ({ label, href }: { label: string; href: string }) => (
-    <Pressable
-      onPress={() => router.push(href as never)}
-      style={({ pressed }) => ({
-        paddingVertical: 10,
-        paddingHorizontal: 14,
-        borderRadius: 999,
-        backgroundColor: "rgba(255,255,255,0.16)",
-        borderColor: "rgba(255,255,255,0.26)",
-        borderWidth: 1,
-        opacity: pressed ? 0.88 : 1,
-      })}
-    >
-      <Text style={{ color: "#FFFFFF", fontWeight: "900", fontSize: 12 }}>{label}</Text>
-    </Pressable>
-  );
 
   return (
     <View style={{ borderRadius: radii.lg, overflow: "hidden", borderWidth: 1, borderColor: colors.border }}>
@@ -56,13 +37,6 @@ export function DashboardHeroHeader({ greetingName }: Props) {
           <Text style={{ color: "rgba(255,255,255,0.78)", marginTop: 8, fontSize: 13, lineHeight: 18 }}>
             Jump back into your day: tasks, schedule, documents, and updates.
           </Text>
-
-          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10, marginTop: spacing.md }}>
-            <Quick label="My Tasks" href="/(tabs)/tasks" />
-            <Quick label="My Schedule" href="/(tabs)/schedule" />
-            <Quick label="Documents" href="/(tabs)/documents" />
-            <Quick label="Search" href="/(tabs)/search" />
-          </View>
         </LinearGradient>
       </ImageBackground>
     </View>
