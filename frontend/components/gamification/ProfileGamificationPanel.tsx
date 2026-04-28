@@ -107,13 +107,29 @@ export function ProfileGamificationPanel() {
         <p className="mt-1 text-sm text-ds-muted">Level, XP segments, streak, badges, and avatar border (unlocks at levels 10 / 20 / 30 / 50).</p>
       </div>
       {err ? <p className="text-sm text-ds-danger">{err}</p> : null}
-      <WowXpBar
-        totalXp={a.totalXp}
-        level={a.level}
-        xpIntoLevel={a.xpIntoLevel}
-        xpToNextLevel={a.xpToNextLevel}
-        showTotals
-      />
+      {a.totalXp === 0 ? (
+        <div className="rounded-md border border-ds-border bg-ds-secondary px-5 py-6 text-center space-y-3">
+          <p className="text-2xl">🏁</p>
+          <p className="text-sm font-bold text-ds-foreground">You're just getting started</p>
+          <p className="text-xs text-ds-muted max-w-xs mx-auto leading-relaxed">
+            Complete your first task to earn XP and start building your streak. Your stats will appear here.
+          </p>
+          <a
+            href="/worker"
+            className="inline-flex items-center gap-1.5 rounded-md bg-ds-accent px-4 py-2 text-xs font-bold text-ds-accent-foreground hover:bg-ds-accent/90"
+          >
+            View my tasks →
+          </a>
+        </div>
+      ) : (
+        <WowXpBar
+          totalXp={a.totalXp}
+          level={a.level}
+          xpIntoLevel={a.xpIntoLevel}
+          xpToNextLevel={a.xpToNextLevel}
+          showTotals
+        />
+      )}
       <div className="flex flex-wrap items-center gap-2 text-xs text-ds-muted">
         <span className="font-semibold text-ds-foreground">Streak:</span> {a.streak ?? 0} day(s)
       </div>

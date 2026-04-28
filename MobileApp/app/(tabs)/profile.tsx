@@ -193,7 +193,38 @@ export default function ProfileScreen() {
       </View>
 
       <View style={{ padding: spacing.lg, gap: spacing.md }}>
-        {g ? (
+        {(!g || g.total_xp === 0) ? (
+          <View
+            style={{
+              backgroundColor: colors.card,
+              borderColor: colors.border,
+              borderWidth: 1,
+              borderRadius: radii.lg,
+              padding: spacing.xl,
+              alignItems: "center",
+              gap: spacing.md,
+            }}
+          >
+            <Text style={{ fontSize: 36 }}>🏁</Text>
+            <Text style={{ color: colors.text, fontWeight: "900", fontSize: 16, textAlign: "center" }}>
+              You're just getting started
+            </Text>
+            <Text style={{ color: colors.muted, fontSize: 13, textAlign: "center", lineHeight: 20 }}>
+              Complete your first task to earn XP and start your streak. Your stats will appear here.
+            </Text>
+            <Pressable
+              onPress={() => router.push("/(tabs)/tasks" as never)}
+              style={{
+                backgroundColor: colors.success,
+                borderRadius: radii.lg,
+                paddingVertical: 12,
+                paddingHorizontal: 24,
+              }}
+            >
+              <Text style={{ color: "#0A0A0A", fontWeight: "900" }}>View my tasks →</Text>
+            </Pressable>
+          </View>
+        ) : (
           <View
             style={{
               backgroundColor: colors.card,
