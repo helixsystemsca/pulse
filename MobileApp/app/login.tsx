@@ -1,42 +1,14 @@
-import React, { useCallback, useState } from "react";
-import {
-  ActivityIndicator,
-  Image,
-  ImageBackground,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  Text,
-  TextInput,
-  useWindowDimensions,
-  View,
-} from "react-native";
+import React, { useCallback, useMemo, useState } from "react";
+import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, Text, TextInput, View } from "react-native";
 import type { Href } from "expo-router";
 import { Redirect } from "expo-router";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { StatusBar } from "expo-status-bar";
-import { BlurView } from "expo-blur";
-import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { expandLoginEmail, isEmailShape, validateIdentifier } from "@/lib/authIdentifier";
 import { useSession } from "@/store/session";
 import { useTheme } from "@/theme/ThemeProvider";
-
-function hexToRgb(hex: string): { r: number; g: number; b: number } | null {
-  const m = hex.trim().match(/^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i);
-  if (!m) return null;
-  return { r: parseInt(m[1], 16), g: parseInt(m[2], 16), b: parseInt(m[3], 16) };
-}
-
-function rgba(hex: string, a: number): string {
-  const rgb = hexToRgb(hex);
-  if (!rgb) return `rgba(0,0,0,${a})`;
-  return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${a})`;
-}
+import { Screen } from "@/components/Screen";
 
 export default function LoginScreen() {
-  const { height: windowHeight } = useWindowDimensions();
   const { colors, radii, spacing, text } = useTheme();
   const { session, authReady, signIn } = useSession();
   const [identifier, setIdentifier] = useState("");
@@ -45,7 +17,11 @@ export default function LoginScreen() {
   const [error, setError] = useState<string | null>(null);
 
   const apiConfigured = Boolean((process.env.EXPO_PUBLIC_API_BASE_URL ?? "").trim());
-  const heroPadTop = Math.round(windowHeight * 0.08);
+
+  const loginTitle = useMemo(() => {
+    // Keep this aligned with the web app feel: plain, focused, no hero art.
+    return "Sign in";
+  }, []);
 
   const onSubmit = useCallback(async () => {
     setError(null);
@@ -100,289 +76,128 @@ export default function LoginScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={["top", "bottom"]}>
-      <StatusBar style="light" />
+    <Screen>
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         style={{ flex: 1 }}
       >
-        <View style={{ flex: 1 }}>
-          <ImageBackground
-            source={require("../assets/images/panorama.jpg")}
-            resizeMode="cover"
-            style={{ flex: 1 }}
+        <View style={{ flex: 1, justifyContent: "center", padding: spacing.lg }}>
+          <View
+            style={{
+              backgroundColor: colors.card,
+              borderColor: colors.border,
+              borderWidth: 1,
+              borderRadius: radii.xl,
+              padding: spacing.lg,
+            }}
           >
-            <LinearGradient
-              colors={[
-                rgba(colors.background, 0.96),
-                rgba("#0b1322", 0.88),
-                rgba("#06101d", 0.92),
-              ]}
-              locations={[0, 0.55, 1]}
-              style={{ flex: 1 }}
-            >
-              {/* subtle concentric rings */}
-              <View pointerEvents="none" style={{ position: "absolute", inset: 0, opacity: 0.16 }}>
-                {Array.from({ length: 6 }).map((_, i) => {
-                  const size = 240 + i * 110;
-                  return (
-                    <View
-                      key={i}
-                      style={{
-                        position: "absolute",
-                        top: "18%",
-                        left: "50%",
-                        width: size,
-                        height: size,
-                        marginLeft: -size / 2,
-                        borderRadius: size / 2,
-                        borderWidth: 1,
-                        borderColor: rgba("#D7E3FF", 0.55),
-                        opacity: 0.22,
-                      }}
-                    />
-                  );
-                })}
-              </View>
+            <Text style={{ color: colors.text, ...text.h1, textAlign: "center" }}>Pulse</Text>
+            <Text style={{ color: colors.muted, ...text.body, textAlign: "center", marginTop: 6 }}>{loginTitle}</Text>
 
-              <ScrollView
-                keyboardShouldPersistTaps="handled"
-                keyboardDismissMode="on-drag"
-                showsVerticalScrollIndicator={false}
-                contentContainerStyle={{
-                  flexGrow: 1,
-                  paddingTop: heroPadTop,
-                  paddingBottom: spacing.xl,
-                  justifyContent: "space-between",
+            {!apiConfigured ? (
+              <View
+                style={{
+                  marginTop: spacing.md,
+                  padding: spacing.md,
+                  borderRadius: radii.lg,
+                  backgroundColor: "rgba(235,81,96,0.10)",
+                  borderWidth: 1,
+                  borderColor: "rgba(235,81,96,0.22)",
                 }}
               >
-                {/* hero */}
-                <View style={{ alignItems: "center", paddingHorizontal: spacing.lg }}>
-                  <View
-                    style={{
-                      width: 72,
-                      height: 72,
-                      borderRadius: 22,
-                      backgroundColor: rgba(colors.success, 0.22),
-                      borderWidth: 1,
-                      borderColor: rgba(colors.success, 0.35),
-                      alignItems: "center",
-                      justifyContent: "center",
-                      shadowColor: "#000",
-                      shadowOpacity: 0.25,
-                      shadowRadius: 18,
-                      shadowOffset: { width: 0, height: 12 },
-                      elevation: 6,
-                    }}
-                  >
-                    <Image source={require("../assets/images/icon.png")} style={{ width: 42, height: 42 }} />
-                  </View>
+                <Text style={{ color: colors.text, fontWeight: "900" }}>API URL missing</Text>
+                <Text style={{ color: colors.muted, marginTop: 6, ...text.small }}>
+                  Set <Text style={{ fontWeight: "900" }}>EXPO_PUBLIC_API_BASE_URL</Text> to the same API origin as the
+                  web app’s <Text style={{ fontWeight: "900" }}>NEXT_PUBLIC_API_URL</Text> (no /api/v1 suffix). Restart
+                  Expo after changing .env.
+                </Text>
+              </View>
+            ) : null}
 
-                  <Text style={{ color: colors.text, marginTop: spacing.md, fontSize: 44, fontWeight: "800" }}>
-                    Pulse
-                  </Text>
+            <View style={{ marginTop: spacing.lg, gap: spacing.md }}>
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 10,
+                  borderRadius: radii.lg,
+                  backgroundColor: colors.surface,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                  paddingHorizontal: spacing.md,
+                  paddingVertical: 12,
+                }}
+              >
+                <Ionicons name="mail-outline" size={18} color={colors.muted} />
+                <TextInput
+                  value={identifier}
+                  onChangeText={setIdentifier}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  keyboardType="email-address"
+                  textContentType="emailAddress"
+                  placeholder="Email"
+                  placeholderTextColor={colors.muted}
+                  editable={!busy}
+                  style={{ flex: 1, color: colors.text, fontWeight: "700", paddingVertical: 6 }}
+                />
+              </View>
 
-                  <View
-                    style={{
-                      marginTop: spacing.sm,
-                      paddingHorizontal: 14,
-                      paddingVertical: 8,
-                      borderRadius: 999,
-                      backgroundColor: rgba("#0b1322", 0.42),
-                      borderWidth: 1,
-                      borderColor: rgba("#D7E3FF", 0.22),
-                    }}
-                  >
-                    <Text style={{ color: rgba("#D7E3FF", 0.92), fontSize: 12, fontWeight: "700", letterSpacing: 2 }}>
-                      OPERATIONS PLATFORM
-                    </Text>
-                  </View>
-                </View>
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 10,
+                  borderRadius: radii.lg,
+                  backgroundColor: colors.surface,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                  paddingHorizontal: spacing.md,
+                  paddingVertical: 12,
+                }}
+              >
+                <Ionicons name="lock-closed-outline" size={18} color={colors.muted} />
+                <TextInput
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry
+                  textContentType="password"
+                  placeholder="Password"
+                  placeholderTextColor={colors.muted}
+                  editable={!busy}
+                  onSubmitEditing={() => void onSubmit()}
+                  style={{ flex: 1, color: colors.text, fontWeight: "700", paddingVertical: 6 }}
+                />
+              </View>
+            </View>
 
-                {/* bottom frosted card */}
-                <View style={{ paddingHorizontal: spacing.lg }}>
-                  <BlurView
-                    intensity={28}
-                    tint="light"
-                    style={{
-                      borderRadius: 28,
-                      overflow: "hidden",
-                      borderWidth: 1,
-                      borderColor: "rgba(255,255,255,0.28)",
-                      backgroundColor: "rgba(255,255,255,0.14)",
-                      shadowColor: "#000",
-                      shadowOpacity: 0.22,
-                      shadowRadius: 24,
-                      shadowOffset: { width: 0, height: 16 },
-                      elevation: 8,
-                    }}
-                  >
-                    <View style={{ padding: spacing.lg }}>
-                      <Text
-                        style={{
-                          color: colors.headerGlassText,
-                          fontSize: 28,
-                          fontWeight: "800",
-                          textAlign: "center",
-                          lineHeight: 32,
-                        }}
-                      >
-                        Enhance your daily{"\n"}operations.
-                      </Text>
-                      <Text
-                        style={{
-                          color: colors.headerGlassMuted,
-                          marginTop: spacing.sm,
-                          ...text.body,
-                          textAlign: "center",
-                        }}
-                      >
-                        Invite-only access for verified operators.
-                      </Text>
+            {error ? <Text style={{ color: colors.danger, marginTop: spacing.md, fontWeight: "800" }}>{error}</Text> : null}
 
-                      {!apiConfigured ? (
-                        <View
-                          style={{
-                            marginTop: spacing.md,
-                            padding: spacing.md,
-                            borderRadius: radii.md,
-                            backgroundColor: "rgba(235,81,96,0.13)",
-                            borderWidth: 1,
-                            borderColor: "rgba(235,81,96,0.22)",
-                          }}
-                        >
-                          <Text style={{ color: rgba(colors.headerGlassText, 0.98), fontWeight: "800" }}>
-                            API URL missing
-                          </Text>
-                          <Text style={{ color: rgba(colors.headerGlassText, 0.8), marginTop: 6, ...text.small }}>
-                            Set EXPO_PUBLIC_API_BASE_URL to the same API origin as the web app’s NEXT_PUBLIC_API_URL (no
-                            /api/v1 suffix). Restart Expo after changing .env.
-                          </Text>
-                        </View>
-                      ) : null}
+            <Pressable
+              onPress={() => void onSubmit()}
+              disabled={busy}
+              style={({ pressed }) => ({
+                marginTop: spacing.lg,
+                borderRadius: 999,
+                backgroundColor: colors.success,
+                paddingVertical: 14,
+                alignItems: "center",
+                opacity: busy ? 0.65 : pressed ? 0.92 : 1,
+              })}
+            >
+              {busy ? (
+                <ActivityIndicator color="#0A0A0A" />
+              ) : (
+                <Text style={{ color: "#0A0A0A", fontWeight: "900", fontSize: 15 }}>Sign in</Text>
+              )}
+            </Pressable>
 
-                      <View style={{ marginTop: spacing.lg, gap: spacing.md }}>
-                        <View
-                          style={{
-                            flexDirection: "row",
-                            alignItems: "center",
-                            gap: 10,
-                            borderRadius: 16,
-                            backgroundColor: "rgba(219, 233, 255, 0.78)",
-                            borderWidth: 1,
-                            borderColor: "rgba(255,255,255,0.55)",
-                            paddingHorizontal: spacing.md,
-                            paddingVertical: 12,
-                          }}
-                        >
-                          <Ionicons name="mail-outline" size={20} color={rgba(colors.headerGlassText, 0.7)} />
-                          <TextInput
-                            value={identifier}
-                            onChangeText={setIdentifier}
-                            autoCapitalize="none"
-                            autoCorrect={false}
-                            keyboardType="email-address"
-                            textContentType="emailAddress"
-                            placeholder="Work Email"
-                            placeholderTextColor={rgba(colors.headerGlassText, 0.55)}
-                            editable={!busy}
-                            style={{
-                              flex: 1,
-                              color: rgba(colors.headerGlassText, 0.95),
-                              fontWeight: "700",
-                              paddingVertical: 6,
-                            }}
-                          />
-                        </View>
-
-                        <View
-                          style={{
-                            flexDirection: "row",
-                            alignItems: "center",
-                            gap: 10,
-                            borderRadius: 16,
-                            backgroundColor: "rgba(219, 233, 255, 0.78)",
-                            borderWidth: 1,
-                            borderColor: "rgba(255,255,255,0.55)",
-                            paddingHorizontal: spacing.md,
-                            paddingVertical: 12,
-                          }}
-                        >
-                          <Ionicons name="lock-closed-outline" size={20} color={rgba(colors.headerGlassText, 0.7)} />
-                          <TextInput
-                            value={password}
-                            onChangeText={setPassword}
-                            secureTextEntry
-                            textContentType="password"
-                            placeholder="Password"
-                            placeholderTextColor={rgba(colors.headerGlassText, 0.55)}
-                            editable={!busy}
-                            onSubmitEditing={() => void onSubmit()}
-                            style={{
-                              flex: 1,
-                              color: rgba(colors.headerGlassText, 0.95),
-                              fontWeight: "700",
-                              paddingVertical: 6,
-                            }}
-                          />
-                        </View>
-                      </View>
-
-                      {error ? (
-                        <Text style={{ color: colors.danger, marginTop: spacing.md, fontWeight: "800" }}>{error}</Text>
-                      ) : null}
-
-                      <Pressable
-                        onPress={() => void onSubmit()}
-                        disabled={busy}
-                        style={({ pressed }) => ({
-                          marginTop: spacing.lg,
-                          borderRadius: 999,
-                          overflow: "hidden",
-                          opacity: busy ? 0.65 : pressed ? 0.92 : 1,
-                        })}
-                      >
-                        <LinearGradient
-                          colors={[rgba(colors.background, 0.85), rgba(colors.background, 0.72)]}
-                          style={{
-                            paddingVertical: 16,
-                            paddingHorizontal: 18,
-                            alignItems: "center",
-                            justifyContent: "center",
-                            borderRadius: 999,
-                            borderWidth: 1,
-                            borderColor: "rgba(255,255,255,0.22)",
-                          }}
-                        >
-                          {busy ? (
-                            <ActivityIndicator color="#FFFFFF" />
-                          ) : (
-                            <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-                              <Text style={{ color: "#FFFFFF", fontWeight: "900", fontSize: 16 }}>Authenticate</Text>
-                              <Ionicons name="arrow-forward-outline" size={18} color="#FFFFFF" />
-                            </View>
-                          )}
-                        </LinearGradient>
-                      </Pressable>
-                    </View>
-                  </BlurView>
-
-                  <Text
-                    style={{
-                      marginTop: spacing.md,
-                      color: rgba("#D7E3FF", 0.62),
-                      textAlign: "center",
-                      ...text.small,
-                    }}
-                  >
-                    Use the same credentials as the web app.
-                  </Text>
-                </View>
-              </ScrollView>
-            </LinearGradient>
-          </ImageBackground>
+            <Text style={{ marginTop: spacing.md, color: colors.muted, textAlign: "center", ...text.small }}>
+              Use the same credentials as the web app.
+            </Text>
+          </View>
         </View>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </Screen>
   );
 }

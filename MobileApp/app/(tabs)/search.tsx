@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from "react-native";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useTheme } from "@/theme/ThemeProvider";
 import { useSession } from "@/store/session";
 import { search, type SearchResultItem, type SearchResults } from "@/lib/api/search";
@@ -30,6 +30,7 @@ export default function SearchScreen() {
   const { colors, radii, spacing, text } = useTheme();
   const { session } = useSession();
   const router = useRouter();
+  const params = useLocalSearchParams<{ q?: string }>();
   const token = session?.token ?? "";
 
   const [q, setQ] = useState("");
@@ -37,6 +38,13 @@ export default function SearchScreen() {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    const initial = typeof params.q === "string" ? params.q : "";
+    if (initial && !q) setQ(initial);
+    // Only run once on mount/param change; avoid overwriting user typing.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params.q]);
 
   const doSearch = useCallback(
     async (query: string) => {

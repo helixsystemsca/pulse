@@ -9,6 +9,7 @@ import { listMyTasks, type Task } from "@/lib/api/tasks";
 import { listNotifications, type AppNotification } from "@/lib/api/notifications";
 import { listMyTools, type AssignedTool } from "@/lib/api/tools";
 import { subscribePulseWs } from "@/lib/realtime/pulseWs";
+import { DashboardHeroHeader } from "./DashboardHeroHeader";
 
 function isoNow() {
   return new Date().toISOString();
@@ -70,7 +71,7 @@ export function DashboardScreen() {
   const userId = session?.user?.id ?? "";
   const userName = session?.user?.fullName ?? session?.user?.email ?? "";
 
-  const [upcomingShift, setUpcomingShift] = useState<ShiftOut | null>(null);
+  const [upcomingShifts, setUpcomingShifts] = useState<ShiftOut[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [tools, setTools] = useState<AssignedTool[]>([]);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
@@ -86,8 +87,10 @@ export function DashboardScreen() {
         listNotifications(token),
       ]);
       if (shifts.status === "fulfilled") {
-        const mine = shifts.value.filter((s) => String(s.assigned_user_id) === String(userId));
-        setUpcomingShift(mine[0] ?? null);
+        const mine = shifts.value
+          .filter((s) => String(s.assigned_user_id) === String(userId))
+          .sort((a, b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime());
+        setUpcomingShifts(mine);
       }
       if (myTasks.status === "fulfilled") setTasks(myTasks.value.filter((t) => t.status !== "done").slice(0, 5));
       if (myTools.status === "fulfilled") setTools(myTools.value.slice(0, 3));
@@ -114,10 +117,6 @@ export function DashboardScreen() {
     });
   }, [token, load]);
 
-  const firstName = userName.trim().split(/\s+/)[0] ?? "there";
-  const hour = new Date().getHours();
-  const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
-
   if (loading) {
     return (
       <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: colors.background }}>
@@ -127,16 +126,38 @@ export function DashboardScreen() {
   }
 
   const unreadCount = notifications.filter((n) => !n.read).length;
+  const now = Date.now();
+  const currentShift = upcomingShifts.find(
+    (s) => new Date(s.starts_at).getTime() <= now && new Date(s.ends_at).getTime() >= now,
+  );
+  const nextShift = upcomingShifts.find((s) => new Date(s.starts_at).getTime() > now);
+  const activeShift = currentShift ?? nextShift ?? null;
+
+  const topTasks = useMemo(() => {
+    const pri: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 };
+    return [...tasks]
+      .sort((a, b) => {
+        const aOver = a.due_date && new Date(a.due_date) < new Date() ? -1 : 0;
+        const bOver = b.due_date && new Date(b.due_date) < new Date() ? -1 : 0;
+        if (aOver !== bOver) return aOver - bOver;
+        return (pri[a.priority ?? ""] ?? 2) - (pri[b.priority ?? ""] ?? 2);
+      })
+      .slice(0, 3);
+  }, [tasks]);
 
   return (
     <ScrollView
       style={{ flex: 1, backgroundColor: colors.background }}
       contentContainerStyle={{ padding: spacing.lg, paddingBottom: 120 }}
     >
+      <View style={{ marginBottom: spacing.lg }}>
+        <DashboardHeroHeader greetingName={userName} />
+      </View>
+
       <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: spacing.lg }}>
         <View>
-          <Text style={{ color: colors.muted, fontSize: 13, fontWeight: "700" }}>{greeting}</Text>
-          <Text style={{ color: colors.text, fontSize: 22, fontWeight: "900" }}>{firstName}</Text>
+          <Text style={{ color: colors.muted, fontSize: 13, fontWeight: "700" }}>Today</Text>
+          <Text style={{ color: colors.text, fontSize: 22, fontWeight: "900" }}>Overview</Text>
         </View>
         <Pressable
           onPress={() => router.push("/notifications" as never)}
@@ -172,18 +193,74 @@ export function DashboardScreen() {
         </Pressable>
       </View>
 
+      <View style={{ flexDirection: "row", gap: 8, marginBottom: spacing.md }}>
+        <Pressable
+          onPress={() => router.push("/new-work-request" as never)}
+          style={({ pressed }) => ({
+            flex: 1,
+            paddingVertical: 12,
+            borderRadius: 999,
+            alignItems: "center",
+            backgroundColor: colors.success,
+            opacity: pressed ? 0.9 : 1,
+          })}
+        >
+          <Text style={{ color: "#0A0A0A", fontWeight: "900", fontSize: 12 }}>+ Log issue</Text>
+        </Pressable>
+        <Pressable
+          onPress={() => router.push("/(tabs)/tasks" as never)}
+          style={({ pressed }) => ({
+            flex: 1,
+            paddingVertical: 12,
+            borderRadius: 999,
+            alignItems: "center",
+            backgroundColor: colors.surface,
+            borderWidth: 1,
+            borderColor: colors.border,
+            opacity: pressed ? 0.9 : 1,
+          })}
+        >
+          <Text style={{ color: colors.text, fontWeight: "900", fontSize: 12 }}>📋 My tasks</Text>
+        </Pressable>
+        <Pressable
+          onPress={() => router.push({ pathname: "/(tabs)/search", params: { q: "tool" } } as never)}
+          style={({ pressed }) => ({
+            flex: 1,
+            paddingVertical: 12,
+            borderRadius: 999,
+            alignItems: "center",
+            backgroundColor: colors.surface,
+            borderWidth: 1,
+            borderColor: colors.border,
+            opacity: pressed ? 0.9 : 1,
+          })}
+        >
+          <Text style={{ color: colors.text, fontWeight: "900", fontSize: 12 }}>🔍 Find tool</Text>
+        </Pressable>
+      </View>
+
       <SectionCard style={{ marginBottom: spacing.md }}>
         <SectionLabel label="YOUR SHIFT" />
-        {upcomingShift ? (
+        {activeShift ? (
           <Pressable onPress={() => router.push("/(tabs)/schedule" as never)}>
-            <Text style={{ color: colors.text, fontSize: 16, fontWeight: "900" }}>{fmtDate(upcomingShift.starts_at)}</Text>
+            <Text style={{ color: colors.text, fontSize: 16, fontWeight: "900" }}>{fmtDate(activeShift.starts_at)}</Text>
             <Text style={{ color: colors.muted, marginTop: 4, fontWeight: "700" }}>
-              {fmtTime(upcomingShift.starts_at)} – {fmtTime(upcomingShift.ends_at)}
-              {upcomingShift.shift_code ? `  ·  ${upcomingShift.shift_code}` : ""}
+              {fmtTime(activeShift.starts_at)} – {fmtTime(activeShift.ends_at)}
+              {activeShift.shift_code ? `  ·  ${activeShift.shift_code}` : ""}
             </Text>
             <View style={{ flexDirection: "row", alignItems: "center", marginTop: 8, gap: 6 }}>
-              <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colors.success }} />
-              <Text style={{ color: colors.success, fontSize: 12, fontWeight: "900" }}>Upcoming</Text>
+              <View
+                style={{
+                  width: 8,
+                  height: 8,
+                  borderRadius: 4,
+                  backgroundColor: colors.success,
+                  opacity: currentShift ? 0.9 : 1,
+                }}
+              />
+              <Text style={{ color: colors.success, fontSize: 12, fontWeight: "900" }}>
+                {currentShift ? "On shift now" : "Next shift"}
+              </Text>
             </View>
           </Pressable>
         ) : (
@@ -191,10 +268,10 @@ export function DashboardScreen() {
         )}
       </SectionCard>
 
-      {tasks.length > 0 ? (
+      {topTasks.length > 0 ? (
         <SectionCard style={{ marginBottom: spacing.md }}>
           <SectionLabel label="YOUR TASKS" />
-          {tasks.map((t, i) => (
+          {topTasks.map((t, i) => (
             <Pressable
               key={t.id}
               onPress={() => router.push("/(tabs)/tasks" as never)}
@@ -212,7 +289,7 @@ export function DashboardScreen() {
                   height: 18,
                   borderRadius: 4,
                   borderWidth: 1.5,
-                  borderColor: colors.border,
+                  borderColor: t.priority === "critical" ? "rgba(242,187,5,0.7)" : colors.border,
                   marginRight: 10,
                   backgroundColor: colors.surface,
                 }}
@@ -221,7 +298,7 @@ export function DashboardScreen() {
                 {t.title}
               </Text>
               {t.due_date ? (
-                <Text style={{ color: colors.muted, fontSize: 11 }}>
+                <Text style={{ color: new Date(t.due_date) < new Date() ? colors.danger : colors.muted, fontSize: 11 }}>
                   {new Date(t.due_date) < new Date() ? "⚠ Overdue" : fmtDate(t.due_date)}
                 </Text>
               ) : null}
