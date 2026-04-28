@@ -26,6 +26,18 @@ const QUICK_FINDS = [
   { label: "Procedures", q: "procedure" },
 ];
 
+function timeAgo(iso: string): string {
+  const t = new Date(iso).getTime();
+  if (!Number.isFinite(t)) return "";
+  const diff = Date.now() - t;
+  const m = Math.floor(diff / 60000);
+  if (m < 1) return "just now";
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  return `${Math.floor(h / 24)}d ago`;
+}
+
 export default function SearchScreen() {
   const { colors, radii, spacing, text } = useTheme();
   const { session } = useSession();
@@ -81,6 +93,17 @@ export default function SearchScreen() {
     if (!results) return [];
     return [...results.tools, ...results.equipment, ...results.procedures, ...results.work_requests];
   }, [results]);
+
+  const displaySubtitle = useCallback((item: SearchResultItem): string | null => {
+    if (item.kind === "tool") {
+      const meta = item.meta ?? {};
+      const zoneName = typeof (meta as any).zone_name === "string" ? ((meta as any).zone_name as string) : null;
+      const lastSeen = typeof (meta as any).last_seen_at === "string" ? ((meta as any).last_seen_at as string) : null;
+      const parts = [zoneName, lastSeen ? timeAgo(lastSeen) : null].filter(Boolean) as string[];
+      if (parts.length) return parts.join(" · ");
+    }
+    return item.subtitle ? String(item.subtitle) : null;
+  }, []);
 
   const handleTap = (item: SearchResultItem) => {
     switch (item.kind) {
@@ -196,8 +219,8 @@ export default function SearchScreen() {
                   <Text style={{ color: colors.text, fontWeight: "900" }} numberOfLines={1}>
                     {item.title}
                   </Text>
-                  {item.subtitle ? (
-                    <Text style={{ color: colors.muted, fontSize: 12, marginTop: 3 }}>{item.subtitle}</Text>
+                  {displaySubtitle(item) ? (
+                    <Text style={{ color: colors.muted, fontSize: 12, marginTop: 3 }}>{displaySubtitle(item)}</Text>
                   ) : null}
                 </View>
                 <View

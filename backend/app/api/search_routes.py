@@ -16,7 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user, get_db
 from app.models.device_hub import AutomationBleDevice, BeaconPosition
-from app.models.domain import FacilityEquipment, User
+from app.models.domain import FacilityEquipment, User, Zone
 from app.models.pulse_models import PulseProcedure, PulseWorkRequest
 
 log = logging.getLogger("pulse.search")
@@ -72,13 +72,14 @@ async def unified_search(
         tool_q = await db.execute(
             select(AutomationBleDevice, BeaconPosition)
             .outerjoin(BeaconPosition, BeaconPosition.beacon_id == AutomationBleDevice.id)
+            .outerjoin(Zone, Zone.id == BeaconPosition.zone_id)
             .where(
                 AutomationBleDevice.company_id == cid,
                 or_(AutomationBleDevice.name.ilike(like), AutomationBleDevice.mac_address.ilike(like)),
             )
             .limit(5)
         )
-        for device, pos in tool_q.all():
+        for device, pos, zone in tool_q.all():
             subtitle = (
                 f"Last seen: {pos.computed_at.strftime('%b %d %H:%M')}"
                 if pos is not None
@@ -94,6 +95,8 @@ async def unified_search(
                         "mac_address": device.mac_address,
                         "type": device.type,
                         "zone_id": str(pos.zone_id) if pos is not None and pos.zone_id else None,
+                        "zone_name": str(zone.name) if zone is not None and getattr(zone, "name", None) else None,
+                        "last_seen_at": pos.computed_at.isoformat() if pos is not None and pos.computed_at else None,
                         "x_norm": float(pos.x_norm) if pos is not None and pos.x_norm is not None else None,
                         "y_norm": float(pos.y_norm) if pos is not None and pos.y_norm is not None else None,
                     },
