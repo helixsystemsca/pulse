@@ -69,6 +69,7 @@ import { ScheduleSettingsModal } from "./ScheduleSettingsModal";
 import { ScheduleTrashDropZone } from "./ScheduleTrashDropZone";
 import { Card } from "@/components/pulse/Card";
 import { ScheduleWeekView } from "./ScheduleWeekView";
+import { ScheduleDraftPanel, type DraftResult } from "./ScheduleDraftPanel";
 import { ScheduleWorkerPanel } from "./ScheduleWorkerPanel";
 import { ScheduleWorkforceBar } from "./ScheduleWorkforceBar";
 import type { ShiftDraft } from "./ShiftEditModal";
@@ -130,6 +131,8 @@ export function ScheduleApp() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [timeOffOpen, setTimeOffOpen] = useState(false);
   const [dragSession, setDragSession] = useState<ScheduleDragSession | null>(null);
+  const [draftResult, setDraftResult] = useState<DraftResult | null>(null);
+  const [buildingDraft, setBuildingDraft] = useState(false);
   const [trashHovering, setTrashHovering] = useState(false);
   const [deleteToast, setDeleteToast] = useState<string | null>(null);
   const [saveBusy, setSaveBusy] = useState(false);
@@ -496,6 +499,48 @@ export function ScheduleApp() {
     }
   }, [visibleDatesForScheduleMerge]);
 
+  const handleBuildDraft = useCallback(async () => {
+    if (!visibleDatesForScheduleMerge.length) return;
+    setBuildingDraft(true);
+    try {
+      const toMin = (t: string) => {
+        const [h, m] = t.split(":").map(Number);
+        return h * 60 + m;
+      };
+      const startMin = toMin(settings.workDayStart || "07:00");
+      const endMin = toMin(settings.workDayEnd || "15:00");
+
+      const slots = visibleDatesForScheduleMerge.map((date) => ({
+        date,
+        start_min: startMin,
+        end_min: endMin,
+        shift_type: "shift",
+        shift_definition_id: null,
+        shift_code: null,
+        required_certs: [] as string[],
+        facility_id: zones[0]?.id ?? null,
+      }));
+
+      const url = "/api/v1/pulse/schedule/draft";
+
+      const result = await apiFetch<DraftResult>(url, {
+        method: "POST",
+        json: {
+          slots,
+          period_start: visibleDatesForScheduleMerge[0],
+          period_end: visibleDatesForScheduleMerge[visibleDatesForScheduleMerge.length - 1],
+          max_hours_per_worker: settings.staffing.maxHoursPerWorkerPerWeek || 160,
+          fairness_enabled: true,
+        },
+      });
+      setDraftResult(result);
+    } catch (e) {
+      console.error("Draft build failed", e);
+    } finally {
+      setBuildingDraft(false);
+    }
+  }, [visibleDatesForScheduleMerge, settings, zones]);
+
   const certsOf = (d: ShiftDraft) => (d.required_certifications ?? []).filter(Boolean);
 
   async function saveShift(draft: ShiftDraft) {
@@ -830,6 +875,7 @@ export function ScheduleApp() {
         </div>
 
         {view === "calendar" ? (
+          <>
           <div
             className={`mt-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center ${scheduleDragLock ? "pointer-events-none" : ""}`}
           >
@@ -882,6 +928,16 @@ export function ScheduleApp() {
                   Publish schedule
                 </button>
               ) : null}
+              {canPublishSchedule && isApiMode() && !draftResult ? (
+                <button
+                  type="button"
+                  onClick={() => void handleBuildDraft()}
+                  disabled={buildingDraft}
+                  className="inline-flex items-center gap-1.5 rounded-md border border-ds-border bg-ds-primary px-3 py-1.5 text-xs font-semibold text-ds-muted hover:text-ds-foreground disabled:opacity-60"
+                >
+                  {buildingDraft ? "Building…" : "✦ Build Draft"}
+                </button>
+              ) : null}
             </div>
             <div className="hidden h-6 w-px bg-pulseShell-border sm:block" aria-hidden />
             <div className="flex flex-wrap items-center gap-2">
@@ -914,6 +970,20 @@ export function ScheduleApp() {
               </nav>
             </div>
           </div>
+          {draftResult ? (
+            <div className="mt-3">
+              <ScheduleDraftPanel
+                draft={draftResult}
+                companyId={null}
+                onCommit={() => {
+                  setDraftResult(null);
+                  void reloadPulseSchedule();
+                }}
+                onDiscard={() => setDraftResult(null)}
+              />
+            </div>
+          ) : null}
+          </>
         ) : null}
 
         <div className={`mt-5 ${scheduleDragLock ? "pointer-events-none" : ""}`}>
@@ -933,6 +1003,8 @@ export function ScheduleApp() {
                 <ScheduleWorkerPanel
                   workers={workers}
                   rosterDragEnabled={workerDragEnabled}
+                  dragSession={dragSession}
+                  shifts={shifts}
                   onDragSessionStart={setDragSession}
                   onDragSessionEnd={() => {
                     setDragSession(null);

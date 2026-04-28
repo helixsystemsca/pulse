@@ -171,6 +171,11 @@ export function ScheduleCompactCellRows({
             <div className="min-w-0">
               {summary ? (
                 <div className="flex min-w-0 items-center gap-0.5">
+                  {s.shiftCode && s.shiftKind !== "project_task" ? (
+                    <span className="mr-1 inline-flex shrink-0 items-center rounded px-1 py-0 text-[9px] font-bold uppercase tracking-wide bg-ds-accent/15 text-ds-accent">
+                      {s.shiftCode}
+                    </span>
+                  ) : null}
                   <span className="min-w-0 flex-1 truncate font-semibold leading-tight">{row.name}</span>
                   <span className="flex min-w-0 shrink-0 items-center gap-0.5">
                     {certUnion.length ? (
@@ -201,7 +206,14 @@ export function ScheduleCompactCellRows({
                 </div>
               ) : (
                 <>
-                  <p className="truncate font-semibold leading-tight">{row.name}</p>
+                  <div className="flex min-w-0 items-center gap-1">
+                    {s.shiftCode && s.shiftKind !== "project_task" ? (
+                      <span className="inline-flex shrink-0 items-center rounded px-1 py-0 text-[9px] font-bold uppercase tracking-wide bg-ds-accent/15 text-ds-accent">
+                        {s.shiftCode}
+                      </span>
+                    ) : null}
+                    <p className="min-w-0 flex-1 truncate font-semibold leading-tight">{row.name}</p>
+                  </div>
 
                   <div className="mt-0.5 flex w-full min-w-0 flex-wrap items-center justify-end gap-1">
                     {certUnion.length ? <ScheduleShiftCertChips shift={s} size="day" requiredOverride={certUnion} /> : null}

@@ -1,6 +1,6 @@
 """Pulse REST API — tenant-scoped CMMS, scheduling, inventory, beacons."""
 
-from datetime import date, datetime, timezone
+from datetime import date, datetime, time, timedelta, timezone
 from collections import defaultdict
 from typing import Annotated, Any, Optional
 
@@ -13,7 +13,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel, Field
 
-from app.api.deps import require_tenant_user
+from app.api.deps import require_manager_or_above, require_tenant_user
 from app.core.events.engine import event_engine
 from app.core.events.types import DomainEvent
 from app.core.pulse_storage import read_user_avatar_bytes
@@ -789,6 +789,34 @@ async def create_shift(
     return ShiftCreateResult(shift=_shift_to_out(sh), warnings=warnings)
 
 
+@router.post("/schedule/shifts/{shift_id}/start", status_code=status.HTTP_204_NO_CONTENT)
+async def acknowledge_shift_start(
+    db: Db,
+    cid: CompanyId,
+    shift_id: str,
+    user: User = Depends(require_tenant_user),
+) -> Response:
+    """Assigned worker acknowledges their shift has started (attendance XP via ``schedule.shift_started``)."""
+    sh = await db.get(PulseScheduleShift, shift_id)
+    if not sh or sh.company_id != cid:
+        raise HTTPException(status_code=404, detail="Not found")
+    if str(sh.assigned_user_id or "") != str(user.id):
+        raise HTTPException(status_code=403, detail="Not assigned to this shift")
+    await event_engine.publish(
+        DomainEvent(
+            event_type="schedule.shift_started",
+            company_id=str(cid),
+            entity_id=str(sh.id),
+            source_module="pulse",
+            metadata={
+                "shift_id": str(sh.id),
+                "assigned_user_id": str(sh.assigned_user_id),
+            },
+        )
+    )
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
 @router.patch("/schedule/shifts/{shift_id}", response_model=ShiftCreateResult)
 async def patch_shift(db: Db, cid: CompanyId, shift_id: str, body: ShiftUpdate) -> ShiftCreateResult:
     sh = await db.get(PulseScheduleShift, shift_id)
@@ -850,6 +878,201 @@ async def delete_shift(db: Db, cid: CompanyId, shift_id: str) -> None:
         raise HTTPException(status_code=404, detail="Not found")
     await db.execute(delete(PulseScheduleShift).where(PulseScheduleShift.id == sh.id))
     await db.commit()
+
+
+# ── Draft auto-populate ──────────────────────────────────────────────────────
+
+
+class DraftSlotIn(BaseModel):
+    date: str  # YYYY-MM-DD
+    start_min: int  # minutes from midnight
+    end_min: int
+    shift_type: str = "shift"
+    shift_definition_id: str | None = None
+    shift_code: str | None = None
+    required_certs: list[str] = []
+    facility_id: str | None = None
+
+
+class DraftAssignmentOut(BaseModel):
+    slot_date: str
+    slot_start_min: int
+    slot_end_min: int
+    slot_shift_type: str
+    shift_definition_id: str | None
+    shift_code: str | None
+    facility_id: str | None
+    user_id: str
+    user_name: str
+    score: float
+    warnings: list[str]
+
+
+class DraftConflictOut(BaseModel):
+    slot_date: str
+    slot_start_min: int
+    slot_shift_type: str
+    reason: str
+
+
+class DraftResultOut(BaseModel):
+    assignments: list[DraftAssignmentOut]
+    conflicts: list[DraftConflictOut]
+    total_slots: int
+
+
+class BuildDraftIn(BaseModel):
+    slots: list[DraftSlotIn]
+    period_start: str  # YYYY-MM-DD
+    period_end: str  # YYYY-MM-DD
+    max_hours_per_worker: float = 160
+    fairness_enabled: bool = True
+
+
+@router.post("/schedule/draft", response_model=DraftResultOut)
+async def build_schedule_draft(
+    body: BuildDraftIn,
+    db: Db,
+    user: Annotated[User, Depends(require_manager_or_above)],
+) -> DraftResultOut:
+    """Auto-populate draft. Does NOT create shifts — supervisor reviews first."""
+    from app.modules.pulse.draft_engine import DraftSlot as EngineDraftSlot
+    from app.modules.pulse.draft_engine import build_draft
+
+    cid = str(user.company_id)
+    slots = [
+        EngineDraftSlot(
+            date=date.fromisoformat(s.date),
+            start_min=s.start_min,
+            end_min=s.end_min,
+            shift_type=s.shift_type,
+            shift_definition_id=s.shift_definition_id,
+            shift_code=s.shift_code,
+            required_certs=s.required_certs,
+            facility_id=s.facility_id,
+        )
+        for s in body.slots
+    ]
+
+    result = await build_draft(
+        db=db,
+        company_id=cid,
+        slots=slots,
+        period_start=date.fromisoformat(body.period_start),
+        period_end=date.fromisoformat(body.period_end),
+        max_hours_per_worker=body.max_hours_per_worker,
+        fairness_enabled=body.fairness_enabled,
+    )
+
+    return DraftResultOut(
+        total_slots=result.total_slots,
+        assignments=[
+            DraftAssignmentOut(
+                slot_date=str(a.slot.date),
+                slot_start_min=a.slot.start_min,
+                slot_end_min=a.slot.end_min,
+                slot_shift_type=a.slot.shift_type,
+                shift_definition_id=a.slot.shift_definition_id,
+                shift_code=a.slot.shift_code,
+                facility_id=a.slot.facility_id,
+                user_id=a.user_id,
+                user_name=a.user_name,
+                score=round(a.score, 2),
+                warnings=a.warnings,
+            )
+            for a in result.assignments
+        ],
+        conflicts=[
+            DraftConflictOut(
+                slot_date=str(c.slot.date),
+                slot_start_min=c.slot.start_min,
+                slot_shift_type=c.slot.shift_type,
+                reason=c.reason,
+            )
+            for c in result.conflicts
+        ],
+    )
+
+
+class CommitDraftIn(BaseModel):
+    assignments: list[DraftAssignmentOut]
+
+
+@router.post("/schedule/draft/commit", status_code=201)
+async def commit_schedule_draft(
+    body: CommitDraftIn,
+    db: Db,
+    user: Annotated[User, Depends(require_manager_or_above)],
+) -> dict:
+    """Create shifts from a reviewed draft."""
+    cid = str(user.company_id)
+    created = 0
+
+    for a in body.assignments:
+        d = date.fromisoformat(a.slot_date)
+        starts_at = datetime.combine(
+            d,
+            time(hour=a.slot_start_min // 60, minute=a.slot_start_min % 60),
+            tzinfo=timezone.utc,
+        )
+        end_h, end_m = a.slot_end_min // 60, a.slot_end_min % 60
+        ends_at = datetime.combine(d, time(hour=end_h, minute=end_m), tzinfo=timezone.utc)
+        if ends_at <= starts_at:
+            ends_at += timedelta(days=1)
+
+        shift = PulseScheduleShift(
+            company_id=cid,
+            assigned_user_id=a.user_id,
+            facility_id=a.facility_id,
+            shift_definition_id=a.shift_definition_id,
+            shift_code=a.shift_code,
+            starts_at=starts_at,
+            ends_at=ends_at,
+            shift_type=a.slot_shift_type,
+            shift_kind="workforce",
+            is_draft=False,
+        )
+        db.add(shift)
+        created += 1
+
+    await db.commit()
+    return {"ok": True, "shifts_created": created}
+
+
+# ── Publish ──────────────────────────────────────────────────────────────────
+
+
+class PublishScheduleIn(BaseModel):
+    period_start: str
+    period_end: str
+    notify_workers: bool = True
+
+
+@router.post("/schedule/publish")
+async def publish_schedule(
+    body: PublishScheduleIn,
+    _db: Db,
+    user: Annotated[User, Depends(require_manager_or_above)],
+) -> dict:
+    """Mark period as published. Fires domain event for push notification pipeline."""
+    cid = str(user.company_id)
+
+    await event_engine.publish(
+        DomainEvent(
+            event_type="schedule.period_published",
+            company_id=cid,
+            entity_id=f"{body.period_start}:{body.period_end}",
+            source_module="schedule",
+            metadata={
+                "period_start": body.period_start,
+                "period_end": body.period_end,
+                "notify_workers": body.notify_workers,
+                "published_by": str(user.id),
+            },
+        )
+    )
+
+    return {"ok": True, "period_start": body.period_start, "period_end": body.period_end}
 
 
 @router.get("/schedule/shifts/{shift_id}/work-queue")
