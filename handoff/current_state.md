@@ -6,7 +6,7 @@
 ---
 
 ## Last Updated
-2026-04-27 — Full integration audit: schedule A–D + mobile E + gamification F verified; B tightened (open-period defaults, GET `/pulse/schedule/acknowledgement/status`, My Shifts acknowledge banner); dead `nightAssignmentsEnabled` prop removed from day view
+2026-04-28 — Gap fixes shipped: supervisor period status bar + create/edit period modal; onboarding checklist extended to 7 steps (schedule setup) with auto-marking from reality + worker tour auto-dismiss on first XP; My Shifts shows assignment detail on tap; tools + profile zero/empty states on web + mobile
 
 ---
 
@@ -24,16 +24,16 @@
 ### Backend
 - Telemetry positions + inference confirm/dismiss endpoints are live (`/api/v1/telemetry/*`)
 - PM tasks: tenant-safe (`company_id`) + BLE tools + facility equipment paths
-- Schedule: double-booking + work queue + periods/availability POST + acknowledge POST + **acknowledgement status GET** + draft build/commit + publish event
+- Schedule: double-booking + work queue + periods/availability POST + period PATCH + acknowledge POST + **acknowledgement status GET** + draft build/commit + publish event + onboarding auto-mark for shift defs/period/publish
 - Security: per-gateway ingest rate limit + demo-reset routes restricted + maintenance inference TTL cleanup
 - Unified search: GET `/api/v1/search`; app notifications: push-token register + inbox stub on `/api/v1/notifications` (replace with DB for production)
 
 ### Frontend
-- Web `/settings` + `/live-map` are DS-aligned and stable
+- Web `/settings` + `/live-map` are DS-aligned and stable (XP profile shows “getting started” zero-state)
 - Blueprint designer polish shipped (tools/templates/indicators/read-only UX)
-- Schedule: shift-definitions CRUD page + legend; Phase 3 (code chips, cert drag filter, draft/publish); phases 4–5 (My Shifts **+ acknowledge banner**, day work queue, overlay); availability pages default to **draft/open** period; supervisor grid defaults open-then-any
+- Schedule: shift-definitions CRUD page + legend; period status bar + create/edit modal; Phase 3 (code chips, cert drag filter, draft/publish); phases 4–5 (My Shifts **+ acknowledge banner + assignment detail on tap**, day work queue, overlay); availability pages default to **draft/open** period; supervisor grid defaults open-then-any
 - Preventative rules UI is read-only (deprecated; use PM tasks)
-- Mobile M1–M6 **audit-verified** (6 tabs, dashboard 4 sources, inference-confirm, documents/search/profile, push + WS)
+- Mobile M1–M6 **audit-verified** (6 tabs, dashboard 4 sources + tools empty state, inference-confirm, documents/search/profile + profile zero-state, push + WS)
 
 ### Known Issues / TODOs
 - Blueprint designer remaining phases still pending: lock/unlock-all, fine grid toggle, default shape behavior tweaks
