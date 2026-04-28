@@ -311,10 +311,35 @@ export function DashboardScreen() {
         </SectionCard>
       ) : null}
 
-      {tools.length > 0 ? (
-        <SectionCard style={{ marginBottom: spacing.md }}>
-          <SectionLabel label="YOUR TOOLS" />
-          {tools.map((t, i) => (
+      <SectionCard style={{ marginBottom: spacing.md }}>
+        <SectionLabel label="YOUR TOOLS" />
+        {tools.length === 0 ? (
+          <View
+            style={{
+              paddingVertical: 8,
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 10,
+            }}
+          >
+            <View
+              style={{
+                width: 8,
+                height: 8,
+                borderRadius: 4,
+                backgroundColor: colors.muted,
+                opacity: 0.4,
+              }}
+            />
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: colors.muted, fontSize: 13, fontWeight: "700" }}>No tools tracked yet</Text>
+              <Text style={{ color: colors.muted, fontSize: 11, marginTop: 2, opacity: 0.7 }}>
+                BLE beacons will appear here once connected
+              </Text>
+            </View>
+          </View>
+        ) : (
+          tools.map((t, i) => (
             <View
               key={t.id}
               style={{
@@ -342,12 +367,12 @@ export function DashboardScreen() {
                 {t.last_seen_zone ?? (t.status === "missing" ? "Missing" : "No beacon")}
               </Text>
             </View>
-          ))}
-          <Pressable onPress={() => router.push("/(tabs)/search" as never)} style={{ marginTop: 8 }}>
-            <Text style={{ color: colors.success, fontWeight: "900", fontSize: 13 }}>Find tools →</Text>
-          </Pressable>
-        </SectionCard>
-      ) : null}
+          ))
+        )}
+        <Pressable onPress={() => router.push("/(tabs)/search" as never)} style={{ marginTop: 8 }}>
+          <Text style={{ color: colors.success, fontWeight: "900", fontSize: 13 }}>Find tools →</Text>
+        </Pressable>
+      </SectionCard>
 
       {notifications.length > 0 ? (
         <SectionCard style={{ marginBottom: spacing.md }}>

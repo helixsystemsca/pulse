@@ -219,11 +219,16 @@ export function LiveFacilityMap({ className = "", compact = false, pollMs = 5000
             </div>
           )}
 
-          {!loading && zones.length === 0 && beacons.length === 0 && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
+          {!loading && beacons.length === 0 && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-center px-4">
               <Bluetooth className="h-6 w-6 text-ds-muted/40" />
-              <p className="text-xs text-ds-muted/60 text-center px-4">
-                No zones yet. Set up zones in Zones &amp; Devices.
+              <p className="text-sm font-semibold text-ds-foreground">No beacons connected</p>
+              <p className="text-xs text-ds-muted max-w-xs">
+                BLE location tags will appear here once paired in{" "}
+                <a href="/devices" className="text-ds-accent underline">
+                  Zones &amp; Devices
+                </a>
+                .
               </p>
             </div>
           )}
