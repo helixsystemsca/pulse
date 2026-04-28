@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Alert, Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import { Alert, Modal, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { useTheme } from "@/theme/ThemeProvider";
 import { Screen } from "@/components/Screen";
 import { useSession } from "@/store/session";
@@ -68,7 +68,7 @@ export default function ScheduleScreen() {
   const { session } = useSession();
   const token = session?.token ?? "";
 
-  const [tab, setTab] = useState<"schedule" | "projects" | "availability" | "timeoff">("schedule");
+  const [tab, setTab] = useState<"mine" | "team" | "projects" | "availability" | "timeoff">("mine");
   const [rows, setRows] = useState<ShiftOut[]>([]);
   const [zones, setZones] = useState<Zone[]>([]);
   const [err, setErr] = useState<string | null>(null);
@@ -87,6 +87,13 @@ export default function ScheduleScreen() {
   const [schedulePeriods, setSchedulePeriods] = useState<SchedulePeriodRow[]>([]);
   const [acknowledged, setAcknowledged] = useState(false);
   const [ackBusy, setAckBusy] = useState(false);
+
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [detailShift, setDetailShift] = useState<ShiftOut | null>(null);
+  const [detailAssignments, setDetailAssignments] = useState<Array<{ id: string; area: string; notes?: string | null; assigned_user_id?: string | null }>>(
+    [],
+  );
+  const [detailLoading, setDetailLoading] = useState(false);
 
   const zoneNameById = useMemo(() => {
     const m = new Map<string, string>();
@@ -136,6 +143,21 @@ export default function ScheduleScreen() {
     void load();
   }, [load]);
 
+  useEffect(() => {
+    if (!session?.token || !publishedPeriodForAck?.id) return;
+    void (async () => {
+      try {
+        const st = await apiFetch<{ acknowledged: boolean }>(
+          `/api/v1/pulse/schedule/acknowledgement/status?period_id=${encodeURIComponent(publishedPeriodForAck.id)}`,
+          { token: session.token },
+        );
+        setAcknowledged(Boolean(st.acknowledged));
+      } catch {
+        // If status endpoint isn't available (older backend), keep local fallback.
+      }
+    })();
+  }, [publishedPeriodForAck?.id, session?.token]);
+
   const { myShifts, otherShifts, projectShifts } = useMemo(() => {
     const mine: ShiftOut[] = [];
     const other: ShiftOut[] = [];
@@ -181,13 +203,14 @@ export default function ScheduleScreen() {
       <ScrollView contentContainerStyle={{ padding: spacing.lg, paddingBottom: 110 }}>
         <Text style={{ color: colors.text, ...text.h1 }}>Schedule</Text>
         <Text style={{ color: colors.muted, marginTop: 6, ...text.body }}>
-          Full schedule, optimized for mobile. Your shifts are highlighted.
+          Your shifts first, then the full team schedule when you need it.
         </Text>
 
         <View style={{ flexDirection: "row", marginTop: spacing.lg, gap: 10 }}>
           {(
             [
-              ["schedule", "Schedule"],
+              ["mine", "My shifts"],
+              ["team", "Team"],
               ["projects", "Projects"],
               ...(showAvailabilityTab ? [["availability", "Availability"]] : []),
               ["timeoff", "Time off"],
@@ -234,9 +257,9 @@ export default function ScheduleScreen() {
           </View>
         ) : null}
 
-        {tab === "schedule" ? (
+        {tab === "mine" ? (
           <View style={{ marginTop: spacing.lg }}>
-            {!acknowledged && publishedPeriodForAck && myShifts.length > 0 ? (
+            {!acknowledged && publishedPeriodForAck ? (
               <Pressable
                 disabled={ackBusy}
                 onPress={async () => {
@@ -270,7 +293,7 @@ export default function ScheduleScreen() {
                 <Text style={{ fontSize: 18 }}>{ackBusy ? "⏳" : "📋"}</Text>
                 <View style={{ flex: 1 }}>
                   <Text style={{ color: colors.text, fontWeight: "900" }}>
-                    {ackBusy ? "Acknowledging…" : "Acknowledge schedule"}
+                    {ackBusy ? "Acknowledging…" : "📋 Tap to acknowledge your schedule"}
                   </Text>
                   <Text style={{ color: colors.muted, fontSize: 12, marginTop: 2 }}>
                     Tap to confirm you have seen your shifts for this period.
@@ -288,8 +311,12 @@ export default function ScheduleScreen() {
             </Text>
             <View style={{ marginTop: spacing.sm, gap: spacing.sm }}>
               {(myShifts.length ? myShifts : []).map((s) => (
-                <View
+                <Pressable
                   key={s.id}
+                  onPress={() => {
+                    setDetailShift(s);
+                    setDetailOpen(true);
+                  }}
                   style={{
                     backgroundColor: "rgba(54,241,205,0.14)",
                     borderColor: "rgba(54,241,205,0.45)",
@@ -308,14 +335,21 @@ export default function ScheduleScreen() {
                         ? zoneNameById.get(String(s.zone_id)) ?? `Zone ${s.zone_id}`
                         : "No zone"}
                   </Text>
-                </View>
+                  {s.shift_code ? (
+                    <Text style={{ color: colors.success, marginTop: 6, fontWeight: "900" }}>{s.shift_code}</Text>
+                  ) : null}
+                </Pressable>
               ))}
               {!myShifts.length ? (
                 <Text style={{ color: colors.muted, marginTop: 8 }}>No shifts assigned in the current range.</Text>
               ) : null}
             </View>
+          </View>
+        ) : null}
 
-            <Text style={{ color: colors.muted, fontSize: 12, fontWeight: "900", letterSpacing: 0.6, marginTop: spacing.lg }}>
+        {tab === "team" ? (
+          <View style={{ marginTop: spacing.lg }}>
+            <Text style={{ color: colors.muted, fontSize: 12, fontWeight: "900", letterSpacing: 0.6 }}>
               FULL SCHEDULE
             </Text>
             <View style={{ marginTop: spacing.sm, gap: spacing.sm }}>
@@ -747,6 +781,113 @@ export default function ScheduleScreen() {
           </View>
         ) : null}
       </ScrollView>
+
+      <Modal
+        visible={detailOpen}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setDetailOpen(false)}
+      >
+        <View style={{ flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.55)" }}>
+          <View
+            style={{
+              backgroundColor: colors.card,
+              borderTopLeftRadius: radii.xl,
+              borderTopRightRadius: radii.xl,
+              borderWidth: 1,
+              borderColor: colors.border,
+              padding: spacing.lg,
+              maxHeight: "80%",
+            }}
+          >
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: spacing.md }}>
+              <Text style={{ color: colors.text, fontWeight: "900", fontSize: 16 }}>Shift details</Text>
+              <Pressable onPress={() => setDetailOpen(false)}>
+                <Text style={{ color: colors.muted, fontWeight: "900" }}>Close</Text>
+              </Pressable>
+            </View>
+
+            {detailShift ? (
+              <>
+                <Text style={{ color: colors.text, fontWeight: "900" }}>
+                  {new Date(detailShift.starts_at).toLocaleString()} – {new Date(detailShift.ends_at).toLocaleTimeString()}
+                </Text>
+                <Text style={{ color: colors.muted, marginTop: 6, fontWeight: "700" }}>
+                  {detailShift.zone_id ? zoneNameById.get(String(detailShift.zone_id)) ?? `Zone ${detailShift.zone_id}` : "No zone"}
+                  {detailShift.shift_code ? `  ·  ${detailShift.shift_code}` : ""}
+                </Text>
+
+                <View style={{ marginTop: spacing.lg }}>
+                  <Text style={{ color: colors.muted, fontSize: 12, fontWeight: "900", letterSpacing: 0.6 }}>
+                    ASSIGNMENTS
+                  </Text>
+
+                  {detailLoading ? (
+                    <Text style={{ color: colors.muted, marginTop: 8 }}>Loading…</Text>
+                  ) : detailAssignments.length ? (
+                    <View style={{ marginTop: spacing.sm, gap: 10 }}>
+                      {detailAssignments.map((a) => (
+                        <View
+                          key={a.id}
+                          style={{
+                            backgroundColor: colors.surface,
+                            borderColor: colors.border,
+                            borderWidth: 1,
+                            borderRadius: radii.lg,
+                            padding: spacing.md,
+                          }}
+                        >
+                          <Text style={{ color: colors.text, fontWeight: "900" }}>{a.area}</Text>
+                          {a.notes ? <Text style={{ color: colors.muted, marginTop: 6 }}>{a.notes}</Text> : null}
+                        </View>
+                      ))}
+                    </View>
+                  ) : (
+                    <Text style={{ color: colors.muted, marginTop: 8 }}>No assignments found for this day.</Text>
+                  )}
+                </View>
+              </>
+            ) : (
+              <Text style={{ color: colors.muted }}>No shift selected.</Text>
+            )}
+
+            <Pressable
+              onPress={() => {
+                if (!detailShift) return;
+                setDetailLoading(true);
+                void (async () => {
+                  try {
+                    const d = new Date(detailShift.starts_at).toISOString().slice(0, 10);
+                    const from = `${d}T00:00:00.000Z`;
+                    const to = `${d}T23:59:59.999Z`;
+                    const rows = await apiFetch<
+                      Array<{ id: string; area: string; notes?: string | null; assigned_user_id?: string | null }>
+                    >(
+                      `/api/v1/pulse/schedule/assignments?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&shift_type=${encodeURIComponent(detailShift.shift_type || "day")}`,
+                      { token },
+                    );
+                    setDetailAssignments(rows.filter((x: any) => String((x as any).date ?? d) === d));
+                  } catch {
+                    setDetailAssignments([]);
+                  } finally {
+                    setDetailLoading(false);
+                  }
+                })();
+              }}
+              style={({ pressed }) => ({
+                marginTop: spacing.lg,
+                backgroundColor: colors.success,
+                paddingVertical: 12,
+                borderRadius: 999,
+                alignItems: "center",
+                opacity: pressed ? 0.9 : 1,
+              })}
+            >
+              <Text style={{ color: "#0A0A0A", fontWeight: "900" }}>Refresh assignments</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </Screen>
   );
 }
