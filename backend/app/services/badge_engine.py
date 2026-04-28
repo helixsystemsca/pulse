@@ -70,6 +70,45 @@ async def _count_inspection_xp_events(db: AsyncSession, *, company_id: str, user
     return int(q.scalar_one() or 0)
 
 
+async def _count_inference_confirmed(db: AsyncSession, *, company_id: str, user_id: str) -> int:
+    q = await db.execute(
+        select(func.count())
+        .select_from(XpLedger)
+        .where(
+            XpLedger.company_id == company_id,
+            XpLedger.user_id == user_id,
+            XpLedger.reason_code == "inference_confirmed",
+        )
+    )
+    return int(q.scalar_one() or 0)
+
+
+async def _count_pm_on_time(db: AsyncSession, *, company_id: str, user_id: str) -> int:
+    q = await db.execute(
+        select(func.count())
+        .select_from(XpLedger)
+        .where(
+            XpLedger.company_id == company_id,
+            XpLedger.user_id == user_id,
+            XpLedger.reason_code == "pm_completed_on_time",
+        )
+    )
+    return int(q.scalar_one() or 0)
+
+
+async def _count_any_tasks_done(db: AsyncSession, *, company_id: str, user_id: str) -> int:
+    q = await db.execute(
+        select(func.count())
+        .select_from(Task)
+        .where(
+            Task.company_id == company_id,
+            Task.assigned_to == user_id,
+            Task.status == "done",
+        )
+    )
+    return int(q.scalar_one() or 0)
+
+
 async def evaluate_new_badges(db: AsyncSession, *, company_id: str, user_id: str) -> list[dict]:
     """Insert any newly earned badges; returns payloads for realtime UI."""
     have = await _existing_badges(db, user_id)
@@ -79,11 +118,15 @@ async def evaluate_new_badges(db: AsyncSession, *, company_id: str, user_id: str
     ot = await _count_on_time_completions(db, company_id=company_id, user_id=user_id)
     proc = await _count_procedure_like_done(db, company_id=company_id, user_id=user_id)
     insp = await _count_inspection_xp_events(db, company_id=company_id, user_id=user_id)
+    infer = await _count_inference_confirmed(db, company_id=company_id, user_id=user_id)
+    pm_ot = await _count_pm_on_time(db, company_id=company_id, user_id=user_id)
+    any_done = await _count_any_tasks_done(db, company_id=company_id, user_id=user_id)
 
     candidates: list[tuple[str, bool]] = [
         ("streak_3", streak >= 3),
         ("streak_7", streak >= 7),
         ("streak_30", streak >= 30),
+        ("streak_100", streak >= 100),
         ("wo_10", wo >= 10),
         ("wo_50", wo >= 50),
         ("wo_200", wo >= 200),
@@ -92,6 +135,10 @@ async def evaluate_new_badges(db: AsyncSession, *, company_id: str, user_id: str
         ("proc_10", proc >= 10),
         ("proc_50", proc >= 50),
         ("insp_10", insp >= 10),
+        ("inference_5", infer >= 5),
+        ("inference_20", infer >= 20),
+        ("pm_guardian_5", pm_ot >= 5),
+        ("first_task", any_done >= 1),
     ]
 
     now = datetime.now(timezone.utc)

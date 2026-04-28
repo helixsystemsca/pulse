@@ -89,8 +89,9 @@ async def try_grant_xp(
     apply_streak: bool = True,
     emit_events: bool = True,
 ) -> XpGrantResult:
-    if amount <= 0:
+    if amount == 0:
         return await _snapshot(db, company_id=company_id, user_id=user_id)
+
     dk = (dedupe_key or "").strip()[:500]
     if not dk:
         return await _snapshot(db, company_id=company_id, user_id=user_id)
@@ -106,6 +107,7 @@ async def try_grant_xp(
     md = dict(meta or {})
     label = (reason or "").strip() or display_reason(reason_code, md)
 
+    delta = int(amount)
     row = {
         "id": str(uuid4()),
         "company_id": str(company_id),
@@ -114,7 +116,7 @@ async def try_grant_xp(
         "reason_code": reason_code[:64],
         "reason": label[:2000],
         "dedupe_key": dk,
-        "xp_delta": int(amount),
+        "xp_delta": delta,
         "meta": md,
         "created_at": datetime.now(timezone.utc),
     }
@@ -132,16 +134,16 @@ async def try_grant_xp(
     prev_total = int(stats.total_xp or 0)
     old_level = level_from_total_xp(prev_total)
 
-    stats.total_xp = prev_total + int(amount)
+    stats.total_xp = max(0, prev_total + delta)
     if track == "worker":
-        stats.xp_worker = int(getattr(stats, "xp_worker", 0) or 0) + int(amount)
+        stats.xp_worker = max(0, int(getattr(stats, "xp_worker", 0) or 0) + delta)
     elif track == "lead":
-        stats.xp_lead = int(getattr(stats, "xp_lead", 0) or 0) + int(amount)
+        stats.xp_lead = max(0, int(getattr(stats, "xp_lead", 0) or 0) + delta)
     elif track == "supervisor":
-        stats.xp_supervisor = int(getattr(stats, "xp_supervisor", 0) or 0) + int(amount)
+        stats.xp_supervisor = max(0, int(getattr(stats, "xp_supervisor", 0) or 0) + delta)
 
     today = datetime.now(timezone.utc).date()
-    if apply_streak and counts_toward_streak:
+    if delta > 0 and apply_streak and counts_toward_streak:
         await touch_streak_and_award_milestones(
             db,
             company_id=str(company_id),
@@ -154,12 +156,12 @@ async def try_grant_xp(
     _sync_level_and_borders(stats)
 
     new_badges: list[dict[str, Any]] = []
-    if apply_badges:
+    if delta > 0 and apply_badges:
         new_badges = await evaluate_new_badges(db, company_id=str(company_id), user_id=str(user_id))
 
     total = int(stats.total_xp or 0)
     lvl, into, _seg = xp_progress(total)
-    leveled_up = int(stats.level) > old_level
+    leveled_up = int(stats.level) > old_level if delta > 0 else False
 
     cid = str(company_id)
     if emit_events:
@@ -171,7 +173,7 @@ async def try_grant_xp(
                 source_module="gamification",
                 metadata={
                     "user_id": str(user_id),
-                    "amount": int(amount),
+                    "amount": delta,
                     "reason_code": reason_code,
                     "reason": label,
                     "total_xp": total,
@@ -211,7 +213,7 @@ async def try_grant_xp(
             )
 
     return XpGrantResult(
-        applied=int(amount),
+        applied=delta,
         total_xp=total,
         level=lvl,
         old_level=old_level,
@@ -227,3 +229,35 @@ async def has_ledger_entry(db: AsyncSession, *, user_id: str, dedupe_key: str) -
     dk = (dedupe_key or "").strip()[:500]
     q = await db.execute(select(XpLedger.id).where(XpLedger.user_id == user_id, XpLedger.dedupe_key == dk).limit(1))
     return q.scalar_one_or_none() is not None
+
+
+async def quality_bonus_xp_for_task(
+    db: AsyncSession,
+    *,
+    company_id: str,
+    user_id: str,
+    task_id: str,
+) -> int:
+    """
+    Sum ``steps`` + ``photo`` + ``clean`` from the stored ``xp_breakdown`` on the task_completion ledger row.
+    Returns ``0`` if no breakdown (e.g. completions before quality buckets existed).
+    """
+    rq = await db.execute(
+        select(XpLedger.meta).where(
+            XpLedger.company_id == company_id,
+            XpLedger.user_id == user_id,
+            XpLedger.reason_code == "task_completed",
+            XpLedger.dedupe_key == f"task_completion:{task_id}",
+        ).limit(1)
+    )
+    meta = rq.scalar_one_or_none()
+    if not isinstance(meta, dict):
+        return 0
+    bd = meta.get("xp_breakdown")
+    if not isinstance(bd, dict):
+        return 0
+    return (
+        int(bd.get("steps") or 0)
+        + int(bd.get("photo") or 0)
+        + int(bd.get("clean") or 0)
+    )

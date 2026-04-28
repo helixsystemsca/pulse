@@ -64,6 +64,12 @@ class UserStats(Base):
     avg_completion_time: Mapped[float] = mapped_column(Float, nullable=False, server_default=text("0"))
     streak: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
     last_streak_activity_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    streaks: Mapped[dict[str, Any]] = mapped_column(
+        JSONB,
+        nullable=False,
+        server_default=text("'{}'::jsonb"),
+        comment="Named streaks: daily_activity, pm_on_time, no_flags, shift_attendance",
+    )
     avatar_border: Mapped[str | None] = mapped_column(String(32), nullable=True)
     unlocked_avatar_borders: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, server_default=text("'[]'::jsonb"))
 

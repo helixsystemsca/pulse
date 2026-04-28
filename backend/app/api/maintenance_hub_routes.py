@@ -8,12 +8,14 @@ from typing import Annotated, Optional
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
-from sqlalchemy import and_, delete, select
+from sqlalchemy import and_, delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.responses import Response
 
 from app.api.deps import require_tenant_user
 from app.core.database import get_db
+from app.core.events.engine import event_engine
+from app.core.events.types import DomainEvent
 from app.core.pulse_storage import (
     read_procedure_assignment_photo_bytes,
     read_procedure_step_image_bytes,
@@ -690,7 +692,34 @@ async def complete_procedure_assignment(
     now = datetime.now(timezone.utc)
     a.completed_at = now
     a.updated_at = now
+    proc = await db.get(PulseProcedure, a.procedure_id)
+    steps_n = len(normalize_procedure_steps(proc.steps if proc else None))
+    photo_n = int(
+        (
+            await db.execute(
+                select(func.count()).select_from(PulseProcedureAssignmentPhoto).where(
+                    PulseProcedureAssignmentPhoto.assignment_id == assignment_id
+                )
+            )
+        ).scalar_one()
+        or 0
+    )
+    all_steps_completed = steps_n == 0 or (steps_n > 0 and photo_n >= steps_n)
     await db.commit()
+    await event_engine.publish(
+        DomainEvent(
+            event_type="ops.procedure_completed",
+            company_id=str(cid),
+            entity_id=str(a.procedure_id),
+            source_module="cmms",
+            metadata={
+                "procedure_id": str(a.procedure_id),
+                "completed_by": str(user.id),
+                "assignment_id": str(a.id),
+                "all_steps_completed": all_steps_completed,
+            },
+        )
+    )
     return ProcedureAssignmentCompleteOut(assignment_id=str(a.id), completed_at=now)
 
 
