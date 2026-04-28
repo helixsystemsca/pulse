@@ -38,7 +38,8 @@
         {
           "photosPermission": "Allow access to your photos to set your profile picture."
         }
-      ]
+      ],
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true

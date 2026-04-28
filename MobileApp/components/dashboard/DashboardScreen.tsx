@@ -117,6 +117,19 @@ export function DashboardScreen() {
     });
   }, [token, load]);
 
+  const topTasks = useMemo(() => {
+    return [...tasks]
+      .sort((a, b) => {
+        const aOver = a.due_date && new Date(a.due_date) < new Date() ? -1 : 0;
+        const bOver = b.due_date && new Date(b.due_date) < new Date() ? -1 : 0;
+        if (aOver !== bOver) return aOver - bOver;
+        const ap = Number(a.priority ?? 1);
+        const bp = Number(b.priority ?? 1);
+        return bp - ap; // higher number = higher priority
+      })
+      .slice(0, 3);
+  }, [tasks]);
+
   if (loading) {
     return (
       <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: colors.background }}>
@@ -132,19 +145,6 @@ export function DashboardScreen() {
   );
   const nextShift = upcomingShifts.find((s) => new Date(s.starts_at).getTime() > now);
   const activeShift = currentShift ?? nextShift ?? null;
-
-  const topTasks = useMemo(() => {
-    return [...tasks]
-      .sort((a, b) => {
-        const aOver = a.due_date && new Date(a.due_date) < new Date() ? -1 : 0;
-        const bOver = b.due_date && new Date(b.due_date) < new Date() ? -1 : 0;
-        if (aOver !== bOver) return aOver - bOver;
-        const ap = Number(a.priority ?? 1);
-        const bp = Number(b.priority ?? 1);
-        return bp - ap; // higher number = higher priority
-      })
-      .slice(0, 3);
-  }, [tasks]);
 
   return (
     <ScrollView
