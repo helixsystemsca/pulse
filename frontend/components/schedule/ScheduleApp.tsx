@@ -70,6 +70,7 @@ import { ScheduleTrashDropZone } from "./ScheduleTrashDropZone";
 import { Card } from "@/components/pulse/Card";
 import { ScheduleWeekView } from "./ScheduleWeekView";
 import { ScheduleDraftPanel, type DraftResult } from "./ScheduleDraftPanel";
+import { SchedulePeriodModal, type SchedulePeriodLite } from "./SchedulePeriodModal";
 import { ScheduleWorkerPanel } from "./ScheduleWorkerPanel";
 import { ScheduleWorkforceBar } from "./ScheduleWorkforceBar";
 import type { ShiftDraft } from "./ShiftEditModal";
@@ -112,6 +113,7 @@ export function ScheduleApp() {
   const session = readSession();
   const currentUserId = session?.sub ?? null;
   const canPublishSchedule = sessionHasAnyRole(session, "manager", "supervisor", "company_admin", "system_admin");
+  const canEdit = canPublishSchedule;
 
   const scheduleMod = useModuleSettings("schedule");
   const scheduleFlags = scheduleMod.settings as { allowShiftOverrides?: boolean };
@@ -136,6 +138,8 @@ export function ScheduleApp() {
   const [trashHovering, setTrashHovering] = useState(false);
   const [deleteToast, setDeleteToast] = useState<string | null>(null);
   const [saveBusy, setSaveBusy] = useState(false);
+  const [activePeriod, setActivePeriod] = useState<SchedulePeriodLite | null>(null);
+  const [showPeriodModal, setShowPeriodModal] = useState(false);
   const [scheduleProjects, setScheduleProjects] = useState<ProjectRow[] | null>(null);
   const [showProjectOverlay, setShowProjectOverlay] = useState(true);
   const schedulePath = usePathname() ?? "";
@@ -257,6 +261,17 @@ export function ScheduleApp() {
     setShiftDefinitions(defs);
   }, [applyPulseScheduleSnapshot, calendarScale, cursor.m, cursor.y, focusDate]);
 
+  const reloadActivePeriod = useCallback(async () => {
+    if (!hydrated || !canEdit || !isApiMode()) return;
+    try {
+      const periods = await apiFetch<SchedulePeriodLite[]>(`/api/v1/pulse/schedule/periods`);
+      const open = periods?.find((p) => p?.status === "open" || p?.status === "draft");
+      setActivePeriod(open ?? null);
+    } catch {
+      // non-fatal
+    }
+  }, [canEdit, hydrated]);
+
   const scheduleFacilitySettingsKey = useMemo(() => {
     const s = scheduleMod.settings as { facilityCount?: number; facilityLabels?: string[] };
     return `${s.facilityCount ?? ""}:${JSON.stringify(s.facilityLabels ?? [])}`;
@@ -266,6 +281,10 @@ export function ScheduleApp() {
     if (!hydrated || !isApiMode()) return;
     void reloadPulseSchedule();
   }, [hydrated, reloadPulseSchedule, scheduleFacilitySettingsKey]);
+
+  useEffect(() => {
+    void reloadActivePeriod();
+  }, [reloadActivePeriod]);
 
   const hasPendingServerSave = useMemo(() => {
     if (!isApiMode()) return false;
@@ -970,6 +989,51 @@ export function ScheduleApp() {
               </nav>
             </div>
           </div>
+          {canEdit ? (
+            <div className={`mt-3 ${scheduleDragLock ? "pointer-events-none" : ""}`}>
+              <div className="flex items-center justify-between gap-3 rounded-md border border-ds-border bg-ds-secondary px-4 py-2 text-xs">
+                {activePeriod ? (
+                  <>
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`h-2 w-2 rounded-full ${
+                          activePeriod.status === "open" ? "bg-emerald-500" : "bg-amber-400"
+                        }`}
+                      />
+                      <span className="font-semibold text-ds-foreground">
+                        {activePeriod.status === "open" ? "Availability open" : "Period draft"}
+                        {" · "}
+                        {activePeriod.start_date} – {activePeriod.end_date}
+                      </span>
+                      {activePeriod.availability_deadline ? (
+                        <span className="text-ds-muted">
+                          {" · "}Due {new Date(activePeriod.availability_deadline).toLocaleDateString()}
+                        </span>
+                      ) : null}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowPeriodModal(true)}
+                      className="font-semibold text-ds-accent hover:underline"
+                    >
+                      Manage period
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <span className="text-ds-muted">No active period. Create one to collect availability.</span>
+                    <button
+                      type="button"
+                      onClick={() => setShowPeriodModal(true)}
+                      className="inline-flex items-center gap-1 rounded-md bg-ds-accent px-3 py-1 text-xs font-bold text-ds-accent-foreground hover:bg-ds-accent/90"
+                    >
+                      + Create period
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+          ) : null}
           {draftResult ? (
             <div className="mt-3">
               <ScheduleDraftPanel
@@ -1254,6 +1318,15 @@ export function ScheduleApp() {
           {deleteToast}
         </div>
       ) : null}
+
+      <SchedulePeriodModal
+        open={showPeriodModal}
+        existing={activePeriod}
+        onClose={() => setShowPeriodModal(false)}
+        onSaved={() => {
+          void reloadActivePeriod();
+        }}
+      />
 
       <TimeOffRequestModal
         open={timeOffOpen}

@@ -126,6 +126,14 @@ class SchedulePeriodOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class SchedulePeriodPatchIn(BaseModel):
+    start_date: Optional[date] = None
+    end_date: Optional[date] = None
+    availability_deadline: Optional[datetime] = None
+    publish_deadline: Optional[datetime] = None
+    status: Optional[str] = None
+
+
 class AvailabilityWindow(BaseModel):
     start: int = Field(..., ge=0, lt=1440)
     end: int = Field(..., ge=0, lt=1440)
@@ -1266,6 +1274,34 @@ async def create_schedule_period(db: Db, cid: CompanyId, body: SchedulePeriodCre
         status="draft",
     )
     db.add(row)
+    await db.commit()
+    await db.refresh(row)
+    return SchedulePeriodOut.model_validate(row)
+
+
+@router.patch("/schedule/periods/{period_id}", response_model=SchedulePeriodOut)
+async def patch_schedule_period(db: Db, cid: CompanyId, period_id: str, body: SchedulePeriodPatchIn) -> SchedulePeriodOut:
+    q = await db.execute(select(PulseSchedulePeriod).where(PulseSchedulePeriod.id == period_id, PulseSchedulePeriod.company_id == cid))
+    row = q.scalar_one_or_none()
+    if not row:
+        raise HTTPException(status_code=404, detail="Unknown schedule period")
+
+    start = body.start_date or row.start_date
+    end = body.end_date or row.end_date
+    if start and end and start > end:
+        raise HTTPException(status_code=400, detail="start_date must be <= end_date")
+
+    if body.start_date is not None:
+        row.start_date = body.start_date
+    if body.end_date is not None:
+        row.end_date = body.end_date
+    if body.availability_deadline is not None:
+        row.availability_deadline = body.availability_deadline
+    if body.publish_deadline is not None:
+        row.publish_deadline = body.publish_deadline
+    if body.status is not None:
+        row.status = body.status
+
     await db.commit()
     await db.refresh(row)
     return SchedulePeriodOut.model_validate(row)
