@@ -1,507 +1,367 @@
-
-# Pulse · Audit + Complete — integration.md
+# Mobile Polish — integration.md
 
 ## CURSOR PROMPT
 "Read handoff/integration.md and handoff/contracts.md.
-This is an AUDIT task. For each item below, check if it exists and works.
-If it exists and is correct: mark DONE.
-If it is missing or incomplete: implement it.
-Check files before writing. Do not duplicate existing code.
-Run cd frontend && npm run build before committing.
-Commit after each phase with the message provided."
+Option A — native screens. No WebViews.
+Execute steps in order. Check before creating.
+Run cd frontend && npm run build on web changes.
+Commit after each phase with message provided."
 
 ---
 
-## HOW TO AUDIT
-
-For each item, run the check command first.
-If the check passes → mark DONE, move on.
-If the check fails → implement the fix, then mark DONE.
+## CONTEXT
+All 6 tabs exist. The structure is correct.
+Goal: make each tab genuinely useful for a field worker's daily flow.
+Do not rebuild screens that already work — polish and wire missing pieces.
 
 ---
 
-## PHASE A — Schedule: Shift Definitions + Legend
+## PHASE 1 — Home tab polish
 
-### A1 — Shift definitions builder UI [ ]
+### 1A — Shift card shows correct state [ ]
 CHECK:
 ```bash
-find frontend/app/schedule -name "shift-definitions*" -o -name "shift-def*"
-grep -rn "shift_definition\|ShiftDefinition\|shift-definitions" frontend/app/schedule/
+grep -n "On shift\|Upcoming\|No shift\|starts_at\|ends_at" MobileApp/components/dashboard/DashboardScreen.tsx | head -10
 ```
-EXPECTED: A page at `frontend/app/schedule/shift-definitions/page.tsx` that:
-- Lists existing shift definitions (GET /api/v1/pulse/schedule/shift-definitions)
-- Allows creating new ones (code, name, start_min, end_min, shift_type, color, cert_requirements)
-- Allows editing and deleting existing ones
 
-IF MISSING: Create `frontend/app/schedule/shift-definitions/page.tsx` with a simple
-CRUD table. Follow the pattern of other settings pages in the app.
-Use apiFetch. Auth guard with readSession() + navigateToPulseLogin().
+The shift card should show one of three states:
+- **On shift now** — if current time is between starts_at and ends_at → green dot, "On shift now"
+- **Next shift** — upcoming shift → show date + time
+- **No shifts** — no upcoming shifts → "No upcoming shifts scheduled"
 
-### A2 — Shift code badge on schedule grid chips [ ]
-CHECK:
-```bash
-grep -n "shift_code\|shiftCode\|shift\.code" frontend/components/schedule/ScheduleCompactCellRows.tsx
-grep -n "shift_code\|shiftCode" frontend/lib/schedule/pulse-bridge.ts
-```
-EXPECTED: `pulse-bridge.ts` maps `shift_code` from API → local Shift type.
-`ScheduleCompactCellRows.tsx` renders a small badge when `shift.shiftCode` is set.
-
-IF MISSING: 
-In `frontend/lib/schedule/types.ts` add to Shift interface:
-```ts
-shiftCode?: string;
-shiftDefinitionId?: string;
-```
-In `frontend/lib/schedule/pulse-bridge.ts` in the shift mapping function add:
-```ts
-shiftCode: raw.shift_code ?? undefined,
-shiftDefinitionId: raw.shift_definition_id ?? undefined,
-```
-In `frontend/components/schedule/ScheduleCompactCellRows.tsx` find where
-the shift chip content renders. Add before the worker name:
+Fix the shift card logic:
 ```tsx
-{shift.shiftCode && (
-  <span className="inline-flex items-center rounded px-1 text-[9px] font-bold
-    uppercase tracking-wide bg-ds-accent/15 text-ds-accent mr-1">
-    {shift.shiftCode}
-  </span>
+const now = Date.now();
+const currentShift = upcomingShifts.find(s =>
+  new Date(s.starts_at).getTime() <= now &&
+  new Date(s.ends_at).getTime() >= now
+);
+const nextShift = upcomingShifts.find(s =>
+  new Date(s.starts_at).getTime() > now
+);
+const activeShift = currentShift ?? nextShift ?? null;
+```
+Show "On shift now" with pulsing green dot if currentShift exists.
+Show "Next shift" with date/time if nextShift exists but currentShift doesn't.
+
+### 1B — Tasks card shows priority correctly [ ]
+CHECK:
+```bash
+grep -n "priority\|overdue\|due_date" MobileApp/components/dashboard/DashboardScreen.tsx | head -10
+```
+Tasks on the home card should show:
+- Overdue tasks first (due_date < now), flagged in red
+- Critical tasks next
+- Max 3 tasks shown, with "View all →" below
+
+If not already sorted this way, sort before slicing:
+```tsx
+const sorted = tasks.sort((a, b) => {
+  const aOver = a.due_date && new Date(a.due_date) < new Date() ? -1 : 0;
+  const bOver = b.due_date && new Date(b.due_date) < new Date() ? -1 : 0;
+  if (aOver !== bOver) return aOver - bOver;
+  const pri = { critical: 0, high: 1, medium: 2, low: 3 };
+  return (pri[a.priority] ?? 2) - (pri[b.priority] ?? 2);
+});
+```
+
+### 1C — Quick actions row [ ]
+CHECK:
+```bash
+grep -n "Quick\|quick.*action\|scan\|QR\|Log.*work\|New.*WR" MobileApp/components/dashboard/DashboardScreen.tsx | head -5
+```
+EXPECTED: Below the greeting, a row of quick action buttons:
+- "+ Log issue" → navigates to /new-work-request
+- "📋 My tasks" → navigates to /(tabs)/tasks
+- "🔍 Find tool" → navigates to /(tabs)/search with q pre-filled
+
+IF MISSING: Add above the shift card:
+```tsx
+<View style={{ flexDirection: "row", gap: 8, marginBottom: spacing.md }}>
+  {[
+    { label: "+ Log issue", to: "/new-work-request" },
+    { label: "My tasks",    to: "/(tabs)/tasks" },
+    { label: "Find tool",   to: "/(tabs)/search" },
+  ].map(a => (
+    <Pressable key={a.label} onPress={() => router.push(a.to as never)}
+      style={{
+        flex: 1, paddingVertical: 10, borderRadius: radii.lg,
+        backgroundColor: colors.surface, borderWidth: 1,
+        borderColor: colors.border, alignItems: "center",
+      }}>
+      <Text style={{ color: colors.text, fontWeight: "800", fontSize: 12 }}>
+        {a.label}
+      </Text>
+    </Pressable>
+  ))}
+</View>
+```
+
+Commit: `polish(mobile/home): shift state logic, priority sorting, quick actions`
+
+---
+
+## PHASE 2 — Tasks tab polish
+
+### 2A — Task detail screen [ ]
+CHECK:
+```bash
+find MobileApp/app -name "task-detail*"
+grep -n "task.id\|task_id\|TaskDetail" "MobileApp/app/(tabs)/tasks.tsx" | head -5
+```
+EXPECTED: Tapping a task navigates to a detail screen showing:
+- Title, description, priority badge
+- Due date with overdue warning
+- Status update buttons: Start / Complete
+- Notes input
+
+IF task-detail.tsx is missing or stub-only, replace with:
+```tsx
+// MobileApp/app/task-detail.tsx
+// GET /api/v1/tasks/{id}/full (or /api/v1/gamification/tasks/{id}/full)
+// Shows: title, description, priority, due, status
+// Buttons: "Start working" → PATCH status to in_progress
+//          "Mark complete" → POST /api/v1/gamification/tasks/{id}/complete
+// On complete: show XP toast from response (xp, xp_breakdown)
+// After complete: go back to tasks list
+```
+
+### 2B — XP toast on task completion [ ]
+CHECK:
+```bash
+grep -n "xp.*toast\|toast.*xp\|xp_awarded\|CompleteTask" "MobileApp/app/(tabs)/tasks.tsx" MobileApp/app/task-detail.tsx 2>/dev/null | head -10
+```
+EXPECTED: When `POST /tasks/{id}/complete` returns, show a brief XP notification:
+"+48 XP  · +6 steps · +4 photo" for 2 seconds at bottom of screen.
+
+IF MISSING: After successful complete call, show:
+```tsx
+// Simple toast — no library needed
+const [xpToast, setXpToast] = useState<string | null>(null);
+
+// After complete:
+const breakdown = result.xp_breakdown ?? {};
+const parts = Object.entries(breakdown)
+  .filter(([k, v]) => k !== "base" && v > 0)
+  .map(([k, v]) => `+${v} ${k}`);
+const msg = `+${result.xp} XP${parts.length ? "  ·  " + parts.join("  ·  ") : ""}`;
+setXpToast(msg);
+setTimeout(() => setXpToast(null), 2500);
+
+// Render at bottom of screen (absolute positioned):
+{xpToast && (
+  <View style={{
+    position: "absolute", bottom: 100, left: spacing.lg, right: spacing.lg,
+    backgroundColor: colors.success, borderRadius: radii.lg,
+    padding: spacing.md, alignItems: "center",
+  }}>
+    <Text style={{ color: "#0A0A0A", fontWeight: "900" }}>{xpToast}</Text>
+  </View>
 )}
 ```
 
-### A3 — Legend panel [ ]
-CHECK:
-```bash
-find frontend/components/schedule -name "*Legend*" -o -name "*legend*"
-grep -n "Legend\|legend" frontend/components/schedule/ScheduleApp.tsx | head -10
-```
-EXPECTED: `ScheduleLegendPanel.tsx` exists and is rendered in `ScheduleApp.tsx`.
-Shows shift codes with their colors and cert requirements.
-
-IF MISSING: Create `frontend/components/schedule/ScheduleLegendPanel.tsx`:
-```tsx
-"use client";
-import { useEffect, useState } from "react";
-import { apiFetch } from "@/lib/api";
-
-type ShiftDef = {
-  id: string; code: string; name: string | null;
-  start_min: number; end_min: number; shift_type: string;
-  color: string | null; cert_requirements: string[];
-};
-
-function minToTime(m: number) {
-  const h = Math.floor(m / 60); const mm = m % 60;
-  return `${h % 12 || 12}:${String(mm).padStart(2,"0")}${h < 12 ? "am" : "pm"}`;
-}
-
-export function ScheduleLegendPanel({ companyId }: { companyId: string | null }) {
-  const [defs, setDefs] = useState<ShiftDef[]>([]);
-  useEffect(() => {
-    const url = companyId
-      ? `/api/v1/pulse/schedule/shift-definitions?company_id=${companyId}`
-      : "/api/v1/pulse/schedule/shift-definitions";
-    apiFetch<ShiftDef[]>(url).then(setDefs).catch(() => {});
-  }, [companyId]);
-  if (!defs.length) return null;
-  return (
-    <div className="rounded-md border border-ds-border bg-ds-primary p-3 text-xs">
-      <p className="text-[10px] font-bold uppercase tracking-wider text-ds-muted mb-2">
-        Shift Legend
-      </p>
-      <div className="space-y-1">
-        {defs.map(d => (
-          <div key={d.id} className="flex items-center gap-2">
-            <span className="font-bold text-ds-accent w-8">{d.code}</span>
-            <span className="text-ds-muted">{minToTime(d.start_min)}–{minToTime(d.end_min)}</span>
-            {d.cert_requirements.length > 0 && (
-              <span className="text-ds-muted">· {d.cert_requirements.join(", ")}</span>
-            )}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-```
-Then in `ScheduleApp.tsx` import and render it in the sidebar or below the toolbar.
-
-Commit: `feat(schedule): shift definition builder, shift code chips, legend panel`
+Commit: `polish(mobile/tasks): task detail screen, XP toast on completion`
 
 ---
 
-## PHASE B — Schedule: Availability + Periods
+## PHASE 3 — Schedule tab polish
 
-### B1 — Availability submission wired to period API [ ]
+### 3A — My Shifts tab is the default [ ]
 CHECK:
 ```bash
-find frontend/app/schedule -name "availability*"
-grep -n "period_id\|schedule/availability\|schedule/periods" frontend/app/schedule/availability/page.tsx 2>/dev/null | head -10
+grep -n "defaultTab\|initialTab\|useState.*tab\|my.shift\|MyShift" "MobileApp/app/(tabs)/schedule.tsx" | head -10
 ```
-EXPECTED: `frontend/app/schedule/availability/page.tsx` exists and calls
-`POST /api/v1/pulse/schedule/availability` with `period_id` from
-`GET /api/v1/pulse/schedule/periods`.
+EXPECTED: Schedule tab opens to "My Shifts" by default, not the full team schedule.
+Workers should see their own shifts first.
 
-IF MISSING OR NOT WIRED TO PERIODS: Update the availability page to:
-1. Fetch active period: `GET /api/v1/pulse/schedule/periods`
-   - Find period where status is "draft" or "open"
-2. Show the period dates as context
-3. On save, POST to `/api/v1/pulse/schedule/availability` with:
-   ```json
-   { "period_id": "<active_period_id>", "windows": [...], "exceptions": [] }
-   ```
-If no active period exists, show: "No open availability window. Check back later."
+IF OPENING TO WRONG TAB: Change the initial tab state to "my-shifts" or "mine".
 
-### B2 — Supervisor availability grid [ ]
+### 3B — Shift detail on tap [ ]
 CHECK:
 ```bash
-find frontend/app/schedule -name "availability-grid*"
-grep -n "availability-grid\|AvailabilityGrid\|submissions" frontend/app/schedule/ -r 2>/dev/null | head -10
+grep -n "onPress.*shift\|shift.*onPress\|ShiftDetail\|shift-detail" "MobileApp/app/(tabs)/schedule.tsx" | head -10
 ```
-EXPECTED: `frontend/app/schedule/availability-grid/page.tsx` shows all workers
-and whether they've submitted availability for the active period.
-Calls `GET /api/v1/pulse/schedule/availability?period_id=...`
+EXPECTED: Tapping a shift in My Shifts shows:
+- Date, time, shift code
+- Zone/facility
+- Crew members on same shift (if available)
+- Assignments for that shift
 
-IF MISSING: Create a minimal version:
+IF TAP DOES NOTHING: Add navigation to a shift detail modal or screen.
+Minimal implementation — show a bottom sheet or navigate to `/shift-detail`:
 ```tsx
-// frontend/app/schedule/availability-grid/page.tsx
-// Shows: worker name | submitted? | actions
-// GET /api/v1/pulse/schedule/periods → find active
-// GET /api/v1/pulse/schedule/availability?period_id=... → list submissions
-// For each worker not in submissions list → show "Not submitted" + [Remind] button
-// [Remind] → TODO (push notification — stub for now)
+// Basic shift detail as a modal using React Native Modal
+// Shows: shift time, code, assignments from pulse_schedule_assignments
+// GET /api/v1/pulse/schedule/assignments?from=shift_date&to=shift_date&shift_type=
 ```
 
-### B3 — Acknowledgement button on My Shifts [ ]
+### 3C — Acknowledgement banner [ ]
 CHECK:
 ```bash
-grep -n "acknowledge\|Acknowledge" frontend/app/schedule/availability/page.tsx 2>/dev/null
-grep -n "acknowledge\|Acknowledge" frontend/components/schedule/ScheduleApp.tsx | head -5
+grep -n "acknowledge\|Acknowledge" "MobileApp/app/(tabs)/schedule.tsx" | head -5
 ```
-EXPECTED: Workers can tap "Acknowledge schedule" after viewing their shifts.
-Calls `POST /api/v1/pulse/schedule/acknowledge` with `{ period_id }`.
+EXPECTED: When a schedule is published and not yet acknowledged, show a banner
+at the top of My Shifts: "📋 Tap to acknowledge your schedule"
+On tap → POST /api/v1/pulse/schedule/acknowledge → banner becomes "✓ Acknowledged"
 
-IF MISSING: In ScheduleApp.tsx or the My Shifts view, add a button that:
-1. Fetches active period
-2. Shows "Acknowledge schedule" banner if not yet acknowledged
-3. On tap, POSTs to `/api/v1/pulse/schedule/acknowledge`
-4. Replaces banner with "✓ Schedule acknowledged"
+IF MISSING: Wire the acknowledgement status check and banner from M6integration.md.
 
-Commit: `feat(schedule): availability period wiring, supervisor grid, acknowledgement`
+Commit: `polish(mobile/schedule): my shifts default, shift detail, acknowledgement banner`
 
 ---
 
-## PHASE C — Schedule: Builder Improvements
+## PHASE 4 — Documents tab polish
 
-### C1 — Draft engine backend [ ]
+### 4A — Procedure step runner [ ]
 CHECK:
 ```bash
-find backend/app/modules/pulse -name "draft*"
-grep -n "schedule/draft\|build_draft\|BuildDraft" backend/app/modules/pulse/router.py | head -10
+find MobileApp/app -name "procedure-assignment*"
+grep -n "step\|Step\|checklist\|complete.*step" MobileApp/app/procedure-assignment.tsx 2>/dev/null | head -10
 ```
-EXPECTED:
-- `backend/app/modules/pulse/draft_engine.py` exists
-- `POST /api/v1/pulse/schedule/draft` route exists in router.py
-- `POST /api/v1/pulse/schedule/draft/commit` route exists
+EXPECTED: `procedure-assignment.tsx` shows steps one at a time:
+- Large step number
+- Step content/instruction
+- Checkbox or "Done" button per step
+- Progress indicator (step 3 of 8)
+- "Complete procedure" button when all steps done
+- Completion fires `ops.procedure_completed` domain event via API
 
-IF MISSING: Create `backend/app/modules/pulse/draft_engine.py` and add routes.
-See `handoff/integration.md` history — the full implementation was provided.
-Key points:
-- Reads availability from `pulse_schedule_availability_submissions`
-- Reads shift definitions from `pulse_schedule_shift_definitions`
-- Scores workers by: availability match, cert match, hours in period, fairness
-- Returns assignments + conflicts — does NOT create shifts
-- `/draft/commit` creates the actual shifts
+IF STUB ONLY: The procedure-assignment screen needs step-by-step UX.
+This is the worker's most important document interaction.
+Add step navigation with Prev/Next buttons and a completion flow.
 
-### C2 — Build Draft button + ScheduleDraftPanel [ ]
+### 4B — Blueprint viewer accessible [ ]
 CHECK:
 ```bash
-find frontend/components/schedule -name "ScheduleDraftPanel*"
-grep -n "Build Draft\|buildDraft\|draftResult\|DraftPanel" frontend/components/schedule/ScheduleApp.tsx | head -10
+find MobileApp/app -name "blueprint*"
+grep -n "blueprint\|Blueprint" "MobileApp/app/(tabs)/documents.tsx" | head -5
 ```
-EXPECTED:
-- `frontend/components/schedule/ScheduleDraftPanel.tsx` exists
-- `ScheduleApp.tsx` has a "Build Draft" button for managers
-- Clicking it calls `POST /api/v1/pulse/schedule/draft`
-- Shows panel with assignments and conflicts
-- "Accept N shifts" calls `/draft/commit`
+EXPECTED: Tapping a drawing in Documents opens `blueprint.tsx` (or similar).
+Blueprint renders the saved drawing in read-only mode.
 
-IF MISSING: 
-Create `ScheduleDraftPanel.tsx` — shows assignments list + conflicts with reasons.
-Add to `ScheduleApp.tsx`:
-```tsx
-// State
-const [draftResult, setDraftResult] = useState(null);
-const [buildingDraft, setBuildingDraft] = useState(false);
+IF NOT WIRED: Ensure the Drawings tab row navigates to the blueprint viewer.
 
-// Button in toolbar (managers only)
-{canEdit && !draftResult && (
-  <button onClick={buildDraft} disabled={buildingDraft}
-    className="inline-flex items-center gap-1.5 rounded-md border border-ds-border
-      bg-ds-primary px-3 py-1.5 text-xs font-semibold text-ds-muted
-      hover:text-ds-foreground disabled:opacity-60">
-    {buildingDraft ? "Building…" : "✦ Build Draft"}
-  </button>
-)}
-
-// Panel below toolbar
-{draftResult && (
-  <ScheduleDraftPanel
-    draft={draftResult}
-    companyId={effectiveCompanyId}
-    onCommit={() => { setDraftResult(null); void refreshSchedule(); }}
-    onDiscard={() => setDraftResult(null)}
-  />
-)}
-```
-
-### C3 — Drag visual states for worker panel [ ]
-CHECK:
-```bash
-grep -n "opacity-40\|cert.*filter\|meetsReq\|activeCert\|dragSession.*cert" frontend/components/schedule/ScheduleWorkerPanel.tsx | head -10
-grep -n "workerHighlightByDate\|dragHighlight\|tone.*good\|tone.*invalid" frontend/components/schedule/ScheduleCalendarGrid.tsx | head -10
-```
-EXPECTED:
-- Calendar cells show green/amber/red during worker drag (highlight tones)
-- Workers missing required certs are greyed out in worker panel during drag
-
-IF DRAG HIGHLIGHTS MISSING: Check `frontend/lib/schedule/worker-drag-highlights.ts` exists.
-If it exists and `buildWorkerDragHighlightMap` is not called in ScheduleApp, wire it:
-```tsx
-const dragHighlightMap = useMemo(() => {
-  if (!dragSession || dragSession.kind !== "worker") return {};
-  const worker = workers.find(w => w.id === dragSession.workerId);
-  if (!worker) return {};
-  return buildWorkerDragHighlightMap(worker, visibleDates, shifts, settings, timeOffBlocks);
-}, [dragSession, workers, visibleDates, shifts, settings, timeOffBlocks]);
-```
-Pass as `workerHighlightByDate={dragHighlightMap}` to ScheduleCalendarGrid.
-
-IF CERT FILTERING MISSING in ScheduleWorkerPanel: Add:
-```tsx
-const activeCertReqs: string[] = useMemo(() => {
-  if (!dragSession || dragSession.kind !== "shift") return [];
-  const s = shifts.find(x => x.id === dragSession.shiftId);
-  return s?.required_certifications ?? [];
-}, [dragSession, shifts]);
-```
-Apply `opacity-40 pointer-events-none` to workers missing required certs.
-
-### C4 — Publish button [ ]
-CHECK:
-```bash
-grep -n "Publish\|publish.*schedule\|schedule/publish" frontend/components/schedule/ScheduleApp.tsx | head -10
-grep -n "schedule/publish" backend/app/modules/pulse/router.py | head -5
-```
-EXPECTED:
-- `POST /api/v1/pulse/schedule/publish` exists in router.py
-- "Publish schedule" button in ScheduleApp toolbar for managers
-
-IF MISSING: Add publish route to router.py (fires `schedule.period_published` domain event).
-Add button to ScheduleApp toolbar next to Build Draft.
-
-Commit: `feat(schedule): draft engine, build draft UI, drag states, publish button`
+Commit: `polish(mobile/documents): procedure step runner, blueprint navigation`
 
 ---
 
-## PHASE D — Schedule: My Shifts + Assignment Builder
+## PHASE 5 — Search tab polish
 
-### D1 — My Shifts view [ ]
+### 5A — Tool location result [ ]
 CHECK:
 ```bash
-grep -n "my-shifts\|MyShifts\|my_shifts\|\"my\"" frontend/components/schedule/ScheduleApp.tsx | head -10
-find frontend/components/schedule -name "*MyShift*"
+grep -n "x_norm\|y_norm\|zone.*name\|last_seen_zone\|location" MobileApp/lib/api/search.ts 2>/dev/null | head -10
+grep -n "zone_id\|zone.*label\|location.*label" "MobileApp/app/(tabs)/search.tsx" | head -10
 ```
-EXPECTED: A "My Shifts" tab or view in ScheduleApp showing only the
-current user's shifts, grouped chronologically. Uses `currentUserId` from session.
+EXPECTED: When a tool appears in search results, the subtitle shows its last known zone name.
+Tool cards show: name | zone name | time ago
 
-IF MISSING: Add to ScheduleApp:
-1. Add `"my-shifts"` to the View type
-2. Add tab button for "My Shifts" with User icon
-3. Filter shifts by `shift.workerId === currentUserId`
-4. Render as a simple chronological list (not the full grid)
-Create `frontend/components/schedule/ScheduleMyShiftsView.tsx` if needed.
+IF SHOWING RAW ZONE_ID: Resolve zone name from the search result meta.
+The backend search result already has `meta.zone_id` and `meta.last_seen_at`.
+Add zone name resolution:
+- Either include zone_name in the search result from backend (preferred)
+- Or load zones once and resolve client-side
 
-### D2 — Assignment work queue in Day view [ ]
-CHECK:
-```bash
-grep -n "work.queue\|work_queue\|WorkQueue\|overdue.*pm\|open.*work" frontend/components/schedule/ScheduleDayView.tsx | head -10
-grep -n "schedule/shifts.*work-queue\|work-queue" backend/app/modules/pulse/router.py | head -5
-```
-EXPECTED:
-- `GET /api/v1/pulse/schedule/shifts/{shift_id}/work-queue` exists
-- ScheduleDayView shows open work requests + overdue PMs for the shift's zone
-- Assignment panel works for all shift types (not just nights)
-
-IF MISSING:
-Add to router.py:
+Add to search_routes.py tool result:
 ```python
-@router.get("/schedule/shifts/{shift_id}/work-queue")
-async def get_shift_work_queue(shift_id: str, db: ..., user: ...) -> dict:
-    # Returns open WRs + overdue PMs for the shift's zone
-    # See handoff/integration.md Phase 5 for full implementation
+# In the tool search section, join BeaconPosition to Zone
+# Add to meta: "zone_name": zone.name if zone else None
 ```
 
-In ScheduleDayView.tsx:
-- Remove nightAssignmentsEnabled guard (assignments work for all shifts)
-- Fetch work queue on mount
-- Render overdue PMs and open WRs below assignments
+### 5B — Empty state is helpful [ ]
+CHECK:
+```bash
+grep -n "No results\|empty\|nothing found\|Quick find" "MobileApp/app/(tabs)/search.tsx" | head -5
+```
+EXPECTED: Empty state (no query) shows quick find chips:
+- "My Tools", "Equipment", "Procedures"
+These pre-fill the search box and trigger a search.
 
-Commit: `feat(schedule): my shifts view, assignment work queue, day view for all shifts`
+IF MISSING OR PLACEHOLDER: Wire quick find buttons to set query and trigger search.
+
+Commit: `polish(mobile/search): tool zone names in results, quick find chips`
 
 ---
 
-## PHASE E — Mobile App Audit
+## PHASE 6 — Profile tab polish
 
-### E1 — Check tab structure [ ]
-```bash
-cat "MobileApp/app/(tabs)/_layout.tsx" | grep -A 2 "Tabs.Screen"
-```
-EXPECTED: 6 tabs — Home, Tasks, Schedule, Documents, Search, Profile
-IF WRONG: Fix to match the 6-tab structure from M1integration.md
-
-### E2 — Check Home screen loads real data [ ]
-```bash
-grep -n "listShifts\|listMyTasks\|listNotifications\|listMyTools" MobileApp/components/dashboard/DashboardScreen.tsx | head -10
-```
-EXPECTED: DashboardScreen fetches all 4 data sources (shifts, tasks, tools, notifications)
-IF STILL HARDCODED: Apply M1integration.md DashboardScreen replacement
-
-### E3 — Check inference confirmation screen [ ]
-```bash
-find MobileApp/app -name "inference-confirm*"
-grep -n "inference.confirm\|InferenceConfirm" "MobileApp/app/(tabs)/_layout.tsx" 2>/dev/null
-grep -n "inference" MobileApp/components/ProximityPromptBanner.tsx | head -5
-```
-EXPECTED: `MobileApp/app/inference-confirm.tsx` exists.
-ProximityPromptBanner subscribes to WS events and navigates to it on tap.
-IF MISSING: Apply M2integration.md
-
-### E4 — Check Documents tab [ ]
-```bash
-find "MobileApp/app/(tabs)" -name "documents*"
-```
-EXPECTED: `MobileApp/app/(tabs)/documents.tsx` exists with Procedures/Drawings/Logs tabs
-IF MISSING: Apply M3integration.md
-
-### E5 — Check Search screen [ ]
-```bash
-find "MobileApp/app/(tabs)" -name "search*"
-grep -n "unified_search\|/api/v1/search" backend/app/api/search_routes.py 2>/dev/null | head -5
-```
-EXPECTED: `MobileApp/app/(tabs)/search.tsx` exists.
-`backend/app/api/search_routes.py` exists and is registered in main.py.
-IF MISSING: Apply M4integration.md
-
-### E6 — Check Profile screen [ ]
-```bash
-find "MobileApp/app/(tabs)" -name "profile*"
-```
-EXPECTED: `MobileApp/app/(tabs)/profile.tsx` with XP, leaderboard, certs, settings
-IF MISSING: Apply M5integration.md
-
-### E7 — Check push notifications wiring [ ]
-```bash
-grep -n "registerNotification\|push.token\|notifyLocal\|subscribePulseWs" "MobileApp/app/_layout.tsx" | head -10
-find backend/app/api -name "notifications_routes*"
-```
-EXPECTED: `_layout.tsx` registers push token on login and subscribes to WS for local notifications.
-`backend/app/api/notifications_routes.py` exists and is registered in main.py.
-IF MISSING: Apply M6integration.md
-
-Commit: `fix(mobile): complete any missing M1-M6 screens and wiring`
-
----
-
-## PHASE F — Gamification: Missing Pieces
-
-### F1 — Missing event subscribers [ ]
+### 6A — Gamification data loads [ ]
 CHECK:
 ```bash
-grep -n "inference_confirmed\|procedure_completed\|pm_completed_on_time\|shift_started\|inspection_sheet" backend/app/services/xp_event_subscribers.py | head -10
+grep -n "getMyGamification\|gamification\|total_xp\|leaderboard" "MobileApp/app/(tabs)/profile.tsx" | head -10
 ```
-EXPECTED: All 5 new subscribers registered in `attach_xp_event_subscribers()`
-IF MISSING: Add to `xp_event_subscribers.py` — see `handoff/gamification.md` Section 2 for full code
+EXPECTED: Profile loads from `/api/v1/workers/{userId}/gamification` or
+`/api/v1/gamification/me`. Shows XP, level, progress bar, badges, streak.
 
-### F2 — Leaderboard endpoint [ ]
+IF SHOWING ZEROS OR FAILING: Check the endpoint exists on backend (Phase F audit).
+Ensure the fallback to `/api/v1/users/{id}/analytics` works if primary fails.
+
+### 6B — Certifications show labels not codes [ ]
 CHECK:
 ```bash
-grep -n "leaderboard" backend/app/api/gamification_routes.py | head -5
+grep -n "cert\|Cert\|certification" "MobileApp/app/(tabs)/profile.tsx" | head -10
 ```
-EXPECTED: `GET /api/v1/gamification/leaderboard` returns ranked list with `is_me` flag
-IF MISSING: Add to `gamification_routes.py` — see `handoff/gamification.md` Section 8
+EXPECTED: Certs show human labels ("Pool Operator 2") not raw codes ("P2").
+IF SHOWING RAW CODES: The cert definitions come from pulse_config.
+For now, use a hardcoded label map as fallback:
+```ts
+const CERT_LABELS: Record<string, string> = {
+  P1: "Pool Operator 1", P2: "Pool Operator 2",
+  RO: "Refrigeration Operator", FA: "First Aid",
+};
+// label = CERT_LABELS[cert.code] ?? cert.code
+```
+Mark with TODO to fetch from pulse_config when cert definitions are migrated.
 
-### F3 — Worker gamification endpoint [ ]
+### 6C — Settings rows navigate correctly [ ]
 CHECK:
 ```bash
-grep -n "workers.*gamification\|worker.*gamif" backend/app/api/gamification_routes.py | head -5
+grep -n "Notifications\|Availability\|Theme\|onPress.*settings" "MobileApp/app/(tabs)/profile.tsx" | head -10
 ```
-EXPECTED: `GET /api/v1/workers/{user_id}/gamification` exists
-IF MISSING: Add to `gamification_routes.py` — see `handoff/gamification.md` Section 8
+EXPECTED:
+- "Availability" → navigates to schedule tab availability section
+- "Notifications" → navigates to notification settings (stub screen ok)
+- "Theme" → toggles dark/light mode using existing theme system
 
-### F4 — Certifications endpoint [ ]
-CHECK:
-```bash
-grep -n "workers/me/certifications\|certifications" backend/app/api/gamification_routes.py | head -5
-```
-EXPECTED: `GET /api/v1/workers/me/certifications` exists
-IF MISSING: Add to `gamification_routes.py` — see `handoff/gamification.md` Section 8
+IF ANY ROW DOES NOTHING: Wire navigation or add stub screens.
 
-### F5 — Badge definitions seeded [ ]
-CHECK:
-```bash
-# In psql or via API:
-# SELECT count(*) FROM badge_definitions;
-# Should be > 10
-grep -n "badge_definitions\|INSERT.*badge" backend/alembic/versions/ -r | head -10
-```
-EXPECTED: Badge definitions seeded in a migration (inference_5, pm_guardian_5, first_task etc)
-IF MISSING: Create new migration that seeds badge definitions from `handoff/gamification.md` Section 7
-
-Commit: `feat(gamification): missing subscribers, leaderboard, worker gamification, certifications, badge seeds`
+Commit: `polish(mobile/profile): gamification data, cert labels, settings navigation`
 
 ---
 
 ## EXECUTION ORDER
-1. Run Phase A checks → implement missing items → commit
-2. Run Phase B checks → implement missing items → commit
-3. Run Phase C checks → implement missing items → commit
-4. Run Phase D checks → implement missing items → commit
-5. Run Phase E checks → implement missing items → commit
-6. Run Phase F checks → implement missing items → commit
-7. cd frontend && npm run build (fix any TypeScript errors)
-8. git push origin main
+1. Phase 1 (Home) → commit
+2. Phase 2 (Tasks) → commit
+3. Phase 3 (Schedule) → commit
+4. Phase 4 (Documents) → commit
+5. Phase 5 (Search) → commit
+6. Phase 6 (Profile) → commit
+7. git push origin main
 
 ---
 
-## VALIDATION (after all phases)
-- [ ] Shift codes (D1, PM2, N1) show as badges on schedule grid chips
-- [ ] Shift definition builder accessible at /schedule/shift-definitions
-- [ ] Legend panel renders in schedule UI
-- [ ] Availability page fetches active period and submits with period_id
-- [ ] Supervisor availability grid shows submission status per worker
-- [ ] Build Draft button appears in schedule toolbar for managers
-- [ ] Draft panel shows assignments + conflicts on build
-- [ ] My Shifts view shows personal shifts only
-- [ ] Day view assignment panel works for all shift types
-- [ ] Mobile: 6 tabs (Home, Tasks, Schedule, Documents, Search, Profile)
-- [ ] Mobile: Home loads real API data (shift, tasks, tools, notifications)
-- [ ] Mobile: inference-confirm.tsx exists and is reachable from banner
-- [ ] Mobile: Documents tab has Procedures/Drawings/Logs sub-tabs
-- [ ] Mobile: Search screen with debounced search
-- [ ] Mobile: Profile screen with XP display
-- [ ] GET /api/v1/gamification/leaderboard returns ranked list
-- [ ] 5 new XP subscribers registered
-- [ ] Badge definitions seeded in DB
-- [ ] npm run build passes
+## VALIDATION
+- [ ] Home: shift shows "On shift now" / "Next shift" / "No shifts" correctly
+- [ ] Home: tasks sorted by overdue then priority
+- [ ] Home: quick action row visible
+- [ ] Tasks: tapping a task opens detail screen
+- [ ] Tasks: completing a task shows XP toast with breakdown
+- [ ] Schedule: opens to My Shifts by default
+- [ ] Schedule: tapping a shift shows shift detail
+- [ ] Schedule: acknowledgement banner shows when unacknowledged
+- [ ] Documents: procedures show step-by-step runner
+- [ ] Documents: drawings tap opens blueprint viewer
+- [ ] Search: tool results show zone name not raw ID
+- [ ] Search: quick find chips work
+- [ ] Profile: XP and level load from API
+- [ ] Profile: cert labels are human-readable
+- [ ] Profile: settings rows navigate correctly
 
 ---
 
 ## UPDATE handoff/current_state.md
-After all phases complete:
-- Mark all schedule phases (1-5) as live
-- Mark all mobile phases (M1-M6) as verified complete
-- Mark gamification missing pieces as complete
-- Note any items that remained BLOCKED with reason
+- Add: Mobile polish pass complete — all 6 tabs have real content and navigation
+- Note any screens that remain stub with reason
 - Update Last Updated
 git add handoff/current_state.md
-git commit -m "chore: update current_state after full audit and completion pass"
+git commit -m "chore: update current_state after mobile polish pass"
