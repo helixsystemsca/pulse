@@ -470,8 +470,8 @@ export default function ScheduleScreen() {
 
                 <View style={{ marginTop: spacing.md }}>
                   <View style={{ flexDirection: "row" }}>
-                    {["S", "M", "T", "W", "T", "F", "S"].map((d) => (
-                      <View key={d} style={{ width: `${100 / 7}%`, paddingVertical: 6 }}>
+                    {["S", "M", "T", "W", "T", "F", "S"].map((d, idx) => (
+                      <View key={`${d}-${idx}`} style={{ width: `${100 / 7}%`, paddingVertical: 6 }}>
                         <Text style={{ color: colors.muted, textAlign: "center", fontWeight: "900", fontSize: 12 }}>
                           {d}
                         </Text>
