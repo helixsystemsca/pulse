@@ -15,6 +15,13 @@ import {
   type WorkerGamification,
 } from "@/lib/api/gamification";
 
+const CERT_LABELS: Record<string, string> = {
+  P1: "Pool Operator 1",
+  P2: "Pool Operator 2",
+  RO: "Refrigeration Operator",
+  FA: "First Aid",
+};
+
 function initials(name: string | null | undefined): string {
   const parts = (name ?? "").trim().split(/\s+/).filter(Boolean);
   if (!parts.length) return "?";
@@ -44,7 +51,7 @@ function resolvedAvatarUrl(raw: string | null | undefined): string | null {
 }
 
 export default function ProfileScreen() {
-  const { colors, radii, spacing } = useTheme();
+  const { colors, radii, spacing, toggleMode, mode } = useTheme();
   const { session, signOut, refreshProfile } = useSession();
   const router = useRouter();
   const token = session?.token ?? "";
@@ -334,6 +341,11 @@ export default function ProfileScreen() {
             </Text>
             {certifications.map((cert, i) => {
               const expiryColor = certExpiryColor(cert.days_until_expiry, colors);
+              const rawLabel = (cert.label ?? "").trim();
+              const label =
+                rawLabel && rawLabel.toUpperCase() !== String(cert.code).toUpperCase()
+                  ? rawLabel
+                  : CERT_LABELS[String(cert.code).toUpperCase()] ?? String(cert.code);
               return (
                 <View
                   key={cert.code}
@@ -347,8 +359,8 @@ export default function ProfileScreen() {
                 >
                   <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: expiryColor, marginRight: 10 }} />
                   <View style={{ flex: 1 }}>
-                    <Text style={{ color: colors.text, fontWeight: "800" }}>{cert.label}</Text>
-                    <Text style={{ color: colors.muted, fontSize: 12, marginTop: 2 }}>{cert.code}</Text>
+                    <Text style={{ color: colors.text, fontWeight: "800" }}>{label}</Text>
+                    <Text style={{ color: colors.muted, fontSize: 12, marginTop: 2 }}>Code: {cert.code}</Text>
                   </View>
                   {cert.expires_at ? (
                     <Text style={{ color: expiryColor, fontSize: 12, fontWeight: "800" }}>
@@ -372,9 +384,9 @@ export default function ProfileScreen() {
             SETTINGS
           </Text>
           {[
-            { label: "Notifications", onPress: () => {} },
-            { label: "Availability", onPress: () => router.push("/(tabs)/schedule" as never) },
-            { label: "Theme", onPress: () => {} },
+            { label: "Notifications", onPress: () => router.push("/notification-settings" as never) },
+            { label: "Availability", onPress: () => router.push({ pathname: "/(tabs)/schedule", params: { tab: "availability" } } as never) },
+            { label: `Theme: ${mode === "dark" ? "Dark" : "Light"}`, onPress: () => toggleMode() },
           ].map((item, i) => (
             <Pressable
               key={item.label}

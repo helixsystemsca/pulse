@@ -1,5 +1,5 @@
 import { useIsFocused } from "@react-navigation/native";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import { useTheme } from "@/theme/ThemeProvider";
@@ -134,13 +134,14 @@ export function DashboardScreen() {
   const activeShift = currentShift ?? nextShift ?? null;
 
   const topTasks = useMemo(() => {
-    const pri: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 };
     return [...tasks]
       .sort((a, b) => {
         const aOver = a.due_date && new Date(a.due_date) < new Date() ? -1 : 0;
         const bOver = b.due_date && new Date(b.due_date) < new Date() ? -1 : 0;
         if (aOver !== bOver) return aOver - bOver;
-        return (pri[a.priority ?? ""] ?? 2) - (pri[b.priority ?? ""] ?? 2);
+        const ap = Number(a.priority ?? 1);
+        const bp = Number(b.priority ?? 1);
+        return bp - ap; // higher number = higher priority
       })
       .slice(0, 3);
   }, [tasks]);
@@ -289,7 +290,7 @@ export function DashboardScreen() {
                   height: 18,
                   borderRadius: 4,
                   borderWidth: 1.5,
-                  borderColor: t.priority === "critical" ? "rgba(242,187,5,0.7)" : colors.border,
+                  borderColor: Number(t.priority ?? 1) >= 3 ? "rgba(242,187,5,0.7)" : colors.border,
                   marginRight: 10,
                   backgroundColor: colors.surface,
                 }}

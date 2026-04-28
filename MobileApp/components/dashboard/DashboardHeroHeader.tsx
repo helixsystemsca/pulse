@@ -40,7 +40,7 @@ export function DashboardHeroHeader({ greetingName }: Props) {
   );
 
   return (
-    <View style={{ borderRadius: radii.xl, overflow: "hidden", borderWidth: 1, borderColor: colors.border }}>
+    <View style={{ borderRadius: radii.lg, overflow: "hidden", borderWidth: 1, borderColor: colors.border }}>
       <ImageBackground source={require("../../assets/images/panorama.jpg")} resizeMode="cover">
         <LinearGradient
           colors={["rgba(9,16,28,0.15)", "rgba(9,16,28,0.72)", "rgba(9,16,28,0.92)"]}

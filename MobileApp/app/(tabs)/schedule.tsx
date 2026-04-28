@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Alert, Modal, Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import { useLocalSearchParams } from "expo-router";
 import { useTheme } from "@/theme/ThemeProvider";
 import { Screen } from "@/components/Screen";
 import { useSession } from "@/store/session";
@@ -66,6 +67,7 @@ function daysInMonth(d: Date): number {
 export default function ScheduleScreen() {
   const { colors, radii, spacing, text } = useTheme();
   const { session } = useSession();
+  const params = useLocalSearchParams<{ tab?: string }>();
   const token = session?.token ?? "";
 
   const [tab, setTab] = useState<"mine" | "team" | "projects" | "availability" | "timeoff">("mine");
@@ -142,6 +144,14 @@ export default function ScheduleScreen() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    const raw = typeof params.tab === "string" ? params.tab : "";
+    if (!raw) return;
+    if (raw === "availability" || raw === "mine" || raw === "team" || raw === "projects" || raw === "timeoff") {
+      setTab(raw);
+    }
+  }, [params.tab]);
 
   useEffect(() => {
     if (!session?.token || !publishedPeriodForAck?.id) return;
@@ -792,8 +802,8 @@ export default function ScheduleScreen() {
           <View
             style={{
               backgroundColor: colors.card,
-              borderTopLeftRadius: radii.xl,
-              borderTopRightRadius: radii.xl,
+              borderTopLeftRadius: radii.lg,
+              borderTopRightRadius: radii.lg,
               borderWidth: 1,
               borderColor: colors.border,
               padding: spacing.lg,

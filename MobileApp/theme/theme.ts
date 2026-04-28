@@ -1,4 +1,4 @@
-export const theme = {
+export const darkTheme = {
   colors: {
     background: "#4C6085", // dusk blue
     surface: "#556B8E",
@@ -35,5 +35,28 @@ export const theme = {
   },
 };
 
-export type PulseTheme = typeof theme;
+export const lightTheme = {
+  colors: {
+    background: "#F6F8FC",
+    surface: "#FFFFFF",
+    card: "#FFFFFF",
+    border: "rgba(15,23,42,0.10)",
+
+    text: "#0F172A",
+    muted: "rgba(15,23,42,0.55)",
+    headerGlassText: "#0F172A",
+    headerGlassMuted: "rgba(15,23,42,0.60)",
+
+    success: "#36F1CD",
+    warning: "#F2BB05",
+    danger: "#EB5160",
+  },
+  radii: darkTheme.radii,
+  spacing: darkTheme.spacing,
+  text: darkTheme.text,
+};
+
+export const theme = darkTheme;
+
+export type PulseTheme = typeof darkTheme;
 
