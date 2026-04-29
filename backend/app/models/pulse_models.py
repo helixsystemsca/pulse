@@ -202,6 +202,51 @@ class PulsePreventativeRule(Base):
     )
 
 
+class PulsePmPlan(Base):
+    """
+    Soft-start preventative maintenance plan.
+
+    Phase 1: lightweight recurring schedule that generates Work Requests (type=preventative_maintenance).
+    Phase 2+: optional structured links (equipment/template) + metadata expansion.
+    """
+
+    __tablename__ = "pulse_pm_plans"
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    company_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+    frequency: Mapped[str] = mapped_column(String(16), nullable=False)  # daily | weekly | monthly | custom
+    custom_interval_days: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+
+    start_date: Mapped[date] = mapped_column(Date, nullable=False, index=True)
+    due_time_offset_days: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    assigned_user_id: Mapped[Optional[str]] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+
+    # Optional structure (nullable for now).
+    equipment_id: Mapped[Optional[str]] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("facility_equipment.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    template_id: Mapped[Optional[str]] = mapped_column(String(128), nullable=True, index=True)
+    metadata: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
+
+    last_generated_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    next_due_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
+
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+
 class PulseWorkRequest(Base):
     __tablename__ = "pulse_work_requests"
 
@@ -223,6 +268,12 @@ class PulseWorkRequest(Base):
         nullable=True,
         index=True,
     )
+    pm_plan_id: Mapped[Optional[str]] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("pulse_pm_plans.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     part_id: Mapped[Optional[str]] = mapped_column(
         UUID(as_uuid=False), ForeignKey("equipment_parts.id", ondelete="SET NULL"), nullable=True, index=True
     )
@@ -230,6 +281,7 @@ class PulseWorkRequest(Base):
         UUID(as_uuid=False), ForeignKey("zones.id", ondelete="SET NULL"), nullable=True, index=True
     )
     category: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    work_request_kind: Mapped[Optional[str]] = mapped_column(String(64), nullable=True, index=True)
     priority: Mapped[PulseWorkRequestPriority] = mapped_column(
         Enum(PulseWorkRequestPriority, values_callable=lambda x: [e.value for e in x], native_enum=False, length=16),
         default=PulseWorkRequestPriority.medium,

@@ -345,6 +345,7 @@ async def list_work_requests(
     _: WrReader,
     cid: CompanyId,
     q: Optional[str] = Query(None, description="Search title/description/category"),
+    kind: Optional[str] = Query(None, description="Optional work request kind, e.g. preventative_maintenance"),
     status_filter: Optional[str] = Query(None, alias="status"),
     priority: Optional[str] = Query(None),
     zone_id: Optional[str] = Query(None),
@@ -375,6 +376,8 @@ async def list_work_requests(
                 PulseWorkRequest.category.ilike(like),
             )
         )
+    if kind and kind.strip():
+        conds.append(PulseWorkRequest.work_request_kind == kind.strip())
     if priority:
         try:
             pr = PulseWorkRequestPriority(priority)

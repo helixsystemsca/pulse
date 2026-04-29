@@ -49,6 +49,7 @@ import {
   postWorkRequestStatus,
   postWorkRequestAssign,
 } from "@/lib/workRequestsService";
+import { createPmPlan } from "@/lib/pmPlansService";
 import { useModuleSettings, useModuleSettingsOptional } from "@/providers/ModuleSettingsProvider";
 
 type CompanyOption = { id: string; name: string };
@@ -199,10 +200,11 @@ export type WorkRequestsAppProps = {
   hubMode?: boolean;
   initialHubCategory?: string;
   initialStatusFilter?: string;
+  initialKind?: string;
 };
 
 export function WorkRequestsApp(props?: WorkRequestsAppProps) {
-  const { hubMode = false, initialHubCategory = "", initialStatusFilter = "" } = props ?? {};
+  const { hubMode = false, initialHubCategory = "", initialStatusFilter = "", initialKind = "" } = props ?? {};
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -234,6 +236,7 @@ export function WorkRequestsApp(props?: WorkRequestsAppProps) {
   const [qDebounced, setQDebounced] = useState("");
   const [statusFilter, setStatusFilter] = useState(hubMode ? initialStatusFilter : "");
   const [hubCategoryFilter, setHubCategoryFilter] = useState(hubMode ? initialHubCategory : "");
+  const [kindFilter, setKindFilter] = useState(hubMode ? initialKind : "");
   const [priorityFilter, setPriorityFilter] = useState("");
   const [zoneFilter, setZoneFilter] = useState("");
   const [dateFrom, setDateFrom] = useState("");
@@ -267,6 +270,7 @@ export function WorkRequestsApp(props?: WorkRequestsAppProps) {
   const [menuFor, setMenuFor] = useState<string | null>(null);
   const [menuAnchor, setMenuAnchor] = useState<{ top: number; right: number } | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
+  const [pmCreateOpen, setPmCreateOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsTab, setSettingsTab] = useState<SettingsTab>("Statuses");
   const [settingsDraft, setSettingsDraft] = useState<WrSettings | null>(null);
@@ -297,6 +301,52 @@ export function WorkRequestsApp(props?: WorkRequestsAppProps) {
     due_date: "",
     attachmentsNotes: "",
   });
+
+  const PM_SUGGESTIONS = useMemo(
+    () => [
+      "Check HVAC filters",
+      "Inspect boiler pressure",
+      "Test emergency lighting",
+      "Inspect fire extinguishers",
+      "Check for water leaks",
+      "Inspect rooftop units",
+    ],
+    [],
+  );
+
+  const [pmTitle, setPmTitle] = useState("");
+  const [pmDescription, setPmDescription] = useState("");
+  const [pmFrequency, setPmFrequency] = useState<"daily" | "weekly" | "monthly" | "custom">("monthly");
+  const [pmCustomDays, setPmCustomDays] = useState("30");
+  const [pmStartDate, setPmStartDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [pmDueOffset, setPmDueOffset] = useState("0");
+  const [pmAssignedTo, setPmAssignedTo] = useState("");
+  const [pmSuggestOpen, setPmSuggestOpen] = useState(false);
+  const pmTitleWrapRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!pmSuggestOpen) return;
+    const close = (e: MouseEvent) => {
+      if (pmTitleWrapRef.current && !pmTitleWrapRef.current.contains(e.target as Node)) {
+        setPmSuggestOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, [pmSuggestOpen]);
+
+  const pmSuggestions = useMemo(() => {
+    const q = pmTitle.trim().toLowerCase();
+    if (!q) return PM_SUGGESTIONS;
+    const scored = PM_SUGGESTIONS.map((s) => {
+      const sl = s.toLowerCase();
+      const score = sl.includes(q) ? 2 : q.split(/\s+/).some((w) => w && sl.includes(w)) ? 1 : 0;
+      return { s, score };
+    })
+      .sort((a, b) => b.score - a.score)
+      .map((x) => x.s);
+    return scored;
+  }, [PM_SUGGESTIONS, pmTitle]);
 
   const [detailEquipmentDraft, setDetailEquipmentDraft] = useState("");
   const lastCreateQuerySig = useRef<string | null>(null);
@@ -363,8 +413,9 @@ export function WorkRequestsApp(props?: WorkRequestsAppProps) {
     if (!hubMode) return;
     setHubCategoryFilter(initialHubCategory ?? "");
     setStatusFilter(initialStatusFilter ?? "");
+    setKindFilter(initialKind ?? "");
     setPage(0);
-  }, [hubMode, initialHubCategory, initialStatusFilter]);
+  }, [hubMode, initialHubCategory, initialStatusFilter, initialKind]);
 
   useEffect(() => {
     if (!dataEnabled || searchParams.get("create") !== "1") return;
@@ -425,6 +476,7 @@ export function WorkRequestsApp(props?: WorkRequestsAppProps) {
         priority: priorityFilter || undefined,
         zone_id: zoneFilter || undefined,
         hub_category: hubMode && hubCategoryFilter ? hubCategoryFilter : undefined,
+        kind: hubMode && kindFilter ? kindFilter : undefined,
         due_after,
         due_before,
         limit: pageSize,
@@ -827,6 +879,15 @@ export function WorkRequestsApp(props?: WorkRequestsAppProps) {
             >
               <Settings className="h-4 w-4" aria-hidden />
               Workflow
+            </button>
+            <button
+              type="button"
+              className="app-btn-secondary inline-flex items-center gap-2 px-4 py-2.5"
+              onClick={() => setPmCreateOpen(true)}
+              disabled={!dataEnabled || !canManage}
+              title={!canManage ? "Managers can create preventative maintenance plans" : undefined}
+            >
+              + New PM
             </button>
             <button
               type="button"
@@ -1436,6 +1497,152 @@ export function WorkRequestsApp(props?: WorkRequestsAppProps) {
               value={createForm.attachmentsNotes}
               onChange={(e) => setCreateForm((f) => ({ ...f, attachmentsNotes: e.target.value }))}
             />
+          </div>
+        </div>
+      </PulseDrawer>
+
+      <PulseDrawer
+        open={pmCreateOpen}
+        title="New preventative maintenance"
+        subtitle="Create a recurring PM in under 30 seconds"
+        onClose={() => setPmCreateOpen(false)}
+        wide
+        placement="center"
+        labelledBy="pm-create-title"
+        footer={
+          <div className="flex flex-wrap justify-end gap-3">
+            <button
+              type="button"
+              className="text-sm font-semibold text-pulse-muted hover:text-pulse-navy"
+              onClick={() => setPmCreateOpen(false)}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              className={PRIMARY_BTN}
+              disabled={actionBusy || !pmTitle.trim()}
+              onClick={async () => {
+                if (!pmTitle.trim()) return;
+                setActionBusy(true);
+                setListError(null);
+                try {
+                  const custom_interval_days =
+                    pmFrequency === "custom" ? Math.max(1, Number(pmCustomDays) || 1) : null;
+                  await createPmPlan({
+                    title: pmTitle.trim(),
+                    description: pmDescription.trim() || null,
+                    frequency: pmFrequency,
+                    start_date: pmStartDate || null,
+                    due_time_offset_days: pmDueOffset ? Math.max(0, Number(pmDueOffset) || 0) : null,
+                    assigned_to: pmAssignedTo.trim() || null,
+                    custom_interval_days,
+                  });
+                  setPmCreateOpen(false);
+                  // Show the generated task immediately.
+                  if (hubMode) {
+                    setHubCategoryFilter("");
+                    setKindFilter("preventative_maintenance");
+                    setStatusFilter("");
+                  }
+                  await loadList();
+                } catch (e: unknown) {
+                  setListError(e instanceof Error ? e.message : "Failed to create PM");
+                } finally {
+                  setActionBusy(false);
+                }
+              }}
+            >
+              {actionBusy ? "Saving…" : "Create PM"}
+            </button>
+          </div>
+        }
+      >
+        <div className="space-y-4">
+          <p id="pm-create-title" className="sr-only">
+            New preventative maintenance
+          </p>
+          <div ref={pmTitleWrapRef} className="relative">
+            <label className={LABEL}>Title</label>
+            <input
+              className={FIELD}
+              value={pmTitle}
+              onFocus={() => setPmSuggestOpen(true)}
+              onChange={(e) => {
+                setPmTitle(e.target.value);
+                setPmSuggestOpen(Boolean(e.target.value) ? true : true);
+              }}
+              placeholder="e.g. Inspect boiler pressure"
+            />
+            {pmSuggestOpen ? (
+              <div className="absolute z-20 mt-1 w-full rounded-lg border border-ds-border bg-ds-primary shadow-lg">
+                {pmSuggestions.slice(0, 6).map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    className="block w-full px-3 py-2 text-left text-sm text-ds-foreground hover:bg-ds-interactive-hover"
+                    onClick={() => {
+                      setPmTitle(s);
+                      setPmSuggestOpen(false);
+                    }}
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+          </div>
+
+          <div>
+            <label className={LABEL}>Description (optional)</label>
+            <textarea
+              className={`${FIELD} min-h-[90px]`}
+              value={pmDescription}
+              onChange={(e) => setPmDescription(e.target.value)}
+              placeholder="Optional notes for the technician…"
+            />
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label className={LABEL}>Frequency</label>
+              <select
+                className={FIELD}
+                value={pmFrequency}
+                onChange={(e) => setPmFrequency(e.target.value as any)}
+              >
+                <option value="daily">Daily</option>
+                <option value="weekly">Weekly</option>
+                <option value="monthly">Monthly</option>
+                <option value="custom">Custom</option>
+              </select>
+              {pmFrequency === "custom" ? (
+                <div className="mt-2">
+                  <label className={LABEL}>Every N days</label>
+                  <input className={FIELD} value={pmCustomDays} onChange={(e) => setPmCustomDays(e.target.value)} />
+                </div>
+              ) : null}
+            </div>
+            <div>
+              <label className={LABEL}>Start date</label>
+              <input className={FIELD} type="date" value={pmStartDate} onChange={(e) => setPmStartDate(e.target.value)} />
+              <div className="mt-2">
+                <label className={LABEL}>Due offset (days)</label>
+                <input className={FIELD} value={pmDueOffset} onChange={(e) => setPmDueOffset(e.target.value)} />
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <label className={LABEL}>Assign to (optional)</label>
+            <select className={FIELD} value={pmAssignedTo} onChange={(e) => setPmAssignedTo(e.target.value)}>
+              <option value="">Unassigned</option>
+              {workers.map((w) => (
+                <option key={w.id} value={w.id}>
+                  {(w.full_name ?? w.email) || w.id}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
       </PulseDrawer>

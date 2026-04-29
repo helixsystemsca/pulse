@@ -10,6 +10,7 @@ import { WorkRequestsApp } from "@/components/work-requests/WorkRequestsApp";
 const HUB_CATS = [
   { id: "", label: "All" },
   { id: "preventative", label: "Preventative" },
+  { id: "preventative_maintenance", label: "Preventative Maintenance" },
   { id: "work_requests", label: "Work requests" },
   { id: "projects", label: "Projects" },
 ] as const;
@@ -36,14 +37,18 @@ export function MaintenanceWorkHub() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const hub = searchParams.get("hub") ?? "";
+  const kind = searchParams.get("kind") ?? "";
   const status = searchParams.get("status") ?? "";
 
-  const pushFilters = (next: { hub?: string; status?: string }) => {
+  const pushFilters = (next: { hub?: string; kind?: string; status?: string }) => {
     const sp = new URLSearchParams(searchParams.toString());
     const nh = next.hub !== undefined ? next.hub : hub;
+    const nk = next.kind !== undefined ? next.kind : kind;
     const ns = next.status !== undefined ? next.status : status;
     if (nh) sp.set("hub", nh);
     else sp.delete("hub");
+    if (nk) sp.set("kind", nk);
+    else sp.delete("kind");
     if (ns) sp.set("status", ns);
     else sp.delete("status");
     const q = sp.toString();
@@ -74,7 +79,13 @@ export function MaintenanceWorkHub() {
                 key={c.id || "all"}
                 type="button"
                 className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${chipClass(hub === c.id)}`}
-                onClick={() => pushFilters({ hub: c.id })}
+                onClick={() => {
+                  if (c.id === "preventative_maintenance") {
+                    pushFilters({ hub: "", kind: "preventative_maintenance" });
+                    return;
+                  }
+                  pushFilters({ hub: c.id, kind: "" });
+                }}
               >
                 {c.label}
               </button>
@@ -105,7 +116,7 @@ export function MaintenanceWorkHub() {
           </div>
         }
       >
-        <WorkRequestsApp hubMode initialHubCategory={hub} initialStatusFilter={status} />
+        <WorkRequestsApp hubMode initialHubCategory={hub} initialStatusFilter={status} initialKind={kind} />
       </Suspense>
 
       <details className="group rounded-md border border-ds-border bg-ds-primary shadow-[var(--ds-shadow-card)]">

@@ -78,6 +78,12 @@ def _parse_frequency_type(raw: str) -> str:
 
 async def sync_pm_task_after_work_order_completed(db: AsyncSession, wr: PulseWorkRequest) -> None:
     """When a PM-linked work order is completed, advance the task schedule."""
+    # New soft-start PM plans live alongside legacy equipment-linked PM tasks.
+    if getattr(wr, "pm_plan_id", None):
+        from app.services.pm_plan_service import sync_pm_plan_after_work_request_completed
+
+        await sync_pm_plan_after_work_request_completed(db, wr)
+        return
     if not wr.pm_task_id:
         return
     if wr.status != PulseWorkRequestStatus.completed:
@@ -222,6 +228,30 @@ async def run_pm_due_scan(db: AsyncSession) -> dict[str, int]:
                     created += 1
         except IntegrityError:
             _log.info("PM task %s: skipped creating WO (concurrent or duplicate open row)", task.id)
+
+    # Soft-start PM plans: same scan mechanism, but no equipment/tool required.
+    from app.models.pulse_models import PulsePmPlan
+    from app.services.pm_plan_service import create_due_work_request_for_plan
+
+    plan_rows = (
+        (
+            await db.execute(
+                select(PulsePmPlan).where(
+                    PulsePmPlan.next_due_at <= horizon,
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
+    for plan in plan_rows:
+        try:
+            async with db.begin_nested():
+                wr2 = await create_due_work_request_for_plan(db, plan)
+                if wr2:
+                    created += 1
+        except IntegrityError:
+            _log.info("PM plan %s: skipped creating WO (concurrent or duplicate open row)", plan.id)
     await db.commit()
     return {"work_orders_created": created}
 

@@ -84,6 +84,7 @@ function companyQs(companyId: string | null): string {
 function buildListQuery(params: {
   companyId: string | null;
   q?: string;
+  kind?: string;
   status?: string;
   priority?: string;
   zone_id?: string;
@@ -98,6 +99,7 @@ function buildListQuery(params: {
   const sp = new URLSearchParams();
   if (params.companyId) sp.set("company_id", params.companyId);
   if (params.q?.trim()) sp.set("q", params.q.trim());
+  if (params.kind?.trim()) sp.set("kind", params.kind.trim());
   if (params.status) sp.set("status", params.status);
   if (params.priority) sp.set("priority", params.priority);
   if (params.zone_id) sp.set("zone_id", params.zone_id);
