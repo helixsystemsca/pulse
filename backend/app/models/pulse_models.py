@@ -234,7 +234,10 @@ class PulsePmPlan(Base):
         UUID(as_uuid=False), ForeignKey("facility_equipment.id", ondelete="SET NULL"), nullable=True, index=True
     )
     template_id: Mapped[Optional[str]] = mapped_column(String(128), nullable=True, index=True)
-    metadata: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
+    # DB column "metadata" — Python name cannot be `metadata` (reserved on DeclarativeBase).
+    plan_metadata: Mapped[dict[str, Any]] = mapped_column(
+        "metadata", JSONB, nullable=False, server_default=text("'{}'::jsonb")
+    )
 
     last_generated_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     next_due_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)

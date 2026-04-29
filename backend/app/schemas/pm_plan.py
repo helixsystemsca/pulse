@@ -32,7 +32,7 @@ class PmPlanOut(BaseModel):
     assigned_to: Optional[str] = None
     equipment_id: Optional[str] = None
     template_id: Optional[str] = None
-    metadata: dict[str, Any] = {}
+    plan_metadata: dict[str, Any] = {}
     next_due_at: datetime
     created_at: datetime
     updated_at: datetime

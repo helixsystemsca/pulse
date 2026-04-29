@@ -107,7 +107,7 @@ async def create_pm_plan_and_first_work_request(
         assigned_user_id=str(assigned_user_id) if assigned_user_id else None,
         equipment_id=None,
         template_id=None,
-        metadata={},
+        plan_metadata={},
         last_generated_at=None,
         next_due_at=due_at,
     )

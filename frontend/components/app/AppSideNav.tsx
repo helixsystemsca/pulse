@@ -63,8 +63,6 @@ export function AppSideNav() {
   const pathname = usePathname();
   const { authed, session } = usePulseAuth();
 
-  if (!authed) return null;
-
   const isSystemAdmin = Boolean(session?.is_system_admin || session?.role === "system_admin");
   /** Platform shell: always use the slim system rail (not tenant product links). Imp JWTs look like tenant users. */
   const rawNav = isSystemAdmin ? pulseSystemSidebarNav : pulseTenantSidebarNav;
@@ -128,6 +126,8 @@ export function AppSideNav() {
     assets: false,
     system: false,
   }));
+
+  if (!authed) return null;
 
   return (
     <aside
