@@ -48,19 +48,19 @@ export function AppLayout({
         <InactivitySessionGuard />
         <ServerTimeSync />
         <ProximityPromptHost />
-        <div data-pulse-app-shell className="flex min-h-screen min-w-0 flex-col">
-          {chrome ? <AppNavbar /> : null}
-          {chrome ? <ImpersonationBanner /> : null}
-          <div className="flex min-h-0 min-w-0 flex-1 items-stretch">
-            {chrome ? <AppSideNav /> : null}
+        <div data-pulse-app-shell className="min-h-screen min-w-0">
+          {chrome ? <AppSideNav /> : null}
+          <div className={`${chrome ? "lg:ml-64" : ""} w-full`}>
+            {chrome ? <AppNavbar /> : null}
+            {chrome ? <ImpersonationBanner /> : null}
             <AppMain className={mainClassName} reserveRail={false}>
               <MainContentWidth className={mainContentClassName}>
                 {pageShell ? <PageShell>{children}</PageShell> : children}
               </MainContentWidth>
               <OnboardingChrome />
             </AppMain>
+            {chrome ? <AppLayoutFooter /> : null}
           </div>
-          {chrome ? <AppLayoutFooter /> : null}
         </div>
         </GamificationProvider>
         </ModuleSettingsProvider>

@@ -22,7 +22,6 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { GridLayout, noCompactor, useContainerWidth, type Layout, type LayoutItem } from "react-grid-layout";
 import { DashboardAddWidgetWizard } from "@/components/dashboard/DashboardAddWidgetWizard";
 import { DashboardCustomPeekWidget } from "@/components/dashboard/DashboardCustomPeekWidget";
-import { DashboardCard } from "@/components/dashboard/DashboardCard";
 import { XpTasksWidget } from "@/components/gamification/XpTasksWidget";
 import { AdminOnboardingChecklist } from "@/components/onboarding/AdminOnboardingChecklist";
 import { apiFetch, isApiMode } from "@/lib/api";
@@ -51,6 +50,33 @@ import "react-grid-layout/css/styles.css";
 import "react-resizable/css/styles.css";
 
 type AlertPriority = "critical" | "high" | "medium" | "low";
+
+function WorkerDashCard({
+  title,
+  headerRight,
+  children,
+  className = "",
+}: {
+  title: string;
+  headerRight?: ReactNode;
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <section
+      className={[
+        "rounded-2xl border border-ds-border bg-white p-5 shadow-[var(--ds-shadow-card)] dark:bg-ds-primary",
+        className,
+      ].join(" ")}
+    >
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <p className="font-headline text-base font-extrabold text-ds-foreground">{title}</p>
+        {headerRight ? <div className="text-xs font-semibold text-ds-muted">{headerRight}</div> : null}
+      </div>
+      <div className="mt-4">{children}</div>
+    </section>
+  );
+}
 
 type AlertItem = {
   severity: "critical" | "warning";
@@ -1621,7 +1647,8 @@ function DashboardBody({
   const weatherTemp = useMemo(() => (weather.tempC == null ? "—" : `${Math.round(weather.tempC)}°C`), [weather.tempC]);
 
   return (
-    <div className="mx-auto w-full max-w-6xl space-y-6 px-4 py-6">
+    <div className="w-full px-2 py-6 sm:px-3 lg:px-4">
+      <div className="space-y-6">
       <div className="rounded-2xl border border-ds-border bg-ds-primary shadow-[var(--ds-shadow-card)]">
         <div className="flex flex-wrap items-center justify-between gap-4 px-5 py-4">
           <div className="min-w-0">
@@ -1716,19 +1743,20 @@ function DashboardBody({
 
         <div ref={containerRef as any}>
           {mounted ? (
-            <GridLayout
-              layout={layout}
-              width={width}
-              gridConfig={{ cols: 12, rowHeight: 100, margin: [24, 24], containerPadding: [0, 0] }}
-              dragConfig={{ enabled: !readOnly && editMode, bounded: false, handle: ".dashboard-drag-handle" }}
-              resizeConfig={{ enabled: !readOnly && editMode, handles: ["se"] }}
-              compactor={noCompactor}
-              onLayoutChange={(next) => {
-                if (readOnly) return;
-                setLayout(next);
-              }}
-            >
-          {layout.map((item) => {
+            editMode ? (
+              <GridLayout
+                layout={layout}
+                width={width}
+                gridConfig={{ cols: 12, rowHeight: 100, margin: [24, 24], containerPadding: [0, 0] }}
+                dragConfig={{ enabled: !readOnly && editMode, bounded: false, handle: ".dashboard-drag-handle" }}
+                resizeConfig={{ enabled: !readOnly && editMode, handles: ["se"] }}
+                compactor={noCompactor}
+                onLayoutChange={(next) => {
+                  if (readOnly) return;
+                  setLayout(next);
+                }}
+              >
+                {layout.map((item) => {
             if (item.i.startsWith("cw_")) {
               const cfg = customConfigs[item.i];
               if (!cfg) return <div key={item.i} />;
@@ -1772,9 +1800,9 @@ function DashboardBody({
                   key={item.i}
                   className={["transition-transform", editMode ? "cursor-grab active:cursor-grabbing" : ""].join(" ")}
                 >
-                  <DashboardCard title={cfg.title} accent="blue" headerRight={headerRight} className="h-full">
+                  <WorkerDashCard title={cfg.title} headerRight={headerRight} className="h-full">
                     <DashboardCustomPeekWidget config={cfg} model={model} />
-                  </DashboardCard>
+                  </WorkerDashCard>
                 </div>
               );
             }
@@ -1785,10 +1813,7 @@ function DashboardBody({
             if (!w) return <div key={item.i} />;
             const alertsPeek =
               item.i === "alerts" ? (
-                <Link
-                  href={pulseRoutes.monitoring}
-                  className="mr-1 text-xs font-semibold text-white underline decoration-white/60 decoration-1 underline-offset-4 hover:decoration-white"
-                >
+                <Link href={pulseRoutes.monitoring} className="ds-link text-xs font-semibold">
                   View all
                 </Link>
               ) : null;
@@ -1830,19 +1855,75 @@ function DashboardBody({
                   editMode ? "cursor-grab active:cursor-grabbing" : "",
                 ].join(" ")}
               >
-                <DashboardCard
-                  title={w.title}
-                  accent={w.accent}
-                  headerRight={headerRight}
-                  className="h-full"
-                  bodyClassName={item.i === "setup" ? "overflow-auto" : undefined}
-                >
+                <WorkerDashCard title={w.title} headerRight={headerRight} className={["h-full", item.i === "setup" ? "overflow-auto" : ""].join(" ")}>
                   {w.render()}
-                </DashboardCard>
+                </WorkerDashCard>
               </div>
             );
-          })}
-            </GridLayout>
+                })}
+              </GridLayout>
+            ) : (
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
+                {layout.map((item) => {
+                  if (item.i.startsWith("cw_")) {
+                    const cfg = customConfigs[item.i];
+                    if (!cfg) return null;
+                    const headerRight = !readOnly ? (
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setPeekWizardInitial(cfg);
+                            setPeekWizardMode("edit");
+                            setShowPeekWizard(true);
+                          }}
+                          className="inline-flex items-center rounded-md border border-ds-border bg-ds-secondary/60 px-2 py-1 text-ds-foreground hover:bg-ds-interactive-hover"
+                          aria-label="Customize peek widget"
+                          title="Customize"
+                        >
+                          <Settings className="h-3.5 w-3.5" aria-hidden />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => removeWidget(item.i)}
+                          className="rounded-md border border-ds-border bg-ds-secondary/60 px-2 py-1 text-xs font-semibold text-ds-foreground hover:bg-ds-interactive-hover"
+                          aria-label={`Remove ${cfg.title}`}
+                          title="Remove widget"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ) : null;
+                    return (
+                      <WorkerDashCard key={item.i} title={cfg.title} headerRight={headerRight}>
+                        <DashboardCustomPeekWidget config={cfg} model={model} />
+                      </WorkerDashCard>
+                    );
+                  }
+                  const w = (widgetRegistry as Record<string, any>)[item.i] as
+                    | { title: string; render: () => ReactNode }
+                    | null
+                    | undefined;
+                  if (!w) return null;
+                  const headerRight =
+                    item.i === "alerts" ? (
+                      <Link href={pulseRoutes.monitoring} className="ds-link text-xs font-semibold">
+                        View all
+                      </Link>
+                    ) : null;
+                  return (
+                    <WorkerDashCard
+                      key={item.i}
+                      title={w.title}
+                      headerRight={headerRight}
+                      className={item.i === "setup" ? "md:col-span-2 xl:col-span-3" : ""}
+                    >
+                      {w.render()}
+                    </WorkerDashCard>
+                  );
+                })}
+              </div>
+            )
           ) : null}
         </div>
 
@@ -1921,6 +2002,7 @@ function DashboardBody({
             onSave={saveCustomPeek}
           />
         ) : null}
+      </div>
       </div>
     </div>
   );

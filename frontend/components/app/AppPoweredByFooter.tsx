@@ -3,17 +3,13 @@
 import Link from "next/link";
 import { HelixMarketingLogo } from "@/components/branding/HelixMarketingLogo";
 import { helixMarketingHref } from "@/lib/pulse-app";
-import { usePulseAuth } from "@/hooks/usePulseAuth";
-
 /** Global strip below main content: visible “Powered by” + wordmark (not shown on marketing-only pages). */
 export function AppPoweredByFooter() {
-  const { authed } = usePulseAuth();
-  const gutter = authed ? "lg:pl-64" : "";
   return (
     <footer
-      className={`mt-auto flex h-14 shrink-0 items-center border-t border-gray-200 bg-white/90 dark:border-ds-border dark:bg-ds-elevated ${gutter}`.trim()}
+      className="w-full h-10 px-4 flex items-center justify-center text-xs text-muted-foreground border-t bg-background"
     >
-      <div className="flex w-full items-center justify-center gap-2 px-4">
+      <div className="flex w-full items-center justify-center gap-2">
         <Link
           href={helixMarketingHref("/")}
           target="_blank"

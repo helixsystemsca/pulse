@@ -9,7 +9,6 @@ import { usePathname } from "next/navigation";
 import type { LucideIcon } from "lucide-react";
 import {
   Activity,
-  Bell,
   Building2,
   CalendarDays,
   ClipboardList,
@@ -93,6 +92,8 @@ export function AppSideNav() {
       return isTenantNavPermissionGranted(i.href, session.permissions);
     });
   }
+  // Settings lives in the persistent bottom section (not the main nav list).
+  items = items.filter((i) => i.href !== "/settings");
   const systemRail = isSystemAdmin;
 
   const filteredNavItems = useMemo(() => {
@@ -106,88 +107,81 @@ export function AppSideNav() {
   if (!authed || !session) return null;
 
   const shell =
-    "flex w-64 shrink-0 flex-col border-r border-slate-200/90 bg-[#f4f6f8] dark:border-white/[0.08] dark:bg-[#161a1d] " +
-    "sticky top-16 z-[40] hidden min-h-0 self-stretch lg:flex";
+    "fixed left-0 top-0 hidden h-screen w-64 min-w-[16rem] flex-shrink-0 flex-col justify-between border-r bg-background lg:flex";
 
   return (
     <aside className={shell} aria-label={systemRail ? "System navigation" : "App navigation"}>
-      {/* In-rail search */}
-      <div className="shrink-0 px-3 pb-3 pt-3">
-        <div className="relative">
-          <Search
-            className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500"
-            strokeWidth={2}
-            aria-hidden
-          />
-          <input
-            type="search"
-            value={navSearch}
-            onChange={(e) => setNavSearch(e.target.value)}
-            placeholder="Search…"
-            className="w-full rounded-full border-0 bg-slate-200/70 py-2 pl-9 pr-3 text-sm text-slate-800 shadow-inner placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--ds-success)_35%,transparent)] dark:bg-white/[0.08] dark:text-slate-100 dark:placeholder:text-slate-500"
-            aria-label="Filter navigation"
-          />
-        </div>
-      </div>
-
-      {/* Flat nav list — no expandable groups */}
-      <nav className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto overflow-x-hidden px-2 pb-2" aria-label="Navigation">
-        {filteredNavItems.map((item) => {
-          const active = isPulseNavActive(item.href, pathname);
-          const Icon = ICONS[item.icon];
-          return (
-            <Link
-              key={`${item.href}-${item.label}`}
-              href={item.href}
-              title={item.label}
-              data-guided-tour-anchor={item.href === "/dashboard/maintenance" ? "sidebar-work-requests" : undefined}
-              className={`group flex items-center gap-3 rounded-xl px-3 py-2 text-[13px] font-semibold leading-tight transition-colors ${
-                active
-                  ? "bg-ds-interactive-hover-strong text-ds-foreground shadow-sm"
-                  : "text-slate-700 hover:bg-slate-200/60 dark:text-slate-200 dark:hover:bg-white/[0.06]"
-              }`}
-            >
-              <span
-                className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
-                  active
-                    ? "bg-white text-ds-success shadow-sm ring-1 ring-[color-mix(in_srgb,var(--ds-success)_28%,transparent)] dark:bg-white/10"
-                    : "bg-slate-200/50 text-slate-500 group-hover:bg-slate-200/90 group-hover:text-slate-700 dark:bg-white/[0.06] dark:text-slate-400 dark:group-hover:bg-white/[0.1] dark:group-hover:text-slate-200"
-                }`}
-              >
-                <Icon className="h-[18px] w-[18px]" strokeWidth={2} aria-hidden />
-              </span>
-              <span className="min-w-0 flex-1 truncate">{item.label}</span>
-            </Link>
-          );
-        })}
-      </nav>
-
-      {/* Profile footer — pinned to bottom of rail */}
-      <div className="mt-auto shrink-0 border-t border-slate-200/90 px-3 py-3 dark:border-white/[0.08]">
-        <Link
-          href="/settings"
-          className="mb-2 flex w-full items-center justify-center gap-2 rounded-lg border border-slate-300/80 bg-white/70 px-3 py-1.5 text-sm font-semibold text-slate-700 transition-colors hover:bg-white dark:border-white/[0.14] dark:bg-white/[0.05] dark:text-slate-100 dark:hover:bg-white/[0.08]"
-        >
-          <Settings className="h-4 w-4" aria-hidden />
-          Settings
-        </Link>
-        <div className="flex items-center gap-3">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-ds-success text-xs font-bold text-[var(--ds-on-accent)]">
-            {navInitials(session.full_name, session.email)}
-          </span>
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold text-slate-900 dark:text-white">
-              {session.full_name?.trim() || session.email.split("@")[0]}
-            </p>
-            <p className="truncate text-xs capitalize text-slate-500 dark:text-slate-400">{formatRoleLabel(session)}</p>
+      <div className="flex h-full flex-col justify-between pt-16">
+        <div className="space-y-2">
+          <div className="px-3 pb-1">
+            <div className="relative">
+              <Search
+                className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+                strokeWidth={2}
+                aria-hidden
+              />
+              <input
+                type="search"
+                value={navSearch}
+                onChange={(e) => setNavSearch(e.target.value)}
+                placeholder="Search…"
+                className="w-full rounded-full border border-border bg-background py-2 pl-9 pr-3 text-sm text-foreground shadow-inner placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--ds-success)_35%,transparent)]"
+                aria-label="Filter navigation"
+              />
+            </div>
           </div>
+
+          <nav className="space-y-0.5 px-2" aria-label="Navigation">
+            {filteredNavItems.map((item) => {
+              const active = isPulseNavActive(item.href, pathname);
+              const Icon = ICONS[item.icon];
+              return (
+                <Link
+                  key={`${item.href}-${item.label}`}
+                  href={item.href}
+                  title={item.label}
+                  data-guided-tour-anchor={item.href === "/dashboard/maintenance" ? "sidebar-work-requests" : undefined}
+                  className={`group flex items-center gap-3 rounded-xl px-3 py-2 text-[13px] font-semibold leading-tight transition-colors ${
+                    active
+                      ? "bg-ds-interactive-hover-strong text-ds-foreground shadow-sm"
+                      : "text-foreground/80 hover:bg-ds-interactive-hover"
+                  }`}
+                >
+                  <span
+                    className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
+                      active
+                        ? "bg-background text-ds-success shadow-sm ring-1 ring-[color-mix(in_srgb,var(--ds-success)_28%,transparent)]"
+                        : "bg-ds-secondary/60 text-muted-foreground group-hover:text-foreground"
+                    }`}
+                  >
+                    <Icon className="h-[18px] w-[18px]" strokeWidth={2} aria-hidden />
+                  </span>
+                  <span className="min-w-0 flex-1 truncate">{item.label}</span>
+                </Link>
+              );
+            })}
+          </nav>
+        </div>
+
+        <div className="border-t border-border px-3 pt-3">
           <Link
             href="/settings"
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-slate-500 transition-colors hover:bg-slate-200/80 hover:text-slate-800 dark:text-slate-400 dark:hover:bg-white/[0.08] dark:hover:text-white"
-            aria-label="Open settings"
+            className="mb-2 flex w-full items-center justify-center gap-2 rounded-lg border border-border bg-background px-3 py-1.5 text-sm font-semibold text-foreground transition-colors hover:bg-ds-interactive-hover"
           >
-            <Settings className="h-[1.125rem] w-[1.125rem]" strokeWidth={1.75} aria-hidden />
+            <Settings className="h-4 w-4" aria-hidden />
+            Settings
           </Link>
+          <div className="flex items-center gap-3 pb-3">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-ds-success text-xs font-bold text-[var(--ds-on-accent)]">
+              {navInitials(session.full_name, session.email)}
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-semibold text-foreground">
+                {session.full_name?.trim() || session.email.split("@")[0]}
+              </p>
+              <p className="truncate text-xs capitalize text-muted-foreground">{formatRoleLabel(session)}</p>
+            </div>
+          </div>
         </div>
       </div>
     </aside>
