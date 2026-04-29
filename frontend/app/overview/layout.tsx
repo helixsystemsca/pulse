@@ -7,5 +7,13 @@ export const metadata: Metadata = {
 };
 
 export default function OverviewLayout({ children }: { children: React.ReactNode }) {
-  return <AppLayout mainClassName="bg-pulse-bg">{children}</AppLayout>;
+  return (
+    <AppLayout
+      mainClassName="bg-pulse-bg"
+      pageShell={false}
+      mainContentClassName="flex min-h-0 w-full flex-1 flex-col !p-0"
+    >
+      {children}
+    </AppLayout>
+  );
 }

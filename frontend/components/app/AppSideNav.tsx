@@ -111,31 +111,8 @@ export function AppSideNav() {
 
   return (
     <aside className={shell} aria-label={systemRail ? "System navigation" : "App navigation"}>
-      {/* Brand + quick action */}
-      <div className="flex shrink-0 items-center justify-between gap-2 px-3 pb-2 pt-3">
-        <Link
-          href={isSystemAdmin ? "/system" : "/overview"}
-          className="flex min-w-0 items-center gap-2.5 rounded-lg outline-none ring-offset-2 ring-offset-[#f4f6f8] focus-visible:ring-2 focus-visible:ring-teal-500/50 dark:ring-offset-[#161a1d]"
-        >
-          <span
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-teal-600 text-sm font-bold text-white shadow-sm dark:bg-teal-500"
-            aria-hidden
-          >
-            H
-          </span>
-          <span className="truncate text-lg font-semibold tracking-tight text-slate-900 dark:text-white">Helix</span>
-        </Link>
-        <Link
-          href={isSystemAdmin ? "/system/logs" : "/monitoring"}
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-slate-500 transition-colors hover:bg-slate-200/80 hover:text-slate-800 dark:text-slate-400 dark:hover:bg-white/[0.08] dark:hover:text-white"
-          aria-label={isSystemAdmin ? "System logs" : "Monitoring and alerts"}
-        >
-          <Bell className="h-[1.125rem] w-[1.125rem]" strokeWidth={1.75} aria-hidden />
-        </Link>
-      </div>
-
       {/* In-rail search */}
-      <div className="shrink-0 px-3 pb-3">
+      <div className="shrink-0 px-3 pb-3 pt-3">
         <div className="relative">
           <Search
             className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500"
@@ -147,7 +124,7 @@ export function AppSideNav() {
             value={navSearch}
             onChange={(e) => setNavSearch(e.target.value)}
             placeholder="Search…"
-            className="w-full rounded-full border-0 bg-slate-200/70 py-2.5 pl-9 pr-3 text-sm text-slate-800 shadow-inner placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500/35 dark:bg-white/[0.08] dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:ring-teal-400/30"
+            className="w-full rounded-full border-0 bg-slate-200/70 py-2 pl-9 pr-3 text-sm text-slate-800 shadow-inner placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--ds-success)_35%,transparent)] dark:bg-white/[0.08] dark:text-slate-100 dark:placeholder:text-slate-500"
             aria-label="Filter navigation"
           />
         </div>
@@ -164,16 +141,16 @@ export function AppSideNav() {
               href={item.href}
               title={item.label}
               data-guided-tour-anchor={item.href === "/dashboard/maintenance" ? "sidebar-work-requests" : undefined}
-              className={`group flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-semibold leading-tight transition-colors ${
+              className={`group flex items-center gap-3 rounded-xl px-3 py-2 text-[13px] font-semibold leading-tight transition-colors ${
                 active
-                  ? "bg-teal-500/[0.14] text-teal-800 shadow-sm dark:bg-teal-400/15 dark:text-teal-100"
+                  ? "bg-ds-interactive-hover-strong text-ds-foreground shadow-sm"
                   : "text-slate-700 hover:bg-slate-200/60 dark:text-slate-200 dark:hover:bg-white/[0.06]"
               }`}
             >
               <span
-                className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${
+                className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
                   active
-                    ? "bg-white text-teal-700 shadow-sm ring-1 ring-teal-500/20 dark:bg-white/10 dark:text-teal-200 dark:ring-teal-400/25"
+                    ? "bg-white text-ds-success shadow-sm ring-1 ring-[color-mix(in_srgb,var(--ds-success)_28%,transparent)] dark:bg-white/10"
                     : "bg-slate-200/50 text-slate-500 group-hover:bg-slate-200/90 group-hover:text-slate-700 dark:bg-white/[0.06] dark:text-slate-400 dark:group-hover:bg-white/[0.1] dark:group-hover:text-slate-200"
                 }`}
               >
@@ -189,13 +166,13 @@ export function AppSideNav() {
       <div className="mt-auto shrink-0 border-t border-slate-200/90 px-3 py-3 dark:border-white/[0.08]">
         <Link
           href="/settings"
-          className="mb-2.5 flex w-full items-center justify-center gap-2 rounded-lg border border-slate-300/80 bg-white/70 px-3 py-2 text-sm font-semibold text-slate-700 transition-colors hover:bg-white dark:border-white/[0.14] dark:bg-white/[0.05] dark:text-slate-100 dark:hover:bg-white/[0.08]"
+          className="mb-2 flex w-full items-center justify-center gap-2 rounded-lg border border-slate-300/80 bg-white/70 px-3 py-1.5 text-sm font-semibold text-slate-700 transition-colors hover:bg-white dark:border-white/[0.14] dark:bg-white/[0.05] dark:text-slate-100 dark:hover:bg-white/[0.08]"
         >
           <Settings className="h-4 w-4" aria-hidden />
           Settings
         </Link>
         <div className="flex items-center gap-3">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-teal-600 text-xs font-bold text-white dark:bg-teal-500">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-ds-success text-xs font-bold text-[var(--ds-on-accent)]">
             {navInitials(session.full_name, session.email)}
           </span>
           <div className="min-w-0 flex-1">
