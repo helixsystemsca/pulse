@@ -1,7 +1,7 @@
 """soft start pm plans
 
 Revision ID: 0081_soft_start_pm_plans
-Revises: 0080_gamification_g5_badges
+Revises: 0080_g5_badges
 Create Date: 2026-04-28
 """
 
@@ -14,7 +14,7 @@ from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision = "0081_soft_start_pm_plans"
-down_revision = "0080_gamification_g5_badges"
+down_revision = "0080_g5_badges"
 branch_labels = None
 depends_on = None
 
