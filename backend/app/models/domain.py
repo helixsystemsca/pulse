@@ -242,6 +242,21 @@ class User(Base):
     user_onboarding_tour_completed: Mapped[bool] = mapped_column(
         Boolean, nullable=False, server_default=text("false")
     )
+    #: Tier 1 checklist completion map keyed by module-action IDs.
+    onboarding_tier1_progress: Mapped[dict[str, Any]] = mapped_column(
+        JSONB,
+        nullable=False,
+        server_default=text("'{}'::jsonb"),
+    )
+    #: Tier 2 feature checklist unlocked by completion or elapsed setup time.
+    onboarding_tier2_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
+    #: First onboarding timestamp used for time-delay Tier 2 unlock fallback.
+    onboarding_started_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=text("timezone('utc', now())"),
+    )
+    onboarding_tier2_prompted_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
 
     company: Mapped[Optional[Company]] = relationship(
         back_populates="users",

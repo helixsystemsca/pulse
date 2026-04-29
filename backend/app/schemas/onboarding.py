@@ -14,6 +14,21 @@ class OnboardingStepOut(BaseModel):
     href: str = Field(default="/overview", description="Tenant app path for this step")
 
 
+class ModuleChecklistItemOut(BaseModel):
+    key: str
+    label: str
+    completed: bool
+    href: str = "/overview"
+
+
+class ModuleChecklistOut(BaseModel):
+    module: str
+    title: str
+    completed_count: int
+    total_count: int
+    items: list[ModuleChecklistItemOut]
+
+
 class OnboardingStateOut(BaseModel):
     onboarding_enabled: bool
     #: True when the company_admin org checklist is complete (always false for non-admins).
@@ -26,6 +41,11 @@ class OnboardingStateOut(BaseModel):
     completed_count: int
     total_count: int
     flow: OnboardingFlowOut
+    tier1_modules: list[ModuleChecklistOut] = []
+    tier1_completed_count: int = 0
+    tier1_total_count: int = 0
+    tier2_enabled: bool = False
+    tier2_eligible: bool = False
 
 
 class OnboardingPatchIn(BaseModel):
@@ -36,3 +56,4 @@ class OnboardingPatchIn(BaseModel):
     onboarding_enabled: Optional[bool] = None
     onboarding_seen: Optional[bool] = None
     user_onboarding_tour_completed: Optional[bool] = None
+    tier2_enabled: Optional[bool] = None

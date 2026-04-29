@@ -38,6 +38,11 @@ def _state_to_out(raw: dict) -> OnboardingStateOut:
         completed_count=raw["completed_count"],
         total_count=raw["total_count"],
         flow=raw["flow"],
+        tier1_modules=raw.get("tier1_modules", []),
+        tier1_completed_count=raw.get("tier1_completed_count", 0),
+        tier1_total_count=raw.get("tier1_total_count", 0),
+        tier2_enabled=raw.get("tier2_enabled", False),
+        tier2_eligible=raw.get("tier2_eligible", False),
     )
 
 
@@ -89,6 +94,12 @@ async def patch_onboarding(
 
     if body.user_onboarding_tour_completed is not None:
         user.user_onboarding_tour_completed = bool(body.user_onboarding_tour_completed)
+    if body.tier2_enabled is not None:
+        user.onboarding_tier2_enabled = bool(body.tier2_enabled)
+        if body.tier2_enabled and getattr(user, "onboarding_tier2_prompted_at", None) is None:
+            from datetime import datetime, timezone
+
+            user.onboarding_tier2_prompted_at = datetime.now(timezone.utc)
 
     if body.step is not None:
         if not is_company_admin_checklist_user(user):

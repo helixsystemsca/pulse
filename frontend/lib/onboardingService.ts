@@ -25,6 +25,17 @@ export type OnboardingState = {
   completed_count: number;
   total_count: number;
   flow: OnboardingFlow;
+  tier1_modules: {
+    module: string;
+    title: string;
+    completed_count: number;
+    total_count: number;
+    items: { key: string; label: string; completed: boolean; href: string }[];
+  }[];
+  tier1_completed_count: number;
+  tier1_total_count: number;
+  tier2_enabled: boolean;
+  tier2_eligible: boolean;
 };
 
 function onboardingCacheKey(sub: string) {
@@ -96,6 +107,7 @@ export type OnboardingPatchBody = {
   onboarding_enabled?: boolean;
   onboarding_seen?: boolean;
   user_onboarding_tour_completed?: boolean;
+  tier2_enabled?: boolean;
 };
 
 export async function patchOnboarding(body: OnboardingPatchBody): Promise<OnboardingState> {

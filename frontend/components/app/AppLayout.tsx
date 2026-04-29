@@ -12,6 +12,7 @@ import { AppSideNav } from "./AppSideNav";
 import { ImpersonationBanner } from "./ImpersonationBanner";
 import { OnboardingChrome } from "@/components/onboarding/OnboardingChrome";
 import { OnboardingProvider } from "@/components/onboarding/OnboardingProvider";
+import { GuidedTourProvider } from "@/components/onboarding/CoreGuidedTour";
 import { ModuleSettingsProvider } from "@/providers/ModuleSettingsProvider";
 import { ProximityPromptHost } from "./ProximityPromptHost";
 import { AppLayoutFooter } from "./AppLayoutFooter";
@@ -40,6 +41,7 @@ export function AppLayout({
   return (
     <div className="relative min-h-screen">
       <PulseThemedBackground />
+      <GuidedTourProvider>
       <OnboardingProvider>
         <ModuleSettingsProvider>
         <GamificationProvider>
@@ -49,7 +51,7 @@ export function AppLayout({
         <div data-pulse-app-shell className="flex min-h-screen min-w-0 flex-col">
           {chrome ? <AppNavbar /> : null}
           {chrome ? <ImpersonationBanner /> : null}
-          <div className="flex min-w-0 flex-1 items-start">
+          <div className="flex min-h-0 min-w-0 flex-1 items-stretch">
             {chrome ? <AppSideNav /> : null}
             <AppMain className={mainClassName} reserveRail={false}>
               <MainContentWidth className={mainContentClassName}>
@@ -63,6 +65,7 @@ export function AppLayout({
         </GamificationProvider>
         </ModuleSettingsProvider>
       </OnboardingProvider>
+      </GuidedTourProvider>
     </div>
   );
 }

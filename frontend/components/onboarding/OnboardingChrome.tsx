@@ -3,6 +3,9 @@
 import { useOnboarding } from "./OnboardingProvider";
 import { NonAdminOnboardingModal } from "./NonAdminOnboardingModal";
 import { OnboardingReminderBanner } from "./OnboardingReminderBanner";
+import { GuidedTourLayer } from "./GuidedTourLayer";
+import { Tier2UnlockModal } from "./Tier2UnlockModal";
+import { TierChecklistPanel } from "./TierChecklistPanel";
 
 /**
  * Fixed-position onboarding UI: non-admin welcome tour modal, setup reminder banner (company admins), toast.
@@ -14,7 +17,10 @@ export function OnboardingChrome() {
   return (
     <>
       <NonAdminOnboardingModal />
+      <GuidedTourLayer />
+      <Tier2UnlockModal />
       {active ? <OnboardingReminderBanner /> : null}
+      <TierChecklistPanel />
       {toastMessage ? (
         <div className="pointer-events-auto fixed bottom-24 left-1/2 z-[125] w-[min(92vw,24rem)] -translate-x-1/2 px-2 sm:bottom-28">
           <div className="flex items-center gap-3 rounded-md border border-slate-200/90 bg-white px-4 py-3 text-sm font-medium text-pulse-navy shadow-lg dark:border-slate-600 dark:bg-ds-secondary dark:text-slate-100 dark:shadow-[0_8px_24px_rgba(0,0,0,0.45)]">

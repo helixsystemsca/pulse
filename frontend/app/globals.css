@@ -36,7 +36,8 @@ html.pulse-welcome-blur [data-pulse-app-shell] {
   --ds-text-primary: #111111;
   --ds-text-secondary: rgba(0, 0, 0, 0.6);
   --ds-success: #36f1cd;
-  --ds-warning: #f2bb05;
+  --ds-warning: #36f1cd;
+  --ds-info: #6b7280;
   --ds-danger: #eb5160;
   /** Text on solid aquamarine / amber / lobster (buttons, badges, pills) */
   --ds-on-accent: #0a0a0a;
@@ -78,7 +79,8 @@ html.pulse-welcome-blur [data-pulse-app-shell] {
   --ds-text-primary: #ffffff;
   --ds-text-secondary: rgba(255, 255, 255, 0.7);
   --ds-success: #36f1cd;
-  --ds-warning: #f2bb05;
+  --ds-warning: #36f1cd;
+  --ds-info: #9ca3af;
   --ds-danger: #eb5160;
   --ds-on-accent: #0a0a0a;
   --ds-interactive-hover: color-mix(in srgb, var(--ds-success) 16%, transparent);

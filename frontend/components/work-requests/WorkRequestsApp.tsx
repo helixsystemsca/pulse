@@ -287,6 +287,8 @@ export function WorkRequestsApp(props?: WorkRequestsAppProps) {
   const [holdModalForId, setHoldModalForId] = useState<string | null>(null);
   const [holdReasonKey, setHoldReasonKey] = useState<string>(WORK_REQUEST_HOLD_REASONS[0]!.id);
   const [holdNoteDraft, setHoldNoteDraft] = useState("");
+  const [assignModalForId, setAssignModalForId] = useState<string | null>(null);
+  const [assignPickUserId, setAssignPickUserId] = useState("");
 
   const [createForm, setCreateForm] = useState({
     title: "",
@@ -473,6 +475,7 @@ export function WorkRequestsApp(props?: WorkRequestsAppProps) {
         companyId: isSystemAdmin ? effectiveCompanyId : null,
         q: qDebounced || undefined,
         status: statusFilter || undefined,
+        exclude_terminal: statusFilter ? undefined : true,
         priority: priorityFilter || undefined,
         zone_id: zoneFilter || undefined,
         hub_category: hubMode && hubCategoryFilter ? hubCategoryFilter : undefined,
@@ -505,6 +508,7 @@ export function WorkRequestsApp(props?: WorkRequestsAppProps) {
     page,
     hubMode,
     hubCategoryFilter,
+    kindFilter,
   ]);
 
   useEffect(() => {
@@ -642,14 +646,15 @@ export function WorkRequestsApp(props?: WorkRequestsAppProps) {
     }
   }
 
-  async function assignItem(id: string, userId: string | null) {
-    if (!effectiveCompanyId || !canAssign) return;
+  async function assignItem(id: string, userId: string | null): Promise<boolean> {
+    if (!effectiveCompanyId || !canAssign) return false;
     setActionBusy(true);
     try {
       await postWorkRequestAssign(isSystemAdmin ? effectiveCompanyId : null, id, userId);
       await postWorkRequestStatus(isSystemAdmin ? effectiveCompanyId : null, id, userId ? "assigned" : "approved");
       await loadList();
       if (detailId === id) await loadDetail();
+      return true;
     } finally {
       setActionBusy(false);
     }
@@ -993,7 +998,7 @@ export function WorkRequestsApp(props?: WorkRequestsAppProps) {
                   }
                 }}
               >
-                <option value="">Status</option>
+                <option value="">All active</option>
                 {WORKFLOW_STATUSES.map((s) => (
                   <option key={s.id} value={s.id}>
                     {s.label}
@@ -1268,11 +1273,16 @@ export function WorkRequestsApp(props?: WorkRequestsAppProps) {
                 </button>
               </>
             ) : null}
-            {row.status === "approved" && canAssign ? (
+            {canAssign && !terminalRowStatus(row.status) ? (
               <button
                 type="button"
                 className="block w-full px-3 py-2 text-left text-sm text-pulse-navy hover:bg-slate-50 dark:text-gray-100 dark:hover:bg-ds-interactive-hover"
-                onClick={() => setDetailId(row.id)}
+                onClick={() => {
+                  setMenuFor(null);
+                  setMenuAnchor(null);
+                  setAssignPickUserId(row.assigned_user_id ?? "");
+                  setAssignModalForId(row.id);
+                }}
               >
                 Assign…
               </button>
@@ -1690,7 +1700,7 @@ export function WorkRequestsApp(props?: WorkRequestsAppProps) {
               <div>
                 <h3 className={LABEL}>Assigned</h3>
                 <p className="mt-1.5 text-sm text-pulse-navy">{detail.assignee_name ?? "Unassigned"}</p>
-                {(detail.status === "approved" || detail.status === "pending_approval") && canAssign ? (
+                {canAssign && !terminalRowStatus(detail.status) ? (
                   <div className="mt-3">
                     <label className={LABEL}>Assign to</label>
                     <select
@@ -1795,7 +1805,7 @@ export function WorkRequestsApp(props?: WorkRequestsAppProps) {
                 </>
               ) : null}
               {detail.status === "approved" && canAssign ? (
-                <span className="text-sm text-pulse-muted">Assign a worker to move this item to “Assigned”.</span>
+                <span className="text-sm text-pulse-muted">Assign a worker to move this item to Assigned.</span>
               ) : null}
               {detail.status === "assigned" ? (
                 <button type="button" className={PRIMARY_BTN} disabled={actionBusy} onClick={() => void startItem(detail.id)}>
@@ -2033,6 +2043,97 @@ export function WorkRequestsApp(props?: WorkRequestsAppProps) {
           </div>
         )}
       </PulseDrawer>
+
+      {assignModalForId ? (
+        <div className="fixed inset-0 z-[130] flex items-center justify-center p-4">
+          <button
+            type="button"
+            className="ds-modal-backdrop absolute inset-0 backdrop-blur-[2px]"
+            aria-label="Dismiss"
+            disabled={actionBusy}
+            onClick={() => {
+              if (!actionBusy) {
+                setAssignModalForId(null);
+                setAssignPickUserId("");
+              }
+            }}
+          />
+          <div
+            className="relative w-full max-w-md rounded-xl border border-slate-200/90 bg-white p-5 shadow-xl dark:border-ds-border dark:bg-ds-primary"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="wr-assign-title"
+          >
+            <h2 id="wr-assign-title" className="text-lg font-semibold text-pulse-navy dark:text-gray-100">
+              Assign work request
+            </h2>
+            <p className="mt-1 text-sm text-pulse-muted">
+              {(() => {
+                const r = rows.find((x) => x.id === assignModalForId);
+                return r ? (
+                  <>
+                    <span className="font-medium text-pulse-navy dark:text-gray-100">{workItemDisplayId(r)}</span>
+                    {" — "}
+                    {r.title}
+                  </>
+                ) : null;
+              })()}
+            </p>
+            <label className="mt-4 block">
+              <span className={LABEL}>Worker</span>
+              <select
+                className={FIELD}
+                value={assignPickUserId}
+                onChange={(e) => setAssignPickUserId(e.target.value)}
+              >
+                <option value="">Unassigned</option>
+                {workers.map((w) => (
+                  <option key={w.id} value={w.id}>
+                    {w.full_name?.trim() ? `${w.full_name} (${w.email})` : w.email}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {workers.length === 0 ? (
+              <p className="mt-2 text-xs text-pulse-muted">No workers loaded. Check company context or refresh the page.</p>
+            ) : null}
+            <div className="mt-4 flex flex-wrap justify-end gap-2">
+              <button
+                type="button"
+                className="rounded-lg px-4 py-2 text-sm font-semibold text-pulse-muted hover:text-pulse-navy dark:hover:text-gray-100"
+                disabled={actionBusy}
+                onClick={() => {
+                  setAssignModalForId(null);
+                  setAssignPickUserId("");
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className={PRIMARY_BTN}
+                disabled={actionBusy || !canAssign}
+                onClick={() =>
+                  void (async () => {
+                    if (!assignModalForId) return;
+                    try {
+                      const ok = await assignItem(assignModalForId, assignPickUserId || null);
+                      if (ok) {
+                        setAssignModalForId(null);
+                        setAssignPickUserId("");
+                      }
+                    } catch {
+                      /* keep modal open */
+                    }
+                  })()
+                }
+              >
+                {actionBusy ? "Saving…" : "Save assignment"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {closeModalForId ? (
         <div className="fixed inset-0 z-[130] flex items-center justify-center p-4">

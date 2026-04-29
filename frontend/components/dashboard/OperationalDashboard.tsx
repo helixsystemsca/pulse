@@ -206,8 +206,8 @@ function ActiveAlertsRow({ alert: a }: { alert: AlertItem }) {
   const style =
     p === "medium"
       ? ({
-          borderLeftColor: "#2B4C7E",
-          background: "rgba(43, 76, 126, 0.05)",
+          borderLeftColor: "var(--ds-info)",
+          background: "color-mix(in srgb, var(--ds-info) 12%, transparent)",
         } as const)
       : undefined;
 
@@ -217,7 +217,7 @@ function ActiveAlertsRow({ alert: a }: { alert: AlertItem }) {
     ) : p === "high" ? (
       <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-ds-warning" aria-hidden />
     ) : p === "medium" ? (
-      <Info className="mt-0.5 h-5 w-5 shrink-0 text-[#2B4C7E]" aria-hidden />
+      <Info className="mt-0.5 h-5 w-5 shrink-0 text-[var(--ds-info)]" aria-hidden />
     ) : isPad ? (
       <Minus className="mt-0.5 h-5 w-5 shrink-0 text-ds-muted" aria-hidden />
     ) : (
@@ -359,10 +359,10 @@ function WorkforceStatusDot({
 }) {
   const bg =
     color === "green"
-      ? "bg-emerald-500"
+      ? "bg-ds-success"
       : color === "yellow"
-        ? "bg-amber-400"
-        : "bg-slate-400";
+        ? "bg-[var(--ds-info)]"
+        : "bg-ds-muted";
   return (
     <span
       className={`absolute -bottom-0.5 -right-0.5 z-10 h-2.5 w-2.5 rounded-full ${bg} ring-2 ring-[var(--ds-surface-primary)]`}
@@ -373,7 +373,7 @@ function WorkforceStatusDot({
 
 function WorkforceUpcomingPill() {
   return (
-    <span className="absolute -bottom-1 -right-1 z-10 rounded-full bg-blue-100 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-blue-800 ring-2 ring-[var(--ds-surface-primary)] dark:bg-blue-600 dark:text-white">
+    <span className="absolute -bottom-1 -right-1 z-10 rounded-full border border-ds-border bg-ds-secondary px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-ds-muted ring-2 ring-[var(--ds-surface-primary)]">
       Upcoming
     </span>
   );
@@ -1134,7 +1134,7 @@ function DashboardBody({
 
             <div className="mt-4 space-y-5">
               <div className="space-y-3">
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-ds-success">
                   On Site
                 </p>
                 <div className="flex flex-wrap gap-3">
@@ -1159,7 +1159,7 @@ function DashboardBody({
               </div>
 
               <div className="space-y-3">
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-amber-700 dark:text-amber-300">
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-[var(--ds-info)]">
                   On Shift Now
                 </p>
                 <div className="flex flex-wrap gap-3">
@@ -1185,7 +1185,7 @@ function DashboardBody({
 
               {model.workforce.upcomingToday.length > 0 ? (
                 <div className="space-y-3">
-                  <p className="text-[11px] font-semibold uppercase tracking-wider text-blue-700 dark:text-blue-300">
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-[var(--ds-info)]">
                     Upcoming Today
                   </p>
                   <div className="flex flex-wrap gap-3">
@@ -1259,7 +1259,7 @@ function DashboardBody({
         render: () => (
           <>
             <div className="flex flex-wrap items-start justify-between gap-3">
-              <span className="app-badge-amber inline-flex items-center rounded-full px-3 py-1 text-xs font-bold tracking-tight">
+              <span className="inline-flex items-center rounded-full border border-ds-border bg-ds-interactive-hover px-3 py-1 text-xs font-bold tracking-tight text-ds-foreground">
                 {model.workRequests.awaitingCount} requests awaiting assignment
               </span>
             </div>
@@ -1343,7 +1343,7 @@ function DashboardBody({
               {model.equipment.activeCount} Active Tools
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
-              <span className="app-badge-amber inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-ds-border bg-ds-interactive-hover px-3 py-1 text-xs font-semibold text-ds-foreground">
                 <span className="h-1.5 w-1.5 rounded-full bg-current opacity-90" />
                 {model.equipment.missingCount} Missing
               </span>
@@ -1411,7 +1411,9 @@ function DashboardBody({
               </div>
               <span
                 className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold ${
-                  model.inventory.consumablesOk ? "app-badge-emerald" : "app-badge-amber"
+                  model.inventory.consumablesOk
+                    ? "border border-ds-border bg-ds-interactive-hover text-ds-foreground"
+                    : "border border-ds-border bg-ds-secondary text-[var(--ds-info)]"
                 }`}
               >
                 {model.inventory.consumablesOk ? "OK" : "Review"}
@@ -1427,7 +1429,7 @@ function DashboardBody({
                     <p className="text-sm font-semibold text-ds-foreground">{model.inventory.alert.category}</p>
                     <p className="mt-2 text-xs font-medium text-ds-foreground">{model.inventory.alert.message}</p>
                   </div>
-                  <span className="app-badge-amber shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold">
+                  <span className="shrink-0 rounded-full border border-ds-border bg-ds-secondary px-2 py-0.5 text-[11px] font-semibold text-[var(--ds-info)]">
                     Soon
                   </span>
                 </div>
@@ -1814,6 +1816,15 @@ function DashboardBody({
             return (
               <div
                 key={item.i}
+                data-guided-tour-anchor={
+                  item.i === "alerts"
+                    ? "dashboard-alerts"
+                    : item.i === "workforce"
+                      ? "dashboard-workforce"
+                      : item.i === "inventory"
+                        ? "dashboard-inventory"
+                        : undefined
+                }
                 className={[
                   "transition-transform",
                   editMode ? "cursor-grab active:cursor-grabbing" : "",
@@ -1859,7 +1870,7 @@ function DashboardBody({
               <div className="mt-4 space-y-2">
                 <button
                   type="button"
-                  className="flex w-full items-center justify-between rounded-xl border border-[#2B4C7E]/25 bg-sky-50/80 px-4 py-3 text-left text-sm font-semibold text-[#2B4C7E] hover:bg-sky-50"
+                  className="flex w-full items-center justify-between rounded-xl border border-ds-border bg-ds-secondary px-4 py-3 text-left text-sm font-semibold text-ds-foreground hover:bg-ds-interactive-hover"
                   onClick={() => {
                     setShowAddWidget(false);
                     setPeekWizardInitial(null);
@@ -1868,7 +1879,7 @@ function DashboardBody({
                   }}
                 >
                   <span>Custom page peek…</span>
-                  <span className="text-xs font-semibold text-[#2B4C7E]/80">New</span>
+                  <span className="text-xs font-semibold text-[var(--ds-info)]">New</span>
                 </button>
                 <p className="pt-2 text-[11px] font-semibold uppercase tracking-wider text-slate-500">Built-in cards</p>
                 {availableToAdd.length === 0 ? (

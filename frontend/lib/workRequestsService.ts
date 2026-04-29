@@ -86,6 +86,8 @@ function buildListQuery(params: {
   q?: string;
   kind?: string;
   status?: string;
+  /** When true and status is unset, API omits completed/cancelled (active workloads). */
+  exclude_terminal?: boolean;
   priority?: string;
   zone_id?: string;
   hub_category?: string;
@@ -101,6 +103,7 @@ function buildListQuery(params: {
   if (params.q?.trim()) sp.set("q", params.q.trim());
   if (params.kind?.trim()) sp.set("kind", params.kind.trim());
   if (params.status) sp.set("status", params.status);
+  if (params.exclude_terminal) sp.set("exclude_terminal", "true");
   if (params.priority) sp.set("priority", params.priority);
   if (params.zone_id) sp.set("zone_id", params.zone_id);
   if (params.hub_category) sp.set("hub_category", params.hub_category);

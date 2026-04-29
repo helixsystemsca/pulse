@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+from datetime import datetime, timedelta, timezone
 from typing import Any, Iterable, Literal
 
 from sqlalchemy import select
@@ -63,6 +64,34 @@ STEP_HREFS: dict[str, str] = {
 }
 
 OnboardingFlowOut = Literal["manager", "worker"]
+_TIER2_UNLOCK_DELAY_DAYS = 3
+
+TIER1_MODULE_CHECKLISTS: tuple[dict[str, Any], ...] = (
+    {
+        "module": "dashboard",
+        "title": "Dashboard",
+        "items": (
+            {"key": "alerts_visible", "label": "Review active alerts", "href": "/overview"},
+            {"key": "workforce_visible", "label": "Open workforce overview", "href": "/overview"},
+        ),
+    },
+    {
+        "module": "work_requests",
+        "title": "Work Requests",
+        "items": (
+            {"key": "work_request_created", "label": "Create a work request", "href": "/dashboard/maintenance"},
+            {"key": "work_request_assigned", "label": "Assign a work request", "href": "/dashboard/maintenance"},
+        ),
+    },
+    {
+        "module": "inventory",
+        "title": "Inventory",
+        "items": (
+            {"key": "equipment_added", "label": "Add equipment or tools", "href": "/equipment"},
+            {"key": "inventory_reviewed", "label": "Review low-stock inventory", "href": "/dashboard/inventory"},
+        ),
+    },
+)
 
 
 def is_company_admin_checklist_user(user: User) -> bool:
@@ -181,29 +210,41 @@ async def sync_user_onboarding_from_reality(db: AsyncSession, user: User) -> boo
         return False
     if not user.onboarding_enabled:
         return False
-    if not user_has_any_role(user, UserRole.company_admin):
-        return False
 
     reality = await load_onboarding_reality(db, str(user.company_id), for_user_id=str(user.id))
+    tier1_prev = getattr(user, "onboarding_tier1_progress", None) or {}
+    if not isinstance(tier1_prev, dict):
+        tier1_prev = {}
+    tier1_new = dict(tier1_prev)
+    tier1_new["alerts_visible"] = bool(reality.has_recent_sensor_readings or reality.onboarding_demo_sensors)
+    tier1_new["workforce_visible"] = bool(reality.worker_user_count > 0 or reality.active_company_user_count > 0)
+    tier1_new["work_request_created"] = bool(reality.work_request_count > 0)
+    tier1_new["work_request_assigned"] = bool(reality.user_shift_count > 0 or reality.user_completed_wr_count > 0)
+    tier1_new["equipment_added"] = bool(reality.equipment_count > 0)
+    tier1_new["inventory_reviewed"] = bool(reality.equipment_count > 0 or reality.work_request_count > 0)
+
     steps = _normalize_steps(user.onboarding_steps)
     prev = {s["key"]: bool(s["completed"]) for s in steps}
     m = {k: prev.get(k, False) for k in ALL_ONBOARDING_STEP_KEYS}
-
-    m["create_work_order"] = m["create_work_order"] or reality.work_request_count > 0
-    m["add_equipment"] = m["add_equipment"] or reality.equipment_count > 0
-    m["invite_team"] = m["invite_team"] or reality.active_company_user_count >= 2
-    m["customize_workflow"] = (
-        m["customize_workflow"] or reality.procedure_task_count > 0 or reality.work_request_count >= 2
-    )
-    m["create_shift_definitions"] = m["create_shift_definitions"] or reality.shift_definitions_created
-    m["create_schedule_period"] = m["create_schedule_period"] or reality.period_created
-    m["publish_first_schedule"] = m["publish_first_schedule"] or reality.schedule_published
-
+    if user_has_any_role(user, UserRole.company_admin):
+        m["create_work_order"] = m["create_work_order"] or reality.work_request_count > 0
+        m["add_equipment"] = m["add_equipment"] or reality.equipment_count > 0
+        m["invite_team"] = m["invite_team"] or reality.active_company_user_count >= 2
+        m["customize_workflow"] = (
+            m["customize_workflow"] or reality.procedure_task_count > 0 or reality.work_request_count >= 2
+        )
+        m["create_shift_definitions"] = m["create_shift_definitions"] or reality.shift_definitions_created
+        m["create_schedule_period"] = m["create_schedule_period"] or reality.period_created
+        m["publish_first_schedule"] = m["publish_first_schedule"] or reality.schedule_published
     new_steps = [{"key": k, "completed": m[k]} for k in ALL_ONBOARDING_STEP_KEYS]
-    if {s["key"]: s["completed"] for s in new_steps} == prev:
+    steps_unchanged = {s["key"]: s["completed"] for s in new_steps} == prev
+    tier1_unchanged = tier1_new == tier1_prev
+    if steps_unchanged and tier1_unchanged:
         return False
 
-    user.onboarding_steps = copy.deepcopy(new_steps)
+    if not steps_unchanged:
+        user.onboarding_steps = copy.deepcopy(new_steps)
+    user.onboarding_tier1_progress = copy.deepcopy(tier1_new)
     recompute_onboarding_completed(user, new_steps)
     await db.flush()
     return True
@@ -225,6 +266,45 @@ def build_onboarding_state_out(user: User) -> dict[str, Any]:
         org_done = False
         checklist_progress = None
 
+    stored_tier1 = getattr(user, "onboarding_tier1_progress", None) or {}
+    if not isinstance(stored_tier1, dict):
+        stored_tier1 = {}
+    now = datetime.now(timezone.utc)
+    tier1_modules: list[dict[str, Any]] = []
+    tier1_done = 0
+    tier1_total = 0
+    for mod in TIER1_MODULE_CHECKLISTS:
+        item_rows: list[dict[str, Any]] = []
+        done_count = 0
+        for item in mod["items"]:
+            completed = bool(stored_tier1.get(item["key"], False))
+            if completed:
+                done_count += 1
+                tier1_done += 1
+            tier1_total += 1
+            item_rows.append(
+                {
+                    "key": item["key"],
+                    "label": item["label"],
+                    "completed": completed,
+                    "href": item["href"],
+                }
+            )
+        tier1_modules.append(
+            {
+                "module": mod["module"],
+                "title": mod["title"],
+                "completed_count": done_count,
+                "total_count": len(mod["items"]),
+                "items": item_rows,
+            }
+        )
+
+    started_at = getattr(user, "onboarding_started_at", None) or now
+    delay_elapsed = now >= (started_at + timedelta(days=_TIER2_UNLOCK_DELAY_DAYS))
+    tier2_eligible = bool(tier1_total and tier1_done >= tier1_total) or delay_elapsed
+    tier2_enabled = bool(getattr(user, "onboarding_tier2_enabled", False))
+
     return {
         "onboarding_enabled": user.onboarding_enabled,
         "onboarding_completed": user.onboarding_completed,
@@ -236,6 +316,11 @@ def build_onboarding_state_out(user: User) -> dict[str, Any]:
         "completed_count": done,
         "total_count": total,
         "flow": flow_for_onboarding_api(user),
+        "tier1_modules": tier1_modules,
+        "tier1_completed_count": tier1_done,
+        "tier1_total_count": tier1_total,
+        "tier2_enabled": tier2_enabled,
+        "tier2_eligible": tier2_eligible,
     }
 
 

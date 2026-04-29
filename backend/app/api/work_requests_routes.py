@@ -361,6 +361,10 @@ async def list_work_requests(
         None,
         description="Optional hub facet: preventative | work_requests | projects",
     ),
+    exclude_terminal: bool = Query(
+        False,
+        description="When true and `status` is not set, omit completed and cancelled rows (active list + counts).",
+    ),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
 ) -> WorkRequestListOut:
@@ -430,6 +434,9 @@ async def list_work_requests(
                 conds.append(PulseWorkRequest.status == st)
             except ValueError:
                 raise HTTPException(status_code=400, detail="Invalid status")
+    elif exclude_terminal:
+        conds.append(PulseWorkRequest.status != PulseWorkRequestStatus.completed)
+        conds.append(PulseWorkRequest.status != PulseWorkRequestStatus.cancelled)
 
     where_clause = and_(*conds)
     total = int(
