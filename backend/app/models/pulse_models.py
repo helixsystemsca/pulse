@@ -464,6 +464,22 @@ class PulseProjectAutomationTrigger(str, enum.Enum):
     task_stale = "task_stale"
 
 
+class PulseProjectPhase(str, enum.Enum):
+    initiation = "Initiation"
+    planning = "Planning"
+    execution = "Execution"
+    monitoring = "Monitoring"
+    closing = "Closing"
+
+
+class PulseProjectActivityType(str, enum.Enum):
+    task = "task"
+    issue = "issue"
+    decision = "decision"
+    change = "change"
+    note = "note"
+
+
 class PulseProject(Base):
     __tablename__ = "pulse_projects"
 
@@ -481,6 +497,16 @@ class PulseProject(Base):
     )
     start_date: Mapped[date] = mapped_column(Date, nullable=False)
     end_date: Mapped[date] = mapped_column(Date, nullable=False)
+    goal: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    success_definition: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    current_phase: Mapped[Optional[PulseProjectPhase]] = mapped_column(
+        Enum(PulseProjectPhase, values_callable=lambda x: [e.value for e in x], native_enum=False, length=32),
+        nullable=True,
+    )
+    summary: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    metrics: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    lessons_learned: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     status: Mapped[PulseProjectStatus] = mapped_column(
         Enum(PulseProjectStatus, values_callable=lambda x: [e.value for e in x], native_enum=False, length=32),
         default=PulseProjectStatus.active,
@@ -494,6 +520,33 @@ class PulseProject(Base):
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
         onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+
+class PulseProjectActivity(Base):
+    __tablename__ = "pulse_project_activity"
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    project_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("pulse_projects.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    type: Mapped[PulseProjectActivityType] = mapped_column(
+        Enum(
+            PulseProjectActivityType,
+            values_callable=lambda x: [e.value for e in x],
+            native_enum=False,
+            length=16,
+        ),
+        nullable=False,
+        index=True,
+    )
+    title: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    description: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True
     )
 
 

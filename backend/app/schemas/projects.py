@@ -24,6 +24,13 @@ class ProjectPatch(BaseModel):
     end_date: Optional[date] = None
     status: Optional[str] = None
     owner_user_id: Optional[str] = None
+    goal: Optional[str] = None
+    notes: Optional[str] = None
+    success_definition: Optional[str] = None
+    current_phase: Optional[str] = None
+    summary: Optional[str] = None
+    metrics: Optional[str] = None
+    lessons_learned: Optional[str] = None
 
 
 class ProjectOut(BaseModel):
@@ -35,6 +42,13 @@ class ProjectOut(BaseModel):
     created_by_user_id: Optional[str] = None
     start_date: date
     end_date: date
+    goal: Optional[str] = None
+    notes: Optional[str] = None
+    success_definition: Optional[str] = None
+    current_phase: Optional[str] = None
+    summary: Optional[str] = None
+    metrics: Optional[str] = None
+    lessons_learned: Optional[str] = None
     status: str
     created_at: datetime
     updated_at: datetime
@@ -100,6 +114,20 @@ class TaskOut(BaseModel):
 
 class ProjectDetailOut(ProjectOut):
     tasks: list[TaskOut] = []
+
+
+class ProjectActivityOut(BaseModel):
+    id: str
+    project_id: str
+    type: str
+    title: Optional[str] = None
+    description: str
+    created_at: datetime
+
+
+class ProjectActivityCreateNoteIn(BaseModel):
+    title: Optional[str] = Field(None, max_length=255)
+    description: str = Field(..., min_length=1, max_length=4000)
 
 
 def task_orm_to_out(
@@ -256,3 +284,4 @@ class ProjectOutWithProgress(ProjectOut):
     task_completed: int = 0
     progress_pct: int = 0
     assignee_user_ids: list[str] = Field(default_factory=list)
+    last_activity_at: Optional[datetime] = None

@@ -22,13 +22,16 @@ import { emitOnboardingMaybeUpdated } from "@/lib/onboarding-events";
 import { parseClientApiError } from "@/lib/parse-client-api-error";
 import { ProjectAutomationPanel } from "@/components/projects/ProjectAutomationPanel";
 import {
+  addProjectNote,
   createTask,
   deleteTask,
   getProject,
+  listProjectActivity,
   patchProject,
   patchTask,
   syncTaskDependencies,
   type ProjectDetail,
+  type ProjectActivityRow,
   type TaskRow,
 } from "@/lib/projectsService";
 import type { PulseWorkerApi } from "@/lib/schedule/pulse-bridge";
@@ -108,11 +111,24 @@ export function ProjectDetailApp({ projectId }: { projectId: string }) {
   const [skillCategories, setSkillCategories] = useState<string[]>([]);
   const [err, setErr] = useState<string | null>(null);
   const [blockHint, setBlockHint] = useState<string | null>(null);
+  const [detailTab, setDetailTab] = useState<"overview" | "work" | "activity" | "summary">("overview");
   const [viewTab, setViewTab] = useState<"tasks" | "board" | "automation">("tasks");
   const [taskModalOpen, setTaskModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<TaskRow | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [projectCompleting, setProjectCompleting] = useState(false);
+
+  const [overviewGoal, setOverviewGoal] = useState("");
+  const [overviewNotes, setOverviewNotes] = useState("");
+  const [overviewSuccess, setOverviewSuccess] = useState("");
+  const [summaryText, setSummaryText] = useState("");
+  const [summaryMetrics, setSummaryMetrics] = useState("");
+  const [summaryLessons, setSummaryLessons] = useState("");
+  const [savingMeta, setSavingMeta] = useState(false);
+  const [activityRows, setActivityRows] = useState<ProjectActivityRow[] | null>(null);
+  const [activityErr, setActivityErr] = useState<string | null>(null);
+  const [newNote, setNewNote] = useState("");
+  const [noteSaving, setNoteSaving] = useState(false);
 
   const [matchTaskId, setMatchTaskId] = useState<string>("");
   const [workerFilter, setWorkerFilter] = useState<"all" | "matching">("all");
@@ -132,6 +148,16 @@ export function ProjectDetailApp({ projectId }: { projectId: string }) {
   useEffect(() => {
     void reload();
   }, [reload]);
+
+  useEffect(() => {
+    if (!data) return;
+    setOverviewGoal((data.goal ?? "").toString());
+    setOverviewNotes((data.notes ?? "").toString());
+    setOverviewSuccess((data.success_definition ?? "").toString());
+    setSummaryText((data.summary ?? "").toString());
+    setSummaryMetrics((data.metrics ?? "").toString());
+    setSummaryLessons((data.lessons_learned ?? "").toString());
+  }, [data]);
 
   useEffect(() => {
     (async () => {
@@ -364,6 +390,91 @@ export function ProjectDetailApp({ projectId }: { projectId: string }) {
     }
   }
 
+  const topTabClass = (active: boolean) =>
+    `rounded-md px-3 py-2 text-sm font-semibold transition-colors ${
+      active
+        ? "bg-ds-success text-ds-on-accent shadow-sm"
+        : "text-ds-muted hover:bg-ds-interactive-hover hover:text-ds-foreground"
+    }`;
+
+  const activityTypeLabel = (t: string): string => {
+    const v = (t || "").toLowerCase();
+    if (v === "task") return "Task";
+    if (v === "note") return "Note";
+    return "Update";
+  };
+
+  const loadActivity = useCallback(async () => {
+    try {
+      const rows = await listProjectActivity(projectId);
+      setActivityRows(rows);
+      setActivityErr(null);
+    } catch {
+      setActivityRows([]);
+      setActivityErr("Could not load activity.");
+    }
+  }, [projectId]);
+
+  useEffect(() => {
+    if (detailTab !== "activity") return;
+    void loadActivity();
+  }, [detailTab, loadActivity]);
+
+  async function saveOverview() {
+    if (!data || savingMeta) return;
+    setSavingMeta(true);
+    try {
+      const out = await patchProject(projectId, {
+        goal: overviewGoal,
+        notes: overviewNotes,
+        success_definition: overviewSuccess,
+      });
+      setData((prev) => (prev ? { ...prev, ...out, tasks: prev.tasks } : prev));
+      setToast("Saved.");
+    } catch (e) {
+      const { message } = parseClientApiError(e);
+      setToast(message || "Could not save.");
+    } finally {
+      setSavingMeta(false);
+    }
+  }
+
+  async function saveSummary() {
+    if (!data || savingMeta) return;
+    setSavingMeta(true);
+    try {
+      const out = await patchProject(projectId, {
+        summary: summaryText,
+        metrics: summaryMetrics,
+        lessons_learned: summaryLessons,
+      });
+      setData((prev) => (prev ? { ...prev, ...out, tasks: prev.tasks } : prev));
+      setToast("Saved.");
+    } catch (e) {
+      const { message } = parseClientApiError(e);
+      setToast(message || "Could not save.");
+    } finally {
+      setSavingMeta(false);
+    }
+  }
+
+  async function submitNote() {
+    const desc = newNote.trim();
+    if (!data || !desc || noteSaving) return;
+    setNoteSaving(true);
+    try {
+      const created = await addProjectNote(projectId, { description: desc });
+      setNewNote("");
+      setActivityRows((prev) => (prev ? [created, ...prev] : [created]));
+      setToast("Note added.");
+    } catch (e) {
+      const { message } = parseClientApiError(e);
+      setToast(message || "Could not add note.");
+    } finally {
+      setNoteSaving(false);
+    }
+  }
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -434,48 +545,246 @@ export function ProjectDetailApp({ projectId }: { projectId: string }) {
             </p>
           ) : null}
 
-          <div className="flex max-w-2xl flex-wrap gap-2 rounded-lg border border-ds-border bg-ds-secondary p-1 shadow-[var(--ds-shadow-card)]">
-            <button
-              type="button"
-              className={`inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm font-semibold transition-colors ${
-                viewTab === "tasks"
-                  ? "bg-ds-success text-ds-on-accent shadow-sm"
-                  : "text-ds-muted hover:bg-ds-interactive-hover hover:text-ds-foreground"
-              }`}
-              onClick={() => setViewTab("tasks")}
-            >
-              <List className="h-4 w-4" aria-hidden />
-              Tasks
+          <div className="flex flex-wrap gap-2 rounded-lg border border-ds-border bg-ds-secondary p-1 shadow-[var(--ds-shadow-card)]">
+            <button type="button" className={topTabClass(detailTab === "overview")} onClick={() => setDetailTab("overview")}>
+              Overview
             </button>
-            <button
-              type="button"
-              className={`inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm font-semibold transition-colors ${
-                viewTab === "board"
-                  ? "bg-ds-success text-ds-on-accent shadow-sm"
-                  : "text-ds-muted hover:bg-ds-interactive-hover hover:text-ds-foreground"
-              }`}
-              onClick={() => setViewTab("board")}
-            >
-              <LayoutGrid className="h-4 w-4" aria-hidden />
-              Board
+            <button type="button" className={topTabClass(detailTab === "work")} onClick={() => setDetailTab("work")}>
+              Work
             </button>
-            <button
-              type="button"
-              className={`inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm font-semibold transition-colors ${
-                viewTab === "automation"
-                  ? "bg-ds-success text-ds-on-accent shadow-sm"
-                  : "text-ds-muted hover:bg-ds-interactive-hover hover:text-ds-foreground"
-              }`}
-              onClick={() => setViewTab("automation")}
-            >
-              <Settings2 className="h-4 w-4" aria-hidden />
-              Automation
+            <button type="button" className={topTabClass(detailTab === "activity")} onClick={() => setDetailTab("activity")}>
+              Activity
+            </button>
+            <button type="button" className={topTabClass(detailTab === "summary")} onClick={() => setDetailTab("summary")}>
+              Summary
             </button>
           </div>
 
-          {viewTab === "automation" ? <ProjectAutomationPanel projectId={projectId} /> : null}
+          {detailTab === "overview" ? (
+            <div className="grid gap-6 lg:grid-cols-12">
+              <div className="space-y-6 lg:col-span-8">
+                <Card padding="md" className="space-y-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <p className="text-sm font-bold text-ds-foreground">Project notes</p>
+                    <button type="button" className={SECONDARY_BTN} disabled={savingMeta} onClick={() => void saveOverview()}>
+                      {savingMeta ? "Saving…" : "Save"}
+                    </button>
+                  </div>
+                  <div>
+                    <label className={LABEL} htmlFor="proj-goal">
+                      Goal
+                    </label>
+                    <textarea
+                      id="proj-goal"
+                      className={FIELD}
+                      rows={3}
+                      value={overviewGoal}
+                      onChange={(e) => setOverviewGoal(e.target.value)}
+                      placeholder="What are we trying to achieve?"
+                    />
+                  </div>
+                  <div>
+                    <label className={LABEL} htmlFor="proj-success">
+                      What does done look like?
+                    </label>
+                    <textarea
+                      id="proj-success"
+                      className={FIELD}
+                      rows={3}
+                      value={overviewSuccess}
+                      onChange={(e) => setOverviewSuccess(e.target.value)}
+                      placeholder="Define a clear finish line."
+                    />
+                  </div>
+                  <div>
+                    <label className={LABEL} htmlFor="proj-notes">
+                      Notes
+                    </label>
+                    <textarea
+                      id="proj-notes"
+                      className={FIELD}
+                      rows={6}
+                      value={overviewNotes}
+                      onChange={(e) => setOverviewNotes(e.target.value)}
+                      placeholder="Anything worth keeping in one place."
+                    />
+                  </div>
+                </Card>
+              </div>
+              <div className="lg:col-span-4">
+                <Card padding="md" className="space-y-3">
+                  <p className="text-sm font-bold text-ds-foreground">At a glance</p>
+                  <p className="text-xs text-ds-muted">These fields are optional and won’t change how tasks work.</p>
+                  <div className="space-y-2 text-sm text-ds-foreground">
+                    <p>
+                      <span className="font-semibold">Status:</span> {data.status.replace(/_/g, " ")}
+                    </p>
+                    <p>
+                      <span className="font-semibold">Timeline:</span> {data.start_date} → {data.end_date}
+                    </p>
+                  </div>
+                </Card>
+              </div>
+            </div>
+          ) : null}
 
-          {viewTab === "tasks" ? (
+          {detailTab === "activity" ? (
+            <div className="space-y-6">
+              <Card padding="md" className="space-y-3">
+                <p className="text-sm font-bold text-ds-foreground">Add a note</p>
+                <textarea
+                  className={FIELD}
+                  rows={3}
+                  value={newNote}
+                  onChange={(e) => setNewNote(e.target.value)}
+                  placeholder="Add an update for this project…"
+                />
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-xs text-ds-muted">This shows up in Activity immediately.</p>
+                  <button
+                    type="button"
+                    className={PRIMARY_BTN}
+                    disabled={noteSaving || !newNote.trim()}
+                    onClick={() => void submitNote()}
+                  >
+                    {noteSaving ? "Saving…" : "Add note"}
+                  </button>
+                </div>
+              </Card>
+
+              <Card padding="md" className="space-y-4">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-sm font-bold text-ds-foreground">Activity</p>
+                  <button type="button" className={SECONDARY_BTN} onClick={() => void loadActivity()}>
+                    Refresh
+                  </button>
+                </div>
+                {activityErr ? <p className="text-sm font-medium text-red-700 dark:text-red-400">{activityErr}</p> : null}
+                {activityRows === null ? (
+                  <p className="text-sm text-ds-muted">Loading activity…</p>
+                ) : activityRows.length === 0 ? (
+                  <p className="text-sm text-ds-muted">No activity yet.</p>
+                ) : (
+                  <ul className="space-y-3">
+                    {activityRows.map((a) => {
+                      const ts = new Date(a.created_at);
+                      const when = Number.isFinite(ts.getTime()) ? ts.toLocaleString() : a.created_at;
+                      const label = activityTypeLabel(a.type);
+                      return (
+                        <li key={a.id} className="rounded-lg border border-ds-border bg-white p-4 dark:bg-ds-primary">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <span className="inline-flex rounded-full bg-ds-secondary px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-ds-foreground ring-1 ring-ds-border">
+                              {label}
+                            </span>
+                            <span className="text-[11px] font-semibold text-ds-muted">{when}</span>
+                          </div>
+                          {a.title ? <p className="mt-2 text-sm font-semibold text-ds-foreground">{a.title}</p> : null}
+                          <p className="mt-2 whitespace-pre-line text-sm text-ds-foreground">{a.description}</p>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </Card>
+            </div>
+          ) : null}
+
+          {detailTab === "summary" ? (
+            <div className="space-y-6">
+              <Card padding="md" className="space-y-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <p className="text-sm font-bold text-ds-foreground">Summary</p>
+                  <button type="button" className={SECONDARY_BTN} disabled={savingMeta} onClick={() => void saveSummary()}>
+                    {savingMeta ? "Saving…" : "Save"}
+                  </button>
+                </div>
+                <div>
+                  <label className={LABEL} htmlFor="proj-summary">
+                    Summary
+                  </label>
+                  <textarea
+                    id="proj-summary"
+                    className={FIELD}
+                    rows={4}
+                    value={summaryText}
+                    onChange={(e) => setSummaryText(e.target.value)}
+                    placeholder="What happened? What’s the current state?"
+                  />
+                </div>
+                <div>
+                  <label className={LABEL} htmlFor="proj-metrics">
+                    Metrics / Results
+                  </label>
+                  <textarea
+                    id="proj-metrics"
+                    className={FIELD}
+                    rows={4}
+                    value={summaryMetrics}
+                    onChange={(e) => setSummaryMetrics(e.target.value)}
+                    placeholder="Key numbers or outcomes."
+                  />
+                </div>
+                <div>
+                  <label className={LABEL} htmlFor="proj-lessons">
+                    Lessons Learned
+                  </label>
+                  <textarea
+                    id="proj-lessons"
+                    className={FIELD}
+                    rows={4}
+                    value={summaryLessons}
+                    onChange={(e) => setSummaryLessons(e.target.value)}
+                    placeholder="What would we do differently next time?"
+                  />
+                </div>
+              </Card>
+            </div>
+          ) : null}
+
+          {detailTab === "work" ? (
+            <>
+              <div className="flex max-w-2xl flex-wrap gap-2 rounded-lg border border-ds-border bg-ds-secondary p-1 shadow-[var(--ds-shadow-card)]">
+                <button
+                  type="button"
+                  className={`inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm font-semibold transition-colors ${
+                    viewTab === "tasks"
+                      ? "bg-ds-success text-ds-on-accent shadow-sm"
+                      : "text-ds-muted hover:bg-ds-interactive-hover hover:text-ds-foreground"
+                  }`}
+                  onClick={() => setViewTab("tasks")}
+                >
+                  <List className="h-4 w-4" aria-hidden />
+                  Tasks
+                </button>
+                <button
+                  type="button"
+                  className={`inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm font-semibold transition-colors ${
+                    viewTab === "board"
+                      ? "bg-ds-success text-ds-on-accent shadow-sm"
+                      : "text-ds-muted hover:bg-ds-interactive-hover hover:text-ds-foreground"
+                  }`}
+                  onClick={() => setViewTab("board")}
+                >
+                  <LayoutGrid className="h-4 w-4" aria-hidden />
+                  Board
+                </button>
+                <button
+                  type="button"
+                  className={`inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm font-semibold transition-colors ${
+                    viewTab === "automation"
+                      ? "bg-ds-success text-ds-on-accent shadow-sm"
+                      : "text-ds-muted hover:bg-ds-interactive-hover hover:text-ds-foreground"
+                  }`}
+                  onClick={() => setViewTab("automation")}
+                >
+                  <Settings2 className="h-4 w-4" aria-hidden />
+                  Automation
+                </button>
+              </div>
+
+              {viewTab === "automation" ? <ProjectAutomationPanel projectId={projectId} /> : null}
+
+              {viewTab === "tasks" ? (
             <div className="grid gap-6 lg:grid-cols-12">
               <div className="space-y-6 lg:col-span-7 xl:col-span-8">
                 <Card padding="md" className="space-y-3">
@@ -681,6 +990,8 @@ export function ProjectDetailApp({ projectId }: { projectId: string }) {
                 </div>
               ))}
             </div>
+          ) : null}
+            </>
           ) : null}
         </>
       )}

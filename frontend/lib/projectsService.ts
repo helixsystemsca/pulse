@@ -15,6 +15,13 @@ export type ProjectRow = {
   created_by_user_id?: string | null;
   start_date: string;
   end_date: string;
+  goal?: string | null;
+  notes?: string | null;
+  success_definition?: string | null;
+  current_phase?: string | null;
+  summary?: string | null;
+  metrics?: string | null;
+  lessons_learned?: string | null;
   status: string;
   created_at: string;
   updated_at: string;
@@ -22,6 +29,7 @@ export type ProjectRow = {
   task_completed: number;
   progress_pct: number;
   assignee_user_ids?: string[];
+  last_activity_at?: string | null;
 };
 
 export type TaskRow = {
@@ -185,6 +193,13 @@ export async function patchProject(
     end_date: string;
     status: string;
     owner_user_id: string | null;
+    goal: string | null;
+    notes: string | null;
+    success_definition: string | null;
+    current_phase: string | null;
+    summary: string | null;
+    metrics: string | null;
+    lessons_learned: string | null;
   }>,
 ): Promise<ProjectRow> {
   return apiFetch<ProjectRow>(`/api/v1/projects/${id}`, { method: "PATCH", json: patch });
@@ -217,6 +232,29 @@ export async function createProject(body: {
 
 export async function getProject(id: string): Promise<ProjectDetail> {
   return apiFetch<ProjectDetail>(`/api/v1/projects/${id}`);
+}
+
+export type ProjectActivityRow = {
+  id: string;
+  project_id: string;
+  type: string;
+  title?: string | null;
+  description: string;
+  created_at: string;
+};
+
+export async function listProjectActivity(projectId: string): Promise<ProjectActivityRow[]> {
+  return apiFetch<ProjectActivityRow[]>(`/api/v1/projects/${projectId}/activity`);
+}
+
+export async function addProjectNote(
+  projectId: string,
+  body: { title?: string | null; description: string },
+): Promise<ProjectActivityRow> {
+  return apiFetch<ProjectActivityRow>(`/api/v1/projects/${projectId}/activity/notes`, {
+    method: "POST",
+    json: body,
+  });
 }
 
 export async function getReadyTasks(projectId: string): Promise<ReadyTaskRow[]> {

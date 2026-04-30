@@ -306,6 +306,16 @@ export function ProjectsApp() {
             const owner = p.owner_user_id ? workerById.get(p.owner_user_id) : undefined;
             const creatorIsYou = Boolean(myUserId && p.created_by_user_id && p.created_by_user_id === myUserId);
             const creatorCanComplete = creatorIsYou && p.status !== "completed";
+            const lastTs = (p.last_activity_at || p.updated_at || p.created_at || "").trim();
+            const lastUpdateLabel = (() => {
+              if (!lastTs) return "";
+              const t = new Date(lastTs).getTime();
+              if (!Number.isFinite(t)) return "";
+              const days = Math.max(0, Math.floor((Date.now() - t) / (1000 * 60 * 60 * 24)));
+              if (days <= 0) return "Last update: today";
+              if (days === 1) return "Last update: 1 day ago";
+              return `Last update: ${days} days ago`;
+            })();
             return (
               <Card key={p.id} padding="md" className="h-full">
                 <div className="flex items-start gap-3">
@@ -324,6 +334,9 @@ export function ProjectsApp() {
                       <span className="font-semibold text-pulse-navy/80 dark:text-slate-300">Owner: </span>
                       {owner ? displayName(owner) : "—"}
                     </p>
+                    {lastUpdateLabel ? (
+                      <p className="mt-1 text-[11px] font-medium text-pulse-muted">{lastUpdateLabel}</p>
+                    ) : null}
                     <div className="mt-3 flex flex-wrap items-center gap-2">
                       <span className="inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-pulse-muted ring-1 ring-slate-200/80 dark:bg-ds-secondary dark:text-slate-300 dark:ring-ds-border">
                         {statusLabel(p.status)}

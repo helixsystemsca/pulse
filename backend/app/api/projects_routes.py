@@ -15,6 +15,9 @@ from app.core.database import get_db
 from app.models.domain import User
 from app.models.pulse_models import (
     PulseProject,
+    PulseProjectActivity,
+    PulseProjectActivityType,
+    PulseProjectPhase,
     PulseProjectAutomationRule,
     PulseProjectAutomationTrigger,
     PulseProjectStatus,
@@ -41,6 +44,8 @@ from app.schemas.projects import (
     ProjectOut,
     ProjectOutWithProgress,
     ProjectPatch,
+    ProjectActivityCreateNoteIn,
+    ProjectActivityOut,
     ReadyTaskOut,
     TaskBlockingMini,
     TaskCreate,
@@ -96,10 +101,52 @@ def _project_out(p: PulseProject) -> ProjectOut:
         created_by_user_id=str(p.created_by_user_id) if getattr(p, "created_by_user_id", None) else None,
         start_date=p.start_date,
         end_date=p.end_date,
+        goal=getattr(p, "goal", None),
+        notes=getattr(p, "notes", None),
+        success_definition=getattr(p, "success_definition", None),
+        current_phase=getattr(getattr(p, "current_phase", None), "value", None)
+        if getattr(p, "current_phase", None) is not None
+        else None,
+        summary=getattr(p, "summary", None),
+        metrics=getattr(p, "metrics", None),
+        lessons_learned=getattr(p, "lessons_learned", None),
         status=st,
         created_at=p.created_at,
         updated_at=p.updated_at,
     )
+
+
+def _activity_out(a: PulseProjectActivity) -> ProjectActivityOut:
+    ty = a.type.value if hasattr(a.type, "value") else str(a.type)
+    return ProjectActivityOut(
+        id=str(a.id),
+        project_id=str(a.project_id),
+        type=ty,
+        title=a.title,
+        description=a.description,
+        created_at=a.created_at,
+    )
+
+
+async def _log_activity(
+    db: Db,
+    *,
+    project_id: str,
+    activity_type: PulseProjectActivityType,
+    description: str,
+    title: str | None = None,
+) -> None:
+    desc = (description or "").strip()
+    if not desc:
+        return
+    row = PulseProjectActivity(
+        project_id=project_id,
+        type=activity_type,
+        title=(title or "").strip() or None,
+        description=desc,
+    )
+    db.add(row)
+    await db.flush()
 
 
 def _parse_trigger(s: str) -> PulseProjectAutomationTrigger:
@@ -112,6 +159,13 @@ def _parse_trigger(s: str) -> PulseProjectAutomationTrigger:
 @router.get("/projects", response_model=list[ProjectOutWithProgress])
 async def list_projects(db: Db, cid: CompanyId) -> list[ProjectOutWithProgress]:
     rows = (await db.execute(select(PulseProject).where(PulseProject.company_id == cid))).scalars().all()
+    last_q = await db.execute(
+        select(PulseProjectActivity.project_id, func.max(PulseProjectActivity.created_at))
+        .join(PulseProject, PulseProject.id == PulseProjectActivity.project_id)
+        .where(PulseProject.company_id == cid)
+        .group_by(PulseProjectActivity.project_id)
+    )
+    last_by_project = {str(pid): ts for (pid, ts) in last_q.all() if pid and ts}
     out: list[ProjectOutWithProgress] = []
     for p in rows:
         tot_q = await db.scalar(
@@ -154,6 +208,15 @@ async def list_projects(db: Db, cid: CompanyId) -> list[ProjectOutWithProgress]:
                 created_by_user_id=str(p.created_by_user_id) if getattr(p, "created_by_user_id", None) else None,
                 start_date=p.start_date,
                 end_date=p.end_date,
+                goal=getattr(p, "goal", None),
+                notes=getattr(p, "notes", None),
+                success_definition=getattr(p, "success_definition", None),
+                current_phase=getattr(getattr(p, "current_phase", None), "value", None)
+                if getattr(p, "current_phase", None) is not None
+                else None,
+                summary=getattr(p, "summary", None),
+                metrics=getattr(p, "metrics", None),
+                lessons_learned=getattr(p, "lessons_learned", None),
                 status=st,
                 created_at=p.created_at,
                 updated_at=p.updated_at,
@@ -161,6 +224,7 @@ async def list_projects(db: Db, cid: CompanyId) -> list[ProjectOutWithProgress]:
                 task_completed=done,
                 progress_pct=pct,
                 assignee_user_ids=assignee_user_ids,
+                last_activity_at=last_by_project.get(str(p.id)),
             )
         )
     await db.commit()
@@ -240,11 +304,65 @@ async def get_project(db: Db, cid: CompanyId, project_id: str) -> ProjectDetailO
         created_by_user_id=str(p.created_by_user_id) if getattr(p, "created_by_user_id", None) else None,
         start_date=p.start_date,
         end_date=p.end_date,
+        goal=getattr(p, "goal", None),
+        notes=getattr(p, "notes", None),
+        success_definition=getattr(p, "success_definition", None),
+        current_phase=getattr(getattr(p, "current_phase", None), "value", None)
+        if getattr(p, "current_phase", None) is not None
+        else None,
+        summary=getattr(p, "summary", None),
+        metrics=getattr(p, "metrics", None),
+        lessons_learned=getattr(p, "lessons_learned", None),
         status=st,
         created_at=p.created_at,
         updated_at=p.updated_at,
         tasks=tasks,
     )
+
+
+@router.get("/projects/{project_id}/activity", response_model=list[ProjectActivityOut])
+async def list_project_activity(db: Db, cid: CompanyId, project_id: str) -> list[ProjectActivityOut]:
+    p = await db.get(PulseProject, project_id)
+    if not p or str(p.company_id) != cid:
+        raise HTTPException(status_code=404, detail="Not found")
+    aq = await db.execute(
+        select(PulseProjectActivity)
+        .where(PulseProjectActivity.project_id == project_id)
+        .order_by(PulseProjectActivity.created_at.desc())
+        .limit(200)
+    )
+    rows = list(aq.scalars().all())
+    return [_activity_out(a) for a in rows]
+
+
+@router.post("/projects/{project_id}/activity/notes", response_model=ProjectActivityOut, status_code=201)
+async def create_project_note(
+    db: Db,
+    cid: CompanyId,
+    project_id: str,
+    body: ProjectActivityCreateNoteIn,
+) -> ProjectActivityOut:
+    p = await db.get(PulseProject, project_id)
+    if not p or str(p.company_id) != cid:
+        raise HTTPException(status_code=404, detail="Not found")
+    await _log_activity(
+        db,
+        project_id=project_id,
+        activity_type=PulseProjectActivityType.note,
+        title=body.title,
+        description=body.description,
+    )
+    await db.commit()
+    row = (
+        await db.execute(
+            select(PulseProjectActivity)
+            .where(PulseProjectActivity.project_id == project_id)
+            .order_by(PulseProjectActivity.created_at.desc())
+            .limit(1)
+        )
+    ).scalars().first()
+    assert row is not None
+    return _activity_out(row)
 
 
 @router.get("/projects/{project_id}/ready-tasks", response_model=list[ReadyTaskOut])
@@ -354,6 +472,7 @@ async def patch_project(
     if not p or str(p.company_id) != cid:
         raise HTTPException(status_code=404, detail="Not found")
     data = body.model_dump(exclude_unset=True)
+    old_project_status = p.status
     if "status" in data and data["status"] is not None:
         new_st = proj_svc.parse_project_status(str(data["status"]))
         if new_st == PulseProjectStatus.completed:
@@ -371,11 +490,32 @@ async def patch_project(
         if owner_id and not await proj_svc.user_in_company(db, cid, owner_id):
             raise HTTPException(status_code=400, detail="Owner not in organization")
         p.owner_user_id = owner_id or None
+    if "current_phase" in data:
+        raw = data.pop("current_phase")
+        v = str(raw).strip() if raw is not None else ""
+        if not v:
+            p.current_phase = None
+        else:
+            try:
+                p.current_phase = PulseProjectPhase(v)
+            except ValueError:
+                raise HTTPException(status_code=400, detail="invalid current_phase")
     for k, v in data.items():
         if v is not None:
             setattr(p, k, v)
     if p.end_date < p.start_date:
         raise HTTPException(status_code=400, detail="end_date must be on or after start_date")
+    if (
+        old_project_status != PulseProjectStatus.completed
+        and p.status == PulseProjectStatus.completed
+    ):
+        await _log_activity(
+            db,
+            project_id=str(p.id),
+            activity_type=PulseProjectActivityType.note,
+            title="Project completed",
+            description="Project marked complete.",
+        )
     await db.commit()
     await db.refresh(p)
     return _project_out(p)
@@ -527,6 +667,13 @@ async def create_task(
     )
     db.add(t)
     await db.flush()
+    await _log_activity(
+        db,
+        project_id=str(t.project_id),
+        activity_type=PulseProjectActivityType.task,
+        title=t.title,
+        description=(t.description or "").strip() or f"Task created: {t.title}",
+    )
     await proj_svc.ensure_calendar_shift_for_task(db, cid, t)
     await try_mark_onboarding_step(db, str(actor.id), "customize_workflow")
     await db.commit()
@@ -584,6 +731,14 @@ async def patch_task(
     await db.flush()
     await proj_svc.ensure_calendar_shift_for_task(db, cid, t)
     await project_automation_engine.run_rules_for_task_change(db, cid, t, old_status, old_due)
+    if old_status != PulseTaskStatus.complete and t.status == PulseTaskStatus.complete:
+        await _log_activity(
+            db,
+            project_id=str(t.project_id),
+            activity_type=PulseProjectActivityType.task,
+            title=t.title,
+            description=f"Task completed: {t.title}",
+        )
     await db.commit()
     await db.refresh(t)
     return await task_to_out_enriched(db, t)
