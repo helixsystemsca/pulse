@@ -134,7 +134,7 @@ export default function MyAvailabilityPage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-3xl px-4 pb-10 pt-6">
+    <div className="w-full pb-10">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-lg font-semibold text-ds-foreground">My availability</h1>

@@ -318,7 +318,7 @@ export function WorkerBreakRoomDashboard({ kiosk = false }: Props) {
   const weatherTemp = useMemo(() => (weather.tempC == null ? "—" : `${Math.round(weather.tempC)}°C`), [weather.tempC]);
 
   return (
-    <div className={`mx-auto w-full max-w-6xl space-y-6 px-4 py-6 ${kiosk ? "max-w-none px-6 py-6" : ""}`}>
+    <div className={`w-full space-y-6 ${kiosk ? "" : ""}`}>
       <KioskCriticalModal alert={criticalAlert} onAcknowledge={() => setCriticalAlert(null)} />
 
       <div className="rounded-2xl border border-ds-border bg-ds-primary shadow-[var(--ds-shadow-card)]">

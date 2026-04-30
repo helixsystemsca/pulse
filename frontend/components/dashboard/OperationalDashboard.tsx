@@ -1647,8 +1647,7 @@ function DashboardBody({
   const weatherTemp = useMemo(() => (weather.tempC == null ? "—" : `${Math.round(weather.tempC)}°C`), [weather.tempC]);
 
   return (
-    <div className="w-full px-2 py-6 sm:px-3 lg:px-4">
-      <div className="space-y-6">
+    <div className="w-full space-y-6">
       <div className="rounded-2xl border border-ds-border bg-ds-primary shadow-[var(--ds-shadow-card)]">
         <div className="flex flex-wrap items-center justify-between gap-4 px-5 py-4">
           <div className="min-w-0">
@@ -2002,7 +2001,6 @@ function DashboardBody({
             onSave={saveCustomPeek}
           />
         ) : null}
-      </div>
       </div>
     </div>
   );

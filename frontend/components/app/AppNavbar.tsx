@@ -16,10 +16,6 @@ import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { replayNonAdminOnboardingTour } from "@/lib/onboarding-events";
 import { sessionHasAnyRole } from "@/lib/pulse-roles";
 
-/** Top bar uses mint cream (`bg-ds-header`) in light theme; token-driven in dark. */
-const HEADER =
-  "sticky top-0 z-50 h-16 shrink-0 border-b backdrop-blur-md border-ds-border bg-ds-header shadow-[var(--ds-shadow-card)]";
-
 export function AppNavbar() {
   const pathname = usePathname();
   const { authed, session, refresh } = usePulseAuth();
@@ -47,11 +43,7 @@ export function AppNavbar() {
   }, []);
 
   return (
-    <header className={HEADER}>
-      <nav
-        className="flex h-full w-full items-center justify-between gap-4 px-3 sm:px-5 lg:px-8"
-        aria-label="Main"
-      >
+      <nav className="flex w-full items-center justify-between gap-4" aria-label="Main">
         <div className="flex min-w-0 items-center">
           <Link
             href={logoHref}
@@ -77,7 +69,7 @@ export function AppNavbar() {
             <button
               type="button"
               onClick={() => onboarding.setChecklistExpanded(true)}
-              className="inline-flex max-w-[7rem] truncate rounded-md border border-ds-border bg-ds-header px-2 py-1.5 text-[11px] font-semibold text-ds-foreground shadow-sm hover:bg-ds-interactive-hover dark:border-ds-border dark:bg-ds-secondary/60 dark:hover:bg-ds-interactive-hover sm:max-w-none sm:px-2.5 sm:text-xs"
+              className="inline-flex max-w-[7rem] truncate rounded-md border border-ds-border bg-ds-secondary/60 px-2 py-1.5 text-[11px] font-semibold text-ds-foreground shadow-sm hover:bg-ds-interactive-hover dark:border-ds-border dark:bg-ds-secondary/60 dark:hover:bg-ds-interactive-hover sm:max-w-none sm:px-2.5 sm:text-xs"
             >
               Resume setup
             </button>
@@ -177,6 +169,5 @@ export function AppNavbar() {
           )}
         </div>
       </nav>
-    </header>
   );
 }

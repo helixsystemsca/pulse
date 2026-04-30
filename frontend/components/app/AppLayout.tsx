@@ -2,11 +2,8 @@
  * Authenticated shell: floating `AppSideNav` rail, top `AppNavbar`, and scrollable `AppMain`.
  */
 import type { ReactNode } from "react";
-import { AppMain } from "./AppMain";
 import { InactivitySessionGuard } from "./InactivitySessionGuard";
 import { ServerTimeSync } from "./ServerTimeSync";
-import { MainContentWidth } from "./MainContentWidth";
-import { PageShell } from "./PageShell";
 import { AppNavbar } from "./AppNavbar";
 import { AppSideNav } from "./AppSideNav";
 import { ImpersonationBanner } from "./ImpersonationBanner";
@@ -16,7 +13,6 @@ import { GuidedTourProvider } from "@/components/onboarding/CoreGuidedTour";
 import { ModuleSettingsProvider } from "@/providers/ModuleSettingsProvider";
 import { ProximityPromptHost } from "./ProximityPromptHost";
 import { AppLayoutFooter } from "./AppLayoutFooter";
-import { PulseThemedBackground } from "./PulseThemedBackground";
 import { GamificationProvider } from "@/components/gamification/GamificationProvider";
 
 type AppLayoutProps = {
@@ -39,8 +35,7 @@ export function AppLayout({
   chrome = true,
 }: AppLayoutProps) {
   return (
-    <div className="relative min-h-screen">
-      <PulseThemedBackground />
+    <div className="flex h-screen w-screen flex-col overflow-hidden bg-muted/30">
       <GuidedTourProvider>
       <OnboardingProvider>
         <ModuleSettingsProvider>
@@ -48,18 +43,30 @@ export function AppLayout({
         <InactivitySessionGuard />
         <ServerTimeSync />
         <ProximityPromptHost />
-        <div data-pulse-app-shell className="min-h-screen min-w-0">
-          {chrome ? <AppSideNav /> : null}
-          <div className={`${chrome ? "lg:ml-64" : ""} w-full`}>
-            {chrome ? <AppNavbar /> : null}
-            {chrome ? <ImpersonationBanner /> : null}
-            <AppMain className={mainClassName} reserveRail={false}>
-              <MainContentWidth className={mainContentClassName}>
-                {pageShell ? <PageShell>{children}</PageShell> : children}
-              </MainContentWidth>
-              <OnboardingChrome />
-            </AppMain>
-            {chrome ? <AppLayoutFooter /> : null}
+        <div data-pulse-app-shell className="flex h-full w-full flex-col overflow-hidden">
+          {chrome ? (
+            <header className="flex h-14 items-center border-b bg-background px-4">
+              <div className="w-full">
+                <AppNavbar />
+              </div>
+            </header>
+          ) : null}
+
+          {chrome ? <ImpersonationBanner /> : null}
+
+          <div className="flex flex-1 overflow-hidden">
+            {chrome ? <AppSideNav /> : null}
+
+            <div className="flex flex-1 flex-col overflow-hidden">
+              <main className={["flex-1 overflow-y-auto", mainClassName].filter(Boolean).join(" ")}>
+                <div className={["w-full max-w-none px-3 py-4 lg:px-4", mainContentClassName].filter(Boolean).join(" ")}>
+                  {children}
+                </div>
+              </main>
+
+              {chrome ? <OnboardingChrome /> : null}
+              {chrome ? <AppLayoutFooter /> : null}
+            </div>
           </div>
         </div>
         </GamificationProvider>

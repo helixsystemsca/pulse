@@ -21,7 +21,7 @@ export function DashboardViewTabs() {
 
   return (
     <nav
-      className="mx-auto mb-4 inline-flex flex-wrap gap-1 rounded-md border border-ds-border bg-ds-secondary p-1"
+      className="mb-4 inline-flex flex-wrap gap-1 rounded-md border border-ds-border bg-ds-secondary p-1"
       aria-label="Dashboards"
     >
       <Link

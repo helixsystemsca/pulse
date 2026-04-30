@@ -26,7 +26,7 @@ export default function SopDetailPage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-3xl px-4 py-6 sm:px-6 lg:px-8">
+    <div className="w-full">
       <Link
         href="/projects"
         className="inline-flex text-sm font-semibold text-pulse-accent hover:text-pulse-navy"
