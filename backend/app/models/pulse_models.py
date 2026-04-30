@@ -540,6 +540,7 @@ class PulseProject(Base):
         index=True,
     )
     repopulation_frequency: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
+    completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
     archived_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)

@@ -147,6 +147,7 @@ def _project_out(p: PulseProject) -> ProjectOut:
         lessons_learned=getattr(p, "lessons_learned", None),
         status=st,
         repopulation_frequency=getattr(p, "repopulation_frequency", None),
+        completed_at=getattr(p, "completed_at", None),
         archived_at=getattr(p, "archived_at", None),
         created_at=p.created_at,
         updated_at=p.updated_at,
@@ -480,6 +481,32 @@ def _parse_trigger(s: str) -> PulseProjectAutomationTrigger:
 
 @router.get("/projects", response_model=list[ProjectOutWithProgress])
 async def list_projects(db: Db, cid: CompanyId) -> list[ProjectOutWithProgress]:
+    # Jan 1 rollover: move prior-year completed projects into archive.
+    now = datetime.now(timezone.utc)
+    if now.month == 1 and now.day == 1:
+        prev_year = now.year - 1
+        await db.execute(
+            select(PulseProject.id)
+            .where(
+                PulseProject.company_id == cid,
+                PulseProject.status == PulseProjectStatus.completed,
+                PulseProject.archived_at.is_(None),
+                PulseProject.completed_at.isnot(None),
+            )
+        )
+        # Set archived_at for any completed projects with a completed_at year <= prev_year.
+        await db.execute(
+            PulseProject.__table__.update()
+            .where(
+                PulseProject.company_id == cid,
+                PulseProject.status == PulseProjectStatus.completed,
+                PulseProject.archived_at.is_(None),
+                PulseProject.completed_at.isnot(None),
+                func.date_part("year", PulseProject.completed_at) <= prev_year,
+            )
+            .values(archived_at=now)
+        )
+        await db.commit()
     rows = (await db.execute(select(PulseProject).where(PulseProject.company_id == cid))).scalars().all()
     cat_ids = {str(p.category_id) for p in rows if getattr(p, "category_id", None)}
     cats: dict[str, PulseCategory] = {}
@@ -943,8 +970,8 @@ async def patch_project(
         old_project_status != PulseProjectStatus.completed
         and p.status == PulseProjectStatus.completed
     ):
-        # Archive + optional auto-repopulate.
-        p.archived_at = datetime.now(timezone.utc)
+        # Annual snapshot: keep in "Completed" until Jan 1 rollover archives it.
+        p.completed_at = datetime.now(timezone.utc)
         await _log_activity(
             db,
             project_id=str(p.id),

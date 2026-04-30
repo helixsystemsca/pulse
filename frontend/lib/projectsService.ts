@@ -26,6 +26,7 @@ export type ProjectRow = {
   lessons_learned?: string | null;
   status: string;
   repopulation_frequency?: string | null;
+  completed_at?: string | null;
   archived_at?: string | null;
   created_at: string;
   updated_at: string;

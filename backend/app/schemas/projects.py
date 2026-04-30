@@ -72,6 +72,7 @@ class ProjectOut(BaseModel):
     lessons_learned: Optional[str] = None
     status: str
     repopulation_frequency: Optional[str] = None
+    completed_at: Optional[datetime] = None
     archived_at: Optional[datetime] = None
     created_at: datetime
     updated_at: datetime

@@ -78,7 +78,7 @@ export function ProjectsApp() {
   const [rows, setRows] = useState<ProjectRow[] | null>(null);
   const [workers, setWorkers] = useState<PulseWorkerApi[]>([]);
   const [err, setErr] = useState<string | null>(null);
-  const [filter, setFilter] = useState<"active" | "completed">("active");
+  const [filter, setFilter] = useState<"active" | "completed" | "archive">("active");
   const [createOpen, setCreateOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [editFor, setEditFor] = useState<ProjectRow | null>(null);
@@ -185,12 +185,34 @@ export function ProjectsApp() {
 
   const filtered = useMemo(() => {
     if (!rows) return [];
-    return rows.filter((p) => (filter === "completed" ? p.status === "completed" : p.status !== "completed"));
+    const now = new Date();
+    const year = now.getFullYear();
+    if (filter === "active") return rows.filter((p) => p.status !== "completed");
+    if (filter === "completed") {
+      // Annual snapshot: only show projects completed in the current year.
+      return rows.filter((p) => {
+        if (p.status !== "completed") return false;
+        if (p.archived_at) return false;
+        const ts = (p.completed_at || p.updated_at || "").toString();
+        const t = Date.parse(ts);
+        if (!Number.isFinite(t)) return true;
+        return new Date(t).getFullYear() === year;
+      });
+    }
+    // archive
+    return rows.filter((p) => {
+      if (p.archived_at) return true;
+      if (p.status !== "completed") return false;
+      const ts = (p.completed_at || p.updated_at || "").toString();
+      const t = Date.parse(ts);
+      if (!Number.isFinite(t)) return false;
+      return new Date(t).getFullYear() < year;
+    });
   }, [rows, filter]);
 
   const groupedProjects = useMemo(() => {
     if (!rows) return null;
-    const base = rows.filter((p) => (filter === "completed" ? p.status === "completed" : p.status !== "completed"));
+    const base = filtered;
     const uniqueCats = new Set(base.map((p) => p.category?.name || "Uncategorized"));
     if (uniqueCats.size <= 1) return null;
     const groups = new Map<string, ProjectRow[]>();
@@ -200,7 +222,7 @@ export function ProjectsApp() {
     }
     const keys = [...groups.keys()].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }));
     return { keys, groups };
-  }, [rows, filter]);
+  }, [rows, filter, filtered]);
 
   async function markProjectComplete(p: ProjectRow) {
     if (!myUserId || p.created_by_user_id !== myUserId || completingId) return;
@@ -397,6 +419,7 @@ export function ProjectsApp() {
             options={[
               { value: "active", label: "Active" },
               { value: "completed", label: "Completed" },
+              { value: "archive", label: "Archive" },
             ]}
           />
         </div>
@@ -425,8 +448,10 @@ export function ProjectsApp() {
             {rows.length === 0
               ? "No projects yet. Create one to get started."
               : filter === "completed"
-                ? "No completed projects in this view."
-                : "No active projects in this filter. Switch to Completed or create a project."}
+                ? "No completed projects yet this year."
+                : filter === "archive"
+                  ? "No archived projects yet."
+                  : "No active projects in this filter. Switch to Completed/Archive or create a project."}
           </p>
         </Card>
       ) : (
