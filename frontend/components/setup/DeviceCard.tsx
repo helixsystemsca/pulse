@@ -80,6 +80,270 @@ type BleProps = {
 
 export type DeviceCardProps = GatewayProps | BleProps;
 
+function GatewayDeviceCard(props: GatewayProps) {
+  const {
+    gateway,
+    operationalStatus,
+    zoneLabel,
+    lastHeardAt,
+    secondsSinceLastSeen,
+    onChangeZone,
+    testListening,
+    testSuccessFlash,
+    testMatchKind,
+    testMatchDebug,
+    testMatchDetails,
+    onTestDetection,
+  } = props;
+  const online = operationalStatus === "online";
+  const gatewayTestMsg =
+    testMatchKind === "mac_only"
+      ? "Detected (unassigned tag) — assign worker and equipment tags on this page."
+      : "Detection received — traffic matched this gateway.";
+  const gatewayMacOnly = testSuccessFlash && testMatchKind === "mac_only";
+  const relative = formatRelativeTime(lastHeardAt);
+  return (
+    <div className={`${cardBase} ${testRing(testListening, testSuccessFlash, testMatchKind)}`}>
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="flex h-11 w-11 items-center justify-center rounded-md bg-ds-secondary text-ds-foreground">
+            <Router className="h-5 w-5" aria-hidden />
+          </div>
+          <div>
+            <h3 className="font-semibold text-ds-foreground">{gateway.name}</h3>
+            <p className="mt-0.5 font-mono text-xs text-ds-muted">{gateway.identifier}</p>
+          </div>
+        </div>
+        <div className="flex flex-col items-end gap-2">
+          {statusPill(online, "Online", "Offline")}
+          {!online ? <WifiOff className="h-4 w-4 text-ds-muted" aria-hidden /> : null}
+        </div>
+      </div>
+      <div className="mt-4 space-y-2 border-t border-ds-border pt-4">
+        {activityRow("Last heartbeat", relative)}
+        {activityRow("Signal health", gatewaySignalHealth(online, secondsSinceLastSeen ?? null))}
+        {testSuccessFlash ? (
+          <div
+            className={
+              gatewayMacOnly
+                ? "flex gap-2 rounded-md bg-amber-50/90 px-2 py-1.5 ring-1 ring-amber-200/80"
+                : "space-y-0.5"
+            }
+          >
+            {gatewayMacOnly ? (
+              <CircleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-600" aria-hidden />
+            ) : null}
+            <div className="min-w-0 space-y-0.5">
+              <p
+                className={
+                  gatewayMacOnly ? "text-xs font-medium text-amber-950" : "text-xs font-medium text-emerald-800"
+                }
+              >
+                {gatewayTestMsg}
+              </p>
+              <p
+                className={
+                  gatewayMacOnly
+                    ? "text-[10px] font-semibold uppercase tracking-wide text-amber-800/80"
+                    : "text-[10px] font-semibold uppercase tracking-wide text-emerald-900/70"
+                }
+              >
+                via Gateway
+              </p>
+            </div>
+          </div>
+        ) : null}
+        {testSuccessFlash && testMatchDetails ? (
+          <TestMatchPayloadPanel details={testMatchDetails} testMatchKind={testMatchKind} debug={testMatchDebug} />
+        ) : null}
+        {!online && relative !== "—" ? (
+          <p className="text-[11px] text-amber-800/90">Offline by policy — check power or uplink if this is unexpected.</p>
+        ) : null}
+      </div>
+      <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-ds-muted">
+        <span className="text-ds-foreground/80">Zone:</span>
+        <span>{zoneLabel ?? "—"}</span>
+        {onChangeZone ? (
+          <button type="button" onClick={onChangeZone} className="ds-link ml-auto text-xs font-semibold">
+            Change zone
+          </button>
+        ) : null}
+      </div>
+      {onTestDetection ? (
+        <button
+          type="button"
+          onClick={onTestDetection}
+          disabled={Boolean(testListening)}
+          className="mt-3 rounded-lg border border-ds-border bg-ds-primary px-3 py-1.5 text-xs font-semibold text-ds-foreground shadow-[var(--ds-shadow-card)] hover:bg-ds-interactive-hover disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {testListening ? "Waiting for detection…" : "Test detection"}
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+function BleDeviceCard(props: BleProps) {
+  const {
+    device,
+    assignedLabel,
+    emphasizeUnassigned,
+    disableAssignment,
+    assignmentHint,
+    onAssign,
+    testListening,
+    testSuccessFlash,
+    testMatchKind,
+    testMatchDebug,
+    testMatchDetails,
+    signalHistoryMs,
+    onTestDetection,
+  } = props;
+
+  const bleTestMsg =
+    testMatchKind === "mac_only"
+      ? "Detected (unassigned tag) — assign this tag under Gateways & sensors."
+      : "Detection received — tag seen in live traffic.";
+  const bleMacOnly = testSuccessFlash && testMatchKind === "mac_only";
+  const [nowMs, setNowMs] = useState(() => Date.now());
+  useEffect(() => {
+    const t = window.setInterval(() => setNowMs(Date.now()), 1000);
+    return () => window.clearInterval(t);
+  }, []);
+
+  const assigned = Boolean(device.assigned_worker_id || device.assigned_equipment_id);
+  const batteryPct = device.battery_percent;
+  const bleRelative = formatRelativeTime(device.last_seen_at ?? null);
+  const signalTier = bleSignalTier(device.last_seen_at ?? null, nowMs);
+  const trendCommittedRef = useRef<"up" | "flat" | "down">("flat");
+  const diff = useMemo(() => bleTrendDetectionDiff(signalHistoryMs, nowMs), [signalHistoryMs, nowMs]);
+  const trend = useMemo(() => {
+    if (diff >= TREND_DELTA_THRESHOLD) {
+      trendCommittedRef.current = "up";
+      return "up";
+    }
+    if (diff <= -TREND_DELTA_THRESHOLD) {
+      trendCommittedRef.current = "down";
+      return "down";
+    }
+    return trendCommittedRef.current;
+  }, [diff]);
+  const accent =
+    emphasizeUnassigned && !assigned
+      ? "border-amber-300/90 bg-amber-50/40 shadow-[0_0_0_1px_rgba(251,191,36,0.35)]"
+      : "";
+
+  return (
+    <div className={`${cardBase} ${accent} ${testRing(testListening, testSuccessFlash, testMatchKind)}`}>
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="flex h-11 w-11 items-center justify-center rounded-md bg-ds-secondary text-ds-foreground">
+            <Bluetooth className="h-5 w-5" aria-hidden />
+          </div>
+          <div>
+            <div className="flex flex-wrap items-center gap-2">
+              <h3 className="font-semibold text-ds-foreground">{device.name}</h3>
+              {emphasizeUnassigned && !assigned ? (
+                <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-900 ring-1 ring-amber-200/80">
+                  Unassigned
+                </span>
+              ) : null}
+            </div>
+            <p className="mt-0.5 font-mono text-xs text-ds-muted">{device.mac_address}</p>
+            <p className="mt-1 text-[11px] font-medium uppercase tracking-wide text-ds-muted">
+              {tagTypeLabel(device.type)}
+            </p>
+          </div>
+        </div>
+        <div className="flex flex-col items-end gap-2">
+          {assigned ? statusPill(true, "Assigned", "") : statusPill(false, "", "Unassigned")}
+          <div className="flex flex-col items-end gap-1">
+            <BleSignalIndicator tier={signalTier} />
+            <TrendMark trend={trend} />
+          </div>
+        </div>
+      </div>
+      <div className="mt-4 space-y-2 border-t border-ds-border pt-4 text-sm">
+        {activityRow("Last seen (via edge)", bleRelative)}
+        {batteryPct != null ? activityRow("Battery", `${batteryPct}%`) : null}
+        {activityRow(
+          "Movement / activity",
+          signalTier === "strong" ? "Active (recent)" : signalTier === "weak" ? "Intermittent" : "Quiet / stale",
+        )}
+        {testSuccessFlash ? (
+          <div
+            className={
+              bleMacOnly
+                ? "flex gap-2 rounded-md bg-amber-50/90 px-2 py-1.5 ring-1 ring-amber-200/80"
+                : "space-y-0.5"
+            }
+          >
+            {bleMacOnly ? (
+              <CircleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-600" aria-hidden />
+            ) : null}
+            <div className="min-w-0 space-y-0.5">
+              <p
+                className={bleMacOnly ? "text-xs font-medium text-amber-950" : "text-xs font-medium text-emerald-800"}
+              >
+                {bleTestMsg}
+              </p>
+              <p
+                className={
+                  bleMacOnly
+                    ? "text-[10px] font-semibold uppercase tracking-wide text-amber-800/80"
+                    : "text-[10px] font-semibold uppercase tracking-wide text-emerald-900/70"
+                }
+              >
+                via BLE
+              </p>
+            </div>
+          </div>
+        ) : null}
+        {testSuccessFlash && testMatchDetails ? (
+          <TestMatchPayloadPanel details={testMatchDetails} testMatchKind={testMatchKind} debug={testMatchDebug} />
+        ) : null}
+        {assigned ? (
+          <p className="text-ds-muted">
+            <span className="font-medium text-ds-foreground">Assigned to:</span> {assignedLabel}
+          </p>
+        ) : (
+          <p className="text-ds-muted">
+            {device.type === "equipment_tag"
+              ? "Unassigned equipment tag — assign to a tracked asset with the button below."
+              : "Not assigned to a worker yet — assign to finish worker onboarding."}
+          </p>
+        )}
+        {assignmentHint ? <p className="text-[11px] text-ds-muted">{assignmentHint}</p> : null}
+        <div className="flex flex-wrap gap-2">
+          {onAssign && !disableAssignment ? (
+            <button
+              type="button"
+              onClick={onAssign}
+              className={
+                assigned
+                  ? "mt-1 rounded-lg border border-ds-border bg-ds-primary px-3 py-1.5 text-xs font-semibold text-ds-foreground shadow-[var(--ds-shadow-card)] hover:bg-ds-interactive-hover"
+                  : "mt-1 rounded-lg bg-ds-accent px-3 py-1.5 text-xs font-semibold text-ds-accent-foreground shadow-[var(--ds-shadow-card)] hover:bg-ds-accent/90"
+              }
+            >
+              {assigned ? "Reassign" : "Assign"}
+            </button>
+          ) : null}
+          {onTestDetection ? (
+            <button
+              type="button"
+              onClick={onTestDetection}
+              disabled={Boolean(testListening)}
+              className="mt-1 rounded-lg border border-dashed border-ds-border bg-ds-secondary/60 px-3 py-1.5 text-xs font-semibold text-ds-foreground hover:bg-ds-interactive-hover disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {testListening ? "Listening…" : "Test detection"}
+            </button>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function statusPill(ok: boolean, onlineLabel: string, offlineLabel: string) {
   return (
     <span
@@ -237,278 +501,5 @@ function TestMatchPayloadPanel({
 }
 
 export function DeviceCard(props: DeviceCardProps) {
-  if (props.variant === "gateway") {
-    const {
-      gateway,
-      operationalStatus,
-      zoneLabel,
-      lastHeardAt,
-      secondsSinceLastSeen,
-      onChangeZone,
-      testListening,
-      testSuccessFlash,
-      testMatchKind,
-      testMatchDebug,
-      testMatchDetails,
-      onTestDetection,
-    } = props;
-    const online = operationalStatus === "online";
-    const gatewayTestMsg =
-      testMatchKind === "mac_only"
-        ? "Detected (unassigned tag) — assign worker and equipment tags on this page."
-        : "Detection received — traffic matched this gateway.";
-    const gatewayMacOnly = testSuccessFlash && testMatchKind === "mac_only";
-    const relative = formatRelativeTime(lastHeardAt);
-    return (
-      <div className={`${cardBase} ${testRing(testListening, testSuccessFlash, testMatchKind)}`}>
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-md bg-ds-secondary text-ds-foreground">
-              <Router className="h-5 w-5" aria-hidden />
-            </div>
-            <div>
-              <h3 className="font-semibold text-ds-foreground">{gateway.name}</h3>
-              <p className="mt-0.5 font-mono text-xs text-ds-muted">{gateway.identifier}</p>
-            </div>
-          </div>
-          <div className="flex flex-col items-end gap-2">
-            {statusPill(online, "Online", "Offline")}
-            {!online ? <WifiOff className="h-4 w-4 text-ds-muted" aria-hidden /> : null}
-          </div>
-        </div>
-        <div className="mt-4 space-y-2 border-t border-ds-border pt-4">
-          {activityRow("Last heartbeat", relative)}
-          {activityRow("Signal health", gatewaySignalHealth(online, secondsSinceLastSeen ?? null))}
-          {testSuccessFlash ? (
-            <div
-              className={
-                gatewayMacOnly
-                  ? "flex gap-2 rounded-md bg-amber-50/90 px-2 py-1.5 ring-1 ring-amber-200/80"
-                  : "space-y-0.5"
-              }
-            >
-              {gatewayMacOnly ? (
-                <CircleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-600" aria-hidden />
-              ) : null}
-              <div className="min-w-0 space-y-0.5">
-                <p
-                  className={
-                    gatewayMacOnly ? "text-xs font-medium text-amber-950" : "text-xs font-medium text-emerald-800"
-                  }
-                >
-                  {gatewayTestMsg}
-                </p>
-                <p
-                  className={
-                    gatewayMacOnly
-                      ? "text-[10px] font-semibold uppercase tracking-wide text-amber-800/80"
-                      : "text-[10px] font-semibold uppercase tracking-wide text-emerald-900/70"
-                  }
-                >
-                  via Gateway
-                </p>
-              </div>
-            </div>
-          ) : null}
-          {testSuccessFlash && testMatchDetails ? (
-            <TestMatchPayloadPanel
-              details={testMatchDetails}
-              testMatchKind={testMatchKind}
-              debug={testMatchDebug}
-            />
-          ) : null}
-          {!online && relative !== "—" ? (
-            <p className="text-[11px] text-amber-800/90">Offline by policy — check power or uplink if this is unexpected.</p>
-          ) : null}
-        </div>
-        <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-ds-muted">
-          <span className="text-ds-foreground/80">Zone:</span>
-          <span>{zoneLabel ?? "—"}</span>
-          {onChangeZone ? (
-            <button
-              type="button"
-              onClick={onChangeZone}
-              className="ds-link ml-auto text-xs font-semibold"
-            >
-              Change zone
-            </button>
-          ) : null}
-        </div>
-        {onTestDetection ? (
-          <button
-            type="button"
-            onClick={onTestDetection}
-            disabled={Boolean(testListening)}
-            className="mt-3 rounded-lg border border-ds-border bg-ds-primary px-3 py-1.5 text-xs font-semibold text-ds-foreground shadow-[var(--ds-shadow-card)] hover:bg-ds-interactive-hover disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {testListening ? "Waiting for detection…" : "Test detection"}
-          </button>
-        ) : null}
-      </div>
-    );
-  }
-
-  const {
-    device,
-    assignedLabel,
-    emphasizeUnassigned,
-    disableAssignment,
-    assignmentHint,
-    onAssign,
-    testListening,
-    testSuccessFlash,
-    testMatchKind,
-    testMatchDebug,
-    testMatchDetails,
-    signalHistoryMs,
-    onTestDetection,
-  } = props;
-  const bleTestMsg =
-    testMatchKind === "mac_only"
-      ? "Detected (unassigned tag) — assign this tag under Gateways & sensors."
-      : "Detection received — tag seen in live traffic.";
-  const bleMacOnly = testSuccessFlash && testMatchKind === "mac_only";
-  const [nowMs, setNowMs] = useState(() => Date.now());
-  useEffect(() => {
-    const t = window.setInterval(() => setNowMs(Date.now()), 1000);
-    return () => window.clearInterval(t);
-  }, []);
-
-  const assigned = Boolean(device.assigned_worker_id || device.assigned_equipment_id);
-  const batteryPct = device.battery_percent;
-  const bleRelative = formatRelativeTime(device.last_seen_at ?? null);
-  const signalTier = bleSignalTier(device.last_seen_at ?? null, nowMs);
-  const trendCommittedRef = useRef<"up" | "flat" | "down">("flat");
-  const diff = useMemo(() => bleTrendDetectionDiff(signalHistoryMs, nowMs), [signalHistoryMs, nowMs]);
-  const trend = useMemo(() => {
-    if (diff >= TREND_DELTA_THRESHOLD) {
-      trendCommittedRef.current = "up";
-      return "up";
-    }
-    if (diff <= -TREND_DELTA_THRESHOLD) {
-      trendCommittedRef.current = "down";
-      return "down";
-    }
-    return trendCommittedRef.current;
-  }, [diff]);
-  const accent =
-    emphasizeUnassigned && !assigned
-      ? "border-amber-300/90 bg-amber-50/40 shadow-[0_0_0_1px_rgba(251,191,36,0.35)]"
-      : "";
-
-  return (
-    <div className={`${cardBase} ${accent} ${testRing(testListening, testSuccessFlash, testMatchKind)}`}>
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-md bg-ds-secondary text-ds-foreground">
-            <Bluetooth className="h-5 w-5" aria-hidden />
-          </div>
-          <div>
-            <div className="flex flex-wrap items-center gap-2">
-              <h3 className="font-semibold text-ds-foreground">{device.name}</h3>
-              {emphasizeUnassigned && !assigned ? (
-                <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-900 ring-1 ring-amber-200/80">
-                  Unassigned
-                </span>
-              ) : null}
-            </div>
-            <p className="mt-0.5 font-mono text-xs text-ds-muted">{device.mac_address}</p>
-            <p className="mt-1 text-[11px] font-medium uppercase tracking-wide text-ds-muted">
-              {tagTypeLabel(device.type)}
-            </p>
-          </div>
-        </div>
-        <div className="flex flex-col items-end gap-2">
-          {assigned ? statusPill(true, "Assigned", "") : statusPill(false, "", "Unassigned")}
-          <div className="flex flex-col items-end gap-1">
-            <BleSignalIndicator tier={signalTier} />
-            <TrendMark trend={trend} />
-          </div>
-        </div>
-      </div>
-      <div className="mt-4 space-y-2 border-t border-ds-border pt-4 text-sm">
-        {activityRow("Last seen (via edge)", bleRelative)}
-        {batteryPct != null ? activityRow("Battery", `${batteryPct}%`) : null}
-        {activityRow(
-          "Movement / activity",
-          signalTier === "strong" ? "Active (recent)" : signalTier === "weak" ? "Intermittent" : "Quiet / stale",
-        )}
-        {testSuccessFlash ? (
-          <div
-            className={
-              bleMacOnly
-                ? "flex gap-2 rounded-md bg-amber-50/90 px-2 py-1.5 ring-1 ring-amber-200/80"
-                : "space-y-0.5"
-            }
-          >
-            {bleMacOnly ? (
-              <CircleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-600" aria-hidden />
-            ) : null}
-            <div className="min-w-0 space-y-0.5">
-              <p
-                className={
-                  bleMacOnly ? "text-xs font-medium text-amber-950" : "text-xs font-medium text-emerald-800"
-                }
-              >
-                {bleTestMsg}
-              </p>
-              <p
-                className={
-                  bleMacOnly
-                    ? "text-[10px] font-semibold uppercase tracking-wide text-amber-800/80"
-                    : "text-[10px] font-semibold uppercase tracking-wide text-emerald-900/70"
-                }
-              >
-                via BLE
-              </p>
-            </div>
-          </div>
-        ) : null}
-        {testSuccessFlash && testMatchDetails ? (
-          <TestMatchPayloadPanel
-            details={testMatchDetails}
-            testMatchKind={testMatchKind}
-            debug={testMatchDebug}
-          />
-        ) : null}
-        {assigned ? (
-          <p className="text-ds-muted">
-            <span className="font-medium text-ds-foreground">Assigned to:</span> {assignedLabel}
-          </p>
-        ) : (
-          <p className="text-ds-muted">
-            {device.type === "equipment_tag"
-              ? "Unassigned equipment tag — assign to a tracked asset with the button below."
-              : "Not assigned to a worker yet — assign to finish worker onboarding."}
-          </p>
-        )}
-        {assignmentHint ? <p className="text-[11px] text-ds-muted">{assignmentHint}</p> : null}
-        <div className="flex flex-wrap gap-2">
-          {onAssign && !disableAssignment ? (
-            <button
-              type="button"
-              onClick={onAssign}
-              className={
-                assigned
-                  ? "mt-1 rounded-lg border border-ds-border bg-ds-primary px-3 py-1.5 text-xs font-semibold text-ds-foreground shadow-[var(--ds-shadow-card)] hover:bg-ds-interactive-hover"
-                  : "mt-1 rounded-lg bg-ds-accent px-3 py-1.5 text-xs font-semibold text-ds-accent-foreground shadow-[var(--ds-shadow-card)] hover:bg-ds-accent/90"
-              }
-            >
-              {assigned ? "Reassign" : "Assign"}
-            </button>
-          ) : null}
-          {onTestDetection ? (
-            <button
-              type="button"
-              onClick={onTestDetection}
-              disabled={Boolean(testListening)}
-              className="mt-1 rounded-lg border border-dashed border-ds-border bg-ds-secondary/60 px-3 py-1.5 text-xs font-semibold text-ds-foreground hover:bg-ds-interactive-hover disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {testListening ? "Listening…" : "Test detection"}
-            </button>
-          ) : null}
-        </div>
-      </div>
-    </div>
-  );
+  return props.variant === "gateway" ? <GatewayDeviceCard {...props} /> : <BleDeviceCard {...props} />;
 }

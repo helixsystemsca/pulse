@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import require_tenant_user
 from app.services.onboarding_service import try_mark_onboarding_step
 from app.core.database import get_db
-from app.models.domain import User
+from app.models.domain import InventoryItem, User
 from app.models.pulse_models import (
     PulseCategory,
     PulseProject,
@@ -26,6 +26,7 @@ from app.models.pulse_models import (
     PulseProjectAutomationTrigger,
     PulseProjectStatus,
     PulseProjectTask,
+    PulseProjectTaskMaterial,
     PulseTaskDependency,
     PulseTaskStatus,
 )
@@ -62,6 +63,10 @@ from app.schemas.projects import (
     ReadyTaskOut,
     TaskBlockingMini,
     TaskCreate,
+    TaskMaterialCreateIn,
+    TaskMaterialOut,
+    TaskMaterialPatch,
+    ProjectMaterialSummaryRow,
     TaskDependencyCreate,
     TaskDependencyOut,
     TaskHealthItem,
@@ -141,9 +146,76 @@ def _project_out(p: PulseProject) -> ProjectOut:
         metrics=getattr(p, "metrics", None),
         lessons_learned=getattr(p, "lessons_learned", None),
         status=st,
+        repopulation_frequency=getattr(p, "repopulation_frequency", None),
+        archived_at=getattr(p, "archived_at", None),
         created_at=p.created_at,
         updated_at=p.updated_at,
     )
+
+
+def _inv_flags(qty: float | None, low: float | None) -> tuple[bool, bool]:
+    if qty is None:
+        return (False, False)
+    if qty <= 0:
+        return (True, True if (low is not None and low > 0) else False)
+    if low is None:
+        return (False, False)
+    return (False, bool(qty <= low))
+
+
+async def _material_out(db: Db, cid: str, m: PulseProjectTaskMaterial) -> TaskMaterialOut:
+    inv_qty: float | None = None
+    low: float | None = None
+    if m.inventory_item_id:
+        it = await db.get(InventoryItem, str(m.inventory_item_id))
+        if it and str(it.company_id) == cid:
+            inv_qty = float(it.quantity or 0)
+            low = float(it.low_stock_threshold or 0)
+    oos, lowf = _inv_flags(inv_qty, low)
+    return TaskMaterialOut(
+        id=str(m.id),
+        company_id=str(m.company_id),
+        project_id=str(m.project_id),
+        task_id=str(m.task_id),
+        inventory_item_id=str(m.inventory_item_id) if m.inventory_item_id else None,
+        name=m.name,
+        quantity_required=float(m.quantity_required or 0),
+        unit=m.unit,
+        notes=m.notes,
+        created_at=m.created_at,
+        updated_at=m.updated_at,
+        inventory_quantity=inv_qty,
+        low_stock_threshold=low,
+        is_out_of_stock=oos,
+        is_low_stock=lowf,
+    )
+
+
+def _next_start_date(cur: datetime.date, freq: str) -> datetime.date:
+    f = (freq or "").strip().lower()
+    if f in ("quarterly", "quarter"):
+        months = 3
+    elif f in ("semi-annual", "semiannual", "semi annual"):
+        months = 6
+    elif f in ("annual", "yearly"):
+        months = 12
+    else:
+        months = 0
+    if months <= 0:
+        return cur
+    y = cur.year
+    m = cur.month + months
+    while m > 12:
+        y += 1
+        m -= 12
+    # clamp day to month length
+    d = cur.day
+    for day in (d, 28, 27, 26, 25):
+        try:
+            return cur.replace(year=y, month=m, day=day)
+        except ValueError:
+            continue
+    return cur.replace(year=y, month=m, day=1)
 
 
 @router.get("/categories", response_model=list[CategoryOut])
@@ -550,6 +622,7 @@ async def create_project(
         start_date=body.start_date,
         end_date=body.end_date,
         status=proj_svc.parse_project_status(body.status or "active"),
+        repopulation_frequency=(getattr(body, "repopulation_frequency", None) or "").strip() or None,
         goal=getattr(template, "default_goal", None) if template else None,
         notes=getattr(template, "default_notes", None) if template else None,
         success_definition=getattr(template, "default_success_definition", None) if template else None,
@@ -847,6 +920,10 @@ async def patch_project(
             if not c or str(c.company_id) != cid:
                 raise HTTPException(status_code=400, detail="Category not found")
             p.category_id = str(c.id)
+    if "repopulation_frequency" in data:
+        raw = data.pop("repopulation_frequency")
+        v = str(raw).strip() if raw is not None else ""
+        p.repopulation_frequency = v or None
     if "current_phase" in data:
         raw = data.pop("current_phase")
         v = str(raw).strip() if raw is not None else ""
@@ -866,6 +943,8 @@ async def patch_project(
         old_project_status != PulseProjectStatus.completed
         and p.status == PulseProjectStatus.completed
     ):
+        # Archive + optional auto-repopulate.
+        p.archived_at = datetime.now(timezone.utc)
         await _log_activity(
             db,
             project_id=str(p.id),
@@ -873,6 +952,83 @@ async def patch_project(
             title="Project completed",
             description="Project marked complete.",
         )
+        freq = (getattr(p, "repopulation_frequency", None) or "").strip()
+        if freq and freq.lower() not in ("once", "one-time", "one time"):
+            # Clone project (and tasks + materials) into a new future project.
+            dur_days = max(0, int((p.end_date - p.start_date).days))
+            ns = _next_start_date(p.start_date, freq)
+            ne = ns.fromordinal(ns.toordinal() + dur_days)
+            new_proj = PulseProject(
+                company_id=cid,
+                name=p.name,
+                description=p.description,
+                owner_user_id=str(p.owner_user_id) if getattr(p, "owner_user_id", None) else None,
+                created_by_user_id=str(actor.id),
+                category_id=str(p.category_id) if getattr(p, "category_id", None) else None,
+                start_date=ns,
+                end_date=ne,
+                status=PulseProjectStatus.future,
+                repopulation_frequency=freq,
+                goal=getattr(p, "goal", None),
+                notes=getattr(p, "notes", None),
+                success_definition=getattr(p, "success_definition", None),
+                current_phase=getattr(p, "current_phase", None),
+            )
+            db.add(new_proj)
+            await db.flush()
+            # Clone tasks
+            tq = await db.execute(select(PulseProjectTask).where(PulseProjectTask.project_id == str(p.id)))
+            old_tasks = list(tq.scalars().all())
+            old_to_new: dict[str, str] = {}
+            for ot in old_tasks:
+                nt = PulseProjectTask(
+                    company_id=cid,
+                    project_id=str(new_proj.id),
+                    title=ot.title,
+                    description=ot.description,
+                    assigned_user_id=ot.assigned_user_id,
+                    priority=ot.priority,
+                    status=PulseTaskStatus.todo,
+                    start_date=ns,
+                    estimated_completion_minutes=getattr(ot, "estimated_completion_minutes", None),
+                    due_date=None,
+                    estimated_duration=getattr(ot, "estimated_duration", None),
+                    skill_type=getattr(ot, "skill_type", None),
+                    material_notes=getattr(ot, "material_notes", None),
+                    phase_group=getattr(ot, "phase_group", None),
+                    planned_start_at=None,
+                    planned_end_at=None,
+                    location_tag_id=getattr(ot, "location_tag_id", None),
+                    sop_id=getattr(ot, "sop_id", None),
+                    required_skill_names=getattr(ot, "required_skill_names", None) or [],
+                )
+                db.add(nt)
+                await db.flush()
+                old_to_new[str(ot.id)] = str(nt.id)
+                # Clone materials
+                mq = await db.execute(
+                    select(PulseProjectTaskMaterial).where(PulseProjectTaskMaterial.task_id == str(ot.id))
+                )
+                mats = list(mq.scalars().all())
+                for m in mats:
+                    nm = PulseProjectTaskMaterial(
+                        company_id=cid,
+                        project_id=str(new_proj.id),
+                        task_id=str(nt.id),
+                        inventory_item_id=m.inventory_item_id,
+                        name=m.name,
+                        quantity_required=m.quantity_required,
+                        unit=m.unit,
+                        notes=m.notes,
+                    )
+                    db.add(nm)
+            await _log_activity(
+                db,
+                project_id=str(new_proj.id),
+                activity_type=PulseProjectActivityType.note,
+                title="Project created",
+                description=f"Auto-created from completion of: {p.name}",
+            )
     await db.commit()
     await db.refresh(p)
     out = _project_out(p)
@@ -880,6 +1036,147 @@ async def patch_project(
         c = await db.get(PulseCategory, str(p.category_id))
         if c and str(c.company_id) == cid:
             out.category = _category_out(c)
+    return out
+
+
+# —— Task Materials ——
+
+
+@tasks_router.get("/tasks/{task_id}/materials", response_model=list[TaskMaterialOut])
+async def list_task_materials(db: Db, cid: CompanyId, task_id: str) -> list[TaskMaterialOut]:
+    t = await db.get(PulseProjectTask, task_id)
+    if not t or str(t.company_id) != cid:
+        raise HTTPException(status_code=404, detail="Not found")
+    q = await db.execute(
+        select(PulseProjectTaskMaterial)
+        .where(PulseProjectTaskMaterial.task_id == task_id, PulseProjectTaskMaterial.company_id == cid)
+        .order_by(PulseProjectTaskMaterial.created_at.asc())
+    )
+    rows = list(q.scalars().all())
+    return [await _material_out(db, cid, r) for r in rows]
+
+
+@tasks_router.post("/tasks/{task_id}/materials", response_model=TaskMaterialOut, status_code=201)
+async def add_task_material(db: Db, cid: CompanyId, task_id: str, body: TaskMaterialCreateIn) -> TaskMaterialOut:
+    t = await db.get(PulseProjectTask, task_id)
+    if not t or str(t.company_id) != cid:
+        raise HTTPException(status_code=404, detail="Not found")
+    inv_id = (body.inventory_item_id or "").strip() or None
+    name = body.name.strip()
+    unit = (body.unit or "").strip() or None
+    if inv_id:
+        it = await db.get(InventoryItem, inv_id)
+        if not it or str(it.company_id) != cid:
+            raise HTTPException(status_code=400, detail="inventory_item_id not found")
+        name = it.name
+        unit = it.unit
+    row = PulseProjectTaskMaterial(
+        company_id=cid,
+        project_id=str(t.project_id),
+        task_id=task_id,
+        inventory_item_id=inv_id,
+        name=name,
+        quantity_required=float(body.quantity_required),
+        unit=unit,
+        notes=body.notes,
+    )
+    db.add(row)
+    await db.commit()
+    await db.refresh(row)
+    return await _material_out(db, cid, row)
+
+
+@tasks_router.patch("/tasks/{task_id}/materials/{material_id}", response_model=TaskMaterialOut)
+async def patch_task_material(
+    db: Db, cid: CompanyId, task_id: str, material_id: str, body: TaskMaterialPatch
+) -> TaskMaterialOut:
+    t = await db.get(PulseProjectTask, task_id)
+    if not t or str(t.company_id) != cid:
+        raise HTTPException(status_code=404, detail="Not found")
+    row = await db.get(PulseProjectTaskMaterial, material_id)
+    if not row or str(row.company_id) != cid or str(row.task_id) != task_id:
+        raise HTTPException(status_code=404, detail="Not found")
+    data = body.model_dump(exclude_unset=True)
+    if "inventory_item_id" in data:
+        inv_id = str(data["inventory_item_id"]).strip() if data["inventory_item_id"] is not None else ""
+        if not inv_id:
+            row.inventory_item_id = None
+        else:
+            it = await db.get(InventoryItem, inv_id)
+            if not it or str(it.company_id) != cid:
+                raise HTTPException(status_code=400, detail="inventory_item_id not found")
+            row.inventory_item_id = inv_id
+            row.name = it.name
+            row.unit = it.unit
+    if "name" in data and data["name"] is not None:
+        row.name = str(data["name"]).strip()
+    if "quantity_required" in data and data["quantity_required"] is not None:
+        row.quantity_required = float(data["quantity_required"])
+    if "unit" in data:
+        v = data["unit"]
+        row.unit = (str(v).strip() or None) if v is not None else None
+    if "notes" in data:
+        row.notes = data["notes"]
+    await db.commit()
+    await db.refresh(row)
+    return await _material_out(db, cid, row)
+
+
+@tasks_router.delete("/tasks/{task_id}/materials/{material_id}", status_code=204)
+async def delete_task_material(db: Db, cid: CompanyId, task_id: str, material_id: str) -> None:
+    t = await db.get(PulseProjectTask, task_id)
+    if not t or str(t.company_id) != cid:
+        raise HTTPException(status_code=404, detail="Not found")
+    row = await db.get(PulseProjectTaskMaterial, material_id)
+    if not row or str(row.company_id) != cid or str(row.task_id) != task_id:
+        raise HTTPException(status_code=404, detail="Not found")
+    await db.execute(delete(PulseProjectTaskMaterial).where(PulseProjectTaskMaterial.id == material_id))
+    await db.commit()
+
+
+@router.get("/projects/{project_id}/materials", response_model=list[ProjectMaterialSummaryRow])
+async def project_materials_master_list(db: Db, cid: CompanyId, project_id: str) -> list[ProjectMaterialSummaryRow]:
+    p = await db.get(PulseProject, project_id)
+    if not p or str(p.company_id) != cid:
+        raise HTTPException(status_code=404, detail="Not found")
+    q = await db.execute(
+        select(
+            PulseProjectTaskMaterial.inventory_item_id,
+            PulseProjectTaskMaterial.name,
+            PulseProjectTaskMaterial.unit,
+            func.sum(PulseProjectTaskMaterial.quantity_required),
+        )
+        .where(PulseProjectTaskMaterial.project_id == project_id, PulseProjectTaskMaterial.company_id == cid)
+        .group_by(PulseProjectTaskMaterial.inventory_item_id, PulseProjectTaskMaterial.name, PulseProjectTaskMaterial.unit)
+        .order_by(PulseProjectTaskMaterial.name.asc())
+    )
+    rows = q.all()
+    inv_ids = [str(r[0]) for r in rows if r[0]]
+    inv_map: dict[str, InventoryItem] = {}
+    if inv_ids:
+        iq = await db.execute(select(InventoryItem).where(InventoryItem.id.in_(inv_ids)))
+        inv_map = {str(it.id): it for it in iq.scalars().all() if it and str(it.company_id) == cid}
+    out: list[ProjectMaterialSummaryRow] = []
+    for inv_id, name, unit, qty_sum in rows:
+        inv_qty = None
+        low = None
+        if inv_id and str(inv_id) in inv_map:
+            it = inv_map[str(inv_id)]
+            inv_qty = float(it.quantity or 0)
+            low = float(it.low_stock_threshold or 0)
+        oos, lowf = _inv_flags(inv_qty, low)
+        out.append(
+            ProjectMaterialSummaryRow(
+                inventory_item_id=str(inv_id) if inv_id else None,
+                name=str(name),
+                unit=unit,
+                quantity_required_total=float(qty_sum or 0),
+                inventory_quantity=inv_qty,
+                low_stock_threshold=low,
+                is_out_of_stock=oos,
+                is_low_stock=lowf,
+            )
+        )
     return out
 
 

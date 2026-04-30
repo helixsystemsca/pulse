@@ -17,6 +17,9 @@ class ProjectCreate(BaseModel):
     owner_user_id: Optional[str] = Field(None, description="User id within the tenant")
     template_id: Optional[str] = Field(None, description="Optional project template id")
     category_id: Optional[str] = Field(None, description="Optional category id")
+    repopulation_frequency: Optional[str] = Field(
+        None, description="Once | Quarterly | Semi-Annual | Annual"
+    )
 
 
 class ProjectPatch(BaseModel):
@@ -27,6 +30,7 @@ class ProjectPatch(BaseModel):
     status: Optional[str] = None
     owner_user_id: Optional[str] = None
     category_id: Optional[str] = None
+    repopulation_frequency: Optional[str] = None
     goal: Optional[str] = None
     notes: Optional[str] = None
     success_definition: Optional[str] = None
@@ -67,6 +71,8 @@ class ProjectOut(BaseModel):
     metrics: Optional[str] = None
     lessons_learned: Optional[str] = None
     status: str
+    repopulation_frequency: Optional[str] = None
+    archived_at: Optional[datetime] = None
     created_at: datetime
     updated_at: datetime
     health_status: str = "On Track"
@@ -160,6 +166,53 @@ class TaskOut(BaseModel):
 
 class ProjectDetailOut(ProjectOut):
     tasks: list[TaskOut] = []
+
+
+class TaskMaterialCreateIn(BaseModel):
+    inventory_item_id: Optional[str] = None
+    name: str = Field(..., min_length=1, max_length=255)
+    quantity_required: float = Field(default=1, gt=0)
+    unit: Optional[str] = Field(None, max_length=32)
+    notes: Optional[str] = Field(None, max_length=2000)
+
+
+class TaskMaterialPatch(BaseModel):
+    name: Optional[str] = Field(None, min_length=1, max_length=255)
+    quantity_required: Optional[float] = Field(None, gt=0)
+    unit: Optional[str] = Field(None, max_length=32)
+    notes: Optional[str] = Field(None, max_length=2000)
+    inventory_item_id: Optional[str] = None
+
+
+class TaskMaterialOut(BaseModel):
+    id: str
+    company_id: str
+    project_id: str
+    task_id: str
+    inventory_item_id: Optional[str] = None
+    name: str
+    quantity_required: float
+    unit: Optional[str] = None
+    notes: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+
+    # Enriched inventory snapshot for warnings.
+    inventory_quantity: Optional[float] = None
+    low_stock_threshold: Optional[float] = None
+    is_out_of_stock: bool = False
+    is_low_stock: bool = False
+
+
+class ProjectMaterialSummaryRow(BaseModel):
+    inventory_item_id: Optional[str] = None
+    name: str
+    unit: Optional[str] = None
+    quantity_required_total: float
+    inventory_quantity: Optional[float] = None
+    low_stock_threshold: Optional[float] = None
+    is_out_of_stock: bool = False
+    is_low_stock: bool = False
 
 
 class ProjectActivityOut(BaseModel):

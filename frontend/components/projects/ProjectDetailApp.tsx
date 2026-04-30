@@ -32,6 +32,10 @@ import {
   getProject,
   listCriticalSteps,
   listProjectActivity,
+  listProjectMaterials,
+  listTaskMaterials,
+  addTaskMaterial,
+  deleteTaskMaterial,
   patchCriticalStep,
   patchProject,
   patchTask,
@@ -41,9 +45,12 @@ import {
   type CategoryRow,
   type CriticalStepRow,
   type TaskRow,
+  type TaskMaterialRow,
+  type ProjectMaterialSummaryRow,
 } from "@/lib/projectsService";
 import type { PulseWorkerApi } from "@/lib/schedule/pulse-bridge";
 import { useResolvedAvatarSrc } from "@/lib/useResolvedAvatarSrc";
+import { fetchInventoryList, type InventoryRow } from "@/lib/inventoryService";
 
 const PRIMARY_BTN =
   "rounded-[10px] bg-[#2B4C7E] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#234066] disabled:opacity-50";
@@ -135,6 +142,8 @@ export function ProjectDetailApp({ projectId }: { projectId: string }) {
   const [projectCompleting, setProjectCompleting] = useState(false);
   const [categories, setCategories] = useState<CategoryRow[]>([]);
   const [categoryBusy, setCategoryBusy] = useState(false);
+  const [projectMaterials, setProjectMaterials] = useState<ProjectMaterialSummaryRow[] | null>(null);
+  const [projectMaterialsErr, setProjectMaterialsErr] = useState<string | null>(null);
 
   const [overviewGoal, setOverviewGoal] = useState("");
   const [overviewNotes, setOverviewNotes] = useState("");
@@ -179,6 +188,14 @@ export function ProjectDetailApp({ projectId }: { projectId: string }) {
       const p = await getProject(projectId);
       setData(p);
       setErr(null);
+      try {
+        const mats = await listProjectMaterials(projectId);
+        setProjectMaterials(mats);
+        setProjectMaterialsErr(null);
+      } catch {
+        setProjectMaterials([]);
+        setProjectMaterialsErr("Could not load materials.");
+      }
     } catch {
       setErr("Could not load project.");
     }
@@ -759,6 +776,52 @@ export function ProjectDetailApp({ projectId }: { projectId: string }) {
                       </select>
                     </div>
                   </div>
+                </Card>
+                <Card padding="md" className="mt-4 space-y-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-sm font-bold text-ds-foreground">Materials</p>
+                    <button type="button" className={SECONDARY_BTN} onClick={() => void reload()}>
+                      Refresh
+                    </button>
+                  </div>
+                  {projectMaterialsErr ? (
+                    <p className="text-sm font-medium text-red-700 dark:text-red-400">{projectMaterialsErr}</p>
+                  ) : null}
+                  {projectMaterials === null ? (
+                    <p className="text-sm text-ds-muted">Loading…</p>
+                  ) : projectMaterials.length === 0 ? (
+                    <p className="text-sm text-ds-muted">
+                      No materials yet. Add materials on a task to build the project master list.
+                    </p>
+                  ) : (
+                    <ul className="space-y-2">
+                      {projectMaterials.map((m, idx) => {
+                        const warn = Boolean(m.is_out_of_stock || m.is_low_stock);
+                        const badge = m.is_out_of_stock ? "Out" : m.is_low_stock ? "Low" : "";
+                        return (
+                          <li
+                            key={`${m.inventory_item_id ?? "free"}-${m.name}-${idx}`}
+                            className="flex items-center justify-between gap-3 rounded-md border border-ds-border bg-white px-3 py-2 text-sm dark:bg-ds-primary"
+                          >
+                            <div className="min-w-0">
+                              <p className="truncate font-semibold text-ds-foreground">{m.name}</p>
+                              <p className="mt-0.5 text-[11px] text-ds-muted">
+                                Req: {m.quantity_required_total} {m.unit ?? ""}
+                                {typeof m.inventory_quantity === "number"
+                                  ? ` · In stock: ${m.inventory_quantity}`
+                                  : ""}
+                              </p>
+                            </div>
+                            {warn ? (
+                              <span className="shrink-0 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-bold uppercase text-amber-950 ring-1 ring-amber-200/80 dark:bg-amber-950/50 dark:text-amber-100 dark:ring-amber-500/40">
+                                {badge}
+                              </span>
+                            ) : null}
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
                 </Card>
               </div>
             </div>
@@ -1692,6 +1755,13 @@ function ProjectTaskModal({
   const [plannedEndAt, setPlannedEndAt] = useState("");
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [materials, setMaterials] = useState<TaskMaterialRow[] | null>(null);
+  const [materialsErr, setMaterialsErr] = useState<string | null>(null);
+  const [matQuery, setMatQuery] = useState("");
+  const [matQty, setMatQty] = useState<string>("1");
+  const [matNotes, setMatNotes] = useState("");
+  const [matSuggestions, setMatSuggestions] = useState<InventoryRow[]>([]);
+  const [matBusy, setMatBusy] = useState(false);
 
   const selectablePeers = peerTasks.filter((t) => !task || t.id !== task.id);
 
@@ -1749,7 +1819,50 @@ function ProjectTaskModal({
       setPlannedEndAt("");
       setShowAdvanced(false);
     }
+    setMaterials(null);
+    setMaterialsErr(null);
+    setMatQuery("");
+    setMatQty("1");
+    setMatNotes("");
+    setMatSuggestions([]);
   }, [open, task]);
+
+  useEffect(() => {
+    if (!open) return;
+    if (!task?.id) {
+      setMaterials([]);
+      return;
+    }
+    (async () => {
+      try {
+        const rows = await listTaskMaterials(task.id);
+        setMaterials(rows);
+        setMaterialsErr(null);
+      } catch {
+        setMaterials([]);
+        setMaterialsErr("Could not load materials.");
+      }
+    })();
+  }, [open, task?.id]);
+
+  useEffect(() => {
+    const q = matQuery.trim();
+    if (!open || q.length < 2) {
+      setMatSuggestions([]);
+      return;
+    }
+    const t = window.setTimeout(() => {
+      void (async () => {
+        try {
+          const res = await fetchInventoryList({ companyId: null, q, limit: 8, offset: 0 });
+          setMatSuggestions(res.items ?? []);
+        } catch {
+          setMatSuggestions([]);
+        }
+      })();
+    }, 180);
+    return () => window.clearTimeout(t);
+  }, [open, matQuery]);
 
   const depBlockedLive = depSelected.some((id) => {
     const p = peerTasks.find((x) => x.id === id);
@@ -1944,6 +2057,182 @@ function ProjectTaskModal({
                 </option>
               ))}
             </select>
+          </div>
+
+          <div className="space-y-2 rounded-xl border border-ds-border bg-ds-secondary/30 p-4">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-sm font-bold text-ds-foreground">Materials</p>
+              {task ? (
+                <button
+                  type="button"
+                  className="text-xs font-semibold text-pulse-accent hover:underline"
+                  onClick={async () => {
+                    if (!task?.id) return;
+                    try {
+                      const rows = await listTaskMaterials(task.id);
+                      setMaterials(rows);
+                      setMaterialsErr(null);
+                    } catch {
+                      setMaterialsErr("Could not load materials.");
+                    }
+                  }}
+                >
+                  Refresh
+                </button>
+              ) : (
+                <span className="text-[11px] text-ds-muted">Save task to add materials.</span>
+              )}
+            </div>
+            {materialsErr ? <p className="text-sm font-medium text-red-700 dark:text-red-400">{materialsErr}</p> : null}
+            {!task ? (
+              <p className="text-xs text-ds-muted">Create the task first, then add materials from inventory.</p>
+            ) : (
+              <>
+                <div className="grid gap-2 sm:grid-cols-[1fr,110px]">
+                  <div className="relative">
+                    <label className={LABEL} htmlFor="tm-mat-q">
+                      Add material
+                    </label>
+                    <input
+                      id="tm-mat-q"
+                      className={FIELD}
+                      value={matQuery}
+                      onChange={(e) => setMatQuery(e.target.value)}
+                      placeholder="Start typing…"
+                    />
+                    {matSuggestions.length ? (
+                      <div className="absolute z-30 mt-2 w-full rounded-xl border border-ds-border bg-white p-2 shadow-xl dark:bg-ds-primary">
+                        <ul className="max-h-48 overflow-y-auto">
+                          {matSuggestions.map((it) => {
+                            const oos = (it.quantity ?? 0) <= 0;
+                            const low = !oos && (it.quantity ?? 0) <= (it.low_stock_threshold ?? 0);
+                            return (
+                              <li key={it.id}>
+                                <button
+                                  type="button"
+                                  className="flex w-full items-center justify-between gap-3 rounded-lg px-2 py-2 text-left text-sm hover:bg-ds-interactive-hover"
+                                  onClick={() => {
+                                    setMatQuery(it.name);
+                                    setMatSuggestions([]);
+                                  }}
+                                >
+                                  <span className="min-w-0 truncate font-semibold text-ds-foreground">{it.name}</span>
+                                  {oos || low ? (
+                                    <span className="shrink-0 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-bold uppercase text-amber-950 ring-1 ring-amber-200/80 dark:bg-amber-950/50 dark:text-amber-100 dark:ring-amber-500/40">
+                                      {oos ? "Out" : "Low"}
+                                    </span>
+                                  ) : (
+                                    <span className="shrink-0 text-[11px] font-semibold text-ds-muted">
+                                      {it.quantity} {it.unit}
+                                    </span>
+                                  )}
+                                </button>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      </div>
+                    ) : null}
+                  </div>
+                  <div>
+                    <label className={LABEL} htmlFor="tm-mat-qty">
+                      Qty
+                    </label>
+                    <input
+                      id="tm-mat-qty"
+                      inputMode="decimal"
+                      className={FIELD}
+                      value={matQty}
+                      onChange={(e) => setMatQty(e.target.value.replace(/[^\d.]/g, ""))}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className={LABEL} htmlFor="tm-mat-notes">
+                    Notes (optional)
+                  </label>
+                  <input
+                    id="tm-mat-notes"
+                    className={FIELD}
+                    value={matNotes}
+                    onChange={(e) => setMatNotes(e.target.value)}
+                    placeholder="Optional notes"
+                  />
+                </div>
+                <button
+                  type="button"
+                  className={SECONDARY_BTN}
+                  disabled={matBusy || !matQuery.trim() || !(Number(matQty) > 0)}
+                  onClick={async () => {
+                    if (!task?.id) return;
+                    setMatBusy(true);
+                    try {
+                      const q = matQuery.trim();
+                      const match = matSuggestions.find((x) => x.name.trim().toLowerCase() === q.toLowerCase()) ?? null;
+                      await addTaskMaterial(task.id, {
+                        inventory_item_id: match?.id ?? null,
+                        name: q,
+                        quantity_required: Number(matQty),
+                        unit: match?.unit ?? null,
+                        notes: matNotes.trim() || null,
+                      });
+                      const rows = await listTaskMaterials(task.id);
+                      setMaterials(rows);
+                      setMatQuery("");
+                      setMatQty("1");
+                      setMatNotes("");
+                      setMaterialsErr(null);
+                    } catch {
+                      setMaterialsErr("Could not add material.");
+                    } finally {
+                      setMatBusy(false);
+                    }
+                  }}
+                >
+                  Add material
+                </button>
+
+                {materials === null ? (
+                  <p className="text-sm text-ds-muted">Loading…</p>
+                ) : materials.length === 0 ? (
+                  <p className="text-sm text-ds-muted">No materials added yet.</p>
+                ) : (
+                  <ul className="space-y-2">
+                    {materials.map((m) => (
+                      <li
+                        key={m.id}
+                        className="flex items-center justify-between gap-3 rounded-md border border-ds-border bg-white px-3 py-2 text-sm dark:bg-ds-primary"
+                      >
+                        <div className="min-w-0">
+                          <p className="truncate font-semibold text-ds-foreground">{m.name}</p>
+                          <p className="mt-0.5 text-[11px] text-ds-muted">
+                            {m.quantity_required} {m.unit ?? ""}
+                            {m.is_out_of_stock ? " · Out of stock" : m.is_low_stock ? " · Low stock" : ""}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          className="text-xs font-semibold text-red-700 hover:underline dark:text-red-300"
+                          onClick={async () => {
+                            if (!task?.id) return;
+                            setMatBusy(true);
+                            try {
+                              await deleteTaskMaterial(task.id, m.id);
+                              const rows = await listTaskMaterials(task.id);
+                              setMaterials(rows);
+                            } finally {
+                              setMatBusy(false);
+                            }
+                          }}
+                        >
+                          Remove
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </>
+            )}
           </div>
           {task ? (
             <div>

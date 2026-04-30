@@ -25,6 +25,8 @@ export type ProjectRow = {
   metrics?: string | null;
   lessons_learned?: string | null;
   status: string;
+  repopulation_frequency?: string | null;
+  archived_at?: string | null;
   created_at: string;
   updated_at: string;
   task_total: number;
@@ -214,6 +216,7 @@ export async function patchProject(
     summary: string | null;
     metrics: string | null;
     lessons_learned: string | null;
+    repopulation_frequency: string | null;
   }>,
 ): Promise<ProjectRow> {
   return apiFetch<ProjectRow>(`/api/v1/projects/${id}`, { method: "PATCH", json: patch });
@@ -232,6 +235,7 @@ export async function createProject(body: {
   owner_user_id?: string | null;
   template_id?: string | null;
   category_id?: string | null;
+  repopulation_frequency?: string | null;
 }): Promise<ProjectRow> {
   const row = await apiFetch<Omit<ProjectRow, "task_total" | "task_completed" | "progress_pct" | "assignee_user_ids">>(
     "/api/v1/projects",
@@ -244,6 +248,74 @@ export async function createProject(body: {
     progress_pct: 0,
     assignee_user_ids: [],
   };
+}
+
+export type TaskMaterialRow = {
+  id: string;
+  company_id: string;
+  project_id: string;
+  task_id: string;
+  inventory_item_id: string | null;
+  name: string;
+  quantity_required: number;
+  unit: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+  inventory_quantity?: number | null;
+  low_stock_threshold?: number | null;
+  is_out_of_stock?: boolean;
+  is_low_stock?: boolean;
+};
+
+export type ProjectMaterialSummaryRow = {
+  inventory_item_id: string | null;
+  name: string;
+  unit: string | null;
+  quantity_required_total: number;
+  inventory_quantity?: number | null;
+  low_stock_threshold?: number | null;
+  is_out_of_stock?: boolean;
+  is_low_stock?: boolean;
+};
+
+export async function listTaskMaterials(taskId: string): Promise<TaskMaterialRow[]> {
+  return apiFetch<TaskMaterialRow[]>(`/api/v1/tasks/${taskId}/materials`);
+}
+
+export async function addTaskMaterial(
+  taskId: string,
+  body: {
+    inventory_item_id?: string | null;
+    name: string;
+    quantity_required: number;
+    unit?: string | null;
+    notes?: string | null;
+  },
+): Promise<TaskMaterialRow> {
+  return apiFetch<TaskMaterialRow>(`/api/v1/tasks/${taskId}/materials`, { method: "POST", json: body });
+}
+
+export async function patchTaskMaterial(
+  taskId: string,
+  materialId: string,
+  patch: Partial<{
+    inventory_item_id: string | null;
+    name: string;
+    quantity_required: number;
+    unit: string | null;
+    notes: string | null;
+  }>,
+): Promise<TaskMaterialRow> {
+  return apiFetch<TaskMaterialRow>(`/api/v1/tasks/${taskId}/materials/${materialId}`, { method: "PATCH", json: patch });
+}
+
+export async function deleteTaskMaterial(taskId: string, materialId: string): Promise<void> {
+  await apiFetch<void>(`/api/v1/tasks/${taskId}/materials/${materialId}`, { method: "DELETE" });
+}
+
+export async function listProjectMaterials(projectId: string): Promise<ProjectMaterialSummaryRow[]> {
+  return apiFetch<ProjectMaterialSummaryRow[]>(`/api/v1/projects/${projectId}/materials`);
 }
 
 export async function getProject(id: string): Promise<ProjectDetail> {

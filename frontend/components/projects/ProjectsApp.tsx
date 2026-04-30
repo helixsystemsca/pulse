@@ -93,6 +93,7 @@ export function ProjectsApp() {
   const [formScope, setFormScope] = useState("");
   const [formOwner, setFormOwner] = useState("");
   const [formStatus, setFormStatus] = useState<"active" | "future" | "on_hold" | "completed">("active");
+  const [formRepop, setFormRepop] = useState<string>("Once");
   const [templates, setTemplates] = useState<ProjectTemplateRow[]>([]);
   const [templateId, setTemplateId] = useState("");
   const [categories, setCategories] = useState<CategoryRow[]>([]);
@@ -268,6 +269,7 @@ export function ProjectsApp() {
         status: "active",
         template_id: templateId.trim() || null,
         category_id: categoryId || null,
+        repopulation_frequency: formRepop || "Once",
       });
       setRows((prev) => (prev ? [created, ...prev] : prev));
       setCreateOpen(false);
@@ -279,6 +281,7 @@ export function ProjectsApp() {
       setTemplateId("");
       setCategoryId("");
       setCategoryQuery("");
+      setFormRepop("Once");
       setToast("Project created.");
     } catch {
       setToast("Could not create project.");
@@ -306,6 +309,7 @@ export function ProjectsApp() {
             ? "future"
             : "active",
     );
+    setFormRepop((p.repopulation_frequency as string) || "Once");
     setEditOpen(true);
   }
 
@@ -325,6 +329,7 @@ export function ProjectsApp() {
         owner_user_id: formOwner.trim() || null,
         status: formStatus,
         category_id: categoryId || null,
+        repopulation_frequency: formRepop || "Once",
       });
       setRows((prev) =>
         prev?.map((r) =>
@@ -717,6 +722,21 @@ export function ProjectsApp() {
                 </div>
               </div>
               <div>
+                <label className={LABEL} htmlFor="cp-repop">
+                  Repopulation
+                </label>
+                <select id="cp-repop" className={FIELD} value={formRepop} onChange={(e) => setFormRepop(e.target.value)}>
+                  {["Once", "Quarterly", "Semi-Annual", "Annual"].map((v) => (
+                    <option key={v} value={v}>
+                      {v}
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-1 text-[11px] text-pulse-muted">
+                  When the project is completed, a new Future project will be auto-created on this cadence.
+                </p>
+              </div>
+              <div>
                 <label className={LABEL} htmlFor="cp-scope">
                   Scope description
                 </label>
@@ -997,6 +1017,18 @@ export function ProjectsApp() {
                     Note: the backend only allows the project creator to mark a project complete.
                   </p>
                 ) : null}
+              </div>
+              <div>
+                <label className={LABEL} htmlFor="ep-repop">
+                  Repopulation
+                </label>
+                <select id="ep-repop" className={FIELD} value={formRepop} onChange={(e) => setFormRepop(e.target.value)}>
+                  {["Once", "Quarterly", "Semi-Annual", "Annual"].map((v) => (
+                    <option key={v} value={v}>
+                      {v}
+                    </option>
+                  ))}
+                </select>
               </div>
               <div>
                 <label className={LABEL} htmlFor="ep-scope">
