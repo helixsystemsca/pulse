@@ -10,5 +10,5 @@ export const metadata: Metadata = {
 };
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  return <AppLayout mainClassName="bg-dashboard-canvas">{children}</AppLayout>;
+  return <AppLayout mainClassName="bg-ds-bg">{children}</AppLayout>;
 }
