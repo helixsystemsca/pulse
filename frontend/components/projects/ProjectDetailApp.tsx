@@ -24,6 +24,7 @@ import { parseClientApiError } from "@/lib/parse-client-api-error";
 import { ProjectAutomationPanel } from "@/components/projects/ProjectAutomationPanel";
 import {
   addProjectNote,
+  listCategories,
   createCriticalStep,
   createTask,
   deleteCriticalStep,
@@ -37,6 +38,7 @@ import {
   syncTaskDependencies,
   type ProjectDetail,
   type ProjectActivityRow,
+  type CategoryRow,
   type CriticalStepRow,
   type TaskRow,
 } from "@/lib/projectsService";
@@ -131,6 +133,8 @@ export function ProjectDetailApp({ projectId }: { projectId: string }) {
   const [editingTask, setEditingTask] = useState<TaskRow | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [projectCompleting, setProjectCompleting] = useState(false);
+  const [categories, setCategories] = useState<CategoryRow[]>([]);
+  const [categoryBusy, setCategoryBusy] = useState(false);
 
   const [overviewGoal, setOverviewGoal] = useState("");
   const [overviewNotes, setOverviewNotes] = useState("");
@@ -201,6 +205,12 @@ export function ProjectDetailApp({ projectId }: { projectId: string }) {
         setWorkers(w);
       } catch {
         setWorkers([]);
+      }
+      try {
+        const cats = await listCategories();
+        setCategories(cats);
+      } catch {
+        setCategories([]);
       }
       try {
         const st = await apiFetch<{ settings?: { skill_categories?: string[] } }>("/api/v1/workers/settings");
@@ -716,6 +726,38 @@ export function ProjectDetailApp({ projectId }: { projectId: string }) {
                     <p>
                       <span className="font-semibold">Timeline:</span> {data.start_date} → {data.end_date}
                     </p>
+                    <div>
+                      <label className={LABEL} htmlFor="proj-category">
+                        Category
+                      </label>
+                      <select
+                        id="proj-category"
+                        className={FIELD}
+                        value={data.category_id ?? ""}
+                        disabled={categoryBusy}
+                        onChange={async (e) => {
+                          const v = e.target.value || null;
+                          setCategoryBusy(true);
+                          try {
+                            const out = await patchProject(projectId, { category_id: v });
+                            setData((prev) => (prev ? { ...prev, ...out, tasks: prev.tasks } : prev));
+                            setToast("Category updated.");
+                          } catch (err2) {
+                            const { message } = parseClientApiError(err2);
+                            setToast(message || "Could not update category.");
+                          } finally {
+                            setCategoryBusy(false);
+                          }
+                        }}
+                      >
+                        <option value="">— None —</option>
+                        {categories.map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
                 </Card>
               </div>
@@ -1158,16 +1200,19 @@ export function ProjectDetailApp({ projectId }: { projectId: string }) {
                   ) : (
                     (() => {
                       const norm = (s: string | null | undefined) => (s || "").trim();
+                      const startDateFallback = (t: TaskRow) => {
+                        if (!t.start_date) return null;
+                        const d = new Date(`${t.start_date}T00:00:00Z`);
+                        return Number.isFinite(d.getTime()) ? d : null;
+                      };
                       const taskStart = (t: TaskRow) =>
-                        t.planned_start_at ? new Date(t.planned_start_at) : t.due_date ? new Date(t.due_date) : null;
+                        t.planned_start_at ? new Date(t.planned_start_at) : startDateFallback(t);
                       const taskEnd = (t: TaskRow) =>
                         t.planned_end_at
                           ? new Date(t.planned_end_at)
                           : t.planned_start_at
                             ? new Date(t.planned_start_at)
-                            : t.due_date
-                              ? new Date(t.due_date)
-                              : null;
+                            : startDateFallback(t);
                       const allDates = tasks
                         .flatMap((t) => [taskStart(t), taskEnd(t)])
                         .filter((d): d is Date => Boolean(d && Number.isFinite(d.getTime())));
@@ -1545,8 +1590,16 @@ function TaskSection({
                     >
                       {t.priority}
                     </span>
-                    {t.due_date ? (
-                      <span className="text-[11px] tabular-nums text-pulse-muted">Due {t.due_date}</span>
+                    {t.start_date ? (
+                      <span className="text-[11px] tabular-nums text-pulse-muted">Start {t.start_date}</span>
+                    ) : null}
+                    {typeof t.estimated_completion_minutes === "number" && t.estimated_completion_minutes > 0 ? (
+                      <span className="text-[11px] tabular-nums text-pulse-muted">
+                        Est {Math.round(t.estimated_completion_minutes / 60)}h
+                      </span>
+                    ) : null}
+                    {completedStyle && t.end_date ? (
+                      <span className="text-[11px] tabular-nums text-pulse-muted">End {t.end_date}</span>
                     ) : null}
                     {t.is_blocked ? (
                       <span className="inline-flex rounded-full bg-amber-50 px-2 py-0.5 text-[9px] font-bold uppercase text-amber-950 ring-1 ring-amber-200/80 dark:bg-amber-950/50 dark:text-amber-100 dark:ring-amber-500/40">
@@ -1625,7 +1678,8 @@ function ProjectTaskModal({
   const [assignee, setAssignee] = useState("");
   const [priority, setPriority] = useState("medium");
   const [status, setStatus] = useState("todo");
-  const [due, setDue] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [estMinutes, setEstMinutes] = useState<string>("");
   const [locTag, setLocTag] = useState("");
   const [sopRef, setSopRef] = useState("");
   const [depSelected, setDepSelected] = useState<string[]>([]);
@@ -1649,7 +1703,10 @@ function ProjectTaskModal({
       setAssignee(task.assigned_user_id ?? "");
       setPriority(task.priority);
       setStatus(task.status);
-      setDue(task.due_date ?? "");
+      setStartDate(task.start_date ?? "");
+      setEstMinutes(
+        typeof task.estimated_completion_minutes === "number" ? String(task.estimated_completion_minutes) : "",
+      );
       setLocTag(task.location_tag_id ?? "");
       setSopRef(task.sop_id ?? "");
       setDepSelected([...(task.depends_on_task_ids ?? [])]);
@@ -1678,7 +1735,8 @@ function ProjectTaskModal({
       setAssignee("");
       setPriority("medium");
       setStatus("todo");
-      setDue("");
+      setStartDate("");
+      setEstMinutes("");
       setLocTag("");
       setSopRef("");
       setDepSelected([]);
@@ -1713,7 +1771,8 @@ function ProjectTaskModal({
           assigned_user_id: assignee || null,
           priority,
           status,
-          due_date: due || null,
+          start_date: startDate || null,
+          estimated_completion_minutes: estMinutes.trim() ? Number(estMinutes.trim()) : null,
           estimated_duration: estimatedDuration.trim() || null,
           skill_type: skillType.trim() || null,
           material_notes: materialNotes.trim() || null,
@@ -1733,7 +1792,8 @@ function ProjectTaskModal({
           assigned_user_id: assignee || null,
           priority,
           status,
-          due_date: due || null,
+          start_date: startDate || null,
+          estimated_completion_minutes: estMinutes.trim() ? Number(estMinutes.trim()) : null,
           estimated_duration: estimatedDuration.trim() || null,
           skill_type: skillType.trim() || null,
           material_notes: materialNotes.trim() || null,
@@ -1802,11 +1862,33 @@ function ProjectTaskModal({
               </select>
             </div>
             <div>
-              <label className={LABEL} htmlFor="tm-due">
-                Due date
+              <label className={LABEL} htmlFor="tm-start">
+                Start date
               </label>
-              <input id="tm-due" type="date" className={FIELD} value={due} onChange={(e) => setDue(e.target.value)} />
+              <input
+                id="tm-start"
+                type="date"
+                className={FIELD}
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+              />
             </div>
+          </div>
+          <div>
+            <label className={LABEL} htmlFor="tm-est-min">
+              Estimated completion (minutes)
+            </label>
+            <input
+              id="tm-est-min"
+              inputMode="numeric"
+              className={FIELD}
+              value={estMinutes}
+              onChange={(e) => setEstMinutes(e.target.value.replace(/[^\d]/g, ""))}
+              placeholder="e.g. 240"
+            />
+            <p className="mt-1 text-[11px] text-ds-muted">
+              End date is filled automatically when the task is marked complete.
+            </p>
           </div>
           <div>
             <label className={LABEL} htmlFor="tm-loc">

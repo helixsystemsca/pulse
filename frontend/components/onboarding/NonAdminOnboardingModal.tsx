@@ -63,8 +63,6 @@ export function NonAdminOnboardingModal() {
     setOpen(false);
   }, [refresh]);
 
-  if (!open) return null;
-
   const guidedSteps: GuidedTourStep[] = useMemo(
     () => [
       {
@@ -93,6 +91,8 @@ export function NonAdminOnboardingModal() {
     ],
     [],
   );
+
+  if (!open) return null;
 
   return (
     <div className="fixed inset-0 z-[560] flex items-center justify-center p-4" role="dialog" aria-modal="true">

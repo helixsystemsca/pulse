@@ -110,7 +110,7 @@ export function ProfileGamificationPanel() {
       {a.totalXp === 0 ? (
         <div className="rounded-md border border-ds-border bg-ds-secondary px-5 py-6 text-center space-y-3">
           <p className="text-2xl">🏁</p>
-          <p className="text-sm font-bold text-ds-foreground">You're just getting started</p>
+          <p className="text-sm font-bold text-ds-foreground">You&apos;re just getting started</p>
           <p className="text-xs text-ds-muted max-w-xs mx-auto leading-relaxed">
             Complete your first task to earn XP and start building your streak. Your stats will appear here.
           </p>

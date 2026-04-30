@@ -592,7 +592,7 @@ async def get_project(db: Db, cid: CompanyId, project_id: str) -> ProjectDetailO
     tq = await db.execute(
         select(PulseProjectTask)
         .where(PulseProjectTask.project_id == project_id)
-        .order_by(PulseProjectTask.due_date.asc(), PulseProjectTask.created_at)
+        .order_by(PulseProjectTask.start_date.asc().nullslast(), PulseProjectTask.created_at)
     )
     task_orms = list(tq.scalars().all())
     ids = [str(x.id) for x in task_orms]
@@ -720,7 +720,7 @@ async def list_ready_tasks(db: Db, cid: CompanyId, project_id: str) -> list[Read
     tq = await db.execute(
         select(PulseProjectTask)
         .where(PulseProjectTask.project_id == project_id)
-        .order_by(PulseProjectTask.due_date.asc(), PulseProjectTask.created_at)
+        .order_by(PulseProjectTask.start_date.asc().nullslast(), PulseProjectTask.created_at)
     )
     task_orms = list(tq.scalars().all())
     ids = [str(x.id) for x in task_orms]
@@ -1014,6 +1014,8 @@ async def create_task(
     loc = (body.location_tag_id.strip() if body.location_tag_id else None) or None
     sop = (body.sop_id.strip() if body.sop_id else None) or None
     skills = _norm_task_skill_names(body.required_skill_names)
+    today = datetime.now(timezone.utc).date()
+    start_date = body.start_date or today
     t = PulseProjectTask(
         company_id=cid,
         project_id=body.project_id,
@@ -1022,6 +1024,8 @@ async def create_task(
         assigned_user_id=body.assigned_user_id,
         priority=proj_svc.parse_task_priority(body.priority or "medium"),
         status=proj_svc.parse_task_status(body.status or "todo"),
+        start_date=start_date,
+        estimated_completion_minutes=body.estimated_completion_minutes,
         due_date=body.due_date,
         estimated_duration=(body.estimated_duration or "").strip() or None,
         skill_type=(body.skill_type or "").strip() or None,
@@ -1087,6 +1091,11 @@ async def patch_task(
         t.title = data["title"].strip()
     if "description" in data:
         t.description = data["description"]
+    if "start_date" in data:
+        t.start_date = data["start_date"]
+    if "estimated_completion_minutes" in data:
+        raw = data["estimated_completion_minutes"]
+        t.estimated_completion_minutes = int(raw) if raw is not None else None
     if "due_date" in data:
         t.due_date = data["due_date"]
     if "estimated_duration" in data:
@@ -1116,6 +1125,15 @@ async def patch_task(
     await proj_svc.ensure_calendar_shift_for_task(db, cid, t)
     await project_automation_engine.run_rules_for_task_change(db, cid, t, old_status, old_due)
     if old_status != PulseTaskStatus.complete and t.status == PulseTaskStatus.complete:
+        # Fill end_date + actual minutes when task is completed.
+        if getattr(t, "end_date", None) is None:
+            t.end_date = datetime.now(timezone.utc).date()
+        if getattr(t, "start_date", None) and getattr(t, "end_date", None):
+            sd = t.start_date
+            ed = t.end_date
+            # Date resolution: compute whole-day minutes.
+            delta_days = max(0, int((ed - sd).days))
+            t.actual_completion_minutes = delta_days * 1440
         await _log_activity(
             db,
             project_id=str(t.project_id),

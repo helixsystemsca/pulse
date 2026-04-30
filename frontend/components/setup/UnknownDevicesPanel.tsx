@@ -165,8 +165,8 @@ export function UnknownDevicesPanel({
               Discovered · Not Registered
             </h3>
             <p className="mt-0.5 text-xs text-blue-900/75 dark:text-blue-200/70">
-              These MACs were heard by a gateway but aren't registered yet. Register them here or
-              dismiss if they're not your beacons.
+              These MACs were heard by a gateway but aren&apos;t registered yet. Register them here or
+              dismiss if they&apos;re not your beacons.
             </p>
           </div>
         </div>

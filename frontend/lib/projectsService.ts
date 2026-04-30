@@ -45,6 +45,10 @@ export type TaskRow = {
   priority: string;
   status: string;
   required_skill_names?: string[];
+  start_date?: string | null;
+  estimated_completion_minutes?: number | null;
+  end_date?: string | null;
+  actual_completion_minutes?: number | null;
   due_date: string | null;
   estimated_duration?: string | null;
   skill_type?: string | null;
@@ -368,6 +372,8 @@ export async function createTask(body: {
   assigned_user_id?: string | null;
   priority?: string;
   status?: string;
+  start_date?: string | null;
+  estimated_completion_minutes?: number | null;
   due_date?: string | null;
   estimated_duration?: string | null;
   skill_type?: string | null;
@@ -390,6 +396,8 @@ export async function patchTask(
     assigned_user_id: string | null;
     priority: string;
     status: string;
+    start_date: string | null;
+    estimated_completion_minutes: number | null;
     due_date: string | null;
     estimated_duration: string | null;
     skill_type: string | null;

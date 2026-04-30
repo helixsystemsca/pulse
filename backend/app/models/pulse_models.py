@@ -683,6 +683,14 @@ class PulseProjectTask(Base):
         nullable=False,
         index=True,
     )
+    # Preferred lightweight planning fields (date + estimate) used by the PM UI.
+    start_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True, index=True)
+    estimated_completion_minutes: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    # Filled automatically when a task is completed; used for estimate vs actual.
+    end_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True, index=True)
+    actual_completion_minutes: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+
+    # Legacy fields (kept for backward compatibility with existing clients and reports).
     due_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True, index=True)
     estimated_duration: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
     skill_type: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)

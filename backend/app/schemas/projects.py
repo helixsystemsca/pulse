@@ -81,6 +81,10 @@ class TaskCreate(BaseModel):
     assigned_user_id: Optional[str] = None
     priority: str = Field(default="medium")
     status: str = Field(default="todo")
+    # New planning fields (preferred over due_date).
+    start_date: Optional[date] = None
+    estimated_completion_minutes: Optional[int] = Field(None, ge=1, le=60 * 24 * 365)
+    # Legacy fields (kept for backward compatibility).
     due_date: Optional[date] = None
     estimated_duration: Optional[str] = Field(None, max_length=64)
     skill_type: Optional[str] = Field(None, max_length=128)
@@ -99,6 +103,8 @@ class TaskPatch(BaseModel):
     assigned_user_id: Optional[str] = None
     priority: Optional[str] = None
     status: Optional[str] = None
+    start_date: Optional[date] = None
+    estimated_completion_minutes: Optional[int] = Field(None, ge=1, le=60 * 24 * 365)
     due_date: Optional[date] = None
     estimated_duration: Optional[str] = Field(None, max_length=64)
     skill_type: Optional[str] = Field(None, max_length=128)
@@ -127,6 +133,10 @@ class TaskOut(BaseModel):
     priority: str
     status: str
     required_skill_names: list[str] = Field(default_factory=list)
+    start_date: Optional[date] = None
+    estimated_completion_minutes: Optional[int] = None
+    end_date: Optional[date] = None
+    actual_completion_minutes: Optional[int] = None
     due_date: Optional[date]
     estimated_duration: Optional[str] = None
     skill_type: Optional[str] = None
@@ -206,6 +216,10 @@ def task_orm_to_out(
     loc_s = str(loc).strip() if loc else None
     sop_s = str(sop).strip() if sop else None
     est = getattr(t, "estimated_duration", None)
+    start_date = getattr(t, "start_date", None)
+    est_min = getattr(t, "estimated_completion_minutes", None)
+    end_date = getattr(t, "end_date", None)
+    actual_min = getattr(t, "actual_completion_minutes", None)
     skill_type = getattr(t, "skill_type", None)
     material_notes = getattr(t, "material_notes", None)
     phase_group = getattr(t, "phase_group", None)
@@ -223,7 +237,13 @@ def task_orm_to_out(
     is_ready = st == "todo" and not is_blocked
     _today = datetime.now(timezone.utc).date()
     _ud = getattr(t, "updated_at", None)
-    is_overdue = bool(t.due_date and t.due_date < _today and st != "complete")
+    # Overdue is derived from the preferred planning fields when possible.
+    derived_due: Optional[date] = None
+    if start_date and isinstance(est_min, int) and est_min > 0:
+        # Convert minutes → days (ceil) since we're working at date resolution.
+        days = (est_min + 1440 - 1) // 1440
+        derived_due = start_date.fromordinal(start_date.toordinal() + int(days))
+    is_overdue = bool((t.due_date or derived_due) and (t.due_date or derived_due) < _today and st != "complete")
     is_stale = bool(
         st != "complete"
         and _ud is not None
@@ -239,6 +259,10 @@ def task_orm_to_out(
         priority=pr,
         status=st,
         required_skill_names=skill_list,
+        start_date=start_date,
+        estimated_completion_minutes=int(est_min) if isinstance(est_min, int) else None,
+        end_date=end_date,
+        actual_completion_minutes=int(actual_min) if isinstance(actual_min, int) else None,
         due_date=t.due_date,
         estimated_duration=str(est).strip() if est else None,
         skill_type=str(skill_type).strip() if skill_type else None,
