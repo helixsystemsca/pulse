@@ -22,6 +22,8 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { GridLayout, noCompactor, useContainerWidth, type Layout, type LayoutItem } from "react-grid-layout";
 import { DashboardAddWidgetWizard } from "@/components/dashboard/DashboardAddWidgetWizard";
 import { DashboardCustomPeekWidget } from "@/components/dashboard/DashboardCustomPeekWidget";
+import { Button, ButtonLink } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
 import { XpTasksWidget } from "@/components/gamification/XpTasksWidget";
 import { AdminOnboardingChecklist } from "@/components/onboarding/AdminOnboardingChecklist";
 import { apiFetch, isApiMode } from "@/lib/api";
@@ -45,6 +47,7 @@ import {
   shiftIntervalBoundsMs,
 } from "@/lib/schedule/dashboardScheduleDay";
 import type { PulseShiftApi, PulseWorkerApi } from "@/lib/schedule/pulse-bridge";
+import { UI } from "@/styles/ui";
 
 import "react-grid-layout/css/styles.css";
 import "react-resizable/css/styles.css";
@@ -63,18 +66,13 @@ function WorkerDashCard({
   className?: string;
 }) {
   return (
-    <section
-      className={[
-        "rounded-2xl border border-ds-border bg-white p-5 shadow-[var(--ds-shadow-card)] dark:bg-ds-primary",
-        className,
-      ].join(" ")}
-    >
+    <Card className={className}>
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <p className="font-headline text-base font-extrabold text-ds-foreground">{title}</p>
-        {headerRight ? <div className="text-xs font-semibold text-ds-muted">{headerRight}</div> : null}
+        <p className={UI.header}>{title}</p>
+        {headerRight ? <div className={`${UI.subheader} font-semibold text-gray-600`}>{headerRight}</div> : null}
       </div>
       <div className="mt-4">{children}</div>
-    </section>
+    </Card>
   );
 }
 
@@ -1001,21 +999,21 @@ function buildLiveModel(
 function TagPill({ tag }: { tag: WorkTag }) {
   if (tag.kind === "progress") {
     return (
-      <span className="app-badge-blue shrink-0 rounded-full px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide">
+      <span className="app-badge-blue shrink-0 border border-blue-200 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide">
         {tag.label}
       </span>
     );
   }
   if (tag.kind === "overdue") {
     return (
-      <span className="app-badge-amber shrink-0 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold">
-        <span className="h-1.5 w-1.5 rounded-full bg-current opacity-90" />
+      <span className="app-badge-amber shrink-0 inline-flex items-center gap-1 border border-amber-300 px-2 py-0.5 text-[11px] font-bold">
+        <span className="h-1.5 w-1.5 bg-current opacity-90" />
         {tag.label}
       </span>
     );
   }
   return (
-    <span className="app-badge-red shrink-0 self-start rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide">
+    <span className="app-badge-red shrink-0 self-start border border-red-200 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide">
       {tag.label}
     </span>
   );
@@ -1052,14 +1050,14 @@ function OperationsHeaderLogoMark({
 
   return (
     <div
-      className="flex h-[4.5rem] w-[4.5rem] shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-ds-border bg-ds-surface-primary shadow-[var(--ds-shadow-card)]"
+      className="flex h-[4.5rem] w-[4.5rem] shrink-0 items-center justify-center overflow-hidden border-2 border-gray-200 bg-gray-50"
       title={(companyName?.trim() || "Company").slice(0, 48)}
     >
       {src ? (
         // eslint-disable-next-line @next/next/no-img-element -- blob or tenant https URL
         <img src={src} alt="" className="max-h-[2.75rem] max-w-[2.75rem] object-contain" />
       ) : waiting ? (
-        <span className="h-8 w-8 animate-pulse rounded-md bg-ds-secondary" aria-hidden />
+        <span className="h-8 w-8 animate-pulse bg-gray-200" aria-hidden />
       ) : (
         <span className="px-1 text-center text-xs font-bold leading-tight text-ds-foreground">
           {initials}
@@ -1285,7 +1283,7 @@ function DashboardBody({
         render: () => (
           <>
             <div className="flex flex-wrap items-start justify-between gap-3">
-              <span className="inline-flex items-center rounded-full border border-ds-border bg-ds-interactive-hover px-3 py-1 text-xs font-bold tracking-tight text-ds-foreground">
+              <span className="inline-flex items-center border border-gray-200 bg-gray-100 px-3 py-1 text-xs font-bold tracking-tight text-gray-900">
                 {model.workRequests.awaitingCount} requests awaiting assignment
               </span>
             </div>
@@ -1298,7 +1296,7 @@ function DashboardBody({
               {model.workRequests.newest ? (
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-wider text-ds-muted">Newest</p>
-                  <div className="mt-2 rounded-md border border-ds-border bg-transparent p-4">
+                  <div className="mt-2 border border-gray-200 p-4">
                     <div className="flex flex-wrap items-start justify-between gap-2">
                       <div className="min-w-0">
                         <p className="text-sm font-semibold text-ds-foreground">{model.workRequests.newest.title}</p>
@@ -1321,7 +1319,7 @@ function DashboardBody({
               {model.workRequests.oldest ? (
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-wider text-ds-muted">Oldest</p>
-                  <div className="mt-2 rounded-md border border-ds-border bg-transparent p-4">
+                  <div className="mt-2 border border-gray-200 p-4">
                     <div className="flex flex-wrap items-start justify-between gap-2">
                       <div className="min-w-0">
                         <p className="text-sm font-semibold text-ds-foreground">{model.workRequests.oldest.title}</p>
@@ -1348,7 +1346,7 @@ function DashboardBody({
                           <p className="text-sm font-bold text-ds-foreground">{row.title}</p>
                           <p className="mt-0.5 text-xs text-ds-muted">{row.subtitle}</p>
                         </div>
-                        <span className="app-badge-red shrink-0 self-start rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide">
+                        <span className="app-badge-red shrink-0 self-start border border-red-200 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide">
                           Urgent
                         </span>
                       </li>
@@ -1369,12 +1367,12 @@ function DashboardBody({
               {model.equipment.activeCount} Active Tools
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-ds-border bg-ds-interactive-hover px-3 py-1 text-xs font-semibold text-ds-foreground">
-                <span className="h-1.5 w-1.5 rounded-full bg-current opacity-90" />
+              <span className="inline-flex items-center gap-1.5 border border-gray-200 bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-900">
+                <span className="h-1.5 w-1.5 bg-current opacity-90" />
                 {model.equipment.missingCount} Missing
               </span>
-              <span className="app-badge-red inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold">
-                <span className="h-1.5 w-1.5 rounded-full bg-current opacity-90" />
+              <span className="app-badge-red inline-flex items-center gap-1.5 border border-red-200 px-3 py-1 text-xs font-semibold">
+                <span className="h-1.5 w-1.5 bg-current opacity-90" />
                 {model.equipment.outOfServiceCount} Out of Service
               </span>
             </div>
@@ -1389,21 +1387,15 @@ function DashboardBody({
                       </p>
                       <p className="mt-1 text-xs text-ds-muted">Schedule a cleanup?</p>
                       <div className="mt-3 flex flex-wrap gap-2">
-                        <Link
-                          href={
-                            pulseTenantNav.find((n) => n.href === "/dashboard/inventory")?.href ?? "/dashboard/inventory"
-                          }
-                          className="ds-btn-solid-primary inline-flex px-3 py-1.5 text-xs"
+                        <ButtonLink
+                          href={pulseTenantNav.find((n) => n.href === "/dashboard/inventory")?.href ?? "/dashboard/inventory"}
+                          className="text-xs"
                         >
                           Review inventory
-                        </Link>
-                        <button
-                          type="button"
-                          onClick={onDismissZonePrompt}
-                          className="ds-btn-secondary px-3 py-1.5 text-xs"
-                        >
+                        </ButtonLink>
+                        <Button type="button" variant="secondary" className="text-xs" onClick={onDismissZonePrompt}>
                           Dismiss
-                        </button>
+                        </Button>
                       </div>
                     </div>
                   </div>
@@ -1428,7 +1420,7 @@ function DashboardBody({
         accent: "green" as const,
         render: () => (
           <div className="mt-1 flex flex-1 flex-col gap-4">
-            <div className="flex items-start justify-between gap-4 rounded-md border border-ds-border bg-transparent p-4">
+            <div className="flex items-start justify-between gap-4 border border-gray-200 p-4">
               <div>
                 <p className="text-sm font-semibold text-ds-foreground">Consumables</p>
                 <p className="mt-1 text-xs text-ds-muted">
@@ -1436,10 +1428,10 @@ function DashboardBody({
                 </p>
               </div>
               <span
-                className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                className={`shrink-0 border px-2 py-0.5 text-[11px] font-semibold ${
                   model.inventory.consumablesOk
-                    ? "border border-ds-border bg-ds-interactive-hover text-ds-foreground"
-                    : "border border-ds-border bg-ds-secondary text-[var(--ds-info)]"
+                    ? "border-gray-200 bg-gray-100 text-gray-900"
+                    : "border-gray-200 bg-gray-100 text-blue-700"
                 }`}
               >
                 {model.inventory.consumablesOk ? "OK" : "Review"}
@@ -1455,23 +1447,24 @@ function DashboardBody({
                     <p className="text-sm font-semibold text-ds-foreground">{model.inventory.alert.category}</p>
                     <p className="mt-2 text-xs font-medium text-ds-foreground">{model.inventory.alert.message}</p>
                   </div>
-                  <span className="shrink-0 rounded-full border border-ds-border bg-ds-secondary px-2 py-0.5 text-[11px] font-semibold text-[var(--ds-info)]">
+                  <span className="shrink-0 border border-gray-200 bg-gray-100 px-2 py-0.5 text-[11px] font-semibold text-blue-700">
                     Soon
                   </span>
                 </div>
                 <div className="mt-3 flex flex-wrap gap-2">
-                  <Link
+                  <ButtonLink
                     href={pulseTenantNav.find((n) => n.href === "/dashboard/inventory")?.href ?? "/dashboard/inventory"}
-                    className="ds-btn-secondary px-3 py-1.5 text-xs"
+                    variant="secondary"
+                    className="text-xs"
                   >
                     View stock
-                  </Link>
-                  <Link
+                  </ButtonLink>
+                  <ButtonLink
                     href={pulseTenantNav.find((n) => n.href === "/dashboard/inventory")?.href ?? "/dashboard/inventory"}
-                    className="ds-btn-solid-primary inline-flex px-3 py-1.5 text-xs"
+                    className="text-xs"
                   >
                     Order Now
-                  </Link>
+                  </ButtonLink>
                 </div>
               </div>
             ) : (
@@ -1487,9 +1480,9 @@ function DashboardBody({
                   {model.inventory.shoppingList.map((item) => (
                     <li
                       key={item}
-                      className="ds-table-row-hover flex cursor-default items-center gap-2 rounded-md border border-ds-border bg-transparent px-3 py-2 text-sm text-ds-foreground"
+                      className="ds-table-row-hover flex cursor-default items-center gap-2 border border-gray-200 px-3 py-2 text-sm text-gray-900"
                     >
-                      <span className="flex h-4 w-4 shrink-0 rounded border border-ds-border bg-transparent" aria-hidden />
+                      <span className="flex h-4 w-4 shrink-0 border border-gray-300 bg-transparent" aria-hidden />
                       {item}
                     </li>
                   ))}
@@ -1648,16 +1641,16 @@ function DashboardBody({
 
   return (
     <div className="w-full space-y-6">
-      <div className="rounded-2xl border border-ds-border bg-ds-primary shadow-[var(--ds-shadow-card)]">
-        <div className="flex flex-wrap items-center justify-between gap-4 px-5 py-4">
+      <Card>
+        <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="min-w-0">
-            <p className="text-[11px] font-extrabold uppercase tracking-[0.18em] text-ds-muted">Operations dashboard</p>
-            <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm font-semibold text-ds-foreground">
+            <p className={`${UI.subheader} font-extrabold uppercase tracking-[0.18em]`}>Operations dashboard</p>
+            <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm font-semibold text-gray-900">
               <span>{dateInBc(now)}</span>
-              <span className="text-ds-muted">•</span>
+              <span className="text-gray-500">•</span>
               <span className="tabular-nums">{timeInBc(now)}</span>
-              <span className="text-ds-muted">•</span>
-              <span className="inline-flex items-center gap-1.5 text-ds-muted">
+              <span className="text-gray-500">•</span>
+              <span className="inline-flex items-center gap-1.5 text-gray-500">
                 <Cloud className="h-4 w-4" aria-hidden />
                 {weatherTemp} · {weatherLabel}
               </span>
@@ -1665,17 +1658,13 @@ function DashboardBody({
           </div>
           <div className="flex items-center gap-2">
             {!isKiosk ? (
-              <button
-                type="button"
-                className="ds-btn-secondary inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold"
-                onClick={openKiosk}
-              >
+              <Button type="button" variant="secondary" className="inline-flex items-center gap-2" onClick={openKiosk}>
                 <Maximize2 className="h-4 w-4" aria-hidden />
                 Fullscreen
-              </button>
+              </Button>
             ) : null}
             {!hideHeaderWelcome ? (
-              <span className="inline-flex items-center gap-2 rounded-xl border border-ds-border bg-ds-secondary/40 px-3 py-2 text-sm font-semibold text-ds-foreground">
+              <span className="inline-flex items-center gap-2 border border-gray-200 bg-gray-100 px-3 py-2 text-sm font-semibold text-gray-900">
                 <span className="hidden sm:inline">Welcome,</span> {model.welcomeName}
               </span>
             ) : null}
@@ -1683,60 +1672,44 @@ function DashboardBody({
         </div>
 
         {model.bannerNote ? (
-          <div className="border-t border-ds-border bg-ds-secondary/40 px-5 py-2.5 text-sm font-semibold text-ds-foreground">
-            {model.bannerNote}
-          </div>
+          <div className="mt-4 border-t border-gray-200 pt-4 text-sm font-semibold text-gray-900">{model.bannerNote}</div>
         ) : null}
-      </div>
+      </Card>
 
-      <div className="rounded-2xl border border-ds-border bg-white p-5 shadow-[var(--ds-shadow-card)] dark:bg-ds-primary">
+      <Card className="space-y-5">
         {!readOnly ? (
-          <div className="mb-5 flex flex-wrap items-center gap-2">
-          <div
-            className="inline-flex items-center rounded-xl border border-ds-border bg-ds-secondary p-1 shadow-[var(--ds-shadow-card)] dark:bg-ds-secondary"
-            role="group"
-            aria-label="Dashboard layout"
-          >
-            <button
-              type="button"
-              onClick={() => setEditMode((v) => !v)}
-              title={editMode ? "Done editing layout" : "Edit dashboard layout"}
-              aria-label={editMode ? "Done editing layout" : "Edit dashboard layout"}
-              aria-pressed={editMode}
-              className={[
-                "inline-flex h-10 w-10 cursor-pointer items-center justify-center rounded-lg transition-colors",
-                editMode
-                  ? "bg-ds-success text-ds-on-accent shadow-sm"
-                  : "text-ds-foreground hover:bg-ds-surface-elevated dark:hover:bg-white/10",
-              ].join(" ")}
-            >
-              {editMode ? (
-                <Check className="h-[1.125rem] w-[1.125rem] shrink-0" strokeWidth={2.5} aria-hidden />
-              ) : (
-                <Pencil className="h-[1.125rem] w-[1.125rem] shrink-0" strokeWidth={2.5} aria-hidden />
-              )}
-            </button>
-            <span className="mx-0.5 h-6 w-px shrink-0 bg-ds-border" aria-hidden />
-            <button
-              type="button"
-              disabled={!editMode}
-              onClick={() => editMode && setShowAddWidget(true)}
-              title={
-                editMode
-                  ? "Add a built-in card or a custom page peek"
-                  : "Turn on edit mode to add widgets"
-              }
-              aria-label="Add widget"
-              className={[
-                "inline-flex h-10 w-10 items-center justify-center rounded-lg transition-colors",
-                editMode
-                  ? "cursor-pointer text-ds-foreground hover:bg-ds-surface-elevated dark:hover:bg-white/10"
-                  : "cursor-not-allowed text-ds-muted/50",
-              ].join(" ")}
-            >
-              <Plus className="h-[1.125rem] w-[1.125rem] shrink-0" strokeWidth={2.5} aria-hidden />
-            </button>
-          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="inline-flex items-center gap-1 border border-gray-200 p-1" role="group" aria-label="Dashboard layout">
+              <Button
+                type="button"
+                variant={editMode ? "primary" : "secondary"}
+                onClick={() => setEditMode((v) => !v)}
+                title={editMode ? "Done editing layout" : "Edit dashboard layout"}
+                aria-label={editMode ? "Done editing layout" : "Edit dashboard layout"}
+                aria-pressed={editMode}
+                className="flex h-10 w-10 shrink-0 items-center justify-center p-0"
+              >
+                {editMode ? (
+                  <Check className="h-[1.125rem] w-[1.125rem] shrink-0" strokeWidth={2.5} aria-hidden />
+                ) : (
+                  <Pencil className="h-[1.125rem] w-[1.125rem] shrink-0" strokeWidth={2.5} aria-hidden />
+                )}
+              </Button>
+              <span className="mx-0.5 h-6 w-px shrink-0 bg-gray-200" aria-hidden />
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={!editMode}
+                onClick={() => editMode && setShowAddWidget(true)}
+                title={
+                  editMode ? "Add a built-in card or a custom page peek" : "Turn on edit mode to add widgets"
+                }
+                aria-label="Add widget"
+                className="flex h-10 w-10 shrink-0 items-center justify-center p-0 disabled:opacity-40"
+              >
+                <Plus className="h-[1.125rem] w-[1.125rem] shrink-0" strokeWidth={2.5} aria-hidden />
+              </Button>
+            </div>
           </div>
         ) : null}
 
@@ -1761,45 +1734,48 @@ function DashboardBody({
                   const headerRight = !readOnly ? (
                     <div className="flex items-center gap-2">
                       {!editMode ? (
-                        <button
+                        <Button
                           type="button"
+                          variant="secondary"
                           onClick={() => {
                             setPeekWizardInitial(cfg);
                             setPeekWizardMode("edit");
                             setShowPeekWizard(true);
                           }}
-                          className="inline-flex items-center rounded-md border border-ds-border bg-ds-secondary/60 px-2 py-1 text-ds-foreground hover:bg-ds-interactive-hover"
+                          className="inline-flex items-center px-2 py-1"
                           aria-label="Customize peek widget"
                           title="Customize"
                         >
                           <Settings className="h-3.5 w-3.5" aria-hidden />
-                        </button>
+                        </Button>
                       ) : null}
                       {!readOnly && editMode ? (
-                        <span className="dashboard-drag-handle select-none rounded-md border border-black/10 bg-slate-900/90 px-2 py-1 text-[11px] font-semibold text-white shadow-sm dark:bg-white/85 dark:text-slate-900">
+                        <span className="dashboard-drag-handle select-none border border-gray-800 bg-gray-900 px-2 py-1 text-[11px] font-semibold text-white">
                           Drag
                         </span>
                       ) : null}
                       {!readOnly && editMode ? (
-                        <button
+                        <Button
                           type="button"
+                          variant="secondary"
                           onClick={() => removeWidget(item.i)}
-                          className="rounded-md border border-black/10 bg-white/80 px-2 py-1 text-xs font-semibold text-slate-700 hover:bg-white"
+                          className="min-w-8 px-2 py-1 text-xs"
                           aria-label={`Remove ${cfg.title}`}
                           title="Remove widget"
                         >
                           ×
-                        </button>
+                        </Button>
                       ) : (
-                        <button
+                        <Button
                           type="button"
+                          variant="secondary"
                           onClick={() => removeWidget(item.i)}
-                          className="rounded-md border border-ds-border bg-ds-secondary/60 px-2 py-1 text-xs font-semibold text-ds-foreground hover:bg-ds-interactive-hover"
+                          className="min-w-8 px-2 py-1 text-xs"
                           aria-label={`Remove ${cfg.title}`}
                           title="Remove widget"
                         >
                           ×
-                        </button>
+                        </Button>
                       )}
                     </div>
                   ) : null;
@@ -1833,18 +1809,19 @@ function DashboardBody({
                     {alertsPeek}
                     {!readOnly && editMode ? (
                       <>
-                        <span className="dashboard-drag-handle select-none rounded-md border border-black/10 bg-slate-900/90 px-2 py-1 text-[11px] font-semibold text-white shadow-sm dark:bg-white/85 dark:text-slate-900">
+                        <span className="dashboard-drag-handle select-none border border-gray-800 bg-gray-900 px-2 py-1 text-[11px] font-semibold text-white">
                           Drag
                         </span>
-                        <button
+                        <Button
                           type="button"
+                          variant="secondary"
                           onClick={() => removeWidget(item.i)}
-                          className="rounded-md border border-black/10 bg-white/80 px-2 py-1 text-xs font-semibold text-slate-700 hover:bg-white"
+                          className="min-w-8 px-2 py-1 text-xs"
                           aria-label={`Remove ${w.title}`}
                           title="Remove widget"
                         >
                           ×
-                        </button>
+                        </Button>
                       </>
                     ) : null}
                   </div>
@@ -1884,28 +1861,30 @@ function DashboardBody({
         {showAddWidget ? (
           <div className="fixed inset-0 z-[140] flex items-center justify-center p-4">
             <div className="ds-modal-backdrop absolute inset-0" onClick={() => setShowAddWidget(false)} aria-hidden />
-            <div className="relative w-full max-w-md rounded-2xl border border-black/[0.06] bg-white p-5 shadow-[0_18px_55px_rgba(0,0,0,0.18)]">
+            <Card className="relative z-10 w-full max-w-md border border-gray-200 shadow-lg">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="text-lg font-semibold text-slate-900">Add Widget</p>
-                  <p className="mt-1 text-sm text-slate-600">
+                  <p className={UI.header}>Add Widget</p>
+                  <p className={`mt-1 ${UI.subheader}`}>
                     Re-enable a built-in card, or build a compact &quot;peek&quot; from another Pulse page (pick slices and
                     options).
                   </p>
                 </div>
-                <button
+                <Button
                   type="button"
-                  className="rounded-md px-2 py-1 text-sm font-semibold text-slate-600 hover:bg-slate-100"
+                  variant="secondary"
+                  className="min-w-8 px-2 py-1 text-sm"
                   onClick={() => setShowAddWidget(false)}
                   aria-label="Close add widget dialog"
                 >
                   ×
-                </button>
+                </Button>
               </div>
               <div className="mt-4 space-y-2">
-                <button
+                <Button
                   type="button"
-                  className="flex w-full items-center justify-between rounded-xl border border-ds-border bg-ds-secondary px-4 py-3 text-left text-sm font-semibold text-ds-foreground hover:bg-ds-interactive-hover"
+                  variant="secondary"
+                  className="flex w-full items-center justify-between text-left text-sm font-semibold"
                   onClick={() => {
                     setShowAddWidget(false);
                     setPeekWizardInitial(null);
@@ -1914,33 +1893,36 @@ function DashboardBody({
                   }}
                 >
                   <span>Custom page peek…</span>
-                  <span className="text-xs font-semibold text-[var(--ds-info)]">New</span>
-                </button>
-                <p className="pt-2 text-[11px] font-semibold uppercase tracking-wider text-slate-500">Built-in cards</p>
+                  <span className="text-xs font-semibold text-blue-600">New</span>
+                </Button>
+                <p className={`pt-2 text-[11px] font-semibold uppercase tracking-wider ${UI.subheader}`}>
+                  Built-in cards
+                </p>
                 {availableToAdd.length === 0 ? (
-                  <p className="text-sm text-slate-600">All built-in widgets are already on the board.</p>
+                  <p className={`text-sm ${UI.subheader}`}>All built-in widgets are already on the board.</p>
                 ) : (
                   availableToAdd.map((key) => {
                     const ww = (widgetRegistry as Record<string, any>)[key] as { title: string } | null | undefined;
                     if (!ww) return null;
                     return (
-                      <button
+                      <Button
                         key={key}
                         type="button"
-                        className="flex w-full items-center justify-between rounded-xl border border-black/10 bg-white px-4 py-3 text-left text-sm font-semibold text-slate-900 hover:bg-slate-50"
+                        variant="secondary"
+                        className="flex w-full items-center justify-between text-left text-sm font-semibold"
                         onClick={() => {
                           addWidget(key);
                           setShowAddWidget(false);
                         }}
                       >
                         <span>{ww.title}</span>
-                        <span className="text-slate-500">Add</span>
-                      </button>
+                        <span className="text-gray-500">Add</span>
+                      </Button>
                     );
                   })
                 )}
               </div>
-            </div>
+            </Card>
           </div>
         ) : null}
 
@@ -1956,7 +1938,7 @@ function DashboardBody({
             onSave={saveCustomPeek}
           />
         ) : null}
-      </div>
+      </Card>
     </div>
   );
 }
@@ -2159,36 +2141,30 @@ export function OperationalDashboard({
 
   if (loading) {
     return (
-      <div className="app-dashboard-tile rounded-md p-12 text-center">
-        <p className="text-sm text-ds-muted">Loading live dashboard…</p>
-      </div>
+      <Card className="p-12 text-center">
+        <p className={UI.subheader}>Loading live dashboard…</p>
+      </Card>
     );
   }
 
   if (error) {
     return (
-      <div className="ds-notification ds-notification-critical flex flex-col gap-4 p-6 sm:flex-row sm:items-start sm:justify-between">
+      <Card className="flex flex-col gap-4 border border-red-200 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex min-w-0 gap-3">
-          <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-ds-danger" aria-hidden />
-          <p className="text-sm text-ds-foreground" role="status">
+          <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-red-600" aria-hidden />
+          <p className="text-sm text-gray-900" role="status">
             {error}
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => void fetchLive()}
-          className="ds-btn-solid-primary shrink-0 px-4 py-2 text-sm sm:mt-0"
-        >
+        <Button type="button" className="shrink-0 sm:mt-0" onClick={() => void fetchLive()}>
           Retry
-        </button>
-      </div>
+        </Button>
+      </Card>
     );
   }
 
   if (!liveModel) {
-    return (
-      <p className="text-sm text-ds-muted">No dashboard data available.</p>
-    );
+    return <p className={UI.subheader}>No dashboard data available.</p>;
   }
 
   return (

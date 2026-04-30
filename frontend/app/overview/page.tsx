@@ -5,7 +5,9 @@ import {
   OperationalDashboard,
   type OperationalDashboardReadyPayload,
 } from "@/components/dashboard/OperationalDashboard";
+import { PageWrapper } from "@/components/ui/PageWrapper";
 import { WelcomeLoaderModal } from "@/components/ui/WelcomeLoaderModal";
+import { UI } from "@/styles/ui";
 import { isApiMode } from "@/lib/api";
 import { navigateToPulseLogin, pulsePostLoginPath } from "@/lib/pulse-app";
 import { readSession } from "@/lib/pulse-session";
@@ -57,25 +59,26 @@ export default function OverviewPage() {
 
   if (!ready) {
     return (
-      <div className="flex min-h-[40vh] items-center justify-center">
-        <p className="text-sm text-ds-muted">Loading…</p>
-      </div>
+      <PageWrapper>
+        <div className="flex min-h-[40vh] items-center justify-center">
+          <p className={UI.subheader}>Loading…</p>
+        </div>
+      </PageWrapper>
     );
   }
 
   return (
-    <div className="relative space-y-4">
-      <DashboardViewTabs />
-      <OperationalDashboard
-        variant={isApiMode() ? "live" : "demo"}
-        onReady={onDashboardReady}
-      />
-      <WelcomeLoaderModal
-        userName={userName}
-        isReady={dashboardDataReady}
-        criticalCount={welcomeAlertContext.criticalCount}
-        warningCount={welcomeAlertContext.warningCount}
-      />
-    </div>
+    <PageWrapper>
+      <div className="relative space-y-4">
+        <DashboardViewTabs />
+        <OperationalDashboard variant={isApiMode() ? "live" : "demo"} onReady={onDashboardReady} />
+        <WelcomeLoaderModal
+          userName={userName}
+          isReady={dashboardDataReady}
+          criticalCount={welcomeAlertContext.criticalCount}
+          warningCount={welcomeAlertContext.warningCount}
+        />
+      </div>
+    </PageWrapper>
   );
 }

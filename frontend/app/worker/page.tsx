@@ -2,6 +2,7 @@
 
 import { DashboardViewTabs } from "@/components/dashboard/DashboardViewTabs";
 import { WorkerDashboard } from "@/components/dashboard/WorkerBreakRoomDashboard";
+import { PageWrapper } from "@/components/ui/PageWrapper";
 import { navigateToPulseLogin } from "@/lib/pulse-app";
 import { readSession } from "@/lib/pulse-session";
 import { useEffect } from "react";
@@ -11,10 +12,12 @@ export default function WorkerDashboardPage() {
     if (!readSession()) navigateToPulseLogin();
   }, []);
   return (
-    <div className="relative space-y-4">
-      <DashboardViewTabs />
-      <WorkerDashboard kiosk={false} />
-    </div>
+    <PageWrapper>
+      <div className="relative space-y-4">
+        <DashboardViewTabs />
+        <WorkerDashboard kiosk={false} />
+      </div>
+    </PageWrapper>
   );
 }
 

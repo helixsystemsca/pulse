@@ -2,12 +2,16 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AlertTriangle, Cloud, Maximize2, ShieldAlert, Sparkles } from "lucide-react";
+
+import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
 import { isApiMode } from "@/lib/api";
 import { readSession } from "@/lib/pulse-session";
 import type { PulseShiftApi, PulseWorkerApi } from "@/lib/schedule/pulse-bridge";
 import { pulseShiftsToSchedule, pulseWorkersToSchedule, type PulseZoneApi } from "@/lib/schedule/pulse-bridge";
 import type { Shift, Worker } from "@/lib/schedule/types";
 import { shiftBandForWindow } from "@/lib/schedule/shift-codes";
+import { UI } from "@/styles/ui";
 
 type Props = {
   kiosk?: boolean;
@@ -108,43 +112,34 @@ function KioskCriticalModal({ alert, onAcknowledge }: { alert: CriticalAlert | n
   if (!alert) return null;
   return (
     <div className="ds-modal-backdrop fixed inset-0 z-[220] flex items-center justify-center p-4 backdrop-blur-sm">
-      <div
-        className="w-full max-w-2xl overflow-hidden rounded-2xl border border-rose-200/70 bg-white shadow-2xl dark:border-rose-500/35 dark:bg-ds-primary"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="critical-alert-title"
-      >
-        <div className="flex items-start justify-between gap-4 border-b border-rose-200/70 bg-rose-50/70 px-6 py-5 dark:border-rose-500/35 dark:bg-rose-950/35">
+      <div className="relative z-10 w-full max-w-2xl" role="dialog" aria-modal="true" aria-labelledby="critical-alert-title">
+      <Card className="overflow-hidden border border-red-200 p-0 shadow-lg">
+        <div className="flex items-start justify-between gap-4 border-b border-red-200 bg-red-50 px-6 py-5">
           <div className="min-w-0">
-            <p className="text-[11px] font-extrabold uppercase tracking-[0.18em] text-rose-700 dark:text-rose-200">
-              Critical alert
-            </p>
-            <h2 id="critical-alert-title" className="mt-2 flex items-center gap-2 text-lg font-extrabold text-rose-900 dark:text-rose-100">
+            <p className={`text-[11px] font-extrabold uppercase tracking-[0.18em] ${UI.subheader}`}>Critical alert</p>
+            <h2 id="critical-alert-title" className="mt-2 flex items-center gap-2 text-lg font-extrabold text-red-900">
               <ShieldAlert className="h-5 w-5" aria-hidden />
               <span className="truncate">{alert.title}</span>
             </h2>
-            {alert.detail ? <p className="mt-1.5 text-sm text-rose-900/90 dark:text-rose-100/90">{alert.detail}</p> : null}
-            <p className="mt-2 text-xs font-semibold text-rose-700/90 dark:text-rose-200/90">
+            {alert.detail ? <p className="mt-1.5 text-sm text-red-900">{alert.detail}</p> : null}
+            <p className="mt-2 text-xs font-semibold text-red-800">
               {alert.source ? `${alert.source} · ` : ""}{alert.happenedAt ? alert.happenedAt : "Just now"}
             </p>
           </div>
-          <AlertTriangle className="h-6 w-6 shrink-0 text-rose-600 dark:text-rose-300" aria-hidden />
+          <AlertTriangle className="h-6 w-6 shrink-0 text-red-600" aria-hidden />
         </div>
         <div className="px-6 py-5">
-          <p className="text-sm font-semibold text-ds-foreground">Acknowledge and dispatch a supervisor.</p>
-          <p className="mt-1 text-sm text-ds-muted">
+          <p className="text-sm font-semibold text-gray-900">Acknowledge and dispatch a supervisor.</p>
+          <p className={`mt-1 text-sm ${UI.subheader}`}>
             This is a placeholder modal until live alerts are wired in (CO₂, pool chemistry, etc.).
           </p>
           <div className="mt-5 flex justify-end gap-2">
-            <button
-              type="button"
-              className="rounded-lg bg-rose-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-rose-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:ring-offset-ds-primary"
-              onClick={onAcknowledge}
-            >
+            <Button type="button" onClick={onAcknowledge}>
               Acknowledge
-            </button>
+            </Button>
           </div>
         </div>
+      </Card>
       </div>
     </div>
   );
@@ -318,19 +313,19 @@ export function WorkerBreakRoomDashboard({ kiosk = false }: Props) {
   const weatherTemp = useMemo(() => (weather.tempC == null ? "—" : `${Math.round(weather.tempC)}°C`), [weather.tempC]);
 
   return (
-    <div className={`w-full space-y-6 ${kiosk ? "" : ""}`}>
+    <div className="w-full space-y-6">
       <KioskCriticalModal alert={criticalAlert} onAcknowledge={() => setCriticalAlert(null)} />
 
-      <div className="rounded-2xl border border-ds-border bg-ds-primary shadow-[var(--ds-shadow-card)]">
+      <Card className="!p-0">
         <div className="flex flex-wrap items-center justify-between gap-4 px-5 py-4">
           <div className="min-w-0">
-            <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-ds-muted">Worker dashboard</p>
-            <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm font-semibold text-ds-foreground">
+            <p className={`text-[11px] font-bold uppercase tracking-[0.18em] ${UI.subheader}`}>Worker dashboard</p>
+            <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm font-semibold text-gray-900">
               <span>{dateInBc(now)}</span>
-              <span className="text-ds-muted">•</span>
+              <span className="text-gray-500">•</span>
               <span className="tabular-nums">{timeInBc(now)}</span>
-              <span className="text-ds-muted">•</span>
-              <span className="inline-flex items-center gap-1.5 text-ds-muted">
+              <span className="text-gray-500">•</span>
+              <span className="inline-flex items-center gap-1.5 text-gray-500">
                 <Cloud className="h-4 w-4" aria-hidden />
                 {weatherTemp} · {weatherLabel}
               </span>
@@ -338,18 +333,15 @@ export function WorkerBreakRoomDashboard({ kiosk = false }: Props) {
           </div>
           <div className="flex items-center gap-2">
             {!kiosk ? (
-              <button
-                type="button"
-                className="ds-btn-secondary inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold"
-                onClick={openKiosk}
-              >
+              <Button type="button" variant="secondary" className="inline-flex items-center gap-2" onClick={openKiosk}>
                 <Maximize2 className="h-4 w-4" aria-hidden />
                 Fullscreen
-              </button>
+              </Button>
             ) : null}
-            <button
+            <Button
               type="button"
-              className="ds-btn-secondary inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold"
+              variant="secondary"
+              className="inline-flex items-center gap-2"
               onClick={() =>
                 setCriticalAlert({
                   id: crypto.randomUUID(),
@@ -362,15 +354,15 @@ export function WorkerBreakRoomDashboard({ kiosk = false }: Props) {
             >
               <AlertTriangle className="h-4 w-4" aria-hidden />
               Test alert
-            </button>
+            </Button>
           </div>
         </div>
 
-        <div className="border-t border-ds-border bg-ds-secondary/40">
+        <div className="border-t border-gray-200 bg-gray-100">
           <div className="relative overflow-hidden px-5 py-2">
-            <div className="kiosk-marquee whitespace-nowrap text-sm font-semibold text-ds-foreground">
+            <div className="kiosk-marquee whitespace-nowrap text-sm font-semibold text-gray-900">
               {notifications.map((n) => (
-                <span key={n.id} className={`mr-10 ${n.tone === "warning" ? "text-amber-700 dark:text-amber-200" : ""}`}>
+                <span key={n.id} className={`mr-10 ${n.tone === "warning" ? "text-amber-800" : ""}`}>
                   <Sparkles className="mr-2 inline-block h-4 w-4 opacity-80" aria-hidden />
                   {n.message}
                 </span>
@@ -378,38 +370,38 @@ export function WorkerBreakRoomDashboard({ kiosk = false }: Props) {
             </div>
           </div>
         </div>
-      </div>
+      </Card>
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
-          <div className="rounded-2xl border border-ds-border bg-white p-5 shadow-[var(--ds-shadow-card)] dark:bg-ds-primary">
+          <Card>
             <div className="flex flex-wrap items-end justify-between gap-3">
               <div>
-                <p className="font-headline text-base font-extrabold text-ds-foreground">Who’s on shift</p>
-                <p className="mt-1 text-xs text-ds-muted">Auto from Schedule (today).</p>
+                <p className={UI.header}>Who’s on shift</p>
+                <p className={`mt-1 ${UI.subheader}`}>Auto from Schedule (today).</p>
               </div>
-              <p className="text-xs font-semibold text-ds-muted">{loading ? "Loading…" : `${todaysWork.length} scheduled`}</p>
+              <p className={`text-xs font-semibold ${UI.subheader}`}>{loading ? "Loading…" : `${todaysWork.length} scheduled`}</p>
             </div>
 
             <div className="mt-4 grid gap-3 sm:grid-cols-3">
               {(["D", "A", "N"] as const).map((band) => (
-                <div key={band} className="rounded-xl border border-ds-border bg-ds-secondary/25 p-3">
+                <div key={band} className="border border-gray-200 bg-gray-50 p-3">
                   <div className="flex items-center justify-between gap-2">
-                    <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-ds-muted">{bandLabel(band)}</p>
-                    <span className={`rounded-full border px-2 py-0.5 text-[11px] font-extrabold ${chipTone(band)}`}>
+                    <p className={`text-xs font-extrabold uppercase tracking-[0.16em] ${UI.subheader}`}>{bandLabel(band)}</p>
+                    <span className={`border px-2 py-0.5 text-[11px] font-extrabold ${chipTone(band)}`}>
                       {grouped[band].length}
                     </span>
                   </div>
                   <ul className="mt-2 space-y-2 text-sm">
                     {grouped[band].length === 0 ? (
-                      <li className="text-ds-muted">—</li>
+                      <li className={UI.subheader}>—</li>
                     ) : (
                       grouped[band].slice(0, kiosk ? 14 : 10).map((s) => (
-                        <li key={s.id} className="flex items-center justify-between gap-2 rounded-lg bg-white/70 px-2.5 py-2 dark:bg-ds-primary">
-                          <span className="min-w-0 truncate font-semibold text-ds-foreground">
+                        <li key={s.id} className="flex items-center justify-between gap-2 border border-gray-200 bg-gray-50 px-2.5 py-2">
+                          <span className="min-w-0 truncate font-semibold text-gray-900">
                             {s.workerId ? byId.get(s.workerId)?.name ?? "Worker" : "Open"}
                           </span>
-                          <span className="shrink-0 text-xs font-semibold text-ds-muted tabular-nums">
+                          <span className={`shrink-0 text-xs font-semibold tabular-nums ${UI.subheader}`}>
                             {s.startTime}–{s.endTime}
                           </span>
                         </li>
@@ -419,58 +411,56 @@ export function WorkerBreakRoomDashboard({ kiosk = false }: Props) {
                 </div>
               ))}
             </div>
-          </div>
+          </Card>
 
-          <div className="rounded-2xl border border-ds-border bg-white p-5 shadow-[var(--ds-shadow-card)] dark:bg-ds-primary">
+          <Card>
             <div className="flex flex-wrap items-end justify-between gap-3">
               <div>
-                <p className="font-headline text-base font-extrabold text-ds-foreground">Assignments</p>
-                <p className="mt-1 text-xs text-ds-muted">Placeholder until Work Requests + Xplor integration.</p>
+                <p className={UI.header}>Assignments</p>
+                <p className={`mt-1 ${UI.subheader}`}>Placeholder until Work Requests + Xplor integration.</p>
               </div>
-              <p className="text-xs font-semibold text-ds-muted">Today</p>
+              <p className={`text-xs font-semibold ${UI.subheader}`}>Today</p>
             </div>
 
             <div className="mt-4 space-y-2">
               {(todaysWork.length ? todaysWork.slice(0, kiosk ? 14 : 10) : []).map((s) => (
                 <div
                   key={`asg-${s.id}`}
-                  className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-ds-border bg-ds-secondary/25 px-4 py-3"
+                  className="flex flex-wrap items-center justify-between gap-3 border border-gray-200 bg-gray-50 px-4 py-3"
                 >
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-extrabold text-ds-foreground">
+                    <p className="truncate text-sm font-extrabold text-gray-900">
                       {s.workerId ? byId.get(s.workerId)?.name ?? "Worker" : "Open slot"}
                     </p>
-                    <p className="mt-0.5 text-xs text-ds-muted">
+                    <p className={`mt-0.5 text-xs ${UI.subheader}`}>
                       {bandLabel(shiftBandForWindow(s.startTime, s.endTime))} · {s.zoneId ? `Zone ${s.zoneId.slice(0, 6)}` : "—"}
                     </p>
                   </div>
-                  <span className="rounded-full border border-ds-border bg-white px-3 py-1 text-xs font-bold text-ds-foreground dark:bg-ds-elevated">
+                  <span className="border border-gray-200 bg-gray-100 px-3 py-1 text-xs font-bold text-gray-900">
                     Placeholder: Ice clean / Setup / Takedown
                   </span>
                 </div>
               ))}
-              {todaysWork.length === 0 ? <p className="text-sm text-ds-muted">No shifts found for today.</p> : null}
+              {todaysWork.length === 0 ? <p className={`text-sm ${UI.subheader}`}>No shifts found for today.</p> : null}
             </div>
-          </div>
+          </Card>
         </div>
 
         <div className="space-y-6">
-          <div className="rounded-2xl border border-ds-border bg-[linear-gradient(120deg,#36F1CD_0%,#4C6085_80%)] p-5 text-white shadow-[var(--ds-shadow-card-hover)]">
-            <p className="text-[11px] font-extrabold uppercase tracking-[0.18em] text-white/80">Ice & facility cadence</p>
-            <p className="mt-2 text-base font-extrabold">Set-ups • Ice cleans • Takedowns</p>
-            <p className="mt-1 text-sm text-white/90">
-              Placeholder schedule until Xplor Recreation API is connected.
-            </p>
-          </div>
+          <Card>
+            <p className={`text-[11px] font-extrabold uppercase tracking-[0.18em] ${UI.subheader}`}>Ice & facility cadence</p>
+            <p className={`mt-2 ${UI.header}`}>Set-ups • Ice cleans • Takedowns</p>
+            <p className={`mt-1 text-sm ${UI.subheader}`}>Placeholder schedule until Xplor Recreation API is connected.</p>
+          </Card>
 
-          <div className="rounded-2xl border border-ds-border bg-white p-5 shadow-[var(--ds-shadow-card)] dark:bg-ds-primary">
+          <Card>
             <div className="flex items-center justify-between gap-3">
-              <p className="font-headline text-base font-extrabold text-ds-foreground">Facility schedule</p>
-              <span className="text-xs font-semibold text-ds-muted tabular-nums">{timeInBc(now)}</span>
+              <p className={UI.header}>Facility schedule</p>
+              <span className={`text-xs font-semibold tabular-nums ${UI.subheader}`}>{timeInBc(now)}</span>
             </div>
             <div className="mt-4 space-y-4">
               {facilitySchedule.length === 0 ? (
-                <p className="text-sm text-ds-muted">Loading schedule…</p>
+                <p className={`text-sm ${UI.subheader}`}>Loading schedule…</p>
               ) : (
                 Object.entries(
                   facilitySchedule.reduce<Record<string, ScheduleEvent[]>>((acc, ev) => {
@@ -479,24 +469,21 @@ export function WorkerBreakRoomDashboard({ kiosk = false }: Props) {
                   }, {}),
                 ).map(([loc, events]) => (
                   <div key={loc} className="space-y-2">
-                    <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-ds-muted">{loc}</p>
+                    <p className={`text-xs font-extrabold uppercase tracking-[0.16em] ${UI.subheader}`}>{loc}</p>
                     <ul className="space-y-2 text-sm">
                       {events
                         .slice()
                         .sort((a, b) => a.start_time.localeCompare(b.start_time))
                         .slice(0, kiosk ? 10 : 8)
                         .map((ev) => (
-                          <li
-                            key={ev.id}
-                            className="flex items-start justify-between gap-3 rounded-xl border border-ds-border bg-ds-secondary/25 px-4 py-3"
-                          >
+                          <li key={ev.id} className="flex items-start justify-between gap-3 border border-gray-200 bg-gray-50 px-4 py-3">
                             <div className="min-w-0">
-                              <p className="truncate font-semibold text-ds-foreground">{ev.program_name}</p>
+                              <p className="truncate font-semibold text-gray-900">{ev.program_name}</p>
                               {ev.staff?.length ? (
-                                <p className="mt-0.5 truncate text-xs text-ds-muted">{ev.staff.join(", ")}</p>
+                                <p className={`mt-0.5 truncate text-xs ${UI.subheader}`}>{ev.staff.join(", ")}</p>
                               ) : null}
                             </div>
-                            <span className="shrink-0 text-xs font-bold text-ds-muted tabular-nums">
+                            <span className={`shrink-0 text-xs font-bold tabular-nums ${UI.subheader}`}>
                               {new Date(ev.start_time).toLocaleTimeString(undefined, { timeZone: BC_TZ, hour: "2-digit", minute: "2-digit" })}–
                               {new Date(ev.end_time).toLocaleTimeString(undefined, { timeZone: BC_TZ, hour: "2-digit", minute: "2-digit" })}
                             </span>
@@ -507,15 +494,15 @@ export function WorkerBreakRoomDashboard({ kiosk = false }: Props) {
                 ))
               )}
             </div>
-          </div>
+          </Card>
 
-          <div className="rounded-2xl border border-ds-border bg-white p-5 shadow-[var(--ds-shadow-card)] dark:bg-ds-primary">
-            <p className="font-headline text-base font-extrabold text-ds-foreground">Notes</p>
-            <p className="mt-2 text-sm text-ds-muted">
+          <Card>
+            <p className={UI.header}>Notes</p>
+            <p className={`mt-2 text-sm ${UI.subheader}`}>
               This panel is intentionally “kiosk safe” (large text, high contrast). Next we can wire real-time data and critical
               alerts into the modal above.
             </p>
-          </div>
+          </Card>
         </div>
       </div>
 

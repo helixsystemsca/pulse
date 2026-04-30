@@ -7,6 +7,14 @@ export const metadata: Metadata = {
 };
 
 export default function WorkerLayout({ children }: { children: React.ReactNode }) {
-  return <AppLayout mainClassName="bg-dashboard-canvas">{children}</AppLayout>;
+  return (
+    <AppLayout
+      mainClassName="bg-gray-50"
+      pageShell={false}
+      mainContentClassName="flex min-h-0 w-full flex-1 flex-col !bg-gray-50 !p-0"
+    >
+      {children}
+    </AppLayout>
+  );
 }
 

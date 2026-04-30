@@ -1,45 +1,27 @@
 "use client";
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+
+import { Button } from "@/components/ui/Button";
+import { UI } from "@/styles/ui";
 
 /**
- * Switches between supervisor (operations) and worker dashboards. Shown on both `/overview` and `/worker`
- * so the tab state matches the URL after navigation.
+ * Switches between overview (supervisor) and worker dashboards. URL is the source of truth.
  */
 export function DashboardViewTabs() {
   const pathname = usePathname() || "";
-  const isSupervisor = pathname === "/overview";
+  const router = useRouter();
+  const isOverview = pathname === "/overview" || pathname.startsWith("/overview/");
   const isWorker = pathname === "/worker" || pathname.startsWith("/worker/");
 
-  const tabClass = (active: boolean) =>
-    `rounded-lg px-3.5 py-2 text-sm font-semibold transition-colors ${
-      active
-        ? "border-b-2 border-ds-success bg-ds-primary text-ds-foreground"
-        : "border-b-2 border-transparent text-ds-muted hover:bg-ds-interactive-hover hover:text-ds-foreground"
-    }`;
-
   return (
-    <nav
-      className="mb-4 inline-flex flex-wrap gap-1 rounded-md border border-ds-border bg-ds-secondary p-1"
-      aria-label="Dashboards"
-    >
-      <Link
-        href="/overview"
-        className={tabClass(isSupervisor)}
-        prefetch={false}
-        aria-current={isSupervisor ? "page" : undefined}
-      >
-        Supervisor dashboard
-      </Link>
-      <Link
-        href="/worker"
-        className={tabClass(isWorker)}
-        prefetch={false}
-        aria-current={isWorker ? "page" : undefined}
-      >
-        Worker dashboard
-      </Link>
-    </nav>
+    <div className={UI.toggleGroup} role="navigation" aria-label="Dashboards">
+      <Button variant={isWorker ? "primary" : "secondary"} type="button" onClick={() => router.push("/worker")}>
+        Worker
+      </Button>
+      <Button variant={isOverview ? "primary" : "secondary"} type="button" onClick={() => router.push("/overview")}>
+        Overview
+      </Button>
+    </div>
   );
 }

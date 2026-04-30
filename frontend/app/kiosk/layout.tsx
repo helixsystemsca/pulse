@@ -8,7 +8,12 @@ export const metadata: Metadata = {
 
 export default function KioskLayout({ children }: { children: React.ReactNode }) {
   return (
-    <AppLayout chrome={false} pageShell={false} mainClassName="bg-dashboard-canvas">
+    <AppLayout
+      chrome={false}
+      pageShell={false}
+      mainClassName="bg-gray-50"
+      mainContentClassName="!bg-gray-50 !p-0"
+    >
       {children}
     </AppLayout>
   );

@@ -9,9 +9,9 @@ export const metadata: Metadata = {
 export default function OverviewLayout({ children }: { children: React.ReactNode }) {
   return (
     <AppLayout
-      mainClassName="bg-pulse-bg"
+      mainClassName="bg-gray-50"
       pageShell={false}
-      mainContentClassName="flex min-h-0 w-full flex-1 flex-col !p-0"
+      mainContentClassName="flex min-h-0 w-full flex-1 flex-col !bg-gray-50 !p-0"
     >
       {children}
     </AppLayout>
