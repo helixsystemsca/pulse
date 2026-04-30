@@ -13,6 +13,8 @@ export type ProjectRow = {
   description: string | null;
   owner_user_id?: string | null;
   created_by_user_id?: string | null;
+  category_id?: string | null;
+  category?: { id: string; name: string; color?: string | null; created_at: string } | null;
   start_date: string;
   end_date: string;
   goal?: string | null;
@@ -30,6 +32,7 @@ export type ProjectRow = {
   progress_pct: number;
   assignee_user_ids?: string[];
   last_activity_at?: string | null;
+  health_status?: string;
 };
 
 export type TaskRow = {
@@ -43,6 +46,12 @@ export type TaskRow = {
   status: string;
   required_skill_names?: string[];
   due_date: string | null;
+  estimated_duration?: string | null;
+  skill_type?: string | null;
+  material_notes?: string | null;
+  phase_group?: string | null;
+  planned_start_at?: string | null;
+  planned_end_at?: string | null;
   calendar_shift_id: string | null;
   calendar_event_id: string | null;
   created_at: string;
@@ -193,6 +202,7 @@ export async function patchProject(
     end_date: string;
     status: string;
     owner_user_id: string | null;
+    category_id: string | null;
     goal: string | null;
     notes: string | null;
     success_definition: string | null;
@@ -216,6 +226,8 @@ export async function createProject(body: {
   end_date: string;
   status?: string;
   owner_user_id?: string | null;
+  template_id?: string | null;
+  category_id?: string | null;
 }): Promise<ProjectRow> {
   const row = await apiFetch<Omit<ProjectRow, "task_total" | "task_completed" | "progress_pct" | "assignee_user_ids">>(
     "/api/v1/projects",
@@ -240,6 +252,8 @@ export type ProjectActivityRow = {
   type: string;
   title?: string | null;
   description: string;
+  impact_level?: string | null;
+  related_task_id?: string | null;
   created_at: string;
 };
 
@@ -255,6 +269,52 @@ export async function addProjectNote(
     method: "POST",
     json: body,
   });
+}
+
+export type ProjectTemplateRow = {
+  id: string;
+  name: string;
+  description?: string | null;
+  default_goal?: string | null;
+  default_notes?: string | null;
+  default_success_definition?: string | null;
+};
+
+export type ProjectTemplateTaskRow = {
+  id: string;
+  template_id: string;
+  title: string;
+  description?: string | null;
+  suggested_duration?: string | null;
+  skill_type?: string | null;
+  material_notes?: string | null;
+  order_index: number;
+  phase_group?: string | null;
+};
+
+export type ProjectTemplateDetail = ProjectTemplateRow & { tasks: ProjectTemplateTaskRow[] };
+
+export async function listProjectTemplates(): Promise<ProjectTemplateRow[]> {
+  return apiFetch<ProjectTemplateRow[]>("/api/v1/project-templates");
+}
+
+export async function getProjectTemplate(id: string): Promise<ProjectTemplateDetail> {
+  return apiFetch<ProjectTemplateDetail>(`/api/v1/project-templates/${id}`);
+}
+
+export type CategoryRow = {
+  id: string;
+  name: string;
+  color?: string | null;
+  created_at: string;
+};
+
+export async function listCategories(): Promise<CategoryRow[]> {
+  return apiFetch<CategoryRow[]>("/api/v1/categories");
+}
+
+export async function createCategory(body: { name: string; color?: string | null }): Promise<CategoryRow> {
+  return apiFetch<CategoryRow>("/api/v1/categories", { method: "POST", json: body });
 }
 
 export async function getReadyTasks(projectId: string): Promise<ReadyTaskRow[]> {
@@ -277,6 +337,12 @@ export async function createTask(body: {
   priority?: string;
   status?: string;
   due_date?: string | null;
+  estimated_duration?: string | null;
+  skill_type?: string | null;
+  material_notes?: string | null;
+  phase_group?: string | null;
+  planned_start_at?: string | null;
+  planned_end_at?: string | null;
   location_tag_id?: string | null;
   sop_id?: string | null;
   required_skill_names?: string[];
@@ -293,6 +359,12 @@ export async function patchTask(
     priority: string;
     status: string;
     due_date: string | null;
+    estimated_duration: string | null;
+    skill_type: string | null;
+    material_notes: string | null;
+    phase_group: string | null;
+    planned_start_at: string | null;
+    planned_end_at: string | null;
     location_tag_id: string | null;
     sop_id: string | null;
     required_skill_names: string[];

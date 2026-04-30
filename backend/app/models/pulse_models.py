@@ -480,6 +480,28 @@ class PulseProjectActivityType(str, enum.Enum):
     note = "note"
 
 
+class PulseProjectActivityImpactLevel(str, enum.Enum):
+    low = "low"
+    medium = "medium"
+    high = "high"
+
+
+class PulseCategory(Base):
+    __tablename__ = "pulse_categories"
+    __table_args__ = (UniqueConstraint("company_id", "name", name="uq_pulse_category_company_name"),)
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    company_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    name: Mapped[str] = mapped_column(String(128), nullable=False)
+    # Store token-like color keys (e.g. "ds-success") or empty.
+    color: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+
+
 class PulseProject(Base):
     __tablename__ = "pulse_projects"
 
@@ -494,6 +516,9 @@ class PulseProject(Base):
     )
     created_by_user_id: Mapped[Optional[str]] = mapped_column(
         UUID(as_uuid=False), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    category_id: Mapped[Optional[str]] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("pulse_categories.id", ondelete="SET NULL"), nullable=True, index=True
     )
     start_date: Mapped[date] = mapped_column(Date, nullable=False)
     end_date: Mapped[date] = mapped_column(Date, nullable=False)
@@ -545,8 +570,67 @@ class PulseProjectActivity(Base):
     )
     title: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     description: Mapped[str] = mapped_column(Text, nullable=False)
+    impact_level: Mapped[Optional[PulseProjectActivityImpactLevel]] = mapped_column(
+        Enum(
+            PulseProjectActivityImpactLevel,
+            values_callable=lambda x: [e.value for e in x],
+            native_enum=False,
+            length=16,
+        ),
+        nullable=True,
+    )
+    related_task_id: Mapped[Optional[str]] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("pulse_project_tasks.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True
+    )
+
+
+class PulseProjectTemplate(Base):
+    __tablename__ = "pulse_project_templates"
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    company_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    default_goal: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    default_notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    default_success_definition: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+
+class PulseProjectTemplateTask(Base):
+    __tablename__ = "pulse_project_template_tasks"
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    template_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("pulse_project_templates.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    title: Mapped[str] = mapped_column(String(512), nullable=False)
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    suggested_duration: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    skill_type: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    material_notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    order_index: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    phase_group: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
 
 
@@ -577,6 +661,12 @@ class PulseProjectTask(Base):
         index=True,
     )
     due_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True, index=True)
+    estimated_duration: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    skill_type: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    material_notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    phase_group: Mapped[Optional[str]] = mapped_column(String(128), nullable=True, index=True)
+    planned_start_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
+    planned_end_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
     location_tag_id: Mapped[Optional[str]] = mapped_column(String(128), nullable=True, index=True)
     sop_id: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
     required_skill_names: Mapped[list[Any]] = mapped_column(

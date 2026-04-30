@@ -171,14 +171,7 @@ export function AppSideNav() {
             <Settings className="h-4 w-4" aria-hidden />
             Settings
           </Link>
-          <div className="flex items-center gap-3 pb-3">
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-semibold text-foreground">
-                {session.full_name?.trim() || session.email.split("@")[0]}
-              </p>
-              <p className="truncate text-xs capitalize text-muted-foreground">{formatRoleLabel(session)}</p>
-            </div>
-          </div>
+          <div className="pb-3" />
         </div>
       </div>
     </aside>

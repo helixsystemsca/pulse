@@ -107,8 +107,13 @@ export function AppNavbar() {
                     </span>
                   )}
                 </span>
-                <span className="hidden max-w-[11rem] truncate text-sm font-medium text-ds-muted md:block">
-                  {session?.email}
+                <span className="hidden max-w-[11rem] truncate text-left md:block">
+                  <span className="block truncate text-sm font-semibold text-ds-foreground">
+                    {session?.full_name?.trim() || session?.email?.split("@")[0] || "Account"}
+                  </span>
+                  <span className="block truncate text-[11px] font-semibold capitalize text-ds-muted">
+                    {session ? session.role?.replace(/_/g, " ") || "member" : ""}
+                  </span>
                 </span>
                 <ChevronDown className="h-4 w-4 shrink-0 text-ds-muted" aria-hidden />
               </button>
@@ -117,6 +122,12 @@ export function AppNavbar() {
                   className="absolute right-0 mt-1 w-56 rounded-md border border-ds-border bg-ds-elevated py-1 shadow-[var(--ds-shadow-diffuse)]"
                   role="menu"
                 >
+                  {session?.email ? (
+                    <div className="px-3 pb-2 pt-2">
+                      <p className="truncate text-xs font-semibold text-ds-muted">{session.email}</p>
+                    </div>
+                  ) : null}
+                  <div className="h-px w-full bg-ds-border" aria-hidden />
                   <Link
                     href={pulseApp.to("/dashboard/profile-settings")}
                     className="flex items-center gap-2 px-3 py-2 text-sm text-ds-foreground hover:bg-ds-secondary"

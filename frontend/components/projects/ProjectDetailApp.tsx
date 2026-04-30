@@ -4,6 +4,7 @@ import Link from "next/link";
 import {
   ArrowLeft,
   CheckCircle2,
+  CalendarRange,
   FolderKanban,
   LayoutGrid,
   List,
@@ -44,6 +45,13 @@ const SECONDARY_BTN =
 const FIELD =
   "mt-1.5 w-full rounded-[10px] border border-ds-border bg-ds-secondary px-3 py-2.5 text-sm text-ds-foreground shadow-sm focus:border-[color-mix(in_srgb,var(--ds-success)_45%,var(--ds-border))] focus:outline-none focus:ring-1 focus:ring-[color-mix(in_srgb,var(--ds-success)_28%,transparent)]";
 const LABEL = "text-[11px] font-semibold uppercase tracking-wider text-ds-muted";
+
+function healthBadgeClass(h: string | null | undefined): string {
+  const v = (h || "").toLowerCase();
+  if (v.includes("risk")) return "bg-red-50 text-red-800 ring-red-200/90 dark:bg-red-950/40 dark:text-red-200 dark:ring-red-500/35";
+  if (v.includes("attention")) return "bg-amber-50 text-amber-900 ring-amber-200/90 dark:bg-amber-950/40 dark:text-amber-200 dark:ring-amber-500/35";
+  return "bg-slate-100 text-ds-muted ring-slate-200/80 dark:bg-ds-secondary dark:text-slate-300 dark:ring-ds-border";
+}
 
 function displayName(w: PulseWorkerApi): string {
   return (w.full_name || w.email || "User").trim();
@@ -112,7 +120,7 @@ export function ProjectDetailApp({ projectId }: { projectId: string }) {
   const [err, setErr] = useState<string | null>(null);
   const [blockHint, setBlockHint] = useState<string | null>(null);
   const [detailTab, setDetailTab] = useState<"overview" | "work" | "activity" | "summary">("overview");
-  const [viewTab, setViewTab] = useState<"tasks" | "board" | "automation">("tasks");
+  const [viewTab, setViewTab] = useState<"tasks" | "board" | "schedule" | "automation">("tasks");
   const [taskModalOpen, setTaskModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<TaskRow | null>(null);
   const [toast, setToast] = useState<string | null>(null);
@@ -498,6 +506,16 @@ export function ProjectDetailApp({ projectId }: { projectId: string }) {
               <ArrowLeft className="h-4 w-4" aria-hidden />
               Projects
             </Link>
+            {data?.health_status ? (
+              <span
+                className={`inline-flex items-center rounded-full px-3 py-2 text-[11px] font-bold uppercase tracking-wide ring-1 ${healthBadgeClass(
+                  data.health_status,
+                )}`}
+                title="Derived from overdue tasks and issue activity."
+              >
+                {data.health_status}
+              </span>
+            ) : null}
             {canMarkProjectComplete ? (
               <button
                 type="button"
@@ -771,6 +789,18 @@ export function ProjectDetailApp({ projectId }: { projectId: string }) {
                 <button
                   type="button"
                   className={`inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm font-semibold transition-colors ${
+                    viewTab === "schedule"
+                      ? "bg-ds-success text-ds-on-accent shadow-sm"
+                      : "text-ds-muted hover:bg-ds-interactive-hover hover:text-ds-foreground"
+                  }`}
+                  onClick={() => setViewTab("schedule")}
+                >
+                  <CalendarRange className="h-4 w-4" aria-hidden />
+                  Schedule
+                </button>
+                <button
+                  type="button"
+                  className={`inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm font-semibold transition-colors ${
                     viewTab === "automation"
                       ? "bg-ds-success text-ds-on-accent shadow-sm"
                       : "text-ds-muted hover:bg-ds-interactive-hover hover:text-ds-foreground"
@@ -783,6 +813,109 @@ export function ProjectDetailApp({ projectId }: { projectId: string }) {
               </div>
 
               {viewTab === "automation" ? <ProjectAutomationPanel projectId={projectId} /> : null}
+
+              {viewTab === "schedule" ? (
+                <Card padding="md" className="space-y-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-bold text-ds-foreground">Schedule</p>
+                      <p className="mt-1 text-xs text-ds-muted">
+                        Visualization only. Use Advanced planning fields on tasks to set planned dates and groupings.
+                      </p>
+                    </div>
+                  </div>
+
+                  {tasks.length === 0 ? (
+                    <p className="text-sm text-ds-muted">No tasks yet.</p>
+                  ) : (
+                    (() => {
+                      const norm = (s: string | null | undefined) => (s || "").trim();
+                      const taskStart = (t: TaskRow) =>
+                        t.planned_start_at ? new Date(t.planned_start_at) : t.due_date ? new Date(t.due_date) : null;
+                      const taskEnd = (t: TaskRow) =>
+                        t.planned_end_at
+                          ? new Date(t.planned_end_at)
+                          : t.planned_start_at
+                            ? new Date(t.planned_start_at)
+                            : t.due_date
+                              ? new Date(t.due_date)
+                              : null;
+                      const allDates = tasks
+                        .flatMap((t) => [taskStart(t), taskEnd(t)])
+                        .filter((d): d is Date => Boolean(d && Number.isFinite(d.getTime())));
+                      const min = allDates.length ? new Date(Math.min(...allDates.map((d) => d.getTime()))) : new Date();
+                      const max = allDates.length ? new Date(Math.max(...allDates.map((d) => d.getTime()))) : new Date();
+                      const spanMs = Math.max(1, max.getTime() - min.getTime());
+
+                      const groups = new Map<string, TaskRow[]>();
+                      for (const t of tasks) {
+                        const g = norm(t.phase_group) || "Tasks";
+                        groups.set(g, [...(groups.get(g) || []), t]);
+                      }
+                      const groupKeys = [...groups.keys()].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }));
+
+                      const pctFor = (d: Date) => ((d.getTime() - min.getTime()) / spanMs) * 100;
+
+                      return (
+                        <div className="space-y-5">
+                          <div className="rounded-lg border border-ds-border bg-ds-secondary px-3 py-2 text-[11px] font-semibold text-ds-muted">
+                            Range: {min.toLocaleDateString()} → {max.toLocaleDateString()}
+                          </div>
+                          {groupKeys.map((g) => {
+                            const rows = (groups.get(g) || []).slice().sort((a, b) => {
+                              const sa = taskStart(a)?.getTime() ?? Number.POSITIVE_INFINITY;
+                              const sb = taskStart(b)?.getTime() ?? Number.POSITIVE_INFINITY;
+                              return sa - sb;
+                            });
+                            return (
+                              <div key={g} className="space-y-2">
+                                <p className="text-[11px] font-bold uppercase tracking-wide text-ds-muted">{g}</p>
+                                <div className="space-y-2">
+                                  {rows.map((t) => {
+                                    const s = taskStart(t);
+                                    const e = taskEnd(t);
+                                    const left = s ? pctFor(s) : 0;
+                                    const right = e ? pctFor(e) : left;
+                                    const width = Math.max(1.5, right - left);
+                                    const label = s ? s.toLocaleDateString() : "—";
+                                    const label2 = e ? e.toLocaleDateString() : label;
+                                    return (
+                                      <div key={t.id} className="grid grid-cols-12 items-center gap-3">
+                                        <button
+                                          type="button"
+                                          className="col-span-5 truncate text-left text-sm font-semibold text-ds-foreground hover:underline"
+                                          onClick={() => {
+                                            setEditingTask(t);
+                                            setTaskModalOpen(true);
+                                          }}
+                                        >
+                                          {t.title}
+                                        </button>
+                                        <div className="col-span-7">
+                                          <div className="relative h-8 w-full rounded-md border border-ds-border bg-white dark:bg-ds-primary">
+                                            <div
+                                              className="absolute top-1/2 h-3 -translate-y-1/2 rounded-md bg-ds-success/70"
+                                              style={{ left: `${left}%`, width: `${width}%` }}
+                                            />
+                                            <div className="absolute inset-0 flex items-center justify-between px-2 text-[10px] font-semibold text-ds-muted">
+                                              <span>{label}</span>
+                                              <span>{label2}</span>
+                                            </div>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    })()
+                  )}
+                </Card>
+              ) : null}
 
               {viewTab === "tasks" ? (
             <div className="grid gap-6 lg:grid-cols-12">
@@ -1166,6 +1299,12 @@ function ProjectTaskModal({
   const [sopRef, setSopRef] = useState("");
   const [depSelected, setDepSelected] = useState<string[]>([]);
   const [skillsSel, setSkillsSel] = useState<string[]>([]);
+  const [estimatedDuration, setEstimatedDuration] = useState("");
+  const [skillType, setSkillType] = useState("");
+  const [materialNotes, setMaterialNotes] = useState("");
+  const [phaseGroup, setPhaseGroup] = useState("");
+  const [plannedStartAt, setPlannedStartAt] = useState("");
+  const [plannedEndAt, setPlannedEndAt] = useState("");
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [busy, setBusy] = useState(false);
 
@@ -1184,7 +1323,24 @@ function ProjectTaskModal({
       setSopRef(task.sop_id ?? "");
       setDepSelected([...(task.depends_on_task_ids ?? [])]);
       setSkillsSel([...(task.required_skill_names ?? [])]);
-      setShowAdvanced(Boolean(task.sop_id || (task.depends_on_task_ids?.length ?? 0) > 0));
+      setEstimatedDuration(task.estimated_duration ?? "");
+      setSkillType(task.skill_type ?? "");
+      setMaterialNotes(task.material_notes ?? "");
+      setPhaseGroup(task.phase_group ?? "");
+      setPlannedStartAt(task.planned_start_at ?? "");
+      setPlannedEndAt(task.planned_end_at ?? "");
+      setShowAdvanced(
+        Boolean(
+          task.sop_id ||
+            (task.depends_on_task_ids?.length ?? 0) > 0 ||
+            task.estimated_duration ||
+            task.skill_type ||
+            task.material_notes ||
+            task.phase_group ||
+            task.planned_start_at ||
+            task.planned_end_at,
+        ),
+      );
     } else {
       setTitle("");
       setDescription("");
@@ -1196,6 +1352,12 @@ function ProjectTaskModal({
       setSopRef("");
       setDepSelected([]);
       setSkillsSel([]);
+      setEstimatedDuration("");
+      setSkillType("");
+      setMaterialNotes("");
+      setPhaseGroup("");
+      setPlannedStartAt("");
+      setPlannedEndAt("");
       setShowAdvanced(false);
     }
   }, [open, task]);
@@ -1221,6 +1383,12 @@ function ProjectTaskModal({
           priority,
           status,
           due_date: due || null,
+          estimated_duration: estimatedDuration.trim() || null,
+          skill_type: skillType.trim() || null,
+          material_notes: materialNotes.trim() || null,
+          phase_group: phaseGroup.trim() || null,
+          planned_start_at: plannedStartAt || null,
+          planned_end_at: plannedEndAt || null,
           location_tag_id: locTag.trim() || null,
           sop_id: sopRef.trim() || null,
           required_skill_names: skillsSel,
@@ -1235,6 +1403,12 @@ function ProjectTaskModal({
           priority,
           status,
           due_date: due || null,
+          estimated_duration: estimatedDuration.trim() || null,
+          skill_type: skillType.trim() || null,
+          material_notes: materialNotes.trim() || null,
+          phase_group: phaseGroup.trim() || null,
+          planned_start_at: plannedStartAt || null,
+          planned_end_at: plannedEndAt || null,
           location_tag_id: locTag.trim() || null,
           sop_id: sopRef.trim() || null,
           required_skill_names: skillsSel,
@@ -1377,10 +1551,87 @@ function ProjectTaskModal({
             className="text-xs font-semibold text-pulse-accent hover:underline"
             onClick={() => setShowAdvanced((v) => !v)}
           >
-            {showAdvanced ? "Hide advanced" : "Advanced: SOP, dependencies"}
+            {showAdvanced ? "Hide advanced" : "Advanced: planning"}
           </button>
           {showAdvanced ? (
             <div className="space-y-4 border-t border-slate-100 pt-4 dark:border-ds-border">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className={LABEL} htmlFor="tm-duration">
+                    Estimated duration
+                  </label>
+                  <input
+                    id="tm-duration"
+                    className={FIELD}
+                    value={estimatedDuration}
+                    onChange={(e) => setEstimatedDuration(e.target.value)}
+                    placeholder="e.g. half day"
+                  />
+                </div>
+                <div>
+                  <label className={LABEL} htmlFor="tm-skill-type">
+                    Skill type
+                  </label>
+                  <input
+                    id="tm-skill-type"
+                    className={FIELD}
+                    value={skillType}
+                    onChange={(e) => setSkillType(e.target.value)}
+                    placeholder="Optional label"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className={LABEL} htmlFor="tm-phase">
+                  Phase group
+                </label>
+                <input
+                  id="tm-phase"
+                  className={FIELD}
+                  value={phaseGroup}
+                  onChange={(e) => setPhaseGroup(e.target.value)}
+                  placeholder="e.g. Prep, Repair, Wrap-up"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className={LABEL} htmlFor="tm-plan-start">
+                    Planned start
+                  </label>
+                  <input
+                    id="tm-plan-start"
+                    type="datetime-local"
+                    className={FIELD}
+                    value={plannedStartAt ? plannedStartAt.slice(0, 16) : ""}
+                    onChange={(e) => setPlannedStartAt(e.target.value ? new Date(e.target.value).toISOString() : "")}
+                  />
+                </div>
+                <div>
+                  <label className={LABEL} htmlFor="tm-plan-end">
+                    Planned end
+                  </label>
+                  <input
+                    id="tm-plan-end"
+                    type="datetime-local"
+                    className={FIELD}
+                    value={plannedEndAt ? plannedEndAt.slice(0, 16) : ""}
+                    onChange={(e) => setPlannedEndAt(e.target.value ? new Date(e.target.value).toISOString() : "")}
+                  />
+                </div>
+              </div>
+              <div>
+                <label className={LABEL} htmlFor="tm-materials">
+                  Material notes
+                </label>
+                <textarea
+                  id="tm-materials"
+                  rows={3}
+                  className={FIELD}
+                  value={materialNotes}
+                  onChange={(e) => setMaterialNotes(e.target.value)}
+                  placeholder="Optional materials/tools notes"
+                />
+              </div>
               <div>
                 <label className={LABEL} htmlFor="tm-sop">
                   SOP id

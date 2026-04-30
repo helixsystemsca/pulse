@@ -15,6 +15,8 @@ class ProjectCreate(BaseModel):
     end_date: date
     status: str = Field(default="active", description="active | future | completed | on_hold")
     owner_user_id: Optional[str] = Field(None, description="User id within the tenant")
+    template_id: Optional[str] = Field(None, description="Optional project template id")
+    category_id: Optional[str] = Field(None, description="Optional category id")
 
 
 class ProjectPatch(BaseModel):
@@ -24,6 +26,7 @@ class ProjectPatch(BaseModel):
     end_date: Optional[date] = None
     status: Optional[str] = None
     owner_user_id: Optional[str] = None
+    category_id: Optional[str] = None
     goal: Optional[str] = None
     notes: Optional[str] = None
     success_definition: Optional[str] = None
@@ -33,6 +36,18 @@ class ProjectPatch(BaseModel):
     lessons_learned: Optional[str] = None
 
 
+class CategoryOut(BaseModel):
+    id: str
+    name: str
+    color: Optional[str] = None
+    created_at: datetime
+
+
+class CategoryCreateIn(BaseModel):
+    name: str = Field(..., min_length=1, max_length=128)
+    color: Optional[str] = Field(None, max_length=64)
+
+
 class ProjectOut(BaseModel):
     id: str
     company_id: str
@@ -40,6 +55,8 @@ class ProjectOut(BaseModel):
     description: Optional[str]
     owner_user_id: Optional[str] = None
     created_by_user_id: Optional[str] = None
+    category_id: Optional[str] = None
+    category: Optional[CategoryOut] = None
     start_date: date
     end_date: date
     goal: Optional[str] = None
@@ -52,6 +69,7 @@ class ProjectOut(BaseModel):
     status: str
     created_at: datetime
     updated_at: datetime
+    health_status: str = "On Track"
 
     model_config = {"from_attributes": True}
 
@@ -64,6 +82,12 @@ class TaskCreate(BaseModel):
     priority: str = Field(default="medium")
     status: str = Field(default="todo")
     due_date: Optional[date] = None
+    estimated_duration: Optional[str] = Field(None, max_length=64)
+    skill_type: Optional[str] = Field(None, max_length=128)
+    material_notes: Optional[str] = None
+    phase_group: Optional[str] = Field(None, max_length=128)
+    planned_start_at: Optional[datetime] = None
+    planned_end_at: Optional[datetime] = None
     location_tag_id: Optional[str] = Field(None, max_length=128)
     sop_id: Optional[str] = Field(None, max_length=128)
     required_skill_names: list[str] = Field(default_factory=list)
@@ -76,6 +100,12 @@ class TaskPatch(BaseModel):
     priority: Optional[str] = None
     status: Optional[str] = None
     due_date: Optional[date] = None
+    estimated_duration: Optional[str] = Field(None, max_length=64)
+    skill_type: Optional[str] = Field(None, max_length=128)
+    material_notes: Optional[str] = None
+    phase_group: Optional[str] = Field(None, max_length=128)
+    planned_start_at: Optional[datetime] = None
+    planned_end_at: Optional[datetime] = None
     location_tag_id: Optional[str] = Field(None, max_length=128)
     sop_id: Optional[str] = Field(None, max_length=128)
     required_skill_names: Optional[list[str]] = None
@@ -98,6 +128,12 @@ class TaskOut(BaseModel):
     status: str
     required_skill_names: list[str] = Field(default_factory=list)
     due_date: Optional[date]
+    estimated_duration: Optional[str] = None
+    skill_type: Optional[str] = None
+    material_notes: Optional[str] = None
+    phase_group: Optional[str] = None
+    planned_start_at: Optional[datetime] = None
+    planned_end_at: Optional[datetime] = None
     calendar_shift_id: Optional[str] = None
     calendar_event_id: Optional[str] = None
     created_at: datetime
@@ -122,6 +158,8 @@ class ProjectActivityOut(BaseModel):
     type: str
     title: Optional[str] = None
     description: str
+    impact_level: Optional[str] = None
+    related_task_id: Optional[str] = None
     created_at: datetime
 
 
@@ -144,6 +182,12 @@ def task_orm_to_out(
     sop = getattr(t, "sop_id", None)
     loc_s = str(loc).strip() if loc else None
     sop_s = str(sop).strip() if sop else None
+    est = getattr(t, "estimated_duration", None)
+    skill_type = getattr(t, "skill_type", None)
+    material_notes = getattr(t, "material_notes", None)
+    phase_group = getattr(t, "phase_group", None)
+    planned_start_at = getattr(t, "planned_start_at", None)
+    planned_end_at = getattr(t, "planned_end_at", None)
     raw_skills = getattr(t, "required_skill_names", None) or []
     skill_list: list[str] = []
     if isinstance(raw_skills, list):
@@ -173,6 +217,12 @@ def task_orm_to_out(
         status=st,
         required_skill_names=skill_list,
         due_date=t.due_date,
+        estimated_duration=str(est).strip() if est else None,
+        skill_type=str(skill_type).strip() if skill_type else None,
+        material_notes=material_notes,
+        phase_group=str(phase_group).strip() if phase_group else None,
+        planned_start_at=planned_start_at,
+        planned_end_at=planned_end_at,
         calendar_shift_id=sid,
         calendar_event_id=sid,
         created_at=t.created_at,
@@ -285,3 +335,50 @@ class ProjectOutWithProgress(ProjectOut):
     progress_pct: int = 0
     assignee_user_ids: list[str] = Field(default_factory=list)
     last_activity_at: Optional[datetime] = None
+    health_status: str = "On Track"
+
+
+class ProjectTemplateOut(BaseModel):
+    id: str
+    name: str
+    description: Optional[str] = None
+    default_goal: Optional[str] = None
+    default_notes: Optional[str] = None
+    default_success_definition: Optional[str] = None
+
+
+class ProjectTemplateTaskOut(BaseModel):
+    id: str
+    template_id: str
+    title: str
+    description: Optional[str] = None
+    suggested_duration: Optional[str] = None
+    skill_type: Optional[str] = None
+    material_notes: Optional[str] = None
+    order_index: int = 0
+    phase_group: Optional[str] = None
+
+
+class ProjectTemplateDetailOut(ProjectTemplateOut):
+    tasks: list[ProjectTemplateTaskOut] = Field(default_factory=list)
+
+
+class ProjectTemplateTaskCreateIn(BaseModel):
+    title: str = Field(..., min_length=1, max_length=512)
+    description: Optional[str] = None
+    suggested_duration: Optional[str] = Field(None, max_length=64)
+    skill_type: Optional[str] = Field(None, max_length=128)
+    material_notes: Optional[str] = None
+    order_index: int = 0
+    phase_group: Optional[str] = Field(None, max_length=128)
+
+
+class ProjectTemplateCreateIn(BaseModel):
+    name: str = Field(..., min_length=1, max_length=255)
+    description: Optional[str] = None
+    default_goal: Optional[str] = None
+    default_notes: Optional[str] = None
+    default_success_definition: Optional[str] = None
+    tasks: list[ProjectTemplateTaskCreateIn] = Field(
+        default_factory=list, description="Optional seed tasks for the template"
+    )
