@@ -11,7 +11,7 @@ export default function WorkerDashboardPage() {
     if (!readSession()) navigateToPulseLogin();
   }, []);
   return (
-    <div className="relative">
+    <div className="relative space-y-4">
       <DashboardViewTabs />
       <WorkerDashboard kiosk={false} />
     </div>

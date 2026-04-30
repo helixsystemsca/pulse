@@ -1742,133 +1742,25 @@ function DashboardBody({
 
         <div ref={containerRef as any}>
           {mounted ? (
-            editMode ? (
-              <GridLayout
-                layout={layout}
-                width={width}
-                gridConfig={{ cols: 12, rowHeight: 100, margin: [24, 24], containerPadding: [0, 0] }}
-                dragConfig={{ enabled: !readOnly && editMode, bounded: false, handle: ".dashboard-drag-handle" }}
-                resizeConfig={{ enabled: !readOnly && editMode, handles: ["se"] }}
-                compactor={noCompactor}
-                onLayoutChange={(next) => {
-                  if (readOnly) return;
-                  setLayout(next);
-                }}
-              >
-                {layout.map((item) => {
-            if (item.i.startsWith("cw_")) {
-              const cfg = customConfigs[item.i];
-              if (!cfg) return <div key={item.i} />;
-              const headerRight = (
-                <div className="flex items-center gap-2">
-                  {!readOnly && editMode ? (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setPeekWizardInitial(cfg);
-                        setPeekWizardMode("edit");
-                        setShowPeekWizard(true);
-                      }}
-                      className="inline-flex items-center rounded-md border border-black/10 bg-white/80 px-2 py-1 text-slate-700 hover:bg-white dark:border-ds-border dark:bg-ds-secondary dark:text-gray-100 dark:hover:bg-ds-interactive-hover"
-                      aria-label="Customize peek widget"
-                      title="Customize"
-                    >
-                      <Settings className="h-3.5 w-3.5" aria-hidden />
-                    </button>
-                  ) : null}
-                  {!readOnly && editMode ? (
-                    <span className="dashboard-drag-handle select-none rounded-md border border-black/10 bg-slate-900/90 px-2 py-1 text-[11px] font-semibold text-white shadow-sm dark:bg-white/85 dark:text-slate-900">
-                      Drag
-                    </span>
-                  ) : null}
-                  {!readOnly && editMode ? (
-                    <button
-                      type="button"
-                      onClick={() => removeWidget(item.i)}
-                      className="rounded-md border border-black/10 bg-white/80 px-2 py-1 text-xs font-semibold text-slate-700 hover:bg-white"
-                      aria-label={`Remove ${cfg.title}`}
-                      title="Remove widget"
-                    >
-                      ×
-                    </button>
-                  ) : null}
-                </div>
-              );
-              return (
-                <div
-                  key={item.i}
-                  className={["transition-transform", editMode ? "cursor-grab active:cursor-grabbing" : ""].join(" ")}
-                >
-                  <WorkerDashCard title={cfg.title} headerRight={headerRight} className="h-full">
-                    <DashboardCustomPeekWidget config={cfg} model={model} />
-                  </WorkerDashCard>
-                </div>
-              );
-            }
-            const w = (widgetRegistry as Record<string, any>)[item.i] as
-              | { title: string; accent: "yellow" | "red" | "blue" | "green" | "none"; render: () => ReactNode }
-              | null
-              | undefined;
-            if (!w) return <div key={item.i} />;
-            const alertsPeek =
-              item.i === "alerts" ? (
-                <Link href={pulseRoutes.monitoring} className="ds-link text-xs font-semibold">
-                  View all
-                </Link>
-              ) : null;
-            const headerRight = (
-              <div className="flex items-center gap-2">
-                {alertsPeek}
-                {!readOnly && editMode ? (
-                  <span className="dashboard-drag-handle select-none rounded-md border border-black/10 bg-slate-900/90 px-2 py-1 text-[11px] font-semibold text-white shadow-sm dark:bg-white/85 dark:text-slate-900">
-                    Drag
-                  </span>
-                ) : null}
-                {!readOnly && editMode ? (
-                  <button
-                    type="button"
-                    onClick={() => removeWidget(item.i)}
-                    className="rounded-md border border-black/10 bg-white/80 px-2 py-1 text-xs font-semibold text-slate-700 hover:bg-white"
-                    aria-label={`Remove ${w.title}`}
-                    title="Remove widget"
-                  >
-                    ×
-                  </button>
-                ) : null}
-              </div>
-            );
-            return (
-              <div
-                key={item.i}
-                data-guided-tour-anchor={
-                  item.i === "alerts"
-                    ? "dashboard-alerts"
-                    : item.i === "workforce"
-                      ? "dashboard-workforce"
-                      : item.i === "inventory"
-                        ? "dashboard-inventory"
-                        : undefined
-                }
-                className={[
-                  "transition-transform",
-                  editMode ? "cursor-grab active:cursor-grabbing" : "",
-                ].join(" ")}
-              >
-                <WorkerDashCard title={w.title} headerRight={headerRight} className={["h-full", item.i === "setup" ? "overflow-auto" : ""].join(" ")}>
-                  {w.render()}
-                </WorkerDashCard>
-              </div>
-            );
-                })}
-              </GridLayout>
-            ) : (
-              <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
-                {layout.map((item) => {
-                  if (item.i.startsWith("cw_")) {
-                    const cfg = customConfigs[item.i];
-                    if (!cfg) return null;
-                    const headerRight = !readOnly ? (
-                      <div className="flex items-center gap-2">
+            <GridLayout
+              layout={layout}
+              width={width}
+              gridConfig={{ cols: 12, rowHeight: 100, margin: [24, 24], containerPadding: [0, 0] }}
+              dragConfig={{ enabled: !readOnly && editMode, bounded: false, handle: ".dashboard-drag-handle" }}
+              resizeConfig={{ enabled: !readOnly && editMode, handles: ["se"] }}
+              compactor={noCompactor}
+              onLayoutChange={(next) => {
+                if (readOnly || !editMode) return;
+                setLayout(next);
+              }}
+            >
+              {layout.map((item) => {
+                if (item.i.startsWith("cw_")) {
+                  const cfg = customConfigs[item.i];
+                  if (!cfg) return <div key={item.i} />;
+                  const headerRight = !readOnly ? (
+                    <div className="flex items-center gap-2">
+                      {!editMode ? (
                         <button
                           type="button"
                           onClick={() => {
@@ -1882,6 +1774,23 @@ function DashboardBody({
                         >
                           <Settings className="h-3.5 w-3.5" aria-hidden />
                         </button>
+                      ) : null}
+                      {!readOnly && editMode ? (
+                        <span className="dashboard-drag-handle select-none rounded-md border border-black/10 bg-slate-900/90 px-2 py-1 text-[11px] font-semibold text-white shadow-sm dark:bg-white/85 dark:text-slate-900">
+                          Drag
+                        </span>
+                      ) : null}
+                      {!readOnly && editMode ? (
+                        <button
+                          type="button"
+                          onClick={() => removeWidget(item.i)}
+                          className="rounded-md border border-black/10 bg-white/80 px-2 py-1 text-xs font-semibold text-slate-700 hover:bg-white"
+                          aria-label={`Remove ${cfg.title}`}
+                          title="Remove widget"
+                        >
+                          ×
+                        </button>
+                      ) : (
                         <button
                           type="button"
                           onClick={() => removeWidget(item.i)}
@@ -1891,38 +1800,84 @@ function DashboardBody({
                         >
                           ×
                         </button>
-                      </div>
-                    ) : null;
-                    return (
-                      <WorkerDashCard key={item.i} title={cfg.title} headerRight={headerRight}>
+                      )}
+                    </div>
+                  ) : null;
+                  return (
+                    <div
+                      key={item.i}
+                      className={["transition-transform", editMode ? "cursor-grab active:cursor-grabbing" : ""].join(" ")}
+                    >
+                      <WorkerDashCard title={cfg.title} headerRight={headerRight} className="h-full">
                         <DashboardCustomPeekWidget config={cfg} model={model} />
                       </WorkerDashCard>
-                    );
-                  }
-                  const w = (widgetRegistry as Record<string, any>)[item.i] as
-                    | { title: string; render: () => ReactNode }
-                    | null
-                    | undefined;
-                  if (!w) return null;
-                  const headerRight =
-                    item.i === "alerts" ? (
-                      <Link href={pulseRoutes.monitoring} className="ds-link text-xs font-semibold">
-                        View all
-                      </Link>
-                    ) : null;
-                  return (
+                    </div>
+                  );
+                }
+
+                const w = (widgetRegistry as Record<string, any>)[item.i] as
+                  | { title: string; accent: "yellow" | "red" | "blue" | "green" | "none"; render: () => ReactNode }
+                  | null
+                  | undefined;
+                if (!w) return <div key={item.i} />;
+
+                const alertsPeek =
+                  item.i === "alerts" ? (
+                    <Link href={pulseRoutes.monitoring} className="ds-link text-xs font-semibold">
+                      View all
+                    </Link>
+                  ) : null;
+
+                const headerRight = (
+                  <div className="flex items-center gap-2">
+                    {alertsPeek}
+                    {!readOnly && editMode ? (
+                      <>
+                        <span className="dashboard-drag-handle select-none rounded-md border border-black/10 bg-slate-900/90 px-2 py-1 text-[11px] font-semibold text-white shadow-sm dark:bg-white/85 dark:text-slate-900">
+                          Drag
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => removeWidget(item.i)}
+                          className="rounded-md border border-black/10 bg-white/80 px-2 py-1 text-xs font-semibold text-slate-700 hover:bg-white"
+                          aria-label={`Remove ${w.title}`}
+                          title="Remove widget"
+                        >
+                          ×
+                        </button>
+                      </>
+                    ) : null}
+                  </div>
+                );
+
+                return (
+                  <div
+                    key={item.i}
+                    data-guided-tour-anchor={
+                      item.i === "alerts"
+                        ? "dashboard-alerts"
+                        : item.i === "workforce"
+                          ? "dashboard-workforce"
+                          : item.i === "inventory"
+                            ? "dashboard-inventory"
+                            : undefined
+                    }
+                    className={[
+                      "transition-transform",
+                      editMode ? "cursor-grab active:cursor-grabbing" : "",
+                    ].join(" ")}
+                  >
                     <WorkerDashCard
-                      key={item.i}
                       title={w.title}
                       headerRight={headerRight}
-                      className={item.i === "setup" ? "md:col-span-2 xl:col-span-3" : ""}
+                      className={["h-full", item.i === "setup" ? "overflow-auto" : ""].join(" ")}
                     >
                       {w.render()}
                     </WorkerDashCard>
-                  );
-                })}
-              </div>
-            )
+                  </div>
+                );
+              })}
+            </GridLayout>
           ) : null}
         </div>
 

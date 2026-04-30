@@ -112,7 +112,7 @@ export function AppSideNav() {
   return (
     <aside className={shell} aria-label={systemRail ? "System navigation" : "App navigation"}>
       <div className="flex min-h-0 flex-1 flex-col">
-        <div className="min-h-0 flex-1 space-y-2 overflow-y-auto pb-2">
+        <div className="min-h-0 flex-1 space-y-2 overflow-y-auto pb-2 pt-3">
           <div className="px-3 pb-1">
             <div className="relative">
               <Search
@@ -172,9 +172,6 @@ export function AppSideNav() {
             Settings
           </Link>
           <div className="flex items-center gap-3 pb-3">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-ds-success text-xs font-bold text-[var(--ds-on-accent)]">
-              {navInitials(session.full_name, session.email)}
-            </span>
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-semibold text-foreground">
                 {session.full_name?.trim() || session.email.split("@")[0]}

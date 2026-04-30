@@ -64,7 +64,7 @@ export default function OverviewPage() {
   }
 
   return (
-    <div className="relative">
+    <div className="relative space-y-4">
       <DashboardViewTabs />
       <OperationalDashboard
         variant={isApiMode() ? "live" : "demo"}

@@ -58,16 +58,25 @@ export function AppLayout({
             {chrome ? <AppSideNav /> : null}
 
             <div className="flex flex-1 flex-col overflow-hidden">
-              <main className={["flex-1 overflow-y-auto", mainClassName].filter(Boolean).join(" ")}>
-                <div className={["w-full max-w-none px-3 py-4 lg:px-4", mainContentClassName].filter(Boolean).join(" ")}>
+              <main
+                className={["flex-1 overflow-y-auto bg-background", mainClassName].filter(Boolean).join(" ")}
+              >
+                <div
+                  className={[
+                    "min-h-full w-full max-w-none bg-background px-3 py-4 lg:px-4",
+                    mainContentClassName,
+                  ]
+                    .filter(Boolean)
+                    .join(" ")}
+                >
                   {children}
                 </div>
               </main>
-
-              {chrome ? <OnboardingChrome /> : null}
-              {chrome ? <AppLayoutFooter /> : null}
             </div>
           </div>
+
+          {chrome ? <OnboardingChrome /> : null}
+          {chrome ? <AppLayoutFooter /> : null}
         </div>
         </GamificationProvider>
         </ModuleSettingsProvider>
