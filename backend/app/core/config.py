@@ -187,6 +187,11 @@ class Settings(BaseSettings):
         default="",
         validation_alias=AliasChoices("PM_CRON_SECRET", "pm_cron_secret"),
     )
+    #: Shared secret for `POST /api/v1/internal/notifications/run-evaluations` (daily cron). Env: NOTIFICATION_CRON_SECRET.
+    notification_cron_secret: str = Field(
+        default="",
+        validation_alias=AliasChoices("NOTIFICATION_CRON_SECRET", "notification_cron_secret"),
+    )
 
     # --- Telemetry ingest rate limiting (per gateway; best-effort in-process)
     telemetry_ingest_max_readings_per_sec: int = Field(

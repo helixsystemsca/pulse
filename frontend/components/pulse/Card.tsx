@@ -1,8 +1,8 @@
-import type { ReactNode } from "react";
+import type { ComponentPropsWithoutRef, ReactNode } from "react";
 
 export type CardVariant = "primary" | "secondary" | "elevated";
 
-type CardProps = {
+export type CardProps = {
   children: ReactNode;
   className?: string;
   /** default: comfortable p-6 */
@@ -11,7 +11,7 @@ type CardProps = {
   variant?: CardVariant;
   /** Whole card is a control (e.g. wraps a link). Default: static surface, no hover lift. */
   interactive?: boolean;
-};
+} & Omit<ComponentPropsWithoutRef<"div">, "children" | "className">;
 
 const paddingClass = {
   none: "",
@@ -33,10 +33,13 @@ export function Card({
   padding = "lg",
   variant = "primary",
   interactive = false,
+  ...rest
 }: CardProps) {
+  const showPointer = interactive || typeof rest.onClick === "function";
   return (
     <div
-      className={`${variantClass[variant]} ${interactive ? interactiveClass : ""} ${paddingClass[padding]} ${className}`}
+      className={`${variantClass[variant]} ${showPointer ? interactiveClass : ""} ${paddingClass[padding]} ${className}`}
+      {...rest}
     >
       {children}
     </div>

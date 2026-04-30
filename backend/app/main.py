@@ -54,6 +54,7 @@ from app.api.pm_task_routes import router as pm_task_router
 from app.api.pm_task_routes import tools_router as pm_tools_router
 from app.api.pm_plans_routes import router as pm_plans_router
 from app.api.schedule_internal_routes import router as schedule_internal_router
+from app.api.notification_internal_routes import router as notification_internal_router
 from app.api.gamification_routes import router as gamification_router
 from app.api.team_insights_routes import router as team_insights_router
 from app.api.worker_profile_routes import router as worker_profile_router
@@ -169,6 +170,7 @@ app.include_router(pm_tools_router, prefix="/api/v1")
 app.include_router(pm_internal_router, prefix="/api/v1")
 app.include_router(pm_plans_router, prefix="/api/v1")
 app.include_router(schedule_internal_router, prefix="/api/v1")
+app.include_router(notification_internal_router, prefix="/api/v1")
 app.include_router(gamification_router, prefix="/api/v1")
 app.include_router(team_insights_router, prefix="/api/v1")
 app.include_router(worker_profile_router, prefix="/api/v1")

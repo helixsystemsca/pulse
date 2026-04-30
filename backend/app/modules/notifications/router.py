@@ -14,7 +14,7 @@ from app.api.deps import require_company_admin_scoped
 from app.core.database import get_db
 from app.core.events.engine import event_engine
 from app.core.events.types import DomainEvent
-from app.models.domain import NotificationRule, User
+from app.models.domain import TenantNotificationRule, User
 from app.modules.notifications import MODULE_KEY
 from app.modules.notifications.schemas import RuleCreate
 
@@ -26,7 +26,7 @@ async def list_rules(
     user: Annotated[User, Depends(require_company_admin_scoped)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> list[dict[str, Any]]:
-    q = await db.execute(select(NotificationRule).where(NotificationRule.company_id == user.company_id))
+    q = await db.execute(select(TenantNotificationRule).where(TenantNotificationRule.company_id == user.company_id))
     rows = q.scalars().all()
     return [
         {
@@ -46,7 +46,7 @@ async def create_rule(
     user: Annotated[User, Depends(require_company_admin_scoped)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> dict[str, str]:
-    row = NotificationRule(
+    row = TenantNotificationRule(
         company_id=user.company_id,
         name=body.name,
         event_pattern=body.event_pattern,

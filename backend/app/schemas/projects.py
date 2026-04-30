@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import date, datetime, timezone
 from typing import Any, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class ProjectCreate(BaseModel):
@@ -106,6 +106,86 @@ class ProjectNotificationSettingsPatch(BaseModel):
     notification_to_owner: Optional[bool] = None
 
 
+NOTIFICATION_RULE_CONDITION_KEYS = frozenset(
+    {"has_materials", "material_status_in", "fallback_to_existence_if_no_inventory"}
+)
+TASK_MATERIAL_STATUS_VALUES = frozenset({"in_stock", "needs_order", "ordered", "received"})
+NOTIFICATION_RECIPIENT_ROLES = frozenset({"supervisor", "lead", "owner"})
+
+
+class NotificationRuleCreateIn(BaseModel):
+    type: str = Field(..., min_length=1, max_length=64)
+    enabled: bool = True
+    offset_days: int
+    conditions: dict[str, Any] = Field(default_factory=dict)
+    recipients: list[str] = Field(default_factory=list)
+
+    @field_validator("type", mode="after")
+    @classmethod
+    def strip_rule_type(cls, v: str) -> str:
+        t = v.strip()
+        if not t:
+            raise ValueError("type is required")
+        return t
+
+    @field_validator("conditions", mode="after")
+    @classmethod
+    def validate_conditions(cls, v: dict[str, Any]) -> dict[str, Any]:
+        for k in v:
+            if k not in NOTIFICATION_RULE_CONDITION_KEYS:
+                raise ValueError(f"Unknown conditions key: {k!r}")
+        hm = v.get("has_materials")
+        if hm is not None and not isinstance(hm, bool):
+            raise ValueError("has_materials must be a boolean")
+        fb = v.get("fallback_to_existence_if_no_inventory")
+        if fb is not None and not isinstance(fb, bool):
+            raise ValueError("fallback_to_existence_if_no_inventory must be a boolean")
+        raw_ms = v.get("material_status_in")
+        if raw_ms is None:
+            return dict(v)
+        if not isinstance(raw_ms, list):
+            raise ValueError("material_status_in must be a list of status strings")
+        norm: list[str] = []
+        for s in raw_ms:
+            st = str(s).strip().lower()
+            if st not in TASK_MATERIAL_STATUS_VALUES:
+                raise ValueError(f"Invalid material status: {s!r}")
+            if st not in norm:
+                norm.append(st)
+        out = dict(v)
+        out["material_status_in"] = norm
+        return out
+
+    @field_validator("recipients", mode="after")
+    @classmethod
+    def validate_recipients(cls, v: list[str]) -> list[str]:
+        out: list[str] = []
+        for x in v:
+            r = str(x).strip().lower()
+            if r == "supervision":
+                r = "supervisor"
+            if r not in NOTIFICATION_RECIPIENT_ROLES:
+                raise ValueError(f"Invalid recipient role: {x!r}")
+            if r not in out:
+                out.append(r)
+        return out
+
+
+class NotificationRuleOut(BaseModel):
+    id: str
+    project_id: str
+    company_id: str
+    type: str
+    enabled: bool
+    offset_days: int
+    conditions: dict[str, Any]
+    recipients: list[str]
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
 class TaskCreate(BaseModel):
     project_id: str
     title: str = Field(..., min_length=1, max_length=512)
@@ -200,6 +280,15 @@ class TaskMaterialCreateIn(BaseModel):
     quantity_required: float = Field(default=1, gt=0)
     unit: Optional[str] = Field(None, max_length=32)
     notes: Optional[str] = Field(None, max_length=2000)
+    status: str = Field(default="in_stock", description="in_stock | needs_order | ordered | received")
+
+    @field_validator("status", mode="after")
+    @classmethod
+    def validate_material_status(cls, v: str) -> str:
+        s = v.strip().lower()
+        if s not in TASK_MATERIAL_STATUS_VALUES:
+            raise ValueError(f"Invalid material status: {v!r}")
+        return s
 
 
 class TaskMaterialPatch(BaseModel):
@@ -208,6 +297,17 @@ class TaskMaterialPatch(BaseModel):
     unit: Optional[str] = Field(None, max_length=32)
     notes: Optional[str] = Field(None, max_length=2000)
     inventory_item_id: Optional[str] = None
+    status: Optional[str] = Field(None, description="in_stock | needs_order | ordered | received")
+
+    @field_validator("status", mode="after")
+    @classmethod
+    def validate_material_status_patch(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return None
+        s = v.strip().lower()
+        if s not in TASK_MATERIAL_STATUS_VALUES:
+            raise ValueError(f"Invalid material status: {v!r}")
+        return s
 
 
 class TaskMaterialOut(BaseModel):
@@ -220,6 +320,7 @@ class TaskMaterialOut(BaseModel):
     quantity_required: float
     unit: Optional[str] = None
     notes: Optional[str] = None
+    status: str = "in_stock"
     created_at: datetime
     updated_at: datetime
 

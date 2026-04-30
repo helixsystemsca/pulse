@@ -1,18 +1,6 @@
 "use client";
 
-import {
-  AlertCircle,
-  Eye,
-  EyeOff,
-  Globe,
-  HelpCircle,
-  Loader2,
-  Lock,
-  Mail,
-  Moon,
-  Sun,
-} from "lucide-react";
-import Link from "next/link";
+import { AlertCircle, Eye, EyeOff, Loader2, Lock, Mail, Moon, Sun } from "lucide-react";
 import { FormEvent, useEffect, useId, useState } from "react";
 import { AuthScreenShell } from "@/components/auth/AuthScreenShell";
 import { isApiMode } from "@/lib/api";
@@ -27,7 +15,7 @@ import {
   writeApiSession,
   writeSession,
 } from "@/lib/pulse-session";
-import { helixMarketingHref, navigateAfterPulseLogin, pulseRoutes } from "@/lib/pulse-app";
+import { navigateAfterPulseLogin } from "@/lib/pulse-app";
 import { PULSE_BUILD_VERSION } from "@/lib/pulse-build-version";
 import { mailtoInfo, mailtoSupport } from "@/lib/helix-emails";
 import { useTheme } from "@/components/theme/ThemeProvider";
@@ -155,18 +143,7 @@ export default function LoginPage() {
       <div className="auth-shell-inner relative flex min-h-0 flex-1 flex-col">
         <LoginRipples />
 
-        <header className="relative z-10 flex w-full items-center justify-between gap-4 px-5 py-4 sm:px-8 lg:px-12">
-          <Link
-            href={pulseRoutes.pulseLanding}
-            className="flex items-center gap-2.5 no-underline transition-opacity hover:opacity-90"
-          >
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-[color-mix(in_srgb,#4c6085_18%,transparent)] bg-white shadow-sm dark:border-ds-border dark:bg-ds-secondary">
-              <img src="/images/pulse-mark.svg" width={36} height={36} alt="" className="h-9 w-9" />
-            </span>
-            <span className="font-headline text-lg font-extrabold tracking-tight text-[#3f5274] dark:text-ds-foreground sm:text-xl">
-              Pulse
-            </span>
-          </Link>
+        <header className="relative z-10 flex w-full items-center justify-end gap-4 px-5 py-4 sm:px-8 lg:px-12">
           <nav className="flex items-center gap-1 sm:gap-2" aria-label="Login header">
             <button
               type="button"
@@ -177,20 +154,6 @@ export default function LoginPage() {
             >
               {theme === "dark" ? <Sun className="h-5 w-5" strokeWidth={2} aria-hidden /> : <Moon className="h-5 w-5" strokeWidth={2} aria-hidden />}
             </button>
-            <span
-              className="flex h-10 w-10 items-center justify-center rounded-full text-[#4c6085] opacity-50 dark:text-ds-muted"
-              title="Language"
-              aria-hidden
-            >
-              <Globe className="h-5 w-5" strokeWidth={2} />
-            </span>
-            <a
-              href={helixMarketingHref("/pulse")}
-              className="flex h-10 w-10 items-center justify-center rounded-full text-[#4c6085] transition-colors hover:bg-[color-mix(in_srgb,#4c6085_10%,transparent)] dark:text-ds-muted dark:hover:bg-ds-interactive-hover"
-              aria-label="Help"
-            >
-              <HelpCircle className="h-5 w-5" strokeWidth={2} />
-            </a>
             <a
               href={mailtoSupport("Pulse — Support")}
               className="inline-flex rounded-full bg-[#4c6085] px-3 py-2 text-[11px] font-bold uppercase tracking-wide text-white shadow-sm transition-colors hover:bg-[#3f5274] sm:px-4 sm:py-2.5 sm:text-xs dark:bg-[#556b8e] dark:hover:bg-[#4c6085]"
@@ -202,17 +165,20 @@ export default function LoginPage() {
 
         <main className="relative z-10 flex min-h-0 flex-1 flex-col justify-center px-4 pb-10 pt-2 sm:px-6 md:px-8">
           <div className="mx-auto w-full max-w-[440px]">
-            <div className="flex justify-center">
+            <div className="flex items-center justify-center gap-3 sm:gap-4 md:gap-5">
               <div
-                className="rounded-full p-[3px] shadow-[0_0_0_1px_rgba(207,227,245,0.9),0_12px_40px_rgba(76,96,133,0.18)] dark:shadow-[0_0_0_1px_rgba(255,255,255,0.08),0_16px_48px_rgba(0,0,0,0.35)]"
+                className="shrink-0 rounded-full p-[3px] shadow-[0_0_0_1px_rgba(207,227,245,0.9),0_12px_40px_rgba(76,96,133,0.18)] dark:shadow-[0_0_0_1px_rgba(255,255,255,0.08),0_16px_48px_rgba(0,0,0,0.35)]"
                 style={{
                   background: "linear-gradient(145deg, rgba(54,241,205,0.35) 0%, #4c6085 42%, #354766 100%)",
                 }}
               >
                 <div className="flex h-[88px] w-[88px] items-center justify-center rounded-full bg-white dark:bg-ds-surface-secondary">
-                  <img src="/images/pulse-mark.svg" width={64} height={64} alt="Pulse" className="h-16 w-16 rounded-xl" />
+                  <img src="/images/pulse-mark.svg" width={64} height={64} alt="" className="h-16 w-16 rounded-xl" />
                 </div>
               </div>
+              <span className="font-headline text-[1.75rem] font-extrabold leading-none tracking-tight text-[#3f5274] dark:text-ds-foreground sm:text-[2.125rem] md:text-[2.35rem]">
+                Pulse
+              </span>
             </div>
 
             <h1 className="mt-7 text-center font-headline text-[1.65rem] font-extrabold leading-tight tracking-tight text-[#2f3d52] dark:text-ds-foreground sm:text-3xl">
@@ -332,25 +298,9 @@ export default function LoginPage() {
         </main>
 
         <footer className="relative z-10 mt-auto border-t border-[color-mix(in_srgb,#4c6085_10%,transparent)] bg-[color-mix(in_srgb,#ffffff_70%,transparent)] px-5 py-4 dark:border-ds-border dark:bg-ds-surface-primary/40 sm:px-8 lg:px-12">
-          <div className="mx-auto flex max-w-6xl flex-col gap-3 text-[10px] font-bold uppercase tracking-wide text-[color-mix(in_srgb,var(--ds-text-primary)_48%,transparent)] sm:flex-row sm:items-center sm:justify-between dark:text-ds-muted">
-            <Link href={pulseRoutes.pulseLanding} className="text-[#3f5274] no-underline hover:underline dark:text-ds-foreground">
-              Pulse
-            </Link>
-            <nav className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 sm:gap-x-6" aria-label="Footer">
-              <a href="#" className="no-underline hover:text-[#4c6085] dark:hover:text-ds-foreground">
-                Privacy policy
-              </a>
-              <a href="#" className="no-underline hover:text-[#4c6085] dark:hover:text-ds-foreground">
-                Terms of service
-              </a>
-              <Link href={pulseRoutes.overview} className="no-underline hover:text-[#4c6085] dark:hover:text-ds-foreground">
-                System status
-              </Link>
-            </nav>
-            <p className="text-center sm:text-right">
-              © {new Date().getFullYear()} Helix Systems · Pulse operations
-            </p>
-          </div>
+          <p className="mx-auto max-w-6xl text-center text-[10px] font-bold uppercase tracking-wide text-[color-mix(in_srgb,var(--ds-text-primary)_48%,transparent)] dark:text-ds-muted">
+            © {new Date().getFullYear()} Helix Systems
+          </p>
         </footer>
       </div>
     </AuthScreenShell>

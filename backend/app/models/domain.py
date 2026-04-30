@@ -638,8 +638,10 @@ class MaintenanceLog(Base):
     inference_triggered: Mapped[bool] = mapped_column(Boolean, default=False)
 
 
-class NotificationRule(Base):
-    __tablename__ = "notification_rules"
+class TenantNotificationRule(Base):
+    """Legacy tenant-scoped event routing rules (admin UI under /notifications/rules)."""
+
+    __tablename__ = "tenant_notification_rules"
 
     id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
     company_id: Mapped[str] = mapped_column(

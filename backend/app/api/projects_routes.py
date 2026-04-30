@@ -12,9 +12,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import require_tenant_user
 from app.services.onboarding_service import try_mark_onboarding_step
+from app.services.notifications import seed_default_notification_rules
 from app.core.database import get_db
 from app.models.domain import Company, FacilityEquipment, InventoryItem, User
 from app.models.pulse_models import (
+    NotificationRule,
     PulseCategory,
     PulseProject,
     PulseProjectActivity,
@@ -74,6 +76,8 @@ from app.schemas.projects import (
     TaskMaterialCreateIn,
     TaskMaterialOut,
     TaskMaterialPatch,
+    NotificationRuleCreateIn,
+    NotificationRuleOut,
     ProjectMaterialSummaryRow,
     TaskDependencyCreate,
     TaskDependencyOut,
@@ -190,6 +194,23 @@ def _notification_settings_out(project_id: str, p: PulseProject) -> ProjectNotif
     )
 
 
+def _notification_rule_out(r: NotificationRule) -> NotificationRuleOut:
+    rec = r.recipients if isinstance(r.recipients, list) else []
+    cond = r.conditions if isinstance(r.conditions, dict) else {}
+    return NotificationRuleOut(
+        id=str(r.id),
+        project_id=str(r.project_id),
+        company_id=str(r.company_id),
+        type=r.type,
+        enabled=bool(r.enabled),
+        offset_days=int(r.offset_days),
+        conditions=cond,
+        recipients=[str(x) for x in rec],
+        created_at=r.created_at,
+        updated_at=r.updated_at,
+    )
+
+
 async def _equipment_out(db: Db, cid: str, row: PulseProjectTaskEquipment) -> TaskEquipmentOut:
     eq_type: str | None = None
     eq_status: str | None = None
@@ -238,6 +259,7 @@ async def _material_out(db: Db, cid: str, m: PulseProjectTaskMaterial) -> TaskMa
         low_stock_threshold=low,
         is_out_of_stock=oos,
         is_low_stock=lowf,
+        status=str(getattr(m, "status", None) or "in_stock"),
     )
 
 
@@ -694,6 +716,7 @@ async def create_project(
     )
     db.add(p)
     await db.flush()
+    await seed_default_notification_rules(db, project_id=str(p.id), company_id=cid)
     if template and template_tasks:
         for tt in template_tasks:
             row = PulseProjectTask(
@@ -806,6 +829,49 @@ async def patch_project_notification_settings(
     await db.commit()
     await db.refresh(p)
     return _notification_settings_out(project_id, p)
+
+
+@router.get("/projects/{project_id}/notification-rules", response_model=list[NotificationRuleOut])
+async def list_project_notification_rules(db: Db, cid: CompanyId, project_id: str) -> list[NotificationRuleOut]:
+    p = await db.get(PulseProject, project_id)
+    if not p or str(p.company_id) != cid:
+        raise HTTPException(status_code=404, detail="Not found")
+    rq = await db.execute(
+        select(NotificationRule)
+        .where(NotificationRule.project_id == project_id, NotificationRule.company_id == cid)
+        .order_by(NotificationRule.created_at.asc())
+    )
+    rows = list(rq.scalars().all())
+    return [_notification_rule_out(r) for r in rows]
+
+
+@router.post(
+    "/projects/{project_id}/notification-rules",
+    response_model=NotificationRuleOut,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_project_notification_rule(
+    db: Db,
+    cid: CompanyId,
+    project_id: str,
+    body: NotificationRuleCreateIn,
+) -> NotificationRuleOut:
+    p = await db.get(PulseProject, project_id)
+    if not p or str(p.company_id) != cid:
+        raise HTTPException(status_code=404, detail="Not found")
+    row = NotificationRule(
+        project_id=project_id,
+        company_id=cid,
+        type=body.type,
+        enabled=body.enabled,
+        offset_days=body.offset_days,
+        conditions=dict(body.conditions),
+        recipients=list(body.recipients),
+    )
+    db.add(row)
+    await db.commit()
+    await db.refresh(row)
+    return _notification_rule_out(row)
 
 
 @router.get("/projects/{project_id}/activity", response_model=list[ProjectActivityOut])
@@ -1167,6 +1233,7 @@ async def add_task_material(db: Db, cid: CompanyId, task_id: str, body: TaskMate
         quantity_required=float(body.quantity_required),
         unit=unit,
         notes=body.notes,
+        status=body.status,
     )
     db.add(row)
     await db.commit()
@@ -1205,6 +1272,8 @@ async def patch_task_material(
         row.unit = (str(v).strip() or None) if v is not None else None
     if "notes" in data:
         row.notes = data["notes"]
+    if "status" in data and data["status"] is not None:
+        row.status = str(data["status"]).strip().lower()
     await db.commit()
     await db.refresh(row)
     return await _material_out(db, cid, row)
