@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { ChevronDown, Download, Flame, Sparkles, Trophy } from "lucide-react";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { PageBody } from "@/components/ui/PageBody";
 import { Card } from "@/components/pulse/Card";
 import { fetchTeamInsights, type TeamInsightsActivity, type TeamInsightsWorker } from "@/lib/teamInsightsService";
 import { WorkerRow } from "@/components/team/WorkerRow";
@@ -91,7 +92,7 @@ export function TeamInsightsApp() {
   }, [workers]);
 
   return (
-    <div className="mx-auto w-full max-w-6xl space-y-6 px-4 py-6">
+    <div className="space-y-6">
       <PageHeader
         title="Team Insights"
         description="Celebrate progress. Build a stronger team."
@@ -123,11 +124,12 @@ export function TeamInsightsApp() {
         }
       />
 
-      {err ? (
-        <div className="rounded-xl border border-ds-border bg-ds-primary px-4 py-3 text-sm font-medium text-ds-danger shadow-sm">
-          {err}
-        </div>
-      ) : null}
+      <PageBody>
+        {err ? (
+          <div className="rounded-xl border border-ds-border bg-ds-primary px-4 py-3 text-sm font-medium text-ds-danger shadow-sm">
+            {err}
+          </div>
+        ) : null}
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <Card
@@ -305,11 +307,8 @@ export function TeamInsightsApp() {
         </div>
       </Card>
 
-      <WorkerProfileModal
-        userId={openProfileUserId}
-        open={Boolean(openProfileUserId)}
-        onClose={() => setOpenProfileUserId(null)}
-      />
+        <WorkerProfileModal userId={openProfileUserId} open={Boolean(openProfileUserId)} onClose={() => setOpenProfileUserId(null)} />
+      </PageBody>
     </div>
   );
 }

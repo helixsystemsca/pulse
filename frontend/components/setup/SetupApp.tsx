@@ -801,7 +801,7 @@ export function SetupApp({ defaultTab }: { defaultTab?: TabId }) {
 
   if (isSystemAdmin && !companyPick) {
     return (
-      <div className="mx-auto max-w-3xl space-y-6">
+      <div className="space-y-6">
         <PageHeader
           title="Zones & Devices"
           description="Select a company to manage gateways, tags, and zones."

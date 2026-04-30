@@ -1,7 +1,7 @@
 """project categories
 
 Revision ID: 0085_project_categories
-Revises: 0084_project_templates_task_planning
+Revises: 0084_prj_templates
 Create Date: 2026-04-30
 """
 
@@ -12,7 +12,7 @@ from alembic import op
 from sqlalchemy.dialects.postgresql import UUID
 
 revision = "0085_project_categories"
-down_revision = "0084_project_templates_task_planning"
+down_revision = "0084_prj_templates"
 branch_labels = None
 depends_on = None
 

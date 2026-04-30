@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Card } from "@/components/pulse/Card";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { TankIndicator } from "@/components/monitoring/TankIndicator";
 import { isApiMode, refreshPulseUserFromServer } from "@/lib/api";
 import { emitOnboardingMaybeUpdated } from "@/lib/onboarding-events";
 import { fetchSetupProgress, patchOnboarding } from "@/lib/onboardingService";
@@ -127,6 +128,17 @@ export function MonitoringApp() {
               <h2 id="co2-heading" className="font-headline text-lg font-bold text-ds-foreground">
                 CO₂ tank levels
               </h2>
+              <Card padding="md" className="flex flex-wrap items-center justify-between gap-6">
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-ds-foreground">Tank indicators</p>
+                  <p className="mt-1 text-sm text-ds-muted">Hardcoded values (visual-only) for quick status checks.</p>
+                </div>
+                <div className="flex flex-wrap items-end justify-end gap-8">
+                  <TankIndicator label="CO₂ Tank" value={325} />
+                  <TankIndicator label="Backup CO₂" value={410} />
+                  <TankIndicator label="Spare" value={275} />
+                </div>
+              </Card>
               <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
                 {co2Tanks.map((tank) => {
                   const status = getCo2TankStatus(tank.level);

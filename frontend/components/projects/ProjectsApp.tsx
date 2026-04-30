@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Card } from "@/components/pulse/Card";
 import { ModuleOnboardingHint } from "@/components/onboarding/ModuleOnboardingHint";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { PageBody } from "@/components/ui/PageBody";
 import { SegmentedControl } from "@/components/schedule/SegmentedControl";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
 import { apiFetch } from "@/lib/api";
@@ -383,16 +384,17 @@ export function ProjectsApp() {
         }
       />
 
-      <div className="max-w-md">
-        <SegmentedControl
-          value={filter}
-          onChange={setFilter}
-          options={[
-            { value: "active", label: "Active" },
-            { value: "completed", label: "Completed" },
-          ]}
-        />
-      </div>
+      <PageBody>
+        <div className="max-w-md">
+          <SegmentedControl
+            value={filter}
+            onChange={setFilter}
+            options={[
+              { value: "active", label: "Active" },
+              { value: "completed", label: "Completed" },
+            ]}
+          />
+        </div>
 
       {toast ? (
         <div
@@ -830,7 +832,7 @@ export function ProjectsApp() {
         </div>
       ) : null}
 
-      {editOpen && editFor ? (
+        {editOpen && editFor ? (
         <div className="ds-modal-backdrop fixed inset-0 z-[140] flex items-center justify-center p-4 backdrop-blur-[2px]">
           <div
             className="max-h-[min(90vh,680px)] w-full max-w-lg overflow-y-auto rounded-xl border border-slate-200/90 bg-white p-6 shadow-2xl dark:border-ds-border dark:bg-ds-primary"
@@ -1032,7 +1034,8 @@ export function ProjectsApp() {
             </div>
           </div>
         </div>
-      ) : null}
+        ) : null}
+      </PageBody>
     </div>
   );
 }

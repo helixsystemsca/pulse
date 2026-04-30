@@ -1,7 +1,7 @@
 """project templates + task planning metadata + activity enrichment
 
-Revision ID: 0084_project_templates_task_planning
-Revises: 0083_project_activity_hidden_fields
+Revision ID: 0084_prj_templates
+Revises: 0083_prj_activity
 Create Date: 2026-04-30
 """
 
@@ -11,8 +11,8 @@ import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects.postgresql import UUID
 
-revision = "0084_project_templates_task_planning"
-down_revision = "0083_project_activity_hidden_fields"
+revision = "0084_prj_templates"
+down_revision = "0083_prj_activity"
 branch_labels = None
 depends_on = None
 

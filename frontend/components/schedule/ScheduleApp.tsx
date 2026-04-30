@@ -801,7 +801,7 @@ export function ScheduleApp() {
   if (scheduleModuleBlocked && isApiMode()) {
     return (
       <div className="flex min-h-[min(70vh,520px)] flex-col">
-        <div className="mx-auto w-full max-w-2xl py-6">
+        <div className="w-full py-6">
           <Card padding="md">
             <h1 className="font-headline text-xl font-bold text-gray-900 dark:text-white">Schedule</h1>
             <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">

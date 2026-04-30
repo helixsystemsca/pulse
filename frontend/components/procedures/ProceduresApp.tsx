@@ -3,6 +3,7 @@
 import { ClipboardList, ImagePlus, Loader2, Plus, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useId, useMemo, useState, type Dispatch, type SetStateAction } from "react";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { PageBody } from "@/components/ui/PageBody";
 import {
   createProcedure,
   createProcedureAssignment,
@@ -501,7 +502,7 @@ export function ProceduresApp() {
   );
 
   return (
-    <div className="mx-auto w-full max-w-6xl space-y-6 px-4 py-6">
+    <div className="space-y-6">
       <PageHeader
         title="Procedures"
         description="Reusable maintenance procedures with numbered steps, optional photos, and acknowledgments."
@@ -553,6 +554,8 @@ export function ProceduresApp() {
           )
         }
       />
+
+      <PageBody>
 
       {assignOpen ? (
         <div className="rounded-xl border border-ds-border bg-white p-4 shadow-[var(--ds-shadow-card)] dark:bg-ds-surface-primary">
@@ -1002,6 +1005,7 @@ export function ProceduresApp() {
           </div>
         </div>
       ) : null}
+      </PageBody>
     </div>
   );
 }

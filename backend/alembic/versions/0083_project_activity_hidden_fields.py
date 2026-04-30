@@ -1,6 +1,6 @@
 """project activity log + hidden project fields
 
-Revision ID: 0083_project_activity_hidden_fields
+Revision ID: 0083_prj_activity
 Revises: 0082_onboarding_tiered_progress
 Create Date: 2026-04-30
 """
@@ -11,7 +11,7 @@ import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects.postgresql import UUID
 
-revision = "0083_project_activity_hidden_fields"
+revision = "0083_prj_activity"
 down_revision = "0082_onboarding_tiered_progress"
 branch_labels = None
 depends_on = None

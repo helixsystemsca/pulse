@@ -28,6 +28,7 @@ import { PulseDrawer } from "@/components/schedule/PulseDrawer";
 import { SettingsGear } from "@/components/settings/SettingsGear";
 import { ModuleSettingsGear } from "@/components/module-settings/ModuleSettingsGear";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { PageBody } from "@/components/ui/PageBody";
 import { managerOrAbove } from "@/lib/pulse-roles";
 import { isTenantNavFeatureEnabled } from "@/lib/pulse-nav-features";
 import { isTenantNavPermissionGranted } from "@/lib/pulse-nav-permissions";
@@ -906,6 +907,7 @@ export function WorkRequestsApp(props?: WorkRequestsAppProps) {
         }
       />
 
+      <PageBody>
       <div className="flex flex-wrap gap-2">
         <button
           type="button"
@@ -2270,6 +2272,7 @@ export function WorkRequestsApp(props?: WorkRequestsAppProps) {
           </div>
         </div>
       ) : null}
+      </PageBody>
     </div>
   );
 }
