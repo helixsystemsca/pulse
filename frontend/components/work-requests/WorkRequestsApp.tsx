@@ -946,7 +946,7 @@ export function WorkRequestsApp(props?: WorkRequestsAppProps) {
         <div className="mt-6 rounded-md border border-pulse-border bg-white p-4 shadow-sm dark:border-ds-border dark:bg-ds-primary dark:shadow-[0_2px_8px_rgba(0,0,0,0.35)]">
           <label className="block text-xs font-semibold uppercase tracking-wide text-pulse-muted">Company</label>
           <select
-            className="mt-1.5 w-full max-w-md rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2 text-sm font-medium text-pulse-navy outline-none focus:border-pulse-accent focus:ring-2 focus:ring-pulse-accent/25 dark:border-ds-border dark:bg-ds-secondary dark:text-gray-100 md:w-auto"
+            className="mt-1.5 w-full max-w-md rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-pulse-navy outline-none focus:border-pulse-accent focus:ring-2 focus:ring-pulse-accent/25 dark:border-ds-border dark:bg-ds-secondary dark:text-gray-100 md:w-auto"
             value={companyPick ?? ""}
             onChange={(e) => {
               setCompanyPick(e.target.value || null);
@@ -981,11 +981,11 @@ export function WorkRequestsApp(props?: WorkRequestsAppProps) {
                     setQ(e.target.value);
                     setPage(0);
                   }}
-                  className="w-full rounded-lg border border-slate-200 bg-slate-50/80 py-2 pl-9 pr-3 text-sm text-pulse-navy placeholder:text-slate-400 outline-none focus:border-pulse-accent focus:ring-2 focus:ring-pulse-accent/25 dark:border-ds-border dark:bg-ds-secondary dark:text-gray-100 dark:placeholder:text-gray-500"
+                  className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm text-pulse-navy placeholder:text-slate-400 outline-none focus:border-pulse-accent focus:ring-2 focus:ring-pulse-accent/25 dark:border-ds-border dark:bg-ds-secondary dark:text-gray-100 dark:placeholder:text-gray-500"
                 />
               </div>
               <select
-                className="rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2 text-sm font-medium text-pulse-navy outline-none focus:border-pulse-accent focus:ring-2 focus:ring-pulse-accent/25 dark:border-ds-border dark:bg-ds-secondary dark:text-gray-100"
+                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-pulse-navy outline-none focus:border-pulse-accent focus:ring-2 focus:ring-pulse-accent/25 dark:border-ds-border dark:bg-ds-secondary dark:text-gray-100"
                 value={statusFilter}
                 onChange={(e) => {
                   const v = e.target.value;
@@ -1008,7 +1008,7 @@ export function WorkRequestsApp(props?: WorkRequestsAppProps) {
                 ))}
               </select>
               <select
-                className="rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2 text-sm font-medium text-pulse-navy outline-none focus:border-pulse-accent focus:ring-2 focus:ring-pulse-accent/25 dark:border-ds-border dark:bg-ds-secondary dark:text-gray-100"
+                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-pulse-navy outline-none focus:border-pulse-accent focus:ring-2 focus:ring-pulse-accent/25 dark:border-ds-border dark:bg-ds-secondary dark:text-gray-100"
                 value={priorityFilter}
                 onChange={(e) => {
                   setPriorityFilter(e.target.value);
@@ -1022,7 +1022,7 @@ export function WorkRequestsApp(props?: WorkRequestsAppProps) {
                 <option value="critical">Critical</option>
               </select>
               <select
-                className="rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2 text-sm font-medium text-pulse-navy outline-none focus:border-pulse-accent focus:ring-2 focus:ring-pulse-accent/25 dark:border-ds-border dark:bg-ds-secondary dark:text-gray-100"
+                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-pulse-navy outline-none focus:border-pulse-accent focus:ring-2 focus:ring-pulse-accent/25 dark:border-ds-border dark:bg-ds-secondary dark:text-gray-100"
                 value={zoneFilter}
                 onChange={(e) => {
                   setZoneFilter(e.target.value);
@@ -1043,7 +1043,7 @@ export function WorkRequestsApp(props?: WorkRequestsAppProps) {
                   setDateFrom(e.target.value);
                   setPage(0);
                 }}
-                className="rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2 text-sm text-pulse-navy outline-none focus:border-pulse-accent focus:ring-2 focus:ring-pulse-accent/25 dark:border-ds-border dark:bg-ds-secondary dark:text-gray-100"
+                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-pulse-navy outline-none focus:border-pulse-accent focus:ring-2 focus:ring-pulse-accent/25 dark:border-ds-border dark:bg-ds-secondary dark:text-gray-100"
               />
               <input
                 type="date"
@@ -1052,7 +1052,7 @@ export function WorkRequestsApp(props?: WorkRequestsAppProps) {
                   setDateTo(e.target.value);
                   setPage(0);
                 }}
-                className="rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2 text-sm text-pulse-navy outline-none focus:border-pulse-accent focus:ring-2 focus:ring-pulse-accent/25 dark:border-ds-border dark:bg-ds-secondary dark:text-gray-100"
+                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-pulse-navy outline-none focus:border-pulse-accent focus:ring-2 focus:ring-pulse-accent/25 dark:border-ds-border dark:bg-ds-secondary dark:text-gray-100"
               />
             </div>
             <button

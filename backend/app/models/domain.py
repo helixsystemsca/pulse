@@ -211,6 +211,8 @@ class User(Base):
     )
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     is_system_admin: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    # User-level gating for advanced project management features (PM features).
+    can_use_pm_features: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False, server_default=text("false"))
     last_login: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     #: Updated on successful password login (and optional future activity hooks).
     last_active_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)

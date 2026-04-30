@@ -67,6 +67,7 @@ class SystemUserRow(BaseModel):
     company_id: Optional[str]
     company_name: Optional[str]
     is_active: bool
+    can_use_pm_features: bool = False
     last_login: Optional[str]
     last_active_at: Optional[str] = None
     last_login_city: Optional[str] = None

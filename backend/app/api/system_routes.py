@@ -7,6 +7,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Annotated, Any, Optional
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
+from pydantic import BaseModel
 from sqlalchemy import delete, func, select
 from sqlalchemy.dialects.postgresql import array as pg_array
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -55,6 +56,10 @@ from app.schemas.system_admin import (
     SystemUserRow,
     SystemUsersDirectoryOut,
 )
+
+
+class SystemUserPmFeaturesPatch(BaseModel):
+    can_use_pm_features: bool
 
 # Mounted in main.py at prefix `/api/system` — do not add another `/system` here or routes become `/api/system/system/...`.
 router = APIRouter(tags=["system"])
@@ -640,6 +645,7 @@ async def list_all_users(
                 company_id=u.company_id,
                 company_name=company_name,
                 is_active=u.is_active,
+                can_use_pm_features=bool(getattr(u, "can_use_pm_features", False)),
                 last_login=u.last_login.isoformat() if u.last_login else None,
                 last_active_at=u.last_active_at.isoformat() if u.last_active_at else None,
                 last_login_city=le.city if le else None,
@@ -673,6 +679,29 @@ async def list_all_users(
         )
 
     return SystemUsersDirectoryOut(users=out_users, pending_invites=out_inv)
+
+
+@router.patch("/users/{user_id}/pm-features", status_code=200)
+async def patch_user_pm_features(
+    user_id: str,
+    body: SystemUserPmFeaturesPatch,
+    admin: Annotated[User, Depends(require_system_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> dict[str, Any]:
+    u = await db.get(User, user_id)
+    if not u:
+        raise HTTPException(status_code=404, detail="User not found")
+    u.can_use_pm_features = bool(body.can_use_pm_features)
+    await record_system_log(
+        db,
+        action="user.pm_features_updated",
+        performed_by=admin.id,
+        target_type="user",
+        target_id=u.id,
+        metadata={"can_use_pm_features": u.can_use_pm_features},
+    )
+    await db.commit()
+    return {"id": u.id, "can_use_pm_features": u.can_use_pm_features}
 
 
 @router.get("/users/{user_id}/login-events", response_model=list[LoginEventOut])

@@ -168,6 +168,29 @@ class ProjectActivityCreateNoteIn(BaseModel):
     description: str = Field(..., min_length=1, max_length=4000)
 
 
+class CriticalStepOut(BaseModel):
+    id: str
+    project_id: str
+    title: str
+    order_index: int
+    depends_on_id: Optional[str] = None
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class CriticalStepCreateIn(BaseModel):
+    title: str = Field(..., min_length=1, max_length=512)
+    order_index: int = Field(default=0, ge=0)
+    depends_on_id: Optional[str] = None
+
+
+class CriticalStepPatch(BaseModel):
+    title: Optional[str] = Field(None, min_length=1, max_length=512)
+    order_index: Optional[int] = Field(None, ge=0)
+    depends_on_id: Optional[str] = None
+
+
 def task_orm_to_out(
     t: Any,
     *,

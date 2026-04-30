@@ -309,12 +309,44 @@ export type CategoryRow = {
   created_at: string;
 };
 
+export type CriticalStepRow = {
+  id: string;
+  project_id: string;
+  title: string;
+  order_index: number;
+  depends_on_id?: string | null;
+  created_at: string;
+};
+
 export async function listCategories(): Promise<CategoryRow[]> {
   return apiFetch<CategoryRow[]>("/api/v1/categories");
 }
 
 export async function createCategory(body: { name: string; color?: string | null }): Promise<CategoryRow> {
   return apiFetch<CategoryRow>("/api/v1/categories", { method: "POST", json: body });
+}
+
+export async function listCriticalSteps(projectId: string): Promise<CriticalStepRow[]> {
+  return apiFetch<CriticalStepRow[]>(`/api/v1/projects/${projectId}/critical-steps`);
+}
+
+export async function createCriticalStep(
+  projectId: string,
+  body: { title: string; order_index?: number; depends_on_id?: string | null },
+): Promise<CriticalStepRow> {
+  return apiFetch<CriticalStepRow>(`/api/v1/projects/${projectId}/critical-steps`, { method: "POST", json: body });
+}
+
+export async function patchCriticalStep(
+  projectId: string,
+  stepId: string,
+  body: { title?: string; order_index?: number; depends_on_id?: string | null },
+): Promise<CriticalStepRow> {
+  return apiFetch<CriticalStepRow>(`/api/v1/projects/${projectId}/critical-steps/${stepId}`, { method: "PATCH", json: body });
+}
+
+export async function deleteCriticalStep(projectId: string, stepId: string): Promise<void> {
+  await apiFetch<void>(`/api/v1/projects/${projectId}/critical-steps/${stepId}`, { method: "DELETE" });
 }
 
 export async function getReadyTasks(projectId: string): Promise<ReadyTaskRow[]> {

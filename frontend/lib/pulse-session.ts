@@ -79,6 +79,8 @@ export type PulseAuthSession = {
   onboarding_seen?: boolean;
   /** From `/auth/me`; non-admin modal tour finished or skipped. */
   user_onboarding_tour_completed?: boolean;
+  /** User-level feature flag for advanced PM features in Projects. */
+  can_use_pm_features?: boolean;
   iat: number;
   exp: number;
   /** Legacy: was tied to removed “Keep me signed in”; new sessions always use `false`. */
@@ -106,6 +108,7 @@ export type UserOut = {
   onboarding_completed?: boolean;
   onboarding_seen?: boolean;
   user_onboarding_tour_completed?: boolean;
+  can_use_pm_features?: boolean;
   /** UTC ISO timestamp from `GET /auth/me` for client clock sync. */
   server_time?: string;
 };
@@ -246,6 +249,7 @@ export function writeApiSession(
     onboarding_completed: user.onboarding_completed,
     onboarding_seen: user.onboarding_seen,
     user_onboarding_tour_completed: user.user_onboarding_tour_completed,
+    can_use_pm_features: user.can_use_pm_features,
     iat: now,
     exp,
     remember,

@@ -634,6 +634,29 @@ class PulseProjectTemplateTask(Base):
     )
 
 
+class PulseProjectCriticalStep(Base):
+    __tablename__ = "pulse_project_critical_steps"
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    company_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    project_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("pulse_projects.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    title: Mapped[str] = mapped_column(String(512), nullable=False)
+    order_index: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    depends_on_id: Mapped[Optional[str]] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("pulse_project_critical_steps.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+
+
 class PulseProjectTask(Base):
     __tablename__ = "pulse_project_tasks"
 

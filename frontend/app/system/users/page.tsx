@@ -21,6 +21,7 @@ type UserRow = {
   company_id: string | null;
   company_name: string | null;
   is_active: boolean;
+  can_use_pm_features: boolean;
   last_login: string | null;
   last_active_at?: string | null;
   last_login_city?: string | null;
@@ -104,6 +105,7 @@ export default function SystemUsersPage() {
   const [activityRows, setActivityRows] = useState<LoginEventRow[]>([]);
   const [activityLoading, setActivityLoading] = useState(false);
   const [activityError, setActivityError] = useState<string | null>(null);
+  const [pmBusyId, setPmBusyId] = useState<string | null>(null);
 
   const openFilters = () => {
     setDraftQ(appliedQ);
@@ -144,6 +146,22 @@ export default function SystemUsersPage() {
       setLoading(false);
     }
   }, [appliedQ, appliedRole]);
+
+  async function togglePmFeatures(userId: string, next: boolean) {
+    setPmBusyId(userId);
+    try {
+      await apiFetch(`/api/system/users/${userId}/pm-features`, {
+        method: "PATCH",
+        json: { can_use_pm_features: next },
+      });
+      setRows((prev) => prev.map((r) => (r.id === userId ? { ...r, can_use_pm_features: next } : r)));
+    } catch (e) {
+      const { message } = parseClientApiError(e);
+      setLoadError(message || "Could not update PM features.");
+    } finally {
+      setPmBusyId(null);
+    }
+  }
 
   useEffect(() => {
     void load();
@@ -333,6 +351,7 @@ export default function SystemUsersPage() {
                         <th className="px-4 py-3">User</th>
                         <th className="px-4 py-3">Role</th>
                         <th className="px-4 py-3">Company</th>
+                        <th className="px-4 py-3">PM Features</th>
                         <th className="px-4 py-3">Last login</th>
                         <th className="px-4 py-3">Last active</th>
                         <th className="hidden px-4 py-3 lg:table-cell">Last sign-in (geo)</th>
@@ -349,6 +368,19 @@ export default function SystemUsersPage() {
                           </td>
                           <td className="px-4 py-3 text-ds-muted">{r.role}</td>
                           <td className="px-4 py-3 text-ds-muted">{r.company_name || "—"}</td>
+                          <td className="px-4 py-3">
+                            <label className="inline-flex items-center gap-2 text-xs font-semibold text-ds-muted">
+                              <input
+                                type="checkbox"
+                                className="h-4 w-4 accent-[color-mix(in_srgb,var(--ds-success)_80%,transparent)]"
+                                checked={Boolean(r.can_use_pm_features)}
+                                disabled={pmBusyId === r.id}
+                                onChange={(e) => void togglePmFeatures(r.id, e.target.checked)}
+                                aria-label={`PM features for ${r.email}`}
+                              />
+                              {r.can_use_pm_features ? "On" : "Off"}
+                            </label>
+                          </td>
                           <td className="px-4 py-3 text-xs text-ds-muted">{r.last_login || "—"}</td>
                           <td className="px-4 py-3 text-xs text-ds-muted">{formatWhen(r.last_active_at)}</td>
                           <td className="hidden px-4 py-3 text-xs text-ds-muted lg:table-cell">{formatGeo(r)}</td>

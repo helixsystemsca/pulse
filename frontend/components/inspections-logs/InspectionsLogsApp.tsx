@@ -19,12 +19,12 @@ import { InspectionBuilder } from "./InspectionBuilder";
 import { LogBuilder } from "./LogBuilder";
 
 const TABLE_WRAP =
-  "mt-6 overflow-hidden rounded-md border border-ds-border bg-ds-secondary shadow-sm";
+  "mt-6 overflow-hidden rounded-md border border-ds-border bg-white shadow-sm dark:bg-ds-secondary";
 const TH =
   "bg-ds-primary px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-ds-muted";
-const TD = "bg-ds-secondary px-4 py-3 text-sm text-ds-foreground";
+const TD = "bg-white px-4 py-3 text-sm text-ds-foreground dark:bg-ds-secondary";
 const ROW =
-  "ds-table-row-hover border-t border-ds-border bg-ds-secondary transition-colors";
+  "ds-table-row-hover border-t border-ds-border bg-white transition-colors dark:bg-ds-secondary";
 const LINKISH =
   "ds-link text-xs font-semibold disabled:opacity-40";
 const TAB_ACTIVE = "border-b-2 border-ds-success bg-ds-primary text-ds-foreground";
@@ -99,7 +99,7 @@ export function InspectionsLogsApp() {
         actions={<CreateDropdown onNewInspection={openNewInspection} onNewLog={openNewLog} />}
       />
 
-      <div className="rounded-md border border-ds-border bg-ds-secondary p-1">
+      <div className="rounded-md border border-ds-border bg-white p-1 dark:bg-ds-secondary">
         <nav className="flex flex-wrap gap-1" aria-label="Module tabs">
           <button
             type="button"

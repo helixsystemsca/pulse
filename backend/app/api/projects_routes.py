@@ -21,6 +21,7 @@ from app.models.pulse_models import (
     PulseProjectPhase,
     PulseProjectTemplate,
     PulseProjectTemplateTask,
+    PulseProjectCriticalStep,
     PulseProjectAutomationRule,
     PulseProjectAutomationTrigger,
     PulseProjectStatus,
@@ -41,6 +42,9 @@ from app.modules.pulse.task_dependencies import (
 from app.schemas.projects import (
     CategoryCreateIn,
     CategoryOut,
+    CriticalStepCreateIn,
+    CriticalStepOut,
+    CriticalStepPatch,
     AutomationRuleCreate,
     AutomationRuleOut,
     AutomationRulePatch,
@@ -73,6 +77,17 @@ tasks_router = APIRouter(tags=["tasks"])
 
 def _category_out(c: PulseCategory) -> CategoryOut:
     return CategoryOut(id=str(c.id), name=c.name, color=c.color, created_at=c.created_at)
+
+
+def _critical_step_out(s: PulseProjectCriticalStep) -> CriticalStepOut:
+    return CriticalStepOut(
+        id=str(s.id),
+        project_id=str(s.project_id),
+        title=s.title,
+        order_index=int(s.order_index or 0),
+        depends_on_id=str(s.depends_on_id) if getattr(s, "depends_on_id", None) else None,
+        created_at=s.created_at,
+    )
 
 
 async def _company_id(user: User = Depends(require_tenant_user)) -> str:
@@ -163,6 +178,88 @@ async def create_category(db: Db, cid: CompanyId, body: CategoryCreateIn) -> Cat
     await db.commit()
     await db.refresh(c)
     return _category_out(c)
+
+
+@router.get("/projects/{project_id}/critical-steps", response_model=list[CriticalStepOut])
+async def list_critical_steps(db: Db, cid: CompanyId, project_id: str) -> list[CriticalStepOut]:
+    p = await db.get(PulseProject, project_id)
+    if not p or str(p.company_id) != cid:
+        raise HTTPException(status_code=404, detail="Not found")
+    rq = await db.execute(
+        select(PulseProjectCriticalStep)
+        .where(PulseProjectCriticalStep.project_id == project_id, PulseProjectCriticalStep.company_id == cid)
+        .order_by(PulseProjectCriticalStep.order_index.asc(), PulseProjectCriticalStep.created_at.asc())
+    )
+    rows = list(rq.scalars().all())
+    return [_critical_step_out(x) for x in rows]
+
+
+@router.post("/projects/{project_id}/critical-steps", response_model=CriticalStepOut, status_code=201)
+async def create_critical_step(db: Db, cid: CompanyId, project_id: str, body: CriticalStepCreateIn) -> CriticalStepOut:
+    p = await db.get(PulseProject, project_id)
+    if not p or str(p.company_id) != cid:
+        raise HTTPException(status_code=404, detail="Not found")
+    dep_id = (body.depends_on_id or "").strip() or None
+    if dep_id:
+        dep = await db.get(PulseProjectCriticalStep, dep_id)
+        if not dep or str(dep.company_id) != cid or str(dep.project_id) != project_id:
+            raise HTTPException(status_code=400, detail="depends_on_id not found")
+    row = PulseProjectCriticalStep(
+        company_id=cid,
+        project_id=project_id,
+        title=body.title.strip(),
+        order_index=int(body.order_index or 0),
+        depends_on_id=dep_id,
+    )
+    db.add(row)
+    await db.commit()
+    await db.refresh(row)
+    return _critical_step_out(row)
+
+
+@router.patch("/projects/{project_id}/critical-steps/{step_id}", response_model=CriticalStepOut)
+async def patch_critical_step(
+    db: Db, cid: CompanyId, project_id: str, step_id: str, body: CriticalStepPatch
+) -> CriticalStepOut:
+    p = await db.get(PulseProject, project_id)
+    if not p or str(p.company_id) != cid:
+        raise HTTPException(status_code=404, detail="Not found")
+    row = await db.get(PulseProjectCriticalStep, step_id)
+    if not row or str(row.company_id) != cid or str(row.project_id) != project_id:
+        raise HTTPException(status_code=404, detail="Not found")
+    data = body.model_dump(exclude_unset=True)
+    if "title" in data and data["title"] is not None:
+        row.title = str(data["title"]).strip()
+    if "order_index" in data and data["order_index"] is not None:
+        row.order_index = int(data["order_index"])
+    if "depends_on_id" in data:
+        raw = data["depends_on_id"]
+        v = str(raw).strip() if raw is not None else ""
+        if not v:
+            row.depends_on_id = None
+        else:
+            if v == str(row.id):
+                raise HTTPException(status_code=400, detail="depends_on_id cannot be self")
+            dep = await db.get(PulseProjectCriticalStep, v)
+            if not dep or str(dep.company_id) != cid or str(dep.project_id) != project_id:
+                raise HTTPException(status_code=400, detail="depends_on_id not found")
+            row.depends_on_id = str(dep.id)
+    await db.commit()
+    await db.refresh(row)
+    return _critical_step_out(row)
+
+
+@router.delete("/projects/{project_id}/critical-steps/{step_id}", status_code=204)
+async def delete_critical_step(db: Db, cid: CompanyId, project_id: str, step_id: str) -> None:
+    p = await db.get(PulseProject, project_id)
+    if not p or str(p.company_id) != cid:
+        raise HTTPException(status_code=404, detail="Not found")
+    row = await db.get(PulseProjectCriticalStep, step_id)
+    if not row or str(row.company_id) != cid or str(row.project_id) != project_id:
+        raise HTTPException(status_code=404, detail="Not found")
+    await db.execute(delete(PulseProjectCriticalStep).where(PulseProjectCriticalStep.id == step_id))
+    await db.commit()
+    return None
 
 
 def _activity_out(a: PulseProjectActivity) -> ProjectActivityOut:
