@@ -121,7 +121,10 @@ app.add_middleware(
 app.add_middleware(FeatureGateMiddleware)
 if settings.trusted_host_list:
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=settings.trusted_host_list)
-# CORS must be outermost so responses from inner middleware (e.g. TrustedHost 400) still get ACAO on preflight/POST.
+# HTTPS enforcement must sit *inside* CORS: if RequireHttpsMiddleware is outermost and returns 403 without
+# call_next, CORSMiddleware never runs and browsers report a missing Access-Control-Allow-Origin header.
+app.add_middleware(RequireHttpsMiddleware, enabled=settings.require_https)
+# CORS outermost (registered last): wraps all inner middleware + routes so ACAO is applied consistently.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_cors_origins,
@@ -130,7 +133,6 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
-app.add_middleware(RequireHttpsMiddleware, enabled=settings.require_https)
 
 app.include_router(public_router, prefix="/api/public")
 app.include_router(gateway_register_router, prefix="/api")
