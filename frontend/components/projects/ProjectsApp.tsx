@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { CalendarRange, FolderKanban, Pencil, Plus } from "lucide-react";
+import { CalendarRange, FolderKanban, Pencil, Plus, Settings2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Card } from "@/components/pulse/Card";
 import { ModuleOnboardingHint } from "@/components/onboarding/ModuleOnboardingHint";
@@ -15,10 +15,12 @@ import {
   createProject,
   createCategory,
   deleteProject,
+  getProjectNotificationSettings,
   listProjects,
   listCategories,
   listProjectTemplates,
   patchProject,
+  patchProjectNotificationSettings,
   type ProjectRow,
   type ProjectTemplateRow,
   type CategoryRow,
@@ -86,6 +88,16 @@ export function ProjectsApp() {
   const [saving, setSaving] = useState(false);
   const [completingId, setCompletingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsFor, setSettingsFor] = useState<ProjectRow | null>(null);
+  const [settingsLoading, setSettingsLoading] = useState(false);
+  const [settingsSaving, setSettingsSaving] = useState(false);
+  const [notifEnabled, setNotifEnabled] = useState(false);
+  const [notifMatDays, setNotifMatDays] = useState("30");
+  const [notifEqDays, setNotifEqDays] = useState("7");
+  const [notifSupervision, setNotifSupervision] = useState(false);
+  const [notifLead, setNotifLead] = useState(false);
+  const [notifOwner, setNotifOwner] = useState(true);
 
   const [formName, setFormName] = useState("");
   const [formStart, setFormStart] = useState("");
@@ -182,6 +194,38 @@ export function ProjectsApp() {
     const t = window.setTimeout(() => setToast(null), 3500);
     return () => window.clearTimeout(t);
   }, [toast]);
+
+  useEffect(() => {
+    if (!settingsOpen || !settingsFor) return;
+    let cancelled = false;
+    (async () => {
+      setSettingsLoading(true);
+      try {
+        const s = await getProjectNotificationSettings(settingsFor.id);
+        if (cancelled) return;
+        setNotifEnabled(s.notification_enabled);
+        setNotifMatDays(String(s.notification_material_days ?? 30));
+        setNotifEqDays(String(s.notification_equipment_days ?? 7));
+        setNotifSupervision(s.notification_to_supervision);
+        setNotifLead(s.notification_to_lead);
+        setNotifOwner(s.notification_to_owner);
+      } catch {
+        if (!cancelled) {
+          setNotifEnabled(Boolean(settingsFor.notification_enabled));
+          setNotifMatDays(String(settingsFor.notification_material_days ?? 30));
+          setNotifEqDays(String(settingsFor.notification_equipment_days ?? 7));
+          setNotifSupervision(Boolean(settingsFor.notification_to_supervision));
+          setNotifLead(Boolean(settingsFor.notification_to_lead));
+          setNotifOwner(settingsFor.notification_to_owner !== false);
+        }
+      } finally {
+        if (!cancelled) setSettingsLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [settingsOpen, settingsFor?.id]);
 
   const filtered = useMemo(() => {
     if (!rows) return [];
@@ -333,6 +377,46 @@ export function ProjectsApp() {
     );
     setFormRepop((p.repopulation_frequency as string) || "Once");
     setEditOpen(true);
+  }
+
+  async function submitNotificationSettings() {
+    if (!settingsFor || settingsSaving) return;
+    const md = Math.max(1, Math.min(365, Math.round(Number(notifMatDays) || 30)));
+    const ed = Math.max(1, Math.min(365, Math.round(Number(notifEqDays) || 7)));
+    setSettingsSaving(true);
+    try {
+      const s = await patchProjectNotificationSettings(settingsFor.id, {
+        notification_enabled: notifEnabled,
+        notification_material_days: md,
+        notification_equipment_days: ed,
+        notification_to_supervision: notifSupervision,
+        notification_to_lead: notifLead,
+        notification_to_owner: notifOwner,
+      });
+      setRows((prev) =>
+        prev?.map((r) =>
+          r.id === settingsFor.id
+            ? {
+                ...r,
+                notification_enabled: s.notification_enabled,
+                notification_material_days: s.notification_material_days,
+                notification_equipment_days: s.notification_equipment_days,
+                notification_to_supervision: s.notification_to_supervision,
+                notification_to_lead: s.notification_to_lead,
+                notification_to_owner: s.notification_to_owner,
+              }
+            : r,
+        ) ?? null,
+      );
+      setToast("Notification settings saved.");
+      setSettingsOpen(false);
+      setSettingsFor(null);
+    } catch (e) {
+      const { message } = parseClientApiError(e);
+      setToast(message || "Could not save settings.");
+    } finally {
+      setSettingsSaving(false);
+    }
   }
 
   async function submitEdit() {
@@ -487,7 +571,23 @@ export function ProjectsApp() {
                             <FolderKanban className="h-5 w-5" aria-hidden />
                           </span>
                           <div className="min-w-0 flex-1">
-                            <p className="font-headline text-base font-semibold text-pulse-navy dark:text-slate-100">{p.name}</p>
+                            <div className="flex items-start justify-between gap-2">
+                              <p className="min-w-0 font-headline text-base font-semibold text-pulse-navy dark:text-slate-100">
+                                {p.name}
+                              </p>
+                              <button
+                                type="button"
+                                className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] border border-slate-200/90 bg-white text-pulse-navy shadow-sm transition-colors hover:bg-slate-50 dark:border-ds-border dark:bg-ds-secondary dark:text-slate-100 dark:hover:bg-ds-interactive-hover"
+                                aria-label={`Settings for ${p.name}`}
+                                title="Project settings"
+                                onClick={() => {
+                                  setSettingsFor(p);
+                                  setSettingsOpen(true);
+                                }}
+                              >
+                                <Settings2 className="h-4 w-4" aria-hidden />
+                              </button>
+                            </div>
                             <p className="mt-1.5 inline-flex items-center gap-1.5 text-xs text-pulse-muted">
                               <CalendarRange className="h-3.5 w-3.5 shrink-0 opacity-80" aria-hidden />
                               <span className="tabular-nums">
@@ -589,6 +689,143 @@ export function ProjectsApp() {
           })}
         </div>
       )}
+
+      {settingsOpen && settingsFor ? (
+        <div className="ds-modal-backdrop fixed inset-0 z-[141] flex items-center justify-center p-4 backdrop-blur-[2px]">
+          <div
+            className="max-h-[min(90vh,720px)] w-full max-w-lg overflow-y-auto rounded-xl border border-slate-200/90 bg-white p-6 shadow-2xl dark:border-ds-border dark:bg-ds-primary"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="project-settings-title"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h2 id="project-settings-title" className="text-lg font-bold text-pulse-navy dark:text-slate-100">
+                  Project settings
+                </h2>
+                <p className="mt-1 text-sm text-pulse-muted">{settingsFor.name}</p>
+              </div>
+              <button
+                type="button"
+                className="rounded-lg px-2 py-1 text-sm font-semibold text-pulse-muted hover:bg-slate-100 dark:hover:bg-ds-secondary"
+                onClick={() => {
+                  setSettingsOpen(false);
+                  setSettingsFor(null);
+                }}
+              >
+                Close
+              </button>
+            </div>
+            <div className="mt-5 flex gap-2 border-b border-slate-200/90 pb-3 dark:border-ds-border">
+              <span className="rounded-full bg-pulse-accent/15 px-3 py-1 text-xs font-bold uppercase tracking-wide text-pulse-navy dark:bg-ds-success/15 dark:text-ds-foreground">
+                Notifications
+              </span>
+            </div>
+            {settingsLoading ? (
+              <p className="mt-6 text-sm text-pulse-muted">Loading…</p>
+            ) : (
+              <div className="mt-5 space-y-5">
+                <label className="flex cursor-pointer items-center gap-3">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 rounded border-slate-300 text-pulse-accent focus:ring-pulse-accent dark:border-ds-border"
+                    checked={notifEnabled}
+                    onChange={(e) => setNotifEnabled(e.target.checked)}
+                  />
+                  <span className="text-sm font-semibold text-pulse-navy dark:text-slate-100">Enable project notifications</span>
+                </label>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <label className={LABEL} htmlFor="ns-mat-days">
+                      Materials (days ahead)
+                    </label>
+                    <input
+                      id="ns-mat-days"
+                      type="number"
+                      min={1}
+                      max={365}
+                      className={FIELD}
+                      value={notifMatDays}
+                      onChange={(e) => setNotifMatDays(e.target.value)}
+                    />
+                    <p className="mt-1 text-[11px] text-pulse-muted">
+                      Reminder to check inventory and order materials.
+                    </p>
+                  </div>
+                  <div>
+                    <label className={LABEL} htmlFor="ns-eq-days">
+                      Equipment (days ahead)
+                    </label>
+                    <input
+                      id="ns-eq-days"
+                      type="number"
+                      min={1}
+                      max={365}
+                      className={FIELD}
+                      value={notifEqDays}
+                      onChange={(e) => setNotifEqDays(e.target.value)}
+                    />
+                    <p className="mt-1 text-[11px] text-pulse-muted">Reminder to inspect equipment.</p>
+                  </div>
+                </div>
+                <div>
+                  <p className={LABEL}>Send notifications to</p>
+                  <div className="mt-2 space-y-2">
+                    <label className="flex cursor-pointer items-center gap-2">
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4 rounded border-slate-300 text-pulse-accent dark:border-ds-border"
+                        checked={notifSupervision}
+                        onChange={(e) => setNotifSupervision(e.target.checked)}
+                      />
+                      <span className="text-sm text-pulse-navy dark:text-slate-100">Supervision</span>
+                    </label>
+                    <label className="flex cursor-pointer items-center gap-2">
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4 rounded border-slate-300 text-pulse-accent dark:border-ds-border"
+                        checked={notifLead}
+                        onChange={(e) => setNotifLead(e.target.checked)}
+                      />
+                      <span className="text-sm text-pulse-navy dark:text-slate-100">Lead</span>
+                    </label>
+                    <label className="flex cursor-pointer items-center gap-2">
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4 rounded border-slate-300 text-pulse-accent dark:border-ds-border"
+                        checked={notifOwner}
+                        onChange={(e) => setNotifOwner(e.target.checked)}
+                      />
+                      <span className="text-sm text-pulse-navy dark:text-slate-100">Owner</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            )}
+            <div className="mt-8 flex flex-wrap justify-end gap-2">
+              <button
+                type="button"
+                className={SECONDARY_BTN}
+                disabled={settingsSaving}
+                onClick={() => {
+                  setSettingsOpen(false);
+                  setSettingsFor(null);
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className={PRIMARY_BTN}
+                disabled={settingsSaving || settingsLoading}
+                onClick={() => void submitNotificationSettings()}
+              >
+                {settingsSaving ? "Saving…" : "Save"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {createOpen ? (
         <div className="ds-modal-backdrop fixed inset-0 z-[140] flex items-center justify-center p-4 backdrop-blur-[2px]">

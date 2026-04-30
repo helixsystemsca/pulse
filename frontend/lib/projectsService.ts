@@ -28,6 +28,12 @@ export type ProjectRow = {
   repopulation_frequency?: string | null;
   completed_at?: string | null;
   archived_at?: string | null;
+  notification_enabled?: boolean;
+  notification_material_days?: number;
+  notification_equipment_days?: number;
+  notification_to_supervision?: boolean;
+  notification_to_lead?: boolean;
+  notification_to_owner?: boolean;
   created_at: string;
   updated_at: string;
   task_total: number;
@@ -317,6 +323,95 @@ export async function deleteTaskMaterial(taskId: string, materialId: string): Pr
 
 export async function listProjectMaterials(projectId: string): Promise<ProjectMaterialSummaryRow[]> {
   return apiFetch<ProjectMaterialSummaryRow[]>(`/api/v1/projects/${projectId}/materials`);
+}
+
+export type ProjectNotificationSettings = {
+  project_id: string;
+  notification_enabled: boolean;
+  notification_material_days: number;
+  notification_equipment_days: number;
+  notification_to_supervision: boolean;
+  notification_to_lead: boolean;
+  notification_to_owner: boolean;
+};
+
+export async function getProjectNotificationSettings(projectId: string): Promise<ProjectNotificationSettings> {
+  return apiFetch<ProjectNotificationSettings>(`/api/v1/projects/${projectId}/notification-settings`);
+}
+
+export async function patchProjectNotificationSettings(
+  projectId: string,
+  body: Partial<{
+    notification_enabled: boolean;
+    notification_material_days: number;
+    notification_equipment_days: number;
+    notification_to_supervision: boolean;
+    notification_to_lead: boolean;
+    notification_to_owner: boolean;
+  }>,
+): Promise<ProjectNotificationSettings> {
+  return apiFetch<ProjectNotificationSettings>(`/api/v1/projects/${projectId}/notification-settings`, {
+    method: "PATCH",
+    json: body,
+  });
+}
+
+export type FacilityEquipmentListRow = {
+  id: string;
+  company_id: string;
+  name: string;
+  type: string;
+  zone_id?: string | null;
+  zone_name?: string | null;
+  status: string;
+};
+
+export async function fetchEquipmentSuggestions(q: string, limit = 12): Promise<FacilityEquipmentListRow[]> {
+  const params = new URLSearchParams();
+  if (q.trim()) params.set("q", q.trim());
+  params.set("sort", "name");
+  params.set("order", "asc");
+  const qs = params.toString();
+  return apiFetch<FacilityEquipmentListRow[]>(`/api/v1/equipment?${qs}`);
+}
+
+export type TaskEquipmentRow = {
+  id: string;
+  company_id: string;
+  project_id: string;
+  task_id: string;
+  facility_equipment_id: string | null;
+  name: string;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+  equipment_type?: string | null;
+  equipment_status?: string | null;
+};
+
+export type ProjectEquipmentSummaryRow = {
+  facility_equipment_id: string | null;
+  name: string;
+  line_count: number;
+};
+
+export async function listTaskEquipment(taskId: string): Promise<TaskEquipmentRow[]> {
+  return apiFetch<TaskEquipmentRow[]>(`/api/v1/tasks/${taskId}/equipment`);
+}
+
+export async function addTaskEquipment(
+  taskId: string,
+  body: { facility_equipment_id?: string | null; name: string; notes?: string | null },
+): Promise<TaskEquipmentRow> {
+  return apiFetch<TaskEquipmentRow>(`/api/v1/tasks/${taskId}/equipment`, { method: "POST", json: body });
+}
+
+export async function deleteTaskEquipment(taskId: string, equipmentRowId: string): Promise<void> {
+  await apiFetch<void>(`/api/v1/tasks/${taskId}/equipment/${equipmentRowId}`, { method: "DELETE" });
+}
+
+export async function listProjectEquipment(projectId: string): Promise<ProjectEquipmentSummaryRow[]> {
+  return apiFetch<ProjectEquipmentSummaryRow[]>(`/api/v1/projects/${projectId}/equipment`);
 }
 
 export async function getProject(id: string): Promise<ProjectDetail> {

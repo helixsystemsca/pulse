@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import require_tenant_user
 from app.services.onboarding_service import try_mark_onboarding_step
 from app.core.database import get_db
-from app.models.domain import Company, InventoryItem, User
+from app.models.domain import Company, FacilityEquipment, InventoryItem, User
 from app.models.pulse_models import (
     PulseCategory,
     PulseProject,
@@ -27,6 +27,7 @@ from app.models.pulse_models import (
     PulseProjectAutomationTrigger,
     PulseProjectStatus,
     PulseProjectTask,
+    PulseProjectTaskEquipment,
     PulseProjectTaskMaterial,
     PulseTaskDependency,
     PulseTaskStatus,
@@ -52,6 +53,9 @@ from app.schemas.projects import (
     AutomationRulePatch,
     ProjectCreate,
     ProjectDetailOut,
+    ProjectEquipmentSummaryRow,
+    ProjectNotificationSettingsOut,
+    ProjectNotificationSettingsPatch,
     ProjectOut,
     ProjectOutWithProgress,
     ProjectPatch,
@@ -64,6 +68,9 @@ from app.schemas.projects import (
     ReadyTaskOut,
     TaskBlockingMini,
     TaskCreate,
+    TaskEquipmentCreateIn,
+    TaskEquipmentOut,
+    TaskEquipmentPatch,
     TaskMaterialCreateIn,
     TaskMaterialOut,
     TaskMaterialPatch,
@@ -150,6 +157,12 @@ def _project_out(p: PulseProject) -> ProjectOut:
         repopulation_frequency=getattr(p, "repopulation_frequency", None),
         completed_at=getattr(p, "completed_at", None),
         archived_at=getattr(p, "archived_at", None),
+        notification_enabled=bool(getattr(p, "notification_enabled", False)),
+        notification_material_days=int(getattr(p, "notification_material_days", 30) or 30),
+        notification_equipment_days=int(getattr(p, "notification_equipment_days", 7) or 7),
+        notification_to_supervision=bool(getattr(p, "notification_to_supervision", False)),
+        notification_to_lead=bool(getattr(p, "notification_to_lead", False)),
+        notification_to_owner=bool(getattr(p, "notification_to_owner", True)),
         created_at=p.created_at,
         updated_at=p.updated_at,
     )
@@ -163,6 +176,41 @@ def _inv_flags(qty: float | None, low: float | None) -> tuple[bool, bool]:
     if low is None:
         return (False, False)
     return (False, bool(qty <= low))
+
+
+def _notification_settings_out(project_id: str, p: PulseProject) -> ProjectNotificationSettingsOut:
+    return ProjectNotificationSettingsOut(
+        project_id=project_id,
+        notification_enabled=bool(getattr(p, "notification_enabled", False)),
+        notification_material_days=int(getattr(p, "notification_material_days", 30) or 30),
+        notification_equipment_days=int(getattr(p, "notification_equipment_days", 7) or 7),
+        notification_to_supervision=bool(getattr(p, "notification_to_supervision", False)),
+        notification_to_lead=bool(getattr(p, "notification_to_lead", False)),
+        notification_to_owner=bool(getattr(p, "notification_to_owner", True)),
+    )
+
+
+async def _equipment_out(db: Db, cid: str, row: PulseProjectTaskEquipment) -> TaskEquipmentOut:
+    eq_type: str | None = None
+    eq_status: str | None = None
+    if row.facility_equipment_id:
+        eq = await db.get(FacilityEquipment, str(row.facility_equipment_id))
+        if eq and str(eq.company_id) == cid:
+            eq_type = eq.type
+            eq_status = eq.status.value if hasattr(eq.status, "value") else str(eq.status)
+    return TaskEquipmentOut(
+        id=str(row.id),
+        company_id=str(row.company_id),
+        project_id=str(row.project_id),
+        task_id=str(row.task_id),
+        facility_equipment_id=str(row.facility_equipment_id) if row.facility_equipment_id else None,
+        name=row.name,
+        notes=row.notes,
+        created_at=row.created_at,
+        updated_at=row.updated_at,
+        equipment_type=eq_type,
+        equipment_status=eq_status,
+    )
 
 
 async def _material_out(db: Db, cid: str, m: PulseProjectTaskMaterial) -> TaskMaterialOut:
@@ -566,7 +614,6 @@ async def list_projects(db: Db, cid: CompanyId) -> list[ProjectOutWithProgress]:
             )
         )
         issue_ct = int(issue_q or 0)
-        st = p.status.value if hasattr(p.status, "value") else str(p.status)
         assignee_rows = (
             (
                 await db.execute(
@@ -582,30 +629,12 @@ async def list_projects(db: Db, cid: CompanyId) -> list[ProjectOutWithProgress]:
             .all()
         )
         assignee_user_ids = [str(aid) for aid in assignee_rows if aid]
+        base = _project_out(p)
+        if getattr(p, "category_id", None) and str(p.category_id) in cats:
+            base.category = _category_out(cats[str(p.category_id)])
         out.append(
             ProjectOutWithProgress(
-                id=str(p.id),
-                company_id=str(p.company_id),
-                name=p.name,
-                description=p.description,
-                owner_user_id=str(p.owner_user_id) if getattr(p, "owner_user_id", None) else None,
-                created_by_user_id=str(p.created_by_user_id) if getattr(p, "created_by_user_id", None) else None,
-                category_id=str(p.category_id) if getattr(p, "category_id", None) else None,
-                category=_category_out(cats[str(p.category_id)]) if getattr(p, "category_id", None) and str(p.category_id) in cats else None,
-                start_date=p.start_date,
-                end_date=p.end_date,
-                goal=getattr(p, "goal", None),
-                notes=getattr(p, "notes", None),
-                success_definition=getattr(p, "success_definition", None),
-                current_phase=getattr(getattr(p, "current_phase", None), "value", None)
-                if getattr(p, "current_phase", None) is not None
-                else None,
-                summary=getattr(p, "summary", None),
-                metrics=getattr(p, "metrics", None),
-                lessons_learned=getattr(p, "lessons_learned", None),
-                status=st,
-                created_at=p.created_at,
-                updated_at=p.updated_at,
+                **base.model_dump(),
                 task_total=total,
                 task_completed=done,
                 progress_pct=pct,
@@ -727,7 +756,6 @@ async def get_project(db: Db, cid: CompanyId, project_id: str) -> ProjectDetailO
                 depends_on_task_ids=prereq_map.get(str(t.id), []),
             )
         )
-    st = p.status.value if hasattr(p.status, "value") else str(p.status)
     today = datetime.now(timezone.utc).date()
     overdue_ct = sum(
         1
@@ -743,37 +771,41 @@ async def get_project(db: Db, cid: CompanyId, project_id: str) -> ProjectDetailO
         )
     )
     issue_ct = int(issue_q or 0)
-    cat = None
+    base = _project_out(p)
     if getattr(p, "category_id", None):
         c = await db.get(PulseCategory, str(p.category_id))
         if c and str(c.company_id) == cid:
-            cat = _category_out(c)
+            base.category = _category_out(c)
     return ProjectDetailOut(
-        id=str(p.id),
-        company_id=str(p.company_id),
-        name=p.name,
-        description=p.description,
-        owner_user_id=str(p.owner_user_id) if getattr(p, "owner_user_id", None) else None,
-        created_by_user_id=str(p.created_by_user_id) if getattr(p, "created_by_user_id", None) else None,
-        category_id=str(p.category_id) if getattr(p, "category_id", None) else None,
-        category=cat,
-        start_date=p.start_date,
-        end_date=p.end_date,
-        goal=getattr(p, "goal", None),
-        notes=getattr(p, "notes", None),
-        success_definition=getattr(p, "success_definition", None),
-        current_phase=getattr(getattr(p, "current_phase", None), "value", None)
-        if getattr(p, "current_phase", None) is not None
-        else None,
-        summary=getattr(p, "summary", None),
-        metrics=getattr(p, "metrics", None),
-        lessons_learned=getattr(p, "lessons_learned", None),
-        status=st,
-        created_at=p.created_at,
-        updated_at=p.updated_at,
+        **base.model_dump(),
         health_status=_health_status(overdue_tasks=int(overdue_ct), open_issues=issue_ct),
         tasks=tasks,
     )
+
+
+@router.get("/projects/{project_id}/notification-settings", response_model=ProjectNotificationSettingsOut)
+async def get_project_notification_settings(db: Db, cid: CompanyId, project_id: str) -> ProjectNotificationSettingsOut:
+    p = await db.get(PulseProject, project_id)
+    if not p or str(p.company_id) != cid:
+        raise HTTPException(status_code=404, detail="Not found")
+    return _notification_settings_out(project_id, p)
+
+
+@router.patch("/projects/{project_id}/notification-settings", response_model=ProjectNotificationSettingsOut)
+async def patch_project_notification_settings(
+    db: Db,
+    cid: CompanyId,
+    project_id: str,
+    body: ProjectNotificationSettingsPatch,
+) -> ProjectNotificationSettingsOut:
+    p = await db.get(PulseProject, project_id)
+    if not p or str(p.company_id) != cid:
+        raise HTTPException(status_code=404, detail="Not found")
+    for k, v in body.model_dump(exclude_unset=True).items():
+        setattr(p, k, v)
+    await db.commit()
+    await db.refresh(p)
+    return _notification_settings_out(project_id, p)
 
 
 @router.get("/projects/{project_id}/activity", response_model=list[ProjectActivityOut])
@@ -1009,6 +1041,12 @@ async def patch_project(
                 notes=getattr(p, "notes", None),
                 success_definition=getattr(p, "success_definition", None),
                 current_phase=getattr(p, "current_phase", None),
+                notification_enabled=bool(getattr(p, "notification_enabled", False)),
+                notification_material_days=int(getattr(p, "notification_material_days", 30) or 30),
+                notification_equipment_days=int(getattr(p, "notification_equipment_days", 7) or 7),
+                notification_to_supervision=bool(getattr(p, "notification_to_supervision", False)),
+                notification_to_lead=bool(getattr(p, "notification_to_lead", False)),
+                notification_to_owner=bool(getattr(p, "notification_to_owner", True)),
             )
             db.add(new_proj)
             await db.flush()
@@ -1058,6 +1096,20 @@ async def patch_project(
                         notes=m.notes,
                     )
                     db.add(nm)
+                eq_q = await db.execute(
+                    select(PulseProjectTaskEquipment).where(PulseProjectTaskEquipment.task_id == str(ot.id))
+                )
+                eqs = list(eq_q.scalars().all())
+                for e in eqs:
+                    ne = PulseProjectTaskEquipment(
+                        company_id=cid,
+                        project_id=str(new_proj.id),
+                        task_id=str(nt.id),
+                        facility_equipment_id=e.facility_equipment_id,
+                        name=e.name,
+                        notes=e.notes,
+                    )
+                    db.add(ne)
             await _log_activity(
                 db,
                 project_id=str(new_proj.id),
@@ -1170,6 +1222,92 @@ async def delete_task_material(db: Db, cid: CompanyId, task_id: str, material_id
     await db.commit()
 
 
+# —— Task equipment ——
+
+
+@tasks_router.get("/tasks/{task_id}/equipment", response_model=list[TaskEquipmentOut])
+async def list_task_equipment(db: Db, cid: CompanyId, task_id: str) -> list[TaskEquipmentOut]:
+    t = await db.get(PulseProjectTask, task_id)
+    if not t or str(t.company_id) != cid:
+        raise HTTPException(status_code=404, detail="Not found")
+    q = await db.execute(
+        select(PulseProjectTaskEquipment)
+        .where(PulseProjectTaskEquipment.task_id == task_id, PulseProjectTaskEquipment.company_id == cid)
+        .order_by(PulseProjectTaskEquipment.created_at.asc())
+    )
+    rows = list(q.scalars().all())
+    return [await _equipment_out(db, cid, r) for r in rows]
+
+
+@tasks_router.post("/tasks/{task_id}/equipment", response_model=TaskEquipmentOut, status_code=201)
+async def add_task_equipment(db: Db, cid: CompanyId, task_id: str, body: TaskEquipmentCreateIn) -> TaskEquipmentOut:
+    t = await db.get(PulseProjectTask, task_id)
+    if not t or str(t.company_id) != cid:
+        raise HTTPException(status_code=404, detail="Not found")
+    eq_id = (body.facility_equipment_id or "").strip() or None
+    name = body.name.strip()
+    if eq_id:
+        eq = await db.get(FacilityEquipment, eq_id)
+        if not eq or str(eq.company_id) != cid:
+            raise HTTPException(status_code=400, detail="facility_equipment_id not found")
+        name = eq.name
+    row = PulseProjectTaskEquipment(
+        company_id=cid,
+        project_id=str(t.project_id),
+        task_id=task_id,
+        facility_equipment_id=eq_id,
+        name=name,
+        notes=body.notes,
+    )
+    db.add(row)
+    await db.commit()
+    await db.refresh(row)
+    return await _equipment_out(db, cid, row)
+
+
+@tasks_router.patch("/tasks/{task_id}/equipment/{equipment_row_id}", response_model=TaskEquipmentOut)
+async def patch_task_equipment(
+    db: Db, cid: CompanyId, task_id: str, equipment_row_id: str, body: TaskEquipmentPatch
+) -> TaskEquipmentOut:
+    t = await db.get(PulseProjectTask, task_id)
+    if not t or str(t.company_id) != cid:
+        raise HTTPException(status_code=404, detail="Not found")
+    row = await db.get(PulseProjectTaskEquipment, equipment_row_id)
+    if not row or str(row.company_id) != cid or str(row.task_id) != task_id:
+        raise HTTPException(status_code=404, detail="Not found")
+    data = body.model_dump(exclude_unset=True)
+    if "facility_equipment_id" in data:
+        raw = data["facility_equipment_id"]
+        eq_id = str(raw).strip() if raw is not None else ""
+        if not eq_id:
+            row.facility_equipment_id = None
+        else:
+            eq = await db.get(FacilityEquipment, eq_id)
+            if not eq or str(eq.company_id) != cid:
+                raise HTTPException(status_code=400, detail="facility_equipment_id not found")
+            row.facility_equipment_id = eq_id
+            row.name = eq.name
+    if "name" in data and data["name"] is not None:
+        row.name = str(data["name"]).strip()
+    if "notes" in data:
+        row.notes = data["notes"]
+    await db.commit()
+    await db.refresh(row)
+    return await _equipment_out(db, cid, row)
+
+
+@tasks_router.delete("/tasks/{task_id}/equipment/{equipment_row_id}", status_code=204)
+async def delete_task_equipment(db: Db, cid: CompanyId, task_id: str, equipment_row_id: str) -> None:
+    t = await db.get(PulseProjectTask, task_id)
+    if not t or str(t.company_id) != cid:
+        raise HTTPException(status_code=404, detail="Not found")
+    row = await db.get(PulseProjectTaskEquipment, equipment_row_id)
+    if not row or str(row.company_id) != cid or str(row.task_id) != task_id:
+        raise HTTPException(status_code=404, detail="Not found")
+    await db.execute(delete(PulseProjectTaskEquipment).where(PulseProjectTaskEquipment.id == equipment_row_id))
+    await db.commit()
+
+
 @router.get("/projects/{project_id}/materials", response_model=list[ProjectMaterialSummaryRow])
 async def project_materials_master_list(db: Db, cid: CompanyId, project_id: str) -> list[ProjectMaterialSummaryRow]:
     p = await db.get(PulseProject, project_id)
@@ -1214,6 +1352,31 @@ async def project_materials_master_list(db: Db, cid: CompanyId, project_id: str)
             )
         )
     return out
+
+
+@router.get("/projects/{project_id}/equipment", response_model=list[ProjectEquipmentSummaryRow])
+async def project_equipment_master_list(db: Db, cid: CompanyId, project_id: str) -> list[ProjectEquipmentSummaryRow]:
+    p = await db.get(PulseProject, project_id)
+    if not p or str(p.company_id) != cid:
+        raise HTTPException(status_code=404, detail="Not found")
+    q = await db.execute(
+        select(
+            PulseProjectTaskEquipment.facility_equipment_id,
+            PulseProjectTaskEquipment.name,
+            func.count(PulseProjectTaskEquipment.id),
+        )
+        .where(PulseProjectTaskEquipment.project_id == project_id, PulseProjectTaskEquipment.company_id == cid)
+        .group_by(PulseProjectTaskEquipment.facility_equipment_id, PulseProjectTaskEquipment.name)
+        .order_by(PulseProjectTaskEquipment.name.asc())
+    )
+    return [
+        ProjectEquipmentSummaryRow(
+            facility_equipment_id=str(fid) if fid else None,
+            name=str(name),
+            line_count=int(cnt or 0),
+        )
+        for fid, name, cnt in q.all()
+    ]
 
 
 @router.delete("/projects/{project_id}", status_code=status.HTTP_204_NO_CONTENT)

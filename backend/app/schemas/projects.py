@@ -74,11 +74,36 @@ class ProjectOut(BaseModel):
     repopulation_frequency: Optional[str] = None
     completed_at: Optional[datetime] = None
     archived_at: Optional[datetime] = None
+    notification_enabled: bool = False
+    notification_material_days: int = 30
+    notification_equipment_days: int = 7
+    notification_to_supervision: bool = False
+    notification_to_lead: bool = False
+    notification_to_owner: bool = True
     created_at: datetime
     updated_at: datetime
     health_status: str = "On Track"
 
     model_config = {"from_attributes": True}
+
+
+class ProjectNotificationSettingsOut(BaseModel):
+    project_id: str
+    notification_enabled: bool
+    notification_material_days: int
+    notification_equipment_days: int
+    notification_to_supervision: bool
+    notification_to_lead: bool
+    notification_to_owner: bool
+
+
+class ProjectNotificationSettingsPatch(BaseModel):
+    notification_enabled: Optional[bool] = None
+    notification_material_days: Optional[int] = Field(None, ge=1, le=365)
+    notification_equipment_days: Optional[int] = Field(None, ge=1, le=365)
+    notification_to_supervision: Optional[bool] = None
+    notification_to_lead: Optional[bool] = None
+    notification_to_owner: Optional[bool] = None
 
 
 class TaskCreate(BaseModel):
@@ -214,6 +239,38 @@ class ProjectMaterialSummaryRow(BaseModel):
     low_stock_threshold: Optional[float] = None
     is_out_of_stock: bool = False
     is_low_stock: bool = False
+
+
+class TaskEquipmentCreateIn(BaseModel):
+    facility_equipment_id: Optional[str] = None
+    name: str = Field(..., min_length=1, max_length=255)
+    notes: Optional[str] = Field(None, max_length=2000)
+
+
+class TaskEquipmentPatch(BaseModel):
+    name: Optional[str] = Field(None, min_length=1, max_length=255)
+    notes: Optional[str] = Field(None, max_length=2000)
+    facility_equipment_id: Optional[str] = None
+
+
+class TaskEquipmentOut(BaseModel):
+    id: str
+    company_id: str
+    project_id: str
+    task_id: str
+    facility_equipment_id: Optional[str] = None
+    name: str
+    notes: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+    equipment_type: Optional[str] = None
+    equipment_status: Optional[str] = None
+
+
+class ProjectEquipmentSummaryRow(BaseModel):
+    facility_equipment_id: Optional[str] = None
+    name: str
+    line_count: int = 0
 
 
 class ProjectActivityOut(BaseModel):

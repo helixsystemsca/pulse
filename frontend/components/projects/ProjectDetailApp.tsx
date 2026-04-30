@@ -33,9 +33,13 @@ import {
   listCriticalSteps,
   listProjectActivity,
   listProjectMaterials,
+  listProjectEquipment,
   listTaskMaterials,
+  listTaskEquipment,
   addTaskMaterial,
+  addTaskEquipment,
   deleteTaskMaterial,
+  deleteTaskEquipment,
   patchCriticalStep,
   patchProject,
   patchTask,
@@ -46,7 +50,11 @@ import {
   type CriticalStepRow,
   type TaskRow,
   type TaskMaterialRow,
+  type TaskEquipmentRow,
   type ProjectMaterialSummaryRow,
+  type ProjectEquipmentSummaryRow,
+  type FacilityEquipmentListRow,
+  fetchEquipmentSuggestions,
 } from "@/lib/projectsService";
 import type { PulseWorkerApi } from "@/lib/schedule/pulse-bridge";
 import { useResolvedAvatarSrc } from "@/lib/useResolvedAvatarSrc";
@@ -144,6 +152,8 @@ export function ProjectDetailApp({ projectId }: { projectId: string }) {
   const [categoryBusy, setCategoryBusy] = useState(false);
   const [projectMaterials, setProjectMaterials] = useState<ProjectMaterialSummaryRow[] | null>(null);
   const [projectMaterialsErr, setProjectMaterialsErr] = useState<string | null>(null);
+  const [projectEquipment, setProjectEquipment] = useState<ProjectEquipmentSummaryRow[] | null>(null);
+  const [projectEquipmentErr, setProjectEquipmentErr] = useState<string | null>(null);
 
   const [overviewGoal, setOverviewGoal] = useState("");
   const [overviewNotes, setOverviewNotes] = useState("");
@@ -195,6 +205,14 @@ export function ProjectDetailApp({ projectId }: { projectId: string }) {
       } catch {
         setProjectMaterials([]);
         setProjectMaterialsErr("Could not load materials.");
+      }
+      try {
+        const eq = await listProjectEquipment(projectId);
+        setProjectEquipment(eq);
+        setProjectEquipmentErr(null);
+      } catch {
+        setProjectEquipment([]);
+        setProjectEquipmentErr("Could not load equipment.");
       }
     } catch {
       setErr("Could not load project.");
@@ -820,6 +838,36 @@ export function ProjectDetailApp({ projectId }: { projectId: string }) {
                           </li>
                         );
                       })}
+                    </ul>
+                  )}
+                </Card>
+                <Card padding="md" className="mt-4 space-y-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-sm font-bold text-ds-foreground">Equipment</p>
+                    <button type="button" className={SECONDARY_BTN} onClick={() => void reload()}>
+                      Refresh
+                    </button>
+                  </div>
+                  {projectEquipmentErr ? (
+                    <p className="text-sm font-medium text-red-700 dark:text-red-400">{projectEquipmentErr}</p>
+                  ) : null}
+                  {projectEquipment === null ? (
+                    <p className="text-sm text-ds-muted">Loading…</p>
+                  ) : projectEquipment.length === 0 ? (
+                    <p className="text-sm text-ds-muted">
+                      No equipment yet. Link equipment on a task to build the project master list.
+                    </p>
+                  ) : (
+                    <ul className="space-y-2">
+                      {projectEquipment.map((e, idx) => (
+                        <li
+                          key={`${e.facility_equipment_id ?? "free"}-${e.name}-${idx}`}
+                          className="rounded-md border border-ds-border bg-white px-3 py-2 text-sm dark:bg-ds-primary"
+                        >
+                          <p className="truncate font-semibold text-ds-foreground">{e.name}</p>
+                          <p className="mt-0.5 text-[11px] text-ds-muted">Linked on {e.line_count} task line(s)</p>
+                        </li>
+                      ))}
                     </ul>
                   )}
                 </Card>
@@ -1626,22 +1674,30 @@ function TaskSection({
             <Card
               key={t.id}
               padding="md"
+              interactive
+              role="group"
+              tabIndex={0}
+              aria-label={`Task: ${t.title}. Press Enter to edit.`}
               className={completedStyle ? "opacity-90" : ""}
+              onClick={() => onEdit(t)}
+              onKeyDown={(e) => {
+                if (e.target !== e.currentTarget) return;
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  onEdit(t);
+                }
+              }}
             >
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
-                  <button
-                    type="button"
-                    className="flex min-w-0 items-center gap-2 text-left text-base font-semibold text-pulse-navy hover:text-pulse-accent dark:text-slate-100"
-                    onClick={() => onEdit(t)}
-                  >
+                  <div className="flex min-w-0 items-center gap-2 text-left text-base font-semibold text-pulse-navy dark:text-slate-100">
                     {t.location_tag_id?.trim() ? (
-                      <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-pulse-navy dark:bg-ds-secondary dark:text-slate-200">
+                      <span className="shrink-0 rounded-full bg-ds-success/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-ds-success ring-1 ring-inset ring-ds-success/25 dark:bg-ds-success/12 dark:ring-ds-success/35">
                         {t.location_tag_id.trim()}
                       </span>
                     ) : null}
                     <span className="min-w-0 truncate">{t.title}</span>
-                  </button>
+                  </div>
                   {t.description ? (
                     <p className="mt-1 line-clamp-2 text-xs text-pulse-muted">{t.description}</p>
                   ) : null}
@@ -1695,13 +1751,23 @@ function TaskSection({
                       className={TASK_DELETE_ICON_BTN}
                       aria-label={`Delete task: ${t.title}`}
                       title="Delete task"
-                      onClick={() => onDelete(t)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onDelete(t);
+                      }}
                     >
                       <Trash2 className="h-4 w-4" aria-hidden />
                     </button>
                   ) : null}
                   {!completedStyle && t.status !== "complete" ? (
-                    <button type="button" className={SECONDARY_BTN} onClick={() => onComplete(t)}>
+                    <button
+                      type="button"
+                      className={SECONDARY_BTN}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onComplete(t);
+                      }}
+                    >
                       Mark complete
                     </button>
                   ) : null}
@@ -1762,6 +1828,11 @@ function ProjectTaskModal({
   const [matNotes, setMatNotes] = useState("");
   const [matSuggestions, setMatSuggestions] = useState<InventoryRow[]>([]);
   const [matBusy, setMatBusy] = useState(false);
+  const [lineKind, setLineKind] = useState<"material" | "equipment">("material");
+  const [equipmentRows, setEquipmentRows] = useState<TaskEquipmentRow[] | null>(null);
+  const [equipmentErr, setEquipmentErr] = useState<string | null>(null);
+  const [eqQuery, setEqQuery] = useState("");
+  const [eqSuggestions, setEqSuggestions] = useState<FacilityEquipmentListRow[]>([]);
 
   const selectablePeers = peerTasks.filter((t) => !task || t.id !== task.id);
 
@@ -1825,12 +1896,18 @@ function ProjectTaskModal({
     setMatQty("1");
     setMatNotes("");
     setMatSuggestions([]);
+    setLineKind("material");
+    setEquipmentRows(null);
+    setEquipmentErr(null);
+    setEqQuery("");
+    setEqSuggestions([]);
   }, [open, task]);
 
   useEffect(() => {
     if (!open) return;
     if (!task?.id) {
       setMaterials([]);
+      setEquipmentRows([]);
       return;
     }
     (async () => {
@@ -1842,12 +1919,20 @@ function ProjectTaskModal({
         setMaterials([]);
         setMaterialsErr("Could not load materials.");
       }
+      try {
+        const er = await listTaskEquipment(task.id);
+        setEquipmentRows(er);
+        setEquipmentErr(null);
+      } catch {
+        setEquipmentRows([]);
+        setEquipmentErr("Could not load equipment.");
+      }
     })();
   }, [open, task?.id]);
 
   useEffect(() => {
     const q = matQuery.trim();
-    if (!open || q.length < 2) {
+    if (!open || lineKind !== "material" || q.length < 2) {
       setMatSuggestions([]);
       return;
     }
@@ -1862,7 +1947,26 @@ function ProjectTaskModal({
       })();
     }, 180);
     return () => window.clearTimeout(t);
-  }, [open, matQuery]);
+  }, [open, lineKind, matQuery]);
+
+  useEffect(() => {
+    const q = eqQuery.trim();
+    if (!open || lineKind !== "equipment" || q.length < 2) {
+      setEqSuggestions([]);
+      return;
+    }
+    const t = window.setTimeout(() => {
+      void (async () => {
+        try {
+          const res = await fetchEquipmentSuggestions(q, 12);
+          setEqSuggestions(res ?? []);
+        } catch {
+          setEqSuggestions([]);
+        }
+      })();
+    }, 180);
+    return () => window.clearTimeout(t);
+  }, [open, lineKind, eqQuery]);
 
   const depBlockedLive = depSelected.some((id) => {
     const p = peerTasks.find((x) => x.id === id);
@@ -2061,7 +2165,7 @@ function ProjectTaskModal({
 
           <div className="space-y-2 rounded-xl border border-ds-border bg-ds-secondary/30 p-4">
             <div className="flex items-center justify-between gap-3">
-              <p className="text-sm font-bold text-ds-foreground">Materials</p>
+              <p className="text-sm font-bold text-ds-foreground">Materials &amp; equipment</p>
               {task ? (
                 <button
                   type="button"
@@ -2069,84 +2173,146 @@ function ProjectTaskModal({
                   onClick={async () => {
                     if (!task?.id) return;
                     try {
-                      const rows = await listTaskMaterials(task.id);
+                      const [rows, er] = await Promise.all([listTaskMaterials(task.id), listTaskEquipment(task.id)]);
                       setMaterials(rows);
+                      setEquipmentRows(er);
                       setMaterialsErr(null);
+                      setEquipmentErr(null);
                     } catch {
-                      setMaterialsErr("Could not load materials.");
+                      setMaterialsErr("Could not refresh lines.");
+                      setEquipmentErr("Could not refresh lines.");
                     }
                   }}
                 >
                   Refresh
                 </button>
               ) : (
-                <span className="text-[11px] text-ds-muted">Save task to add materials.</span>
+                <span className="text-[11px] text-ds-muted">Save the task first, then add lines.</span>
               )}
             </div>
-            {materialsErr ? <p className="text-sm font-medium text-red-700 dark:text-red-400">{materialsErr}</p> : null}
+            {(materialsErr || equipmentErr) ? (
+              <p className="text-sm font-medium text-red-700 dark:text-red-400">{materialsErr || equipmentErr}</p>
+            ) : null}
             {!task ? (
-              <p className="text-xs text-ds-muted">Create the task first, then add materials from inventory.</p>
+              <p className="text-xs text-ds-muted">Create the task first, then add materials or equipment.</p>
             ) : (
               <>
-                <div className="grid gap-2 sm:grid-cols-[1fr,110px]">
+                <div>
+                  <label className={LABEL} htmlFor="tm-line-kind">
+                    Line type
+                  </label>
+                  <select
+                    id="tm-line-kind"
+                    className={FIELD}
+                    value={lineKind}
+                    onChange={(e) => {
+                      const v = e.target.value as "material" | "equipment";
+                      setLineKind(v);
+                      setMatSuggestions([]);
+                      setEqSuggestions([]);
+                    }}
+                  >
+                    <option value="material">Material</option>
+                    <option value="equipment">Equipment</option>
+                  </select>
+                </div>
+                {lineKind === "material" ? (
+                  <div className="grid gap-2 sm:grid-cols-[1fr,110px]">
+                    <div className="relative">
+                      <label className={LABEL} htmlFor="tm-mat-q">
+                        Search inventory
+                      </label>
+                      <input
+                        id="tm-mat-q"
+                        className={FIELD}
+                        value={matQuery}
+                        onChange={(e) => setMatQuery(e.target.value)}
+                        placeholder="Start typing…"
+                      />
+                      {matSuggestions.length ? (
+                        <div className="absolute z-30 mt-2 w-full rounded-xl border border-ds-border bg-white p-2 shadow-xl dark:bg-ds-primary">
+                          <ul className="max-h-48 overflow-y-auto">
+                            {matSuggestions.map((it) => {
+                              const oos = (it.quantity ?? 0) <= 0;
+                              const low = !oos && (it.quantity ?? 0) <= (it.low_stock_threshold ?? 0);
+                              return (
+                                <li key={it.id}>
+                                  <button
+                                    type="button"
+                                    className="flex w-full items-center justify-between gap-3 rounded-lg px-2 py-2 text-left text-sm hover:bg-ds-interactive-hover"
+                                    onClick={() => {
+                                      setMatQuery(it.name);
+                                      setMatSuggestions([]);
+                                    }}
+                                  >
+                                    <span className="min-w-0 truncate font-semibold text-ds-foreground">{it.name}</span>
+                                    {oos || low ? (
+                                      <span className="shrink-0 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-bold uppercase text-amber-950 ring-1 ring-amber-200/80 dark:bg-amber-950/50 dark:text-amber-100 dark:ring-amber-500/40">
+                                        {oos ? "Out" : "Low"}
+                                      </span>
+                                    ) : (
+                                      <span className="shrink-0 text-[11px] font-semibold text-ds-muted">
+                                        {it.quantity} {it.unit}
+                                      </span>
+                                    )}
+                                  </button>
+                                </li>
+                              );
+                            })}
+                          </ul>
+                        </div>
+                      ) : null}
+                    </div>
+                    <div>
+                      <label className={LABEL} htmlFor="tm-mat-qty">
+                        Qty
+                      </label>
+                      <input
+                        id="tm-mat-qty"
+                        inputMode="decimal"
+                        className={FIELD}
+                        value={matQty}
+                        onChange={(e) => setMatQty(e.target.value.replace(/[^\d.]/g, ""))}
+                      />
+                    </div>
+                  </div>
+                ) : (
                   <div className="relative">
-                    <label className={LABEL} htmlFor="tm-mat-q">
-                      Add material
+                    <label className={LABEL} htmlFor="tm-eq-q">
+                      Search equipment registry
                     </label>
                     <input
-                      id="tm-mat-q"
+                      id="tm-eq-q"
                       className={FIELD}
-                      value={matQuery}
-                      onChange={(e) => setMatQuery(e.target.value)}
+                      value={eqQuery}
+                      onChange={(e) => setEqQuery(e.target.value)}
                       placeholder="Start typing…"
                     />
-                    {matSuggestions.length ? (
+                    {eqSuggestions.length ? (
                       <div className="absolute z-30 mt-2 w-full rounded-xl border border-ds-border bg-white p-2 shadow-xl dark:bg-ds-primary">
                         <ul className="max-h-48 overflow-y-auto">
-                          {matSuggestions.map((it) => {
-                            const oos = (it.quantity ?? 0) <= 0;
-                            const low = !oos && (it.quantity ?? 0) <= (it.low_stock_threshold ?? 0);
-                            return (
-                              <li key={it.id}>
-                                <button
-                                  type="button"
-                                  className="flex w-full items-center justify-between gap-3 rounded-lg px-2 py-2 text-left text-sm hover:bg-ds-interactive-hover"
-                                  onClick={() => {
-                                    setMatQuery(it.name);
-                                    setMatSuggestions([]);
-                                  }}
-                                >
-                                  <span className="min-w-0 truncate font-semibold text-ds-foreground">{it.name}</span>
-                                  {oos || low ? (
-                                    <span className="shrink-0 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-bold uppercase text-amber-950 ring-1 ring-amber-200/80 dark:bg-amber-950/50 dark:text-amber-100 dark:ring-amber-500/40">
-                                      {oos ? "Out" : "Low"}
-                                    </span>
-                                  ) : (
-                                    <span className="shrink-0 text-[11px] font-semibold text-ds-muted">
-                                      {it.quantity} {it.unit}
-                                    </span>
-                                  )}
-                                </button>
-                              </li>
-                            );
-                          })}
+                          {eqSuggestions.map((it) => (
+                            <li key={it.id}>
+                              <button
+                                type="button"
+                                className="flex w-full items-center justify-between gap-3 rounded-lg px-2 py-2 text-left text-sm hover:bg-ds-interactive-hover"
+                                onClick={() => {
+                                  setEqQuery(it.name);
+                                  setEqSuggestions([]);
+                                }}
+                              >
+                                <span className="min-w-0 truncate font-semibold text-ds-foreground">{it.name}</span>
+                                <span className="shrink-0 text-[11px] font-semibold text-ds-muted">
+                                  {it.type} · {it.status}
+                                </span>
+                              </button>
+                            </li>
+                          ))}
                         </ul>
                       </div>
                     ) : null}
                   </div>
-                  <div>
-                    <label className={LABEL} htmlFor="tm-mat-qty">
-                      Qty
-                    </label>
-                    <input
-                      id="tm-mat-qty"
-                      inputMode="decimal"
-                      className={FIELD}
-                      value={matQty}
-                      onChange={(e) => setMatQty(e.target.value.replace(/[^\d.]/g, ""))}
-                    />
-                  </div>
-                </div>
+                )}
                 <div>
                   <label className={LABEL} htmlFor="tm-mat-notes">
                     Notes (optional)
@@ -2162,75 +2328,145 @@ function ProjectTaskModal({
                 <button
                   type="button"
                   className={SECONDARY_BTN}
-                  disabled={matBusy || !matQuery.trim() || !(Number(matQty) > 0)}
+                  disabled={
+                    matBusy ||
+                    (lineKind === "material" && (!matQuery.trim() || !(Number(matQty) > 0))) ||
+                    (lineKind === "equipment" && !eqQuery.trim())
+                  }
                   onClick={async () => {
                     if (!task?.id) return;
                     setMatBusy(true);
                     try {
-                      const q = matQuery.trim();
-                      const match = matSuggestions.find((x) => x.name.trim().toLowerCase() === q.toLowerCase()) ?? null;
-                      await addTaskMaterial(task.id, {
-                        inventory_item_id: match?.id ?? null,
-                        name: q,
-                        quantity_required: Number(matQty),
-                        unit: match?.unit ?? null,
-                        notes: matNotes.trim() || null,
-                      });
-                      const rows = await listTaskMaterials(task.id);
-                      setMaterials(rows);
-                      setMatQuery("");
-                      setMatQty("1");
-                      setMatNotes("");
-                      setMaterialsErr(null);
+                      if (lineKind === "material") {
+                        const q = matQuery.trim();
+                        const match =
+                          matSuggestions.find((x) => x.name.trim().toLowerCase() === q.toLowerCase()) ?? null;
+                        await addTaskMaterial(task.id, {
+                          inventory_item_id: match?.id ?? null,
+                          name: q,
+                          quantity_required: Number(matQty),
+                          unit: match?.unit ?? null,
+                          notes: matNotes.trim() || null,
+                        });
+                        const rows = await listTaskMaterials(task.id);
+                        setMaterials(rows);
+                        setMatQuery("");
+                        setMatQty("1");
+                        setMatNotes("");
+                        setMaterialsErr(null);
+                      } else {
+                        const q = eqQuery.trim();
+                        const match =
+                          eqSuggestions.find((x) => x.name.trim().toLowerCase() === q.toLowerCase()) ?? null;
+                        await addTaskEquipment(task.id, {
+                          facility_equipment_id: match?.id ?? null,
+                          name: q,
+                          notes: matNotes.trim() || null,
+                        });
+                        const er = await listTaskEquipment(task.id);
+                        setEquipmentRows(er);
+                        setEqQuery("");
+                        setMatNotes("");
+                        setEquipmentErr(null);
+                      }
                     } catch {
-                      setMaterialsErr("Could not add material.");
+                      if (lineKind === "material") {
+                        setMaterialsErr("Could not add material.");
+                      } else {
+                        setEquipmentErr("Could not add equipment.");
+                      }
                     } finally {
                       setMatBusy(false);
                     }
                   }}
                 >
-                  Add material
+                  {lineKind === "material" ? "Add material" : "Add equipment"}
                 </button>
 
-                {materials === null ? (
-                  <p className="text-sm text-ds-muted">Loading…</p>
-                ) : materials.length === 0 ? (
-                  <p className="text-sm text-ds-muted">No materials added yet.</p>
-                ) : (
-                  <ul className="space-y-2">
-                    {materials.map((m) => (
-                      <li
-                        key={m.id}
-                        className="flex items-center justify-between gap-3 rounded-md border border-ds-border bg-white px-3 py-2 text-sm dark:bg-ds-primary"
-                      >
-                        <div className="min-w-0">
-                          <p className="truncate font-semibold text-ds-foreground">{m.name}</p>
-                          <p className="mt-0.5 text-[11px] text-ds-muted">
-                            {m.quantity_required} {m.unit ?? ""}
-                            {m.is_out_of_stock ? " · Out of stock" : m.is_low_stock ? " · Low stock" : ""}
-                          </p>
-                        </div>
-                        <button
-                          type="button"
-                          className="text-xs font-semibold text-red-700 hover:underline dark:text-red-300"
-                          onClick={async () => {
-                            if (!task?.id) return;
-                            setMatBusy(true);
-                            try {
-                              await deleteTaskMaterial(task.id, m.id);
-                              const rows = await listTaskMaterials(task.id);
-                              setMaterials(rows);
-                            } finally {
-                              setMatBusy(false);
-                            }
-                          }}
+                <div className="border-t border-ds-border pt-3">
+                  <p className="text-[11px] font-bold uppercase tracking-wide text-ds-muted">Materials on this task</p>
+                  {materials === null ? (
+                    <p className="mt-2 text-sm text-ds-muted">Loading…</p>
+                  ) : materials.length === 0 ? (
+                    <p className="mt-2 text-sm text-ds-muted">None yet.</p>
+                  ) : (
+                    <ul className="mt-2 space-y-2">
+                      {materials.map((m) => (
+                        <li
+                          key={m.id}
+                          className="flex items-center justify-between gap-3 rounded-md border border-ds-border bg-white px-3 py-2 text-sm dark:bg-ds-primary"
                         >
-                          Remove
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
+                          <div className="min-w-0">
+                            <p className="truncate font-semibold text-ds-foreground">{m.name}</p>
+                            <p className="mt-0.5 text-[11px] text-ds-muted">
+                              {m.quantity_required} {m.unit ?? ""}
+                              {m.is_out_of_stock ? " · Out of stock" : m.is_low_stock ? " · Low stock" : ""}
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            className="text-xs font-semibold text-red-700 hover:underline dark:text-red-300"
+                            onClick={async () => {
+                              if (!task?.id) return;
+                              setMatBusy(true);
+                              try {
+                                await deleteTaskMaterial(task.id, m.id);
+                                const rows = await listTaskMaterials(task.id);
+                                setMaterials(rows);
+                              } finally {
+                                setMatBusy(false);
+                              }
+                            }}
+                          >
+                            Remove
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+                <div className="border-t border-ds-border pt-3">
+                  <p className="text-[11px] font-bold uppercase tracking-wide text-ds-muted">Equipment on this task</p>
+                  {equipmentRows === null ? (
+                    <p className="mt-2 text-sm text-ds-muted">Loading…</p>
+                  ) : equipmentRows.length === 0 ? (
+                    <p className="mt-2 text-sm text-ds-muted">None yet.</p>
+                  ) : (
+                    <ul className="mt-2 space-y-2">
+                      {equipmentRows.map((ex) => (
+                        <li
+                          key={ex.id}
+                          className="flex items-center justify-between gap-3 rounded-md border border-ds-border bg-white px-3 py-2 text-sm dark:bg-ds-primary"
+                        >
+                          <div className="min-w-0">
+                            <p className="truncate font-semibold text-ds-foreground">{ex.name}</p>
+                            <p className="mt-0.5 text-[11px] text-ds-muted">
+                              {ex.equipment_type ? `${ex.equipment_type}` : "Custom"}
+                              {ex.equipment_status ? ` · ${ex.equipment_status}` : ""}
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            className="text-xs font-semibold text-red-700 hover:underline dark:text-red-300"
+                            onClick={async () => {
+                              if (!task?.id) return;
+                              setMatBusy(true);
+                              try {
+                                await deleteTaskEquipment(task.id, ex.id);
+                                const er = await listTaskEquipment(task.id);
+                                setEquipmentRows(er);
+                              } finally {
+                                setMatBusy(false);
+                              }
+                            }}
+                          >
+                            Remove
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
               </>
             )}
           </div>
