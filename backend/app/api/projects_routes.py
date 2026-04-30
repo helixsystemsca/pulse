@@ -654,9 +654,10 @@ async def list_projects(db: Db, cid: CompanyId) -> list[ProjectOutWithProgress]:
         base = _project_out(p)
         if getattr(p, "category_id", None) and str(p.category_id) in cats:
             base.category = _category_out(cats[str(p.category_id)])
+        data = base.model_dump(exclude={"health_status"})
         out.append(
             ProjectOutWithProgress(
-                **base.model_dump(),
+                **data,
                 task_total=total,
                 task_completed=done,
                 progress_pct=pct,
@@ -799,8 +800,9 @@ async def get_project(db: Db, cid: CompanyId, project_id: str) -> ProjectDetailO
         c = await db.get(PulseCategory, str(p.category_id))
         if c and str(c.company_id) == cid:
             base.category = _category_out(c)
+    detail_data = base.model_dump(exclude={"health_status"})
     return ProjectDetailOut(
-        **base.model_dump(),
+        **detail_data,
         health_status=_health_status(overdue_tasks=int(overdue_ct), open_issues=issue_ct),
         tasks=tasks,
     )
