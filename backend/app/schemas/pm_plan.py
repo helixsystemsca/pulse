@@ -7,7 +7,7 @@ from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, Field
 
-PmFrequency = Literal["daily", "weekly", "monthly", "custom"]
+PmFrequency = Literal["daily", "weekly", "monthly", "annual", "custom"]
 
 
 class PmPlanCreateIn(BaseModel):

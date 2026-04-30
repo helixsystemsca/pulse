@@ -1,6 +1,6 @@
 import { apiFetch } from "@/lib/api";
 
-export type PmPlanFrequency = "daily" | "weekly" | "monthly" | "custom";
+export type PmPlanFrequency = "daily" | "weekly" | "monthly" | "annual" | "custom";
 
 export type PmPlanOut = {
   id: string;

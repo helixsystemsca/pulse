@@ -38,9 +38,9 @@ function WorkRequestsIntakeInner() {
   return (
     <div className="space-y-4">
       <p className="text-sm text-pulse-muted">
-        Submit and triage intake requests here. Track everything in the{" "}
+        Submit and triage intake requests here. Track everything under{" "}
         <Link href="/dashboard/maintenance" className="font-semibold text-pulse-accent hover:underline">
-          Work request hub
+          Maintenance → Work Requests
         </Link>
         .
       </p>

@@ -221,7 +221,7 @@ class PulsePmPlan(Base):
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
-    frequency: Mapped[str] = mapped_column(String(16), nullable=False)  # daily | weekly | monthly | custom
+    frequency: Mapped[str] = mapped_column(String(16), nullable=False)  # daily | weekly | monthly | annual | custom
     custom_interval_days: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
 
     start_date: Mapped[date] = mapped_column(Date, nullable=False, index=True)

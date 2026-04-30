@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from calendar import monthrange
 from datetime import date, datetime, time, timedelta, timezone
 from typing import Optional
 
@@ -47,15 +48,19 @@ def advance_due_at(*, current_due_at: datetime, frequency: str, custom_interval_
         ny = y + (nm - 1) // 12
         nm = (nm - 1) % 12 + 1
         # clamp day
-        from calendar import monthrange
-
         last = monthrange(ny, nm)[1]
         d = min(current_due_at.day, last)
         return current_due_at.replace(year=ny, month=nm, day=d)
     if f == "custom":
         days = int(custom_interval_days or 1)
         return current_due_at + timedelta(days=max(1, days))
-    raise ValueError("frequency must be daily, weekly, monthly, or custom")
+    if f == "annual":
+        y = current_due_at.year + 1
+        m, d = current_due_at.month, current_due_at.day
+        last = monthrange(y, m)[1]
+        d = min(d, last)
+        return current_due_at.replace(year=y, month=m, day=d)
+    raise ValueError("frequency must be daily, weekly, monthly, annual, or custom")
 
 
 def _apply_due_offset(due_at: datetime, offset_days: Optional[int]) -> datetime:

@@ -50,7 +50,7 @@ import {
   postWorkRequestStatus,
   postWorkRequestAssign,
 } from "@/lib/workRequestsService";
-import { createPmPlan } from "@/lib/pmPlansService";
+import { createPmPlan, type PmPlanFrequency } from "@/lib/pmPlansService";
 import { useModuleSettings, useModuleSettingsOptional } from "@/providers/ModuleSettingsProvider";
 
 type CompanyOption = { id: string; name: string };
@@ -148,6 +148,21 @@ const WORKFLOW_STATUSES: { id: WorkItemStatus; label: string }[] = [
   { id: "overdue", label: "Overdue" },
 ];
 
+/** Category sources — maps to `hub_category` / `kind` list params (same semantics as the retired hub chips). */
+const WR_CATEGORY_CHIPS = [
+  { id: "", label: "All" },
+  { id: "preventative", label: "Preventative" },
+  { id: "preventative_maintenance", label: "Preventative Maintenance" },
+  { id: "work_requests", label: "Work requests" },
+  { id: "projects", label: "Projects" },
+] as const;
+
+function wrFilterChipClass(active: boolean): string {
+  return active
+    ? "border-ds-accent bg-ds-accent/15 text-ds-foreground ring-1 ring-ds-accent/30"
+    : "border-ds-border bg-ds-secondary/60 text-ds-muted hover:border-ds-border hover:bg-ds-interactive-hover hover:text-ds-foreground";
+}
+
 /** Preset keys stored on activity `meta.hold_reason` when placing a request on hold. */
 const WORK_REQUEST_HOLD_REASONS: { id: string; label: string }[] = [
   { id: "awaiting_parts", label: "On hold — awaiting parts" },
@@ -196,19 +211,14 @@ function workItemDisplayId(row: WorkRequestRow): string {
   return `${code}-${row.id.slice(0, 6).toUpperCase()}`;
 }
 
-export type WorkRequestsAppProps = {
-  /** When true, list is driven by hub category + status chips from the maintenance hub URL. */
-  hubMode?: boolean;
-  initialHubCategory?: string;
-  initialStatusFilter?: string;
-  initialKind?: string;
-};
-
-export function WorkRequestsApp(props?: WorkRequestsAppProps) {
-  const { hubMode = false, initialHubCategory = "", initialStatusFilter = "", initialKind = "" } = props ?? {};
+export function WorkRequestsApp() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const hubQ = searchParams.get("hub") ?? "";
+  const kindQ = searchParams.get("kind") ?? "";
+  const statusQ = searchParams.get("status") ?? "";
+  const maintenanceListRoute = Boolean(pathname?.startsWith("/dashboard/maintenance"));
   const wrMod = useModuleSettings("workRequests");
   const moduleSettingsCtx = useModuleSettingsOptional();
   const session = readSession();
@@ -235,9 +245,9 @@ export function WorkRequestsApp(props?: WorkRequestsAppProps) {
 
   const [q, setQ] = useState("");
   const [qDebounced, setQDebounced] = useState("");
-  const [statusFilter, setStatusFilter] = useState(hubMode ? initialStatusFilter : "");
-  const [hubCategoryFilter, setHubCategoryFilter] = useState(hubMode ? initialHubCategory : "");
-  const [kindFilter, setKindFilter] = useState(hubMode ? initialKind : "");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [hubCategoryFilter, setHubCategoryFilter] = useState("");
+  const [kindFilter, setKindFilter] = useState("");
   const [priorityFilter, setPriorityFilter] = useState("");
   const [zoneFilter, setZoneFilter] = useState("");
   const [dateFrom, setDateFrom] = useState("");
@@ -319,7 +329,7 @@ export function WorkRequestsApp(props?: WorkRequestsAppProps) {
 
   const [pmTitle, setPmTitle] = useState("");
   const [pmDescription, setPmDescription] = useState("");
-  const [pmFrequency, setPmFrequency] = useState<"daily" | "weekly" | "monthly" | "custom">("monthly");
+  const [pmFrequency, setPmFrequency] = useState<PmPlanFrequency>("monthly");
   const [pmCustomDays, setPmCustomDays] = useState("30");
   const [pmStartDate, setPmStartDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [pmDueOffset, setPmDueOffset] = useState("0");
@@ -412,13 +422,33 @@ export function WorkRequestsApp(props?: WorkRequestsAppProps) {
     setDetailId(wrFromUrl.trim());
   }, [dataEnabled, wrFromUrl]);
 
+  const writeMaintenanceQuery = useCallback(
+    (hub: string, kind: string, status: string) => {
+      if (!pathname?.startsWith("/dashboard/maintenance")) return;
+      const sp = new URLSearchParams(searchParams.toString());
+      if (hub) sp.set("hub", hub);
+      else sp.delete("hub");
+      if (kind) sp.set("kind", kind);
+      else sp.delete("kind");
+      if (status) sp.set("status", status);
+      else sp.delete("status");
+      const nq = sp.toString();
+      router.replace(nq ? `${pathname}?${nq}` : pathname, { scroll: false });
+    },
+    [pathname, router, searchParams],
+  );
+
   useEffect(() => {
-    if (!hubMode) return;
-    setHubCategoryFilter(initialHubCategory ?? "");
-    setStatusFilter(initialStatusFilter ?? "");
-    setKindFilter(initialKind ?? "");
+    if (!pathname?.startsWith("/dashboard/maintenance")) {
+      setHubCategoryFilter("");
+      setKindFilter("");
+      return;
+    }
+    setHubCategoryFilter(hubQ);
+    setKindFilter(kindQ);
+    setStatusFilter(statusQ);
     setPage(0);
-  }, [hubMode, initialHubCategory, initialStatusFilter, initialKind]);
+  }, [pathname, hubQ, kindQ, statusQ]);
 
   useEffect(() => {
     if (!dataEnabled || searchParams.get("create") !== "1") return;
@@ -465,52 +495,57 @@ export function WorkRequestsApp(props?: WorkRequestsAppProps) {
     })();
   }, [createOpen, createForm.equipment_id]);
 
-  const loadList = useCallback(async () => {
-    if (!dataEnabled || !effectiveCompanyId) return;
-    setListLoading(true);
-    setListError(null);
-    try {
-      const due_after = dateFrom ? `${dateFrom}T00:00:00.000Z` : undefined;
-      const due_before = dateTo ? `${dateTo}T23:59:59.999Z` : undefined;
-      const res = await fetchWorkRequestList({
-        companyId: isSystemAdmin ? effectiveCompanyId : null,
-        q: qDebounced || undefined,
-        status: statusFilter || undefined,
-        exclude_terminal: statusFilter ? undefined : true,
-        priority: priorityFilter || undefined,
-        zone_id: zoneFilter || undefined,
-        hub_category: hubMode && hubCategoryFilter ? hubCategoryFilter : undefined,
-        kind: hubMode && kindFilter ? kindFilter : undefined,
-        due_after,
-        due_before,
-        limit: pageSize,
-        offset: page * pageSize,
-      });
-      setRows(res.items);
-      setTotal(res.total);
-      setOverdueCritical(res.overdue_critical_count);
-    } catch (e: unknown) {
-      setListError(e instanceof Error ? e.message : "Failed to load");
-      setRows([]);
-      setTotal(0);
-    } finally {
-      setListLoading(false);
-    }
-  }, [
-    dataEnabled,
-    effectiveCompanyId,
-    isSystemAdmin,
-    qDebounced,
-    statusFilter,
-    priorityFilter,
-    zoneFilter,
-    dateFrom,
-    dateTo,
-    page,
-    hubMode,
-    hubCategoryFilter,
-    kindFilter,
-  ]);
+  const loadList = useCallback(
+    async (opts?: { hub_category?: string; kind?: string; status?: string }) => {
+      if (!dataEnabled || !effectiveCompanyId) return;
+      setListLoading(true);
+      setListError(null);
+      try {
+        const effStatus = opts?.status !== undefined ? opts.status : statusFilter;
+        const effHub = opts?.hub_category !== undefined ? opts.hub_category : hubCategoryFilter;
+        const effKind = opts?.kind !== undefined ? opts.kind : kindFilter;
+        const due_after = dateFrom ? `${dateFrom}T00:00:00.000Z` : undefined;
+        const due_before = dateTo ? `${dateTo}T23:59:59.999Z` : undefined;
+        const res = await fetchWorkRequestList({
+          companyId: isSystemAdmin ? effectiveCompanyId : null,
+          q: qDebounced || undefined,
+          status: effStatus || undefined,
+          exclude_terminal: effStatus ? undefined : true,
+          priority: priorityFilter || undefined,
+          zone_id: zoneFilter || undefined,
+          hub_category: effHub ? effHub : undefined,
+          kind: effKind ? effKind : undefined,
+          due_after,
+          due_before,
+          limit: pageSize,
+          offset: page * pageSize,
+        });
+        setRows(res.items);
+        setTotal(res.total);
+        setOverdueCritical(res.overdue_critical_count);
+      } catch (e: unknown) {
+        setListError(e instanceof Error ? e.message : "Failed to load");
+        setRows([]);
+        setTotal(0);
+      } finally {
+        setListLoading(false);
+      }
+    },
+    [
+      dataEnabled,
+      effectiveCompanyId,
+      isSystemAdmin,
+      qDebounced,
+      statusFilter,
+      priorityFilter,
+      zoneFilter,
+      dateFrom,
+      dateTo,
+      page,
+      hubCategoryFilter,
+      kindFilter,
+    ],
+  );
 
   useEffect(() => {
     void loadList();
@@ -579,19 +614,40 @@ export function WorkRequestsApp(props?: WorkRequestsAppProps) {
     setDateFrom("");
     setDateTo("");
     setPage(0);
-    if (hubMode) {
-      setStatusFilter(initialStatusFilter ?? "");
-      setHubCategoryFilter(initialHubCategory ?? "");
-    } else {
-      setStatusFilter("");
-      setHubCategoryFilter("");
-    }
+    setStatusFilter("");
+    setHubCategoryFilter("");
+    setKindFilter("");
+    writeMaintenanceQuery("", "", "");
+  }
+
+  function categoryChipActive(c: (typeof WR_CATEGORY_CHIPS)[number]): boolean {
+    if (c.id === "") return !hubCategoryFilter && !kindFilter;
+    if (c.id === "preventative_maintenance") return kindFilter === "preventative_maintenance";
+    return hubCategoryFilter === c.id && !kindFilter;
+  }
+
+  function applyCategoryChip(c: (typeof WR_CATEGORY_CHIPS)[number]) {
+    setPage(0);
+    let nextHub = "";
+    let nextKind = "";
+    if (c.id === "preventative_maintenance") nextKind = "preventative_maintenance";
+    else if (c.id) nextHub = c.id;
+    setHubCategoryFilter(nextHub);
+    setKindFilter(nextKind);
+    writeMaintenanceQuery(nextHub, nextKind, statusFilter);
+  }
+
+  function applyStatusChip(nextStatus: string) {
+    setPage(0);
+    setStatusFilter(nextStatus);
+    writeMaintenanceQuery(hubCategoryFilter, kindFilter, nextStatus);
   }
 
   function applyCriticalView() {
     setStatusFilter("overdue");
     setPriorityFilter("critical");
     setPage(0);
+    writeMaintenanceQuery(hubCategoryFilter, kindFilter, "overdue");
   }
 
   const filteredRows = useMemo(() => {
@@ -868,14 +924,18 @@ export function WorkRequestsApp(props?: WorkRequestsAppProps) {
     <div className="space-y-6">
       <PageHeader
         title="Work Requests"
-        description={
-          hubMode
-            ? "Triaged requests and work orders for your facility. Use the hub chips above to narrow by category and status ID."
-            : "Manage and monitor maintenance tasks across all zones."
-        }
+        description="Manage and monitor maintenance tasks across all zones."
         icon={ClipboardList}
         actions={
           <>
+            {maintenanceListRoute ? (
+              <Link
+                href="/dashboard/procedures"
+                className="inline-flex items-center text-sm font-semibold text-ds-accent hover:underline"
+              >
+                Procedure library →
+              </Link>
+            ) : null}
             <SettingsGear module="workRequests" />
             <ModuleSettingsGear moduleId="workRequests" label="Work requests organization settings" />
             <button
@@ -916,7 +976,7 @@ export function WorkRequestsApp(props?: WorkRequestsAppProps) {
             tab === "my_work" ? "border-[#2B4C7E] bg-[#2B4C7E]/10 text-[#2B4C7E]" : "border-slate-200 bg-white text-pulse-muted hover:bg-slate-50"
           }`}
         >
-          My Work
+          Assigned to Me
         </button>
         {(canApprove || canAssign || isSystemAdmin) ? (
           <button
@@ -926,7 +986,7 @@ export function WorkRequestsApp(props?: WorkRequestsAppProps) {
               tab === "approval" ? "border-[#2B4C7E] bg-[#2B4C7E]/10 text-[#2B4C7E]" : "border-slate-200 bg-white text-pulse-muted hover:bg-slate-50"
             }`}
           >
-            Approval
+            Pending Approval
           </button>
         ) : null}
         {(canApprove || canAssign || isSystemAdmin) ? (
@@ -937,7 +997,7 @@ export function WorkRequestsApp(props?: WorkRequestsAppProps) {
               tab === "all" ? "border-[#2B4C7E] bg-[#2B4C7E]/10 text-[#2B4C7E]" : "border-slate-200 bg-white text-pulse-muted hover:bg-slate-50"
             }`}
           >
-            All
+            All Requests
           </button>
         ) : null}
       </div>
@@ -969,99 +1029,133 @@ export function WorkRequestsApp(props?: WorkRequestsAppProps) {
         </p>
       ) : (
         <>
-          <div className="mt-6 flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-end lg:justify-between">
-            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-              <div className="relative min-w-[14rem]">
-                <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-pulse-muted" />
-                <input
-                  type="search"
-                  placeholder="Search assets, requests, locations…"
-                  value={q}
-                  onChange={(e) => {
-                    setQ(e.target.value);
-                    setPage(0);
-                  }}
-                  className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm text-pulse-navy placeholder:text-slate-400 outline-none focus:border-pulse-accent focus:ring-2 focus:ring-pulse-accent/25 dark:border-ds-border dark:bg-ds-secondary dark:text-gray-100 dark:placeholder:text-gray-500"
-                />
+          <div className="mt-6 rounded-lg border border-slate-200/90 bg-white p-4 shadow-sm dark:border-ds-border dark:bg-ds-primary dark:shadow-[0_2px_8px_rgba(0,0,0,0.2)]">
+            <div className="flex flex-col gap-3 xl:flex-row xl:flex-wrap xl:items-end xl:justify-between">
+              <div className="flex min-w-0 flex-1 flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+                <div className="min-w-[min(100%,14rem)] flex-1 sm:max-w-md">
+                  <label className={LABEL}>Search</label>
+                  <div className="relative mt-1.5">
+                    <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-pulse-muted" />
+                    <input
+                      type="search"
+                      placeholder="Assets, requests, locations…"
+                      value={q}
+                      onChange={(e) => {
+                        setQ(e.target.value);
+                        setPage(0);
+                      }}
+                      className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm text-pulse-navy placeholder:text-slate-400 outline-none focus:border-pulse-accent focus:ring-2 focus:ring-pulse-accent/25 dark:border-ds-border dark:bg-ds-secondary dark:text-gray-100 dark:placeholder:text-gray-500"
+                    />
+                  </div>
+                </div>
+                <div className="min-w-[9rem]">
+                  <label className={LABEL}>Priority</label>
+                  <select
+                    className="mt-1.5 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-pulse-navy outline-none focus:border-pulse-accent focus:ring-2 focus:ring-pulse-accent/25 dark:border-ds-border dark:bg-ds-secondary dark:text-gray-100"
+                    value={priorityFilter}
+                    onChange={(e) => {
+                      setPriorityFilter(e.target.value);
+                      setPage(0);
+                    }}
+                  >
+                    <option value="">All priorities</option>
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                    <option value="critical">Critical</option>
+                  </select>
+                </div>
+                <div className="min-w-[9rem]">
+                  <label className={LABEL}>Location</label>
+                  <select
+                    className="mt-1.5 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-pulse-navy outline-none focus:border-pulse-accent focus:ring-2 focus:ring-pulse-accent/25 dark:border-ds-border dark:bg-ds-secondary dark:text-gray-100"
+                    value={zoneFilter}
+                    onChange={(e) => {
+                      setZoneFilter(e.target.value);
+                      setPage(0);
+                    }}
+                  >
+                    <option value="">All locations</option>
+                    {zones.map((z) => (
+                      <option key={z.id} value={z.id}>
+                        {z.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="min-w-[9.5rem]">
+                  <label className={LABEL}>Due from</label>
+                  <input
+                    type="date"
+                    value={dateFrom}
+                    onChange={(e) => {
+                      setDateFrom(e.target.value);
+                      setPage(0);
+                    }}
+                    className="mt-1.5 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-pulse-navy outline-none focus:border-pulse-accent focus:ring-2 focus:ring-pulse-accent/25 dark:border-ds-border dark:bg-ds-secondary dark:text-gray-100"
+                  />
+                </div>
+                <div className="min-w-[9.5rem]">
+                  <label className={LABEL}>Due to</label>
+                  <input
+                    type="date"
+                    value={dateTo}
+                    onChange={(e) => {
+                      setDateTo(e.target.value);
+                      setPage(0);
+                    }}
+                    className="mt-1.5 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-pulse-navy outline-none focus:border-pulse-accent focus:ring-2 focus:ring-pulse-accent/25 dark:border-ds-border dark:bg-ds-secondary dark:text-gray-100"
+                  />
+                </div>
               </div>
-              <select
-                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-pulse-navy outline-none focus:border-pulse-accent focus:ring-2 focus:ring-pulse-accent/25 dark:border-ds-border dark:bg-ds-secondary dark:text-gray-100"
-                value={statusFilter}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  setStatusFilter(v);
-                  setPage(0);
-                  if (hubMode) {
-                    const sp = new URLSearchParams(searchParams.toString());
-                    if (v) sp.set("status", v);
-                    else sp.delete("status");
-                    const nq = sp.toString();
-                    router.replace(nq ? `${pathname}?${nq}` : pathname, { scroll: false });
-                  }
-                }}
+              <button
+                type="button"
+                className="shrink-0 text-sm font-semibold text-[#2B4C7E] hover:underline dark:text-ds-success"
+                onClick={clearFilters}
               >
-                <option value="">All active</option>
-                {WORKFLOW_STATUSES.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.label}
-                  </option>
-                ))}
-              </select>
-              <select
-                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-pulse-navy outline-none focus:border-pulse-accent focus:ring-2 focus:ring-pulse-accent/25 dark:border-ds-border dark:bg-ds-secondary dark:text-gray-100"
-                value={priorityFilter}
-                onChange={(e) => {
-                  setPriorityFilter(e.target.value);
-                  setPage(0);
-                }}
-              >
-                <option value="">Priority</option>
-                <option value="low">Low</option>
-                <option value="medium">Medium</option>
-                <option value="high">High</option>
-                <option value="critical">Critical</option>
-              </select>
-              <select
-                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-pulse-navy outline-none focus:border-pulse-accent focus:ring-2 focus:ring-pulse-accent/25 dark:border-ds-border dark:bg-ds-secondary dark:text-gray-100"
-                value={zoneFilter}
-                onChange={(e) => {
-                  setZoneFilter(e.target.value);
-                  setPage(0);
-                }}
-              >
-                <option value="">Location</option>
-                {zones.map((z) => (
-                  <option key={z.id} value={z.id}>
-                    {z.name}
-                  </option>
-                ))}
-              </select>
-              <input
-                type="date"
-                value={dateFrom}
-                onChange={(e) => {
-                  setDateFrom(e.target.value);
-                  setPage(0);
-                }}
-                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-pulse-navy outline-none focus:border-pulse-accent focus:ring-2 focus:ring-pulse-accent/25 dark:border-ds-border dark:bg-ds-secondary dark:text-gray-100"
-              />
-              <input
-                type="date"
-                value={dateTo}
-                onChange={(e) => {
-                  setDateTo(e.target.value);
-                  setPage(0);
-                }}
-                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-pulse-navy outline-none focus:border-pulse-accent focus:ring-2 focus:ring-pulse-accent/25 dark:border-ds-border dark:bg-ds-secondary dark:text-gray-100"
-              />
+                Clear filters
+              </button>
             </div>
-            <button
-              type="button"
-              className="text-sm font-semibold text-[#2B4C7E] hover:underline"
-              onClick={clearFilters}
-            >
-              Clear filters
-            </button>
+
+            <div className="mt-4 flex flex-col gap-4 border-t border-slate-200/80 pt-4 dark:border-ds-border lg:flex-row lg:items-start lg:gap-8">
+              <div className="min-w-0 flex-1">
+                <p className={LABEL}>Category</p>
+                <div className="mt-2 flex flex-wrap gap-2" role="group" aria-label="Category filters">
+                  {WR_CATEGORY_CHIPS.map((c) => (
+                    <button
+                      key={c.id || "all-cat"}
+                      type="button"
+                      className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${wrFilterChipClass(categoryChipActive(c))}`}
+                      onClick={() => applyCategoryChip(c)}
+                    >
+                      {c.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className={LABEL}>Status</p>
+                <div className="mt-2 flex flex-wrap gap-2" role="group" aria-label="Status filters">
+                  <button
+                    type="button"
+                    className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${wrFilterChipClass(!statusFilter)}`}
+                    onClick={() => applyStatusChip("")}
+                  >
+                    All active
+                  </button>
+                  {WORKFLOW_STATUSES.map((s) => (
+                    <button
+                      key={s.id}
+                      type="button"
+                      className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${wrFilterChipClass(statusFilter === s.id)}`}
+                      onClick={() => applyStatusChip(s.id)}
+                    >
+                      {s.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
 
           <div className="app-data-shell mt-4">
@@ -1551,13 +1645,15 @@ export function WorkRequestsApp(props?: WorkRequestsAppProps) {
                     custom_interval_days,
                   });
                   setPmCreateOpen(false);
-                  // Show the generated task immediately.
-                  if (hubMode) {
-                    setHubCategoryFilter("");
-                    setKindFilter("preventative_maintenance");
-                    setStatusFilter("");
-                  }
-                  await loadList();
+                  setHubCategoryFilter("");
+                  setKindFilter("preventative_maintenance");
+                  setStatusFilter("");
+                  writeMaintenanceQuery("", "preventative_maintenance", "");
+                  await loadList({
+                    hub_category: "",
+                    kind: "preventative_maintenance",
+                    status: "",
+                  });
                 } catch (e: unknown) {
                   setListError(e instanceof Error ? e.message : "Failed to create PM");
                 } finally {
@@ -1621,11 +1717,12 @@ export function WorkRequestsApp(props?: WorkRequestsAppProps) {
               <select
                 className={FIELD}
                 value={pmFrequency}
-                onChange={(e) => setPmFrequency(e.target.value as any)}
+                onChange={(e) => setPmFrequency(e.target.value as PmPlanFrequency)}
               >
                 <option value="daily">Daily</option>
                 <option value="weekly">Weekly</option>
                 <option value="monthly">Monthly</option>
+                <option value="annual">Annual</option>
                 <option value="custom">Custom</option>
               </select>
               {pmFrequency === "custom" ? (

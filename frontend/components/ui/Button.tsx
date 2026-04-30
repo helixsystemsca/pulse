@@ -6,13 +6,18 @@ import type { ComponentProps, ReactNode } from "react";
 import { UI } from "@/styles/ui";
 
 type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
-  variant?: "primary" | "secondary";
+  variant?: "primary" | "secondary" | "accent";
   children: ReactNode;
   className?: string;
 };
 
 export function Button({ variant = "primary", children, className = "", ...props }: ButtonProps) {
-  const variantClass = variant === "secondary" ? UI.button.secondary : UI.button.primary;
+  const variantClass =
+    variant === "secondary"
+      ? UI.button.secondary
+      : variant === "accent"
+        ? UI.button.accent
+        : UI.button.primary;
 
   return (
     <button className={`${UI.button.base} ${variantClass} ${className}`.trim()} {...props}>
@@ -22,13 +27,18 @@ export function Button({ variant = "primary", children, className = "", ...props
 }
 
 type ButtonLinkProps = Omit<ComponentProps<typeof Link>, "className"> & {
-  variant?: "primary" | "secondary";
+  variant?: "primary" | "secondary" | "accent";
   className?: string;
   children: ReactNode;
 };
 
 export function ButtonLink({ href, variant = "primary", children, className = "", ...props }: ButtonLinkProps) {
-  const variantClass = variant === "secondary" ? UI.button.secondary : UI.button.primary;
+  const variantClass =
+    variant === "secondary"
+      ? UI.button.secondary
+      : variant === "accent"
+        ? UI.button.accent
+        : UI.button.primary;
 
   return (
     <Link

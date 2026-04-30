@@ -8,6 +8,8 @@ export const UI = {
 
   button: {
     base: "px-4 py-2 rounded-lg font-medium transition",
+    /** Solid DS accent — teal fill, dark text (matches segmented toggles). */
+    accent: "bg-ds-success text-ds-on-accent shadow-sm",
     primary: "bg-blue-600 text-white hover:bg-blue-700",
     secondary: "bg-gray-200 text-gray-800 hover:bg-gray-300",
   },

@@ -16,10 +16,10 @@ export function DashboardViewTabs() {
 
   return (
     <div className={UI.toggleGroup} role="navigation" aria-label="Dashboards">
-      <Button variant={isWorker ? "primary" : "secondary"} type="button" onClick={() => router.push("/worker")}>
+      <Button variant={isWorker ? "accent" : "secondary"} type="button" onClick={() => router.push("/worker")}>
         Worker
       </Button>
-      <Button variant={isOverview ? "primary" : "secondary"} type="button" onClick={() => router.push("/overview")}>
+      <Button variant={isOverview ? "accent" : "secondary"} type="button" onClick={() => router.push("/overview")}>
         Overview
       </Button>
     </div>
