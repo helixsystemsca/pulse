@@ -4,15 +4,16 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from typing import Annotated
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, func, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import require_tenant_user
 from app.services.onboarding_service import try_mark_onboarding_step
 from app.core.database import get_db
-from app.models.domain import InventoryItem, User
+from app.models.domain import Company, InventoryItem, User
 from app.models.pulse_models import (
     PulseCategory,
     PulseProject,
@@ -479,30 +480,38 @@ def _parse_trigger(s: str) -> PulseProjectAutomationTrigger:
         raise HTTPException(status_code=400, detail="invalid trigger_type")
 
 
+def _company_archive_tz(tz_name: str | None) -> ZoneInfo:
+    """IANA zone from company admin settings; UTC if unset or invalid."""
+    raw = (tz_name or "").strip()
+    if not raw:
+        return ZoneInfo("UTC")
+    try:
+        return ZoneInfo(raw)
+    except ZoneInfoNotFoundError:
+        return ZoneInfo("UTC")
+
+
 @router.get("/projects", response_model=list[ProjectOutWithProgress])
 async def list_projects(db: Db, cid: CompanyId) -> list[ProjectOutWithProgress]:
-    # Jan 1 rollover: move prior-year completed projects into archive.
+    # Jan 1 rollover (company timezone): archive completed projects from prior calendar years.
     now = datetime.now(timezone.utc)
-    if now.month == 1 and now.day == 1:
-        prev_year = now.year - 1
+    company = await db.get(Company, cid)
+    tz = _company_archive_tz(getattr(company, "timezone", None) if company else None)
+    local_now = now.astimezone(tz)
+    if local_now.month == 1 and local_now.day == 1:
+        prev_year = local_now.year - 1
+        tz_key = str(tz.key) if hasattr(tz, "key") else "UTC"
+        year_clause = text(
+            "EXTRACT(YEAR FROM (pulse_projects.completed_at AT TIME ZONE CAST(:ctz AS text))) <= :pyear"
+        ).bindparams(ctz=tz_key, pyear=prev_year)
         await db.execute(
-            select(PulseProject.id)
+            update(PulseProject)
             .where(
                 PulseProject.company_id == cid,
                 PulseProject.status == PulseProjectStatus.completed,
                 PulseProject.archived_at.is_(None),
                 PulseProject.completed_at.isnot(None),
-            )
-        )
-        # Set archived_at for any completed projects with a completed_at year <= prev_year.
-        await db.execute(
-            PulseProject.__table__.update()
-            .where(
-                PulseProject.company_id == cid,
-                PulseProject.status == PulseProjectStatus.completed,
-                PulseProject.archived_at.is_(None),
-                PulseProject.completed_at.isnot(None),
-                func.date_part("year", PulseProject.completed_at) <= prev_year,
+                year_clause,
             )
             .values(archived_at=now)
         )
@@ -970,7 +979,7 @@ async def patch_project(
         old_project_status != PulseProjectStatus.completed
         and p.status == PulseProjectStatus.completed
     ):
-        # Annual snapshot: keep in "Completed" until Jan 1 rollover archives it.
+        # Annual snapshot: stay in Completed until Jan 1 in the company timezone archives it.
         p.completed_at = datetime.now(timezone.utc)
         await _log_activity(
             db,
