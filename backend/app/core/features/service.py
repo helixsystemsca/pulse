@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -40,6 +42,21 @@ class FeatureFlagService:
                 or "rtls_tracking" in enabled
             )
         return module_key in enabled
+
+    async def any_enabled(self, company_id: str, keys: Iterable[str]) -> bool:
+        """True if at least one module key is enabled (respects equipment aliases)."""
+        enabled = await self._frozen_enabled(company_id)
+        for module_key in keys:
+            if module_key == "equipment":
+                if (
+                    "equipment" in enabled
+                    or "tool_tracking" in enabled
+                    or "rtls_tracking" in enabled
+                ):
+                    return True
+            elif module_key in enabled:
+                return True
+        return False
 
     async def _frozen_enabled(self, company_id: str) -> frozenset[str]:
         cached = get_cached(company_id)

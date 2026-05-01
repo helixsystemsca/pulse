@@ -5,26 +5,16 @@ from __future__ import annotations
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.features.system_catalog import normalize_enabled_features
+from app.core.features.system_catalog import (
+    GLOBAL_SYSTEM_FEATURES,
+    TENANT_EMPTY_FEATURES_MARKER,
+    coerce_legacy_feature_names,
+    normalize_enabled_features,
+)
 from app.models.domain import CompanyFeature
 
-# Stored when `sync_enabled_features` runs with zero catalog features so the tenant is not
-# mistaken for a pre–feature-gates company (which has no rows and still gets legacy defaults).
-_TENANT_EMPTY_FEATURES_MARKER = "_tenant_empty_feature_canvas"
-
-
 # When a company has no rows yet, treat product modules as on (pre‑gates behavior).
-_LEGACY_DEFAULT_PRODUCT_FEATURES: tuple[str, ...] = (
-    "compliance",
-    "schedule",
-    "monitoring",
-    "projects",
-    "work_orders",
-    "workers",
-    "inventory",
-    "equipment",
-    "floor_plan",
-)
+_LEGACY_DEFAULT_PRODUCT_FEATURES: tuple[str, ...] = GLOBAL_SYSTEM_FEATURES
 
 
 async def sync_enabled_features(db: AsyncSession, company_id: str, requested: list[str]) -> None:
@@ -37,7 +27,7 @@ async def sync_enabled_features(db: AsyncSession, company_id: str, requested: li
         db.add(
             CompanyFeature(
                 company_id=company_id,
-                feature_name=_TENANT_EMPTY_FEATURES_MARKER,
+                feature_name=TENANT_EMPTY_FEATURES_MARKER,
                 enabled=True,
             )
         )
@@ -65,4 +55,7 @@ async def tenant_enabled_feature_names_with_legacy(db: AsyncSession, company_id:
     """Enabled names, or default product modules if the company has never had feature rows."""
     if not await company_has_any_feature_row(db, company_id):
         return list(_LEGACY_DEFAULT_PRODUCT_FEATURES)
-    return await list_enabled_names(db, company_id)
+    raw = await list_enabled_names(db, company_id)
+    if raw == [TENANT_EMPTY_FEATURES_MARKER]:
+        return []
+    return coerce_legacy_feature_names(raw)

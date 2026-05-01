@@ -9,17 +9,20 @@ export function featureKeyForTenantNavHref(href: string): string | undefined {
   if (href === "/schedule") return "schedule";
   if (href === "/monitoring") return "monitoring";
   if (href === "/projects" || href.startsWith("/projects/")) return "projects";
-  if (href === "/dashboard/work-requests" || href.startsWith("/dashboard/work-requests")) return "work_orders";
-  if (href === "/dashboard/maintenance" || href.startsWith("/dashboard/maintenance/")) return "work_orders";
-  if (href === "/dashboard/procedures" || href.startsWith("/dashboard/procedures/")) return "work_orders";
-  if (href === "/dashboard/team-insights" || href.startsWith("/dashboard/team-insights/")) return "workers";
-  if (href === "/dashboard/workers" || href.startsWith("/dashboard/workers")) return "workers";
+  if (href === "/dashboard/work-requests" || href.startsWith("/dashboard/work-requests")) return "work_requests";
+  if (href === "/dashboard/maintenance" || href.startsWith("/dashboard/maintenance")) return "work_requests";
+  if (href === "/dashboard/procedures" || href.startsWith("/dashboard/procedures")) return "procedures";
+  if (href === "/dashboard/team-insights" || href.startsWith("/dashboard/team-insights")) return "team_insights";
+  /** Team Management — not tenant-feature gated (still permission / role gated). */
+  if (href === "/dashboard/workers" || href.startsWith("/dashboard/workers")) return undefined;
   if (href === "/dashboard/inventory") return "inventory";
   if (href === "/equipment") return "equipment";
   if (href.includes("tool-tracking")) return "equipment";
-  if (href === "/zones-devices" || href.startsWith("/zones-devices/")) return "floor_plan";
-  if (href === "/devices" || href.startsWith("/devices")) return "floor_plan";
-  if (href === "/zones" || href.startsWith("/zones")) return "floor_plan";
+  if (href === "/drawings" || href.startsWith("/drawings")) return "drawings";
+  if (href === "/zones-devices" || href.startsWith("/zones-devices")) return "zones_devices";
+  if (href === "/devices" || href.startsWith("/devices")) return "zones_devices";
+  if (href === "/zones" || href.startsWith("/zones")) return "zones_devices";
+  if (href === "/live-map" || href.startsWith("/live-map")) return "live_map";
   return undefined;
 }
 

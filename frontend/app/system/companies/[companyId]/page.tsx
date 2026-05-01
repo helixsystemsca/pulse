@@ -315,8 +315,9 @@ export default function SystemCompanyDetailPage() {
 
       <section className={sectionCls}>
         <p className="mb-3 text-xs text-gray-500 dark:text-zinc-500">
-          If this company has no saved feature rows yet, tenants still get the default product modules (projects, compliance,
-          equipment, inventory, schedule). Checking boxes and saving persists flags in{" "}
+          Toggle which product areas appear in the tenant sidebar. Dashboard, Team Management, and Settings are always
+          available (subject to role permissions). If this company has no saved feature rows yet, all catalog modules below
+          stay enabled until you save. Checking boxes persists flags in{" "}
           <span className="font-mono text-gray-600 dark:text-zinc-400">company_features</span>.
         </p>
         <div className="flex flex-wrap items-center justify-between gap-3">

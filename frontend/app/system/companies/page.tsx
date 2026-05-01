@@ -391,7 +391,7 @@ export default function SystemCompaniesPage() {
                             key={f}
                             className="rounded bg-gray-100 px-1.5 py-0.5 text-xs text-gray-800 dark:bg-ds-primary dark:text-ds-muted"
                           >
-                            {f}
+                            {systemAdminFeatureLabel(f)}
                           </span>
                         ))}
                       </div>

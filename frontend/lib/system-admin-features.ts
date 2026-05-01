@@ -7,11 +7,14 @@ export const SYSTEM_ADMIN_FEATURE_ORDER = [
   "schedule",
   "monitoring",
   "projects",
-  "work_orders",
-  "workers",
+  "work_requests",
+  "procedures",
+  "team_insights",
   "inventory",
   "equipment",
-  "floor_plan",
+  "drawings",
+  "zones_devices",
+  "live_map",
 ] as const;
 
 export const SYSTEM_ADMIN_FEATURE_LABELS: Record<string, string> = {
@@ -19,11 +22,14 @@ export const SYSTEM_ADMIN_FEATURE_LABELS: Record<string, string> = {
   schedule: "Schedule",
   monitoring: "Monitoring",
   projects: "Projects",
-  work_orders: "Maintenance",
-  workers: "Workers & Roles",
+  work_requests: "Work Requests",
+  procedures: "Procedures",
+  team_insights: "Team Insights",
   inventory: "Inventory",
-  equipment: "Equipment & Tracking",
-  floor_plan: "Floor Plans",
+  equipment: "Equipment",
+  drawings: "Drawings",
+  zones_devices: "Zones & Devices",
+  live_map: "Live Map",
 };
 
 export function systemAdminFeatureLabel(key: string): string {

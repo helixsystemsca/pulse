@@ -88,23 +88,29 @@ const TENANT_PRODUCT_MODULES = [
   "schedule",
   "monitoring",
   "projects",
-  "work_orders",
-  "workers",
+  "work_requests",
+  "procedures",
+  "team_insights",
   "inventory",
   "equipment",
-  "floor_plan",
+  "drawings",
+  "zones_devices",
+  "live_map",
 ] as const;
 
 const MODULE_LABEL: Record<string, string> = {
-  compliance: "Inspections & compliance",
+  compliance: "Inspections & Logs",
   schedule: "Schedule",
   monitoring: "Monitoring",
   projects: "Projects",
-  work_orders: "Maintenance & work orders",
-  workers: "Workers & roles",
+  work_requests: "Work Requests",
+  procedures: "Procedures",
+  team_insights: "Team Insights",
   inventory: "Inventory",
   equipment: "Equipment",
-  floor_plan: "Floor plans & zones",
+  drawings: "Drawings",
+  zones_devices: "Zones & Devices",
+  live_map: "Live Map",
 };
 
 const SETTINGS_TABS = ["Roles", "Shifts", "Skill categories", "Certification rules"] as const;

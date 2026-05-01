@@ -24,6 +24,7 @@ from app.core.features.service import MODULE_KEYS
 from app.core.features.system_catalog import (
     GLOBAL_SYSTEM_FEATURES,
     canonicalize_enabled_features_for_admin_ui,
+    expand_feature_name_for_usage_counts,
     normalize_enabled_features,
 )
 from app.core.company_logo_upload import INTERNAL_LOGO_PATH, normalize_logo_content_type, validate_logo_bytes
@@ -104,11 +105,9 @@ async def system_overview(
         .group_by(CompanyFeature.feature_name)
     )
     for fname, cnt in fq.all():
-        key = fname
-        if fname == "rtls_tracking":
-            key = "equipment"
-        if key in feature_usage:
-            feature_usage[key] += int(cnt)
+        for key in expand_feature_name_for_usage_counts(fname):
+            if key in feature_usage:
+                feature_usage[key] += int(cnt)
 
     return SystemOverviewOut(
         total_companies=all_cos,

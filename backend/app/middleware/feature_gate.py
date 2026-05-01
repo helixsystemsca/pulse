@@ -32,6 +32,7 @@ class FeatureGateMiddleware(BaseHTTPMiddleware):
         feature = required_feature_for_path(path)
         if feature is None:
             return await call_next(request)
+        keys = (feature,) if isinstance(feature, str) else tuple(feature)
 
         auth = request.headers.get("authorization")
         if not auth or not auth.lower().startswith("bearer "):
@@ -57,12 +58,13 @@ class FeatureGateMiddleware(BaseHTTPMiddleware):
 
         try:
             async with AsyncSessionLocal() as session:
-                if not await FeatureFlagService(session).is_enabled(company_id, feature):
+                svc = FeatureFlagService(session)
+                if not await svc.any_enabled(company_id, keys):
                     return JSONResponse(
                         status_code=403,
                         content={
                             "detail": "feature_disabled",
-                            "feature": feature,
+                            "feature": keys if len(keys) > 1 else keys[0],
                         },
                     )
         except Exception:
