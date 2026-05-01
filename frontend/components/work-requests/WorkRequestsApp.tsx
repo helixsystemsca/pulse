@@ -150,8 +150,8 @@ const WORKFLOW_STATUSES: { id: WorkItemStatus; label: string }[] = [
 /** Category sources — maps to `hub_category` / `kind` list params (same semantics as the retired hub chips). */
 const WR_CATEGORY_CHIPS = [
   { id: "", label: "All" },
-  { id: "preventative", label: "Preventative" },
-  { id: "preventative_maintenance", label: "Preventative Maintenance" },
+  /** Backend treats `preventative` as work_order_type preventative OR kind preventative_maintenance. */
+  { id: "preventative", label: "Preventative / PM" },
   { id: "work_requests", label: "Work requests" },
   { id: "projects", label: "Projects" },
 ] as const;
@@ -275,6 +275,8 @@ export function WorkRequestsApp() {
   const [rows, setRows] = useState<WorkRequestRow[]>([]);
   const [total, setTotal] = useState(0);
   const [overdueCritical, setOverdueCritical] = useState(0);
+  const [kpiSummary, setKpiSummary] = useState<{ pending: number; inProgress: number; overdueAny: number } | null>(null);
+  const [kpiLoading, setKpiLoading] = useState(false);
 
   const [menuFor, setMenuFor] = useState<string | null>(null);
   const [menuAnchor, setMenuAnchor] = useState<{ top: number; right: number } | null>(null);
@@ -445,11 +447,20 @@ export function WorkRequestsApp() {
       setKindFilter("");
       return;
     }
+    // Legacy URLs used `kind=preventative_maintenance` alone; merged category uses `hub=preventative`.
+    if ((!hubQ && kindQ === "preventative_maintenance") || (hubQ === "preventative" && kindQ === "preventative_maintenance")) {
+      setHubCategoryFilter("preventative");
+      setKindFilter("");
+      setStatusFilter(statusQ);
+      setPage(0);
+      writeMaintenanceQuery("preventative", "", statusQ);
+      return;
+    }
     setHubCategoryFilter(hubQ);
     setKindFilter(kindQ);
     setStatusFilter(statusQ);
     setPage(0);
-  }, [pathname, hubQ, kindQ, statusQ]);
+  }, [pathname, hubQ, kindQ, statusQ, writeMaintenanceQuery]);
 
   useEffect(() => {
     if (!dataEnabled || searchParams.get("create") !== "1") return;
@@ -552,6 +563,66 @@ export function WorkRequestsApp() {
     void loadList();
   }, [loadList]);
 
+  useEffect(() => {
+    if (!dataEnabled || !effectiveCompanyId || overdueCritical !== 0) {
+      setKpiLoading(false);
+      if (overdueCritical !== 0) setKpiSummary(null);
+      return;
+    }
+    let cancelled = false;
+    setKpiLoading(true);
+    void (async () => {
+      try {
+        const companyId = isSystemAdmin ? effectiveCompanyId : null;
+        const due_after = dateFrom ? `${dateFrom}T00:00:00.000Z` : undefined;
+        const due_before = dateTo ? `${dateTo}T23:59:59.999Z` : undefined;
+        const common = {
+          companyId,
+          q: qDebounced || undefined,
+          priority: priorityFilter || undefined,
+          zone_id: zoneFilter || undefined,
+          hub_category: hubCategoryFilter || undefined,
+          kind: kindFilter || undefined,
+          due_after,
+          due_before,
+          limit: 1,
+          offset: 0,
+        };
+        const [pendingRes, inProgressRes, overdueRes] = await Promise.all([
+          fetchWorkRequestList({ ...common, status: "pending_approval" }),
+          fetchWorkRequestList({ ...common, status: "in_progress" }),
+          fetchWorkRequestList({ ...common, status: "overdue" }),
+        ]);
+        if (!cancelled) {
+          setKpiSummary({
+            pending: pendingRes.total,
+            inProgress: inProgressRes.total,
+            overdueAny: overdueRes.total,
+          });
+        }
+      } catch {
+        if (!cancelled) setKpiSummary(null);
+      } finally {
+        if (!cancelled) setKpiLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    dataEnabled,
+    effectiveCompanyId,
+    isSystemAdmin,
+    overdueCritical,
+    qDebounced,
+    priorityFilter,
+    zoneFilter,
+    hubCategoryFilter,
+    kindFilter,
+    dateFrom,
+    dateTo,
+  ]);
+
   const loadDetail = useCallback(async () => {
     if (!detailId || !effectiveCompanyId) return;
     setDetailLoading(true);
@@ -623,7 +694,9 @@ export function WorkRequestsApp() {
 
   function categoryChipActive(c: (typeof WR_CATEGORY_CHIPS)[number]): boolean {
     if (c.id === "") return !hubCategoryFilter && !kindFilter;
-    if (c.id === "preventative_maintenance") return kindFilter === "preventative_maintenance";
+    if (c.id === "preventative") {
+      return hubCategoryFilter === "preventative" || kindFilter === "preventative_maintenance";
+    }
     return hubCategoryFilter === c.id && !kindFilter;
   }
 
@@ -631,7 +704,7 @@ export function WorkRequestsApp() {
     setPage(0);
     let nextHub = "";
     let nextKind = "";
-    if (c.id === "preventative_maintenance") nextKind = "preventative_maintenance";
+    if (c.id === "preventative") nextHub = "preventative";
     else if (c.id) nextHub = c.id;
     setHubCategoryFilter(nextHub);
     setKindFilter(nextKind);
@@ -1342,33 +1415,76 @@ export function WorkRequestsApp() {
             </div>
           </div>
 
-          <div className="mt-6 grid gap-4 lg:grid-cols-3">
-            <div className="rounded-md border border-rose-200/80 bg-[#fff5f5] p-5 shadow-sm dark:border-red-500/35 dark:bg-red-950/45 lg:col-span-2">
-              <div className="flex items-start gap-3">
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#c53030] text-white dark:bg-red-600">
-                  <AlertTriangle className="h-5 w-5" aria-hidden />
-                </span>
-                <div className="min-w-0">
-                  <h2 className="text-base font-bold text-rose-900 dark:text-red-100">Overdue Critical Tasks</h2>
-                  <p className="mt-1 text-sm text-rose-900/85 dark:text-red-100/90">
-                    There {overdueCritical === 1 ? "is" : "are"} {overdueCritical} critical work{" "}
-                    {overdueCritical === 1 ? "request" : "requests"} past due that need immediate attention.
-                  </p>
-                  <button
-                    type="button"
-                    className="mt-4 rounded-[10px] bg-[#9b2c2c] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-[#822727]"
-                    onClick={applyCriticalView}
-                  >
-                    View critical tasks
-                  </button>
+          <div className="mt-6 grid gap-4 lg:grid-cols-4">
+            {overdueCritical > 0 ? (
+              <>
+                <div className="rounded-md border border-rose-200/80 bg-[#fff5f5] p-5 shadow-sm dark:border-red-500/35 dark:bg-red-950/45 lg:col-span-3">
+                  <div className="flex items-start gap-3">
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#c53030] text-white dark:bg-red-600">
+                      <AlertTriangle className="h-5 w-5" aria-hidden />
+                    </span>
+                    <div className="min-w-0">
+                      <h2 className="text-base font-bold text-rose-900 dark:text-red-100">Overdue Critical Tasks</h2>
+                      <p className="mt-1 text-sm text-rose-900/85 dark:text-red-100/90">
+                        There {overdueCritical === 1 ? "is" : "are"} {overdueCritical} critical work{" "}
+                        {overdueCritical === 1 ? "request" : "requests"} past due that need immediate attention.
+                      </p>
+                      <button
+                        type="button"
+                        className="mt-4 rounded-[10px] bg-[#9b2c2c] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-[#822727]"
+                        onClick={applyCriticalView}
+                      >
+                        View critical tasks
+                      </button>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
-            <div className="rounded-md border border-pulse-border bg-white p-5 shadow-sm ring-1 ring-slate-100/80 border-l-4 border-l-[#2B4C7E] dark:border-ds-border dark:bg-ds-primary dark:ring-white/[0.06] dark:border-l-[#3B82F6]">
-              <span className="text-xs font-semibold uppercase tracking-wide text-pulse-muted dark:text-gray-400">Total requests</span>
-              <p className="mt-3 text-3xl font-bold tabular-nums text-pulse-navy dark:text-gray-100">{total}</p>
-              <p className="mt-1 text-sm text-pulse-muted">In current filter scope</p>
-            </div>
+                <div className="rounded-md border border-pulse-border bg-white p-5 shadow-sm ring-1 ring-slate-100/80 border-l-4 border-l-[#2B4C7E] dark:border-ds-border dark:bg-ds-primary dark:ring-white/[0.06] dark:border-l-[#3B82F6]">
+                  <span className="text-xs font-semibold uppercase tracking-wide text-pulse-muted dark:text-gray-400">
+                    Total requests
+                  </span>
+                  <p className="mt-3 text-3xl font-bold tabular-nums text-pulse-navy dark:text-gray-100">{total}</p>
+                  <p className="mt-1 text-sm text-pulse-muted">In current filter scope</p>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="rounded-md border border-pulse-border bg-white p-5 shadow-sm ring-1 ring-slate-100/80 border-l-4 border-l-amber-500/90 dark:border-ds-border dark:bg-ds-primary dark:ring-white/[0.06]">
+                  <span className="text-xs font-semibold uppercase tracking-wide text-pulse-muted dark:text-gray-400">
+                    Pending approval
+                  </span>
+                  <p className="mt-3 flex min-h-[2.25rem] items-center text-3xl font-bold tabular-nums text-pulse-navy dark:text-gray-100">
+                    {kpiLoading ? <Loader2 className="h-7 w-7 animate-spin text-pulse-muted" aria-hidden /> : kpiSummary?.pending ?? "—"}
+                  </p>
+                  <p className="mt-1 text-sm text-pulse-muted">Matches filters below</p>
+                </div>
+                <div className="rounded-md border border-pulse-border bg-white p-5 shadow-sm ring-1 ring-slate-100/80 border-l-4 border-l-sky-500/90 dark:border-ds-border dark:bg-ds-primary dark:ring-white/[0.06]">
+                  <span className="text-xs font-semibold uppercase tracking-wide text-pulse-muted dark:text-gray-400">
+                    In progress
+                  </span>
+                  <p className="mt-3 flex min-h-[2.25rem] items-center text-3xl font-bold tabular-nums text-pulse-navy dark:text-gray-100">
+                    {kpiLoading ? <Loader2 className="h-7 w-7 animate-spin text-pulse-muted" aria-hidden /> : kpiSummary?.inProgress ?? "—"}
+                  </p>
+                  <p className="mt-1 text-sm text-pulse-muted">Matches filters below</p>
+                </div>
+                <div className="rounded-md border border-pulse-border bg-white p-5 shadow-sm ring-1 ring-slate-100/80 border-l-4 border-l-rose-500/85 dark:border-ds-border dark:bg-ds-primary dark:ring-white/[0.06]">
+                  <span className="text-xs font-semibold uppercase tracking-wide text-pulse-muted dark:text-gray-400">
+                    Overdue (any priority)
+                  </span>
+                  <p className="mt-3 flex min-h-[2.25rem] items-center text-3xl font-bold tabular-nums text-pulse-navy dark:text-gray-100">
+                    {kpiLoading ? <Loader2 className="h-7 w-7 animate-spin text-pulse-muted" aria-hidden /> : kpiSummary?.overdueAny ?? "—"}
+                  </p>
+                  <p className="mt-1 text-sm text-pulse-muted">Matches filters below</p>
+                </div>
+                <div className="rounded-md border border-pulse-border bg-white p-5 shadow-sm ring-1 ring-slate-100/80 border-l-4 border-l-[#2B4C7E] dark:border-ds-border dark:bg-ds-primary dark:ring-white/[0.06] dark:border-l-[#3B82F6]">
+                  <span className="text-xs font-semibold uppercase tracking-wide text-pulse-muted dark:text-gray-400">
+                    Total requests
+                  </span>
+                  <p className="mt-3 text-3xl font-bold tabular-nums text-pulse-navy dark:text-gray-100">{total}</p>
+                  <p className="mt-1 text-sm text-pulse-muted">In current filter scope</p>
+                </div>
+              </>
+            )}
           </div>
         </>
       )}
@@ -1689,13 +1805,13 @@ export function WorkRequestsApp() {
                     custom_interval_days,
                   });
                   setPmCreateOpen(false);
-                  setHubCategoryFilter("");
-                  setKindFilter("preventative_maintenance");
+                  setHubCategoryFilter("preventative");
+                  setKindFilter("");
                   setStatusFilter("");
-                  writeMaintenanceQuery("", "preventative_maintenance", "");
+                  writeMaintenanceQuery("preventative", "", "");
                   await loadList({
-                    hub_category: "",
-                    kind: "preventative_maintenance",
+                    hub_category: "preventative",
+                    kind: "",
                     status: "",
                   });
                 } catch (e: unknown) {

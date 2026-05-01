@@ -359,7 +359,7 @@ async def list_work_requests(
     due_before: Optional[datetime] = Query(None, description="Filter by due_date <= (UTC)"),
     hub_category: Optional[str] = Query(
         None,
-        description="Optional hub facet: preventative | work_requests | projects",
+        description="Optional hub facet: preventative (PM + typed preventative) | work_requests | projects",
     ),
     exclude_terminal: bool = Query(
         False,
@@ -406,7 +406,13 @@ async def list_work_requests(
     if hub_category:
         hc = hub_category.strip().lower()
         if hc == "preventative":
-            conds.append(PulseWorkRequest.work_order_type == PulseWorkOrderType.preventative)
+            # One hub facet for all preventative work: typed preventative orders and PM-scheduled rows (`kind`).
+            conds.append(
+                or_(
+                    PulseWorkRequest.work_order_type == PulseWorkOrderType.preventative,
+                    PulseWorkRequest.work_request_kind == "preventative_maintenance",
+                )
+            )
         elif hc in ("work_requests", "work_request"):
             conds.append(
                 PulseWorkRequest.work_order_type.in_((PulseWorkOrderType.issue, PulseWorkOrderType.request))

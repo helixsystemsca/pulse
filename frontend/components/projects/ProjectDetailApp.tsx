@@ -1309,6 +1309,8 @@ export function ProjectDetailApp({ projectId }: { projectId: string }) {
 
                   <GanttSchedule
                     tasks={tasks}
+                    projectStartDate={data?.start_date}
+                    projectEndDate={data?.end_date}
                     onTaskClick={(t) => {
                       setEditingTask(t);
                       setTaskModalOpen(true);
