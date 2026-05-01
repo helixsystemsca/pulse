@@ -25,8 +25,7 @@ import { apiFetch } from "@/lib/api";
 import { fetchEquipmentList, fetchEquipmentParts } from "@/lib/equipmentService";
 import { emitOnboardingMaybeUpdated } from "@/lib/onboarding-events";
 import { PulseDrawer } from "@/components/schedule/PulseDrawer";
-import { SettingsGear } from "@/components/settings/SettingsGear";
-import { ModuleSettingsGear } from "@/components/module-settings/ModuleSettingsGear";
+import { ModuleSettingsModal } from "@/components/module-settings/ModuleSettingsModal";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PageBody } from "@/components/ui/PageBody";
 import { managerOrAbove } from "@/lib/pulse-roles";
@@ -218,8 +217,7 @@ export function WorkRequestsApp() {
   const hubQ = searchParams.get("hub") ?? "";
   const kindQ = searchParams.get("kind") ?? "";
   const statusQ = searchParams.get("status") ?? "";
-  const maintenanceListRoute = Boolean(pathname?.startsWith("/dashboard/maintenance"));
-  const wrMod = useModuleSettings("workRequests");
+  useModuleSettings("workRequests");
   const moduleSettingsCtx = useModuleSettingsOptional();
   const session = readSession();
   const isSystemAdmin = Boolean(session?.is_system_admin || session?.role === "system_admin");
@@ -286,6 +284,9 @@ export function WorkRequestsApp() {
   const [settingsTab, setSettingsTab] = useState<SettingsTab>("Statuses");
   const [settingsDraft, setSettingsDraft] = useState<WrSettings | null>(null);
   const [settingsLoading, setSettingsLoading] = useState(false);
+  const [orgSettingsOpen, setOrgSettingsOpen] = useState(false);
+  const [headerSettingsOpen, setHeaderSettingsOpen] = useState(false);
+  const [headerSettingsAnchor, setHeaderSettingsAnchor] = useState<{ top: number; left: number } | null>(null);
 
   const [detailId, setDetailId] = useState<string | null>(null);
   const [detail, setDetail] = useState<WorkRequestDetail | null>(null);
@@ -928,23 +929,18 @@ export function WorkRequestsApp() {
         icon={ClipboardList}
         actions={
           <>
-            {maintenanceListRoute ? (
-              <Link
-                href="/dashboard/procedures"
-                className="inline-flex items-center text-sm font-semibold text-ds-accent hover:underline"
-              >
-                Procedure library →
-              </Link>
-            ) : null}
-            <SettingsGear module="workRequests" />
-            <ModuleSettingsGear moduleId="workRequests" label="Work requests organization settings" />
             <button
               type="button"
-              className="app-btn-secondary inline-flex items-center gap-2 px-4 py-2.5"
-              onClick={() => setSettingsOpen(true)}
+              className="inline-flex items-center justify-center rounded-lg border border-slate-200/90 bg-white p-2.5 text-pulse-navy shadow-sm transition-colors hover:bg-slate-50 dark:border-ds-border dark:bg-ds-primary dark:text-slate-100 dark:hover:bg-ds-interactive-hover"
+              aria-label="Work request settings"
+              title="Work request settings"
+              onClick={(e) => {
+                const r = (e.currentTarget as HTMLButtonElement).getBoundingClientRect();
+                setHeaderSettingsAnchor({ top: r.bottom + 8, left: Math.max(12, r.right - 240) });
+                setHeaderSettingsOpen((v) => !v);
+              }}
             >
               <Settings className="h-4 w-4" aria-hidden />
-              Workflow
             </button>
             <button
               type="button"
@@ -968,6 +964,54 @@ export function WorkRequestsApp() {
       />
 
       <PageBody>
+      {headerSettingsOpen ? (
+        <button
+          type="button"
+          className="fixed inset-0 z-[120] cursor-default bg-transparent"
+          aria-label="Close settings menu"
+          onClick={() => {
+            setHeaderSettingsOpen(false);
+            setHeaderSettingsAnchor(null);
+          }}
+        />
+      ) : null}
+
+      {headerSettingsOpen && headerSettingsAnchor ? (
+        <div
+          className="fixed z-[130] w-60 rounded-lg border border-slate-200 bg-white py-1 text-left shadow-lg dark:border-ds-border dark:bg-ds-elevated"
+          style={{ top: headerSettingsAnchor.top, left: headerSettingsAnchor.left }}
+          role="menu"
+          aria-label="Work request settings"
+        >
+          <button
+            type="button"
+            className="block w-full px-3 py-2 text-left text-sm text-pulse-navy hover:bg-slate-50 dark:text-gray-100 dark:hover:bg-ds-interactive-hover"
+            onClick={() => {
+              setHeaderSettingsOpen(false);
+              setHeaderSettingsAnchor(null);
+              setSettingsOpen(true);
+            }}
+          >
+            Workflow &amp; notifications
+          </button>
+          {moduleSettingsCtx?.canConfigure ? (
+            <button
+              type="button"
+              className="block w-full px-3 py-2 text-left text-sm text-pulse-navy hover:bg-slate-50 dark:text-gray-100 dark:hover:bg-ds-interactive-hover"
+              onClick={() => {
+                setHeaderSettingsOpen(false);
+                setHeaderSettingsAnchor(null);
+                setOrgSettingsOpen(true);
+              }}
+            >
+              Organization rules
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+
+      <ModuleSettingsModal moduleId="workRequests" open={orgSettingsOpen} onClose={() => setOrgSettingsOpen(false)} />
+
       <div className="flex flex-wrap gap-2">
         <button
           type="button"
