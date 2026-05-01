@@ -17,7 +17,6 @@ export function ZonesDevicesChrome({ children }: { children: React.ReactNode }) 
   const pathname = usePathname();
   const { session } = usePulseAuth();
   const isZones = pathname.startsWith("/zones-devices/zones") || pathname === "/zones-devices";
-  const isBlueprint = pathname.startsWith("/zones-devices/blueprint");
   const [showZonesEmptyHint, setShowZonesEmptyHint] = useState(false);
 
   useEffect(() => {
@@ -65,11 +64,11 @@ export function ZonesDevicesChrome({ children }: { children: React.ReactNode }) 
           transition={{ duration: bpDuration.med, ease: bpEase }}
         >
           <ModuleOnboardingHint className="border-ds-border bg-ds-secondary text-ds-muted dark:border-ds-border dark:bg-ds-secondary dark:text-ds-muted">
-            <strong className="font-semibold text-ds-foreground">Zones and floor plans.</strong> Use the{" "}
-            <Link href="/zones-devices/blueprint" className="ds-link font-semibold">
-              Blueprint designer
+            <strong className="font-semibold text-ds-foreground">Zones and floor plans.</strong> Use{" "}
+            <Link href="/drawings" className="ds-link font-semibold">
+              Drawings
             </Link>{" "}
-            to draw your layout, or define areas manually under{" "}
+            for infrastructure maps on blueprint images, or define areas manually under{" "}
             <Link href="/zones" className="ds-link font-semibold">
               Zones
             </Link>
@@ -79,7 +78,7 @@ export function ZonesDevicesChrome({ children }: { children: React.ReactNode }) 
       ) : null}
       <nav
         className="inline-flex flex-wrap gap-1 rounded-md border border-ds-border bg-ds-secondary p-1"
-        aria-label="Zones and blueprints"
+        aria-label="Zones and floor plans"
       >
         <Link
           href="/zones-devices/zones"
@@ -89,33 +88,21 @@ export function ZonesDevicesChrome({ children }: { children: React.ReactNode }) 
         >
           Zones
         </Link>
-        <Link
-          href="/zones-devices/blueprint"
-          className={tabClass(isBlueprint)}
-          prefetch={false}
-          aria-current={isBlueprint ? "page" : undefined}
-        >
-          Blueprint designer
-        </Link>
       </nav>
       {/*
         Blueprint designer uses `position: fixed` for immersive fullscreen. A Framer Motion parent
         with `transform` (e.g. translateY) creates a containing block so fixed overlays only cover
         this column and the app header stays visible — use a plain div on the blueprint route.
       */}
-      {isBlueprint ? (
-        <div className="flex min-h-0 flex-1 flex-col">{children}</div>
-      ) : (
-        <motion.div
-          key={pathname}
-          className="flex min-h-0 flex-1 flex-col"
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: bpDuration.med, ease: bpEase }}
-        >
-          {children}
-        </motion.div>
-      )}
+      <motion.div
+        key={pathname}
+        className="flex min-h-0 flex-1 flex-col"
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: bpDuration.med, ease: bpEase }}
+      >
+        {children}
+      </motion.div>
     </div>
   );
 }

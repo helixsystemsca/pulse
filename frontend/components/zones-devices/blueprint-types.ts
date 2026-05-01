@@ -23,6 +23,8 @@ export type BlueprintElement = {
   metadata?: {
     isRoom?: boolean;
     name?: string;
+    /** Client hint for open annotation strokes; prefer `symbol_type === "map_pen"` for persistence. */
+    annotate_open_stroke?: boolean;
   };
   rotation?: number;
   locked?: boolean;

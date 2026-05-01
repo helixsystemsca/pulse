@@ -3,11 +3,14 @@
 import { X } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
 import { useCallback, useEffect, useLayoutEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { APP_MODAL_PORTAL_Z_BASE } from "@/components/ui/app-modal-layer";
+import { usePulseAuth } from "@/hooks/usePulseAuth";
+import { canAccessLegacyBlueprintEditor } from "@/lib/legacy-blueprint-editor";
 import { bpEase, bpDuration } from "@/lib/motion-presets";
+import { readSession } from "@/lib/pulse-session";
+import { motion } from "framer-motion";
 
 const BlueprintDesigner = dynamic(
   () =>
@@ -34,7 +37,11 @@ const CLOSE_HREF = "/zones-devices/zones";
 
 export default function BlueprintPage() {
   const router = useRouter();
+  const { session } = usePulseAuth();
+
   const [portalReady, setPortalReady] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
   const close = useCallback(() => {
     router.push(CLOSE_HREF);
   }, [router]);
@@ -42,6 +49,20 @@ export default function BlueprintPage() {
   useLayoutEffect(() => {
     setPortalReady(true);
   }, []);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const effectiveSession = mounted ? readSession() ?? session : null;
+  const allowed = canAccessLegacyBlueprintEditor(effectiveSession);
+
+  useEffect(() => {
+    if (!mounted) return;
+    if (!allowed) {
+      router.replace("/drawings");
+    }
+  }, [allowed, mounted, router]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -66,8 +87,16 @@ export default function BlueprintPage() {
     };
   }, []);
 
-  if (!portalReady) {
+  if (!portalReady || !mounted) {
     return null;
+  }
+
+  if (!allowed) {
+    return (
+      <div className="fixed inset-0 z-[80] flex items-center justify-center bg-ds-primary/90 text-sm text-ds-muted">
+        Redirecting to Drawings…
+      </div>
+    );
   }
 
   const layer = (
@@ -91,7 +120,7 @@ export default function BlueprintPage() {
             id="blueprint-dialog-title"
             className="truncate pl-0.5 text-sm font-semibold text-pulse-navy dark:text-slate-100 sm:text-base"
           >
-            Blueprint designer
+            Legacy blueprint editor
           </h2>
           <button
             type="button"
@@ -103,7 +132,7 @@ export default function BlueprintPage() {
           </button>
         </div>
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-          <BlueprintDesigner fullscreen />
+          <BlueprintDesigner fullscreen legacyMigrationBanner legacyMigrationTools />
         </div>
       </div>
     </div>

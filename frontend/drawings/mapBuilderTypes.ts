@@ -7,4 +7,4 @@ export type AssetDrawShape = "rectangle" | "ellipse" | "polygon";
 export type ConnectFlow = "pick" | "draw";
 
 /** Annotate: decorative / non-graph blueprint overlays only. */
-export type AnnotateKind = "symbol" | "sketch";
+export type AnnotateKind = "symbol" | "text" | "sketch" | "pen";

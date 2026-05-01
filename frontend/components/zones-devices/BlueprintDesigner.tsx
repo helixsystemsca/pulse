@@ -1184,9 +1184,18 @@ export type BlueprintDesignerProps = {
    * Pulse full-screen shell: drop outer card padding and lift `max-height` so the stage uses the modal viewport.
    */
   fullscreen?: boolean;
+  /** Pulse legacy route only: yellow migration banner at top of editor. */
+  legacyMigrationBanner?: boolean;
+  /** Pulse legacy route only: show shape→room conversion and similar migration actions. */
+  legacyMigrationTools?: boolean;
 };
 
-export function BlueprintDesigner({ standalone = false, fullscreen = false }: BlueprintDesignerProps) {
+export function BlueprintDesigner({
+  standalone = false,
+  fullscreen = false,
+  legacyMigrationBanner = false,
+  legacyMigrationTools = false,
+}: BlueprintDesignerProps) {
   const {
     blueprint,
     updateBlueprint,
@@ -3621,6 +3630,18 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
     <div
       className={`bp-shell${isPublish ? " bp-shell--publish" : ""}${!standalone ? " bp-shell--pulse" : ""}${fullscreen ? " bp-shell--fullscreen" : ""}${immersiveOpen ? " bp-shell--immersive" : ""}`}
     >
+      {legacyMigrationBanner && !standalone ? (
+        <div
+          className="bp-legacy-banner flex shrink-0 items-center gap-2 border-b border-amber-400/40 bg-amber-500/15 px-3 py-2 text-[12px] font-semibold text-amber-950 dark:border-amber-500/35 dark:bg-amber-500/10 dark:text-amber-100"
+          role="status"
+        >
+          Legacy Editor — for migration only. Use{" "}
+          <a href="/drawings" className="underline underline-offset-2 hover:text-amber-900 dark:hover:text-amber-50">
+            Drawings
+          </a>{" "}
+          for all new work.
+        </div>
+      ) : null}
       <motion.aside
         className={`bp-sidebar${isPublish ? " bp-sidebar--disabled" : ""}`}
         aria-label="Blueprint tasks"
@@ -5825,7 +5846,8 @@ export function BlueprintDesigner({ standalone = false, fullscreen = false }: Bl
                         aria-label="Name"
                       />
                     </label>
-                    {!isRoom(selected) &&
+                    {legacyMigrationTools &&
+                    !isRoom(selected) &&
                     (selected.type === "rectangle" || selected.type === "polygon" || selected.type === "path") ? (
                       <button
                         type="button"

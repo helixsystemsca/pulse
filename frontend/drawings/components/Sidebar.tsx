@@ -1,14 +1,10 @@
 "use client";
 
 import {
-  Cable,
-  Droplets,
   MapPin,
   MousePointer2,
   PenLine,
-  Radar,
   Route,
-  Zap,
   Square,
   Circle as CircleIcon,
   Hexagon,
@@ -16,6 +12,7 @@ import {
   Spline,
   StickyNote,
   Pencil,
+  Type,
 } from "lucide-react";
 import { useState } from "react";
 import type { FilterRule, SystemType } from "../utils/graphHelpers";
@@ -198,7 +195,7 @@ export function Sidebar({
 
         <section className="space-y-1.5">
           <div className="flex items-center justify-between gap-2 px-1">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-ds-muted">Map tools</p>
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-ds-muted">Infrastructure tools</p>
             <button
               type="button"
               title="Trace route"
@@ -273,10 +270,10 @@ export function Sidebar({
                   className={`rounded-md px-2 py-1.5 text-xs font-semibold ${connectFlow === "draw" ? "bg-ds-success/20 text-ds-foreground" : "text-ds-muted hover:bg-ds-primary/40"}`}
                   onClick={() => onConnectFlowChange("draw")}
                 >
-                  Draw segment
+                  Draw connection
                 </button>
               </div>
-              <p className="mt-1.5 text-[10px] text-ds-muted">Pick: click start asset, then end. Draw: drag a line — endpoints snap to nearest assets.</p>
+              <p className="mt-1.5 text-[10px] text-ds-muted">Pick two assets, or draw a line whose endpoints snap to assets.</p>
             </div>
           ) : null}
 
@@ -292,37 +289,41 @@ export function Sidebar({
               <div className="grid grid-cols-2 gap-1">
                 <button
                   type="button"
+                  title="Place a marker symbol"
                   className={`inline-flex h-9 items-center justify-center gap-1 rounded-md border text-xs ${annotateKind === "symbol" ? "border-ds-success bg-ds-success/15" : "border-transparent hover:bg-ds-primary/40"}`}
                   onClick={() => onAnnotateKindChange("symbol")}
                 >
-                  <StickyNote className="h-4 w-4" /> Symbol
+                  <StickyNote className="h-4 w-4 shrink-0" /> Symbol
                 </button>
                 <button
                   type="button"
+                  title="Place a text label"
+                  className={`inline-flex h-9 items-center justify-center gap-1 rounded-md border text-xs ${annotateKind === "text" ? "border-ds-success bg-ds-success/15" : "border-transparent hover:bg-ds-primary/40"}`}
+                  onClick={() => onAnnotateKindChange("text")}
+                >
+                  <Type className="h-4 w-4 shrink-0" /> Text
+                </button>
+                <button
+                  type="button"
+                  title="Tap vertices to close a highlight region"
                   className={`inline-flex h-9 items-center justify-center gap-1 rounded-md border text-xs ${annotateKind === "sketch" ? "border-ds-success bg-ds-success/15" : "border-transparent hover:bg-ds-primary/40"}`}
                   onClick={() => onAnnotateKindChange("sketch")}
                 >
-                  <Pencil className="h-4 w-4" /> Sketch
+                  <Pencil className="h-4 w-4 shrink-0" /> Region
+                </button>
+                <button
+                  type="button"
+                  title="Drag to draw a freehand stroke"
+                  className={`inline-flex h-9 items-center justify-center gap-1 rounded-md border text-xs ${annotateKind === "pen" ? "border-ds-success bg-ds-success/15" : "border-transparent hover:bg-ds-primary/40"}`}
+                  onClick={() => onAnnotateKindChange("pen")}
+                >
+                  <PenLine className="h-4 w-4 shrink-0" /> Pen
                 </button>
               </div>
-              <p className="mt-1.5 text-[10px] text-ds-muted">Annotations stay on the blueprint layer only — they do not create graph nodes.</p>
+              <p className="mt-1.5 text-[10px] text-ds-muted">Blueprint-only overlays — never added to the infrastructure graph.</p>
             </div>
           ) : null}
 
-          <div className="mt-1 grid grid-cols-4 gap-1 px-0.5">
-            <span className="inline-flex items-center justify-center rounded-md bg-transparent text-[10px] text-ds-muted" title="Fiber">
-              <Cable className="h-4 w-4" aria-hidden />
-            </span>
-            <span className="inline-flex items-center justify-center rounded-md bg-transparent text-[10px] text-ds-muted" title="Irrigation">
-              <Droplets className="h-4 w-4" aria-hidden />
-            </span>
-            <span className="inline-flex items-center justify-center rounded-md bg-transparent text-[10px] text-ds-muted" title="Electrical">
-              <Zap className="h-4 w-4" aria-hidden />
-            </span>
-            <span className="inline-flex items-center justify-center rounded-md bg-transparent text-[10px] text-ds-muted" title="Telemetry">
-              <Radar className="h-4 w-4" aria-hidden />
-            </span>
-          </div>
         </section>
       </div>
     </aside>

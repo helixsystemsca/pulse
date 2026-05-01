@@ -20,7 +20,9 @@ export type MapSemanticHandlers = {
   onSemanticConnectionDraw: Parameters<typeof MapSemanticDrawLayer>[0]["onSemanticConnectionDraw"];
   onSemanticZonePolygon: Parameters<typeof MapSemanticDrawLayer>[0]["onSemanticZonePolygon"];
   onSemanticAnnotateSymbol: Parameters<typeof MapSemanticDrawLayer>[0]["onSemanticAnnotateSymbol"];
+  onSemanticAnnotateText: Parameters<typeof MapSemanticDrawLayer>[0]["onSemanticAnnotateText"];
   onSemanticAnnotateSketch: Parameters<typeof MapSemanticDrawLayer>[0]["onSemanticAnnotateSketch"];
+  onSemanticAnnotatePen: Parameters<typeof MapSemanticDrawLayer>[0]["onSemanticAnnotatePen"];
 };
 
 type Props = {
@@ -142,7 +144,9 @@ export function CanvasWrapper({
           onSemanticConnectionDraw={mapSemantic.onSemanticConnectionDraw}
           onSemanticZonePolygon={mapSemantic.onSemanticZonePolygon}
           onSemanticAnnotateSymbol={mapSemantic.onSemanticAnnotateSymbol}
+          onSemanticAnnotateText={mapSemantic.onSemanticAnnotateText}
           onSemanticAnnotateSketch={mapSemantic.onSemanticAnnotateSketch}
+          onSemanticAnnotatePen={mapSemantic.onSemanticAnnotatePen}
         />
       ) : null;
 

@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections import deque
 from typing import Annotated, Any, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy import and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -18,6 +18,7 @@ from app.schemas.infrastructure_map import (
     InfraAssetPatchIn,
     InfraAttributeCreateIn,
     InfraAttributeOut,
+    InfraAttributeUpsertIn,
     InfraConnectionCreateIn,
     InfraConnectionOut,
     TraceRouteIn,
@@ -28,6 +29,74 @@ router = APIRouter(tags=["infrastructure-map"])
 
 Db = Annotated[AsyncSession, Depends(get_db)]
 TenantUser = Annotated[User, Depends(get_current_company_user)]
+
+
+async def _assert_infra_entity_owned(cid: str, body: InfraAttributeCreateIn, db: AsyncSession) -> None:
+    if body.entity_type == "asset":
+        ok = (
+            await db.execute(select(InfraAsset.id).where(InfraAsset.company_id == cid, InfraAsset.id == body.entity_id))
+        ).scalar_one_or_none()
+    else:
+        ok = (
+            await db.execute(select(InfraConnection.id).where(InfraConnection.company_id == cid, InfraConnection.id == body.entity_id))
+        ).scalar_one_or_none()
+    if not ok:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unknown entity_id")
+
+
+async def _upsert_infra_attribute(
+    body: InfraAttributeCreateIn,
+    db: AsyncSession,
+    cid: str,
+) -> tuple[InfraAttributeOut, int]:
+    await _assert_infra_entity_owned(cid, body, db)
+    key = body.key.strip()
+    existing = (
+        await db.execute(
+            select(InfraAttribute).where(
+                InfraAttribute.company_id == cid,
+                InfraAttribute.entity_type == body.entity_type,
+                InfraAttribute.entity_id == body.entity_id,
+                InfraAttribute.key == key,
+            )
+        )
+    ).scalar_one_or_none()
+    if existing:
+        existing.value = body.value
+        await db.commit()
+        await db.refresh(existing)
+        return (
+            InfraAttributeOut(
+                id=existing.id,
+                entity_type=existing.entity_type,  # type: ignore[arg-type]
+                entity_id=existing.entity_id,
+                key=existing.key,
+                value=existing.value,
+                created_at=existing.created_at,
+            ),
+            status.HTTP_200_OK,
+        )
+    row = InfraAttribute(
+        company_id=cid,
+        entity_type=body.entity_type,
+        entity_id=body.entity_id,
+        key=key,
+        value=body.value,
+    )
+    db.add(row)
+    await db.commit()
+    await db.refresh(row)
+    return (
+        InfraAttributeOut(
+            id=row.id,
+            entity_type=row.entity_type,  # type: ignore[arg-type]
+            entity_id=row.entity_id,
+            key=row.key,
+            value=row.value,
+            created_at=row.created_at,
+        ),
+        status.HTTP_201_CREATED,
+    )
 
 
 @router.get("/assets", response_model=list[InfraAssetOut])
@@ -196,34 +265,32 @@ async def list_attributes(
     ]
 
 
-@router.post("/attributes", response_model=InfraAttributeOut, status_code=status.HTTP_201_CREATED)
-async def create_attribute(body: InfraAttributeCreateIn, db: Db, user: TenantUser) -> InfraAttributeOut:
+@router.post("/attributes", response_model=InfraAttributeOut)
+async def create_or_update_attribute(
+    body: InfraAttributeCreateIn,
+    response: Response,
+    db: Db,
+    user: TenantUser,
+) -> InfraAttributeOut:
+    """Insert attribute or update value when (entity_type, entity_id, key) already exists."""
     cid = str(user.company_id)
-    # Basic tenant ownership check: entity must belong to this tenant
-    if body.entity_type == "asset":
-        ok = (await db.execute(select(InfraAsset.id).where(InfraAsset.company_id == cid, InfraAsset.id == body.entity_id))).scalar_one_or_none()
-    else:
-        ok = (await db.execute(select(InfraConnection.id).where(InfraConnection.company_id == cid, InfraConnection.id == body.entity_id))).scalar_one_or_none()
-    if not ok:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unknown entity_id")
-    row = InfraAttribute(
-        company_id=cid,
-        entity_type=body.entity_type,
-        entity_id=body.entity_id,
-        key=body.key.strip(),
-        value=body.value,
-    )
-    db.add(row)
-    await db.commit()
-    await db.refresh(row)
-    return InfraAttributeOut(
-        id=row.id,
-        entity_type=row.entity_type,  # type: ignore[arg-type]
-        entity_id=row.entity_id,
-        key=row.key,
-        value=row.value,
-        created_at=row.created_at,
-    )
+    out, code = await _upsert_infra_attribute(body, db, cid)
+    response.status_code = code
+    return out
+
+
+@router.patch("/attributes/upsert", response_model=InfraAttributeOut)
+async def upsert_attribute_patch(
+    body: InfraAttributeUpsertIn,
+    response: Response,
+    db: Db,
+    user: TenantUser,
+) -> InfraAttributeOut:
+    """Upsert by (entity_type, entity_id, key); same behavior as POST /attributes."""
+    cid = str(user.company_id)
+    out, code = await _upsert_infra_attribute(body, db, cid)
+    response.status_code = code
+    return out
 
 
 @router.post("/trace-route", response_model=TraceRouteOut)

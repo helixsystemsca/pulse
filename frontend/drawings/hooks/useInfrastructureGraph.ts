@@ -106,8 +106,24 @@ export function useInfrastructureGraph() {
     return await apiFetch<InfraAttribute[]>(`/api/attributes?${sp.toString()}`);
   }, []);
 
-  const createAttribute = useCallback(async (body: { entity_type: "asset" | "connection"; entity_id: string; key: string; value: string }) => {
-    return await apiFetch<InfraAttribute>("/api/attributes", { method: "POST", body: JSON.stringify(body) });
+  /** Upserts by (entity_type, entity_id, key); merges into local attribute list (no duplicate rows). */
+  const upsertAttribute = useCallback(async (body: { entity_type: "asset" | "connection"; entity_id: string; key: string; value: string }) => {
+    const row = await apiFetch<InfraAttribute>("/api/attributes/upsert", {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    });
+    setAttributes((prev) => {
+      const rest = prev.filter(
+        (a) =>
+          !(
+            a.entity_type === body.entity_type &&
+            a.entity_id === body.entity_id &&
+            a.key === body.key
+          ),
+      );
+      return [row, ...rest];
+    });
+    return row;
   }, []);
 
   const traceRoute = useCallback(async (body: { start_asset_id: string; end_asset_id: string; system_type?: SystemType; filters?: unknown[] }) => {
@@ -130,7 +146,7 @@ export function useInfrastructureGraph() {
     optimisticMoveAsset,
     createConnection,
     listAttributes,
-    createAttribute,
+    upsertAttribute,
     traceRoute,
   };
 }

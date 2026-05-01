@@ -3,8 +3,29 @@
 import { useEffect, useMemo, useState } from "react";
 import type { BlueprintElement } from "@/components/zones-devices/blueprint-types";
 import type { InfraAsset, InfraConnection, SystemType } from "../utils/graphHelpers";
+import { parseInfraAssetFromNotes } from "../utils/infraSymbolNotes";
+import { ZONE_META_PREFIX, packZoneMeta, parseZoneMeta } from "../utils/overlayMeta";
 
 type AttributeRow = { id: string; key: string; value: string };
+
+function proceduresLinesFromStored(raw: string): string {
+  const t = String(raw ?? "").trim();
+  if (!t) return "";
+  if (t.startsWith("[")) {
+    try {
+      const j = JSON.parse(t) as unknown;
+      if (Array.isArray(j) && j.every((x) => typeof x === "string")) return (j as string[]).join("\n");
+    } catch {
+      /* legacy newline-separated */
+    }
+  }
+  return t;
+}
+
+function proceduresToStored(textarea: string): string {
+  const lines = textarea.split("\n").map((s) => s.trim()).filter(Boolean);
+  return JSON.stringify(lines);
+}
 
 export function RightPanel({
   selectedAssets,
@@ -43,7 +64,14 @@ export function RightPanel({
   const [draftSystem, setDraftSystem] = useState<SystemType>("telemetry");
   const [draftNotes, setDraftNotes] = useState("");
   const [draftProcedures, setDraftProcedures] = useState("");
+  const [draftConnNotes, setDraftConnNotes] = useState("");
+
   const [bpDraftName, setBpDraftName] = useState("");
+  const [bpZoneType, setBpZoneType] = useState("");
+  const [bpZoneNotes, setBpZoneNotes] = useState("");
+  const [bpSymbolType, setBpSymbolType] = useState("marker");
+  const [bpOverlayNotes, setBpOverlayNotes] = useState("");
+  const [bpInfraLinked, setBpInfraLinked] = useState(false);
 
   useEffect(() => {
     if (asset) {
@@ -55,8 +83,27 @@ export function RightPanel({
   }, [asset]);
 
   useEffect(() => {
-    if (blueprintElement) {
-      setBpDraftName(blueprintElement.name ?? "");
+    if (!blueprintElement) return;
+    setBpDraftName(blueprintElement.name ?? "");
+    const linked = Boolean(parseInfraAssetFromNotes(blueprintElement.symbol_notes));
+    setBpInfraLinked(linked);
+    if (blueprintElement.type === "zone") {
+      const zm = parseZoneMeta(blueprintElement.symbol_notes);
+      setBpZoneType(zm.zone_type);
+      setBpZoneNotes(zm.notes);
+      setBpOverlayNotes("");
+    } else {
+      setBpZoneType("");
+      setBpZoneNotes("");
+      const sn = blueprintElement.symbol_notes ?? "";
+      if (linked || sn.startsWith(ZONE_META_PREFIX)) {
+        setBpOverlayNotes("");
+      } else {
+        setBpOverlayNotes(sn);
+      }
+    }
+    if (blueprintElement.type === "symbol") {
+      setBpSymbolType(blueprintElement.symbol_type ?? "marker");
     }
   }, [blueprintElement]);
 
@@ -68,8 +115,13 @@ export function RightPanel({
       try {
         const rows = await onLoadAttributes({ entity_type: entity.kind, entity_id: entity.id });
         setAttrs(rows);
-        const proc = rows.find((r) => r.key === "procedure_steps");
-        setDraftProcedures(proc?.value ?? "");
+        if (entity.kind === "asset") {
+          const proc = rows.find((r) => r.key === "procedure_steps");
+          setDraftProcedures(proceduresLinesFromStored(proc?.value ?? ""));
+        }
+        if (entity.kind === "connection") {
+          setDraftConnNotes(rows.find((r) => r.key === "notes")?.value ?? "");
+        }
       } finally {
         setAttrsLoading(false);
       }
@@ -81,13 +133,19 @@ export function RightPanel({
     if (connection) return "Connection";
     if (blueprintElement?.type === "zone") return "Zone";
     if (blueprintElement?.type === "symbol") return "Annotation";
-    if (blueprintElement?.type === "path") return "Sketch";
-    if (blueprintElement?.type === "polygon") return "Blueprint polygon";
+    if (blueprintElement?.type === "path") {
+      return blueprintElement.symbol_type === "map_pen" ? "Markup (freehand)" : "Region sketch";
+    }
+    if (blueprintElement?.type === "polygon") return "Area overlay";
     return "Selection";
-  }, [asset, blueprintElement?.type, connection]);
+  }, [asset, blueprintElement, connection]);
 
   // Blueprint-only selection (non-graph overlay / zones)
   if (!entity && blueprintElement && onSaveBlueprintPatch) {
+    const isZone = blueprintElement.type === "zone";
+    const isAnnotSymbol = blueprintElement.type === "symbol";
+    const isAnnotPath = blueprintElement.type === "path";
+
     return (
       <aside className="w-[300px] shrink-0 bg-ds-secondary/15 p-2 shadow-[0_8px_24px_rgba(0,0,0,0.12)] transition-all duration-150 ease-out">
         <div className="flex items-start justify-between gap-2">
@@ -99,21 +157,100 @@ export function RightPanel({
             ×
           </button>
         </div>
+
+        {bpInfraLinked ? (
+          <p className="mt-2 rounded-md border border-ds-border/60 bg-ds-primary/20 px-2 py-1.5 text-[11px] text-ds-muted">
+            This footprint is linked to an infrastructure asset. Edit the asset in the graph inspector when the asset is selected.
+          </p>
+        ) : null}
+
         <div className="mt-2 space-y-2">
           <label className="block">
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-ds-muted">Label</span>
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-ds-muted">{isZone ? "Name" : "Label"}</span>
             <input className="app-field mt-1.5 w-full" value={bpDraftName} onChange={(e) => setBpDraftName(e.target.value)} disabled={disabled} />
           </label>
+
+          {isZone ? (
+            <>
+              <label className="block">
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-ds-muted">Zone type</span>
+                <input
+                  className="app-field mt-1.5 w-full"
+                  value={bpZoneType}
+                  onChange={(e) => setBpZoneType(e.target.value)}
+                  disabled={disabled}
+                  placeholder="e.g. area, floor, yard"
+                />
+              </label>
+              <label className="block">
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-ds-muted">Notes</span>
+                <textarea className="app-field mt-1.5 w-full min-h-20" value={bpZoneNotes} onChange={(e) => setBpZoneNotes(e.target.value)} disabled={disabled} />
+              </label>
+            </>
+          ) : null}
+
+          {isAnnotSymbol ? (
+            <label className="block">
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-ds-muted">Symbol</span>
+              <select className="app-field mt-1.5 w-full" value={bpSymbolType} onChange={(e) => setBpSymbolType(e.target.value)} disabled={disabled || bpInfraLinked}>
+                <option value="marker">Marker</option>
+                <option value="label">Text plate</option>
+                <option value="tree">Tree</option>
+                <option value="generic">Generic</option>
+              </select>
+            </label>
+          ) : null}
+
+          {(isAnnotSymbol || isAnnotPath) && !bpInfraLinked ? (
+            <label className="block">
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-ds-muted">Overlay notes</span>
+              <textarea
+                className="app-field mt-1.5 w-full min-h-16"
+                value={bpOverlayNotes}
+                onChange={(e) => setBpOverlayNotes(e.target.value)}
+                disabled={disabled}
+                placeholder="Internal notes (blueprint only)"
+              />
+            </label>
+          ) : null}
+
+          {!isZone && blueprintElement.type === "polygon" ? (
+            <p className="text-[10px] leading-snug text-ds-muted">
+              Unlinked blueprint polygon — use Add asset with polygon placement for structured infrastructure areas.
+            </p>
+          ) : null}
+
           <button
             type="button"
             className="ds-btn-primary w-full"
             disabled={disabled}
-            onClick={() => void onSaveBlueprintPatch(blueprintElement.id, { name: bpDraftName })}
+            onClick={() =>
+              void (async () => {
+                if (bpInfraLinked) {
+                  await onSaveBlueprintPatch(blueprintElement.id, { name: bpDraftName });
+                  return;
+                }
+                if (isZone) {
+                  const zn = packZoneMeta({ zone_type: bpZoneType, notes: bpZoneNotes });
+                  await onSaveBlueprintPatch(blueprintElement.id, {
+                    name: bpDraftName,
+                    ...(zn ? { symbol_notes: zn } : {}),
+                  });
+                  return;
+                }
+                await onSaveBlueprintPatch(blueprintElement.id, {
+                  name: bpDraftName,
+                  ...(isAnnotSymbol ? { symbol_type: bpSymbolType } : {}),
+                  ...(isAnnotSymbol || isAnnotPath ? { symbol_notes: bpOverlayNotes.trim() ? bpOverlayNotes.trim() : undefined } : {}),
+                });
+              })()
+            }
           >
             Save
           </button>
+
           <p className="text-[10px] leading-snug text-ds-muted">
-            Zones and sketches live on the blueprint layer only — they are not graph nodes. Link infrastructure via Add asset / Connect.
+            Overlay elements stay on the blueprint image — they are not graph nodes. Infrastructure lives in assets and connections.
           </p>
         </div>
       </aside>
@@ -188,13 +325,13 @@ export function RightPanel({
               </label>
               <label className="block">
                 <span className="text-[11px] font-semibold uppercase tracking-wider text-ds-muted">Procedures</span>
-                <span className="mt-1 block text-[10px] text-ds-muted">One step per line (stored as attributes).</span>
+                <span className="mt-1 block text-[10px] text-ds-muted">One step per line (stored as a JSON array on the asset).</span>
                 <textarea
                   className="app-field mt-1.5 w-full min-h-28"
                   value={draftProcedures}
                   onChange={(e) => setDraftProcedures(e.target.value)}
                   disabled={disabled}
-                  placeholder="Step 1&#10;Step 2"
+                  placeholder={"Step 1\nStep 2"}
                 />
               </label>
               <button
@@ -213,7 +350,7 @@ export function RightPanel({
                       entity_type: "asset",
                       entity_id: asset.id,
                       key: "procedure_steps",
-                      value: draftProcedures.split("\n").filter(Boolean).join("\n"),
+                      value: proceduresToStored(draftProcedures),
                     });
                     const rows = await onLoadAttributes({ entity_type: "asset", entity_id: asset.id });
                     setAttrs(rows);
@@ -236,7 +373,31 @@ export function RightPanel({
                 <span className="text-[11px] font-semibold uppercase tracking-wider text-ds-muted">Connection type</span>
                 <input className="app-field mt-1.5 w-full opacity-80" readOnly value={connection.connection_type} />
               </label>
-              <p className="text-[10px] text-ds-muted">Notes for connections can be stored as attributes on the Attributes tab.</p>
+              <label className="block">
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-ds-muted">Notes</span>
+                <span className="mt-1 block text-[10px] text-ds-muted">Stored as attribute <span className="font-mono">notes</span>.</span>
+                <textarea className="app-field mt-1.5 w-full min-h-24" value={draftConnNotes} onChange={(e) => setDraftConnNotes(e.target.value)} disabled={disabled} />
+              </label>
+              <button
+                type="button"
+                className="ds-btn-primary w-full"
+                disabled={disabled}
+                onClick={() =>
+                  void (async () => {
+                    await onAddAttribute({
+                      entity_type: "connection",
+                      entity_id: connection.id,
+                      key: "notes",
+                      value: draftConnNotes,
+                    });
+                    const rows = await onLoadAttributes({ entity_type: "connection", entity_id: connection.id });
+                    setAttrs(rows);
+                  })()
+                }
+              >
+                Save notes
+              </button>
+              <p className="text-[10px] text-ds-muted">Additional structured fields live under the Attributes tab.</p>
             </>
           ) : null}
         </div>

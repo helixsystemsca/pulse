@@ -74,13 +74,20 @@ type Props = {
   onSemanticZonePolygon: (path_points: number[], label: string) => void | Promise<void>;
   /** Annotate: blueprint-only overlay. */
   onSemanticAnnotateSymbol: (x: number, y: number) => void | Promise<void>;
+  /** Text label overlay (wider symbol plate). */
+  onSemanticAnnotateText: (x: number, y: number) => void | Promise<void>;
+  /** Closed region sketch (tap vertices). */
   onSemanticAnnotateSketch: (path_points: number[]) => void | Promise<void>;
+  /** Freehand stroke (open path). */
+  onSemanticAnnotatePen: (path_points: number[]) => void | Promise<void>;
 };
 
 const MIN_DRAG_WORLD = 6;
 const CLOSE_POLY_WORLD = 14;
 const SNAP_WORLD = 52;
 const SYMBOL_W = 40;
+const MIN_PEN_STEP_WORLD = 3;
+const MIN_PEN_POINTS = 4;
 
 export function MapSemanticDrawLayer({
   viewport,
@@ -94,13 +101,17 @@ export function MapSemanticDrawLayer({
   onSemanticConnectionDraw,
   onSemanticZonePolygon,
   onSemanticAnnotateSymbol,
+  onSemanticAnnotateText,
   onSemanticAnnotateSketch,
+  onSemanticAnnotatePen,
 }: Props) {
   const dragRectRef = useRef<{ x0: number; y0: number } | null>(null);
   const [dragRect, setDragRect] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
   const [polyPts, setPolyPts] = useState<number[]>([]);
   const connectDragRef = useRef<{ x0: number; y0: number } | null>(null);
   const [connectDrag, setConnectDrag] = useState<{ x: number; y: number; x2: number; y2: number } | null>(null);
+  const penDragRef = useRef<number[] | null>(null);
+  const [penPreview, setPenPreview] = useState<number[] | null>(null);
 
   const listening = Boolean(viewport) && !disabled;
 
@@ -117,6 +128,8 @@ export function MapSemanticDrawLayer({
     setPolyPts([]);
     connectDragRef.current = null;
     setConnectDrag(null);
+    penDragRef.current = null;
+    setPenPreview(null);
   }, []);
 
   useEffect(() => {
@@ -142,6 +155,19 @@ export function MapSemanticDrawLayer({
       if (primaryMode === "annotate" && annotateKind === "symbol") {
         e.cancelBubble = true;
         void onSemanticAnnotateSymbol(w.x - SYMBOL_W / 2, w.y - SYMBOL_W / 2);
+        return;
+      }
+
+      if (primaryMode === "annotate" && annotateKind === "text") {
+        e.cancelBubble = true;
+        void onSemanticAnnotateText(w.x, w.y);
+        return;
+      }
+
+      if (primaryMode === "annotate" && annotateKind === "pen") {
+        e.cancelBubble = true;
+        penDragRef.current = [w.x, w.y];
+        setPenPreview([w.x, w.y]);
         return;
       }
 
@@ -228,6 +254,8 @@ export function MapSemanticDrawLayer({
       disabled,
       onSemanticAnnotateSketch,
       onSemanticAnnotateSymbol,
+      onSemanticAnnotateText,
+      onSemanticAnnotatePen,
       onSemanticAssetShape,
       onSemanticZonePolygon,
       primaryMode,
@@ -248,6 +276,17 @@ export function MapSemanticDrawLayer({
         return;
       }
 
+      if (primaryMode === "annotate" && annotateKind === "pen" && penDragRef.current) {
+        const pts = penDragRef.current;
+        const lx = pts[pts.length - 2]!;
+        const ly = pts[pts.length - 1]!;
+        if (Math.hypot(w.x - lx, w.y - ly) >= MIN_PEN_STEP_WORLD) {
+          penDragRef.current = [...pts, w.x, w.y];
+          setPenPreview([...penDragRef.current]);
+        }
+        return;
+      }
+
       if (primaryMode === "add_asset" && (assetShape === "rectangle" || assetShape === "ellipse")) {
         const d0 = dragRectRef.current;
         if (d0) {
@@ -259,7 +298,7 @@ export function MapSemanticDrawLayer({
         }
       }
     },
-    [assetShape, connectFlow, disabled, primaryMode, viewport],
+    [annotateKind, assetShape, connectFlow, disabled, primaryMode, viewport],
   );
 
   const handleMouseUp = useCallback(
@@ -277,6 +316,17 @@ export function MapSemanticDrawLayer({
         setConnectDrag(null);
         if (fromId && toId && fromId !== toId) {
           void onSemanticConnectionDraw(fromId, toId);
+        }
+        return;
+      }
+
+      if (primaryMode === "annotate" && annotateKind === "pen" && penDragRef.current) {
+        e.cancelBubble = true;
+        const pts = penDragRef.current;
+        penDragRef.current = null;
+        setPenPreview(null);
+        if (pts.length >= MIN_PEN_POINTS) {
+          void onSemanticAnnotatePen(pts);
         }
         return;
       }
@@ -325,7 +375,18 @@ export function MapSemanticDrawLayer({
         }
       }
     },
-    [assetShape, connectFlow, disabled, onSemanticAssetShape, onSemanticConnectionDraw, assets, primaryMode, viewport],
+    [
+      annotateKind,
+      assetShape,
+      connectFlow,
+      disabled,
+      onSemanticAnnotatePen,
+      onSemanticAssetShape,
+      onSemanticConnectionDraw,
+      assets,
+      primaryMode,
+      viewport,
+    ],
   );
 
   if (!worldBounds) return null;
@@ -380,6 +441,18 @@ export function MapSemanticDrawLayer({
       />
     ) : null;
 
+  const penStrokePreview =
+    penPreview && penPreview.length >= 4 ? (
+      <Line
+        points={penPreview}
+        stroke="rgba(148, 163, 184, 0.95)"
+        strokeWidth={2}
+        lineCap="round"
+        lineJoin="round"
+        listening={false}
+      />
+    ) : null;
+
   return (
     <Group listening={captureActive}>
       <Rect
@@ -400,6 +473,7 @@ export function MapSemanticDrawLayer({
       (primaryMode === "annotate" && annotateKind === "sketch")
         ? polyPreview
         : null}
+      {primaryMode === "annotate" && annotateKind === "pen" ? penStrokePreview : null}
     </Group>
   );
 }

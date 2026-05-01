@@ -4,7 +4,7 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: { absolute: "Floor Plans | Pulse" },
-  description: "Zone context and blueprint designer.",
+  description: "Zone context and floor plan previews.",
 };
 
 export default function ZonesDevicesLayout({ children }: { children: React.ReactNode }) {

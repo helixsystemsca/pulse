@@ -1,12 +1,13 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { apiFetch, isApiMode } from "@/lib/api";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Camera, LayoutGrid, Maximize2, Minimize2 } from "lucide-react";
 import type { BlueprintElement, BlueprintLayer } from "@/components/zones-devices/blueprint-types";
 import { SYMBOL_DEFAULT, mapApiElement, parseApiBlueprintLayers, toApiPayload } from "@/lib/blueprint-layout";
+import { packInfraAssetNotes, parseInfraAssetFromNotes } from "./utils/infraSymbolNotes";
+import { packZoneMeta } from "./utils/overlayMeta";
 import { useInfrastructureGraph } from "./hooks/useInfrastructureGraph";
 import type { FilterRule, GraphFilters, SystemType, TraceRouteResult } from "./utils/graphHelpers";
 import { getVisibleGraphElements } from "./utils/graphHelpers";
@@ -14,7 +15,6 @@ import { Sidebar } from "./components/Sidebar";
 import { CanvasWrapper } from "./components/CanvasWrapper";
 import { RightPanel } from "./components/RightPanel";
 import type { AnnotateKind, AssetDrawShape, ConnectFlow, PrimaryMode } from "./mapBuilderTypes";
-import { packInfraAssetNotes } from "./utils/infraSymbolNotes";
 import { bboxFromFlatPoly, uniqueLabel } from "./utils/mapBuilderHelpers";
 import type { StageViewport } from "./components/MapSemanticDrawLayer";
 
@@ -365,6 +365,7 @@ export default function DrawingsPage() {
         const zoneNames = blueprintElements.filter((e) => e.type === "zone").map((e) => e.name ?? "");
         const nm = uniqueLabel("Zone", zoneNames);
         const elId = crypto.randomUUID();
+        const zn = packZoneMeta({ zone_type: "area", notes: "" });
         const bpEl: BlueprintElement = {
           id: elId,
           type: "zone",
@@ -375,6 +376,7 @@ export default function DrawingsPage() {
           path_points: pts,
           name: nm,
           metadata: { isRoom: true, name: nm },
+          ...(zn ? { symbol_notes: zn } : {}),
         };
         await persistBlueprintElements([...editableBlueprintElements(), bpEl]);
         setSelectedBlueprintElementId(elId);
@@ -407,6 +409,44 @@ export default function DrawingsPage() {
           x: bb.x,
           y: bb.y,
           path_points: pts,
+          symbol_type: "map_sketch",
+          name: "Region",
+        };
+        await persistBlueprintElements([...editableBlueprintElements(), bpEl]);
+        setSelectedBlueprintElementId(elId);
+        setSelectedAssets([]);
+        setSelectedConnections([]);
+      },
+      onSemanticAnnotateText: async (x: number, y: number) => {
+        const elId = crypto.randomUUID();
+        const w = 132;
+        const h = 44;
+        const bpEl: BlueprintElement = {
+          id: elId,
+          type: "symbol",
+          x: x - w / 2,
+          y: y - h / 2,
+          width: w,
+          height: h,
+          symbol_type: "label",
+          name: "Note",
+        };
+        await persistBlueprintElements([...editableBlueprintElements(), bpEl]);
+        setSelectedBlueprintElementId(elId);
+        setSelectedAssets([]);
+        setSelectedConnections([]);
+      },
+      onSemanticAnnotatePen: async (pts: number[]) => {
+        const bb = bboxFromFlatPoly(pts);
+        const elId = crypto.randomUUID();
+        const bpEl: BlueprintElement = {
+          id: elId,
+          type: "path",
+          x: bb.x,
+          y: bb.y,
+          path_points: pts,
+          symbol_type: "map_pen",
+          name: "Markup",
         };
         await persistBlueprintElements([...editableBlueprintElements(), bpEl]);
         setSelectedBlueprintElementId(elId);
@@ -454,9 +494,6 @@ export default function DrawingsPage() {
           <Camera className="h-4 w-4" aria-hidden />
           Save snapshot
         </button>
-        <Link href="/zones-devices/blueprint" className="ds-btn-secondary" prefetch={false}>
-          Legacy designer
-        </Link>
       </div>
     </div>
   );
@@ -613,6 +650,17 @@ export default function DrawingsPage() {
                     dimAssetIds={vis.dimAssetIds}
                     dimConnectionIds={vis.dimConnectionIds}
                     onPickBlueprintElementId={(id) => {
+                      const raw = blueprintDetail?.elements.find((e) => e.id === id);
+                      if (raw) {
+                        const mapped = mapApiElement(raw);
+                        const linkedAssetId = parseInfraAssetFromNotes(mapped.symbol_notes);
+                        if (linkedAssetId && graph.assetsById.has(linkedAssetId)) {
+                          setSelectedAssets([linkedAssetId]);
+                          setSelectedBlueprintElementId(null);
+                          setSelectedConnections([]);
+                          return;
+                        }
+                      }
                       setSelectedBlueprintElementId(id);
                       setSelectedAssets([]);
                       setSelectedConnections([]);
@@ -665,7 +713,7 @@ export default function DrawingsPage() {
             return rows.map((r) => ({ id: r.id, key: r.key, value: r.value }));
           }}
           onAddAttribute={async (opts) => {
-            await graph.createAttribute(opts);
+            await graph.upsertAttribute(opts);
           }}
         />
       </div>

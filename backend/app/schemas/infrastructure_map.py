@@ -73,6 +73,10 @@ class InfraAttributeCreateIn(InfraAttributeBase):
     pass
 
 
+class InfraAttributeUpsertIn(InfraAttributeCreateIn):
+    """Upsert body for PATCH /attributes/upsert (same shape as POST /attributes)."""
+
+
 class InfraAttributeOut(InfraAttributeBase):
     id: str
     created_at: datetime

@@ -11,7 +11,7 @@ from datetime import datetime, timezone
 from typing import Optional
 from uuid import uuid4
 
-from sqlalchemy import Boolean, DateTime, Float, ForeignKey, String, Text
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, String, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -71,6 +71,7 @@ class InfraConnection(Base):
 
 class InfraAttribute(Base):
     __tablename__ = "infra_attributes"
+    __table_args__ = (UniqueConstraint("entity_type", "entity_id", "key", name="uq_infra_attributes_entity_key"),)
 
     id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
     company_id: Mapped[str] = mapped_column(

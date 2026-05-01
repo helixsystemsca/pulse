@@ -113,6 +113,14 @@ function SymbolGlyphRo({ symbolType, isDark }: { symbolType: string; isDark: boo
   const fill2 = isDark ? SYM_FILL2_DARK : SYM_FILL2_LIGHT;
   const sw = 1.25;
   switch (k) {
+    case "label":
+      return (
+        <Group listening={false}>
+          <Rect x={-14} y={-10} width={28} height={20} cornerRadius={3} fill={fill} stroke={stroke} strokeWidth={sw} listening={false} />
+          <Line points={[-8, -3, 8, -3]} stroke={stroke} strokeWidth={sw * 0.9} lineCap="round" listening={false} />
+          <Line points={[-8, 2, 4, 2]} stroke={stroke} strokeWidth={sw * 0.9} lineCap="round" listening={false} />
+        </Group>
+      );
     case "tree":
       return (
         <Group listening={false}>
@@ -672,23 +680,32 @@ export function BlueprintReadOnlyCanvas({
               );
             })}
           {laidOut
-            .filter((el) => el.type === "path" && (el.path_points?.length ?? 0) >= 6)
+            .filter((el) => {
+              if (el.type !== "path") return false;
+              const n = el.path_points?.length ?? 0;
+              const open = el.symbol_type === "map_pen" || el.metadata?.annotate_open_stroke === true;
+              return open ? n >= 4 : n >= 6;
+            })
             .map((el) => {
               const pts = el.path_points ?? [];
+              const open = el.symbol_type === "map_pen" || el.metadata?.annotate_open_stroke === true;
               const sw = Math.max(0.65, 1 / scale);
               return (
                 <Line
                   key={el.id}
                   {...ez(el.id)}
                   points={pts}
-                  closed
-                  tension={PATH_LINE_TENSION}
-                  fill={theme.pathFill}
+                  closed={!open}
+                  tension={open ? 0.35 : PATH_LINE_TENSION}
+                  fillEnabled={!open}
+                  fill={open ? undefined : theme.pathFill}
                   stroke={theme.pathStroke}
                   strokeWidth={sw}
                   lineCap="round"
                   lineJoin="round"
-                  listening={false}
+                  listening={canPick}
+                  onClick={() => onSelectElementId?.(el.id)}
+                  onTap={() => onSelectElementId?.(el.id)}
                 />
               );
             })}

@@ -218,10 +218,10 @@ export function FloorPlanBlueprintSection() {
             {deleting ? "Deleting…" : "Delete"}
           </button>
           <Link
-            href="/zones-devices/blueprint"
+            href="/drawings"
             className="ds-btn-secondary inline-flex items-center justify-center rounded-md px-3 py-2 text-sm font-semibold"
           >
-            Edit in designer
+            Open Drawings
           </Link>
         </div>
       </div>
@@ -230,9 +230,9 @@ export function FloorPlanBlueprintSection() {
 
       {!loadingList && list.length === 0 ? (
         <p className="mt-4 text-sm text-ds-muted">
-          No blueprints found. Create one in the{" "}
-          <Link href="/zones-devices/blueprint" className="ds-link font-semibold">
-            Blueprint designer
+          No blueprints found. Add and edit maps under{" "}
+          <Link href="/drawings" className="ds-link font-semibold">
+            Drawings
           </Link>
           .
         </p>
