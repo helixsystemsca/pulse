@@ -197,6 +197,11 @@ export type BlueprintReadOnlyCanvasProps = {
   minHeight?: number;
   onSelectElementId?: (id: string) => void;
   /**
+   * Optional Konva overlay content rendered above blueprint shapes.
+   * Useful for graph overlays (assets + connections) without rewriting the canvas.
+   */
+  overlay?: ReactNode;
+  /**
    * When this value changes (e.g. selected blueprint id), the view is auto-fitted again
    * and any manual zoom from the wheel is cleared.
    */
@@ -212,6 +217,7 @@ export function BlueprintReadOnlyCanvas({
   theme: themeName,
   minHeight = 420,
   onSelectElementId,
+  overlay,
   fitResetKey,
 }: BlueprintReadOnlyCanvasProps) {
   const hostRef = useRef<HTMLDivElement | null>(null);
@@ -663,6 +669,7 @@ export function BlueprintReadOnlyCanvas({
               );
             })}
         </Layer>
+        {overlay ? <Layer listening>{overlay}</Layer> : null}
       </Stage>
       <p className="pointer-events-none absolute bottom-2 right-3 m-0 text-[10px] text-ds-muted opacity-80">
         Scroll to zoom

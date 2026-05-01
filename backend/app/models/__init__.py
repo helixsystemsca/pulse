@@ -13,6 +13,7 @@ from app.models.automation_engine import (
 from app.models.device_hub import AutomationBleDevice, AutomationGateway, AutomationUnknownDevice
 from app.models.base import Base
 from app.models.blueprint_models import Blueprint, BlueprintElement
+from app.models.infrastructure_map_models import InfraAsset, InfraAttribute, InfraConnection
 from app.models.monitoring_models import (
     AlertSeverity,
     AlertStatus,
@@ -99,6 +100,9 @@ __all__ = [
     "Base",
     "Blueprint",
     "BlueprintElement",
+    "InfraAsset",
+    "InfraAttribute",
+    "InfraConnection",
     "AuditLog",
     "Company",
     "CompanyFeature",
