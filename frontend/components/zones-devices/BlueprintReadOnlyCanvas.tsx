@@ -6,7 +6,7 @@
  */
 
 import type Konva from "konva";
-import { useCallback, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Circle, Ellipse, Group, Layer, Line, Rect, Stage, Text } from "react-konva";
 import { isRoom, type BlueprintElement, type BlueprintLayer } from "./blueprint-types";
 import {
