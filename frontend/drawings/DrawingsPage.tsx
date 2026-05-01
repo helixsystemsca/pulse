@@ -572,7 +572,7 @@ export default function DrawingsPage() {
   );
 
   const workspaceChrome = (
-    <>
+    <div className="flex min-h-0 min-w-0 flex-1 flex-row items-stretch overflow-hidden">
       <span id="drawings-workspace-title" className="sr-only">
         Infrastructure map workspace
       </span>
@@ -668,6 +668,7 @@ export default function DrawingsPage() {
                 );
                 return (
                   <CanvasWrapper
+                    key={workspaceFullscreen ? "drawings-canvas-fs" : "drawings-canvas-inline"}
                     elements={blueprintElements}
                     layers={blueprintLayers}
                     theme={theme}
@@ -752,7 +753,7 @@ export default function DrawingsPage() {
             await graph.upsertAttribute(opts);
           }}
         />
-    </>
+    </div>
   );
 
   const fullscreenPortal =

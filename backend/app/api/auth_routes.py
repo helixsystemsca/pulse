@@ -238,6 +238,7 @@ async def me(
         onboarding_seen=ob_seen,
         user_onboarding_tour_completed=tour_done,
         onboarding_tier2_enabled=tier2_enabled,
+        can_use_pm_features=bool(getattr(user, "can_use_pm_features", False)),
         permissions=perm_out,
         server_time=datetime.now(timezone.utc).isoformat(),
     )

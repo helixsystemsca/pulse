@@ -5,9 +5,7 @@
  */
 import { useEffect } from "react";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
-import { apiFetch, isApiMode } from "@/lib/api";
-import { applyServerTimeFromUserOut } from "@/lib/serverTime";
-import type { UserOut } from "@/lib/pulse-session";
+import { isApiMode, refreshPulseUserFromServer } from "@/lib/api";
 
 const RESYNC_MS = 12 * 60 * 1000;
 
@@ -21,10 +19,9 @@ export function ServerTimeSync() {
 
     const sync = async () => {
       try {
-        const user = await apiFetch<UserOut>("/api/v1/auth/me");
-        if (!cancelled) applyServerTimeFromUserOut(user);
+        await refreshPulseUserFromServer();
       } catch {
-        /* 401 clears session + redirects via apiFetch; network — offset unchanged */
+        /* refreshPulseUserFromServer swallows most errors; 401 handled inside */
       }
     };
 
