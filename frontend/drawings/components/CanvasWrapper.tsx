@@ -5,7 +5,23 @@ import type { BlueprintElement, BlueprintLayer } from "@/components/zones-device
 import { BlueprintReadOnlyCanvas } from "@/components/zones-devices/BlueprintReadOnlyCanvas";
 import type { BlueprintReadOnlyTheme } from "@/components/zones-devices/BlueprintReadOnlyCanvas";
 import type { InfraAsset, InfraConnection, SystemType, TraceRouteResult } from "../utils/graphHelpers";
+import type { AnnotateKind, AssetDrawShape, ConnectFlow, PrimaryMode } from "../mapBuilderTypes";
 import { GraphOverlay } from "./GraphOverlay";
+import { MapSemanticDrawLayer, type StageViewport } from "./MapSemanticDrawLayer";
+
+export type MapSemanticHandlers = {
+  viewport: StageViewport | null;
+  disabled: boolean;
+  primaryMode: PrimaryMode;
+  assetShape: AssetDrawShape;
+  connectFlow: ConnectFlow;
+  annotateKind: AnnotateKind;
+  onSemanticAssetShape: Parameters<typeof MapSemanticDrawLayer>[0]["onSemanticAssetShape"];
+  onSemanticConnectionDraw: Parameters<typeof MapSemanticDrawLayer>[0]["onSemanticConnectionDraw"];
+  onSemanticZonePolygon: Parameters<typeof MapSemanticDrawLayer>[0]["onSemanticZonePolygon"];
+  onSemanticAnnotateSymbol: Parameters<typeof MapSemanticDrawLayer>[0]["onSemanticAnnotateSymbol"];
+  onSemanticAnnotateSketch: Parameters<typeof MapSemanticDrawLayer>[0]["onSemanticAnnotateSketch"];
+};
 
 type Props = {
   elements: BlueprintElement[];
@@ -35,8 +51,13 @@ type Props = {
   onHoverAssetId?: (id: string | null) => void;
   onHoverConnectionId?: (id: string | null) => void;
 
-  /** When true and traceResult exists, dim non-path items. */
   dimForTrace?: boolean;
+  /** When false, asset nodes are not draggable (semantic placement modes). */
+  graphDraggableAssets?: boolean;
+  /** Infrastructure Map Builder — semantic drawing on top of graph (ordered above GraphOverlay for hit capture). */
+  mapSemantic?: MapSemanticHandlers | null;
+  /** Lift Konva stage viewport (world-space rubber-band drawing). */
+  onStageViewport?: (v: StageViewport) => void;
 };
 
 export function CanvasWrapper({
@@ -63,6 +84,9 @@ export function CanvasWrapper({
   onHoverAssetId,
   onHoverConnectionId,
   dimForTrace = false,
+  graphDraggableAssets = true,
+  mapSemantic = null,
+  onStageViewport,
 }: Props) {
   const [hoverAssetId, setHoverAssetId] = useState<string | null>(null);
   const [hoverConnectionId, setHoverConnectionId] = useState<string | null>(null);
@@ -70,17 +94,8 @@ export function CanvasWrapper({
   const pointerWorldRef = useRef<{ x: number; y: number } | null>(null);
   const stageScaleRef = useRef<number>(1);
 
-  const getPointerWorldPosition = useCallback(() => {
-    return pointerWorldRef.current;
-  }, []);
-
-  const getStageScale = useCallback(() => {
-    const s = stageScaleRef.current;
-    return Number.isFinite(s) && s > 0 ? s : 1;
-  }, []);
-
   const overlay = useMemo(() => {
-    return (
+    const graph = (
       <GraphOverlay
         assets={assets}
         connections={connections}
@@ -108,9 +123,34 @@ export function CanvasWrapper({
         onSelectConnectionId={onSelectConnectionId}
         onAssetDragMove={onAssetDragMove}
         onAssetDragEnd={onAssetDragEnd}
-        draggableAssets={!connectMode}
+        draggableAssets={graphDraggableAssets && !connectMode}
         dimNonMatching={dimForTrace}
       />
+    );
+
+    const semantic =
+      mapSemantic ? (
+        <MapSemanticDrawLayer
+          viewport={mapSemantic.viewport}
+          assets={assets}
+          disabled={mapSemantic.disabled}
+          primaryMode={mapSemantic.primaryMode}
+          assetShape={mapSemantic.assetShape}
+          connectFlow={mapSemantic.connectFlow}
+          annotateKind={mapSemantic.annotateKind}
+          onSemanticAssetShape={mapSemantic.onSemanticAssetShape}
+          onSemanticConnectionDraw={mapSemantic.onSemanticConnectionDraw}
+          onSemanticZonePolygon={mapSemantic.onSemanticZonePolygon}
+          onSemanticAnnotateSymbol={mapSemantic.onSemanticAnnotateSymbol}
+          onSemanticAnnotateSketch={mapSemantic.onSemanticAnnotateSketch}
+        />
+      ) : null;
+
+    return (
+      <>
+        {graph}
+        {semantic}
+      </>
     );
   }, [
     activeSystems,
@@ -119,8 +159,10 @@ export function CanvasWrapper({
     connectDraftFromId,
     connectMode,
     dimForTrace,
+    graphDraggableAssets,
     hoverAssetId,
     hoverConnectionId,
+    mapSemantic,
     onAssetDragEnd,
     onAssetDragMove,
     onHoverAssetId,
@@ -152,10 +194,10 @@ export function CanvasWrapper({
         onStageScaleChange={(s) => {
           stageScaleRef.current = s;
         }}
+        onStageViewport={onStageViewport}
         minHeight={720}
         chromeLess
       />
     </div>
   );
 }
-

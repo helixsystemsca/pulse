@@ -4,17 +4,19 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { apiFetch, isApiMode } from "@/lib/api";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { LayoutGrid } from "lucide-react";
+import { Camera, LayoutGrid, Maximize2, Minimize2 } from "lucide-react";
 import type { BlueprintElement, BlueprintLayer } from "@/components/zones-devices/blueprint-types";
-import { mapApiElement, parseApiBlueprintLayers, toApiPayload } from "@/lib/blueprint-layout";
+import { SYMBOL_DEFAULT, mapApiElement, parseApiBlueprintLayers, toApiPayload } from "@/lib/blueprint-layout";
 import { useInfrastructureGraph } from "./hooks/useInfrastructureGraph";
 import type { FilterRule, GraphFilters, SystemType, TraceRouteResult } from "./utils/graphHelpers";
-import { getVisibleGraphElements, nearestAssetId } from "./utils/graphHelpers";
+import { getVisibleGraphElements } from "./utils/graphHelpers";
 import { Sidebar } from "./components/Sidebar";
 import { CanvasWrapper } from "./components/CanvasWrapper";
 import { RightPanel } from "./components/RightPanel";
-
-type ToolId = "select" | "draw" | "add_asset" | "connect";
+import type { AnnotateKind, AssetDrawShape, ConnectFlow, PrimaryMode } from "./mapBuilderTypes";
+import { packInfraAssetNotes } from "./utils/infraSymbolNotes";
+import { bboxFromFlatPoly, uniqueLabel } from "./utils/mapBuilderHelpers";
+import type { StageViewport } from "./components/MapSemanticDrawLayer";
 
 type BlueprintSummary = { id: string; name: string; created_at: string };
 type ApiBlueprintElement = Parameters<typeof mapApiElement>[0];
@@ -53,8 +55,14 @@ export default function DrawingsPage() {
   const isDark = useDocumentDark();
   const theme = isDark ? ("dark" as const) : ("light" as const);
 
-  // UI state
-  const [tool, setTool] = useState<ToolId>("select");
+  // UI state — Infrastructure Map Builder modes (intent-first)
+  const [primaryMode, setPrimaryMode] = useState<PrimaryMode>("select");
+  const [assetShape, setAssetShape] = useState<AssetDrawShape>("rectangle");
+  const [connectFlow, setConnectFlow] = useState<ConnectFlow>("pick");
+  const [annotateKind, setAnnotateKind] = useState<AnnotateKind>("symbol");
+  const [defaultSystemType, setDefaultSystemType] = useState<SystemType>("telemetry");
+  const [stageViewport, setStageViewport] = useState<StageViewport | null>(null);
+
   const [activeSystems, setActiveSystems] = useState<Record<SystemType, boolean>>({
     fiber: true,
     irrigation: true,
@@ -75,6 +83,11 @@ export default function DrawingsPage() {
   const [traceResult, setTraceResult] = useState<TraceRouteResult | null>(null);
 
   const [connectDraftFromId, setConnectDraftFromId] = useState<string | null>(null);
+  const [workspaceFullscreen, setWorkspaceFullscreen] = useState(false);
+
+  useEffect(() => {
+    if (primaryMode !== "connect") setConnectDraftFromId(null);
+  }, [primaryMode]);
 
   // Graph data layer
   const graph = useInfrastructureGraph();
@@ -100,6 +113,24 @@ export default function DrawingsPage() {
       }
     })();
   }, []);
+
+  useEffect(() => {
+    if (!workspaceFullscreen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setWorkspaceFullscreen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [workspaceFullscreen]);
+
+  useEffect(() => {
+    if (!workspaceFullscreen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [workspaceFullscreen]);
 
   useEffect(() => {
     if (!isApiMode() || !selectedBlueprintId) {
@@ -139,8 +170,8 @@ export default function DrawingsPage() {
   }, [blueprintElements, selectedBlueprintElementId]);
 
   async function persistBlueprintElements(next: BlueprintElement[]) {
-    if (!blueprintDetail) return;
-    await apiFetch(`/api/blueprints/${blueprintDetail.id}`, {
+    if (!blueprintDetail || !isApiMode()) return;
+    const updated = await apiFetch<BlueprintDetail>(`/api/blueprints/${blueprintDetail.id}`, {
       method: "PUT",
       body: JSON.stringify({
         name: blueprintDetail.name,
@@ -149,6 +180,12 @@ export default function DrawingsPage() {
         layers: blueprintLayers,
       }),
     });
+    setBlueprintDetail(updated);
+  }
+
+  function editableBlueprintElements(): BlueprintElement[] {
+    if (!blueprintDetail) return [];
+    return blueprintDetail.elements.map(mapApiElement).filter((e) => !hiddenBlueprintElementIds.has(e.id));
   }
 
   function clearSelection() {
@@ -162,65 +199,7 @@ export default function DrawingsPage() {
   const selectedConnection =
     selectedConnections.length === 1 ? graph.connectionsById.get(selectedConnections[0]!) ?? null : null;
 
-  const connectMode = tool === "connect";
-
-  const canConvertToAsset = selectedBlueprintElement?.type === "rectangle";
-  const canConvertToConnection = selectedBlueprintElement?.type === "connection";
-
-  async function convertRectangleToAsset() {
-    const el = selectedBlueprintElement;
-    if (!el || el.type !== "rectangle") return;
-    const w = el.width ?? 80;
-    const h = el.height ?? 60;
-    const cx = el.x + w / 2;
-    const cy = el.y + h / 2;
-    const name = prompt("Asset name?", el.name ?? "Building") ?? "";
-    if (!name.trim()) return;
-    const type = (prompt("Asset type?", "building") ?? "building").trim() || "building";
-    const system_type = (prompt("System (fiber|irrigation|electrical|telemetry)?", "telemetry") ?? "telemetry") as SystemType;
-    const created = await graph.createAsset({ name: name.trim(), type, system_type, x: cx, y: cy, notes: null });
-
-    // Hide/remove original rectangle from blueprint persistence
-    const next = blueprintElements.filter((e) => e.id !== el.id);
-    await persistBlueprintElements(next);
-    setHiddenBlueprintElementIds((prev) => {
-      const n = new Set(prev);
-      n.add(el.id);
-      return n;
-    });
-    setSelectedBlueprintElementId(null);
-    setSelectedAssets([created.id]);
-    setSelectedConnections([]);
-  }
-
-  async function convertLineToConnection() {
-    const el = selectedBlueprintElement;
-    if (!el || el.type !== "connection") return;
-    const pts = el.path_points ?? [];
-    if (pts.length < 4) return;
-    const ax = pts[0]!;
-    const ay = pts[1]!;
-    const bx = pts[pts.length - 2]!;
-    const by = pts[pts.length - 1]!;
-    const aId = nearestAssetId(graph.assets, ax, ay);
-    const bId = nearestAssetId(graph.assets, bx, by);
-    if (!aId || !bId || aId === bId) {
-      alert("Could not find two nearby assets to connect. Create assets first.");
-      return;
-    }
-    const system_type = (prompt("System (fiber|irrigation|electrical|telemetry)?", "telemetry") ?? "telemetry") as SystemType;
-    await graph.createConnection({ from_asset_id: aId, to_asset_id: bId, system_type, connection_type: "link" });
-
-    // Hide/remove original line from blueprint persistence
-    const next = blueprintElements.filter((e) => e.id !== el.id);
-    await persistBlueprintElements(next);
-    setHiddenBlueprintElementIds((prev) => {
-      const n = new Set(prev);
-      n.add(el.id);
-      return n;
-    });
-    setSelectedBlueprintElementId(null);
-  }
+  const connectMode = primaryMode === "connect";
 
   async function onTraceRoute() {
     setTraceResult(null);
@@ -253,8 +232,8 @@ export default function DrawingsPage() {
       return;
     }
 
-    // Connect mode selection flow
-    if (connectMode) {
+    // Connect mode — pick two assets (draw mode uses the canvas segment tool)
+    if (connectMode && connectFlow === "pick") {
       if (!connectDraftFromId) {
         setConnectDraftFromId(id);
         setSelectedAssets([id]);
@@ -262,8 +241,12 @@ export default function DrawingsPage() {
         return;
       }
       if (connectDraftFromId && connectDraftFromId !== id) {
-        const system_type = (prompt("System (fiber|irrigation|electrical|telemetry)?", "telemetry") ?? "telemetry") as SystemType;
-        await graph.createConnection({ from_asset_id: connectDraftFromId, to_asset_id: id, system_type, connection_type: "link" });
+        await graph.createConnection({
+          from_asset_id: connectDraftFromId,
+          to_asset_id: id,
+          system_type: defaultSystemType,
+          connection_type: "link",
+        });
         setConnectDraftFromId(null);
         setSelectedAssets([id]);
         return;
@@ -293,12 +276,164 @@ export default function DrawingsPage() {
     setSelectedConnections((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   }
 
+  function handleSnapshotStub() {
+    console.info("[Infrastructure Map Builder] Save Snapshot (stub)", {
+      blueprintId: blueprintDetail?.id ?? null,
+      assets: graph.assets,
+      connections: graph.connections,
+      attributes: graph.attributes ?? [],
+    });
+  }
+
+  const mapSemantic = useMemo(() => {
+    if (!isApiMode() || !blueprintDetail) return null;
+
+    return {
+      viewport: stageViewport,
+      disabled: traceMode || bpLoading,
+      primaryMode,
+      assetShape,
+      connectFlow,
+      annotateKind,
+      onSemanticAssetShape: async (payload: {
+        shape: AssetDrawShape;
+        blueprint: {
+          type: "rectangle" | "ellipse" | "polygon";
+          x: number;
+          y: number;
+          width?: number;
+          height?: number;
+          path_points?: number[];
+          name: string;
+        };
+        assetCenter: { x: number; y: number };
+        assetDefaults: { type: string; system_type: SystemType; name: string };
+      }) => {
+        const names = graph.assets.map((a) => a.name ?? "");
+        const label = uniqueLabel(payload.assetDefaults.name, names);
+        const created = await graph.createAsset({
+          name: label,
+          type: payload.assetDefaults.type,
+          system_type: defaultSystemType,
+          x: payload.assetCenter.x,
+          y: payload.assetCenter.y,
+          notes: null,
+        });
+        const elId = crypto.randomUUID();
+        let bpEl: BlueprintElement;
+        if (payload.blueprint.type === "polygon" && payload.blueprint.path_points?.length) {
+          const bb = bboxFromFlatPoly(payload.blueprint.path_points);
+          bpEl = {
+            id: elId,
+            type: "polygon",
+            x: bb.x,
+            y: bb.y,
+            path_points: payload.blueprint.path_points,
+            name: uniqueLabel("Area", names),
+            symbol_notes: packInfraAssetNotes(created.id),
+          };
+        } else {
+          bpEl = {
+            id: elId,
+            type: payload.blueprint.type,
+            x: payload.blueprint.x,
+            y: payload.blueprint.y,
+            width: payload.blueprint.width,
+            height: payload.blueprint.height,
+            name: label,
+            symbol_notes: packInfraAssetNotes(created.id),
+          };
+        }
+        await persistBlueprintElements([...editableBlueprintElements(), bpEl]);
+        setSelectedAssets([created.id]);
+        setSelectedBlueprintElementId(null);
+        setSelectedConnections([]);
+      },
+      onSemanticConnectionDraw: async (fromId: string, toId: string) => {
+        await graph.createConnection({
+          from_asset_id: fromId,
+          to_asset_id: toId,
+          system_type: defaultSystemType,
+          connection_type: "link",
+        });
+        setConnectDraftFromId(null);
+        setSelectedConnections([]);
+        setSelectedAssets([]);
+      },
+      onSemanticZonePolygon: async (pts: number[], _label: string) => {
+        const bb = bboxFromFlatPoly(pts);
+        const zoneNames = blueprintElements.filter((e) => e.type === "zone").map((e) => e.name ?? "");
+        const nm = uniqueLabel("Zone", zoneNames);
+        const elId = crypto.randomUUID();
+        const bpEl: BlueprintElement = {
+          id: elId,
+          type: "zone",
+          x: bb.x,
+          y: bb.y,
+          width: bb.w,
+          height: bb.h,
+          path_points: pts,
+          name: nm,
+          metadata: { isRoom: true, name: nm },
+        };
+        await persistBlueprintElements([...editableBlueprintElements(), bpEl]);
+        setSelectedBlueprintElementId(elId);
+        setSelectedAssets([]);
+        setSelectedConnections([]);
+      },
+      onSemanticAnnotateSymbol: async (x: number, y: number) => {
+        const elId = crypto.randomUUID();
+        const bpEl: BlueprintElement = {
+          id: elId,
+          type: "symbol",
+          x,
+          y,
+          width: SYMBOL_DEFAULT,
+          height: SYMBOL_DEFAULT,
+          symbol_type: "marker",
+          name: "Marker",
+        };
+        await persistBlueprintElements([...editableBlueprintElements(), bpEl]);
+        setSelectedBlueprintElementId(elId);
+        setSelectedAssets([]);
+        setSelectedConnections([]);
+      },
+      onSemanticAnnotateSketch: async (pts: number[]) => {
+        const bb = bboxFromFlatPoly(pts);
+        const elId = crypto.randomUUID();
+        const bpEl: BlueprintElement = {
+          id: elId,
+          type: "path",
+          x: bb.x,
+          y: bb.y,
+          path_points: pts,
+        };
+        await persistBlueprintElements([...editableBlueprintElements(), bpEl]);
+        setSelectedBlueprintElementId(elId);
+        setSelectedAssets([]);
+        setSelectedConnections([]);
+      },
+    };
+  }, [
+    annotateKind,
+    assetShape,
+    blueprintDetail,
+    blueprintElements,
+    bpLoading,
+    connectFlow,
+    defaultSystemType,
+    graph,
+    primaryMode,
+    stageViewport,
+    traceMode,
+  ]);
+
   const topBar = (
     <div className="flex flex-wrap items-end justify-between gap-3">
       <div className="min-w-0">
         <p className="text-sm font-semibold text-ds-foreground">Infrastructure map</p>
         <p className="mt-0.5 text-xs text-ds-muted">
-          Graph overlay (assets + connections) layered on top of existing drawings.
+          Unified Infrastructure Map Builder — structured assets, connections, and zones on your facility image.
         </p>
       </div>
       <div className="flex flex-wrap items-center gap-2">
@@ -315,36 +450,93 @@ export default function DrawingsPage() {
             </option>
           ))}
         </select>
+        <button type="button" className="ds-btn-secondary inline-flex items-center gap-1.5" onClick={handleSnapshotStub} title="Placeholder — future versioned snapshots">
+          <Camera className="h-4 w-4" aria-hidden />
+          Save snapshot
+        </button>
         <Link href="/zones-devices/blueprint" className="ds-btn-secondary" prefetch={false}>
-          Open designer
+          Legacy designer
         </Link>
       </div>
     </div>
   );
 
   return (
-    <div className="flex min-h-[calc(100dvh-10rem)] flex-col gap-2">
-      <PageHeader icon={LayoutGrid} title="Drawings" description="Multi-system infrastructure overlays on your facility maps." />
+    <div className="flex min-h-0 w-full max-w-none flex-col gap-2">
+      <PageHeader
+        icon={LayoutGrid}
+        title="Drawings"
+        description="Infrastructure Map Builder — place assets, connections, and zones directly on the map."
+        actions={
+          <button
+            type="button"
+            className="ds-btn-secondary inline-flex items-center gap-2"
+            onClick={() => setWorkspaceFullscreen(true)}
+            title="Open map in fullscreen"
+          >
+            <Maximize2 className="h-4 w-4" aria-hidden />
+            Fullscreen
+          </button>
+        }
+      />
 
       <div className="rounded-md border border-ds-border/70 bg-ds-secondary/10 px-3 py-2">
         {topBar}
         {(bpError || graph.error) ? <p className="mt-3 text-sm text-ds-danger">{bpError ?? graph.error}</p> : null}
       </div>
 
-      <div className="flex min-h-0 flex-1 overflow-hidden rounded-md border border-ds-border/70 bg-ds-primary">
+      {workspaceFullscreen ? (
+        <div
+          className="fixed inset-0 z-[90] bg-black/50 backdrop-blur-[1px]"
+          aria-hidden
+          role="presentation"
+          onClick={() => setWorkspaceFullscreen(false)}
+        />
+      ) : null}
+
+      <div
+        className={[
+          "flex min-h-0 flex-1 overflow-hidden rounded-md border border-ds-border/70 bg-ds-primary",
+          workspaceFullscreen
+            ? "fixed inset-3 z-[100] rounded-xl shadow-2xl sm:inset-4 md:inset-8"
+            : "relative min-h-[min(72vh,560px)] sm:min-h-[min(76vh,640px)]",
+        ].join(" ")}
+        role={workspaceFullscreen ? "dialog" : undefined}
+        aria-modal={workspaceFullscreen ? true : undefined}
+        aria-labelledby={workspaceFullscreen ? "drawings-workspace-title" : undefined}
+      >
+        {workspaceFullscreen ? (
+          <button
+            type="button"
+            className="absolute right-2 top-2 z-[110] inline-flex items-center gap-1.5 rounded-lg border border-ds-border/80 bg-ds-secondary/95 px-2.5 py-1.5 text-xs font-semibold text-ds-foreground shadow-md backdrop-blur-sm hover:bg-ds-primary/90"
+            onClick={(e) => {
+              e.stopPropagation();
+              setWorkspaceFullscreen(false);
+            }}
+          >
+            <Minimize2 className="h-3.5 w-3.5" aria-hidden />
+            Exit fullscreen
+          </button>
+        ) : null}
+        <span id="drawings-workspace-title" className="sr-only">
+          Infrastructure map workspace
+        </span>
         <Sidebar
           activeSystems={activeSystems}
           onToggleSystem={(s) => setActiveSystems((prev) => ({ ...prev, [s]: !(prev[s] !== false) }))}
-          tool={tool}
-          onToolChange={(t) => {
-            setTool(t);
-            setConnectDraftFromId(null);
-            if (t === "draw") {
-              // keep existing drawing tool accessible without rewriting the canvas
-              window.open("/zones-devices/blueprint", "_blank", "noopener,noreferrer");
-              setTool("select");
-            }
+          primaryMode={primaryMode}
+          onPrimaryModeChange={(m) => {
+            setPrimaryMode(m);
+            if (m !== "connect") setConnectDraftFromId(null);
           }}
+          assetShape={assetShape}
+          onAssetShapeChange={setAssetShape}
+          connectFlow={connectFlow}
+          onConnectFlowChange={setConnectFlow}
+          annotateKind={annotateKind}
+          onAnnotateKindChange={setAnnotateKind}
+          defaultSystemType={defaultSystemType}
+          onDefaultSystemTypeChange={setDefaultSystemType}
           onTraceRoute={() => void onTraceRoute()}
           traceActive={traceMode}
           filterRules={filterRules as unknown as FilterRule[]}
@@ -367,25 +559,15 @@ export default function DrawingsPage() {
             <div className="rounded-lg border border-ds-border bg-ds-secondary/40 p-4">
               <p className="text-sm text-ds-muted">Connect to the API to load saved drawings and infrastructure overlays.</p>
             </div>
-          ) : blueprintElements.length === 0 ? (
+          ) : !blueprintDetail ? (
             <div className="rounded-lg border border-ds-border bg-ds-secondary/40 p-4">
-              <p className="text-sm text-ds-muted">No blueprint loaded yet. Create one in the designer.</p>
+              <p className="text-sm text-ds-muted">Choose a blueprint above to load the map canvas.</p>
             </div>
           ) : (
             <>
               <div className="mb-2 flex flex-wrap items-center justify-between gap-2 px-2 pt-2">
                 <div className="flex flex-wrap items-center gap-2">
-                  {canConvertToAsset ? (
-                    <button type="button" className="ds-btn-secondary" onClick={() => void convertRectangleToAsset()}>
-                      Convert to Asset
-                    </button>
-                  ) : null}
-                  {canConvertToConnection ? (
-                    <button type="button" className="ds-btn-secondary" onClick={() => void convertLineToConnection()}>
-                      Convert to Connection
-                    </button>
-                  ) : null}
-                  {connectMode && connectDraftFromId ? (
+                  {connectMode && connectFlow === "pick" && connectDraftFromId ? (
                     <span className="text-xs font-semibold text-ds-muted">Connect: pick destination asset…</span>
                   ) : null}
                   {traceMode ? (
@@ -442,10 +624,13 @@ export default function DrawingsPage() {
                       void graph.updateAsset(id, { x, y });
                     }}
                     onCanvasClearSelection={() => {
-                      if (connectMode && connectDraftFromId) return;
+                      if (connectMode && connectFlow === "pick" && connectDraftFromId) return;
                       clearSelection();
                     }}
                     dimForTrace={Boolean(traceResult)}
+                    graphDraggableAssets={primaryMode === "select" && !traceMode}
+                    mapSemantic={mapSemantic}
+                    onStageViewport={setStageViewport}
                   />
                 );
               })()}
@@ -458,14 +643,22 @@ export default function DrawingsPage() {
           selectedConnections={selectedConnections}
           asset={selectedAsset}
           connection={selectedConnection}
+          blueprintElement={
+            selectedAssets.length === 0 && selectedConnections.length === 0 ? selectedBlueprintElement : null
+          }
           onClose={() => {
             setSelectedAssets([]);
             setSelectedConnections([]);
+            setSelectedBlueprintElementId(null);
           }}
           disabled={graph.loading}
           onSaveAsset={async (patch) => {
             if (selectedAssets.length !== 1) return;
             await graph.updateAsset(selectedAssets[0]!, patch);
+          }}
+          onSaveBlueprintPatch={async (id, patch) => {
+            const els = editableBlueprintElements().map((e) => (e.id === id ? { ...e, ...patch } : e));
+            await persistBlueprintElements(els);
           }}
           onLoadAttributes={async (opts) => {
             const rows = await graph.listAttributes(opts);

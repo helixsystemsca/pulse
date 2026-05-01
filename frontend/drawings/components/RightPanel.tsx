@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import type { BlueprintElement } from "@/components/zones-devices/blueprint-types";
 import type { InfraAsset, InfraConnection, SystemType } from "../utils/graphHelpers";
 
 type AttributeRow = { id: string; key: string; value: string };
@@ -10,8 +11,10 @@ export function RightPanel({
   selectedConnections,
   asset,
   connection,
+  blueprintElement,
   onClose,
   onSaveAsset,
+  onSaveBlueprintPatch,
   onLoadAttributes,
   onAddAttribute,
   disabled,
@@ -20,8 +23,10 @@ export function RightPanel({
   selectedConnections: string[];
   asset: InfraAsset | null;
   connection: InfraConnection | null;
+  blueprintElement?: BlueprintElement | null;
   onClose: () => void;
   onSaveAsset: (patch: Partial<Omit<InfraAsset, "id">>) => Promise<void>;
+  onSaveBlueprintPatch?: (id: string, patch: Partial<BlueprintElement>) => Promise<void>;
   onLoadAttributes: (opts: { entity_type: "asset" | "connection"; entity_id: string }) => Promise<Array<{ id: string; key: string; value: string }>>;
   onAddAttribute: (opts: { entity_type: "asset" | "connection"; entity_id: string; key: string; value: string }) => Promise<void>;
   disabled?: boolean;
@@ -37,6 +42,8 @@ export function RightPanel({
   const [draftType, setDraftType] = useState("");
   const [draftSystem, setDraftSystem] = useState<SystemType>("telemetry");
   const [draftNotes, setDraftNotes] = useState("");
+  const [draftProcedures, setDraftProcedures] = useState("");
+  const [bpDraftName, setBpDraftName] = useState("");
 
   useEffect(() => {
     if (asset) {
@@ -48,6 +55,12 @@ export function RightPanel({
   }, [asset]);
 
   useEffect(() => {
+    if (blueprintElement) {
+      setBpDraftName(blueprintElement.name ?? "");
+    }
+  }, [blueprintElement]);
+
+  useEffect(() => {
     if (!entity) return;
     setAttrs([]);
     setAttrsLoading(true);
@@ -55,6 +68,8 @@ export function RightPanel({
       try {
         const rows = await onLoadAttributes({ entity_type: entity.kind, entity_id: entity.id });
         setAttrs(rows);
+        const proc = rows.find((r) => r.key === "procedure_steps");
+        setDraftProcedures(proc?.value ?? "");
       } finally {
         setAttrsLoading(false);
       }
@@ -64,8 +79,46 @@ export function RightPanel({
   const title = useMemo(() => {
     if (asset) return "Asset";
     if (connection) return "Connection";
+    if (blueprintElement?.type === "zone") return "Zone";
+    if (blueprintElement?.type === "symbol") return "Annotation";
+    if (blueprintElement?.type === "path") return "Sketch";
+    if (blueprintElement?.type === "polygon") return "Blueprint polygon";
     return "Selection";
-  }, [asset, connection]);
+  }, [asset, blueprintElement?.type, connection]);
+
+  // Blueprint-only selection (non-graph overlay / zones)
+  if (!entity && blueprintElement && onSaveBlueprintPatch) {
+    return (
+      <aside className="w-[300px] shrink-0 bg-ds-secondary/15 p-2 shadow-[0_8px_24px_rgba(0,0,0,0.12)] transition-all duration-150 ease-out">
+        <div className="flex items-start justify-between gap-2">
+          <div>
+            <p className="text-sm font-bold text-ds-foreground">{title}</p>
+            <p className="text-[11px] text-ds-muted break-all">{blueprintElement.id}</p>
+          </div>
+          <button type="button" className="rounded-lg px-2 py-1 text-sm font-semibold text-ds-muted hover:bg-ds-secondary/50 hover:text-ds-foreground" onClick={onClose}>
+            ×
+          </button>
+        </div>
+        <div className="mt-2 space-y-2">
+          <label className="block">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-ds-muted">Label</span>
+            <input className="app-field mt-1.5 w-full" value={bpDraftName} onChange={(e) => setBpDraftName(e.target.value)} disabled={disabled} />
+          </label>
+          <button
+            type="button"
+            className="ds-btn-primary w-full"
+            disabled={disabled}
+            onClick={() => void onSaveBlueprintPatch(blueprintElement.id, { name: bpDraftName })}
+          >
+            Save
+          </button>
+          <p className="text-[10px] leading-snug text-ds-muted">
+            Zones and sketches live on the blueprint layer only — they are not graph nodes. Link infrastructure via Add asset / Connect.
+          </p>
+        </div>
+      </aside>
+    );
+  }
 
   if (!entity) return null;
 
@@ -133,27 +186,59 @@ export function RightPanel({
                 <span className="text-[11px] font-semibold uppercase tracking-wider text-ds-muted">Notes</span>
                 <textarea className="app-field mt-1.5 w-full min-h-24" value={draftNotes} onChange={(e) => setDraftNotes(e.target.value)} disabled={disabled} />
               </label>
+              <label className="block">
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-ds-muted">Procedures</span>
+                <span className="mt-1 block text-[10px] text-ds-muted">One step per line (stored as attributes).</span>
+                <textarea
+                  className="app-field mt-1.5 w-full min-h-28"
+                  value={draftProcedures}
+                  onChange={(e) => setDraftProcedures(e.target.value)}
+                  disabled={disabled}
+                  placeholder="Step 1&#10;Step 2"
+                />
+              </label>
               <button
                 type="button"
                 className="ds-btn-primary w-full"
                 disabled={disabled}
                 onClick={() =>
-                  void onSaveAsset({
-                    name: draftName,
-                    type: draftType,
-                    system_type: draftSystem,
-                    notes: draftNotes,
-                  })
+                  void (async () => {
+                    await onSaveAsset({
+                      name: draftName,
+                      type: draftType,
+                      system_type: draftSystem,
+                      notes: draftNotes,
+                    });
+                    await onAddAttribute({
+                      entity_type: "asset",
+                      entity_id: asset.id,
+                      key: "procedure_steps",
+                      value: draftProcedures.split("\n").filter(Boolean).join("\n"),
+                    });
+                    const rows = await onLoadAttributes({ entity_type: "asset", entity_id: asset.id });
+                    setAttrs(rows);
+                  })()
                 }
               >
                 Save
               </button>
             </>
-          ) : (
-            <div className="rounded-md border border-ds-border/70 bg-ds-primary/25 p-2 text-xs text-ds-muted">
-              Connection details editing is coming next.
-            </div>
-          )}
+          ) : connection ? (
+            <>
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-ds-muted">Endpoints</p>
+              <p className="break-all text-xs text-ds-foreground">{connection.from_asset_id}</p>
+              <p className="break-all text-xs text-ds-foreground">{connection.to_asset_id}</p>
+              <label className="block">
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-ds-muted">System</span>
+                <input className="app-field mt-1.5 w-full opacity-80" readOnly value={connection.system_type} />
+              </label>
+              <label className="block">
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-ds-muted">Connection type</span>
+                <input className="app-field mt-1.5 w-full opacity-80" readOnly value={connection.connection_type} />
+              </label>
+              <p className="text-[10px] text-ds-muted">Notes for connections can be stored as attributes on the Attributes tab.</p>
+            </>
+          ) : null}
         </div>
       ) : (
         <div className="mt-2 space-y-2">
@@ -202,4 +287,3 @@ export function RightPanel({
     </aside>
   );
 }
-

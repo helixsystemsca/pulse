@@ -1,16 +1,39 @@
 "use client";
 
-import { Cable, Droplets, Zap, Radar, MousePointer2, PenTool, Plus, GitBranch, Route } from "lucide-react";
+import {
+  Cable,
+  Droplets,
+  MapPin,
+  MousePointer2,
+  PenLine,
+  Radar,
+  Route,
+  Zap,
+  Square,
+  Circle as CircleIcon,
+  Hexagon,
+  Building2,
+  Spline,
+  StickyNote,
+  Pencil,
+} from "lucide-react";
 import { useState } from "react";
 import type { FilterRule, SystemType } from "../utils/graphHelpers";
-
-type ToolId = "select" | "draw" | "add_asset" | "connect";
+import type { AnnotateKind, AssetDrawShape, ConnectFlow, PrimaryMode } from "../mapBuilderTypes";
 
 export function Sidebar({
   activeSystems,
   onToggleSystem,
-  tool,
-  onToolChange,
+  primaryMode,
+  onPrimaryModeChange,
+  assetShape,
+  onAssetShapeChange,
+  connectFlow,
+  onConnectFlowChange,
+  annotateKind,
+  onAnnotateKindChange,
+  defaultSystemType,
+  onDefaultSystemTypeChange,
   onTraceRoute,
   traceActive,
   filterRules,
@@ -20,8 +43,16 @@ export function Sidebar({
 }: {
   activeSystems: Record<SystemType, boolean>;
   onToggleSystem: (s: SystemType) => void;
-  tool: ToolId;
-  onToolChange: (t: ToolId) => void;
+  primaryMode: PrimaryMode;
+  onPrimaryModeChange: (m: PrimaryMode) => void;
+  assetShape: AssetDrawShape;
+  onAssetShapeChange: (s: AssetDrawShape) => void;
+  connectFlow: ConnectFlow;
+  onConnectFlowChange: (f: ConnectFlow) => void;
+  annotateKind: AnnotateKind;
+  onAnnotateKindChange: (k: AnnotateKind) => void;
+  defaultSystemType: SystemType;
+  onDefaultSystemTypeChange: (s: SystemType) => void;
   onTraceRoute: () => void;
   traceActive: boolean;
   filterRules: FilterRule[];
@@ -61,18 +92,19 @@ export function Sidebar({
     </label>
   );
 
-  const toolBtn = (id: ToolId, label: string, Icon: typeof MousePointer2) => (
+  const modeBtn = (id: PrimaryMode, label: string, Icon: typeof MousePointer2) => (
     <button
       key={id}
       type="button"
       title={label}
       aria-label={label}
+      aria-pressed={primaryMode === id}
       className={`inline-flex h-10 w-10 items-center justify-center rounded-lg border transition-colors ${
-        tool === id
+        primaryMode === id
           ? "border-ds-success bg-ds-success/15 text-ds-foreground"
           : "border-transparent bg-transparent text-ds-muted hover:border-ds-border hover:bg-ds-primary/40 hover:text-ds-foreground"
       }`}
-      onClick={() => onToolChange(id)}
+      onClick={() => onPrimaryModeChange(id)}
     >
       <Icon className="h-5 w-5" aria-hidden />
     </button>
@@ -92,22 +124,37 @@ export function Sidebar({
         </section>
 
         <section className="space-y-1.5">
+          <p className="px-1 text-[10px] font-semibold uppercase tracking-wider text-ds-muted">Default system</p>
+          <p className="px-1 text-[10px] leading-snug text-ds-muted">New assets & connections use this system unless changed in the inspector.</p>
+          <select
+            className="app-field min-h-9 w-full !py-1.5 !text-xs leading-snug"
+            value={defaultSystemType}
+            onChange={(e) => onDefaultSystemTypeChange(e.target.value as SystemType)}
+          >
+            <option value="fiber">Fiber</option>
+            <option value="irrigation">Irrigation</option>
+            <option value="electrical">Electrical</option>
+            <option value="telemetry">Telemetry</option>
+          </select>
+        </section>
+
+        <section className="space-y-1.5">
           <p className="px-1 text-[10px] font-semibold uppercase tracking-wider text-ds-muted">Filters</p>
           <div className="rounded-md border border-ds-border/70 bg-ds-primary/25 p-2">
             <div className="grid grid-cols-2 gap-1.5">
-              <select className="app-field h-8 text-xs" value={entity} onChange={(e) => setEntity(e.target.value as any)}>
+              <select className="app-field min-h-9 !py-1.5 !text-xs leading-snug" value={entity} onChange={(e) => setEntity(e.target.value as "asset" | "connection")}>
                 <option value="asset">Asset</option>
                 <option value="connection">Connection</option>
               </select>
-              <select className="app-field h-8 text-xs" value={operator} onChange={(e) => setOperator(e.target.value as any)}>
+              <select className="app-field min-h-9 !py-1.5 !text-xs leading-snug" value={operator} onChange={(e) => setOperator(e.target.value as FilterRule["operator"])}>
                 <option value="equals">=</option>
                 <option value="not_equals">≠</option>
                 <option value="gt">&gt;</option>
                 <option value="lt">&lt;</option>
                 <option value="contains">contains</option>
               </select>
-              <input className="app-field h-8 text-xs" placeholder="key" value={key} onChange={(e) => setKey(e.target.value)} />
-              <input className="app-field h-8 text-xs" placeholder="value" value={value} onChange={(e) => setValue(e.target.value)} />
+              <input className="app-field min-h-9 !py-1.5 !text-xs leading-snug" placeholder="key" value={key} onChange={(e) => setKey(e.target.value)} />
+              <input className="app-field min-h-9 !py-1.5 !text-xs leading-snug" placeholder="value" value={value} onChange={(e) => setValue(e.target.value)} />
             </div>
             <div className="mt-2 flex items-center gap-2">
               <button
@@ -151,7 +198,7 @@ export function Sidebar({
 
         <section className="space-y-1.5">
           <div className="flex items-center justify-between gap-2 px-1">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-ds-muted">Tools</p>
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-ds-muted">Map tools</p>
             <button
               type="button"
               title="Trace route"
@@ -166,12 +213,102 @@ export function Sidebar({
               <Route className="h-4.5 w-4.5" aria-hidden />
             </button>
           </div>
-          <div className="grid grid-cols-4 gap-1">
-            {toolBtn("select", "Select", MousePointer2)}
-            {toolBtn("draw", "Draw shape (opens designer)", PenTool)}
-            {toolBtn("add_asset", "Add asset", Plus)}
-            {toolBtn("connect", "Connect", GitBranch)}
+
+          <p className="px-1 text-[10px] leading-snug text-ds-muted">Choose intent first; drawing creates structured infrastructure data.</p>
+
+          <div className="grid grid-cols-5 gap-1">
+            {modeBtn("select", "Select", MousePointer2)}
+            {modeBtn("add_asset", "Add asset", Building2)}
+            {modeBtn("connect", "Connect", Spline)}
+            {modeBtn("add_zone", "Add zone", MapPin)}
+            {modeBtn("annotate", "Annotate", PenLine)}
           </div>
+
+          {primaryMode === "add_asset" ? (
+            <div className="rounded-md border border-ds-border/60 bg-ds-primary/20 px-2 py-2">
+              <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-ds-muted">Placement</p>
+              <div className="grid grid-cols-3 gap-1">
+                <button
+                  type="button"
+                  title="Building footprint"
+                  className={`inline-flex h-9 items-center justify-center rounded-md border text-xs ${assetShape === "rectangle" ? "border-ds-success bg-ds-success/15" : "border-transparent hover:bg-ds-primary/40"}`}
+                  onClick={() => onAssetShapeChange("rectangle")}
+                >
+                  <Square className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  title="Node / junction"
+                  className={`inline-flex h-9 items-center justify-center rounded-md border text-xs ${assetShape === "ellipse" ? "border-ds-success bg-ds-success/15" : "border-transparent hover:bg-ds-primary/40"}`}
+                  onClick={() => onAssetShapeChange("ellipse")}
+                >
+                  <CircleIcon className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  title="Custom area"
+                  className={`inline-flex h-9 items-center justify-center rounded-md border text-xs ${assetShape === "polygon" ? "border-ds-success bg-ds-success/15" : "border-transparent hover:bg-ds-primary/40"}`}
+                  onClick={() => onAssetShapeChange("polygon")}
+                >
+                  <Hexagon className="h-4 w-4" />
+                </button>
+              </div>
+              <p className="mt-1.5 text-[10px] text-ds-muted">Rectangle → building · Circle → node · Polygon → area (click vertices, click near start to close)</p>
+            </div>
+          ) : null}
+
+          {primaryMode === "connect" ? (
+            <div className="rounded-md border border-ds-border/60 bg-ds-primary/20 px-2 py-2">
+              <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-ds-muted">Connection</p>
+              <div className="grid grid-cols-2 gap-1">
+                <button
+                  type="button"
+                  className={`rounded-md px-2 py-1.5 text-xs font-semibold ${connectFlow === "pick" ? "bg-ds-success/20 text-ds-foreground" : "text-ds-muted hover:bg-ds-primary/40"}`}
+                  onClick={() => onConnectFlowChange("pick")}
+                >
+                  Pick 2 assets
+                </button>
+                <button
+                  type="button"
+                  className={`rounded-md px-2 py-1.5 text-xs font-semibold ${connectFlow === "draw" ? "bg-ds-success/20 text-ds-foreground" : "text-ds-muted hover:bg-ds-primary/40"}`}
+                  onClick={() => onConnectFlowChange("draw")}
+                >
+                  Draw segment
+                </button>
+              </div>
+              <p className="mt-1.5 text-[10px] text-ds-muted">Pick: click start asset, then end. Draw: drag a line — endpoints snap to nearest assets.</p>
+            </div>
+          ) : null}
+
+          {primaryMode === "add_zone" ? (
+            <div className="rounded-md border border-ds-border/60 bg-ds-primary/20 px-2 py-2">
+              <p className="text-[10px] text-ds-muted">Click vertices for the zone polygon; click near the first point to close. Zones are for grouping and visuals (not graph edges).</p>
+            </div>
+          ) : null}
+
+          {primaryMode === "annotate" ? (
+            <div className="rounded-md border border-ds-border/60 bg-ds-primary/20 px-2 py-2">
+              <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-ds-muted">Overlay</p>
+              <div className="grid grid-cols-2 gap-1">
+                <button
+                  type="button"
+                  className={`inline-flex h-9 items-center justify-center gap-1 rounded-md border text-xs ${annotateKind === "symbol" ? "border-ds-success bg-ds-success/15" : "border-transparent hover:bg-ds-primary/40"}`}
+                  onClick={() => onAnnotateKindChange("symbol")}
+                >
+                  <StickyNote className="h-4 w-4" /> Symbol
+                </button>
+                <button
+                  type="button"
+                  className={`inline-flex h-9 items-center justify-center gap-1 rounded-md border text-xs ${annotateKind === "sketch" ? "border-ds-success bg-ds-success/15" : "border-transparent hover:bg-ds-primary/40"}`}
+                  onClick={() => onAnnotateKindChange("sketch")}
+                >
+                  <Pencil className="h-4 w-4" /> Sketch
+                </button>
+              </div>
+              <p className="mt-1.5 text-[10px] text-ds-muted">Annotations stay on the blueprint layer only — they do not create graph nodes.</p>
+            </div>
+          ) : null}
+
           <div className="mt-1 grid grid-cols-4 gap-1 px-0.5">
             <span className="inline-flex items-center justify-center rounded-md bg-transparent text-[10px] text-ds-muted" title="Fiber">
               <Cable className="h-4 w-4" aria-hidden />
@@ -191,4 +328,3 @@ export function Sidebar({
     </aside>
   );
 }
-

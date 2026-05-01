@@ -212,6 +212,8 @@ export type BlueprintReadOnlyCanvasProps = {
   onPointerWorldMove?: (p: { x: number; y: number } | null) => void;
   /** Optional callback fired when stage scale changes (for overlays). */
   onStageScaleChange?: (scale: number) => void;
+  /** Stage size, pan, and zoom — for overlays that need world-space hit regions (semantic drawing tools). */
+  onStageViewport?: (v: { width: number; height: number; pos: { x: number; y: number }; scale: number }) => void;
   /**
    * When this value changes (e.g. selected blueprint id), the view is auto-fitted again
    * and any manual zoom from the wheel is cleared.
@@ -233,6 +235,7 @@ export function BlueprintReadOnlyCanvas({
   overlay,
   onPointerWorldMove,
   onStageScaleChange,
+  onStageViewport,
   fitResetKey,
 }: BlueprintReadOnlyCanvasProps) {
   const hostRef = useRef<HTMLDivElement | null>(null);
@@ -302,6 +305,10 @@ export function BlueprintReadOnlyCanvas({
   useEffect(() => {
     onStageScaleChange?.(scale);
   }, [onStageScaleChange, scale]);
+
+  useEffect(() => {
+    onStageViewport?.({ width: size.w, height: size.h, pos, scale });
+  }, [onStageViewport, pos, scale, size.h, size.w]);
 
   const gridLines = useMemo(() => {
     const { w, h } = size;
