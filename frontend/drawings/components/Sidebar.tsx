@@ -1,7 +1,8 @@
 "use client";
 
 import { Cable, Droplets, Zap, Radar, MousePointer2, PenTool, Plus, GitBranch, Route } from "lucide-react";
-import type { SystemType } from "../utils/graphHelpers";
+import { useState } from "react";
+import type { FilterRule, SystemType } from "../utils/graphHelpers";
 
 type ToolId = "select" | "draw" | "add_asset" | "connect";
 
@@ -12,6 +13,10 @@ export function Sidebar({
   onToolChange,
   onTraceRoute,
   traceActive,
+  filterRules,
+  onAddFilterRule,
+  onRemoveFilterRule,
+  onPresetAvailableFiber,
 }: {
   activeSystems: Record<SystemType, boolean>;
   onToggleSystem: (s: SystemType) => void;
@@ -19,7 +24,25 @@ export function Sidebar({
   onToolChange: (t: ToolId) => void;
   onTraceRoute: () => void;
   traceActive: boolean;
+  filterRules: FilterRule[];
+  onAddFilterRule: (r: FilterRule) => void;
+  onRemoveFilterRule: (idx: number) => void;
+  onPresetAvailableFiber: () => void;
 }) {
+  const [entity, setEntity] = useState<FilterRule["entity"]>("asset");
+  const [key, setKey] = useState("");
+  const [operator, setOperator] = useState<FilterRule["operator"]>("equals");
+  const [value, setValue] = useState("");
+
+  const parseValue = (raw: string): string | number | boolean => {
+    const t = raw.trim();
+    if (t === "true") return true;
+    if (t === "false") return false;
+    const n = Number(t);
+    if (t !== "" && Number.isFinite(n)) return n;
+    return t;
+  };
+
   const sysRow = (s: SystemType, label: string, dot: string) => (
     <label
       key={s}
@@ -70,9 +93,60 @@ export function Sidebar({
 
         <section className="space-y-1.5">
           <p className="px-1 text-[10px] font-semibold uppercase tracking-wider text-ds-muted">Filters</p>
-          <div className="rounded-md border border-ds-border/70 bg-ds-primary/30 px-2 py-1.5 text-xs text-ds-muted">
-            Placeholder
+          <div className="rounded-md border border-ds-border/70 bg-ds-primary/25 p-2">
+            <div className="grid grid-cols-2 gap-1.5">
+              <select className="app-field h-8 text-xs" value={entity} onChange={(e) => setEntity(e.target.value as any)}>
+                <option value="asset">Asset</option>
+                <option value="connection">Connection</option>
+              </select>
+              <select className="app-field h-8 text-xs" value={operator} onChange={(e) => setOperator(e.target.value as any)}>
+                <option value="equals">=</option>
+                <option value="not_equals">≠</option>
+                <option value="gt">&gt;</option>
+                <option value="lt">&lt;</option>
+                <option value="contains">contains</option>
+              </select>
+              <input className="app-field h-8 text-xs" placeholder="key" value={key} onChange={(e) => setKey(e.target.value)} />
+              <input className="app-field h-8 text-xs" placeholder="value" value={value} onChange={(e) => setValue(e.target.value)} />
+            </div>
+            <div className="mt-2 flex items-center gap-2">
+              <button
+                type="button"
+                className="ds-btn-secondary h-8 flex-1 text-xs"
+                disabled={!key.trim()}
+                onClick={() => {
+                  const k = key.trim();
+                  if (!k) return;
+                  onAddFilterRule({ entity, key: k, operator, value: parseValue(value) });
+                  setKey("");
+                  setValue("");
+                }}
+              >
+                Add Filter
+              </button>
+              <button type="button" className="ds-btn-secondary h-8 text-xs" onClick={onPresetAvailableFiber} title="Available Fiber">
+                Preset
+              </button>
+            </div>
           </div>
+          {filterRules.length > 0 ? (
+            <div className="mt-2 space-y-1">
+              {filterRules.map((r, i) => (
+                <div
+                  key={`${r.entity}-${r.key}-${i}`}
+                  className="flex items-center justify-between gap-2 rounded-md border border-ds-border/70 bg-ds-primary/15 px-2 py-1 text-[11px] text-ds-muted"
+                >
+                  <span className="min-w-0 truncate">
+                    <span className="font-semibold text-ds-foreground">{r.entity}</span> · {r.key} {r.operator}{" "}
+                    <span className="font-semibold text-ds-foreground">{String(r.value)}</span>
+                  </span>
+                  <button type="button" className="shrink-0 rounded px-1 text-xs hover:bg-ds-primary/40" onClick={() => onRemoveFilterRule(i)} aria-label="Remove filter">
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+          ) : null}
         </section>
 
         <section className="space-y-1.5">

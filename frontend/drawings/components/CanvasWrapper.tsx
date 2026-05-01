@@ -19,6 +19,8 @@ type Props = {
 
   selectedAssets: string[];
   selectedConnections: string[];
+  dimAssetIds?: Set<string>;
+  dimConnectionIds?: Set<string>;
   traceResult: TraceRouteResult | null;
 
   connectMode: boolean;
@@ -47,6 +49,8 @@ export function CanvasWrapper({
   activeSystems,
   selectedAssets,
   selectedConnections,
+  dimAssetIds,
+  dimConnectionIds,
   traceResult,
   connectMode,
   connectDraftFromId,
@@ -83,6 +87,8 @@ export function CanvasWrapper({
         activeSystems={activeSystems}
         selectedAssets={selectedAssets}
         selectedConnections={selectedConnections}
+        dimAssetIds={dimAssetIds}
+        dimConnectionIds={dimConnectionIds}
         hoverAssetId={hoverAssetId}
         hoverConnectionId={hoverConnectionId}
         traceResult={traceResult}

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Literal, Optional
+from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -82,9 +82,12 @@ class TraceRouteIn(BaseModel):
     start_asset_id: str
     end_asset_id: str
     system_type: Optional[SystemType] = None
+    filters: Optional[list[dict[str, Any]]] = None
 
 
 class TraceRouteOut(BaseModel):
     asset_ids: list[str]
     connection_ids: list[str]
+    filtered_out_count: int = 0
+    reason: Optional[str] = None
 

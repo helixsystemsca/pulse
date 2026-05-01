@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections import deque
-from typing import Annotated, Optional
+from typing import Annotated, Any, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import and_, or_, select
@@ -230,12 +230,80 @@ async def create_attribute(body: InfraAttributeCreateIn, db: Db, user: TenantUse
 async def trace_route(body: TraceRouteIn, db: Db, user: TenantUser) -> TraceRouteOut:
     cid = str(user.company_id)
 
+    def _coerce(v: Any) -> str | float | bool:
+        if isinstance(v, bool):
+            return v
+        if isinstance(v, (int, float)):
+            return float(v)
+        t = str(v or "").strip()
+        if t.lower() == "true":
+            return True
+        if t.lower() == "false":
+            return False
+        try:
+            n = float(t)
+            # preserve integer-y inputs; ok if float.
+            return n
+        except ValueError:
+            return t
+
+    def _rule_ok(actual: Any, operator: str, expected: Any) -> bool:
+        a = _coerce(actual)
+        b = expected
+        op = str(operator or "").strip()
+        if op == "equals":
+            return str(a) == str(b)
+        if op == "not_equals":
+            return str(a) != str(b)
+        if op == "contains":
+            return str(a).lower().find(str(b).lower()) >= 0
+        if op == "gt" or op == "lt":
+            try:
+                an = float(a)  # type: ignore[arg-type]
+                bn = float(b)  # type: ignore[arg-type]
+            except (TypeError, ValueError):
+                return False
+            return an > bn if op == "gt" else an < bn
+        return True
+
+    filters = body.filters or []
+    asset_rules = [r for r in filters if isinstance(r, dict) and r.get("entity") == "asset" and str(r.get("key") or "").strip()]
+    conn_rules = [r for r in filters if isinstance(r, dict) and r.get("entity") == "connection" and str(r.get("key") or "").strip()]
+
     # Ensure endpoints exist
     ids = {body.start_asset_id, body.end_asset_id}
     q = await db.execute(select(InfraAsset.id).where(InfraAsset.company_id == cid, InfraAsset.id.in_(ids)))
     found = set(q.scalars().all())
     if ids - found:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unknown start/end asset")
+
+    # Load all attributes once (tenant-scoped) so BFS filtering is in-memory.
+    aq = await db.execute(select(InfraAttribute).where(InfraAttribute.company_id == cid))
+    attrs = aq.scalars().all()
+    attr_idx: dict[str, dict[str, Any]] = {}
+    for row in attrs:
+        k = f"{row.entity_type}:{row.entity_id}"
+        if k not in attr_idx:
+            attr_idx[k] = {}
+        attr_idx[k][row.key] = row.value
+
+    def _matches_all(entity_type: str, entity_id: str, rules: list[dict[str, Any]]) -> bool:
+        if not rules:
+            return True
+        a = attr_idx.get(f"{entity_type}:{entity_id}", {})
+        for r in rules:
+            key = str(r.get("key") or "").strip()
+            op = str(r.get("operator") or "equals").strip()
+            expected = r.get("value")
+            if not _rule_ok(a.get(key), op, expected):
+                return False
+        return True
+
+    # If endpoint nodes fail asset rules, no constrained path exists.
+    if asset_rules and not _matches_all("asset", body.start_asset_id, asset_rules):
+        return TraceRouteOut(asset_ids=[body.start_asset_id], connection_ids=[], filtered_out_count=0, reason="No valid path under current filters")
+    if asset_rules and not _matches_all("asset", body.end_asset_id, asset_rules):
+        return TraceRouteOut(asset_ids=[body.start_asset_id], connection_ids=[], filtered_out_count=0, reason="No valid path under current filters")
 
     # Load active connections (optionally scoped to a system)
     cq = select(InfraConnection).where(InfraConnection.company_id == cid, InfraConnection.active.is_(True))
@@ -258,6 +326,7 @@ async def trace_route(body: TraceRouteIn, db: Db, user: TenantUser) -> TraceRout
     prev: dict[str, tuple[str, str]] = {}
     seen = {start}
     dq: deque[str] = deque([start])
+    filtered_out_count = 0
     while dq:
         cur = dq.popleft()
         if cur == goal:
@@ -265,12 +334,23 @@ async def trace_route(body: TraceRouteIn, db: Db, user: TenantUser) -> TraceRout
         for nxt, cid2 in adj.get(cur, []):
             if nxt in seen:
                 continue
+            if conn_rules and not _matches_all("connection", cid2, conn_rules):
+                filtered_out_count += 1
+                continue
+            if asset_rules and not _matches_all("asset", nxt, asset_rules):
+                filtered_out_count += 1
+                continue
             seen.add(nxt)
             prev[nxt] = (cur, cid2)
             dq.append(nxt)
 
     if goal not in seen:
-        return TraceRouteOut(asset_ids=[start], connection_ids=[])
+        return TraceRouteOut(
+            asset_ids=[start],
+            connection_ids=[],
+            filtered_out_count=filtered_out_count,
+            reason="No valid path under current filters" if filters else "No route found",
+        )
 
     # Reconstruct ordered path
     asset_path: list[str] = [goal]
@@ -283,5 +363,10 @@ async def trace_route(body: TraceRouteIn, db: Db, user: TenantUser) -> TraceRout
         cur = p
     asset_path.reverse()
     conn_ids = list(reversed(conn_path_rev))
-    return TraceRouteOut(asset_ids=asset_path, connection_ids=conn_ids)
+    return TraceRouteOut(
+        asset_ids=asset_path,
+        connection_ids=conn_ids,
+        filtered_out_count=filtered_out_count,
+        reason=None,
+    )
 

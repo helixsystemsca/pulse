@@ -8,7 +8,7 @@ import { LayoutGrid } from "lucide-react";
 import type { BlueprintElement, BlueprintLayer } from "@/components/zones-devices/blueprint-types";
 import { mapApiElement, parseApiBlueprintLayers, toApiPayload } from "@/lib/blueprint-layout";
 import { useInfrastructureGraph } from "./hooks/useInfrastructureGraph";
-import type { GraphFilters, SystemType, TraceRouteResult } from "./utils/graphHelpers";
+import type { FilterRule, GraphFilters, SystemType, TraceRouteResult } from "./utils/graphHelpers";
 import { getVisibleGraphElements, nearestAssetId } from "./utils/graphHelpers";
 import { Sidebar } from "./components/Sidebar";
 import { CanvasWrapper } from "./components/CanvasWrapper";
@@ -26,6 +26,14 @@ type BlueprintDetail = {
   elements: ApiBlueprintElement[];
   layers?: unknown;
   tasks?: Array<{ id: string; title: string; mode: string; content: string | string[]; linked_element_ids: string[] }>;
+};
+
+// id="f1k29x"
+type FilterRuleLocal = {
+  entity: "asset" | "connection";
+  key: string;
+  operator: "equals" | "not_equals" | "gt" | "lt" | "contains";
+  value: string | number | boolean;
 };
 
 function useDocumentDark(): boolean {
@@ -53,6 +61,8 @@ export function DrawingsPage() {
     electrical: true,
     telemetry: true,
   });
+  // filters
+  const [filterRules, setFilterRules] = useState<FilterRuleLocal[]>([]);
   const [selectedAssets, setSelectedAssets] = useState<string[]>([]);
   const [selectedConnections, setSelectedConnections] = useState<string[]>([]);
   const [selectedBlueprintElementId, setSelectedBlueprintElementId] = useState<string | null>(null);
@@ -231,7 +241,7 @@ export function DrawingsPage() {
       if (!traceEndId) {
         setTraceEndId(id);
         setSelectedAssets([id]);
-        const res = await graph.traceRoute({ start_asset_id: traceStartId, end_asset_id: id });
+        const res = await graph.traceRoute({ start_asset_id: traceStartId, end_asset_id: id, filters: filterRules as unknown as any[] });
         setTraceResult(res);
         return;
       }
@@ -337,6 +347,15 @@ export function DrawingsPage() {
           }}
           onTraceRoute={() => void onTraceRoute()}
           traceActive={traceMode}
+          filterRules={filterRules as unknown as FilterRule[]}
+          onAddFilterRule={(r) => setFilterRules((prev) => [...prev, r as unknown as FilterRuleLocal])}
+          onRemoveFilterRule={(idx) => setFilterRules((prev) => prev.filter((_, i) => i !== idx))}
+          onPresetAvailableFiber={() =>
+            setFilterRules((prev) => [
+              ...prev,
+              { entity: "asset", key: "strands_available", operator: "gt", value: 0 },
+            ])
+          }
         />
 
         <main className="flex min-h-0 flex-1 flex-col p-0">
@@ -380,40 +399,53 @@ export function DrawingsPage() {
                     Hops: <span className="font-semibold text-ds-foreground">{Math.max(0, traceResult.asset_ids.length - 1)}</span>
                   </div>
                 ) : null}
+                {traceResult?.reason ? (
+                  <div className="text-xs font-semibold text-ds-warning">
+                    {traceResult.reason}
+                  </div>
+                ) : null}
               </div>
 
               {(() => {
-                const vis = getVisibleGraphElements({ systems: activeSystems } satisfies GraphFilters, graph.assets, graph.connections);
+                const vis = getVisibleGraphElements(
+                  { systems: activeSystems } satisfies GraphFilters,
+                  graph.assets,
+                  graph.connections,
+                  graph.attributesByEntityId,
+                  filterRules as unknown as FilterRule[],
+                );
                 return (
                   <CanvasWrapper
-                elements={blueprintElements}
-                layers={blueprintLayers}
-                theme={theme}
-                fitResetKey={blueprintDetail?.id}
+                    elements={blueprintElements}
+                    layers={blueprintLayers}
+                    theme={theme}
+                    fitResetKey={blueprintDetail?.id}
                     assets={vis.visibleAssets}
                     connections={vis.visibleConnections}
-                activeSystems={activeSystems}
-                selectedAssets={selectedAssets}
-                selectedConnections={selectedConnections}
-                traceResult={traceResult}
-                connectMode={connectMode}
-                connectDraftFromId={connectDraftFromId}
-                onPickBlueprintElementId={(id) => {
-                  setSelectedBlueprintElementId(id);
-                  setSelectedAssets([]);
-                  setSelectedConnections([]);
-                }}
-                onSelectAssetId={(id, shiftKey) => void handlePickAsset(id, shiftKey)}
-                onSelectConnectionId={(id, shiftKey) => handlePickConnection(id, shiftKey)}
-                onAssetDragEnd={(id, x, y) => {
-                  graph.optimisticMoveAsset(id, x, y);
-                  void graph.updateAsset(id, { x, y });
-                }}
-                onCanvasClearSelection={() => {
-                  if (connectMode && connectDraftFromId) return;
-                  clearSelection();
-                }}
-                dimForTrace={Boolean(traceResult)}
+                    activeSystems={activeSystems}
+                    selectedAssets={selectedAssets}
+                    selectedConnections={selectedConnections}
+                    traceResult={traceResult}
+                    connectMode={connectMode}
+                    connectDraftFromId={connectDraftFromId}
+                    dimAssetIds={vis.dimAssetIds}
+                    dimConnectionIds={vis.dimConnectionIds}
+                    onPickBlueprintElementId={(id) => {
+                      setSelectedBlueprintElementId(id);
+                      setSelectedAssets([]);
+                      setSelectedConnections([]);
+                    }}
+                    onSelectAssetId={(id, shiftKey) => void handlePickAsset(id, shiftKey)}
+                    onSelectConnectionId={(id, shiftKey) => handlePickConnection(id, shiftKey)}
+                    onAssetDragEnd={(id, x, y) => {
+                      graph.optimisticMoveAsset(id, x, y);
+                      void graph.updateAsset(id, { x, y });
+                    }}
+                    onCanvasClearSelection={() => {
+                      if (connectMode && connectDraftFromId) return;
+                      clearSelection();
+                    }}
+                    dimForTrace={Boolean(traceResult)}
                   />
                 );
               })()}

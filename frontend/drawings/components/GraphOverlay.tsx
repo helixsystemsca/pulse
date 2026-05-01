@@ -12,6 +12,8 @@ type Props = {
   activeSystems: Record<SystemType, boolean>;
   selectedAssets: string[];
   selectedConnections: string[];
+  dimAssetIds?: Set<string>;
+  dimConnectionIds?: Set<string>;
   hoverAssetId: string | null;
   hoverConnectionId: string | null;
   traceResult: TraceRouteResult | null;
@@ -44,6 +46,8 @@ export function GraphOverlay({
   activeSystems,
   selectedAssets,
   selectedConnections,
+  dimAssetIds,
+  dimConnectionIds,
   hoverAssetId,
   hoverConnectionId,
   traceResult,
@@ -202,8 +206,8 @@ export function GraphOverlay({
           const isSel = selectedConnSet.has(c.id);
           const isHover = c.id === hoverConnectionId;
           const inTrace = isInTrace(traceResult, "connection", c.id);
-          const dim = shouldDim("connection", c.id, c.system_type);
-          const opacity = dim ? 0.1 : inTrace ? 1 : on ? 0.55 : 0.1;
+          const dim = shouldDim("connection", c.id, c.system_type) || Boolean(dimConnectionIds?.has(c.id));
+          const opacity = dim ? 0.18 : inTrace ? 1 : on ? 0.55 : 0.18;
           const sw = inTrace ? 6 : isSel ? 5 : isHover ? 4 : 2.5;
           return (
             <Group key={c.id}>
@@ -246,8 +250,8 @@ export function GraphOverlay({
         const isSel = selectedAssetSet.has(a.id);
         const isHover = a.id === hoverAssetId;
         const inTrace = isInTrace(traceResult, "asset", a.id);
-        const dim = shouldDim("asset", a.id, a.system_type);
-        const opacity = dim ? 0.15 : inTrace ? 1 : sysOn(a.system_type) ? 0.92 : 0.15;
+        const dim = shouldDim("asset", a.id, a.system_type) || Boolean(dimAssetIds?.has(a.id));
+        const opacity = dim ? 0.2 : inTrace ? 1 : sysOn(a.system_type) ? 0.92 : 0.2;
         const strokeWidth = inTrace ? 4.2 : isSel ? 3.6 : isHover ? 3 : 2;
         const glow = inTrace ? 10 : isSel ? 9 : isHover ? 7 : 4;
 

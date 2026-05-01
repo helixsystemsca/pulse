@@ -1,8 +1,8 @@
-"use client";
+import dynamic from "next/dynamic";
 
-import { DrawingsPage } from "@/drawings/DrawingsPage";
+const DrawingsPage = dynamic(() => import("@/drawings/DrawingsPage"), { ssr: false });
 
-export default function DrawingsRoutePage() {
+export default function Page() {
   return <DrawingsPage />;
 }
 
