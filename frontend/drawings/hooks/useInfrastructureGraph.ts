@@ -14,7 +14,24 @@ type InfraAttribute = {
   created_at: string;
 };
 
-export function useInfrastructureGraph() {
+function assetsUrl(projectId: string, systemType?: string): string {
+  const sp = new URLSearchParams({ project_id: projectId });
+  if (systemType) sp.set("system_type", systemType);
+  return `/api/assets?${sp.toString()}`;
+}
+
+function connectionsUrl(projectId: string, systemType?: string): string {
+  const sp = new URLSearchParams({ project_id: projectId });
+  if (systemType) sp.set("system_type", systemType);
+  return `/api/connections?${sp.toString()}`;
+}
+
+function attributesUrl(projectId: string): string {
+  const sp = new URLSearchParams({ project_id: projectId });
+  return `/api/attributes?${sp.toString()}`;
+}
+
+export function useInfrastructureGraph(projectId: string | null) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [assets, setAssets] = useState<InfraAsset[]>([]);
@@ -45,14 +62,21 @@ export function useInfrastructureGraph() {
   }, [attributes]);
 
   const refresh = useCallback(async () => {
-    if (!isApiMode()) return;
+    if (!isApiMode() || !projectId) {
+      setAssets([]);
+      setConnections([]);
+      setAttributes([]);
+      setError(null);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
       const [a, c, at] = await Promise.all([
-        apiFetch<InfraAsset[]>("/api/assets"),
-        apiFetch<InfraConnection[]>("/api/connections"),
-        apiFetch<InfraAttribute[]>("/api/attributes"),
+        apiFetch<InfraAsset[]>(assetsUrl(projectId)),
+        apiFetch<InfraConnection[]>(connectionsUrl(projectId)),
+        apiFetch<InfraAttribute[]>(attributesUrl(projectId)),
       ]);
       setAssets(a);
       setConnections(c);
@@ -65,19 +89,23 @@ export function useInfrastructureGraph() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [projectId]);
 
   useEffect(() => {
     void refresh();
   }, [refresh]);
 
   const createAsset = useCallback(
-    async (body: Omit<InfraAsset, "id">) => {
-      const created = await apiFetch<InfraAsset>("/api/assets", { method: "POST", body: JSON.stringify(body) });
+    async (body: Omit<InfraAsset, "id" | "project_id">) => {
+      if (!projectId) throw new Error("Select a project before creating assets");
+      const created = await apiFetch<InfraAsset>("/api/assets", {
+        method: "POST",
+        body: JSON.stringify({ ...body, project_id: projectId }),
+      });
       setAssets((prev) => [created, ...prev]);
       return created;
     },
-    [],
+    [projectId],
   );
 
   const updateAsset = useCallback(async (id: string, patch: Partial<Omit<InfraAsset, "id">>) => {
@@ -93,42 +121,64 @@ export function useInfrastructureGraph() {
     setAssets((prev) => prev.map((a) => (a.id === id ? { ...a, x, y } : a)));
   }, []);
 
-  const createConnection = useCallback(async (body: Omit<InfraConnection, "id" | "active">) => {
-    const created = await apiFetch<InfraConnection>("/api/connections", { method: "POST", body: JSON.stringify(body) });
-    setConnections((prev) => [created, ...prev]);
-    return created;
-  }, []);
+  const createConnection = useCallback(
+    async (body: Omit<InfraConnection, "id" | "active" | "project_id">) => {
+      if (!projectId) throw new Error("Select a project before creating connections");
+      const created = await apiFetch<InfraConnection>("/api/connections", {
+        method: "POST",
+        body: JSON.stringify({ ...body, project_id: projectId }),
+      });
+      setConnections((prev) => [created, ...prev]);
+      return created;
+    },
+    [projectId],
+  );
 
-  const listAttributes = useCallback(async (opts: { entity_type: "asset" | "connection"; entity_id: string }) => {
-    const sp = new URLSearchParams();
-    sp.set("entity_type", opts.entity_type);
-    sp.set("entity_id", opts.entity_id);
-    return await apiFetch<InfraAttribute[]>(`/api/attributes?${sp.toString()}`);
-  }, []);
+  const listAttributes = useCallback(
+    async (opts: { entity_type: "asset" | "connection"; entity_id: string }) => {
+      const sp = new URLSearchParams();
+      sp.set("entity_type", opts.entity_type);
+      sp.set("entity_id", opts.entity_id);
+      if (projectId) sp.set("project_id", projectId);
+      return await apiFetch<InfraAttribute[]>(`/api/attributes?${sp.toString()}`);
+    },
+    [projectId],
+  );
 
   /** Upserts by (entity_type, entity_id, key); merges into local attribute list (no duplicate rows). */
-  const upsertAttribute = useCallback(async (body: { entity_type: "asset" | "connection"; entity_id: string; key: string; value: string }) => {
-    const row = await apiFetch<InfraAttribute>("/api/attributes/upsert", {
-      method: "PATCH",
-      body: JSON.stringify(body),
-    });
-    setAttributes((prev) => {
-      const rest = prev.filter(
-        (a) =>
-          !(
-            a.entity_type === body.entity_type &&
-            a.entity_id === body.entity_id &&
-            a.key === body.key
-          ),
-      );
-      return [row, ...rest];
-    });
-    return row;
-  }, []);
+  const upsertAttribute = useCallback(
+    async (body: { entity_type: "asset" | "connection"; entity_id: string; key: string; value: string }) => {
+      const row = await apiFetch<InfraAttribute>("/api/attributes/upsert", {
+        method: "PATCH",
+        body: JSON.stringify(body),
+      });
+      setAttributes((prev) => {
+        const rest = prev.filter(
+          (a) =>
+            !(a.entity_type === body.entity_type && a.entity_id === body.entity_id && a.key === body.key),
+        );
+        return [row, ...rest];
+      });
+      return row;
+    },
+    [],
+  );
 
-  const traceRoute = useCallback(async (body: { start_asset_id: string; end_asset_id: string; system_type?: SystemType; filters?: unknown[] }) => {
-    return await apiFetch<TraceRouteResult>("/api/trace-route", { method: "POST", body: JSON.stringify(body) });
-  }, []);
+  const traceRoute = useCallback(
+    async (body: {
+      start_asset_id: string;
+      end_asset_id: string;
+      system_type?: SystemType;
+      filters?: unknown[];
+    }) => {
+      if (!projectId) throw new Error("Select a project before tracing routes");
+      return await apiFetch<TraceRouteResult>("/api/trace-route", {
+        method: "POST",
+        body: JSON.stringify({ ...body, project_id: projectId }),
+      });
+    },
+    [projectId],
+  );
 
   return {
     loading,
@@ -150,4 +200,3 @@ export function useInfrastructureGraph() {
     traceRoute,
   };
 }
-

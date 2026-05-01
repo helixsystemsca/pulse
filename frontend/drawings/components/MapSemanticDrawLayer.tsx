@@ -4,6 +4,7 @@ import type Konva from "konva";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Ellipse, Group, Line, Rect } from "react-konva";
 import type { InfraAsset } from "../utils/graphHelpers";
+import { BUILDER_ALL_PRIMARY_MODES } from "../mapBuilderModes";
 import type { AnnotateKind, AssetDrawShape, ConnectFlow, PrimaryMode } from "../mapBuilderTypes";
 
 export type StageViewport = {
@@ -80,11 +81,15 @@ type Props = {
   onSemanticAnnotateSketch: (path_points: number[]) => void | Promise<void>;
   /** Freehand stroke (open path). */
   onSemanticAnnotatePen: (path_points: number[]) => void | Promise<void>;
+  /** Max distance (world px) to attach drawn connection endpoints to assets — from active mode config. */
+  drawConnectionSnapRadiusWorld?: number;
+  allowedPrimaryModes?: ReadonlySet<PrimaryMode>;
+  allowedAnnotateKinds?: ReadonlySet<AnnotateKind>;
 };
 
 const MIN_DRAG_WORLD = 6;
 const CLOSE_POLY_WORLD = 14;
-const SNAP_WORLD = 52;
+const DEFAULT_SNAP_WORLD = 52;
 const SYMBOL_W = 40;
 const MIN_PEN_STEP_WORLD = 3;
 const MIN_PEN_POINTS = 4;
@@ -104,6 +109,9 @@ export function MapSemanticDrawLayer({
   onSemanticAnnotateText,
   onSemanticAnnotateSketch,
   onSemanticAnnotatePen,
+  drawConnectionSnapRadiusWorld = DEFAULT_SNAP_WORLD,
+  allowedPrimaryModes = BUILDER_ALL_PRIMARY_MODES,
+  allowedAnnotateKinds,
 }: Props) {
   const dragRectRef = useRef<{ x0: number; y0: number } | null>(null);
   const [dragRect, setDragRect] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
@@ -115,12 +123,16 @@ export function MapSemanticDrawLayer({
 
   const listening = Boolean(viewport) && !disabled;
 
+  const annotateAllowed = allowedAnnotateKinds?.has(annotateKind) ?? true;
+
   const captureActive = useMemo(() => {
     if (!listening || !viewport) return false;
+    if (!allowedPrimaryModes.has(primaryMode)) return false;
     if (primaryMode === "select") return false;
     if (primaryMode === "connect" && connectFlow === "pick") return false;
+    if (primaryMode === "annotate" && !annotateAllowed) return false;
     return true;
-  }, [connectFlow, listening, primaryMode, viewport]);
+  }, [allowedPrimaryModes, annotateAllowed, connectFlow, listening, primaryMode, viewport]);
 
   const resetDraft = useCallback(() => {
     dragRectRef.current = null;
@@ -151,6 +163,9 @@ export function MapSemanticDrawLayer({
       if (!viewport || !worldBounds || disabled) return;
       const w = worldFromPointer(e.target.getStage(), viewport);
       if (!w) return;
+
+      if (!allowedPrimaryModes.has(primaryMode)) return;
+      if (primaryMode === "annotate" && allowedAnnotateKinds && !allowedAnnotateKinds.has(annotateKind)) return;
 
       if (primaryMode === "annotate" && annotateKind === "symbol") {
         e.cancelBubble = true;
@@ -248,6 +263,8 @@ export function MapSemanticDrawLayer({
       }
     },
     [
+      allowedAnnotateKinds,
+      allowedPrimaryModes,
       annotateKind,
       assetShape,
       connectFlow,
@@ -310,8 +327,9 @@ export function MapSemanticDrawLayer({
       if (primaryMode === "connect" && connectFlow === "draw" && connectDragRef.current) {
         e.cancelBubble = true;
         const o = connectDragRef.current;
-        const fromId = nearestAssetWithin(assets, o.x0, o.y0, SNAP_WORLD);
-        const toId = nearestAssetWithin(assets, w.x, w.y, SNAP_WORLD);
+        const snapR = drawConnectionSnapRadiusWorld;
+        const fromId = nearestAssetWithin(assets, o.x0, o.y0, snapR);
+        const toId = nearestAssetWithin(assets, w.x, w.y, snapR);
         connectDragRef.current = null;
         setConnectDrag(null);
         if (fromId && toId && fromId !== toId) {
@@ -386,6 +404,7 @@ export function MapSemanticDrawLayer({
       assets,
       primaryMode,
       viewport,
+      drawConnectionSnapRadiusWorld,
     ],
   );
 

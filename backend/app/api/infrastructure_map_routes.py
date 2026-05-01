@@ -5,13 +5,14 @@ from __future__ import annotations
 from collections import deque
 from typing import Annotated, Any, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy import and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_company_user, get_db
 from app.models.domain import User
 from app.models.infrastructure_map_models import InfraAsset, InfraAttribute, InfraConnection
+from app.models.pulse_models import PulseProject
 from app.schemas.infrastructure_map import (
     InfraAssetCreateIn,
     InfraAssetOut,
@@ -29,6 +30,14 @@ router = APIRouter(tags=["infrastructure-map"])
 
 Db = Annotated[AsyncSession, Depends(get_db)]
 TenantUser = Annotated[User, Depends(get_current_company_user)]
+
+
+async def _require_pulse_project(db: AsyncSession, company_id: str, project_id: str) -> None:
+    ok = (
+        await db.execute(select(PulseProject.id).where(PulseProject.company_id == company_id, PulseProject.id == project_id))
+    ).scalar_one_or_none()
+    if not ok:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
 
 
 async def _assert_infra_entity_owned(cid: str, body: InfraAttributeCreateIn, db: AsyncSession) -> None:
@@ -100,9 +109,15 @@ async def _upsert_infra_attribute(
 
 
 @router.get("/assets", response_model=list[InfraAssetOut])
-async def list_assets(db: Db, user: TenantUser, system_type: Optional[str] = None) -> list[InfraAssetOut]:
+async def list_assets(
+    db: Db,
+    user: TenantUser,
+    project_id: str = Query(..., min_length=1, description="pulse_projects.id — drawings canvas scope"),
+    system_type: Optional[str] = None,
+) -> list[InfraAssetOut]:
     cid = str(user.company_id)
-    q = select(InfraAsset).where(InfraAsset.company_id == cid)
+    await _require_pulse_project(db, cid, project_id)
+    q = select(InfraAsset).where(InfraAsset.company_id == cid, InfraAsset.project_id == project_id)
     if system_type:
         q = q.where(InfraAsset.system_type == system_type)
     rows = (await db.execute(q.order_by(InfraAsset.created_at.desc()))).scalars().all()
@@ -115,6 +130,7 @@ async def list_assets(db: Db, user: TenantUser, system_type: Optional[str] = Non
             x=r.x,
             y=r.y,
             notes=r.notes,
+            project_id=getattr(r, "project_id", None),
             created_at=r.created_at,
             updated_at=r.updated_at,
         )
@@ -125,8 +141,10 @@ async def list_assets(db: Db, user: TenantUser, system_type: Optional[str] = Non
 @router.post("/assets", response_model=InfraAssetOut, status_code=status.HTTP_201_CREATED)
 async def create_asset(body: InfraAssetCreateIn, db: Db, user: TenantUser) -> InfraAssetOut:
     cid = str(user.company_id)
+    await _require_pulse_project(db, cid, body.project_id)
     row = InfraAsset(
         company_id=cid,
+        project_id=body.project_id,
         name=body.name.strip(),
         asset_type=body.type.strip(),
         system_type=body.system_type,
@@ -145,6 +163,7 @@ async def create_asset(body: InfraAssetCreateIn, db: Db, user: TenantUser) -> In
         x=row.x,
         y=row.y,
         notes=row.notes,
+        project_id=row.project_id,
         created_at=row.created_at,
         updated_at=row.updated_at,
     )
@@ -178,15 +197,22 @@ async def patch_asset(asset_id: str, body: InfraAssetPatchIn, db: Db, user: Tena
         x=row.x,
         y=row.y,
         notes=row.notes,
+        project_id=getattr(row, "project_id", None),
         created_at=row.created_at,
         updated_at=row.updated_at,
     )
 
 
 @router.get("/connections", response_model=list[InfraConnectionOut])
-async def list_connections(db: Db, user: TenantUser, system_type: Optional[str] = None) -> list[InfraConnectionOut]:
+async def list_connections(
+    db: Db,
+    user: TenantUser,
+    project_id: str = Query(..., min_length=1, description="pulse_projects.id — drawings canvas scope"),
+    system_type: Optional[str] = None,
+) -> list[InfraConnectionOut]:
     cid = str(user.company_id)
-    q = select(InfraConnection).where(InfraConnection.company_id == cid)
+    await _require_pulse_project(db, cid, project_id)
+    q = select(InfraConnection).where(InfraConnection.company_id == cid, InfraConnection.project_id == project_id)
     if system_type:
         q = q.where(InfraConnection.system_type == system_type)
     rows = (await db.execute(q.order_by(InfraConnection.created_at.desc()))).scalars().all()
@@ -197,6 +223,7 @@ async def list_connections(db: Db, user: TenantUser, system_type: Optional[str] 
             to_asset_id=r.to_asset_id,
             system_type=r.system_type,  # type: ignore[arg-type]
             connection_type=r.connection_type,
+            project_id=getattr(r, "project_id", None),
             active=bool(r.active),
             created_at=r.created_at,
         )
@@ -207,14 +234,21 @@ async def list_connections(db: Db, user: TenantUser, system_type: Optional[str] 
 @router.post("/connections", response_model=InfraConnectionOut, status_code=status.HTTP_201_CREATED)
 async def create_connection(body: InfraConnectionCreateIn, db: Db, user: TenantUser) -> InfraConnectionOut:
     cid = str(user.company_id)
-    # Validate endpoints exist in-company
+    await _require_pulse_project(db, cid, body.project_id)
     ids = {body.from_asset_id, body.to_asset_id}
-    q = await db.execute(select(InfraAsset.id).where(InfraAsset.company_id == cid, InfraAsset.id.in_(ids)))
-    found = set(q.scalars().all())
+    rows = (await db.execute(select(InfraAsset).where(InfraAsset.company_id == cid, InfraAsset.id.in_(ids)))).scalars().all()
+    found = {r.id for r in rows}
     if ids - found:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unknown asset endpoint(s)")
+    for ar in rows:
+        if ar.project_id != body.project_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Endpoints must belong to the selected project",
+            )
     row = InfraConnection(
         company_id=cid,
+        project_id=body.project_id,
         from_asset_id=body.from_asset_id,
         to_asset_id=body.to_asset_id,
         system_type=body.system_type,
@@ -230,6 +264,7 @@ async def create_connection(body: InfraConnectionCreateIn, db: Db, user: TenantU
         to_asset_id=row.to_asset_id,
         system_type=row.system_type,  # type: ignore[arg-type]
         connection_type=row.connection_type,
+        project_id=row.project_id,
         active=bool(row.active),
         created_at=row.created_at,
     )
@@ -239,12 +274,23 @@ async def create_connection(body: InfraConnectionCreateIn, db: Db, user: TenantU
 async def list_attributes(
     db: Db,
     user: TenantUser,
+    project_id: Optional[str] = Query(None, min_length=1, description="When set, only attributes for entities in this project"),
     entity_type: Optional[str] = None,
     entity_id: Optional[str] = None,
     key: Optional[str] = None,
 ) -> list[InfraAttributeOut]:
     cid = str(user.company_id)
     q = select(InfraAttribute).where(InfraAttribute.company_id == cid)
+    if project_id:
+        await _require_pulse_project(db, cid, project_id)
+        asset_scope = select(InfraAsset.id).where(InfraAsset.company_id == cid, InfraAsset.project_id == project_id)
+        conn_scope = select(InfraConnection.id).where(InfraConnection.company_id == cid, InfraConnection.project_id == project_id)
+        q = q.where(
+            or_(
+                and_(InfraAttribute.entity_type == "asset", InfraAttribute.entity_id.in_(asset_scope)),
+                and_(InfraAttribute.entity_type == "connection", InfraAttribute.entity_id.in_(conn_scope)),
+            )
+        )
     if entity_type:
         q = q.where(InfraAttribute.entity_type == entity_type)
     if entity_id:
@@ -337,15 +383,27 @@ async def trace_route(body: TraceRouteIn, db: Db, user: TenantUser) -> TraceRout
     asset_rules = [r for r in filters if isinstance(r, dict) and r.get("entity") == "asset" and str(r.get("key") or "").strip()]
     conn_rules = [r for r in filters if isinstance(r, dict) and r.get("entity") == "connection" and str(r.get("key") or "").strip()]
 
-    # Ensure endpoints exist
+    await _require_pulse_project(db, cid, body.project_id)
     ids = {body.start_asset_id, body.end_asset_id}
-    q = await db.execute(select(InfraAsset.id).where(InfraAsset.company_id == cid, InfraAsset.id.in_(ids)))
-    found = set(q.scalars().all())
+    ep_rows = (await db.execute(select(InfraAsset).where(InfraAsset.company_id == cid, InfraAsset.id.in_(ids)))).scalars().all()
+    found = {r.id for r in ep_rows}
     if ids - found:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unknown start/end asset")
+    for ar in ep_rows:
+        if ar.project_id != body.project_id:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Assets must belong to the selected project")
 
-    # Load all attributes once (tenant-scoped) so BFS filtering is in-memory.
-    aq = await db.execute(select(InfraAttribute).where(InfraAttribute.company_id == cid))
+    asset_scope = select(InfraAsset.id).where(InfraAsset.company_id == cid, InfraAsset.project_id == body.project_id)
+    conn_scope = select(InfraConnection.id).where(InfraConnection.company_id == cid, InfraConnection.project_id == body.project_id)
+    aq = await db.execute(
+        select(InfraAttribute).where(
+            InfraAttribute.company_id == cid,
+            or_(
+                and_(InfraAttribute.entity_type == "asset", InfraAttribute.entity_id.in_(asset_scope)),
+                and_(InfraAttribute.entity_type == "connection", InfraAttribute.entity_id.in_(conn_scope)),
+            ),
+        )
+    )
     attrs = aq.scalars().all()
     attr_idx: dict[str, dict[str, Any]] = {}
     for row in attrs:
@@ -372,8 +430,12 @@ async def trace_route(body: TraceRouteIn, db: Db, user: TenantUser) -> TraceRout
     if asset_rules and not _matches_all("asset", body.end_asset_id, asset_rules):
         return TraceRouteOut(asset_ids=[body.start_asset_id], connection_ids=[], filtered_out_count=0, reason="No valid path under current filters")
 
-    # Load active connections (optionally scoped to a system)
-    cq = select(InfraConnection).where(InfraConnection.company_id == cid, InfraConnection.active.is_(True))
+    # Load active connections for this project (optionally scoped to a system)
+    cq = select(InfraConnection).where(
+        InfraConnection.company_id == cid,
+        InfraConnection.project_id == body.project_id,
+        InfraConnection.active.is_(True),
+    )
     if body.system_type:
         cq = cq.where(InfraConnection.system_type == body.system_type)
     conns = (await db.execute(cq)).scalars().all()

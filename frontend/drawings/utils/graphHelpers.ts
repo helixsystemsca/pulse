@@ -8,6 +8,8 @@ export type InfraAsset = {
   x: number;
   y: number;
   notes?: string | null;
+  /** pulse_projects.id when scoped on the server */
+  project_id?: string | null;
 };
 
 export type InfraConnection = {
@@ -17,6 +19,7 @@ export type InfraConnection = {
   system_type: SystemType;
   connection_type: string;
   active: boolean;
+  project_id?: string | null;
 };
 
 export type TraceRouteResult = {

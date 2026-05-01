@@ -23,6 +23,9 @@ export type MapSemanticHandlers = {
   onSemanticAnnotateText: Parameters<typeof MapSemanticDrawLayer>[0]["onSemanticAnnotateText"];
   onSemanticAnnotateSketch: Parameters<typeof MapSemanticDrawLayer>[0]["onSemanticAnnotateSketch"];
   onSemanticAnnotatePen: Parameters<typeof MapSemanticDrawLayer>[0]["onSemanticAnnotatePen"];
+  drawConnectionSnapRadiusWorld?: number;
+  allowedPrimaryModes?: ReadonlySet<PrimaryMode>;
+  allowedAnnotateKinds?: ReadonlySet<AnnotateKind>;
 };
 
 type Props = {
@@ -60,6 +63,8 @@ type Props = {
   mapSemantic?: MapSemanticHandlers | null;
   /** Lift Konva stage viewport (world-space rubber-band drawing). */
   onStageViewport?: (v: StageViewport) => void;
+  directedConnections?: boolean;
+  snapConnectPreviewToAssets?: boolean;
 };
 
 export function CanvasWrapper({
@@ -89,6 +94,8 @@ export function CanvasWrapper({
   graphDraggableAssets = true,
   mapSemantic = null,
   onStageViewport,
+  directedConnections = false,
+  snapConnectPreviewToAssets = true,
 }: Props) {
   const [hoverAssetId, setHoverAssetId] = useState<string | null>(null);
   const [hoverConnectionId, setHoverConnectionId] = useState<string | null>(null);
@@ -127,6 +134,8 @@ export function CanvasWrapper({
         onAssetDragEnd={onAssetDragEnd}
         draggableAssets={graphDraggableAssets && !connectMode}
         dimNonMatching={dimForTrace}
+        directedConnections={directedConnections}
+        snapConnectPreviewToAssets={snapConnectPreviewToAssets}
       />
     );
 
@@ -147,6 +156,9 @@ export function CanvasWrapper({
           onSemanticAnnotateText={mapSemantic.onSemanticAnnotateText}
           onSemanticAnnotateSketch={mapSemantic.onSemanticAnnotateSketch}
           onSemanticAnnotatePen={mapSemantic.onSemanticAnnotatePen}
+          drawConnectionSnapRadiusWorld={mapSemantic.drawConnectionSnapRadiusWorld}
+          allowedPrimaryModes={mapSemantic.allowedPrimaryModes}
+          allowedAnnotateKinds={mapSemantic.allowedAnnotateKinds}
         />
       ) : null;
 
@@ -167,6 +179,8 @@ export function CanvasWrapper({
     hoverAssetId,
     hoverConnectionId,
     mapSemantic,
+    directedConnections,
+    snapConnectPreviewToAssets,
     onAssetDragEnd,
     onAssetDragMove,
     onHoverAssetId,

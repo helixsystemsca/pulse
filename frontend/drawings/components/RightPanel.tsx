@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { BlueprintElement } from "@/components/zones-devices/blueprint-types";
+import type { MapModeConfig } from "../mapBuilderModes";
 import type { InfraAsset, InfraConnection, SystemType } from "../utils/graphHelpers";
 import { parseInfraAssetFromNotes } from "../utils/infraSymbolNotes";
 import { ZONE_META_PREFIX, packZoneMeta, parseZoneMeta } from "../utils/overlayMeta";
@@ -28,6 +29,7 @@ function proceduresToStored(textarea: string): string {
 }
 
 export function RightPanel({
+  inspectorVariant,
   selectedAssets,
   selectedConnections,
   asset,
@@ -40,6 +42,7 @@ export function RightPanel({
   onAddAttribute,
   disabled,
 }: {
+  inspectorVariant: MapModeConfig["inspector"];
   selectedAssets: string[];
   selectedConnections: string[];
   asset: InfraAsset | null;
@@ -65,6 +68,9 @@ export function RightPanel({
   const [draftNotes, setDraftNotes] = useState("");
   const [draftProcedures, setDraftProcedures] = useState("");
   const [draftConnNotes, setDraftConnNotes] = useState("");
+  const [draftCpDuration, setDraftCpDuration] = useState("");
+  const [draftAssetDependencyNotes, setDraftAssetDependencyNotes] = useState("");
+  const [draftConnDependencyNotes, setDraftConnDependencyNotes] = useState("");
 
   const [bpDraftName, setBpDraftName] = useState("");
   const [bpZoneType, setBpZoneType] = useState("");
@@ -116,17 +122,28 @@ export function RightPanel({
         const rows = await onLoadAttributes({ entity_type: entity.kind, entity_id: entity.id });
         setAttrs(rows);
         if (entity.kind === "asset") {
-          const proc = rows.find((r) => r.key === "procedure_steps");
-          setDraftProcedures(proceduresLinesFromStored(proc?.value ?? ""));
+          if (inspectorVariant === "critical_path") {
+            setDraftCpDuration(rows.find((r) => r.key === "cp_duration_days")?.value ?? "");
+            setDraftAssetDependencyNotes(rows.find((r) => r.key === "dependency_notes")?.value ?? "");
+          } else {
+            const proc = rows.find((r) => r.key === "procedure_steps");
+            setDraftProcedures(proceduresLinesFromStored(proc?.value ?? ""));
+          }
         }
         if (entity.kind === "connection") {
-          setDraftConnNotes(rows.find((r) => r.key === "notes")?.value ?? "");
+          if (inspectorVariant === "critical_path") {
+            setDraftConnDependencyNotes(
+              rows.find((r) => r.key === "dependency_notes")?.value ?? rows.find((r) => r.key === "notes")?.value ?? "",
+            );
+          } else {
+            setDraftConnNotes(rows.find((r) => r.key === "notes")?.value ?? "");
+          }
         }
       } finally {
         setAttrsLoading(false);
       }
     })();
-  }, [entity?.id, entity?.kind, onLoadAttributes]);
+  }, [entity?.id, entity?.kind, inspectorVariant, onLoadAttributes]);
 
   const title = useMemo(() => {
     if (asset) return "Asset";
@@ -323,17 +340,44 @@ export function RightPanel({
                 <span className="text-[11px] font-semibold uppercase tracking-wider text-ds-muted">Notes</span>
                 <textarea className="app-field mt-1.5 w-full min-h-24" value={draftNotes} onChange={(e) => setDraftNotes(e.target.value)} disabled={disabled} />
               </label>
-              <label className="block">
-                <span className="text-[11px] font-semibold uppercase tracking-wider text-ds-muted">Procedures</span>
-                <span className="mt-1 block text-[10px] text-ds-muted">One step per line (stored as a JSON array on the asset).</span>
-                <textarea
-                  className="app-field mt-1.5 w-full min-h-28"
-                  value={draftProcedures}
-                  onChange={(e) => setDraftProcedures(e.target.value)}
-                  disabled={disabled}
-                  placeholder={"Step 1\nStep 2"}
-                />
-              </label>
+              {inspectorVariant === "critical_path" ? (
+                <>
+                  <label className="block">
+                    <span className="text-[11px] font-semibold uppercase tracking-wider text-ds-muted">Duration</span>
+                    <span className="mt-1 block text-[10px] text-ds-muted">Stored as attribute <span className="font-mono">cp_duration_days</span> (numeric days).</span>
+                    <input
+                      className="app-field mt-1.5 w-full"
+                      inputMode="numeric"
+                      value={draftCpDuration}
+                      onChange={(e) => setDraftCpDuration(e.target.value)}
+                      disabled={disabled}
+                      placeholder="e.g. 5"
+                    />
+                  </label>
+                  <label className="block">
+                    <span className="text-[11px] font-semibold uppercase tracking-wider text-ds-muted">Dependency notes</span>
+                    <textarea
+                      className="app-field mt-1.5 w-full min-h-24"
+                      value={draftAssetDependencyNotes}
+                      onChange={(e) => setDraftAssetDependencyNotes(e.target.value)}
+                      disabled={disabled}
+                      placeholder="Predecessors, constraints, owner handoffs…"
+                    />
+                  </label>
+                </>
+              ) : (
+                <label className="block">
+                  <span className="text-[11px] font-semibold uppercase tracking-wider text-ds-muted">Procedures</span>
+                  <span className="mt-1 block text-[10px] text-ds-muted">One step per line (stored as a JSON array on the asset).</span>
+                  <textarea
+                    className="app-field mt-1.5 w-full min-h-28"
+                    value={draftProcedures}
+                    onChange={(e) => setDraftProcedures(e.target.value)}
+                    disabled={disabled}
+                    placeholder={"Step 1\nStep 2"}
+                  />
+                </label>
+              )}
               <button
                 type="button"
                 className="ds-btn-primary w-full"
@@ -346,12 +390,27 @@ export function RightPanel({
                       system_type: draftSystem,
                       notes: draftNotes,
                     });
-                    await onAddAttribute({
-                      entity_type: "asset",
-                      entity_id: asset.id,
-                      key: "procedure_steps",
-                      value: proceduresToStored(draftProcedures),
-                    });
+                    if (inspectorVariant === "critical_path") {
+                      await onAddAttribute({
+                        entity_type: "asset",
+                        entity_id: asset.id,
+                        key: "cp_duration_days",
+                        value: draftCpDuration.trim(),
+                      });
+                      await onAddAttribute({
+                        entity_type: "asset",
+                        entity_id: asset.id,
+                        key: "dependency_notes",
+                        value: draftAssetDependencyNotes,
+                      });
+                    } else {
+                      await onAddAttribute({
+                        entity_type: "asset",
+                        entity_id: asset.id,
+                        key: "procedure_steps",
+                        value: proceduresToStored(draftProcedures),
+                      });
+                    }
                     const rows = await onLoadAttributes({ entity_type: "asset", entity_id: asset.id });
                     setAttrs(rows);
                   })()
@@ -373,29 +432,51 @@ export function RightPanel({
                 <span className="text-[11px] font-semibold uppercase tracking-wider text-ds-muted">Connection type</span>
                 <input className="app-field mt-1.5 w-full opacity-80" readOnly value={connection.connection_type} />
               </label>
-              <label className="block">
-                <span className="text-[11px] font-semibold uppercase tracking-wider text-ds-muted">Notes</span>
-                <span className="mt-1 block text-[10px] text-ds-muted">Stored as attribute <span className="font-mono">notes</span>.</span>
-                <textarea className="app-field mt-1.5 w-full min-h-24" value={draftConnNotes} onChange={(e) => setDraftConnNotes(e.target.value)} disabled={disabled} />
-              </label>
+              {inspectorVariant === "critical_path" ? (
+                <label className="block">
+                  <span className="text-[11px] font-semibold uppercase tracking-wider text-ds-muted">Dependency notes</span>
+                  <span className="mt-1 block text-[10px] text-ds-muted">Stored as attribute <span className="font-mono">dependency_notes</span>.</span>
+                  <textarea
+                    className="app-field mt-1.5 w-full min-h-24"
+                    value={draftConnDependencyNotes}
+                    onChange={(e) => setDraftConnDependencyNotes(e.target.value)}
+                    disabled={disabled}
+                  />
+                </label>
+              ) : (
+                <label className="block">
+                  <span className="text-[11px] font-semibold uppercase tracking-wider text-ds-muted">Notes</span>
+                  <span className="mt-1 block text-[10px] text-ds-muted">Stored as attribute <span className="font-mono">notes</span>.</span>
+                  <textarea className="app-field mt-1.5 w-full min-h-24" value={draftConnNotes} onChange={(e) => setDraftConnNotes(e.target.value)} disabled={disabled} />
+                </label>
+              )}
               <button
                 type="button"
                 className="ds-btn-primary w-full"
                 disabled={disabled}
                 onClick={() =>
                   void (async () => {
-                    await onAddAttribute({
-                      entity_type: "connection",
-                      entity_id: connection.id,
-                      key: "notes",
-                      value: draftConnNotes,
-                    });
+                    if (inspectorVariant === "critical_path") {
+                      await onAddAttribute({
+                        entity_type: "connection",
+                        entity_id: connection.id,
+                        key: "dependency_notes",
+                        value: draftConnDependencyNotes,
+                      });
+                    } else {
+                      await onAddAttribute({
+                        entity_type: "connection",
+                        entity_id: connection.id,
+                        key: "notes",
+                        value: draftConnNotes,
+                      });
+                    }
                     const rows = await onLoadAttributes({ entity_type: "connection", entity_id: connection.id });
                     setAttrs(rows);
                   })()
                 }
               >
-                Save notes
+                {inspectorVariant === "critical_path" ? "Save dependency notes" : "Save notes"}
               </button>
               <p className="text-[10px] text-ds-muted">Additional structured fields live under the Attributes tab.</p>
             </>

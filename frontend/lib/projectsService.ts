@@ -55,6 +55,8 @@ export type TaskRow = {
   status: string;
   required_skill_names?: string[];
   start_date?: string | null;
+  /** Days; optional API alias used by schedule/Gantt when end_date is omitted. */
+  duration_estimate?: number | null;
   estimated_completion_minutes?: number | null;
   end_date?: string | null;
   actual_completion_minutes?: number | null;

@@ -29,6 +29,9 @@ class InfraAsset(Base):
     company_id: Mapped[str] = mapped_column(
         UUID(as_uuid=False), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True
     )
+    project_id: Mapped[Optional[str]] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("pulse_projects.id", ondelete="CASCADE"), nullable=True, index=True
+    )
 
     name: Mapped[str] = mapped_column(String(255), nullable=False, default="")
     asset_type: Mapped[str] = mapped_column(String(64), nullable=False, default="asset")
@@ -54,6 +57,9 @@ class InfraConnection(Base):
     id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
     company_id: Mapped[str] = mapped_column(
         UUID(as_uuid=False), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    project_id: Mapped[Optional[str]] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("pulse_projects.id", ondelete="CASCADE"), nullable=True, index=True
     )
 
     from_asset_id: Mapped[str] = mapped_column(UUID(as_uuid=False), ForeignKey("infra_assets.id", ondelete="CASCADE"), nullable=False, index=True)

@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Literal, Optional
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 SystemType = Literal["fiber", "irrigation", "electrical", "telemetry"]
@@ -21,7 +21,12 @@ class InfraAssetBase(BaseModel):
 
 
 class InfraAssetCreateIn(InfraAssetBase):
-    pass
+    project_id: str = Field(..., min_length=1, description="pulse_projects.id — required for scoped drawings")
+
+    @field_validator("project_id")
+    @classmethod
+    def strip_pid(cls, v: str) -> str:
+        return str(v).strip()
 
 
 class InfraAssetPatchIn(BaseModel):
@@ -35,6 +40,7 @@ class InfraAssetPatchIn(BaseModel):
 
 class InfraAssetOut(InfraAssetBase):
     id: str
+    project_id: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 
@@ -53,11 +59,17 @@ class InfraConnectionBase(BaseModel):
 
 
 class InfraConnectionCreateIn(InfraConnectionBase):
-    pass
+    project_id: str = Field(..., min_length=1, description="pulse_projects.id — must match endpoint assets")
+
+    @field_validator("project_id")
+    @classmethod
+    def strip_cpid(cls, v: str) -> str:
+        return str(v).strip()
 
 
 class InfraConnectionOut(InfraConnectionBase):
     id: str
+    project_id: Optional[str] = None
     active: bool
     created_at: datetime
 
@@ -85,8 +97,14 @@ class InfraAttributeOut(InfraAttributeBase):
 class TraceRouteIn(BaseModel):
     start_asset_id: str
     end_asset_id: str
+    project_id: str = Field(..., min_length=1)
     system_type: Optional[SystemType] = None
     filters: Optional[list[dict[str, Any]]] = None
+
+    @field_validator("project_id")
+    @classmethod
+    def strip_trace_pid(cls, v: str) -> str:
+        return str(v).strip()
 
 
 class TraceRouteOut(BaseModel):

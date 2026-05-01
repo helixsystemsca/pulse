@@ -17,8 +17,14 @@ import {
 import { useState } from "react";
 import type { FilterRule, SystemType } from "../utils/graphHelpers";
 import type { AnnotateKind, AssetDrawShape, ConnectFlow, PrimaryMode } from "../mapBuilderTypes";
+import type { BuilderSemanticMode, MapModeConfig } from "../mapBuilderModes";
+import { MODES } from "../mapBuilderModes";
 
 export function Sidebar({
+  projectReady = true,
+  semanticMode,
+  onSemanticModeChange,
+  modeConfig,
   activeSystems,
   onToggleSystem,
   primaryMode,
@@ -56,6 +62,11 @@ export function Sidebar({
   onAddFilterRule: (r: FilterRule) => void;
   onRemoveFilterRule: (idx: number) => void;
   onPresetAvailableFiber: () => void;
+  /** When false, creation tools (assets, connections, zones, annotate, trace) are disabled. */
+  projectReady?: boolean;
+  semanticMode: BuilderSemanticMode;
+  onSemanticModeChange: (m: BuilderSemanticMode) => void;
+  modeConfig: MapModeConfig;
 }) {
   const [entity, setEntity] = useState<FilterRule["entity"]>("asset");
   const [key, setKey] = useState("");
@@ -89,54 +100,111 @@ export function Sidebar({
     </label>
   );
 
-  const modeBtn = (id: PrimaryMode, label: string, Icon: typeof MousePointer2) => (
-    <button
-      key={id}
-      type="button"
-      title={label}
-      aria-label={label}
-      aria-pressed={primaryMode === id}
-      className={`inline-flex h-10 w-10 items-center justify-center rounded-lg border transition-colors ${
-        primaryMode === id
-          ? "border-ds-success bg-ds-success/15 text-ds-foreground"
-          : "border-transparent bg-transparent text-ds-muted hover:border-ds-border hover:bg-ds-primary/40 hover:text-ds-foreground"
-      }`}
-      onClick={() => onPrimaryModeChange(id)}
-    >
-      <Icon className="h-5 w-5" aria-hidden />
-    </button>
-  );
+  const modeBtn = (id: PrimaryMode, label: string, Icon: typeof MousePointer2) => {
+    const allowed =
+      modeConfig.allowedPrimaryModes.has(id) && (id === "select" || projectReady);
+    return (
+      <button
+        key={id}
+        type="button"
+        title={label}
+        aria-label={label}
+        aria-pressed={primaryMode === id}
+        disabled={!allowed}
+        className={`inline-flex h-10 w-10 items-center justify-center rounded-lg border transition-colors ${
+          !allowed
+            ? "cursor-not-allowed opacity-35"
+            : primaryMode === id
+              ? "border-ds-success bg-ds-success/15 text-ds-foreground"
+              : "border-transparent bg-transparent text-ds-muted hover:border-ds-border hover:bg-ds-primary/40 hover:text-ds-foreground"
+        }`}
+        onClick={() => allowed && onPrimaryModeChange(id)}
+      >
+        <Icon className="h-5 w-5" aria-hidden />
+      </button>
+    );
+  };
+
+  const annotateBtn = (kind: AnnotateKind, label: string, Icon: typeof StickyNote) => {
+    const allowed = projectReady && modeConfig.allowedAnnotateKinds.has(kind);
+    return (
+      <button
+        key={kind}
+        type="button"
+        title={label}
+        disabled={!allowed}
+        className={`inline-flex h-9 items-center justify-center gap-1 rounded-md border text-xs ${
+          !allowed
+            ? "cursor-not-allowed opacity-35"
+            : annotateKind === kind
+              ? "border-ds-success bg-ds-success/15"
+              : "border-transparent hover:bg-ds-primary/40"
+        }`}
+        onClick={() => allowed && onAnnotateKindChange(kind)}
+      >
+        <Icon className="h-4 w-4 shrink-0" /> {label.replace(/\s*\(.*\)/, "")}
+      </button>
+    );
+  };
+
+  const modeEntries = (Object.keys(MODES) as BuilderSemanticMode[]).map((key) => ({ key, cfg: MODES[key] }));
 
   return (
     <aside className="w-[252px] shrink-0 border-r border-ds-border/70 bg-ds-secondary/20 p-2">
       <div className="space-y-3">
         <section className="space-y-1.5">
-          <p className="px-1 text-[10px] font-semibold uppercase tracking-wider text-ds-muted">Layers</p>
-          <div className="space-y-0.5">
-            {sysRow("fiber", "Fiber", "bg-blue-500")}
-            {sysRow("irrigation", "Irrigation", "bg-emerald-500")}
-            {sysRow("electrical", "Electrical", "bg-amber-500")}
-            {sysRow("telemetry", "Telemetry", "bg-slate-400")}
-          </div>
-        </section>
-
-        <section className="space-y-1.5">
-          <p className="px-1 text-[10px] font-semibold uppercase tracking-wider text-ds-muted">Default system</p>
-          <p className="px-1 text-[10px] leading-snug text-ds-muted">New assets & connections use this system unless changed in the inspector.</p>
+          <p className="px-1 text-[10px] font-semibold uppercase tracking-wider text-ds-muted">Semantic mode</p>
+          <p className="px-1 text-[10px] leading-snug text-ds-muted">Switches tools and graph presentation — same engine, different configuration.</p>
           <select
             className="app-field min-h-9 w-full !py-1.5 !text-xs leading-snug"
-            value={defaultSystemType}
-            onChange={(e) => onDefaultSystemTypeChange(e.target.value as SystemType)}
+            value={semanticMode}
+            onChange={(e) => onSemanticModeChange(e.target.value as BuilderSemanticMode)}
           >
-            <option value="fiber">Fiber</option>
-            <option value="irrigation">Irrigation</option>
-            <option value="electrical">Electrical</option>
-            <option value="telemetry">Telemetry</option>
+            {modeEntries.map(({ key, cfg }) => (
+              <option key={key} value={key}>
+                {cfg.label}
+              </option>
+            ))}
           </select>
         </section>
 
-        <section className="space-y-1.5">
-          <p className="px-1 text-[10px] font-semibold uppercase tracking-wider text-ds-muted">Filters</p>
+        {modeConfig.ui.showSystemLayerToggles ? (
+          <section className="space-y-1.5">
+            <p className="px-1 text-[10px] font-semibold uppercase tracking-wider text-ds-muted">Layers</p>
+            <div className="space-y-0.5">
+              {sysRow("fiber", "Fiber", "bg-blue-500")}
+              {sysRow("irrigation", "Irrigation", "bg-emerald-500")}
+              {sysRow("electrical", "Electrical", "bg-amber-500")}
+              {sysRow("telemetry", "Telemetry", "bg-slate-400")}
+            </div>
+          </section>
+        ) : null}
+
+        {modeConfig.ui.showDefaultSystemPicker ? (
+          <section className="space-y-1.5">
+            <p className="px-1 text-[10px] font-semibold uppercase tracking-wider text-ds-muted">Default system</p>
+            <p className="px-1 text-[10px] leading-snug text-ds-muted">New assets & connections use this system unless changed in the inspector.</p>
+            <select
+              className="app-field min-h-9 w-full !py-1.5 !text-xs leading-snug"
+              value={defaultSystemType}
+              onChange={(e) => onDefaultSystemTypeChange(e.target.value as SystemType)}
+            >
+              <option value="fiber">Fiber</option>
+              <option value="irrigation">Irrigation</option>
+              <option value="electrical">Electrical</option>
+              <option value="telemetry">Telemetry</option>
+            </select>
+          </section>
+        ) : (
+          <p className="px-1 text-[10px] leading-snug text-ds-muted">
+            Mode <span className="font-semibold text-ds-foreground">{modeConfig.label}</span> uses system{" "}
+            <span className="font-semibold text-ds-foreground">{modeConfig.defaultSystemType}</span> for new graph elements.
+          </p>
+        )}
+
+        {modeConfig.ui.showInfrastructureFilters ? (
+          <section className="space-y-1.5">
+            <p className="px-1 text-[10px] font-semibold uppercase tracking-wider text-ds-muted">Filters</p>
           <div className="rounded-md border border-ds-border/70 bg-ds-primary/25 p-2">
             <div className="grid grid-cols-2 gap-1.5">
               <select className="app-field min-h-9 !py-1.5 !text-xs leading-snug" value={entity} onChange={(e) => setEntity(e.target.value as "asset" | "connection")}>
@@ -191,24 +259,32 @@ export function Sidebar({
               ))}
             </div>
           ) : null}
-        </section>
+          </section>
+        ) : null}
 
         <section className="space-y-1.5">
           <div className="flex items-center justify-between gap-2 px-1">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-ds-muted">Infrastructure tools</p>
-            <button
-              type="button"
-              title="Trace route"
-              aria-label="Trace route"
-              className={`inline-flex h-8 w-8 items-center justify-center rounded-lg border transition-colors ${
-                traceActive
-                  ? "border-ds-success bg-ds-success/15 text-ds-foreground"
-                  : "border-transparent bg-transparent text-ds-muted hover:border-ds-border hover:bg-ds-primary/40 hover:text-ds-foreground"
-              }`}
-              onClick={onTraceRoute}
-            >
-              <Route className="h-4.5 w-4.5" aria-hidden />
-            </button>
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-ds-muted">Map tools</p>
+            {modeConfig.ui.showTraceRoute ? (
+              <button
+                type="button"
+                title="Trace route"
+                aria-label="Trace route"
+                disabled={!projectReady}
+                className={`inline-flex h-8 w-8 items-center justify-center rounded-lg border transition-colors ${
+                  !projectReady
+                    ? "cursor-not-allowed opacity-35"
+                    : traceActive
+                      ? "border-ds-success bg-ds-success/15 text-ds-foreground"
+                      : "border-transparent bg-transparent text-ds-muted hover:border-ds-border hover:bg-ds-primary/40 hover:text-ds-foreground"
+                }`}
+                onClick={() => projectReady && onTraceRoute()}
+              >
+                <Route className="h-4.5 w-4.5" aria-hidden />
+              </button>
+            ) : (
+              <span className="text-[10px] text-ds-muted"> </span>
+            )}
           </div>
 
           <p className="px-1 text-[10px] leading-snug text-ds-muted">Choose intent first; drawing creates structured infrastructure data.</p>
@@ -273,7 +349,10 @@ export function Sidebar({
                   Draw connection
                 </button>
               </div>
-              <p className="mt-1.5 text-[10px] text-ds-muted">Pick two assets, or draw a line whose endpoints snap to assets.</p>
+              <p className="mt-1.5 text-[10px] text-ds-muted">
+                Pick two assets, or draw a line whose endpoints snap to assets.
+                {!modeConfig.interaction.snapConnectPreviewToAssets ? " Preview follows the cursor without magnet snap." : ""}
+              </p>
             </div>
           ) : null}
 
@@ -287,38 +366,10 @@ export function Sidebar({
             <div className="rounded-md border border-ds-border/60 bg-ds-primary/20 px-2 py-2">
               <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-ds-muted">Overlay</p>
               <div className="grid grid-cols-2 gap-1">
-                <button
-                  type="button"
-                  title="Place a marker symbol"
-                  className={`inline-flex h-9 items-center justify-center gap-1 rounded-md border text-xs ${annotateKind === "symbol" ? "border-ds-success bg-ds-success/15" : "border-transparent hover:bg-ds-primary/40"}`}
-                  onClick={() => onAnnotateKindChange("symbol")}
-                >
-                  <StickyNote className="h-4 w-4 shrink-0" /> Symbol
-                </button>
-                <button
-                  type="button"
-                  title="Place a text label"
-                  className={`inline-flex h-9 items-center justify-center gap-1 rounded-md border text-xs ${annotateKind === "text" ? "border-ds-success bg-ds-success/15" : "border-transparent hover:bg-ds-primary/40"}`}
-                  onClick={() => onAnnotateKindChange("text")}
-                >
-                  <Type className="h-4 w-4 shrink-0" /> Text
-                </button>
-                <button
-                  type="button"
-                  title="Tap vertices to close a highlight region"
-                  className={`inline-flex h-9 items-center justify-center gap-1 rounded-md border text-xs ${annotateKind === "sketch" ? "border-ds-success bg-ds-success/15" : "border-transparent hover:bg-ds-primary/40"}`}
-                  onClick={() => onAnnotateKindChange("sketch")}
-                >
-                  <Pencil className="h-4 w-4 shrink-0" /> Region
-                </button>
-                <button
-                  type="button"
-                  title="Drag to draw a freehand stroke"
-                  className={`inline-flex h-9 items-center justify-center gap-1 rounded-md border text-xs ${annotateKind === "pen" ? "border-ds-success bg-ds-success/15" : "border-transparent hover:bg-ds-primary/40"}`}
-                  onClick={() => onAnnotateKindChange("pen")}
-                >
-                  <PenLine className="h-4 w-4 shrink-0" /> Pen
-                </button>
+                {annotateBtn("symbol", "Symbol", StickyNote)}
+                {annotateBtn("text", "Text", Type)}
+                {annotateBtn("sketch", "Region", Pencil)}
+                {annotateBtn("pen", "Pen", PenLine)}
               </div>
               <p className="mt-1.5 text-[10px] text-ds-muted">Blueprint-only overlays — never added to the infrastructure graph.</p>
             </div>

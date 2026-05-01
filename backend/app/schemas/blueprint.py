@@ -172,6 +172,7 @@ class BlueprintSummaryOut(BaseModel):
     id: str
     name: str
     created_at: datetime
+    project_id: Optional[str] = None
 
 
 class BlueprintDetailOut(BlueprintSummaryOut):
@@ -183,6 +184,7 @@ class BlueprintDetailOut(BlueprintSummaryOut):
 
 class BlueprintCreateIn(BaseModel):
     name: str = Field(..., min_length=1, max_length=255)
+    project_id: Optional[str] = Field(None, description="pulse_projects.id — omit only for legacy unscoped blueprints")
     elements: list[BlueprintElementIn] = []
     tasks: list[TaskOverlayIn] = []
     layers: list[BlueprintLayer] = []

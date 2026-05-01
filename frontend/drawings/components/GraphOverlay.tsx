@@ -33,7 +33,28 @@ type Props = {
    * but we draw a preview line externally.
    */
   dimNonMatching?: boolean;
+  /** Render dependency direction (from → to) for scheduling-style graphs. */
+  directedConnections?: boolean;
+  /** When false, connect preview follows the pointer instead of snapping to candidate assets. */
+  snapConnectPreviewToAssets?: boolean;
 };
+
+/** Tip at (x2,y2); shorten shaft so it meets the arrow base. */
+function directedArrowParts(x1: number, y1: number, x2: number, y2: number, headLen = 14, headWidth = 11): { shaft: number[]; head: number[] } {
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  const len = Math.hypot(dx, dy) || 1;
+  const ux = dx / len;
+  const uy = dy / len;
+  const bx = x2 - ux * headLen;
+  const by = y2 - uy * headLen;
+  const px = -uy * (headWidth / 2);
+  const py = ux * (headWidth / 2);
+  return {
+    shaft: [x1, y1, bx, by],
+    head: [x2, y2, bx + px, by + py, bx - px, by - py],
+  };
+}
 
 function isInTrace(trace: TraceRouteResult | null, kind: "asset" | "connection", id: string): boolean {
   if (!trace) return false;
@@ -63,6 +84,8 @@ export function GraphOverlay({
   onAssetDragEnd,
   draggableAssets = true,
   dimNonMatching = false,
+  directedConnections = false,
+  snapConnectPreviewToAssets = true,
 }: Props) {
   const assetsById = useMemo(() => new Map(assets.map((a) => [a.id, a])), [assets]);
   const selectedAssetSet = new Set(selectedAssets);
@@ -146,24 +169,26 @@ export function GraphOverlay({
       const p = pointerWorldRef.current;
       if (!from || !p) return;
 
-      // Snap pointer to nearby asset center (excluding start asset).
+      // Snap pointer to nearby asset center (excluding start asset), unless mode disables magnet snap.
       let tx = p.x;
       let ty = p.y;
-      const rawScale = stageScaleRef.current;
-      const scale = Number.isFinite(rawScale) && rawScale > 0 ? rawScale : 1;
-      const snapThresholdWorld = Math.min(MAX_WORLD, Math.max(MIN_WORLD, SNAP_SCREEN_PX / scale));
-      let bestD2 = snapThresholdWorld * snapThresholdWorld;
       let snapId: string | null = null;
-      for (const a of assets) {
-        if (a.id === connectStartAssetId) continue;
-        const dx = a.x - p.x;
-        const dy = a.y - p.y;
-        const d2 = dx * dx + dy * dy;
-        if (d2 <= bestD2) {
-          bestD2 = d2;
-          tx = a.x;
-          ty = a.y;
-          snapId = a.id;
+      if (snapConnectPreviewToAssets) {
+        const rawScale = stageScaleRef.current;
+        const scale = Number.isFinite(rawScale) && rawScale > 0 ? rawScale : 1;
+        const snapThresholdWorld = Math.min(MAX_WORLD, Math.max(MIN_WORLD, SNAP_SCREEN_PX / scale));
+        let bestD2 = snapThresholdWorld * snapThresholdWorld;
+        for (const a of assets) {
+          if (a.id === connectStartAssetId) continue;
+          const dx = a.x - p.x;
+          const dy = a.y - p.y;
+          const d2 = dx * dx + dy * dy;
+          if (d2 <= bestD2) {
+            bestD2 = d2;
+            tx = a.x;
+            ty = a.y;
+            snapId = a.id;
+          }
         }
       }
       snapTargetIdRef.current = snapId;
@@ -175,7 +200,7 @@ export function GraphOverlay({
     rafRef.current = requestAnimationFrame(tick);
 
     return () => stop();
-  }, [assets, assetsById, connectMode, connectStartAssetId, pointerWorldRef]);
+  }, [assets, assetsById, connectMode, connectStartAssetId, pointerWorldRef, snapConnectPreviewToAssets]);
 
   return (
     <Group>
@@ -209,11 +234,17 @@ export function GraphOverlay({
           const dim = shouldDim("connection", c.id, c.system_type) || Boolean(dimConnectionIds?.has(c.id));
           const opacity = dim ? 0.18 : inTrace ? 1 : on ? 0.55 : 0.18;
           const sw = inTrace ? 6 : isSel ? 5 : isHover ? 4 : 2.5;
+          const x1 = pts[0]!;
+          const y1 = pts[1]!;
+          const x2 = pts[2]!;
+          const y2 = pts[3]!;
+          const parts = directedConnections ? directedArrowParts(x1, y1, x2, y2) : null;
+          const visibleShaft = parts ? parts.shaft : [x1, y1, x2, y2];
           return (
             <Group key={c.id}>
               {/* Invisible hit target for easier selection */}
               <Line
-                points={[pts[0], pts[1], pts[2], pts[3]]}
+                points={[x1, y1, x2, y2]}
                 stroke="rgba(0,0,0,1)"
                 opacity={0}
                 strokeWidth={14}
@@ -232,7 +263,7 @@ export function GraphOverlay({
               />
               {/* Visible connection */}
               <Line
-                points={[pts[0], pts[1], pts[2], pts[3]]}
+                points={visibleShaft}
                 stroke={stroke}
                 opacity={opacity}
                 strokeWidth={sw}
@@ -240,6 +271,17 @@ export function GraphOverlay({
                 lineJoin="round"
                 listening={false}
               />
+              {parts ? (
+                <Line
+                  points={parts.head}
+                  stroke={stroke}
+                  fill={stroke}
+                  opacity={opacity}
+                  strokeWidth={1}
+                  closed
+                  listening={false}
+                />
+              ) : null}
             </Group>
           );
         })}

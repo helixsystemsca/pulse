@@ -22,6 +22,7 @@ import { apiFetch } from "@/lib/api";
 import { emitOnboardingMaybeUpdated } from "@/lib/onboarding-events";
 import { parseClientApiError } from "@/lib/parse-client-api-error";
 import { ProjectAutomationPanel } from "@/components/projects/ProjectAutomationPanel";
+import { GanttSchedule } from "@/components/projects/GanttSchedule";
 import {
   addProjectNote,
   listCategories,
@@ -1306,98 +1307,13 @@ export function ProjectDetailApp({ projectId }: { projectId: string }) {
                     </div>
                   </div>
 
-                  {tasks.length === 0 ? (
-                    <p className="text-sm text-ds-muted">No tasks yet.</p>
-                  ) : (
-                    (() => {
-                      const norm = (s: string | null | undefined) => (s || "").trim();
-                      const startDateFallback = (t: TaskRow) => {
-                        if (!t.start_date) return null;
-                        const d = new Date(`${t.start_date}T00:00:00Z`);
-                        return Number.isFinite(d.getTime()) ? d : null;
-                      };
-                      const taskStart = (t: TaskRow) =>
-                        t.planned_start_at ? new Date(t.planned_start_at) : startDateFallback(t);
-                      const taskEnd = (t: TaskRow) =>
-                        t.planned_end_at
-                          ? new Date(t.planned_end_at)
-                          : t.planned_start_at
-                            ? new Date(t.planned_start_at)
-                            : startDateFallback(t);
-                      const allDates = tasks
-                        .flatMap((t) => [taskStart(t), taskEnd(t)])
-                        .filter((d): d is Date => Boolean(d && Number.isFinite(d.getTime())));
-                      const min = allDates.length ? new Date(Math.min(...allDates.map((d) => d.getTime()))) : new Date();
-                      const max = allDates.length ? new Date(Math.max(...allDates.map((d) => d.getTime()))) : new Date();
-                      const spanMs = Math.max(1, max.getTime() - min.getTime());
-
-                      const groups = new Map<string, TaskRow[]>();
-                      for (const t of tasks) {
-                        const g = norm(t.phase_group) || "Tasks";
-                        groups.set(g, [...(groups.get(g) || []), t]);
-                      }
-                      const groupKeys = [...groups.keys()].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }));
-
-                      const pctFor = (d: Date) => ((d.getTime() - min.getTime()) / spanMs) * 100;
-
-                      return (
-                        <div className="space-y-5">
-                          <div className="rounded-lg border border-ds-border bg-ds-secondary px-3 py-2 text-[11px] font-semibold text-ds-muted">
-                            Range: {min.toLocaleDateString()} → {max.toLocaleDateString()}
-                          </div>
-                          {groupKeys.map((g) => {
-                            const rows = (groups.get(g) || []).slice().sort((a, b) => {
-                              const sa = taskStart(a)?.getTime() ?? Number.POSITIVE_INFINITY;
-                              const sb = taskStart(b)?.getTime() ?? Number.POSITIVE_INFINITY;
-                              return sa - sb;
-                            });
-                            return (
-                              <div key={g} className="space-y-2">
-                                <p className="text-[11px] font-bold uppercase tracking-wide text-ds-muted">{g}</p>
-                                <div className="space-y-2">
-                                  {rows.map((t) => {
-                                    const s = taskStart(t);
-                                    const e = taskEnd(t);
-                                    const left = s ? pctFor(s) : 0;
-                                    const right = e ? pctFor(e) : left;
-                                    const width = Math.max(1.5, right - left);
-                                    const label = s ? s.toLocaleDateString() : "—";
-                                    const label2 = e ? e.toLocaleDateString() : label;
-                                    return (
-                                      <div key={t.id} className="grid grid-cols-12 items-center gap-3">
-                                        <button
-                                          type="button"
-                                          className="col-span-5 truncate text-left text-sm font-semibold text-ds-foreground hover:underline"
-                                          onClick={() => {
-                                            setEditingTask(t);
-                                            setTaskModalOpen(true);
-                                          }}
-                                        >
-                                          {t.title}
-                                        </button>
-                                        <div className="col-span-7">
-                                          <div className="relative h-8 w-full rounded-md border border-ds-border bg-white dark:bg-ds-primary">
-                                            <div
-                                              className="absolute top-1/2 h-3 -translate-y-1/2 rounded-md bg-ds-success/70"
-                                              style={{ left: `${left}%`, width: `${width}%` }}
-                                            />
-                                            <div className="absolute inset-0 flex items-center justify-between px-2 text-[10px] font-semibold text-ds-muted">
-                                              <span>{label}</span>
-                                              <span>{label2}</span>
-                                            </div>
-                                          </div>
-                                        </div>
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      );
-                    })()
-                  )}
+                  <GanttSchedule
+                    tasks={tasks}
+                    onTaskClick={(t) => {
+                      setEditingTask(t);
+                      setTaskModalOpen(true);
+                    }}
+                  />
                 </Card>
               ) : null}
 

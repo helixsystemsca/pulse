@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { apiFetch, isApiMode } from "@/lib/api";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Camera, LayoutGrid, Maximize2, Minimize2 } from "lucide-react";
@@ -8,9 +9,13 @@ import type { BlueprintElement, BlueprintLayer } from "@/components/zones-device
 import { SYMBOL_DEFAULT, mapApiElement, parseApiBlueprintLayers, toApiPayload } from "@/lib/blueprint-layout";
 import { packInfraAssetNotes, parseInfraAssetFromNotes } from "./utils/infraSymbolNotes";
 import { packZoneMeta } from "./utils/overlayMeta";
+import { ProjectSelector } from "./components/ProjectSelector";
+import { useActiveProject } from "./hooks/useActiveProject";
 import { useInfrastructureGraph } from "./hooks/useInfrastructureGraph";
 import type { FilterRule, GraphFilters, SystemType, TraceRouteResult } from "./utils/graphHelpers";
 import { getVisibleGraphElements } from "./utils/graphHelpers";
+import { MODES } from "./mapBuilderModes";
+import { useBuilderMode } from "./hooks/useBuilderMode";
 import { Sidebar } from "./components/Sidebar";
 import { CanvasWrapper } from "./components/CanvasWrapper";
 import { RightPanel } from "./components/RightPanel";
@@ -54,6 +59,8 @@ function useDocumentDark(): boolean {
 export default function DrawingsPage() {
   const isDark = useDocumentDark();
   const theme = isDark ? ("dark" as const) : ("light" as const);
+  const { activeMode, setActiveMode, modeConfig } = useBuilderMode();
+  const { activeProjectId, setActiveProjectId } = useActiveProject();
 
   // UI state — Infrastructure Map Builder modes (intent-first)
   const [primaryMode, setPrimaryMode] = useState<PrimaryMode>("select");
@@ -89,8 +96,53 @@ export default function DrawingsPage() {
     if (primaryMode !== "connect") setConnectDraftFromId(null);
   }, [primaryMode]);
 
-  // Graph data layer
-  const graph = useInfrastructureGraph();
+  useEffect(() => {
+    setDefaultSystemType(modeConfig.defaultSystemType);
+  }, [activeMode, modeConfig.defaultSystemType]);
+
+  useEffect(() => {
+    if (!modeConfig.ui.showSystemLayerToggles) {
+      setActiveSystems({ fiber: true, irrigation: true, electrical: true, telemetry: true });
+    }
+  }, [activeMode, modeConfig.ui.showSystemLayerToggles]);
+
+  useEffect(() => {
+    const cfg = MODES[activeMode];
+    if (!cfg.allowedPrimaryModes.has(primaryMode)) {
+      setPrimaryMode("select");
+      setConnectDraftFromId(null);
+    }
+  }, [activeMode, primaryMode]);
+
+  useEffect(() => {
+    const cfg = MODES[activeMode];
+    if (!cfg.allowedAnnotateKinds.has(annotateKind)) {
+      setAnnotateKind("symbol");
+    }
+  }, [activeMode, annotateKind]);
+
+  useEffect(() => {
+    if (!modeConfig.ui.showTraceRoute && traceMode) {
+      setTraceMode(false);
+      setTraceStartId(null);
+      setTraceEndId(null);
+      setTraceResult(null);
+    }
+  }, [modeConfig.ui.showTraceRoute, traceMode]);
+
+  useEffect(() => {
+    setSelectedAssets([]);
+    setSelectedConnections([]);
+    setSelectedBlueprintElementId(null);
+    setTraceMode(false);
+    setTraceStartId(null);
+    setTraceEndId(null);
+    setTraceResult(null);
+    setConnectDraftFromId(null);
+  }, [activeProjectId]);
+
+  // Graph data layer — strictly scoped to active project (server-enforced)
+  const graph = useInfrastructureGraph(activeProjectId);
 
   // Blueprint (existing drawing) data
   const [blueprints, setBlueprints] = useState<BlueprintSummary[]>([]);
@@ -100,19 +152,27 @@ export default function DrawingsPage() {
   const [bpError, setBpError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!isApiMode()) return;
+    if (!isApiMode() || !activeProjectId) {
+      setBlueprints([]);
+      setSelectedBlueprintId("");
+      setBpError(null);
+      return;
+    }
     void (async () => {
       try {
-        const list = await apiFetch<BlueprintSummary[]>("/api/blueprints");
+        const list = await apiFetch<BlueprintSummary[]>(
+          `/api/blueprints?project_id=${encodeURIComponent(activeProjectId)}`,
+        );
         setBlueprints(list);
         setSelectedBlueprintId((cur) => (cur && list.some((b) => b.id === cur) ? cur : list[0]?.id ?? ""));
+        setBpError(null);
       } catch (e: unknown) {
         setBlueprints([]);
         setSelectedBlueprintId("");
         setBpError(e instanceof Error ? e.message : "Failed to load blueprints");
       }
     })();
-  }, []);
+  }, [activeProjectId]);
 
   useEffect(() => {
     if (!workspaceFullscreen) return;
@@ -133,7 +193,7 @@ export default function DrawingsPage() {
   }, [workspaceFullscreen]);
 
   useEffect(() => {
-    if (!isApiMode() || !selectedBlueprintId) {
+    if (!isApiMode() || !selectedBlueprintId || !activeProjectId) {
       setBlueprintDetail(null);
       return;
     }
@@ -142,7 +202,9 @@ export default function DrawingsPage() {
     setBpError(null);
     void (async () => {
       try {
-        const d = await apiFetch<BlueprintDetail>(`/api/blueprints/${selectedBlueprintId}`);
+        const d = await apiFetch<BlueprintDetail>(
+          `/api/blueprints/${selectedBlueprintId}?project_id=${encodeURIComponent(activeProjectId)}`,
+        );
         if (!cancel) setBlueprintDetail(d);
       } catch (e: unknown) {
         if (!cancel) setBpError(e instanceof Error ? e.message : "Failed to load blueprint");
@@ -153,7 +215,7 @@ export default function DrawingsPage() {
     return () => {
       cancel = true;
     };
-  }, [selectedBlueprintId]);
+  }, [selectedBlueprintId, activeProjectId]);
 
   const blueprintElements: BlueprintElement[] = useMemo(() => {
     const els = blueprintDetail ? blueprintDetail.elements.map(mapApiElement) : [];
@@ -170,16 +232,19 @@ export default function DrawingsPage() {
   }, [blueprintElements, selectedBlueprintElementId]);
 
   async function persistBlueprintElements(next: BlueprintElement[]) {
-    if (!blueprintDetail || !isApiMode()) return;
-    const updated = await apiFetch<BlueprintDetail>(`/api/blueprints/${blueprintDetail.id}`, {
-      method: "PUT",
-      body: JSON.stringify({
-        name: blueprintDetail.name,
-        elements: toApiPayload(next),
-        tasks: blueprintDetail.tasks ?? [],
-        layers: blueprintLayers,
-      }),
-    });
+    if (!blueprintDetail || !isApiMode() || !activeProjectId) return;
+    const updated = await apiFetch<BlueprintDetail>(
+      `/api/blueprints/${blueprintDetail.id}?project_id=${encodeURIComponent(activeProjectId)}`,
+      {
+        method: "PUT",
+        body: JSON.stringify({
+          name: blueprintDetail.name,
+          elements: toApiPayload(next),
+          tasks: blueprintDetail.tasks ?? [],
+          layers: blueprintLayers,
+        }),
+      },
+    );
     setBlueprintDetail(updated);
   }
 
@@ -286,11 +351,14 @@ export default function DrawingsPage() {
   }
 
   const mapSemantic = useMemo(() => {
-    if (!isApiMode() || !blueprintDetail) return null;
+    if (!isApiMode() || !blueprintDetail || !activeProjectId) return null;
 
     return {
       viewport: stageViewport,
       disabled: traceMode || bpLoading,
+      drawConnectionSnapRadiusWorld: modeConfig.interaction.drawConnectionSnapRadiusWorld,
+      allowedPrimaryModes: modeConfig.allowedPrimaryModes,
+      allowedAnnotateKinds: modeConfig.allowedAnnotateKinds,
       primaryMode,
       assetShape,
       connectFlow,
@@ -466,22 +534,27 @@ export default function DrawingsPage() {
     primaryMode,
     stageViewport,
     traceMode,
+    modeConfig,
+    activeProjectId,
   ]);
+
+  const projectReady = Boolean(activeProjectId);
 
   const topBar = (
     <div className="flex flex-wrap items-end justify-between gap-3">
       <div className="min-w-0">
         <p className="text-sm font-semibold text-ds-foreground">Infrastructure map</p>
-        <p className="mt-0.5 text-xs text-ds-muted">
+        <p className={`mt-0.5 text-xs text-ds-muted ${workspaceFullscreen ? "hidden sm:block" : ""}`}>
           Unified Infrastructure Map Builder — structured assets, connections, and zones on your facility image.
         </p>
       </div>
       <div className="flex flex-wrap items-center gap-2">
+        <ProjectSelector value={activeProjectId} onChange={setActiveProjectId} disabled={bpLoading} />
         <select
           className="app-field w-[min(100%,22rem)]"
           value={selectedBlueprintId}
           onChange={(e) => setSelectedBlueprintId(e.target.value)}
-          disabled={bpLoading || blueprints.length === 0}
+          disabled={!projectReady || bpLoading || blueprints.length === 0}
         >
           {blueprints.length === 0 ? <option value="">No blueprints yet</option> : null}
           {blueprints.map((b) => (
@@ -498,67 +571,16 @@ export default function DrawingsPage() {
     </div>
   );
 
-  return (
-    <div className="flex min-h-0 w-full max-w-none flex-col gap-2">
-      <PageHeader
-        icon={LayoutGrid}
-        title="Drawings"
-        description="Infrastructure Map Builder — place assets, connections, and zones directly on the map."
-        actions={
-          <button
-            type="button"
-            className="ds-btn-secondary inline-flex items-center gap-2"
-            onClick={() => setWorkspaceFullscreen(true)}
-            title="Open map in fullscreen"
-          >
-            <Maximize2 className="h-4 w-4" aria-hidden />
-            Fullscreen
-          </button>
-        }
-      />
-
-      <div className="rounded-md border border-ds-border/70 bg-ds-secondary/10 px-3 py-2">
-        {topBar}
-        {(bpError || graph.error) ? <p className="mt-3 text-sm text-ds-danger">{bpError ?? graph.error}</p> : null}
-      </div>
-
-      {workspaceFullscreen ? (
-        <div
-          className="fixed inset-0 z-[90] bg-black/50 backdrop-blur-[1px]"
-          aria-hidden
-          role="presentation"
-          onClick={() => setWorkspaceFullscreen(false)}
-        />
-      ) : null}
-
-      <div
-        className={[
-          "flex min-h-0 flex-1 overflow-hidden rounded-md border border-ds-border/70 bg-ds-primary",
-          workspaceFullscreen
-            ? "fixed inset-3 z-[100] rounded-xl shadow-2xl sm:inset-4 md:inset-8"
-            : "relative min-h-[min(72vh,560px)] sm:min-h-[min(76vh,640px)]",
-        ].join(" ")}
-        role={workspaceFullscreen ? "dialog" : undefined}
-        aria-modal={workspaceFullscreen ? true : undefined}
-        aria-labelledby={workspaceFullscreen ? "drawings-workspace-title" : undefined}
-      >
-        {workspaceFullscreen ? (
-          <button
-            type="button"
-            className="absolute right-2 top-2 z-[110] inline-flex items-center gap-1.5 rounded-lg border border-ds-border/80 bg-ds-secondary/95 px-2.5 py-1.5 text-xs font-semibold text-ds-foreground shadow-md backdrop-blur-sm hover:bg-ds-primary/90"
-            onClick={(e) => {
-              e.stopPropagation();
-              setWorkspaceFullscreen(false);
-            }}
-          >
-            <Minimize2 className="h-3.5 w-3.5" aria-hidden />
-            Exit fullscreen
-          </button>
-        ) : null}
-        <span id="drawings-workspace-title" className="sr-only">
-          Infrastructure map workspace
-        </span>
-        <Sidebar
+  const workspaceChrome = (
+    <>
+      <span id="drawings-workspace-title" className="sr-only">
+        Infrastructure map workspace
+      </span>
+      <Sidebar
+          projectReady={projectReady}
+          semanticMode={activeMode}
+          onSemanticModeChange={setActiveMode}
+          modeConfig={modeConfig}
           activeSystems={activeSystems}
           onToggleSystem={(s) => setActiveSystems((prev) => ({ ...prev, [s]: !(prev[s] !== false) }))}
           primaryMode={primaryMode}
@@ -596,9 +618,20 @@ export default function DrawingsPage() {
             <div className="rounded-lg border border-ds-border bg-ds-secondary/40 p-4">
               <p className="text-sm text-ds-muted">Connect to the API to load saved drawings and infrastructure overlays.</p>
             </div>
+          ) : !projectReady ? (
+            <div className="relative flex min-h-[420px] flex-1 flex-col items-center justify-center rounded-lg border border-ds-border bg-ds-secondary/40 p-6">
+              <p className="max-w-md text-center text-sm font-semibold text-ds-foreground">Select a project to start building</p>
+              <p className="mt-2 max-w-md text-center text-xs text-ds-muted">
+                Assets, connections, zones, and blueprint edits are scoped to one project. Choose a project in the bar above to load data and enable tools.
+              </p>
+            </div>
           ) : !blueprintDetail ? (
             <div className="rounded-lg border border-ds-border bg-ds-secondary/40 p-4">
-              <p className="text-sm text-ds-muted">Choose a blueprint above to load the map canvas.</p>
+              <p className="text-sm text-ds-muted">
+                {blueprints.length === 0
+                  ? "No blueprints are linked to this project yet. Create a blueprint for this project (or assign project_id) to use the map canvas."
+                  : "Choose a blueprint above to load the map canvas."}
+              </p>
             </div>
           ) : (
             <>
@@ -679,6 +712,8 @@ export default function DrawingsPage() {
                     graphDraggableAssets={primaryMode === "select" && !traceMode}
                     mapSemantic={mapSemantic}
                     onStageViewport={setStageViewport}
+                    directedConnections={modeConfig.graphRules.directedEdges}
+                    snapConnectPreviewToAssets={modeConfig.interaction.snapConnectPreviewToAssets}
                   />
                 );
               })()}
@@ -687,6 +722,7 @@ export default function DrawingsPage() {
         </main>
 
         <RightPanel
+          inspectorVariant={modeConfig.inspector}
           selectedAssets={selectedAssets}
           selectedConnections={selectedConnections}
           asset={selectedAsset}
@@ -716,7 +752,82 @@ export default function DrawingsPage() {
             await graph.upsertAttribute(opts);
           }}
         />
-      </div>
+    </>
+  );
+
+  const fullscreenPortal =
+    workspaceFullscreen && typeof document !== "undefined"
+      ? createPortal(
+          <>
+            <div
+              className="fixed inset-0 z-[280] bg-black/50 backdrop-blur-[1px]"
+              aria-hidden
+              role="presentation"
+              onClick={() => setWorkspaceFullscreen(false)}
+            />
+            <div
+              className="fixed left-[max(0.5rem,env(safe-area-inset-left))] right-[max(0.5rem,env(safe-area-inset-right))] top-[max(0.5rem,env(safe-area-inset-top))] bottom-[max(0.5rem,env(safe-area-inset-bottom))] z-[290] flex min-h-0 flex-col overflow-hidden rounded-xl border border-ds-border/70 bg-ds-primary shadow-2xl sm:left-3 sm:right-3 sm:top-3 sm:bottom-3"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="drawings-workspace-title"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex shrink-0 flex-wrap items-start justify-between gap-2 border-b border-ds-border/70 bg-ds-secondary/10 px-3 py-2">
+                <div className="min-w-0 flex-1">{topBar}</div>
+                <button
+                  type="button"
+                  className="shrink-0 rounded-lg border border-ds-border/80 bg-ds-secondary/95 px-2.5 py-1.5 text-xs font-semibold text-ds-foreground shadow-sm hover:bg-ds-primary/90"
+                  onClick={() => setWorkspaceFullscreen(false)}
+                >
+                  <span className="inline-flex items-center gap-1.5">
+                    <Minimize2 className="h-3.5 w-3.5" aria-hidden />
+                    Exit fullscreen
+                  </span>
+                </button>
+              </div>
+              {(bpError || graph.error) ? (
+                <p className="shrink-0 border-b border-ds-border/60 px-3 py-2 text-sm text-ds-danger">{bpError ?? graph.error}</p>
+              ) : null}
+              <div className="flex min-h-0 min-w-0 flex-1 overflow-hidden">{workspaceChrome}</div>
+            </div>
+          </>,
+          document.body,
+        )
+      : null;
+
+  return (
+    <div className="flex min-h-0 w-full max-w-none flex-col gap-2">
+      <PageHeader
+        icon={LayoutGrid}
+        title="Drawings"
+        description="Infrastructure Map Builder — place assets, connections, and zones directly on the map."
+        actions={
+          <button
+            type="button"
+            className="ds-btn-secondary inline-flex items-center gap-2"
+            onClick={() => setWorkspaceFullscreen(true)}
+            title="Open map in fullscreen"
+          >
+            <Maximize2 className="h-4 w-4" aria-hidden />
+            Fullscreen
+          </button>
+        }
+      />
+
+      {!workspaceFullscreen ? (
+        <div className="rounded-md border border-ds-border/70 bg-ds-secondary/10 px-3 py-2">
+          {topBar}
+          {(bpError || graph.error) ? <p className="mt-3 text-sm text-ds-danger">{bpError ?? graph.error}</p> : null}
+        </div>
+      ) : null}
+
+      {!workspaceFullscreen ? (
+        <div className="relative flex min-h-[min(72vh,560px)] min-w-0 flex-1 overflow-hidden rounded-md border border-ds-border/70 bg-ds-primary sm:min-h-[min(76vh,640px)]">
+          {workspaceChrome}
+        </div>
+      ) : (
+        fullscreenPortal
+      )}
     </div>
   );
 }
