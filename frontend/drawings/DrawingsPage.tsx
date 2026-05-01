@@ -49,7 +49,7 @@ function useDocumentDark(): boolean {
   return dark;
 }
 
-export function DrawingsPage() {
+export default function DrawingsPage() {
   const isDark = useDocumentDark();
   const theme = isDark ? ("dark" as const) : ("light" as const);
 
