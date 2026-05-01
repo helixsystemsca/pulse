@@ -1,7 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Line } from "react-konva";
+import { useCallback, useMemo, useRef, useState } from "react";
 import type { BlueprintElement, BlueprintLayer } from "@/components/zones-devices/blueprint-types";
 import { BlueprintReadOnlyCanvas } from "@/components/zones-devices/BlueprintReadOnlyCanvas";
 import type { BlueprintReadOnlyTheme } from "@/components/zones-devices/BlueprintReadOnlyCanvas";
@@ -18,17 +17,18 @@ type Props = {
   connections: InfraConnection[];
   activeSystems: Record<SystemType, boolean>;
 
-  selectedAssetId: string | null;
-  selectedConnectionId: string | null;
+  selectedAssets: string[];
+  selectedConnections: string[];
   traceResult: TraceRouteResult | null;
 
   connectMode: boolean;
   connectDraftFromId: string | null;
-  connectPointerWorld: { x: number; y: number } | null;
 
   onPickBlueprintElementId?: (id: string) => void;
-  onSelectAssetId: (id: string) => void;
-  onSelectConnectionId: (id: string) => void;
+  onSelectAssetId: (id: string, shiftKey: boolean) => void;
+  onSelectConnectionId: (id: string, shiftKey: boolean) => void;
+  onAssetDragMove?: (id: string, x: number, y: number) => void;
+  onAssetDragEnd?: (id: string, x: number, y: number) => void;
   onCanvasClearSelection: () => void;
   onHoverAssetId?: (id: string | null) => void;
   onHoverConnectionId?: (id: string | null) => void;
@@ -45,15 +45,16 @@ export function CanvasWrapper({
   assets,
   connections,
   activeSystems,
-  selectedAssetId,
-  selectedConnectionId,
+  selectedAssets,
+  selectedConnections,
   traceResult,
   connectMode,
   connectDraftFromId,
-  connectPointerWorld,
   onPickBlueprintElementId,
   onSelectAssetId,
   onSelectConnectionId,
+  onAssetDragMove,
+  onAssetDragEnd,
   onCanvasClearSelection,
   onHoverAssetId,
   onHoverConnectionId,
@@ -62,45 +63,48 @@ export function CanvasWrapper({
   const [hoverAssetId, setHoverAssetId] = useState<string | null>(null);
   const [hoverConnectionId, setHoverConnectionId] = useState<string | null>(null);
 
+  const pointerWorldRef = useRef<{ x: number; y: number } | null>(null);
+  const stageScaleRef = useRef<number>(1);
+
+  const getPointerWorldPosition = useCallback(() => {
+    return pointerWorldRef.current;
+  }, []);
+
+  const getStageScale = useCallback(() => {
+    const s = stageScaleRef.current;
+    return Number.isFinite(s) && s > 0 ? s : 1;
+  }, []);
+
   const overlay = useMemo(() => {
     return (
-      <>
-        <GraphOverlay
-          assets={assets}
-          connections={connections}
-          activeSystems={activeSystems}
-          selectedAssetId={selectedAssetId}
-          selectedConnectionId={selectedConnectionId}
-          hoverAssetId={hoverAssetId}
-          hoverConnectionId={hoverConnectionId}
-          traceResult={traceResult}
-          onHoverAssetId={(id) => {
-            setHoverAssetId(id);
-            onHoverAssetId?.(id);
-          }}
-          onHoverConnectionId={(id) => {
-            setHoverConnectionId(id);
-            onHoverConnectionId?.(id);
-          }}
-          onSelectAssetId={onSelectAssetId}
-          onSelectConnectionId={onSelectConnectionId}
-          dimNonMatching={dimForTrace}
-        />
-        {/* Connection preview (simple straight line) */}
-        {connectMode && connectDraftFromId && connectPointerWorld ? (() => {
-          const from = assets.find((a) => a.id === connectDraftFromId);
-          if (!from) return null;
-          return (
-            <Line
-              points={[from.x, from.y, connectPointerWorld.x, connectPointerWorld.y]}
-              stroke="rgba(59, 130, 246, 0.85)"
-              strokeWidth={3}
-              dash={[8, 6]}
-              listening={false}
-            />
-          );
-        })() : null}
-      </>
+      <GraphOverlay
+        assets={assets}
+        connections={connections}
+        activeSystems={activeSystems}
+        selectedAssets={selectedAssets}
+        selectedConnections={selectedConnections}
+        hoverAssetId={hoverAssetId}
+        hoverConnectionId={hoverConnectionId}
+        traceResult={traceResult}
+        connectMode={connectMode}
+        connectStartAssetId={connectDraftFromId}
+        pointerWorldRef={pointerWorldRef}
+        stageScaleRef={stageScaleRef}
+        onHoverAssetId={(id) => {
+          setHoverAssetId(id);
+          onHoverAssetId?.(id);
+        }}
+        onHoverConnectionId={(id) => {
+          setHoverConnectionId(id);
+          onHoverConnectionId?.(id);
+        }}
+        onSelectAssetId={onSelectAssetId}
+        onSelectConnectionId={onSelectConnectionId}
+        onAssetDragMove={onAssetDragMove}
+        onAssetDragEnd={onAssetDragEnd}
+        draggableAssets={!connectMode}
+        dimNonMatching={dimForTrace}
+      />
     );
   }, [
     activeSystems,
@@ -108,16 +112,17 @@ export function CanvasWrapper({
     connections,
     connectDraftFromId,
     connectMode,
-    connectPointerWorld,
     dimForTrace,
     hoverAssetId,
     hoverConnectionId,
+    onAssetDragEnd,
+    onAssetDragMove,
     onHoverAssetId,
     onHoverConnectionId,
     onSelectAssetId,
     onSelectConnectionId,
-    selectedAssetId,
-    selectedConnectionId,
+    selectedAssets,
+    selectedConnections,
     traceResult,
   ]);
 
@@ -135,7 +140,14 @@ export function CanvasWrapper({
         fitResetKey={fitResetKey}
         onSelectElementId={onPickBlueprintElementId}
         overlay={overlay}
+        onPointerWorldMove={(p) => {
+          pointerWorldRef.current = p;
+        }}
+        onStageScaleChange={(s) => {
+          stageScaleRef.current = s;
+        }}
         minHeight={720}
+        chromeLess
       />
     </div>
   );

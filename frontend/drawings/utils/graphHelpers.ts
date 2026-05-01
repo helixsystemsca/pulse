@@ -21,6 +21,10 @@ export type InfraConnection = {
 
 export type TraceRouteResult = { asset_ids: string[]; connection_ids: string[] };
 
+export type GraphFilters = {
+  systems: Record<SystemType, boolean>;
+};
+
 export function systemColor(system: SystemType): { stroke: string; fill: string } {
   switch (system) {
     case "fiber":
@@ -32,6 +36,17 @@ export function systemColor(system: SystemType): { stroke: string; fill: string 
     default:
       return { stroke: "rgba(148, 163, 184, 0.95)", fill: "rgba(148, 163, 184, 0.2)" };
   }
+}
+
+export function getVisibleGraphElements(
+  filters: GraphFilters,
+  assets: InfraAsset[],
+  connections: InfraConnection[],
+): { visibleAssets: InfraAsset[]; visibleConnections: InfraConnection[] } {
+  const sysOn = (s: SystemType) => filters.systems[s] !== false;
+  const visibleAssets = assets.filter((a) => sysOn(a.system_type));
+  const visibleConnections = connections.filter((c) => c.active && sysOn(c.system_type));
+  return { visibleAssets, visibleConnections };
 }
 
 export function buildAdjacency(connections: InfraConnection[]): Map<string, Array<{ to: string; connectionId: string }>> {

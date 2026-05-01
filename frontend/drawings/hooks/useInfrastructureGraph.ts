@@ -66,6 +66,10 @@ export function useInfrastructureGraph() {
     return updated;
   }, []);
 
+  const optimisticMoveAsset = useCallback((id: string, x: number, y: number) => {
+    setAssets((prev) => prev.map((a) => (a.id === id ? { ...a, x, y } : a)));
+  }, []);
+
   const createConnection = useCallback(async (body: Omit<InfraConnection, "id" | "active">) => {
     const created = await apiFetch<InfraConnection>("/api/connections", { method: "POST", body: JSON.stringify(body) });
     setConnections((prev) => [created, ...prev]);
@@ -98,6 +102,7 @@ export function useInfrastructureGraph() {
     refresh,
     createAsset,
     updateAsset,
+    optimisticMoveAsset,
     createConnection,
     listAttributes,
     createAttribute,

@@ -70,7 +70,7 @@ export const pulseTenantSidebarNav = [
   { href: "/dashboard/workers", label: "Team Management", icon: "user-cog" as const },
   { href: "/dashboard/inventory", label: "Inventory", icon: "package" as const },
   { href: "/equipment", label: "Equipment", icon: "wrench" as const },
-  { href: "/zones-devices/zones", label: "Drawings", icon: "layers" as const },
+  { href: "/drawings", label: "Drawings", icon: "layers" as const },
   { href: "/devices", label: "Zones & Devices", icon: "map-pin" as const },
   { href: "/live-map", label: "Live Map", icon: "radio" as const },
   { href: "/settings", label: "Settings", icon: "settings" as const },

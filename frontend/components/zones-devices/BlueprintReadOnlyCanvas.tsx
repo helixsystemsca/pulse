@@ -195,12 +195,23 @@ export type BlueprintReadOnlyCanvasProps = {
   theme: BlueprintReadOnlyTheme;
   /** Min height of the preview region */
   minHeight?: number;
+  /** Optional wrapper className for the host container. */
+  className?: string;
+  /** If true, removes the default border + rounding for edge-to-edge embedding. */
+  chromeLess?: boolean;
   onSelectElementId?: (id: string) => void;
   /**
    * Optional Konva overlay content rendered above blueprint shapes.
    * Useful for graph overlays (assets + connections) without rewriting the canvas.
    */
   overlay?: ReactNode;
+  /**
+   * Optional callback for converting pointer position to world coords (for overlays).
+   * Called on pointer move when the stage has a pointer position.
+   */
+  onPointerWorldMove?: (p: { x: number; y: number } | null) => void;
+  /** Optional callback fired when stage scale changes (for overlays). */
+  onStageScaleChange?: (scale: number) => void;
   /**
    * When this value changes (e.g. selected blueprint id), the view is auto-fitted again
    * and any manual zoom from the wheel is cleared.
@@ -216,8 +227,12 @@ export function BlueprintReadOnlyCanvas({
   layers = [],
   theme: themeName,
   minHeight = 420,
+  className = "",
+  chromeLess = false,
   onSelectElementId,
   overlay,
+  onPointerWorldMove,
+  onStageScaleChange,
   fitResetKey,
 }: BlueprintReadOnlyCanvasProps) {
   const hostRef = useRef<HTMLDivElement | null>(null);
@@ -284,6 +299,10 @@ export function BlueprintReadOnlyCanvas({
     fitView(size.w, size.h, laidOut);
   }, [fitView, fitResetKey, laidOut, size.h, size.w]);
 
+  useEffect(() => {
+    onStageScaleChange?.(scale);
+  }, [onStageScaleChange, scale]);
+
   const gridLines = useMemo(() => {
     const { w, h } = size;
     const minWX = (-pos.x) / scale;
@@ -325,6 +344,19 @@ export function BlueprintReadOnlyCanvas({
     setPos({ x: p.x - wx * newS, y: p.y - wy * newS });
   };
 
+  const handlePointerMove = () => {
+    if (!onPointerWorldMove) return;
+    const stage = stageRef.current;
+    if (!stage) return;
+    const p = stage.getPointerPosition();
+    if (!p) {
+      onPointerWorldMove(null);
+      return;
+    }
+    // Inverse of Stage transform: stage is positioned at `pos` and scaled by `scale`.
+    onPointerWorldMove({ x: (p.x - pos.x) / scale, y: (p.y - pos.y) / scale });
+  };
+
   const swBase = Math.max(0.75, 1.05 / scale);
   const isDark = themeName === "dark";
   const symScale = 1.08;
@@ -333,7 +365,13 @@ export function BlueprintReadOnlyCanvas({
   return (
     <div
       ref={hostRef}
-      className="relative w-full overflow-hidden rounded-lg border border-ds-border"
+      className={[
+        "relative w-full overflow-hidden",
+        chromeLess ? "" : "rounded-lg border border-ds-border",
+        className,
+      ]
+        .filter(Boolean)
+        .join(" ")}
       style={{ height: minHeight, width: "100%", background: theme.canvasBg }}
     >
       <Stage
@@ -345,6 +383,8 @@ export function BlueprintReadOnlyCanvas({
         scaleX={scale}
         scaleY={scale}
         onWheel={handleWheel}
+        onMouseMove={handlePointerMove}
+        onTouchMove={handlePointerMove}
       >
         <Layer listening={false} sortChildren>
           {gridLines}
