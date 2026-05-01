@@ -131,12 +131,18 @@ export function MonitoringApp() {
               <Card padding="md" className="flex flex-wrap items-center justify-between gap-6">
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-ds-foreground">Tank indicators</p>
-                  <p className="mt-1 text-sm text-ds-muted">Hardcoded values (visual-only) for quick status checks.</p>
+                  <p className="mt-1 text-sm text-ds-muted">Visual summary (synced to the cards below).</p>
                 </div>
                 <div className="flex flex-wrap items-end justify-end gap-8">
-                  <TankIndicator label="CO₂ Tank" value={325} />
-                  <TankIndicator label="Backup CO₂" value={410} />
-                  <TankIndicator label="Spare" value={275} />
+                  {co2Tanks.map((tank) => (
+                    <TankIndicator
+                      key={tank.id}
+                      label={tank.name}
+                      sublabel={tank.location}
+                      value={tank.level}
+                      max={1000}
+                    />
+                  ))}
                 </div>
               </Card>
               <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">

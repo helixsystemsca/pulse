@@ -1135,6 +1135,256 @@ function DashboardBody({
 
   const activeAlertRows = useMemo(() => activeAlertCardRows(model.alerts), [model.alerts]);
 
+  const kioskAlerts = useMemo(() => {
+    const real = model.alerts
+      .filter((a) => a.countsTowardTotals !== false)
+      .filter((a) => a.title !== NO_ACTIVE_ALERTS_TITLE)
+      .slice()
+      .sort(compareAlerts)
+      .slice(0, 3);
+    if (real.length === 0) return activeAlertRows;
+    if (real.length >= 3) return real;
+    return [...real, ...activeAlertRows].slice(0, 3);
+  }, [activeAlertRows, model.alerts]);
+
+  const mockKPIs = useMemo(
+    () => ({
+      activeRequests: 7,
+      overdue: 2,
+      lowStock: 3,
+      outOfService: 1,
+      onSite: 5,
+      completedToday: 12,
+    }),
+    [],
+  );
+
+  const kioskKpis = useMemo(() => {
+    return [
+      { label: "Active requests", value: mockKPIs.activeRequests },
+      { label: "Overdue", value: mockKPIs.overdue },
+      { label: "Low stock", value: mockKPIs.lowStock },
+      { label: "Out of service", value: mockKPIs.outOfService },
+      { label: "On site", value: mockKPIs.onSite },
+      { label: "Completed today", value: mockKPIs.completedToday },
+    ] as const;
+  }, [mockKPIs]);
+
+  const views = useMemo(() => ["overview", "workforce", "systems"] as const, []);
+  const [viewIndex, setViewIndex] = useState(0);
+  useEffect(() => {
+    if (!isKiosk) return;
+    const interval = window.setInterval(() => {
+      setViewIndex((prev) => (prev + 1) % views.length);
+    }, 15000);
+    return () => window.clearInterval(interval);
+  }, [isKiosk, views.length]);
+  const currentView = views[viewIndex] ?? "overview";
+
+  function KioskTile({ label, value }: { label: string; value: number }) {
+    return (
+      <Card className="p-3">
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-ds-muted">{label}</p>
+        <p className="mt-1 font-headline text-3xl font-extrabold tabular-nums text-ds-foreground">{value}</p>
+      </Card>
+    );
+  }
+
+  function KioskPanel({ title, children }: { title: string; children: ReactNode }) {
+    return (
+      <Card className="flex h-full flex-col p-3">
+        <p className="text-base font-bold text-ds-foreground">{title}</p>
+        <div className="mt-3 min-h-0 flex-1">{children}</div>
+      </Card>
+    );
+  }
+
+  function KioskAlertCard({ alert }: { alert: AlertItem }) {
+    const p = alertPriority(alert);
+    const icon =
+      p === "critical" ? (
+        <AlertTriangle className="h-5 w-5 shrink-0 text-ds-danger" aria-hidden />
+      ) : p === "high" ? (
+        <AlertCircle className="h-5 w-5 shrink-0 text-ds-warning" aria-hidden />
+      ) : p === "medium" ? (
+        <Info className="h-5 w-5 shrink-0 text-[var(--ds-info)]" aria-hidden />
+      ) : (
+        <Radio className="h-5 w-5 shrink-0 text-ds-muted" aria-hidden />
+      );
+    const accent =
+      p === "critical"
+        ? "border-ds-danger/30 bg-[color-mix(in_srgb,var(--ds-danger)_10%,transparent)]"
+        : p === "high"
+          ? "border-ds-warning/35 bg-[color-mix(in_srgb,var(--ds-warning)_12%,transparent)]"
+          : p === "medium"
+            ? "border-[color-mix(in_srgb,var(--ds-info)_35%,transparent)] bg-[color-mix(in_srgb,var(--ds-info)_10%,transparent)]"
+            : "border-ds-border bg-ds-secondary/40";
+
+    return (
+      <Card className={`p-3 border ${accent}`.trim()}>
+        <div className="flex gap-3">
+          {icon}
+          <div className="min-w-0">
+            <p className="text-sm font-bold text-ds-foreground max-w-md truncate">{alert.title}</p>
+            {alert.subtitle ? (
+              <p className="mt-1 text-xs leading-relaxed text-ds-muted max-w-md line-clamp-2 whitespace-pre-line">
+                {alert.subtitle}
+              </p>
+            ) : null}
+          </div>
+        </div>
+      </Card>
+    );
+  }
+
+  function OverviewView() {
+    return (
+      <>
+        <div className="col-span-12">
+          <div className="grid grid-cols-6 gap-3">
+            {kioskKpis.map((k) => (
+              <KioskTile key={k.label} label={k.label} value={k.value} />
+            ))}
+          </div>
+        </div>
+
+        <div className="col-span-12 grid grid-cols-3 gap-3">
+          {kioskAlerts.slice(0, 3).map((a, idx) => (
+            <KioskAlertCard key={`${a.title}-${idx}`} alert={a} />
+          ))}
+        </div>
+
+        <div className="col-span-12 grid grid-cols-3 gap-4">
+          <div className="col-span-1">
+            <KioskPanel title="Workforce">
+              <div className="max-w-md">{(widgetRegistry as any).workforce.render()}</div>
+            </KioskPanel>
+          </div>
+          <div className="col-span-1">
+            <KioskPanel title="Inventory">
+              <div className="max-w-md">{(widgetRegistry as any).inventory.render()}</div>
+            </KioskPanel>
+          </div>
+          <div className="col-span-1">
+            <KioskPanel title="Equipment">
+              <div className="max-w-md">{(widgetRegistry as any).equipment.render()}</div>
+            </KioskPanel>
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  function WorkforceView() {
+    const onSite = model.workforce.onSite.slice(0, 12);
+    return (
+      <>
+        <div className="col-span-12">
+          <div className="grid grid-cols-6 gap-3">
+            <KioskTile label="On site" value={mockKPIs.onSite} />
+            <KioskTile label="Active requests" value={mockKPIs.activeRequests} />
+            <KioskTile label="Awaiting assignment" value={model.workRequests.awaitingCount} />
+            <KioskTile label="Overdue" value={mockKPIs.overdue} />
+            <KioskTile label="Completed today" value={mockKPIs.completedToday} />
+            <KioskTile label="Shifts today" value={Math.max(0, Number(model.workforce.summaryLine.match(/\d+/)?.[0] ?? 0))} />
+          </div>
+        </div>
+
+        <div className="col-span-12 grid grid-cols-3 gap-4">
+          <div className="col-span-2">
+            <KioskPanel title="On-site workers">
+              <div className="max-w-md">
+                <div className="flex flex-wrap gap-3">
+                  {onSite.length === 0 ? (
+                    <p className="text-sm text-ds-muted">No workers currently on site.</p>
+                  ) : (
+                    onSite.map((b) => (
+                      <WorkforceBubbleStack
+                        key={b.id}
+                        bubble={b}
+                        faceClassName={onsiteAvatarClass()}
+                        badges={
+                          <>
+                            {b.badge ? <WorkforceRoleLetterBadge letter={b.badge} /> : null}
+                            <WorkforceStatusDot color="green" />
+                          </>
+                        }
+                      />
+                    ))
+                  )}
+                </div>
+              </div>
+            </KioskPanel>
+          </div>
+
+          <div className="col-span-1">
+            <KioskPanel title="Work focus">
+              <div className="max-w-md space-y-3">
+                <div className="rounded-lg border border-ds-border bg-ds-secondary/40 p-3">
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-ds-muted">Assigned vs unassigned</p>
+                  <p className="mt-2 text-sm font-semibold text-ds-foreground">
+                    Unassigned: <span className="tabular-nums">{model.workRequests.awaitingCount}</span>
+                  </p>
+                  <p className="mt-1 text-sm font-semibold text-ds-foreground">
+                    Active: <span className="tabular-nums">{mockKPIs.activeRequests}</span>
+                  </p>
+                </div>
+                <div className="rounded-lg border border-ds-border bg-ds-secondary/40 p-3">
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-ds-muted">Today</p>
+                  <p className="mt-2 text-sm font-semibold text-ds-foreground">
+                    Completed: <span className="tabular-nums">{mockKPIs.completedToday}</span>
+                  </p>
+                  <p className="mt-1 text-sm font-semibold text-ds-foreground">
+                    Overdue: <span className="tabular-nums">{mockKPIs.overdue}</span>
+                  </p>
+                </div>
+              </div>
+            </KioskPanel>
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  function SystemsView() {
+    return (
+      <>
+        <div className="col-span-12">
+          <div className="grid grid-cols-6 gap-3">
+            <KioskTile label="Low stock" value={mockKPIs.lowStock} />
+            <KioskTile label="Out of service" value={mockKPIs.outOfService} />
+            <KioskTile label="Missing tools" value={model.equipment.missingCount} />
+            <KioskTile label="Active tools" value={model.equipment.activeCount} />
+            <KioskTile label="Inventory items" value={model.inventory.shoppingList.length} />
+            <KioskTile label="Overdue" value={mockKPIs.overdue} />
+          </div>
+        </div>
+
+        <div className="col-span-12 grid grid-cols-3 gap-4">
+          <div className="col-span-1">
+            <KioskPanel title="Inventory">
+              <div className="max-w-md">{(widgetRegistry as any).inventory.render()}</div>
+            </KioskPanel>
+          </div>
+          <div className="col-span-1">
+            <KioskPanel title="Equipment">
+              <div className="max-w-md">{(widgetRegistry as any).equipment.render()}</div>
+            </KioskPanel>
+          </div>
+          <div className="col-span-1">
+            <KioskPanel title="Top alerts">
+              <div className="max-w-md space-y-3">
+                {kioskAlerts.slice(0, 3).map((a, idx) => (
+                  <KioskAlertCard key={`${a.title}-${idx}`} alert={a} />
+                ))}
+              </div>
+            </KioskPanel>
+          </div>
+        </div>
+      </>
+    );
+  }
+
   const widgetRegistry = useMemo(() => {
     return {
       alerts: {
@@ -1638,6 +1888,60 @@ function DashboardBody({
 
   const weatherLabel = useMemo(() => weatherLabelFromCode(weather.code), [weather.code]);
   const weatherTemp = useMemo(() => (weather.tempC == null ? "—" : `${Math.round(weather.tempC)}°C`), [weather.tempC]);
+
+  if (isKiosk) {
+    return (
+      <div className="w-full px-4">
+        <div className="grid grid-cols-12 gap-4">
+          <div className="col-span-12">
+            <Card className="p-3">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="min-w-0 flex items-center gap-3">
+                  <OperationsHeaderLogoMark logoUrl={headerLogoUrl} companyName={headerCompanyName} />
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-extrabold uppercase tracking-[0.18em] text-ds-muted">
+                      Operations dashboard
+                    </p>
+                    <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm font-semibold text-ds-foreground">
+                      <span className="max-w-md truncate">{dateInBc(now)}</span>
+                      <span className="text-ds-muted">•</span>
+                      <span className="tabular-nums">{timeInBc(now)}</span>
+                      <span className="text-ds-muted">•</span>
+                      <span className="inline-flex items-center gap-1.5 text-ds-muted">
+                        <Cloud className="h-4 w-4" aria-hidden />
+                        {weatherTemp} · {weatherLabel}
+                      </span>
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="text-xs font-semibold text-ds-muted">{currentView.toUpperCase()}</div>
+                  {!hideHeaderWelcome ? (
+                    <span className="inline-flex items-center gap-2 rounded-lg border border-ds-border bg-ds-secondary/60 px-3 py-2 text-sm font-semibold text-ds-foreground">
+                      <span className="hidden sm:inline">Welcome,</span> {model.welcomeName || userInitials}
+                    </span>
+                  ) : null}
+                </div>
+              </div>
+              {model.bannerNote ? (
+                <div className="mt-3 border-t border-ds-border pt-3 text-sm font-semibold text-ds-foreground max-w-md">
+                  {model.bannerNote}
+                </div>
+              ) : null}
+            </Card>
+          </div>
+
+          <div className="col-span-12">
+            <div className="transition-opacity duration-500 ease-in-out">
+              {currentView === "overview" && <OverviewView />}
+              {currentView === "workforce" && <WorkforceView />}
+              {currentView === "systems" && <SystemsView />}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full space-y-6">

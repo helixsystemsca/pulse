@@ -3,33 +3,39 @@ import { useMemo } from "react";
 type TankIndicatorProps = {
   label: string;
   value: number;
+  max: number;
+  sublabel?: string;
 };
 
-const MAX_VISUAL = 500;
-
-type TankStatus = "healthy" | "warning" | "critical";
+type TankStatus = "ok" | "change_soon" | "change_now";
 
 function getStatus(value: number): TankStatus {
-  if (value <= 300) return "critical";
-  if (value <= 400) return "warning";
-  return "healthy";
+  // CO₂ mock sensor ranges in Monitoring are modeled on a 0–1000 scale.
+  // Keep indicator thresholds aligned with `getCo2TankStatus`.
+  if (value < 300) return "change_now";
+  if (value <= 350) return "change_soon";
+  return "ok";
 }
 
 const statusColors: Record<TankStatus, string> = {
-  healthy: "bg-ds-success",
-  warning: "bg-ds-warning",
-  critical: "bg-ds-danger",
+  ok: "bg-ds-success",
+  change_soon: "bg-ds-warning",
+  change_now: "bg-ds-danger",
 };
 
 const statusLabels: Record<TankStatus, string> = {
-  healthy: "Good",
-  warning: "Caution",
-  critical: "Low",
+  ok: "OK",
+  change_soon: "Change soon",
+  change_now: "Change now",
 };
 
-export function TankIndicator({ label, value }: TankIndicatorProps) {
+export function TankIndicator({ label, value, max, sublabel }: TankIndicatorProps) {
   const status = useMemo(() => getStatus(value), [value]);
-  const percent = useMemo(() => Math.min(100, (value / MAX_VISUAL) * 100), [value]);
+  const percent = useMemo(() => {
+    const m = Math.max(1, max);
+    return Math.min(100, Math.max(0, (value / m) * 100));
+  }, [max, value]);
+  const percentLabel = useMemo(() => `${Math.round(percent)}%`, [percent]);
 
   return (
     <div className="flex flex-col items-center">
@@ -44,10 +50,16 @@ export function TankIndicator({ label, value }: TankIndicatorProps) {
           style={{ height: `${percent}%` }}
           aria-hidden
         />
+        <div className="absolute inset-0 flex items-center justify-center">
+          <span className="rounded-md bg-black/30 px-2 py-1 text-xs font-bold tabular-nums text-white backdrop-blur-[2px]">
+            {percentLabel}
+          </span>
+        </div>
       </div>
       <p className="mt-2 text-sm font-semibold text-ds-foreground">{label}</p>
       <p className="mt-0.5 text-xs text-ds-muted">
-        <span className="tabular-nums">{value}</span> PSI • {statusLabels[status]}
+        <span className="tabular-nums">{value}</span> / {max} • {statusLabels[status]}
+        {sublabel ? <span className="text-ds-muted/80"> · {sublabel}</span> : null}
       </p>
     </div>
   );
