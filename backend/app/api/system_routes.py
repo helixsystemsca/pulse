@@ -12,7 +12,12 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.dialects.postgresql import array as pg_array
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import require_system_admin
-from app.core.user_roles import primary_jwt_role, user_has_any_role
+from app.core.user_roles import (
+    default_operational_role_for_invite_role,
+    primary_jwt_role,
+    user_has_any_role,
+    validate_tenant_roles_non_empty,
+)
 from app.core.audit.service import record_audit
 from app.core.auth.security import create_access_token, hash_password as hash_pw
 from app.core.config import Settings, get_settings
@@ -48,6 +53,7 @@ from app.schemas.system_admin import (
     SystemCompanyBootstrapPassword,
     SystemCompanyCreate,
     SystemCompanyCreateAndInvite,
+    SystemCompanyMemberOut,
     SystemCompanyPatch,
     SystemCompanyRow,
     SystemInviteCreate,
@@ -56,6 +62,8 @@ from app.schemas.system_admin import (
     SystemPendingInviteRow,
     SystemUserRow,
     SystemUsersDirectoryOut,
+    TransferTenantOwnerBody,
+    TransferTenantOwnerOut,
 )
 
 
@@ -426,6 +434,82 @@ async def get_company(
     )
 
 
+@router.get("/companies/{company_id}/members", response_model=list[SystemCompanyMemberOut])
+async def list_company_members(
+    company_id: str,
+    _: Annotated[User, Depends(require_system_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> list[SystemCompanyMemberOut]:
+    c = await db.get(Company, company_id)
+    if not c:
+        raise HTTPException(status_code=404, detail="Company not found")
+    q = await db.execute(select(User).where(User.company_id == company_id).order_by(User.email.asc()))
+    users = list(q.scalars().all())
+    return [
+        SystemCompanyMemberOut(id=str(u.id), email=u.email, full_name=u.full_name, roles=list(u.roles or []))
+        for u in users
+    ]
+
+
+@router.post(
+    "/companies/{company_id}/transfer-tenant-owner",
+    response_model=TransferTenantOwnerOut,
+    status_code=status.HTTP_200_OK,
+)
+async def transfer_tenant_owner(
+    company_id: str,
+    body: TransferTenantOwnerBody,
+    admin: Annotated[User, Depends(require_system_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> TransferTenantOwnerOut:
+    """
+    Canonical tenant owner swap: updates `companies.owner_admin_id` and aligns RBAC so the
+    system users directory reflects the same truth as downstream checks.
+    """
+    c = await db.get(Company, company_id)
+    if not c:
+        raise HTTPException(status_code=404, detail="Company not found")
+    new_u = await db.get(User, body.new_owner_user_id)
+    if not new_u or str(new_u.company_id) != str(company_id):
+        raise HTTPException(status_code=400, detail="New owner must be an active user row in this company")
+    if user_has_any_role(new_u, UserRole.system_admin) or new_u.is_system_admin:
+        raise HTTPException(status_code=400, detail="Cannot assign platform system admin as tenant owner")
+    prev_id = str(c.owner_admin_id) if c.owner_admin_id else None
+    if prev_id == str(new_u.id):
+        raise HTTPException(status_code=400, detail="User is already the recorded tenant owner")
+
+    demote_enum = UserRole.manager if body.demote_previous_to == "manager" else UserRole.worker
+
+    if prev_id:
+        prev = await db.get(User, prev_id)
+        if prev and str(prev.company_id) == str(company_id):
+            stripped = [r for r in (prev.roles or []) if r != UserRole.company_admin.value]
+            if not stripped:
+                stripped = [demote_enum.value]
+            prev.roles = validate_tenant_roles_non_empty(stripped)
+            prev.operational_role = default_operational_role_for_invite_role(demote_enum)
+
+    new_u.roles = validate_tenant_roles_non_empty([UserRole.company_admin.value])
+    new_u.operational_role = default_operational_role_for_invite_role(UserRole.company_admin)
+
+    c.owner_admin_id = new_u.id
+    await record_system_log(
+        db,
+        action="company.tenant_owner_transferred",
+        performed_by=admin.id,
+        target_type="company",
+        target_id=c.id,
+        metadata={
+            "new_owner_user_id": str(new_u.id),
+            "previous_owner_user_id": prev_id,
+            "demote_previous_to": body.demote_previous_to,
+        },
+    )
+    await db.commit()
+    await db.refresh(c)
+    return TransferTenantOwnerOut(company_id=str(c.id), owner_admin_id=str(new_u.id))
+
+
 @router.patch("/companies/{company_id}", response_model=SystemCompanyRow)
 async def patch_company(
     company_id: str,
@@ -611,7 +695,7 @@ async def list_all_users(
     q: Optional[str] = Query(None),
     role: Optional[str] = Query(None, description="Filter by role enum value, e.g. system_admin, company_admin"),
 ) -> SystemUsersDirectoryOut:
-    stmt = select(User, Company.name).outerjoin(Company, User.company_id == Company.id)
+    stmt = select(User, Company).outerjoin(Company, User.company_id == Company.id)
     if role and role.strip():
         try:
             role_enum = UserRole(role.strip())
@@ -632,7 +716,10 @@ async def list_all_users(
     rows = (await db.execute(stmt)).all()
     login_latest = await latest_login_event_per_user(db, [u.id for u, _ in rows])
     out_users: list[SystemUserRow] = []
-    for u, company_name in rows:
+    for u, co in rows:
+        company_name = co.name if co else None
+        owner_id = str(co.owner_admin_id) if co and co.owner_admin_id else None
+        is_owner = bool(owner_id and owner_id == str(u.id))
         le = login_latest.get(u.id)
         out_users.append(
             SystemUserRow(
@@ -643,6 +730,7 @@ async def list_all_users(
                 roles=list(u.roles),
                 company_id=u.company_id,
                 company_name=company_name,
+                is_company_owner=is_owner,
                 is_active=u.is_active,
                 can_use_pm_features=bool(getattr(u, "can_use_pm_features", False)),
                 last_login=u.last_login.isoformat() if u.last_login else None,

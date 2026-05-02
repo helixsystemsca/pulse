@@ -23,6 +23,13 @@ type CompanyRow = {
   owner_admin_id?: string | null;
 };
 
+type CompanyMember = {
+  id: string;
+  email: string;
+  full_name: string | null;
+  roles: string[];
+};
+
 const inputCls =
   "min-w-[12rem] flex-1 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-500/40 focus:outline-none focus:ring-2 focus:ring-blue-500/50 disabled:opacity-50 dark:border-ds-border dark:bg-ds-secondary dark:text-white dark:placeholder:text-ds-muted";
 const sectionCls =
@@ -51,20 +58,29 @@ export default function SystemCompanyDetailPage() {
   const [savingLogo, setSavingLogo] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [uploadErr, setUploadErr] = useState<string | null>(null);
+  const [members, setMembers] = useState<CompanyMember[]>([]);
+  const [newOwnerId, setNewOwnerId] = useState("");
+  const [demotePrev, setDemotePrev] = useState<"manager" | "worker">("manager");
+  const [transferBusy, setTransferBusy] = useState(false);
+  const [transferErr, setTransferErr] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!companyId) return;
     setLoading(true);
     setNotFound(false);
     try {
-      const [co, cat] = await Promise.all([
+      const [co, cat, mem] = await Promise.all([
         apiFetch<CompanyRow>(`/api/system/companies/${companyId}`),
         apiFetch<{ features: string[] }>("/api/system/features/catalog"),
+        apiFetch<CompanyMember[]>(`/api/system/companies/${companyId}/members`),
       ]);
       setRow(co);
       setNameDraft(co.name);
       setLogoDraft(co.logo_url ?? "");
       setCatalog(cat.features);
+      setMembers(mem ?? []);
+      setNewOwnerId("");
+      setTransferErr(null);
     } catch {
       setNotFound(true);
       setRow(null);
@@ -168,6 +184,29 @@ export default function SystemCompanyDetailPage() {
       json: { is_active: true },
     });
     setRow(updated);
+  };
+
+  const transferTenantOwner = async () => {
+    if (!row || !newOwnerId.trim()) return;
+    setTransferBusy(true);
+    setTransferErr(null);
+    try {
+      await apiFetch(`/api/system/companies/${row.id}/transfer-tenant-owner`, {
+        method: "POST",
+        json: { new_owner_user_id: newOwnerId.trim(), demote_previous_to: demotePrev },
+      });
+      const [co, mem] = await Promise.all([
+        apiFetch<CompanyRow>(`/api/system/companies/${row.id}`),
+        apiFetch<CompanyMember[]>(`/api/system/companies/${row.id}/members`),
+      ]);
+      setRow(co);
+      setMembers(mem ?? []);
+      setNewOwnerId("");
+    } catch (e) {
+      setTransferErr(parseClientApiError(e).message);
+    } finally {
+      setTransferBusy(false);
+    }
   };
 
   if (!companyId) {
@@ -311,6 +350,70 @@ export default function SystemCompanyDetailPage() {
             ) : null}
           </div>
         </div>
+      </section>
+
+      <section className={sectionCls}>
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-zinc-500">
+          Tenant owner (canonical)
+        </h2>
+        <p className="mt-2 text-xs text-gray-500 dark:text-zinc-500">
+          Updates <span className="font-mono text-gray-600 dark:text-zinc-400">companies.owner_admin_id</span> and
+          aligns <span className="font-mono">users.roles</span> so the system users directory and JWTs match this
+          tenant&apos;s administrator of record.
+        </p>
+        <p className="mt-2 text-sm text-gray-700 dark:text-zinc-300">
+          Current owner:{" "}
+          <strong className="text-gray-900 dark:text-white">
+            {row.owner_admin_id
+              ? members.find((m) => m.id === row.owner_admin_id)?.email ?? row.owner_admin_id
+              : "— (unset)"}
+          </strong>
+        </p>
+        <div className="mt-4 flex max-w-xl flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+          <div className="min-w-[12rem] flex-1">
+            <label className={labelCls} htmlFor="tenant-owner-select">
+              New owner
+            </label>
+            <select
+              id="tenant-owner-select"
+              className={`mt-1.5 w-full ${inputCls}`}
+              disabled={!row.is_active || transferBusy}
+              value={newOwnerId}
+              onChange={(e) => setNewOwnerId(e.target.value)}
+            >
+              <option value="">Select user…</option>
+              {members.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.email} ({m.roles.join(", ") || "—"})
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className={labelCls} htmlFor="demote-prev">
+              Demote previous owner to
+            </label>
+            <select
+              id="demote-prev"
+              className={`mt-1.5 w-full min-w-[10rem] ${inputCls}`}
+              disabled={!row.is_active || transferBusy}
+              value={demotePrev}
+              onChange={(e) => setDemotePrev(e.target.value as "manager" | "worker")}
+            >
+              <option value="manager">manager</option>
+              <option value="worker">worker</option>
+            </select>
+          </div>
+          <button
+            type="button"
+            disabled={!row.is_active || transferBusy || !newOwnerId}
+            onClick={() => void transferTenantOwner()}
+            className={btnPrimary}
+          >
+            {transferBusy ? "Applying…" : "Transfer owner"}
+          </button>
+        </div>
+        {transferErr ? <p className="mt-2 text-sm text-red-600 dark:text-red-400">{transferErr}</p> : null}
       </section>
 
       <section className={sectionCls}>

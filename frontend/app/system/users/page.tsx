@@ -19,7 +19,12 @@ type UserRow = {
   id: string;
   email: string;
   full_name: string | null;
+  /** Highest-precedence RBAC role (same claim as JWT primary). */
   role: string;
+  /** Full `users.roles` array from the database. */
+  roles?: string[];
+  /** True when this user id matches `companies.owner_admin_id` for their tenant. */
+  is_company_owner?: boolean;
   company_id: string | null;
   company_name: string | null;
   is_active: boolean;
@@ -351,7 +356,7 @@ export default function SystemUsersPage() {
                     <thead>
                       <tr className={dataTableHeadRowClass}>
                         <th className="px-4 py-3">User</th>
-                        <th className="px-4 py-3">Role</th>
+                        <th className="px-4 py-3">Role / tenant</th>
                         <th className="px-4 py-3">Company</th>
                         <th className="px-4 py-3">PM Features</th>
                         <th className="px-4 py-3">Last login</th>
@@ -368,7 +373,19 @@ export default function SystemUsersPage() {
                             <div className="font-medium text-ds-foreground">{r.full_name || "—"}</div>
                             <div className="text-xs text-ds-muted">{r.email}</div>
                           </td>
-                          <td className="px-4 py-3 text-ds-muted">{r.role}</td>
+                          <td className="px-4 py-3">
+                            <div className="font-medium text-ds-foreground">{r.role}</div>
+                            {r.roles && r.roles.length > 0 ? (
+                              <div className="mt-0.5 font-mono text-[10px] text-ds-muted" title="users.roles">
+                                {r.roles.join(", ")}
+                              </div>
+                            ) : null}
+                            {r.is_company_owner ? (
+                              <div className="mt-1 inline-flex rounded-md bg-[color-mix(in_srgb,var(--ds-success)_14%,transparent)] px-1.5 py-0.5 text-[10px] font-bold text-ds-foreground">
+                                Tenant owner
+                              </div>
+                            ) : null}
+                          </td>
                           <td className="px-4 py-3 text-ds-muted">{r.company_name || "—"}</td>
                           <td className="px-4 py-3">
                             <label className="inline-flex items-center gap-2 text-xs font-semibold text-ds-muted">

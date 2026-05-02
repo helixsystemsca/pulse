@@ -66,6 +66,8 @@ class SystemUserRow(BaseModel):
     roles: list[str] = []
     company_id: Optional[str]
     company_name: Optional[str]
+    #: True when `users.id` matches `companies.owner_admin_id` for their tenant (canonical owner pointer).
+    is_company_owner: bool = False
     is_active: bool
     can_use_pm_features: bool = False
     last_login: Optional[str]
@@ -73,6 +75,23 @@ class SystemUserRow(BaseModel):
     last_login_city: Optional[str] = None
     last_login_region: Optional[str] = None
     last_login_user_agent: Optional[str] = None
+
+
+class SystemCompanyMemberOut(BaseModel):
+    id: str
+    email: str
+    full_name: Optional[str]
+    roles: list[str]
+
+
+class TransferTenantOwnerBody(BaseModel):
+    new_owner_user_id: str = Field(..., min_length=8, max_length=64)
+    demote_previous_to: str = Field(default="manager", pattern="^(manager|worker)$")
+
+
+class TransferTenantOwnerOut(BaseModel):
+    company_id: str
+    owner_admin_id: str
 
 
 class SystemPendingInviteRow(BaseModel):

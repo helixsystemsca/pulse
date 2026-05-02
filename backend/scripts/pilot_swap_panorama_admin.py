@@ -1,7 +1,11 @@
 """
 One-off pilot fix: move company_admin from Liz → Josh (Panorama tenant).
 
-System admin cannot demote company_admin via normal APIs; this script updates DB directly.
+**Preferred:** use System Admin UI → Company → **Tenant owner (canonical)** → Transfer owner
+(`POST /api/system/companies/{id}/transfer-tenant-owner`). That updates both `users.roles` and
+`companies.owner_admin_id`, so `/system/users` stays the source of truth.
+
+This script is a DB-only fallback when the API is not available.
 
   - liz@panorama.ca     → manager
   - josh@panorama.ca    → company_admin + companies.owner_admin_id
