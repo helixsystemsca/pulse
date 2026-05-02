@@ -7,9 +7,11 @@ type Props = {
   value: string | null;
   onChange: (projectId: string | null) => void;
   disabled?: boolean;
+  /** Compact single control for top bars (no surrounding label). */
+  variant?: "default" | "inline";
 };
 
-export function ProjectSelector({ value, onChange, disabled }: Props) {
+export function ProjectSelector({ value, onChange, disabled, variant = "default" }: Props) {
   const [projects, setProjects] = useState<ProjectRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -36,23 +38,40 @@ export function ProjectSelector({ value, onChange, disabled }: Props) {
     };
   }, []);
 
+  const select = (
+    <select
+      className={
+        variant === "inline"
+          ? "app-field h-9 min-h-0 w-[min(100%,14rem)] py-0 text-sm"
+          : "app-field min-h-9 text-sm"
+      }
+      disabled={disabled || loading}
+      value={value ?? ""}
+      onChange={(e) => onChange(e.target.value ? e.target.value : null)}
+      aria-invalid={Boolean(error)}
+    >
+      <option value="">{loading ? "Loading projects…" : "Select a project…"}</option>
+      {projects.map((p) => (
+        <option key={p.id} value={p.id}>
+          {p.name}
+        </option>
+      ))}
+    </select>
+  );
+
+  if (variant === "inline") {
+    return (
+      <div className="flex min-w-0 flex-col gap-0.5">
+        {select}
+        {error ? <span className="sr-only text-ds-danger">{error}</span> : null}
+      </div>
+    );
+  }
+
   return (
     <label className="flex min-w-[min(100%,14rem)] flex-col gap-0.5">
       <span className="text-[10px] font-semibold uppercase tracking-wider text-ds-muted">Project</span>
-      <select
-        className="app-field min-h-9 text-sm"
-        disabled={disabled || loading}
-        value={value ?? ""}
-        onChange={(e) => onChange(e.target.value ? e.target.value : null)}
-        aria-invalid={Boolean(error)}
-      >
-        <option value="">{loading ? "Loading projects…" : "Select a project…"}</option>
-        {projects.map((p) => (
-          <option key={p.id} value={p.id}>
-            {p.name}
-          </option>
-        ))}
-      </select>
+      {select}
       {error ? <span className="text-[10px] text-ds-danger">{error}</span> : null}
     </label>
   );

@@ -3,22 +3,23 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { apiFetch, isApiMode } from "@/lib/api";
-import { PageHeader } from "@/components/ui/PageHeader";
-import { Camera, LayoutGrid, Maximize2, Minimize2 } from "lucide-react";
+import { listProjects, type ProjectRow } from "@/lib/projectsService";
 import type { BlueprintElement, BlueprintLayer } from "@/components/zones-devices/blueprint-types";
 import { SYMBOL_DEFAULT, mapApiElement, parseApiBlueprintLayers, toApiPayload } from "@/lib/blueprint-layout";
 import { packInfraAssetNotes, parseInfraAssetFromNotes } from "./utils/infraSymbolNotes";
 import { packZoneMeta } from "./utils/overlayMeta";
-import { ProjectSelector } from "./components/ProjectSelector";
 import { useActiveProject } from "./hooks/useActiveProject";
 import { useInfrastructureGraph } from "./hooks/useInfrastructureGraph";
 import type { FilterRule, GraphFilters, SystemType, TraceRouteResult } from "./utils/graphHelpers";
 import { getVisibleGraphElements } from "./utils/graphHelpers";
 import { MODES } from "./mapBuilderModes";
 import { useBuilderMode } from "./hooks/useBuilderMode";
-import { Sidebar } from "./components/Sidebar";
 import { CanvasWrapper } from "./components/CanvasWrapper";
+import { DrawingsTopBar } from "./components/DrawingsTopBar";
+import { MiniToolRail } from "./components/MiniToolRail";
 import { RightPanel } from "./components/RightPanel";
+import { ToolPanel } from "./components/ToolPanel";
+import { PRIMARY_TO_TOOL, toolToPrimaryMode, type WorkspaceTool } from "./workspaceTools";
 import type { AnnotateKind, AssetDrawShape, ConnectFlow, PrimaryMode } from "./mapBuilderTypes";
 import { bboxFromFlatPoly, uniqueLabel } from "./utils/mapBuilderHelpers";
 import type { StageViewport } from "./components/MapSemanticDrawLayer";
@@ -91,6 +92,14 @@ export default function DrawingsPage({ fullscreen = false }: { fullscreen?: bool
   const [traceResult, setTraceResult] = useState<TraceRouteResult | null>(null);
 
   const [connectDraftFromId, setConnectDraftFromId] = useState<string | null>(null);
+  const [activeTool, setActiveTool] = useState<WorkspaceTool>("select");
+  const [projectRows, setProjectRows] = useState<ProjectRow[]>([]);
+
+  useEffect(() => {
+    void listProjects()
+      .then(setProjectRows)
+      .catch(() => setProjectRows([]));
+  }, []);
 
   useEffect(() => {
     if (primaryMode !== "connect") setConnectDraftFromId(null);
@@ -272,6 +281,35 @@ export default function DrawingsPage({ fullscreen = false }: { fullscreen?: bool
     setTraceEndId(null);
     setTraceMode((v) => !v);
   }
+
+  function applyWorkspaceTool(tool: WorkspaceTool) {
+    if (tool === "trace") {
+      if (!modeConfig.ui.showTraceRoute || !activeProjectId) return;
+      const willEnable = !traceMode;
+      void onTraceRoute();
+      setActiveTool(willEnable ? "trace" : "select");
+      return;
+    }
+    if (traceMode) void onTraceRoute();
+    setActiveTool(tool);
+    if (tool === "door") {
+      setPrimaryMode("select");
+      return;
+    }
+    const pm = toolToPrimaryMode(tool);
+    if (pm && modeConfig.allowedPrimaryModes.has(pm)) {
+      setPrimaryMode(pm);
+      if (pm !== "connect") setConnectDraftFromId(null);
+    }
+  }
+
+  useEffect(() => {
+    if (traceMode) {
+      setActiveTool("trace");
+      return;
+    }
+    setActiveTool((prev) => (prev === "door" ? "door" : PRIMARY_TO_TOOL[primaryMode]));
+  }, [primaryMode, traceMode]);
 
   async function handlePickAsset(id: string, shiftKey: boolean) {
     // Trace route selection flow
@@ -540,121 +578,98 @@ export default function DrawingsPage({ fullscreen = false }: { fullscreen?: bool
 
   const projectReady = Boolean(activeProjectId);
 
-  const topBar = (
-    <div className="flex flex-wrap items-end justify-between gap-3">
-      <div className="min-w-0">
-        <p className="text-sm font-semibold text-ds-foreground">Infrastructure map</p>
-        <p className={`mt-0.5 text-xs text-ds-muted ${fullscreen ? "hidden sm:block" : ""}`}>
-          Unified Infrastructure Map Builder — structured assets, connections, and zones on your facility image.
-        </p>
-      </div>
-      <div className="flex flex-wrap items-center gap-2">
-        <ProjectSelector value={activeProjectId} onChange={setActiveProjectId} disabled={bpLoading} />
-        <select
-          className="app-field w-[min(100%,22rem)]"
-          value={selectedBlueprintId}
-          onChange={(e) => setSelectedBlueprintId(e.target.value)}
-          disabled={!projectReady || bpLoading || blueprints.length === 0}
-        >
-          {blueprints.length === 0 ? <option value="">No blueprints yet</option> : null}
-          {blueprints.map((b) => (
-            <option key={b.id} value={b.id}>
-              {b.name}
-            </option>
-          ))}
-        </select>
-        <button type="button" className="ds-btn-secondary inline-flex items-center gap-1.5" onClick={handleSnapshotStub} title="Placeholder — future versioned snapshots">
-          <Camera className="h-4 w-4" aria-hidden />
-          Save snapshot
-        </button>
-      </div>
-    </div>
-  );
+  const titleLeft =
+    activeProjectId && projectRows.length > 0
+      ? projectRows.find((p) => p.id === activeProjectId)?.name ?? "Drawings"
+      : "Drawings";
 
   const workspaceChrome = (
-    <div className="flex min-h-0 min-w-0 flex-1 flex-row items-stretch overflow-hidden">
+    <div className="flex min-h-0 min-w-0 flex-1 flex-row overflow-hidden bg-ds-primary">
       <span id="drawings-workspace-title" className="sr-only">
         Infrastructure map workspace
       </span>
-      <Sidebar
-          projectReady={projectReady}
-          semanticMode={activeMode}
-          onSemanticModeChange={setActiveMode}
-          modeConfig={modeConfig}
-          activeSystems={activeSystems}
-          onToggleSystem={(s) => setActiveSystems((prev) => ({ ...prev, [s]: !(prev[s] !== false) }))}
-          primaryMode={primaryMode}
-          onPrimaryModeChange={(m) => {
-            setPrimaryMode(m);
-            if (m !== "connect") setConnectDraftFromId(null);
-          }}
-          assetShape={assetShape}
-          onAssetShapeChange={setAssetShape}
-          connectFlow={connectFlow}
-          onConnectFlowChange={setConnectFlow}
-          annotateKind={annotateKind}
-          onAnnotateKindChange={setAnnotateKind}
-          defaultSystemType={defaultSystemType}
-          onDefaultSystemTypeChange={setDefaultSystemType}
-          onTraceRoute={() => void onTraceRoute()}
-          traceActive={traceMode}
-          filterRules={filterRules as unknown as FilterRule[]}
-          onAddFilterRule={(r) => setFilterRules((prev) => [...prev, r as unknown as FilterRuleLocal])}
-          onRemoveFilterRule={(idx) => setFilterRules((prev) => prev.filter((_, i) => i !== idx))}
-          onPresetAvailableFiber={() =>
-            setFilterRules((prev) => [
-              ...prev,
-              { entity: "asset", key: "strands_available", operator: "gt", value: 0 },
-            ])
-          }
-        />
+      <MiniToolRail
+        activeTool={activeTool}
+        onToolChange={applyWorkspaceTool}
+        traceAllowed={modeConfig.ui.showTraceRoute}
+        projectReady={projectReady}
+      />
+      <ToolPanel
+        activeTool={activeTool}
+        projectReady={projectReady}
+        semanticMode={activeMode}
+        onSemanticModeChange={setActiveMode}
+        modeConfig={modeConfig}
+        activeSystems={activeSystems}
+        onToggleSystem={(s) => setActiveSystems((prev) => ({ ...prev, [s]: !(prev[s] !== false) }))}
+        primaryMode={primaryMode}
+        assetShape={assetShape}
+        onAssetShapeChange={setAssetShape}
+        connectFlow={connectFlow}
+        onConnectFlowChange={setConnectFlow}
+        annotateKind={annotateKind}
+        onAnnotateKindChange={setAnnotateKind}
+        defaultSystemType={defaultSystemType}
+        onDefaultSystemTypeChange={setDefaultSystemType}
+        filterRules={filterRules as unknown as FilterRule[]}
+        onAddFilterRule={(r) => setFilterRules((prev) => [...prev, r as unknown as FilterRuleLocal])}
+        onRemoveFilterRule={(idx) => setFilterRules((prev) => prev.filter((_, i) => i !== idx))}
+        onPresetAvailableFiber={() =>
+          setFilterRules((prev) => [
+            ...prev,
+            { entity: "asset", key: "strands_available", operator: "gt", value: 0 },
+          ])
+        }
+        traceMode={traceMode}
+        traceStartId={traceStartId}
+        traceResult={traceResult}
+      />
 
-        <main className="flex min-h-0 flex-1 flex-col p-0">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-row overflow-hidden">
+        <main className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
           {bpLoading ? (
-            <div className="flex min-h-[420px] items-center justify-center">
+            <div className="flex flex-1 items-center justify-center border-l border-ds-border/40 bg-ds-primary">
               <p className="text-sm text-ds-muted">Loading canvas…</p>
             </div>
           ) : !isApiMode() ? (
-            <div className="rounded-lg border border-ds-border bg-ds-secondary/40 p-4">
+            <div className="flex flex-1 flex-col justify-center border-l border-ds-border/40 bg-ds-secondary/25 px-4 py-6">
               <p className="text-sm text-ds-muted">Connect to the API to load saved drawings and infrastructure overlays.</p>
             </div>
           ) : !projectReady ? (
-            <div className="relative flex min-h-[420px] flex-1 flex-col items-center justify-center rounded-lg border border-ds-border bg-ds-secondary/40 p-6">
-              <p className="max-w-md text-center text-sm font-semibold text-ds-foreground">Select a project to start building</p>
+            <div className="flex flex-1 flex-col items-center justify-center border-l border-ds-border/40 bg-ds-secondary/25 px-6 py-8">
+              <p className="max-w-md text-center text-sm font-semibold text-ds-foreground">Select a project</p>
               <p className="mt-2 max-w-md text-center text-xs text-ds-muted">
-                Assets, connections, zones, and blueprint edits are scoped to one project. Choose a project in the bar above to load data and enable tools.
+                Choose a project in the header to load data and enable tools.
               </p>
             </div>
           ) : !blueprintDetail ? (
-            <div className="rounded-lg border border-ds-border bg-ds-secondary/40 p-4">
+            <div className="flex flex-1 flex-col justify-center border-l border-ds-border/40 bg-ds-secondary/25 px-4 py-6">
               <p className="text-sm text-ds-muted">
                 {blueprints.length === 0
-                  ? "No blueprints are linked to this project yet. Create a blueprint for this project (or assign project_id) to use the map canvas."
-                  : "Choose a blueprint above to load the map canvas."}
+                  ? "No blueprints are linked to this project yet."
+                  : "Choose a blueprint in the header to load the map canvas."}
               </p>
             </div>
           ) : (
             <>
-              <div className="mb-2 flex flex-wrap items-center justify-between gap-2 px-2 pt-2">
+              <div className="pointer-events-none absolute left-0 right-0 top-0 z-10 flex flex-wrap items-start justify-between gap-2 border-b border-ds-border/30 bg-ds-primary/85 px-2 py-1 backdrop-blur-[2px]">
                 <div className="flex flex-wrap items-center gap-2">
                   {connectMode && connectFlow === "pick" && connectDraftFromId ? (
-                    <span className="text-xs font-semibold text-ds-muted">Connect: pick destination asset…</span>
+                    <span className="pointer-events-none text-[11px] font-semibold text-ds-muted">Connect: pick destination…</span>
                   ) : null}
                   {traceMode ? (
-                    <span className="text-xs font-semibold text-ds-muted">
-                      Trace route: {traceStartId ? "pick end asset…" : "pick start asset…"}
+                    <span className="pointer-events-none text-[11px] font-semibold text-ds-muted">
+                      Trace: {traceStartId ? "pick end asset…" : "pick start asset…"}
                     </span>
                   ) : null}
                 </div>
                 {traceResult ? (
-                  <div className="text-xs text-ds-muted">
+                  <div className="text-[11px] text-ds-muted">
                     Hops: <span className="font-semibold text-ds-foreground">{Math.max(0, traceResult.asset_ids.length - 1)}</span>
                   </div>
                 ) : null}
                 {traceResult?.reason ? (
-                  <div className="text-xs font-semibold text-ds-warning">
-                    {traceResult.reason}
-                  </div>
+                  <div className="text-[11px] font-semibold text-ds-warning">{traceResult.reason}</div>
                 ) : null}
               </div>
 
@@ -715,7 +730,7 @@ export default function DrawingsPage({ fullscreen = false }: { fullscreen?: bool
                     onStageViewport={setStageViewport}
                     directedConnections={modeConfig.graphRules.directedEdges}
                     snapConnectPreviewToAssets={modeConfig.interaction.snapConnectPreviewToAssets}
-                    sizeCanvasToContainer={fullscreen}
+                    sizeCanvasToContainer
                   />
                 );
               })()}
@@ -754,62 +769,39 @@ export default function DrawingsPage({ fullscreen = false }: { fullscreen?: bool
             await graph.upsertAttribute(opts);
           }}
         />
+      </div>
     </div>
   );
 
-  if (fullscreen) {
-    return (
-      <div className="flex h-full min-h-0 w-full flex-col overflow-hidden bg-background">
-        <div className="flex shrink-0 flex-wrap items-start justify-between gap-2 border-b border-ds-border/70 bg-ds-secondary/10 px-2 py-2 sm:px-3">
-          <div className="min-w-0 flex-1">{topBar}</div>
-          <button
-            type="button"
-            className="shrink-0 rounded-lg border border-ds-border/80 bg-ds-secondary/95 px-2.5 py-1.5 text-xs font-semibold text-ds-foreground shadow-sm hover:bg-ds-primary/90"
-            onClick={() => router.push("/drawings")}
-          >
-            <span className="inline-flex items-center gap-1.5">
-              <Minimize2 className="h-3.5 w-3.5" aria-hidden />
-              Exit fullscreen
-            </span>
-          </button>
-        </div>
-        {bpError || graph.error ? (
-          <p className="shrink-0 border-b border-ds-border/60 px-3 py-2 text-sm text-ds-danger">{bpError ?? graph.error}</p>
-        ) : null}
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">{workspaceChrome}</div>
-      </div>
-    );
-  }
+  const errorBanner =
+    bpError || graph.error ? (
+      <p className="shrink-0 border-b border-ds-border/60 bg-ds-secondary/25 px-3 py-1.5 text-xs text-ds-danger">{bpError ?? graph.error}</p>
+    ) : null;
 
   return (
-    <div className="flex min-h-0 w-full max-w-none flex-col gap-2">
-      <PageHeader
-        icon={LayoutGrid}
-        title="Drawings"
-        description="Infrastructure Map Builder — place assets, connections, and zones directly on the map."
-        actions={
-          <button
-            type="button"
-            className="ds-btn-secondary inline-flex items-center gap-2"
-            onClick={() => router.push("/drawings/fullscreen")}
-            title="Open map in fullscreen"
-          >
-            <Maximize2 className="h-4 w-4" aria-hidden />
-            Fullscreen
-          </button>
-        }
+    <div
+      className={
+        fullscreen
+          ? "flex h-full min-h-0 w-full flex-col overflow-hidden bg-background"
+          : "flex min-h-0 w-full flex-1 flex-col overflow-hidden min-h-[calc(100dvh-7rem)]"
+      }
+    >
+      <DrawingsTopBar
+        titleLeft={titleLeft}
+        projectReady={projectReady}
+        bpLoading={bpLoading}
+        activeProjectId={activeProjectId}
+        setActiveProjectId={setActiveProjectId}
+        blueprints={blueprints}
+        selectedBlueprintId={selectedBlueprintId}
+        setSelectedBlueprintId={setSelectedBlueprintId}
+        onSnapshot={handleSnapshotStub}
+        fullscreen={fullscreen}
+        onEnterFullscreen={() => router.push("/drawings/fullscreen")}
+        onExitFullscreen={() => router.push("/drawings")}
       />
-
-      <div className="rounded-md border border-ds-border/70 bg-ds-secondary/10 px-3 py-2">
-        {topBar}
-        {bpError || graph.error ? (
-          <p className="mt-3 text-sm text-ds-danger">{bpError ?? graph.error}</p>
-        ) : null}
-      </div>
-
-      <div className="relative flex min-h-[min(72vh,560px)] min-w-0 flex-1 overflow-hidden rounded-md border border-ds-border/70 bg-ds-primary sm:min-h-[min(76vh,640px)]">
-        {workspaceChrome}
-      </div>
+      {errorBanner}
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">{workspaceChrome}</div>
     </div>
   );
 }
