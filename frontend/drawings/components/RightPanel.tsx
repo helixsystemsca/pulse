@@ -211,14 +211,14 @@ export function RightPanel({
                 value={bpOverlayNotes}
                 onChange={(e) => setBpOverlayNotes(e.target.value)}
                 disabled={disabled}
-                placeholder="Internal notes (blueprint only)"
+                placeholder="Internal notes (map only)"
               />
             </label>
           ) : null}
 
           {!isZone && blueprintElement.type === "polygon" ? (
             <p className="text-[10px] leading-snug text-ds-muted">
-              Unlinked blueprint polygon — use Add asset with polygon placement for structured infrastructure areas.
+              Unlinked map polygon — use Add asset with polygon placement for structured infrastructure areas.
             </p>
           ) : null}
 
@@ -252,7 +252,7 @@ export function RightPanel({
           </button>
 
           <p className="text-[10px] leading-snug text-ds-muted">
-            Overlay elements stay on the blueprint image — they are not graph nodes. Infrastructure lives in assets and connections.
+            Overlay elements stay on the base image — they are not graph nodes. Infrastructure lives in assets and connections.
           </p>
         </div>
       </aside>

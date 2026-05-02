@@ -32,6 +32,9 @@ class InfraAsset(Base):
     project_id: Mapped[Optional[str]] = mapped_column(
         UUID(as_uuid=False), ForeignKey("pulse_projects.id", ondelete="CASCADE"), nullable=True, index=True
     )
+    map_id: Mapped[Optional[str]] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("facility_maps.id", ondelete="CASCADE"), nullable=True, index=True
+    )
 
     name: Mapped[str] = mapped_column(String(255), nullable=False, default="")
     asset_type: Mapped[str] = mapped_column(String(64), nullable=False, default="asset")
@@ -60,6 +63,9 @@ class InfraConnection(Base):
     )
     project_id: Mapped[Optional[str]] = mapped_column(
         UUID(as_uuid=False), ForeignKey("pulse_projects.id", ondelete="CASCADE"), nullable=True, index=True
+    )
+    map_id: Mapped[Optional[str]] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("facility_maps.id", ondelete="CASCADE"), nullable=True, index=True
     )
 
     from_asset_id: Mapped[str] = mapped_column(UUID(as_uuid=False), ForeignKey("infra_assets.id", ondelete="CASCADE"), nullable=False, index=True)

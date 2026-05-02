@@ -14,24 +14,28 @@ type InfraAttribute = {
   created_at: string;
 };
 
-function assetsUrl(projectId: string, systemType?: string): string {
-  const sp = new URLSearchParams({ project_id: projectId });
+function assetsUrl(projectId: string, mapId: string, systemType?: string): string {
+  const sp = new URLSearchParams({ project_id: projectId, map_id: mapId });
   if (systemType) sp.set("system_type", systemType);
   return `/api/assets?${sp.toString()}`;
 }
 
-function connectionsUrl(projectId: string, systemType?: string): string {
-  const sp = new URLSearchParams({ project_id: projectId });
+function connectionsUrl(projectId: string, mapId: string, systemType?: string): string {
+  const sp = new URLSearchParams({ project_id: projectId, map_id: mapId });
   if (systemType) sp.set("system_type", systemType);
   return `/api/connections?${sp.toString()}`;
 }
 
-function attributesUrl(projectId: string): string {
-  const sp = new URLSearchParams({ project_id: projectId });
+function attributesUrl(projectId: string, mapId: string): string {
+  const sp = new URLSearchParams({ project_id: projectId, map_id: mapId });
   return `/api/attributes?${sp.toString()}`;
 }
 
-export function useInfrastructureGraph(projectId: string | null) {
+/**
+ * Infrastructure graph scoped to a single facility map (`map_id` on the server).
+ * When `mapId` is null, the graph is cleared (no requests).
+ */
+export function useInfrastructureGraph(projectId: string | null, mapId: string | null) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [assets, setAssets] = useState<InfraAsset[]>([]);
@@ -62,7 +66,7 @@ export function useInfrastructureGraph(projectId: string | null) {
   }, [attributes]);
 
   const refresh = useCallback(async () => {
-    if (!isApiMode() || !projectId) {
+    if (!isApiMode() || !projectId || !mapId) {
       setAssets([]);
       setConnections([]);
       setAttributes([]);
@@ -74,9 +78,9 @@ export function useInfrastructureGraph(projectId: string | null) {
     setError(null);
     try {
       const [a, c, at] = await Promise.all([
-        apiFetch<InfraAsset[]>(assetsUrl(projectId)),
-        apiFetch<InfraConnection[]>(connectionsUrl(projectId)),
-        apiFetch<InfraAttribute[]>(attributesUrl(projectId)),
+        apiFetch<InfraAsset[]>(assetsUrl(projectId, mapId)),
+        apiFetch<InfraConnection[]>(connectionsUrl(projectId, mapId)),
+        apiFetch<InfraAttribute[]>(attributesUrl(projectId, mapId)),
       ]);
       setAssets(a);
       setConnections(c);
@@ -89,23 +93,23 @@ export function useInfrastructureGraph(projectId: string | null) {
     } finally {
       setLoading(false);
     }
-  }, [projectId]);
+  }, [projectId, mapId]);
 
   useEffect(() => {
     void refresh();
   }, [refresh]);
 
   const createAsset = useCallback(
-    async (body: Omit<InfraAsset, "id" | "project_id">) => {
-      if (!projectId) throw new Error("Select a project before creating assets");
+    async (body: Omit<InfraAsset, "id" | "project_id" | "map_id">) => {
+      if (!projectId || !mapId) throw new Error("Select a map before creating assets");
       const created = await apiFetch<InfraAsset>("/api/assets", {
         method: "POST",
-        body: JSON.stringify({ ...body, project_id: projectId }),
+        body: JSON.stringify({ ...body, project_id: projectId, map_id: mapId }),
       });
       setAssets((prev) => [created, ...prev]);
       return created;
     },
-    [projectId],
+    [projectId, mapId],
   );
 
   const updateAsset = useCallback(async (id: string, patch: Partial<Omit<InfraAsset, "id">>) => {
@@ -122,16 +126,16 @@ export function useInfrastructureGraph(projectId: string | null) {
   }, []);
 
   const createConnection = useCallback(
-    async (body: Omit<InfraConnection, "id" | "active" | "project_id">) => {
-      if (!projectId) throw new Error("Select a project before creating connections");
+    async (body: Omit<InfraConnection, "id" | "active" | "project_id" | "map_id">) => {
+      if (!projectId || !mapId) throw new Error("Select a map before creating connections");
       const created = await apiFetch<InfraConnection>("/api/connections", {
         method: "POST",
-        body: JSON.stringify({ ...body, project_id: projectId }),
+        body: JSON.stringify({ ...body, project_id: projectId, map_id: mapId }),
       });
       setConnections((prev) => [created, ...prev]);
       return created;
     },
-    [projectId],
+    [projectId, mapId],
   );
 
   const listAttributes = useCallback(
@@ -140,9 +144,10 @@ export function useInfrastructureGraph(projectId: string | null) {
       sp.set("entity_type", opts.entity_type);
       sp.set("entity_id", opts.entity_id);
       if (projectId) sp.set("project_id", projectId);
+      if (mapId) sp.set("map_id", mapId);
       return await apiFetch<InfraAttribute[]>(`/api/attributes?${sp.toString()}`);
     },
-    [projectId],
+    [projectId, mapId],
   );
 
   /** Upserts by (entity_type, entity_id, key); merges into local attribute list (no duplicate rows). */
@@ -171,13 +176,13 @@ export function useInfrastructureGraph(projectId: string | null) {
       system_type?: SystemType;
       filters?: unknown[];
     }) => {
-      if (!projectId) throw new Error("Select a project before tracing routes");
+      if (!projectId || !mapId) throw new Error("Select a map before tracing routes");
       return await apiFetch<TraceRouteResult>("/api/trace-route", {
         method: "POST",
-        body: JSON.stringify({ ...body, project_id: projectId }),
+        body: JSON.stringify({ ...body, project_id: projectId, map_id: mapId }),
       });
     },
-    [projectId],
+    [projectId, mapId],
   );
 
   return {

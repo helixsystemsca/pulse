@@ -31,6 +31,7 @@ from app.api.org_module_settings_routes import router as org_module_settings_rou
 from app.api.setup_progress_routes import router as setup_progress_router
 from app.api.auth_routes import router as auth_router
 from app.api.blueprint_routes import router as blueprint_router
+from app.api.map_routes import router as map_router
 from app.api.company_routes import router as company_router
 from app.api.config_routes import router as config_router
 from app.api.demo_routes import router as demo_router
@@ -138,6 +139,7 @@ app.add_middleware(
 app.include_router(public_router, prefix="/api/public")
 app.include_router(gateway_register_router, prefix="/api")
 app.include_router(blueprint_router, prefix="/api")
+app.include_router(map_router, prefix="/api")
 app.include_router(infrastructure_map_router, prefix="/api")
 app.include_router(compliance_router, prefix="/api")
 app.include_router(work_requests_router, prefix="/api")

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { apiFetch, isApiMode } from "@/lib/api";
 import type { BlueprintElement, BlueprintLayer } from "@/components/zones-devices/blueprint-types";
@@ -13,6 +13,7 @@ import type { FilterRule, GraphFilters, SystemType, TraceRouteResult } from "./u
 import { getVisibleGraphElements } from "./utils/graphHelpers";
 import { MODES } from "./mapBuilderModes";
 import { useBuilderMode } from "./hooks/useBuilderMode";
+import { Button } from "@/components/ui/Button";
 import { CanvasWrapper } from "./components/CanvasWrapper";
 import { DrawingsTopBar } from "./components/DrawingsTopBar";
 import { MiniToolRail } from "./components/MiniToolRail";
@@ -22,18 +23,50 @@ import { PRIMARY_TO_TOOL, toolToPrimaryMode, type WorkspaceTool } from "./worksp
 import type { AnnotateKind, AssetDrawShape, ConnectFlow, PrimaryMode } from "./mapBuilderTypes";
 import { bboxFromFlatPoly, uniqueLabel } from "./utils/mapBuilderHelpers";
 import type { StageViewport } from "./components/MapSemanticDrawLayer";
+import { DRAWINGS_BASE_IMAGE_SYMBOL } from "./mapConstants";
 
-type BlueprintSummary = { id: string; name: string; created_at: string };
-type ApiBlueprintElement = Parameters<typeof mapApiElement>[0];
-type BlueprintDetail = {
+type MapSummary = {
   id: string;
   name: string;
+  project_id?: string | null;
+  category: string;
   created_at: string;
   updated_at: string;
-  elements: ApiBlueprintElement[];
+};
+type ApiMapElement = Parameters<typeof mapApiElement>[0];
+type MapDetail = {
+  id: string;
+  name: string;
+  category: string;
+  image_url: string;
+  project_id?: string | null;
+  created_at: string;
+  updated_at: string;
+  elements: ApiMapElement[];
   layers?: unknown;
   tasks?: Array<{ id: string; title: string; mode: string; content: string | string[]; linked_element_ids: string[] }>;
 };
+
+const TOOLS_LOCKED_HINT = "Select a map with an image to use drawing tools";
+const MAX_BASE_IMAGE_WORLD = 4200;
+
+function readFileAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(String(r.result ?? ""));
+    r.onerror = () => reject(new Error("Could not read file"));
+    r.readAsDataURL(file);
+  });
+}
+
+function naturalImageSize(dataUrl: string): Promise<{ w: number; h: number }> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve({ w: img.naturalWidth, h: img.naturalHeight });
+    img.onerror = () => reject(new Error("Invalid image"));
+    img.src = dataUrl;
+  });
+}
 
 // id="f1k29x"
 type FilterRuleLocal = {
@@ -142,38 +175,75 @@ export default function DrawingsPage({ fullscreen = false }: { fullscreen?: bool
     setConnectDraftFromId(null);
   }, [activeProjectId]);
 
-  // Graph data layer — strictly scoped to active project (server-enforced)
-  const graph = useInfrastructureGraph(activeProjectId);
+  const [maps, setMaps] = useState<MapSummary[]>([]);
+  const [activeMapId, setActiveMapId] = useState<string>("");
+  const [newMapCategory, setNewMapCategory] = useState<string>("General");
 
-  // Blueprint (existing drawing) data
-  const [blueprints, setBlueprints] = useState<BlueprintSummary[]>([]);
-  const [selectedBlueprintId, setSelectedBlueprintId] = useState<string>("");
-  const [blueprintDetail, setBlueprintDetail] = useState<BlueprintDetail | null>(null);
-  const [bpLoading, setBpLoading] = useState(false);
-  const [bpError, setBpError] = useState<string | null>(null);
+  // Graph is scoped to the active facility map (server `map_id`).
+  const graph = useInfrastructureGraph(activeProjectId, activeMapId || null);
+
+  const [mapDetail, setMapDetail] = useState<MapDetail | null>(null);
+  const [mapListLoading, setMapListLoading] = useState(false);
+  const [mapDetailLoading, setMapDetailLoading] = useState(false);
+  const [mapError, setMapError] = useState<string | null>(null);
+  const [uploadBusy, setUploadBusy] = useState(false);
+  const mapImageInputRef = useRef<HTMLInputElement>(null);
+  const uploadCreatesNewMapRef = useRef(false);
+  const [baseWorldSize, setBaseWorldSize] = useState<{ w: number; h: number } | null>(null);
 
   useEffect(() => {
     if (!isApiMode() || !activeProjectId) {
-      setBlueprints([]);
-      setSelectedBlueprintId("");
-      setBpError(null);
+      setMaps([]);
+      setActiveMapId("");
+      setMapError(null);
       return;
     }
+    let cancel = false;
+    setMapListLoading(true);
+    setMapError(null);
     void (async () => {
       try {
-        const list = await apiFetch<BlueprintSummary[]>(
-          `/api/blueprints?project_id=${encodeURIComponent(activeProjectId)}`,
-        );
-        setBlueprints(list);
-        setSelectedBlueprintId((cur) => (cur && list.some((b) => b.id === cur) ? cur : list[0]?.id ?? ""));
-        setBpError(null);
+        const list = await apiFetch<MapSummary[]>(`/api/maps?project_id=${encodeURIComponent(activeProjectId)}`);
+        if (cancel) return;
+        setMaps(list);
+        setActiveMapId((cur) => (cur && list.some((m) => m.id === cur) ? cur : list[0]?.id ?? ""));
+        setMapError(null);
       } catch (e: unknown) {
-        setBlueprints([]);
-        setSelectedBlueprintId("");
-        setBpError(e instanceof Error ? e.message : "Failed to load blueprints");
+        if (!cancel) {
+          setMaps([]);
+          setActiveMapId("");
+          setMapError(e instanceof Error ? e.message : "Failed to load maps");
+        }
+      } finally {
+        if (!cancel) setMapListLoading(false);
       }
     })();
+    return () => {
+      cancel = true;
+    };
   }, [activeProjectId]);
+
+  useEffect(() => {
+    const url = mapDetail?.image_url?.trim();
+    if (!url) {
+      setBaseWorldSize(null);
+      return;
+    }
+    const img = new Image();
+    img.onload = () => {
+      let fw = img.naturalWidth;
+      let fh = img.naturalHeight;
+      const m = Math.max(fw, fh);
+      if (m > MAX_BASE_IMAGE_WORLD) {
+        const s = MAX_BASE_IMAGE_WORLD / m;
+        fw = Math.round(fw * s);
+        fh = Math.round(fh * s);
+      }
+      setBaseWorldSize({ w: fw, h: fh });
+    };
+    img.onerror = () => setBaseWorldSize(null);
+    img.src = url;
+  }, [mapDetail?.image_url]);
 
   useEffect(() => {
     if (!fullscreen) return;
@@ -194,64 +264,80 @@ export default function DrawingsPage({ fullscreen = false }: { fullscreen?: bool
   }, [fullscreen]);
 
   useEffect(() => {
-    if (!isApiMode() || !selectedBlueprintId || !activeProjectId) {
-      setBlueprintDetail(null);
+    if (!isApiMode() || !activeMapId || !activeProjectId) {
+      setMapDetail(null);
       return;
     }
     let cancel = false;
-    setBpLoading(true);
-    setBpError(null);
+    setMapDetailLoading(true);
+    setMapError(null);
     void (async () => {
       try {
-        const d = await apiFetch<BlueprintDetail>(
-          `/api/blueprints/${selectedBlueprintId}?project_id=${encodeURIComponent(activeProjectId)}`,
+        const d = await apiFetch<MapDetail>(
+          `/api/maps/${activeMapId}?project_id=${encodeURIComponent(activeProjectId)}`,
         );
-        if (!cancel) setBlueprintDetail(d);
+        if (!cancel && d.id === activeMapId) setMapDetail(d);
       } catch (e: unknown) {
-        if (!cancel) setBpError(e instanceof Error ? e.message : "Failed to load blueprint");
+        if (!cancel) setMapError(e instanceof Error ? e.message : "Failed to load map");
       } finally {
-        if (!cancel) setBpLoading(false);
+        if (!cancel) setMapDetailLoading(false);
       }
     })();
     return () => {
       cancel = true;
     };
-  }, [selectedBlueprintId, activeProjectId]);
+  }, [activeMapId, activeProjectId]);
+
+  const mapLoading = mapListLoading || mapDetailLoading;
 
   const blueprintElements: BlueprintElement[] = useMemo(() => {
-    const els = blueprintDetail ? blueprintDetail.elements.map(mapApiElement) : [];
-    return els.filter((e) => !hiddenBlueprintElementIds.has(e.id));
-  }, [blueprintDetail, hiddenBlueprintElementIds]);
+    if (!mapDetail) return [];
+    const els = mapDetail.elements.map(mapApiElement);
+    const stripLegacyBase = Boolean(mapDetail.image_url?.trim());
+    return els
+      .filter((e) => !(stripLegacyBase && e.type === "symbol" && e.symbol_type === DRAWINGS_BASE_IMAGE_SYMBOL))
+      .filter((e) => !hiddenBlueprintElementIds.has(e.id));
+  }, [mapDetail, hiddenBlueprintElementIds]);
 
   const blueprintLayers: BlueprintLayer[] = useMemo(() => {
-    return blueprintDetail ? parseApiBlueprintLayers(blueprintDetail.layers) : [];
-  }, [blueprintDetail]);
+    return mapDetail ? parseApiBlueprintLayers(mapDetail.layers) : [];
+  }, [mapDetail]);
 
   const selectedBlueprintElement = useMemo(() => {
     if (!selectedBlueprintElementId) return null;
     return blueprintElements.find((e) => e.id === selectedBlueprintElementId) ?? null;
   }, [blueprintElements, selectedBlueprintElementId]);
 
-  async function persistBlueprintElements(next: BlueprintElement[]) {
-    if (!blueprintDetail || !isApiMode() || !activeProjectId) return;
-    const updated = await apiFetch<BlueprintDetail>(
-      `/api/blueprints/${blueprintDetail.id}?project_id=${encodeURIComponent(activeProjectId)}`,
-      {
+  const selectedBlueprintElementForPanel = useMemo(() => {
+    if (!selectedBlueprintElement) return null;
+    if (selectedBlueprintElement.symbol_type === DRAWINGS_BASE_IMAGE_SYMBOL) return null;
+    return selectedBlueprintElement;
+  }, [selectedBlueprintElement]);
+
+  const hasBaseImage = Boolean(mapDetail?.image_url?.trim());
+
+  const persistMapElements = useCallback(
+    async (next: BlueprintElement[]) => {
+      if (!mapDetail || !isApiMode() || !activeProjectId) return;
+      const updated = await apiFetch<MapDetail>(`/api/maps/${mapDetail.id}?project_id=${encodeURIComponent(activeProjectId)}`, {
         method: "PUT",
-        body: JSON.stringify({
-          name: blueprintDetail.name,
+        json: {
+          name: mapDetail.name,
+          category: mapDetail.category,
+          image_url: mapDetail.image_url ?? "",
           elements: toApiPayload(next),
-          tasks: blueprintDetail.tasks ?? [],
+          tasks: mapDetail.tasks ?? [],
           layers: blueprintLayers,
-        }),
-      },
-    );
-    setBlueprintDetail(updated);
-  }
+        },
+      });
+      setMapDetail(updated);
+    },
+    [activeProjectId, mapDetail, blueprintLayers],
+  );
 
   function editableBlueprintElements(): BlueprintElement[] {
-    if (!blueprintDetail) return [];
-    return blueprintDetail.elements.map(mapApiElement).filter((e) => !hiddenBlueprintElementIds.has(e.id));
+    if (!mapDetail) return [];
+    return mapDetail.elements.map(mapApiElement).filter((e) => !hiddenBlueprintElementIds.has(e.id));
   }
 
   function clearSelection() {
@@ -275,8 +361,9 @@ export default function DrawingsPage({ fullscreen = false }: { fullscreen?: bool
   }
 
   function applyWorkspaceTool(tool: WorkspaceTool) {
+    if (!activeMapId || !hasBaseImage) return;
     if (tool === "trace") {
-      if (!modeConfig.ui.showTraceRoute || !activeProjectId) return;
+      if (!modeConfig.ui.showTraceRoute || !activeProjectId || !activeMapId) return;
       const willEnable = !traceMode;
       void onTraceRoute();
       setActiveTool(willEnable ? "trace" : "select");
@@ -371,21 +458,117 @@ export default function DrawingsPage({ fullscreen = false }: { fullscreen?: bool
     setSelectedConnections((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   }
 
-  function handleSnapshotStub() {
-    console.info("[Infrastructure Map Builder] Save Snapshot (stub)", {
-      blueprintId: blueprintDetail?.id ?? null,
-      assets: graph.assets,
-      connections: graph.connections,
-      attributes: graph.attributes ?? [],
-    });
-  }
+  const openMapImagePicker = useCallback((createNewMap: boolean) => {
+    uploadCreatesNewMapRef.current = createNewMap;
+    mapImageInputRef.current?.click();
+  }, []);
+
+  const onMapImageInputChange = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      e.target.value = "";
+      if (!file?.type.startsWith("image/") || !isApiMode() || !activeProjectId || uploadBusy) return;
+      const createNew = uploadCreatesNewMapRef.current;
+      uploadCreatesNewMapRef.current = false;
+      setUploadBusy(true);
+      setMapError(null);
+      try {
+        const dataUrl = await readFileAsDataUrl(file);
+        const { w: nw, h: nh } = await naturalImageSize(dataUrl);
+        let fw = nw;
+        let fh = nh;
+        const m = Math.max(fw, fh);
+        if (m > MAX_BASE_IMAGE_WORLD) {
+          const s = MAX_BASE_IMAGE_WORLD / m;
+          fw = Math.round(fw * s);
+          fh = Math.round(fh * s);
+        }
+        const baseName = file.name.replace(/\.[^/.]+$/, "") || "Map";
+
+        if (createNew || !mapDetail) {
+          const created = await apiFetch<MapDetail>("/api/maps", {
+            method: "POST",
+            json: {
+              name: baseName,
+              project_id: activeProjectId,
+              category: newMapCategory.trim() || "General",
+              image_url: dataUrl,
+              elements: [],
+              tasks: [],
+              layers: [],
+            },
+          });
+          setMaps((prev) => [
+            ...prev,
+            {
+              id: created.id,
+              name: created.name,
+              project_id: created.project_id ?? activeProjectId,
+              category: created.category,
+              created_at: created.created_at,
+              updated_at: created.updated_at,
+            },
+          ]);
+          setActiveMapId(created.id);
+          setMapDetail(created);
+        } else {
+          const withoutBase = mapDetail.elements
+            .map(mapApiElement)
+            .filter((el) => el.symbol_type !== DRAWINGS_BASE_IMAGE_SYMBOL && !hiddenBlueprintElementIds.has(el.id));
+          const updated = await apiFetch<MapDetail>(
+            `/api/maps/${mapDetail.id}?project_id=${encodeURIComponent(activeProjectId)}`,
+            {
+              method: "PUT",
+              json: {
+                name: mapDetail.name,
+                category: mapDetail.category,
+                image_url: dataUrl,
+                elements: toApiPayload(withoutBase),
+                tasks: mapDetail.tasks ?? [],
+                layers: blueprintLayers,
+              },
+            },
+          );
+          setMapDetail(updated);
+        }
+        setSelectedBlueprintElementId(null);
+        setSelectedAssets([]);
+        setSelectedConnections([]);
+      } catch (err: unknown) {
+        setMapError(err instanceof Error ? err.message : "Could not upload image");
+      } finally {
+        setUploadBusy(false);
+      }
+    },
+    [activeProjectId, blueprintLayers, hiddenBlueprintElementIds, mapDetail, newMapCategory, uploadBusy],
+  );
+
+  const handleSaveMap = useCallback(async () => {
+    if (!mapDetail || !isApiMode() || !activeProjectId) return;
+    setMapError(null);
+    try {
+      const next = mapDetail.elements.map(mapApiElement).filter((e) => !hiddenBlueprintElementIds.has(e.id));
+      await persistMapElements(next);
+    } catch (err: unknown) {
+      setMapError(err instanceof Error ? err.message : "Save failed");
+    }
+  }, [activeProjectId, mapDetail, hiddenBlueprintElementIds, persistMapElements]);
+
+  useEffect(() => {
+    if (!hasBaseImage && traceMode) {
+      setTraceResult(null);
+      setTraceStartId(null);
+      setTraceEndId(null);
+      setTraceMode(false);
+    }
+  }, [hasBaseImage, traceMode]);
 
   const mapSemantic = useMemo(() => {
-    if (!isApiMode() || !blueprintDetail || !activeProjectId) return null;
+    if (!isApiMode() || !mapDetail || !activeProjectId || !activeMapId || mapDetail.id !== activeMapId) return null;
 
     return {
       viewport: stageViewport,
-      disabled: traceMode || bpLoading,
+      disabled: traceMode || mapLoading || !hasBaseImage,
       drawConnectionSnapRadiusWorld: modeConfig.interaction.drawConnectionSnapRadiusWorld,
       allowedPrimaryModes: modeConfig.allowedPrimaryModes,
       allowedAnnotateKinds: modeConfig.allowedAnnotateKinds,
@@ -442,7 +625,7 @@ export default function DrawingsPage({ fullscreen = false }: { fullscreen?: bool
             symbol_notes: packInfraAssetNotes(created.id),
           };
         }
-        await persistBlueprintElements([...editableBlueprintElements(), bpEl]);
+        await persistMapElements([...editableBlueprintElements(), bpEl]);
         setSelectedAssets([created.id]);
         setSelectedBlueprintElementId(null);
         setSelectedConnections([]);
@@ -476,7 +659,7 @@ export default function DrawingsPage({ fullscreen = false }: { fullscreen?: bool
           metadata: { isRoom: true, name: nm },
           ...(zn ? { symbol_notes: zn } : {}),
         };
-        await persistBlueprintElements([...editableBlueprintElements(), bpEl]);
+        await persistMapElements([...editableBlueprintElements(), bpEl]);
         setSelectedBlueprintElementId(elId);
         setSelectedAssets([]);
         setSelectedConnections([]);
@@ -493,7 +676,7 @@ export default function DrawingsPage({ fullscreen = false }: { fullscreen?: bool
           symbol_type: "marker",
           name: "Marker",
         };
-        await persistBlueprintElements([...editableBlueprintElements(), bpEl]);
+        await persistMapElements([...editableBlueprintElements(), bpEl]);
         setSelectedBlueprintElementId(elId);
         setSelectedAssets([]);
         setSelectedConnections([]);
@@ -510,7 +693,7 @@ export default function DrawingsPage({ fullscreen = false }: { fullscreen?: bool
           symbol_type: "map_sketch",
           name: "Region",
         };
-        await persistBlueprintElements([...editableBlueprintElements(), bpEl]);
+        await persistMapElements([...editableBlueprintElements(), bpEl]);
         setSelectedBlueprintElementId(elId);
         setSelectedAssets([]);
         setSelectedConnections([]);
@@ -529,7 +712,7 @@ export default function DrawingsPage({ fullscreen = false }: { fullscreen?: bool
           symbol_type: "label",
           name: "Note",
         };
-        await persistBlueprintElements([...editableBlueprintElements(), bpEl]);
+        await persistMapElements([...editableBlueprintElements(), bpEl]);
         setSelectedBlueprintElementId(elId);
         setSelectedAssets([]);
         setSelectedConnections([]);
@@ -546,7 +729,7 @@ export default function DrawingsPage({ fullscreen = false }: { fullscreen?: bool
           symbol_type: "map_pen",
           name: "Markup",
         };
-        await persistBlueprintElements([...editableBlueprintElements(), bpEl]);
+        await persistMapElements([...editableBlueprintElements(), bpEl]);
         setSelectedBlueprintElementId(elId);
         setSelectedAssets([]);
         setSelectedConnections([]);
@@ -555,17 +738,20 @@ export default function DrawingsPage({ fullscreen = false }: { fullscreen?: bool
   }, [
     annotateKind,
     assetShape,
-    blueprintDetail,
+    mapDetail,
     blueprintElements,
-    bpLoading,
+    mapLoading,
+    hasBaseImage,
     connectFlow,
     defaultSystemType,
     graph,
+    persistMapElements,
     primaryMode,
     stageViewport,
     traceMode,
     modeConfig,
     activeProjectId,
+    activeMapId,
   ]);
 
   const projectReady = Boolean(activeProjectId);
@@ -580,6 +766,8 @@ export default function DrawingsPage({ fullscreen = false }: { fullscreen?: bool
     return graph.assetsById.get(traceEndId)?.name ?? traceEndId.slice(0, 8);
   }, [graph.assetsById, traceEndId]);
 
+  const toolsLocked = Boolean(projectReady && isApiMode() && (!activeMapId || !mapDetail || !hasBaseImage));
+
   const workspaceChrome = (
     <div className="flex min-h-0 min-w-0 flex-1 flex-row overflow-hidden bg-ds-primary">
       <span id="drawings-workspace-title" className="sr-only">
@@ -590,10 +778,14 @@ export default function DrawingsPage({ fullscreen = false }: { fullscreen?: bool
         onToolChange={applyWorkspaceTool}
         traceAllowed={modeConfig.ui.showTraceRoute}
         projectReady={projectReady}
+        toolsLocked={toolsLocked}
+        toolsLockedHint={TOOLS_LOCKED_HINT}
       />
       <ToolPanel
         activeTool={activeTool}
         projectReady={projectReady}
+        toolsLocked={toolsLocked}
+        toolsLockedHint={TOOLS_LOCKED_HINT}
         semanticMode={activeMode}
         onSemanticModeChange={setActiveMode}
         modeConfig={modeConfig}
@@ -640,9 +832,9 @@ export default function DrawingsPage({ fullscreen = false }: { fullscreen?: bool
 
       <div className="flex min-h-0 min-w-0 flex-1 flex-row overflow-hidden">
         <main className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
-          {bpLoading ? (
+          {mapListLoading ? (
             <div className="flex flex-1 items-center justify-center border-l border-ds-border/40 bg-ds-primary">
-              <p className="text-sm text-ds-muted">Loading canvas…</p>
+              <p className="text-sm text-ds-muted">Loading maps…</p>
             </div>
           ) : !isApiMode() ? (
             <div className="flex flex-1 flex-col justify-center border-l border-ds-border/40 bg-ds-secondary/25 px-4 py-6">
@@ -655,12 +847,30 @@ export default function DrawingsPage({ fullscreen = false }: { fullscreen?: bool
                 Choose a project in the header to load data and enable tools.
               </p>
             </div>
-          ) : !blueprintDetail ? (
+          ) : maps.length === 0 ? (
+            <div className="flex flex-1 flex-col items-center justify-center border-l border-ds-border/40 bg-ds-secondary/25 px-6 py-8">
+              <p className="max-w-md text-center text-sm font-semibold text-ds-foreground">No maps for this project</p>
+              <p className="mt-2 max-w-md text-center text-xs text-ds-muted">
+                Upload a top-down image (aerial or floor plan) to create your first facility map.
+              </p>
+              <Button
+                type="button"
+                variant="primary"
+                className="mt-4"
+                disabled={uploadBusy}
+                onClick={() => openMapImagePicker(true)}
+              >
+                {uploadBusy ? "Uploading…" : "Upload new image"}
+              </Button>
+            </div>
+          ) : !mapDetail ? (
             <div className="flex flex-1 flex-col justify-center border-l border-ds-border/40 bg-ds-secondary/25 px-4 py-6">
               <p className="text-sm text-ds-muted">
-                {blueprints.length === 0
-                  ? "No blueprints are linked to this project yet."
-                  : "Choose a blueprint in the header to load the map canvas."}
+                {mapDetailLoading
+                  ? "Loading map…"
+                  : activeMapId
+                    ? "Map could not be loaded. Check your connection and try again."
+                    : "Select a map in the header."}
               </p>
             </div>
           ) : (
@@ -686,67 +896,91 @@ export default function DrawingsPage({ fullscreen = false }: { fullscreen?: bool
                 ) : null}
               </div>
 
-              {(() => {
-                const vis = getVisibleGraphElements(
-                  { systems: activeSystems } satisfies GraphFilters,
-                  graph.assets,
-                  graph.connections,
-                  graph.attributesByEntityId,
-                  filterRules as unknown as FilterRule[],
-                );
-                return (
-                  <CanvasWrapper
-                    key={fullscreen ? "drawings-canvas-fs" : "drawings-canvas-inline"}
-                    elements={blueprintElements}
-                    layers={blueprintLayers}
-                    theme={theme}
-                    fitResetKey={blueprintDetail?.id}
-                    assets={vis.visibleAssets}
-                    connections={vis.visibleConnections}
-                    activeSystems={activeSystems}
-                    selectedAssets={selectedAssets}
-                    selectedConnections={selectedConnections}
-                    traceResult={traceResult}
-                    connectMode={connectMode}
-                    connectDraftFromId={connectDraftFromId}
-                    dimAssetIds={vis.dimAssetIds}
-                    dimConnectionIds={vis.dimConnectionIds}
-                    onPickBlueprintElementId={(id) => {
-                      const raw = blueprintDetail?.elements.find((e) => e.id === id);
-                      if (raw) {
-                        const mapped = mapApiElement(raw);
-                        const linkedAssetId = parseInfraAssetFromNotes(mapped.symbol_notes);
-                        if (linkedAssetId && graph.assetsById.has(linkedAssetId)) {
-                          setSelectedAssets([linkedAssetId]);
-                          setSelectedBlueprintElementId(null);
-                          setSelectedConnections([]);
-                          return;
+              <div className="relative flex min-h-0 flex-1 flex-col">
+                {(() => {
+                  const vis = getVisibleGraphElements(
+                    { systems: activeSystems } satisfies GraphFilters,
+                    graph.assets,
+                    graph.connections,
+                    graph.attributesByEntityId,
+                    filterRules as unknown as FilterRule[],
+                  );
+                  return (
+                    <CanvasWrapper
+                      key={fullscreen ? "drawings-canvas-fs" : "drawings-canvas-inline"}
+                      elements={blueprintElements}
+                      layers={blueprintLayers}
+                      theme={theme}
+                      baseImageUrl={hasBaseImage ? mapDetail.image_url : null}
+                      baseImageWorldSize={baseWorldSize}
+                      fitResetKey={mapDetail?.id}
+                      assets={vis.visibleAssets}
+                      connections={vis.visibleConnections}
+                      activeSystems={activeSystems}
+                      selectedAssets={selectedAssets}
+                      selectedConnections={selectedConnections}
+                      traceResult={traceResult}
+                      connectMode={connectMode}
+                      connectDraftFromId={connectDraftFromId}
+                      dimAssetIds={vis.dimAssetIds}
+                      dimConnectionIds={vis.dimConnectionIds}
+                      onPickBlueprintElementId={(id) => {
+                        const raw = mapDetail?.elements.find((e) => e.id === id);
+                        if (raw) {
+                          const mapped = mapApiElement(raw);
+                          if (mapped.symbol_type === DRAWINGS_BASE_IMAGE_SYMBOL) return;
+                          const linkedAssetId = parseInfraAssetFromNotes(mapped.symbol_notes);
+                          if (linkedAssetId && graph.assetsById.has(linkedAssetId)) {
+                            setSelectedAssets([linkedAssetId]);
+                            setSelectedBlueprintElementId(null);
+                            setSelectedConnections([]);
+                            return;
+                          }
                         }
-                      }
-                      setSelectedBlueprintElementId(id);
-                      setSelectedAssets([]);
-                      setSelectedConnections([]);
-                    }}
-                    onSelectAssetId={(id, shiftKey) => void handlePickAsset(id, shiftKey)}
-                    onSelectConnectionId={(id, shiftKey) => handlePickConnection(id, shiftKey)}
-                    onAssetDragEnd={(id, x, y) => {
-                      graph.optimisticMoveAsset(id, x, y);
-                      void graph.updateAsset(id, { x, y });
-                    }}
-                    onCanvasClearSelection={() => {
-                      if (connectMode && connectFlow === "pick" && connectDraftFromId) return;
-                      clearSelection();
-                    }}
-                    dimForTrace={Boolean(traceResult)}
-                    graphDraggableAssets={primaryMode === "select" && !traceMode}
-                    mapSemantic={mapSemantic}
-                    onStageViewport={setStageViewport}
-                    directedConnections={modeConfig.graphRules.directedEdges}
-                    snapConnectPreviewToAssets={modeConfig.interaction.snapConnectPreviewToAssets}
-                    sizeCanvasToContainer
-                  />
-                );
-              })()}
+                        setSelectedBlueprintElementId(id);
+                        setSelectedAssets([]);
+                        setSelectedConnections([]);
+                      }}
+                      onSelectAssetId={(id, shiftKey) => void handlePickAsset(id, shiftKey)}
+                      onSelectConnectionId={(id, shiftKey) => handlePickConnection(id, shiftKey)}
+                      onAssetDragEnd={(id, x, y) => {
+                        graph.optimisticMoveAsset(id, x, y);
+                        void graph.updateAsset(id, { x, y });
+                      }}
+                      onCanvasClearSelection={() => {
+                        if (connectMode && connectFlow === "pick" && connectDraftFromId) return;
+                        clearSelection();
+                      }}
+                      dimForTrace={Boolean(traceResult)}
+                      graphDraggableAssets={primaryMode === "select" && !traceMode && hasBaseImage}
+                      mapSemantic={mapSemantic}
+                      onStageViewport={setStageViewport}
+                      directedConnections={modeConfig.graphRules.directedEdges}
+                      snapConnectPreviewToAssets={modeConfig.interaction.snapConnectPreviewToAssets}
+                      sizeCanvasToContainer
+                    />
+                  );
+                })()}
+                {!hasBaseImage ? (
+                  <div className="absolute inset-0 z-20 flex items-center justify-center bg-ds-primary/40">
+                    <div className="mx-4 max-w-md rounded-lg border border-ds-border/60 bg-background/90 px-6 py-5 text-center shadow-lg backdrop-blur">
+                      <h2 className="text-lg font-semibold text-ds-foreground">No base image</h2>
+                      <p className="mt-2 text-sm text-ds-muted">
+                        Upload a top-down image (aerial or floor plan) to start mapping your facility.
+                      </p>
+                      <Button
+                        type="button"
+                        variant="primary"
+                        className="mt-4"
+                        disabled={uploadBusy}
+                        onClick={() => openMapImagePicker(false)}
+                      >
+                        {uploadBusy ? "Uploading…" : "Upload Image"}
+                      </Button>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
             </>
           )}
         </main>
@@ -757,7 +991,7 @@ export default function DrawingsPage({ fullscreen = false }: { fullscreen?: bool
           asset={selectedAsset}
           connection={selectedConnection}
           blueprintElement={
-            selectedAssets.length === 0 && selectedConnections.length === 0 ? selectedBlueprintElement : null
+            selectedAssets.length === 0 && selectedConnections.length === 0 ? selectedBlueprintElementForPanel : null
           }
           onClose={() => {
             setSelectedAssets([]);
@@ -771,7 +1005,7 @@ export default function DrawingsPage({ fullscreen = false }: { fullscreen?: bool
           }}
           onSaveBlueprintPatch={async (id, patch) => {
             const els = editableBlueprintElements().map((e) => (e.id === id ? { ...e, ...patch } : e));
-            await persistBlueprintElements(els);
+            await persistMapElements(els);
           }}
           onLoadAttributes={async (opts) => {
             const rows = await graph.listAttributes(opts);
@@ -786,8 +1020,8 @@ export default function DrawingsPage({ fullscreen = false }: { fullscreen?: bool
   );
 
   const errorBanner =
-    bpError || graph.error ? (
-      <p className="shrink-0 border-b border-ds-border/60 bg-ds-secondary/25 px-3 py-1.5 text-xs text-ds-danger">{bpError ?? graph.error}</p>
+    mapError || graph.error ? (
+      <p className="shrink-0 border-b border-ds-border/60 bg-ds-secondary/25 px-3 py-1.5 text-xs text-ds-danger">{mapError ?? graph.error}</p>
     ) : null;
 
   return (
@@ -798,15 +1032,29 @@ export default function DrawingsPage({ fullscreen = false }: { fullscreen?: bool
           : "flex min-h-0 w-full flex-1 flex-col overflow-hidden min-h-[calc(100dvh-7rem)]"
       }
     >
+      <input
+        ref={mapImageInputRef}
+        type="file"
+        accept="image/*"
+        className="sr-only"
+        aria-hidden
+        tabIndex={-1}
+        onChange={onMapImageInputChange}
+      />
       <DrawingsTopBar
         projectReady={projectReady}
-        bpLoading={bpLoading}
+        mapListLoading={mapListLoading}
+        uploadBusy={uploadBusy}
         activeProjectId={activeProjectId}
         setActiveProjectId={setActiveProjectId}
-        blueprints={blueprints}
-        selectedBlueprintId={selectedBlueprintId}
-        setSelectedBlueprintId={setSelectedBlueprintId}
-        onSnapshot={handleSnapshotStub}
+        maps={maps}
+        activeMapId={activeMapId}
+        onMapChange={(id) => setActiveMapId(id)}
+        newMapCategory={newMapCategory}
+        onNewMapCategoryChange={setNewMapCategory}
+        onUploadNewMap={() => openMapImagePicker(true)}
+        onSaveMap={() => void handleSaveMap()}
+        saveDisabled={!projectReady || !mapDetail || mapLoading || uploadBusy}
         fullscreen={fullscreen}
         onEnterFullscreen={() => router.push("/drawings/fullscreen")}
         onExitFullscreen={() => router.push("/drawings")}

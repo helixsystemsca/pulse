@@ -7,7 +7,7 @@
 
 import type Konva from "konva";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { Circle, Ellipse, Group, Layer, Line, Rect, Stage, Text } from "react-konva";
+import { Circle, Ellipse, Group, Image, Layer, Line, Rect, Stage, Text } from "react-konva";
 import { isRoom, type BlueprintElement, type BlueprintLayer } from "./blueprint-types";
 import {
   bboxFromPathPoints,
@@ -25,6 +25,7 @@ import {
   ZONE_RADIUS,
   zonePolygonFlat,
 } from "@/lib/blueprint-layout";
+import { DRAWINGS_BASE_IMAGE_SYMBOL, parseDrawingsBaseImageNotes } from "@/drawings/mapConstants";
 
 export type BlueprintReadOnlyTheme = "light" | "dark";
 
@@ -232,6 +233,10 @@ export type BlueprintReadOnlyCanvasProps = {
    * and any manual zoom from the wheel is cleared.
    */
   fitResetKey?: string;
+  /** Base image from facility map `image_url` (URL or data URL); drawn under elements. */
+  externalBaseImageUrl?: string | null;
+  /** World size for `externalBaseImageUrl` (width / height). */
+  externalBaseWorldSize?: { w: number; h: number } | null;
 };
 
 const ZOOM_MIN = 0.35;
@@ -251,6 +256,8 @@ export function BlueprintReadOnlyCanvas({
   onStageScaleChange,
   onStageViewport,
   fitResetKey,
+  externalBaseImageUrl = null,
+  externalBaseWorldSize = null,
 }: BlueprintReadOnlyCanvasProps) {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const stageRef = useRef<Konva.Stage | null>(null);
@@ -261,12 +268,96 @@ export function BlueprintReadOnlyCanvas({
   const [pos, setPos] = useState({ x: 0, y: 0 });
 
   const laidOut = useMemo(() => relayoutAllDoors(elements), [elements]);
+
+  const laidOutForFit = useMemo(() => {
+    const u = externalBaseImageUrl?.trim();
+    const sz = externalBaseWorldSize;
+    if (!u || !sz || sz.w < 1 || sz.h < 1) return laidOut;
+    const r: BlueprintElement = {
+      id: "__external_base_fit__",
+      type: "rectangle",
+      x: 0,
+      y: 0,
+      width: sz.w,
+      height: sz.h,
+      rotation: 0,
+      name: "",
+    };
+    return [r, ...laidOut];
+  }, [laidOut, externalBaseImageUrl, externalBaseWorldSize]);
   const theme = useMemo(() => palette(themeName), [themeName]);
   const elementZ = useMemo(() => blueprintPaintZIndices(laidOut, layers), [laidOut, layers]);
   const ez = (elementId: string) => {
     const z = elementZ.get(elementId);
     return z === undefined ? {} : { zIndex: z };
   };
+
+  const baseImageSignature = useMemo(
+    () =>
+      laidOut
+        .filter((el) => el.type === "symbol" && el.symbol_type === DRAWINGS_BASE_IMAGE_SYMBOL)
+        .map((el) => `${el.id}:${el.x}:${el.y}:${el.width ?? 0}:${el.height ?? 0}:${(el.symbol_notes ?? "").length}`)
+        .join("|"),
+    [laidOut],
+  );
+
+  const [baseImageHtmlById, setBaseImageHtmlById] = useState<Map<string, HTMLImageElement>>(() => new Map());
+
+  const [externalBaseHtml, setExternalBaseHtml] = useState<HTMLImageElement | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const u = externalBaseImageUrl?.trim();
+    if (!u) {
+      setExternalBaseHtml(null);
+      return;
+    }
+    const img = new window.Image();
+    img.onload = () => {
+      if (!cancelled) setExternalBaseHtml(img);
+    };
+    img.onerror = () => {
+      if (!cancelled) setExternalBaseHtml(null);
+    };
+    img.src = u;
+    return () => {
+      cancelled = true;
+    };
+  }, [externalBaseImageUrl]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const els = laidOut.filter((el) => el.type === "symbol" && el.symbol_type === DRAWINGS_BASE_IMAGE_SYMBOL);
+    if (els.length === 0) {
+      setBaseImageHtmlById(new Map());
+      return;
+    }
+    const m = new Map<string, HTMLImageElement>();
+    void Promise.all(
+      els.map(
+        (el) =>
+          new Promise<void>((resolve) => {
+            const parsed = parseDrawingsBaseImageNotes(el.symbol_notes);
+            if (!parsed) {
+              resolve();
+              return;
+            }
+            const img = new window.Image();
+            img.onload = () => {
+              if (!cancelled) m.set(el.id, img);
+              resolve();
+            };
+            img.onerror = () => resolve();
+            img.src = parsed.dataUrl;
+          }),
+      ),
+    ).then(() => {
+      if (!cancelled) setBaseImageHtmlById(m);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [baseImageSignature, laidOut]);
 
   const fitView = useCallback(
     (stageW: number, stageH: number, els: BlueprintElement[]) => {
@@ -318,8 +409,8 @@ export function BlueprintReadOnlyCanvas({
       userAdjustedRef.current = false;
     }
     if (userAdjustedRef.current) return;
-    fitView(size.w, size.h, laidOut);
-  }, [fitView, fitResetKey, laidOut, size.h, size.w]);
+    fitView(size.w, size.h, laidOutForFit);
+  }, [fitView, fitResetKey, laidOutForFit, size.h, size.w]);
 
   useEffect(() => {
     onStageScaleChange?.(scale);
@@ -418,6 +509,42 @@ export function BlueprintReadOnlyCanvas({
         onMouseMove={handlePointerMove}
         onTouchMove={handlePointerMove}
       >
+        <Layer listening={false}>
+          {externalBaseHtml &&
+          externalBaseWorldSize &&
+          externalBaseWorldSize.w > 0 &&
+          externalBaseWorldSize.h > 0 ? (
+            <Image
+              key="__external_base__"
+              x={0}
+              y={0}
+              width={externalBaseWorldSize.w}
+              height={externalBaseWorldSize.h}
+              image={externalBaseHtml}
+              listening={false}
+            />
+          ) : null}
+          {laidOut
+            .filter((el) => el.type === "symbol" && el.symbol_type === DRAWINGS_BASE_IMAGE_SYMBOL)
+            .map((el) => {
+              const img = baseImageHtmlById.get(el.id);
+              if (!img) return null;
+              const w = el.width ?? img.naturalWidth;
+              const h = el.height ?? img.naturalHeight;
+              return (
+                <Image
+                  key={el.id}
+                  x={el.x}
+                  y={el.y}
+                  width={w}
+                  height={h}
+                  rotation={el.rotation ?? 0}
+                  image={img}
+                  listening={false}
+                />
+              );
+            })}
+        </Layer>
         <Layer listening={false} sortChildren>
           {gridLines}
           {laidOut
@@ -605,7 +732,7 @@ export function BlueprintReadOnlyCanvas({
               );
             })}
           {laidOut
-            .filter((el) => el.type === "symbol")
+            .filter((el) => el.type === "symbol" && el.symbol_type !== DRAWINGS_BASE_IMAGE_SYMBOL)
             .map((el) => {
               const w = el.width ?? SYMBOL_DEFAULT;
               const h = el.height ?? SYMBOL_DEFAULT;

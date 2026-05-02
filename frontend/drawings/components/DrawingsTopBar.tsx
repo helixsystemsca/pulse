@@ -1,36 +1,64 @@
 "use client";
 
-import { Camera, Maximize2, Minimize2 } from "lucide-react";
+import { Maximize2, Minimize2, Save } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { ProjectSelector } from "./ProjectSelector";
 
-type BlueprintOption = { id: string; name: string };
+const MAP_CATEGORIES = ["General", "Floor plan", "Aerial", "Site", "Other"] as const;
+
+type MapSummary = {
+  id: string;
+  name: string;
+  category: string;
+};
 
 export function DrawingsTopBar({
   projectReady,
-  bpLoading,
+  mapListLoading,
+  uploadBusy,
   activeProjectId,
   setActiveProjectId,
-  blueprints,
-  selectedBlueprintId,
-  setSelectedBlueprintId,
-  onSnapshot,
+  maps,
+  activeMapId,
+  onMapChange,
+  newMapCategory,
+  onNewMapCategoryChange,
+  onUploadNewMap,
+  onSaveMap,
+  saveDisabled,
   fullscreen,
   onEnterFullscreen,
   onExitFullscreen,
 }: {
   projectReady: boolean;
-  bpLoading: boolean;
+  mapListLoading: boolean;
+  uploadBusy: boolean;
   activeProjectId: string | null;
   setActiveProjectId: (id: string | null) => void;
-  blueprints: BlueprintOption[];
-  selectedBlueprintId: string;
-  setSelectedBlueprintId: (id: string) => void;
-  onSnapshot: () => void;
+  maps: MapSummary[];
+  activeMapId: string;
+  onMapChange: (id: string) => void;
+  newMapCategory: string;
+  onNewMapCategoryChange: (c: string) => void;
+  onUploadNewMap: () => void;
+  onSaveMap: () => void;
+  saveDisabled: boolean;
   fullscreen: boolean;
   onEnterFullscreen: () => void;
   onExitFullscreen: () => void;
 }) {
+  const busy = mapListLoading || uploadBusy;
+
+  const grouped = (() => {
+    const m = new Map<string, MapSummary[]>();
+    for (const map of maps) {
+      const c = map.category?.trim() || "General";
+      if (!m.has(c)) m.set(c, []);
+      m.get(c)!.push(map);
+    }
+    return [...m.entries()].sort(([a], [b]) => a.localeCompare(b));
+  })();
+
   return (
     <div className="bg-ds-success text-[var(--ds-on-accent)]">
       <header className="flex min-h-14 shrink-0 flex-wrap items-center gap-y-2 border-b border-black/10 px-3 py-2 sm:h-14 sm:flex-nowrap sm:gap-4 sm:py-0 dark:border-white/10">
@@ -40,21 +68,51 @@ export function DrawingsTopBar({
               variant="inline"
               value={activeProjectId}
               onChange={setActiveProjectId}
-              disabled={bpLoading}
+              disabled={mapListLoading}
             />
           </div>
+          <label className="flex min-w-0 items-center gap-1.5 text-xs">
+            <span className="hidden shrink-0 sm:inline">New map category</span>
+            <select
+              className="app-field h-9 max-w-[10rem] min-w-0 py-0 text-xs"
+              value={newMapCategory}
+              onChange={(e) => onNewMapCategoryChange(e.target.value)}
+              disabled={!projectReady || busy}
+              title="Category for the next uploaded map"
+            >
+              {MAP_CATEGORIES.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+          </label>
           <select
-            className="app-field h-9 min-h-0 min-w-0 w-full max-w-[min(100%,20rem)] shrink py-0 text-sm sm:w-[min(100%,18rem)]"
-            value={selectedBlueprintId}
-            onChange={(e) => setSelectedBlueprintId(e.target.value)}
-            disabled={!projectReady || bpLoading || blueprints.length === 0}
+            className="app-field h-9 min-w-0 max-w-[min(100%,22rem)] shrink py-0 text-sm sm:w-[min(100%,20rem)]"
+            aria-label="Select map"
+            value={activeMapId}
+            onChange={(e) => {
+              const v = e.target.value;
+              if (v === "__upload__") {
+                e.target.value = activeMapId;
+                onUploadNewMap();
+                return;
+              }
+              onMapChange(v);
+            }}
+            disabled={!projectReady || busy}
           >
-            {blueprints.length === 0 ? <option value="">No blueprints yet</option> : null}
-            {blueprints.map((b) => (
-              <option key={b.id} value={b.id}>
-                {b.name}
-              </option>
+            <option value="">Select map</option>
+            {grouped.map(([cat, list]) => (
+              <optgroup key={cat} label={cat}>
+                {list.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.name}
+                  </option>
+                ))}
+              </optgroup>
             ))}
+            <option value="__upload__">Upload new image…</option>
           </select>
         </div>
 
@@ -64,11 +122,12 @@ export function DrawingsTopBar({
             variant="secondary"
             surface="light"
             className="h-9 gap-1.5 px-3 text-xs"
-            onClick={onSnapshot}
-            title="Placeholder — future versioned snapshots"
+            disabled={saveDisabled}
+            onClick={onSaveMap}
+            title="Save map overlays and layout to the server"
           >
-            <Camera className="h-4 w-4 shrink-0 opacity-90" aria-hidden />
-            <span className="hidden sm:inline">Save snapshot</span>
+            <Save className="h-4 w-4 shrink-0 opacity-90" aria-hidden />
+            <span className="hidden sm:inline">Save</span>
           </Button>
           {fullscreen ? (
             <Button

@@ -10,6 +10,8 @@ export type InfraAsset = {
   notes?: string | null;
   /** pulse_projects.id when scoped on the server */
   project_id?: string | null;
+  /** facility_maps.id when scoped to a facility map */
+  map_id?: string | null;
 };
 
 export type InfraConnection = {
@@ -20,6 +22,7 @@ export type InfraConnection = {
   connection_type: string;
   active: boolean;
   project_id?: string | null;
+  map_id?: string | null;
 };
 
 export type TraceRouteResult = {

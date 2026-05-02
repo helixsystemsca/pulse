@@ -32,6 +32,10 @@ type Props = {
   elements: BlueprintElement[];
   layers: BlueprintLayer[];
   theme: BlueprintReadOnlyTheme;
+  /** Facility map base image (URL or data URL); drawn under overlays. */
+  baseImageUrl?: string | null;
+  /** World-space size for the base image (must match scaled image used on the server). */
+  baseImageWorldSize?: { w: number; h: number } | null;
   fitResetKey?: string;
 
   assets: InfraAsset[];
@@ -73,6 +77,8 @@ export function CanvasWrapper({
   elements,
   layers,
   theme,
+  baseImageUrl = null,
+  baseImageWorldSize = null,
   fitResetKey,
   assets,
   connections,
@@ -206,6 +212,8 @@ export function CanvasWrapper({
         elements={elements}
         layers={layers}
         theme={theme}
+        externalBaseImageUrl={baseImageUrl ?? undefined}
+        externalBaseWorldSize={baseImageWorldSize ?? undefined}
         fitResetKey={fitResetKey}
         onSelectElementId={onPickBlueprintElementId}
         overlay={overlay}

@@ -21,11 +21,15 @@ export function MiniToolRail({
   onToolChange,
   traceAllowed,
   projectReady,
+  toolsLocked,
+  toolsLockedHint,
 }: {
   activeTool: WorkspaceTool;
   onToolChange: (tool: WorkspaceTool) => void;
   traceAllowed: boolean;
   projectReady: boolean;
+  toolsLocked: boolean;
+  toolsLockedHint: string;
 }) {
   const items: Item[] = [
     { tool: "select", label: "Select", Icon: MousePointer2 },
@@ -49,20 +53,23 @@ export function MiniToolRail({
     >
       {items.map(({ tool, label, Icon, disabled }) => {
         const on = activeTool === tool;
+        const locked = toolsLocked && tool !== "door";
+        const effectiveDisabled = Boolean(disabled) || locked;
+        const title = locked ? toolsLockedHint : label;
         return (
           <button
             key={tool}
             type="button"
-            title={label}
+            title={title}
             aria-label={label}
             aria-pressed={on}
-            disabled={disabled}
+            disabled={effectiveDisabled}
             className={`${BTN} ${
               on
                 ? "border-l-2 border-l-ds-success bg-ds-primary/50 text-ds-foreground"
                 : "border-l-2 border-l-transparent text-ds-muted hover:bg-ds-primary/30 hover:text-ds-foreground"
             }`}
-            onClick={() => !disabled && onToolChange(tool)}
+            onClick={() => !effectiveDisabled && onToolChange(tool)}
           >
             <Icon className="h-5 w-5" aria-hidden />
           </button>

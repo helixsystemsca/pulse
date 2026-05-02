@@ -25,6 +25,8 @@ import type { WorkspaceTool } from "../workspaceTools";
 export function ToolPanel({
   activeTool,
   projectReady,
+  toolsLocked,
+  toolsLockedHint,
   semanticMode,
   onSemanticModeChange,
   modeConfig,
@@ -55,6 +57,8 @@ export function ToolPanel({
 }: {
   activeTool: WorkspaceTool;
   projectReady: boolean;
+  toolsLocked: boolean;
+  toolsLockedHint: string;
   semanticMode: BuilderSemanticMode;
   onSemanticModeChange: (m: BuilderSemanticMode) => void;
   modeConfig: MapModeConfig;
@@ -116,12 +120,12 @@ export function ToolPanel({
   );
 
   const annotateBtn = (kind: AnnotateKind, label: string, Icon: typeof StickyNote) => {
-    const allowed = projectReady && modeConfig.allowedAnnotateKinds.has(kind);
+    const allowed = projectReady && modeConfig.allowedAnnotateKinds.has(kind) && !toolsLocked;
     return (
       <button
         key={kind}
         type="button"
-        title={label}
+        title={toolsLocked ? toolsLockedHint : label}
         disabled={!allowed}
         className={`inline-flex h-9 flex-1 items-center justify-center gap-1 border border-ds-border/50 text-xs ${
           !allowed
@@ -185,6 +189,8 @@ export function ToolPanel({
           <select
             className="app-field min-h-9 w-full !py-1.5 !text-xs leading-snug"
             value={semanticMode}
+            title={toolsLocked ? toolsLockedHint : undefined}
+            disabled={toolsLocked}
             onChange={(e) => onSemanticModeChange(e.target.value as BuilderSemanticMode)}
           >
             {modeEntries.map(({ key, cfg }) => (
@@ -314,8 +320,9 @@ export function ToolPanel({
                   ? "border border-ds-success bg-ds-success/20 text-ds-foreground"
                   : "border border-ds-border/70 bg-ds-primary/30 text-ds-foreground hover:bg-ds-primary/45"
               }`}
-              disabled={!projectReady}
-              onClick={() => projectReady && onTraceRoute()}
+              title={toolsLocked ? toolsLockedHint : undefined}
+              disabled={!projectReady || toolsLocked}
+              onClick={() => projectReady && !toolsLocked && onTraceRoute()}
             >
               {traceMode ? "Tracing… (click to cancel)" : "Trace route"}
             </button>
@@ -349,6 +356,8 @@ export function ToolPanel({
                     <select
                       className="app-field min-h-9 w-full !py-1.5 !text-xs leading-snug"
                       value={defaultSystemType}
+                      title={toolsLocked ? toolsLockedHint : undefined}
+                      disabled={toolsLocked}
                       onChange={(e) => onDefaultSystemTypeChange(e.target.value as SystemType)}
                     >
                       <option value="fiber">Fiber</option>
@@ -369,31 +378,34 @@ export function ToolPanel({
                     <div className="grid grid-cols-3 gap-1 border border-ds-border/60 p-2">
                       <button
                         type="button"
-                        title="Building footprint"
+                        title={toolsLocked ? toolsLockedHint : "Building footprint"}
+                        disabled={toolsLocked}
                         className={`inline-flex h-10 items-center justify-center border text-xs ${
                           assetShape === "rectangle" ? "border-ds-success bg-ds-success/15" : "border-transparent hover:bg-ds-primary/40"
                         }`}
-                        onClick={() => onAssetShapeChange("rectangle")}
+                        onClick={() => !toolsLocked && onAssetShapeChange("rectangle")}
                       >
                         <Square className="h-4 w-4" />
                       </button>
                       <button
                         type="button"
-                        title="Node / junction"
+                        title={toolsLocked ? toolsLockedHint : "Node / junction"}
+                        disabled={toolsLocked}
                         className={`inline-flex h-10 items-center justify-center border text-xs ${
                           assetShape === "ellipse" ? "border-ds-success bg-ds-success/15" : "border-transparent hover:bg-ds-primary/40"
                         }`}
-                        onClick={() => onAssetShapeChange("ellipse")}
+                        onClick={() => !toolsLocked && onAssetShapeChange("ellipse")}
                       >
                         <CircleIcon className="h-4 w-4" />
                       </button>
                       <button
                         type="button"
-                        title="Custom area"
+                        title={toolsLocked ? toolsLockedHint : "Custom area"}
+                        disabled={toolsLocked}
                         className={`inline-flex h-10 items-center justify-center border text-xs ${
                           assetShape === "polygon" ? "border-ds-success bg-ds-success/15" : "border-transparent hover:bg-ds-primary/40"
                         }`}
-                        onClick={() => onAssetShapeChange("polygon")}
+                        onClick={() => !toolsLocked && onAssetShapeChange("polygon")}
                       >
                         <Hexagon className="h-4 w-4" />
                       </button>
@@ -413,15 +425,19 @@ export function ToolPanel({
                     <div className="grid grid-cols-2 gap-1 border border-ds-border/60 p-1">
                       <button
                         type="button"
+                        title={toolsLocked ? toolsLockedHint : undefined}
+                        disabled={toolsLocked}
                         className={`px-2 py-2 text-xs font-semibold ${connectFlow === "pick" ? "bg-ds-success/20 text-ds-foreground" : "text-ds-muted hover:bg-ds-primary/40"}`}
-                        onClick={() => onConnectFlowChange("pick")}
+                        onClick={() => !toolsLocked && onConnectFlowChange("pick")}
                       >
                         Pick 2 assets
                       </button>
                       <button
                         type="button"
+                        title={toolsLocked ? toolsLockedHint : undefined}
+                        disabled={toolsLocked}
                         className={`px-2 py-2 text-xs font-semibold ${connectFlow === "draw" ? "bg-ds-success/20 text-ds-foreground" : "text-ds-muted hover:bg-ds-primary/40"}`}
-                        onClick={() => onConnectFlowChange("draw")}
+                        onClick={() => !toolsLocked && onConnectFlowChange("draw")}
                       >
                         Draw
                       </button>
@@ -445,7 +461,7 @@ export function ToolPanel({
 
             {activeTool === "door" ? (
               <p className="text-xs leading-relaxed text-ds-muted">
-                Door placement is not enabled here yet. When available, door segments will snap to wall geometry like the blueprint designer.
+                Door placement is not enabled here yet. When available, door segments will snap to wall geometry from the facility map.
               </p>
             ) : null}
 
@@ -457,7 +473,7 @@ export function ToolPanel({
                   {annotateBtn("sketch", "Region", Pencil)}
                   {annotateBtn("pen", "Pen", PenLine)}
                 </div>
-                <p className="text-[10px] text-ds-muted">Blueprint overlays only — not written to the infrastructure graph.</p>
+                <p className="text-[10px] text-ds-muted">Map overlays only — not written to the infrastructure graph.</p>
               </>
             ) : null}
 
