@@ -19,6 +19,8 @@ import { navigateAfterPulseLogin } from "@/lib/pulse-app";
 import { PULSE_BUILD_VERSION } from "@/lib/pulse-build-version";
 import { mailtoInfo, mailtoSupport } from "@/lib/helix-emails";
 import { useTheme } from "@/components/theme/ThemeProvider";
+import { cn } from "@/lib/cn";
+import { buttonVariants } from "@/styles/button-variants";
 
 function LoginRipples() {
   const rings = [520, 640, 760, 880, 1000, 1120];
@@ -150,7 +152,7 @@ export default function LoginPage() {
               onClick={toggleTheme}
               title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
               aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-              className="ds-btn-auth-icon h-10 w-10 border border-transparent text-[#4c6085] hover:border-[color-mix(in_srgb,#4c6085_22%,transparent)] dark:text-ds-muted"
+              className="ds-btn-auth-icon h-10 w-10 border-transparent text-[#4c6085] hover:border-[color-mix(in_srgb,#4c6085_22%,transparent)] dark:text-ds-muted"
             >
               {theme === "dark" ? <Sun className="h-5 w-5" strokeWidth={2} aria-hidden /> : <Moon className="h-5 w-5" strokeWidth={2} aria-hidden />}
             </button>
@@ -261,7 +263,10 @@ export default function LoginPage() {
                   <button
                     type="submit"
                     disabled={submitting}
-                    className="flex w-full items-center justify-center gap-2 rounded-full bg-[#4c6085] py-3.5 text-xs font-extrabold uppercase tracking-[0.18em] text-white shadow-sm transition-colors hover:bg-[#3f5274] disabled:opacity-60 dark:bg-[#556b8e] dark:hover:bg-[#4c6085]"
+                    className={cn(
+                      buttonVariants({ surface: "light", intent: "accent" }),
+                      "w-full gap-2 py-3.5 text-xs font-extrabold uppercase tracking-[0.18em] disabled:opacity-60",
+                    )}
                   >
                     {submitting ? (
                       <>

@@ -12,6 +12,8 @@ import { navigateAfterPulseLogin, pulseApp } from "@/lib/pulse-app";
 import { writeApiSession } from "@/lib/pulse-session";
 import type { UserOut } from "@/lib/pulse-session";
 import { applyServerTimeFromUserOut } from "@/lib/serverTime";
+import { cn } from "@/lib/cn";
+import { buttonVariants } from "@/styles/button-variants";
 
 function JoinForm() {
   const search = useSearchParams();
@@ -100,7 +102,7 @@ function JoinForm() {
             className={`mt-1.5 ${dsInputClass}`}
           />
         </div>
-        <button type="submit" disabled={busy} className="ds-btn-solid-primary w-full py-3 text-sm disabled:opacity-60">
+        <button type="submit" disabled={busy} className={cn(buttonVariants({ surface: "light", intent: "accent" }), "w-full py-3 text-sm disabled:opacity-60")}>
           {busy ? "Working…" : "Activate account"}
         </button>
         <p className="text-center text-xs text-ds-muted">

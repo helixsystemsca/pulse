@@ -12,6 +12,8 @@ import { fetchSystemUserLoginEvents } from "@/lib/workersService";
 import { setImpersonationOverlayAccessToken } from "@/lib/impersonation-overlay-token";
 import { parseClientApiError } from "@/lib/parse-client-api-error";
 import { readSession } from "@/lib/pulse-session";
+import { cn } from "@/lib/cn";
+import { buttonVariants } from "@/styles/button-variants";
 
 type UserRow = {
   id: string;
@@ -52,8 +54,8 @@ const ROLE_OPTIONS: { value: string; label: string }[] = [
 ];
 
 const INPUT = dsInputClass;
-const BTN_PRIMARY = "ds-btn-solid-primary px-4 py-2 text-sm";
-const BTN_SECONDARY = "ds-btn-secondary px-4 py-2 text-sm";
+const BTN_PRIMARY = cn(buttonVariants({ surface: "light", intent: "accent" }), "px-4 py-2");
+const BTN_SECONDARY = cn(buttonVariants({ surface: "light", intent: "secondary" }), "px-4 py-2");
 
 function formatWhen(iso: string | null | undefined): string {
   if (!iso) return "—";
@@ -233,7 +235,7 @@ export default function SystemUsersPage() {
         <button
           type="button"
           onClick={openFilters}
-          className="ds-btn-secondary inline-flex items-center gap-2 px-4 py-2 text-sm"
+          className={cn(buttonVariants({ surface: "light", intent: "secondary" }), "inline-flex items-center gap-2 px-4 py-2 text-sm")}
         >
           Filters
           {filterBadge > 0 ? (

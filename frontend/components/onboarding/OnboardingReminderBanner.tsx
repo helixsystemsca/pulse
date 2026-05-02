@@ -5,6 +5,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { PULSE_ONBOARDING_BANNER_SESSION_KEY } from "@/lib/pulse-session";
 import { useOnboarding } from "./OnboardingProvider";
+import { cn } from "@/lib/cn";
+import { buttonVariants } from "@/styles/button-variants";
 
 export function OnboardingReminderBanner() {
   const { state, loading, active, setChecklistExpanded } = useOnboarding();
@@ -31,7 +33,7 @@ export function OnboardingReminderBanner() {
         </p>
         <button
           type="button"
-          className="ds-btn-solid-primary shrink-0 px-3 py-1.5 text-xs"
+          className={cn(buttonVariants({ surface: "light", intent: "accent" }), "shrink-0 px-3 py-1.5 text-xs")}
           onClick={() => setChecklistExpanded(true)}
         >
           Open checklist

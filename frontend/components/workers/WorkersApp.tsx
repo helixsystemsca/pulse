@@ -65,10 +65,12 @@ import {
 } from "@/lib/workersService";
 import { UserProfileAvatarPreview } from "@/components/profile/UserProfileAvatarPreview";
 import { useResolvedAvatarSrc } from "@/lib/useResolvedAvatarSrc";
+import { cn } from "@/lib/cn";
+import { buttonVariants } from "@/styles/button-variants";
 
 type CompanyOption = { id: string; name: string };
 
-const PRIMARY_BTN = "ds-btn-solid-primary px-5 py-2.5 text-sm";
+const PRIMARY_BTN = cn(buttonVariants({ surface: "light", intent: "accent" }), "px-5 py-2.5");
 const FIELD = dsInputStackedClass;
 const LABEL = dsLabelClass;
 const SECTION_KICKER = "text-[11px] font-semibold uppercase tracking-wider text-ds-success";
@@ -932,7 +934,7 @@ export function WorkersApp() {
           <>
             <button
               type="button"
-              className="app-btn-secondary px-4 py-2.5"
+              className={cn(buttonVariants({ surface: "light", intent: "secondary" }), "px-4 py-2.5")}
               onClick={() => {
                 setSettingsDraft({ ...fullSettings });
                 setCertRulesText(JSON.stringify(fullSettings.certification_rules ?? [], null, 2));
@@ -1018,7 +1020,7 @@ export function WorkersApp() {
             <div className="flex shrink-0 flex-wrap items-center gap-2 sm:flex-col sm:items-stretch sm:pt-1">
               <button
                 type="button"
-                className="ds-btn-solid-primary inline-flex items-center justify-center gap-2 px-3 py-2 text-xs"
+                className={cn(buttonVariants({ surface: "light", intent: "accent" }), "inline-flex items-center justify-center gap-2 px-3 py-2 text-xs")}
                 onClick={() => {
                   void navigator.clipboard.writeText(inviteNotice.inviteUrl).then(() => {
                     setInviteLinkCopied(true);
@@ -1040,7 +1042,7 @@ export function WorkersApp() {
               </button>
               <button
                 type="button"
-                className="ds-btn-secondary px-3 py-2 text-xs"
+                className={cn(buttonVariants({ surface: "light", intent: "secondary" }), "px-3 py-2 text-xs")}
                 onClick={() => {
                   setInviteNotice(null);
                   setInviteLinkCopied(false);
@@ -1567,7 +1569,7 @@ export function WorkersApp() {
               <>
                 <button
                   type="button"
-                  className="ds-btn-secondary px-4 py-2.5 text-sm"
+                  className={cn(buttonVariants({ surface: "light", intent: "secondary" }), "px-4 py-2.5 text-sm")}
                   disabled={profileBusy || inviteLinkBusyId === profileId}
                   onClick={() => {
                     if (!profileId) return;
@@ -1601,7 +1603,7 @@ export function WorkersApp() {
             {canEditWorkerBasics ? (
               <button
                 type="button"
-                className="app-btn-secondary px-4 py-2.5 text-sm font-semibold"
+                className={cn(buttonVariants({ surface: "light", intent: "secondary" }), "px-4 py-2.5 text-sm font-semibold")}
                 disabled={profileBusy}
                 onClick={() => void saveProfileHr()}
               >
@@ -1797,7 +1799,7 @@ export function WorkersApp() {
                 </div>
                 <button
                   type="button"
-                  className="app-btn-secondary mt-3 px-4 py-2 text-sm font-semibold"
+                  className={cn(buttonVariants({ surface: "light", intent: "secondary" }), "mt-3 px-4 py-2 text-sm font-semibold")}
                   disabled={profileBusy}
                   onClick={() => void saveProfileRoles()}
                 >
@@ -1832,7 +1834,7 @@ export function WorkersApp() {
                 </div>
                 <button
                   type="button"
-                  className="app-btn-secondary mt-3 px-4 py-2 text-sm font-semibold"
+                  className={cn(buttonVariants({ surface: "light", intent: "secondary" }), "mt-3 px-4 py-2 text-sm font-semibold")}
                   disabled={profileBusy}
                   onClick={() => void saveExtraModules()}
                 >
@@ -2134,7 +2136,7 @@ export function WorkersApp() {
                   {isCompanyAdmin ? (
                     <button
                       type="button"
-                      className="ds-btn-secondary px-4 py-2 text-sm font-semibold"
+                      className={cn(buttonVariants({ surface: "light", intent: "secondary" }), "px-4 py-2 text-sm font-semibold")}
                       onClick={() =>
                         void openLoginActivity({
                           id: profile.id,
@@ -2159,7 +2161,7 @@ export function WorkersApp() {
                   {canDeactivateProfile && !profile.is_active ? (
                     <button
                       type="button"
-                      className="ds-btn-secondary px-4 py-2 text-sm font-semibold"
+                      className={cn(buttonVariants({ surface: "light", intent: "secondary" }), "px-4 py-2 text-sm font-semibold")}
                       disabled={profileBusy}
                       onClick={() => void setProfileActive(true)}
                     >

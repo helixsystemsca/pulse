@@ -13,6 +13,14 @@ function readStoredMode(): BuilderSemanticMode {
   if (typeof window === "undefined") return "telemetry";
   try {
     const raw = window.localStorage.getItem(BUILDER_MODE_STORAGE_KEY);
+    if (raw === "criticalPath") {
+      try {
+        window.localStorage.setItem(BUILDER_MODE_STORAGE_KEY, "telemetry");
+      } catch {
+        /* ignore */
+      }
+      return "telemetry";
+    }
     if (isBuilderSemanticMode(raw)) return raw;
   } catch {
     /* ignore */

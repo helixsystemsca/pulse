@@ -1,5 +1,8 @@
 "use client";
 
+import { cn } from "@/lib/cn";
+import { buttonVariants } from "@/styles/button-variants";
+
 export function LevelUpModal({
   open,
   oldLevel,
@@ -29,7 +32,7 @@ export function LevelUpModal({
         ) : (
           <p className="mt-3 text-center text-sm text-ds-muted">Keep up the great work.</p>
         )}
-        <button type="button" className="ds-btn-solid-primary mt-6 w-full py-2.5 text-sm font-bold" onClick={onClose}>
+        <button type="button" className={cn(buttonVariants({ surface: "dark", intent: "accent" }), "mt-6 w-full py-2.5 text-sm font-bold")} onClick={onClose}>
           Continue
         </button>
       </div>

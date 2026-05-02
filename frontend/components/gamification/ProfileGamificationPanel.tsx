@@ -12,6 +12,8 @@ import {
 import { parseClientApiError } from "@/lib/parse-client-api-error";
 import { sessionHasAnyRole } from "@/lib/pulse-roles";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
+import { cn } from "@/lib/cn";
+import { buttonVariants } from "@/styles/button-variants";
 
 const BORDERS: { id: string; label: string }[] = [
   { id: "bronze", label: "Bronze" },
@@ -196,7 +198,7 @@ export function ProfileGamificationPanel() {
               onChange={(e) => setAwardReason(e.target.value)}
             />
           </div>
-          <button type="button" className="ds-btn-solid-primary mt-3 px-4 py-2 text-sm" disabled={awardBusy} onClick={() => void onAward()}>
+          <button type="button" className={cn(buttonVariants({ surface: "light", intent: "accent" }), "mt-3 px-4 py-2 text-sm")} disabled={awardBusy} onClick={() => void onAward()}>
             {awardBusy ? "Sending…" : "Award XP"}
           </button>
         </div>

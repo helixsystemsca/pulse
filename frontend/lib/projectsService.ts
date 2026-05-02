@@ -77,6 +77,8 @@ export type TaskRow = {
   sop_id?: string | null;
   blocking_tasks?: TaskBlockingMini[];
   depends_on_task_ids?: string[];
+  /** Workstream for Gantt / CPM coloring; defaults to "other" when absent. */
+  category?: "planning" | "execution" | "cleanup" | "reflection" | "other" | null;
 };
 
 export type ProjectDetail = ProjectRow & { tasks: TaskRow[] };

@@ -17,6 +17,8 @@ import { readSession } from "@/lib/pulse-session";
 import { CreateDropdown } from "./CreateDropdown";
 import { InspectionBuilder } from "./InspectionBuilder";
 import { LogBuilder } from "./LogBuilder";
+import { cn } from "@/lib/cn";
+import { buttonVariants } from "@/styles/button-variants";
 
 const TABLE_WRAP =
   "mt-6 overflow-hidden rounded-md border border-ds-border bg-white shadow-sm dark:bg-ds-secondary";
@@ -564,7 +566,7 @@ function InspectionFillModal({
           </button>
           <button
             type="button"
-            className="ds-btn-solid-primary rounded-md px-4 py-2 text-sm font-semibold"
+            className={cn(buttonVariants({ surface: "light", intent: "accent" }), "px-4 py-2 text-sm font-semibold")}
             onClick={() => onSubmit(values)}
           >
             Save completion
@@ -721,7 +723,7 @@ function LogFillModal({
           </button>
           <button
             type="button"
-            className="ds-btn-solid-primary rounded-md px-4 py-2 text-sm font-semibold"
+            className={cn(buttonVariants({ surface: "light", intent: "accent" }), "px-4 py-2 text-sm font-semibold")}
             onClick={() => {
               const out: Record<string, unknown> = { ...vals };
               sorted.forEach((f) => {

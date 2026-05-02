@@ -1,5 +1,8 @@
 "use client";
 
+import { cn } from "@/lib/cn";
+import { buttonVariants } from "@/styles/button-variants";
+
 export type BadgePayload = { id: string; name: string; description: string; iconKey?: string };
 
 export function BadgeUnlockModal({ badge, onClose }: { badge: BadgePayload | null; onClose: () => void }) {
@@ -14,7 +17,7 @@ export function BadgeUnlockModal({ badge, onClose }: { badge: BadgePayload | nul
         </div>
         <h2 className="mt-3 text-xl font-extrabold text-ds-foreground">{badge.name}</h2>
         <p className="mt-2 text-sm text-ds-muted">{badge.description}</p>
-        <button type="button" className="ds-btn-solid-primary mt-6 w-full py-2.5 text-sm font-bold" onClick={onClose}>
+        <button type="button" className={cn(buttonVariants({ surface: "dark", intent: "accent" }), "mt-6 w-full py-2.5 text-sm font-bold")} onClick={onClose}>
           Nice
         </button>
       </div>

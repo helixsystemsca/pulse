@@ -17,6 +17,8 @@ import {
   setShiftDragData,
 } from "@/lib/schedule/drag";
 import { flushSync } from "react-dom";
+import { cn } from "@/lib/cn";
+import { buttonVariants } from "@/styles/button-variants";
 import { evaluateWorkerDrop, type WorkerDayHighlight } from "@/lib/schedule/worker-drag-highlights";
 import { formatTimeRange } from "@/lib/schedule/time-format";
 import type {
@@ -227,7 +229,7 @@ export function ScheduleDayView({
         <div className="flex shrink-0 flex-wrap items-center gap-2">
           <button
             type="button"
-            className="ds-btn-solid-primary inline-flex items-center gap-2 px-4 py-2.5 text-sm"
+            className={cn(buttonVariants({ surface: "light", intent: "accent" }), "inline-flex items-center gap-2 px-4 py-2.5 text-sm")}
             onClick={() => onAddForDate(date)}
             aria-label="Add shift"
           >
@@ -575,7 +577,7 @@ export function ScheduleDayView({
                   />
                   <button
                     type="button"
-                    className="ds-btn-solid-primary inline-flex w-full items-center justify-center gap-2 px-4 py-2 text-sm"
+                    className={cn(buttonVariants({ surface: "light", intent: "accent" }), "inline-flex w-full items-center justify-center gap-2 px-4 py-2 text-sm")}
                     disabled={assignLoading || !newArea.trim()}
                     onClick={() => {
                       if (!newArea.trim()) return;

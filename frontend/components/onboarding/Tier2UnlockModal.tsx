@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { patchOnboarding } from "@/lib/onboardingService";
 import { emitOnboardingMaybeUpdated } from "@/lib/onboarding-events";
 import { useOnboarding } from "./OnboardingProvider";
+import { cn } from "@/lib/cn";
+import { buttonVariants } from "@/styles/button-variants";
 
 const DISMISS_KEY = "pulse_onboarding_tier2_prompt_dismissed_v1";
 
@@ -45,7 +47,7 @@ export function Tier2UnlockModal() {
         <div className="mt-5 flex justify-end gap-2">
           <button
             type="button"
-            className="ds-btn-secondary px-3 py-2 text-sm"
+            className={cn(buttonVariants({ surface: "light", intent: "secondary" }), "px-3 py-2 text-sm")}
             onClick={() => {
               try {
                 localStorage.setItem(DISMISS_KEY, "1");
@@ -57,7 +59,7 @@ export function Tier2UnlockModal() {
           </button>
           <button
             type="button"
-            className="ds-btn-solid-primary px-3 py-2 text-sm"
+            className={cn(buttonVariants({ surface: "light", intent: "accent" }), "px-3 py-2 text-sm")}
             disabled={busy}
             onClick={() =>
               void (async () => {

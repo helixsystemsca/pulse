@@ -8,6 +8,8 @@ import { Card } from "@/components/pulse/Card";
 import { fetchTeamInsights, type TeamInsightsActivity, type TeamInsightsWorker } from "@/lib/teamInsightsService";
 import { WorkerRow } from "@/components/team/WorkerRow";
 import { WorkerProfileModal } from "@/components/team/WorkerProfileModal";
+import { cn } from "@/lib/cn";
+import { buttonVariants } from "@/styles/button-variants";
 
 type SortKey = "xp" | "level" | "streak";
 type RoleFilter = "all" | "worker" | "lead" | "supervisor";
@@ -101,7 +103,7 @@ export function TeamInsightsApp() {
           <>
             <div className="relative">
               <select
-                className="ds-btn-secondary appearance-none px-4 py-2.5 pr-10 text-sm font-semibold"
+                className={cn(buttonVariants({ surface: "light", intent: "secondary" }), "appearance-none px-4 py-2.5 pr-10 text-sm font-semibold")}
                 value={dateFilter}
                 onChange={(e) => setDateFilter(e.target.value)}
                 aria-label="Date filter"
@@ -115,7 +117,7 @@ export function TeamInsightsApp() {
             </div>
             <button
               type="button"
-              className="ds-btn-secondary inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold"
+              className={cn(buttonVariants({ surface: "light", intent: "secondary" }), "inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold")}
             >
               <Download className="h-4 w-4" aria-hidden />
               Export
@@ -245,7 +247,7 @@ export function TeamInsightsApp() {
 
               <div className="relative">
                 <select
-                  className="ds-btn-secondary appearance-none px-4 py-2 pr-10 text-xs font-semibold"
+                  className={cn(buttonVariants({ surface: "light", intent: "secondary" }), "appearance-none px-4 py-2 pr-10 text-xs font-semibold")}
                   value={sort}
                   onChange={(e) => setSort(e.target.value as SortKey)}
                   aria-label="Sort"

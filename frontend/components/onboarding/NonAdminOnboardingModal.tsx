@@ -9,6 +9,8 @@ import { canAccessPulseTenantApis } from "@/lib/pulse-session";
 import { sessionHasAnyRole } from "@/lib/pulse-roles";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
 import { useGuidedTour, type GuidedTourStep } from "./CoreGuidedTour";
+import { cn } from "@/lib/cn";
+import { buttonVariants } from "@/styles/button-variants";
 
 async function completeTour(refresh: () => void) {
   try {
@@ -109,12 +111,12 @@ export function NonAdminOnboardingModal() {
             Start a quick guided tour to learn the key dashboard areas.
           </p>
           <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
-            <button type="button" className="ds-btn-secondary order-2 px-4 py-2.5 text-sm" onClick={() => void skip()}>
+            <button type="button" className={cn(buttonVariants({ surface: "light", intent: "secondary" }), "order-2 px-4 py-2.5 text-sm")} onClick={() => void skip()}>
               Skip
             </button>
             <button
               type="button"
-              className="ds-btn-secondary order-1 px-4 py-2.5 text-sm"
+              className={cn(buttonVariants({ surface: "light", intent: "secondary" }), "order-1 px-4 py-2.5 text-sm")}
               onClick={() => {
                 router.push("/overview");
                 void skip();
@@ -124,7 +126,7 @@ export function NonAdminOnboardingModal() {
             </button>
             <button
               type="button"
-              className="ds-btn-solid-primary order-1 px-4 py-2.5 text-sm sm:order-3"
+              className={cn(buttonVariants({ surface: "light", intent: "accent" }), "order-1 px-4 py-2.5 text-sm sm:order-3")}
               onClick={() =>
                 void (async () => {
                   startTour(guidedSteps);

@@ -10,6 +10,8 @@ import {
   Type,
 } from "lucide-react";
 import { useState } from "react";
+import { cn } from "@/lib/cn";
+import { buttonVariants } from "@/styles/button-variants";
 import type { FilterRule, SystemType, TraceRouteResult } from "../utils/graphHelpers";
 import type { AnnotateKind, AssetDrawShape, ConnectFlow, PrimaryMode } from "../mapBuilderTypes";
 import type { BuilderSemanticMode, MapModeConfig } from "../mapBuilderModes";
@@ -235,7 +237,7 @@ export function ToolPanel({
               <div className="flex flex-wrap items-center gap-1.5">
                 <button
                   type="button"
-                  className="ds-btn-secondary h-8 flex-1 min-w-[5.5rem] text-xs"
+                  className={cn(buttonVariants({ surface: "light", intent: "secondary" }), "h-8 min-w-[5.5rem] flex-1 text-xs")}
                   disabled={!key.trim()}
                   onClick={() => {
                     const k = key.trim();
@@ -252,13 +254,13 @@ export function ToolPanel({
             <div>
               <p className="mb-1 text-[10px] font-medium uppercase tracking-wide text-ds-muted">Presets</p>
               <div className="grid grid-cols-1 gap-1 sm:grid-cols-3">
-                <button type="button" className="ds-btn-secondary h-8 px-1 text-[11px] leading-tight" onClick={onPresetAvailableFiber} title="strands_available &gt; 0">
+                <button type="button" className={cn(buttonVariants({ surface: "light", intent: "secondary" }), "h-8 px-1 text-[11px] leading-tight")} onClick={onPresetAvailableFiber} title="strands_available &gt; 0">
                   Available fiber
                 </button>
-                <button type="button" className="ds-btn-secondary h-8 px-1 text-[11px] leading-tight" onClick={onPresetNearCapacity} title="strands_available &lt; 2">
+                <button type="button" className={cn(buttonVariants({ surface: "light", intent: "secondary" }), "h-8 px-1 text-[11px] leading-tight")} onClick={onPresetNearCapacity} title="strands_available &lt; 2">
                   Near capacity
                 </button>
-                <button type="button" className="ds-btn-secondary h-8 px-1 text-[11px] leading-tight" onClick={onPresetActiveOnly} title="status = active">
+                <button type="button" className={cn(buttonVariants({ surface: "light", intent: "secondary" }), "h-8 px-1 text-[11px] leading-tight")} onClick={onPresetActiveOnly} title="status = active">
                   Active only
                 </button>
               </div>
@@ -333,13 +335,6 @@ export function ToolPanel({
         ) : (
           <p className="text-[10px] text-ds-muted">Trace route is not available in this semantic mode.</p>
         )}
-
-        <div className="space-y-1 border-t border-ds-border/50 pt-2">
-          <p className="text-[10px] font-medium uppercase tracking-wide text-ds-muted">Routing (preview)</p>
-          <p className="text-[10px] leading-relaxed text-ds-muted">
-            Critical path & constrained routing overlays will appear here for schedule-linked maps.
-          </p>
-        </div>
       </div>
 
       {showContextual ? (

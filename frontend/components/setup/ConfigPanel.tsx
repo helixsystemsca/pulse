@@ -2,6 +2,8 @@
 
 import { Loader2, SlidersHorizontal } from "lucide-react";
 import { type ReactNode, useEffect, useState } from "react";
+import { cn } from "@/lib/cn";
+import { buttonVariants } from "@/styles/button-variants";
 
 const panel =
   "rounded-md border border-slate-200/80 bg-white p-6 shadow-card space-y-8";
@@ -9,8 +11,7 @@ const titleLbl = "text-sm font-semibold text-pulse-navy";
 const hint = "mt-1 text-xs leading-relaxed text-pulse-muted";
 const field =
   "mt-1.5 w-full rounded-md border border-slate-200/90 bg-white px-3 py-2.5 text-sm text-pulse-navy shadow-sm focus:border-[#2B4C7E]/35 focus:outline-none focus:ring-1 focus:ring-[#2B4C7E]/25";
-const saveBtn =
-  "rounded-md bg-[#2B4C7E] px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#234066] disabled:opacity-50 inline-flex items-center gap-2";
+const saveBtn = cn(buttonVariants({ surface: "light", intent: "accent" }), "inline-flex items-center gap-2 px-4 py-2");
 
 function FieldBlock({
   label,

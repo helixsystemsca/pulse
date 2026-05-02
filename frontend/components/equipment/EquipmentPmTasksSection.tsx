@@ -19,6 +19,8 @@ import {
   type PmTaskCreatePayload,
   type PmTaskRow,
 } from "@/lib/equipmentService";
+import { cn } from "@/lib/cn";
+import { buttonVariants } from "@/styles/button-variants";
 
 const SECTION_LABEL = "text-[11px] font-semibold uppercase tracking-wider text-pulse-muted";
 
@@ -376,7 +378,7 @@ export function EquipmentPmTasksSection({ equipmentId, canMutate, onTasksChanged
                 type="button"
                 disabled={saving || !name.trim()}
                 onClick={() => void submitModal()}
-                className="rounded-[10px] bg-[#2B4C7E] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:opacity-95 disabled:opacity-50"
+                className={cn(buttonVariants({ surface: "light", intent: "accent" }), "px-4 py-2 hover:opacity-95 disabled:opacity-50")}
               >
                 {saving ? "Saving…" : "Save"}
               </button>

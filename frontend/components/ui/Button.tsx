@@ -3,49 +3,43 @@
 import Link from "next/link";
 import type { ComponentProps, ReactNode } from "react";
 
-import { UI } from "@/styles/ui";
+import { cn } from "@/lib/cn";
+import { buttonVariants, type ButtonIntent, type ButtonSurface } from "@/styles/button-variants";
 
 type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
-  variant?: "primary" | "secondary" | "accent";
+  /** Semantic fill / emphasis (maps to CVA `intent`). */
+  variant?: ButtonIntent;
+  /** `light` = black border + rules for white/grey/teal panels; `dark` = white border on dusk/black. */
+  surface?: ButtonSurface;
   children: ReactNode;
   className?: string;
 };
 
-export function Button({ variant = "primary", children, className = "", ...props }: ButtonProps) {
-  const variantClass =
-    variant === "secondary"
-      ? UI.button.secondary
-      : variant === "accent"
-        ? UI.button.accent
-        : UI.button.primary;
-
+export function Button({
+  variant = "primary",
+  surface = "light",
+  children,
+  className = "",
+  type = "button",
+  ...props
+}: ButtonProps) {
   return (
-    <button className={`${UI.button.base} ${variantClass} ${className}`.trim()} {...props}>
+    <button type={type} className={cn(buttonVariants({ surface, intent: variant }), className)} {...props}>
       {children}
     </button>
   );
 }
 
 type ButtonLinkProps = Omit<ComponentProps<typeof Link>, "className"> & {
-  variant?: "primary" | "secondary" | "accent";
+  variant?: ButtonIntent;
+  surface?: ButtonSurface;
   className?: string;
   children: ReactNode;
 };
 
-export function ButtonLink({ href, variant = "primary", children, className = "", ...props }: ButtonLinkProps) {
-  const variantClass =
-    variant === "secondary"
-      ? UI.button.secondary
-      : variant === "accent"
-        ? UI.button.accent
-        : UI.button.primary;
-
+export function ButtonLink({ href, variant = "primary", surface = "light", children, className = "", ...props }: ButtonLinkProps) {
   return (
-    <Link
-      href={href}
-      className={`${UI.button.base} ${variantClass} inline-flex items-center justify-center ${className}`.trim()}
-      {...props}
-    >
+    <Link href={href} className={cn(buttonVariants({ surface, intent: variant }), className)} {...props}>
       {children}
     </Link>
   );

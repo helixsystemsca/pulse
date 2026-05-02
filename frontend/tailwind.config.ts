@@ -75,6 +75,12 @@ const config: Config = {
           danger: "var(--ds-danger)",
           /** Black text on solid aquamarine / amber / lobster */
           "on-accent": "var(--ds-on-accent)",
+          /** Gantt / CPM task category bars */
+          blue: { 500: "#0ea5e9" },
+          teal: { 500: "#14b8a6" },
+          yellow: { 500: "#eab308" },
+          pink: { 500: "#ec4899" },
+          gray: { 400: "#9ca3af" },
         },
       },
       ringOffsetColor: {

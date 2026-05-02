@@ -13,6 +13,8 @@ import {
 import { fetchOnboarding, ONBOARDING_STEP_HREF, type OnboardingState } from "@/lib/onboardingService";
 import { canAccessPulseTenantApis } from "@/lib/pulse-session";
 import { sessionHasAnyRole } from "@/lib/pulse-roles";
+import { cn } from "@/lib/cn";
+import { buttonVariants } from "@/styles/button-variants";
 
 const BANNER_DISMISS_KEY = "pulse_admin_setup_banner_dismissed";
 
@@ -135,7 +137,7 @@ export function AdminOnboardingChecklist() {
         <p className="text-sm font-semibold text-ds-success">Setup complete ✓</p>
         <button
           type="button"
-          className="ds-btn-secondary px-3 py-1.5 text-xs"
+          className={cn(buttonVariants({ surface: "light", intent: "secondary" }), "px-3 py-1.5 text-xs")}
           onClick={() => {
             try {
               localStorage.setItem(BANNER_DISMISS_KEY, "1");

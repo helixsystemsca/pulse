@@ -3,6 +3,8 @@
 import { useState } from "react";
 import type { Worker } from "@/lib/schedule/types";
 import { PulseDrawer } from "./PulseDrawer";
+import { cn } from "@/lib/cn";
+import { buttonVariants } from "@/styles/button-variants";
 
 type Props = {
   open: boolean;
@@ -46,7 +48,7 @@ export function TimeOffRequestModal({ open, workers, onClose, onSubmit }: Props)
           </button>
           <button
             type="button"
-            className="rounded-[10px] bg-[#2B4C7E] px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-[#234066] disabled:opacity-40"
+            className={cn(buttonVariants({ surface: "light", intent: "accent" }), "px-5 py-2.5 disabled:opacity-40")}
             disabled={!workerId || !start || !end}
             onClick={() => {
               onSubmit({ workerId, startDate: start, endDate: end, status, kind });

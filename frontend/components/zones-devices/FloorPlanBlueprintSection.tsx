@@ -10,6 +10,8 @@ import { parseClientApiError } from "@/lib/parse-client-api-error";
 import { canAccessPulseTenantApis } from "@/lib/pulse-session";
 import { sessionHasAnyRole } from "@/lib/pulse-roles";
 import type { BlueprintReadOnlyTheme } from "./BlueprintReadOnlyCanvas";
+import { cn } from "@/lib/cn";
+import { buttonVariants } from "@/styles/button-variants";
 
 const BlueprintReadOnlyCanvas = dynamic(
   () => import("./BlueprintReadOnlyCanvas").then((m) => ({ default: m.BlueprintReadOnlyCanvas })),
@@ -203,7 +205,7 @@ export function FloorPlanBlueprintSection() {
         <div className="flex shrink-0 flex-wrap items-center gap-2">
           <button
             type="button"
-            className="ds-btn-secondary inline-flex items-center justify-center rounded-md px-3 py-2 text-sm font-semibold"
+            className={cn(buttonVariants({ surface: "light", intent: "secondary" }), "inline-flex items-center justify-center px-3 py-2 text-sm font-semibold")}
             onClick={() => void deleteSelected()}
             disabled={!canDelete}
             aria-disabled={!canDelete}
@@ -219,7 +221,7 @@ export function FloorPlanBlueprintSection() {
           </button>
           <Link
             href="/drawings"
-            className="ds-btn-secondary inline-flex items-center justify-center rounded-md px-3 py-2 text-sm font-semibold"
+            className={cn(buttonVariants({ surface: "light", intent: "secondary" }), "inline-flex items-center justify-center px-3 py-2 text-sm font-semibold")}
           >
             Open Drawings
           </Link>

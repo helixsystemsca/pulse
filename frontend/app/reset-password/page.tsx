@@ -12,6 +12,8 @@ import { navigateAfterPulseLogin, pulseApp } from "@/lib/pulse-app";
 import { writeApiSession } from "@/lib/pulse-session";
 import type { UserOut } from "@/lib/pulse-session";
 import { applyServerTimeFromUserOut } from "@/lib/serverTime";
+import { cn } from "@/lib/cn";
+import { buttonVariants } from "@/styles/button-variants";
 
 function ResetForm() {
   const search = useSearchParams();
@@ -93,7 +95,7 @@ function ResetForm() {
             className={`mt-1.5 ${dsInputClass}`}
           />
         </div>
-        <button type="submit" disabled={busy} className="ds-btn-gradient-primary w-full py-3 text-sm">
+        <button type="submit" disabled={busy} className={cn(buttonVariants({ surface: "light", intent: "accent" }), "w-full py-3 text-sm")}>
           {busy ? "Updating…" : "Save and sign in"}
         </button>
         <p className="text-center text-xs text-ds-muted">

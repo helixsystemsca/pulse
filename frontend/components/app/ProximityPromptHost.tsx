@@ -6,11 +6,11 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { PULSE_PROXIMITY_EVENT, type PulseProximityDetail } from "@/lib/proximityBridge";
 import { patchTask, postProximityEvent, type ProximityTask } from "@/lib/projectsService";
 import { readSession } from "@/lib/pulse-session";
+import { cn } from "@/lib/cn";
+import { buttonVariants } from "@/styles/button-variants";
 
-const BTN_SECONDARY =
-  "rounded-[10px] border border-slate-200/90 bg-white px-4 py-2 text-sm font-semibold text-pulse-navy shadow-sm hover:bg-slate-50";
-const BTN_PRIMARY =
-  "rounded-[10px] bg-[#2B4C7E] px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#234066] disabled:opacity-50";
+const BTN_SECONDARY = cn(buttonVariants({ surface: "light", intent: "secondary" }), "px-4 py-2");
+const BTN_PRIMARY = cn(buttonVariants({ surface: "light", intent: "accent" }), "px-4 py-2");
 
 /** Gentle nudge after closing the sheet without starting a task (matches accountability "no action" window concept). */
 const DISMISS_REMINDER_MS = 90_000;

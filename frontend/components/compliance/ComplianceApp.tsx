@@ -32,6 +32,8 @@ import { DataTableCard, dataTableBodyRow, dataTableHeadRowClass } from "@/compon
 import { dsInputClass, dsLabelClass, dsSelectClass } from "@/components/ui/ds-form-classes";
 import { MetricCard } from "@/components/ui/MetricCard";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { cn } from "@/lib/cn";
+import { buttonVariants } from "@/styles/button-variants";
 import { StatusBadge, type StatusBadgeVariant } from "@/components/ui/StatusBadge";
 import { HarnessInspectionForm } from "@/components/compliance/HarnessInspectionForm";
 
@@ -457,7 +459,7 @@ export function ComplianceApp() {
                   setSort("date");
                   setDir((d) => (d === "desc" ? "asc" : "desc"));
                 }}
-                className="ds-btn-secondary px-3 py-2 text-xs"
+                className={cn(buttonVariants({ surface: "light", intent: "secondary" }), "px-3 py-2 text-xs")}
               >
                 Sort date {sort === "date" ? (dir === "desc" ? "↓" : "↑") : ""}
               </button>
@@ -467,14 +469,14 @@ export function ComplianceApp() {
                   setSort("status");
                   setDir((d) => (d === "desc" ? "asc" : "desc"));
                 }}
-                className="ds-btn-secondary px-3 py-2 text-xs"
+                className={cn(buttonVariants({ surface: "light", intent: "secondary" }), "px-3 py-2 text-xs")}
               >
                 Sort status {sort === "status" ? (dir === "desc" ? "↓" : "↑") : ""}
               </button>
               <button
                 type="button"
                 onClick={exportCsv}
-                className="ds-btn-solid-primary inline-flex items-center gap-1.5 px-3 py-2 text-xs"
+                className={cn(buttonVariants({ surface: "light", intent: "accent" }), "inline-flex items-center gap-1.5 px-3 py-2 text-xs")}
               >
                 <Download className="h-3.5 w-3.5" aria-hidden />
                 Export CSV
@@ -572,7 +574,7 @@ export function ComplianceApp() {
                           <td className="relative px-4 py-3 text-right">
                             <button
                               type="button"
-                              className="ds-btn-secondary inline-flex h-8 w-8 items-center justify-center p-0"
+                              className={cn(buttonVariants({ surface: "light", intent: "secondary" }), "inline-flex h-8 w-8 items-center justify-center p-0")}
                               aria-label="Row actions"
                               onClick={() => setMenuFor((m) => (m === row.id ? null : row.id))}
                             >
@@ -644,7 +646,7 @@ export function ComplianceApp() {
                   type="button"
                   disabled={page <= 0}
                   onClick={() => setPage((p) => Math.max(0, p - 1))}
-                  className="ds-btn-secondary px-2 py-1 text-xs disabled:opacity-40"
+                  className={cn(buttonVariants({ surface: "light", intent: "secondary" }), "px-2 py-1 text-xs disabled:opacity-40")}
                 >
                   Prev
                 </button>
@@ -655,7 +657,7 @@ export function ComplianceApp() {
                   type="button"
                   disabled={page + 1 >= totalPages}
                   onClick={() => setPage((p) => p + 1)}
-                  className="ds-btn-secondary px-2 py-1 text-xs disabled:opacity-40"
+                  className={cn(buttonVariants({ surface: "light", intent: "secondary" }), "px-2 py-1 text-xs disabled:opacity-40")}
                 >
                   Next
                 </button>

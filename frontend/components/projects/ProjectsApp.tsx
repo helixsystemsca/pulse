@@ -26,13 +26,12 @@ import {
   type CategoryRow,
 } from "@/lib/projectsService";
 import type { PulseWorkerApi } from "@/lib/schedule/pulse-bridge";
+import { cn } from "@/lib/cn";
+import { buttonVariants } from "@/styles/button-variants";
 
-const PRIMARY_BTN =
-  "rounded-[10px] bg-[#2B4C7E] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#234066] disabled:opacity-50";
-const SECONDARY_BTN =
-  "rounded-[10px] border border-slate-200/90 bg-white px-5 py-2.5 text-sm font-semibold text-pulse-navy shadow-sm transition-colors hover:bg-slate-50 disabled:opacity-50 dark:border-ds-border dark:bg-ds-secondary dark:text-slate-100 dark:hover:bg-ds-interactive-hover";
-const DANGER_BTN =
-  "rounded-[10px] border border-red-200/90 bg-white px-5 py-2.5 text-sm font-semibold text-red-700 shadow-sm transition-colors hover:bg-red-50 disabled:opacity-50 dark:border-red-500/35 dark:bg-ds-secondary dark:text-red-300 dark:hover:bg-red-950/50";
+const PRIMARY_BTN = cn(buttonVariants({ surface: "light", intent: "accent" }), "px-5 py-2.5");
+const SECONDARY_BTN = cn(buttonVariants({ surface: "light", intent: "secondary" }), "px-5 py-2.5");
+const DANGER_BTN = cn(buttonVariants({ surface: "light", intent: "danger" }), "px-5 py-2.5");
 const FIELD =
   "mt-1.5 w-full rounded-[10px] border border-slate-200/90 bg-white px-3 py-2.5 text-sm text-pulse-navy shadow-sm focus:border-[#2B4C7E]/35 focus:outline-none focus:ring-1 focus:ring-[#2B4C7E]/25 dark:border-ds-border dark:bg-ds-secondary dark:text-gray-100";
 const LABEL = "text-[11px] font-semibold uppercase tracking-wider text-pulse-muted";

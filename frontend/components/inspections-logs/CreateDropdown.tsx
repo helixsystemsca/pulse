@@ -2,11 +2,12 @@
 
 import { ChevronDown, Plus } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { cn } from "@/lib/cn";
+import { buttonVariants } from "@/styles/button-variants";
 
 type CreateAction = "inspection" | "log";
 
-const BTN =
-  "ds-btn-secondary inline-flex items-center gap-2 rounded-md border px-4 py-2.5 text-sm font-semibold shadow-sm";
+const BTN = cn(buttonVariants({ surface: "light", intent: "secondary" }), "inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold shadow-sm");
 
 export function CreateDropdown({
   onNewInspection,

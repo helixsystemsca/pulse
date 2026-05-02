@@ -12,6 +12,7 @@ import {
   Settings2,
   Trash2,
   Users,
+  Waypoints,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Card } from "@/components/pulse/Card";
@@ -23,6 +24,7 @@ import { emitOnboardingMaybeUpdated } from "@/lib/onboarding-events";
 import { parseClientApiError } from "@/lib/parse-client-api-error";
 import { ProjectAutomationPanel } from "@/components/projects/ProjectAutomationPanel";
 import { GanttSchedule } from "@/components/projects/GanttSchedule";
+import { ProjectCriticalPathAnalysis } from "@/components/projects/ProjectCriticalPathAnalysis";
 import {
   addProjectNote,
   listCategories,
@@ -60,11 +62,11 @@ import {
 import type { PulseWorkerApi } from "@/lib/schedule/pulse-bridge";
 import { useResolvedAvatarSrc } from "@/lib/useResolvedAvatarSrc";
 import { fetchInventoryList, type InventoryRow } from "@/lib/inventoryService";
+import { cn } from "@/lib/cn";
+import { buttonVariants } from "@/styles/button-variants";
 
-const PRIMARY_BTN =
-  "rounded-[10px] bg-[#2B4C7E] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#234066] disabled:opacity-50";
-const SECONDARY_BTN =
-  "rounded-[10px] border border-slate-200/90 bg-white px-4 py-2 text-sm font-semibold text-pulse-navy shadow-sm transition-colors hover:bg-slate-50 dark:border-ds-border dark:bg-ds-secondary dark:text-slate-100 dark:hover:bg-ds-interactive-hover";
+const PRIMARY_BTN = cn(buttonVariants({ surface: "light", intent: "accent" }), "px-5 py-2.5");
+const SECONDARY_BTN = cn(buttonVariants({ surface: "light", intent: "secondary" }), "px-4 py-2");
 const FIELD =
   "mt-1.5 w-full rounded-[10px] border border-ds-border bg-ds-secondary px-3 py-2.5 text-sm text-ds-foreground shadow-sm focus:border-[color-mix(in_srgb,var(--ds-success)_45%,var(--ds-border))] focus:outline-none focus:ring-1 focus:ring-[color-mix(in_srgb,var(--ds-success)_28%,transparent)]";
 const LABEL = "text-[11px] font-semibold uppercase tracking-wider text-ds-muted";
@@ -144,7 +146,7 @@ export function ProjectDetailApp({ projectId }: { projectId: string }) {
   const [err, setErr] = useState<string | null>(null);
   const [blockHint, setBlockHint] = useState<string | null>(null);
   const [detailTab, setDetailTab] = useState<"overview" | "work" | "activity" | "summary">("overview");
-  const [viewTab, setViewTab] = useState<"tasks" | "board" | "schedule" | "automation" | "plan">("tasks");
+  const [viewTab, setViewTab] = useState<"tasks" | "board" | "schedule" | "analysis" | "automation" | "plan">("tasks");
   const [taskModalOpen, setTaskModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<TaskRow | null>(null);
   const [toast, setToast] = useState<string | null>(null);
@@ -1029,18 +1031,32 @@ export function ProjectDetailApp({ projectId }: { projectId: string }) {
                   Schedule
                 </button>
                 {canUsePMFeatures ? (
-                  <button
-                    type="button"
-                    className={`inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm font-semibold transition-colors ${
-                      viewTab === "plan"
-                        ? "bg-ds-success text-ds-on-accent shadow-sm"
-                        : "text-ds-muted hover:bg-ds-interactive-hover hover:text-ds-foreground"
-                    }`}
-                    onClick={() => setViewTab("plan")}
-                  >
-                    <List className="h-4 w-4" aria-hidden />
-                    Plan
-                  </button>
+                  <>
+                    <button
+                      type="button"
+                      className={`inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm font-semibold transition-colors ${
+                        viewTab === "analysis"
+                          ? "bg-ds-success text-ds-on-accent shadow-sm"
+                          : "text-ds-muted hover:bg-ds-interactive-hover hover:text-ds-foreground"
+                      }`}
+                      onClick={() => setViewTab("analysis")}
+                    >
+                      <Waypoints className="h-4 w-4" aria-hidden />
+                      Critical path
+                    </button>
+                    <button
+                      type="button"
+                      className={`inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm font-semibold transition-colors ${
+                        viewTab === "plan"
+                          ? "bg-ds-success text-ds-on-accent shadow-sm"
+                          : "text-ds-muted hover:bg-ds-interactive-hover hover:text-ds-foreground"
+                      }`}
+                      onClick={() => setViewTab("plan")}
+                    >
+                      <List className="h-4 w-4" aria-hidden />
+                      Plan
+                    </button>
+                  </>
                 ) : null}
                 <button
                   type="button"
@@ -1316,6 +1332,18 @@ export function ProjectDetailApp({ projectId }: { projectId: string }) {
                       setTaskModalOpen(true);
                     }}
                   />
+                </Card>
+              ) : null}
+
+              {viewTab === "analysis" && canUsePMFeatures ? (
+                <Card padding="md" className="space-y-4">
+                  <div>
+                    <p className="text-sm font-bold text-ds-foreground">Critical path (CPM)</p>
+                    <p className="mt-1 text-xs text-ds-muted">
+                      Same tasks as the Gantt. Durations follow planned estimates; dependencies use task predecessors. Schedule tab shows the timeline view.
+                    </p>
+                  </div>
+                  <ProjectCriticalPathAnalysis tasks={tasks} />
                 </Card>
               ) : null}
 

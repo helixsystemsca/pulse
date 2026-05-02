@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useGuidedTour } from "./CoreGuidedTour";
+import { cn } from "@/lib/cn";
+import { buttonVariants } from "@/styles/button-variants";
 
 export function GuidedTourLayer() {
   const { tour, closeTour, nextStep, prevStep } = useGuidedTour();
@@ -61,10 +63,10 @@ export function GuidedTourLayer() {
         <p className="mt-2 text-sm leading-relaxed text-ds-muted">{step.body}</p>
         <p className="mt-3 text-xs font-semibold text-ds-muted">{marker}</p>
         <div className="mt-4 flex items-center justify-end gap-2">
-          <button type="button" className="ds-btn-secondary px-3 py-2 text-sm" onClick={prevStep} disabled={tour.index <= 0}>
+          <button type="button" className={cn(buttonVariants({ surface: "light", intent: "secondary" }), "px-3 py-2 text-sm")} onClick={prevStep} disabled={tour.index <= 0}>
             Back
           </button>
-          <button type="button" className="ds-btn-solid-primary px-3 py-2 text-sm" onClick={isLast ? closeTour : nextStep}>
+          <button type="button" className={cn(buttonVariants({ surface: "light", intent: "accent" }), "px-3 py-2 text-sm")} onClick={isLast ? closeTour : nextStep}>
             {isLast ? "Done" : "Next"}
           </button>
         </div>

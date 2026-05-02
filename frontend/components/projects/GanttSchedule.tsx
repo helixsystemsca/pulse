@@ -2,6 +2,7 @@
 
 import { useMemo, type CSSProperties } from "react";
 import type { TaskRow } from "@/lib/projectsService";
+import { computeCPM, normalizeTaskCategory, TASK_CATEGORY_COLORS } from "@/lib/projects/cpm";
 import { parseLocalDate } from "@/lib/schedule/calendar";
 
 const MS_PER_DAY = 86_400_000;
@@ -151,15 +152,6 @@ function normLabel(s: string | null | undefined): string {
   return (s || "").trim();
 }
 
-function phaseBarStyle(phase: string | null | undefined): CSSProperties {
-  const p = normLabel(phase).toLowerCase();
-  if (p.includes("plan")) return { backgroundColor: "rgb(14 165 233 / 0.88)" };
-  if (p.includes("execut")) return { backgroundColor: "rgb(45 212 191 / 0.9)" };
-  if (p.includes("clean")) return { backgroundColor: "rgb(251 191 36 / 0.9)" };
-  if (p.includes("reflect")) return { backgroundColor: "rgb(167 139 250 / 0.88)" };
-  return { backgroundColor: "rgb(100 116 139 / 0.82)" };
-}
-
 function weekNumberSundayFirst(d: Date): number {
   const oneJan = new Date(d.getFullYear(), 0, 1);
   const days = Math.floor((startOfLocalDay(d).getTime() - startOfLocalDay(oneJan).getTime()) / MS_PER_DAY);
@@ -209,6 +201,8 @@ export function GanttSchedule({ tasks, projectStartDate, projectEndDate, onTaskC
   );
 
   const normalized = useMemo(() => normalizeTasks(tasks, project), [tasks, project]);
+
+  const cpm = useMemo(() => computeCPM(tasks), [tasks]);
 
   const { viewStart, viewEndExclusive, timelineWidthPx, totalMs } = useMemo(() => {
     const parsed = parseProjectBounds(project.projectStartDate, project.projectEndDate);
@@ -269,6 +263,25 @@ export function GanttSchedule({ tasks, projectStartDate, projectEndDate, onTaskC
         {projectStartDate && projectEndDate ? (
           <span className="ml-2 text-ds-muted">(project window)</span>
         ) : null}
+      </div>
+
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-md border border-ds-border bg-ds-secondary/40 px-3 py-2 text-[10px] text-ds-muted">
+        <span className="font-bold uppercase tracking-wide text-ds-foreground">Legend</span>
+        <span className="inline-flex items-center gap-1.5">
+          <span className={`h-2.5 w-6 rounded-sm ${TASK_CATEGORY_COLORS.planning}`} /> Planning
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <span className={`h-2.5 w-6 rounded-sm ${TASK_CATEGORY_COLORS.execution}`} /> Execution
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <span className={`h-2.5 w-6 rounded-sm ${TASK_CATEGORY_COLORS.cleanup}`} /> Cleanup
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <span className={`h-2.5 w-6 rounded-sm ${TASK_CATEGORY_COLORS.reflection}`} /> Reflection
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <span className="inline-block h-2.5 w-6 rounded-sm border-2 border-red-500 bg-ds-gray-400" /> Critical
+        </span>
       </div>
 
       <div className="overflow-x-auto rounded-lg border border-ds-border bg-white dark:bg-ds-primary">
@@ -332,7 +345,7 @@ export function GanttSchedule({ tasks, projectStartDate, projectEndDate, onTaskC
                       <div className="mt-0.5 text-[10px] text-ds-muted">{rangeLabel}</div>
                     </button>
                     <div className="relative py-2" style={{ width: timelineWidthPx }}>
-                      <div className="relative mx-1 h-9 overflow-visible rounded-md border border-ds-border bg-white dark:bg-ds-primary" style={{ ...gridStyle }}>
+                      <div className="relative mx-1 h-10 overflow-visible rounded-md border border-ds-border bg-white dark:bg-ds-primary" style={{ ...gridStyle }}>
                         {showToday ? (
                           <div
                             className="pointer-events-none absolute bottom-0 top-0 z-[2] w-px bg-sky-500/90"
@@ -342,8 +355,14 @@ export function GanttSchedule({ tasks, projectStartDate, projectEndDate, onTaskC
                         ) : null}
                         <button
                           type="button"
-                          className="absolute top-1/2 z-[1] h-3 min-w-[10px] -translate-y-1/2 cursor-pointer rounded-full border-0 p-0 shadow-sm transition-opacity hover:opacity-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
-                          style={{ left: leftPx, width: widthPx, ...phaseBarStyle(t.phase_group) }}
+                          className={[
+                            "absolute top-1/2 z-[1] h-5 min-w-[10px] -translate-y-1/2 cursor-pointer rounded-sm border-0 p-0 shadow-sm transition-opacity hover:opacity-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500",
+                            TASK_CATEGORY_COLORS[normalizeTaskCategory(t)],
+                            cpm.byId[t.id]?.isCritical ? "ring-2 ring-red-500 ring-offset-1 ring-offset-white dark:ring-offset-ds-primary" : "",
+                          ]
+                            .filter(Boolean)
+                            .join(" ")}
+                          style={{ left: leftPx, width: widthPx } as CSSProperties}
                           title={`${t.title}: ${t._start.toLocaleString()} → ${t._end.toLocaleString()}`}
                           aria-label={`Open task ${t.title}`}
                           onClick={() => onTaskClick?.(t)}

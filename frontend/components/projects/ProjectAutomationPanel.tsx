@@ -11,9 +11,10 @@ import {
   patchAutomationRule,
   type AutomationRuleRow,
 } from "@/lib/projectsService";
+import { cn } from "@/lib/cn";
+import { buttonVariants } from "@/styles/button-variants";
 
-const PRIMARY_BTN =
-  "rounded-[10px] bg-[#2B4C7E] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#234066] disabled:opacity-50";
+const PRIMARY_BTN = cn(buttonVariants({ surface: "light", intent: "accent" }), "px-5 py-2.5");
 const FIELD =
   "mt-1.5 w-full rounded-[10px] border border-slate-200/90 bg-white px-3 py-2.5 text-sm text-pulse-navy shadow-sm focus:border-[#2B4C7E]/35 focus:outline-none focus:ring-1 focus:ring-[#2B4C7E]/25";
 const LABEL = "text-[11px] font-semibold uppercase tracking-wider text-pulse-muted";

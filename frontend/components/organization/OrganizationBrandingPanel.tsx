@@ -13,6 +13,8 @@ import { getImpersonationOverlayAccessToken } from "@/lib/impersonation-overlay-
 import { uploadTenantCompanyBackgroundFile, uploadTenantCompanyLogoFile } from "@/lib/companyBrandingUpload";
 import { parseClientApiError } from "@/lib/parse-client-api-error";
 import type { CompanySummary } from "@/lib/pulse-session";
+import { cn } from "@/lib/cn";
+import { buttonVariants } from "@/styles/button-variants";
 
 type Props = {
   initialCompany: CompanySummary;
@@ -223,7 +225,7 @@ export function OrganizationBrandingPanel({ initialCompany, onCompanyUpdated }: 
             />
             <button
               type="button"
-              className="ds-btn-secondary px-4 py-2.5 text-sm"
+              className={cn(buttonVariants({ surface: "light", intent: "secondary" }), "px-4 py-2.5 text-sm")}
               disabled={uploadingLogo}
               onClick={() => logoFileRef.current?.click()}
             >
@@ -251,7 +253,7 @@ export function OrganizationBrandingPanel({ initialCompany, onCompanyUpdated }: 
               type="button"
               disabled={!logoUrlDirty || savingLogoUrl}
               onClick={() => void saveLogoUrl()}
-              className="ds-btn-solid-primary px-4 py-2.5 text-sm"
+              className={cn(buttonVariants({ surface: "light", intent: "accent" }), "px-4 py-2.5 text-sm")}
             >
               {savingLogoUrl ? "Saving…" : "Save URL"}
             </button>
@@ -280,7 +282,7 @@ export function OrganizationBrandingPanel({ initialCompany, onCompanyUpdated }: 
           />
           <button
             type="button"
-            className="ds-btn-secondary px-4 py-2.5 text-sm"
+            className={cn(buttonVariants({ surface: "light", intent: "secondary" }), "px-4 py-2.5 text-sm")}
             disabled={uploadingBg}
             onClick={() => bgFileRef.current?.click()}
           >
@@ -307,7 +309,7 @@ export function OrganizationBrandingPanel({ initialCompany, onCompanyUpdated }: 
               type="button"
               disabled={!bgUrlDirty || savingBgUrl}
               onClick={() => void saveBgUrl()}
-              className="ds-btn-solid-primary px-4 py-2.5 text-sm"
+              className={cn(buttonVariants({ surface: "light", intent: "accent" }), "px-4 py-2.5 text-sm")}
             >
               {savingBgUrl ? "Saving…" : "Save URL"}
             </button>

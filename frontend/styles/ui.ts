@@ -6,13 +6,5 @@ export const UI = {
   header: "text-xl font-semibold text-gray-900",
   subheader: "text-sm text-gray-500",
 
-  button: {
-    base: "px-4 py-2 rounded-lg font-medium transition",
-    /** Solid DS accent — teal fill, dark text (matches segmented toggles). */
-    accent: "bg-ds-success text-ds-on-accent shadow-sm",
-    primary: "bg-blue-600 text-white hover:bg-blue-700",
-    secondary: "bg-gray-200 text-gray-800 hover:bg-gray-300",
-  },
-
   toggleGroup: "flex gap-2 mb-4",
 };

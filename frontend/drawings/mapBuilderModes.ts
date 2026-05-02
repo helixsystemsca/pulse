@@ -1,7 +1,7 @@
 import type { AnnotateKind, PrimaryMode } from "./mapBuilderTypes";
 import type { SystemType } from "./utils/graphHelpers";
 
-export type BuilderSemanticMode = "fiber" | "electrical" | "irrigation" | "telemetry" | "criticalPath";
+export type BuilderSemanticMode = "fiber" | "electrical" | "irrigation" | "telemetry";
 
 export type MapModeConfig = {
   label: string;
@@ -21,15 +21,12 @@ export type MapModeConfig = {
     showDefaultSystemPicker: boolean;
     showInfrastructureFilters: boolean;
   };
-  inspector: "infrastructure" | "critical_path";
 };
 
 /** Default superset — modes narrow this via `allowedPrimaryModes`. */
 export const BUILDER_ALL_PRIMARY_MODES: ReadonlySet<PrimaryMode> = new Set(["select", "add_asset", "connect", "add_zone", "annotate"]);
 const ALL_PRIMARY = BUILDER_ALL_PRIMARY_MODES;
 const ALL_ANNOTATE: ReadonlySet<AnnotateKind> = new Set(["symbol", "text", "sketch", "pen"]);
-
-const CRITICAL_PRIMARY: ReadonlySet<PrimaryMode> = new Set(["select", "add_asset", "connect", "annotate"]);
 
 function infraPreset(label: string, system: SystemType): MapModeConfig {
   return {
@@ -48,7 +45,6 @@ function infraPreset(label: string, system: SystemType): MapModeConfig {
       showDefaultSystemPicker: true,
       showInfrastructureFilters: true,
     },
-    inspector: "infrastructure",
   };
 }
 
@@ -57,24 +53,6 @@ export const MODES: Record<BuilderSemanticMode, MapModeConfig> = {
   electrical: infraPreset("Electrical", "electrical"),
   irrigation: infraPreset("Irrigation", "irrigation"),
   telemetry: infraPreset("Telemetry", "telemetry"),
-  criticalPath: {
-    label: "Critical Path",
-    defaultSystemType: "telemetry",
-    allowedPrimaryModes: CRITICAL_PRIMARY,
-    allowedAnnotateKinds: ALL_ANNOTATE,
-    graphRules: { directedEdges: true },
-    interaction: {
-      snapConnectPreviewToAssets: false,
-      drawConnectionSnapRadiusWorld: 52,
-    },
-    ui: {
-      showSystemLayerToggles: false,
-      showTraceRoute: false,
-      showDefaultSystemPicker: false,
-      showInfrastructureFilters: false,
-    },
-    inspector: "critical_path",
-  },
 };
 
 export const BUILDER_MODE_STORAGE_KEY = "helix.drawings.builderSemanticMode";

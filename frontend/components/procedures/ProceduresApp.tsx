@@ -18,11 +18,17 @@ import { sessionHasAnyRole } from "@/lib/pulse-roles";
 import { readSession } from "@/lib/pulse-session";
 import { acknowledgeProcedure, hasAcknowledgedProcedure } from "@/lib/procedureAcknowledgments";
 import { fetchWorkerList, fetchWorkerSettings } from "@/lib/workersService";
+import { cn } from "@/lib/cn";
+import { buttonVariants } from "@/styles/button-variants";
 
-const PROCEDURES_HEADER_BTN =
-  "ds-btn-solid-primary inline-flex items-center justify-center gap-2 rounded-lg px-5 py-2.5 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50";
-const PROCEDURES_HEADER_BTN_OUTLINE =
-  "app-btn-secondary inline-flex items-center justify-center gap-2 rounded-lg px-5 py-2.5 text-sm font-semibold shadow-sm disabled:cursor-not-allowed disabled:opacity-50";
+const PROCEDURES_HEADER_BTN = cn(
+  buttonVariants({ surface: "light", intent: "accent" }),
+  "inline-flex items-center justify-center gap-2 px-5 py-2.5 disabled:cursor-not-allowed disabled:opacity-50",
+);
+const PROCEDURES_HEADER_BTN_OUTLINE = cn(
+  buttonVariants({ surface: "light", intent: "secondary" }),
+  "inline-flex items-center justify-center gap-2 px-5 py-2.5 disabled:cursor-not-allowed disabled:opacity-50",
+);
 
 type DraftStep = {
   key: string;
@@ -663,7 +669,7 @@ export function ProceduresApp() {
               <div className="mt-4 flex flex-wrap items-center justify-end gap-3">
                 <button
                   type="button"
-                  className="ds-btn-secondary px-4 py-2.5 text-sm"
+                  className={cn(buttonVariants({ surface: "light", intent: "secondary" }), "px-4 py-2.5 text-sm")}
                   onClick={() => {
                     setIsCreating(false);
                     setErr(null);
@@ -676,7 +682,7 @@ export function ProceduresApp() {
                   type="button"
                   disabled={saving || !title.trim()}
                   onClick={() => void create()}
-                  className="ds-btn-solid-primary inline-flex items-center gap-2 px-4 py-2.5 text-sm disabled:opacity-50"
+                  className={cn(buttonVariants({ surface: "light", intent: "accent" }), "inline-flex items-center gap-2 px-4 py-2.5 text-sm disabled:opacity-50")}
                 >
                   {saving ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : null}
                   Create procedure

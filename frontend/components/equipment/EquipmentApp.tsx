@@ -39,11 +39,13 @@ import {
 import { usePulseAuth } from "@/hooks/usePulseAuth";
 import { managerOrAbove } from "@/lib/pulse-roles";
 import { useModuleSettings } from "@/providers/ModuleSettingsProvider";
+import { cn } from "@/lib/cn";
+import { buttonVariants } from "@/styles/button-variants";
 
 type ZoneOpt = { id: string; name: string };
 
-const PRIMARY_BTN = "ds-btn-solid-primary px-5 py-2.5 text-sm disabled:opacity-50";
-const SECONDARY_BTN = "ds-btn-secondary px-5 py-2.5 text-sm disabled:opacity-50";
+const PRIMARY_BTN = cn(buttonVariants({ surface: "light", intent: "accent" }), "px-5 py-2.5");
+const SECONDARY_BTN = cn(buttonVariants({ surface: "light", intent: "secondary" }), "px-5 py-2.5");
 const FIELD = "app-field mt-1.5";
 const LABEL = "text-[11px] font-semibold uppercase tracking-wider text-ds-muted";
 
@@ -705,7 +707,7 @@ export function EquipmentApp() {
                         <div className="flex flex-wrap gap-1">
                           <button
                             type="button"
-                            className="ds-btn-secondary inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-xs font-semibold"
+                            className={cn(SECONDARY_BTN, "inline-flex items-center gap-1 px-2 py-1 text-xs")}
                             onClick={() => void openView(r.id)}
                           >
                             <Eye className="h-3.5 w-3.5" aria-hidden />
@@ -715,7 +717,7 @@ export function EquipmentApp() {
                             <>
                               <button
                                 type="button"
-                                className="ds-btn-secondary inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-xs font-semibold"
+                                className={cn(SECONDARY_BTN, "inline-flex items-center gap-1 px-2 py-1 text-xs")}
                                 onClick={() => void openEdit(r.id)}
                               >
                                 <Pencil className="h-3.5 w-3.5" aria-hidden />
@@ -747,7 +749,7 @@ export function EquipmentApp() {
             <div className="flex items-center gap-2">
               <button
                 type="button"
-                className="ds-btn-secondary inline-flex items-center gap-1 rounded-lg border px-2 py-1.5 text-sm font-semibold"
+                className={cn(SECONDARY_BTN, "inline-flex items-center gap-1 px-2 py-1.5 text-sm")}
                 onClick={() => {
                   resetForm();
                   setTab("list");

@@ -5,6 +5,8 @@ import { completeTask, getUserAnalytics, listMyTasks, previewXp, type GamifiedTa
 import { readSession } from "@/lib/pulse-session";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { WowXpBar } from "@/components/gamification/WowXpBar";
+import { cn } from "@/lib/cn";
+import { buttonVariants } from "@/styles/button-variants";
 
 function formatDue(dueIso: string | null | undefined): string {
   if (!dueIso) return "—";
@@ -76,7 +78,7 @@ export function XpTasksWidget() {
                   type="button"
                   disabled={busy === t.id}
                   onClick={() => void onComplete(t.id)}
-                  className="ds-btn-solid-primary shrink-0 px-3 py-2 text-xs"
+                  className={cn(buttonVariants({ surface: "light", intent: "accent" }), "shrink-0 px-3 py-2 text-xs")}
                 >
                   {busy === t.id ? "Completing…" : "Complete"}
                 </button>

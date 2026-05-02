@@ -8,12 +8,14 @@ import type {
   InspectionItemResponseType,
   InspectionTemplate,
 } from "@/lib/inspectionsLogsTypes";
+import { cn } from "@/lib/cn";
+import { buttonVariants } from "@/styles/button-variants";
 
 const FIELD =
   "app-field mt-1.5 w-full rounded-md border-ds-border bg-ds-primary text-ds-foreground placeholder:text-ds-muted focus:border-ds-success/40 focus:ring-2 focus:ring-[var(--ds-focus-ring)]";
 const LABEL = "text-[11px] font-semibold uppercase tracking-wider text-ds-muted";
-const BTN_SECONDARY = "ds-btn-secondary rounded-md px-3 py-2 text-xs font-semibold";
-const BTN_PRIMARY = "ds-btn-solid-primary rounded-md px-4 py-2 text-sm font-semibold disabled:opacity-45";
+const BTN_SECONDARY = cn(buttonVariants({ surface: "light", intent: "secondary" }), "px-3 py-2 text-xs font-semibold");
+const BTN_PRIMARY = cn(buttonVariants({ surface: "light", intent: "accent" }), "px-4 py-2 text-sm font-semibold disabled:opacity-45");
 
 function sortItems(items: InspectionChecklistItem[]): InspectionChecklistItem[] {
   return [...items].sort((a, b) => a.order - b.order);

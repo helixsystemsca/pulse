@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState, type ChangeEvent, type ReactNode } from "react";
 import { readSession } from "@/lib/pulse-session";
+import { cn } from "@/lib/cn";
+import { buttonVariants } from "@/styles/button-variants";
 
 type PassFail = "pass" | "fail" | null;
 
@@ -401,7 +403,7 @@ export function HarnessInspectionForm({
           <button
             type="button"
             disabled={!canSubmit}
-            className="ds-btn-solid-primary px-4 py-2 text-sm disabled:opacity-50"
+            className={cn(buttonVariants({ surface: "light", intent: "accent" }), "px-4 py-2 text-sm disabled:opacity-50")}
             onClick={() => onSubmit?.(submitPayload)}
           >
             Submit inspection

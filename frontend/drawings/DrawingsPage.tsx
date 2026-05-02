@@ -752,7 +752,6 @@ export default function DrawingsPage({ fullscreen = false }: { fullscreen?: bool
         </main>
 
         <RightPanel
-          inspectorVariant={modeConfig.inspector}
           selectedAssets={selectedAssets}
           selectedConnections={selectedConnections}
           asset={selectedAsset}

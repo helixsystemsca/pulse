@@ -51,6 +51,8 @@ import {
 } from "@/lib/workRequestsService";
 import { createPmPlan, type PmPlanFrequency } from "@/lib/pmPlansService";
 import { useModuleSettings, useModuleSettingsOptional } from "@/providers/ModuleSettingsProvider";
+import { cn } from "@/lib/cn";
+import { buttonVariants } from "@/styles/button-variants";
 
 type CompanyOption = { id: string; name: string };
 type ZoneOpt = { id: string; name: string };
@@ -59,8 +61,7 @@ type EquipmentOpt = { id: string; name: string };
 type WrPartOpt = { id: string; name: string };
 type WorkerOpt = { id: string; email: string; full_name: string | null; role: string };
 
-const PRIMARY_BTN =
-  "rounded-[10px] bg-[#2B4C7E] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#234066] disabled:opacity-50";
+const PRIMARY_BTN = cn(buttonVariants({ surface: "light", intent: "accent" }), "px-5 py-2.5");
 const FIELD =
   "mt-1.5 w-full rounded-[10px] border border-slate-200/90 bg-white px-3 py-2.5 text-sm text-pulse-navy shadow-sm focus:border-[#2B4C7E]/35 focus:outline-none focus:ring-1 focus:ring-[#2B4C7E]/25 dark:border-ds-border dark:bg-ds-secondary dark:text-gray-100 dark:placeholder:text-gray-500";
 const LABEL = "text-[11px] font-semibold uppercase tracking-wider text-pulse-muted";
@@ -1017,7 +1018,7 @@ export function WorkRequestsApp() {
             </button>
             <button
               type="button"
-              className="app-btn-secondary inline-flex items-center gap-2 px-4 py-2.5"
+              className={cn(buttonVariants({ surface: "light", intent: "secondary" }), "inline-flex items-center gap-2 px-4 py-2.5")}
               onClick={() => setPmCreateOpen(true)}
               disabled={!dataEnabled || !canManage}
               title={!canManage ? "Managers can create preventative maintenance plans" : undefined}
