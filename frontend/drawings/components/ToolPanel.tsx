@@ -144,7 +144,7 @@ export function ToolPanel({
   const modeEntries = (Object.keys(MODES) as BuilderSemanticMode[]).map((k) => ({ key: k, cfg: MODES[k] }));
 
   const panelTitle = (t: string) => (
-    <p className="border-b border-ds-border/60 px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-ds-muted">
+    <p className="border-b border-[#e2e6ec] px-4 py-2 font-mono text-[9.5px] font-medium uppercase tracking-[0.13em] text-[#7a8494] dark:border-ds-border/60 dark:text-ds-muted">
       {t}
     </p>
   );
@@ -181,7 +181,7 @@ export function ToolPanel({
     activeTool === "trace";
 
   return (
-    <aside className="flex w-[288px] shrink-0 flex-col overflow-y-auto border-r border-ds-border/80 bg-ds-secondary/20">
+    <aside className="flex w-[240px] shrink-0 flex-col overflow-y-auto border-r border-[#e2e6ec] bg-white dark:border-ds-border/80 dark:bg-ds-secondary/20">
       {panelTitle("Graph & filters")}
       <div className="space-y-3 border-b border-ds-border/70 px-3 py-3">
         <div className="space-y-1">

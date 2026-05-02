@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Hexagon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { apiFetch, isApiMode } from "@/lib/api";
 import type { BlueprintElement, BlueprintLayer } from "@/components/zones-devices/blueprint-types";
@@ -776,7 +777,7 @@ export default function DrawingsPage({ fullscreen = false }: { fullscreen?: bool
   const toolsLocked = Boolean(projectReady && isApiMode() && (!activeMapId || !mapDetail || !hasBaseImage));
 
   const workspaceChrome = (
-    <div className="flex min-h-0 min-w-0 flex-1 flex-row overflow-hidden bg-ds-primary">
+    <div className="flex min-h-0 min-w-0 flex-1 flex-row overflow-hidden bg-[#f4f6f8] dark:bg-ds-primary">
       <span id="drawings-workspace-title" className="sr-only">
         Infrastructure map workspace
       </span>
@@ -787,6 +788,9 @@ export default function DrawingsPage({ fullscreen = false }: { fullscreen?: bool
         projectReady={projectReady}
         toolsLocked={toolsLocked}
         toolsLockedHint={TOOLS_LOCKED_HINT}
+        canvasNavMode={canvasNavMode}
+        onCanvasSelectMode={() => applyWorkspaceTool("select")}
+        onCanvasPanMode={() => setCanvasNavMode("pan")}
       />
       <ToolPanel
         activeTool={activeTool}
@@ -840,22 +844,22 @@ export default function DrawingsPage({ fullscreen = false }: { fullscreen?: bool
       <div className="flex min-h-0 min-w-0 flex-1 flex-row overflow-hidden">
         <main className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
           {mapListLoading ? (
-            <div className="flex flex-1 items-center justify-center border-l border-ds-border/40 bg-ds-primary">
+            <div className="flex flex-1 items-center justify-center border-l border-[#e2e6ec] bg-[#f4f6f8] dark:border-ds-border/40 dark:bg-ds-primary">
               <p className="text-sm text-ds-muted">Loading maps…</p>
             </div>
           ) : !isApiMode() ? (
-            <div className="flex flex-1 flex-col justify-center border-l border-ds-border/40 bg-ds-secondary/25 px-4 py-6">
+            <div className="flex flex-1 flex-col justify-center border-l border-[#e2e6ec] bg-[#f4f6f8] px-4 py-6 dark:border-ds-border/40 dark:bg-ds-secondary/25">
               <p className="text-sm text-ds-muted">Connect to the API to load saved drawings and infrastructure overlays.</p>
             </div>
           ) : !projectReady ? (
-            <div className="flex flex-1 flex-col items-center justify-center border-l border-ds-border/40 bg-ds-secondary/25 px-6 py-8">
-              <p className="max-w-md text-center text-sm font-semibold text-ds-foreground">Select a project</p>
-              <p className="mt-2 max-w-md text-center text-xs text-ds-muted">
+            <div className="flex flex-1 flex-col items-center justify-center border-l border-[#e2e6ec] bg-[#f4f6f8] px-6 py-8 dark:border-ds-border/40 dark:bg-ds-secondary/25">
+              <p className="max-w-md text-center text-sm font-semibold text-[#1a2030] dark:text-ds-foreground">Select a project</p>
+              <p className="mt-2 max-w-md text-center text-xs text-[#0fa07e] dark:text-ds-muted">
                 Choose a project in the header to load data and enable tools.
               </p>
             </div>
           ) : maps.length === 0 ? (
-            <div className="flex flex-1 flex-col items-center justify-center border-l border-ds-border/40 bg-ds-secondary/25 px-6 py-8">
+            <div className="flex flex-1 flex-col items-center justify-center border-l border-[#e2e6ec] bg-[#f4f6f8] px-6 py-8 dark:border-ds-border/40 dark:bg-ds-secondary/25">
               <p className="max-w-md text-center text-sm font-semibold text-ds-foreground">No maps for this project</p>
               <p className="mt-2 max-w-md text-center text-xs text-ds-muted">
                 Upload a top-down image (aerial or floor plan) to create your first facility map.
@@ -871,7 +875,7 @@ export default function DrawingsPage({ fullscreen = false }: { fullscreen?: bool
               </Button>
             </div>
           ) : !mapDetail ? (
-            <div className="flex flex-1 flex-col justify-center border-l border-ds-border/40 bg-ds-secondary/25 px-4 py-6">
+            <div className="flex flex-1 flex-col justify-center border-l border-[#e2e6ec] bg-[#f4f6f8] px-4 py-6 dark:border-ds-border/40 dark:bg-ds-secondary/25">
               <p className="text-sm text-ds-muted">
                 {mapDetailLoading
                   ? "Loading map…"
@@ -904,13 +908,7 @@ export default function DrawingsPage({ fullscreen = false }: { fullscreen?: bool
               </div>
 
               <div className="relative flex min-h-0 flex-1 flex-col">
-                <DrawingCanvasToolbar
-                  disabled={toolsLocked}
-                  canvasNavMode={canvasNavMode}
-                  onCanvasNavModeChange={setCanvasNavMode}
-                  onSelectMode={() => applyWorkspaceTool("select")}
-                  viewportRef={canvasViewportRef}
-                />
+                <DrawingCanvasToolbar disabled={toolsLocked} viewportRef={canvasViewportRef} />
                 {(() => {
                   const vis = getVisibleGraphElements(
                     { systems: activeSystems } satisfies GraphFilters,
@@ -1079,6 +1077,13 @@ export default function DrawingsPage({ fullscreen = false }: { fullscreen?: bool
       />
       {errorBanner}
       <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">{workspaceChrome}</div>
+      {!fullscreen ? (
+        <footer className="flex h-9 shrink-0 items-center justify-center gap-1.5 border-t border-[#e2e6ec] bg-white font-mono text-[11px] tracking-[0.04em] text-[#96a0b0] dark:border-ds-border dark:bg-ds-secondary/30 dark:text-ds-muted">
+          <span>Powered by</span>
+          <Hexagon className="h-3.5 w-3.5 shrink-0 text-[#1ec8a0]" strokeWidth={1.35} aria-hidden />
+          <span className="font-sans font-medium text-[#5a6478] dark:text-ds-muted">Helix</span>
+        </footer>
+      ) : null}
     </div>
   );
 }
