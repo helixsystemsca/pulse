@@ -42,7 +42,7 @@ export function ProjectSelector({ value, onChange, disabled, variant = "default"
     <select
       className={
         variant === "inline"
-          ? "app-field h-9 min-h-0 w-[min(100%,14rem)] py-0 text-sm"
+          ? "app-field h-9 min-h-0 w-[min(100%,14rem)] py-1.5 text-sm leading-normal"
           : "app-field min-h-9 text-sm"
       }
       disabled={disabled || loading}
@@ -61,7 +61,7 @@ export function ProjectSelector({ value, onChange, disabled, variant = "default"
 
   if (variant === "inline") {
     return (
-      <div className="flex min-w-0 flex-col gap-0.5">
+      <div className="flex min-h-9 min-w-0 items-center">
         {select}
         {error ? <span className="sr-only text-ds-danger">{error}</span> : null}
       </div>

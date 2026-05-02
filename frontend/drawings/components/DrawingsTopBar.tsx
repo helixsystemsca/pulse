@@ -61,9 +61,9 @@ export function DrawingsTopBar({
 
   return (
     <div className="bg-ds-success text-[var(--ds-on-accent)]">
-      <header className="flex min-h-14 shrink-0 flex-wrap items-center gap-y-2 border-b border-black/10 px-3 py-2 sm:h-14 sm:flex-nowrap sm:gap-4 sm:py-0 dark:border-white/10">
-        <div className="flex min-w-0 w-full flex-1 flex-wrap items-center justify-center gap-2 sm:w-auto sm:flex-nowrap sm:gap-3">
-          <div className="min-w-0 flex-1 basis-[min(100%,14rem)] sm:flex-initial sm:basis-auto">
+      <header className="flex min-h-14 shrink-0 flex-wrap items-center gap-y-2 border-b border-black/10 px-3 py-2 sm:h-14 sm:flex-nowrap sm:gap-4 sm:py-2 dark:border-white/10">
+        <div className="flex min-w-0 w-full flex-1 flex-wrap items-center justify-center gap-2 sm:w-auto sm:flex-nowrap sm:gap-3 sm:min-h-9">
+          <div className="flex min-w-0 flex-1 basis-[min(100%,14rem)] items-center sm:flex-initial sm:basis-auto">
             <ProjectSelector
               variant="inline"
               value={activeProjectId}
@@ -71,10 +71,10 @@ export function DrawingsTopBar({
               disabled={mapListLoading}
             />
           </div>
-          <label className="flex min-w-0 items-center gap-1.5 text-xs">
-            <span className="hidden shrink-0 sm:inline">New map category</span>
+          <label className="flex min-w-0 items-center gap-1.5 text-xs leading-snug text-[var(--ds-on-accent)]">
+            <span className="hidden shrink-0 self-center sm:inline">New map category</span>
             <select
-              className="app-field h-9 max-w-[10rem] min-w-0 py-0 text-xs"
+              className="app-field h-9 max-w-[10rem] min-w-0 py-1.5 text-xs leading-normal"
               value={newMapCategory}
               onChange={(e) => onNewMapCategoryChange(e.target.value)}
               disabled={!projectReady || busy}
@@ -88,7 +88,7 @@ export function DrawingsTopBar({
             </select>
           </label>
           <select
-            className="app-field h-9 min-w-0 max-w-[min(100%,22rem)] shrink py-0 text-sm sm:w-[min(100%,20rem)]"
+            className="app-field h-9 min-w-0 max-w-[min(100%,22rem)] shrink py-1.5 text-sm leading-normal sm:w-[min(100%,20rem)]"
             aria-label="Select map"
             value={activeMapId}
             onChange={(e) => {
@@ -120,7 +120,7 @@ export function DrawingsTopBar({
           <Button
             type="button"
             variant="secondary"
-            surface="light"
+            surface="dark"
             className="h-9 gap-1.5 px-3 text-xs"
             disabled={saveDisabled}
             onClick={onSaveMap}
@@ -133,7 +133,7 @@ export function DrawingsTopBar({
             <Button
               type="button"
               variant="secondary"
-              surface="light"
+              surface="dark"
               className="h-9 gap-1.5 px-3 text-xs"
               onClick={onExitFullscreen}
               title="Return to Drawings"
@@ -145,7 +145,7 @@ export function DrawingsTopBar({
             <Button
               type="button"
               variant="secondary"
-              surface="light"
+              surface="dark"
               className="h-9 gap-1.5 px-3 text-xs"
               onClick={onEnterFullscreen}
               title="Open fullscreen editor"

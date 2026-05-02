@@ -446,18 +446,30 @@ html.pulse-welcome-blur [data-pulse-app-shell] {
     @apply shadow-md dark:shadow-[0_2px_12px_rgba(0,0,0,0.22),0_1px_3px_rgba(0,0,0,0.16)];
   }
 
-  /** Form fields — token surfaces */
+  /** Form fields — light grey fill, strong stroke (readable on pale sidebars) */
   .app-field {
     @apply w-full rounded-md px-3 py-2.5 text-sm shadow-sm outline-none transition-colors;
-    border: 1px solid var(--ds-border);
-    background-color: var(--ds-surface-primary);
-    color: var(--ds-text-primary);
+    border: 1px solid #000;
+    background-color: #e5e7eb;
+    color: #111827;
   }
   .app-field::placeholder {
-    color: var(--ds-text-secondary);
+    color: #6b7280;
   }
   .app-field:focus {
-    border-color: color-mix(in srgb, var(--ds-success) 35%, var(--ds-border));
+    border-color: #000;
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--ds-success) 45%, transparent);
+  }
+  .dark .app-field {
+    border-color: #fff;
+    background-color: color-mix(in srgb, var(--ds-surface-elevated) 55%, #374151);
+    color: var(--ds-text-primary);
+  }
+  .dark .app-field::placeholder {
+    color: var(--ds-text-secondary);
+  }
+  .dark .app-field:focus {
+    border-color: #fff;
     box-shadow: 0 0 0 2px var(--ds-focus-ring);
   }
 

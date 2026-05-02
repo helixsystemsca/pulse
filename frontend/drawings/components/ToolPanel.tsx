@@ -104,11 +104,11 @@ export function ToolPanel({
   const sysRow = (s: SystemType, label: string, dot: string) => (
     <label
       key={s}
-      className="flex cursor-pointer items-center justify-between gap-2 border-b border-ds-border/40 py-2 text-xs font-medium text-ds-foreground last:border-b-0 hover:bg-ds-primary/30"
+      className="flex cursor-pointer items-center justify-between gap-2 border-b border-ds-border/40 px-2.5 py-2 text-xs font-medium text-ds-foreground last:border-b-0 hover:bg-ds-primary/30"
     >
-      <span className="flex items-center gap-2">
-        <span className={`h-2.5 w-2.5 rounded-full ${dot}`} aria-hidden />
-        {label}
+      <span className="flex min-w-0 flex-1 items-center gap-2">
+        <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${dot}`} aria-hidden />
+        <span className="min-w-0 truncate">{label}</span>
       </span>
       <input
         type="checkbox"
@@ -204,7 +204,7 @@ export function ToolPanel({
         {modeConfig.ui.showSystemLayerToggles ? (
           <div>
             <p className="mb-1 text-[10px] font-medium uppercase tracking-wide text-ds-muted">System layers</p>
-            <div className="border border-ds-border/60">
+            <div className="overflow-hidden rounded-md border border-ds-border/60">
               {sysRow("fiber", "Fiber", "bg-blue-500")}
               {sysRow("irrigation", "Irrigation", "bg-emerald-500")}
               {sysRow("electrical", "Electrical", "bg-amber-500")}
