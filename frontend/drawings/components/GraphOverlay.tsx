@@ -37,6 +37,8 @@ type Props = {
   directedConnections?: boolean;
   /** When false, connect preview follows the pointer instead of snapping to candidate assets. */
   snapConnectPreviewToAssets?: boolean;
+  /** When true, overlay ignores pointer (e.g. canvas Pan tool). */
+  pointerSuspended?: boolean;
 };
 
 /** Tip at (x2,y2); shorten shaft so it meets the arrow base. */
@@ -86,6 +88,7 @@ export function GraphOverlay({
   dimNonMatching = false,
   directedConnections = false,
   snapConnectPreviewToAssets = true,
+  pointerSuspended = false,
 }: Props) {
   const assetsById = useMemo(() => new Map(assets.map((a) => [a.id, a])), [assets]);
   const selectedAssetSet = new Set(selectedAssets);
@@ -203,7 +206,7 @@ export function GraphOverlay({
   }, [assets, assetsById, connectMode, connectStartAssetId, pointerWorldRef, snapConnectPreviewToAssets]);
 
   return (
-    <Group>
+    <Group listening={!pointerSuspended}>
       {/* Imperative connect preview line (points updated via RAF) */}
       <Line
         ref={(n) => {

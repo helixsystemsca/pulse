@@ -1,8 +1,11 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState } from "react";
+import { forwardRef, useMemo, useRef, useState } from "react";
 import type { BlueprintElement, BlueprintLayer } from "@/components/zones-devices/blueprint-types";
-import { BlueprintReadOnlyCanvas } from "@/components/zones-devices/BlueprintReadOnlyCanvas";
+import {
+  BlueprintReadOnlyCanvas,
+  type BlueprintViewportHandle,
+} from "@/components/zones-devices/BlueprintReadOnlyCanvas";
 import type { BlueprintReadOnlyTheme } from "@/components/zones-devices/BlueprintReadOnlyCanvas";
 import type { InfraAsset, InfraConnection, SystemType, TraceRouteResult } from "../utils/graphHelpers";
 import type { AnnotateKind, AssetDrawShape, ConnectFlow, PrimaryMode } from "../mapBuilderTypes";
@@ -27,6 +30,8 @@ export type MapSemanticHandlers = {
   allowedPrimaryModes?: ReadonlySet<PrimaryMode>;
   allowedAnnotateKinds?: ReadonlySet<AnnotateKind>;
 };
+
+export type { BlueprintViewportHandle };
 
 type Props = {
   elements: BlueprintElement[];
@@ -71,41 +76,47 @@ type Props = {
   snapConnectPreviewToAssets?: boolean;
   /** Expand the Konva stage with the flex parent (fullscreen / kiosk). */
   sizeCanvasToContainer?: boolean;
+  /** Pan tool: suspend graph hits so the stage can drag the view. */
+  viewportPanActive?: boolean;
 };
 
-export function CanvasWrapper({
-  elements,
-  layers,
-  theme,
-  baseImageUrl = null,
-  baseImageWorldSize = null,
-  fitResetKey,
-  assets,
-  connections,
-  activeSystems,
-  selectedAssets,
-  selectedConnections,
-  dimAssetIds,
-  dimConnectionIds,
-  traceResult,
-  connectMode,
-  connectDraftFromId,
-  onPickBlueprintElementId,
-  onSelectAssetId,
-  onSelectConnectionId,
-  onAssetDragMove,
-  onAssetDragEnd,
-  onCanvasClearSelection,
-  onHoverAssetId,
-  onHoverConnectionId,
-  dimForTrace = false,
-  graphDraggableAssets = true,
-  mapSemantic = null,
-  onStageViewport,
-  directedConnections = false,
-  snapConnectPreviewToAssets = true,
-  sizeCanvasToContainer = false,
-}: Props) {
+export const CanvasWrapper = forwardRef<BlueprintViewportHandle | null, Props>(function CanvasWrapper(
+  {
+    elements,
+    layers,
+    theme,
+    baseImageUrl = null,
+    baseImageWorldSize = null,
+    fitResetKey,
+    assets,
+    connections,
+    activeSystems,
+    selectedAssets,
+    selectedConnections,
+    dimAssetIds,
+    dimConnectionIds,
+    traceResult,
+    connectMode,
+    connectDraftFromId,
+    onPickBlueprintElementId,
+    onSelectAssetId,
+    onSelectConnectionId,
+    onAssetDragMove,
+    onAssetDragEnd,
+    onCanvasClearSelection,
+    onHoverAssetId,
+    onHoverConnectionId,
+    dimForTrace = false,
+    graphDraggableAssets = true,
+    mapSemantic = null,
+    onStageViewport,
+    directedConnections = false,
+    snapConnectPreviewToAssets = true,
+    sizeCanvasToContainer = false,
+    viewportPanActive = false,
+  },
+  ref,
+) {
   const [hoverAssetId, setHoverAssetId] = useState<string | null>(null);
   const [hoverConnectionId, setHoverConnectionId] = useState<string | null>(null);
 
@@ -145,6 +156,7 @@ export function CanvasWrapper({
         dimNonMatching={dimForTrace}
         directedConnections={directedConnections}
         snapConnectPreviewToAssets={snapConnectPreviewToAssets}
+        pointerSuspended={viewportPanActive}
       />
     );
 
@@ -199,6 +211,7 @@ export function CanvasWrapper({
     selectedAssets,
     selectedConnections,
     traceResult,
+    viewportPanActive,
   ]);
 
   return (
@@ -209,6 +222,7 @@ export function CanvasWrapper({
       }}
     >
       <BlueprintReadOnlyCanvas
+        ref={ref}
         elements={elements}
         layers={layers}
         theme={theme}
@@ -227,7 +241,8 @@ export function CanvasWrapper({
         minHeight={720}
         sizeToContainer={sizeCanvasToContainer}
         chromeLess
+        interactionMode={viewportPanActive ? "pan" : "default"}
       />
     </div>
   );
-}
+});

@@ -14,7 +14,9 @@ import { getVisibleGraphElements } from "./utils/graphHelpers";
 import { MODES } from "./mapBuilderModes";
 import { useBuilderMode } from "./hooks/useBuilderMode";
 import { Button } from "@/components/ui/Button";
+import type { BlueprintViewportHandle } from "@/components/zones-devices/BlueprintReadOnlyCanvas";
 import { CanvasWrapper } from "./components/CanvasWrapper";
+import { DrawingCanvasToolbar } from "./components/DrawingCanvasToolbar";
 import { DrawingsTopBar } from "./components/DrawingsTopBar";
 import { MiniToolRail } from "./components/MiniToolRail";
 import { RightPanel } from "./components/RightPanel";
@@ -125,6 +127,9 @@ export default function DrawingsPage({ fullscreen = false }: { fullscreen?: bool
 
   const [connectDraftFromId, setConnectDraftFromId] = useState<string | null>(null);
   const [activeTool, setActiveTool] = useState<WorkspaceTool>("select");
+  /** Canvas overlay: Select vs Pan (left icon rail still picks Add asset / Connect / Zone / …). */
+  const [canvasNavMode, setCanvasNavMode] = useState<"select" | "pan">("select");
+  const canvasViewportRef = useRef<BlueprintViewportHandle | null>(null);
 
   useEffect(() => {
     if (primaryMode !== "connect") setConnectDraftFromId(null);
@@ -361,6 +366,7 @@ export default function DrawingsPage({ fullscreen = false }: { fullscreen?: bool
   }
 
   function applyWorkspaceTool(tool: WorkspaceTool) {
+    setCanvasNavMode("select");
     if (!activeMapId || !hasBaseImage) return;
     if (tool === "trace") {
       if (!modeConfig.ui.showTraceRoute || !activeProjectId || !activeMapId) return;
@@ -568,7 +574,7 @@ export default function DrawingsPage({ fullscreen = false }: { fullscreen?: bool
 
     return {
       viewport: stageViewport,
-      disabled: traceMode || mapLoading || !hasBaseImage,
+      disabled: traceMode || mapLoading || !hasBaseImage || canvasNavMode === "pan",
       drawConnectionSnapRadiusWorld: modeConfig.interaction.drawConnectionSnapRadiusWorld,
       allowedPrimaryModes: modeConfig.allowedPrimaryModes,
       allowedAnnotateKinds: modeConfig.allowedAnnotateKinds,
@@ -752,6 +758,7 @@ export default function DrawingsPage({ fullscreen = false }: { fullscreen?: bool
     modeConfig,
     activeProjectId,
     activeMapId,
+    canvasNavMode,
   ]);
 
   const projectReady = Boolean(activeProjectId);
@@ -897,6 +904,13 @@ export default function DrawingsPage({ fullscreen = false }: { fullscreen?: bool
               </div>
 
               <div className="relative flex min-h-0 flex-1 flex-col">
+                <DrawingCanvasToolbar
+                  disabled={toolsLocked}
+                  canvasNavMode={canvasNavMode}
+                  onCanvasNavModeChange={setCanvasNavMode}
+                  onSelectMode={() => applyWorkspaceTool("select")}
+                  viewportRef={canvasViewportRef}
+                />
                 {(() => {
                   const vis = getVisibleGraphElements(
                     { systems: activeSystems } satisfies GraphFilters,
@@ -907,7 +921,9 @@ export default function DrawingsPage({ fullscreen = false }: { fullscreen?: bool
                   );
                   return (
                     <CanvasWrapper
+                      ref={canvasViewportRef}
                       key={fullscreen ? "drawings-canvas-fs" : "drawings-canvas-inline"}
+                      viewportPanActive={canvasNavMode === "pan"}
                       elements={blueprintElements}
                       layers={blueprintLayers}
                       theme={theme}
@@ -952,7 +968,9 @@ export default function DrawingsPage({ fullscreen = false }: { fullscreen?: bool
                         clearSelection();
                       }}
                       dimForTrace={Boolean(traceResult)}
-                      graphDraggableAssets={primaryMode === "select" && !traceMode && hasBaseImage}
+                      graphDraggableAssets={
+                        primaryMode === "select" && !traceMode && hasBaseImage && canvasNavMode !== "pan"
+                      }
                       mapSemantic={mapSemantic}
                       onStageViewport={setStageViewport}
                       directedConnections={modeConfig.graphRules.directedEdges}

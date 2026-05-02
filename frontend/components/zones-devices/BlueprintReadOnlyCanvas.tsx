@@ -6,7 +6,17 @@
  */
 
 import type Konva from "konva";
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { Circle, Ellipse, Group, Image, Layer, Line, Rect, Stage, Text } from "react-konva";
 import { isRoom, type BlueprintElement, type BlueprintLayer } from "./blueprint-types";
 import {
@@ -237,28 +247,44 @@ export type BlueprintReadOnlyCanvasProps = {
   externalBaseImageUrl?: string | null;
   /** World size for `externalBaseImageUrl` (width / height). */
   externalBaseWorldSize?: { w: number; h: number } | null;
+  /**
+   * `pan` — drag on the stage moves the view (graph/blueprint picking is handled by the host).
+   * `default` — normal stage behavior.
+   */
+  interactionMode?: "default" | "pan";
 };
 
 const ZOOM_MIN = 0.35;
 const ZOOM_MAX = 2.75;
+const ZOOM_BUTTON_FACTOR = 1.12;
 
-export function BlueprintReadOnlyCanvas({
-  elements,
-  layers = [],
-  theme: themeName,
-  minHeight = 420,
-  sizeToContainer = false,
-  className = "",
-  chromeLess = false,
-  onSelectElementId,
-  overlay,
-  onPointerWorldMove,
-  onStageScaleChange,
-  onStageViewport,
-  fitResetKey,
-  externalBaseImageUrl = null,
-  externalBaseWorldSize = null,
-}: BlueprintReadOnlyCanvasProps) {
+export type BlueprintViewportHandle = {
+  zoomIn: () => void;
+  zoomOut: () => void;
+  resetFit: () => void;
+};
+
+export const BlueprintReadOnlyCanvas = forwardRef<BlueprintViewportHandle, BlueprintReadOnlyCanvasProps>(function BlueprintReadOnlyCanvas(
+  {
+    elements,
+    layers = [],
+    theme: themeName,
+    minHeight = 420,
+    sizeToContainer = false,
+    className = "",
+    chromeLess = false,
+    onSelectElementId,
+    overlay,
+    onPointerWorldMove,
+    onStageScaleChange,
+    onStageViewport,
+    fitResetKey,
+    externalBaseImageUrl = null,
+    externalBaseWorldSize = null,
+    interactionMode = "default",
+  },
+  ref,
+) {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const stageRef = useRef<Konva.Stage | null>(null);
   const userAdjustedRef = useRef(false);
@@ -461,6 +487,95 @@ export function BlueprintReadOnlyCanvas({
     setPos({ x: p.x - wx * newS, y: p.y - wy * newS });
   };
 
+  const interactionModeRef = useRef(interactionMode);
+  interactionModeRef.current = interactionMode;
+
+  const panDraggingRef = useRef(false);
+  const panLastClientRef = useRef({ x: 0, y: 0 });
+  const panListenersRef = useRef(false);
+  const panMoveRef = useRef<(ev: MouseEvent) => void>(() => {});
+  const panUpRef = useRef<() => void>(() => {});
+
+  const zoomCentered = useCallback((factor: number) => {
+    userAdjustedRef.current = true;
+    const { w, h } = size;
+    const cx = w / 2;
+    const cy = h / 2;
+    setScale((oldS) => {
+      let newS = oldS * factor;
+      newS = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, newS));
+      setPos((p) => {
+        const wx = (cx - p.x) / oldS;
+        const wy = (cy - p.y) / oldS;
+        return { x: cx - wx * newS, y: cy - wy * newS };
+      });
+      return newS;
+    });
+  }, [size.w, size.h]);
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      zoomIn: () => zoomCentered(ZOOM_BUTTON_FACTOR),
+      zoomOut: () => zoomCentered(1 / ZOOM_BUTTON_FACTOR),
+      resetFit: () => {
+        userAdjustedRef.current = false;
+        fitView(size.w, size.h, laidOutForFit);
+      },
+    }),
+    [zoomCentered, fitView, size.w, size.h, laidOutForFit],
+  );
+
+  const teardownPanListeners = useCallback(() => {
+    if (!panListenersRef.current) return;
+    window.removeEventListener("mousemove", panMoveRef.current);
+    window.removeEventListener("mouseup", panUpRef.current);
+    panListenersRef.current = false;
+    panDraggingRef.current = false;
+  }, []);
+
+  const beginPanDrag = useCallback(
+    (initEv: MouseEvent) => {
+      if (interactionModeRef.current !== "pan" || initEv.button !== 0) return;
+      initEv.preventDefault();
+      teardownPanListeners();
+      panDraggingRef.current = true;
+      panLastClientRef.current = { x: initEv.clientX, y: initEv.clientY };
+
+      const onMove = (ev: MouseEvent) => {
+        if (!panDraggingRef.current) return;
+        const dx = ev.clientX - panLastClientRef.current.x;
+        const dy = ev.clientY - panLastClientRef.current.y;
+        panLastClientRef.current = { x: ev.clientX, y: ev.clientY };
+        userAdjustedRef.current = true;
+        setPos((p) => ({ x: p.x + dx, y: p.y + dy }));
+      };
+
+      const onUp = () => {
+        teardownPanListeners();
+      };
+
+      panMoveRef.current = onMove;
+      panUpRef.current = onUp;
+      window.addEventListener("mousemove", onMove);
+      window.addEventListener("mouseup", onUp);
+      panListenersRef.current = true;
+    },
+    [teardownPanListeners],
+  );
+
+  useEffect(() => {
+    if (interactionMode === "pan") return;
+    teardownPanListeners();
+  }, [interactionMode, teardownPanListeners]);
+
+  useEffect(
+    () => () => {
+      teardownPanListeners();
+    },
+    [teardownPanListeners],
+  );
+
   const handlePointerMove = () => {
     if (!onPointerWorldMove) return;
     const stage = stageRef.current;
@@ -477,7 +592,7 @@ export function BlueprintReadOnlyCanvas({
   const swBase = Math.max(0.75, 1.05 / scale);
   const isDark = themeName === "dark";
   const symScale = 1.08;
-  const canPick = Boolean(onSelectElementId);
+  const canPick = Boolean(onSelectElementId) && interactionMode !== "pan";
 
   return (
     <div
@@ -486,6 +601,7 @@ export function BlueprintReadOnlyCanvas({
         "relative w-full overflow-hidden",
         sizeToContainer ? "min-h-0 h-full" : "",
         chromeLess ? "" : "rounded-lg border border-ds-border",
+        interactionMode === "pan" ? "cursor-grab active:cursor-grabbing" : "",
         className,
       ]
         .filter(Boolean)
@@ -506,6 +622,10 @@ export function BlueprintReadOnlyCanvas({
         scaleX={scale}
         scaleY={scale}
         onWheel={handleWheel}
+        onMouseDown={(e) => {
+          if (interactionMode !== "pan") return;
+          beginPanDrag(e.evt);
+        }}
         onMouseMove={handlePointerMove}
         onTouchMove={handlePointerMove}
       >
@@ -877,11 +997,11 @@ export function BlueprintReadOnlyCanvas({
               );
             })}
         </Layer>
-        {overlay ? <Layer listening>{overlay}</Layer> : null}
+        {overlay ? <Layer listening={interactionMode !== "pan"}>{overlay}</Layer> : null}
       </Stage>
-      <p className="pointer-events-none absolute bottom-2 right-3 m-0 text-[10px] text-ds-muted opacity-80">
-        Scroll to zoom
+      <p className="pointer-events-none absolute bottom-2 right-3 m-0 max-w-[min(100%,14rem)] text-right text-[10px] leading-snug text-ds-muted opacity-80">
+        Scroll to zoom · Pan tool: drag map · +/− or fit in toolbar
       </p>
     </div>
   );
-}
+});
