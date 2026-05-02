@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { apiFetch, isApiMode } from "@/lib/api";
-import { listProjects, type ProjectRow } from "@/lib/projectsService";
 import type { BlueprintElement, BlueprintLayer } from "@/components/zones-devices/blueprint-types";
 import { SYMBOL_DEFAULT, mapApiElement, parseApiBlueprintLayers, toApiPayload } from "@/lib/blueprint-layout";
 import { packInfraAssetNotes, parseInfraAssetFromNotes } from "./utils/infraSymbolNotes";
@@ -93,13 +92,6 @@ export default function DrawingsPage({ fullscreen = false }: { fullscreen?: bool
 
   const [connectDraftFromId, setConnectDraftFromId] = useState<string | null>(null);
   const [activeTool, setActiveTool] = useState<WorkspaceTool>("select");
-  const [projectRows, setProjectRows] = useState<ProjectRow[]>([]);
-
-  useEffect(() => {
-    void listProjects()
-      .then(setProjectRows)
-      .catch(() => setProjectRows([]));
-  }, []);
 
   useEffect(() => {
     if (primaryMode !== "connect") setConnectDraftFromId(null);
@@ -578,10 +570,15 @@ export default function DrawingsPage({ fullscreen = false }: { fullscreen?: bool
 
   const projectReady = Boolean(activeProjectId);
 
-  const titleLeft =
-    activeProjectId && projectRows.length > 0
-      ? projectRows.find((p) => p.id === activeProjectId)?.name ?? "Drawings"
-      : "Drawings";
+  const traceStartLabel = useMemo(() => {
+    if (!traceStartId) return null;
+    return graph.assetsById.get(traceStartId)?.name ?? traceStartId.slice(0, 8);
+  }, [graph.assetsById, traceStartId]);
+
+  const traceEndLabel = useMemo(() => {
+    if (!traceEndId) return null;
+    return graph.assetsById.get(traceEndId)?.name ?? traceEndId.slice(0, 8);
+  }, [graph.assetsById, traceEndId]);
 
   const workspaceChrome = (
     <div className="flex min-h-0 min-w-0 flex-1 flex-row overflow-hidden bg-ds-primary">
@@ -620,9 +617,25 @@ export default function DrawingsPage({ fullscreen = false }: { fullscreen?: bool
             { entity: "asset", key: "strands_available", operator: "gt", value: 0 },
           ])
         }
+        onPresetNearCapacity={() =>
+          setFilterRules((prev) => [
+            ...prev,
+            { entity: "asset", key: "strands_available", operator: "lt", value: 2 },
+          ])
+        }
+        onPresetActiveOnly={() =>
+          setFilterRules((prev) => [
+            ...prev,
+            { entity: "asset", key: "status", operator: "equals", value: "active" },
+          ])
+        }
         traceMode={traceMode}
         traceStartId={traceStartId}
+        traceEndId={traceEndId}
+        traceStartLabel={traceStartLabel}
+        traceEndLabel={traceEndLabel}
         traceResult={traceResult}
+        onTraceRoute={() => void onTraceRoute()}
       />
 
       <div className="flex min-h-0 min-w-0 flex-1 flex-row overflow-hidden">
@@ -787,7 +800,6 @@ export default function DrawingsPage({ fullscreen = false }: { fullscreen?: bool
       }
     >
       <DrawingsTopBar
-        titleLeft={titleLeft}
         projectReady={projectReady}
         bpLoading={bpLoading}
         activeProjectId={activeProjectId}

@@ -6,7 +6,6 @@ import { ProjectSelector } from "./ProjectSelector";
 type BlueprintOption = { id: string; name: string };
 
 export function DrawingsTopBar({
-  titleLeft,
   projectReady,
   bpLoading,
   activeProjectId,
@@ -19,7 +18,6 @@ export function DrawingsTopBar({
   onEnterFullscreen,
   onExitFullscreen,
 }: {
-  titleLeft: string;
   projectReady: boolean;
   bpLoading: boolean;
   activeProjectId: string | null;
@@ -35,10 +33,6 @@ export function DrawingsTopBar({
   return (
     <div className="bg-ds-success text-[var(--ds-on-accent)]">
     <header className="flex h-14 shrink-0 items-center gap-4 border-b border-black/10 px-3 dark:border-white/10">
-      <div className="flex min-w-0 flex-[0_1_180px] items-center">
-        <span className="truncate text-sm font-semibold tracking-tight text-[var(--ds-on-accent)]">{titleLeft}</span>
-      </div>
-
       <div className="flex min-w-0 flex-1 items-center justify-center gap-3">
         <ProjectSelector
           variant="inline"
