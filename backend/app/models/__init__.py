@@ -62,6 +62,16 @@ from app.models.pm_models import (
     PulseWorkRequestChecklistItem,
     PulseWorkRequestPartLine,
 )
+from app.models.pm_coord_models import (
+    PmCoordProject,
+    PmCoordResourceKind,
+    PmCoordRisk,
+    PmCoordRiskImpact,
+    PmCoordTask,
+    PmCoordTaskDependency,
+    PmCoordTaskResource,
+    PmCoordTaskStatus,
+)
 from app.models.pulse_models import (
     PulseBeaconEquipment,
     PulsePreventativeRule,
@@ -135,6 +145,14 @@ __all__ = [
     "PmTask",
     "PmTaskChecklistItem",
     "PmTaskPart",
+    "PmCoordProject",
+    "PmCoordResourceKind",
+    "PmCoordRisk",
+    "PmCoordRiskImpact",
+    "PmCoordTask",
+    "PmCoordTaskDependency",
+    "PmCoordTaskResource",
+    "PmCoordTaskStatus",
     "PulseWorkRequestChecklistItem",
     "PulseWorkRequestPartLine",
     "PulsePreventativeRule",

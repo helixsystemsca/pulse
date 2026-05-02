@@ -50,6 +50,13 @@ html.pulse-welcome-blur [data-pulse-app-shell] {
   --ds-focus-ring: rgba(54, 241, 205, 0.4);
   --ds-radius-card: 0.75rem;
 
+  /** PM planning shell — alias tokens (use with `style` or arbitrary props). */
+  --pm-color-primary: var(--ds-success);
+  --pm-color-critical: var(--ds-danger);
+  --pm-color-muted: var(--ds-text-secondary);
+  --pm-color-accent-blue: #3b82f6;
+  --pm-low-float: #f59e0b;
+
   /* Legacy shell — tables & schedule: white cells, neutral chrome */
   --pulse-shell-canvas: var(--ds-bg);
   --pulse-shell-surface: var(--ds-surface-primary);

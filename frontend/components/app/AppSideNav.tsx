@@ -29,7 +29,13 @@ import {
 import { useMemo, useState } from "react";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
 import type { PulseAuthSession } from "@/lib/pulse-session";
-import { pulseSystemSidebarNav, pulseTenantSidebarNav, type PulseSidebarIcon } from "@/lib/pulse-app";
+import {
+  pulseSystemSidebarNav,
+  pulseTenantSidebarNav,
+  type PulseSidebarIcon,
+} from "@/lib/pulse-app";
+
+type SidebarNavItem = { href: string; label: string; icon: PulseSidebarIcon };
 import { isPulseNavActive } from "@/lib/pulse-nav-active";
 import { isTenantNavFeatureEnabled } from "@/lib/pulse-nav-features";
 import { isTenantNavPermissionGranted } from "@/lib/pulse-nav-permissions";
@@ -77,10 +83,21 @@ export function AppSideNav() {
 
   const isSystemAdmin = Boolean(session?.is_system_admin || session?.role === "system_admin");
   const rawNav = isSystemAdmin ? pulseSystemSidebarNav : pulseTenantSidebarNav;
-  let items =
+  let items: SidebarNavItem[] = (
     !isSystemAdmin && sessionPrimaryRole(session) === "worker"
       ? rawNav.filter((i) => i.href !== "/monitoring")
-      : [...rawNav];
+      : [...rawNav]
+  ).map((i) => ({ href: i.href, label: i.label, icon: i.icon }));
+  if (!isSystemAdmin && session?.can_use_pm_features) {
+    items = [
+      ...items,
+      {
+        href: "/pm/planning",
+        label: "PM planning",
+        icon: "list-checks",
+      },
+    ];
+  }
   if (!isSystemAdmin && session) {
     items = items.filter((i) => isTenantNavFeatureEnabled(i.href, session.enabled_features));
     items = items.filter((i) => {

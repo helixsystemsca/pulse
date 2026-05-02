@@ -22,6 +22,7 @@ _MODULE_PATH_PREFIXES: tuple[tuple[str, FeatureRequirement], ...] = (
     ("/api/v1/tasks", "projects"),
     ("/api/v1/proximity", "projects"),
     ("/api/v1/operations", "projects"),
+    ("/api/v1/pm-coord", "projects"),
     ("/api/compliance", "compliance"),
     ("/api/v1/equipment", "equipment"),
     ("/api/v1/tool-tracking", "equipment"),

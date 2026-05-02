@@ -39,6 +39,7 @@ from app.api.infrastructure_map_routes import router as infrastructure_map_route
 from app.api.organization_routes import router as organization_router
 from app.api.profile_routes import router as profile_router
 from app.api.compliance_routes import router as compliance_router
+from app.api.pm_coord_routes import router as pm_coord_router
 from app.api.projects_routes import router as projects_router
 from app.api.projects_routes import tasks_router as projects_tasks_router
 from app.api.monitoring_routes import router as monitoring_router
@@ -182,6 +183,7 @@ app.include_router(team_insights_router, prefix="/api/v1")
 app.include_router(worker_profile_router, prefix="/api/v1")
 app.include_router(projects_router, prefix="/api/v1")
 app.include_router(projects_tasks_router, prefix="/api/v1")
+app.include_router(pm_coord_router, prefix="/api/v1")
 app.include_router(proximity_router, prefix="/api/v1")
 app.include_router(operations_router, prefix="/api/v1")
 app.include_router(monitoring_router, prefix="/api/v1")
