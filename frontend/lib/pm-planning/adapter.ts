@@ -1,11 +1,56 @@
 /**
- * Map planning tasks → minimal `TaskRow` for `computeCPM` without touching backend types in UI.
+ * Map planning tasks ↔ minimal `TaskRow` for `computeCPM` without touching backend types in UI.
  */
 
+import { taskDurationDaysForCPM } from "@/lib/projects/cpm";
 import type { TaskRow } from "@/lib/projectsService";
+import { parseLocalDate } from "@/lib/schedule/calendar";
 import type { PmTask } from "@/lib/pm-planning/types";
 
 const ADAPTER_PROJECT_ID = "pm-planning-adapter";
+
+function parseTaskStartAnchor(task: TaskRow): Date | null {
+  if (task.planned_start_at?.trim()) {
+    const d = new Date(task.planned_start_at);
+    return Number.isFinite(d.getTime()) ? d : null;
+  }
+  if (task.start_date?.trim()) {
+    try {
+      return parseLocalDate(task.start_date.trim());
+    } catch {
+      const d = new Date(`${task.start_date.trim()}T12:00:00`);
+      return Number.isFinite(d.getTime()) ? d : null;
+    }
+  }
+  return null;
+}
+
+/**
+ * Pulse project tasks → planning adapter tasks (same IDs as `TaskRow` for clicks + API).
+ * Durations match `computeCPM` / Gantt (`taskDurationDaysForCPM`).
+ */
+export function taskRowsToPmTasks(
+  tasks: TaskRow[],
+  projectStart: Date,
+  assigneeLabel: (userId: string | null | undefined) => string | undefined,
+): PmTask[] {
+  return tasks.map((t) => {
+    const start = parseTaskStartAnchor(t) ?? projectStart;
+    const duration = Math.max(1 / 24, taskDurationDaysForCPM(t));
+    const dependencies = (t.depends_on_task_ids ?? []).filter(Boolean);
+    const resource = assigneeLabel(t.assigned_user_id);
+    const category = t.phase_group?.trim() || (t.category as string | undefined) || undefined;
+    return {
+      id: t.id,
+      name: t.title,
+      start,
+      duration,
+      dependencies,
+      resource,
+      category,
+    };
+  });
+}
 
 /** Minimal TaskRow-shaped rows for CPM only (not sent to API). */
 export function pmTasksToTaskRows(tasks: PmTask[], companyId = ""): TaskRow[] {

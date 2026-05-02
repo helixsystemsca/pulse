@@ -12,7 +12,6 @@ import {
   Settings2,
   Trash2,
   Users,
-  Waypoints,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Card } from "@/components/pulse/Card";
@@ -23,8 +22,7 @@ import { apiFetch } from "@/lib/api";
 import { emitOnboardingMaybeUpdated } from "@/lib/onboarding-events";
 import { parseClientApiError } from "@/lib/parse-client-api-error";
 import { ProjectAutomationPanel } from "@/components/projects/ProjectAutomationPanel";
-import { GanttSchedule } from "@/components/projects/GanttSchedule";
-import { ProjectCriticalPathAnalysis } from "@/components/projects/ProjectCriticalPathAnalysis";
+import { PmPlanningShell } from "@/components/pm-planning/PmPlanningShell";
 import {
   addProjectNote,
   listCategories,
@@ -59,6 +57,9 @@ import {
   type FacilityEquipmentListRow,
   fetchEquipmentSuggestions,
 } from "@/lib/projectsService";
+import { taskRowsToPmTasks } from "@/lib/pm-planning/adapter";
+import type { PmProjectMeta } from "@/lib/pm-planning/types";
+import { parseLocalDate } from "@/lib/schedule/calendar";
 import type { PulseWorkerApi } from "@/lib/schedule/pulse-bridge";
 import { useResolvedAvatarSrc } from "@/lib/useResolvedAvatarSrc";
 import { fetchInventoryList, type InventoryRow } from "@/lib/inventoryService";
@@ -145,8 +146,8 @@ export function ProjectDetailApp({ projectId }: { projectId: string }) {
   const [skillCategories, setSkillCategories] = useState<string[]>([]);
   const [err, setErr] = useState<string | null>(null);
   const [blockHint, setBlockHint] = useState<string | null>(null);
-  const [detailTab, setDetailTab] = useState<"overview" | "work" | "activity" | "summary">("overview");
-  const [viewTab, setViewTab] = useState<"tasks" | "board" | "schedule" | "analysis" | "automation" | "plan">("tasks");
+  const [detailTab, setDetailTab] = useState<"overview" | "planning" | "work" | "activity" | "summary">("overview");
+  const [viewTab, setViewTab] = useState<"tasks" | "board" | "automation">("tasks");
   const [taskModalOpen, setTaskModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<TaskRow | null>(null);
   const [toast, setToast] = useState<string | null>(null);
@@ -278,6 +279,36 @@ export function ProjectDetailApp({ projectId }: { projectId: string }) {
   );
 
   const tasks = data?.tasks ?? [];
+
+  const planningProjectStart = useMemo(() => {
+    const s = data?.start_date?.trim();
+    if (!s) return new Date();
+    try {
+      return parseLocalDate(s);
+    } catch {
+      const d = new Date(`${s}T12:00:00`);
+      return Number.isFinite(d.getTime()) ? d : new Date();
+    }
+  }, [data?.start_date]);
+
+  const planningMeta = useMemo((): PmProjectMeta | null => {
+    if (!data) return null;
+    return {
+      id: data.id,
+      name: data.name,
+      code: `${data.start_date} → ${data.end_date}`,
+      projectStart: planningProjectStart,
+    };
+  }, [data, planningProjectStart]);
+
+  const pmTasks = useMemo(() => {
+    if (!data) return [];
+    return taskRowsToPmTasks(tasks, planningProjectStart, (uid) => {
+      if (!uid) return undefined;
+      const n = workerMap.get(uid)?.trim();
+      return n || undefined;
+    });
+  }, [data, tasks, planningProjectStart, workerMap]);
 
   const locationOptions = useMemo(() => {
     const set = new Set<string>();
@@ -504,11 +535,10 @@ export function ProjectDetailApp({ projectId }: { projectId: string }) {
   }, [detailTab, loadActivity]);
 
   useEffect(() => {
-    if (detailTab !== "work") return;
-    if (viewTab !== "plan") return;
+    if (detailTab !== "planning") return;
     if (criticalSteps !== null) return;
     void loadCriticalSteps();
-  }, [detailTab, viewTab, criticalSteps, loadCriticalSteps]);
+  }, [detailTab, criticalSteps, loadCriticalSteps]);
 
   const criticalOrdered = useMemo(() => {
     const rows = criticalSteps ?? [];
@@ -691,6 +721,16 @@ export function ProjectDetailApp({ projectId }: { projectId: string }) {
             <button type="button" className={topTabClass(detailTab === "overview")} onClick={() => setDetailTab("overview")}>
               Overview
             </button>
+            {canUsePMFeatures ? (
+              <button
+                type="button"
+                className={`inline-flex items-center gap-2 ${topTabClass(detailTab === "planning")}`}
+                onClick={() => setDetailTab("planning")}
+              >
+                <CalendarRange className="h-4 w-4" aria-hidden />
+                Planning
+              </button>
+            ) : null}
             <button type="button" className={topTabClass(detailTab === "work")} onClick={() => setDetailTab("work")}>
               Work
             </button>
@@ -878,6 +918,266 @@ export function ProjectDetailApp({ projectId }: { projectId: string }) {
             </div>
           ) : null}
 
+          {detailTab === "planning" && canUsePMFeatures && planningMeta ? (
+            <PmPlanningShell
+              variant="embedded"
+              embedded={{
+                meta: planningMeta,
+                pmTasks,
+                onTaskClick: (id) => {
+                  const t = tasks.find((x) => x.id === id);
+                  if (t) {
+                    setEditingTask(t);
+                    setTaskModalOpen(true);
+                  }
+                },
+                belowCriticalTab: (
+                  <div className="space-y-6 border-t border-[var(--ds-border)] pt-8">
+                    <p className="text-sm font-bold text-ds-foreground">Milestone steps</p>
+                    <p className="text-xs text-[var(--pm-color-muted)]">
+                      Optional high-level steps (separate from task-based CPM).
+                    </p>
+                    <div className="space-y-6">
+                      <Card padding="md" className="space-y-4">
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="text-sm font-bold text-ds-foreground">Critical Path</p>
+                            <p className="mt-1 text-xs text-ds-muted">Define key steps and visualize the flow.</p>
+                          </div>
+                          <button
+                            type="button"
+                            className={SECONDARY_BTN}
+                            disabled={criticalLoading}
+                            onClick={() => void loadCriticalSteps()}
+                          >
+                            Refresh
+                          </button>
+                        </div>
+
+                        <div className="grid gap-3 sm:grid-cols-[1fr,220px,auto]">
+                          <div>
+                            <label className={LABEL} htmlFor="cp-step-title">
+                              Step name
+                            </label>
+                            <input
+                              id="cp-step-title"
+                              className={FIELD}
+                              value={newCriticalTitle}
+                              onChange={(e) => setNewCriticalTitle(e.target.value)}
+                              placeholder="Step name"
+                            />
+                          </div>
+                          <div>
+                            <label className={LABEL} htmlFor="cp-step-dep">
+                              Depends on (optional)
+                            </label>
+                            <select
+                              id="cp-step-dep"
+                              className={FIELD}
+                              value={newCriticalDependsOn}
+                              onChange={(e) => setNewCriticalDependsOn(e.target.value)}
+                            >
+                              <option value="">— None —</option>
+                              {(criticalSteps ?? []).map((s) => (
+                                <option key={s.id} value={s.id}>
+                                  {s.title}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                          <div className="flex items-end">
+                            <button
+                              type="button"
+                              className={PRIMARY_BTN}
+                              disabled={!newCriticalTitle.trim() || criticalLoading}
+                              onClick={async () => {
+                                const title = newCriticalTitle.trim();
+                                if (!title) return;
+                                setCriticalLoading(true);
+                                setCriticalErr(null);
+                                try {
+                                  const orderIndex = (criticalSteps ?? []).length;
+                                  const created = await createCriticalStep(projectId, {
+                                    title,
+                                    order_index: orderIndex,
+                                    depends_on_id: newCriticalDependsOn || null,
+                                  });
+                                  setCriticalSteps((prev) =>
+                                    ([...(prev ?? []), created]).sort((a, b) => a.order_index - b.order_index),
+                                  );
+                                  setNewCriticalTitle("");
+                                  setNewCriticalDependsOn("");
+                                } catch (e) {
+                                  const { message } = parseClientApiError(e);
+                                  setCriticalErr(message || "Could not add step.");
+                                } finally {
+                                  setCriticalLoading(false);
+                                }
+                              }}
+                            >
+                              Add Step
+                            </button>
+                          </div>
+                        </div>
+
+                        {criticalErr ? <p className="text-sm font-medium text-red-700 dark:text-red-400">{criticalErr}</p> : null}
+                        {criticalLoading && criticalSteps === null ? <p className="text-sm text-ds-muted">Loading…</p> : null}
+
+                        {(criticalSteps ?? []).length === 0 ? (
+                          <p className="text-sm text-ds-muted">No steps yet. Add your first step above.</p>
+                        ) : (
+                          <ul className="space-y-2">
+                            {(criticalSteps ?? [])
+                              .slice()
+                              .sort((a, b) => a.order_index - b.order_index)
+                              .map((s, idx, arr) => (
+                                <li
+                                  key={s.id}
+                                  className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-ds-border bg-white px-3 py-2 dark:bg-ds-primary"
+                                >
+                                  <div className="min-w-0 flex-1">
+                                    <p className="text-sm font-semibold text-ds-foreground">
+                                      <span className="mr-2 text-xs font-bold text-ds-muted">#{idx + 1}</span>
+                                      {s.title}
+                                    </p>
+                                    <div className="mt-1 flex flex-wrap items-center gap-2">
+                                      <span className="text-xs text-ds-muted">Depends on:</span>
+                                      <select
+                                        className="rounded-md border border-ds-border bg-ds-secondary px-2 py-1 text-xs font-semibold text-ds-foreground"
+                                        value={s.depends_on_id || ""}
+                                        onChange={async (e) => {
+                                          const v = e.target.value || null;
+                                          setCriticalSavingId(s.id);
+                                          setCriticalErr(null);
+                                          try {
+                                            const out = await patchCriticalStep(projectId, s.id, { depends_on_id: v });
+                                            setCriticalSteps((prev) => (prev ?? []).map((x) => (x.id === s.id ? out : x)));
+                                          } catch (err2) {
+                                            const { message } = parseClientApiError(err2);
+                                            setCriticalErr(message || "Could not update dependency.");
+                                          } finally {
+                                            setCriticalSavingId(null);
+                                          }
+                                        }}
+                                        disabled={criticalSavingId === s.id}
+                                      >
+                                        <option value="">— None —</option>
+                                        {(criticalSteps ?? [])
+                                          .filter((x) => x.id !== s.id)
+                                          .map((x) => (
+                                            <option key={x.id} value={x.id}>
+                                              {x.title}
+                                            </option>
+                                          ))}
+                                      </select>
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <button
+                                      type="button"
+                                      className="rounded-md border border-ds-border bg-ds-secondary px-2 py-1 text-xs font-semibold text-ds-foreground hover:bg-ds-interactive-hover disabled:opacity-40"
+                                      disabled={idx === 0 || criticalSavingId === s.id}
+                                      onClick={async () => {
+                                        const prev = arr[idx - 1]!;
+                                        setCriticalSavingId(s.id);
+                                        setCriticalErr(null);
+                                        try {
+                                          const a = await patchCriticalStep(projectId, s.id, { order_index: prev.order_index });
+                                          const b = await patchCriticalStep(projectId, prev.id, { order_index: s.order_index });
+                                          setCriticalSteps((old) =>
+                                            (old ?? [])
+                                              .map((x) => (x.id === a.id ? a : x.id === b.id ? b : x))
+                                              .sort((x, y) => x.order_index - y.order_index),
+                                          );
+                                        } catch (err3) {
+                                          const { message } = parseClientApiError(err3);
+                                          setCriticalErr(message || "Could not reorder steps.");
+                                        } finally {
+                                          setCriticalSavingId(null);
+                                        }
+                                      }}
+                                    >
+                                      Up
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="rounded-md border border-ds-border bg-ds-secondary px-2 py-1 text-xs font-semibold text-ds-foreground hover:bg-ds-interactive-hover disabled:opacity-40"
+                                      disabled={idx === arr.length - 1 || criticalSavingId === s.id}
+                                      onClick={async () => {
+                                        const next = arr[idx + 1]!;
+                                        setCriticalSavingId(s.id);
+                                        setCriticalErr(null);
+                                        try {
+                                          const a = await patchCriticalStep(projectId, s.id, { order_index: next.order_index });
+                                          const b = await patchCriticalStep(projectId, next.id, { order_index: s.order_index });
+                                          setCriticalSteps((old) =>
+                                            (old ?? [])
+                                              .map((x) => (x.id === a.id ? a : x.id === b.id ? b : x))
+                                              .sort((x, y) => x.order_index - y.order_index),
+                                          );
+                                        } catch (err4) {
+                                          const { message } = parseClientApiError(err4);
+                                          setCriticalErr(message || "Could not reorder steps.");
+                                        } finally {
+                                          setCriticalSavingId(null);
+                                        }
+                                      }}
+                                    >
+                                      Down
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="rounded-md border border-ds-border bg-ds-secondary px-2 py-1 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:opacity-40 dark:text-red-200 dark:hover:bg-red-950/40"
+                                      disabled={criticalSavingId === s.id}
+                                      onClick={async () => {
+                                        setCriticalSavingId(s.id);
+                                        setCriticalErr(null);
+                                        try {
+                                          await deleteCriticalStep(projectId, s.id);
+                                          setCriticalSteps((old) => (old ?? []).filter((x) => x.id !== s.id));
+                                        } catch (err5) {
+                                          const { message } = parseClientApiError(err5);
+                                          setCriticalErr(message || "Could not delete step.");
+                                        } finally {
+                                          setCriticalSavingId(null);
+                                        }
+                                      }}
+                                    >
+                                      Delete
+                                    </button>
+                                  </div>
+                                </li>
+                              ))}
+                          </ul>
+                        )}
+                      </Card>
+
+                      <Card padding="md" className="space-y-3">
+                        <p className="text-sm font-bold text-ds-foreground">Flow</p>
+                        <div className="overflow-x-auto">
+                          <div className="flex min-w-max items-center gap-3 py-1">
+                            {criticalOrdered.length === 0 ? (
+                              <p className="text-sm text-ds-muted">Add steps to see the flow.</p>
+                            ) : (
+                              criticalOrdered.map((s, i) => (
+                                <div key={s.id} className="flex items-center gap-3">
+                                  <div className="rounded-md border border-ds-border bg-white px-3 py-2 text-sm font-semibold text-ds-foreground dark:bg-ds-secondary">
+                                    {s.title}
+                                  </div>
+                                  {i < criticalOrdered.length - 1 ? <span className="text-ds-muted">→</span> : null}
+                                </div>
+                              ))
+                            )}
+                          </div>
+                        </div>
+                      </Card>
+                    </div>
+                  </div>
+                ),
+              }}
+            />
+          ) : null}
+
           {detailTab === "activity" ? (
             <div className="space-y-6">
               <Card padding="md" className="space-y-3">
@@ -1021,46 +1321,6 @@ export function ProjectDetailApp({ projectId }: { projectId: string }) {
                 <button
                   type="button"
                   className={`inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm font-semibold transition-colors ${
-                    viewTab === "schedule"
-                      ? "bg-ds-success text-ds-on-accent shadow-sm"
-                      : "text-ds-muted hover:bg-ds-interactive-hover hover:text-ds-foreground"
-                  }`}
-                  onClick={() => setViewTab("schedule")}
-                >
-                  <CalendarRange className="h-4 w-4" aria-hidden />
-                  Schedule
-                </button>
-                {canUsePMFeatures ? (
-                  <>
-                    <button
-                      type="button"
-                      className={`inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm font-semibold transition-colors ${
-                        viewTab === "analysis"
-                          ? "bg-ds-success text-ds-on-accent shadow-sm"
-                          : "text-ds-muted hover:bg-ds-interactive-hover hover:text-ds-foreground"
-                      }`}
-                      onClick={() => setViewTab("analysis")}
-                    >
-                      <Waypoints className="h-4 w-4" aria-hidden />
-                      Critical path
-                    </button>
-                    <button
-                      type="button"
-                      className={`inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm font-semibold transition-colors ${
-                        viewTab === "plan"
-                          ? "bg-ds-success text-ds-on-accent shadow-sm"
-                          : "text-ds-muted hover:bg-ds-interactive-hover hover:text-ds-foreground"
-                      }`}
-                      onClick={() => setViewTab("plan")}
-                    >
-                      <List className="h-4 w-4" aria-hidden />
-                      Plan
-                    </button>
-                  </>
-                ) : null}
-                <button
-                  type="button"
-                  className={`inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm font-semibold transition-colors ${
                     viewTab === "automation"
                       ? "bg-ds-success text-ds-on-accent shadow-sm"
                       : "text-ds-muted hover:bg-ds-interactive-hover hover:text-ds-foreground"
@@ -1073,279 +1333,6 @@ export function ProjectDetailApp({ projectId }: { projectId: string }) {
               </div>
 
               {viewTab === "automation" ? <ProjectAutomationPanel projectId={projectId} /> : null}
-
-              {viewTab === "plan" && canUsePMFeatures ? (
-                <div className="space-y-6">
-                  <Card padding="md" className="space-y-4">
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="text-sm font-bold text-ds-foreground">Critical Path</p>
-                        <p className="mt-1 text-xs text-ds-muted">Define key steps and visualize the flow.</p>
-                      </div>
-                      <button
-                        type="button"
-                        className={SECONDARY_BTN}
-                        disabled={criticalLoading}
-                        onClick={() => void loadCriticalSteps()}
-                      >
-                        Refresh
-                      </button>
-                    </div>
-
-                    <div className="grid gap-3 sm:grid-cols-[1fr,220px,auto]">
-                      <div>
-                        <label className={LABEL} htmlFor="cp-step-title">
-                          Step name
-                        </label>
-                        <input
-                          id="cp-step-title"
-                          className={FIELD}
-                          value={newCriticalTitle}
-                          onChange={(e) => setNewCriticalTitle(e.target.value)}
-                          placeholder="Step name"
-                        />
-                      </div>
-                      <div>
-                        <label className={LABEL} htmlFor="cp-step-dep">
-                          Depends on (optional)
-                        </label>
-                        <select
-                          id="cp-step-dep"
-                          className={FIELD}
-                          value={newCriticalDependsOn}
-                          onChange={(e) => setNewCriticalDependsOn(e.target.value)}
-                        >
-                          <option value="">— None —</option>
-                          {(criticalSteps ?? []).map((s) => (
-                            <option key={s.id} value={s.id}>
-                              {s.title}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                      <div className="flex items-end">
-                        <button
-                          type="button"
-                          className={PRIMARY_BTN}
-                          disabled={!newCriticalTitle.trim() || criticalLoading}
-                          onClick={async () => {
-                            const title = newCriticalTitle.trim();
-                            if (!title) return;
-                            setCriticalLoading(true);
-                            setCriticalErr(null);
-                            try {
-                              const orderIndex = (criticalSteps ?? []).length;
-                              const created = await createCriticalStep(projectId, {
-                                title,
-                                order_index: orderIndex,
-                                depends_on_id: newCriticalDependsOn || null,
-                              });
-                              setCriticalSteps((prev) =>
-                                ([...(prev ?? []), created]).sort((a, b) => a.order_index - b.order_index),
-                              );
-                              setNewCriticalTitle("");
-                              setNewCriticalDependsOn("");
-                            } catch (e) {
-                              const { message } = parseClientApiError(e);
-                              setCriticalErr(message || "Could not add step.");
-                            } finally {
-                              setCriticalLoading(false);
-                            }
-                          }}
-                        >
-                          Add Step
-                        </button>
-                      </div>
-                    </div>
-
-                    {criticalErr ? <p className="text-sm font-medium text-red-700 dark:text-red-400">{criticalErr}</p> : null}
-                    {criticalLoading && criticalSteps === null ? <p className="text-sm text-ds-muted">Loading…</p> : null}
-
-                    {(criticalSteps ?? []).length === 0 ? (
-                      <p className="text-sm text-ds-muted">No steps yet. Add your first step above.</p>
-                    ) : (
-                      <ul className="space-y-2">
-                        {(criticalSteps ?? [])
-                          .slice()
-                          .sort((a, b) => a.order_index - b.order_index)
-                          .map((s, idx, arr) => (
-                            <li
-                              key={s.id}
-                              className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-ds-border bg-white px-3 py-2 dark:bg-ds-primary"
-                            >
-                              <div className="min-w-0 flex-1">
-                                <p className="text-sm font-semibold text-ds-foreground">
-                                  <span className="mr-2 text-xs font-bold text-ds-muted">#{idx + 1}</span>
-                                  {s.title}
-                                </p>
-                                <div className="mt-1 flex flex-wrap items-center gap-2">
-                                  <span className="text-xs text-ds-muted">Depends on:</span>
-                                  <select
-                                    className="rounded-md border border-ds-border bg-ds-secondary px-2 py-1 text-xs font-semibold text-ds-foreground"
-                                    value={s.depends_on_id || ""}
-                                    onChange={async (e) => {
-                                      const v = e.target.value || null;
-                                      setCriticalSavingId(s.id);
-                                      setCriticalErr(null);
-                                      try {
-                                        const out = await patchCriticalStep(projectId, s.id, { depends_on_id: v });
-                                        setCriticalSteps((prev) => (prev ?? []).map((x) => (x.id === s.id ? out : x)));
-                                      } catch (err2) {
-                                        const { message } = parseClientApiError(err2);
-                                        setCriticalErr(message || "Could not update dependency.");
-                                      } finally {
-                                        setCriticalSavingId(null);
-                                      }
-                                    }}
-                                    disabled={criticalSavingId === s.id}
-                                  >
-                                    <option value="">— None —</option>
-                                    {(criticalSteps ?? [])
-                                      .filter((x) => x.id !== s.id)
-                                      .map((x) => (
-                                        <option key={x.id} value={x.id}>
-                                          {x.title}
-                                        </option>
-                                      ))}
-                                  </select>
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <button
-                                  type="button"
-                                  className="rounded-md border border-ds-border bg-ds-secondary px-2 py-1 text-xs font-semibold text-ds-foreground hover:bg-ds-interactive-hover disabled:opacity-40"
-                                  disabled={idx === 0 || criticalSavingId === s.id}
-                                  onClick={async () => {
-                                    const prev = arr[idx - 1]!;
-                                    setCriticalSavingId(s.id);
-                                    setCriticalErr(null);
-                                    try {
-                                      const a = await patchCriticalStep(projectId, s.id, { order_index: prev.order_index });
-                                      const b = await patchCriticalStep(projectId, prev.id, { order_index: s.order_index });
-                                      setCriticalSteps((old) =>
-                                        (old ?? [])
-                                          .map((x) => (x.id === a.id ? a : x.id === b.id ? b : x))
-                                          .sort((x, y) => x.order_index - y.order_index),
-                                      );
-                                    } catch (err3) {
-                                      const { message } = parseClientApiError(err3);
-                                      setCriticalErr(message || "Could not reorder steps.");
-                                    } finally {
-                                      setCriticalSavingId(null);
-                                    }
-                                  }}
-                                >
-                                  Up
-                                </button>
-                                <button
-                                  type="button"
-                                  className="rounded-md border border-ds-border bg-ds-secondary px-2 py-1 text-xs font-semibold text-ds-foreground hover:bg-ds-interactive-hover disabled:opacity-40"
-                                  disabled={idx === arr.length - 1 || criticalSavingId === s.id}
-                                  onClick={async () => {
-                                    const next = arr[idx + 1]!;
-                                    setCriticalSavingId(s.id);
-                                    setCriticalErr(null);
-                                    try {
-                                      const a = await patchCriticalStep(projectId, s.id, { order_index: next.order_index });
-                                      const b = await patchCriticalStep(projectId, next.id, { order_index: s.order_index });
-                                      setCriticalSteps((old) =>
-                                        (old ?? [])
-                                          .map((x) => (x.id === a.id ? a : x.id === b.id ? b : x))
-                                          .sort((x, y) => x.order_index - y.order_index),
-                                      );
-                                    } catch (err4) {
-                                      const { message } = parseClientApiError(err4);
-                                      setCriticalErr(message || "Could not reorder steps.");
-                                    } finally {
-                                      setCriticalSavingId(null);
-                                    }
-                                  }}
-                                >
-                                  Down
-                                </button>
-                                <button
-                                  type="button"
-                                  className="rounded-md border border-ds-border bg-ds-secondary px-2 py-1 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:opacity-40 dark:text-red-200 dark:hover:bg-red-950/40"
-                                  disabled={criticalSavingId === s.id}
-                                  onClick={async () => {
-                                    setCriticalSavingId(s.id);
-                                    setCriticalErr(null);
-                                    try {
-                                      await deleteCriticalStep(projectId, s.id);
-                                      setCriticalSteps((old) => (old ?? []).filter((x) => x.id !== s.id));
-                                    } catch (err5) {
-                                      const { message } = parseClientApiError(err5);
-                                      setCriticalErr(message || "Could not delete step.");
-                                    } finally {
-                                      setCriticalSavingId(null);
-                                    }
-                                  }}
-                                >
-                                  Delete
-                                </button>
-                              </div>
-                            </li>
-                          ))}
-                      </ul>
-                    )}
-                  </Card>
-
-                  <Card padding="md" className="space-y-3">
-                    <p className="text-sm font-bold text-ds-foreground">Flow</p>
-                    <div className="overflow-x-auto">
-                      <div className="flex min-w-max items-center gap-3 py-1">
-                        {criticalOrdered.length === 0 ? (
-                          <p className="text-sm text-ds-muted">Add steps to see the flow.</p>
-                        ) : (
-                          criticalOrdered.map((s, i) => (
-                            <div key={s.id} className="flex items-center gap-3">
-                              <div className="rounded-md border border-ds-border bg-white px-3 py-2 text-sm font-semibold text-ds-foreground dark:bg-ds-secondary">
-                                {s.title}
-                              </div>
-                              {i < criticalOrdered.length - 1 ? <span className="text-ds-muted">→</span> : null}
-                            </div>
-                          ))
-                        )}
-                      </div>
-                    </div>
-                  </Card>
-                </div>
-              ) : null}
-
-              {viewTab === "schedule" && canUsePMFeatures ? (
-                <Card padding="md" className="space-y-4">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                      <p className="text-sm font-bold text-ds-foreground">Schedule</p>
-                      <p className="mt-1 text-xs text-ds-muted">
-                        Visualization only. Use Advanced planning fields on tasks to set planned dates and groupings.
-                      </p>
-                    </div>
-                  </div>
-
-                  <GanttSchedule
-                    tasks={tasks}
-                    projectStartDate={data?.start_date}
-                    projectEndDate={data?.end_date}
-                    onTaskClick={(t) => {
-                      setEditingTask(t);
-                      setTaskModalOpen(true);
-                    }}
-                  />
-                </Card>
-              ) : null}
-
-              {viewTab === "analysis" && canUsePMFeatures ? (
-                <Card padding="md" className="space-y-4">
-                  <div>
-                    <p className="text-sm font-bold text-ds-foreground">Critical path (CPM)</p>
-                    <p className="mt-1 text-xs text-ds-muted">
-                      Same tasks as the Gantt. Durations follow planned estimates; dependencies use task predecessors. Schedule tab shows the timeline view.
-                    </p>
-                  </div>
-                  <ProjectCriticalPathAnalysis tasks={tasks} />
-                </Card>
-              ) : null}
 
               {viewTab === "tasks" ? (
             <div className="grid gap-6 lg:grid-cols-12">

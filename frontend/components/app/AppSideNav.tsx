@@ -88,16 +88,6 @@ export function AppSideNav() {
       ? rawNav.filter((i) => i.href !== "/monitoring")
       : [...rawNav]
   ).map((i) => ({ href: i.href, label: i.label, icon: i.icon }));
-  if (!isSystemAdmin && session?.can_use_pm_features) {
-    items = [
-      ...items,
-      {
-        href: "/pm/planning",
-        label: "PM planning",
-        icon: "list-checks",
-      },
-    ];
-  }
   if (!isSystemAdmin && session) {
     items = items.filter((i) => isTenantNavFeatureEnabled(i.href, session.enabled_features));
     items = items.filter((i) => {

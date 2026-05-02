@@ -16,6 +16,7 @@ export function PmGantt({
   whatIfMode,
   durationOverrides,
   onDurationChange,
+  onTaskLabelClick,
 }: {
   tasks: PmTask[];
   cpm: CPMResult;
@@ -23,6 +24,8 @@ export function PmGantt({
   whatIfMode: boolean;
   durationOverrides: Record<string, number>;
   onDurationChange: (taskId: string, days: number) => void;
+  /** When set (e.g. embedded project planning), clicking the task name opens the task editor. */
+  onTaskLabelClick?: (taskId: string) => void;
 }) {
   const chartDays = Math.ceil(cpm.projectDuration) + 3;
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -71,9 +74,20 @@ export function PmGantt({
                   idx % 2 === 0 ? "bg-[var(--ds-surface-primary)]" : "bg-[var(--ds-surface-secondary)]"
                 }`}
               >
-                <span className="min-w-0 flex-1 truncate font-medium text-[var(--ds-text-primary)]" title={t.name}>
-                  {t.name}
-                </span>
+                {onTaskLabelClick ? (
+                  <button
+                    type="button"
+                    className="min-w-0 flex-1 cursor-pointer truncate text-left font-medium text-[var(--ds-text-primary)] hover:underline"
+                    title={t.name}
+                    onClick={() => onTaskLabelClick(t.id)}
+                  >
+                    {t.name}
+                  </button>
+                ) : (
+                  <span className="min-w-0 flex-1 truncate font-medium text-[var(--ds-text-primary)]" title={t.name}>
+                    {t.name}
+                  </span>
+                )}
                 <span
                   className={`ml-1 shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold ${
                     isCrit

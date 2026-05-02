@@ -1,29 +1,47 @@
 "use client";
 
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
 import { Sparkles } from "lucide-react";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
 import { MOCK_PM_TASKS, POOL_SHUTDOWN_META } from "@/lib/pm-planning/mockPoolShutdown";
 import { computePlanningCPMWithOverrides } from "@/lib/pm-planning/computePlanningCPM";
 import { findResourceConflicts } from "@/lib/pm-planning/resourceConflicts";
-import type { PmPlanningTab } from "@/lib/pm-planning/types";
+import type { PmPlanningTab, PmProjectMeta, PmTask } from "@/lib/pm-planning/types";
 import { PmCriticalPath } from "@/components/pm-planning/PmCriticalPath";
 import { PmGantt } from "@/components/pm-planning/PmGantt";
 import { PmNetworkDiagram } from "@/components/pm-planning/PmNetworkDiagram";
 import { PmResourceView } from "@/components/pm-planning/PmResourceView";
 
-/** Pool Shutdown demo + tabs — gated by `session.can_use_pm_features`. */
-export function PmPlanningShell() {
+export type PmPlanningEmbeddedProps = {
+  meta: PmProjectMeta;
+  pmTasks: PmTask[];
+  onTaskClick?: (taskId: string) => void;
+  /** Rendered under the CPM critical-path strip (e.g. milestone steps editor). */
+  belowCriticalTab?: ReactNode;
+};
+
+export type PmPlanningShellProps =
+  | { variant?: "demo" }
+  | { variant: "embedded"; embedded: PmPlanningEmbeddedProps };
+
+/** PM planning tabs — demo (`/pm/planning`) or embedded on a project. Gated by `session.can_use_pm_features`. */
+export function PmPlanningShell(props: PmPlanningShellProps = {}) {
   const { session } = usePulseAuth();
   const allowed = Boolean(session?.can_use_pm_features);
+
+  const isEmbedded = props.variant === "embedded";
+  const embedded = isEmbedded ? props.embedded : null;
 
   const [tab, setTab] = useState<PmPlanningTab>("gantt");
   const [whatIf, setWhatIf] = useState(false);
   const [durationOverrides, setDurationOverrides] = useState<Record<string, number>>({});
 
-  const tasks = MOCK_PM_TASKS;
-  const meta = POOL_SHUTDOWN_META;
+  const tasks: PmTask[] = embedded ? embedded.pmTasks : MOCK_PM_TASKS;
+  const meta: PmProjectMeta = embedded ? embedded.meta : POOL_SHUTDOWN_META;
+  const onTaskClick = embedded?.onTaskClick;
+  const belowCriticalTab = embedded?.belowCriticalTab;
 
   const cpm = useMemo(
     () => computePlanningCPMWithOverrides(tasks, durationOverrides),
@@ -83,18 +101,26 @@ export function PmPlanningShell() {
 
   return (
     <div className="mx-auto flex max-w-[1600px] flex-col gap-4 pb-8">
-      <div className="h-1 w-full rounded-full bg-gradient-to-r from-[var(--ds-success)] via-[#3a7bd5] to-[var(--ds-danger)] opacity-90" />
+      {!isEmbedded ? (
+        <div className="h-1 w-full rounded-full bg-gradient-to-r from-[var(--ds-success)] via-[#3a7bd5] to-[var(--ds-danger)] opacity-90" />
+      ) : null}
 
       <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-xl font-bold text-ds-foreground">{meta.name}</h1>
           <p className="text-sm text-[var(--pm-color-muted)]">{meta.code}</p>
-          <Link
-            href="/dashboard/pm-workspace"
-            className="mt-1 inline-block text-xs font-semibold text-[var(--pm-color-primary)] hover:underline"
-          >
-            Coordination workspace →
-          </Link>
+          {!isEmbedded ? (
+            <Link
+              href="/dashboard/pm-workspace"
+              className="mt-1 inline-block text-xs font-semibold text-[var(--pm-color-primary)] hover:underline"
+            >
+              Coordination workspace →
+            </Link>
+          ) : (
+            <p className="mt-1 text-xs text-[var(--pm-color-muted)]">
+              Gantt and CPM use task planned dates, estimates, and predecessors. What-if changes are not saved to tasks.
+            </p>
+          )}
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <button
@@ -149,15 +175,16 @@ export function PmPlanningShell() {
 
       {whatIf ? (
         <div className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-2 text-sm text-amber-950 dark:border-amber-700 dark:bg-amber-950/25 dark:text-amber-100">
-          ⚠ What-if mode — drag the right edge of a Gantt bar to adjust duration (scenario only).
+          ⚠ What-if mode — drag the right edge of a Gantt bar to adjust duration (scenario only; not saved to tasks
+          {isEmbedded ? " in the database" : ""}).
         </div>
       ) : null}
 
       <nav className="flex flex-wrap gap-1 border-b border-ds-border">
-        {tabBtn("gantt", "Gantt / Schedule")}
-        {tabBtn("network", "Network Diagram")}
-        {tabBtn("resource", "Resource View")}
-        {tabBtn("critical", "Critical Path")}
+        {tabBtn("gantt", "Gantt")}
+        {tabBtn("critical", "Critical path")}
+        {tabBtn("resource", "Resource")}
+        {tabBtn("network", "Network diagram")}
       </nav>
 
       {tab === "gantt" ? (
@@ -168,13 +195,19 @@ export function PmPlanningShell() {
           whatIfMode={whatIf}
           durationOverrides={durationOverrides}
           onDurationChange={(id, days) => setDurationOverrides((prev) => ({ ...prev, [id]: days }))}
+          onTaskLabelClick={onTaskClick}
         />
       ) : null}
       {tab === "network" ? <PmNetworkDiagram tasks={tasks} cpm={cpm} /> : null}
       {tab === "resource" ? (
         <PmResourceView tasks={tasks} cpm={cpm} projectStart={meta.projectStart} conflicts={conflicts} />
       ) : null}
-      {tab === "critical" ? <PmCriticalPath tasks={tasks} cpm={cpm} projectStart={meta.projectStart} /> : null}
+      {tab === "critical" ? (
+        <div className="space-y-8">
+          <PmCriticalPath tasks={tasks} cpm={cpm} projectStart={meta.projectStart} />
+          {belowCriticalTab}
+        </div>
+      ) : null}
     </div>
   );
 }
