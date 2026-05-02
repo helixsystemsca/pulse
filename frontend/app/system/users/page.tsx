@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { AlertCircle, Info, Loader2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ImpersonationTenantModal } from "@/components/system/ImpersonationTenantModal";
@@ -44,6 +45,29 @@ type PendingInviteRow = {
   company_name: string | null;
   expires_at: string;
 };
+
+type CompanyMember = {
+  id: string;
+  email: string;
+  full_name: string | null;
+  roles: string[];
+};
+
+type TenantOwnerModal =
+  | {
+      companyId: string;
+      companyName: string | null;
+      mode: "pick_new_owner";
+      /** Current tenant owner row (must pick a different member). */
+      currentOwnerRow: UserRow;
+    }
+  | {
+      companyId: string;
+      companyName: string | null;
+      mode: "self_as_owner";
+      /** User who will become tenant owner. */
+      candidateRow: UserRow;
+    };
 
 type UsersDirectory = {
   users: UserRow[];
@@ -114,6 +138,14 @@ export default function SystemUsersPage() {
   const [activityError, setActivityError] = useState<string | null>(null);
   const [pmBusyId, setPmBusyId] = useState<string | null>(null);
 
+  const [tenantModal, setTenantModal] = useState<TenantOwnerModal | null>(null);
+  const [tenantMembers, setTenantMembers] = useState<CompanyMember[]>([]);
+  const [tenantMembersLoading, setTenantMembersLoading] = useState(false);
+  const [newOwnerUserId, setNewOwnerUserId] = useState("");
+  const [demotePrev, setDemotePrev] = useState<"manager" | "worker">("manager");
+  const [tenantBusy, setTenantBusy] = useState(false);
+  const [tenantErr, setTenantErr] = useState<string | null>(null);
+
   const openFilters = () => {
     setDraftQ(appliedQ);
     setDraftRole(appliedRole);
@@ -174,6 +206,40 @@ export default function SystemUsersPage() {
     void load();
   }, [load]);
 
+  useEffect(() => {
+    if (!tenantModal) {
+      setTenantMembers([]);
+      setTenantErr(null);
+      setNewOwnerUserId("");
+      setDemotePrev("manager");
+      return;
+    }
+    if (tenantModal.mode === "self_as_owner") {
+      setNewOwnerUserId(tenantModal.candidateRow.id);
+    } else {
+      setNewOwnerUserId("");
+    }
+    let cancelled = false;
+    (async () => {
+      setTenantMembersLoading(true);
+      setTenantErr(null);
+      try {
+        const mem = await apiFetch<CompanyMember[]>(`/api/system/companies/${tenantModal.companyId}/members`);
+        if (!cancelled) setTenantMembers(mem ?? []);
+      } catch (e: unknown) {
+        if (!cancelled) {
+          setTenantMembers([]);
+          setTenantErr(parseClientApiError(e).message);
+        }
+      } finally {
+        if (!cancelled) setTenantMembersLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [tenantModal]);
+
   const filterBadge = useMemo(() => {
     let n = 0;
     if (appliedQ.trim()) n += 1;
@@ -226,6 +292,59 @@ export default function SystemUsersPage() {
       setLoadError(parseClientApiError(e).message);
     }
   };
+
+  function openTenantOwnerModalFromRow(r: UserRow) {
+    if (!r.company_id || r.role === "system_admin" || !r.is_active) return;
+    if (r.is_company_owner) {
+      setTenantModal({
+        companyId: r.company_id,
+        companyName: r.company_name,
+        mode: "pick_new_owner",
+        currentOwnerRow: r,
+      });
+    } else {
+      setTenantModal({
+        companyId: r.company_id,
+        companyName: r.company_name,
+        mode: "self_as_owner",
+        candidateRow: r,
+      });
+    }
+  }
+
+  async function submitTenantOwnerTransfer() {
+    if (!tenantModal) return;
+    const companyId = tenantModal.companyId;
+    const ownerId = newOwnerUserId.trim();
+    if (!ownerId) {
+      setTenantErr("Select the new tenant owner.");
+      return;
+    }
+    if (tenantModal.mode === "pick_new_owner" && ownerId === tenantModal.currentOwnerRow.id) {
+      setTenantErr("Choose a different user than the current owner.");
+      return;
+    }
+    setTenantBusy(true);
+    setTenantErr(null);
+    try {
+      await apiFetch(`/api/system/companies/${companyId}/transfer-tenant-owner`, {
+        method: "POST",
+        json: {
+          new_owner_user_id: ownerId,
+          demote_previous_to: demotePrev,
+        },
+      });
+      setTenantModal(null);
+      await load();
+    } catch (e: unknown) {
+      setTenantErr(parseClientApiError(e).message);
+    } finally {
+      setTenantBusy(false);
+    }
+  }
+
+  const canManageTenantOwnership = (r: UserRow) =>
+    Boolean(r.company_id && r.role !== "system_admin" && r.is_active);
 
   return (
     <div className="space-y-6">
@@ -381,8 +500,29 @@ export default function SystemUsersPage() {
                               </div>
                             ) : null}
                             {r.is_company_owner ? (
-                              <div className="mt-1 inline-flex rounded-md bg-[color-mix(in_srgb,var(--ds-success)_14%,transparent)] px-1.5 py-0.5 text-[10px] font-bold text-ds-foreground">
-                                Tenant owner
+                              <div className="mt-1 flex flex-wrap items-center gap-2">
+                                <span className="inline-flex rounded-md bg-[color-mix(in_srgb,var(--ds-success)_14%,transparent)] px-1.5 py-0.5 text-[10px] font-bold text-ds-foreground">
+                                  Tenant owner
+                                </span>
+                                {canManageTenantOwnership(r) ? (
+                                  <button
+                                    type="button"
+                                    className="text-[10px] font-semibold text-ds-accent underline decoration-dotted underline-offset-2 hover:brightness-110"
+                                    onClick={() => openTenantOwnerModalFromRow(r)}
+                                  >
+                                    Transfer ownership
+                                  </button>
+                                ) : null}
+                              </div>
+                            ) : canManageTenantOwnership(r) ? (
+                              <div className="mt-1">
+                                <button
+                                  type="button"
+                                  className="text-[10px] font-semibold text-ds-accent underline decoration-dotted underline-offset-2 hover:brightness-110"
+                                  onClick={() => openTenantOwnerModalFromRow(r)}
+                                >
+                                  Make tenant owner
+                                </button>
                               </div>
                             ) : null}
                           </td>
@@ -493,6 +633,127 @@ export default function SystemUsersPage() {
           targetName={impersonationModal.full_name}
           onClosed={() => setImpersonationModal(null)}
         />
+      ) : null}
+
+      {tenantModal ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-[color-mix(in_srgb,var(--ds-text-primary)_38%,transparent)] p-4 backdrop-blur-sm"
+          onClick={() => !tenantBusy && setTenantModal(null)}
+          role="presentation"
+        >
+          <div
+            className="w-full max-w-lg overflow-hidden rounded-xl border border-ds-border bg-ds-elevated shadow-2xl"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="tenant-owner-modal-title"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-ds-border px-4 py-3">
+              <div>
+                <h2 id="tenant-owner-modal-title" className="text-sm font-semibold text-ds-foreground">
+                  Tenant ownership
+                </h2>
+                <p className="text-xs text-ds-muted">
+                  {tenantModal.companyName || "Company"} · updates{" "}
+                  <span className="font-mono text-[10px]">owner_admin_id</span> and{" "}
+                  <span className="font-mono text-[10px]">users.roles</span>
+                </p>
+              </div>
+              <button
+                type="button"
+                className="rounded-lg px-2 py-1 text-ds-muted hover:bg-ds-secondary disabled:opacity-40"
+                disabled={tenantBusy}
+                onClick={() => setTenantModal(null)}
+                aria-label="Close"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="space-y-4 p-4">
+              <p className="text-sm text-ds-foreground">
+                {tenantModal.mode === "pick_new_owner" ? (
+                  <>
+                    Current owner:{" "}
+                    <strong>{tenantModal.currentOwnerRow.full_name || tenantModal.currentOwnerRow.email}</strong>.
+                    Choose who should become the recorded tenant owner.
+                  </>
+                ) : (
+                  <>
+                    Set <strong>{tenantModal.candidateRow.full_name || tenantModal.candidateRow.email}</strong> as the
+                    tenant owner. The previous owner will be demoted to the role you pick below.
+                  </>
+                )}
+              </p>
+              {tenantModal.mode === "pick_new_owner" ? (
+                <div>
+                  <label className={dsLabelClass} htmlFor="tenant-new-owner">
+                    New owner
+                  </label>
+                  <select
+                    id="tenant-new-owner"
+                    className={`mt-1.5 w-full ${INPUT}`}
+                    disabled={tenantBusy || tenantMembersLoading}
+                    value={newOwnerUserId}
+                    onChange={(e) => setNewOwnerUserId(e.target.value)}
+                  >
+                    <option value="">Select user…</option>
+                    {tenantMembers
+                      .filter((m) => m.id !== tenantModal.currentOwnerRow.id)
+                      .map((m) => (
+                        <option key={m.id} value={m.id}>
+                          {m.email}
+                          {m.full_name ? ` (${m.full_name})` : ""} — {m.roles?.join(", ") || "—"}
+                        </option>
+                      ))}
+                  </select>
+                </div>
+              ) : null}
+              <div>
+                <label className={dsLabelClass} htmlFor="tenant-demote">
+                  Demote previous owner to
+                </label>
+                <select
+                  id="tenant-demote"
+                  className={`mt-1.5 w-full max-w-xs ${INPUT}`}
+                  disabled={tenantBusy}
+                  value={demotePrev}
+                  onChange={(e) => setDemotePrev(e.target.value as "manager" | "worker")}
+                >
+                  <option value="manager">manager</option>
+                  <option value="worker">worker</option>
+                </select>
+              </div>
+              {tenantMembersLoading ? (
+                <div className="flex items-center gap-2 text-sm text-ds-muted">
+                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                  Loading company roster…
+                </div>
+              ) : null}
+              {tenantErr ? <p className="text-sm text-ds-danger">{tenantErr}</p> : null}
+              <div className="flex flex-wrap items-center justify-between gap-3 border-t border-ds-border pt-4">
+                <Link
+                  href={`/system/companies/${tenantModal.companyId}`}
+                  className="text-xs font-semibold text-ds-accent underline decoration-dotted underline-offset-2 hover:brightness-110"
+                >
+                  Open company settings
+                </Link>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    className={BTN_SECONDARY}
+                    disabled={tenantBusy}
+                    onClick={() => setTenantModal(null)}
+                  >
+                    Cancel
+                  </button>
+                  <button type="button" className={BTN_PRIMARY} disabled={tenantBusy} onClick={() => void submitTenantOwnerTransfer()}>
+                    {tenantBusy ? "Applying…" : "Apply transfer"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       ) : null}
 
       {activityOpen ? (
