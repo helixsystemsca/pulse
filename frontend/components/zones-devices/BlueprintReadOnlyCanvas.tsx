@@ -203,6 +203,11 @@ export type BlueprintReadOnlyCanvasProps = {
   theme: BlueprintReadOnlyTheme;
   /** Min height of the preview region */
   minHeight?: number;
+  /**
+   * When true, the host fills the parent height and the stage size follows the container
+   * (for flex / full-viewport layouts). When false, host height is fixed to `minHeight`.
+   */
+  sizeToContainer?: boolean;
   /** Optional wrapper className for the host container. */
   className?: string;
   /** If true, removes the default border + rounding for edge-to-edge embedding. */
@@ -237,6 +242,7 @@ export function BlueprintReadOnlyCanvas({
   layers = [],
   theme: themeName,
   minHeight = 420,
+  sizeToContainer = false,
   className = "",
   chromeLess = false,
   onSelectElementId,
@@ -285,21 +291,26 @@ export function BlueprintReadOnlyCanvas({
     [],
   );
 
-  /** Width from layout only; height stays `minHeight` to avoid ResizeObserver ↔ canvas size feedback loops. */
+  /**
+   * Width always from layout; height is either fixed `minHeight` or tracks the container when
+   * `sizeToContainer` is true (parent must establish height, e.g. flex-1 min-h-0).
+   */
   useLayoutEffect(() => {
     const el = hostRef.current;
     if (!el) return;
 
     const measure = () => {
-      const w = Math.max(320, Math.floor(el.getBoundingClientRect().width));
-      setSize((prev) => (prev.w === w && prev.h === minHeight ? prev : { w, h: minHeight }));
+      const r = el.getBoundingClientRect();
+      const w = Math.max(320, Math.floor(r.width));
+      const h = sizeToContainer ? Math.max(200, Math.floor(r.height)) : minHeight;
+      setSize((prev) => (prev.w === w && prev.h === h ? prev : { w, h }));
     };
 
     measure();
     const ro = new ResizeObserver(measure);
     ro.observe(el);
     return () => ro.disconnect();
-  }, [minHeight]);
+  }, [minHeight, sizeToContainer]);
 
   useLayoutEffect(() => {
     if (prevFitKeyRef.current !== fitResetKey) {
@@ -382,12 +393,18 @@ export function BlueprintReadOnlyCanvas({
       ref={hostRef}
       className={[
         "relative w-full overflow-hidden",
+        sizeToContainer ? "min-h-0 h-full" : "",
         chromeLess ? "" : "rounded-lg border border-ds-border",
         className,
       ]
         .filter(Boolean)
         .join(" ")}
-      style={{ height: minHeight, width: "100%", background: theme.canvasBg }}
+      style={{
+        height: sizeToContainer ? "100%" : minHeight,
+        minHeight: sizeToContainer ? minHeight : undefined,
+        width: "100%",
+        background: theme.canvasBg,
+      }}
     >
       <Stage
         ref={stageRef}

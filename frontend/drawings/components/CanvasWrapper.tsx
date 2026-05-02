@@ -65,6 +65,8 @@ type Props = {
   onStageViewport?: (v: StageViewport) => void;
   directedConnections?: boolean;
   snapConnectPreviewToAssets?: boolean;
+  /** Expand the Konva stage with the flex parent (fullscreen / kiosk). */
+  sizeCanvasToContainer?: boolean;
 };
 
 export function CanvasWrapper({
@@ -96,6 +98,7 @@ export function CanvasWrapper({
   onStageViewport,
   directedConnections = false,
   snapConnectPreviewToAssets = true,
+  sizeCanvasToContainer = false,
 }: Props) {
   const [hoverAssetId, setHoverAssetId] = useState<string | null>(null);
   const [hoverConnectionId, setHoverConnectionId] = useState<string | null>(null);
@@ -214,6 +217,7 @@ export function CanvasWrapper({
         }}
         onStageViewport={onStageViewport}
         minHeight={720}
+        sizeToContainer={sizeCanvasToContainer}
         chromeLess
       />
     </div>

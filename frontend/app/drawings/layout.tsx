@@ -1,4 +1,3 @@
-import { AppLayout } from "@/components/app/AppLayout";
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
@@ -9,6 +8,7 @@ export const metadata: Metadata = {
   description: "Multi-system infrastructure overlays on facility maps.",
 };
 
+/** Shared segment layout only — shell chrome lives in `(main)/layout.tsx`. */
 export default function DrawingsLayout({ children }: { children: ReactNode }) {
-  return <AppLayout mainClassName="bg-pulse-bg">{children}</AppLayout>;
+  return children;
 }

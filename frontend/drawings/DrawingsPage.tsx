@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { createPortal } from "react-dom";
+import { useRouter } from "next/navigation";
 import { apiFetch, isApiMode } from "@/lib/api";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Camera, LayoutGrid, Maximize2, Minimize2 } from "lucide-react";
@@ -56,7 +56,8 @@ function useDocumentDark(): boolean {
   return dark;
 }
 
-export default function DrawingsPage() {
+export default function DrawingsPage({ fullscreen = false }: { fullscreen?: boolean }) {
+  const router = useRouter();
   const isDark = useDocumentDark();
   const theme = isDark ? ("dark" as const) : ("light" as const);
   const { activeMode, setActiveMode, modeConfig } = useBuilderMode();
@@ -90,7 +91,6 @@ export default function DrawingsPage() {
   const [traceResult, setTraceResult] = useState<TraceRouteResult | null>(null);
 
   const [connectDraftFromId, setConnectDraftFromId] = useState<string | null>(null);
-  const [workspaceFullscreen, setWorkspaceFullscreen] = useState(false);
 
   useEffect(() => {
     if (primaryMode !== "connect") setConnectDraftFromId(null);
@@ -175,22 +175,22 @@ export default function DrawingsPage() {
   }, [activeProjectId]);
 
   useEffect(() => {
-    if (!workspaceFullscreen) return;
+    if (!fullscreen) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setWorkspaceFullscreen(false);
+      if (e.key === "Escape") router.push("/drawings");
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [workspaceFullscreen]);
+  }, [fullscreen, router]);
 
   useEffect(() => {
-    if (!workspaceFullscreen) return;
+    if (!fullscreen) return;
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => {
       document.body.style.overflow = prev;
     };
-  }, [workspaceFullscreen]);
+  }, [fullscreen]);
 
   useEffect(() => {
     if (!isApiMode() || !selectedBlueprintId || !activeProjectId) {
@@ -544,7 +544,7 @@ export default function DrawingsPage() {
     <div className="flex flex-wrap items-end justify-between gap-3">
       <div className="min-w-0">
         <p className="text-sm font-semibold text-ds-foreground">Infrastructure map</p>
-        <p className={`mt-0.5 text-xs text-ds-muted ${workspaceFullscreen ? "hidden sm:block" : ""}`}>
+        <p className={`mt-0.5 text-xs text-ds-muted ${fullscreen ? "hidden sm:block" : ""}`}>
           Unified Infrastructure Map Builder — structured assets, connections, and zones on your facility image.
         </p>
       </div>
@@ -668,7 +668,7 @@ export default function DrawingsPage() {
                 );
                 return (
                   <CanvasWrapper
-                    key={workspaceFullscreen ? "drawings-canvas-fs" : "drawings-canvas-inline"}
+                    key={fullscreen ? "drawings-canvas-fs" : "drawings-canvas-inline"}
                     elements={blueprintElements}
                     layers={blueprintLayers}
                     theme={theme}
@@ -715,6 +715,7 @@ export default function DrawingsPage() {
                     onStageViewport={setStageViewport}
                     directedConnections={modeConfig.graphRules.directedEdges}
                     snapConnectPreviewToAssets={modeConfig.interaction.snapConnectPreviewToAssets}
+                    sizeCanvasToContainer={fullscreen}
                   />
                 );
               })()}
@@ -756,45 +757,29 @@ export default function DrawingsPage() {
     </div>
   );
 
-  const fullscreenPortal =
-    workspaceFullscreen && typeof document !== "undefined"
-      ? createPortal(
-          <>
-            <div
-              className="fixed inset-0 z-[280] bg-black/50 backdrop-blur-[1px]"
-              aria-hidden
-              role="presentation"
-              onClick={() => setWorkspaceFullscreen(false)}
-            />
-            <div
-              className="fixed left-[max(0.5rem,env(safe-area-inset-left))] right-[max(0.5rem,env(safe-area-inset-right))] top-[max(0.5rem,env(safe-area-inset-top))] bottom-[max(0.5rem,env(safe-area-inset-bottom))] z-[290] flex min-h-0 flex-col overflow-hidden rounded-xl border border-ds-border/70 bg-ds-primary shadow-2xl sm:left-3 sm:right-3 sm:top-3 sm:bottom-3"
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby="drawings-workspace-title"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="flex shrink-0 flex-wrap items-start justify-between gap-2 border-b border-ds-border/70 bg-ds-secondary/10 px-3 py-2">
-                <div className="min-w-0 flex-1">{topBar}</div>
-                <button
-                  type="button"
-                  className="shrink-0 rounded-lg border border-ds-border/80 bg-ds-secondary/95 px-2.5 py-1.5 text-xs font-semibold text-ds-foreground shadow-sm hover:bg-ds-primary/90"
-                  onClick={() => setWorkspaceFullscreen(false)}
-                >
-                  <span className="inline-flex items-center gap-1.5">
-                    <Minimize2 className="h-3.5 w-3.5" aria-hidden />
-                    Exit fullscreen
-                  </span>
-                </button>
-              </div>
-              {(bpError || graph.error) ? (
-                <p className="shrink-0 border-b border-ds-border/60 px-3 py-2 text-sm text-ds-danger">{bpError ?? graph.error}</p>
-              ) : null}
-              <div className="flex min-h-0 min-w-0 flex-1 overflow-hidden">{workspaceChrome}</div>
-            </div>
-          </>,
-          document.body,
-        )
-      : null;
+  if (fullscreen) {
+    return (
+      <div className="flex h-full min-h-0 w-full flex-col overflow-hidden bg-background">
+        <div className="flex shrink-0 flex-wrap items-start justify-between gap-2 border-b border-ds-border/70 bg-ds-secondary/10 px-2 py-2 sm:px-3">
+          <div className="min-w-0 flex-1">{topBar}</div>
+          <button
+            type="button"
+            className="shrink-0 rounded-lg border border-ds-border/80 bg-ds-secondary/95 px-2.5 py-1.5 text-xs font-semibold text-ds-foreground shadow-sm hover:bg-ds-primary/90"
+            onClick={() => router.push("/drawings")}
+          >
+            <span className="inline-flex items-center gap-1.5">
+              <Minimize2 className="h-3.5 w-3.5" aria-hidden />
+              Exit fullscreen
+            </span>
+          </button>
+        </div>
+        {bpError || graph.error ? (
+          <p className="shrink-0 border-b border-ds-border/60 px-3 py-2 text-sm text-ds-danger">{bpError ?? graph.error}</p>
+        ) : null}
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">{workspaceChrome}</div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-0 w-full max-w-none flex-col gap-2">
@@ -806,7 +791,7 @@ export default function DrawingsPage() {
           <button
             type="button"
             className="ds-btn-secondary inline-flex items-center gap-2"
-            onClick={() => setWorkspaceFullscreen(true)}
+            onClick={() => router.push("/drawings/fullscreen")}
             title="Open map in fullscreen"
           >
             <Maximize2 className="h-4 w-4" aria-hidden />
@@ -815,20 +800,16 @@ export default function DrawingsPage() {
         }
       />
 
-      {!workspaceFullscreen ? (
-        <div className="rounded-md border border-ds-border/70 bg-ds-secondary/10 px-3 py-2">
-          {topBar}
-          {(bpError || graph.error) ? <p className="mt-3 text-sm text-ds-danger">{bpError ?? graph.error}</p> : null}
-        </div>
-      ) : null}
+      <div className="rounded-md border border-ds-border/70 bg-ds-secondary/10 px-3 py-2">
+        {topBar}
+        {bpError || graph.error ? (
+          <p className="mt-3 text-sm text-ds-danger">{bpError ?? graph.error}</p>
+        ) : null}
+      </div>
 
-      {!workspaceFullscreen ? (
-        <div className="relative flex min-h-[min(72vh,560px)] min-w-0 flex-1 overflow-hidden rounded-md border border-ds-border/70 bg-ds-primary sm:min-h-[min(76vh,640px)]">
-          {workspaceChrome}
-        </div>
-      ) : (
-        fullscreenPortal
-      )}
+      <div className="relative flex min-h-[min(72vh,560px)] min-w-0 flex-1 overflow-hidden rounded-md border border-ds-border/70 bg-ds-primary sm:min-h-[min(76vh,640px)]">
+        {workspaceChrome}
+      </div>
     </div>
   );
 }
