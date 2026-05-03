@@ -10,7 +10,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth.security import decode_token
 from app.core.database import get_db
-from app.core.user_roles import primary_jwt_role, roles_match_token, user_has_any_role
+from app.core.user_roles import (
+    primary_jwt_role,
+    roles_match_token,
+    user_has_any_role,
+    user_has_facility_tenant_admin_flag,
+    user_has_tenant_full_admin,
+)
 from app.core.events.engine import event_engine
 from app.core.features.service import FeatureFlagService
 from app.core.inference.engine import InferenceEngine
@@ -98,8 +104,8 @@ async def get_current_company_user(user: Annotated[User, Depends(get_current_use
 
 
 async def get_current_company_admin_user(user: Annotated[User, Depends(get_current_company_user)]) -> User:
-    """Company org admin only (not manager/supervisor/lead/worker). For destructive tenant operations."""
-    if not user_has_any_role(user, UserRole.company_admin):
+    """External `company_admin` or in-facility tenant delegate. For destructive tenant operations."""
+    if not user_has_tenant_full_admin(user):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="company_admin role required",
@@ -121,25 +127,37 @@ async def require_system_admin(user: Annotated[User, Depends(get_current_user)])
 
 
 async def require_company_admin(user: Annotated[User, Depends(get_current_user)]) -> User:
-    if not user_has_any_role(user, UserRole.system_admin, UserRole.company_admin):
+    if not (
+        user.is_system_admin
+        or user_has_any_role(user, UserRole.system_admin)
+        or user_has_tenant_full_admin(user)
+    ):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="company_admin only")
     return user
 
 
 async def require_company_admin_scoped(user: Annotated[User, Depends(get_current_user)]) -> User:
-    """Company admin within their org (not system_admin)."""
-    if UserRole.company_admin.value not in user.roles:
+    """Tenant full admin within their org: external `company_admin` role or facility delegate (not system_admin)."""
+    if user_has_any_role(user, UserRole.system_admin) or user.is_system_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Use tenant-scoped credentials (not system_admin) for this resource",
+        )
+    if not user_has_tenant_full_admin(user):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="company_admin only")
     return user
 
 
 async def require_manager_or_above(user: Annotated[User, Depends(get_current_user)]) -> User:
-    if not user_has_any_role(
-        user,
-        UserRole.system_admin,
-        UserRole.company_admin,
-        UserRole.manager,
-        UserRole.supervisor,
+    if not (
+        user_has_any_role(
+            user,
+            UserRole.system_admin,
+            UserRole.company_admin,
+            UserRole.manager,
+            UserRole.supervisor,
+        )
+        or user_has_facility_tenant_admin_flag(user)
     ):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="manager or above required")
     return user
@@ -171,7 +189,9 @@ def require_permission(permission: str) -> Callable[..., Awaitable[User]]:
         user: User = Depends(get_current_user),
         db: AsyncSession = Depends(get_db),
     ) -> User:
-        if user_has_any_role(user, UserRole.system_admin, UserRole.company_admin):
+        if user_has_any_role(user, UserRole.system_admin, UserRole.company_admin) or user_has_facility_tenant_admin_flag(
+            user
+        ):
             return user
         svc = PermissionService(db)
         if not await svc.user_has(user, permission):

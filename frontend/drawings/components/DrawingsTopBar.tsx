@@ -4,7 +4,7 @@ import { ChevronDown, Maximize2, Minimize2, Plus, Save } from "lucide-react";
 import { ProjectSelector } from "./ProjectSelector";
 import { cn } from "@/lib/cn";
 
-const MAP_CATEGORIES = ["General", "Floor plan", "Aerial", "Site", "Other"] as const;
+const MAP_CATEGORIES = ["General", "Facility map", "Floor plan", "Aerial", "Site", "Other"] as const;
 
 type MapSummary = {
   id: string;
@@ -16,9 +16,7 @@ const ctrlBase =
   "inline-flex h-8 shrink-0 items-center gap-1.5 rounded-[7px] border px-2.5 text-[12.5px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-45";
 
 export function DrawingsTopBar({
-  projectReady,
-  mapListLoading,
-  uploadBusy,
+  mapsToolbarDisabled,
   activeProjectId,
   setActiveProjectId,
   maps,
@@ -33,9 +31,8 @@ export function DrawingsTopBar({
   onEnterFullscreen,
   onExitFullscreen,
 }: {
-  projectReady: boolean;
-  mapListLoading: boolean;
-  uploadBusy: boolean;
+  /** When true, map picker / upload / category controls are disabled (e.g. offline or busy). */
+  mapsToolbarDisabled: boolean;
   activeProjectId: string | null;
   setActiveProjectId: (id: string | null) => void;
   maps: MapSummary[];
@@ -50,8 +47,6 @@ export function DrawingsTopBar({
   onEnterFullscreen: () => void;
   onExitFullscreen: () => void;
 }) {
-  const busy = mapListLoading || uploadBusy;
-
   const grouped = (() => {
     const m = new Map<string, MapSummary[]>();
     for (const map of maps) {
@@ -72,38 +67,31 @@ export function DrawingsTopBar({
 
         <span className="hidden h-5 w-px shrink-0 bg-[#d0d6df] sm:block dark:bg-ds-border" aria-hidden />
 
-        <div className="order-last flex w-full min-w-0 flex-1 basis-full items-center gap-1.5 sm:order-none sm:w-auto sm:basis-auto sm:min-w-0">
-          <ProjectSelector
-            variant="toolbar"
-            value={activeProjectId}
-            onChange={setActiveProjectId}
-            disabled={mapListLoading}
-          />
-
+        <div className="order-last flex w-full min-w-0 flex-1 basis-full flex-wrap items-center gap-1.5 sm:order-none sm:w-auto sm:basis-auto sm:min-w-0 sm:flex-nowrap">
           <button
             type="button"
             className={cn(
               ctrlBase,
               "border-[#b2f0e0] bg-[#e6faf5] text-[#0fa07e] hover:border-[#1ec8a0] hover:bg-[#c8f5e8] hover:shadow-[0_0_0_3px_rgba(30,200,160,0.1)] dark:border-emerald-500/40 dark:bg-emerald-950/40 dark:text-emerald-200",
             )}
-            disabled={!projectReady || busy}
+            disabled={mapsToolbarDisabled}
             onClick={onUploadNewMap}
-            title="Upload a new map image"
+            title="Upload an image — first step for a new facility map"
           >
             <Plus className="h-3.5 w-3.5 shrink-0" strokeWidth={2} aria-hidden />
-            <span className="hidden sm:inline">New map</span>
+            <span className="hidden sm:inline">Upload image</span>
           </button>
 
           <div className="relative flex shrink-0 items-center">
             <select
               className={cn(
                 ctrlBase,
-                "w-[124px] cursor-pointer appearance-none border-[#c5d6f5] bg-[#eef3fd] pr-7 text-[#2a5faf] hover:border-[#3a7bd5] hover:bg-[#dce9fb] dark:border-blue-500/40 dark:bg-blue-950/35 dark:text-blue-200",
+                "w-[128px] cursor-pointer appearance-none border-[#c5d6f5] bg-[#eef3fd] pr-7 text-[#2a5faf] hover:border-[#3a7bd5] hover:bg-[#dce9fb] dark:border-blue-500/40 dark:bg-blue-950/35 dark:text-blue-200",
               )}
               value={newMapCategory}
               onChange={(e) => onNewMapCategoryChange(e.target.value)}
-              disabled={!projectReady || busy}
-              title="Category for the next uploaded map"
+              disabled={mapsToolbarDisabled}
+              title="Category for the next uploaded map (e.g. Facility map for building / zone layouts)"
               aria-label="Map category for new uploads"
             >
               {MAP_CATEGORIES.map((c) => (
@@ -117,7 +105,7 @@ export function DrawingsTopBar({
             </span>
           </div>
 
-          <div className="relative min-w-0 flex-1">
+          <div className="relative min-w-0 flex-1 basis-[min(100%,12rem)] sm:basis-auto">
             <select
               className={cn(
                 ctrlBase,
@@ -134,7 +122,7 @@ export function DrawingsTopBar({
                 }
                 onMapChange(v);
               }}
-              disabled={!projectReady || busy}
+              disabled={mapsToolbarDisabled}
             >
               <option value="">Select map…</option>
               {grouped.map(([cat, list]) => (
@@ -151,6 +139,20 @@ export function DrawingsTopBar({
             <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[#96a0b0] dark:text-ds-muted">
               <ChevronDown className="h-3.5 w-3.5" aria-hidden />
             </span>
+          </div>
+
+          <span className="hidden h-5 w-px shrink-0 bg-[#d0d6df] sm:block dark:bg-ds-border" aria-hidden />
+
+          <div className="flex min-w-0 max-w-[200px] shrink items-center gap-1.5 sm:max-w-[220px]">
+            <span className="hidden shrink-0 text-[10px] font-medium uppercase tracking-wide text-[#96a0b0] lg:inline dark:text-ds-muted">
+              Project
+            </span>
+            <ProjectSelector
+              variant="toolbar"
+              value={activeProjectId}
+              onChange={setActiveProjectId}
+              disabled={mapsToolbarDisabled}
+            />
           </div>
         </div>
 

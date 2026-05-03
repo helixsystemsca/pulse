@@ -70,6 +70,7 @@ class SystemUserRow(BaseModel):
     is_company_owner: bool = False
     is_active: bool
     can_use_pm_features: bool = False
+    facility_tenant_admin: bool = False
     last_login: Optional[str]
     last_active_at: Optional[str] = None
     last_login_city: Optional[str] = None

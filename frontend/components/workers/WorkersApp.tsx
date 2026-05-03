@@ -269,8 +269,14 @@ export function WorkersApp() {
   const sessionCompanyId = session?.company_id ?? null;
   const createRoleLimited = isCreateRoleLimitedSession(session);
   const isCompanyAdmin = sessionHasAnyRole(session, "company_admin");
-  // Team Management is administrative control only (no gamification UI).
-  const canOpenWorkers = isSystemAdmin || isCompanyAdmin;
+  /** External IT `company_admin` role or in-facility delegate (`facility_tenant_admin` from sysadmin). */
+  const isTenantFullAdmin = isCompanyAdmin || Boolean(session?.facility_tenant_admin);
+  /** Matches `/auth/me` → `workers_roster_access` (company admin + delegated roles from workers settings). */
+  const canOpenWorkers = Boolean(
+    isSystemAdmin ||
+      session?.workers_roster_access ||
+      (session?.workers_roster_access !== false && isTenantFullAdmin),
+  );
 
   const [contractFeatureNamesFromApi, setContractFeatureNamesFromApi] = useState<string[]>([]);
   const contractCatalog = useMemo(
@@ -498,30 +504,30 @@ export function WorkersApp() {
   /** HR fields (not roles/modules): company admin, or manager/supervisor for non-admin profiles, or lead for workers. */
   const canEditWorkerBasics = useMemo(() => {
     if (!profile || !session) return false;
-    if (isCompanyAdmin) return true;
+    if (isTenantFullAdmin) return true;
     if (principalHasAnyRole(profile, "company_admin")) return false;
     if (managerOrAbove(session)) return true;
     if (sessionHasAnyRole(session, "lead") && principalHasAnyRole(profile, "worker")) return true;
     return false;
-  }, [profile, session, isCompanyAdmin]);
+  }, [profile, session, isTenantFullAdmin]);
 
   /** Soft-remove from roster (PATCH is_active); matches server rules for company_admin / manager / supervisor. */
   const canDeactivateProfile = useMemo(() => {
     if (!profile || !session?.sub) return false;
     if (profile.id === session.sub) return false;
     if (principalHasAnyRole(profile, "company_admin")) return false;
-    if (isCompanyAdmin) return true;
+    if (isTenantFullAdmin) return true;
     if (managerOrAbove(session) && principalHasAnyRole(profile, "worker", "lead")) return true;
     return false;
-  }, [profile, session, isCompanyAdmin]);
+  }, [profile, session, isTenantFullAdmin]);
 
   /** Hard-delete roster user (API enforces company / system admin). */
   const canDeleteWorkerProfile = useMemo(() => {
     if (!profile || !session?.sub) return false;
     if (profile.id === session.sub) return false;
     if (principalHasAnyRole(profile, "company_admin")) return false;
-    return isCompanyAdmin || isSystemAdmin;
-  }, [profile, session, isCompanyAdmin, isSystemAdmin]);
+    return isTenantFullAdmin || isSystemAdmin;
+  }, [profile, session, isTenantFullAdmin, isSystemAdmin]);
 
   const clearProfileQueryFromUrl = useCallback(() => {
     const q = new URLSearchParams(searchParams.toString());
@@ -582,7 +588,7 @@ export function WorkersApp() {
     return order.map((role) => ({ role, items: m.get(role) ?? [] }));
   }, [list]);
 
-  const canDeleteInvitedFromList = isCompanyAdmin || isSystemAdmin;
+  const canDeleteInvitedFromList = isTenantFullAdmin || isSystemAdmin;
 
   const supervisors = useMemo(
     () =>
@@ -701,7 +707,7 @@ export function WorkersApp() {
   }
 
   async function saveAccessPolicy() {
-    if (!effectiveCompanyId || !isCompanyAdmin) return;
+    if (!effectiveCompanyId || !isTenantFullAdmin) return;
     setAccessPolicySaving(true);
     try {
       const r = await patchWorkerSettings(apiCompany, {
@@ -721,7 +727,7 @@ export function WorkersApp() {
   }
 
   async function saveExtraModules() {
-    if (!profileId || !profile || !isCompanyAdmin || principalHasAnyRole(profile, "company_admin")) return;
+    if (!profileId || !profile || !isTenantFullAdmin || principalHasAnyRole(profile, "company_admin")) return;
     setProfileBusy(true);
     try {
       await patchWorker(apiCompany, profileId, { feature_allow_extra: extraModulesDraft });
@@ -756,7 +762,7 @@ export function WorkersApp() {
     if (trim(basicDraft.full_name) !== (profile.full_name ?? "").trim()) {
       payload.full_name = trim(basicDraft.full_name) || null;
     }
-    if (isCompanyAdmin && trim(basicDraft.email).toLowerCase() !== profile.email.trim().toLowerCase()) {
+    if (isTenantFullAdmin && trim(basicDraft.email).toLowerCase() !== profile.email.trim().toLowerCase()) {
       if (!trim(basicDraft.email)) {
         window.alert("Email cannot be empty.");
         return;
@@ -824,7 +830,7 @@ export function WorkersApp() {
   }
 
   async function saveProfileRoles() {
-    if (!profileId || !profile || !isCompanyAdmin) return;
+    if (!profileId || !profile || !isTenantFullAdmin) return;
     if (principalHasAnyRole(profile, "company_admin")) return;
     const uniq = [...new Set(profileRolesDraft.map((r) => r.trim()).filter(Boolean))];
     if (uniq.length < 1) return;
@@ -839,7 +845,7 @@ export function WorkersApp() {
   }
 
   async function saveSettingsModal() {
-    if (!effectiveCompanyId || !isCompanyAdmin) return;
+    if (!effectiveCompanyId || !isTenantFullAdmin) return;
     setSettingsBusy(true);
     try {
       let rules: unknown = [];
@@ -916,8 +922,8 @@ export function WorkersApp() {
   if (!canOpenWorkers) {
     return (
       <p className="text-sm text-pulse-muted">
-        You do not have access to Team Management. Company administrators can open this page and, when needed, delegate
-        access to managers, supervisors, or leads.
+        You do not have access to Team Management. A company administrator can enable it for your role under Team
+        Management → Edit roles → “Who can open this page” (managers, supervisors, or leads).
       </p>
     );
   }
@@ -938,7 +944,7 @@ export function WorkersApp() {
                 setCertRulesText(JSON.stringify(fullSettings.certification_rules ?? [], null, 2));
                 setSettingsOpen(true);
               }}
-              disabled={!dataEnabled || !isCompanyAdmin}
+              disabled={!dataEnabled || !isTenantFullAdmin}
             >
               Edit roles
             </button>
@@ -1078,7 +1084,7 @@ export function WorkersApp() {
       ) : (
         <div className="mt-6 grid gap-6 lg:grid-cols-12">
           <div className="flex flex-col gap-6 lg:col-span-4 xl:col-span-3">
-            {isCompanyAdmin && contractCatalog.length > 0 ? (
+            {isTenantFullAdmin && contractCatalog.length > 0 ? (
               <Card variant="secondary" padding="md">
                 <h2 className="text-sm font-bold tracking-tight text-ds-foreground">Delegate Workers &amp; Roles page</h2>
                 <p className="mt-1 text-xs text-ds-muted">
@@ -1108,7 +1114,7 @@ export function WorkersApp() {
               </Card>
             ) : null}
 
-            {isCompanyAdmin && contractCatalog.length > 0 ? (
+            {isTenantFullAdmin && contractCatalog.length > 0 ? (
               <Card variant="secondary" padding="md">
                 <h2 className="text-sm font-bold tracking-tight text-ds-foreground">Permissions</h2>
                 <p className="mt-1 text-xs text-ds-muted">
@@ -1140,9 +1146,9 @@ export function WorkersApp() {
                           type="button"
                           role="switch"
                           aria-checked={on}
-                          disabled={!isCompanyAdmin}
+                          disabled={!isTenantFullAdmin}
                           onClick={() =>
-                            isCompanyAdmin ? toggleRoleModule(permissionsRole, mod) : undefined
+                            isTenantFullAdmin ? toggleRoleModule(permissionsRole, mod) : undefined
                           }
                           className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${
                             on ? "bg-ds-success" : "bg-ds-border"
@@ -1172,7 +1178,7 @@ export function WorkersApp() {
               </Card>
             ) : null}
 
-            {isCompanyAdmin ? (
+            {isTenantFullAdmin ? (
               <Card variant="secondary" padding="md">
                 <h2 className="text-sm font-bold tracking-tight text-ds-foreground">Procedure editing</h2>
                 <p className="mt-1 text-xs text-ds-muted">
@@ -1208,7 +1214,7 @@ export function WorkersApp() {
               </Card>
             ) : null}
 
-            {isCompanyAdmin ? null : (
+            {isTenantFullAdmin ? null : (
               <p className="ds-inset-panel px-3 py-2 text-xs text-ds-muted">
                 Workers settings and contract-scoped module access are managed by a company administrator.
               </p>
@@ -1673,7 +1679,7 @@ export function WorkersApp() {
                         autoComplete="name"
                       />
                     </div>
-                    {isCompanyAdmin ? (
+                    {isTenantFullAdmin ? (
                       <div className="sm:col-span-2">
                         <label className={LABEL} htmlFor="worker-profile-email">
                           Email
@@ -1775,7 +1781,7 @@ export function WorkersApp() {
               </div>
             </section>
 
-            {isCompanyAdmin && !principalHasAnyRole(profile, "company_admin") ? (
+            {isTenantFullAdmin && !principalHasAnyRole(profile, "company_admin") ? (
               <section>
                 <h3 className={SECTION_KICKER}>Edit roles</h3>
                 <p className="mt-1 text-xs text-pulse-muted">
@@ -1806,7 +1812,7 @@ export function WorkersApp() {
               </section>
             ) : null}
 
-            {isCompanyAdmin && !principalHasAnyRole(profile, "company_admin") && contractCatalog.length > 0 ? (
+            {isTenantFullAdmin && !principalHasAnyRole(profile, "company_admin") && contractCatalog.length > 0 ? (
               <section>
                 <h3 className={SECTION_KICKER}>Extra module access</h3>
                 <p className="mt-1 text-xs text-pulse-muted">
@@ -2127,11 +2133,11 @@ export function WorkersApp() {
               </div>
             </section>
 
-            {isCompanyAdmin || canDeactivateProfile ? (
+            {isTenantFullAdmin || canDeactivateProfile ? (
               <section>
                 <h3 className={SECTION_KICKER}>Account</h3>
                 <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-                  {isCompanyAdmin ? (
+                  {isTenantFullAdmin ? (
                     <button
                       type="button"
                       className={cn(buttonVariants({ surface: "light", intent: "secondary" }), "px-4 py-2 text-sm font-semibold")}

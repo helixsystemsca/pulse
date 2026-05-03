@@ -1,4 +1,40 @@
 import type { TaskRow } from "@/lib/projectsService";
+import { parseLocalDate } from "@/lib/schedule/calendar";
+
+const MS_PER_DAY = 86_400_000;
+
+function startOfLocalDay(d: Date): Date {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+}
+
+/** Earliest wall-calendar anchor for a task (matches Gantt / PM adapter). */
+function parseTaskEarliestAnchor(task: TaskRow): Date | null {
+  if (task.planned_start_at?.trim()) {
+    const d = new Date(task.planned_start_at);
+    return Number.isFinite(d.getTime()) ? d : null;
+  }
+  if (task.start_date?.trim()) {
+    try {
+      return parseLocalDate(task.start_date.trim());
+    } catch {
+      const d = new Date(`${task.start_date.trim()}T12:00:00`);
+      return Number.isFinite(d.getTime()) ? d : null;
+    }
+  }
+  return null;
+}
+
+/**
+ * Minimum CPM early-start (day offset from `projectOrigin`) implied by planned `start_date` /
+ * `planned_start_at`. When `projectOrigin` is omitted, returns 0 (classic CPM).
+ */
+export function taskCalendarEarliestEsDays(task: TaskRow, projectOrigin: Date): number {
+  const anchor = parseTaskEarliestAnchor(task);
+  if (!anchor) return 0;
+  const deltaMs = startOfLocalDay(anchor).getTime() - startOfLocalDay(projectOrigin).getTime();
+  const days = deltaMs / MS_PER_DAY;
+  return Number.isFinite(days) ? Math.max(0, days) : 0;
+}
 
 /** Task workstream for Gantt / CPM UI (API may send `category`; else derived from `phase_group`). */
 export type TaskCategory = "planning" | "execution" | "cleanup" | "reflection" | "other";
@@ -65,11 +101,20 @@ export type CPMResult = {
 
 const SLACK_EPS = 1e-4;
 
+export type ComputeCPMOptions = {
+  /**
+   * When set, each task's ES is at least the calendar offset of its planned start from this
+   * origin (in addition to predecessor finishes). Unblocks PM planning / Gantt when tasks have
+   * wall dates but a short dependency chain.
+   */
+  calendarProjectStart?: Date;
+};
+
 /**
  * Classic CPM (ES/EF forward, LS/LF backward) on task rows using `depends_on_task_ids`.
  * Same task list as Gantt; durations match `taskDurationDaysForCPM`.
  */
-export function computeCPM(tasks: TaskRow[]): CPMResult {
+export function computeCPM(tasks: TaskRow[], opts?: ComputeCPMOptions): CPMResult {
   const byId = new Map(tasks.map((t) => [t.id, t]));
   const ids = tasks.map((t) => t.id);
   const idSet = new Set(ids);
@@ -105,11 +150,14 @@ export function computeCPM(tasks: TaskRow[]): CPMResult {
 
   const hasCycle = topo.length !== ids.length;
 
+  const origin = opts?.calendarProjectStart;
   const es = new Map<string, number>();
   const ef = new Map<string, number>();
   for (const id of topo) {
     const pList = preds.get(id) ?? [];
-    const esVal = pList.length === 0 ? 0 : Math.max(...pList.map((p) => ef.get(p) ?? 0));
+    const predEs = pList.length === 0 ? 0 : Math.max(...pList.map((p) => ef.get(p) ?? 0));
+    const floor = origin ? taskCalendarEarliestEsDays(byId.get(id)!, origin) : 0;
+    const esVal = Math.max(floor, predEs);
     const d = taskDurationDaysForCPM(byId.get(id)!);
     es.set(id, esVal);
     ef.set(id, esVal + d);

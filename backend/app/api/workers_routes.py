@@ -21,6 +21,7 @@ from app.core.user_roles import (
     default_operational_role_for_invite_role,
     primary_jwt_role,
     user_has_any_role,
+    user_has_facility_tenant_admin_flag,
     user_roles_subset_of,
     validate_tenant_roles_non_empty,
 )
@@ -113,7 +114,7 @@ async def require_company_admin_for_workers_settings(
 ) -> User:
     if user_has_any_role(user, UserRole.system_admin) or user.is_system_admin:
         return user
-    if UserRole.company_admin.value not in user.roles:
+    if not user_has_any_role(user, UserRole.company_admin) and not user_has_facility_tenant_admin_flag(user):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only company administrators can update workers settings.",
@@ -197,7 +198,9 @@ async def _assert_valid_supervisor(db: AsyncSession, cid: str, supervisor_id: Op
         raise HTTPException(status_code=400, detail="Unknown supervisor")
     if u.account_status != UserAccountStatus.active or not u.is_active:
         raise HTTPException(status_code=400, detail="Supervisor must be an active user")
-    if not user_has_any_role(u, UserRole.supervisor, UserRole.manager, UserRole.company_admin):
+    if not user_has_any_role(u, UserRole.supervisor, UserRole.manager, UserRole.company_admin) and not user_has_facility_tenant_admin_flag(
+        u
+    ):
         raise HTTPException(
             status_code=400,
             detail="Supervisor must be a manager, supervisor, or company admin",
@@ -386,7 +389,7 @@ async def _sync_training(db: AsyncSession, cid: str, user_id: str, items: list[A
 def _patch_actor_can_touch_target(actor: User, target: User) -> None:
     if user_has_any_role(actor, UserRole.system_admin) or actor.is_system_admin:
         return
-    if user_has_any_role(actor, UserRole.company_admin):
+    if user_has_any_role(actor, UserRole.company_admin) or user_has_facility_tenant_admin_flag(actor):
         return
     if user_has_any_role(actor, UserRole.manager, UserRole.supervisor):
         if not user_roles_subset_of(target, (UserRole.worker, UserRole.lead)):
@@ -705,7 +708,7 @@ async def create_worker(
 ) -> WorkerCreateResultOut:
     if user_has_any_role(actor, UserRole.system_admin) or actor.is_system_admin:
         pass
-    elif user_has_any_role(actor, UserRole.company_admin):
+    elif user_has_any_role(actor, UserRole.company_admin) or user_has_facility_tenant_admin_flag(actor):
         if body.role not in _company_admin_creatable_roles():
             raise HTTPException(
                 status_code=403,
@@ -882,7 +885,7 @@ async def patch_worker(
     data = body.model_dump(exclude_unset=True)
 
     if "email" in data and data["email"] is not None:
-        if not user_has_any_role(actor, UserRole.company_admin):
+        if not user_has_any_role(actor, UserRole.company_admin) and not user_has_facility_tenant_admin_flag(actor):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Only company administrators can change sign-in email",
@@ -896,7 +899,7 @@ async def patch_worker(
             target.email = new_email
 
     if body.roles is not None:
-        if not user_has_any_role(actor, UserRole.company_admin):
+        if not user_has_any_role(actor, UserRole.company_admin) and not user_has_facility_tenant_admin_flag(actor):
             raise HTTPException(status_code=403, detail="Only company_admin can change roles")
         if user_has_any_role(target, UserRole.company_admin):
             raise HTTPException(status_code=400, detail="Cannot reassign company_admin role here")
@@ -908,7 +911,7 @@ async def patch_worker(
             raise HTTPException(status_code=400, detail="Cannot promote to company_admin via this endpoint")
         target.roles = new_roles
     elif "role" in data and data["role"]:
-        if not user_has_any_role(actor, UserRole.company_admin):
+        if not user_has_any_role(actor, UserRole.company_admin) and not user_has_facility_tenant_admin_flag(actor):
             raise HTTPException(status_code=403, detail="Only company_admin can change roles")
         new_r = UserRole(data["role"])
         if user_has_any_role(target, UserRole.company_admin):
@@ -1018,8 +1021,10 @@ async def patch_worker(
         await _sync_training(db, cid, user_id, body.training)
 
     if body.feature_allow_extra is not None:
-        if not user_has_any_role(actor, UserRole.company_admin) and not (
-            user_has_any_role(actor, UserRole.system_admin) or actor.is_system_admin
+        if (
+            not user_has_any_role(actor, UserRole.company_admin)
+            and not user_has_facility_tenant_admin_flag(actor)
+            and not (user_has_any_role(actor, UserRole.system_admin) or actor.is_system_admin)
         ):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,

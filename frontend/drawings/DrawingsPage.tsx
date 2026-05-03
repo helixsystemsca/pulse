@@ -50,7 +50,7 @@ type MapDetail = {
   tasks?: Array<{ id: string; title: string; mode: string; content: string | string[]; linked_element_ids: string[] }>;
 };
 
-const TOOLS_LOCKED_HINT = "Select a map with an image to use drawing tools";
+const TOOLS_LOCKED_HINT = "Upload or select a map image to use drawing tools";
 const MAX_BASE_IMAGE_WORLD = 4200;
 
 function readFileAsDataUrl(file: File): Promise<string> {
@@ -185,9 +185,6 @@ export default function DrawingsPage({ fullscreen = false }: { fullscreen?: bool
   const [activeMapId, setActiveMapId] = useState<string>("");
   const [newMapCategory, setNewMapCategory] = useState<string>("General");
 
-  // Graph is scoped to the active facility map (server `map_id`).
-  const graph = useInfrastructureGraph(activeProjectId, activeMapId || null);
-
   const [mapDetail, setMapDetail] = useState<MapDetail | null>(null);
   const [mapListLoading, setMapListLoading] = useState(false);
   const [mapDetailLoading, setMapDetailLoading] = useState(false);
@@ -197,8 +194,23 @@ export default function DrawingsPage({ fullscreen = false }: { fullscreen?: bool
   const uploadCreatesNewMapRef = useRef(false);
   const [baseWorldSize, setBaseWorldSize] = useState<{ w: number; h: number } | null>(null);
 
+  /** Pulse project for graph API — null for tenant-level facility maps (no project link). */
+  const graphProjectId = useMemo(() => {
+    const mid = activeMapId.trim();
+    if (!mid) return null;
+    if (mapDetail?.id === mid) {
+      const p = mapDetail.project_id;
+      return p != null && String(p).trim() ? String(p).trim() : null;
+    }
+    const row = maps.find((m) => m.id === mid);
+    const p = row?.project_id;
+    return p != null && String(p).trim() ? String(p).trim() : null;
+  }, [activeMapId, mapDetail, maps]);
+
+  const graph = useInfrastructureGraph(graphProjectId, activeMapId.trim() || null);
+
   useEffect(() => {
-    if (!isApiMode() || !activeProjectId) {
+    if (!isApiMode()) {
       setMaps([]);
       setActiveMapId("");
       setMapError(null);
@@ -209,7 +221,10 @@ export default function DrawingsPage({ fullscreen = false }: { fullscreen?: bool
     setMapError(null);
     void (async () => {
       try {
-        const list = await apiFetch<MapSummary[]>(`/api/maps?project_id=${encodeURIComponent(activeProjectId)}`);
+        const listUrl = activeProjectId
+          ? `/api/maps?project_id=${encodeURIComponent(activeProjectId)}`
+          : `/api/maps`;
+        const list = await apiFetch<MapSummary[]>(listUrl);
         if (cancel) return;
         setMaps(list);
         setActiveMapId((cur) => (cur && list.some((m) => m.id === cur) ? cur : list[0]?.id ?? ""));
@@ -270,7 +285,7 @@ export default function DrawingsPage({ fullscreen = false }: { fullscreen?: bool
   }, [fullscreen]);
 
   useEffect(() => {
-    if (!isApiMode() || !activeMapId || !activeProjectId) {
+    if (!isApiMode() || !activeMapId.trim()) {
       setMapDetail(null);
       return;
     }
@@ -279,9 +294,7 @@ export default function DrawingsPage({ fullscreen = false }: { fullscreen?: bool
     setMapError(null);
     void (async () => {
       try {
-        const d = await apiFetch<MapDetail>(
-          `/api/maps/${activeMapId}?project_id=${encodeURIComponent(activeProjectId)}`,
-        );
+        const d = await apiFetch<MapDetail>(`/api/maps/${encodeURIComponent(activeMapId.trim())}`);
         if (!cancel && d.id === activeMapId) setMapDetail(d);
       } catch (e: unknown) {
         if (!cancel) setMapError(e instanceof Error ? e.message : "Failed to load map");
@@ -292,7 +305,7 @@ export default function DrawingsPage({ fullscreen = false }: { fullscreen?: bool
     return () => {
       cancel = true;
     };
-  }, [activeMapId, activeProjectId]);
+  }, [activeMapId]);
 
   const mapLoading = mapListLoading || mapDetailLoading;
 
@@ -324,8 +337,8 @@ export default function DrawingsPage({ fullscreen = false }: { fullscreen?: bool
 
   const persistMapElements = useCallback(
     async (next: BlueprintElement[]) => {
-      if (!mapDetail || !isApiMode() || !activeProjectId) return;
-      const updated = await apiFetch<MapDetail>(`/api/maps/${mapDetail.id}?project_id=${encodeURIComponent(activeProjectId)}`, {
+      if (!mapDetail || !isApiMode()) return;
+      const updated = await apiFetch<MapDetail>(`/api/maps/${encodeURIComponent(mapDetail.id)}`, {
         method: "PUT",
         json: {
           name: mapDetail.name,
@@ -338,7 +351,7 @@ export default function DrawingsPage({ fullscreen = false }: { fullscreen?: bool
       });
       setMapDetail(updated);
     },
-    [activeProjectId, mapDetail, blueprintLayers],
+    [mapDetail, blueprintLayers],
   );
 
   function editableBlueprintElements(): BlueprintElement[] {
@@ -370,7 +383,7 @@ export default function DrawingsPage({ fullscreen = false }: { fullscreen?: bool
     setCanvasNavMode("select");
     if (!activeMapId || !hasBaseImage) return;
     if (tool === "trace") {
-      if (!modeConfig.ui.showTraceRoute || !activeProjectId || !activeMapId) return;
+      if (!modeConfig.ui.showTraceRoute || !activeMapId.trim()) return;
       const willEnable = !traceMode;
       void onTraceRoute();
       setActiveTool(willEnable ? "trace" : "select");
@@ -474,7 +487,7 @@ export default function DrawingsPage({ fullscreen = false }: { fullscreen?: bool
     async (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
       e.target.value = "";
-      if (!file?.type.startsWith("image/") || !isApiMode() || !activeProjectId || uploadBusy) return;
+      if (!file?.type.startsWith("image/") || !isApiMode() || uploadBusy) return;
       const createNew = uploadCreatesNewMapRef.current;
       uploadCreatesNewMapRef.current = false;
       setUploadBusy(true);
@@ -493,11 +506,12 @@ export default function DrawingsPage({ fullscreen = false }: { fullscreen?: bool
         const baseName = file.name.replace(/\.[^/.]+$/, "") || "Map";
 
         if (createNew || !mapDetail) {
+          const pid = activeProjectId?.trim() || null;
           const created = await apiFetch<MapDetail>("/api/maps", {
             method: "POST",
             json: {
               name: baseName,
-              project_id: activeProjectId,
+              project_id: pid,
               category: newMapCategory.trim() || "General",
               image_url: dataUrl,
               elements: [],
@@ -510,7 +524,7 @@ export default function DrawingsPage({ fullscreen = false }: { fullscreen?: bool
             {
               id: created.id,
               name: created.name,
-              project_id: created.project_id ?? activeProjectId,
+              project_id: created.project_id ?? pid,
               category: created.category,
               created_at: created.created_at,
               updated_at: created.updated_at,
@@ -522,20 +536,17 @@ export default function DrawingsPage({ fullscreen = false }: { fullscreen?: bool
           const withoutBase = mapDetail.elements
             .map(mapApiElement)
             .filter((el) => el.symbol_type !== DRAWINGS_BASE_IMAGE_SYMBOL && !hiddenBlueprintElementIds.has(el.id));
-          const updated = await apiFetch<MapDetail>(
-            `/api/maps/${mapDetail.id}?project_id=${encodeURIComponent(activeProjectId)}`,
-            {
-              method: "PUT",
-              json: {
-                name: mapDetail.name,
-                category: mapDetail.category,
-                image_url: dataUrl,
-                elements: toApiPayload(withoutBase),
-                tasks: mapDetail.tasks ?? [],
-                layers: blueprintLayers,
-              },
+          const updated = await apiFetch<MapDetail>(`/api/maps/${encodeURIComponent(mapDetail.id)}`, {
+            method: "PUT",
+            json: {
+              name: mapDetail.name,
+              category: mapDetail.category,
+              image_url: dataUrl,
+              elements: toApiPayload(withoutBase),
+              tasks: mapDetail.tasks ?? [],
+              layers: blueprintLayers,
             },
-          );
+          });
           setMapDetail(updated);
         }
         setSelectedBlueprintElementId(null);
@@ -551,7 +562,7 @@ export default function DrawingsPage({ fullscreen = false }: { fullscreen?: bool
   );
 
   const handleSaveMap = useCallback(async () => {
-    if (!mapDetail || !isApiMode() || !activeProjectId) return;
+    if (!mapDetail || !isApiMode()) return;
     setMapError(null);
     try {
       const next = mapDetail.elements.map(mapApiElement).filter((e) => !hiddenBlueprintElementIds.has(e.id));
@@ -559,7 +570,7 @@ export default function DrawingsPage({ fullscreen = false }: { fullscreen?: bool
     } catch (err: unknown) {
       setMapError(err instanceof Error ? err.message : "Save failed");
     }
-  }, [activeProjectId, mapDetail, hiddenBlueprintElementIds, persistMapElements]);
+  }, [mapDetail, hiddenBlueprintElementIds, persistMapElements]);
 
   useEffect(() => {
     if (!hasBaseImage && traceMode) {
@@ -571,7 +582,7 @@ export default function DrawingsPage({ fullscreen = false }: { fullscreen?: bool
   }, [hasBaseImage, traceMode]);
 
   const mapSemantic = useMemo(() => {
-    if (!isApiMode() || !mapDetail || !activeProjectId || !activeMapId || mapDetail.id !== activeMapId) return null;
+    if (!isApiMode() || !mapDetail || !activeMapId.trim() || mapDetail.id !== activeMapId.trim()) return null;
 
     return {
       viewport: stageViewport,
@@ -757,12 +768,11 @@ export default function DrawingsPage({ fullscreen = false }: { fullscreen?: bool
     stageViewport,
     traceMode,
     modeConfig,
-    activeProjectId,
     activeMapId,
     canvasNavMode,
   ]);
 
-  const projectReady = Boolean(activeProjectId);
+  const apiConnected = Boolean(isApiMode());
 
   const traceStartLabel = useMemo(() => {
     if (!traceStartId) return null;
@@ -774,7 +784,7 @@ export default function DrawingsPage({ fullscreen = false }: { fullscreen?: bool
     return graph.assetsById.get(traceEndId)?.name ?? traceEndId.slice(0, 8);
   }, [graph.assetsById, traceEndId]);
 
-  const toolsLocked = Boolean(projectReady && isApiMode() && (!activeMapId || !mapDetail || !hasBaseImage));
+  const toolsLocked = Boolean(isApiMode() && (!activeMapId.trim() || !mapDetail || !hasBaseImage));
 
   const workspaceChrome = (
     <div className="flex min-h-0 min-w-0 flex-1 flex-row overflow-hidden bg-[#f4f6f8] dark:bg-ds-primary">
@@ -785,7 +795,7 @@ export default function DrawingsPage({ fullscreen = false }: { fullscreen?: bool
         activeTool={activeTool}
         onToolChange={applyWorkspaceTool}
         traceAllowed={modeConfig.ui.showTraceRoute}
-        projectReady={projectReady}
+        apiConnected={apiConnected}
         toolsLocked={toolsLocked}
         toolsLockedHint={TOOLS_LOCKED_HINT}
         canvasNavMode={canvasNavMode}
@@ -794,7 +804,7 @@ export default function DrawingsPage({ fullscreen = false }: { fullscreen?: bool
       />
       <ToolPanel
         activeTool={activeTool}
-        projectReady={projectReady}
+        apiConnected={apiConnected}
         toolsLocked={toolsLocked}
         toolsLockedHint={TOOLS_LOCKED_HINT}
         semanticMode={activeMode}
@@ -851,18 +861,13 @@ export default function DrawingsPage({ fullscreen = false }: { fullscreen?: bool
             <div className="flex flex-1 flex-col justify-center border-l border-[#e2e6ec] bg-[#f4f6f8] px-4 py-6 dark:border-ds-border/40 dark:bg-ds-secondary/25">
               <p className="text-sm text-ds-muted">Connect to the API to load saved drawings and infrastructure overlays.</p>
             </div>
-          ) : !projectReady ? (
-            <div className="flex flex-1 flex-col items-center justify-center border-l border-[#e2e6ec] bg-[#f4f6f8] px-6 py-8 dark:border-ds-border/40 dark:bg-ds-secondary/25">
-              <p className="max-w-md text-center text-sm font-semibold text-[#1a2030] dark:text-ds-foreground">Select a project</p>
-              <p className="mt-2 max-w-md text-center text-xs text-[#0fa07e] dark:text-ds-muted">
-                Choose a project in the header to load data and enable tools.
-              </p>
-            </div>
           ) : maps.length === 0 ? (
             <div className="flex flex-1 flex-col items-center justify-center border-l border-[#e2e6ec] bg-[#f4f6f8] px-6 py-8 dark:border-ds-border/40 dark:bg-ds-secondary/25">
-              <p className="max-w-md text-center text-sm font-semibold text-ds-foreground">No maps for this project</p>
+              <p className="max-w-md text-center text-sm font-semibold text-ds-foreground">Upload a map image to start</p>
               <p className="mt-2 max-w-md text-center text-xs text-ds-muted">
-                Upload a top-down image (aerial or floor plan) to create your first facility map.
+                {
+                  'Add a floor plan, aerial, or site image, then draw infrastructure on top. Use the "Facility map" category for building or zone layouts. Link a project later when this drawing is for a specific job.'
+                }
               </p>
               <Button
                 type="button"
@@ -1058,9 +1063,7 @@ export default function DrawingsPage({ fullscreen = false }: { fullscreen?: bool
         onChange={onMapImageInputChange}
       />
       <DrawingsTopBar
-        projectReady={projectReady}
-        mapListLoading={mapListLoading}
-        uploadBusy={uploadBusy}
+        mapsToolbarDisabled={!apiConnected || mapListLoading || uploadBusy}
         activeProjectId={activeProjectId}
         setActiveProjectId={setActiveProjectId}
         maps={maps}
@@ -1070,7 +1073,7 @@ export default function DrawingsPage({ fullscreen = false }: { fullscreen?: bool
         onNewMapCategoryChange={setNewMapCategory}
         onUploadNewMap={() => openMapImagePicker(true)}
         onSaveMap={() => void handleSaveMap()}
-        saveDisabled={!projectReady || !mapDetail || mapLoading || uploadBusy}
+        saveDisabled={!mapDetail || mapLoading || uploadBusy}
         fullscreen={fullscreen}
         onEnterFullscreen={() => router.push("/drawings/fullscreen")}
         onExitFullscreen={() => router.push("/drawings")}

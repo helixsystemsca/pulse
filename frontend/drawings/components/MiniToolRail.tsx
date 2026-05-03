@@ -22,7 +22,7 @@ export function MiniToolRail({
   activeTool,
   onToolChange,
   traceAllowed,
-  projectReady,
+  apiConnected,
   toolsLocked,
   toolsLockedHint,
   canvasNavMode,
@@ -32,7 +32,7 @@ export function MiniToolRail({
   activeTool: WorkspaceTool;
   onToolChange: (tool: WorkspaceTool) => void;
   traceAllowed: boolean;
-  projectReady: boolean;
+  apiConnected: boolean;
   toolsLocked: boolean;
   toolsLockedHint: string;
   canvasNavMode: "select" | "pan";
@@ -49,7 +49,7 @@ export function MiniToolRail({
       tool: "trace",
       label: "Trace route",
       Icon: Route,
-      disabled: !traceAllowed || !projectReady,
+      disabled: !traceAllowed || !apiConnected || toolsLocked,
     },
   ];
 

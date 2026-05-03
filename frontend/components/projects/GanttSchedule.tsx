@@ -202,7 +202,10 @@ export function GanttSchedule({ tasks, projectStartDate, projectEndDate, onTaskC
 
   const normalized = useMemo(() => normalizeTasks(tasks, project), [tasks, project]);
 
-  const cpm = useMemo(() => computeCPM(tasks), [tasks]);
+  const cpm = useMemo(() => {
+    const parsed = parseProjectBounds(project.projectStartDate, project.projectEndDate);
+    return computeCPM(tasks, parsed?.origin ? { calendarProjectStart: parsed.origin } : undefined);
+  }, [tasks, project.projectStartDate, project.projectEndDate]);
 
   const { viewStart, viewEndExclusive, timelineWidthPx, totalMs } = useMemo(() => {
     const parsed = parseProjectBounds(project.projectStartDate, project.projectEndDate);

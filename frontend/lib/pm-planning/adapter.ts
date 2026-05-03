@@ -9,6 +9,14 @@ import type { PmTask } from "@/lib/pm-planning/types";
 
 const ADAPTER_PROJECT_ID = "pm-planning-adapter";
 
+/** Stable wire format for CPM calendar floors (avoids UTC day shift from `Date#toISOString()`). */
+function localDateNoonIso(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}T12:00:00`;
+}
+
 function parseTaskStartAnchor(task: TaskRow): Date | null {
   if (task.planned_start_at?.trim()) {
     const d = new Date(task.planned_start_at);
@@ -73,7 +81,7 @@ export function pmTasksToTaskRows(tasks: PmTask[], companyId = ""): TaskRow[] {
     skill_type: t.resource ?? null,
     material_notes: null,
     phase_group: t.category ?? null,
-    planned_start_at: null,
+    planned_start_at: t.start && Number.isFinite(t.start.getTime()) ? localDateNoonIso(t.start) : null,
     planned_end_at: null,
     calendar_shift_id: null,
     calendar_event_id: null,

@@ -24,7 +24,7 @@ import type { WorkspaceTool } from "../workspaceTools";
  */
 export function ToolPanel({
   activeTool,
-  projectReady,
+  apiConnected,
   toolsLocked,
   toolsLockedHint,
   semanticMode,
@@ -56,7 +56,7 @@ export function ToolPanel({
   onTraceRoute,
 }: {
   activeTool: WorkspaceTool;
-  projectReady: boolean;
+  apiConnected: boolean;
   toolsLocked: boolean;
   toolsLockedHint: string;
   semanticMode: BuilderSemanticMode;
@@ -120,7 +120,7 @@ export function ToolPanel({
   );
 
   const annotateBtn = (kind: AnnotateKind, label: string, Icon: typeof StickyNote) => {
-    const allowed = projectReady && modeConfig.allowedAnnotateKinds.has(kind) && !toolsLocked;
+    const allowed = apiConnected && modeConfig.allowedAnnotateKinds.has(kind) && !toolsLocked;
     return (
       <button
         key={kind}
@@ -321,8 +321,8 @@ export function ToolPanel({
                   : "border border-ds-border/70 bg-ds-primary/30 text-ds-foreground hover:bg-ds-primary/45"
               }`}
               title={toolsLocked ? toolsLockedHint : undefined}
-              disabled={!projectReady || toolsLocked}
-              onClick={() => projectReady && !toolsLocked && onTraceRoute()}
+              disabled={!apiConnected || toolsLocked}
+              onClick={() => apiConnected && !toolsLocked && onTraceRoute()}
             >
               {traceMode ? "Tracing… (click to cancel)" : "Trace route"}
             </button>
@@ -372,7 +372,7 @@ export function ToolPanel({
                     <span className="font-semibold text-ds-foreground">{modeConfig.defaultSystemType}</span> for new elements.
                   </p>
                 )}
-                {primaryMode === "add_asset" && projectReady ? (
+                {primaryMode === "add_asset" && apiConnected ? (
                   <div>
                     <p className="mb-2 text-[10px] font-medium uppercase tracking-wide text-ds-muted">Asset type</p>
                     <div className="grid grid-cols-3 gap-1 border border-ds-border/60 p-2">

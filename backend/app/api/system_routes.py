@@ -70,6 +70,10 @@ from app.schemas.system_admin import (
 class SystemUserPmFeaturesPatch(BaseModel):
     can_use_pm_features: bool
 
+
+class SystemUserFacilityAdminPatch(BaseModel):
+    facility_tenant_admin: bool
+
 # Mounted in main.py at prefix `/api/system` — do not add another `/system` here or routes become `/api/system/system/...`.
 router = APIRouter(tags=["system"])
 settings = get_settings()
@@ -739,6 +743,7 @@ async def list_all_users(
                 is_company_owner=is_owner,
                 is_active=u.is_active,
                 can_use_pm_features=bool(getattr(u, "can_use_pm_features", False)),
+                facility_tenant_admin=bool(getattr(u, "facility_tenant_admin", False)),
                 last_login=u.last_login.isoformat() if u.last_login else None,
                 last_active_at=u.last_active_at.isoformat() if u.last_active_at else None,
                 last_login_city=le.city if le else None,
@@ -795,6 +800,32 @@ async def patch_user_pm_features(
     )
     await db.commit()
     return {"id": u.id, "can_use_pm_features": u.can_use_pm_features}
+
+
+@router.patch("/users/{user_id}/facility-tenant-admin", status_code=200)
+async def patch_user_facility_tenant_admin(
+    user_id: str,
+    body: SystemUserFacilityAdminPatch,
+    admin: Annotated[User, Depends(require_system_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> dict[str, Any]:
+    """Grant or revoke in-facility tenant administrator (keeps base role; supersedes manager deny overlays in UI)."""
+    u = await db.get(User, user_id)
+    if not u:
+        raise HTTPException(status_code=404, detail="User not found")
+    if u.company_id is None:
+        raise HTTPException(status_code=400, detail="Facility tenant admin applies to tenant users only")
+    u.facility_tenant_admin = bool(body.facility_tenant_admin)
+    await record_system_log(
+        db,
+        action="user.facility_tenant_admin_updated",
+        performed_by=admin.id,
+        target_type="user",
+        target_id=u.id,
+        metadata={"facility_tenant_admin": u.facility_tenant_admin},
+    )
+    await db.commit()
+    return {"id": u.id, "facility_tenant_admin": u.facility_tenant_admin}
 
 
 @router.get("/users/{user_id}/login-events", response_model=list[LoginEventOut])

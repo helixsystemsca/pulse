@@ -53,6 +53,10 @@ class UserOut(BaseModel):
     is_system_admin: bool = False
     company: Optional[CompanySummaryOut] = None
     can_use_pm_features: bool = False
+    #: In-facility tenant administrator (sysadmin); base role stays in `roles` (e.g. worker).
+    facility_tenant_admin: bool = False
+    #: When set, prefer this label in the shell (e.g. ``Worker (Admin)``) instead of humanizing `role` alone.
+    role_display_label: Optional[str] = None
     #: Effective permission strings for tenant UI (`["*"]` = full access). Omitted for system operators without a tenant session.
     permissions: Optional[list[str]] = None
     #: Current server time (UTC ISO-8601) for client clock sync; not persisted on the user row.

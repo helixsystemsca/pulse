@@ -19,7 +19,11 @@ from app.core.tenant_feature_access import contract_and_effective_features_for_m
 from app.core.system_audit import record_system_log
 from app.core.system_tokens import hash_system_token
 from app.limiter import limiter
-from app.core.user_roles import primary_jwt_role, user_has_any_role
+from app.core.user_roles import (
+    primary_jwt_role,
+    tenant_role_display_label,
+    user_has_any_role,
+)
 from app.models.domain import (
     Company,
     Invite,
@@ -222,6 +226,8 @@ async def me(
         is_system_admin=bool(user.is_system_admin or user_has_any_role(user, UserRole.system_admin)),
         company=company_summary,
         can_use_pm_features=bool(getattr(user, "can_use_pm_features", False)),
+        facility_tenant_admin=bool(getattr(user, "facility_tenant_admin", False)),
+        role_display_label=tenant_role_display_label(user),
         permissions=perm_out,
         server_time=datetime.now(timezone.utc).isoformat(),
     )

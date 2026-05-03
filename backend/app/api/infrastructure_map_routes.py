@@ -55,6 +55,11 @@ async def _require_map_in_project(db: AsyncSession, company_id: str, project_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Map not found for this project")
 
 
+async def _get_facility_map_row(db: AsyncSession, company_id: str, map_id: str) -> FacilityMap | None:
+    q = await db.execute(select(FacilityMap).where(FacilityMap.company_id == company_id, FacilityMap.id == map_id))
+    return q.scalar_one_or_none()
+
+
 async def _assert_infra_entity_owned(cid: str, body: InfraAttributeCreateIn, db: AsyncSession) -> None:
     if body.entity_type == "asset":
         ok = (
@@ -127,17 +132,39 @@ async def _upsert_infra_attribute(
 async def list_assets(
     db: Db,
     user: TenantUser,
-    project_id: str = Query(..., min_length=1, description="pulse_projects.id — drawings canvas scope"),
+    project_id: Optional[str] = Query(None, min_length=1, description="pulse_projects.id — optional for tenant-level maps"),
     map_id: Optional[str] = Query(None, min_length=1, description="When set, only assets on this facility map"),
     system_type: Optional[str] = None,
 ) -> list[InfraAssetOut]:
     cid = str(user.company_id)
-    await _require_pulse_project(db, cid, project_id)
+    q: Any
     if map_id:
-        await _require_map_in_project(db, cid, project_id, map_id)
-    q = select(InfraAsset).where(InfraAsset.company_id == cid, InfraAsset.project_id == project_id)
-    if map_id:
-        q = q.where(InfraAsset.map_id == map_id)
+        mrow = await _get_facility_map_row(db, cid, map_id)
+        if not mrow:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Map not found")
+        mproj = getattr(mrow, "project_id", None)
+        if mproj:
+            pid = (project_id or "").strip()
+            if not pid:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="This map belongs to a project; pass project_id",
+                )
+            await _require_pulse_project(db, cid, pid)
+            if str(mproj) != str(pid):
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Map not found for this project")
+            await _require_map_in_project(db, cid, pid, map_id)
+            q = select(InfraAsset).where(InfraAsset.company_id == cid, InfraAsset.project_id == pid, InfraAsset.map_id == map_id)
+        else:
+            q = select(InfraAsset).where(InfraAsset.company_id == cid, InfraAsset.map_id == map_id)
+    elif project_id:
+        await _require_pulse_project(db, cid, project_id)
+        q = select(InfraAsset).where(InfraAsset.company_id == cid, InfraAsset.project_id == project_id)
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Provide map_id and/or project_id",
+        )
     if system_type:
         q = q.where(InfraAsset.system_type == system_type)
     rows = (await db.execute(q.order_by(InfraAsset.created_at.desc()))).scalars().all()
@@ -162,13 +189,38 @@ async def list_assets(
 @router.post("/assets", response_model=InfraAssetOut, status_code=status.HTTP_201_CREATED)
 async def create_asset(body: InfraAssetCreateIn, db: Db, user: TenantUser) -> InfraAssetOut:
     cid = str(user.company_id)
-    await _require_pulse_project(db, cid, body.project_id)
-    if body.map_id:
-        await _require_map_in_project(db, cid, body.project_id, body.map_id)
+    eff_pid: str | None = body.project_id
+    eff_map = body.map_id.strip() if body.map_id and str(body.map_id).strip() else None
+    if eff_map:
+        mrow = await _get_facility_map_row(db, cid, eff_map)
+        if not mrow:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Map not found")
+        mproj = getattr(mrow, "project_id", None)
+        if mproj:
+            if not eff_pid or str(eff_pid).strip() != str(mproj):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="project_id must match the map's project",
+                )
+            eff_pid = str(mproj).strip()
+            await _require_map_in_project(db, cid, eff_pid, eff_map)
+        else:
+            if eff_pid:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Omit project_id for tenant-level facility maps",
+                )
+            eff_pid = None
+    elif eff_pid:
+        await _require_pulse_project(db, cid, eff_pid)
+        if eff_map:
+            await _require_map_in_project(db, cid, eff_pid, eff_map)
+    else:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Provide map_id and/or project_id")
     row = InfraAsset(
         company_id=cid,
-        project_id=body.project_id,
-        map_id=body.map_id,
+        project_id=eff_pid,
+        map_id=eff_map,
         name=body.name.strip(),
         asset_type=body.type.strip(),
         system_type=body.system_type,
@@ -233,17 +285,41 @@ async def patch_asset(asset_id: str, body: InfraAssetPatchIn, db: Db, user: Tena
 async def list_connections(
     db: Db,
     user: TenantUser,
-    project_id: str = Query(..., min_length=1, description="pulse_projects.id — drawings canvas scope"),
+    project_id: Optional[str] = Query(None, min_length=1, description="pulse_projects.id — optional for tenant-level maps"),
     map_id: Optional[str] = Query(None, min_length=1, description="When set, only connections on this facility map"),
     system_type: Optional[str] = None,
 ) -> list[InfraConnectionOut]:
     cid = str(user.company_id)
-    await _require_pulse_project(db, cid, project_id)
+    q: Any
     if map_id:
-        await _require_map_in_project(db, cid, project_id, map_id)
-    q = select(InfraConnection).where(InfraConnection.company_id == cid, InfraConnection.project_id == project_id)
-    if map_id:
-        q = q.where(InfraConnection.map_id == map_id)
+        mrow = await _get_facility_map_row(db, cid, map_id)
+        if not mrow:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Map not found")
+        mproj = getattr(mrow, "project_id", None)
+        if mproj:
+            pid = (project_id or "").strip()
+            if not pid:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="This map belongs to a project; pass project_id",
+                )
+            await _require_pulse_project(db, cid, pid)
+            if str(mproj) != str(pid):
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Map not found for this project")
+            await _require_map_in_project(db, cid, pid, map_id)
+            q = select(InfraConnection).where(
+                InfraConnection.company_id == cid, InfraConnection.project_id == pid, InfraConnection.map_id == map_id
+            )
+        else:
+            q = select(InfraConnection).where(InfraConnection.company_id == cid, InfraConnection.map_id == map_id)
+    elif project_id:
+        await _require_pulse_project(db, cid, project_id)
+        q = select(InfraConnection).where(InfraConnection.company_id == cid, InfraConnection.project_id == project_id)
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Provide map_id and/or project_id",
+        )
     if system_type:
         q = q.where(InfraConnection.system_type == system_type)
     rows = (await db.execute(q.order_by(InfraConnection.created_at.desc()))).scalars().all()
@@ -266,34 +342,61 @@ async def list_connections(
 @router.post("/connections", response_model=InfraConnectionOut, status_code=status.HTTP_201_CREATED)
 async def create_connection(body: InfraConnectionCreateIn, db: Db, user: TenantUser) -> InfraConnectionOut:
     cid = str(user.company_id)
-    await _require_pulse_project(db, cid, body.project_id)
-    if body.map_id:
-        await _require_map_in_project(db, cid, body.project_id, body.map_id)
+    eff_pid: str | None = body.project_id
+    eff_map = body.map_id.strip() if body.map_id and str(body.map_id).strip() else None
+    if eff_map:
+        mrow = await _get_facility_map_row(db, cid, eff_map)
+        if not mrow:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Map not found")
+        mproj = getattr(mrow, "project_id", None)
+        if mproj:
+            if not eff_pid or str(eff_pid).strip() != str(mproj):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="project_id must match the map's project",
+                )
+            eff_pid = str(mproj).strip()
+            await _require_map_in_project(db, cid, eff_pid, eff_map)
+        else:
+            if eff_pid:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Omit project_id for tenant-level facility maps",
+                )
+            eff_pid = None
+    elif eff_pid:
+        await _require_pulse_project(db, cid, eff_pid)
+        if eff_map:
+            await _require_map_in_project(db, cid, eff_pid, eff_map)
+    else:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Provide map_id and/or project_id")
     ids = {body.from_asset_id, body.to_asset_id}
     rows = (await db.execute(select(InfraAsset).where(InfraAsset.company_id == cid, InfraAsset.id.in_(ids)))).scalars().all()
     found = {r.id for r in rows}
     if ids - found:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unknown asset endpoint(s)")
     for ar in rows:
-        if ar.project_id != body.project_id:
+        ap = getattr(ar, "project_id", None)
+        amp = getattr(ar, "map_id", None)
+        if ap != eff_pid:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Endpoints must belong to the selected project",
+                detail="Endpoints must belong to the selected project context",
             )
-        if body.map_id and getattr(ar, "map_id", None) != body.map_id:
+        if eff_map and amp != eff_map:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Endpoints must belong to the selected map",
             )
-        if body.map_id is None and getattr(ar, "map_id", None) is not None:
+        if eff_map is None and amp is not None:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Map-scoped assets require map_id on the connection",
             )
     row = InfraConnection(
         company_id=cid,
-        project_id=body.project_id,
-        map_id=body.map_id,
+        project_id=eff_pid,
+        map_id=eff_map,
         from_asset_id=body.from_asset_id,
         to_asset_id=body.to_asset_id,
         system_type=body.system_type,
@@ -321,26 +424,53 @@ async def list_attributes(
     db: Db,
     user: TenantUser,
     project_id: Optional[str] = Query(None, min_length=1, description="When set, only attributes for entities in this project"),
-    map_id: Optional[str] = Query(None, min_length=1, description="When set with project_id, only entities on this map"),
+    map_id: Optional[str] = Query(None, min_length=1, description="When set, scope to this map (project_id required if map is project-linked)"),
     entity_type: Optional[str] = None,
     entity_id: Optional[str] = None,
     key: Optional[str] = None,
 ) -> list[InfraAttributeOut]:
     cid = str(user.company_id)
     q = select(InfraAttribute).where(InfraAttribute.company_id == cid)
-    if project_id:
-        await _require_pulse_project(db, cid, project_id)
-        if map_id:
-            await _require_map_in_project(db, cid, project_id, map_id)
+    if map_id:
+        mrow = await _get_facility_map_row(db, cid, map_id)
+        if not mrow:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Map not found")
+        mproj = getattr(mrow, "project_id", None)
+        if mproj:
+            pid = (project_id or "").strip()
+            if not pid:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="This map belongs to a project; pass project_id",
+                )
+            await _require_pulse_project(db, cid, pid)
+            if str(mproj) != str(pid):
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Map not found for this project")
+            await _require_map_in_project(db, cid, pid, map_id)
             asset_scope = select(InfraAsset.id).where(
-                InfraAsset.company_id == cid, InfraAsset.project_id == project_id, InfraAsset.map_id == map_id
+                InfraAsset.company_id == cid, InfraAsset.project_id == pid, InfraAsset.map_id == map_id
             )
             conn_scope = select(InfraConnection.id).where(
-                InfraConnection.company_id == cid, InfraConnection.project_id == project_id, InfraConnection.map_id == map_id
+                InfraConnection.company_id == cid, InfraConnection.project_id == pid, InfraConnection.map_id == map_id
             )
         else:
-            asset_scope = select(InfraAsset.id).where(InfraAsset.company_id == cid, InfraAsset.project_id == project_id)
-            conn_scope = select(InfraConnection.id).where(InfraConnection.company_id == cid, InfraConnection.project_id == project_id)
+            if project_id:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Omit project_id for tenant-level facility maps",
+                )
+            asset_scope = select(InfraAsset.id).where(InfraAsset.company_id == cid, InfraAsset.map_id == map_id)
+            conn_scope = select(InfraConnection.id).where(InfraConnection.company_id == cid, InfraConnection.map_id == map_id)
+        q = q.where(
+            or_(
+                and_(InfraAttribute.entity_type == "asset", InfraAttribute.entity_id.in_(asset_scope)),
+                and_(InfraAttribute.entity_type == "connection", InfraAttribute.entity_id.in_(conn_scope)),
+            )
+        )
+    elif project_id:
+        await _require_pulse_project(db, cid, project_id)
+        asset_scope = select(InfraAsset.id).where(InfraAsset.company_id == cid, InfraAsset.project_id == project_id)
+        conn_scope = select(InfraConnection.id).where(InfraConnection.company_id == cid, InfraConnection.project_id == project_id)
         q = q.where(
             or_(
                 and_(InfraAttribute.entity_type == "asset", InfraAttribute.entity_id.in_(asset_scope)),
@@ -439,32 +569,67 @@ async def trace_route(body: TraceRouteIn, db: Db, user: TenantUser) -> TraceRout
     asset_rules = [r for r in filters if isinstance(r, dict) and r.get("entity") == "asset" and str(r.get("key") or "").strip()]
     conn_rules = [r for r in filters if isinstance(r, dict) and r.get("entity") == "connection" and str(r.get("key") or "").strip()]
 
-    await _require_pulse_project(db, cid, body.project_id)
-    if body.map_id:
-        await _require_map_in_project(db, cid, body.project_id, body.map_id)
+    eff_pid: str | None = body.project_id
+    eff_map = body.map_id
+    if eff_map:
+        mrow = await _get_facility_map_row(db, cid, eff_map)
+        if not mrow:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Map not found")
+        mproj = getattr(mrow, "project_id", None)
+        if mproj:
+            if not eff_pid or str(eff_pid).strip() != str(mproj):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="project_id must match the map's project",
+                )
+            eff_pid = str(mproj).strip()
+            await _require_map_in_project(db, cid, eff_pid, eff_map)
+        else:
+            if eff_pid:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Omit project_id for tenant-level facility maps",
+                )
+            eff_pid = None
+    elif eff_pid:
+        await _require_pulse_project(db, cid, eff_pid)
+    else:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Provide map_id and/or project_id")
+
     ids = {body.start_asset_id, body.end_asset_id}
     ep_rows = (await db.execute(select(InfraAsset).where(InfraAsset.company_id == cid, InfraAsset.id.in_(ids)))).scalars().all()
     found = {r.id for r in ep_rows}
     if ids - found:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unknown start/end asset")
     for ar in ep_rows:
-        if ar.project_id != body.project_id:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Assets must belong to the selected project")
-        if body.map_id and getattr(ar, "map_id", None) != body.map_id:
+        ar_pid = getattr(ar, "project_id", None)
+        if (ar_pid or None) != (eff_pid or None):
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Assets must belong to the selected project context")
+        if eff_map and getattr(ar, "map_id", None) != eff_map:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Assets must belong to the selected map")
 
-    if body.map_id:
-        asset_scope = select(InfraAsset.id).where(
-            InfraAsset.company_id == cid, InfraAsset.project_id == body.project_id, InfraAsset.map_id == body.map_id
-        )
-        conn_scope = select(InfraConnection.id).where(
-            InfraConnection.company_id == cid,
-            InfraConnection.project_id == body.project_id,
-            InfraConnection.map_id == body.map_id,
-        )
+    if eff_map:
+        if eff_pid:
+            asset_scope = select(InfraAsset.id).where(
+                InfraAsset.company_id == cid, InfraAsset.project_id == eff_pid, InfraAsset.map_id == eff_map
+            )
+            conn_scope = select(InfraConnection.id).where(
+                InfraConnection.company_id == cid,
+                InfraConnection.project_id == eff_pid,
+                InfraConnection.map_id == eff_map,
+            )
+        else:
+            asset_scope = select(InfraAsset.id).where(
+                InfraAsset.company_id == cid, InfraAsset.project_id.is_(None), InfraAsset.map_id == eff_map
+            )
+            conn_scope = select(InfraConnection.id).where(
+                InfraConnection.company_id == cid,
+                InfraConnection.project_id.is_(None),
+                InfraConnection.map_id == eff_map,
+            )
     else:
-        asset_scope = select(InfraAsset.id).where(InfraAsset.company_id == cid, InfraAsset.project_id == body.project_id)
-        conn_scope = select(InfraConnection.id).where(InfraConnection.company_id == cid, InfraConnection.project_id == body.project_id)
+        asset_scope = select(InfraAsset.id).where(InfraAsset.company_id == cid, InfraAsset.project_id == eff_pid)
+        conn_scope = select(InfraConnection.id).where(InfraConnection.company_id == cid, InfraConnection.project_id == eff_pid)
     aq = await db.execute(
         select(InfraAttribute).where(
             InfraAttribute.company_id == cid,
@@ -500,14 +665,14 @@ async def trace_route(body: TraceRouteIn, db: Db, user: TenantUser) -> TraceRout
     if asset_rules and not _matches_all("asset", body.end_asset_id, asset_rules):
         return TraceRouteOut(asset_ids=[body.start_asset_id], connection_ids=[], filtered_out_count=0, reason="No valid path under current filters")
 
-    # Load active connections for this project (optionally scoped to a system)
-    cq = select(InfraConnection).where(
-        InfraConnection.company_id == cid,
-        InfraConnection.project_id == body.project_id,
-        InfraConnection.active.is_(True),
-    )
-    if body.map_id:
-        cq = cq.where(InfraConnection.map_id == body.map_id)
+    # Load active connections for this scope (optionally filtered by system)
+    cq = select(InfraConnection).where(InfraConnection.company_id == cid, InfraConnection.active.is_(True))
+    if eff_pid is not None:
+        cq = cq.where(InfraConnection.project_id == eff_pid)
+    else:
+        cq = cq.where(InfraConnection.project_id.is_(None))
+    if eff_map:
+        cq = cq.where(InfraConnection.map_id == eff_map)
     if body.system_type:
         cq = cq.where(InfraConnection.system_type == body.system_type)
     conns = (await db.execute(cq)).scalars().all()

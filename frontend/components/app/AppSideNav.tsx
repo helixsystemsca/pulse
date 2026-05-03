@@ -39,7 +39,7 @@ type SidebarNavItem = { href: string; label: string; icon: PulseSidebarIcon };
 import { isPulseNavActive } from "@/lib/pulse-nav-active";
 import { isTenantNavFeatureEnabled } from "@/lib/pulse-nav-features";
 import { isTenantNavPermissionGranted } from "@/lib/pulse-nav-permissions";
-import { sessionHasAnyRole, sessionPrimaryRole } from "@/lib/pulse-roles";
+import { sessionHasAnyRole, sessionPrimaryRole, sessionRoleDisplayLabel } from "@/lib/pulse-roles";
 
 const ICONS: Record<PulseSidebarIcon, LucideIcon> = {
   layout: LayoutDashboard,
@@ -72,8 +72,15 @@ function navInitials(name: string | null | undefined, email: string): string {
 
 function formatRoleLabel(session: PulseAuthSession): string {
   if (session.is_system_admin || session.role === "system_admin") return "Platform admin";
-  const r = session.role ?? "member";
-  return r.replace(/_/g, " ");
+  return sessionRoleDisplayLabel(session);
+}
+
+/** Sidebar Team Management link — aligned with `GET /auth/me` → `workers_roster_access` + legacy sessions. */
+function showWorkersNavItem(session: PulseAuthSession, isSystemAdmin: boolean): boolean {
+  if (isSystemAdmin) return true;
+  if (session.workers_roster_access === true) return true;
+  if (session.workers_roster_access === false) return false;
+  return sessionHasAnyRole(session, "company_admin");
 }
 
 export function AppSideNav() {
@@ -92,7 +99,7 @@ export function AppSideNav() {
     items = items.filter((i) => isTenantNavFeatureEnabled(i.href, session.enabled_features));
     items = items.filter((i) => {
       if (i.href === "/dashboard/workers" || i.href.startsWith("/dashboard/workers")) {
-        if (!sessionHasAnyRole(session, "company_admin")) return false;
+        if (!showWorkersNavItem(session, isSystemAdmin)) return false;
         if (!isTenantNavPermissionGranted(i.href, session.permissions)) return false;
         return true;
       }

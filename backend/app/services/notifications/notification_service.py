@@ -156,7 +156,7 @@ async def resolve_recipients(
                     found_sup = True
             if not found_sup:
                 for u in users:
-                    if "company_admin" in (u.roles or []):
+                    if "company_admin" in (u.roles or []) or bool(getattr(u, "facility_tenant_admin", False)):
                         add_user(u)
 
     return list(resolved.values())

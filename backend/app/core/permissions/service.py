@@ -6,7 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.permissions import keys
-from app.core.user_roles import user_has_any_role
+from app.core.user_roles import user_has_any_role, user_has_facility_tenant_admin_flag
 from app.models.domain import RolePermission, RolePermissionTarget, User, UserRole
 
 
@@ -15,7 +15,11 @@ class PermissionService:
         self._db = db
 
     async def effective_allow_set(self, user: User) -> set[str]:
-        if user_has_any_role(user, UserRole.system_admin, UserRole.company_admin) or user.is_system_admin:
+        if (
+            user.is_system_admin
+            or user_has_any_role(user, UserRole.system_admin, UserRole.company_admin)
+            or user_has_facility_tenant_admin_flag(user)
+        ):
             return {"*"}
         if user.company_id is None:
             return set()

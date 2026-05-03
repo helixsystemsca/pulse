@@ -45,27 +45,30 @@ export function principalHasAnyRole(
 }
 
 export function managerOrAbove(
-  session: Pick<PulseAuthSession, "role" | "roles" | "is_system_admin"> | null | undefined,
+  session: Pick<PulseAuthSession, "role" | "roles" | "is_system_admin" | "facility_tenant_admin"> | null | undefined,
 ): boolean {
   if (!session) return false;
   if (session.is_system_admin || sessionHasAnyRole(session, "system_admin")) return true;
+  if (session.facility_tenant_admin) return true;
   return sessionHasAnyRole(session, "manager", "company_admin", "supervisor");
 }
 
 /** Managers and company admins only (excludes supervisor) — matches strict compliance-flag rules. */
 export function complianceManagerFlagAllowed(
-  session: Pick<PulseAuthSession, "role" | "roles" | "is_system_admin"> | null | undefined,
+  session: Pick<PulseAuthSession, "role" | "roles" | "is_system_admin" | "facility_tenant_admin"> | null | undefined,
 ): boolean {
   if (!session) return false;
   if (session.is_system_admin || sessionHasAnyRole(session, "system_admin")) return true;
+  if (session.facility_tenant_admin) return true;
   return sessionHasAnyRole(session, "manager", "company_admin");
 }
 
 /** Managers/supervisors without company_admin: limited invite/create role options. */
 export function isCreateRoleLimitedSession(
-  session: Pick<PulseAuthSession, "role" | "roles"> | null | undefined,
+  session: Pick<PulseAuthSession, "role" | "roles" | "facility_tenant_admin"> | null | undefined,
 ): boolean {
   if (!session) return false;
+  if (session.facility_tenant_admin) return false;
   return (
     sessionHasAnyRole(session, "manager", "supervisor") && !sessionHasAnyRole(session, "company_admin")
   );
@@ -73,6 +76,16 @@ export function isCreateRoleLimitedSession(
 
 export function humanizeRole(role: string): string {
   return role.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+/** Sidebar / profile: uses server-provided label for facility tenant admins when present. */
+export function sessionRoleDisplayLabel(
+  session: Pick<PulseAuthSession, "role_display_label" | "role" | "roles"> | null | undefined,
+): string {
+  if (!session) return "Member";
+  const d = session.role_display_label?.trim();
+  if (d) return d;
+  return humanizeRole(sessionPrimaryRole(session));
 }
 
 const DISPLAY_ORDER = ["company_admin", "manager", "supervisor", "lead", "worker"];

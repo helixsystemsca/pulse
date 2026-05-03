@@ -18,6 +18,15 @@ _ROLE_PRECEDENCE: tuple[UserRole, ...] = (
 
 _PRECEDENCE_INDEX = {r: i for i, r in enumerate(_ROLE_PRECEDENCE)}
 
+# Facility-facing roles (excludes company_admin / system_admin) for display + operational defaults.
+_FACILITY_STAFF_PRECEDENCE: tuple[UserRole, ...] = (
+    UserRole.manager,
+    UserRole.supervisor,
+    UserRole.lead,
+    UserRole.worker,
+)
+_FACILITY_STAFF_INDEX = {r: i for i, r in enumerate(_FACILITY_STAFF_PRECEDENCE)}
+
 # Tenant roles that may appear together on one user (system_admin is separate / platform).
 TENANT_ROLE_VALUES: frozenset[str] = frozenset(
     {
@@ -67,6 +76,55 @@ def user_roles_subset_of(user: User, allowed: Iterable[UserRole]) -> bool:
     return set(user.roles).issubset(allow)
 
 
+def user_has_facility_tenant_admin_flag(user: User) -> bool:
+    """True when sysadmin designated this user as an in-facility tenant admin (separate from `company_admin` role)."""
+    return bool(getattr(user, "facility_tenant_admin", False))
+
+
+def user_is_external_company_admin(user: User) -> bool:
+    """IT / off-site style tenant admin: `company_admin` appears in `users.roles`."""
+    return user_has_any_role(user, UserRole.company_admin)
+
+
+def user_has_tenant_full_admin(user: User) -> bool:
+    """Full tenant administration: external `company_admin` role OR in-facility delegate flag."""
+    if user_is_external_company_admin(user):
+        return True
+    return user_has_facility_tenant_admin_flag(user)
+
+
+def primary_facility_staff_role(user: User) -> UserRole:
+    """Highest facility role among worker/lead/supervisor/manager (ignores company_admin / system_admin)."""
+    best: UserRole = UserRole.worker
+    best_i = 10**9
+    for r in user_roles_enum(user):
+        if r not in _FACILITY_STAFF_INDEX:
+            continue
+        i = _FACILITY_STAFF_INDEX[r]
+        if i < best_i:
+            best_i = i
+            best = r
+    return best
+
+
+_FACILITY_ROLE_LABEL: dict[UserRole, str] = {
+    UserRole.worker: "Worker",
+    UserRole.lead: "Lead",
+    UserRole.supervisor: "Supervisor",
+    UserRole.manager: "Manager",
+}
+
+
+def tenant_role_display_label(user: User) -> str | None:
+    """Sidebar / profile label override, e.g. ``Worker (Admin)``. ``None`` = use primary JWT role + existing humanize."""
+    if user_is_external_company_admin(user):
+        return None
+    if user_has_facility_tenant_admin_flag(user):
+        base = primary_facility_staff_role(user)
+        return f"{_FACILITY_ROLE_LABEL.get(base, base.value)} (Admin)"
+    return None
+
+
 def primary_jwt_role(user: User) -> UserRole:
     """Single claim for backward-compatible JWT + sorting."""
     best: UserRole | None = None
@@ -95,8 +153,10 @@ def user_roles_values(user: User) -> list[str]:
 
 
 def is_elevated_tenant_staff(user: User) -> bool:
-    """Managers, supervisors, company admins, and platform/system admins."""
+    """Managers, supervisors, tenant admins (external or in-facility delegate), and platform/system admins."""
     if user.is_system_admin:
+        return True
+    if user_has_facility_tenant_admin_flag(user):
         return True
     return user_has_any_role(
         user,

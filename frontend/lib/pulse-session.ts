@@ -68,6 +68,10 @@ export type PulseAuthSession = {
   company?: CompanySummary | null;
   /** User-level feature flag for advanced PM features in Projects. */
   can_use_pm_features?: boolean;
+  /** In-facility tenant admin (sysadmin); base role remains in `roles`. */
+  facility_tenant_admin?: boolean;
+  /** Prefer over humanized `role` when present (e.g. ``Worker (Admin)``). */
+  role_display_label?: string | null;
   iat: number;
   exp: number;
   /** Legacy: was tied to removed “Keep me signed in”; new sessions always use `false`. */
@@ -92,6 +96,8 @@ export type UserOut = {
   is_system_admin?: boolean;
   company?: CompanySummary | null;
   can_use_pm_features?: boolean;
+  facility_tenant_admin?: boolean;
+  role_display_label?: string | null;
   /** UTC ISO timestamp from `GET /auth/me` for client clock sync. */
   server_time?: string;
 };
@@ -227,6 +233,8 @@ export function writeApiSession(
         : user.is_impersonating === true || decodeJwtImpersonating(accessToken) === true,
     company: user.company ?? null,
     can_use_pm_features: user.can_use_pm_features,
+    facility_tenant_admin: user.facility_tenant_admin,
+    role_display_label: user.role_display_label ?? undefined,
     iat: now,
     exp,
     remember,

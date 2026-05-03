@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.workers_settings_merge import merge_workers_settings
 from app.core.company_features import tenant_enabled_feature_names_with_legacy
 from app.core.features.service import MODULE_KEYS
-from app.core.user_roles import user_has_any_role
+from app.core.user_roles import user_has_any_role, user_has_facility_tenant_admin_flag
 from app.models.domain import User, UserRole
 from app.models.pulse_models import PulseWorkersSettings
 
@@ -42,7 +42,7 @@ def feature_access_role_bucket(user: User) -> str:
 def user_has_workers_roster_page_access(user: User, merged_settings: dict[str, Any]) -> bool:
     if user.is_system_admin or user_has_any_role(user, UserRole.system_admin):
         return True
-    if user_has_any_role(user, UserRole.company_admin):
+    if user_has_any_role(user, UserRole.company_admin) or user_has_facility_tenant_admin_flag(user):
         return True
     deleg = merged_settings.get("workers_page_delegation") or {}
     if not isinstance(deleg, dict):
@@ -65,7 +65,7 @@ def effective_tenant_feature_names_for_user(
     cset = set(contract_names)
     if user.company_id is None or user.is_system_admin or user_has_any_role(user, UserRole.system_admin):
         return sorted(cset)
-    if user_has_any_role(user, UserRole.company_admin):
+    if user_has_any_role(user, UserRole.company_admin) or user_has_facility_tenant_admin_flag(user):
         return sorted(cset)
 
     rfa = merged_settings.get("role_feature_access") or {}
@@ -103,5 +103,9 @@ async def contract_and_effective_features_for_me(
     merged = await load_merged_workers_settings(db, cid)
     eff = effective_tenant_feature_names_for_user(user=user, contract_names=contract, merged_settings=merged)
     roster = user_has_workers_roster_page_access(user, merged)
-    admin_catalog = list(contract) if user_has_any_role(user, UserRole.company_admin) else []
+    admin_catalog = (
+        list(contract)
+        if user_has_any_role(user, UserRole.company_admin) or user_has_facility_tenant_admin_flag(user)
+        else []
+    )
     return contract, eff, roster, admin_catalog

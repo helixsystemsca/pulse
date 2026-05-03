@@ -14,25 +14,29 @@ type InfraAttribute = {
   created_at: string;
 };
 
-function assetsUrl(projectId: string, mapId: string, systemType?: string): string {
-  const sp = new URLSearchParams({ project_id: projectId, map_id: mapId });
+function assetsUrl(projectId: string | null, mapId: string, systemType?: string): string {
+  const sp = new URLSearchParams({ map_id: mapId });
+  if (projectId) sp.set("project_id", projectId);
   if (systemType) sp.set("system_type", systemType);
   return `/api/assets?${sp.toString()}`;
 }
 
-function connectionsUrl(projectId: string, mapId: string, systemType?: string): string {
-  const sp = new URLSearchParams({ project_id: projectId, map_id: mapId });
+function connectionsUrl(projectId: string | null, mapId: string, systemType?: string): string {
+  const sp = new URLSearchParams({ map_id: mapId });
+  if (projectId) sp.set("project_id", projectId);
   if (systemType) sp.set("system_type", systemType);
   return `/api/connections?${sp.toString()}`;
 }
 
-function attributesUrl(projectId: string, mapId: string): string {
-  const sp = new URLSearchParams({ project_id: projectId, map_id: mapId });
+function attributesUrl(projectId: string | null, mapId: string): string {
+  const sp = new URLSearchParams({ map_id: mapId });
+  if (projectId) sp.set("project_id", projectId);
   return `/api/attributes?${sp.toString()}`;
 }
 
 /**
  * Infrastructure graph scoped to a single facility map (`map_id` on the server).
+ * `project_id` is omitted for tenant-level facility maps (maps not linked to a pulse project).
  * When `mapId` is null, the graph is cleared (no requests).
  */
 export function useInfrastructureGraph(projectId: string | null, mapId: string | null) {
@@ -66,7 +70,7 @@ export function useInfrastructureGraph(projectId: string | null, mapId: string |
   }, [attributes]);
 
   const refresh = useCallback(async () => {
-    if (!isApiMode() || !projectId || !mapId) {
+    if (!isApiMode() || !mapId) {
       setAssets([]);
       setConnections([]);
       setAttributes([]);
@@ -101,10 +105,12 @@ export function useInfrastructureGraph(projectId: string | null, mapId: string |
 
   const createAsset = useCallback(
     async (body: Omit<InfraAsset, "id" | "project_id" | "map_id">) => {
-      if (!projectId || !mapId) throw new Error("Select a map before creating assets");
+      if (!mapId) throw new Error("Select a map before creating assets");
+      const payload: Record<string, unknown> = { ...body, map_id: mapId };
+      if (projectId) payload.project_id = projectId;
       const created = await apiFetch<InfraAsset>("/api/assets", {
         method: "POST",
-        body: JSON.stringify({ ...body, project_id: projectId, map_id: mapId }),
+        body: JSON.stringify(payload),
       });
       setAssets((prev) => [created, ...prev]);
       return created;
@@ -127,10 +133,12 @@ export function useInfrastructureGraph(projectId: string | null, mapId: string |
 
   const createConnection = useCallback(
     async (body: Omit<InfraConnection, "id" | "active" | "project_id" | "map_id">) => {
-      if (!projectId || !mapId) throw new Error("Select a map before creating connections");
+      if (!mapId) throw new Error("Select a map before creating connections");
+      const payload: Record<string, unknown> = { ...body, map_id: mapId };
+      if (projectId) payload.project_id = projectId;
       const created = await apiFetch<InfraConnection>("/api/connections", {
         method: "POST",
-        body: JSON.stringify({ ...body, project_id: projectId, map_id: mapId }),
+        body: JSON.stringify(payload),
       });
       setConnections((prev) => [created, ...prev]);
       return created;
@@ -143,8 +151,8 @@ export function useInfrastructureGraph(projectId: string | null, mapId: string |
       const sp = new URLSearchParams();
       sp.set("entity_type", opts.entity_type);
       sp.set("entity_id", opts.entity_id);
-      if (projectId) sp.set("project_id", projectId);
       if (mapId) sp.set("map_id", mapId);
+      if (projectId) sp.set("project_id", projectId);
       return await apiFetch<InfraAttribute[]>(`/api/attributes?${sp.toString()}`);
     },
     [projectId, mapId],
@@ -176,10 +184,12 @@ export function useInfrastructureGraph(projectId: string | null, mapId: string |
       system_type?: SystemType;
       filters?: unknown[];
     }) => {
-      if (!projectId || !mapId) throw new Error("Select a map before tracing routes");
+      if (!mapId) throw new Error("Select a map before tracing routes");
+      const payload: Record<string, unknown> = { ...body, map_id: mapId };
+      if (projectId) payload.project_id = projectId;
       return await apiFetch<TraceRouteResult>("/api/trace-route", {
         method: "POST",
-        body: JSON.stringify({ ...body, project_id: projectId, map_id: mapId }),
+        body: JSON.stringify(payload),
       });
     },
     [projectId, mapId],

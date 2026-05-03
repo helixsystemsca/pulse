@@ -31,6 +31,8 @@ from app.core.login_activity import list_recent_login_events
 from app.core.user_roles import (
     default_operational_role_for_invite_role,
     user_has_any_role,
+    user_has_facility_tenant_admin_flag,
+    user_is_external_company_admin,
     user_roles_subset_of,
     validate_tenant_roles_non_empty,
 )
@@ -51,7 +53,7 @@ def _ensure_same_company(actor: User, target_company_id: str) -> None:
 def _can_view_user_login_events(actor: User, target: User) -> bool:
     if actor.id == target.id:
         return True
-    if UserRole.company_admin.value not in actor.roles:
+    if UserRole.company_admin.value not in actor.roles and not user_has_facility_tenant_admin_flag(actor):
         return False
     if actor.company_id is None or target.company_id is None:
         return False
@@ -79,7 +81,7 @@ async def create_company_user(
             status_code=403,
             detail="system_admin must use POST /api/system/companies to provision orgs",
         )
-    if user_has_any_role(actor, UserRole.company_admin):
+    if user_has_any_role(actor, UserRole.company_admin) or user_has_facility_tenant_admin_flag(actor):
         if body.role not in ("manager", "worker", "lead", "supervisor"):
             raise HTTPException(
                 status_code=403,
@@ -200,6 +202,17 @@ async def assign_role(
             new_roles = [UserRole(body.role or "").value]
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
+    if UserRole.company_admin.value in new_roles and not user_is_external_company_admin(admin):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only external company administrators may grant the company_admin role",
+        )
+    if UserRole.company_admin.value in old_roles and UserRole.company_admin.value not in new_roles:
+        if not user_is_external_company_admin(admin):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Only external company administrators may remove the company_admin role",
+            )
     target.roles = new_roles
     await db.flush()
     await record_audit(

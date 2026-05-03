@@ -102,7 +102,7 @@ class ComplianceCategory(str, enum.Enum):
 
 
 class Company(Base):
-    """Tenant / company — one canonical company_admin (owner_admin_id)."""
+    """Tenant / company — canonical owner pointer (`owner_admin_id`); IT-style admins use `company_admin` role."""
 
     __tablename__ = "companies"
 
@@ -201,6 +201,12 @@ class User(Base):
     is_system_admin: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     # User-level gating for advanced project management features (PM features).
     can_use_pm_features: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False, server_default=text("false"))
+    #: In-facility tenant administrator (sysadmin-granted). Keeps base role (worker/lead/…) for org chart / UI; full
+    #: tenant admin powers come from permission resolution (supersedes manager-applied denies). Distinct from
+    #: `company_admin` in `roles` (IT / off-site tenant owner style).
+    facility_tenant_admin: Mapped[bool] = mapped_column(
+        Boolean, default=False, nullable=False, server_default=text("false")
+    )
     last_login: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     #: Updated on successful password login (and optional future activity hooks).
     last_active_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)

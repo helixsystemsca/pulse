@@ -21,12 +21,17 @@ class InfraAssetBase(BaseModel):
 
 
 class InfraAssetCreateIn(InfraAssetBase):
-    project_id: str = Field(..., min_length=1, description="pulse_projects.id — required for scoped drawings")
+    project_id: Optional[str] = Field(
+        None,
+        description="pulse_projects.id — omit for tenant-level facility maps (map has no project)",
+    )
     map_id: Optional[str] = Field(None, description="facility_maps.id — scope asset to a facility map")
 
     @field_validator("project_id")
     @classmethod
-    def strip_pid(cls, v: str) -> str:
+    def strip_pid(cls, v: Optional[str]) -> Optional[str]:
+        if v is None or not str(v).strip():
+            return None
         return str(v).strip()
 
     @field_validator("map_id")
@@ -68,12 +73,17 @@ class InfraConnectionBase(BaseModel):
 
 
 class InfraConnectionCreateIn(InfraConnectionBase):
-    project_id: str = Field(..., min_length=1, description="pulse_projects.id — must match endpoint assets")
+    project_id: Optional[str] = Field(
+        None,
+        description="pulse_projects.id — omit when linking assets on a tenant-level facility map",
+    )
     map_id: Optional[str] = Field(None, description="facility_maps.id — must match endpoint assets")
 
     @field_validator("project_id")
     @classmethod
-    def strip_cpid(cls, v: str) -> str:
+    def strip_cpid(cls, v: Optional[str]) -> Optional[str]:
+        if v is None or not str(v).strip():
+            return None
         return str(v).strip()
 
     @field_validator("map_id")
@@ -115,14 +125,19 @@ class InfraAttributeOut(InfraAttributeBase):
 class TraceRouteIn(BaseModel):
     start_asset_id: str
     end_asset_id: str
-    project_id: str = Field(..., min_length=1)
+    project_id: Optional[str] = Field(
+        None,
+        description="pulse_projects.id — omit for tenant-level facility maps when map_id is set",
+    )
     map_id: Optional[str] = Field(None, description="When set, route only within this facility map graph")
     system_type: Optional[SystemType] = None
     filters: Optional[list[dict[str, Any]]] = None
 
     @field_validator("project_id")
     @classmethod
-    def strip_trace_pid(cls, v: str) -> str:
+    def strip_trace_pid(cls, v: Optional[str]) -> Optional[str]:
+        if v is None or not str(v).strip():
+            return None
         return str(v).strip()
 
     @field_validator("map_id")

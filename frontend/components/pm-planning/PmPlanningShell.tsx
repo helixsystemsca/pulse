@@ -44,8 +44,8 @@ export function PmPlanningShell(props: PmPlanningShellProps = {}) {
   const belowCriticalTab = embedded?.belowCriticalTab;
 
   const cpm = useMemo(
-    () => computePlanningCPMWithOverrides(tasks, durationOverrides),
-    [tasks, durationOverrides],
+    () => computePlanningCPMWithOverrides(tasks, durationOverrides, meta.projectStart),
+    [tasks, durationOverrides, meta.projectStart],
   );
 
   const conflicts = useMemo(() => findResourceConflicts(tasks, cpm), [tasks, cpm]);
