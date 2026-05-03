@@ -263,7 +263,7 @@ export function EquipmentSetupTabletSection() {
             <FeatureItem title="Scan or manually add equipment" />
             <FeatureItem title="Assign to zones or jobs" />
             <FeatureItem title="Link equipment to workers" description="Record who is responsible for or carrying each asset." />
-            <FeatureItem title="Activate assets immediately" description="Turn records on as soon as onboarding is done." />
+            <FeatureItem title="Activate assets immediately" description="Turn records on as soon as equipment is registered." />
           </ul>
         </div>
 

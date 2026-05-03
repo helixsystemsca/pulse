@@ -10,7 +10,6 @@ import { apiFetch } from "@/lib/api";
 import { readSession } from "@/lib/pulse-session";
 import type { WorkerRow } from "@/lib/workersService";
 import { activityRowMatchesTest, type DetectionMatchType, type DetectionTestTarget } from "@/lib/detectionTest";
-import { emitOnboardingMaybeUpdated } from "@/lib/onboarding-events";
 import { normalizeMacKey } from "@/lib/macNormalize";
 import {
   fetchEquipmentList as fetchFacilityEquipmentRows,
@@ -577,7 +576,6 @@ export function SetupApp({ defaultTab }: { defaultTab?: TabId }) {
       });
       setNewGwZoneById((m) => ({ ...m, [gatewayId]: "" }));
       await refreshLiveDevices();
-      emitOnboardingMaybeUpdated();
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Could not assign gateway");
     }
@@ -602,7 +600,6 @@ export function SetupApp({ defaultTab }: { defaultTab?: TabId }) {
       setGwIdent("");
       setGwZoneId("");
       await refresh();
-      emitOnboardingMaybeUpdated();
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Could not add gateway");
     }
@@ -619,7 +616,6 @@ export function SetupApp({ defaultTab }: { defaultTab?: TabId }) {
       setBleName("");
       setBleMac("");
       await refresh();
-      emitOnboardingMaybeUpdated();
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Could not register tag");
     }
@@ -635,7 +631,6 @@ export function SetupApp({ defaultTab }: { defaultTab?: TabId }) {
       setZoneName("");
       setZoneDesc("");
       await refresh();
-      emitOnboardingMaybeUpdated();
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Could not create zone");
     }
@@ -647,7 +642,6 @@ export function SetupApp({ defaultTab }: { defaultTab?: TabId }) {
       await patchZone(isSystemAdmin ? effectiveCompanyId : null, zoneId, body);
       setZoneListDraft((d) => (d?.id === zoneId ? null : d));
       await refresh();
-      emitOnboardingMaybeUpdated();
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Could not update zone");
     }
@@ -666,7 +660,6 @@ export function SetupApp({ defaultTab }: { defaultTab?: TabId }) {
       await deleteZone(isSystemAdmin ? effectiveCompanyId : null, zoneId);
       setZoneListDraft((d) => (d?.id === zoneId ? null : d));
       await refresh();
-      emitOnboardingMaybeUpdated();
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Could not delete zone");
     }
@@ -712,7 +705,6 @@ export function SetupApp({ defaultTab }: { defaultTab?: TabId }) {
       setAssignTargetId("");
       setToolQuickCreateName("");
       await refresh();
-      emitOnboardingMaybeUpdated();
     } catch {
       setError("Assignment failed");
     }
@@ -745,7 +737,6 @@ export function SetupApp({ defaultTab }: { defaultTab?: TabId }) {
       setZonePickGateway(null);
       setAssignTargetId("");
       await refresh();
-      emitOnboardingMaybeUpdated();
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Could not update gateway zone");
     }
@@ -757,7 +748,6 @@ export function SetupApp({ defaultTab }: { defaultTab?: TabId }) {
     try {
       const res = await patchFeatureConfig(isSystemAdmin ? effectiveCompanyId : null, "proximity_tracking", body);
       setFeatures(res.features ?? {});
-      emitOnboardingMaybeUpdated();
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Save failed");
     } finally {
@@ -771,7 +761,6 @@ export function SetupApp({ defaultTab }: { defaultTab?: TabId }) {
     try {
       const res = await patchFeatureConfig(isSystemAdmin ? effectiveCompanyId : null, "sop_alerts", body);
       setFeatures(res.features ?? {});
-      emitOnboardingMaybeUpdated();
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Save failed");
     } finally {

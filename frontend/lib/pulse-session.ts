@@ -27,12 +27,6 @@ const SESSION_FALLBACK_TTL_SEC = 62 * 60;
 /** `sessionStorage` flag for the post-login welcome overlay; cleared when auth ends so the next sign-in can show it. */
 export const PULSE_WELCOME_SESSION_KEY = "welcome_shown";
 
-/** Skip onboarding intro modal until next session (Start Setup / Skip for Now). */
-export const PULSE_ONBOARDING_INTRO_SESSION_KEY = "pulse_onboarding_intro_dismissed";
-
-/** Hide the incomplete-setup reminder banner until next session. */
-export const PULSE_ONBOARDING_BANNER_SESSION_KEY = "pulse_onboarding_banner_dismissed";
-
 /** Populated from `/api/v1/auth/me` for tenant users. */
 export type CompanySummary = {
   id: string;
@@ -72,13 +66,6 @@ export type PulseAuthSession = {
   is_impersonating?: boolean;
   /** Tenant branding; absent for system_admin or legacy sessions. */
   company?: CompanySummary | null;
-  /** From `/auth/me`; guides onboarding UI for tenant users. */
-  onboarding_enabled?: boolean;
-  onboarding_completed?: boolean;
-  /** From `/auth/me`; false until first-login intro is dismissed (server-backed). */
-  onboarding_seen?: boolean;
-  /** From `/auth/me`; non-admin modal tour finished or skipped. */
-  user_onboarding_tour_completed?: boolean;
   /** User-level feature flag for advanced PM features in Projects. */
   can_use_pm_features?: boolean;
   iat: number;
@@ -104,10 +91,6 @@ export type UserOut = {
   is_impersonating?: boolean;
   is_system_admin?: boolean;
   company?: CompanySummary | null;
-  onboarding_enabled?: boolean;
-  onboarding_completed?: boolean;
-  onboarding_seen?: boolean;
-  user_onboarding_tour_completed?: boolean;
   can_use_pm_features?: boolean;
   /** UTC ISO timestamp from `GET /auth/me` for client clock sync. */
   server_time?: string;
@@ -174,8 +157,6 @@ function clearSessionQuiet() {
   document.cookie = "pulse_session=; path=/; max-age=0; SameSite=Lax";
   try {
     sessionStorage.removeItem(PULSE_WELCOME_SESSION_KEY);
-    sessionStorage.removeItem(PULSE_ONBOARDING_INTRO_SESSION_KEY);
-    sessionStorage.removeItem(PULSE_ONBOARDING_BANNER_SESSION_KEY);
   } catch {
     /* ignore */
   }
@@ -245,10 +226,6 @@ export function writeApiSession(
         ? false
         : user.is_impersonating === true || decodeJwtImpersonating(accessToken) === true,
     company: user.company ?? null,
-    onboarding_enabled: user.onboarding_enabled,
-    onboarding_completed: user.onboarding_completed,
-    onboarding_seen: user.onboarding_seen,
-    user_onboarding_tour_completed: user.user_onboarding_tour_completed,
     can_use_pm_features: user.can_use_pm_features,
     iat: now,
     exp,

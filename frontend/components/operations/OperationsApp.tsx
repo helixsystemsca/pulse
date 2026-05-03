@@ -4,9 +4,6 @@ import { BarChart3 } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { Card } from "@/components/pulse/Card";
-import { isApiMode, refreshPulseUserFromServer } from "@/lib/api";
-import { emitOnboardingMaybeUpdated } from "@/lib/onboarding-events";
-import { patchOnboarding } from "@/lib/onboardingService";
 import { PageHeader } from "@/components/ui/PageHeader";
 import {
   getOperationsAccountability,
@@ -85,23 +82,6 @@ export function OperationsApp() {
   useEffect(() => {
     void load();
   }, [load]);
-
-  useEffect(() => {
-    if (!isApiMode()) return;
-    let cancelled = false;
-    (async () => {
-      try {
-        await patchOnboarding({ step: "view_operations", completed: true });
-        await refreshPulseUserFromServer();
-        if (!cancelled) emitOnboardingMaybeUpdated();
-      } catch {
-        /* worker / 403 / offline */
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   if (err) {
     return (

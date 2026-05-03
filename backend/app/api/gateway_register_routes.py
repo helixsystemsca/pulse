@@ -1,4 +1,4 @@
-"""ESP32 captive-portal onboarding: register or refresh gateway (no JWT)."""
+"""ESP32 captive-portal registration: register or refresh gateway (no JWT)."""
 
 from __future__ import annotations
 

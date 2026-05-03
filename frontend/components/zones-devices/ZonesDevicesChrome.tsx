@@ -5,11 +5,11 @@ import { LayoutGrid } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { ModuleOnboardingHint } from "@/components/onboarding/ModuleOnboardingHint";
+import { HintCallout } from "@/components/ui/HintCallout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
 import { isApiMode } from "@/lib/api";
-import { fetchSetupProgress } from "@/lib/onboardingService";
+import { fetchSetupProgress } from "@/lib/setup-progress";
 import { bpEase, bpDuration } from "@/lib/motion-presets";
 import { canAccessPulseTenantApis } from "@/lib/pulse-session";
 
@@ -63,7 +63,7 @@ export function ZonesDevicesChrome({ children }: { children: React.ReactNode }) 
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: bpDuration.med, ease: bpEase }}
         >
-          <ModuleOnboardingHint className="border-ds-border bg-ds-secondary text-ds-muted dark:border-ds-border dark:bg-ds-secondary dark:text-ds-muted">
+          <HintCallout className="border-ds-border bg-ds-secondary text-ds-muted dark:border-ds-border dark:bg-ds-secondary dark:text-ds-muted">
             <strong className="font-semibold text-ds-foreground">Zones and floor plans.</strong> Use{" "}
             <Link href="/drawings" className="ds-link font-semibold">
               Drawings
@@ -73,7 +73,7 @@ export function ZonesDevicesChrome({ children }: { children: React.ReactNode }) 
               Zones
             </Link>
             .
-          </ModuleOnboardingHint>
+          </HintCallout>
         </motion.div>
       ) : null}
       <nav

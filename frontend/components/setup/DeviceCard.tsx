@@ -61,7 +61,7 @@ type BleProps = {
   variant: "ble";
   device: BleDeviceOut;
   assignedLabel: string | null;
-  /** Highlight for onboarding (unregistered assignment). */
+  /** Highlight for unregistered gateway assignment. */
   emphasizeUnassigned?: boolean;
   /** When true, hides Assign / Reassign (e.g. read-only contexts). */
   disableAssignment?: boolean;
@@ -310,7 +310,7 @@ function BleDeviceCard(props: BleProps) {
           <p className="text-ds-muted">
             {device.type === "equipment_tag"
               ? "Unassigned equipment tag — assign to a tracked asset with the button below."
-              : "Not assigned to a worker yet — assign to finish worker onboarding."}
+              : "Not assigned to a worker yet — assign from Team Management when ready."}
           </p>
         )}
         {assignmentHint ? <p className="text-[11px] text-ds-muted">{assignmentHint}</p> : null}

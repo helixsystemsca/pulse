@@ -52,13 +52,6 @@ class UserOut(BaseModel):
     is_impersonating: bool = False
     is_system_admin: bool = False
     company: Optional[CompanySummaryOut] = None
-    onboarding_enabled: bool = True
-    onboarding_completed: bool = False
-    #: True after user dismisses the first-login intro (or skipped); not the same as checklist completion.
-    onboarding_seen: bool = True
-    #: Non-admin modal tour complete or skipped (distinct from org admin checklist).
-    user_onboarding_tour_completed: bool = False
-    onboarding_tier2_enabled: bool = False
     can_use_pm_features: bool = False
     #: Effective permission strings for tenant UI (`["*"]` = full access). Omitted for system operators without a tenant session.
     permissions: Optional[list[str]] = None

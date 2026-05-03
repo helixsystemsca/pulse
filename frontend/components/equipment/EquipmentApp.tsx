@@ -21,12 +21,11 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Card } from "@/components/pulse/Card";
-import { ModuleOnboardingHint } from "@/components/onboarding/ModuleOnboardingHint";
+import { HintCallout } from "@/components/ui/HintCallout";
 import { ModuleSettingsGear } from "@/components/module-settings/ModuleSettingsGear";
 import { dataTableBodyRow, dataTableHeadRowClass } from "@/components/ui/DataTable";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { apiFetch } from "@/lib/api";
-import { emitOnboardingMaybeUpdated } from "@/lib/onboarding-events";
 import {
   createEquipment,
   deleteEquipment,
@@ -335,7 +334,6 @@ export function EquipmentApp() {
       setTab("list");
       await loadList();
       await loadStats();
-      emitOnboardingMaybeUpdated();
     } catch {
       setFormError("Save failed. Check your connection and permissions.");
     } finally {
@@ -350,7 +348,6 @@ export function EquipmentApp() {
       setToast("Equipment deleted.");
       await loadList();
       await loadStats();
-      emitOnboardingMaybeUpdated();
       if (formId === id) {
         resetForm();
         setTab("list");
@@ -477,11 +474,11 @@ export function EquipmentApp() {
       </nav>
 
       {!loading && statsItems.length === 0 && !error ? (
-        <ModuleOnboardingHint>
+        <HintCallout>
           <strong className="font-semibold text-ds-foreground">Build your equipment layer.</strong>{" "}
           Register assets here so you can track location, maintenance rhythm, and monitoring context alongside work
           in the field.
-        </ModuleOnboardingHint>
+        </HintCallout>
       ) : null}
 
       {error ? <p className="text-sm font-medium text-ds-danger">{error}</p> : null}

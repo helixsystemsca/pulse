@@ -18,7 +18,6 @@ from app.api.deps import get_current_user, get_db, require_manager_or_above
 from app.core.events.engine import event_engine
 from app.core.events.types import DomainEvent
 from app.core.user_roles import is_field_worker_like, user_has_any_role
-from app.services.onboarding_service import try_mark_onboarding_step
 from app.services.gamification_service import sync_linked_task_assignee_from_work_request
 from app.services.pm_task_service import sync_pm_task_after_work_order_completed
 from app.models.domain import EquipmentPart, FacilityEquipment, Tool, User, UserRole, Zone
@@ -534,9 +533,6 @@ async def create_wr(
     db.add(wr)
     await db.flush()
     await _log(db, wr.id, "created", user.id, {"title": wr.title})
-    if not is_field_worker_like(user):
-        await try_mark_onboarding_step(db, user.id, "create_work_order")
-        await try_mark_onboarding_step(db, user.id, "customize_workflow")
     await db.commit()
     await db.refresh(wr)
     if wr.assigned_user_id and str(wr.assigned_user_id) != str(user.id):
@@ -694,7 +690,6 @@ async def patch_wr(
         and old_status != PulseWorkRequestStatus.completed
     ):
         await sync_pm_task_after_work_order_completed(db, wr)
-        await try_mark_onboarding_step(db, user.id, "complete_work_order")
     if "assigned_user_id" in data:
         await sync_linked_task_assignee_from_work_request(db, work_request=wr)
     await db.commit()

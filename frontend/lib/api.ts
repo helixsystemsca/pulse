@@ -179,7 +179,7 @@ export async function refreshSessionWithToken(token: string, remember: boolean):
   writeApiSession(token, user, remember);
 }
 
-/** Re-fetch `/auth/me` and update stored session (e.g. after onboarding PATCH). */
+/** Re-fetch `/auth/me` and update stored session. */
 export async function refreshPulseUserFromServer(): Promise<void> {
   if (getImpersonationOverlayAccessToken()) return;
   const base = getApiBaseUrl();

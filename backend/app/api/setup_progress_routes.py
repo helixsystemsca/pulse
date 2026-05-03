@@ -11,9 +11,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_company_user, get_db
 from app.models.blueprint_models import Blueprint
-from app.services.onboarding_reality import blueprint_zone_shape_count
+from app.services.blueprint_zone_shapes import blueprint_zone_shape_count
 from app.models.device_hub import AutomationBleDevice, AutomationGateway
-from app.models.domain import Company, FacilityEquipment, User, UserRole, Zone
+from app.models.domain import FacilityEquipment, User, UserRole, Zone
 from app.models.pulse_models import PulseProjectTask, PulseWorkRequest
 from app.schemas.setup_progress import SetupProgressOut
 
@@ -25,9 +25,6 @@ Db = Annotated[AsyncSession, Depends(get_db)]
 @router.get("", response_model=SetupProgressOut)
 async def get_setup_progress(db: Db, user: Annotated[User, Depends(get_current_company_user)]) -> SetupProgressOut:
     cid = str(user.company_id)
-
-    co = await db.get(Company, cid)
-    onboarding_demo_sensors = bool(co.onboarding_demo_sensors) if co else False
 
     blueprint_count = int(
         await db.scalar(select(func.count()).select_from(Blueprint).where(Blueprint.company_id == cid)) or 0
@@ -77,7 +74,7 @@ async def get_setup_progress(db: Db, user: Annotated[User, Depends(get_current_c
         or 0
     )
 
-    devices_done = gateway_count + ble_device_count > 0 or onboarding_demo_sensors
+    devices_done = gateway_count + ble_device_count > 0
     maintenance_started_done = work_request_count > 0 or procedure_task_count > 0
 
     return SetupProgressOut(
@@ -89,7 +86,6 @@ async def get_setup_progress(db: Db, user: Annotated[User, Depends(get_current_c
         gateway_count=gateway_count,
         ble_device_count=ble_device_count,
         work_request_count=work_request_count,
-        onboarding_demo_sensors=onboarding_demo_sensors,
         facility_layout_done=blueprint_count > 0,
         zones_done=zone_count > 0 or blueprint_zone_shapes > 0,
         equipment_done=equipment_count > 0,

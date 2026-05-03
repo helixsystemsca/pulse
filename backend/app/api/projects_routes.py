@@ -11,7 +11,6 @@ from sqlalchemy import delete, func, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import require_tenant_user
-from app.services.onboarding_service import try_mark_onboarding_step
 from app.services.notifications import seed_default_notification_rules
 from app.core.database import get_db
 from app.models.domain import Company, FacilityEquipment, InventoryItem, User
@@ -1615,7 +1614,6 @@ async def create_task(
         related_task_id=str(t.id),
     )
     await proj_svc.ensure_calendar_shift_for_task(db, cid, t)
-    await try_mark_onboarding_step(db, str(actor.id), "customize_workflow")
     await db.commit()
     await db.refresh(t)
     return await task_to_out_enriched(db, t)

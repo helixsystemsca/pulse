@@ -5,21 +5,18 @@
  */
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { Activity, ChevronDown, Image as ImageIcon, LogOut, ScrollText, Settings } from "lucide-react";
+import { Activity, ChevronDown, Image as ImageIcon, LogOut, Settings } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useOnboardingOptional } from "@/components/onboarding/OnboardingProvider";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
 import { navigateToPulseLogin, pulseApp, pulseRoutes } from "@/lib/pulse-app";
 import { clearSession } from "@/lib/pulse-session";
 import { UserProfileAvatarPreview } from "@/components/profile/UserProfileAvatarPreview";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
-import { replayNonAdminOnboardingTour } from "@/lib/onboarding-events";
 import { sessionHasAnyRole } from "@/lib/pulse-roles";
 
 export function AppNavbar() {
   const pathname = usePathname();
-  const { authed, session, refresh } = usePulseAuth();
-  const onboarding = useOnboardingOptional();
+  const { authed, session } = usePulseAuth();
   const [userOpen, setUserOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
 
@@ -60,20 +57,6 @@ export function AppNavbar() {
 
         <div className="flex items-center gap-2">
           {authed ? <ThemeToggle /> : null}
-          {authed &&
-          session &&
-          sessionHasAnyRole(session, "company_admin") &&
-          onboarding?.state?.onboarding_enabled &&
-          !onboarding.state.onboarding_completed &&
-          !onboarding.loading ? (
-            <button
-              type="button"
-              onClick={() => onboarding.setChecklistExpanded(true)}
-              className="inline-flex max-w-[7rem] truncate rounded-md border border-ds-border bg-ds-secondary/60 px-2 py-1.5 text-[11px] font-semibold text-ds-foreground shadow-sm hover:bg-ds-interactive-hover dark:border-ds-border dark:bg-ds-secondary/60 dark:hover:bg-ds-interactive-hover sm:max-w-none sm:px-2.5 sm:text-xs"
-            >
-              Resume setup
-            </button>
-          ) : null}
           {!authed ? (
             pathname !== "/login" ? (
               <Link
@@ -137,23 +120,6 @@ export function AppNavbar() {
                     <Settings className="h-4 w-4 text-ds-muted" strokeWidth={2} aria-hidden />
                     Profile Settings
                   </Link>
-                  {session?.company_id &&
-                  !session.is_system_admin &&
-                  !sessionHasAnyRole(session, "system_admin") &&
-                  !sessionHasAnyRole(session, "company_admin") ? (
-                    <button
-                      type="button"
-                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-ds-foreground hover:bg-ds-secondary"
-                      role="menuitem"
-                      onClick={() => {
-                        setUserOpen(false);
-                        void replayNonAdminOnboardingTour(refresh);
-                      }}
-                    >
-                      <ScrollText className="h-4 w-4 text-ds-muted" strokeWidth={2} aria-hidden />
-                      View onboarding
-                    </button>
-                  ) : null}
                   {session && sessionHasAnyRole(session, "company_admin") ? (
                     <Link
                       href={pulseApp.to("/dashboard/organization")}

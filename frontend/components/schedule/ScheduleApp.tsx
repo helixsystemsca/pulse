@@ -17,10 +17,8 @@ import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { SettingsGear } from "@/components/settings/SettingsGear";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { apiFetch, isApiMode, refreshPulseUserFromServer } from "@/lib/api";
+import { apiFetch, isApiMode } from "@/lib/api";
 import { getServerDate } from "@/lib/serverTime";
-import { emitOnboardingMaybeUpdated } from "@/lib/onboarding-events";
-import { patchOnboarding } from "@/lib/onboardingService";
 import { listProjects, type ProjectRow } from "@/lib/projectsService";
 import { getOrAssignProjectTintClass } from "@/lib/schedule/project-overlay-tints";
 import type { ProjectBarItem } from "@/lib/schedule/project-schedule-bars";
@@ -173,23 +171,6 @@ export function ScheduleApp() {
     }
     return unsub;
   }, []);
-
-  useEffect(() => {
-    if (!hydrated || !isApiMode()) return;
-    let cancelled = false;
-    (async () => {
-      try {
-        await patchOnboarding({ step: "view_schedule", completed: true });
-        await refreshPulseUserFromServer();
-        if (!cancelled) emitOnboardingMaybeUpdated();
-      } catch {
-        /* offline / not in worker flow / 403 */
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [hydrated]);
 
   useEffect(() => {
     if (!hydrated || !isApiMode() || !schedulePath.includes("schedule")) return;

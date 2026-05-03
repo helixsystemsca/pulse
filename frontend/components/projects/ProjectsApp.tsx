@@ -4,7 +4,7 @@ import Link from "next/link";
 import { CalendarRange, FolderKanban, Pencil, Plus, Settings2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Card } from "@/components/pulse/Card";
-import { ModuleOnboardingHint } from "@/components/onboarding/ModuleOnboardingHint";
+import { HintCallout } from "@/components/ui/HintCallout";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PageBody } from "@/components/ui/PageBody";
 import { SegmentedControl } from "@/components/schedule/SegmentedControl";
@@ -522,10 +522,10 @@ export function ProjectsApp() {
           className="space-y-3 border-dashed border-slate-200/90 dark:border-ds-border"
         >
           {rows.length === 0 ? (
-            <ModuleOnboardingHint>
+            <HintCallout>
               <strong className="font-semibold text-pulse-navy dark:text-slate-100">Projects organize work.</strong> Create
               a project, add tasks with priorities and required skills, then match workers from roster profiles.
-            </ModuleOnboardingHint>
+            </HintCallout>
           ) : null}
           <p className="text-sm text-pulse-muted">
             {rows.length === 0

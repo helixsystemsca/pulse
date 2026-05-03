@@ -35,8 +35,6 @@ from app.schemas.facility_equipment import (
     FacilityEquipmentPatchIn,
 )
 from app.services.equipment_part_logic import derive_next_replacement_date, part_maintenance_status
-from app.services.onboarding_service import try_mark_onboarding_step
-
 router = APIRouter(prefix="/equipment", tags=["equipment"])
 
 Db = Annotated[AsyncSession, Depends(get_db)]
@@ -499,7 +497,6 @@ async def create_equipment(
     )
     db.add(row)
     await db.flush()
-    await try_mark_onboarding_step(db, user.id, "add_equipment")
     zn_val: str | None = None
     if row.zone_id:
         z = await db.get(Zone, row.zone_id)

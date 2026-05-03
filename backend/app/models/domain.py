@@ -1,7 +1,6 @@
 """Core domain entities: companies, users, RBAC, tools, jobs, etc."""
 
 import enum
-import json
 from datetime import date, datetime, timezone
 from typing import Any, Optional
 from uuid import uuid4
@@ -27,16 +26,6 @@ from app.models.base import Base
 
 def _uuid() -> str:
     return str(uuid4())
-
-
-_ONBOARDING_STEPS_DEFAULT_JSON = json.dumps(
-    [
-        {"key": "create_work_order", "completed": False},
-        {"key": "add_equipment", "completed": False},
-        {"key": "invite_team", "completed": False},
-        {"key": "customize_workflow", "completed": False},
-    ]
-)
 
 
 class UserRole(str, enum.Enum):
@@ -134,7 +123,6 @@ class Company(Base):
         index=True,
     )
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
-    onboarding_demo_sensors: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
@@ -231,34 +219,6 @@ class User(Base):
         nullable=False,
         server_default=text("'[]'::jsonb"),
     )
-    onboarding_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
-    onboarding_completed: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
-    onboarding_steps: Mapped[list[Any]] = mapped_column(
-        JSONB,
-        nullable=False,
-        server_default=text(f"'{_ONBOARDING_STEPS_DEFAULT_JSON}'::jsonb"),
-    )
-    #: First-login product intro modal dismissed or skipped; independent of checklist completion.
-    onboarding_seen: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
-    #: Non-admin role tour (modal slides) finished or skipped; independent of org admin checklist.
-    user_onboarding_tour_completed: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, server_default=text("false")
-    )
-    #: Tier 1 checklist completion map keyed by module-action IDs.
-    onboarding_tier1_progress: Mapped[dict[str, Any]] = mapped_column(
-        JSONB,
-        nullable=False,
-        server_default=text("'{}'::jsonb"),
-    )
-    #: Tier 2 feature checklist unlocked by completion or elapsed setup time.
-    onboarding_tier2_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
-    #: First onboarding timestamp used for time-delay Tier 2 unlock fallback.
-    onboarding_started_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        nullable=False,
-        server_default=text("timezone('utc', now())"),
-    )
-    onboarding_tier2_prompted_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
 
     company: Mapped[Optional[Company]] = relationship(
         back_populates="users",
@@ -744,7 +704,7 @@ class SystemLog(Base):
 
 
 class Invite(Base):
-    """Single-use invite token (hashed); company-scoped admin onboarding."""
+    """Single-use invite token (hashed); company-scoped admin invite."""
 
     __tablename__ = "invites"
 

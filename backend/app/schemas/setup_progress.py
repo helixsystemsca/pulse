@@ -14,7 +14,6 @@ class SetupProgressOut(BaseModel):
     gateway_count: int = Field(ge=0, description="Registered automation gateways.")
     ble_device_count: int = Field(ge=0, description="Registered BLE tags / devices.")
     work_request_count: int = Field(ge=0, description="All work requests for this company.")
-    onboarding_demo_sensors: bool = Field(description="Company opted into demo monitoring samples.")
 
     facility_layout_done: bool
     zones_done: bool

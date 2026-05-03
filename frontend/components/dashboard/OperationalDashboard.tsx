@@ -25,10 +25,7 @@ import { DashboardCustomPeekWidget } from "@/components/dashboard/DashboardCusto
 import { Button, ButtonLink } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { XpTasksWidget } from "@/components/gamification/XpTasksWidget";
-import { AdminOnboardingChecklist } from "@/components/onboarding/AdminOnboardingChecklist";
 import { apiFetch, isApiMode } from "@/lib/api";
-import { fetchOnboarding, fetchSetupProgress } from "@/lib/onboardingService";
-import { sessionHasAnyRole } from "@/lib/pulse-roles";
 import { useAuthenticatedAssetSrc } from "@/hooks/useAuthenticatedAssetSrc";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
 import { pulseRoutes, pulseTenantNav } from "@/lib/pulse-app";
@@ -1028,8 +1025,6 @@ function headerInitials(welcomeName: string): string {
   }
   return t.slice(0, 2).toUpperCase();
 }
-
-const ADMIN_SETUP_BANNER_DISMISS_KEY = "pulse_admin_setup_banner_dismissed";
 
 function OperationsHeaderLogoMark({
   logoUrl,
@@ -2269,7 +2264,6 @@ export function OperationalDashboard({
   const [error, setError] = useState<string | null>(null);
   const [zoneDismissed, setZoneDismissed] = useState(false);
   const readyNotifiedRef = useRef(false);
-  const [showSetupChecklist, setShowSetupChecklist] = useState(false);
 
   const workOrdersHref =
     pulseTenantNav.find((n) => n.href === "/dashboard/maintenance")?.href ?? "/dashboard/maintenance";
@@ -2319,7 +2313,7 @@ export function OperationalDashboard({
     const to = new Date(dayEndMsExclusive).toISOString();
 
     try {
-      const [dash, wrList, workers, assetList, lowStock, zoneList, beaconList, setupProgress] = await Promise.all([
+      const [dash, wrList, workers, assetList, lowStock, zoneList, beaconList] = await Promise.all([
         fetchJson<DashboardPayload>("/api/v1/pulse/dashboard"),
         fetchJson<WorkRequestListOut>("/api/v1/pulse/work-requests?limit=40&offset=0"),
         fetchJson<WorkerOut[]>("/api/v1/pulse/workers"),
@@ -2327,7 +2321,6 @@ export function OperationalDashboard({
         fetchJson<InventoryItemOut[]>("/api/v1/pulse/inventory/low-stock"),
         fetchJson<ZoneOut[]>("/api/v1/pulse/schedule-facilities"),
         fetchJson<BeaconEquipmentOut[]>("/api/v1/pulse/equipment"),
-        fetchSetupProgress().catch(() => null),
       ]);
       let shiftList: ShiftOut[] = [];
       try {
@@ -2382,56 +2375,6 @@ export function OperationalDashboard({
     }
   }, [variant, notifyReady]);
 
-  useEffect(() => {
-    if (variant !== "live") {
-      setShowSetupChecklist(false);
-      return;
-    }
-    if (!isApiMode()) {
-      setShowSetupChecklist(false);
-      return;
-    }
-    if (!session || !canAccessPulseTenantApis(session) || !sessionHasAnyRole(session, "company_admin")) {
-      setShowSetupChecklist(false);
-      return;
-    }
-    let cancelled = false;
-    void (async () => {
-      try {
-        const onb = await fetchOnboarding();
-        if (cancelled) return;
-        if (!onb.onboarding_enabled) {
-          setShowSetupChecklist(false);
-          return;
-        }
-        if (onb.onboarding_role !== "admin") {
-          setShowSetupChecklist(false);
-          return;
-        }
-        const orgDone = onb.org_onboarding_completed ?? onb.onboarding_completed;
-        let bannerDismissed = true;
-        try {
-          bannerDismissed = localStorage.getItem(ADMIN_SETUP_BANNER_DISMISS_KEY) === "1";
-        } catch {
-          bannerDismissed = true;
-        }
-        const hasBanner = orgDone && !bannerDismissed;
-        const hasSteps = Array.isArray(onb.steps) && onb.steps.length > 0;
-        // Show if there is an active checklist OR the completion banner.
-        setShowSetupChecklist((!orgDone && hasSteps) || hasBanner);
-      } catch {
-        // If onboarding can't load, prefer hiding the widget vs showing an empty card.
-        if (!cancelled) setShowSetupChecklist(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [session, variant]);
-
-  const facilitySetupSlot =
-    variant === "live" && showSetupChecklist ? <AdminOnboardingChecklist /> : null;
-
   if (variant === "demo") {
     return (
       <DashboardBody
@@ -2480,7 +2423,7 @@ export function OperationalDashboard({
       onDismissZonePrompt={() => setZoneDismissed(true)}
       headerLogoUrl="/images/panologo.png"
       headerCompanyName={session?.company?.name ?? null}
-      facilitySetupChecklist={facilitySetupSlot}
+      facilitySetupChecklist={null}
       readOnly={readOnly}
     />
   );

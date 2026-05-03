@@ -7,9 +7,6 @@ import { ServerTimeSync } from "./ServerTimeSync";
 import { AppNavbar } from "./AppNavbar";
 import { AppSideNav } from "./AppSideNav";
 import { ImpersonationBanner } from "./ImpersonationBanner";
-import { OnboardingChrome } from "@/components/onboarding/OnboardingChrome";
-import { OnboardingProvider } from "@/components/onboarding/OnboardingProvider";
-import { GuidedTourProvider } from "@/components/onboarding/CoreGuidedTour";
 import { ModuleSettingsProvider } from "@/providers/ModuleSettingsProvider";
 import { ProximityPromptHost } from "./ProximityPromptHost";
 import { AppLayoutFooter } from "./AppLayoutFooter";
@@ -36,8 +33,6 @@ export function AppLayout({
 }: AppLayoutProps) {
   return (
     <div className="flex h-screen w-screen flex-col overflow-hidden bg-muted/30">
-      <GuidedTourProvider>
-      <OnboardingProvider>
         <ModuleSettingsProvider>
         <GamificationProvider>
         <InactivitySessionGuard />
@@ -75,13 +70,10 @@ export function AppLayout({
             </div>
           </div>
 
-          {chrome ? <OnboardingChrome /> : null}
           {chrome ? <AppLayoutFooter /> : null}
         </div>
         </GamificationProvider>
         </ModuleSettingsProvider>
-      </OnboardingProvider>
-      </GuidedTourProvider>
     </div>
   );
 }

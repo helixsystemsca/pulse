@@ -23,7 +23,6 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { apiFetch } from "@/lib/api";
 import { fetchEquipmentList, fetchEquipmentParts } from "@/lib/equipmentService";
-import { emitOnboardingMaybeUpdated } from "@/lib/onboarding-events";
 import { PulseDrawer } from "@/components/schedule/PulseDrawer";
 import { ModuleSettingsModal } from "@/components/module-settings/ModuleSettingsModal";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -857,7 +856,6 @@ export function WorkRequestsApp() {
         attachmentsNotes: "",
       });
       await loadList();
-      emitOnboardingMaybeUpdated();
     } finally {
       setActionBusy(false);
     }

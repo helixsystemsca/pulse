@@ -27,8 +27,6 @@ from app.schemas.blueprint import (
     row_to_element_out,
     tasks_model_to_json,
 )
-from app.services.onboarding_service import sync_user_onboarding_from_reality
-
 router = APIRouter(prefix="/blueprints", tags=["blueprints"])
 
 Db = Annotated[AsyncSession, Depends(get_db)]
@@ -90,10 +88,6 @@ async def create_blueprint(body: BlueprintCreateIn, db: Db, user: TenantUser) ->
     bp.layers_json = layers_model_to_json(layers)
     await db.commit()
     await db.refresh(bp)
-    await db.refresh(user)
-    if await sync_user_onboarding_from_reality(db, user):
-        await db.commit()
-        await db.refresh(user)
     return await _detail_out(db, bp)
 
 
@@ -145,10 +139,6 @@ async def update_blueprint(
     bp.layers_json = layers_model_to_json(layers)
     await db.commit()
     await db.refresh(bp)
-    await db.refresh(user)
-    if await sync_user_onboarding_from_reality(db, user):
-        await db.commit()
-        await db.refresh(user)
     return await _detail_out(db, bp)
 
 
@@ -160,10 +150,6 @@ async def delete_blueprint(blueprint_id: str, db: Db, user: CompanyAdminUser) ->
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Blueprint not found")
     await db.execute(delete(Blueprint).where(Blueprint.id == blueprint_id, Blueprint.company_id == cid))
     await db.commit()
-    await db.refresh(user)
-    if await sync_user_onboarding_from_reality(db, user):
-        await db.commit()
-        await db.refresh(user)
 
 
 async def _detail_out(db: AsyncSession, bp: Blueprint) -> BlueprintDetailOut:

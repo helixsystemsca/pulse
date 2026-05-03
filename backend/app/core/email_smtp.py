@@ -85,7 +85,7 @@ async def send_company_admin_invite(
         f"“{company_name}” on behalf of {display}.\n\n"
         "What to do next:\n"
         "1. Open the secure link below (or paste it into your browser).\n"
-        "2. Choose a password and confirm your details to finish onboarding.\n"
+        "2. Choose a password and confirm your details to finish account setup.\n"
         "3. Sign in at your organization's Pulse URL to manage your operation.\n\n"
         f"This link expires in {hours} hour(s) for security. If it expires, ask your Helix "
         "contact to send a new invitation.\n\n"
@@ -118,7 +118,7 @@ async def send_company_admin_invite(
           <strong style="display:block;margin-bottom:8px;color:#0f172a;">Steps</strong>
           <ol style="margin:0;padding-left:20px;color:#475569;">
             <li style="margin-bottom:6px;">Click the button below (or use the link at the bottom).</li>
-            <li style="margin-bottom:6px;">Create your password and complete the short onboarding form.</li>
+            <li style="margin-bottom:6px;">Create your password and complete the short setup form.</li>
             <li>Sign in to Pulse to manage maintenance, scheduling, and your team.</li>
           </ol>
         </td></tr>
@@ -160,7 +160,7 @@ async def send_employee_invite(
     company_name: str,
     invite_url: str,
 ) -> bool:
-    """Invite an existing user row to set their password (tenant employee onboarding)."""
+    """Invite an existing user row to set their password (tenant employee invite)."""
     if not settings.smtp_configured:
         return False
 

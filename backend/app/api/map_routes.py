@@ -28,8 +28,6 @@ from app.schemas.facility_map import (
     parse_elements_json,
     serialize_elements_json,
 )
-from app.services.onboarding_service import sync_user_onboarding_from_reality
-
 router = APIRouter(prefix="/maps", tags=["maps"])
 
 Db = Annotated[AsyncSession, Depends(get_db)]
@@ -111,10 +109,6 @@ async def create_map(body: MapCreateIn, db: Db, user: TenantUser) -> MapDetailOu
     db.add(row)
     await db.commit()
     await db.refresh(row)
-    await db.refresh(user)
-    if await sync_user_onboarding_from_reality(db, user):
-        await db.commit()
-        await db.refresh(user)
     return _row_to_detail(row)
 
 
@@ -162,10 +156,6 @@ async def update_map(
     row.layers_json = layers_model_to_json(layers)
     await db.commit()
     await db.refresh(row)
-    await db.refresh(user)
-    if await sync_user_onboarding_from_reality(db, user):
-        await db.commit()
-        await db.refresh(user)
     return _row_to_detail(row)
 
 
@@ -186,7 +176,3 @@ async def delete_map(
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Map not found")
     await db.execute(delete(FacilityMap).where(FacilityMap.id == map_id, FacilityMap.company_id == cid))
     await db.commit()
-    await db.refresh(user)
-    if await sync_user_onboarding_from_reality(db, user):
-        await db.commit()
-        await db.refresh(user)

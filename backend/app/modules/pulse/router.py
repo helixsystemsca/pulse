@@ -20,7 +20,6 @@ from app.core.pulse_storage import read_user_avatar_bytes
 from app.core.user_avatar_upload import INTERNAL_AVATAR_PATH, co_worker_avatar_url
 from app.core.user_roles import is_field_worker_like, primary_jwt_role
 from app.core.user_roles import user_has_any_role
-from app.services.onboarding_service import try_mark_onboarding_step
 from app.core.database import get_db
 from app.models.domain import (
     InventoryItem,
@@ -375,9 +374,6 @@ async def create_work_request(
     # Auto task generation: work order -> gamified task (XP system).
     # Safe to call multiple times; DB uniqueness prevents dupes.
     await ensure_task_for_work_request(db, work_request=wr, created_by_user_id=user.id)
-    if not is_field_worker_like(user):
-        await try_mark_onboarding_step(db, user.id, "create_work_order")
-        await try_mark_onboarding_step(db, user.id, "customize_workflow")
     await db.commit()
     await db.refresh(wr)
     return WorkRequestOut.model_validate(wr)
@@ -1085,7 +1081,6 @@ async def publish_schedule(
         )
     )
 
-    await try_mark_onboarding_step(db, str(user.id), "publish_first_schedule")
     return {"ok": True, "period_start": body.period_start, "period_end": body.period_end}
 
 
@@ -1212,7 +1207,6 @@ async def create_shift_definition(
         await db.rollback()
         raise HTTPException(status_code=400, detail="Duplicate shift definition code") from None
     await db.refresh(row)
-    await try_mark_onboarding_step(db, str(user.id), "create_shift_definitions")
     return ShiftDefinitionOut.model_validate(row)
 
 
@@ -1288,7 +1282,6 @@ async def create_schedule_period(
     db.add(row)
     await db.commit()
     await db.refresh(row)
-    await try_mark_onboarding_step(db, str(user.id), "create_schedule_period")
     return SchedulePeriodOut.model_validate(row)
 
 

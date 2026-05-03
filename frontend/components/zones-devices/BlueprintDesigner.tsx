@@ -10,7 +10,6 @@ import { pulseApp } from "@/lib/pulse-app";
 import { canAccessPulseTenantApis, readSession } from "@/lib/pulse-session";
 import { useModuleSettings } from "@/providers/ModuleSettingsProvider";
 import { ModuleSettingsGear } from "@/components/module-settings/ModuleSettingsGear";
-import { emitOnboardingMaybeUpdated } from "@/lib/onboarding-events";
 import { freehandOptionsFromSlider, processFreehandPath } from "@/lib/blueprint-freehand-path";
 import { flattenPenDraftToClosedPath, type PenDraftAnchor } from "@/lib/blueprint-pen-path";
 import { mergeClosedShapesUnion } from "@/lib/blueprint-shape-merge";
@@ -2445,7 +2444,6 @@ export function BlueprintDesigner({
         });
       }
       await refreshList();
-      emitOnboardingMaybeUpdated();
       setSaveNotice(
         "Saved to your organization in Pulse. The blueprint is stored on the server (tenant database, with your company’s other data) and appears in the Blueprint menu above. Open Zones → Blueprint anytime to edit it again.",
       );

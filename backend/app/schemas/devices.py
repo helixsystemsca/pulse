@@ -62,7 +62,7 @@ class GatewayIngestSecretRotateOut(BaseModel):
 
 
 class GatewayRegisterIn(BaseModel):
-    """ESP32 captive-portal onboarding: announce presence (matches `automation_gateways.identifier`)."""
+    """ESP32 captive-portal setup: announce presence (matches `automation_gateways.identifier`)."""
 
     gateway_id: str = Field(..., min_length=1, max_length=128)
     ip: str = Field(..., min_length=1, max_length=64)

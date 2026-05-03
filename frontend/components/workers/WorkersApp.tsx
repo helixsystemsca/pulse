@@ -30,7 +30,6 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { apiFetch, refreshPulseUserFromServer } from "@/lib/api";
 import { parseClientApiError } from "@/lib/parse-client-api-error";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
-import { emitOnboardingMaybeUpdated } from "@/lib/onboarding-events";
 import {
   humanizeRole,
   isCreateRoleLimitedSession,
@@ -903,7 +902,6 @@ export function WorkersApp() {
       setCreateForm({ ...CREATE_FORM_EMPTY });
       setCreateToast({ variant: "success", message: "Invite sent successfully" });
       await loadList();
-      emitOnboardingMaybeUpdated();
     } catch (e) {
       const { message } = parseClientApiError(e);
       setCreateToast({

@@ -19,7 +19,6 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { SegmentedControl } from "@/components/schedule/SegmentedControl";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
 import { apiFetch } from "@/lib/api";
-import { emitOnboardingMaybeUpdated } from "@/lib/onboarding-events";
 import { parseClientApiError } from "@/lib/parse-client-api-error";
 import { ProjectAutomationPanel } from "@/components/projects/ProjectAutomationPanel";
 import { PmPlanningShell } from "@/components/pm-planning/PmPlanningShell";
@@ -425,7 +424,6 @@ export function ProjectDetailApp({ projectId }: { projectId: string }) {
     });
     try {
       await patchTask(t.id, { status: "complete" });
-      emitOnboardingMaybeUpdated();
     } catch (e: unknown) {
       setData(prev);
       const errObj = e as { status?: number; body?: { detail?: string } };
@@ -479,7 +477,6 @@ export function ProjectDetailApp({ projectId }: { projectId: string }) {
     try {
       await deleteTask(t.id);
       setToast("Task deleted.");
-      emitOnboardingMaybeUpdated();
     } catch {
       setData(prev);
       setToast("Could not delete task.");
@@ -1955,7 +1952,6 @@ function ProjectTaskModal({
           required_skill_names: skillsSel,
         });
         await syncTaskDependencies(created.id, depSelected);
-        emitOnboardingMaybeUpdated();
       }
       await onSaved();
       onClose();
