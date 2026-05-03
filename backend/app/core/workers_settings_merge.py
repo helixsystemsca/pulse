@@ -30,6 +30,10 @@ DEFAULT_WORKERS_SETTINGS: dict[str, Any] = {
     "certification_rules": [],
     #: Company admin delegates access to the Workers & Roles product page (not system-admin contract).
     "workers_page_delegation": {"manager": False, "supervisor": False, "lead": False},
+    #: Company admin: which operational roles may edit downstream `role_feature_access` from Team Management.
+    "permission_delegation": {"manager": False, "supervisor": False, "lead": False},
+    #: When true, delegated managers/supervisors/leads may set `feature_allow_extra` on worker-role roster users.
+    "delegates_can_assign_worker_module_extras": False,
     #: Optional per-role product modules (keys in GLOBAL_SYSTEM_FEATURES). Missing role key => full contract.
     "role_feature_access": {},
     #: Roles (JWT `users.roles`) that may PATCH work requests (assignee, zone, due date, etc.). Company admins always can.

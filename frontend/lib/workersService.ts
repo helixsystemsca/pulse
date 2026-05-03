@@ -102,6 +102,10 @@ export type WorkersSettings = {
   skill_categories?: string[];
   certification_rules?: unknown[];
   workers_page_delegation?: { manager?: boolean; supervisor?: boolean; lead?: boolean };
+  /** Company admin: which roles may edit subordinate `role_feature_access` from Team Management. */
+  permission_delegation?: { manager?: boolean; supervisor?: boolean; lead?: boolean };
+  /** Company admin: delegated editors may assign per-user contract modules to worker-role users. */
+  delegates_can_assign_worker_module_extras?: boolean;
   role_feature_access?: Record<string, string[]>;
   /** Roles allowed to edit procedures (CMMS SOP library). Company admins can always edit. */
   procedures_edit_roles?: string[];

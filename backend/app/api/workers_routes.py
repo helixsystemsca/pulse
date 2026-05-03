@@ -16,12 +16,13 @@ from sqlalchemy import delete, func, or_, select
 from sqlalchemy.dialects.postgresql import array as pg_array
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_user, get_db, require_manager_or_above
+from app.api.deps import get_current_user, get_db
 from app.core.user_roles import (
     default_operational_role_for_invite_role,
     primary_jwt_role,
     user_has_any_role,
     user_has_facility_tenant_admin_flag,
+    user_has_tenant_full_admin,
     user_roles_subset_of,
     validate_tenant_roles_non_empty,
 )
@@ -35,6 +36,10 @@ from app.core.tenant_feature_access import (
     contract_and_effective_features_for_me,
     load_merged_workers_settings,
     user_has_workers_roster_page_access,
+)
+from app.core.workers_permission_delegation import (
+    actor_is_delegated_permission_editor,
+    actor_may_set_worker_feature_allow_extra,
 )
 from app.core.workers_settings_merge import DEFAULT_WORKERS_SETTINGS, merge_workers_settings
 from app.core.email_smtp import send_employee_invite
@@ -96,19 +101,26 @@ async def resolve_workers_company_id(
 
 CompanyId = Annotated[str, Depends(resolve_workers_company_id)]
 Db = Annotated[AsyncSession, Depends(get_db)]
-MgrUser = Annotated[User, Depends(require_manager_or_above)]
 
 
 async def require_workers_roster_page(
-    user: Annotated[User, Depends(require_manager_or_above)],
+    user: Annotated[User, Depends(get_current_user)],
     db: Db,
     cid: CompanyId,
 ) -> User:
+    if user_has_any_role(user, UserRole.system_admin) or user.is_system_admin:
+        return user
     merged = await load_merged_workers_settings(db, cid)
     if user_has_workers_roster_page_access(user, merged):
         return user
     _, eff, _, _ = await contract_and_effective_features_for_me(db, user)
-    if "team_management" in eff:
+    if "team_management" in eff and user_has_any_role(
+        user,
+        UserRole.company_admin,
+        UserRole.manager,
+        UserRole.supervisor,
+        UserRole.lead,
+    ):
         return user
     raise HTTPException(
         status_code=status.HTTP_403_FORBIDDEN,
@@ -156,6 +168,16 @@ def _sanitize_workers_policy_keys(base: dict[str, Any]) -> None:
             "supervisor": bool(wpd.get("supervisor")),
             "lead": bool(wpd.get("lead")),
         }
+    pdel = base.get("permission_delegation")
+    if isinstance(pdel, dict):
+        base["permission_delegation"] = {
+            "manager": bool(pdel.get("manager")),
+            "supervisor": bool(pdel.get("supervisor")),
+            "lead": bool(pdel.get("lead")),
+        }
+    if "delegates_can_assign_worker_module_extras" in base:
+        base["delegates_can_assign_worker_module_extras"] = bool(base.get("delegates_can_assign_worker_module_extras"))
+
 
 async def _contract_feature_names_for_company(db: AsyncSession, cid: str) -> list[str]:
     raw = await tenant_enabled_feature_names_with_legacy(db, cid)
@@ -541,22 +563,71 @@ async def get_workers_settings(db: Db, _: RosterPageUser, cid: CompanyId) -> Wor
     )
 
 
-@router.patch("/settings", response_model=WorkersSettingsOut)
-async def patch_workers_settings(
-    db: Db,
-    _: WorkersSettingsAdminUser,
-    cid: CompanyId,
-    body: WorkersSettingsPatchIn,
-) -> WorkersSettingsOut:
-    row = await _get_settings_row(db, cid)
-    base = merge_workers_settings(row.settings if row else None)
-    for k, v in body.settings.items():
+def _apply_full_settings_patch(base: dict[str, Any], incoming: dict[str, Any]) -> None:
+    for k, v in incoming.items():
         if isinstance(v, dict) and isinstance(base.get(k), dict):
             m = dict(base[k])
             m.update(v)
             base[k] = m
         else:
             base[k] = v
+
+
+def _apply_delegated_settings_patch(actor: User, base: dict[str, Any], incoming: dict[str, Any], contract: set[str]) -> None:
+    """Merge only subordinate `role_feature_access` rows the actor is allowed to edit."""
+    if not actor_is_delegated_permission_editor(actor, base):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Permission delegation is not enabled for your role.",
+        )
+    allowed_targets = delegated_role_feature_targets(actor, base)
+    for key in incoming:
+        if key != "role_feature_access":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Delegated editors may only update role module access (role_feature_access).",
+            )
+    rfa_in = incoming.get("role_feature_access")
+    if not isinstance(rfa_in, dict):
+        raise HTTPException(status_code=400, detail="role_feature_access must be an object")
+    cur = dict(base.get("role_feature_access") or {})
+    for rk, modules in rfa_in.items():
+        role_key = str(rk)
+        if role_key not in allowed_targets:
+            continue
+        cleaned = _sanitize_feature_key_list(modules)
+        cur[role_key] = sorted(x for x in cleaned if x in contract)
+    base["role_feature_access"] = cur
+
+
+@router.patch("/settings", response_model=WorkersSettingsOut)
+async def patch_workers_settings(
+    db: Db,
+    actor: Annotated[User, Depends(get_current_user)],
+    cid: CompanyId,
+    body: WorkersSettingsPatchIn,
+) -> WorkersSettingsOut:
+    await require_workers_roster_page(actor, db, cid)
+    row = await _get_settings_row(db, cid)
+    base = merge_workers_settings(row.settings if row else None)
+    cfn_list = await _contract_feature_names_for_company(db, cid)
+    contract_set = set(cfn_list)
+
+    full_admin = (
+        user_has_tenant_full_admin(actor)
+        or user_has_any_role(actor, UserRole.system_admin)
+        or actor.is_system_admin
+    )
+    if full_admin:
+        _apply_full_settings_patch(base, body.settings)
+    elif body.settings and actor_is_delegated_permission_editor(actor, base):
+        _apply_delegated_settings_patch(actor, base, body.settings, contract_set)
+    elif body.settings:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only company administrators or delegated operational roles may update these settings.",
+        )
+
     _sanitize_workers_policy_keys(base)
     if row:
         row.settings = base
@@ -570,7 +641,7 @@ async def patch_workers_settings(
 @router.get("", response_model=WorkerListOut)
 async def list_workers(
     db: Db,
-    _: MgrUser,
+    _: RosterPageUser,
     cid: CompanyId,
     q: Optional[str] = Query(None),
     include_inactive: bool = Query(True),
@@ -1028,14 +1099,11 @@ async def patch_worker(
         await _sync_training(db, cid, user_id, body.training)
 
     if body.feature_allow_extra is not None:
-        if (
-            not user_has_any_role(actor, UserRole.company_admin)
-            and not user_has_facility_tenant_admin_flag(actor)
-            and not (user_has_any_role(actor, UserRole.system_admin) or actor.is_system_admin)
-        ):
+        merged = await load_merged_workers_settings(db, cid)
+        if not actor_may_set_worker_feature_allow_extra(actor, target, merged):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Only company administrators can set extra module access",
+                detail="Only company administrators or delegated leads may set extra module access for worker-role users when enabled in Team Management settings.",
             )
         target.feature_allow_extra = _sanitize_feature_key_list(body.feature_allow_extra)
 

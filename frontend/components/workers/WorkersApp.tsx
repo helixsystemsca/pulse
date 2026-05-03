@@ -259,6 +259,11 @@ function shortenUa(ua: string | null | undefined, max = 72): string {
   return s.length > max ? `${s.slice(0, max)}…` : s;
 }
 
+function profileIsWorkerOnly(profile: WorkerDetail): boolean {
+  const r = profile.roles?.length ? [...profile.roles] : profile.role ? [profile.role] : [];
+  return r.length > 0 && r.every((x) => x === "worker");
+}
+
 const PERMISSION_ROLE_OPTIONS = ["manager", "supervisor", "lead", "worker"] as const;
 type PermissionRole = (typeof PERMISSION_ROLE_OPTIONS)[number];
 
@@ -300,6 +305,34 @@ export function WorkersApp() {
 
   const [fullSettings, setFullSettings] = useState<WorkersSettings>({});
 
+  const delegatedRoleTargetsForMe = useMemo(() => {
+    const pd = fullSettings.permission_delegation ?? {};
+    const targets = new Set<PermissionRole>();
+    if (sessionHasAnyRole(session, "manager") && pd.manager) {
+      (["supervisor", "lead", "worker"] as const).forEach((r) => targets.add(r));
+    }
+    if (sessionHasAnyRole(session, "supervisor") && pd.supervisor) {
+      (["lead", "worker"] as const).forEach((r) => targets.add(r));
+    }
+    if (sessionHasAnyRole(session, "lead") && pd.lead) {
+      targets.add("worker");
+    }
+    return PERMISSION_ROLE_OPTIONS.filter((r) => targets.has(r));
+  }, [session, fullSettings.permission_delegation]);
+
+  const mayEditDelegatedRoleModules = Boolean(!isTenantFullAdmin && delegatedRoleTargetsForMe.length > 0);
+
+  const canDelegateWorkerExtras = useMemo(() => {
+    if (!session) return false;
+    const pd = fullSettings.permission_delegation ?? {};
+    if (!fullSettings.delegates_can_assign_worker_module_extras) return false;
+    return Boolean(
+      (sessionHasAnyRole(session, "manager") && pd.manager) ||
+        (sessionHasAnyRole(session, "supervisor") && pd.supervisor) ||
+        (sessionHasAnyRole(session, "lead") && pd.lead),
+    );
+  }, [session, fullSettings]);
+
   const [profileId, setProfileId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -325,6 +358,12 @@ export function WorkersApp() {
     supervisor: false,
     lead: false,
   });
+  const [permissionDelegationDraft, setPermissionDelegationDraft] = useState({
+    manager: false,
+    supervisor: false,
+    lead: false,
+  });
+  const [assignWorkerExtrasDraft, setAssignWorkerExtrasDraft] = useState(false);
   const [roleFeatureAccessDraft, setRoleFeatureAccessDraft] = useState<Record<string, string[]>>({});
   const [proceduresEditRolesDraft, setProceduresEditRolesDraft] = useState<string[]>(["manager", "supervisor", "lead"]);
   const [workRequestEditRolesDraft, setWorkRequestEditRolesDraft] = useState<string[]>(["manager", "supervisor"]);
@@ -409,6 +448,15 @@ export function WorkersApp() {
           lead: Boolean(wpd.lead),
         });
       }
+      const pdd = st.settings.permission_delegation;
+      if (pdd && typeof pdd === "object") {
+        setPermissionDelegationDraft({
+          manager: Boolean(pdd.manager),
+          supervisor: Boolean(pdd.supervisor),
+          lead: Boolean(pdd.lead),
+        });
+      }
+      setAssignWorkerExtrasDraft(Boolean(st.settings.delegates_can_assign_worker_module_extras));
       const rfa = (st.settings.role_feature_access ?? {}) as Record<string, string[]>;
       const nextDraft: Record<string, string[]> = {};
       for (const role of ["manager", "supervisor", "lead", "worker"] as const) {
@@ -630,6 +678,13 @@ export function WorkersApp() {
     });
   }
 
+  useEffect(() => {
+    if (!mayEditDelegatedRoleModules || delegatedRoleTargetsForMe.length === 0) return;
+    if (!delegatedRoleTargetsForMe.includes(permissionsRole)) {
+      setPermissionsRole(delegatedRoleTargetsForMe[0]!);
+    }
+  }, [mayEditDelegatedRoleModules, delegatedRoleTargetsForMe, permissionsRole]);
+
   async function deleteInvitedWorkerFromList(row: WorkerRow) {
     if (!canDeleteInvitedFromList) return;
     if ((row.account_status ?? "active") !== "invited") return;
@@ -728,6 +783,8 @@ export function WorkersApp() {
       const r = await patchWorkerSettings(apiCompany, {
         ...fullSettings,
         workers_page_delegation: delegationDraft,
+        permission_delegation: permissionDelegationDraft,
+        delegates_can_assign_worker_module_extras: assignWorkerExtrasDraft,
         role_feature_access: roleFeatureAccessDraft,
         procedures_edit_roles: proceduresEditRolesDraft,
         work_request_edit_roles: workRequestEditRolesDraft,
@@ -743,8 +800,34 @@ export function WorkersApp() {
     }
   }
 
+  async function saveDelegatedRoleModules() {
+    if (!effectiveCompanyId || !mayEditDelegatedRoleModules) return;
+    setAccessPolicySaving(true);
+    try {
+      const slice: Record<string, string[]> = {};
+      for (const r of delegatedRoleTargetsForMe) {
+        slice[r] = roleFeatureAccessDraft[r] ?? [];
+      }
+      const r = await patchWorkerSettings(apiCompany, { role_feature_access: slice });
+      setContractFeatureNamesFromApi(r.contract_feature_names ?? []);
+      setFullSettings(r.settings);
+      setSettingsDraft(r.settings);
+      await refreshPulseUserFromServer();
+      refresh();
+    } finally {
+      setAccessPolicySaving(false);
+    }
+  }
+
   async function saveExtraModules() {
-    if (!profileId || !profile || !isTenantFullAdmin || principalHasAnyRole(profile, "company_admin")) return;
+    if (
+      !profileId ||
+      !profile ||
+      (!isTenantFullAdmin && (!canDelegateWorkerExtras || !profileIsWorkerOnly(profile))) ||
+      principalHasAnyRole(profile, "company_admin")
+    ) {
+      return;
+    }
     setProfileBusy(true);
     try {
       await patchWorker(apiCompany, profileId, { feature_allow_extra: extraModulesDraft });
@@ -1133,6 +1216,53 @@ export function WorkersApp() {
 
             {isTenantFullAdmin && contractCatalog.length > 0 ? (
               <Card variant="secondary" padding="md">
+                <h2 className="text-sm font-bold tracking-tight text-ds-foreground">Permission delegation</h2>
+                <p className="mt-1 text-xs text-ds-muted">
+                  Choose which operational roles may adjust <strong className="font-semibold text-ds-foreground">module access</strong> for
+                  people in roles below them (for example, a manager sets modules for supervisors, leads, and workers).
+                  This is separate from opening this page (see above). Turning on &quot;Individual worker modules&quot; lets
+                  those delegates assign extra contract modules to <strong className="font-semibold text-ds-foreground">worker-role</strong>{" "}
+                  accounts only.
+                </p>
+                <div className="mt-4 space-y-2">
+                  {(
+                    [
+                      ["manager", "Managers"],
+                      ["supervisor", "Supervisors"],
+                      ["lead", "Leads"],
+                    ] as const
+                  ).map(([key, label]) => (
+                    <label key={`pdel-${key}`} className="flex cursor-pointer items-center gap-2 text-sm text-ds-foreground">
+                      <input
+                        type="checkbox"
+                        className={dsCheckboxClass}
+                        checked={permissionDelegationDraft[key as keyof typeof permissionDelegationDraft]}
+                        onChange={(e) =>
+                          setPermissionDelegationDraft((d) => ({ ...d, [key]: e.target.checked }))
+                        }
+                      />
+                      {label} may edit downstream role access
+                    </label>
+                  ))}
+                  <label className="mt-3 flex cursor-pointer items-center gap-2 text-sm text-ds-foreground">
+                    <input
+                      type="checkbox"
+                      className={dsCheckboxClass}
+                      checked={assignWorkerExtrasDraft}
+                      onChange={(e) => setAssignWorkerExtrasDraft(e.target.checked)}
+                    />
+                    Delegates may assign extra modules to individual worker-role users
+                  </label>
+                </div>
+                <p className="mt-3 text-xs text-ds-muted">
+                  Save with <strong className="font-semibold text-ds-foreground">Save permissions</strong> in the card below (or save any
+                  policy change there).
+                </p>
+              </Card>
+            ) : null}
+
+            {isTenantFullAdmin && contractCatalog.length > 0 ? (
+              <Card variant="secondary" padding="md">
                 <h2 className="text-sm font-bold tracking-tight text-ds-foreground">Permissions</h2>
                 <p className="mt-1 text-xs text-ds-muted">
                   Your organization&apos;s Pulse modules come from the contract (set by the system admin). Pick a role,
@@ -1299,11 +1429,74 @@ export function WorkersApp() {
               </Card>
             ) : null}
 
-            {isTenantFullAdmin ? null : (
+            {mayEditDelegatedRoleModules && contractCatalog.length > 0 ? (
+              <Card variant="secondary" padding="md">
+                <h2 className="text-sm font-bold tracking-tight text-ds-foreground">Adjust modules for your team</h2>
+                <p className="mt-1 text-xs text-ds-muted">
+                  Your company administrator enabled downstream access control for your role. Pick a subordinate role,
+                  then choose which Panorama modules people in that role may use (within your organization&apos;s contract).
+                </p>
+                <label className={`${LABEL} mt-4 block`}>Role</label>
+                <select
+                  className={FIELD}
+                  value={permissionsRole}
+                  onChange={(e) => setPermissionsRole(e.target.value as PermissionRole)}
+                >
+                  {delegatedRoleTargetsForMe.map((role) => (
+                    <option key={role} value={role}>
+                      {humanizeRole(role)}
+                    </option>
+                  ))}
+                </select>
+                <div className="mt-4 space-y-3">
+                  {TENANT_PRODUCT_MODULES.filter((m) => contractCatalog.includes(m)).map((mod) => {
+                    const on = (roleFeatureAccessDraft[permissionsRole] ?? []).includes(mod);
+                    return (
+                      <div
+                        key={`del-${permissionsRole}-${mod}`}
+                        className="ds-inset-panel flex items-center justify-between gap-3 px-3 py-3"
+                      >
+                        <p className="min-w-0 text-sm font-semibold text-ds-foreground">{MODULE_LABEL[mod] ?? mod}</p>
+                        <button
+                          type="button"
+                          role="switch"
+                          aria-checked={on}
+                          onClick={() => toggleRoleModule(permissionsRole, mod)}
+                          className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${
+                            on ? "bg-ds-success" : "bg-ds-border"
+                          }`}
+                        >
+                          <span
+                            className={`absolute top-0.5 left-0.5 h-6 w-6 rounded-full bg-ds-primary shadow transition-transform ${
+                              on ? "translate-x-5" : "translate-x-0"
+                            }`}
+                          />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+                <button
+                  type="button"
+                  className={`${PRIMARY_BTN} mt-4 w-full`}
+                  disabled={accessPolicySaving}
+                  onClick={() => void saveDelegatedRoleModules()}
+                >
+                  {accessPolicySaving ? "Saving…" : "Save team module access"}
+                </button>
+              </Card>
+            ) : null}
+
+            {!isTenantFullAdmin && !mayEditDelegatedRoleModules && !canDelegateWorkerExtras ? (
               <p className="ds-inset-panel px-3 py-2 text-xs text-ds-muted">
                 Workers settings and contract-scoped module access are managed by a company administrator.
               </p>
-            )}
+            ) : !isTenantFullAdmin && !mayEditDelegatedRoleModules && canDelegateWorkerExtras ? (
+              <p className="ds-inset-panel px-3 py-2 text-xs text-ds-muted">
+                You can assign extra contract modules to individual <strong className="font-semibold text-ds-foreground">worker-role</strong>{" "}
+                profiles from their detail drawer (Extra module access).
+              </p>
+            ) : null}
           </div>
 
           <div className="lg:col-span-8 xl:col-span-9">
@@ -1897,12 +2090,15 @@ export function WorkersApp() {
               </section>
             ) : null}
 
-            {isTenantFullAdmin && !principalHasAnyRole(profile, "company_admin") && contractCatalog.length > 0 ? (
+            {(isTenantFullAdmin || (canDelegateWorkerExtras && profileIsWorkerOnly(profile))) &&
+            !principalHasAnyRole(profile, "company_admin") &&
+            contractCatalog.length > 0 ? (
               <section>
                 <h3 className={SECTION_KICKER}>Extra module access</h3>
                 <p className="mt-1 text-xs text-pulse-muted">
-                  Grant additional Pulse modules from your organization&apos;s contract (on top of this person&apos;s
-                  role defaults).
+                  {isTenantFullAdmin
+                    ? "Grant additional Panorama modules from your organization's contract (on top of this person's role defaults)."
+                    : "Assign additional contract modules for this worker (within the organization contract). Company administrators control who may do this."}
                 </p>
                 <div className="ds-inset-panel mt-3 flex flex-col gap-1.5 p-3">
                   {TENANT_PRODUCT_MODULES.filter((m) => contractCatalog.includes(m)).map((mod) => (
