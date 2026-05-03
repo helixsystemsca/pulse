@@ -95,10 +95,7 @@ export default function OverviewProjectTabPage() {
         listProjectActivity(selectedId),
         apiFetch<PulseWorkerApi[]>("/api/v1/pulse/workers"),
       ]);
-      const workerMap = new Map<string, string>(
-        (workers ?? []).map((w) => [w.id, (w.full_name?.trim() || w.email)?.trim() || w.email]),
-      );
-      const view = buildProjectKioskView(detail, activity ?? [], workerMap, loadKioskWidgetConfig());
+      const view = buildProjectKioskView(detail, activity ?? [], workers ?? [], loadKioskWidgetConfig());
       setPreviewJson(JSON.stringify(view, null, 2));
     } catch (e: unknown) {
       setPreviewErr(e instanceof Error ? e.message : "Preview failed");

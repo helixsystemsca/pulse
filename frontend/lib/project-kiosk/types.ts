@@ -9,6 +9,14 @@ export type TeamHighlight = {
   description: string;
 };
 
+/** Workers shown as “on site” in the project kiosk header (from in-progress assignments). */
+export type KioskOnSiteWorker = {
+  id: string;
+  firstName: string;
+  displayName: string;
+  avatarUrl?: string | null;
+};
+
 export type KioskSectionBody =
   | {
       kind: "metrics";
@@ -28,11 +36,18 @@ export type KioskSection = {
 
 export type ProjectKioskView = {
   header: {
-    name: string;
+    /** Tenant / facility line above the project title. */
+    facilityLabel: string;
+    projectName: string;
+    /** Target completion (ISO calendar date). */
+    targetEndDate: string | null;
+    /** Shown under target date, e.g. “5 days remaining” or “9 days overdue”. */
+    targetEndCaption: string;
+    targetEndTone: "default" | "warning" | "danger";
     percentComplete: number;
     tasksRemaining: number;
     blockedCount: number;
-    activeWorkers: number;
+    onSiteWorkers: KioskOnSiteWorker[];
     lastUpdated: string;
   };
   lockedSections: KioskSection[];

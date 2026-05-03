@@ -1,5 +1,11 @@
 import { apiFetch } from "@/lib/api";
-import type { KioskSection, KioskWidgetDefinition, ProjectKioskView, TeamHighlight } from "@/lib/project-kiosk/types";
+import type {
+  KioskOnSiteWorker,
+  KioskSection,
+  KioskWidgetDefinition,
+  ProjectKioskView,
+  TeamHighlight,
+} from "@/lib/project-kiosk/types";
 import type { PulseWorkerApi } from "@/lib/schedule/pulse-bridge";
 import {
   getProject,
@@ -13,6 +19,54 @@ import { loadKioskWidgetConfig } from "@/lib/project-kiosk/kioskWidgetConfig";
 function workerName(map: Map<string, string>, id: string | null | undefined): string {
   if (!id) return "Unassigned";
   return map.get(id)?.trim() || "Team member";
+}
+
+function firstNameFromFull(full: string): string {
+  const t = full.trim();
+  if (!t) return "?";
+  return (t.split(/\s+/)[0] ?? t).replace(/[.,:;!?$]+$/, "");
+}
+
+function kioskFacilityLabel(): string {
+  if (typeof process !== "undefined" && process.env.NEXT_PUBLIC_KIOSK_FACILITY_NAME?.trim()) {
+    return process.env.NEXT_PUBLIC_KIOSK_FACILITY_NAME.trim();
+  }
+  return "Panorama Recreation";
+}
+
+function targetCompletionMeta(
+  endIso: string | null | undefined,
+): { caption: string; tone: "default" | "warning" | "danger" } {
+  if (!endIso) return { caption: "No target set", tone: "default" };
+  const end = new Date(endIso.includes("T") ? endIso : `${endIso}T12:00:00`);
+  if (Number.isNaN(end.getTime())) return { caption: "No target set", tone: "default" };
+  const startToday = new Date();
+  startToday.setHours(0, 0, 0, 0);
+  const endDay = new Date(end);
+  endDay.setHours(0, 0, 0, 0);
+  const diffMs = endDay.getTime() - startToday.getTime();
+  const diffDays = Math.round(diffMs / (24 * 60 * 60 * 1000));
+  if (diffDays < 0) return { caption: `${Math.abs(diffDays)} days overdue`, tone: "danger" };
+  if (diffDays === 0) return { caption: "Due today", tone: "warning" };
+  return { caption: `${diffDays} day${diffDays === 1 ? "" : "s"} remaining`, tone: "default" };
+}
+
+function onSiteWorkersFromTasks(tasks: TaskRow[], workers: PulseWorkerApi[]): KioskOnSiteWorker[] {
+  const inProg = tasks.filter((t) => t.status === "in_progress" && t.assigned_user_id);
+  const ids = [...new Set(inProg.map((t) => t.assigned_user_id!))];
+  const byId = new Map(workers.map((w) => [w.id, w]));
+  return ids
+    .map((id) => {
+      const w = byId.get(id);
+      const displayName = (w?.full_name?.trim() || w?.email || "Member").trim();
+      return {
+        id,
+        firstName: firstNameFromFull(displayName),
+        displayName,
+        avatarUrl: w?.avatar_url ?? null,
+      };
+    })
+    .sort((a, b) => a.displayName.localeCompare(b.displayName));
 }
 
 function parseTs(iso: string | null | undefined): number {
@@ -275,21 +329,30 @@ function buildSections(
 export function buildProjectKioskView(
   project: ProjectDetail,
   activity: ProjectActivityRow[],
-  workerMap: Map<string, string>,
+  workers: PulseWorkerApi[],
   widgets: KioskWidgetDefinition[],
 ): ProjectKioskView {
   const tasks = project.tasks ?? [];
+  const workerMap = new Map<string, string>(
+    workers.map((w) => [w.id, (w.full_name?.trim() || w.email)?.trim() || w.email]),
+  );
   const highlights = buildTeamHighlights(tasks, workerMap, activity);
   const { locked, rotating } = buildSections(project, tasks, workerMap, widgets, highlights);
   const lastUpdated = new Date().toISOString();
+  const targetMeta = targetCompletionMeta(project.end_date);
+  const onSite = onSiteWorkersFromTasks(tasks, workers);
 
   return {
     header: {
-      name: project.name,
+      facilityLabel: kioskFacilityLabel(),
+      projectName: project.name,
+      targetEndDate: project.end_date ?? null,
+      targetEndCaption: targetMeta.caption,
+      targetEndTone: targetMeta.tone,
       percentComplete: Math.round(project.progress_pct ?? 0),
       tasksRemaining: Math.max(0, project.task_total - project.task_completed),
       blockedCount: blockedTasks(tasks).length,
-      activeWorkers: uniqueActiveWorkerIds(tasks),
+      onSiteWorkers: onSite,
       lastUpdated,
     },
     lockedSections: locked,
@@ -305,9 +368,6 @@ export async function getProjectKioskView(projectId: string): Promise<ProjectKio
     listProjectActivity(projectId),
     apiFetch<PulseWorkerApi[]>("/api/v1/pulse/workers"),
   ]);
-  const workerMap = new Map<string, string>(
-    (workers ?? []).map((w) => [w.id, (w.full_name?.trim() || w.email)?.trim() || w.email]),
-  );
   const widgets = loadKioskWidgetConfig();
-  return buildProjectKioskView(project, activity ?? [], workerMap, widgets);
+  return buildProjectKioskView(project, activity ?? [], workers ?? [], widgets);
 }

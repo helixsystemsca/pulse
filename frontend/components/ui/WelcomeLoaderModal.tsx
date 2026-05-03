@@ -1,12 +1,13 @@
 "use client";
 
 /**
- * Full-screen welcome overlay after sign-in: centered, minimal loading card + pulse animation.
+ * Full-screen welcome overlay after sign-in: centered card, Panorama logo, and ocean-wave progress.
  * Shown at most once per browser tab session (`sessionStorage`), so refreshes skip the animation.
  */
 
-import { AnimatePresence, motion } from "framer-motion";
-import { useEffect, useRef, useState } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import Image from "next/image";
+import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { PULSE_WELCOME_SESSION_KEY } from "@/lib/pulse-session";
 
@@ -25,7 +26,7 @@ export type WelcomeLoaderModalProps = {
   storageKey?: string;
 };
 
-/** How long the pulse/“preparing” state runs before the personalized line appears. */
+/** How long the “preparing” state runs before the personalized line appears. */
 const LOADING_PHASE_MS = 2200;
 /** How long the personalized welcome is visible before the overlay dismisses. */
 const WELCOME_PHASE_MS = 2000;
@@ -48,50 +49,53 @@ function timeOfDayGreeting(): string {
   return "Good evening";
 }
 
-function PulseLine() {
+function WaveTile({ uid }: { uid: string }) {
+  const fill = `oceanWaveFill-${uid}`;
+  const foam = `oceanWaveFoam-${uid}`;
   return (
     <svg
-      width="96"
-      height="24"
-      viewBox="0 0 96 24"
-      fill="none"
+      className="h-full w-1/2 shrink-0"
+      viewBox="0 0 400 72"
+      preserveAspectRatio="none"
       xmlns="http://www.w3.org/2000/svg"
-      className="block"
-      aria-hidden
     >
       <defs>
-        <linearGradient id="pulseStroke" x1="0" y1="0" x2="96" y2="0" gradientUnits="userSpaceOnUse">
-          <stop offset="0" stopColor="#36F1CD" stopOpacity="0.1" />
-          <stop offset="0.45" stopColor="#36F1CD" stopOpacity="1" />
-          <stop offset="1" stopColor="#36F1CD" stopOpacity="0.1" />
+        <linearGradient id={fill} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#8fd9d4" stopOpacity="0.92" />
+          <stop offset="45%" stopColor="#2c8f82" stopOpacity="0.9" />
+          <stop offset="100%" stopColor="#3d5a80" stopOpacity="0.65" />
         </linearGradient>
-        <filter id="pulseGlow" x="-20%" y="-100%" width="140%" height="300%">
-          <feGaussianBlur stdDeviation="1.6" result="blur" />
-          <feColorMatrix
-            in="blur"
-            type="matrix"
-            values="0 0 0 0 0.21  0 0 0 0 0.95  0 0 0 0 0.80  0 0 0 0.55 0"
-          />
-          <feMerge>
-            <feMergeNode />
-            <feMergeNode in="SourceGraphic" />
-          </feMerge>
-        </filter>
+        <linearGradient id={foam} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#ecfeff" stopOpacity="0.55" />
+          <stop offset="100%" stopColor="#2c8f82" stopOpacity="0" />
+        </linearGradient>
       </defs>
-
-      <motion.path
-        d="M3 12 H24 L30 12 L34 6 L38 20 L42 10 L46 12 H93"
-        stroke="url(#pulseStroke)"
-        strokeWidth="2.2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        filter="url(#pulseGlow)"
-        strokeDasharray="120"
-        strokeDashoffset="120"
-        animate={{ strokeDashoffset: [120, 0, -40] }}
-        transition={{ duration: 1.25, repeat: Infinity, ease: "easeInOut" }}
-      />
+      {/* Period 400: Q + T chain keeps y equal at x=0 and x=400 for seamless tiling */}
+      <path fill={`url(#${fill})`} d="M0 40 Q100 24 200 40 T400 40 L400 72 L0 72 Z" />
+      <path fill={`url(#${foam})`} d="M0 36 Q100 20 200 36 T400 36 L400 42 L0 42 Z" />
     </svg>
+  );
+}
+
+/** Seamless ocean wave along the card bottom while loading. */
+function OceanWaveBar() {
+  const reduce = useReducedMotion();
+  const gid = useId().replace(/:/g, "");
+  return (
+    <div
+      className="pointer-events-none absolute inset-x-0 bottom-0 z-[2] h-[3.25rem] overflow-hidden sm:h-16"
+      aria-hidden
+    >
+      <motion.div
+        className="flex h-full w-[200%] will-change-transform"
+        initial={false}
+        animate={reduce ? { x: "0%" } : { x: ["0%", "-50%"] }}
+        transition={{ duration: 9, repeat: Infinity, ease: "linear" }}
+      >
+        <WaveTile uid={`${gid}-a`} />
+        <WaveTile uid={`${gid}-b`} />
+      </motion.div>
+    </div>
   );
 }
 
@@ -128,7 +132,7 @@ export function WelcomeLoaderModal({
     return () => root.classList.remove("pulse-welcome-blur");
   }, [hydrated, open, skipEntirely]);
 
-  // After the dashboard is ready: show the loading/pulse state, then switch to personalized welcome.
+  // After the dashboard is ready: show the loading state, then switch to personalized welcome.
   useEffect(() => {
     if (!hydrated || skipEntirely || !isReady) return;
     if (loadingTimerRef.current) clearTimeout(loadingTimerRef.current);
@@ -196,27 +200,28 @@ export function WelcomeLoaderModal({
 
           <div className="pointer-events-none absolute inset-0 z-[1] flex min-h-[100dvh] items-center justify-center p-6">
             <motion.div
-              className="pointer-events-none w-full max-w-2xl rounded-[22px] border border-[rgba(76,96,133,0.18)] bg-[#f8fafc] px-10 py-12 text-center shadow-[0_20px_55px_rgba(76,96,133,0.14)] sm:px-14 sm:py-14"
+              className="pointer-events-none relative w-full max-w-2xl overflow-hidden rounded-[22px] border border-[rgba(76,96,133,0.18)] bg-[#f8fafc] text-center shadow-[0_20px_55px_rgba(76,96,133,0.14)]"
               initial={{ opacity: 0, scale: 0.985, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.99, y: 6 }}
               transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
             >
               <div
-                className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl border border-[rgba(54,241,205,0.25)] bg-[linear-gradient(145deg,rgba(54,241,205,0.22)_0%,rgba(76,96,133,0.18)_45%,rgba(53,71,102,0.10)_100%)] shadow-[0_10px_26px_rgba(76,96,133,0.16)]"
-                aria-hidden
+                className={[
+                  "relative z-[3] px-10 pt-12 text-center sm:px-14 sm:pt-14",
+                  phase === "loading" ? "pb-20 sm:pb-24" : "pb-12 sm:pb-14",
+                ].join(" ")}
               >
-                <svg width="34" height="34" viewBox="0 0 34 34" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <rect x="1" y="1" width="32" height="32" rx="10" stroke="rgba(255,255,255,0.55)" />
-                  <path
-                    d="M6 17 H12 L14.5 12 L18 22 L20.5 15.5 L22.5 17 H28"
-                    stroke="#36F1CD"
-                    strokeWidth="2.4"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
+                <div className="relative mx-auto h-16 w-full max-w-[min(100%,18rem)] sm:h-[4.25rem]">
+                  <Image
+                    src="/images/panoramalogo.png"
+                    alt=""
+                    fill
+                    priority
+                    sizes="(max-width: 640px) 288px, 320px"
+                    className="object-contain"
                   />
-                </svg>
-              </div>
+                </div>
 
               {phase === "loading" ? (
                 <>
@@ -229,15 +234,6 @@ export function WelcomeLoaderModal({
                   <p className="mt-2 text-sm font-medium text-[#51647a] sm:text-base">
                     Gathering the latest from your operation
                   </p>
-
-                  <motion.div
-                    className="mt-8 flex justify-center"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 0.12, duration: 0.35 }}
-                  >
-                    <PulseLine />
-                  </motion.div>
                 </>
               ) : (
                 <motion.div
@@ -256,6 +252,9 @@ export function WelcomeLoaderModal({
                   </p>
                 </motion.div>
               )}
+              </div>
+
+              {phase === "loading" ? <OceanWaveBar /> : null}
             </motion.div>
           </div>
         </motion.div>

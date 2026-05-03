@@ -168,18 +168,27 @@ export default function LoginPage() {
 
         <main className="relative z-10 flex min-h-0 flex-1 flex-col justify-center px-4 pb-10 pt-2 sm:px-6 md:px-8">
           <div className="mx-auto w-full max-w-[440px]">
-            <div className="relative mx-auto h-[88px] w-full max-w-[min(100%,22rem)]">
-              <Image
-                src="/images/panoramalogo.png"
-                alt=""
-                fill
-                priority
-                sizes="(max-width: 448px) 100vw, 352px"
-                className="object-contain"
-              />
+            <div className="flex w-full justify-center">
+              <div
+                className={cn(
+                  "relative aspect-square shrink-0 overflow-hidden rounded-full",
+                  "border-[3px] border-[#4c6085] dark:border-ds-border",
+                  "bg-ds-bg shadow-[0_6px_28px_rgba(76,96,133,0.22)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.35)]",
+                  "w-[min(22rem,calc(100vw-1.5rem))]",
+                )}
+              >
+                <Image
+                  src="/images/panoramalogo.png"
+                  alt="Panorama"
+                  fill
+                  priority
+                  sizes="(max-width: 448px) min(100vw, 352px), 352px"
+                  className="object-contain p-[10%]"
+                />
+              </div>
             </div>
 
-            <h1 className="mt-7 text-center font-headline text-[1.65rem] font-extrabold leading-tight tracking-tight text-[#2f3d52] dark:text-ds-foreground sm:text-3xl">
+            <h1 className="mt-10 text-center font-headline text-[1.65rem] font-extrabold leading-tight tracking-tight text-[#2f3d52] dark:text-ds-foreground sm:mt-12 sm:text-3xl">
               Enhance your daily operations.
             </h1>
             <p className="mt-2 text-center text-sm font-medium text-[#5a6d82] dark:text-ds-muted">
