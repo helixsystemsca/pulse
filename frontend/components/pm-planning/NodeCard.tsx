@@ -1,6 +1,7 @@
 "use client";
 
 import type { PmTask } from "@/lib/pm-planning/types";
+import { formatPmTaskChipId } from "@/lib/pm-planning/taskDisplayLabel";
 
 export function NodeCard({
   task,
@@ -22,8 +23,11 @@ export function NodeCard({
       } `}
     >
       <div className="mb-1 flex items-start justify-between gap-2">
-        <span className="rounded bg-[var(--ds-surface-secondary)] px-1.5 py-0.5 font-mono text-[11px] font-bold text-[var(--ds-text-primary)]">
-          {task.id}
+        <span
+          className="max-w-[4.5rem] truncate rounded bg-[var(--ds-surface-secondary)] px-1.5 py-0.5 font-mono text-[11px] font-bold text-[var(--ds-text-primary)]"
+          title={task.id}
+        >
+          {formatPmTaskChipId(task.id)}
         </span>
         <span
           className={`text-[10px] font-bold uppercase ${

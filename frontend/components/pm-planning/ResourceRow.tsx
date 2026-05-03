@@ -3,6 +3,7 @@
 import type { PmTask } from "@/lib/pm-planning/types";
 import type { CPMResult } from "@/lib/projects/cpm";
 import { resourceBarClass } from "@/lib/pm-planning/resourcePalette";
+import { formatPmTaskChipId } from "@/lib/pm-planning/taskDisplayLabel";
 
 export function ResourceRow({
   resourceName,
@@ -40,12 +41,12 @@ export function ResourceRow({
               <div
                 key={t.id}
                 title={`${t.name} (${t.id})`}
-                className={`absolute top-1.5 flex h-8 items-center justify-center rounded px-1 text-[10px] font-bold text-white shadow-sm ${tint} ${
+                className={`absolute top-1.5 flex h-8 max-w-full items-center justify-center overflow-hidden rounded px-1 text-[10px] font-bold text-white shadow-sm ${tint} ${
                   hasConflict ? "ring-2 ring-[var(--pm-color-critical)] ring-offset-1" : ""
                 }`}
                 style={{ left, width: w }}
               >
-                {t.id}
+                <span className="truncate">{t.name.trim() || formatPmTaskChipId(t.id)}</span>
               </div>
             );
           })}

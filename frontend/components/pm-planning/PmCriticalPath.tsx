@@ -48,13 +48,16 @@ export function PmCriticalPath({
         </span>
       </div>
       <ul className="divide-y divide-[var(--ds-border)]">
-        {ordered.map((t) => {
+        {ordered.map((t, idx) => {
           const row = cpm.byId[t.id];
           if (!row) return null;
           return (
             <li key={t.id} className="flex items-start gap-3 px-4 py-3">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border-2 border-[var(--pm-color-critical)] font-mono text-[11px] font-bold text-[var(--ds-text-primary)]">
-                {t.id.replace("T", "")}
+              <div
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border-2 border-[var(--pm-color-critical)] px-0.5 font-mono text-[11px] font-bold tabular-nums text-[var(--ds-text-primary)]"
+                title={t.id}
+              >
+                {idx + 1}
               </div>
               <div className="min-w-0 flex-1">
                 <p className="font-semibold text-[var(--ds-text-primary)]">{t.name}</p>
