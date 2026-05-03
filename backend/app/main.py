@@ -89,7 +89,7 @@ _cors_log.info(
 if not _cors_origins and not settings.cors_origin_regex_pattern:
     _cors_log.warning(
         "CORS_ORIGINS is empty and CORS_ORIGIN_REGEX unset — cross-origin browser requests will fail. "
-        "Include every site Origin (e.g. https://pulse.helixsystems.ca, https://www.helixsystems.ca): CORS_ORIGINS "
+        "Include every site Origin (e.g. https://panorama.helixsystems.ca, https://www.helixsystems.ca): CORS_ORIGINS "
         "(no trailing slash), CORS_EXTRA_ORIGINS, CORS_ORIGIN_REGEX, and/or PULSE_APP_PUBLIC_URL (origin merged).",
     )
 

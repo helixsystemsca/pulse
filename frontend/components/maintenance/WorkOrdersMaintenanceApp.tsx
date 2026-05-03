@@ -6,6 +6,7 @@ import {
   createWorkOrder,
   fetchWorkOrderDetail,
   fetchWorkOrders,
+  procedureStepDisplayText,
   type ProcedureStep,
   type WorkOrderDetail,
   type WorkOrderRow,
@@ -21,12 +22,8 @@ const TYPE_FILTERS: { value: "" | WorkOrderType; label: string }[] = [
   { value: "request", label: "Request" },
 ];
 
-function procedureStepText(s: string | ProcedureStep): string {
-  return typeof s === "string" ? s : (s.text ?? "");
-}
-
 function ProcedureStepLine({ step, index }: { step: string | ProcedureStep; index: number }) {
-  const text = procedureStepText(step);
+  const text = procedureStepDisplayText(step);
   const imageUrl = typeof step === "string" ? null : (step.image_url ?? null);
   const recommendedWorkers = typeof step === "string" ? null : (step.recommended_workers ?? null);
   const tools = typeof step === "string" ? [] : (step.tools ?? []);

@@ -2,10 +2,13 @@
 
 import { OperationalDashboard } from "@/components/dashboard/OperationalDashboard";
 import { isApiMode } from "@/lib/api";
+import { canAccessPulseTenantApis, readSession } from "@/lib/pulse-session";
+import { usePulseAuth } from "@/hooks/usePulseAuth";
 import { useEffect, useMemo, useState } from "react";
 
 export default function KioskOverviewPage() {
   const [ready, setReady] = useState(false);
+  const { session } = usePulseAuth();
 
   useEffect(() => {
     setReady(true);
@@ -22,6 +25,14 @@ export default function KioskOverviewPage() {
     }
   }, []);
 
+  const variant = useMemo<"live" | "demo">(() => {
+    if (!isApiMode()) return "demo";
+    if (token) return "live";
+    if (session && canAccessPulseTenantApis(session)) return "live";
+    if (canAccessPulseTenantApis(readSession())) return "live";
+    return "demo";
+  }, [token, session]);
+
   if (!ready) {
     return (
       <div className="flex min-h-[40vh] items-center justify-center">
@@ -32,10 +43,9 @@ export default function KioskOverviewPage() {
 
   return (
     <OperationalDashboard
-      variant={isApiMode() && token ? "live" : "demo"}
+      variant={variant}
       readOnly
       tokenOverride={token}
     />
   );
 }
-

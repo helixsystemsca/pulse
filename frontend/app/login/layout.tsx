@@ -4,11 +4,11 @@ import type { Metadata } from "next";
 import { headers } from "next/headers";
 
 export const metadata: Metadata = {
-  title: { absolute: "Sign in | Pulse" },
-  description: "Sign in to your Pulse operational dashboard.",
+  title: "Sign in",
+  description: "Sign in to your Panorama operational dashboard.",
 };
 
-/** On Pulse app hosts (e.g. pulse.helixsystems.ca), skip the top bar; marketing host keeps `AppLayout`. */
+/** On app hosts (panorama / pulse subdomain), skip marketing `AppLayout`; apex/www marketing keeps chrome + footer. */
 export default function LoginLayout({ children }: { children: React.ReactNode }) {
   const h = headers();
   const host = requestHostnameFromHeaders((name) => h.get(name));

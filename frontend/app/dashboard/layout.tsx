@@ -5,7 +5,7 @@ import { AppLayout } from "@/components/app/AppLayout";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: { absolute: "Dashboard | Pulse" },
+  title: { absolute: "Dashboard | Panorama" },
   description: "Pulse operational dashboards.",
 };
 

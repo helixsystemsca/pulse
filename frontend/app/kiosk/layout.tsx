@@ -1,7 +1,11 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: { absolute: "Kiosk | Pulse" },
+  title: { template: "%s | Panorama", default: "Kiosk" },
+  icons: {
+    icon: [{ url: "/images/favicon.png", type: "image/png" }],
+    apple: [{ url: "/images/favicon.png", type: "image/png" }],
+  },
   robots: { index: false, follow: false },
 };
 

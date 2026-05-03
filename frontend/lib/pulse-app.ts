@@ -3,10 +3,11 @@
  * left-rail (`pulseTenantSidebarNav` / `pulseSystemSidebarNav`) and top-nav definitions,
  * and marketing-site links. Marketing vs Pulse app hosts are intentionally split.
  *
- * Default app origin: `pulse.helixsystems.ca`. Override with `NEXT_PUBLIC_PULSE_APP_URL`.
+ * Default app origin: `panorama.helixsystems.ca` (legacy `pulse.helixsystems.ca` still supported via host list).
+ * Override with `NEXT_PUBLIC_PULSE_APP_URL`.
  */
 function pulseAppOrigin(): string {
-  const raw = process.env.NEXT_PUBLIC_PULSE_APP_URL ?? "https://pulse.helixsystems.ca";
+  const raw = process.env.NEXT_PUBLIC_PULSE_APP_URL ?? "https://panorama.helixsystems.ca";
   return raw.replace(/\/$/, "");
 }
 
@@ -96,7 +97,7 @@ export function pulseAppHref(path: string): string {
 
 /**
  * Send the browser to Pulse app sign-in. Prefer this over `router.replace('/login')` so
- * unauthenticated users on the marketing host land on `pulse.helixsystems.ca`.
+ * unauthenticated users on the marketing host land on the configured app host (see `NEXT_PUBLIC_PULSE_APP_URL`).
  */
 export function navigateToPulseLogin(): void {
   if (typeof window === "undefined") return;

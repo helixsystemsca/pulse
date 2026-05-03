@@ -2,7 +2,7 @@ import { AppLayout } from "@/components/app/AppLayout";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: { absolute: "Equipment | Pulse" },
+  title: { absolute: "Equipment | Panorama" },
   description: "Manage and monitor facility equipment.",
 };
 

@@ -166,10 +166,10 @@ class Settings(BaseSettings):
         default="info@helixsystems.ca",
         validation_alias=AliasChoices("EMAIL_TO_INFO", "email_to_info"),
     )
-    #: Base URL for links in emails (invite/reset). Must be the **Pulse web app** (browser Origin), not the API host.
-    #: Paths are ignored when merging into CORS; only scheme + host are used.
+    #: Base URL for links in emails (invite/reset). Must be the **Panorama / Pulse web app** (browser Origin), not the API host.
+    #: Paths are ignored when merging into CORS; only scheme + host are used. Set to `https://panorama.helixsystems.ca` when using that host.
     pulse_app_public_url: str = Field(
-        default="https://pulse.helixsystems.ca",
+        default="https://panorama.helixsystems.ca",
         validation_alias=AliasChoices("PULSE_APP_PUBLIC_URL", "pulse_app_public_url"),
     )
     #: When set, unknown `gateway_id` on POST /api/gateway/register creates a row under this company.

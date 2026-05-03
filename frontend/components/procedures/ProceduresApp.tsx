@@ -9,6 +9,7 @@ import {
   createProcedureAssignment,
   fetchProcedures,
   patchProcedure,
+  procedureStepDisplayText,
   uploadProcedureStepImage,
   type ProcedureRow,
 } from "@/lib/cmmsApi";
@@ -63,7 +64,7 @@ function parseKeywordCsv(csv: string): string[] {
 function toDraftFromProcedure(row: ProcedureRow): DraftStep[] {
   return row.steps.map((s) => ({
     key: newKey(),
-    text: typeof s === "string" ? s : s.text ?? "",
+    text: typeof s === "string" ? s : procedureStepDisplayText(s),
     file: null,
     image_url: typeof s === "string" ? null : (s.image_url ?? null),
     recommended_workers: typeof s === "string" ? null : (s.recommended_workers ?? null),
@@ -941,7 +942,6 @@ export function ProceduresApp() {
                 {(() => {
                   const s = selected.steps[readerStep];
                   if (s === undefined) return null;
-                  const step = typeof s === "string" ? { text: s } : s;
                   const idx = readerStep;
                   return (
                     <ol className="space-y-3">
@@ -951,7 +951,7 @@ export function ProceduresApp() {
                             {idx + 1}
                           </span>
                           <div className="min-w-0 flex-1">
-                            <p className="whitespace-pre-wrap text-sm text-ds-foreground">{step.text ?? ""}</p>
+                            <p className="whitespace-pre-wrap text-sm text-ds-foreground">{procedureStepDisplayText(s)}</p>
                             {typeof s !== "string" && (s.recommended_workers || (s.tools?.length ?? 0) > 0) ? (
                               <div className="mt-2 flex flex-wrap gap-2 text-xs text-ds-muted">
                                 {s.recommended_workers ? (
@@ -1023,7 +1023,6 @@ export function ProceduresApp() {
                 ) : null}
                 <ol className="space-y-3">
                   {selected.steps.map((s, idx) => {
-                    const step = typeof s === "string" ? { text: s } : s;
                     return (
                       <li key={idx} className="rounded-md border border-ds-border bg-ds-primary p-4">
                         <div className="flex items-start gap-3">
@@ -1031,7 +1030,7 @@ export function ProceduresApp() {
                             {idx + 1}
                           </span>
                           <div className="min-w-0 flex-1">
-                            <p className="whitespace-pre-wrap text-sm text-ds-foreground">{step.text ?? ""}</p>
+                            <p className="whitespace-pre-wrap text-sm text-ds-foreground">{procedureStepDisplayText(s)}</p>
                             {(typeof s !== "string" && (s.recommended_workers || (s.tools?.length ?? 0) > 0)) ? (
                               <div className="mt-2 flex flex-wrap gap-2 text-xs text-ds-muted">
                                 {s.recommended_workers ? (

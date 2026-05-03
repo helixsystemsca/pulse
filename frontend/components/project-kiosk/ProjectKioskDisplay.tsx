@@ -18,6 +18,7 @@ import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { KioskRotateFooter } from "@/components/dashboard/DashboardChrome";
 import { HandoverNotesKioskPage } from "@/components/project-kiosk/HandoverNotesKioskPage";
+import { SafetyRemindersKioskPage } from "@/components/project-kiosk/SafetyRemindersKioskPage";
 import { UserProfileAvatarPreview } from "@/components/profile/UserProfileAvatarPreview";
 import type {
   KioskSection,
@@ -324,6 +325,9 @@ function KioskSectionBody({ section }: { section: KioskSection }) {
   if (b.kind === "handover_notes") {
     return <HandoverNotesKioskPage cards={[...b.cards]} />;
   }
+  if (b.kind === "safety_reminders") {
+    return <SafetyRemindersKioskPage subtitle={b.subtitle} cards={b.cards} />;
+  }
   return null;
 }
 
@@ -358,6 +362,15 @@ export function ProjectKioskDisplay({ projectId }: { projectId: string }) {
   useEffect(() => {
     void reload();
   }, [reload]);
+
+  useEffect(() => {
+    const prev = document.title;
+    const name = view?.header.projectName?.trim();
+    document.title = name ? `${name} | Panorama` : "Project kiosk | Panorama";
+    return () => {
+      document.title = prev;
+    };
+  }, [view?.header.projectName]);
 
   useProjectKioskRealtime({
     projectId,
@@ -403,7 +416,9 @@ export function ProjectKioskDisplay({ projectId }: { projectId: string }) {
     return rotatingSections[rotIndex % rotatingSections.length] ?? null;
   }, [rotatingSections, rotIndex]);
 
-  const handoverMain = currentRot?.body.kind === "handover_notes";
+  const rotBodyKind = currentRot?.body.kind;
+  const handoverMain = rotBodyKind === "handover_notes";
+  const safetyMain = rotBodyKind === "safety_reminders";
 
   const taskBoard = useMemo(() => pickSection(allSections, "task_board"), [allSections]);
   const teamInsights = useMemo(() => pickSection(allSections, "team_insights"), [allSections]);
@@ -536,6 +551,10 @@ export function ProjectKioskDisplay({ projectId }: { projectId: string }) {
         <div className="flex min-h-0 flex-1 flex-col">
           <HandoverNotesKioskPage cards={[...currentRot.body.cards]} />
         </div>
+      ) : safetyMain && currentRot?.body.kind === "safety_reminders" ? (
+        <div className="flex min-h-0 flex-1 flex-col">
+          <SafetyRemindersKioskPage subtitle={currentRot.body.subtitle} cards={currentRot.body.cards} />
+        </div>
       ) : (
         <div className="flex min-h-0 flex-1 flex-col gap-4 p-4 lg:flex-row lg:gap-5 lg:p-5">
           <aside className="flex w-full shrink-0 flex-col lg:w-[min(100%,22rem)]">
@@ -564,7 +583,8 @@ export function ProjectKioskDisplay({ projectId }: { projectId: string }) {
             {rotCount > 1 &&
             currentRot &&
             currentRot.id !== taskBoard?.id &&
-            currentRot.body.kind !== "handover_notes" ? (
+            currentRot.body.kind !== "handover_notes" &&
+            currentRot.body.kind !== "safety_reminders" ? (
               <div className="relative mt-4 min-h-0 flex-1">
                 <AnimatePresence mode="wait">
                   <motion.div

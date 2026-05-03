@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: { absolute: "Drawings | Pulse" },
+  title: { absolute: "Drawings | Panorama" },
   description: "Multi-system infrastructure overlays on facility maps.",
 };
 

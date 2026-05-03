@@ -2,7 +2,7 @@ import { AppLayout } from "@/components/app/AppLayout";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: { absolute: "Zones & Devices | Pulse" },
+  title: { absolute: "Zones & Devices | Panorama" },
   description: "Guided setup for gateways, BLE tags, and zones.",
 };
 

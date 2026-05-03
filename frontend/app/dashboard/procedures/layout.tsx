@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: { absolute: "Procedures | Pulse" },
+  title: { absolute: "Procedures | Panorama" },
   description: "Reusable maintenance procedures with numbered steps and optional photos.",
 };
 

@@ -78,7 +78,7 @@ export default function SystemCompaniesPage() {
   }, [load]);
 
   const pulseAppOrigin = (
-    process.env.NEXT_PUBLIC_PULSE_APP_URL ?? "https://pulse.helixsystems.ca"
+    process.env.NEXT_PUBLIC_PULSE_APP_URL ?? "https://panorama.helixsystems.ca"
   ).replace(/\/$/, "");
 
   const openModal = (mode: ModalMode) => {

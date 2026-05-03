@@ -18,11 +18,15 @@ const inter = Inter({
 export const metadata: Metadata = {
   metadataBase: new URL("https://helixsystems.ca"),
   title: {
-    default: "Helix Systems | Industrial field software & operations intelligence",
-    template: "%s | Helix Systems",
+    default: "Helix Systems | Panorama",
+    template: "%s | Panorama",
   },
   description:
-    "Helix Systems builds software for industrial operations—field teams, assets, and real-time intelligence. Pulse is our operational intelligence platform.",
+    "Helix Systems builds software for industrial operations—field teams, assets, and real-time intelligence. Panorama is our operational intelligence platform.",
+  icons: {
+    icon: [{ url: "/images/favicon.png", type: "image/png" }],
+    apple: [{ url: "/images/favicon.png", type: "image/png" }],
+  },
   openGraph: {
     siteName: "Helix Systems",
     type: "website",

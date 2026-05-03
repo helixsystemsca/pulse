@@ -71,7 +71,28 @@ export type KioskSectionBody =
   | { kind: "summary_lines"; lines: string[] }
   | { kind: "insights_cards"; highlights: TeamHighlight[] }
   | { kind: "team_insights_panel"; stats: TeamInsightsPanelData["stats"]; members: TeamInsightMemberRow[] }
-  | { kind: "handover_notes"; cards: [HandoverNoteCard, HandoverNoteCard, HandoverNoteCard, HandoverNoteCard] };
+  | { kind: "handover_notes"; cards: [HandoverNoteCard, HandoverNoteCard, HandoverNoteCard, HandoverNoteCard] }
+  | { kind: "safety_reminders"; subtitle: string; cards: SafetyReminderCard[] };
+
+/** One tile on the safety reminders kiosk page (2×3 grid). */
+export type SafetyReminderSeverity = "critical" | "caution" | "info" | "emergency";
+
+/** Icon id resolved in the safety page component (Lucide). */
+export type SafetyReminderIconId =
+  | "shield-alert"
+  | "hard-hat"
+  | "stethoscope"
+  | "phone"
+  | "door-open"
+  | "map-pin";
+
+export type SafetyReminderCard = {
+  severity: SafetyReminderSeverity;
+  icon: SafetyReminderIconId;
+  tag: string;
+  title: string;
+  description: string;
+};
 
 export type KioskSection = {
   id: string;

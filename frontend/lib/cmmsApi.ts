@@ -24,13 +24,26 @@ export type WorkOrderRow = {
 };
 
 export type ProcedureStep = {
-  text: string;
+  /** Canonical step body from the API (`maintenance_hub` schema). */
+  content?: string;
+  /** Legacy body key still accepted on write and returned when older rows are re-saved. */
+  text?: string;
+  id?: string;
+  type?: string;
+  required?: boolean;
   image_url?: string | null;
   /** Optional: recommended number of workers for this step. */
   recommended_workers?: number | null;
   /** Optional: tools required to complete this step. */
   tools?: string[];
 };
+
+/** Readable body for any procedure step shape the API may return. */
+export function procedureStepDisplayText(step: string | ProcedureStep): string {
+  if (typeof step === "string") return step;
+  const t = (step.text ?? step.content ?? "").trim();
+  return t;
+}
 
 export type ProcedureRow = {
   id: string;

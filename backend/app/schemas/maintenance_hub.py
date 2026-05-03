@@ -8,6 +8,7 @@ from typing import Any, Literal, Optional
 WorkOrderSourceApi = Literal["manual", "auto_pm", "downtime_detected"]
 
 import re
+from uuid import uuid4
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
@@ -20,6 +21,9 @@ class ProcedureStepOut(BaseModel):
     type: Literal["instruction", "checklist", "photo", "warning"]
     content: str
     required: bool = False
+    image_url: Optional[str] = None
+    recommended_workers: Optional[int] = None
+    tools: list[str] = Field(default_factory=list)
 
 
 def normalize_procedure_search_keywords(v: Any) -> list[str]:
@@ -68,24 +72,68 @@ def procedure_row_matches_keyword_tokens(stored: Any, tokens: list[str]) -> bool
 
 
 def normalize_procedure_steps(v: Any) -> list[ProcedureStepOut]:
+    """Load steps from JSONB; supports canonical `{id,type,content}` and legacy UI `{text, image_url, tools}`."""
     if v is None:
         return []
     if not isinstance(v, list):
         return []
     out: list[ProcedureStepOut] = []
-    for item in v:
-        if not isinstance(item, dict):
-            # Ignore bad legacy rows rather than crashing render paths.
+    for i, item in enumerate(v):
+        if isinstance(item, str):
+            body = item.strip()
+            if not body:
+                continue
+            out.append(
+                ProcedureStepOut(
+                    id=f"s{i + 1}-{uuid4().hex[:8]}",
+                    type="instruction",
+                    content=body,
+                    required=False,
+                )
+            )
             continue
-        sid = str(item.get("id") or "").strip()
+        if not isinstance(item, dict):
+            continue
+        sid = str(item.get("id") or "").strip() or f"s{i + 1}-{uuid4().hex[:8]}"
         stype = str(item.get("type") or "").strip()
         content = str(item.get("content") or "").strip()
-        required = bool(item.get("required") or False)
-        if not sid or not content:
+        if not content:
+            content = str(item.get("text") or "").strip()
+        img_raw = item.get("image_url")
+        image_url = str(img_raw).strip() if img_raw is not None and str(img_raw).strip() else None
+        if not content and image_url:
+            content = "See step image."
+            if stype not in ("instruction", "checklist", "photo", "warning"):
+                stype = "photo"
+        if not content:
             continue
         if stype not in ("instruction", "checklist", "photo", "warning"):
             stype = "instruction"
-        out.append(ProcedureStepOut(id=sid, type=stype, content=content, required=required))
+        required = bool(item.get("required") or False)
+        rw_raw = item.get("recommended_workers")
+        recommended_workers: Optional[int] = None
+        if rw_raw is not None and rw_raw != "":
+            try:
+                recommended_workers = int(rw_raw)
+            except (TypeError, ValueError):
+                recommended_workers = None
+        tools: list[str] = []
+        tr = item.get("tools")
+        if isinstance(tr, list):
+            tools = [str(x).strip() for x in tr if str(x).strip()][:48]
+        elif isinstance(tr, str) and tr.strip():
+            tools = [p.strip() for p in tr.split(",") if p.strip()][:48]
+        out.append(
+            ProcedureStepOut(
+                id=sid,
+                type=stype,
+                content=content,
+                required=required,
+                image_url=image_url,
+                recommended_workers=recommended_workers,
+                tools=tools,
+            )
+        )
     return out
 
 
@@ -132,10 +180,49 @@ class ProcedureOut(BaseModel):
 
 
 class ProcedureStepIn(BaseModel):
+    model_config = {"extra": "ignore"}
+
     id: str = Field(..., min_length=1, max_length=64)
     type: Literal["instruction", "checklist", "photo", "warning"] = "instruction"
     content: str = Field(..., min_length=1, max_length=8000)
     required: bool = False
+    image_url: Optional[str] = Field(None, max_length=2000)
+    recommended_workers: Optional[int] = Field(None, ge=0, le=999)
+    tools: list[str] = Field(default_factory=list)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _coerce_ui_step_payload(cls, data: Any) -> Any:
+        """Accept `{text, image_url, tools}` from the Procedures UI as well as canonical `{id, type, content}`."""
+        if not isinstance(data, dict):
+            return data
+        d = dict(data)
+        tid = str(d.get("id") or "").strip()
+        if not tid:
+            d["id"] = uuid4().hex[:12]
+        content = str(d.get("content") or "").strip()
+        text = str(d.get("text") or "").strip()
+        if not content and text:
+            d["content"] = text
+        elif not content and str(d.get("image_url") or "").strip():
+            d["content"] = "See step image."
+            if str(d.get("type") or "").strip() not in ("instruction", "checklist", "photo", "warning"):
+                d["type"] = "photo"
+        tr = d.get("tools")
+        if tr is not None and not isinstance(tr, list):
+            if isinstance(tr, str):
+                d["tools"] = [x.strip() for x in tr.split(",") if x.strip()]
+            else:
+                d["tools"] = []
+        rw = d.get("recommended_workers")
+        if rw is not None and rw != "":
+            try:
+                d["recommended_workers"] = int(rw)
+            except (TypeError, ValueError):
+                d["recommended_workers"] = None
+        else:
+            d.pop("recommended_workers", None)
+        return d
 
 
 def procedure_steps_to_storage(steps: list[ProcedureStepIn]) -> list[dict[str, Any]]:
@@ -148,6 +235,12 @@ def procedure_steps_to_storage(steps: list[ProcedureStepIn]) -> list[dict[str, A
             "content": (s.content or "").strip(),
             "required": bool(s.required),
         }
+        if s.image_url:
+            d["image_url"] = str(s.image_url).strip()
+        if s.recommended_workers is not None:
+            d["recommended_workers"] = s.recommended_workers
+        if s.tools:
+            d["tools"] = list(s.tools)
         out.append(d)
     return out
 

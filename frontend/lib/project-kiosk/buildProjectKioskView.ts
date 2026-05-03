@@ -5,6 +5,7 @@ import type {
   KioskSection,
   KioskWidgetDefinition,
   ProjectKioskView,
+  SafetyReminderCard,
   TeamHighlight,
   TeamInsightMemberRow,
   TeamInsightsPanelData,
@@ -380,6 +381,128 @@ function buildHandoverNotesBody(
   return { kind: "handover_notes", cards: [topLeft, topRight, bottomLeft, bottomRight] };
 }
 
+function envPublicTrim(key: string): string | undefined {
+  if (typeof process === "undefined") return undefined;
+  const v = process.env[key];
+  return typeof v === "string" && v.trim() ? v.trim() : undefined;
+}
+
+function buildSafetyRemindersBody(
+  project: ProjectDetail,
+  tasks: TaskRow[],
+  workerMap: Map<string, string>,
+): { kind: "safety_reminders"; subtitle: string; cards: SafetyReminderCard[] } {
+  const act = activeTasks(tasks);
+  const blk = blockedTasks(tasks);
+  const orderedFocus = [
+    ...act.filter((t) => t.status === "in_progress"),
+    ...act.filter((t) => t.status === "blocked"),
+    ...act.filter((t) => t.status === "todo"),
+  ].filter((t, i, arr) => arr.findIndex((x) => x.id === t.id) === i);
+
+  const hazardTask =
+    blk.find((t) => /\b(pump|confined|tank|sewer|pit|vault|chlorine|gas)\b/i.test(t.title)) ??
+    blk[0] ??
+    tasks.find((t) => t.status === "in_progress" && t.priority === "critical");
+
+  let criticalTitle: string;
+  let criticalBody: string;
+  if (hazardTask) {
+    const t = hazardTask.title.trim();
+    if (/\bpump\b/i.test(t)) criticalTitle = "Confined space — pump room";
+    else if (/\bconfined\b/i.test(t)) criticalTitle = `Confined space — ${t.slice(0, 48)}${t.length > 48 ? "…" : ""}`;
+    else criticalTitle = `High attention — ${t.slice(0, 52)}${t.length > 52 ? "…" : ""}`;
+    const extra = [hazardTask.material_notes, hazardTask.description].filter(Boolean).join(" ").trim();
+    criticalBody =
+      extra.slice(0, 380) ||
+      (blk.includes(hazardTask) ?
+        "This work is blocked — do not enter the space until your supervisor clears barricades, ventilation, and permits. Use a buddy system and continuous gas monitoring when a confined-space program applies."
+      : "Follow the task SOP, posted signage, and supervisor direction. Stop work if controls are missing or conditions change.");
+  } else {
+    criticalTitle = "Site awareness — active project";
+    criticalBody =
+      "Review permits, barricades, ventilation, and line-of-fire before entering work zones. Stop and ask your supervisor if controls are unclear.";
+  }
+
+  const lines = orderedFocus.slice(0, 7).map((t) => {
+    const who = workerName(workerMap, t.assigned_user_id);
+    const flag = t.is_blocked ? " (blocked)" : "";
+    return `• ${t.title.trim()} — ${who}${flag}`;
+  });
+  const ppeBody =
+    lines.length > 0 ?
+      ["Today's assignments on this project:", ...lines, "", "Match gloves, eye protection, footwear, and hearing protection to each task and SDS. No shortcuts on cut hazards, chemicals, or overhead work."].join(
+        "\n",
+      )
+    : "No active assignments are listed — stay ready for call-ins. Default to closed-toe shoes, safety glasses, and high-visibility gear where vehicles or machinery operate.";
+
+  const firstAid =
+    envPublicTrim("NEXT_PUBLIC_KIOSK_SAFETY_FIRST_AID") ??
+    "Confirm the nearest first aid kit and AED with your supervisor at the start of each shift. Follow posted evacuation diagrams; do not move an injured person unless the scene is safe.";
+
+  const exits =
+    envPublicTrim("NEXT_PUBLIC_KIOSK_SAFETY_EMERGENCY_EXITS") ??
+    "Use the nearest marked exit. Keep exit routes and fire doors clear. If visibility drops, follow illuminated exit signs toward the exterior, then proceed to the muster point.";
+
+  const muster =
+    envPublicTrim("NEXT_PUBLIC_KIOSK_SAFETY_MUSTER_POINT") ??
+    "Primary muster: main parking lot assembly area unless your supervisor posts an alternate. Check in by crew after any alarm so everyone is accounted for.";
+
+  const contacts =
+    envPublicTrim("NEXT_PUBLIC_KIOSK_SAFETY_EMERGENCY_CONTACTS") ??
+    "Life-threatening emergency: call 911.\nSite / facilities duty: use the posted call sheet at the supervisor desk.\nConfirm who is on call for this project before starting work.";
+
+  const subtitle =
+    envPublicTrim("NEXT_PUBLIC_KIOSK_SAFETY_SUBTITLE") ?? `Active for ${project.name.trim() || "this project"}`;
+
+  const cards: SafetyReminderCard[] = [
+    {
+      severity: "critical",
+      icon: "shield-alert",
+      tag: "Critical",
+      title: criticalTitle,
+      description: criticalBody.slice(0, 520),
+    },
+    {
+      severity: "caution",
+      icon: "hard-hat",
+      tag: "Caution",
+      title: "PPE & today's assignments",
+      description: ppeBody.slice(0, 560),
+    },
+    {
+      severity: "info",
+      icon: "stethoscope",
+      tag: "Info",
+      title: "First aid kit & AED",
+      description: firstAid.slice(0, 520),
+    },
+    {
+      severity: "emergency",
+      icon: "phone",
+      tag: "Emergency",
+      title: "Emergency contacts",
+      description: contacts.slice(0, 520),
+    },
+    {
+      severity: "info",
+      icon: "door-open",
+      tag: "Info",
+      title: "Emergency exits",
+      description: exits.slice(0, 520),
+    },
+    {
+      severity: "caution",
+      icon: "map-pin",
+      tag: "Caution",
+      title: "Muster point",
+      description: muster.slice(0, 520),
+    },
+  ];
+
+  return { kind: "safety_reminders", subtitle, cards };
+}
+
 function buildTeamHighlights(
   tasks: TaskRow[],
   workerMap: Map<string, string>,
@@ -586,6 +709,14 @@ function buildSections(
         title: w.label,
         isHighValue: w.isHighValue,
         body: buildHandoverNotesBody(tasks, activity, workerMap),
+      });
+    }
+    if (w.id === "safety") {
+      push(w, {
+        id: "safety",
+        title: w.label,
+        isHighValue: w.isHighValue,
+        body: buildSafetyRemindersBody(project, tasks, workerMap),
       });
     }
   }

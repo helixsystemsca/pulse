@@ -34,7 +34,7 @@ export function parseClientApiError(err: unknown): {
     /fetch|failed to fetch|networkerror|load failed/i.test(String(err.message))
   ) {
     msg =
-      "The browser could not read the API response (timeout, connection drop, or CORS—not only CORS). The server may still have completed the action—refresh this page and check the list or inbox. If everything looks correct, ignore this. Otherwise confirm CORS_ORIGINS includes your exact origin (e.g. https://pulse.helixsystems.ca) and redeploy the API.";
+      "The browser could not read the API response (timeout, connection drop, or CORS—not only CORS). The server may still have completed the action—refresh this page and check the list or inbox. If everything looks correct, ignore this. Otherwise confirm CORS_ORIGINS (and API `PULSE_APP_PUBLIC_URL`) include your exact origin (e.g. https://panorama.helixsystems.ca) and redeploy the API.";
   }
   return { message: msg, status, requestUrl };
 }

@@ -5,7 +5,7 @@ import { AppLayout } from "@/components/app/AppLayout";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: { absolute: "PM Planning | Pulse" },
+  title: { absolute: "PM Planning | Panorama" },
   description: "Internal project planning views (Gantt, network, resources, critical path).",
 };
 

@@ -500,15 +500,21 @@ function initialsFromUser(email: string, fullName: string | null | undefined): s
 }
 
 function welcomeFromSession(email: string | null | undefined, fullName: string | null | undefined): string {
-  if (fullName?.trim()) return fullName.trim();
-  if (email) return email.split("@")[0] ?? email;
-  return "there";
+  if (fullName?.trim()) {
+    const first = (fullName.trim().split(/\s+/)[0] ?? "").replace(/[.,:;!?$]+$/, "");
+    if (first) return first;
+  }
+  if (email) {
+    const local = (email.split("@")[0] ?? "").trim();
+    if (local) return local;
+  }
+  return "";
 }
 
 function demoModel(): DashboardViewModel {
   return {
     title: "Operations Dashboard",
-    welcomeName: "Alex",
+    welcomeName: "",
     bannerNote: null,
     alerts: [
       {
@@ -1068,7 +1074,7 @@ function OperationsHeaderLogoMark({
 }) {
   const raw = logoUrl?.trim() || null;
   const isExternal = Boolean(raw && (raw.startsWith("http://") || raw.startsWith("https://")));
-  // Public Next.js assets (e.g. `/images/panologo.png`) should NOT be fetched with bearer auth.
+  // Public Next.js assets (e.g. `/images/panoramalogo.png`) should NOT be fetched with bearer auth.
   const isPublicLocal = Boolean(raw && raw.startsWith("/") && !raw.startsWith("/api"));
   const internal = raw && !isExternal && !isPublicLocal ? raw : null;
   const resolved = useAuthenticatedAssetSrc(internal);
@@ -1083,7 +1089,7 @@ function OperationsHeaderLogoMark({
     >
       {src ? (
         // eslint-disable-next-line @next/next/no-img-element -- blob or tenant https URL
-        <img src={src} alt="" className="max-h-[2.75rem] max-w-[2.75rem] object-contain" />
+        <img src={src} alt="" className="h-full w-full object-contain p-1.5" />
       ) : waiting ? (
         <span className="h-8 w-8 animate-pulse bg-gray-200" aria-hidden />
       ) : (
@@ -1148,7 +1154,6 @@ function DashboardBody({
       window.clearInterval(t);
     };
   }, []);
-  const userInitials = headerInitials(model.welcomeName);
   const [editMode, setEditMode] = useState(false);
   useEffect(() => {
     if (readOnly) setEditMode(false);
@@ -1931,10 +1936,7 @@ function DashboardBody({
                 <div className="flex min-w-0 items-center gap-3">
                   <OperationsHeaderLogoMark logoUrl={headerLogoUrl} companyName={headerCompanyName} />
                   <div className="min-w-0">
-                    <p className="text-[11px] font-extrabold uppercase tracking-[0.18em] text-ds-muted">
-                      Operations dashboard
-                    </p>
-                    <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm font-semibold text-ds-foreground">
+                    <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm font-semibold text-ds-foreground">
                       <span className="max-w-md truncate">{dateInBc(now)}</span>
                       <span className="text-ds-muted">•</span>
                       <span className="tabular-nums">{timeInBc(now)}</span>
@@ -1948,9 +1950,9 @@ function DashboardBody({
                 </div>
                 <div className="flex items-center gap-3">
                   <div className="text-xs font-semibold text-ds-muted">{currentView.toUpperCase()}</div>
-                  {!hideHeaderWelcome ? (
+                  {!hideHeaderWelcome && model.welcomeName.trim() ? (
                     <span className="inline-flex items-center gap-2 rounded-lg border border-ds-border bg-ds-secondary/60 px-3 py-2 text-sm font-semibold text-ds-foreground">
-                      <span className="hidden sm:inline">Welcome,</span> {model.welcomeName || userInitials}
+                      <span className="hidden sm:inline">Welcome,</span> {model.welcomeName}
                     </span>
                   ) : null}
                 </div>
@@ -2059,7 +2061,7 @@ function DashboardBody({
                 Fullscreen
               </Button>
             ) : null}
-            {!hideHeaderWelcome ? (
+            {!hideHeaderWelcome && model.welcomeName.trim() ? (
               <span className="inline-flex items-center gap-2 rounded-lg border border-ds-border bg-ds-secondary/60 px-3 py-2 text-sm font-semibold text-ds-foreground">
                 <span className="hidden sm:inline">Welcome,</span> {model.welcomeName}
               </span>
@@ -2439,7 +2441,7 @@ export function OperationalDashboard({
         zoneList,
         beaconList,
       );
-      const welcome = welcomeFromSession(auth?.email, auth?.full_name);
+      const welcome = welcomeFromSession(auth?.email ?? session?.email, auth?.full_name ?? session?.full_name);
       const withWelcome: DashboardViewModel = { ...model, welcomeName: welcome, bannerNote: null };
       readyPayload = alertCountsFromAlerts(withWelcome.alerts);
       setLiveModel(withWelcome);
@@ -2457,10 +2459,8 @@ export function OperationalDashboard({
       setLoading(false);
       notifyReady(readyPayload);
     }
-    // Intentionally omit session from deps: usePulseAuth hydrates after mount and would re-run this eight-way
-    // fetch. Welcome uses readSession() inside the try block above. `variant` is not read here; the caller
-    // effect gates on `variant === "live"` before invoking.
-  }, [fetchJson, notifyReady, tokenOverride]);
+    // Re-run when auth profile hydrates so the kiosk welcome line updates without waiting on another fetch.
+  }, [fetchJson, notifyReady, tokenOverride, session?.email, session?.full_name]);
 
   useEffect(() => {
     if (variant !== "live" || !isApiMode()) return;
@@ -2474,10 +2474,14 @@ export function OperationalDashboard({
   }, [variant, notifyReady]);
 
   if (variant === "demo") {
+    const welcome = welcomeFromSession(session?.email, session?.full_name);
+    const demoWithUser: DashboardViewModel = { ...demoModel(), welcomeName: welcome };
     return (
       <DashboardBody
-        model={demoModel()}
+        model={demoWithUser}
         workOrdersHref={workOrdersHref}
+        headerLogoUrl="/images/panoramalogo.png"
+        headerCompanyName={session?.company?.name ?? null}
         facilitySetupChecklist={null}
         readOnly={readOnly}
       />
@@ -2516,10 +2520,9 @@ export function OperationalDashboard({
     <DashboardBody
       model={liveModel}
       workOrdersHref={workOrdersHref}
-      hideHeaderWelcome
       zonePromptDismissed={zoneDismissed}
       onDismissZonePrompt={() => setZoneDismissed(true)}
-      headerLogoUrl="/images/panologo.png"
+      headerLogoUrl="/images/panoramalogo.png"
       headerCompanyName={session?.company?.name ?? null}
       facilitySetupChecklist={null}
       readOnly={readOnly}
