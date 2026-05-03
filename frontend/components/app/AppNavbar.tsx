@@ -44,10 +44,10 @@ export function AppNavbar() {
         <div className="flex min-w-0 items-center">
           <Link
             href={logoHref}
-            className="flex min-w-0 items-center gap-2.5 font-headline text-lg font-bold tracking-tight text-ds-foreground no-underline hover:text-ds-success sm:text-xl"
+            className="flex min-w-0 items-center gap-2.5 font-headline text-lg font-bold tracking-tight text-ds-foreground no-underline hover:text-ds-accent sm:text-xl"
           >
             <>
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-ds-border bg-ds-secondary text-ds-success shadow-[var(--ds-shadow-card)]">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-ds-border bg-ds-secondary text-ds-accent shadow-[var(--ds-shadow-card)]">
                 <Activity className="h-4 w-4" strokeWidth={2} aria-hidden />
               </span>
               <span className="font-semibold">Pulse</span>

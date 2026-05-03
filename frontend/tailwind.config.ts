@@ -10,8 +10,8 @@ const config: Config = {
   theme: {
     extend: {
       fontFamily: {
-        headline: ["var(--font-headline)", "system-ui", "sans-serif"],
-        body: ["var(--font-body)", "system-ui", "sans-serif"],
+        headline: ["var(--font-app)", "system-ui", "sans-serif"],
+        body: ["var(--font-app)", "system-ui", "sans-serif"],
       },
       colors: {
         helix: {
@@ -27,8 +27,8 @@ const config: Config = {
         },
         pulse: {
           bg: "#f7f8fa",
-          accent: "#2563eb",
-          "accent-hover": "#1d4ed8",
+          accent: "var(--ds-accent)",
+          "accent-hover": "#248a7d",
           navy: "#2c3a55",
           muted: "#64748b",
           border: "#e2e8f0",
@@ -58,6 +58,14 @@ const config: Config = {
           grid: "var(--pulse-shell-grid)",
           kbd: "var(--pulse-shell-kbd)",
         },
+        /** App shell — maps to CSS variables (see `globals.css`) */
+        background: "var(--ds-bg)",
+        foreground: "var(--ds-text-primary)",
+        border: "var(--ds-border)",
+        muted: {
+          DEFAULT: "var(--ds-surface-secondary)",
+          foreground: "var(--ds-text-secondary)",
+        },
         /** Unified design system — prefer these for new UI */
         ds: {
           bg: "var(--ds-bg)",
@@ -69,15 +77,17 @@ const config: Config = {
           elevated: "var(--ds-surface-elevated)",
           sidebar: "var(--ds-sidebar)",
           header: "var(--ds-header)",
+          accent: "var(--ds-accent)",
+          "accent-foreground": "var(--ds-accent-foreground)",
           "interactive-hover": "var(--ds-interactive-hover)",
           success: "var(--ds-success)",
           warning: "var(--ds-warning)",
           danger: "var(--ds-danger)",
-          /** Black text on solid aquamarine / amber / lobster */
+          /** Text on solid brand / status fills */
           "on-accent": "var(--ds-on-accent)",
           /** Gantt / CPM task category bars */
           blue: { 500: "#0ea5e9" },
-          teal: { 500: "#14b8a6" },
+          teal: { 500: "var(--ds-accent)" },
           yellow: { 500: "#eab308" },
           pink: { 500: "#ec4899" },
           gray: { 400: "#9ca3af" },

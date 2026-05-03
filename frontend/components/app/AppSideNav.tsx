@@ -121,7 +121,7 @@ export function AppSideNav() {
   if (!authed || !session) return null;
 
   const shell =
-    "relative z-20 hidden w-64 min-w-[16rem] flex-shrink-0 flex-col justify-between border-r bg-background lg:flex";
+    "relative z-20 hidden w-64 min-w-[16rem] flex-shrink-0 flex-col justify-between border-r border-ds-border bg-ds-primary lg:flex";
 
   return (
     <aside className={shell} aria-label={systemRail ? "System navigation" : "App navigation"}>
@@ -139,7 +139,7 @@ export function AppSideNav() {
                 value={navSearch}
                 onChange={(e) => setNavSearch(e.target.value)}
                 placeholder="Search…"
-                className="w-full rounded-full border border-border bg-background py-2 pl-9 pr-3 text-sm text-foreground shadow-inner placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--ds-success)_35%,transparent)]"
+                className="w-full rounded-full border border-ds-border bg-ds-secondary py-2 pl-9 pr-3 text-sm text-foreground shadow-inner placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--ds-accent)_32%,transparent)]"
                 aria-label="Filter navigation"
               />
             </div>
@@ -164,7 +164,7 @@ export function AppSideNav() {
                   <span
                     className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
                       active
-                        ? "bg-background text-ds-success shadow-sm ring-1 ring-[color-mix(in_srgb,var(--ds-success)_28%,transparent)]"
+                        ? "bg-ds-secondary text-ds-accent shadow-sm ring-1 ring-[color-mix(in_srgb,var(--ds-accent)_26%,transparent)]"
                         : "bg-ds-secondary/60 text-muted-foreground group-hover:text-foreground"
                     }`}
                   >
@@ -177,10 +177,10 @@ export function AppSideNav() {
           </nav>
         </div>
 
-        <div className="border-t border-border px-3 pt-3">
+        <div className="border-t border-ds-border px-3 pt-3">
           <Link
             href="/settings"
-            className="mb-2 flex w-full items-center justify-center gap-2 rounded-lg border border-border bg-background px-3 py-1.5 text-sm font-semibold text-foreground transition-colors hover:bg-ds-interactive-hover"
+            className="mb-2 flex w-full items-center justify-center gap-2 rounded-lg border border-ds-border bg-ds-secondary px-3 py-1.5 text-sm font-semibold text-foreground transition-colors hover:bg-ds-interactive-hover"
           >
             <Settings className="h-4 w-4" aria-hidden />
             Settings

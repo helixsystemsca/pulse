@@ -32,15 +32,16 @@ export function AppLayout({
   chrome = true,
 }: AppLayoutProps) {
   return (
-    <div className="flex h-screen w-screen flex-col overflow-hidden bg-muted/30">
+    <div className="flex h-screen w-screen flex-col overflow-hidden bg-ds-secondary">
         <ModuleSettingsProvider>
         <GamificationProvider>
         <InactivitySessionGuard />
         <ServerTimeSync />
         <ProximityPromptHost />
         <div data-pulse-app-shell className="flex h-full w-full flex-col overflow-hidden">
+          {chrome ? <div className="app-chrome-accent" aria-hidden /> : null}
           {chrome ? (
-            <header className="relative z-50 flex h-14 shrink-0 items-center border-b bg-background px-4">
+            <header className="relative z-50 flex h-14 shrink-0 items-center border-b border-ds-border bg-ds-primary px-4 shadow-none">
               <div className="w-full">
                 <AppNavbar />
               </div>
@@ -54,11 +55,11 @@ export function AppLayout({
 
             <div className="relative z-0 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
               <main
-                className={["relative z-0 flex-1 overflow-y-auto bg-background", mainClassName].filter(Boolean).join(" ")}
+                className={["relative z-0 flex-1 overflow-y-auto bg-ds-bg", mainClassName].filter(Boolean).join(" ")}
               >
                 <div
                   className={[
-                    "min-h-full w-full max-w-none bg-background px-3 py-4 lg:px-4",
+                    "min-h-full w-full max-w-none bg-ds-bg px-3 py-4 lg:px-4",
                     mainContentClassName,
                   ]
                     .filter(Boolean)

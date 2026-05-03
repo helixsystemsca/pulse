@@ -7,7 +7,7 @@ import { helixMarketingHref } from "@/lib/pulse-app";
 export function AppPoweredByFooter() {
   return (
     <footer
-      className="w-full h-10 px-4 flex items-center justify-center text-xs text-muted-foreground border-t bg-background"
+      className="flex h-10 w-full items-center justify-center border-t border-ds-border bg-ds-primary px-4 text-xs text-muted-foreground"
     >
       <div className="flex w-full items-center justify-center gap-2">
         <Link

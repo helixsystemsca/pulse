@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Be_Vietnam_Pro, Plus_Jakarta_Sans } from "next/font/google";
+import { Inter } from "next/font/google";
 import Script from "next/script";
 import { ThemeRoot } from "@/components/theme/ThemeRoot";
 import { THEME_STORAGE_KEY } from "@/lib/theme-constants";
@@ -7,16 +7,11 @@ import "./globals.css";
 
 const themeInitScript = `(function(){try{var k=${JSON.stringify(THEME_STORAGE_KEY)};var t=localStorage.getItem(k)||localStorage.getItem("theme");if(t==="dark")document.documentElement.classList.add("dark");else document.documentElement.classList.remove("dark");}catch(e){}})();`;
 
-const plusJakarta = Plus_Jakarta_Sans({
+/** Single stack — crisp UI typography (Gantt / PM reference: Inter-like rhythm). */
+const inter = Inter({
   subsets: ["latin"],
-  variable: "--font-headline",
-  display: "swap",
-});
-
-const beVietnam = Be_Vietnam_Pro({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  variable: "--font-body",
+  weight: ["400", "500", "600", "700", "800"],
+  variable: "--font-app",
   display: "swap",
 });
 
@@ -36,7 +31,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${plusJakarta.variable} ${beVietnam.variable}`} suppressHydrationWarning>
+    <html lang="en" className={inter.variable} suppressHydrationWarning>
       <body className="font-body antialiased bg-ds-bg text-ds-foreground">
         <Script id="pulse-theme-init" strategy="beforeInteractive">
           {themeInitScript}
