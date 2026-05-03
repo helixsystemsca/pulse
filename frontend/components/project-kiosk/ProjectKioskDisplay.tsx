@@ -1,12 +1,32 @@
 "use client";
 
-import { Award, LogOut } from "lucide-react";
+import {
+  Award,
+  CheckCircle2,
+  Cog,
+  Droplets,
+  LogOut,
+  Shield,
+  Sparkles,
+  Star,
+  Trophy,
+  Wrench,
+} from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
 import Image from "next/image";
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { KioskRotateFooter } from "@/components/dashboard/DashboardChrome";
+import { HandoverNotesKioskPage } from "@/components/project-kiosk/HandoverNotesKioskPage";
 import { UserProfileAvatarPreview } from "@/components/profile/UserProfileAvatarPreview";
-import type { KioskSection, ProjectKioskView, TeamHighlight } from "@/lib/project-kiosk/types";
+import type {
+  KioskSection,
+  ProjectKioskView,
+  TeamHighlight,
+  TeamInsightMemberRow,
+  TeamInsightsPanelData,
+  TeamInsightTag,
+} from "@/lib/project-kiosk/types";
 import { getProjectKioskView } from "@/lib/project-kiosk/buildProjectKioskView";
 import { useProjectKioskRealtime } from "@/lib/project-kiosk/useProjectKioskRealtime";
 import { cn } from "@/lib/cn";
@@ -45,6 +65,129 @@ function KioskHeaderClock() {
     <div className="shrink-0 text-right tabular-nums">
       <p className="font-headline text-2xl font-bold tracking-tight text-ds-foreground sm:text-3xl">{timeStr}</p>
       <p className="mt-0.5 text-xs font-semibold text-ds-muted sm:text-sm">{dateStr}</p>
+    </div>
+  );
+}
+
+function initialsFromName(name: string): string {
+  const p = name.trim().split(/\s+/).filter(Boolean);
+  if (p.length >= 2) return `${p[0]![0] ?? ""}${p[1]![0] ?? ""}`.toUpperCase();
+  return name.trim().slice(0, 2).toUpperCase() || "?";
+}
+
+const AVATAR_BG = ["#0f766e", "#1e3a8a", "#6d28d9", "#c2410c", "#0369a1", "#be185d"] as const;
+
+function avatarBgForId(id: string): string {
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = (h + id.charCodeAt(i) * 13) % 997;
+  return AVATAR_BG[h % AVATAR_BG.length]!;
+}
+
+function tagPillIcon(tag: TeamInsightTag) {
+  const l = tag.label.toLowerCase();
+  if (l.includes("safety") || tag.variant === "teal") return Shield;
+  if (l.includes("lead") || l.includes("star")) return Star;
+  if (l.includes("on-time") || l.includes("time") || l.includes("steady") || l.includes("momentum")) return Trophy;
+  if (l.includes("multi") || l.includes("skill") || l.includes("gear")) return Cog;
+  if (l.includes("pool") || l.includes("water")) return Droplets;
+  if (l.includes("detail") || l.includes("wrench")) return Wrench;
+  if (l.includes("active") || l.includes("complete") || tag.variant === "green") return CheckCircle2;
+  return Sparkles;
+}
+
+const TAG_SURFACE: Record<TeamInsightTag["variant"], string> = {
+  teal: "border border-teal-100 bg-teal-50 text-teal-900",
+  green: "border border-emerald-100 bg-emerald-50 text-emerald-900",
+  orange: "border border-orange-100 bg-orange-50 text-orange-950",
+  blue: "border border-sky-100 bg-sky-50 text-sky-950",
+  gray: "border border-slate-200 bg-slate-100 text-slate-800",
+};
+
+function TeamInsightTagPill({ tag }: { tag: TeamInsightTag }) {
+  const Icon = tagPillIcon(tag);
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold leading-none",
+        TAG_SURFACE[tag.variant],
+      )}
+    >
+      <Icon className="h-3.5 w-3.5 shrink-0 opacity-85" aria-hidden />
+      {tag.label}
+    </span>
+  );
+}
+
+function TeamInsightsMemberRow({ member }: { member: TeamInsightMemberRow }) {
+  const initials = initialsFromName(member.displayName);
+  const bg = avatarBgForId(member.workerId);
+  return (
+    <div className="border-b border-ds-border py-4 last:border-b-0 last:pb-0">
+      <div className="flex gap-3">
+        {member.avatarUrl ? (
+          <UserProfileAvatarPreview
+            avatarUrl={member.avatarUrl}
+            nameFallback={member.displayName}
+            sizeClassName="h-12 w-12"
+            fallback="initials"
+            className="!border-0 !bg-transparent !p-0 !text-[13px] !ring-2 !ring-white"
+          />
+        ) : (
+          <div
+            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white shadow-sm"
+            style={{ backgroundColor: bg }}
+          >
+            {initials}
+          </div>
+        )}
+        <div className="min-w-0 flex-1">
+          <p className="truncate font-headline text-base font-bold text-ds-foreground">{member.displayName}</p>
+          <p className="mt-0.5 text-sm text-ds-muted">{member.roleLabel}</p>
+          {member.tags.length > 0 ? (
+            <div className="mt-2.5 flex flex-wrap gap-2">
+              {member.tags.map((t) => (
+                <TeamInsightTagPill key={`${member.workerId}-${t.label}`} tag={t} />
+              ))}
+            </div>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TeamInsightsPanel({ data }: { data: TeamInsightsPanelData }) {
+  const { stats, members } = data;
+  return (
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="grid shrink-0 grid-cols-2 overflow-hidden rounded-lg border border-ds-border bg-ds-primary">
+        <div className="border-b border-r border-ds-border px-4 py-3 text-center sm:px-5 sm:py-4">
+          <p className="font-headline text-2xl font-bold tabular-nums text-teal-800 dark:text-teal-200">{stats.total}</p>
+          <p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-ds-muted">Total tasks</p>
+        </div>
+        <div className="border-b border-ds-border px-4 py-3 text-center sm:px-5 sm:py-4">
+          <p className="font-headline text-2xl font-bold tabular-nums text-emerald-700 dark:text-emerald-300">
+            {stats.completed}
+          </p>
+          <p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-ds-muted">Completed</p>
+        </div>
+        <div className="border-r border-ds-border px-4 py-3 text-center sm:px-5 sm:py-4">
+          <p className="font-headline text-2xl font-bold tabular-nums text-teal-700 dark:text-teal-200">{stats.inProgress}</p>
+          <p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-ds-muted">In progress</p>
+        </div>
+        <div className="px-4 py-3 text-center sm:px-5 sm:py-4">
+          <p className="font-headline text-2xl font-bold tabular-nums text-rose-600 dark:text-rose-300">{stats.blocked}</p>
+          <p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-ds-muted">Blocked</p>
+        </div>
+      </div>
+
+      <div className="mt-4 min-h-0 flex-1 overflow-y-auto pr-1">
+        {members.length === 0 ? (
+          <p className="py-6 text-center text-sm text-ds-muted">No assignees on this project yet.</p>
+        ) : (
+          members.map((m) => <TeamInsightsMemberRow key={m.workerId} member={m} />)
+        )}
+      </div>
     </div>
   );
 }
@@ -175,6 +318,12 @@ function KioskSectionBody({ section }: { section: KioskSection }) {
   if (b.kind === "insights_cards") {
     return <HighlightStripLight highlights={b.highlights} large />;
   }
+  if (b.kind === "team_insights_panel") {
+    return <TeamInsightsPanel data={{ stats: b.stats, members: b.members }} />;
+  }
+  if (b.kind === "handover_notes") {
+    return <HandoverNotesKioskPage cards={[...b.cards]} />;
+  }
   return null;
 }
 
@@ -254,6 +403,8 @@ export function ProjectKioskDisplay({ projectId }: { projectId: string }) {
     return rotatingSections[rotIndex % rotatingSections.length] ?? null;
   }, [rotatingSections, rotIndex]);
 
+  const handoverMain = currentRot?.body.kind === "handover_notes";
+
   const taskBoard = useMemo(() => pickSection(allSections, "task_board"), [allSections]);
   const teamInsights = useMemo(() => pickSection(allSections, "team_insights"), [allSections]);
   const activeWork = useMemo(() => pickSection(allSections, "active_work"), [allSections]);
@@ -300,7 +451,7 @@ export function ProjectKioskDisplay({ projectId }: { projectId: string }) {
   const body = (
     <div className={cn(DASH.page, "flex min-h-screen flex-col bg-ds-bg text-ds-foreground")}>
       <header className="shrink-0 border-b border-ds-border bg-ds-primary px-4 py-4 shadow-[var(--ds-shadow-card)] sm:px-6">
-        <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between lg:gap-8">
           <div className="flex min-w-0 flex-1 items-start gap-4">
             <div className="relative h-[4.5rem] w-[4.5rem] shrink-0 sm:h-20 sm:w-20">
               <Image
@@ -313,25 +464,26 @@ export function ProjectKioskDisplay({ projectId }: { projectId: string }) {
               />
             </div>
             <div className="min-w-0 pt-0.5">
-              <p className={DASH.sectionLabel}>Projects Kiosk</p>
-              <p className="mt-0.5 text-[10px] font-bold uppercase tracking-[0.18em] text-ds-muted">{h.facilityLabel}</p>
-              <h1 className="mt-1 truncate font-headline text-xl font-extrabold tracking-tight text-ds-foreground sm:text-2xl md:text-3xl">
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-ds-muted sm:text-sm sm:tracking-[0.14em]">
+                {h.facilityLabel}
+              </p>
+              <h1 className="mt-2 text-balance font-headline text-2xl font-semibold leading-[1.08] tracking-[-0.035em] text-ds-foreground sm:mt-2.5 sm:text-3xl md:text-[2.35rem]">
                 {h.projectName}
               </h1>
             </div>
           </div>
 
-          <div className="flex flex-wrap items-start justify-end gap-5 sm:gap-8">
-            <div className="min-w-0">
-              <p className={DASH.sectionLabel}>Target completion</p>
+          <div className="grid w-full min-w-0 shrink-0 grid-cols-1 gap-x-8 gap-y-5 lg:w-auto lg:max-w-5xl lg:grid-cols-4 lg:items-start lg:gap-x-10">
+            <div className="flex min-w-0 flex-col gap-1">
+              <p className={cn(DASH.sectionLabel, "min-h-[1.125rem] leading-none")}>Target completion</p>
               <p className="mt-1 text-lg font-bold tabular-nums text-ds-accent sm:text-xl">{formatTargetDate(h.targetEndDate)}</p>
-              <p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-ds-muted">Days remaining</p>
-              <p className={cn("text-sm font-semibold tabular-nums", targetToneClass)}>{h.targetEndCaption}</p>
+              <p className={cn(DASH.sectionLabel, "mt-1 min-h-[1.125rem] leading-none")}>Days remaining</p>
+              <p className={cn("text-sm font-semibold tabular-nums leading-snug", targetToneClass)}>{h.targetEndCaption}</p>
             </div>
 
-            <div className="min-w-0 max-w-[min(100%,28rem)] flex-1 sm:max-w-md">
-              <p className={DASH.sectionLabel}>On site today</p>
-              <div className="mt-2 flex flex-wrap gap-x-4 gap-y-2">
+            <div className="flex min-h-0 min-w-0 flex-col gap-1">
+              <p className={cn(DASH.sectionLabel, "min-h-[1.125rem] leading-none")}>On site today</p>
+              <div className="mt-2 flex min-h-[2.25rem] flex-wrap items-center gap-x-4 gap-y-2">
                 {h.onSiteWorkers.length === 0 ? (
                   <span className="text-sm text-ds-muted">—</span>
                 ) : (
@@ -351,7 +503,12 @@ export function ProjectKioskDisplay({ projectId }: { projectId: string }) {
               </div>
             </div>
 
-            <div className="flex shrink-0 flex-col items-end gap-2">
+            <div className="flex flex-col gap-1 lg:justify-self-end lg:text-right">
+              <p className={cn(DASH.sectionLabel, "min-h-[1.125rem] leading-none lg:text-right")}>Progress</p>
+              <p className="font-headline text-2xl font-bold tabular-nums text-ds-accent lg:text-right">{h.percentComplete}%</p>
+            </div>
+
+            <div className="flex flex-col items-end gap-2 lg:justify-self-end">
               <button
                 type="button"
                 onClick={() => void exit()}
@@ -362,13 +519,7 @@ export function ProjectKioskDisplay({ projectId }: { projectId: string }) {
                   Exit
                 </span>
               </button>
-              <div className="flex items-center gap-4">
-                <div className="text-right">
-                  <p className={DASH.sectionLabel}>Progress</p>
-                  <p className="font-headline text-2xl font-bold text-ds-accent">{h.percentComplete}%</p>
-                </div>
-                <KioskHeaderClock />
-              </div>
+              <KioskHeaderClock />
             </div>
           </div>
         </div>
@@ -381,55 +532,81 @@ export function ProjectKioskDisplay({ projectId }: { projectId: string }) {
         </div>
       </header>
 
-      <div className="flex min-h-0 flex-1 flex-col gap-4 p-4 lg:flex-row lg:gap-5 lg:p-5">
-        <aside className="flex w-full shrink-0 flex-col lg:w-[min(100%,22rem)]">
-          {activeWork ? (
-            <KioskPanelFrame title={activeWork.title} className="min-h-[12rem] flex-1 lg:min-h-0">
-              <KioskSectionBody section={activeWork} />
-            </KioskPanelFrame>
-          ) : (
-            <KioskPanelFrame title={"Today's assignments"} className="min-h-[8rem]">
-              <p className="text-sm text-ds-muted">Enable the “Active work” widget on the Project tab to show assignments here.</p>
-            </KioskPanelFrame>
-          )}
-        </aside>
-
-        <main className="flex min-h-0 min-w-0 flex-1 flex-col">
-          {taskBoard ? (
-            <KioskPanelFrame title={taskBoard.title} className="flex min-h-0 flex-1 flex-col">
-              <KioskSectionBody section={taskBoard} />
-            </KioskPanelFrame>
-          ) : (
-            <KioskPanelFrame title="Task board" className="flex-1">
-              <p className="text-sm text-ds-muted">Add the “Task board” widget in kiosk configuration.</p>
-            </KioskPanelFrame>
-          )}
-
-          {rotCount > 1 && currentRot && currentRot.id !== taskBoard?.id ? (
-            <div className="mt-4 min-h-0 flex-1">
-              <KioskPanelFrame title={`${currentRot.title} · rotating`} className="min-h-[10rem]">
-                <KioskSectionBody section={currentRot} />
+      {handoverMain && currentRot?.body.kind === "handover_notes" ? (
+        <div className="flex min-h-0 flex-1 flex-col">
+          <HandoverNotesKioskPage cards={[...currentRot.body.cards]} />
+        </div>
+      ) : (
+        <div className="flex min-h-0 flex-1 flex-col gap-4 p-4 lg:flex-row lg:gap-5 lg:p-5">
+          <aside className="flex w-full shrink-0 flex-col lg:w-[min(100%,22rem)]">
+            {activeWork ? (
+              <KioskPanelFrame title={activeWork.title} className="min-h-[12rem] flex-1 lg:min-h-0">
+                <KioskSectionBody section={activeWork} />
               </KioskPanelFrame>
-            </div>
-          ) : null}
-        </main>
+            ) : (
+              <KioskPanelFrame title={"Today's assignments"} className="min-h-[8rem]">
+                <p className="text-sm text-ds-muted">Enable the “Active work” widget on the Project tab to show assignments here.</p>
+              </KioskPanelFrame>
+            )}
+          </aside>
 
-        <aside className="flex w-full shrink-0 flex-col gap-4 lg:w-[min(100%,24rem)]">
-          {teamInsights ? (
-            <KioskPanelFrame title={teamInsights.title} className="min-h-0 flex-1">
-              <KioskSectionBody section={teamInsights} />
-            </KioskPanelFrame>
-          ) : (
-            <KioskPanelFrame title="Team insights" className="min-h-0 flex-1">
-              <HighlightStripLight highlights={view.teamInsights.highlights} large />
-            </KioskPanelFrame>
-          )}
-        </aside>
-      </div>
+          <main className="flex min-h-0 min-w-0 flex-1 flex-col">
+            {taskBoard ? (
+              <KioskPanelFrame title={taskBoard.title} className="flex min-h-0 flex-1 flex-col">
+                <KioskSectionBody section={taskBoard} />
+              </KioskPanelFrame>
+            ) : (
+              <KioskPanelFrame title="Task board" className="flex-1">
+                <p className="text-sm text-ds-muted">Add the “Task board” widget in kiosk configuration.</p>
+              </KioskPanelFrame>
+            )}
+
+            {rotCount > 1 &&
+            currentRot &&
+            currentRot.id !== taskBoard?.id &&
+            currentRot.body.kind !== "handover_notes" ? (
+              <div className="relative mt-4 min-h-0 flex-1">
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={currentRot.id}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
+                    className="min-h-0"
+                  >
+                    <KioskPanelFrame title={`${currentRot.title} · rotating`} className="min-h-[10rem]">
+                      <KioskSectionBody section={currentRot} />
+                    </KioskPanelFrame>
+                  </motion.div>
+                </AnimatePresence>
+              </div>
+            ) : null}
+          </main>
+
+          <aside className="flex w-full shrink-0 flex-col gap-4 lg:w-[min(100%,24rem)]">
+            {teamInsights ? (
+              <KioskPanelFrame title={teamInsights.title} className="min-h-0 flex-1">
+                <KioskSectionBody section={teamInsights} />
+              </KioskPanelFrame>
+            ) : (
+              <KioskPanelFrame title="Team insights" className="min-h-0 flex-1">
+                <TeamInsightsPanel data={view.teamInsightsPanel} />
+              </KioskPanelFrame>
+            )}
+          </aside>
+        </div>
+      )}
 
       {rotCount > 1 ? (
-        <footer className="shrink-0 border-t border-ds-border bg-ds-primary px-4 py-3">
-          <KioskRotateFooter activeIndex={rotIndex} total={rotCount} />
+        <footer className="shrink-0 border-t border-ds-border bg-ds-secondary/30 px-4 py-3">
+          <KioskRotateFooter
+            activeIndex={rotIndex}
+            total={rotCount}
+            showCountdownRing
+            rotationKey={rotIndex}
+            intervalMs={15_000}
+          />
         </footer>
       ) : null}
     </div>

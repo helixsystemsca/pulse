@@ -1,10 +1,14 @@
 import { apiFetch } from "@/lib/api";
 import type {
+  HandoverNoteCard,
   KioskOnSiteWorker,
   KioskSection,
   KioskWidgetDefinition,
   ProjectKioskView,
   TeamHighlight,
+  TeamInsightMemberRow,
+  TeamInsightsPanelData,
+  TeamInsightTag,
 } from "@/lib/project-kiosk/types";
 import type { PulseWorkerApi } from "@/lib/schedule/pulse-bridge";
 import {
@@ -97,6 +101,95 @@ function uniqueActiveWorkerIds(tasks: TaskRow[]): number {
   return ids.size;
 }
 
+function taskInsightStats(tasks: TaskRow[]): TeamInsightsPanelData["stats"] {
+  return {
+    total: tasks.length,
+    completed: tasks.filter((t) => t.status === "complete").length,
+    inProgress: tasks.filter((t) => t.status === "in_progress").length,
+    blocked: blockedTasks(tasks).length,
+  };
+}
+
+function displayRole(w: PulseWorkerApi | undefined): string {
+  const r = (w?.role ?? "").trim().replace(/_/g, " ");
+  if (!r) return "Team member";
+  return r.charAt(0).toUpperCase() + r.slice(1);
+}
+
+function inferTagVariant(badge: string, description: string): TeamInsightTag["variant"] {
+  const s = `${badge} ${description}`.toLowerCase();
+  if (s.includes("safety") || s.includes("shield")) return "teal";
+  if (s.includes("schedule") || s.includes("on-time") || s.includes("on time") || s.includes("momentum")) return "green";
+  if (s.includes("critical") || s.includes("block") || s.includes("risk")) return "orange";
+  if (s.includes("pool") || s.includes("multi") || s.includes("skill") || s.includes("signal")) return "blue";
+  return "gray";
+}
+
+function highlightMatchesUser(h: TeamHighlight, displayName: string): boolean {
+  if (h.user === "Team") return false;
+  const dn = displayName.trim().toLowerCase();
+  const hn = h.user.trim().toLowerCase();
+  if (hn === dn) return true;
+  const dFirst = dn.split(/\s+/)[0] ?? "";
+  const hFirst = hn.split(/\s+/)[0] ?? "";
+  return dFirst.length > 0 && hFirst.length > 0 && (dFirst === hFirst || dn.includes(hFirst) || hn.includes(dFirst));
+}
+
+function buildTeamInsightMemberRows(
+  tasks: TaskRow[],
+  workers: PulseWorkerApi[],
+  highlights: TeamHighlight[],
+): TeamInsightMemberRow[] {
+  const counts = new Map<string, number>();
+  for (const t of tasks) {
+    if (!t.assigned_user_id) continue;
+    counts.set(t.assigned_user_id, (counts.get(t.assigned_user_id) ?? 0) + 1);
+  }
+  const byId = new Map(workers.map((w) => [w.id, w]));
+  const sortedIds = [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([id]) => id).slice(0, 10);
+  if (sortedIds.length === 0) return [];
+
+  let orphanIdx = 0;
+  return sortedIds.map((id) => {
+    const w = byId.get(id);
+    const displayName = (w?.full_name?.trim() || w?.email || "Member").trim();
+    const tags: TeamInsightTag[] = [];
+    for (const h of highlights) {
+      if (tags.length >= 4) break;
+      if (highlightMatchesUser(h, displayName)) {
+        tags.push({ label: h.badge, variant: inferTagVariant(h.badge, h.description) });
+      }
+    }
+    let guard = 0;
+    while (tags.length < 2 && highlights.length > 0 && guard < highlights.length * 4) {
+      guard += 1;
+      const h = highlights[orphanIdx % highlights.length];
+      orphanIdx += 1;
+      if (!h || h.user === "Team") continue;
+      if (tags.some((t) => t.label === h.badge)) continue;
+      tags.push({ label: h.badge, variant: inferTagVariant(h.badge, h.description) });
+    }
+    return {
+      workerId: id,
+      displayName,
+      roleLabel: displayRole(w),
+      avatarUrl: w?.avatar_url ?? null,
+      tags,
+    };
+  });
+}
+
+function buildTeamInsightsPanelData(
+  tasks: TaskRow[],
+  workers: PulseWorkerApi[],
+  highlights: TeamHighlight[],
+): TeamInsightsPanelData {
+  return {
+    stats: taskInsightStats(tasks),
+    members: buildTeamInsightMemberRows(tasks, workers, highlights),
+  };
+}
+
 function taskColumnsByStatus(tasks: TaskRow[], statuses: string[]): { label: string; items: string[] }[] {
   return statuses.map((status) => ({
     label: status.replace(/_/g, " "),
@@ -106,6 +199,185 @@ function taskColumnsByStatus(tasks: TaskRow[], statuses: string[]): { label: str
       .filter(Boolean)
       .slice(0, 6),
   }));
+}
+
+const STANDING_NOTE_PAT = /supervisor|standing|safety|do not|restricted|caution|blocked area|hazard/i;
+
+function relativeCalendarCaption(iso: string): string {
+  const d = new Date(iso.includes("T") ? iso : `${iso}T12:00:00`);
+  if (Number.isNaN(d.getTime())) return "Recently";
+  const start = (x: Date) => {
+    const t = new Date(x);
+    t.setHours(0, 0, 0, 0);
+    return t.getTime();
+  };
+  const now = new Date();
+  const dayDiff = Math.round((start(now) - start(d)) / 86400000);
+  if (dayDiff <= 0) return "Today";
+  if (dayDiff === 1) return "Yesterday";
+  if (dayDiff < 7) return `${dayDiff} days ago`;
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
+function shiftCaptionFromIso(iso: string): string {
+  const d = new Date(iso.includes("T") ? iso : `${iso}T12:00:00`);
+  if (Number.isNaN(d.getTime())) return "Shift";
+  const h = d.getHours();
+  if (h < 12) return "Morning shift";
+  if (h < 17) return "Afternoon shift";
+  return "Evening shift";
+}
+
+function authorForActivity(a: ProjectActivityRow, workerMap: Map<string, string>, tasks: TaskRow[]): string {
+  const title = (a.title ?? "").trim();
+  if (title && title.length <= 48 && !/^note\b/i.test(title)) return title;
+  if (a.related_task_id) {
+    const task = tasks.find((t) => t.id === a.related_task_id);
+    if (task?.assigned_user_id) return workerName(workerMap, task.assigned_user_id);
+  }
+  return "Team";
+}
+
+function pickSupervisorActivity(activity: ProjectActivityRow[]): ProjectActivityRow | null {
+  const sorted = [...activity].sort((x, y) => parseTs(y.created_at) - parseTs(x.created_at));
+  for (const a of sorted) {
+    const text = `${a.title ?? ""} ${a.description}`;
+    if (a.type === "issue") return a;
+    if (a.impact_level === "high") return a;
+    if (STANDING_NOTE_PAT.test(text)) return a;
+  }
+  return null;
+}
+
+function handoverEmptyCard(ribbonLabel: string, title: string, metaLine: string, body: string): HandoverNoteCard {
+  return { kind: "empty", ribbonLabel, title, metaLine, body };
+}
+
+function buildHandoverFilledTeal(
+  a: ProjectActivityRow,
+  workerMap: Map<string, string>,
+  tasks: TaskRow[],
+): HandoverNoteCard {
+  const shift = shiftCaptionFromIso(a.created_at);
+  const rel = relativeCalendarCaption(a.created_at);
+  const body = (a.description ?? "").trim().slice(0, 420);
+  const titlePart = (a.title ?? "").trim();
+  const blob = `${titlePart} ${body}`;
+  const looksComplete = /\bcomplete|finished|done|wrapped|signed off\b/i.test(blob);
+  const ribbon = `${shift.toUpperCase()} — HANDOVER`;
+  const pillLabel =
+    looksComplete && titlePart ? `${titlePart.slice(0, 52)}${titlePart.length > 52 ? "…" : ""} — Complete` : "Work progress — Logged";
+
+  return {
+    kind: "filled",
+    accent: "teal",
+    ribbonLabel: ribbon,
+    authorName: authorForActivity(a, workerMap, tasks),
+    metaLine: `${rel} · ${shift}`,
+    body: body || "No additional detail was provided for this handover.",
+    statusPill: { tone: "success", label: pillLabel },
+  };
+}
+
+function buildHandoverFilledDangerFromActivity(
+  a: ProjectActivityRow,
+  workerMap: Map<string, string>,
+  tasks: TaskRow[],
+): HandoverNoteCard {
+  const body = (a.description ?? "").trim().slice(0, 420);
+  const author = authorForActivity(a, workerMap, tasks);
+  const meta =
+    a.type === "issue" ? "Supervisor · Issue logged" : "Supervisor · All shifts";
+  const descLine = body.split(/\n+/)[0]?.trim() ?? body;
+  const pillText =
+    descLine.length > 56 ? `${descLine.slice(0, 54)}…` : descLine || "Review on site before proceeding";
+
+  return {
+    kind: "filled",
+    accent: "danger",
+    ribbonLabel: "SUPERVISOR — STANDING NOTE",
+    authorName: author,
+    metaLine: meta,
+    body: body || "No additional supervisor context was recorded.",
+    statusPill: { tone: "warning", label: pillText },
+  };
+}
+
+function buildHandoverFilledDangerFromBlocked(t: TaskRow, workerMap: Map<string, string>): HandoverNoteCard {
+  const who = workerName(workerMap, t.assigned_user_id);
+  const body =
+    `Blocked task: ${t.title.trim()}. ` +
+    (t.blocking_tasks?.length ?
+      `Waiting on: ${t.blocking_tasks
+        .map((b) => b.title)
+        .join(", ")}.`
+    : "Review dependencies and site readiness before sending crews in.");
+  const short = t.title.trim().slice(0, 48) + (t.title.trim().length > 48 ? "…" : "");
+
+  return {
+    kind: "filled",
+    accent: "danger",
+    ribbonLabel: "SUPERVISOR — STANDING NOTE",
+    authorName: who,
+    metaLine: "Supervisor · Blocked work",
+    body: body.slice(0, 420),
+    statusPill: { tone: "warning", label: `${short} — Review` },
+  };
+}
+
+function buildHandoverNotesBody(
+  tasks: TaskRow[],
+  activity: ProjectActivityRow[],
+  workerMap: Map<string, string>,
+): { kind: "handover_notes"; cards: [HandoverNoteCard, HandoverNoteCard, HandoverNoteCard, HandoverNoteCard] } {
+  const blk = blockedTasks(tasks);
+  const notes = activity
+    .filter((a) => a.type === "note")
+    .sort((x, y) => parseTs(y.created_at) - parseTs(x.created_at));
+  const sup = pickSupervisorActivity(activity);
+
+  const shiftNote =
+    sup ? notes.find((n) => n.id !== sup.id) ?? null
+    : notes[0] ?? null;
+
+  const topLeft: HandoverNoteCard =
+    shiftNote ?
+      buildHandoverFilledTeal(shiftNote, workerMap, tasks)
+    : handoverEmptyCard(
+        "SHIFT HANDOVER",
+        "No notes yet",
+        "Today · Pending submission",
+        "Shift-to-shift notes will appear here once someone logs a project note from the activity panel.",
+      );
+
+  let topRight: HandoverNoteCard;
+  if (sup) {
+    topRight = buildHandoverFilledDangerFromActivity(sup, workerMap, tasks);
+  } else if (blk[0]) {
+    topRight = buildHandoverFilledDangerFromBlocked(blk[0], workerMap);
+  } else {
+    topRight = handoverEmptyCard(
+      "SUPERVISOR — STANDING NOTE",
+      "No standing notes",
+      "All shifts · Clear",
+      "Supervisor alerts, safety holds, and high-impact issues will surface here when logged.",
+    );
+  }
+
+  const bottomLeft = handoverEmptyCard(
+    "MORNING SHIFT",
+    "No notes yet",
+    "Today · Pending submission",
+    "Morning shift notes will appear here once submitted.",
+  );
+  const bottomRight = handoverEmptyCard(
+    "EVENING SHIFT",
+    "No notes yet",
+    "Today · Pending submission",
+    "Evening shift notes will appear here once submitted.",
+  );
+
+  return { kind: "handover_notes", cards: [topLeft, topRight, bottomLeft, bottomRight] };
 }
 
 function buildTeamHighlights(
@@ -189,8 +461,10 @@ function buildSections(
   project: ProjectDetail,
   tasks: TaskRow[],
   workerMap: Map<string, string>,
+  workers: PulseWorkerApi[],
   widgets: KioskWidgetDefinition[],
   highlights: TeamHighlight[],
+  activity: ProjectActivityRow[],
 ): { locked: KioskSection[]; rotating: KioskSection[] } {
   const locked: KioskSection[] = [];
   const rotating: KioskSection[] = [];
@@ -298,11 +572,20 @@ function buildSections(
       });
     }
     if (w.id === "team_insights") {
+      const panel = buildTeamInsightsPanelData(tasks, workers, highlights);
       push(w, {
         id: "team_insights",
         title: w.label,
         isHighValue: w.isHighValue,
-        body: { kind: "insights_cards", highlights },
+        body: { kind: "team_insights_panel", stats: panel.stats, members: panel.members },
+      });
+    }
+    if (w.id === "handover") {
+      push(w, {
+        id: "handover",
+        title: w.label,
+        isHighValue: w.isHighValue,
+        body: buildHandoverNotesBody(tasks, activity, workerMap),
       });
     }
   }
@@ -337,7 +620,8 @@ export function buildProjectKioskView(
     workers.map((w) => [w.id, (w.full_name?.trim() || w.email)?.trim() || w.email]),
   );
   const highlights = buildTeamHighlights(tasks, workerMap, activity);
-  const { locked, rotating } = buildSections(project, tasks, workerMap, widgets, highlights);
+  const teamInsightsPanel = buildTeamInsightsPanelData(tasks, workers, highlights);
+  const { locked, rotating } = buildSections(project, tasks, workerMap, workers, widgets, highlights, activity);
   const lastUpdated = new Date().toISOString();
   const targetMeta = targetCompletionMeta(project.end_date);
   const onSite = onSiteWorkersFromTasks(tasks, workers);
@@ -358,6 +642,7 @@ export function buildProjectKioskView(
     lockedSections: locked,
     rotatingSections: rotating,
     teamInsights: { highlights },
+    teamInsightsPanel,
   };
 }
 

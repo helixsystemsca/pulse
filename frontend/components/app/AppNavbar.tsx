@@ -14,6 +14,7 @@ import { clearSession } from "@/lib/pulse-session";
 import { UserProfileAvatarPreview } from "@/components/profile/UserProfileAvatarPreview";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { sessionHasAnyRole } from "@/lib/pulse-roles";
+import { cn } from "@/lib/cn";
 
 export function AppNavbar() {
   const pathname = usePathname();
@@ -45,18 +46,25 @@ export function AppNavbar() {
         <div className="flex min-w-0 items-center">
           <Link
             href={logoHref}
-            className="flex min-w-0 items-center no-underline hover:opacity-90"
+            className="flex min-w-0 shrink-0 items-center no-underline hover:opacity-[0.97]"
             aria-label="Home"
           >
-            <span className="relative block h-[4.5rem] w-[min(22rem,calc(100vw-8rem))] shrink-0 overflow-hidden sm:h-20 sm:w-[min(26rem,calc(100vw-6rem))]">
-              <Image
-                src="/images/panoramalogo.png"
-                alt=""
-                fill
-                priority
-                sizes="(max-width: 640px) 352px, 416px"
-                className="object-contain object-left-top"
-              />
+            <span
+              className={cn(
+                "inline-flex rounded-full bg-[var(--ds-chrome-gradient)] p-[3px] shadow-[var(--ds-shadow-card)]",
+                "ring-1 ring-black/[0.04] dark:ring-white/10",
+              )}
+            >
+              <span className="relative block h-[4.5rem] w-[4.5rem] overflow-hidden rounded-full bg-white dark:bg-white sm:h-20 sm:w-20">
+                <Image
+                  src="/images/panoramalogo.png"
+                  alt=""
+                  fill
+                  priority
+                  sizes="96px"
+                  className="object-contain object-left-top p-[10%]"
+                />
+              </span>
             </span>
           </Link>
         </div>

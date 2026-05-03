@@ -5,10 +5,11 @@
  * Shown at most once per browser tab session (`sessionStorage`), so refreshes skip the animation.
  */
 
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import Image from "next/image";
 import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { cn } from "@/lib/cn";
 import { PULSE_WELCOME_SESSION_KEY } from "@/lib/pulse-session";
 
 /** @deprecated Use `PULSE_WELCOME_SESSION_KEY` from `@/lib/pulse-session`. */
@@ -77,24 +78,23 @@ function WaveTile({ uid }: { uid: string }) {
   );
 }
 
-/** Seamless ocean wave along the card bottom while loading. */
+/** Seamless ocean wave along the card bottom while loading (CSS keyframes for reliable motion). */
 function OceanWaveBar() {
-  const reduce = useReducedMotion();
   const gid = useId().replace(/:/g, "");
   return (
     <div
       className="pointer-events-none absolute inset-x-0 bottom-0 z-[2] h-[3.25rem] overflow-hidden sm:h-16"
       aria-hidden
     >
-      <motion.div
-        className="flex h-full w-[200%] will-change-transform"
-        initial={false}
-        animate={reduce ? { x: "0%" } : { x: ["0%", "-50%"] }}
-        transition={{ duration: 9, repeat: Infinity, ease: "linear" }}
+      <div
+        className={cn(
+          "flex h-full w-[200%] will-change-transform",
+          "animate-welcome-ocean motion-reduce:animate-none",
+        )}
       >
         <WaveTile uid={`${gid}-a`} />
         <WaveTile uid={`${gid}-b`} />
-      </motion.div>
+      </div>
     </div>
   );
 }
@@ -212,15 +212,24 @@ export function WelcomeLoaderModal({
                   phase === "loading" ? "pb-20 sm:pb-24" : "pb-12 sm:pb-14",
                 ].join(" ")}
               >
-                <div className="relative mx-auto h-16 w-full max-w-[min(100%,18rem)] sm:h-[4.25rem]">
-                  <Image
-                    src="/images/panoramalogo.png"
-                    alt=""
-                    fill
-                    priority
-                    sizes="(max-width: 640px) 288px, 320px"
-                    className="object-contain"
-                  />
+                <div className="mx-auto flex justify-center">
+                  <div
+                    className={cn(
+                      "rounded-full border-[3px] border-[#4c6085] bg-white shadow-[0_6px_28px_rgba(76,96,133,0.16)] dark:border-ds-border dark:bg-white",
+                      "h-[5.25rem] w-[5.25rem] sm:h-24 sm:w-24",
+                    )}
+                  >
+                    <div className="relative h-full w-full overflow-hidden rounded-full bg-white">
+                      <Image
+                        src="/images/panoramalogo.png"
+                        alt=""
+                        fill
+                        priority
+                        sizes="112px"
+                        className="object-contain object-left-top p-[12%]"
+                      />
+                    </div>
+                  </div>
                 </div>
 
               {phase === "loading" ? (

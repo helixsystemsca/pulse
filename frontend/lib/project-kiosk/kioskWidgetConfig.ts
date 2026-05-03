@@ -11,6 +11,7 @@ export const DEFAULT_KIOSK_WIDGETS: KioskWidgetDefinition[] = [
   { id: "blockers", label: "Blockers view", isHighValue: false },
   { id: "progress_summary", label: "Progress summary", isHighValue: false },
   { id: "team_insights", label: "Team insights", isHighValue: false },
+  { id: "handover", label: "Handover notes", isHighValue: false },
 ];
 
 export function loadKioskWidgetConfig(): KioskWidgetDefinition[] {

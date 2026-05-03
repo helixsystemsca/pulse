@@ -102,6 +102,15 @@ const config: Config = {
         helix: "0 2px 12px rgb(0 0 0 / 0.06), 0 4px 18px rgba(48, 86, 139, 0.05)",
         "stealth-card": "0 1px 3px rgba(0, 0, 0, 0.22), 0 2px 10px rgba(0, 0, 0, 0.18)",
       },
+      keyframes: {
+        "welcome-ocean": {
+          from: { transform: "translateX(0)" },
+          to: { transform: "translateX(-50%)" },
+        },
+      },
+      animation: {
+        "welcome-ocean": "welcome-ocean 4.25s linear infinite",
+      },
     },
   },
   plugins: [],

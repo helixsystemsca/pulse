@@ -9,6 +9,31 @@ export type TeamHighlight = {
   description: string;
 };
 
+/** Pill tag on a team insight row (icon + label styled by variant). */
+export type TeamInsightTag = {
+  label: string;
+  variant: "teal" | "green" | "orange" | "blue" | "gray";
+};
+
+export type TeamInsightMemberRow = {
+  workerId: string;
+  displayName: string;
+  roleLabel: string;
+  avatarUrl?: string | null;
+  tags: TeamInsightTag[];
+};
+
+/** Stats + roster for the kiosk “Team insights” column. */
+export type TeamInsightsPanelData = {
+  stats: {
+    total: number;
+    completed: number;
+    inProgress: number;
+    blocked: number;
+  };
+  members: TeamInsightMemberRow[];
+};
+
 /** Workers shown as “on site” in the project kiosk header (from in-progress assignments). */
 export type KioskOnSiteWorker = {
   id: string;
@@ -16,6 +41,25 @@ export type KioskOnSiteWorker = {
   displayName: string;
   avatarUrl?: string | null;
 };
+
+/** One cell in the handover 2×2 grid (filled note vs empty shift slot). */
+export type HandoverNoteCard =
+  | {
+      kind: "filled";
+      accent: "teal" | "danger";
+      ribbonLabel: string;
+      authorName: string;
+      metaLine: string;
+      body: string;
+      statusPill: { tone: "success" | "warning"; label: string } | null;
+    }
+  | {
+      kind: "empty";
+      ribbonLabel: string;
+      title: string;
+      metaLine: string;
+      body: string;
+    };
 
 export type KioskSectionBody =
   | {
@@ -25,7 +69,9 @@ export type KioskSectionBody =
   | { kind: "task_columns"; columns: { label: string; items: string[] }[] }
   | { kind: "blocked_cards"; items: { title: string; subtitle?: string }[] }
   | { kind: "summary_lines"; lines: string[] }
-  | { kind: "insights_cards"; highlights: TeamHighlight[] };
+  | { kind: "insights_cards"; highlights: TeamHighlight[] }
+  | { kind: "team_insights_panel"; stats: TeamInsightsPanelData["stats"]; members: TeamInsightMemberRow[] }
+  | { kind: "handover_notes"; cards: [HandoverNoteCard, HandoverNoteCard, HandoverNoteCard, HandoverNoteCard] };
 
 export type KioskSection = {
   id: string;
@@ -55,6 +101,8 @@ export type ProjectKioskView = {
   teamInsights: {
     highlights: TeamHighlight[];
   };
+  /** Same payload as `team_insights` widget body when present; used when the widget is off the board. */
+  teamInsightsPanel: TeamInsightsPanelData;
 };
 
 /** Dashboard / kiosk configuration: which logical panels are “always on”. */

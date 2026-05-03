@@ -4,8 +4,8 @@
 
 html {
   scroll-behavior: smooth;
-  /* App header row (logo up to ~5rem) + chrome accent strip + border */
-  scroll-padding-top: 5.75rem;
+  /* App header (circular logo + padding) + chrome accent strip */
+  scroll-padding-top: 6.75rem;
 }
 
 /**
