@@ -29,7 +29,8 @@ html.pulse-welcome-blur [data-pulse-app-shell] {
   --ds-accent-dusk: #5c6bb8;
   --ds-accent: #2c8f82;
   --ds-accent-foreground: #ffffff;
-  --ds-chrome-gradient: linear-gradient(90deg, var(--ds-accent-teal-deep) 0%, var(--ds-accent-dusk) 100%);
+  /** Top-shell strip only: slightly lighter teal than `--ds-accent-teal-deep` for readability at a glance. */
+  --ds-chrome-gradient: linear-gradient(90deg, color-mix(in srgb, var(--ds-accent-teal-deep) 72%, #ffffff 28%) 0%, var(--ds-accent-dusk) 100%);
 
   /* —— Core tokens (light) —— */
   --ds-bg: #f6f7f9;
@@ -87,7 +88,7 @@ html.pulse-welcome-blur [data-pulse-app-shell] {
   --ds-accent-dusk: #7e8fd4;
   --ds-accent: #3daf9e;
   --ds-accent-foreground: #0b1220;
-  --ds-chrome-gradient: linear-gradient(90deg, #1f7a72 0%, #6b7ec8 100%);
+  --ds-chrome-gradient: linear-gradient(90deg, color-mix(in srgb, #1f7a72 55%, var(--ds-accent) 45%) 0%, #6b7ec8 100%);
 
   --ds-bg: #4c6085;
   --ds-surface-primary: #3f5274;
@@ -133,10 +134,10 @@ html.pulse-welcome-blur [data-pulse-app-shell] {
  * Level 1: `app-surface-inset` · Level 2: `app-glass-card` · Level 3: `app-glass-elevated` (modals, emphasis).
  */
 @layer components {
-  /** Thin brand strip — teal → dusk (authenticated shell). */
+  /** Brand strip — teal → dusk (authenticated shell, below navbar). */
   .app-chrome-accent {
     flex-shrink: 0;
-    height: 3px;
+    height: 4px;
     width: 100%;
     background: var(--ds-chrome-gradient);
   }

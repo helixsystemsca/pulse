@@ -1,6 +1,7 @@
 "use client";
 
 import { AlertCircle, Eye, EyeOff, Loader2, Lock, Mail, Moon, Sun } from "lucide-react";
+import Image from "next/image";
 import { FormEvent, useEffect, useId, useState } from "react";
 import { AuthScreenShell } from "@/components/auth/AuthScreenShell";
 import { isApiMode } from "@/lib/api";
@@ -167,20 +168,15 @@ export default function LoginPage() {
 
         <main className="relative z-10 flex min-h-0 flex-1 flex-col justify-center px-4 pb-10 pt-2 sm:px-6 md:px-8">
           <div className="mx-auto w-full max-w-[440px]">
-            <div className="flex items-center justify-center gap-3 sm:gap-4 md:gap-5">
-              <div
-                className="shrink-0 rounded-full p-[3px] shadow-[0_0_0_1px_rgba(207,227,245,0.9),0_12px_40px_rgba(76,96,133,0.18)] dark:shadow-[0_0_0_1px_rgba(255,255,255,0.08),0_16px_48px_rgba(0,0,0,0.35)]"
-                style={{
-                  background: "linear-gradient(145deg, rgba(54,241,205,0.35) 0%, #4c6085 42%, #354766 100%)",
-                }}
-              >
-                <div className="flex h-[88px] w-[88px] items-center justify-center rounded-full bg-white dark:bg-ds-surface-secondary">
-                  <img src="/images/pulse-mark.svg" width={64} height={64} alt="" className="h-16 w-16 rounded-xl" />
-                </div>
-              </div>
-              <span className="font-headline text-[1.75rem] font-extrabold leading-none tracking-tight text-[#3f5274] dark:text-ds-foreground sm:text-[2.125rem] md:text-[2.35rem]">
-                Pulse
-              </span>
+            <div className="relative mx-auto h-[88px] w-full max-w-[min(100%,22rem)]">
+              <Image
+                src="/images/panoramalogo.png"
+                alt=""
+                fill
+                priority
+                sizes="(max-width: 448px) 100vw, 352px"
+                className="object-contain"
+              />
             </div>
 
             <h1 className="mt-7 text-center font-headline text-[1.65rem] font-extrabold leading-tight tracking-tight text-[#2f3d52] dark:text-ds-foreground sm:text-3xl">

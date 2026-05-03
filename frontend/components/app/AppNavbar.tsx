@@ -1,11 +1,12 @@
 "use client";
 
 /**
- * Sticky top bar: Pulse logo, login CTA, or user menu (profile/settings/sign-out links).
+ * Sticky top bar: product logo, login CTA, or user menu (profile/settings/sign-out links).
  */
 import { usePathname } from "next/navigation";
+import Image from "next/image";
 import Link from "next/link";
-import { Activity, ChevronDown, Image as ImageIcon, LogOut, Settings } from "lucide-react";
+import { ChevronDown, Image as ImageIcon, LogOut, Settings } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
 import { navigateToPulseLogin, pulseApp, pulseRoutes } from "@/lib/pulse-app";
@@ -44,14 +45,19 @@ export function AppNavbar() {
         <div className="flex min-w-0 items-center">
           <Link
             href={logoHref}
-            className="flex min-w-0 items-center gap-2.5 font-headline text-lg font-bold tracking-tight text-ds-foreground no-underline hover:text-ds-accent sm:text-xl"
+            className="flex min-w-0 items-center no-underline hover:opacity-90"
+            aria-label="Home"
           >
-            <>
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-ds-border bg-ds-secondary text-ds-accent shadow-[var(--ds-shadow-card)]">
-                <Activity className="h-4 w-4" strokeWidth={2} aria-hidden />
-              </span>
-              <span className="font-semibold">Pulse</span>
-            </>
+            <span className="relative block h-9 w-[11rem] max-w-[min(100vw-8rem,11rem)] shrink-0 sm:h-10 sm:w-[13rem]">
+              <Image
+                src="/images/panoramalogo.png"
+                alt=""
+                fill
+                priority
+                sizes="(max-width: 640px) 176px, 208px"
+                className="object-contain object-left"
+              />
+            </span>
           </Link>
         </div>
 

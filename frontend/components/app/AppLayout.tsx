@@ -39,12 +39,14 @@ export function AppLayout({
         <ServerTimeSync />
         <ProximityPromptHost />
         <div data-pulse-app-shell className="flex h-full w-full flex-col overflow-hidden">
-          {chrome ? <div className="app-chrome-accent" aria-hidden /> : null}
           {chrome ? (
-            <header className="relative z-50 flex h-14 shrink-0 items-center border-b border-ds-border bg-ds-primary px-4 shadow-none">
-              <div className="w-full">
-                <AppNavbar />
+            <header className="relative z-50 flex shrink-0 flex-col bg-ds-primary shadow-none">
+              <div className="flex h-14 items-center border-b border-ds-border px-4">
+                <div className="w-full">
+                  <AppNavbar />
+                </div>
               </div>
+              <div className="app-chrome-accent" aria-hidden />
             </header>
           ) : null}
 
