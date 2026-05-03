@@ -1,7 +1,9 @@
 import { apiFetch } from "@/lib/api";
 import type {
   HandoverNoteCard,
+  KioskOnShiftWorkerCard,
   KioskOnSiteWorker,
+  KioskProjectOwnerHint,
   KioskSection,
   KioskWidgetDefinition,
   ProjectKioskView,
@@ -11,7 +13,9 @@ import type {
   TeamInsightsPanelData,
   TeamInsightTag,
 } from "@/lib/project-kiosk/types";
-import type { PulseWorkerApi } from "@/lib/schedule/pulse-bridge";
+import { fetchScheduleAssignments, type ScheduleAssignment } from "@/lib/schedule/assignments";
+import { formatLocalDate } from "@/lib/schedule/calendar";
+import type { PulseShiftApi, PulseWorkerApi } from "@/lib/schedule/pulse-bridge";
 import {
   getProject,
   listProjectActivity,
@@ -54,6 +58,126 @@ function targetCompletionMeta(
   if (diffDays < 0) return { caption: `${Math.abs(diffDays)} days overdue`, tone: "danger" };
   if (diffDays === 0) return { caption: "Due today", tone: "warning" };
   return { caption: `${diffDays} day${diffDays === 1 ? "" : "s"} remaining`, tone: "default" };
+}
+
+function localTodayRange(): { ymd: string; startMs: number; endMs: number; startIso: string; endIso: string } {
+  const n = new Date();
+  const ymd = formatLocalDate(n);
+  const start = new Date(n);
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(n);
+  end.setHours(23, 59, 59, 999);
+  return {
+    ymd,
+    startMs: start.getTime(),
+    endMs: end.getTime(),
+    startIso: start.toISOString(),
+    endIso: end.toISOString(),
+  };
+}
+
+function shiftsOverlapToday(s: PulseShiftApi, startMs: number, endMs: number): boolean {
+  const a = Date.parse(s.starts_at);
+  const b = Date.parse(s.ends_at);
+  if (!Number.isFinite(a) || !Number.isFinite(b)) return false;
+  return a < endMs && b > startMs;
+}
+
+function buildProjectOwnerHint(project: ProjectDetail, workers: PulseWorkerApi[]): KioskProjectOwnerHint {
+  const oid = project.owner_user_id;
+  if (oid) {
+    const w = workers.find((x) => x.id === oid);
+    const name = (w?.full_name?.trim() || w?.email || "Project owner").trim();
+    return { displayName: name, roleLabel: "Project owner" };
+  }
+  const mgr = workers.find((x) => x.role === "manager" || x.roles?.includes("manager"));
+  if (mgr) {
+    const name = (mgr.full_name?.trim() || mgr.email || "Manager").trim();
+    return { displayName: name, roleLabel: "Manager" };
+  }
+  const sup = workers.find((x) => x.role === "supervisor" || x.roles?.includes("supervisor"));
+  if (sup) {
+    const name = (sup.full_name?.trim() || sup.email || "Supervisor").trim();
+    return { displayName: name, roleLabel: "Supervisor" };
+  }
+  const lead = workers.find((x) => x.role === "lead" || x.roles?.includes("lead"));
+  if (lead) {
+    const name = (lead.full_name?.trim() || lead.email || "Lead").trim();
+    return { displayName: name, roleLabel: "Lead" };
+  }
+  return { displayName: "your site supervisor", roleLabel: "Supervisor" };
+}
+
+function buildOnShiftWorkerCards(
+  projectId: string,
+  tasks: TaskRow[],
+  workers: PulseWorkerApi[],
+  assignments: ScheduleAssignment[],
+  shifts: PulseShiftApi[],
+): KioskOnShiftWorkerCard[] {
+  const { ymd, startMs, endMs } = localTodayRange();
+  const ids = new Set<string>();
+
+  for (const as of assignments) {
+    if (as.date === ymd && as.assigned_user_id) ids.add(as.assigned_user_id);
+  }
+  for (const sh of shifts) {
+    if (!sh.assigned_user_id || !shiftsOverlapToday(sh, startMs, endMs)) continue;
+    const pid = sh.project_id ?? null;
+    const taskPid = sh.project_task_id ? tasks.find((t) => t.id === sh.project_task_id)?.project_id : null;
+    const onThisProject = pid === projectId || taskPid === projectId;
+    if (onThisProject) ids.add(sh.assigned_user_id);
+  }
+
+  for (const t of tasks) {
+    if (t.status === "complete") continue;
+    if (t.assigned_user_id) ids.add(t.assigned_user_id);
+  }
+
+  const byId = new Map(workers.map((w) => [w.id, w]));
+  const sorted = [...ids].sort((a, b) => {
+    const na = (byId.get(a)?.full_name || byId.get(a)?.email || a).toLowerCase();
+    const nb = (byId.get(b)?.full_name || byId.get(b)?.email || b).toLowerCase();
+    return na.localeCompare(nb);
+  });
+
+  return sorted.map((id) => {
+    const w = byId.get(id);
+    const displayName = (w?.full_name?.trim() || w?.email || "Member").trim();
+    const assignedTaskTitles = tasks
+      .filter((t) => t.assigned_user_id === id && t.status !== "complete")
+      .map((t) => t.title.trim())
+      .filter(Boolean)
+      .slice(0, 5);
+    const assign = assignments.find((x) => x.assigned_user_id === id && x.date === ymd);
+    const shiftRow = shifts.find((s) => {
+      if (s.assigned_user_id !== id || !shiftsOverlapToday(s, startMs, endMs)) return false;
+      if (s.project_id === projectId) return true;
+      if (s.project_task_id) {
+        const task = tasks.find((x) => x.id === s.project_task_id);
+        return task?.project_id === projectId;
+      }
+      return false;
+    });
+    const fromAssignment =
+      assign ? [assign.shift_type, assign.area].filter(Boolean).join(" · ").replace(/_/g, " ").trim() || null : null;
+    const fromPublished =
+      shiftRow ?
+        (shiftRow.display_label?.trim() ||
+          [shiftRow.shift_type, shiftRow.shift_code].filter(Boolean).join(" · ").replace(/_/g, " ").trim() ||
+          "Scheduled")
+      : null;
+    const shiftSummary = fromAssignment ?? fromPublished;
+
+    return {
+      workerId: id,
+      firstName: firstNameFromFull(displayName),
+      displayName,
+      avatarUrl: w?.avatar_url ?? null,
+      assignedTaskTitles,
+      shiftSummary: shiftSummary ?? null,
+    };
+  });
 }
 
 function onSiteWorkersFromTasks(tasks: TaskRow[], workers: PulseWorkerApi[]): KioskOnSiteWorker[] {
@@ -700,7 +824,12 @@ function buildSections(
         id: "team_insights",
         title: w.label,
         isHighValue: w.isHighValue,
-        body: { kind: "team_insights_panel", stats: panel.stats, members: panel.members },
+        body: {
+          kind: "team_insights_panel",
+          stats: panel.stats,
+          members: panel.members,
+          highlights,
+        },
       });
     }
     if (w.id === "handover") {
@@ -736,6 +865,28 @@ function buildSections(
   return { locked, rotating };
 }
 
+const KIOSK_ROTATION_ORDER = [
+  "safety",
+  "handover",
+  "task_board",
+  "active_tasks",
+  "team_insights",
+  "progress",
+  "blocked",
+  "active_work",
+  "blockers",
+  "progress_summary",
+  "pulse_idle",
+];
+
+export function sortRotatingSections(sections: KioskSection[]): KioskSection[] {
+  const rank = (id: string) => {
+    const i = KIOSK_ROTATION_ORDER.indexOf(id);
+    return i === -1 ? 999 : i;
+  };
+  return [...sections].sort((a, b) => rank(a.id) - rank(b.id) || a.title.localeCompare(b.title));
+}
+
 /**
  * Pure view-model: maps project detail + roster + activity into kiosk-ready props.
  * Callers fetch inputs; this stays side-effect free and DB-agnostic at this layer.
@@ -745,8 +896,11 @@ export function buildProjectKioskView(
   activity: ProjectActivityRow[],
   workers: PulseWorkerApi[],
   widgets: KioskWidgetDefinition[],
+  opts?: { scheduleAssignments?: ScheduleAssignment[]; dayShifts?: PulseShiftApi[] },
 ): ProjectKioskView {
   const tasks = project.tasks ?? [];
+  const assignments = opts?.scheduleAssignments ?? [];
+  const dayShifts = opts?.dayShifts ?? [];
   const workerMap = new Map<string, string>(
     workers.map((w) => [w.id, (w.full_name?.trim() || w.email)?.trim() || w.email]),
   );
@@ -756,6 +910,8 @@ export function buildProjectKioskView(
   const lastUpdated = new Date().toISOString();
   const targetMeta = targetCompletionMeta(project.end_date);
   const onSite = onSiteWorkersFromTasks(tasks, workers);
+  const onShiftWorkers = buildOnShiftWorkerCards(project.id, tasks, workers, assignments, dayShifts);
+  const projectOwnerHint = buildProjectOwnerHint(project, workers);
 
   return {
     header: {
@@ -771,7 +927,9 @@ export function buildProjectKioskView(
       lastUpdated,
     },
     lockedSections: locked,
-    rotatingSections: rotating,
+    rotatingSections: sortRotatingSections(rotating),
+    onShiftWorkers,
+    projectOwnerHint,
     teamInsights: { highlights },
     teamInsightsPanel,
   };
@@ -779,11 +937,19 @@ export function buildProjectKioskView(
 
 /** Fetches Pulse data and returns the kiosk view model (no raw ORM / API rows). */
 export async function getProjectKioskView(projectId: string): Promise<ProjectKioskView> {
-  const [project, activity, workers] = await Promise.all([
+  const { startIso, endIso } = localTodayRange();
+  const [project, activity, workers, assignments, shifts] = await Promise.all([
     getProject(projectId),
     listProjectActivity(projectId),
     apiFetch<PulseWorkerApi[]>("/api/v1/pulse/workers"),
+    fetchScheduleAssignments({ from: startIso, to: endIso }).catch((): ScheduleAssignment[] => []),
+    apiFetch<PulseShiftApi[]>(
+      `/api/v1/pulse/schedule/shifts?from=${encodeURIComponent(startIso)}&to=${encodeURIComponent(endIso)}`,
+    ).catch((): PulseShiftApi[] => []),
   ]);
   const widgets = loadKioskWidgetConfig();
-  return buildProjectKioskView(project, activity ?? [], workers ?? [], widgets);
+  return buildProjectKioskView(project, activity ?? [], workers ?? [], widgets, {
+    scheduleAssignments: assignments ?? [],
+    dayShifts: shifts ?? [],
+  });
 }

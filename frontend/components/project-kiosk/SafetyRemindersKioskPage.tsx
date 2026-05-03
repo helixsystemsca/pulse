@@ -53,13 +53,21 @@ function SafetyTile({ card }: { card: SafetyReminderCard }) {
   const Icon = ICONS[card.icon];
 
   return (
-    <div className="flex min-h-[10.5rem] flex-col rounded-xl border border-ds-border bg-ds-primary p-4 shadow-[var(--ds-shadow-card)] sm:min-h-[11.5rem] sm:p-5">
+    <div className="flex min-h-0 flex-1 flex-col rounded-xl border border-ds-border bg-ds-primary p-3 shadow-[var(--ds-shadow-card)] sm:p-4">
       <div className={cn("flex h-11 w-11 items-center justify-center rounded-lg", shell.iconWrap)}>
         <Icon className={cn("h-5 w-5", shell.icon)} aria-hidden />
       </div>
       <span className={cn("mt-3 inline-flex w-fit rounded-full px-2.5 py-1", shell.tag)}>{card.tag}</span>
-      <h3 className={cn("mt-2 font-headline text-base font-bold leading-snug sm:text-lg", shell.title)}>{card.title}</h3>
-      <p className={cn("mt-2 flex-1 text-sm leading-relaxed sm:text-[15px]", shell.desc, "whitespace-pre-line")}>
+      <h3 className={cn("mt-2 line-clamp-2 font-headline text-sm font-bold leading-snug sm:text-base", shell.title)}>
+        {card.title}
+      </h3>
+      <p
+        className={cn(
+          "mt-2 line-clamp-4 flex-1 text-xs leading-relaxed sm:text-sm sm:text-[15px]",
+          shell.desc,
+          "whitespace-pre-line",
+        )}
+      >
         {card.description}
       </p>
     </div>
@@ -68,20 +76,24 @@ function SafetyTile({ card }: { card: SafetyReminderCard }) {
 
 export function SafetyRemindersKioskPage({ subtitle, cards }: { subtitle: string; cards: SafetyReminderCard[] }) {
   return (
-    <div className="flex min-h-0 flex-1 flex-col bg-ds-secondary/35 px-4 py-5 lg:px-8 lg:py-6">
-      <div className="mx-auto flex w-full max-w-6xl shrink-0 items-start gap-3">
-        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-amber-200 bg-amber-50 text-amber-700 shadow-sm dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-200">
+    <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-ds-secondary/35 px-3 py-3 sm:px-4 sm:py-4 lg:px-6 lg:py-5">
+      <div className="mx-auto flex w-full max-w-6xl shrink-0 items-start gap-2.5 sm:gap-3">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-amber-200 bg-amber-50 text-amber-700 shadow-sm dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-200 sm:h-11 sm:w-11">
           <AlertTriangle className="h-5 w-5" aria-hidden />
         </div>
-        <div>
-          <h2 className="font-headline text-2xl font-bold tracking-tight text-ds-foreground sm:text-3xl">Safety reminders</h2>
-          <p className="mt-0.5 text-sm text-ds-muted">{subtitle}</p>
+        <div className="min-w-0">
+          <h2 className="font-headline text-xl font-bold tracking-tight text-ds-foreground sm:text-2xl md:text-3xl">
+            Safety reminders
+          </h2>
+          <p className="mt-0.5 text-xs text-ds-muted sm:text-sm">{subtitle}</p>
         </div>
       </div>
 
-      <div className="mx-auto mt-6 grid w-full max-w-6xl min-h-0 flex-1 grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5 lg:gap-6">
+      <div className="mx-auto mt-4 grid min-h-0 w-full max-w-6xl flex-1 grid-cols-1 gap-3 overflow-hidden sm:mt-5 sm:grid-cols-2 sm:gap-4">
         {cards.map((card, i) => (
-          <SafetyTile key={`${card.title}-${i}`} card={card} />
+          <div key={`${card.title}-${i}`} className="flex min-h-0">
+            <SafetyTile card={card} />
+          </div>
         ))}
       </div>
     </div>

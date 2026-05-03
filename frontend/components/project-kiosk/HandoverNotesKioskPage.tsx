@@ -9,14 +9,14 @@ function HandoverCard({ card }: { card: HandoverNoteCard }) {
     return (
       <div
         className={cn(
-          "flex min-h-[11rem] flex-col rounded-xl border border-ds-border bg-ds-primary p-5 shadow-[var(--ds-shadow-card)] sm:min-h-[12.5rem]",
+          "flex min-h-0 flex-1 flex-col rounded-xl border border-ds-border bg-ds-primary p-4 shadow-[var(--ds-shadow-card)] sm:p-5",
           "opacity-[0.72]",
         )}
       >
         <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-ds-muted">{card.ribbonLabel}</p>
         <p className="mt-3 font-headline text-lg font-bold text-ds-muted">{card.title}</p>
         <p className="mt-1 text-xs text-ds-muted">{card.metaLine}</p>
-        <p className="mt-3 flex-1 text-sm leading-relaxed text-ds-muted">{card.body}</p>
+        <p className="mt-3 line-clamp-4 flex-1 text-sm leading-relaxed text-ds-muted">{card.body}</p>
       </div>
     );
   }
@@ -28,14 +28,14 @@ function HandoverCard({ card }: { card: HandoverNoteCard }) {
   return (
     <div
       className={cn(
-        "flex min-h-[11rem] flex-col rounded-xl border border-ds-border border-t-4 bg-ds-primary p-5 shadow-[var(--ds-shadow-card)] sm:min-h-[12.5rem]",
+        "flex min-h-0 flex-1 flex-col rounded-xl border border-ds-border border-t-4 bg-ds-primary p-4 shadow-[var(--ds-shadow-card)] sm:p-5",
         accent,
       )}
     >
       <p className={cn("text-[10px] font-bold uppercase tracking-[0.14em]", ribbonClass)}>{card.ribbonLabel}</p>
       <p className="mt-3 font-headline text-xl font-bold text-ds-foreground">{card.authorName}</p>
       <p className="mt-1 text-xs text-ds-muted">{card.metaLine}</p>
-      <p className="mt-3 line-clamp-6 flex-1 text-sm leading-relaxed text-ds-foreground">{card.body}</p>
+      <p className="mt-3 line-clamp-4 flex-1 text-sm leading-relaxed text-ds-foreground">{card.body}</p>
       {card.statusPill ? (
         <div
           className={cn(
@@ -62,20 +62,24 @@ export function HandoverNotesKioskPage({ cards }: { cards: HandoverNoteCard[] })
   const grid = [a, b, c, d].filter(Boolean) as HandoverNoteCard[];
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col bg-ds-secondary/35 px-4 py-5 lg:px-8 lg:py-6">
-      <div className="mx-auto flex w-full max-w-6xl shrink-0 items-start gap-3">
-        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-ds-border bg-ds-primary text-ds-accent shadow-sm">
+    <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-ds-secondary/35 px-3 py-3 sm:px-4 sm:py-4 lg:px-6 lg:py-5">
+      <div className="mx-auto flex w-full max-w-6xl shrink-0 items-start gap-2.5 sm:gap-3">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-ds-border bg-ds-primary text-ds-accent shadow-sm sm:h-11 sm:w-11">
           <FilePenLine className="h-5 w-5" aria-hidden />
         </div>
-        <div>
-          <h2 className="font-headline text-2xl font-bold tracking-tight text-ds-foreground sm:text-3xl">Handover notes</h2>
-          <p className="mt-0.5 text-sm text-ds-muted">Shift-to-shift updates</p>
+        <div className="min-w-0">
+          <h2 className="font-headline text-xl font-bold tracking-tight text-ds-foreground sm:text-2xl md:text-3xl">
+            Handover notes
+          </h2>
+          <p className="mt-0.5 text-xs text-ds-muted sm:text-sm">Shift-to-shift updates</p>
         </div>
       </div>
 
-      <div className="mx-auto mt-6 grid w-full max-w-6xl min-h-0 flex-1 grid-cols-1 gap-5 sm:grid-cols-2 sm:gap-6">
+      <div className="mx-auto mt-4 grid min-h-0 w-full max-w-6xl flex-1 grid-cols-1 gap-3 overflow-hidden sm:mt-5 sm:grid-cols-2 sm:gap-4">
         {grid.map((card, i) => (
-          <HandoverCard key={`${card.kind}-${i}-${card.kind === "filled" ? card.authorName : card.title}`} card={card} />
+          <div key={`${card.kind}-${i}-${card.kind === "filled" ? card.authorName : card.title}`} className="flex min-h-0">
+            <HandoverCard card={card} />
+          </div>
         ))}
       </div>
     </div>

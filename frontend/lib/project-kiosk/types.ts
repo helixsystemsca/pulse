@@ -42,6 +42,24 @@ export type KioskOnSiteWorker = {
   avatarUrl?: string | null;
 };
 
+/** Left rail: scheduled today and/or with active project tasks — no scroll in kiosk shell. */
+export type KioskOnShiftWorkerCard = {
+  workerId: string;
+  firstName: string;
+  displayName: string;
+  avatarUrl?: string | null;
+  /** Active (non-complete) project tasks assigned to this person. */
+  assignedTaskTitles: string[];
+  /** From schedule assignment or published shift, when available. */
+  shiftSummary?: string | null;
+};
+
+/** Shown when a person has no tasks — “See … (role)” from project owner / manager fallback. */
+export type KioskProjectOwnerHint = {
+  displayName: string;
+  roleLabel: string;
+};
+
 /** One cell in the handover 2×2 grid (filled note vs empty shift slot). */
 export type HandoverNoteCard =
   | {
@@ -70,7 +88,13 @@ export type KioskSectionBody =
   | { kind: "blocked_cards"; items: { title: string; subtitle?: string }[] }
   | { kind: "summary_lines"; lines: string[] }
   | { kind: "insights_cards"; highlights: TeamHighlight[] }
-  | { kind: "team_insights_panel"; stats: TeamInsightsPanelData["stats"]; members: TeamInsightMemberRow[] }
+  | {
+      kind: "team_insights_panel";
+      stats: TeamInsightsPanelData["stats"];
+      members: TeamInsightMemberRow[];
+      /** Recognition strip (badges / milestones); kiosk main pane. */
+      highlights?: TeamHighlight[];
+    }
   | { kind: "handover_notes"; cards: [HandoverNoteCard, HandoverNoteCard, HandoverNoteCard, HandoverNoteCard] }
   | { kind: "safety_reminders"; subtitle: string; cards: SafetyReminderCard[] };
 
@@ -119,6 +143,10 @@ export type ProjectKioskView = {
   };
   lockedSections: KioskSection[];
   rotatingSections: KioskSection[];
+  /** Who is on shift / rostered today and tied to this project, merged with active task assignees. */
+  onShiftWorkers: KioskOnShiftWorkerCard[];
+  /** Contact line when someone has no tasks today. */
+  projectOwnerHint: KioskProjectOwnerHint;
   teamInsights: {
     highlights: TeamHighlight[];
   };

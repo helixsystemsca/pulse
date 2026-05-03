@@ -2,17 +2,18 @@ import type { KioskWidgetDefinition } from "@/lib/project-kiosk/types";
 
 const STORAGE_KEY = "pulse_kiosk_widget_config_v1";
 
+/** All panels rotate in the main body; left rail is fixed “on shift” (schedule + project tasks). */
 export const DEFAULT_KIOSK_WIDGETS: KioskWidgetDefinition[] = [
-  { id: "progress", label: "Progress", isHighValue: true },
-  { id: "blocked", label: "Blocked work", isHighValue: true },
-  { id: "active_work", label: "Active work summary", isHighValue: true },
-  { id: "task_board", label: "Task board snapshot", isHighValue: false },
+  { id: "safety", label: "Safety reminders", isHighValue: false },
+  { id: "handover", label: "Handover notes", isHighValue: false },
+  { id: "task_board", label: "Task board (To-do)", isHighValue: false },
+  { id: "team_insights", label: "Team insights & recognition", isHighValue: false },
+  { id: "progress", label: "Progress", isHighValue: false },
+  { id: "blocked", label: "Blocked work", isHighValue: false },
+  { id: "active_work", label: "Active work summary", isHighValue: false },
   { id: "active_tasks", label: "Active work view", isHighValue: false },
   { id: "blockers", label: "Blockers view", isHighValue: false },
   { id: "progress_summary", label: "Progress summary", isHighValue: false },
-  { id: "team_insights", label: "Team insights", isHighValue: false },
-  { id: "handover", label: "Handover notes", isHighValue: false },
-  { id: "safety", label: "Safety reminders", isHighValue: false },
 ];
 
 export function loadKioskWidgetConfig(): KioskWidgetDefinition[] {

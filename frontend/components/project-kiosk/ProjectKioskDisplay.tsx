@@ -21,6 +21,8 @@ import { HandoverNotesKioskPage } from "@/components/project-kiosk/HandoverNotes
 import { SafetyRemindersKioskPage } from "@/components/project-kiosk/SafetyRemindersKioskPage";
 import { UserProfileAvatarPreview } from "@/components/profile/UserProfileAvatarPreview";
 import type {
+  KioskOnShiftWorkerCard,
+  KioskProjectOwnerHint,
   KioskSection,
   ProjectKioskView,
   TeamHighlight,
@@ -28,14 +30,10 @@ import type {
   TeamInsightsPanelData,
   TeamInsightTag,
 } from "@/lib/project-kiosk/types";
-import { getProjectKioskView } from "@/lib/project-kiosk/buildProjectKioskView";
+import { getProjectKioskView, sortRotatingSections } from "@/lib/project-kiosk/buildProjectKioskView";
 import { useProjectKioskRealtime } from "@/lib/project-kiosk/useProjectKioskRealtime";
 import { cn } from "@/lib/cn";
 import { DASH } from "@/styles/dashboardTheme";
-
-function pickSection(sections: KioskSection[], id: string): KioskSection | undefined {
-  return sections.find((s) => s.id === id);
-}
 
 function formatTargetDate(iso: string | null): string {
   if (!iso) return "—";
@@ -119,34 +117,36 @@ function TeamInsightTagPill({ tag }: { tag: TeamInsightTag }) {
   );
 }
 
-function TeamInsightsMemberRow({ member }: { member: TeamInsightMemberRow }) {
+function TeamInsightsMemberRow({ member, dense }: { member: TeamInsightMemberRow; dense?: boolean }) {
   const initials = initialsFromName(member.displayName);
   const bg = avatarBgForId(member.workerId);
+  const sz = dense ? "h-10 w-10" : "h-12 w-12";
+  const textName = dense ? "text-sm" : "text-base";
   return (
-    <div className="border-b border-ds-border py-4 last:border-b-0 last:pb-0">
+    <div className={cn("border-b border-ds-border last:border-b-0 last:pb-0", dense ? "py-2.5" : "py-4")}>
       <div className="flex gap-3">
         {member.avatarUrl ? (
           <UserProfileAvatarPreview
             avatarUrl={member.avatarUrl}
             nameFallback={member.displayName}
-            sizeClassName="h-12 w-12"
+            sizeClassName={sz}
             fallback="initials"
             className="!border-0 !bg-transparent !p-0 !text-[13px] !ring-2 !ring-white"
           />
         ) : (
           <div
-            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white shadow-sm"
+            className={cn("flex shrink-0 items-center justify-center rounded-full font-bold text-white shadow-sm", sz, dense ? "text-xs" : "text-sm")}
             style={{ backgroundColor: bg }}
           >
             {initials}
           </div>
         )}
         <div className="min-w-0 flex-1">
-          <p className="truncate font-headline text-base font-bold text-ds-foreground">{member.displayName}</p>
-          <p className="mt-0.5 text-sm text-ds-muted">{member.roleLabel}</p>
+          <p className={cn("truncate font-headline font-bold text-ds-foreground", textName)}>{member.displayName}</p>
+          <p className={cn("text-ds-muted", dense ? "mt-0.5 text-[11px]" : "mt-0.5 text-sm")}>{member.roleLabel}</p>
           {member.tags.length > 0 ? (
-            <div className="mt-2.5 flex flex-wrap gap-2">
-              {member.tags.map((t) => (
+            <div className={cn("flex flex-wrap gap-1.5", dense ? "mt-1.5" : "mt-2.5 gap-2")}>
+              {member.tags.slice(0, dense ? 3 : 8).map((t) => (
                 <TeamInsightTagPill key={`${member.workerId}-${t.label}`} tag={t} />
               ))}
             </div>
@@ -157,36 +157,63 @@ function TeamInsightsMemberRow({ member }: { member: TeamInsightMemberRow }) {
   );
 }
 
-function TeamInsightsPanel({ data }: { data: TeamInsightsPanelData }) {
+function TeamInsightsPanel({ data, dense }: { data: TeamInsightsPanelData; dense?: boolean }) {
   const { stats, members } = data;
+  const shownMembers = dense ? members.slice(0, 8) : members;
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       <div className="grid shrink-0 grid-cols-2 overflow-hidden rounded-lg border border-ds-border bg-ds-primary">
-        <div className="border-b border-r border-ds-border px-4 py-3 text-center sm:px-5 sm:py-4">
-          <p className="font-headline text-2xl font-bold tabular-nums text-teal-800 dark:text-teal-200">{stats.total}</p>
+        <div className={cn("border-b border-r border-ds-border text-center", dense ? "px-3 py-2" : "px-4 py-3 sm:px-5 sm:py-4")}>
+          <p
+            className={cn(
+              "font-headline font-bold tabular-nums text-teal-800 dark:text-teal-200",
+              dense ? "text-xl" : "text-2xl",
+            )}
+          >
+            {stats.total}
+          </p>
           <p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-ds-muted">Total tasks</p>
         </div>
-        <div className="border-b border-ds-border px-4 py-3 text-center sm:px-5 sm:py-4">
-          <p className="font-headline text-2xl font-bold tabular-nums text-emerald-700 dark:text-emerald-300">
+        <div className={cn("border-b border-ds-border text-center", dense ? "px-3 py-2" : "px-4 py-3 sm:px-5 sm:py-4")}>
+          <p
+            className={cn(
+              "font-headline font-bold tabular-nums text-emerald-700 dark:text-emerald-300",
+              dense ? "text-xl" : "text-2xl",
+            )}
+          >
             {stats.completed}
           </p>
           <p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-ds-muted">Completed</p>
         </div>
-        <div className="border-r border-ds-border px-4 py-3 text-center sm:px-5 sm:py-4">
-          <p className="font-headline text-2xl font-bold tabular-nums text-teal-700 dark:text-teal-200">{stats.inProgress}</p>
+        <div className={cn("border-r border-ds-border text-center", dense ? "px-3 py-2" : "px-4 py-3 sm:px-5 sm:py-4")}>
+          <p
+            className={cn(
+              "font-headline font-bold tabular-nums text-teal-700 dark:text-teal-200",
+              dense ? "text-xl" : "text-2xl",
+            )}
+          >
+            {stats.inProgress}
+          </p>
           <p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-ds-muted">In progress</p>
         </div>
-        <div className="px-4 py-3 text-center sm:px-5 sm:py-4">
-          <p className="font-headline text-2xl font-bold tabular-nums text-rose-600 dark:text-rose-300">{stats.blocked}</p>
+        <div className={cn("text-center", dense ? "px-3 py-2" : "px-4 py-3 sm:px-5 sm:py-4")}>
+          <p
+            className={cn(
+              "font-headline font-bold tabular-nums text-rose-600 dark:text-rose-300",
+              dense ? "text-xl" : "text-2xl",
+            )}
+          >
+            {stats.blocked}
+          </p>
           <p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-ds-muted">Blocked</p>
         </div>
       </div>
 
-      <div className="mt-4 min-h-0 flex-1 overflow-y-auto pr-1">
-        {members.length === 0 ? (
+      <div className={cn("mt-4 min-h-0 flex-1", dense ? "overflow-hidden" : "overflow-y-auto pr-1")}>
+        {shownMembers.length === 0 ? (
           <p className="py-6 text-center text-sm text-ds-muted">No assignees on this project yet.</p>
         ) : (
-          members.map((m) => <TeamInsightsMemberRow key={m.workerId} member={m} />)
+          shownMembers.map((m) => <TeamInsightsMemberRow key={m.workerId} dense={dense} member={m} />)
         )}
       </div>
     </div>
@@ -223,11 +250,92 @@ function splitAssignmentLine(line: string): { title: string; assignee?: string }
   return { title: line.slice(0, idx).trim(), assignee: line.slice(idx + 3).trim() };
 }
 
-function KioskSectionBody({ section }: { section: KioskSection }) {
+const ON_SHIFT_RAIL_MAX = 10;
+
+function OnShiftWorkersRail({
+  workers,
+  hint,
+}: {
+  workers: KioskOnShiftWorkerCard[];
+  hint: KioskProjectOwnerHint;
+}) {
+  const shown = workers.slice(0, ON_SHIFT_RAIL_MAX);
+  const extra = workers.length - shown.length;
+  return (
+    <KioskPanelFrame title="Who's on shift" className="flex min-h-0 flex-1 flex-col overflow-hidden">
+      <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-hidden">
+        {workers.length === 0 ? (
+          <p className="text-sm leading-snug text-ds-muted">
+            No one is rostered on this project for today yet. When schedule assignments or shifts are published, they
+            appear here.
+          </p>
+        ) : (
+          <>
+            {shown.map((w) => {
+              const first = w.firstName.trim() || w.displayName.trim().split(/\s+/)[0] || w.displayName;
+              return (
+                <div
+                  key={w.workerId}
+                  className="shrink-0 rounded-lg border border-ds-border bg-ds-primary px-2.5 py-2 shadow-[var(--ds-shadow-card)]"
+                >
+                  <div className="flex gap-2.5">
+                    {w.avatarUrl ? (
+                      <UserProfileAvatarPreview
+                        avatarUrl={w.avatarUrl}
+                        nameFallback={w.displayName}
+                        sizeClassName="h-9 w-9 shrink-0"
+                        fallback="initials"
+                        className="!ring-1 !ring-ds-border"
+                      />
+                    ) : (
+                      <div
+                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white shadow-sm"
+                        style={{ backgroundColor: avatarBgForId(w.workerId) }}
+                      >
+                        {initialsFromName(w.displayName)}
+                      </div>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-headline text-sm font-bold text-ds-foreground">{first}</p>
+                      {w.shiftSummary ? (
+                        <p className="truncate text-[11px] text-ds-muted">{w.shiftSummary}</p>
+                      ) : null}
+                      {w.assignedTaskTitles.length > 0 ? (
+                        <ul className="mt-1 space-y-0.5 text-[11px] font-medium leading-snug text-ds-foreground">
+                          {w.assignedTaskTitles.slice(0, 4).map((t) => (
+                            <li key={t} className="truncate border-l-2 border-ds-accent/50 pl-2">
+                              {t}
+                            </li>
+                          ))}
+                          {w.assignedTaskTitles.length > 4 ? (
+                            <li className="truncate pl-2 text-ds-muted">+{w.assignedTaskTitles.length - 4} more</li>
+                          ) : null}
+                        </ul>
+                      ) : (
+                        <p className="mt-1 text-[11px] leading-snug text-ds-muted">
+                          No tasks assigned today — see {hint.displayName} ({hint.roleLabel}).
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+            {extra > 0 ? (
+              <p className="shrink-0 text-center text-[11px] font-semibold text-ds-muted">+{extra} more on shift</p>
+            ) : null}
+          </>
+        )}
+      </div>
+    </KioskPanelFrame>
+  );
+}
+
+function KioskSectionBody({ section, dense }: { section: KioskSection; dense?: boolean }) {
   const b = section.body;
   if (b.kind === "metrics") {
     return (
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid min-h-0 gap-3 overflow-hidden sm:grid-cols-2">
         {b.items.map((m) => (
           <div key={m.label} className={cn(DASH.kpiTile)}>
             <p className={DASH.kpiLabel}>{m.label}</p>
@@ -248,21 +356,21 @@ function KioskSectionBody({ section }: { section: KioskSection }) {
   }
   if (b.kind === "task_columns") {
     return (
-      <div className="grid min-h-0 flex-1 gap-3 lg:grid-cols-4">
+      <div className="grid min-h-0 flex-1 gap-2 overflow-hidden lg:grid-cols-4 lg:gap-3">
         {b.columns.map((c) => (
-            <div key={c.label} className={cn(DASH.cardBase, "flex min-h-0 flex-col")}>
+          <div key={c.label} className={cn(DASH.cardBase, "flex min-h-0 min-w-0 flex-col")}>
             <div
               className="h-[3px] w-full shrink-0 bg-[color-mix(in_srgb,var(--ds-accent)_55%,transparent)]"
               aria-hidden
             />
-            <div className={cn(DASH.cardInner, "flex min-h-0 flex-1 flex-col")}>
-              <p className="text-[11px] font-extrabold uppercase tracking-wide text-ds-accent">{c.label}</p>
-              <ul className="mt-3 min-h-0 flex-1 space-y-2 overflow-y-auto">
+            <div className={cn(DASH.cardInner, "flex min-h-0 flex-1 flex-col py-3", dense && "py-2.5")}>
+              <p className="shrink-0 text-[11px] font-extrabold uppercase tracking-wide text-ds-accent">{c.label}</p>
+              <ul className="mt-2 min-h-0 flex-1 space-y-1.5 overflow-hidden">
                 {c.items.length === 0 ? <li className="text-sm text-ds-muted">—</li> : null}
                 {c.items.map((t) => (
                   <li
                     key={t}
-                    className="rounded-lg border border-ds-border bg-ds-secondary/50 px-3 py-2 text-sm font-semibold text-ds-foreground"
+                    className="truncate rounded-lg border border-ds-border bg-ds-secondary/50 px-2.5 py-1.5 text-xs font-semibold text-ds-foreground sm:px-3 sm:text-sm"
                   >
                     {t}
                   </li>
@@ -276,7 +384,7 @@ function KioskSectionBody({ section }: { section: KioskSection }) {
   }
   if (b.kind === "blocked_cards") {
     return (
-      <div className="grid gap-3 md:grid-cols-2">
+      <div className="grid min-h-0 gap-3 overflow-hidden md:grid-cols-2">
         {b.items.length === 0 ? (
           <p className="text-sm text-ds-muted">No blocked tasks.</p>
         ) : (
@@ -293,17 +401,17 @@ function KioskSectionBody({ section }: { section: KioskSection }) {
   if (b.kind === "summary_lines") {
     const showActive = section.id === "active_work";
     return (
-      <ul className="min-h-0 flex-1 space-y-2 overflow-y-auto">
+      <ul className="min-h-0 flex-1 space-y-2 overflow-hidden">
         {b.lines.map((line) => {
           const { title, assignee } = splitAssignmentLine(line);
           return (
             <li
               key={line}
-              className="flex items-start justify-between gap-3 rounded-lg border border-ds-border bg-ds-primary px-3 py-2.5 shadow-[var(--ds-shadow-card)]"
+              className="flex min-h-0 items-start justify-between gap-3 rounded-lg border border-ds-border bg-ds-primary px-3 py-2 shadow-[var(--ds-shadow-card)]"
             >
               <div className="min-w-0">
-                <p className="text-sm font-semibold text-ds-foreground">{title}</p>
-                {assignee ? <p className="mt-0.5 text-xs text-ds-muted">{assignee}</p> : null}
+                <p className="truncate text-sm font-semibold text-ds-foreground">{title}</p>
+                {assignee ? <p className="mt-0.5 truncate text-xs text-ds-muted">{assignee}</p> : null}
               </div>
               {showActive ? (
                 <span className="shrink-0 rounded-md border border-ds-accent/40 bg-[color-mix(in_srgb,var(--ds-accent)_12%,transparent)] px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide text-ds-accent">
@@ -317,10 +425,26 @@ function KioskSectionBody({ section }: { section: KioskSection }) {
     );
   }
   if (b.kind === "insights_cards") {
-    return <HighlightStripLight highlights={b.highlights} large />;
+    return (
+      <div className="min-h-0 flex-1 overflow-hidden">
+        <HighlightStripLight highlights={b.highlights} large />
+      </div>
+    );
   }
   if (b.kind === "team_insights_panel") {
-    return <TeamInsightsPanel data={{ stats: b.stats, members: b.members }} />;
+    const strip = (b.highlights ?? []).slice(0, 4);
+    return (
+      <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden">
+        {strip.length > 0 ? (
+          <div className="min-h-0 max-h-[42%] shrink-0 overflow-hidden">
+            <HighlightStripLight highlights={strip} large />
+          </div>
+        ) : null}
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+          <TeamInsightsPanel data={{ stats: b.stats, members: b.members }} dense={Boolean(dense)} />
+        </div>
+      </div>
+    );
   }
   if (b.kind === "handover_notes") {
     return <HandoverNotesKioskPage cards={[...b.cards]} />;
@@ -337,7 +461,7 @@ function KioskPanelFrame({ title, children, className }: { title: string; childr
       <div className="h-[3px] w-full shrink-0 bg-ds-border" aria-hidden />
       <div className={cn(DASH.cardInner, "flex min-h-0 flex-1 flex-col")}>
         <p className={DASH.sectionLabel}>{title}</p>
-        <div className="mt-3 min-h-0 flex-1">{children}</div>
+        <div className="mt-3 flex min-h-0 flex-1 flex-col overflow-hidden">{children}</div>
       </div>
     </div>
   );
@@ -378,7 +502,18 @@ export function ProjectKioskDisplay({ projectId }: { projectId: string }) {
     onInvalidate: () => void reload(),
   });
 
-  const rotCount = view?.rotatingSections?.length ?? 0;
+  const kioskPanels = useMemo(() => {
+    if (!view) return [];
+    return sortRotatingSections([...view.lockedSections, ...view.rotatingSections]);
+  }, [view]);
+
+  const rotCount = kioskPanels.length;
+
+  const currentRot = useMemo(() => {
+    if (!kioskPanels.length) return null;
+    return kioskPanels[rotIndex % kioskPanels.length] ?? null;
+  }, [kioskPanels, rotIndex]);
+
   useEffect(() => {
     setRotIndex(0);
   }, [projectId, rotCount]);
@@ -404,25 +539,6 @@ export function ProjectKioskDisplay({ projectId }: { projectId: string }) {
     };
     void go();
   }, []);
-
-  const allSections = useMemo((): KioskSection[] => {
-    if (!view) return [];
-    return [...view.lockedSections, ...view.rotatingSections];
-  }, [view]);
-
-  const rotatingSections = view?.rotatingSections;
-  const currentRot = useMemo(() => {
-    if (!rotatingSections?.length) return null;
-    return rotatingSections[rotIndex % rotatingSections.length] ?? null;
-  }, [rotatingSections, rotIndex]);
-
-  const rotBodyKind = currentRot?.body.kind;
-  const handoverMain = rotBodyKind === "handover_notes";
-  const safetyMain = rotBodyKind === "safety_reminders";
-
-  const taskBoard = useMemo(() => pickSection(allSections, "task_board"), [allSections]);
-  const teamInsights = useMemo(() => pickSection(allSections, "team_insights"), [allSections]);
-  const activeWork = useMemo(() => pickSection(allSections, "active_work"), [allSections]);
 
   const exit = useCallback(async () => {
     try {
@@ -464,8 +580,13 @@ export function ProjectKioskDisplay({ projectId }: { projectId: string }) {
     : "text-ds-muted";
 
   const body = (
-    <div className={cn(DASH.page, "flex min-h-screen flex-col bg-ds-bg text-ds-foreground")}>
-      <header className="shrink-0 border-b border-ds-border bg-ds-primary px-4 py-4 shadow-[var(--ds-shadow-card)] sm:px-6">
+    <div
+      className={cn(
+        DASH.page,
+        "flex h-[100dvh] max-h-[100dvh] flex-col overflow-hidden bg-ds-bg text-ds-foreground",
+      )}
+    >
+      <header className="shrink-0 border-b border-ds-border bg-ds-primary px-4 py-3 shadow-[var(--ds-shadow-card)] sm:px-6 sm:py-4">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between lg:gap-8">
           <div className="flex min-w-0 flex-1 items-start gap-4">
             <div className="relative h-[4.5rem] w-[4.5rem] shrink-0 sm:h-20 sm:w-20">
@@ -547,76 +668,40 @@ export function ProjectKioskDisplay({ projectId }: { projectId: string }) {
         </div>
       </header>
 
-      {handoverMain && currentRot?.body.kind === "handover_notes" ? (
-        <div className="flex min-h-0 flex-1 flex-col">
-          <HandoverNotesKioskPage cards={[...currentRot.body.cards]} />
-        </div>
-      ) : safetyMain && currentRot?.body.kind === "safety_reminders" ? (
-        <div className="flex min-h-0 flex-1 flex-col">
-          <SafetyRemindersKioskPage subtitle={currentRot.body.subtitle} cards={currentRot.body.cards} />
-        </div>
-      ) : (
-        <div className="flex min-h-0 flex-1 flex-col gap-4 p-4 lg:flex-row lg:gap-5 lg:p-5">
-          <aside className="flex w-full shrink-0 flex-col lg:w-[min(100%,22rem)]">
-            {activeWork ? (
-              <KioskPanelFrame title={activeWork.title} className="min-h-[12rem] flex-1 lg:min-h-0">
-                <KioskSectionBody section={activeWork} />
-              </KioskPanelFrame>
-            ) : (
-              <KioskPanelFrame title={"Today's assignments"} className="min-h-[8rem]">
-                <p className="text-sm text-ds-muted">Enable the “Active work” widget on the Project tab to show assignments here.</p>
-              </KioskPanelFrame>
-            )}
-          </aside>
+      <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden p-3 sm:p-4 lg:flex-row lg:gap-4 lg:p-5">
+        <aside className="flex w-full shrink-0 flex-col overflow-hidden lg:w-[min(100%,20rem)] lg:max-w-[22rem]">
+          <OnShiftWorkersRail hint={view.projectOwnerHint} workers={view.onShiftWorkers} />
+        </aside>
 
-          <main className="flex min-h-0 min-w-0 flex-1 flex-col">
-            {taskBoard ? (
-              <KioskPanelFrame title={taskBoard.title} className="flex min-h-0 flex-1 flex-col">
-                <KioskSectionBody section={taskBoard} />
-              </KioskPanelFrame>
-            ) : (
-              <KioskPanelFrame title="Task board" className="flex-1">
-                <p className="text-sm text-ds-muted">Add the “Task board” widget in kiosk configuration.</p>
-              </KioskPanelFrame>
-            )}
-
-            {rotCount > 1 &&
-            currentRot &&
-            currentRot.id !== taskBoard?.id &&
-            currentRot.body.kind !== "handover_notes" &&
-            currentRot.body.kind !== "safety_reminders" ? (
-              <div className="relative mt-4 min-h-0 flex-1">
-                <AnimatePresence mode="wait">
-                  <motion.div
-                    key={currentRot.id}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
-                    className="min-h-0"
-                  >
-                    <KioskPanelFrame title={`${currentRot.title} · rotating`} className="min-h-[10rem]">
-                      <KioskSectionBody section={currentRot} />
-                    </KioskPanelFrame>
-                  </motion.div>
-                </AnimatePresence>
-              </div>
-            ) : null}
-          </main>
-
-          <aside className="flex w-full shrink-0 flex-col gap-4 lg:w-[min(100%,24rem)]">
-            {teamInsights ? (
-              <KioskPanelFrame title={teamInsights.title} className="min-h-0 flex-1">
-                <KioskSectionBody section={teamInsights} />
-              </KioskPanelFrame>
-            ) : (
-              <KioskPanelFrame title="Team insights" className="min-h-0 flex-1">
-                <TeamInsightsPanel data={view.teamInsightsPanel} />
-              </KioskPanelFrame>
-            )}
-          </aside>
-        </div>
-      )}
+        <main className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+          {currentRot ? (
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={currentRot.id}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
+                className="flex min-h-0 flex-1 flex-col overflow-hidden"
+              >
+                {currentRot.body.kind === "handover_notes" ? (
+                  <HandoverNotesKioskPage cards={[...currentRot.body.cards]} />
+                ) : currentRot.body.kind === "safety_reminders" ? (
+                  <SafetyRemindersKioskPage subtitle={currentRot.body.subtitle} cards={currentRot.body.cards} />
+                ) : (
+                  <KioskPanelFrame title={currentRot.title} className="flex min-h-0 flex-1 flex-col overflow-hidden">
+                    <KioskSectionBody dense section={currentRot} />
+                  </KioskPanelFrame>
+                )}
+              </motion.div>
+            </AnimatePresence>
+          ) : (
+            <KioskPanelFrame title="Project kiosk" className="flex min-h-0 flex-1 flex-col overflow-hidden">
+              <p className="text-sm text-ds-muted">Loading panels…</p>
+            </KioskPanelFrame>
+          )}
+        </main>
+      </div>
 
       {rotCount > 1 ? (
         <footer className="shrink-0 border-t border-ds-border bg-ds-secondary/30 px-4 py-3">
