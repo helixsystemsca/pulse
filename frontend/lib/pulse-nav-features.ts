@@ -15,8 +15,7 @@ export function featureKeyForTenantNavHref(href: string): string | undefined {
   if (href === "/dashboard/maintenance" || href.startsWith("/dashboard/maintenance")) return "work_requests";
   if (href === "/dashboard/procedures" || href.startsWith("/dashboard/procedures")) return "procedures";
   if (href === "/dashboard/team-insights" || href.startsWith("/dashboard/team-insights")) return "team_insights";
-  /** Team Management — not tenant-feature gated (still permission / role gated). */
-  if (href === "/dashboard/workers" || href.startsWith("/dashboard/workers")) return undefined;
+  if (href === "/dashboard/workers" || href.startsWith("/dashboard/workers")) return "team_management";
   if (href === "/dashboard/inventory") return "inventory";
   if (href === "/equipment") return "equipment";
   if (href.includes("tool-tracking")) return "equipment";

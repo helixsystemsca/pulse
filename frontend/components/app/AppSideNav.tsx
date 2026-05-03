@@ -75,10 +75,11 @@ function formatRoleLabel(session: PulseAuthSession): string {
   return sessionRoleDisplayLabel(session);
 }
 
-/** Sidebar Team Management link — aligned with `GET /auth/me` → `workers_roster_access` + legacy sessions. */
+/** Team Management: tenant feature `team_management` + route permission; roster delegation still grants access. */
 function showWorkersNavItem(session: PulseAuthSession, isSystemAdmin: boolean): boolean {
   if (isSystemAdmin) return true;
   if (session.workers_roster_access === true) return true;
+  if (session.enabled_features?.includes("team_management")) return true;
   if (session.workers_roster_access === false) return false;
   return sessionHasAnyRole(session, "company_admin");
 }

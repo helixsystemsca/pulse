@@ -9,7 +9,7 @@ from typing import Iterable
 TENANT_EMPTY_FEATURES_MARKER = "_tenant_empty_feature_canvas"
 
 # Product-facing catalog (system admin UI). Order mirrors tenant sidebar in `pulse-app.ts`
-# (toggleable items only — not Dashboard, Team Management, or Settings).
+# (toggleable items only — not Dashboard or Settings).
 # Keys must stay in sync with `frontend/lib/pulse-nav-features.ts` and `system-admin-features.ts`.
 GLOBAL_SYSTEM_FEATURES: tuple[str, ...] = (
     "compliance",
@@ -19,6 +19,7 @@ GLOBAL_SYSTEM_FEATURES: tuple[str, ...] = (
     "work_requests",
     "procedures",
     "team_insights",
+    "team_management",
     "inventory",
     "equipment",
     "drawings",
@@ -29,7 +30,8 @@ GLOBAL_SYSTEM_FEATURES: tuple[str, ...] = (
 _LEGACY_FEATURE_ALIASES: dict[str, tuple[str, ...]] = {
     # Old hub keys → granular nav modules
     "work_orders": ("work_requests", "procedures"),
-    "workers": ("team_insights",),
+    # Legacy `workers` row: roster page + team insights (historical mapping preserved)
+    "workers": ("team_management", "team_insights"),
     "floor_plan": ("zones_devices",),
 }
 

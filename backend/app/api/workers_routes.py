@@ -31,7 +31,11 @@ from app.core.login_activity import latest_login_event_per_user
 from app.core.user_avatar_upload import co_worker_avatar_url
 from app.core.features.service import MODULE_KEYS
 from app.core.features.system_catalog import GLOBAL_SYSTEM_FEATURES
-from app.core.tenant_feature_access import load_merged_workers_settings, user_has_workers_roster_page_access
+from app.core.tenant_feature_access import (
+    contract_and_effective_features_for_me,
+    load_merged_workers_settings,
+    user_has_workers_roster_page_access,
+)
 from app.core.workers_settings_merge import DEFAULT_WORKERS_SETTINGS, merge_workers_settings
 from app.core.email_smtp import send_employee_invite
 from app.core.system_tokens import generate_raw_token, hash_system_token
@@ -101,12 +105,15 @@ async def require_workers_roster_page(
     cid: CompanyId,
 ) -> User:
     merged = await load_merged_workers_settings(db, cid)
-    if not user_has_workers_roster_page_access(user, merged):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Workers & Roles is limited to company administrators unless access is delegated.",
-        )
-    return user
+    if user_has_workers_roster_page_access(user, merged):
+        return user
+    _, eff, _, _ = await contract_and_effective_features_for_me(db, user)
+    if "team_management" in eff:
+        return user
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="Team Management requires company admin access, delegation, or the team_management module for your role.",
+    )
 
 
 async def require_company_admin_for_workers_settings(

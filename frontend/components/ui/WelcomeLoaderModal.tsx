@@ -27,7 +27,9 @@ export type WelcomeLoaderModalProps = {
   storageKey?: string;
 };
 
-/** How long the “preparing” state runs before the personalized line appears. */
+/** Minimum time the ocean wave is visible (fast API / warm Render otherwise flashes past). */
+const MIN_WAVE_DISPLAY_MS = 5000;
+/** Minimum time after `isReady` before the personalized line (so “preparing” never feels instant). */
 const LOADING_PHASE_MS = 2200;
 /** How long the personalized welcome is visible before the overlay dismisses. */
 const WELCOME_PHASE_MS = 2000;
@@ -112,6 +114,8 @@ export function WelcomeLoaderModal({
   const [phase, setPhase] = useState<WelcomePhase>("loading");
   const loadingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const welcomeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** When the overlay first shows the loading wave for this visit (for minimum wave duration). */
+  const waveSessionStartRef = useRef<number | null>(null);
 
   useEffect(() => {
     setHydrated(true);
@@ -132,14 +136,24 @@ export function WelcomeLoaderModal({
     return () => root.classList.remove("pulse-welcome-blur");
   }, [hydrated, open, skipEntirely]);
 
-  // After the dashboard is ready: show the loading state, then switch to personalized welcome.
+  useEffect(() => {
+    if (!hydrated || skipEntirely || !open) return;
+    if (waveSessionStartRef.current === null) {
+      waveSessionStartRef.current = Date.now();
+    }
+  }, [hydrated, skipEntirely, open]);
+
+  // After the dashboard is ready: keep the wave at least MIN_WAVE_DISPLAY_MS total, then switch to welcome.
   useEffect(() => {
     if (!hydrated || skipEntirely || !isReady) return;
     if (loadingTimerRef.current) clearTimeout(loadingTimerRef.current);
     setPhase("loading");
+    const anchor = waveSessionStartRef.current ?? Date.now();
+    const elapsed = Date.now() - anchor;
+    const waitMs = Math.max(LOADING_PHASE_MS, MIN_WAVE_DISPLAY_MS - elapsed);
     loadingTimerRef.current = setTimeout(() => {
       setPhase("welcome");
-    }, LOADING_PHASE_MS);
+    }, waitMs);
     return () => {
       if (loadingTimerRef.current) clearTimeout(loadingTimerRef.current);
       loadingTimerRef.current = null;

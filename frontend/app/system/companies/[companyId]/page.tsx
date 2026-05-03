@@ -430,8 +430,8 @@ export default function SystemCompanyDetailPage() {
 
       <section className={sectionCls}>
         <p className="mb-3 text-xs text-gray-500 dark:text-zinc-500">
-          Toggle which product areas appear in the tenant sidebar. Dashboard, Team Management, and Settings are always
-          available (subject to role permissions). If this company has no saved feature rows yet, all catalog modules below
+          Toggle which product areas appear in the tenant sidebar. Dashboard and Settings stay pinned (subject to role
+          permissions). If this company has no saved feature rows yet, all catalog modules below
           stay enabled until you save. Checking boxes persists flags in{" "}
           <span className="font-mono text-gray-600 dark:text-zinc-400">company_features</span>.
         </p>

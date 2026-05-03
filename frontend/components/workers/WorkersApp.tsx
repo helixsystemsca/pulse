@@ -92,6 +92,7 @@ const TENANT_PRODUCT_MODULES = [
   "work_requests",
   "procedures",
   "team_insights",
+  "team_management",
   "inventory",
   "equipment",
   "drawings",
@@ -107,6 +108,7 @@ const MODULE_LABEL: Record<string, string> = {
   work_requests: "Work Requests",
   procedures: "Procedures",
   team_insights: "Team Insights",
+  team_management: "Team Management",
   inventory: "Inventory",
   equipment: "Equipment",
   drawings: "Drawings",
@@ -271,11 +273,12 @@ export function WorkersApp() {
   const isCompanyAdmin = sessionHasAnyRole(session, "company_admin");
   /** External IT `company_admin` role or in-facility delegate (`facility_tenant_admin` from sysadmin). */
   const isTenantFullAdmin = isCompanyAdmin || Boolean(session?.facility_tenant_admin);
-  /** Matches `/auth/me` → `workers_roster_access` (company admin + delegated roles from workers settings). */
+  /** Roster delegation / tenant admin, or contract + role matrix grants `team_management`. */
   const canOpenWorkers = Boolean(
     isSystemAdmin ||
       session?.workers_roster_access ||
-      (session?.workers_roster_access !== false && isTenantFullAdmin),
+      (session?.workers_roster_access !== false && isTenantFullAdmin) ||
+      (session?.enabled_features?.includes("team_management") ?? false),
   );
 
   const [contractFeatureNamesFromApi, setContractFeatureNamesFromApi] = useState<string[]>([]);
@@ -936,8 +939,8 @@ export function WorkersApp() {
   if (!canOpenWorkers) {
     return (
       <p className="text-sm text-pulse-muted">
-        You do not have access to Team Management. A company administrator can enable it for your role under Team
-        Management → Edit roles → “Who can open this page” (managers, supervisors, or leads).
+        You do not have access to Team Management. A company administrator can turn on the Team Management module for
+        your tenant (system admin → company features) and assign it to your role under Permissions on this page.
       </p>
     );
   }
