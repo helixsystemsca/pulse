@@ -3,8 +3,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AlertTriangle, Cloud, Maximize2, ShieldAlert, Sparkles } from "lucide-react";
 
+import { DashboardAccentCard, DashboardColumnPanel } from "@/components/dashboard/DashboardChrome";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { cn } from "@/lib/cn";
+import { DASH } from "@/styles/dashboardTheme";
 import { isApiMode } from "@/lib/api";
 import { readSession } from "@/lib/pulse-session";
 import type { PulseShiftApi, PulseWorkerApi } from "@/lib/schedule/pulse-bridge";
@@ -313,19 +316,19 @@ export function WorkerBreakRoomDashboard({ kiosk = false }: Props) {
   const weatherTemp = useMemo(() => (weather.tempC == null ? "—" : `${Math.round(weather.tempC)}°C`), [weather.tempC]);
 
   return (
-    <div className="w-full space-y-6">
+    <div className={cn(DASH.page, "space-y-6")}>
       <KioskCriticalModal alert={criticalAlert} onAcknowledge={() => setCriticalAlert(null)} />
 
-      <Card className="!p-0">
-        <div className="flex flex-wrap items-center justify-between gap-4 px-5 py-4">
+      <DashboardAccentCard>
+        <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="min-w-0">
-            <p className={`text-[11px] font-bold uppercase tracking-[0.18em] ${UI.subheader}`}>Worker dashboard</p>
-            <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm font-semibold text-gray-900">
+            <p className={DASH.sectionLabel}>Worker dashboard</p>
+            <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm font-semibold text-ds-foreground">
               <span>{dateInBc(now)}</span>
-              <span className="text-gray-500">•</span>
+              <span className="text-ds-muted">•</span>
               <span className="tabular-nums">{timeInBc(now)}</span>
-              <span className="text-gray-500">•</span>
-              <span className="inline-flex items-center gap-1.5 text-gray-500">
+              <span className="text-ds-muted">•</span>
+              <span className="inline-flex items-center gap-1.5 text-ds-muted">
                 <Cloud className="h-4 w-4" aria-hidden />
                 {weatherTemp} · {weatherLabel}
               </span>
@@ -358,11 +361,11 @@ export function WorkerBreakRoomDashboard({ kiosk = false }: Props) {
           </div>
         </div>
 
-        <div className="border-t border-gray-200 bg-gray-100">
-          <div className="relative overflow-hidden px-5 py-2">
-            <div className="kiosk-marquee whitespace-nowrap text-sm font-semibold text-gray-900">
+        <div className="mt-4 border-t border-ds-border bg-ds-secondary/50">
+          <div className="relative overflow-hidden py-2">
+            <div className="kiosk-marquee whitespace-nowrap text-sm font-semibold text-ds-foreground">
               {notifications.map((n) => (
-                <span key={n.id} className={`mr-10 ${n.tone === "warning" ? "text-amber-800" : ""}`}>
+                <span key={n.id} className={cn("mr-10", n.tone === "warning" && "text-amber-800 dark:text-amber-200")}>
                   <Sparkles className="mr-2 inline-block h-4 w-4 opacity-80" aria-hidden />
                   {n.message}
                 </span>
@@ -370,11 +373,11 @@ export function WorkerBreakRoomDashboard({ kiosk = false }: Props) {
             </div>
           </div>
         </div>
-      </Card>
+      </DashboardAccentCard>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <div className="space-y-6 lg:col-span-2">
-          <Card>
+      <div className={cn(DASH.grid12, "gap-6")}>
+        <div className="col-span-12 space-y-6 lg:col-span-8">
+          <DashboardAccentCard mutedAccent innerClassName="space-y-4">
             <div className="flex flex-wrap items-end justify-between gap-3">
               <div>
                 <p className={UI.header}>Who’s on shift</p>
@@ -383,9 +386,11 @@ export function WorkerBreakRoomDashboard({ kiosk = false }: Props) {
               <p className={`text-xs font-semibold ${UI.subheader}`}>{loading ? "Loading…" : `${todaysWork.length} scheduled`}</p>
             </div>
 
-            <div className="mt-4 grid gap-3 sm:grid-cols-3">
+            <div className="grid gap-3 sm:grid-cols-3">
               {(["D", "A", "N"] as const).map((band) => (
-                <div key={band} className="border border-gray-200 bg-gray-50 p-3">
+                <div key={band} className="overflow-hidden rounded-xl border border-ds-border bg-ds-primary shadow-[var(--ds-shadow-card)]">
+                  <div className="h-0.5 w-full bg-ds-border" aria-hidden />
+                  <div className="p-3">
                   <div className="flex items-center justify-between gap-2">
                     <p className={`text-xs font-extrabold uppercase tracking-[0.16em] ${UI.subheader}`}>{bandLabel(band)}</p>
                     <span className={`border px-2 py-0.5 text-[11px] font-extrabold ${chipTone(band)}`}>
@@ -397,8 +402,8 @@ export function WorkerBreakRoomDashboard({ kiosk = false }: Props) {
                       <li className={UI.subheader}>—</li>
                     ) : (
                       grouped[band].slice(0, kiosk ? 14 : 10).map((s) => (
-                        <li key={s.id} className="flex items-center justify-between gap-2 border border-gray-200 bg-gray-50 px-2.5 py-2">
-                          <span className="min-w-0 truncate font-semibold text-gray-900">
+                        <li key={s.id} className="flex items-center justify-between gap-2 border border-ds-border bg-ds-secondary/40 px-2.5 py-2">
+                          <span className="min-w-0 truncate font-semibold text-ds-foreground">
                             {s.workerId ? byId.get(s.workerId)?.name ?? "Worker" : "Open"}
                           </span>
                           <span className={`shrink-0 text-xs font-semibold tabular-nums ${UI.subheader}`}>
@@ -408,12 +413,13 @@ export function WorkerBreakRoomDashboard({ kiosk = false }: Props) {
                       ))
                     )}
                   </ul>
+                  </div>
                 </div>
               ))}
             </div>
-          </Card>
+          </DashboardAccentCard>
 
-          <Card>
+          <DashboardAccentCard mutedAccent innerClassName="space-y-4">
             <div className="flex flex-wrap items-end justify-between gap-3">
               <div>
                 <p className={UI.header}>Assignments</p>
@@ -422,43 +428,44 @@ export function WorkerBreakRoomDashboard({ kiosk = false }: Props) {
               <p className={`text-xs font-semibold ${UI.subheader}`}>Today</p>
             </div>
 
-            <div className="mt-4 space-y-2">
+            <div className="space-y-2">
               {(todaysWork.length ? todaysWork.slice(0, kiosk ? 14 : 10) : []).map((s) => (
                 <div
                   key={`asg-${s.id}`}
-                  className="flex flex-wrap items-center justify-between gap-3 border border-gray-200 bg-gray-50 px-4 py-3"
+                  className="flex flex-wrap items-center justify-between gap-3 border border-ds-border bg-ds-secondary/40 px-4 py-3"
                 >
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-extrabold text-gray-900">
+                    <p className="truncate text-sm font-extrabold text-ds-foreground">
                       {s.workerId ? byId.get(s.workerId)?.name ?? "Worker" : "Open slot"}
                     </p>
                     <p className={`mt-0.5 text-xs ${UI.subheader}`}>
                       {bandLabel(shiftBandForWindow(s.startTime, s.endTime))} · {s.zoneId ? `Zone ${s.zoneId.slice(0, 6)}` : "—"}
                     </p>
                   </div>
-                  <span className="border border-gray-200 bg-gray-100 px-3 py-1 text-xs font-bold text-gray-900">
+                  <span className="border border-ds-border bg-ds-secondary px-3 py-1 text-xs font-bold text-ds-foreground">
                     Placeholder: Ice clean / Setup / Takedown
                   </span>
                 </div>
               ))}
               {todaysWork.length === 0 ? <p className={`text-sm ${UI.subheader}`}>No shifts found for today.</p> : null}
             </div>
-          </Card>
+          </DashboardAccentCard>
         </div>
 
-        <div className="space-y-6">
-          <Card>
-            <p className={`text-[11px] font-extrabold uppercase tracking-[0.18em] ${UI.subheader}`}>Ice & facility cadence</p>
-            <p className={`mt-2 ${UI.header}`}>Set-ups • Ice cleans • Takedowns</p>
-            <p className={`mt-1 text-sm ${UI.subheader}`}>Placeholder schedule until Xplor Recreation API is connected.</p>
-          </Card>
+        <div className="col-span-12 space-y-6 lg:col-span-4">
+          <DashboardColumnPanel title="Ice & facility cadence" accent="dusk">
+            <p className={cn(UI.header, "leading-snug")}>Set-ups • Ice cleans • Takedowns</p>
+            <p className={cn("mt-2 text-sm leading-relaxed", UI.subheader)}>
+              Placeholder schedule until Xplor Recreation API is connected.
+            </p>
+          </DashboardColumnPanel>
 
-          <Card>
+          <DashboardAccentCard mutedAccent innerClassName="space-y-4">
             <div className="flex items-center justify-between gap-3">
               <p className={UI.header}>Facility schedule</p>
               <span className={`text-xs font-semibold tabular-nums ${UI.subheader}`}>{timeInBc(now)}</span>
             </div>
-            <div className="mt-4 space-y-4">
+            <div className="space-y-4">
               {facilitySchedule.length === 0 ? (
                 <p className={`text-sm ${UI.subheader}`}>Loading schedule…</p>
               ) : (
@@ -476,9 +483,9 @@ export function WorkerBreakRoomDashboard({ kiosk = false }: Props) {
                         .sort((a, b) => a.start_time.localeCompare(b.start_time))
                         .slice(0, kiosk ? 10 : 8)
                         .map((ev) => (
-                          <li key={ev.id} className="flex items-start justify-between gap-3 border border-gray-200 bg-gray-50 px-4 py-3">
+                          <li key={ev.id} className="flex items-start justify-between gap-3 border border-ds-border bg-ds-secondary/40 px-4 py-3">
                             <div className="min-w-0">
-                              <p className="truncate font-semibold text-gray-900">{ev.program_name}</p>
+                              <p className="truncate font-semibold text-ds-foreground">{ev.program_name}</p>
                               {ev.staff?.length ? (
                                 <p className={`mt-0.5 truncate text-xs ${UI.subheader}`}>{ev.staff.join(", ")}</p>
                               ) : null}
@@ -494,15 +501,14 @@ export function WorkerBreakRoomDashboard({ kiosk = false }: Props) {
                 ))
               )}
             </div>
-          </Card>
+          </DashboardAccentCard>
 
-          <Card>
-            <p className={UI.header}>Notes</p>
-            <p className={`mt-2 text-sm ${UI.subheader}`}>
+          <DashboardColumnPanel title="Notes" accent="muted">
+            <p className={cn("text-sm leading-relaxed", UI.subheader)}>
               This panel is intentionally “kiosk safe” (large text, high contrast). Next we can wire real-time data and critical
               alerts into the modal above.
             </p>
-          </Card>
+          </DashboardColumnPanel>
         </div>
       </div>
 

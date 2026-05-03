@@ -44,6 +44,9 @@ import {
   shiftIntervalBoundsMs,
 } from "@/lib/schedule/dashboardScheduleDay";
 import type { PulseShiftApi, PulseWorkerApi } from "@/lib/schedule/pulse-bridge";
+import { DashboardAccentCard, DashboardColumnPanel, KioskRotateFooter } from "@/components/dashboard/DashboardChrome";
+import { cn } from "@/lib/cn";
+import { DASH } from "@/styles/dashboardTheme";
 import { UI } from "@/styles/ui";
 
 import "react-grid-layout/css/styles.css";
@@ -177,6 +180,36 @@ function compareAlerts(a: AlertItem, b: AlertItem): number {
   const dr = alertPriorityRank(alertPriority(a)) - alertPriorityRank(alertPriority(b));
   if (dr !== 0) return dr;
   return a.title.localeCompare(b.title);
+}
+
+function kioskWorkQueueRows(model: DashboardViewModel): {
+  key: string;
+  title: string;
+  status: string;
+  tone: "critical" | "warn" | "ok";
+}[] {
+  const out: { key: string; title: string; status: string; tone: "critical" | "warn" | "ok" }[] = [];
+  for (const c of model.workRequests.critical.slice(0, 5)) {
+    out.push({ key: `cr-${out.length}`, title: c.title, status: "Critical", tone: "critical" });
+  }
+  if (model.workRequests.newest) {
+    const k = model.workRequests.newest.tag.kind;
+    out.push({
+      key: "new",
+      title: model.workRequests.newest.title,
+      status: model.workRequests.newest.tag.label.slice(0, 16),
+      tone: k === "overdue" || k === "urgent" ? "critical" : k === "progress" ? "warn" : "ok",
+    });
+  }
+  if (model.workRequests.oldest) {
+    out.push({
+      key: "old",
+      title: model.workRequests.oldest.title,
+      status: "In queue",
+      tone: "ok",
+    });
+  }
+  return out.slice(0, 8);
 }
 
 /** Active Alerts card: always three rows, highest priority first; pad with neutral rows. */
@@ -1178,19 +1211,18 @@ function DashboardBody({
 
   function KioskTile({ label, value }: { label: string; value: number }) {
     return (
-      <Card className="p-3">
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-ds-muted">{label}</p>
-        <p className="mt-1 font-headline text-3xl font-extrabold tabular-nums text-ds-foreground">{value}</p>
-      </Card>
+      <div className={DASH.kpiTile}>
+        <p className={DASH.kpiLabel}>{label}</p>
+        <p className={DASH.kpiValue}>{value}</p>
+      </div>
     );
   }
 
   function KioskPanel({ title, children }: { title: string; children: ReactNode }) {
     return (
-      <Card className="flex h-full flex-col p-3">
-        <p className="text-base font-bold text-ds-foreground">{title}</p>
-        <div className="mt-3 min-h-0 flex-1">{children}</div>
-      </Card>
+      <DashboardColumnPanel title={title} accent="muted">
+        {children}
+      </DashboardColumnPanel>
     );
   }
 
@@ -1206,18 +1238,27 @@ function DashboardBody({
       ) : (
         <Radio className="h-5 w-5 shrink-0 text-ds-muted" aria-hidden />
       );
-    const accent =
+    const strip =
       p === "critical"
-        ? "border-ds-danger/30 bg-[color-mix(in_srgb,var(--ds-danger)_10%,transparent)]"
+        ? "bg-ds-danger"
         : p === "high"
-          ? "border-ds-warning/35 bg-[color-mix(in_srgb,var(--ds-warning)_12%,transparent)]"
+          ? "bg-ds-warning"
           : p === "medium"
-            ? "border-[color-mix(in_srgb,var(--ds-info)_35%,transparent)] bg-[color-mix(in_srgb,var(--ds-info)_10%,transparent)]"
+            ? "bg-[var(--ds-info)]"
+            : "bg-ds-border";
+    const shell =
+      p === "critical"
+        ? "border-ds-danger/30 bg-[color-mix(in_srgb,var(--ds-danger)_10%,var(--ds-primary))]"
+        : p === "high"
+          ? "border-ds-warning/35 bg-[color-mix(in_srgb,var(--ds-warning)_12%,var(--ds-primary))]"
+          : p === "medium"
+            ? "border-[color-mix(in_srgb,var(--ds-info)_35%,transparent)] bg-[color-mix(in_srgb,var(--ds-info)_10%,var(--ds-primary))]"
             : "border-ds-border bg-ds-secondary/40";
 
     return (
-      <Card className={`p-3 border ${accent}`.trim()}>
-        <div className="flex gap-3">
+      <div className={cn("overflow-hidden rounded-xl border shadow-[var(--ds-shadow-card)]", shell)}>
+        <div className={cn("h-[3px] w-full shrink-0", strip)} aria-hidden />
+        <div className="flex gap-3 p-3">
           {icon}
           <div className="min-w-0">
             <p className="text-sm font-bold text-ds-foreground max-w-md truncate">{alert.title}</p>
@@ -1228,28 +1269,28 @@ function DashboardBody({
             ) : null}
           </div>
         </div>
-      </Card>
+      </div>
     );
   }
 
-  function OverviewView() {
+  function OverviewView({ rowClass }: { rowClass: string }) {
     return (
       <>
-        <div className="col-span-12">
-          <div className="grid grid-cols-6 gap-3">
+        <div className={rowClass}>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
             {kioskKpis.map((k) => (
               <KioskTile key={k.label} label={k.label} value={k.value} />
             ))}
           </div>
         </div>
 
-        <div className="col-span-12 grid grid-cols-3 gap-3">
+        <div className={`${rowClass} grid grid-cols-1 gap-3 md:grid-cols-3`}>
           {kioskAlerts.slice(0, 3).map((a, idx) => (
             <KioskAlertCard key={`${a.title}-${idx}`} alert={a} />
           ))}
         </div>
 
-        <div className="col-span-12 grid grid-cols-3 gap-4">
+        <div className={`${rowClass} grid grid-cols-1 gap-4 md:grid-cols-3`}>
           <div className="col-span-1">
             <KioskPanel title="Workforce">
               <div className="max-w-md">{(widgetRegistry as any).workforce.render()}</div>
@@ -1270,12 +1311,12 @@ function DashboardBody({
     );
   }
 
-  function WorkforceView() {
+  function WorkforceView({ rowClass }: { rowClass: string }) {
     const onSite = model.workforce.onSite.slice(0, 12);
     return (
       <>
-        <div className="col-span-12">
-          <div className="grid grid-cols-6 gap-3">
+        <div className={rowClass}>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
             <KioskTile label="On site" value={mockKPIs.onSite} />
             <KioskTile label="Active requests" value={mockKPIs.activeRequests} />
             <KioskTile label="Awaiting assignment" value={model.workRequests.awaitingCount} />
@@ -1285,8 +1326,8 @@ function DashboardBody({
           </div>
         </div>
 
-        <div className="col-span-12 grid grid-cols-3 gap-4">
-          <div className="col-span-2">
+        <div className={`${rowClass} grid grid-cols-1 gap-4 lg:grid-cols-3`}>
+          <div className="lg:col-span-2">
             <KioskPanel title="On-site workers">
               <div className="max-w-md">
                 <div className="flex flex-wrap gap-3">
@@ -1312,7 +1353,7 @@ function DashboardBody({
             </KioskPanel>
           </div>
 
-          <div className="col-span-1">
+          <div className="lg:col-span-1">
             <KioskPanel title="Work focus">
               <div className="max-w-md space-y-3">
                 <div className="rounded-lg border border-ds-border bg-ds-secondary/40 p-3">
@@ -1341,11 +1382,11 @@ function DashboardBody({
     );
   }
 
-  function SystemsView() {
+  function SystemsView({ rowClass }: { rowClass: string }) {
     return (
       <>
-        <div className="col-span-12">
-          <div className="grid grid-cols-6 gap-3">
+        <div className={rowClass}>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
             <KioskTile label="Low stock" value={mockKPIs.lowStock} />
             <KioskTile label="Out of service" value={mockKPIs.outOfService} />
             <KioskTile label="Missing tools" value={model.equipment.missingCount} />
@@ -1355,18 +1396,18 @@ function DashboardBody({
           </div>
         </div>
 
-        <div className="col-span-12 grid grid-cols-3 gap-4">
-          <div className="col-span-1">
+        <div className={`${rowClass} grid grid-cols-1 gap-4 md:grid-cols-3`}>
+          <div className="min-w-0">
             <KioskPanel title="Inventory">
               <div className="max-w-md">{(widgetRegistry as any).inventory.render()}</div>
             </KioskPanel>
           </div>
-          <div className="col-span-1">
+          <div className="min-w-0">
             <KioskPanel title="Equipment">
               <div className="max-w-md">{(widgetRegistry as any).equipment.render()}</div>
             </KioskPanel>
           </div>
-          <div className="col-span-1">
+          <div className="min-w-0">
             <KioskPanel title="Top alerts">
               <div className="max-w-md space-y-3">
                 {kioskAlerts.slice(0, 3).map((a, idx) => (
@@ -1751,15 +1792,7 @@ function DashboardBody({
           }
         : null,
     } as const;
-  }, [
-    activeAlertRows,
-    facilitySetupChecklist,
-    model,
-    onDismissZonePrompt,
-    pulseTenantNav,
-    workOrdersHref,
-    zonePromptDismissed,
-  ]);
+  }, [activeAlertRows, facilitySetupChecklist, model, onDismissZonePrompt, workOrdersHref, zonePromptDismissed]);
 
   const allWidgetKeys = useMemo(() => {
     return Object.keys(widgetRegistry).filter((k) => (widgetRegistry as Record<string, unknown>)[k] != null);
@@ -1885,13 +1918,17 @@ function DashboardBody({
   const weatherTemp = useMemo(() => (weather.tempC == null ? "—" : `${Math.round(weather.tempC)}°C`), [weather.tempC]);
 
   if (isKiosk) {
+    const row = "w-full";
+    const queue = kioskWorkQueueRows(model);
+    const rightKpis = kioskKpis.slice(0, 4);
+    const onSiteShow = model.workforce.onSite.slice(0, 5);
     return (
-      <div className="w-full px-4">
-        <div className="grid grid-cols-12 gap-4">
+      <div className={cn(DASH.page, DASH.kioskFrame)}>
+        <div className={DASH.grid12}>
           <div className="col-span-12">
-            <Card className="p-3">
+            <DashboardAccentCard>
               <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="min-w-0 flex items-center gap-3">
+                <div className="flex min-w-0 items-center gap-3">
                   <OperationsHeaderLogoMark logoUrl={headerLogoUrl} companyName={headerCompanyName} />
                   <div className="min-w-0">
                     <p className="text-[11px] font-extrabold uppercase tracking-[0.18em] text-ds-muted">
@@ -1919,37 +1956,97 @@ function DashboardBody({
                 </div>
               </div>
               {model.bannerNote ? (
-                <div className="mt-3 border-t border-ds-border pt-3 text-sm font-semibold text-ds-foreground max-w-md">
+                <div className="mt-3 max-w-md border-t border-ds-border pt-3 text-sm font-semibold text-ds-foreground">
                   {model.bannerNote}
                 </div>
               ) : null}
-            </Card>
+            </DashboardAccentCard>
           </div>
 
-          <div className="col-span-12">
+          <div className="col-span-12 min-h-0 lg:col-span-3">
+            <DashboardColumnPanel title="Today's focus" accent="teal">
+              <ul className="space-y-2">
+                {queue.length === 0 ? (
+                  <li className="text-sm text-ds-muted">No queued work items.</li>
+                ) : (
+                  queue.map((q) => (
+                    <li key={q.key} className={cn(DASH.listRow, "flex items-start justify-between gap-2")}>
+                      <span className="min-w-0 truncate text-sm font-semibold text-ds-foreground">{q.title}</span>
+                      <span
+                        className={cn(
+                          DASH.pill,
+                          q.tone === "critical" &&
+                            "border-red-200/80 bg-red-50 text-red-800 dark:border-red-500/35 dark:bg-red-950/40 dark:text-red-100",
+                          q.tone === "warn" &&
+                            "border-amber-200/80 bg-amber-50 text-amber-900 dark:border-amber-500/35 dark:bg-amber-950/35 dark:text-amber-100",
+                          q.tone === "ok" && "border-ds-border bg-ds-secondary text-ds-muted",
+                        )}
+                      >
+                        {q.status}
+                      </span>
+                    </li>
+                  ))
+                )}
+              </ul>
+            </DashboardColumnPanel>
+          </div>
+
+          <div className="col-span-12 min-h-0 lg:col-span-6">
             <div className="transition-opacity duration-500 ease-in-out">
-              {currentView === "overview" && <OverviewView />}
-              {currentView === "workforce" && <WorkforceView />}
-              {currentView === "systems" && <SystemsView />}
+              {currentView === "overview" && <OverviewView rowClass={row} />}
+              {currentView === "workforce" && <WorkforceView rowClass={row} />}
+              {currentView === "systems" && <SystemsView rowClass={row} />}
             </div>
           </div>
+
+          <div className="col-span-12 min-h-0 space-y-3 lg:col-span-3">
+            <DashboardColumnPanel title="Team snapshot" accent="dusk">
+              <div className="grid grid-cols-2 gap-2">
+                {rightKpis.map((k) => (
+                  <KioskTile key={k.label} label={k.label} value={k.value} />
+                ))}
+              </div>
+              <p className={cn(DASH.sectionLabel, "mt-4")}>On site</p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {onSiteShow.length === 0 ? (
+                  <p className="text-sm text-ds-muted">No workers on site.</p>
+                ) : (
+                  onSiteShow.map((b) => (
+                    <WorkforceBubbleStack
+                      key={b.id}
+                      bubble={b}
+                      faceClassName={onsiteAvatarClass()}
+                      badges={
+                        <>
+                          {b.badge ? <WorkforceRoleLetterBadge letter={b.badge} /> : null}
+                          <WorkforceStatusDot color="green" />
+                        </>
+                      }
+                    />
+                  ))
+                )}
+              </div>
+            </DashboardColumnPanel>
+          </div>
+
+          <KioskRotateFooter activeIndex={viewIndex} total={views.length} />
         </div>
       </div>
     );
   }
 
   return (
-    <div className="w-full space-y-6">
-      <Card>
+    <div className={cn(DASH.page, "space-y-6")}>
+      <DashboardAccentCard>
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="min-w-0">
-            <p className={`${UI.subheader} font-extrabold uppercase tracking-[0.18em]`}>Operations dashboard</p>
-            <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm font-semibold text-gray-900">
+            <p className={cn(DASH.sectionLabel)}>Operations dashboard</p>
+            <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm font-semibold text-ds-foreground">
               <span>{dateInBc(now)}</span>
-              <span className="text-gray-500">•</span>
+              <span className="text-ds-muted">•</span>
               <span className="tabular-nums">{timeInBc(now)}</span>
-              <span className="text-gray-500">•</span>
-              <span className="inline-flex items-center gap-1.5 text-gray-500">
+              <span className="text-ds-muted">•</span>
+              <span className="inline-flex items-center gap-1.5 text-ds-muted">
                 <Cloud className="h-4 w-4" aria-hidden />
                 {weatherTemp} · {weatherLabel}
               </span>
@@ -1963,7 +2060,7 @@ function DashboardBody({
               </Button>
             ) : null}
             {!hideHeaderWelcome ? (
-              <span className="inline-flex items-center gap-2 border border-gray-200 bg-gray-100 px-3 py-2 text-sm font-semibold text-gray-900">
+              <span className="inline-flex items-center gap-2 rounded-lg border border-ds-border bg-ds-secondary/60 px-3 py-2 text-sm font-semibold text-ds-foreground">
                 <span className="hidden sm:inline">Welcome,</span> {model.welcomeName}
               </span>
             ) : null}
@@ -1971,14 +2068,14 @@ function DashboardBody({
         </div>
 
         {model.bannerNote ? (
-          <div className="mt-4 border-t border-gray-200 pt-4 text-sm font-semibold text-gray-900">{model.bannerNote}</div>
+          <div className="mt-4 border-t border-ds-border pt-4 text-sm font-semibold text-ds-foreground">{model.bannerNote}</div>
         ) : null}
-      </Card>
+      </DashboardAccentCard>
 
-      <Card className="space-y-5">
+      <DashboardAccentCard mutedAccent innerClassName="space-y-5">
         {!readOnly ? (
           <div className="flex flex-wrap items-center gap-2">
-            <div className="inline-flex items-center gap-1 border border-gray-200 p-1" role="group" aria-label="Dashboard layout">
+            <div className="inline-flex items-center gap-1 rounded-lg border border-ds-border p-1" role="group" aria-label="Dashboard layout">
               <Button
                 type="button"
                 variant={editMode ? "primary" : "secondary"}
@@ -1994,7 +2091,7 @@ function DashboardBody({
                   <Pencil className="h-[1.125rem] w-[1.125rem] shrink-0" strokeWidth={2.5} aria-hidden />
                 )}
               </Button>
-              <span className="mx-0.5 h-6 w-px shrink-0 bg-gray-200" aria-hidden />
+              <span className="mx-0.5 h-6 w-px shrink-0 bg-ds-border" aria-hidden />
               <Button
                 type="button"
                 variant="secondary"
@@ -2237,7 +2334,7 @@ function DashboardBody({
             onSave={saveCustomPeek}
           />
         ) : null}
-      </Card>
+      </DashboardAccentCard>
     </div>
   );
 }
@@ -2361,8 +2458,9 @@ export function OperationalDashboard({
       notifyReady(readyPayload);
     }
     // Intentionally omit session from deps: usePulseAuth hydrates after mount and would re-run this eight-way
-    // fetch. Welcome uses readSession() inside the try block above.
-  }, [fetchJson, notifyReady, tokenOverride, variant]);
+    // fetch. Welcome uses readSession() inside the try block above. `variant` is not read here; the caller
+    // effect gates on `variant === "live"` before invoking.
+  }, [fetchJson, notifyReady, tokenOverride]);
 
   useEffect(() => {
     if (variant !== "live" || !isApiMode()) return;
