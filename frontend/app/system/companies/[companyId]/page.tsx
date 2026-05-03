@@ -30,6 +30,14 @@ type CompanyMember = {
   roles: string[];
 };
 
+const PREVIOUS_OWNER_ROLE_OPTIONS = [
+  { value: "worker" as const, label: "Worker" },
+  { value: "lead" as const, label: "Lead" },
+  { value: "supervisor" as const, label: "Supervisor" },
+  { value: "manager" as const, label: "Manager" },
+];
+type PreviousOwnerRole = (typeof PREVIOUS_OWNER_ROLE_OPTIONS)[number]["value"];
+
 const inputCls =
   "min-w-[12rem] flex-1 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-500/40 focus:outline-none focus:ring-2 focus:ring-blue-500/50 disabled:opacity-50 dark:border-ds-border dark:bg-ds-secondary dark:text-white dark:placeholder:text-ds-muted";
 const sectionCls =
@@ -60,7 +68,7 @@ export default function SystemCompanyDetailPage() {
   const [uploadErr, setUploadErr] = useState<string | null>(null);
   const [members, setMembers] = useState<CompanyMember[]>([]);
   const [newOwnerId, setNewOwnerId] = useState("");
-  const [demotePrev, setDemotePrev] = useState<"manager" | "worker">("manager");
+  const [changePreviousOwnerTo, setChangePreviousOwnerTo] = useState<PreviousOwnerRole>("manager");
   const [transferBusy, setTransferBusy] = useState(false);
   const [transferErr, setTransferErr] = useState<string | null>(null);
 
@@ -80,6 +88,7 @@ export default function SystemCompanyDetailPage() {
       setCatalog(cat.features);
       setMembers(mem ?? []);
       setNewOwnerId("");
+      setChangePreviousOwnerTo("manager");
       setTransferErr(null);
     } catch {
       setNotFound(true);
@@ -193,7 +202,7 @@ export default function SystemCompanyDetailPage() {
     try {
       await apiFetch(`/api/system/companies/${row.id}/transfer-tenant-owner`, {
         method: "POST",
-        json: { new_owner_user_id: newOwnerId.trim(), demote_previous_to: demotePrev },
+        json: { new_owner_user_id: newOwnerId.trim(), change_previous_owner_to: changePreviousOwnerTo },
       });
       const [co, mem] = await Promise.all([
         apiFetch<CompanyRow>(`/api/system/companies/${row.id}`),
@@ -390,18 +399,21 @@ export default function SystemCompanyDetailPage() {
             </select>
           </div>
           <div>
-            <label className={labelCls} htmlFor="demote-prev">
-              Demote previous owner to
+            <label className={labelCls} htmlFor="change-prev-owner-role">
+              Change previous owner to
             </label>
             <select
-              id="demote-prev"
+              id="change-prev-owner-role"
               className={`mt-1.5 w-full min-w-[10rem] ${inputCls}`}
               disabled={!row.is_active || transferBusy}
-              value={demotePrev}
-              onChange={(e) => setDemotePrev(e.target.value as "manager" | "worker")}
+              value={changePreviousOwnerTo}
+              onChange={(e) => setChangePreviousOwnerTo(e.target.value as PreviousOwnerRole)}
             >
-              <option value="manager">manager</option>
-              <option value="worker">worker</option>
+              {PREVIOUS_OWNER_ROLE_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
             </select>
           </div>
           <button

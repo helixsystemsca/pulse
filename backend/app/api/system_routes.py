@@ -478,16 +478,22 @@ async def transfer_tenant_owner(
     if prev_id == str(new_u.id):
         raise HTTPException(status_code=400, detail="User is already the recorded tenant owner")
 
-    demote_enum = UserRole.manager if body.demote_previous_to == "manager" else UserRole.worker
+    _prev_owner_role_map: dict[str, UserRole] = {
+        UserRole.worker.value: UserRole.worker,
+        UserRole.lead.value: UserRole.lead,
+        UserRole.supervisor.value: UserRole.supervisor,
+        UserRole.manager.value: UserRole.manager,
+    }
+    previous_role_enum = _prev_owner_role_map[body.change_previous_owner_to]
 
     if prev_id:
         prev = await db.get(User, prev_id)
         if prev and str(prev.company_id) == str(company_id):
             stripped = [r for r in (prev.roles or []) if r != UserRole.company_admin.value]
             if not stripped:
-                stripped = [demote_enum.value]
+                stripped = [previous_role_enum.value]
             prev.roles = validate_tenant_roles_non_empty(stripped)
-            prev.operational_role = default_operational_role_for_invite_role(demote_enum)
+            prev.operational_role = default_operational_role_for_invite_role(previous_role_enum)
 
     new_u.roles = validate_tenant_roles_non_empty([UserRole.company_admin.value])
     new_u.operational_role = default_operational_role_for_invite_role(UserRole.company_admin)
@@ -502,7 +508,7 @@ async def transfer_tenant_owner(
         metadata={
             "new_owner_user_id": str(new_u.id),
             "previous_owner_user_id": prev_id,
-            "demote_previous_to": body.demote_previous_to,
+            "change_previous_owner_to": body.change_previous_owner_to,
         },
     )
     await db.commit()

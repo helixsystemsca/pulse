@@ -86,6 +86,15 @@ const INPUT = dsInputClass;
 const BTN_PRIMARY = cn(buttonVariants({ surface: "light", intent: "accent" }), "px-4 py-2");
 const BTN_SECONDARY = cn(buttonVariants({ surface: "light", intent: "secondary" }), "px-4 py-2");
 
+/** Role for the outgoing tenant owner after `company_admin` is removed (system transfer-tenant-owner). */
+const PREVIOUS_OWNER_ROLE_OPTIONS = [
+  { value: "worker" as const, label: "Worker" },
+  { value: "lead" as const, label: "Lead" },
+  { value: "supervisor" as const, label: "Supervisor" },
+  { value: "manager" as const, label: "Manager" },
+];
+type PreviousOwnerRole = (typeof PREVIOUS_OWNER_ROLE_OPTIONS)[number]["value"];
+
 function formatWhen(iso: string | null | undefined): string {
   if (!iso) return "—";
   try {
@@ -142,7 +151,7 @@ export default function SystemUsersPage() {
   const [tenantMembers, setTenantMembers] = useState<CompanyMember[]>([]);
   const [tenantMembersLoading, setTenantMembersLoading] = useState(false);
   const [newOwnerUserId, setNewOwnerUserId] = useState("");
-  const [demotePrev, setDemotePrev] = useState<"manager" | "worker">("manager");
+  const [changePreviousOwnerTo, setChangePreviousOwnerTo] = useState<PreviousOwnerRole>("manager");
   const [tenantBusy, setTenantBusy] = useState(false);
   const [tenantErr, setTenantErr] = useState<string | null>(null);
 
@@ -210,8 +219,8 @@ export default function SystemUsersPage() {
     if (!tenantModal) {
       setTenantMembers([]);
       setTenantErr(null);
-      setNewOwnerUserId("");
-      setDemotePrev("manager");
+    setNewOwnerUserId("");
+    setChangePreviousOwnerTo("manager");
       return;
     }
     if (tenantModal.mode === "self_as_owner") {
@@ -331,7 +340,7 @@ export default function SystemUsersPage() {
         method: "POST",
         json: {
           new_owner_user_id: ownerId,
-          demote_previous_to: demotePrev,
+          change_previous_owner_to: changePreviousOwnerTo,
         },
       });
       setTenantModal(null);
@@ -680,7 +689,7 @@ export default function SystemUsersPage() {
                 ) : (
                   <>
                     Set <strong>{tenantModal.candidateRow.full_name || tenantModal.candidateRow.email}</strong> as the
-                    tenant owner. The previous owner will be demoted to the role you pick below.
+                    tenant owner. The previous owner&apos;s role will change to the option you pick below.
                   </>
                 )}
               </p>
@@ -709,18 +718,21 @@ export default function SystemUsersPage() {
                 </div>
               ) : null}
               <div>
-                <label className={dsLabelClass} htmlFor="tenant-demote">
-                  Demote previous owner to
+                <label className={dsLabelClass} htmlFor="tenant-change-prev-role">
+                  Change previous owner to
                 </label>
                 <select
-                  id="tenant-demote"
+                  id="tenant-change-prev-role"
                   className={`mt-1.5 w-full max-w-xs ${INPUT}`}
                   disabled={tenantBusy}
-                  value={demotePrev}
-                  onChange={(e) => setDemotePrev(e.target.value as "manager" | "worker")}
+                  value={changePreviousOwnerTo}
+                  onChange={(e) => setChangePreviousOwnerTo(e.target.value as PreviousOwnerRole)}
                 >
-                  <option value="manager">manager</option>
-                  <option value="worker">worker</option>
+                  {PREVIOUS_OWNER_ROLE_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
                 </select>
               </div>
               {tenantMembersLoading ? (

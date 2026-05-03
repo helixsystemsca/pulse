@@ -11,7 +11,8 @@ import { UI } from "@/styles/ui";
 export function DashboardViewTabs() {
   const pathname = usePathname() || "";
   const router = useRouter();
-  const isOverview = pathname === "/overview" || pathname.startsWith("/overview/");
+  const isProjectTab = pathname === "/overview/project" || pathname.startsWith("/overview/project/");
+  const isOverview = pathname === "/overview" || (pathname.startsWith("/overview/") && !isProjectTab);
   const isWorker = pathname === "/worker" || pathname.startsWith("/worker/");
 
   return (
@@ -21,6 +22,9 @@ export function DashboardViewTabs() {
       </Button>
       <Button variant={isOverview ? "accent" : "secondary"} type="button" onClick={() => router.push("/overview")}>
         Overview
+      </Button>
+      <Button variant={isProjectTab ? "accent" : "secondary"} type="button" onClick={() => router.push("/overview/project")}>
+        Project
       </Button>
     </div>
   );

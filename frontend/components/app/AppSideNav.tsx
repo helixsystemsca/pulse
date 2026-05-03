@@ -114,7 +114,7 @@ export function AppSideNav() {
   if (!authed || !session) return null;
 
   const shell =
-    "hidden w-64 min-w-[16rem] flex-shrink-0 flex-col justify-between border-r bg-background lg:flex";
+    "relative z-20 hidden w-64 min-w-[16rem] flex-shrink-0 flex-col justify-between border-r bg-background lg:flex";
 
   return (
     <aside className={shell} aria-label={systemRail ? "System navigation" : "App navigation"}>

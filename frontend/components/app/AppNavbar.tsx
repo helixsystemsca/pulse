@@ -119,7 +119,7 @@ export function AppNavbar() {
               </button>
               {userOpen ? (
                 <div
-                  className="absolute right-0 mt-1 w-56 rounded-md border border-ds-border bg-ds-elevated py-1 shadow-[var(--ds-shadow-diffuse)]"
+                  className="absolute right-0 z-50 mt-1 w-56 rounded-md border border-ds-border bg-ds-elevated py-1 shadow-[var(--ds-shadow-diffuse)]"
                   role="menu"
                 >
                   {session?.email ? (

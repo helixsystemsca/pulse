@@ -1,6 +1,6 @@
-from typing import Optional
+from typing import Literal, Optional
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import AliasChoices, BaseModel, EmailStr, Field
 
 
 class SystemCompanyCreate(BaseModel):
@@ -84,9 +84,16 @@ class SystemCompanyMemberOut(BaseModel):
     roles: list[str]
 
 
+PreviousOwnerRoleAfterTransfer = Literal["worker", "lead", "supervisor", "manager"]
+
+
 class TransferTenantOwnerBody(BaseModel):
     new_owner_user_id: str = Field(..., min_length=8, max_length=64)
-    demote_previous_to: str = Field(default="manager", pattern="^(manager|worker)$")
+    #: RBAC role assigned to the outgoing tenant owner (after stripping `company_admin`).
+    change_previous_owner_to: PreviousOwnerRoleAfterTransfer = Field(
+        default="manager",
+        validation_alias=AliasChoices("change_previous_owner_to", "demote_previous_to"),
+    )
 
 
 class TransferTenantOwnerOut(BaseModel):

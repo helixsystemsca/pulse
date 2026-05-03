@@ -58,7 +58,7 @@ export function ImpersonationBanner() {
 
   return (
     <div
-      className="sticky top-16 z-[55] flex flex-wrap items-center justify-between gap-3 border-b border-amber-500/45 bg-amber-50 px-3 py-2.5 text-sm text-amber-950 shadow-sm dark:border-amber-500/35 dark:bg-amber-950/95 dark:text-amber-100 dark:shadow-[0_2px_12px_rgba(0,0,0,0.35)] sm:px-5"
+      className="sticky top-16 z-40 flex flex-wrap items-center justify-between gap-3 border-b border-amber-500/45 bg-amber-50 px-3 py-2.5 text-sm text-amber-950 shadow-sm dark:border-amber-500/35 dark:bg-amber-950/95 dark:text-amber-100 dark:shadow-[0_2px_12px_rgba(0,0,0,0.35)] sm:px-5"
       role="status"
       aria-live="polite"
     >
