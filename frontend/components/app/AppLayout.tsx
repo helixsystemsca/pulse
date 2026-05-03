@@ -41,7 +41,7 @@ export function AppLayout({
         <div data-pulse-app-shell className="flex h-full w-full flex-col overflow-hidden">
           {chrome ? (
             <header className="relative z-50 flex shrink-0 flex-col bg-ds-primary shadow-none">
-              <div className="flex h-14 items-center border-b border-ds-border px-4">
+              <div className="flex min-h-[4.5rem] items-center border-b border-ds-border px-4 py-1 sm:min-h-20 sm:py-1.5">
                 <div className="w-full">
                   <AppNavbar />
                 </div>

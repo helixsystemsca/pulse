@@ -4,7 +4,8 @@
 
 html {
   scroll-behavior: smooth;
-  scroll-padding-top: 4.5rem;
+  /* App header row (logo up to ~5rem) + chrome accent strip + border */
+  scroll-padding-top: 5.75rem;
 }
 
 /**

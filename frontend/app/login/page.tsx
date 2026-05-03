@@ -135,9 +135,9 @@ export default function LoginPage() {
   }
 
   const labelClass =
-    "mb-1.5 block text-[11px] font-bold uppercase tracking-[0.14em] text-[color-mix(in_srgb,var(--ds-text-primary)_72%,transparent)] dark:text-ds-muted";
+    "mb-1 block text-[11px] font-bold uppercase tracking-[0.14em] text-[color-mix(in_srgb,var(--ds-text-primary)_72%,transparent)] dark:text-ds-muted";
   const inputShell =
-    "relative flex w-full items-center gap-2 rounded-xl border border-[color-mix(in_srgb,#4c6085_12%,transparent)] bg-[color-mix(in_srgb,#cfe8ff_38%,#ffffff)] px-3 py-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.65)] dark:border-ds-border dark:bg-ds-primary/80 dark:shadow-none";
+    "relative flex w-full items-center gap-2 rounded-xl border border-[color-mix(in_srgb,#4c6085_12%,transparent)] bg-[color-mix(in_srgb,#cfe8ff_38%,#ffffff)] px-3 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.65)] dark:border-ds-border dark:bg-ds-primary/80 dark:shadow-none";
   const inputInner =
     "min-w-0 flex-1 border-0 bg-transparent p-0 text-sm font-medium text-[color-mix(in_srgb,var(--ds-text-primary)_92%,transparent)] outline-none ring-0 placeholder:text-[color-mix(in_srgb,var(--ds-text-primary)_45%,transparent)] dark:text-ds-foreground dark:placeholder:text-ds-muted";
 
@@ -146,7 +146,7 @@ export default function LoginPage() {
       <div className="auth-shell-inner relative flex min-h-0 flex-1 flex-col">
         <LoginRipples />
 
-        <header className="relative z-10 flex w-full items-center justify-end gap-4 px-5 py-4 sm:px-8 lg:px-12">
+        <header className="relative z-10 flex w-full items-center justify-end gap-4 px-5 py-2.5 sm:px-8 sm:py-3 lg:px-12">
           <nav className="flex items-center gap-1 sm:gap-2" aria-label="Login header">
             <button
               type="button"
@@ -166,15 +166,15 @@ export default function LoginPage() {
           </nav>
         </header>
 
-        <main className="relative z-10 flex min-h-0 flex-1 flex-col justify-center px-4 pb-10 pt-2 sm:px-6 md:px-8">
+        <main className="relative z-10 flex min-h-0 flex-1 flex-col justify-center px-4 pb-4 pt-1 sm:px-6 sm:pb-5 md:px-8">
           <div className="mx-auto w-full max-w-[440px]">
             <div className="flex w-full justify-center">
               <div
                 className={cn(
                   "relative aspect-square shrink-0 overflow-hidden rounded-full",
                   "border-[3px] border-[#4c6085] dark:border-ds-border",
-                  "bg-ds-bg shadow-[0_6px_28px_rgba(76,96,133,0.22)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.35)]",
-                  "w-[min(22rem,calc(100vw-1.5rem))]",
+                  "bg-white shadow-[0_6px_28px_rgba(76,96,133,0.22)] dark:bg-white dark:shadow-[0_8px_32px_rgba(0,0,0,0.35)]",
+                  "w-[min(16.5rem,calc(0.75*(100vw-1.5rem)))]",
                 )}
               >
                 <Image
@@ -182,25 +182,25 @@ export default function LoginPage() {
                   alt="Panorama"
                   fill
                   priority
-                  sizes="(max-width: 448px) min(100vw, 352px), 352px"
+                  sizes="(max-width: 448px) min(100vw, 264px), 264px"
                   className="object-contain p-[10%]"
                 />
               </div>
             </div>
 
-            <h1 className="mt-10 text-center font-headline text-[1.65rem] font-extrabold leading-tight tracking-tight text-[#2f3d52] dark:text-ds-foreground sm:mt-12 sm:text-3xl">
+            <h1 className="mt-5 text-center font-headline text-[1.5rem] font-extrabold leading-tight tracking-tight text-[#2f3d52] dark:text-ds-foreground sm:mt-6 sm:text-[1.65rem] md:text-3xl">
               Enhance your daily operations.
             </h1>
-            <p className="mt-2 text-center text-sm font-medium text-[#5a6d82] dark:text-ds-muted">
+            <p className="mt-1.5 text-center text-sm font-medium text-[#5a6d82] dark:text-ds-muted">
               Invite-only access for verified operators.
             </p>
 
-            <div className="mt-9 rounded-[1.35rem] bg-[linear-gradient(180deg,rgba(207,231,255,0.85)_0%,rgba(230,236,245,0.55)_100%)] p-[1px] shadow-[0_20px_50px_rgba(76,96,133,0.12)] dark:bg-ds-border dark:p-px dark:shadow-[0_16px_40px_rgba(0,0,0,0.25)]">
-              <div className="rounded-[1.3rem] border border-white/80 bg-white px-6 py-7 dark:border-ds-border dark:bg-ds-surface-primary sm:px-8 sm:py-8">
-                <form className="space-y-5" onSubmit={onSubmit} noValidate>
+            <div className="mt-5 rounded-[1.15rem] bg-[linear-gradient(180deg,rgba(207,231,255,0.85)_0%,rgba(230,236,245,0.55)_100%)] p-[1px] shadow-[0_20px_50px_rgba(76,96,133,0.12)] dark:bg-ds-border dark:p-px dark:shadow-[0_16px_40px_rgba(0,0,0,0.25)] sm:mt-6">
+              <div className="rounded-[1.1rem] border border-white/80 bg-white px-4 py-4 dark:border-ds-border dark:bg-ds-surface-primary sm:px-5 sm:py-5">
+                <form className="space-y-3.5" onSubmit={onSubmit} noValidate>
                   {formError ? (
                     <div
-                      className="ds-notification ds-notification-critical flex items-start justify-center gap-2 px-3 py-2 text-sm font-medium text-ds-foreground"
+                      className="ds-notification ds-notification-critical flex items-start justify-center gap-2 px-2.5 py-1.5 text-sm font-medium text-ds-foreground"
                       role="alert"
                     >
                       <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-ds-danger" aria-hidden />
@@ -270,7 +270,7 @@ export default function LoginPage() {
                     disabled={submitting}
                     className={cn(
                       buttonVariants({ surface: "light", intent: "accent" }),
-                      "w-full gap-2 py-3.5 text-xs font-extrabold uppercase tracking-[0.18em] disabled:opacity-60",
+                      "w-full gap-2 py-2.5 text-xs font-extrabold uppercase tracking-[0.18em] disabled:opacity-60",
                     )}
                   >
                     {submitting ? (
@@ -283,7 +283,7 @@ export default function LoginPage() {
                     )}
                   </button>
 
-                  <div className="flex flex-wrap items-center justify-between gap-3 pt-1 text-[11px] font-semibold uppercase tracking-wide">
+                  <div className="flex flex-wrap items-center justify-between gap-2 pt-0.5 text-[11px] font-semibold uppercase tracking-wide">
                     <a
                       href={mailtoInfo("Pulse — credentials help")}
                       className="text-[color-mix(in_srgb,var(--ds-success)_78%,#1a4d44)] no-underline hover:underline dark:text-ds-success"
@@ -298,7 +298,7 @@ export default function LoginPage() {
               </div>
             </div>
 
-            <div className="relative mt-10">
+            <div className="relative mt-5 sm:mt-6">
               <div className="h-px w-full bg-[color-mix(in_srgb,#4c6085_14%,transparent)] dark:bg-ds-border" />
               <p className="absolute left-1/2 top-1/2 w-max -translate-x-1/2 -translate-y-1/2 bg-[#fafbfd] px-3 text-[10px] font-bold uppercase tracking-[0.2em] text-[color-mix(in_srgb,var(--ds-text-primary)_38%,transparent)] dark:bg-[var(--ds-bg)] dark:text-ds-muted">
                 Secure link
@@ -307,7 +307,7 @@ export default function LoginPage() {
           </div>
         </main>
 
-        <footer className="relative z-10 mt-auto border-t border-[color-mix(in_srgb,#4c6085_10%,transparent)] bg-[color-mix(in_srgb,#ffffff_70%,transparent)] px-5 py-4 dark:border-ds-border dark:bg-ds-surface-primary/40 sm:px-8 lg:px-12">
+        <footer className="relative z-10 mt-auto border-t border-[color-mix(in_srgb,#4c6085_10%,transparent)] bg-[color-mix(in_srgb,#ffffff_70%,transparent)] px-5 py-2 dark:border-ds-border dark:bg-ds-surface-primary/40 sm:px-8 sm:py-2.5 lg:px-12">
           <p className="mx-auto max-w-6xl text-center text-[10px] font-bold uppercase tracking-wide text-[color-mix(in_srgb,var(--ds-text-primary)_48%,transparent)] dark:text-ds-muted">
             © {new Date().getFullYear()} Helix Systems
           </p>
