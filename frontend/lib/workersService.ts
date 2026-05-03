@@ -105,6 +105,10 @@ export type WorkersSettings = {
   role_feature_access?: Record<string, string[]>;
   /** Roles allowed to edit procedures (CMMS SOP library). Company admins can always edit. */
   procedures_edit_roles?: string[];
+  /** Roles allowed to PATCH work requests (assignee, zone, category, due date, etc.). Creators and company admins always can. */
+  work_request_edit_roles?: string[];
+  /** Roles allowed to create/rename/delete facility zones (work-request location list). Company admins always can. */
+  zone_manage_roles?: string[];
 };
 
 function companyQs(companyId: string | null): string {

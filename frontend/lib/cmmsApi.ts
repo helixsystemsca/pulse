@@ -37,6 +37,8 @@ export type ProcedureRow = {
   company_id: string;
   title: string;
   steps: ProcedureStep[];
+  /** Internal labels for admin filtering (not shown on worker steps). */
+  search_keywords?: string[];
   /** Workflow metadata (optional; older servers may omit). */
   created_by_user_id?: string | null;
   created_by_name?: string | null;
@@ -131,12 +133,17 @@ export async function patchWorkOrder(
   return apiFetch<WorkOrderRow>(`/api/v1/cmms/work-orders/${id}`, { method: "PATCH", json: patch });
 }
 
-export async function fetchProcedures(): Promise<ProcedureRow[]> {
-  return apiFetch<ProcedureRow[]>("/api/v1/cmms/procedures");
+export async function fetchProcedures(params?: { keyword?: string }): Promise<ProcedureRow[]> {
+  const sp = new URLSearchParams();
+  if (params?.keyword?.trim()) sp.set("keyword", params.keyword.trim());
+  const q = sp.toString();
+  return apiFetch<ProcedureRow[]>(`/api/v1/cmms/procedures${q ? `?${q}` : ""}`);
 }
 
 export async function createProcedure(
-  body: { title: string; steps: ProcedureStep[] } & Partial<Pick<ProcedureRow, "created_by_user_id" | "created_by_name" | "review_required">>,
+  body: { title: string; steps: ProcedureStep[]; search_keywords?: string[] } & Partial<
+    Pick<ProcedureRow, "created_by_user_id" | "created_by_name" | "review_required">
+  >,
 ): Promise<ProcedureRow> {
   return apiFetch<ProcedureRow>("/api/v1/cmms/procedures", { method: "POST", json: body });
 }
@@ -144,7 +151,7 @@ export async function createProcedure(
 export async function patchProcedure(
   id: string,
   body: Partial<
-    { title: string; steps: ProcedureStep[] } &
+    { title: string; steps: ProcedureStep[]; search_keywords: string[] } &
       Pick<
         ProcedureRow,
         | "review_required"

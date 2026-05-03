@@ -324,6 +324,8 @@ export function WorkersApp() {
   });
   const [roleFeatureAccessDraft, setRoleFeatureAccessDraft] = useState<Record<string, string[]>>({});
   const [proceduresEditRolesDraft, setProceduresEditRolesDraft] = useState<string[]>(["manager", "supervisor", "lead"]);
+  const [workRequestEditRolesDraft, setWorkRequestEditRolesDraft] = useState<string[]>(["manager", "supervisor"]);
+  const [zoneManageRolesDraft, setZoneManageRolesDraft] = useState<string[]>(["manager", "supervisor"]);
   const [accessPolicySaving, setAccessPolicySaving] = useState(false);
   const [permissionsRole, setPermissionsRole] = useState<PermissionRole>("manager");
   const [extraModulesDraft, setExtraModulesDraft] = useState<string[]>([]);
@@ -414,6 +416,16 @@ export function WorkersApp() {
         Array.isArray(st.settings.procedures_edit_roles) && st.settings.procedures_edit_roles.length
           ? [...st.settings.procedures_edit_roles]
           : ["manager", "supervisor", "lead"],
+      );
+      setWorkRequestEditRolesDraft(
+        Array.isArray(st.settings.work_request_edit_roles) && st.settings.work_request_edit_roles.length
+          ? [...st.settings.work_request_edit_roles]
+          : ["manager", "supervisor"],
+      );
+      setZoneManageRolesDraft(
+        Array.isArray(st.settings.zone_manage_roles) && st.settings.zone_manage_roles.length
+          ? [...st.settings.zone_manage_roles]
+          : ["manager", "supervisor"],
       );
       setSettingsDraft(st.settings);
     } catch (e: unknown) {
@@ -715,6 +727,8 @@ export function WorkersApp() {
         workers_page_delegation: delegationDraft,
         role_feature_access: roleFeatureAccessDraft,
         procedures_edit_roles: proceduresEditRolesDraft,
+        work_request_edit_roles: workRequestEditRolesDraft,
+        zone_manage_roles: zoneManageRolesDraft,
       });
       setContractFeatureNamesFromApi(r.contract_feature_names ?? []);
       setFullSettings(r.settings);
@@ -1211,6 +1225,74 @@ export function WorkersApp() {
                 <p className="mt-3 text-xs text-ds-muted">
                   Company admins can always edit procedures.
                 </p>
+              </Card>
+            ) : null}
+
+            {isTenantFullAdmin ? (
+              <Card variant="secondary" padding="md">
+                <h2 className="text-sm font-bold tracking-tight text-ds-foreground">Work request editing</h2>
+                <p className="mt-1 text-xs text-ds-muted">
+                  Who may change assignee, location (zone), category, due date, and other fields on an existing request.
+                  The person who submitted the request may always edit it; company admins always may.
+                </p>
+                <div className="mt-4 space-y-2">
+                  {PERMISSION_ROLE_OPTIONS.map((role) => {
+                    const on = workRequestEditRolesDraft.includes(role);
+                    return (
+                      <label key={`wr-edit-${role}`} className="flex cursor-pointer items-center justify-between gap-3 text-sm text-ds-foreground">
+                        <span className="font-semibold">{humanizeRole(role)}</span>
+                        <input
+                          type="checkbox"
+                          className={dsCheckboxClass}
+                          checked={on}
+                          onChange={(e) => {
+                            const next = e.target.checked;
+                            setWorkRequestEditRolesDraft((prev) => {
+                              const set = new Set(prev);
+                              if (next) set.add(role);
+                              else set.delete(role);
+                              return [...set];
+                            });
+                          }}
+                        />
+                      </label>
+                    );
+                  })}
+                </div>
+              </Card>
+            ) : null}
+
+            {isTenantFullAdmin ? (
+              <Card variant="secondary" padding="md">
+                <h2 className="text-sm font-bold tracking-tight text-ds-foreground">Facility locations (zones)</h2>
+                <p className="mt-1 text-xs text-ds-muted">
+                  Who may add, rename, or remove locations shown on work requests. Configure lists under Maintenance → Work
+                  requests → Manage locations.
+                </p>
+                <div className="mt-4 space-y-2">
+                  {PERMISSION_ROLE_OPTIONS.map((role) => {
+                    const on = zoneManageRolesDraft.includes(role);
+                    return (
+                      <label key={`zone-${role}`} className="flex cursor-pointer items-center justify-between gap-3 text-sm text-ds-foreground">
+                        <span className="font-semibold">{humanizeRole(role)}</span>
+                        <input
+                          type="checkbox"
+                          className={dsCheckboxClass}
+                          checked={on}
+                          onChange={(e) => {
+                            const next = e.target.checked;
+                            setZoneManageRolesDraft((prev) => {
+                              const set = new Set(prev);
+                              if (next) set.add(role);
+                              else set.delete(role);
+                              return [...set];
+                            });
+                          }}
+                        />
+                      </label>
+                    );
+                  })}
+                </div>
               </Card>
             ) : null}
 

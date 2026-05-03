@@ -12,6 +12,7 @@ import {
   ChevronsRight,
   ClipboardList,
   Loader2,
+  MapPin,
   Minus,
   MoreVertical,
   Pause,
@@ -30,8 +31,10 @@ import { PageBody } from "@/components/ui/PageBody";
 import { managerOrAbove } from "@/lib/pulse-roles";
 import { isTenantNavFeatureEnabled } from "@/lib/pulse-nav-features";
 import { isTenantNavPermissionGranted } from "@/lib/pulse-nav-permissions";
+import type { PulseAuthSession } from "@/lib/pulse-session";
 import { readSession } from "@/lib/pulse-session";
 import { sessionHasAnyRole } from "@/lib/pulse-roles";
+import { fetchWorkerSettings } from "@/lib/workersService";
 import type {
   WorkRequestDetail,
   WorkRequestRow,
@@ -210,6 +213,36 @@ function workItemDisplayId(row: WorkRequestRow): string {
   return `${code}-${row.id.slice(0, 6).toUpperCase()}`;
 }
 
+const DEFAULT_WR_ACCESS_ROLES = ["manager", "supervisor"] as const;
+
+function normalizeSettingsRoles(raw: string[] | undefined, fallback: readonly string[]): string[] {
+  if (!Array.isArray(raw) || raw.length === 0) return [...fallback];
+  const out = raw.map((x) => String(x).trim()).filter(Boolean);
+  return out.length ? [...new Set(out)] : [...fallback];
+}
+
+function userHasDelegatedWrEditRole(session: PulseAuthSession | null, editRoles: string[]): boolean {
+  if (!session) return false;
+  if (session.is_system_admin || sessionHasAnyRole(session, "system_admin", "company_admin")) return true;
+  if (session.facility_tenant_admin) return true;
+  return sessionHasAnyRole(session, ...editRoles);
+}
+
+function userCanEditWorkRequest(
+  session: PulseAuthSession | null,
+  wr: Pick<WorkRequestRow, "created_by_user_id">,
+  editRoles: string[],
+): boolean {
+  if (!session) return false;
+  if (userHasDelegatedWrEditRole(session, editRoles)) return true;
+  if (wr.created_by_user_id && wr.created_by_user_id === session.sub) return true;
+  return false;
+}
+
+function userCanManageFacilityZones(session: PulseAuthSession | null, zoneRoles: string[]): boolean {
+  return userHasDelegatedWrEditRole(session, zoneRoles);
+}
+
 export function WorkRequestsApp() {
   const router = useRouter();
   const pathname = usePathname();
@@ -224,7 +257,20 @@ export function WorkRequestsApp() {
   const sessionCompanyId = session?.company_id ?? null;
   const canManage = managerOrAbove(session);
   const canApprove = sessionHasAnyRole(session, "supervisor", "manager", "company_admin");
-  const canAssign = sessionHasAnyRole(session, "lead", "supervisor", "manager", "company_admin");
+  const [wrEditAccessRoles, setWrEditAccessRoles] = useState<string[]>([...DEFAULT_WR_ACCESS_ROLES]);
+  const [zoneManageAccessRoles, setZoneManageAccessRoles] = useState<string[]>([...DEFAULT_WR_ACCESS_ROLES]);
+  const hasWorkRequestEditRole = useMemo(
+    () => userHasDelegatedWrEditRole(session, wrEditAccessRoles),
+    [session, wrEditAccessRoles],
+  );
+  const canManageZones = useMemo(
+    () => userCanManageFacilityZones(session, zoneManageAccessRoles),
+    [session, zoneManageAccessRoles],
+  );
+  const canEditWorkRequest = useCallback(
+    (wr: Pick<WorkRequestRow, "created_by_user_id">) => userCanEditWorkRequest(session, wr, wrEditAccessRoles),
+    [session, wrEditAccessRoles],
+  );
   const canAccessWorkRequests = useMemo(() => {
     if (isSystemAdmin) return true;
     // Role-based module access is enforced server-side and reflected in `/auth/me`:
@@ -254,9 +300,9 @@ export function WorkRequestsApp() {
   const pageSize = 12;
 
   const defaultTab: WorkTab = useMemo(() => {
-    if (session && sessionHasAnyRole(session, "worker") && !canApprove && !canAssign) return "my_work";
+    if (session && sessionHasAnyRole(session, "worker") && !canApprove && !hasWorkRequestEditRole) return "my_work";
     return "approval";
-  }, [session, canApprove, canAssign]);
+  }, [session, canApprove, hasWorkRequestEditRole]);
 
   const [tab, setTab] = useState<WorkTab>(defaultTab);
 
@@ -365,6 +411,13 @@ export function WorkRequestsApp() {
   }, [PM_SUGGESTIONS, pmTitle]);
 
   const [detailEquipmentDraft, setDetailEquipmentDraft] = useState("");
+  const [detailZoneDraft, setDetailZoneDraft] = useState("");
+  const [detailCategoryDraft, setDetailCategoryDraft] = useState("");
+  const [detailDueDraft, setDetailDueDraft] = useState("");
+  const [detailPriorityDraft, setDetailPriorityDraft] = useState("medium");
+  const [zonesEditorOpen, setZonesEditorOpen] = useState(false);
+  const [zoneNameDrafts, setZoneNameDrafts] = useState<Record<string, string>>({});
+  const [newZoneName, setNewZoneName] = useState("");
   const lastCreateQuerySig = useRef<string | null>(null);
 
   useEffect(() => {
@@ -395,20 +448,34 @@ export function WorkRequestsApp() {
       setAssets([]);
       setEquipmentOptions([]);
       setWorkers([]);
+      setWrEditAccessRoles([...DEFAULT_WR_ACCESS_ROLES]);
+      setZoneManageAccessRoles([...DEFAULT_WR_ACCESS_ROLES]);
       return;
     }
     void (async () => {
       try {
-        const [z, a, w, eq] = await Promise.all([
+        const wsPromise =
+          effectiveCompanyId != null
+            ? fetchWorkerSettings(isSystemAdmin ? effectiveCompanyId : null).catch(() => null)
+            : Promise.resolve(null);
+        const [z, a, w, eq, ws] = await Promise.all([
           apiFetch<ZoneOpt[]>(`/api/v1/pulse/zones`),
           apiFetch<AssetOpt[]>(`/api/v1/pulse/assets`),
           apiFetch<WorkerOpt[]>(`/api/v1/pulse/workers`),
           fetchEquipmentList({}).catch(() => []),
+          wsPromise,
         ]);
         setZones(z);
         setAssets(a);
         setEquipmentOptions(eq.map((r) => ({ id: r.id, name: r.name })));
         setWorkers(w);
+        if (ws?.settings) {
+          setWrEditAccessRoles(normalizeSettingsRoles(ws.settings.work_request_edit_roles, DEFAULT_WR_ACCESS_ROLES));
+          setZoneManageAccessRoles(normalizeSettingsRoles(ws.settings.zone_manage_roles, DEFAULT_WR_ACCESS_ROLES));
+        } else {
+          setWrEditAccessRoles([...DEFAULT_WR_ACCESS_ROLES]);
+          setZoneManageAccessRoles([...DEFAULT_WR_ACCESS_ROLES]);
+        }
       } catch {
         setZones([]);
         setAssets([]);
@@ -416,7 +483,21 @@ export function WorkRequestsApp() {
         setWorkers([]);
       }
     })();
-  }, [dataEnabled, session?.access_token]);
+  }, [dataEnabled, session?.access_token, effectiveCompanyId, isSystemAdmin]);
+
+  useEffect(() => {
+    if (!zonesEditorOpen) return;
+    setZoneNameDrafts((prev) => {
+      const next = { ...prev };
+      for (const z of zones) {
+        if (next[z.id] === undefined) next[z.id] = z.name;
+      }
+      for (const k of Object.keys(next)) {
+        if (!zones.some((z) => z.id === k)) delete next[k];
+      }
+      return next;
+    });
+  }, [zonesEditorOpen, zones]);
 
   const wrFromUrl = searchParams.get("wr");
 
@@ -644,8 +725,16 @@ export function WorkRequestsApp() {
   useEffect(() => {
     if (detail) {
       setDetailEquipmentDraft(detail.equipment_id ?? "");
+      setDetailZoneDraft(detail.zone_id ?? "");
+      setDetailCategoryDraft(detail.category ?? "");
+      setDetailDueDraft(detail.due_date ? detail.due_date.slice(0, 10) : "");
+      setDetailPriorityDraft(detail.priority ?? "medium");
     } else {
       setDetailEquipmentDraft("");
+      setDetailZoneDraft("");
+      setDetailCategoryDraft("");
+      setDetailDueDraft("");
+      setDetailPriorityDraft("medium");
     }
   }, [detail]);
 
@@ -742,13 +831,13 @@ export function WorkRequestsApp() {
       });
     }
     // all
-    if (canApprove || canAssign || isSystemAdmin) return list;
+    if (canApprove || hasWorkRequestEditRole || isSystemAdmin) return list;
     // workers who somehow reach All tab still only see assigned/in-progress
     return list.filter((r) => r.assigned_user_id && me && r.assigned_user_id === me).filter((r) => {
       const s = st(r);
       return s === "assigned" || s === "in_progress";
     });
-  }, [rows, tab, session?.sub, canApprove, canAssign, isSystemAdmin]);
+  }, [rows, tab, session?.sub, canApprove, hasWorkRequestEditRole, isSystemAdmin]);
 
   async function approveItem(id: string) {
     if (!effectiveCompanyId || !canApprove) return;
@@ -778,7 +867,9 @@ export function WorkRequestsApp() {
   }
 
   async function assignItem(id: string, userId: string | null): Promise<boolean> {
-    if (!effectiveCompanyId || !canAssign) return false;
+    if (!effectiveCompanyId) return false;
+    const wr = rows.find((r) => r.id === id) ?? (detail?.id === id ? detail : null);
+    if (!wr || !canEditWorkRequest(wr)) return false;
     setActionBusy(true);
     try {
       await postWorkRequestAssign(isSystemAdmin ? effectiveCompanyId : null, id, userId);
@@ -874,8 +965,31 @@ export function WorkRequestsApp() {
     }
   }
 
+  async function saveDetailMetaFields() {
+    if (!detailId || !detail || !effectiveCompanyId || !canEditWorkRequest(detail)) return;
+    if (terminalRowStatus(detail.status)) return;
+    setActionBusy(true);
+    setListError(null);
+    try {
+      const dueIso = detailDueDraft.trim() ? `${detailDueDraft.trim()}T12:00:00.000Z` : null;
+      await patchWorkRequest(isSystemAdmin ? effectiveCompanyId : null, detailId, {
+        zone_id: detailZoneDraft.trim() || null,
+        category: detailCategoryDraft.trim() || null,
+        due_date: dueIso,
+        priority: detailPriorityDraft,
+      });
+      await loadDetail();
+      await loadList();
+    } catch (e) {
+      setListError(e instanceof Error ? e.message : "Could not save details");
+    } finally {
+      setActionBusy(false);
+    }
+  }
+
   async function saveDetailEquipment() {
-    if (!detailId || !effectiveCompanyId || !canManage) return;
+    if (!detailId || !detail || !effectiveCompanyId || !canEditWorkRequest(detail)) return;
+    if (terminalRowStatus(detail.status)) return;
     setActionBusy(true);
     try {
       await patchWorkRequest(isSystemAdmin ? effectiveCompanyId : null, detailId, {
@@ -883,6 +997,69 @@ export function WorkRequestsApp() {
       });
       await loadDetail();
       await loadList();
+    } finally {
+      setActionBusy(false);
+    }
+  }
+
+  async function createZoneFromEditor() {
+    const name = newZoneName.trim();
+    if (!name || !canManageZones) return;
+    setActionBusy(true);
+    setListError(null);
+    try {
+      await apiFetch(`/api/v1/pulse/zones`, { method: "POST", json: { name } });
+      setNewZoneName("");
+      const z = await apiFetch<ZoneOpt[]>(`/api/v1/pulse/zones`);
+      setZones(z);
+      await loadList();
+    } catch (e) {
+      setListError(e instanceof Error ? e.message : "Could not add location");
+    } finally {
+      setActionBusy(false);
+    }
+  }
+
+  async function saveZoneName(zoneId: string) {
+    if (!canManageZones) return;
+    const name = (zoneNameDrafts[zoneId] ?? "").trim();
+    if (!name) return;
+    setActionBusy(true);
+    setListError(null);
+    try {
+      await apiFetch(`/api/v1/pulse/zones/${encodeURIComponent(zoneId)}`, {
+        method: "PATCH",
+        json: { name },
+      });
+      const z = await apiFetch<ZoneOpt[]>(`/api/v1/pulse/zones`);
+      setZones(z);
+      await loadList();
+    } catch (e) {
+      setListError(e instanceof Error ? e.message : "Could not rename location");
+    } finally {
+      setActionBusy(false);
+    }
+  }
+
+  async function deleteZoneFromEditor(zoneId: string) {
+    if (!canManageZones) return;
+    if (
+      !window.confirm(
+        "Remove this location from the list? Existing work requests that reference it keep their link until you edit them.",
+      )
+    ) {
+      return;
+    }
+    setActionBusy(true);
+    setListError(null);
+    try {
+      await apiFetch(`/api/v1/pulse/zones/${encodeURIComponent(zoneId)}`, { method: "DELETE" });
+      const z = await apiFetch<ZoneOpt[]>(`/api/v1/pulse/zones`);
+      setZones(z);
+      await loadList();
+      if (detailId) await loadDetail();
+    } catch (e) {
+      setListError(e instanceof Error ? e.message : "Could not delete location");
     } finally {
       setActionBusy(false);
     }
@@ -981,6 +1158,23 @@ export function WorkRequestsApp() {
     }
   }
 
+  const assignTargetWr =
+    assignModalForId != null
+      ? rows.find((x) => x.id === assignModalForId) ?? (detail?.id === assignModalForId ? detail : null)
+      : null;
+  const canSaveAssign = assignTargetWr != null && canEditWorkRequest(assignTargetWr);
+
+  const detailMetaDirty = useMemo(() => {
+    if (!detail) return false;
+    const dueSlice = detail.due_date ? detail.due_date.slice(0, 10) : "";
+    return (
+      (detailZoneDraft || "") !== (detail.zone_id ?? "") ||
+      (detailCategoryDraft || "") !== (detail.category ?? "") ||
+      (detailDueDraft || "") !== dueSlice ||
+      (detailPriorityDraft || "") !== (detail.priority ?? "")
+    );
+  }, [detail, detailZoneDraft, detailCategoryDraft, detailDueDraft, detailPriorityDraft]);
+
   if (!canAccessWorkRequests) {
     return (
       <p className="text-sm text-pulse-muted">
@@ -1001,6 +1195,16 @@ export function WorkRequestsApp() {
         icon={ClipboardList}
         actions={
           <>
+            {canManageZones ? (
+              <button
+                type="button"
+                className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200/90 bg-white px-3 py-2.5 text-sm font-semibold text-pulse-navy shadow-sm transition-colors hover:bg-slate-50 dark:border-ds-border dark:bg-ds-primary dark:text-slate-100 dark:hover:bg-ds-interactive-hover"
+                onClick={() => setZonesEditorOpen(true)}
+              >
+                <MapPin className="h-4 w-4 shrink-0" aria-hidden />
+                Locations
+              </button>
+            ) : null}
             <button
               type="button"
               className="inline-flex items-center justify-center rounded-lg border border-slate-200/90 bg-white p-2.5 text-pulse-navy shadow-sm transition-colors hover:bg-slate-50 dark:border-ds-border dark:bg-ds-primary dark:text-slate-100 dark:hover:bg-ds-interactive-hover"
@@ -1079,6 +1283,19 @@ export function WorkRequestsApp() {
               Organization rules
             </button>
           ) : null}
+          {canManageZones ? (
+            <button
+              type="button"
+              className="block w-full px-3 py-2 text-left text-sm text-pulse-navy hover:bg-slate-50 dark:text-gray-100 dark:hover:bg-ds-interactive-hover"
+              onClick={() => {
+                setHeaderSettingsOpen(false);
+                setHeaderSettingsAnchor(null);
+                setZonesEditorOpen(true);
+              }}
+            >
+              Manage facility locations
+            </button>
+          ) : null}
         </div>
       ) : null}
 
@@ -1094,7 +1311,7 @@ export function WorkRequestsApp() {
         >
           Assigned to Me
         </button>
-        {(canApprove || canAssign || isSystemAdmin) ? (
+        {(canApprove || hasWorkRequestEditRole || isSystemAdmin) ? (
           <button
             type="button"
             onClick={() => setTab("approval")}
@@ -1105,7 +1322,7 @@ export function WorkRequestsApp() {
             Pending Approval
           </button>
         ) : null}
-        {(canApprove || canAssign || isSystemAdmin) ? (
+        {(canApprove || hasWorkRequestEditRole || isSystemAdmin) ? (
           <button
             type="button"
             onClick={() => setTab("all")}
@@ -1528,7 +1745,7 @@ export function WorkRequestsApp() {
                 </button>
               </>
             ) : null}
-            {canAssign && !terminalRowStatus(row.status) ? (
+            {canEditWorkRequest(row) && !terminalRowStatus(row.status) ? (
               <button
                 type="button"
                 className="block w-full px-3 py-2 text-left text-sm text-pulse-navy hover:bg-slate-50 dark:text-gray-100 dark:hover:bg-ds-interactive-hover"
@@ -1958,7 +2175,7 @@ export function WorkRequestsApp() {
               <div>
                 <h3 className={LABEL}>Assigned</h3>
                 <p className="mt-1.5 text-sm text-pulse-navy">{detail.assignee_name ?? "Unassigned"}</p>
-                {canAssign && !terminalRowStatus(detail.status) ? (
+                {canEditWorkRequest(detail) && !terminalRowStatus(detail.status) ? (
                   <div className="mt-3">
                     <label className={LABEL}>Assign to</label>
                     <select
@@ -1978,11 +2195,50 @@ export function WorkRequestsApp() {
               </div>
               <div>
                 <h3 className={LABEL}>Due date</h3>
-                <p
-                  className={`mt-1.5 text-sm tabular-nums ${detail.is_overdue ? "font-semibold text-[#c53030]" : "text-pulse-navy"}`}
-                >
-                  {formatDue(detail.due_date)}
-                </p>
+                {canEditWorkRequest(detail) && !terminalRowStatus(detail.status) ? (
+                  <input
+                    type="date"
+                    className={FIELD}
+                    value={detailDueDraft}
+                    onChange={(e) => setDetailDueDraft(e.target.value)}
+                  />
+                ) : (
+                  <p
+                    className={`mt-1.5 text-sm tabular-nums ${detail.is_overdue ? "font-semibold text-[#c53030]" : "text-pulse-navy"}`}
+                  >
+                    {formatDue(detail.due_date)}
+                  </p>
+                )}
+              </div>
+              <div>
+                <h3 className={LABEL}>Priority</h3>
+                {canEditWorkRequest(detail) && !terminalRowStatus(detail.status) ? (
+                  <select
+                    className={FIELD}
+                    value={detailPriorityDraft}
+                    onChange={(e) => setDetailPriorityDraft(e.target.value)}
+                  >
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                    <option value="critical">Critical</option>
+                  </select>
+                ) : (
+                  <p className="mt-1.5 text-sm capitalize text-pulse-navy">{detail.priority}</p>
+                )}
+              </div>
+              <div>
+                <h3 className={LABEL}>Category</h3>
+                {canEditWorkRequest(detail) && !terminalRowStatus(detail.status) ? (
+                  <input
+                    className={FIELD}
+                    value={detailCategoryDraft}
+                    onChange={(e) => setDetailCategoryDraft(e.target.value)}
+                    placeholder="e.g. HVAC, safety"
+                  />
+                ) : (
+                  <p className="mt-1.5 text-sm text-pulse-navy">{detail.category?.trim() ? detail.category : "—"}</p>
+                )}
               </div>
               <div>
                 <h3 className={LABEL}>Asset</h3>
@@ -1991,7 +2247,22 @@ export function WorkRequestsApp() {
               </div>
               <div>
                 <h3 className={LABEL}>Location</h3>
-                <p className="mt-1.5 text-sm text-pulse-navy">{detail.location_name ?? "—"}</p>
+                {canEditWorkRequest(detail) && !terminalRowStatus(detail.status) ? (
+                  <select
+                    className={FIELD}
+                    value={detailZoneDraft}
+                    onChange={(e) => setDetailZoneDraft(e.target.value)}
+                  >
+                    <option value="">None</option>
+                    {zones.map((z) => (
+                      <option key={z.id} value={z.id}>
+                        {z.name}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <p className="mt-1.5 text-sm text-pulse-navy">{detail.location_name ?? "—"}</p>
+                )}
               </div>
               <div className="sm:col-span-2">
                 <h3 className={LABEL}>Linked equipment</h3>
@@ -2007,7 +2278,7 @@ export function WorkRequestsApp() {
                 ) : (
                   <p className="mt-1.5 text-sm text-pulse-muted">None</p>
                 )}
-                {canManage ? (
+                {canEditWorkRequest(detail) && !terminalRowStatus(detail.status) ? (
                   <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-end">
                     <div className="min-w-0 flex-1">
                       <label className={LABEL} htmlFor="wr-detail-equipment">
@@ -2046,6 +2317,19 @@ export function WorkRequestsApp() {
               </div>
             </div>
 
+            {canEditWorkRequest(detail) && !terminalRowStatus(detail.status) && detailMetaDirty ? (
+              <div className="flex flex-wrap justify-end gap-2">
+                <button
+                  type="button"
+                  className={PRIMARY_BTN}
+                  disabled={actionBusy}
+                  onClick={() => void saveDetailMetaFields()}
+                >
+                  Save location &amp; details
+                </button>
+              </div>
+            ) : null}
+
             <div className="flex flex-wrap gap-2">
               {detail.status === "pending_approval" && canApprove ? (
                 <>
@@ -2062,7 +2346,7 @@ export function WorkRequestsApp() {
                   </button>
                 </>
               ) : null}
-              {detail.status === "approved" && canAssign ? (
+              {detail.status === "approved" && canEditWorkRequest(detail) ? (
                 <span className="text-sm text-pulse-muted">Assign a worker to move this item to Assigned.</span>
               ) : null}
               {detail.status === "assigned" ? (
@@ -2144,6 +2428,95 @@ export function WorkRequestsApp() {
             </div>
           </div>
         )}
+      </PulseDrawer>
+
+      <PulseDrawer
+        open={zonesEditorOpen}
+        title="Facility locations"
+        subtitle="Names appear in work request location lists. Who may edit this list is configured under Workers → Overview → Access policy."
+        onClose={() => {
+          setZonesEditorOpen(false);
+          setNewZoneName("");
+        }}
+        wide
+        labelledBy="wr-zones-title"
+      >
+        <p id="wr-zones-title" className="sr-only">
+          Facility locations
+        </p>
+        <div className="space-y-6">
+          <div className="rounded-lg border border-slate-200/90 bg-slate-50/80 p-4 dark:border-ds-border dark:bg-ds-secondary/60">
+            <label className={LABEL} htmlFor="wr-new-zone">
+              Add location
+            </label>
+            <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-end">
+              <input
+                id="wr-new-zone"
+                className={FIELD}
+                value={newZoneName}
+                onChange={(e) => setNewZoneName(e.target.value)}
+                placeholder="e.g. Building A — Floor 2"
+              />
+              <button
+                type="button"
+                className={PRIMARY_BTN}
+                disabled={actionBusy || !newZoneName.trim()}
+                onClick={() => void createZoneFromEditor()}
+              >
+                Add
+              </button>
+            </div>
+          </div>
+          <div className="space-y-3">
+            <h3 className={LABEL}>Existing locations</h3>
+            {zones.length === 0 ? (
+              <p className="text-sm text-pulse-muted">No locations yet. Add one above.</p>
+            ) : (
+              zones.map((z) => {
+                const draft = zoneNameDrafts[z.id] ?? z.name;
+                const dirty = draft.trim() !== z.name;
+                return (
+                  <div
+                    key={z.id}
+                    className="flex flex-col gap-2 rounded-lg border border-slate-200/90 bg-white p-3 sm:flex-row sm:items-end dark:border-ds-border dark:bg-ds-primary"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <label className={LABEL} htmlFor={`zone-${z.id}`}>
+                        Name
+                      </label>
+                      <input
+                        id={`zone-${z.id}`}
+                        className={FIELD}
+                        value={draft}
+                        onChange={(e) =>
+                          setZoneNameDrafts((prev) => ({ ...prev, [z.id]: e.target.value }))
+                        }
+                      />
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        className={PRIMARY_BTN}
+                        disabled={actionBusy || !dirty || !draft.trim()}
+                        onClick={() => void saveZoneName(z.id)}
+                      >
+                        Save
+                      </button>
+                      <button
+                        type="button"
+                        className="rounded-[10px] border border-rose-200 bg-white px-4 py-2 text-sm font-semibold text-rose-800 shadow-sm hover:bg-rose-50 disabled:opacity-50 dark:border-rose-500/40 dark:bg-ds-primary dark:text-rose-100"
+                        disabled={actionBusy}
+                        onClick={() => void deleteZoneFromEditor(z.id)}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
       </PulseDrawer>
 
       <PulseDrawer
@@ -2370,7 +2743,7 @@ export function WorkRequestsApp() {
               <button
                 type="button"
                 className={PRIMARY_BTN}
-                disabled={actionBusy || !canAssign}
+                disabled={actionBusy || !canSaveAssign}
                 onClick={() =>
                   void (async () => {
                     if (!assignModalForId) return;

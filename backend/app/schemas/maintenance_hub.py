@@ -7,6 +7,8 @@ from typing import Any, Literal, Optional
 
 WorkOrderSourceApi = Literal["manual", "auto_pm", "downtime_detected"]
 
+import re
+
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 WorkOrderType = Literal["preventative", "issue", "request"]
@@ -18,6 +20,51 @@ class ProcedureStepOut(BaseModel):
     type: Literal["instruction", "checklist", "photo", "warning"]
     content: str
     required: bool = False
+
+
+def normalize_procedure_search_keywords(v: Any) -> list[str]:
+    """Dedupe, trim, cap count/length for internal procedure lookup labels."""
+    if v is None:
+        return []
+    if not isinstance(v, list):
+        return []
+    out: list[str] = []
+    seen: set[str] = set()
+    for x in v:
+        s = str(x).strip()[:64]
+        if not s:
+            continue
+        low = s.lower()
+        if low in seen:
+            continue
+        seen.add(low)
+        out.append(s)
+        if len(out) >= 32:
+            break
+    return out
+
+
+def parse_procedure_keyword_filter(raw: Optional[str]) -> list[str]:
+    """Split comma/semicolon/newline separated filter; lowercase tokens."""
+    if not raw or not str(raw).strip():
+        return []
+    parts = re.split(r"[,;\n]+", str(raw).strip())
+    return [p.strip().lower() for p in parts if p.strip()][:24]
+
+
+def procedure_row_matches_keyword_tokens(stored: Any, tokens: list[str]) -> bool:
+    """True if any stored keyword contains any token (case-insensitive substring)."""
+    if not tokens:
+        return True
+    kws: list[str] = []
+    if isinstance(stored, list):
+        kws = [str(x).strip().lower() for x in stored if str(x).strip()]
+    for tok in tokens:
+        if not tok:
+            continue
+        if any(tok in kw for kw in kws):
+            return True
+    return False
 
 
 def normalize_procedure_steps(v: Any) -> list[ProcedureStepOut]:
@@ -47,6 +94,7 @@ class ProcedureOut(BaseModel):
     company_id: str
     title: str
     steps: list[ProcedureStepOut]
+    search_keywords: list[str] = Field(default_factory=list, description="Internal labels for admin filtering only")
     created_by_user_id: Optional[str] = None
     created_by_name: Optional[str] = None
     review_required: bool = False
@@ -65,6 +113,11 @@ class ProcedureOut(BaseModel):
     @classmethod
     def _steps(cls, v: Any) -> list[ProcedureStepOut]:
         return normalize_procedure_steps(v)
+
+    @field_validator("search_keywords", mode="before")
+    @classmethod
+    def _search_keywords(cls, v: Any) -> list[str]:
+        return normalize_procedure_search_keywords(v)
 
     @model_validator(mode="before")
     @classmethod
@@ -102,14 +155,21 @@ def procedure_steps_to_storage(steps: list[ProcedureStepIn]) -> list[dict[str, A
 class ProcedureCreate(BaseModel):
     title: str = Field(..., min_length=1, max_length=255)
     steps: list[ProcedureStepIn] = Field(default_factory=list)
+    search_keywords: list[str] = Field(default_factory=list)
     created_by_user_id: Optional[str] = None
     created_by_name: Optional[str] = Field(None, max_length=255)
     review_required: bool = False
+
+    @field_validator("search_keywords", mode="before")
+    @classmethod
+    def _create_kw(cls, v: Any) -> list[str]:
+        return normalize_procedure_search_keywords(v)
 
 
 class ProcedureUpdate(BaseModel):
     title: Optional[str] = Field(None, min_length=1, max_length=255)
     steps: Optional[list[ProcedureStepIn]] = None
+    search_keywords: Optional[list[str]] = None
     created_by_user_id: Optional[str] = None
     created_by_name: Optional[str] = Field(None, max_length=255)
     review_required: Optional[bool] = None
@@ -119,6 +179,13 @@ class ProcedureUpdate(BaseModel):
     revised_by_user_id: Optional[str] = None
     revised_by_name: Optional[str] = Field(None, max_length=255)
     revised_at: Optional[datetime] = None
+
+    @field_validator("search_keywords", mode="before")
+    @classmethod
+    def _update_kw(cls, v: Any) -> Optional[list[str]]:
+        if v is None:
+            return None
+        return normalize_procedure_search_keywords(v)
 
 
 class ProcedureStepImageOut(BaseModel):

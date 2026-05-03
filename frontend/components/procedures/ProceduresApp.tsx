@@ -43,6 +43,23 @@ function newKey() {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 }
 
+/** Comma/semicolon/newline separated → normalized list for API (deduped, capped). */
+function parseKeywordCsv(csv: string): string[] {
+  const parts = csv.split(/[,;\n]+/);
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const p of parts) {
+    const s = p.trim().slice(0, 64);
+    if (!s) continue;
+    const low = s.toLowerCase();
+    if (seen.has(low)) continue;
+    seen.add(low);
+    out.push(s);
+    if (out.length >= 32) break;
+  }
+  return out;
+}
+
 function toDraftFromProcedure(row: ProcedureRow): DraftStep[] {
   return row.steps.map((s) => ({
     key: newKey(),
@@ -70,11 +87,15 @@ export function ProceduresApp() {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
   const [title, setTitle] = useState("");
+  const [createKeywordsCsv, setCreateKeywordsCsv] = useState("");
+  const [libraryKeyword, setLibraryKeyword] = useState("");
+  const [debouncedLibraryKeyword, setDebouncedLibraryKeyword] = useState("");
   const [draftSteps, setDraftSteps] = useState<DraftStep[]>([
     { key: newKey(), text: "", file: null, image_url: null, recommended_workers: null, tools_csv: "" },
   ]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState("");
+  const [editKeywordsCsv, setEditKeywordsCsv] = useState("");
   const [editSteps, setEditSteps] = useState<DraftStep[]>([]);
   const [editCreatorName, setEditCreatorName] = useState("");
   const [ackOpen, setAckOpen] = useState(false);
@@ -108,14 +129,21 @@ export function ProceduresApp() {
     setLoading(true);
     setErr(null);
     try {
-      const list = await fetchProcedures();
+      const list = await fetchProcedures(
+        debouncedLibraryKeyword.trim() ? { keyword: debouncedLibraryKeyword.trim() } : undefined,
+      );
       setRows(list);
     } catch (e) {
       setErr(parseClientApiError(e).message);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [debouncedLibraryKeyword]);
+
+  useEffect(() => {
+    const id = window.setTimeout(() => setDebouncedLibraryKeyword(libraryKeyword.trim()), 400);
+    return () => window.clearTimeout(id);
+  }, [libraryKeyword]);
 
   useEffect(() => {
     void load();
@@ -138,6 +166,7 @@ export function ProceduresApp() {
   useEffect(() => {
     if (!selected) {
       setEditTitle("");
+      setEditKeywordsCsv("");
       setEditSteps([]);
       setEditCreatorName("");
       setAckOpen(false);
@@ -147,6 +176,7 @@ export function ProceduresApp() {
       return;
     }
     setEditTitle(selected.title);
+    setEditKeywordsCsv((selected.search_keywords ?? []).join(", "));
     setEditSteps(toDraftFromProcedure(selected));
     setEditCreatorName(selected.created_by_name?.trim() || "");
     setAckForId(selected.id);
@@ -219,12 +249,14 @@ export function ProceduresApp() {
       const proc = await createProcedure({
         title: t,
         steps: normalized,
+        search_keywords: parseKeywordCsv(createKeywordsCsv),
         created_by_user_id: creatorId,
         created_by_name: creatorName,
         review_required: needsReview,
       });
       await uploadPendingFiles(proc.id, draftSteps);
       setTitle("");
+      setCreateKeywordsCsv("");
       setDraftSteps([{ key: newKey(), text: "", file: null, image_url: null, recommended_workers: null, tools_csv: "" }]);
       await load();
       setIsCreating(false);
@@ -337,6 +369,7 @@ export function ProceduresApp() {
       await patchProcedure(selectedId, {
         title: t,
         steps: normalized,
+        search_keywords: parseKeywordCsv(editKeywordsCsv),
         revised_by_user_id: reviserId,
         revised_by_name: reviserName,
         ...(canReview
@@ -520,6 +553,7 @@ export function ProceduresApp() {
               className="rounded-[10px] border border-ds-border bg-ds-primary px-5 py-2.5 text-sm font-semibold text-ds-foreground shadow-sm transition-colors hover:bg-ds-secondary disabled:opacity-50 dark:bg-ds-secondary"
               onClick={() => {
                 setIsCreating(false);
+                setCreateKeywordsCsv("");
                 setErr(null);
               }}
               disabled={saving}
@@ -535,6 +569,7 @@ export function ProceduresApp() {
                   setIsCreating(true);
                   setSelectedId(null);
                   setEditing(false);
+                  setCreateKeywordsCsv("");
                   setErr(null);
                 }}
               >
@@ -657,6 +692,19 @@ export function ProceduresApp() {
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
               />
+              <label className="mt-3 block text-xs font-semibold uppercase text-ds-muted" htmlFor={`${formId}-new-kw`}>
+                Internal keywords (optional)
+              </label>
+              <input
+                id={`${formId}-new-kw`}
+                className="mt-1 w-full rounded-md border border-ds-border bg-ds-primary px-3 py-2 text-sm dark:bg-ds-secondary"
+                placeholder="e.g. Tile, Pool, Arena, Pool Shutdown"
+                value={createKeywordsCsv}
+                onChange={(e) => setCreateKeywordsCsv(e.target.value)}
+              />
+              <p className="mt-1 text-[10px] text-ds-muted">
+                Comma-separated. Used only for lookup and filtering here — not shown on worker procedure steps.
+              </p>
               {renderStepEditor(draftSteps, setDraftSteps, `${formId}-new`)}
               <button
                 type="button"
@@ -672,6 +720,7 @@ export function ProceduresApp() {
                   className={cn(buttonVariants({ surface: "light", intent: "secondary" }), "px-4 py-2.5 text-sm")}
                   onClick={() => {
                     setIsCreating(false);
+                    setCreateKeywordsCsv("");
                     setErr(null);
                   }}
                   disabled={saving}
@@ -693,8 +742,23 @@ export function ProceduresApp() {
         ) : null}
 
         <section className="overflow-hidden rounded-xl border border-ds-border bg-ds-primary shadow-[var(--ds-shadow-card)]">
-          <div className="border-b border-ds-border bg-ds-surface-secondary px-4 py-2.5">
+          <div className="space-y-2 border-b border-ds-border bg-ds-surface-secondary px-4 py-2.5">
             <h2 className="text-sm font-semibold uppercase tracking-wide text-ds-foreground">Library</h2>
+            <div>
+              <label className="block text-[10px] font-semibold uppercase tracking-wide text-ds-muted" htmlFor={`${formId}-lib-kw`}>
+                Filter by internal keyword
+              </label>
+              <input
+                id={`${formId}-lib-kw`}
+                type="search"
+                className="mt-1 w-full rounded-md border border-ds-border bg-ds-primary px-2.5 py-1.5 text-sm text-ds-foreground dark:bg-ds-secondary"
+                placeholder="e.g. Tile or Pool Shutdown (comma = any match)"
+                value={libraryKeyword}
+                onChange={(e) => setLibraryKeyword(e.target.value)}
+                autoComplete="off"
+              />
+              <p className="mt-0.5 text-[10px] text-ds-muted">Uses saved procedure tags only — not step text.</p>
+            </div>
           </div>
           <div className={`p-6 ${isCreating ? "pointer-events-none opacity-50" : ""}`} aria-hidden={isCreating}>
           {loading ? (
@@ -716,6 +780,12 @@ export function ProceduresApp() {
                   >
                     <div className="min-w-0">
                       <span className="font-medium">{r.title}</span>
+                      {(canReview || isCompanyAdmin) && (r.search_keywords?.length ?? 0) > 0 ? (
+                        <p className="mt-0.5 truncate text-[10px] text-ds-muted" title={(r.search_keywords ?? []).join(", ")}>
+                          Tags: {(r.search_keywords ?? []).slice(0, 4).join(" · ")}
+                          {(r.search_keywords ?? []).length > 4 ? "…" : ""}
+                        </p>
+                      ) : null}
                       <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] font-semibold text-ds-muted">
                         <span>By {r.created_by_name?.trim() || "—"}</span>
                         {r.review_required ? (
@@ -808,6 +878,16 @@ export function ProceduresApp() {
                   className="mt-1 w-full rounded-md border border-ds-border bg-ds-primary px-3 py-2 text-sm dark:bg-ds-secondary"
                   value={editTitle}
                   onChange={(e) => setEditTitle(e.target.value)}
+                />
+                <label className="mt-3 block text-xs font-semibold uppercase text-ds-muted" htmlFor={`${formId}-edit-kw`}>
+                  Internal keywords
+                </label>
+                <input
+                  id={`${formId}-edit-kw`}
+                  className="mt-1 w-full rounded-md border border-ds-border bg-ds-primary px-3 py-2 text-sm dark:bg-ds-secondary"
+                  placeholder="Comma-separated tags for filtering"
+                  value={editKeywordsCsv}
+                  onChange={(e) => setEditKeywordsCsv(e.target.value)}
                 />
                 {renderStepEditor(editSteps, setEditSteps, `${formId}-edit`)}
                 <button
@@ -935,6 +1015,12 @@ export function ProceduresApp() {
                   <p className="text-sm font-semibold text-ds-foreground">Title</p>
                   <p className="mt-1 text-sm text-ds-muted">{selected.title}</p>
                 </div>
+                {(canReview || isCompanyAdmin || canEditSelected) && (selected.search_keywords?.length ?? 0) > 0 ? (
+                  <p className="text-xs text-ds-muted">
+                    <span className="font-semibold text-ds-foreground">Internal tags: </span>
+                    {(selected.search_keywords ?? []).join(", ")}
+                  </p>
+                ) : null}
                 <ol className="space-y-3">
                   {selected.steps.map((s, idx) => {
                     const step = typeof s === "string" ? { text: s } : s;

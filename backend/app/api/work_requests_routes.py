@@ -22,6 +22,8 @@ from app.services.gamification_service import sync_linked_task_assignee_from_wor
 from app.services.pm_task_service import sync_pm_task_after_work_order_completed
 from app.models.domain import EquipmentPart, FacilityEquipment, Tool, User, UserRole, Zone
 from app.core.org_module_settings_merge import merge_org_module_settings
+from app.core.tenant_feature_access import load_merged_workers_settings
+from app.core.work_request_access import user_may_edit_work_request
 from app.models.pulse_models import (
     PulseOrgModuleSettings,
     PulseWorkOrderType,
@@ -628,14 +630,12 @@ async def patch_wr(
         await db.refresh(wr)
         return await _detail(db, cid, wr_id)
 
-    if not user_has_any_role(
-        user,
-        UserRole.system_admin,
-        UserRole.company_admin,
-        UserRole.manager,
-        UserRole.supervisor,
-    ) and not user.is_system_admin:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="manager or above required")
+    merged_workers = await load_merged_workers_settings(db, cid)
+    if not user_may_edit_work_request(user, wr, merged_workers):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not allowed to edit this work request (needs creator, company admin, or a role allowed in Workers settings)",
+        )
     if "tool_id" in data and data["tool_id"] and not await pulse_svc.tool_in_company(db, cid, data["tool_id"]):
         raise HTTPException(status_code=400, detail="Unknown asset")
     if "equipment_id" in data and data["equipment_id"]:
@@ -732,12 +732,18 @@ async def post_comment(
 @router.post("/{wr_id}/assign", response_model=WorkRequestDetailOut)
 async def post_assign(
     db: Db,
-    user: MgrUser,
+    user: WrReader,
     cid: CompanyId,
     wr_id: str,
     body: WorkRequestAssignIn,
 ) -> WorkRequestDetailOut:
     wr = await _get_wr(db, cid, wr_id)
+    merged_workers = await load_merged_workers_settings(db, cid)
+    if not user_may_edit_work_request(user, wr, merged_workers):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not allowed to assign this work request (needs creator, company admin, or a role allowed in Workers settings)",
+        )
     uid = body.user_id
     if uid and not await pulse_svc._user_in_company(db, cid, uid):
         raise HTTPException(status_code=400, detail="Unknown assignee")

@@ -32,6 +32,10 @@ DEFAULT_WORKERS_SETTINGS: dict[str, Any] = {
     "workers_page_delegation": {"manager": False, "supervisor": False, "lead": False},
     #: Optional per-role product modules (keys in GLOBAL_SYSTEM_FEATURES). Missing role key => full contract.
     "role_feature_access": {},
+    #: Roles (JWT `users.roles`) that may PATCH work requests (assignee, zone, due date, etc.). Company admins always can.
+    "work_request_edit_roles": ["manager", "supervisor"],
+    #: Roles that may add/rename/delete facility zones (work-request locations). Company admins always can.
+    "zone_manage_roles": ["manager", "supervisor"],
 }
 
 

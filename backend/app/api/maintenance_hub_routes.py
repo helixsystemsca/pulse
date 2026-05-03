@@ -57,7 +57,10 @@ from app.schemas.maintenance_hub import (
     WorkOrderUpdate,
     WorkOrderStatusApi,
     WorkOrderType,
+    normalize_procedure_search_keywords,
     normalize_procedure_steps,
+    parse_procedure_keyword_filter,
+    procedure_row_matches_keyword_tokens,
     procedure_steps_to_storage,
 )
 
@@ -334,11 +337,22 @@ async def delete_work_order(db: Db, cid: CompanyId, work_order_id: str) -> None:
 
 
 @router.get("/procedures", response_model=list[ProcedureOut])
-async def list_procedures(db: Db, cid: CompanyId) -> list[ProcedureOut]:
+async def list_procedures(
+    db: Db,
+    cid: CompanyId,
+    keyword: Optional[str] = Query(
+        None,
+        description="Comma-separated tokens; procedures whose internal keywords contain any token (case-insensitive).",
+    ),
+) -> list[ProcedureOut]:
     q = await db.execute(
         select(PulseProcedure).where(PulseProcedure.company_id == cid).order_by(PulseProcedure.title)
     )
-    return [ProcedureOut.model_validate(r) for r in q.scalars().all()]
+    rows = list(q.scalars().all())
+    tokens = parse_procedure_keyword_filter(keyword)
+    if tokens:
+        rows = [r for r in rows if procedure_row_matches_keyword_tokens(getattr(r, "search_keywords", None), tokens)]
+    return [ProcedureOut.model_validate(r) for r in rows]
 
 
 @router.post("/procedures", response_model=ProcedureOut, status_code=status.HTTP_201_CREATED)
@@ -346,10 +360,12 @@ async def create_procedure(
     db: Db, cid: CompanyId, body: ProcedureCreate, user: Annotated[User, Depends(require_tenant_user)]
 ) -> ProcedureOut:
     payload = procedure_steps_to_storage(body.steps) if body.steps else []
+    kw = normalize_procedure_search_keywords(body.search_keywords)
     row = PulseProcedure(
         company_id=cid,
         title=body.title.strip(),
         steps=payload,
+        search_keywords=kw,
         created_by_user_id=body.created_by_user_id or str(user.id),
         created_by_name=(body.created_by_name or "").strip() or (str(user.full_name or "").strip() or str(user.email)),
         review_required=bool(body.review_required),
@@ -388,6 +404,9 @@ async def update_procedure(
         raw_steps = patch["steps"]
         parsed = [ProcedureStepIn.model_validate(s) for s in raw_steps]
         row.steps = procedure_steps_to_storage(parsed)
+        mutated = True
+    if "search_keywords" in patch:
+        row.search_keywords = normalize_procedure_search_keywords(patch.get("search_keywords"))
         mutated = True
     if "created_by_user_id" in patch:
         row.created_by_user_id = patch["created_by_user_id"]

@@ -21,6 +21,8 @@ from app.core.user_avatar_upload import INTERNAL_AVATAR_PATH, co_worker_avatar_u
 from app.core.user_roles import is_field_worker_like, primary_jwt_role
 from app.core.user_roles import user_has_any_role
 from app.core.database import get_db
+from app.core.tenant_feature_access import load_merged_workers_settings
+from app.core.work_request_access import user_may_manage_facility_zones
 from app.models.domain import (
     InventoryItem,
     OperationalRole,
@@ -49,6 +51,8 @@ from app.models.pulse_models import (
 )
 from app.modules.pulse import project_service as proj_task_svc
 from app.modules.pulse import service as pulse_svc
+from app.schemas.devices import ZoneCreateIn, ZoneUpdateIn
+from app.services.devices.device_service import DeviceService
 from app.services.schedule_facility_zones import ensure_schedule_facility_zones
 from app.services.gamification_service import ensure_task_for_work_request
 from app.schemas.pulse import (
@@ -1159,6 +1163,86 @@ async def list_zones(db: Db, cid: CompanyId) -> list[ZoneOut]:
     zq = await db.execute(select(Zone).where(Zone.company_id == cid).order_by(Zone.name))
     zones = zq.scalars().all()
     return [ZoneOut(id=z.id, name=z.name, meta=dict(z.meta or {})) for z in zones]
+
+
+def _device_hub_svc(db: AsyncSession) -> DeviceService:
+    return DeviceService(db)
+
+
+@router.post("/zones", response_model=ZoneOut, status_code=status.HTTP_201_CREATED)
+async def create_zone_pulse(
+    db: Db,
+    cid: CompanyId,
+    body: ZoneCreateIn,
+    user: Annotated[User, Depends(require_tenant_user)],
+) -> ZoneOut:
+    merged = await load_merged_workers_settings(db, cid)
+    if not user_may_manage_facility_zones(user, merged):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not allowed to create facility locations (see Workers → settings: zone_manage_roles)",
+        )
+    z = await _device_hub_svc(db).create_zone(
+        company_id=cid,
+        name=body.name,
+        description=body.description,
+        meta=body.meta,
+    )
+    await db.commit()
+    await db.refresh(z)
+    return ZoneOut(id=z.id, name=z.name, meta=dict(z.meta or {}))
+
+
+@router.patch("/zones/{zone_id}", response_model=ZoneOut)
+async def patch_zone_pulse(
+    zone_id: str,
+    body: ZoneUpdateIn,
+    db: Db,
+    cid: CompanyId,
+    user: Annotated[User, Depends(require_tenant_user)],
+) -> ZoneOut:
+    merged = await load_merged_workers_settings(db, cid)
+    if not user_may_manage_facility_zones(user, merged):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not allowed to edit facility locations (see Workers → settings: zone_manage_roles)",
+        )
+    updates = body.model_dump(exclude_unset=True)
+    if not updates:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="no fields to update")
+    try:
+        z = await _device_hub_svc(db).update_zone(company_id=cid, zone_id=zone_id, updates=updates)
+        await db.commit()
+        await db.refresh(z)
+        return ZoneOut(id=z.id, name=z.name, meta=dict(z.meta or {}))
+    except LookupError:
+        await db.rollback()
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="zone not found") from None
+    except ValueError as e:
+        await db.rollback()
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
+
+
+@router.delete("/zones/{zone_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_zone_pulse(
+    zone_id: str,
+    db: Db,
+    cid: CompanyId,
+    user: Annotated[User, Depends(require_tenant_user)],
+) -> Response:
+    merged = await load_merged_workers_settings(db, cid)
+    if not user_may_manage_facility_zones(user, merged):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not allowed to delete facility locations (see Workers → settings: zone_manage_roles)",
+        )
+    try:
+        await _device_hub_svc(db).delete_zone(company_id=cid, zone_id=zone_id)
+        await db.commit()
+    except LookupError:
+        await db.rollback()
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="zone not found") from None
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.get("/schedule-facilities", response_model=list[ZoneOut])

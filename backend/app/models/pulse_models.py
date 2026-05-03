@@ -69,6 +69,10 @@ class PulseProcedure(Base):
     )
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     steps: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, server_default=text("'[]'::jsonb"))
+    # Internal-only labels for filtering / lookup (not shown on worker-facing steps). JSON array of strings.
+    search_keywords: Mapped[list[Any]] = mapped_column(
+        JSONB, nullable=False, server_default=text("'[]'::jsonb")
+    )
     created_by_user_id: Mapped[Optional[str]] = mapped_column(
         UUID(as_uuid=False), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
     )
