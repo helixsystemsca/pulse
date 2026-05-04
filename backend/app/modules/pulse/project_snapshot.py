@@ -71,7 +71,7 @@ async def generateProjectSnapshot(db: AsyncSession, *, company_id: str, project_
     timeline = {
         "target_start_date": p.start_date,
         "target_end_date": p.end_date,
-        "completed_at": p.updated_at if p.status == "completed" else None,
+        "completed_at": getattr(p, "completed_at", None),
         "generated_at": now,
     }
 

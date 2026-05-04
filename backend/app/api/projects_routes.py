@@ -36,6 +36,7 @@ from app.models.pulse_models import (
 )
 from app.modules.pulse import accountability_service as acc_svc
 from app.modules.pulse import project_automation_engine, project_service as proj_svc
+from app.services.projects.completion import complete_and_archive_pulse_project, next_period_start_date
 from app.modules.pulse.ready_proximity import task_priority_str
 from app.modules.pulse.task_dependencies import (
     compute_blocking_for_tasks,
@@ -275,31 +276,7 @@ async def _material_out(db: Db, cid: str, m: PulseProjectTaskMaterial) -> TaskMa
     )
 
 
-def _next_start_date(cur: datetime.date, freq: str) -> datetime.date:
-    f = (freq or "").strip().lower()
-    if f in ("quarterly", "quarter"):
-        months = 3
-    elif f in ("semi-annual", "semiannual", "semi annual"):
-        months = 6
-    elif f in ("annual", "yearly"):
-        months = 12
-    else:
-        months = 0
-    if months <= 0:
-        return cur
-    y = cur.year
-    m = cur.month + months
-    while m > 12:
-        y += 1
-        m -= 12
-    # clamp day to month length
-    d = cur.day
-    for day in (d, 28, 27, 26, 25):
-        try:
-            return cur.replace(year=y, month=m, day=day)
-        except ValueError:
-            continue
-    return cur.replace(year=y, month=m, day=1)
+_next_start_date = next_period_start_date
 
 
 @router.get("/categories", response_model=list[CategoryOut])
@@ -595,7 +572,7 @@ async def list_projects(db: Db, cid: CompanyId) -> list[ProjectOutWithProgress]:
                 PulseProject.completed_at.isnot(None),
                 year_clause,
             )
-            .values(archived_at=now)
+            .values(archived_at=now, status=PulseProjectStatus.archived)
         )
         await db.commit()
     rows = (await db.execute(select(PulseProject).where(PulseProject.company_id == cid))).scalars().all()
@@ -1086,12 +1063,11 @@ async def patch_project(
             setattr(p, k, v)
     if p.end_date < p.start_date:
         raise HTTPException(status_code=400, detail="end_date must be on or after start_date")
-    if (
-        old_project_status != PulseProjectStatus.completed
-        and p.status == PulseProjectStatus.completed
-    ):
-        # Annual snapshot: stay in Completed until Jan 1 in the company timezone archives it.
-        p.completed_at = datetime.now(timezone.utc)
+    if old_project_status not in (
+        PulseProjectStatus.completed,
+        PulseProjectStatus.archived,
+    ) and p.status == PulseProjectStatus.completed:
+        completed_at = datetime.now(timezone.utc)
         await _log_activity(
             db,
             project_id=str(p.id),
@@ -1099,103 +1075,13 @@ async def patch_project(
             title="Project completed",
             description="Project marked complete.",
         )
-        freq = (getattr(p, "repopulation_frequency", None) or "").strip()
-        if freq and freq.lower() not in ("once", "one-time", "one time"):
-            # Clone project (and tasks + materials) into a new future project.
-            dur_days = max(0, int((p.end_date - p.start_date).days))
-            ns = _next_start_date(p.start_date, freq)
-            ne = ns.fromordinal(ns.toordinal() + dur_days)
-            new_proj = PulseProject(
-                company_id=cid,
-                name=p.name,
-                description=p.description,
-                owner_user_id=str(p.owner_user_id) if getattr(p, "owner_user_id", None) else None,
-                created_by_user_id=str(actor.id),
-                category_id=str(p.category_id) if getattr(p, "category_id", None) else None,
-                start_date=ns,
-                end_date=ne,
-                status=PulseProjectStatus.future,
-                repopulation_frequency=freq,
-                goal=getattr(p, "goal", None),
-                notes=getattr(p, "notes", None),
-                success_definition=getattr(p, "success_definition", None),
-                current_phase=getattr(p, "current_phase", None),
-                notification_enabled=bool(getattr(p, "notification_enabled", False)),
-                notification_material_days=int(getattr(p, "notification_material_days", 30) or 30),
-                notification_equipment_days=int(getattr(p, "notification_equipment_days", 7) or 7),
-                notification_to_supervision=bool(getattr(p, "notification_to_supervision", False)),
-                notification_to_lead=bool(getattr(p, "notification_to_lead", False)),
-                notification_to_owner=bool(getattr(p, "notification_to_owner", True)),
-            )
-            db.add(new_proj)
-            await db.flush()
-            # Clone tasks
-            tq = await db.execute(select(PulseProjectTask).where(PulseProjectTask.project_id == str(p.id)))
-            old_tasks = list(tq.scalars().all())
-            old_to_new: dict[str, str] = {}
-            for ot in old_tasks:
-                nt = PulseProjectTask(
-                    company_id=cid,
-                    project_id=str(new_proj.id),
-                    title=ot.title,
-                    description=ot.description,
-                    assigned_user_id=ot.assigned_user_id,
-                    priority=ot.priority,
-                    status=PulseTaskStatus.todo,
-                    start_date=ns,
-                    estimated_completion_minutes=getattr(ot, "estimated_completion_minutes", None),
-                    due_date=None,
-                    estimated_duration=getattr(ot, "estimated_duration", None),
-                    skill_type=getattr(ot, "skill_type", None),
-                    material_notes=getattr(ot, "material_notes", None),
-                    phase_group=getattr(ot, "phase_group", None),
-                    planned_start_at=None,
-                    planned_end_at=None,
-                    location_tag_id=getattr(ot, "location_tag_id", None),
-                    sop_id=getattr(ot, "sop_id", None),
-                    required_skill_names=getattr(ot, "required_skill_names", None) or [],
-                )
-                db.add(nt)
-                await db.flush()
-                old_to_new[str(ot.id)] = str(nt.id)
-                # Clone materials
-                mq = await db.execute(
-                    select(PulseProjectTaskMaterial).where(PulseProjectTaskMaterial.task_id == str(ot.id))
-                )
-                mats = list(mq.scalars().all())
-                for m in mats:
-                    nm = PulseProjectTaskMaterial(
-                        company_id=cid,
-                        project_id=str(new_proj.id),
-                        task_id=str(nt.id),
-                        inventory_item_id=m.inventory_item_id,
-                        name=m.name,
-                        quantity_required=m.quantity_required,
-                        unit=m.unit,
-                        notes=m.notes,
-                    )
-                    db.add(nm)
-                eq_q = await db.execute(
-                    select(PulseProjectTaskEquipment).where(PulseProjectTaskEquipment.task_id == str(ot.id))
-                )
-                eqs = list(eq_q.scalars().all())
-                for e in eqs:
-                    ne = PulseProjectTaskEquipment(
-                        company_id=cid,
-                        project_id=str(new_proj.id),
-                        task_id=str(nt.id),
-                        facility_equipment_id=e.facility_equipment_id,
-                        name=e.name,
-                        notes=e.notes,
-                    )
-                    db.add(ne)
-            await _log_activity(
-                db,
-                project_id=str(new_proj.id),
-                activity_type=PulseProjectActivityType.note,
-                title="Project created",
-                description=f"Auto-created from completion of: {p.name}",
-            )
+        await complete_and_archive_pulse_project(
+            db,
+            project=p,
+            company_id=cid,
+            actor_user_id=str(actor.id),
+            completed_at=completed_at,
+        )
     await db.commit()
     await db.refresh(p)
     out = _project_out(p)

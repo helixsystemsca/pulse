@@ -5,6 +5,7 @@ import {
   ArrowLeft,
   CheckCircle2,
   CalendarRange,
+  ClipboardCheck,
   FolderKanban,
   LayoutGrid,
   List,
@@ -21,6 +22,7 @@ import { usePulseAuth } from "@/hooks/usePulseAuth";
 import { apiFetch } from "@/lib/api";
 import { parseClientApiError } from "@/lib/parse-client-api-error";
 import { ProjectAutomationPanel } from "@/components/projects/ProjectAutomationPanel";
+import { ProjectCloseoutTab } from "@/features/projects/ProjectCloseoutTab";
 import { PmPlanningShell } from "@/components/pm-planning/PmPlanningShell";
 import {
   addProjectNote,
@@ -63,6 +65,7 @@ import type { PulseWorkerApi } from "@/lib/schedule/pulse-bridge";
 import { useResolvedAvatarSrc } from "@/lib/useResolvedAvatarSrc";
 import { fetchInventoryList, type InventoryRow } from "@/lib/inventoryService";
 import { cn } from "@/lib/cn";
+import { sessionHasAnyRole } from "@/lib/pulse-roles";
 import { buttonVariants } from "@/styles/button-variants";
 
 const PRIMARY_BTN = cn(buttonVariants({ surface: "light", intent: "accent" }), "px-5 py-2.5");
@@ -145,7 +148,9 @@ export function ProjectDetailApp({ projectId }: { projectId: string }) {
   const [skillCategories, setSkillCategories] = useState<string[]>([]);
   const [err, setErr] = useState<string | null>(null);
   const [blockHint, setBlockHint] = useState<string | null>(null);
-  const [detailTab, setDetailTab] = useState<"overview" | "planning" | "work" | "activity" | "summary">("overview");
+  const [detailTab, setDetailTab] = useState<"overview" | "planning" | "work" | "activity" | "summary" | "closeout">(
+    "overview",
+  );
   const [viewTab, setViewTab] = useState<"tasks" | "board" | "automation">("tasks");
   const [taskModalOpen, setTaskModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<TaskRow | null>(null);
@@ -447,6 +452,29 @@ export function ProjectDetailApp({ projectId }: { projectId: string }) {
     session?.sub && data?.owner_user_id && data.owner_user_id === session.sub,
   );
 
+  const isTenantFullAdmin =
+    Boolean(session && sessionHasAnyRole(session, "company_admin")) || Boolean(session?.facility_tenant_admin);
+
+  const canManagePulseProject = Boolean(
+    session?.sub &&
+      data &&
+      ((data.created_by_user_id && data.created_by_user_id === session.sub) ||
+        (data.owner_user_id && data.owner_user_id === session.sub) ||
+        isTenantFullAdmin),
+  );
+
+  const showCloseoutTab = Boolean(
+    canUsePMFeatures &&
+      data &&
+      (data.status === "completed" || data.status === "archived" || Boolean(data.archived_at)),
+  );
+
+  useEffect(() => {
+    if (detailTab === "closeout" && !showCloseoutTab) {
+      setDetailTab("overview");
+    }
+  }, [detailTab, showCloseoutTab]);
+
   async function markProjectComplete() {
     if (!data || !session?.sub || data.created_by_user_id !== session.sub || projectCompleting) return;
     setProjectCompleting(true);
@@ -737,6 +765,16 @@ export function ProjectDetailApp({ projectId }: { projectId: string }) {
             <button type="button" className={topTabClass(detailTab === "summary")} onClick={() => setDetailTab("summary")}>
               Summary
             </button>
+            {showCloseoutTab ? (
+              <button
+                type="button"
+                className={`inline-flex items-center gap-2 ${topTabClass(detailTab === "closeout")}`}
+                onClick={() => setDetailTab("closeout")}
+              >
+                <ClipboardCheck className="h-4 w-4" aria-hidden />
+                Closeout
+              </button>
+            ) : null}
           </div>
 
           {detailTab === "overview" ? (
@@ -1286,6 +1324,10 @@ export function ProjectDetailApp({ projectId }: { projectId: string }) {
                 </div>
               </Card>
             </div>
+          ) : null}
+
+          {detailTab === "closeout" && showCloseoutTab ? (
+            <ProjectCloseoutTab projectId={projectId} canManageSummary={canManagePulseProject} />
           ) : null}
 
           {detailTab === "work" ? (

@@ -13,7 +13,7 @@ class ProjectCreate(BaseModel):
     description: Optional[str] = None
     start_date: date
     end_date: date
-    status: str = Field(default="active", description="active | future | completed | on_hold")
+    status: str = Field(default="active", description="active | future | completed | on_hold | archived")
     owner_user_id: Optional[str] = Field(None, description="User id within the tenant")
     template_id: Optional[str] = Field(None, description="Optional project template id")
     category_id: Optional[str] = Field(None, description="Optional category id")

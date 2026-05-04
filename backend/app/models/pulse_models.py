@@ -445,6 +445,7 @@ class PulseProjectStatus(str, enum.Enum):
     future = "future"
     completed = "completed"
     on_hold = "on_hold"
+    archived = "archived"
 
 
 class PulseTaskPriority(str, enum.Enum):

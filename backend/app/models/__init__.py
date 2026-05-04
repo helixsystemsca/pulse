@@ -72,6 +72,7 @@ from app.models.pm_coord_models import (
     PmCoordTaskResource,
     PmCoordTaskStatus,
 )
+from app.models.project_summary_models import ProjectSummary, ProjectSummaryStatus
 from app.models.pulse_models import (
     PulseBeaconEquipment,
     PulsePreventativeRule,
@@ -153,6 +154,8 @@ __all__ = [
     "PmCoordTaskDependency",
     "PmCoordTaskResource",
     "PmCoordTaskStatus",
+    "ProjectSummary",
+    "ProjectSummaryStatus",
     "PulseWorkRequestChecklistItem",
     "PulseWorkRequestPartLine",
     "PulsePreventativeRule",

@@ -46,15 +46,14 @@ function formatTargetDate(iso: string | null): string {
 function KioskHeaderClock() {
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
-    const t = window.setInterval(() => setNow(new Date()), 1000);
+    const tick = () => setNow(new Date());
+    tick();
+    const t = window.setInterval(tick, 1000);
     return () => window.clearInterval(t);
   }, []);
-  const timeStr = now.toLocaleTimeString(undefined, {
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: false,
-  });
+  const h = now.getHours();
+  const m = now.getMinutes();
+  const timeStr = `${h}:${String(m).padStart(2, "0")}`;
   const dateStr = now.toLocaleDateString(undefined, {
     weekday: "short",
     month: "short",
@@ -76,36 +75,47 @@ const KIOSK_SHIFT_BAND_LABEL: Record<KioskShiftBand, string> = {
   night: "Night",
 };
 
-function kioskSupervisorsCell(names: string[]): string {
-  if (!names.length) return "—";
-  return names.join(" · ");
-}
-
 function KioskSupervisorsOnSiteGrid({ data }: { data: KioskSupervisorsOnSite }) {
+  const rowsWithCoverage = data.rows.filter((row) =>
+    KIOSK_SHIFT_BANDS.some((b) => row.namesByBand[b].length > 0),
+  );
+  const bandsInUse = KIOSK_SHIFT_BANDS.filter((b) =>
+    rowsWithCoverage.some((row) => row.namesByBand[b].length > 0),
+  );
+
   return (
     <div className="min-w-0 max-w-[min(100%,28rem)]">
       <p className={cn(DASH.sectionLabel, "mb-1 leading-none")}>Supervisors on site</p>
-      <div
-        className="grid gap-x-2 gap-y-0.5 text-[10px] leading-snug sm:text-[11px]"
-        style={{ gridTemplateColumns: "auto repeat(3, minmax(0, 1fr))" }}
-      >
-        <div />
-        {KIOSK_SHIFT_BANDS.map((b) => (
-          <div key={b} className="font-bold uppercase tracking-wide text-ds-muted">
-            {KIOSK_SHIFT_BAND_LABEL[b]}
-          </div>
-        ))}
-        {data.rows.map((row) => (
-          <Fragment key={row.roleLabel}>
-            <div className="whitespace-nowrap pr-1 font-semibold text-ds-foreground">{row.roleLabel}</div>
-            {KIOSK_SHIFT_BANDS.map((b) => (
-              <div key={`${row.roleLabel}-${b}`} className="min-w-0 break-words text-ds-foreground">
-                {kioskSupervisorsCell(row.namesByBand[b])}
-              </div>
-            ))}
-          </Fragment>
-        ))}
-      </div>
+      {rowsWithCoverage.length === 0 ? (
+        <p className="max-w-xs text-[10px] font-medium leading-snug text-ds-muted sm:text-[11px]">
+          No managers, supervisors, or leads rostered on this project for today.
+        </p>
+      ) : (
+        <div
+          className="grid gap-x-2 gap-y-0.5 text-[10px] leading-snug sm:text-[11px]"
+          style={{ gridTemplateColumns: `auto repeat(${bandsInUse.length}, minmax(0, 1fr))` }}
+        >
+          <div />
+          {bandsInUse.map((b) => (
+            <div key={b} className="font-bold uppercase tracking-wide text-ds-muted">
+              {KIOSK_SHIFT_BAND_LABEL[b]}
+            </div>
+          ))}
+          {rowsWithCoverage.map((row) => (
+            <Fragment key={row.roleLabel}>
+              <div className="whitespace-nowrap pr-1 font-semibold text-ds-foreground">{row.roleLabel}</div>
+              {bandsInUse.map((b) => {
+                const names = row.namesByBand[b];
+                return (
+                  <div key={`${row.roleLabel}-${b}`} className="min-w-0 break-words text-ds-foreground">
+                    {names.length ? names.join(" · ") : ""}
+                  </div>
+                );
+              })}
+            </Fragment>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -632,10 +642,10 @@ export function ProjectKioskDisplay({ projectId }: { projectId: string }) {
         "flex h-[100dvh] max-h-[100dvh] flex-col overflow-hidden bg-ds-bg text-ds-foreground",
       )}
     >
-      <header className="shrink-0 border-b border-ds-border bg-ds-primary px-3 py-2 shadow-[var(--ds-shadow-card)] sm:px-4 sm:py-2.5">
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 xl:flex-nowrap xl:justify-between">
-          <div className="flex min-w-0 shrink-0 items-center gap-2.5">
-            <div className="relative h-11 w-11 shrink-0 sm:h-12 sm:w-12">
+      <header className="shrink-0 border-b border-ds-border bg-ds-primary px-2.5 py-1.5 shadow-[var(--ds-shadow-card)] sm:px-3 sm:py-1.5">
+        <div className="flex flex-wrap items-start gap-x-3 gap-y-1.5 xl:flex-nowrap xl:justify-between">
+          <div className="flex min-w-0 shrink-0 items-start gap-2.5">
+            <div className="relative mt-0.5 h-10 w-10 shrink-0 sm:h-11 sm:w-11">
               <Image
                 src="/images/panoramalogo2.png"
                 alt=""
@@ -655,7 +665,7 @@ export function ProjectKioskDisplay({ projectId }: { projectId: string }) {
             </div>
           </div>
 
-          <div className="flex min-w-0 flex-1 flex-wrap items-center justify-start gap-x-0 gap-y-2 divide-x divide-ds-border/60 xl:justify-end [&>div]:px-3 [&>div:first-child]:border-l-0 [&>div:first-child]:pl-0 max-xl:[&>div:first-child]:pl-0">
+          <div className="flex min-w-0 flex-1 flex-wrap items-start justify-start gap-x-0 gap-y-1.5 divide-x divide-ds-border/60 xl:justify-end [&>div]:px-2.5 [&>div:first-child]:border-l-0 [&>div:first-child]:pl-0 max-xl:[&>div:first-child]:pl-0 sm:[&>div]:px-3">
             <div className="flex flex-col gap-0 border-l-0 pl-0">
               <p className={cn(DASH.sectionLabel, "leading-none")}>Today</p>
               <p className="mt-0.5 text-sm font-bold tabular-nums text-ds-accent sm:text-base">{h.todayLabel}</p>
@@ -676,8 +686,7 @@ export function ProjectKioskDisplay({ projectId }: { projectId: string }) {
               <p className={cn("mt-0.5 text-sm font-bold tabular-nums sm:text-base", targetDateClass)}>
                 {formatTargetDate(h.targetEndDate)}
               </p>
-              <p className={cn(DASH.sectionLabel, "mt-1 leading-none xl:text-right")}>Days remaining</p>
-              <p className={cn("text-xs font-semibold tabular-nums leading-tight xl:text-right", targetToneClass)}>
+              <p className={cn("mt-0.5 text-xs font-semibold tabular-nums leading-tight xl:text-right", targetToneClass)}>
                 {h.targetEndCaption}
               </p>
             </div>
@@ -697,7 +706,7 @@ export function ProjectKioskDisplay({ projectId }: { projectId: string }) {
               </div>
             </div>
 
-            <div className="ml-auto flex shrink-0 flex-col items-end gap-1.5 border-l-0 pl-0 sm:ml-0 xl:border-l xl:border-ds-border/60 xl:pl-3">
+            <div className="ml-auto flex shrink-0 flex-col items-end gap-1 border-l-0 pl-0 sm:ml-0 xl:border-l xl:border-ds-border/60 xl:pl-2.5">
               <button
                 type="button"
                 onClick={() => void exit()}

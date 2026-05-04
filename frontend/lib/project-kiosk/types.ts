@@ -144,7 +144,7 @@ export type ProjectKioskView = {
     projectDurationCaption: string | null;
     /** Target completion (ISO calendar date). */
     targetEndDate: string | null;
-    /** Shown under target date, e.g. “5 days remaining” or “9 days overdue”. */
+    /** Shown under target date (e.g. “5 days remaining”, “9 days overdue”) — no separate “Days remaining” label in the kiosk header. */
     targetEndCaption: string;
     targetEndTone: "default" | "warning" | "danger";
     percentComplete: number;
