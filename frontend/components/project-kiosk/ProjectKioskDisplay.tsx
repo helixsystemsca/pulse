@@ -14,8 +14,7 @@ import {
 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import Image from "next/image";
-import type { ReactNode } from "react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { KioskRotateFooter } from "@/components/dashboard/DashboardChrome";
 import { HandoverNotesKioskPage } from "@/components/project-kiosk/HandoverNotesKioskPage";
 import { SafetyRemindersKioskPage } from "@/components/project-kiosk/SafetyRemindersKioskPage";
@@ -24,6 +23,8 @@ import type {
   KioskOnShiftWorkerCard,
   KioskProjectOwnerHint,
   KioskSection,
+  KioskShiftBand,
+  KioskSupervisorsOnSite,
   ProjectKioskView,
   TeamHighlight,
   TeamInsightMemberRow,
@@ -58,12 +59,53 @@ function KioskHeaderClock() {
     weekday: "short",
     month: "short",
     day: "numeric",
-    year: "numeric",
   });
   return (
     <div className="shrink-0 text-right tabular-nums">
-      <p className="font-headline text-2xl font-bold tracking-tight text-ds-foreground sm:text-3xl">{timeStr}</p>
-      <p className="mt-0.5 text-xs font-semibold text-ds-muted sm:text-sm">{dateStr}</p>
+      <p className="font-headline text-lg font-bold tracking-tight text-ds-foreground sm:text-xl">{timeStr}</p>
+      <p className="mt-0.5 text-[10px] font-semibold leading-tight text-ds-muted sm:text-[11px]">{dateStr}</p>
+    </div>
+  );
+}
+
+const KIOSK_SHIFT_BANDS: KioskShiftBand[] = ["day", "afternoon", "night"];
+
+const KIOSK_SHIFT_BAND_LABEL: Record<KioskShiftBand, string> = {
+  day: "Day",
+  afternoon: "Afternoon",
+  night: "Night",
+};
+
+function kioskSupervisorsCell(names: string[]): string {
+  if (!names.length) return "—";
+  return names.join(" · ");
+}
+
+function KioskSupervisorsOnSiteGrid({ data }: { data: KioskSupervisorsOnSite }) {
+  return (
+    <div className="min-w-0 max-w-[min(100%,28rem)]">
+      <p className={cn(DASH.sectionLabel, "mb-1 leading-none")}>Supervisors on site</p>
+      <div
+        className="grid gap-x-2 gap-y-0.5 text-[10px] leading-snug sm:text-[11px]"
+        style={{ gridTemplateColumns: "auto repeat(3, minmax(0, 1fr))" }}
+      >
+        <div />
+        {KIOSK_SHIFT_BANDS.map((b) => (
+          <div key={b} className="font-bold uppercase tracking-wide text-ds-muted">
+            {KIOSK_SHIFT_BAND_LABEL[b]}
+          </div>
+        ))}
+        {data.rows.map((row) => (
+          <Fragment key={row.roleLabel}>
+            <div className="whitespace-nowrap pr-1 font-semibold text-ds-foreground">{row.roleLabel}</div>
+            {KIOSK_SHIFT_BANDS.map((b) => (
+              <div key={`${row.roleLabel}-${b}`} className="min-w-0 break-words text-ds-foreground">
+                {kioskSupervisorsCell(row.namesByBand[b])}
+              </div>
+            ))}
+          </Fragment>
+        ))}
+      </div>
     </div>
   );
 }
@@ -578,6 +620,10 @@ export function ProjectKioskDisplay({ projectId }: { projectId: string }) {
     h.targetEndTone === "danger" ? "text-ds-danger"
     : h.targetEndTone === "warning" ? "text-ds-warning"
     : "text-ds-muted";
+  const targetDateClass =
+    h.targetEndTone === "danger" ? "text-ds-danger"
+    : h.targetEndTone === "warning" ? "text-ds-warning"
+    : "text-ds-accent";
 
   const body = (
     <div
@@ -586,85 +632,85 @@ export function ProjectKioskDisplay({ projectId }: { projectId: string }) {
         "flex h-[100dvh] max-h-[100dvh] flex-col overflow-hidden bg-ds-bg text-ds-foreground",
       )}
     >
-      <header className="shrink-0 border-b border-ds-border bg-ds-primary px-4 py-3 shadow-[var(--ds-shadow-card)] sm:px-6 sm:py-4">
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between lg:gap-8">
-          <div className="flex min-w-0 flex-1 items-start gap-4">
-            <div className="relative h-[4.5rem] w-[4.5rem] shrink-0 sm:h-20 sm:w-20">
+      <header className="shrink-0 border-b border-ds-border bg-ds-primary px-3 py-2 shadow-[var(--ds-shadow-card)] sm:px-4 sm:py-2.5">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 xl:flex-nowrap xl:justify-between">
+          <div className="flex min-w-0 shrink-0 items-center gap-2.5">
+            <div className="relative h-11 w-11 shrink-0 sm:h-12 sm:w-12">
               <Image
                 src="/images/panoramalogo2.png"
                 alt=""
                 fill
                 priority
-                sizes="80px"
+                sizes="48px"
                 className="object-contain"
               />
             </div>
-            <div className="min-w-0 pt-0.5">
-              <p className="text-xs font-bold uppercase tracking-[0.16em] text-ds-muted sm:text-sm sm:tracking-[0.14em]">
+            <div className="min-w-0">
+              <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-ds-muted sm:text-[11px]">
                 {h.facilityLabel}
               </p>
-              <h1 className="mt-2 text-balance font-headline text-2xl font-semibold leading-[1.08] tracking-[-0.035em] text-ds-foreground sm:mt-2.5 sm:text-3xl md:text-[2.35rem]">
+              <h1 className="mt-0.5 text-balance font-headline text-base font-semibold leading-tight tracking-tight text-ds-foreground sm:text-lg md:text-xl">
                 {h.projectName}
               </h1>
             </div>
           </div>
 
-          <div className="grid w-full min-w-0 shrink-0 grid-cols-1 gap-x-8 gap-y-5 lg:w-auto lg:max-w-5xl lg:grid-cols-4 lg:items-start lg:gap-x-10">
-            <div className="flex min-w-0 flex-col gap-1">
-              <p className={cn(DASH.sectionLabel, "min-h-[1.125rem] leading-none")}>Target completion</p>
-              <p className="mt-1 text-lg font-bold tabular-nums text-ds-accent sm:text-xl">{formatTargetDate(h.targetEndDate)}</p>
-              <p className={cn(DASH.sectionLabel, "mt-1 min-h-[1.125rem] leading-none")}>Days remaining</p>
-              <p className={cn("text-sm font-semibold tabular-nums leading-snug", targetToneClass)}>{h.targetEndCaption}</p>
+          <div className="flex min-w-0 flex-1 flex-wrap items-center justify-start gap-x-0 gap-y-2 divide-x divide-ds-border/60 xl:justify-end [&>div]:px-3 [&>div:first-child]:border-l-0 [&>div:first-child]:pl-0 max-xl:[&>div:first-child]:pl-0">
+            <div className="flex flex-col gap-0 border-l-0 pl-0">
+              <p className={cn(DASH.sectionLabel, "leading-none")}>Today</p>
+              <p className="mt-0.5 text-sm font-bold tabular-nums text-ds-accent sm:text-base">{h.todayLabel}</p>
             </div>
 
-            <div className="flex min-h-0 min-w-0 flex-col gap-1">
-              <p className={cn(DASH.sectionLabel, "min-h-[1.125rem] leading-none")}>On site today</p>
-              <div className="mt-2 flex min-h-[2.25rem] flex-wrap items-center gap-x-4 gap-y-2">
-                {h.onSiteWorkers.length === 0 ? (
-                  <span className="text-sm text-ds-muted">—</span>
-                ) : (
-                  h.onSiteWorkers.map((w) => (
-                    <div key={w.id} className="flex items-center gap-2">
-                      <UserProfileAvatarPreview
-                        avatarUrl={w.avatarUrl}
-                        nameFallback={w.displayName}
-                        sizeClassName="h-9 w-9"
-                        fallback="initials"
-                        className="!ring-1 !ring-ds-border"
-                      />
-                      <span className="text-sm font-semibold text-ds-foreground">{w.firstName}</span>
-                    </div>
-                  ))
-                )}
+            <div className="flex flex-col gap-0">
+              <p className={cn(DASH.sectionLabel, "leading-none")}>Project start</p>
+              <p className="mt-0.5 text-sm font-bold tabular-nums text-ds-foreground sm:text-base">
+                {formatTargetDate(h.projectStartDate)}
+              </p>
+              {h.projectDurationCaption ? (
+                <p className="mt-0.5 text-[10px] font-medium text-ds-muted">{h.projectDurationCaption}</p>
+              ) : null}
+            </div>
+
+            <div className="flex flex-col items-stretch gap-0 text-left xl:min-w-[7.5rem] xl:items-end xl:text-right">
+              <p className={cn(DASH.sectionLabel, "leading-none xl:text-right")}>Target completion</p>
+              <p className={cn("mt-0.5 text-sm font-bold tabular-nums sm:text-base", targetDateClass)}>
+                {formatTargetDate(h.targetEndDate)}
+              </p>
+              <p className={cn(DASH.sectionLabel, "mt-1 leading-none xl:text-right")}>Days remaining</p>
+              <p className={cn("text-xs font-semibold tabular-nums leading-tight xl:text-right", targetToneClass)}>
+                {h.targetEndCaption}
+              </p>
+            </div>
+
+            <div className="min-w-0 flex-1 xl:max-w-md xl:flex-initial">
+              <KioskSupervisorsOnSiteGrid data={h.supervisorsOnSite} />
+            </div>
+
+            <div className="flex flex-col gap-0.5">
+              <p className={cn(DASH.sectionLabel, "leading-none")}>Completion</p>
+              <p className="font-headline text-lg font-bold tabular-nums text-ds-accent sm:text-xl">{h.percentComplete}%</p>
+              <div className="mt-1 h-1.5 w-full max-w-[7.5rem] overflow-hidden rounded-full bg-ds-secondary sm:max-w-[9rem]">
+                <div
+                  className="h-full rounded-full bg-[var(--ds-chrome-gradient)] transition-[width] duration-500"
+                  style={{ width: `${Math.min(100, Math.max(0, h.percentComplete))}%` }}
+                />
               </div>
             </div>
 
-            <div className="flex flex-col gap-1 lg:justify-self-end lg:text-right">
-              <p className={cn(DASH.sectionLabel, "min-h-[1.125rem] leading-none lg:text-right")}>Progress</p>
-              <p className="font-headline text-2xl font-bold tabular-nums text-ds-accent lg:text-right">{h.percentComplete}%</p>
-            </div>
-
-            <div className="flex flex-col items-end gap-2 lg:justify-self-end">
+            <div className="ml-auto flex shrink-0 flex-col items-end gap-1.5 border-l-0 pl-0 sm:ml-0 xl:border-l xl:border-ds-border/60 xl:pl-3">
               <button
                 type="button"
                 onClick={() => void exit()}
-                className="rounded-lg border border-ds-border bg-ds-secondary px-3 py-1.5 text-[10px] font-bold uppercase tracking-wide text-ds-foreground hover:bg-ds-secondary/80"
+                className="rounded-md border border-ds-border bg-ds-secondary px-2 py-1 text-[9px] font-bold uppercase tracking-wide text-ds-foreground hover:bg-ds-secondary/80"
               >
-                <span className="inline-flex items-center gap-1.5">
-                  <LogOut className="h-3.5 w-3.5" aria-hidden />
+                <span className="inline-flex items-center gap-1">
+                  <LogOut className="h-3 w-3" aria-hidden />
                   Exit
                 </span>
               </button>
               <KioskHeaderClock />
             </div>
           </div>
-        </div>
-
-        <div className="mt-4 h-2 w-full overflow-hidden rounded-full bg-ds-secondary">
-          <div
-            className="h-full rounded-full bg-[var(--ds-chrome-gradient)] transition-[width] duration-500"
-            style={{ width: `${Math.min(100, Math.max(0, h.percentComplete))}%` }}
-          />
         </div>
       </header>
 

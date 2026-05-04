@@ -169,21 +169,14 @@ export default function LoginPage() {
         <main className="relative z-10 flex min-h-0 flex-1 flex-col justify-center px-4 pb-4 pt-1 sm:px-6 sm:pb-5 md:px-8">
           <div className="mx-auto w-full max-w-[440px]">
             <div className="flex w-full justify-center">
-              <div
-                className={cn(
-                  "relative aspect-square shrink-0 overflow-hidden rounded-full",
-                  "border-[3px] border-[#4c6085] dark:border-ds-border",
-                  "bg-white shadow-[0_6px_28px_rgba(76,96,133,0.22)] dark:bg-white dark:shadow-[0_8px_32px_rgba(0,0,0,0.35)]",
-                  "w-[min(16.5rem,calc(0.75*(100vw-1.5rem)))]",
-                )}
-              >
+              <div className="relative mx-auto h-[9.25rem] w-[min(22rem,calc(100vw-2rem))] shrink-0 sm:h-[11rem] sm:w-[min(26rem,calc(100vw-2rem))] md:h-[12.5rem] md:w-[min(30rem,calc(100vw-2.5rem))]">
                 <Image
                   src="/images/panoramalogo2.png"
                   alt="Panorama"
                   fill
                   priority
-                  sizes="(max-width: 448px) min(100vw, 264px), 264px"
-                  className="object-contain p-[10%]"
+                  sizes="(max-width: 640px) 90vw, (max-width: 768px) 26rem, 30rem"
+                  className="object-contain object-center"
                 />
               </div>
             </div>

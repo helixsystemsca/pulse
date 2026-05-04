@@ -2,9 +2,11 @@ import { apiFetch } from "@/lib/api";
 import type {
   HandoverNoteCard,
   KioskOnShiftWorkerCard,
-  KioskOnSiteWorker,
   KioskProjectOwnerHint,
   KioskSection,
+  KioskShiftBand,
+  KioskSupervisorRosterRow,
+  KioskSupervisorsOnSite,
   KioskWidgetDefinition,
   ProjectKioskView,
   SafetyReminderCard,
@@ -180,22 +182,92 @@ function buildOnShiftWorkerCards(
   });
 }
 
-function onSiteWorkersFromTasks(tasks: TaskRow[], workers: PulseWorkerApi[]): KioskOnSiteWorker[] {
-  const inProg = tasks.filter((t) => t.status === "in_progress" && t.assigned_user_id);
-  const ids = [...new Set(inProg.map((t) => t.assigned_user_id!))];
+function formatTodayKioskLabel(): string {
+  return new Date().toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+}
+
+function projectDurationCaption(startIso: string | null | undefined, endIso: string | null | undefined): string | null {
+  if (!startIso?.trim() || !endIso?.trim()) return null;
+  const a = new Date(startIso.includes("T") ? startIso : `${startIso.trim()}T12:00:00`);
+  const b = new Date(endIso.includes("T") ? endIso : `${endIso.trim()}T12:00:00`);
+  if (Number.isNaN(a.getTime()) || Number.isNaN(b.getTime())) return null;
+  const da = new Date(a);
+  da.setHours(0, 0, 0, 0);
+  const db = new Date(b);
+  db.setHours(0, 0, 0, 0);
+  const days = Math.round((db.getTime() - da.getTime()) / (24 * 60 * 60 * 1000)) + 1;
+  if (!Number.isFinite(days) || days < 1) return null;
+  return `${days} day${days === 1 ? "" : "s"} duration`;
+}
+
+function shiftBandFromType(st: string): KioskShiftBand {
+  const s = String(st).toLowerCase().replace(/_/g, " ");
+  if (/\bnight\b|grave|noc/.test(s)) return "night";
+  if (/\bafternoon\b|swing|\beve/.test(s) || /\bpm\b/.test(s)) return "afternoon";
+  return "day";
+}
+
+function supervisorTier(w: PulseWorkerApi): "manager" | "supervisor" | "lead" | null {
+  const raw = w.roles?.length ? w.roles : [w.role];
+  const set = new Set(raw.map((x) => String(x).toLowerCase()));
+  if (set.has("manager") || set.has("company_admin")) return "manager";
+  if (set.has("supervisor")) return "supervisor";
+  if (set.has("lead")) return "lead";
+  return null;
+}
+
+function pushUniqueName(arr: string[], displayName: string) {
+  const short = firstNameFromFull(displayName.trim() || "?");
+  if (!short || arr.includes(short)) return;
+  arr.push(short);
+}
+
+function buildSupervisorsOnSite(
+  projectId: string,
+  tasks: TaskRow[],
+  workers: PulseWorkerApi[],
+  assignments: ScheduleAssignment[],
+  shifts: PulseShiftApi[],
+): KioskSupervisorsOnSite {
+  const { ymd, startMs, endMs } = localTodayRange();
   const byId = new Map(workers.map((w) => [w.id, w]));
-  return ids
-    .map((id) => {
-      const w = byId.get(id);
-      const displayName = (w?.full_name?.trim() || w?.email || "Member").trim();
-      return {
-        id,
-        firstName: firstNameFromFull(displayName),
-        displayName,
-        avatarUrl: w?.avatar_url ?? null,
-      };
-    })
-    .sort((a, b) => a.displayName.localeCompare(b.displayName));
+
+  const acc: Record<"manager" | "supervisor" | "lead", Record<KioskShiftBand, string[]>> = {
+    manager: { day: [], afternoon: [], night: [] },
+    supervisor: { day: [], afternoon: [], night: [] },
+    lead: { day: [], afternoon: [], night: [] },
+  };
+
+  const add = (userId: string | null | undefined, band: KioskShiftBand) => {
+    if (!userId) return;
+    const w = byId.get(userId);
+    if (!w) return;
+    const tier = supervisorTier(w);
+    if (!tier) return;
+    const displayName = (w.full_name?.trim() || w.email || "Member").trim();
+    pushUniqueName(acc[tier][band], displayName);
+  };
+
+  for (const as of assignments) {
+    if (as.date !== ymd || !as.assigned_user_id) continue;
+    add(as.assigned_user_id, shiftBandFromType(as.shift_type));
+  }
+
+  for (const sh of shifts) {
+    if (!sh.assigned_user_id || !shiftsOverlapToday(sh, startMs, endMs)) continue;
+    const pid = sh.project_id ?? null;
+    const taskPid = sh.project_task_id ? tasks.find((t) => t.id === sh.project_task_id)?.project_id : null;
+    const onThisProject = pid === projectId || taskPid === projectId;
+    if (!onThisProject) continue;
+    add(sh.assigned_user_id, shiftBandFromType(sh.shift_type));
+  }
+
+  const rows: KioskSupervisorRosterRow[] = [
+    { roleLabel: "Manager", namesByBand: { ...acc.manager } },
+    { roleLabel: "Supervisor", namesByBand: { ...acc.supervisor } },
+    { roleLabel: "Lead", namesByBand: { ...acc.lead } },
+  ];
+  return { rows };
 }
 
 function parseTs(iso: string | null | undefined): number {
@@ -909,7 +981,7 @@ export function buildProjectKioskView(
   const { locked, rotating } = buildSections(project, tasks, workerMap, workers, widgets, highlights, activity);
   const lastUpdated = new Date().toISOString();
   const targetMeta = targetCompletionMeta(project.end_date);
-  const onSite = onSiteWorkersFromTasks(tasks, workers);
+  const supervisorsOnSite = buildSupervisorsOnSite(project.id, tasks, workers, assignments, dayShifts);
   const onShiftWorkers = buildOnShiftWorkerCards(project.id, tasks, workers, assignments, dayShifts);
   const projectOwnerHint = buildProjectOwnerHint(project, workers);
 
@@ -917,13 +989,16 @@ export function buildProjectKioskView(
     header: {
       facilityLabel: kioskFacilityLabel(),
       projectName: project.name,
+      todayLabel: formatTodayKioskLabel(),
+      projectStartDate: project.start_date ?? null,
+      projectDurationCaption: projectDurationCaption(project.start_date, project.end_date),
       targetEndDate: project.end_date ?? null,
       targetEndCaption: targetMeta.caption,
       targetEndTone: targetMeta.tone,
       percentComplete: Math.round(project.progress_pct ?? 0),
       tasksRemaining: Math.max(0, project.task_total - project.task_completed),
       blockedCount: blockedTasks(tasks).length,
-      onSiteWorkers: onSite,
+      supervisorsOnSite,
       lastUpdated,
     },
     lockedSections: locked,

@@ -34,12 +34,18 @@ export type TeamInsightsPanelData = {
   members: TeamInsightMemberRow[];
 };
 
-/** Workers shown as “on site” in the project kiosk header (from in-progress assignments). */
-export type KioskOnSiteWorker = {
-  id: string;
-  firstName: string;
-  displayName: string;
-  avatarUrl?: string | null;
+/** Shift buckets for supervisor roster in the kiosk header. */
+export type KioskShiftBand = "day" | "afternoon" | "night";
+
+/** One row (Manager / Supervisor / Lead) with who is rostered per band today. */
+export type KioskSupervisorRosterRow = {
+  roleLabel: string;
+  namesByBand: Record<KioskShiftBand, string[]>;
+};
+
+/** Supervisors / leads scheduled today, split by shift band (from schedule assignments + published shifts). */
+export type KioskSupervisorsOnSite = {
+  rows: KioskSupervisorRosterRow[];
 };
 
 /** Left rail: scheduled today and/or with active project tasks — no scroll in kiosk shell. */
@@ -130,6 +136,12 @@ export type ProjectKioskView = {
     /** Tenant / facility line above the project title. */
     facilityLabel: string;
     projectName: string;
+    /** “Today” line for the kiosk clock column companion. */
+    todayLabel: string;
+    /** Project start (ISO calendar date). */
+    projectStartDate: string | null;
+    /** e.g. “14 days duration” from start→end inclusive; null if dates missing. */
+    projectDurationCaption: string | null;
     /** Target completion (ISO calendar date). */
     targetEndDate: string | null;
     /** Shown under target date, e.g. “5 days remaining” or “9 days overdue”. */
@@ -138,7 +150,7 @@ export type ProjectKioskView = {
     percentComplete: number;
     tasksRemaining: number;
     blockedCount: number;
-    onSiteWorkers: KioskOnSiteWorker[];
+    supervisorsOnSite: KioskSupervisorsOnSite;
     lastUpdated: string;
   };
   lockedSections: KioskSection[];
