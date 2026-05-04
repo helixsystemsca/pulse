@@ -68,7 +68,7 @@ export function AppNavbar() {
             </span>
             <span
               className={cn(
-                "font-panoramaBrand min-w-0 whitespace-nowrap text-[clamp(1.125rem,2.1vw,1.375rem)] leading-none tracking-[0.04em]",
+                "font-panoramaBrand min-w-0 whitespace-nowrap text-[clamp(1.3125rem,2.75vw,1.875rem)] leading-none tracking-[0.04em]",
                 "text-[#1f3a4a] dark:text-[#b8cad6]",
               )}
             >
