@@ -1,7 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { CalendarRange, FolderKanban, Pencil, Plus, Settings2 } from "lucide-react";
+import {
+  ArrowUpRight,
+  CalendarRange,
+  Check,
+  FolderKanban,
+  Loader2,
+  Pencil,
+  Plus,
+  Settings2,
+  Trash2,
+} from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Card } from "@/components/pulse/Card";
 import { HintCallout } from "@/components/ui/HintCallout";
@@ -75,7 +85,14 @@ function categoryMatchByName(categories: CategoryRow[], name: string): CategoryR
 }
 
 const ICON_BTN =
-  "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] border border-slate-200/90 bg-white text-pulse-navy shadow-sm transition-colors hover:bg-slate-50 dark:border-ds-border dark:bg-ds-secondary dark:text-slate-100 dark:hover:bg-ds-interactive-hover";
+  "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] border border-slate-200/90 bg-white text-pulse-navy shadow-sm transition-colors hover:border-slate-300/90 hover:bg-slate-50 active:bg-slate-100 dark:border-ds-border dark:bg-ds-secondary dark:text-slate-100 dark:hover:border-ds-border dark:hover:bg-ds-interactive-hover";
+
+/** Compact icon actions on project cards (matches bordered icon pattern used in work requests). */
+const PROJECT_CARD_ACTION_BTN =
+  "inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-slate-200/90 bg-white text-pulse-navy shadow-sm transition-colors hover:border-slate-300/90 hover:bg-slate-50 active:bg-slate-100 disabled:pointer-events-none disabled:opacity-50 dark:border-ds-border dark:bg-ds-secondary dark:text-slate-100 dark:hover:border-ds-border dark:hover:bg-ds-interactive-hover";
+
+const PROJECT_CARD_ACTION_DANGER =
+  "inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-slate-200/90 bg-white text-red-700 shadow-sm transition-colors hover:border-red-200/80 hover:bg-red-50 active:bg-red-100 disabled:pointer-events-none disabled:opacity-50 dark:border-ds-border dark:bg-ds-secondary dark:text-red-400 dark:hover:border-red-500/30 dark:hover:bg-red-500/15";
 
 export function ProjectsApp() {
   const { session } = usePulseAuth();
@@ -554,7 +571,7 @@ export function ProjectsApp() {
                     {groupName}
                   </p>
                 ) : null}
-                <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
                   {groupRows.map((p) => {
                     const owner = p.owner_user_id ? workerById.get(p.owner_user_id) : undefined;
                     const creatorIsYou = Boolean(myUserId && p.created_by_user_id && p.created_by_user_id === myUserId);
@@ -572,126 +589,129 @@ export function ProjectsApp() {
                       return `Last update: ${days} days ago`;
                     })();
                     return (
-                      <Card key={p.id} padding="md" className="ds-card-static h-full">
-                        <div className="flex items-start gap-3">
-                          <Link
-                            href={`/projects/${p.id}`}
-                            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-slate-200/80 bg-slate-50 text-pulse-accent no-underline transition-colors hover:border-slate-300/90 hover:bg-slate-100 dark:border-ds-border dark:bg-ds-secondary dark:hover:border-ds-border dark:hover:bg-ds-interactive-hover"
-                            aria-label={`Open ${p.name}`}
-                            title="Open project"
-                          >
-                            <FolderKanban className="h-5 w-5" aria-hidden />
-                          </Link>
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-start justify-between gap-2">
-                              <p className="min-w-0 font-headline text-base font-semibold text-pulse-navy dark:text-slate-100">
-                                {p.name}
-                              </p>
-                              {canManageProjectCard ? (
-                                <button
-                                  type="button"
-                                  className={ICON_BTN}
-                                  aria-label={`Settings for ${p.name}`}
-                                  title="Project settings"
-                                  onClick={() => {
-                                    setSettingsFor(p);
-                                    setSettingsOpen(true);
-                                  }}
-                                >
-                                  <Settings2 className="h-4 w-4" aria-hidden />
-                                </button>
-                              ) : null}
-                            </div>
-                            <p className="mt-1.5 inline-flex items-center gap-1.5 text-xs text-pulse-muted">
-                              <CalendarRange className="h-3.5 w-3.5 shrink-0 opacity-80" aria-hidden />
-                              <span className="tabular-nums">
-                                {p.start_date} → {p.end_date}
-                              </span>
+                      <Card key={p.id} padding="none" className="ds-card-static h-full p-4">
+                        <div className="min-w-0">
+                          <div className="flex items-start justify-between gap-2">
+                            <p className="min-w-0 flex-1 font-headline text-base font-semibold leading-snug text-pulse-navy dark:text-slate-100">
+                              {p.name}
                             </p>
-                            <p className="mt-2 text-xs text-pulse-muted">
-                              <span className="font-semibold text-pulse-navy/80 dark:text-slate-300">Owner: </span>
-                              {owner ? displayName(owner) : "—"}
-                            </p>
-                            {p.category ? (
-                              <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
-                                {p.category.color ? (
-                                  <span className={`h-2 w-2 rounded-full ${categoryDotClass(p.category.color)}`} aria-hidden />
-                                ) : null}
-                                <span className="text-xs text-muted-foreground">{p.category.name}</span>
-                              </div>
-                            ) : null}
-                            {lastUpdateLabel ? (
-                              <p className="mt-1 text-[11px] font-medium text-pulse-muted">{lastUpdateLabel}</p>
-                            ) : null}
-                            <div className="mt-3 flex flex-wrap items-center gap-2">
-                              <span className="inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-pulse-muted ring-1 ring-slate-200/80 dark:bg-ds-secondary dark:text-slate-300 dark:ring-ds-border">
-                                {statusLabel(p.status)}
-                              </span>
-                              <span
-                                className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ring-1 ${healthBadgeClass(
-                                  p.health_status,
-                                )}`}
-                                title="Project health is derived from overdue tasks and issue activity."
+                            {canManageProjectCard ? (
+                              <button
+                                type="button"
+                                className={`${ICON_BTN} h-8 w-8 shrink-0 rounded-lg`}
+                                aria-label={`Settings for ${p.name}`}
+                                title="Project settings"
+                                onClick={() => {
+                                  setSettingsFor(p);
+                                  setSettingsOpen(true);
+                                }}
                               >
-                                {(p.health_status || "On Track").toString()}
-                              </span>
-                            </div>
-                            <div className="mt-4">
-                              <div className="flex items-center justify-between text-[11px] font-semibold text-pulse-muted">
-                                <span>Progress</span>
-                                <span className="tabular-nums text-pulse-navy dark:text-slate-200">{p.progress_pct}%</span>
-                              </div>
-                              <div className="mt-1 h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-ds-secondary">
-                                <div
-                                  className="h-full rounded-full bg-pulse-accent transition-[width] duration-500 ease-out"
-                                  style={{ width: `${p.progress_pct}%` }}
-                                />
-                              </div>
-                              <p className="mt-1 text-[11px] text-pulse-muted">
-                                {p.task_completed} / {p.task_total} tasks complete
-                              </p>
-                            </div>
-                            <div className="mt-4 flex flex-col gap-2">
-                              {canManageProjectCard ? (
-                                <div className="flex flex-col gap-2 sm:flex-row">
-                                  <button
-                                    type="button"
-                                    className={`${SECONDARY_BTN} w-full sm:flex-1`}
-                                    disabled={saving || completingId === p.id || deletingId === p.id}
-                                    onClick={() => openEdit(p)}
-                                  >
-                                    <span className="inline-flex items-center justify-center gap-2">
-                                      <Pencil className="h-4 w-4" aria-hidden />
-                                      Edit
-                                    </span>
-                                  </button>
-                                  {canMarkComplete ? (
-                                    <button
-                                      type="button"
-                                      className={`${SECONDARY_BTN} w-full sm:flex-1`}
-                                      disabled={completingId === p.id || deletingId === p.id}
-                                      onClick={() => void markProjectComplete(p)}
-                                    >
-                                      {completingId === p.id ? "Updating…" : "Mark complete"}
-                                    </button>
-                                  ) : null}
-                                  <button
-                                    type="button"
-                                    className={`${DANGER_BTN} w-full ${canMarkComplete ? "sm:flex-1" : ""}`}
-                                    disabled={deletingId === p.id || completingId === p.id}
-                                    onClick={() => void removeProject(p)}
-                                  >
-                                    {deletingId === p.id ? "Deleting…" : "Delete"}
-                                  </button>
-                                </div>
+                                <Settings2 className="h-4 w-4" aria-hidden />
+                              </button>
+                            ) : null}
+                          </div>
+                          <p className="mt-1 inline-flex items-center gap-1.5 text-xs text-pulse-muted">
+                            <CalendarRange className="h-3.5 w-3.5 shrink-0 opacity-80" aria-hidden />
+                            <span className="tabular-nums">
+                              {p.start_date} → {p.end_date}
+                            </span>
+                          </p>
+                          <p className="mt-1 text-xs text-pulse-muted">
+                            <span className="font-semibold text-pulse-navy/80 dark:text-slate-300">Owner: </span>
+                            {owner ? displayName(owner) : "—"}
+                          </p>
+                          {p.category ? (
+                            <div className="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground">
+                              {p.category.color ? (
+                                <span className={`h-2 w-2 rounded-full ${categoryDotClass(p.category.color)}`} aria-hidden />
                               ) : null}
-                              <Link
-                                href={`/projects/${p.id}`}
-                                className={`${PRIMARY_BTN} inline-flex w-full items-center justify-center no-underline transition-colors`}
-                              >
-                                Open project
-                              </Link>
+                              <span className="text-xs text-muted-foreground">{p.category.name}</span>
                             </div>
+                          ) : null}
+                          {lastUpdateLabel ? (
+                            <p className="mt-0.5 text-[11px] font-medium text-pulse-muted">{lastUpdateLabel}</p>
+                          ) : null}
+                          <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                            <span className="inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-pulse-muted ring-1 ring-slate-200/80 dark:bg-ds-secondary dark:text-slate-300 dark:ring-ds-border">
+                              {statusLabel(p.status)}
+                            </span>
+                            <span
+                              className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ring-1 ${healthBadgeClass(
+                                p.health_status,
+                              )}`}
+                              title="Project health is derived from overdue tasks and issue activity."
+                            >
+                              {(p.health_status || "On Track").toString()}
+                            </span>
+                          </div>
+                          <div className="mt-2.5">
+                            <div className="flex items-center justify-between text-[11px] font-semibold text-pulse-muted">
+                              <span>Progress</span>
+                              <span className="tabular-nums text-pulse-navy dark:text-slate-200">{p.progress_pct}%</span>
+                            </div>
+                            <div className="mt-0.5 h-1.5 overflow-hidden rounded-full bg-slate-100 dark:bg-ds-secondary">
+                              <div
+                                className="h-full rounded-full bg-pulse-accent transition-[width] duration-500 ease-out"
+                                style={{ width: `${p.progress_pct}%` }}
+                              />
+                            </div>
+                            <p className="mt-0.5 text-[11px] text-pulse-muted">
+                              {p.task_completed} / {p.task_total} tasks complete
+                            </p>
+                          </div>
+                          <div className="mt-2 flex flex-wrap items-center justify-end gap-1">
+                            <Link
+                              href={`/projects/${p.id}`}
+                              className={`${PROJECT_CARD_ACTION_BTN} no-underline`}
+                              aria-label={`Open ${p.name}`}
+                              title="Open project"
+                            >
+                              <ArrowUpRight className="h-4 w-4" aria-hidden />
+                            </Link>
+                            {canManageProjectCard ? (
+                              <button
+                                type="button"
+                                className={PROJECT_CARD_ACTION_BTN}
+                                disabled={saving || completingId === p.id || deletingId === p.id}
+                                aria-label={`Edit ${p.name}`}
+                                title="Edit project"
+                                onClick={() => openEdit(p)}
+                              >
+                                <Pencil className="h-4 w-4" aria-hidden />
+                              </button>
+                            ) : null}
+                            {canManageProjectCard && canMarkComplete ? (
+                              <button
+                                type="button"
+                                className={PROJECT_CARD_ACTION_BTN}
+                                disabled={completingId === p.id || deletingId === p.id}
+                                aria-label={completingId === p.id ? "Marking complete…" : `Mark ${p.name} complete`}
+                                title={completingId === p.id ? "Updating…" : "Mark complete"}
+                                onClick={() => void markProjectComplete(p)}
+                              >
+                                {completingId === p.id ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                                ) : (
+                                  <Check className="h-4 w-4" aria-hidden />
+                                )}
+                              </button>
+                            ) : null}
+                            {canManageProjectCard ? (
+                              <button
+                                type="button"
+                                className={PROJECT_CARD_ACTION_DANGER}
+                                disabled={deletingId === p.id || completingId === p.id}
+                                aria-label={deletingId === p.id ? "Deleting…" : `Delete ${p.name}`}
+                                title={deletingId === p.id ? "Deleting…" : "Delete project"}
+                                onClick={() => void removeProject(p)}
+                              >
+                                {deletingId === p.id ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                                ) : (
+                                  <Trash2 className="h-4 w-4" aria-hidden />
+                                )}
+                              </button>
+                            ) : null}
                           </div>
                         </div>
                       </Card>
