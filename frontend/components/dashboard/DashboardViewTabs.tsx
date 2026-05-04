@@ -2,8 +2,15 @@
 
 import { usePathname, useRouter } from "next/navigation";
 
-import { Button } from "@/components/ui/Button";
-import { UI } from "@/styles/ui";
+import { cn } from "@/lib/cn";
+
+const tabBtn =
+  "min-h-9 flex-1 rounded-md px-3 py-2 text-center text-sm font-semibold outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-[var(--ds-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-ds-secondary sm:px-4";
+
+const tabActive = "bg-ds-primary text-ds-foreground shadow-sm ring-1 ring-ds-border";
+
+const tabInactive =
+  "text-ds-muted hover:bg-ds-interactive-hover hover:text-ds-foreground active:bg-ds-muted/40 dark:hover:bg-ds-interactive-hover";
 
 /**
  * Switches between overview (supervisor) and worker dashboards. URL is the source of truth.
@@ -16,16 +23,24 @@ export function DashboardViewTabs() {
   const isWorker = pathname === "/worker" || pathname.startsWith("/worker/");
 
   return (
-    <div className={UI.toggleGroup} role="navigation" aria-label="Dashboards">
-      <Button variant={isWorker ? "accent" : "secondary"} type="button" onClick={() => router.push("/worker")}>
+    <div
+      className="mb-4 flex rounded-lg border border-ds-border bg-ds-secondary p-1 shadow-[var(--ds-shadow-card)]"
+      role="navigation"
+      aria-label="Dashboards"
+    >
+      <button type="button" className={cn(tabBtn, isWorker ? tabActive : tabInactive)} onClick={() => router.push("/worker")}>
         Worker
-      </Button>
-      <Button variant={isOverview ? "accent" : "secondary"} type="button" onClick={() => router.push("/overview")}>
+      </button>
+      <button type="button" className={cn(tabBtn, isOverview ? tabActive : tabInactive)} onClick={() => router.push("/overview")}>
         Overview
-      </Button>
-      <Button variant={isProjectTab ? "accent" : "secondary"} type="button" onClick={() => router.push("/overview/project")}>
+      </button>
+      <button
+        type="button"
+        className={cn(tabBtn, isProjectTab ? tabActive : tabInactive)}
+        onClick={() => router.push("/overview/project")}
+      >
         Project
-      </Button>
+      </button>
     </div>
   );
 }
