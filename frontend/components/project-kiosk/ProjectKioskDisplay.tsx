@@ -62,7 +62,7 @@ function KioskHeaderClock() {
   return (
     <div className="shrink-0 text-right tabular-nums">
       <p className="font-headline text-lg font-bold tracking-tight text-ds-foreground sm:text-xl">{timeStr}</p>
-      <p className="mt-0.5 text-[10px] font-semibold leading-tight text-ds-muted sm:text-[11px]">{dateStr}</p>
+      <p className="mt-0.5 text-[11px] font-bold leading-tight text-ds-muted sm:text-xs">{dateStr}</p>
     </div>
   );
 }
@@ -666,11 +666,6 @@ export function ProjectKioskDisplay({ projectId }: { projectId: string }) {
           </div>
 
           <div className="flex min-w-0 flex-1 flex-wrap items-start justify-start gap-x-0 gap-y-1.5 divide-x divide-ds-border/60 xl:justify-end [&>div]:px-2.5 [&>div:first-child]:border-l-0 [&>div:first-child]:pl-0 max-xl:[&>div:first-child]:pl-0 sm:[&>div]:px-3">
-            <div className="flex flex-col gap-0 border-l-0 pl-0">
-              <p className={cn(DASH.sectionLabel, "leading-none")}>Today</p>
-              <p className="mt-0.5 text-sm font-bold tabular-nums text-ds-accent sm:text-base">{h.todayLabel}</p>
-            </div>
-
             <div className="flex flex-col gap-0">
               <p className={cn(DASH.sectionLabel, "leading-none")}>Project start</p>
               <p className="mt-0.5 text-sm font-bold tabular-nums text-ds-foreground sm:text-base">

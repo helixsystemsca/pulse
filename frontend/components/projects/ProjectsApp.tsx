@@ -571,7 +571,7 @@ export function ProjectsApp() {
                     {groupName}
                   </p>
                 ) : null}
-                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
                   {groupRows.map((p) => {
                     const owner = p.owner_user_id ? workerById.get(p.owner_user_id) : undefined;
                     const creatorIsYou = Boolean(myUserId && p.created_by_user_id && p.created_by_user_id === myUserId);
