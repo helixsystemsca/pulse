@@ -102,7 +102,7 @@ export function ProjectsApp() {
   const [rows, setRows] = useState<ProjectRow[] | null>(null);
   const [workers, setWorkers] = useState<PulseWorkerApi[]>([]);
   const [err, setErr] = useState<string | null>(null);
-  const [filter, setFilter] = useState<"active" | "completed" | "archive">("active");
+  const [filter, setFilter] = useState<"active" | "future" | "completed" | "archive">("active");
   const [createOpen, setCreateOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [editFor, setEditFor] = useState<ProjectRow | null>(null);
@@ -110,6 +110,9 @@ export function ProjectsApp() {
   const [saving, setSaving] = useState(false);
   const [completingId, setCompletingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [closeoutOpen, setCloseoutOpen] = useState(false);
+  const [closeoutFor, setCloseoutFor] = useState<ProjectRow | null>(null);
+  const [closeoutSummary, setCloseoutSummary] = useState("");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsFor, setSettingsFor] = useState<ProjectRow | null>(null);
   const [settingsLoading, setSettingsLoading] = useState(false);
@@ -253,7 +256,8 @@ export function ProjectsApp() {
     if (!rows) return [];
     const now = new Date();
     const year = now.getFullYear();
-    if (filter === "active") return rows.filter((p) => p.status !== "completed");
+    if (filter === "active") return rows.filter((p) => p.status !== "completed" && p.status !== "future");
+    if (filter === "future") return rows.filter((p) => p.status === "future" && !p.archived_at);
     if (filter === "completed") {
       // Annual snapshot: only show projects completed in the current year.
       return rows.filter((p) => {
@@ -290,17 +294,25 @@ export function ProjectsApp() {
     return { keys, groups };
   }, [rows, filter, filtered]);
 
-  async function markProjectComplete(p: ProjectRow) {
-    if (!myUserId || p.created_by_user_id !== myUserId || completingId) return;
-    setCompletingId(p.id);
+  function openCloseout(p: ProjectRow) {
+    setCloseoutFor(p);
+    setCloseoutSummary((p.summary ?? "").toString());
+    setCloseoutOpen(true);
+  }
+
+  async function completeWithCloseout() {
+    if (!closeoutFor || !myUserId || closeoutFor.created_by_user_id !== myUserId || completingId) return;
+    setCompletingId(closeoutFor.id);
     try {
-      const out = await patchProject(p.id, { status: "completed" });
+      await patchProject(closeoutFor.id, { summary: closeoutSummary.trim() || null });
+      const out = await patchProject(closeoutFor.id, { status: "completed" });
       setRows((prev) =>
         prev?.map((r) =>
-          r.id === p.id
+          r.id === closeoutFor.id
             ? {
                 ...r,
                 ...out,
+                summary: closeoutSummary.trim() || null,
                 task_total: r.task_total,
                 task_completed: r.task_completed,
                 progress_pct: r.progress_pct,
@@ -309,7 +321,11 @@ export function ProjectsApp() {
             : r,
         ) ?? null,
       );
+      // Recurring projects may auto-create a new Future instance on completion — refresh list.
+      await reload();
       setToast("Project marked complete.");
+      setCloseoutOpen(false);
+      setCloseoutFor(null);
     } catch (e) {
       const { message } = parseClientApiError(e);
       setToast(message || "Could not update project.");
@@ -524,6 +540,7 @@ export function ProjectsApp() {
             onChange={setFilter}
             options={[
               { value: "active", label: "Active" },
+              { value: "future", label: "Future" },
               { value: "completed", label: "Completed" },
               { value: "archive", label: "Archive" },
             ]}
@@ -555,6 +572,8 @@ export function ProjectsApp() {
               ? "No projects yet. Create one to get started."
               : filter === "completed"
                 ? "No completed projects yet this year."
+                : filter === "future"
+                  ? "No upcoming (Future) projects yet."
                 : filter === "archive"
                   ? "No archived projects yet."
                   : "No active projects in this filter. Switch to Completed/Archive or create a project."}
@@ -687,7 +706,7 @@ export function ProjectsApp() {
                                 disabled={completingId === p.id || deletingId === p.id}
                                 aria-label={completingId === p.id ? "Marking complete…" : `Mark ${p.name} complete`}
                                 title={completingId === p.id ? "Updating…" : "Mark complete"}
-                                onClick={() => void markProjectComplete(p)}
+                                onClick={() => openCloseout(p)}
                               >
                                 {completingId === p.id ? (
                                   <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
@@ -1142,6 +1161,72 @@ export function ProjectsApp() {
                 }}
               >
                 Create
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {closeoutOpen && closeoutFor ? (
+        <div className="ds-modal-backdrop fixed inset-0 z-[141] flex items-center justify-center p-4 backdrop-blur-[2px]">
+          <div
+            className="max-h-[min(90vh,620px)] w-full max-w-lg overflow-y-auto rounded-xl border border-slate-200/90 bg-white p-6 shadow-2xl dark:border-ds-border dark:bg-ds-primary"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="project-closeout-title"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <h2 id="project-closeout-title" className="text-lg font-bold text-pulse-navy dark:text-slate-100">
+                  Close out project
+                </h2>
+                <p className="mt-1 text-sm text-pulse-muted">{closeoutFor.name}</p>
+              </div>
+              <button
+                type="button"
+                className="rounded-lg px-2 py-1 text-sm font-semibold text-pulse-muted hover:bg-slate-100 dark:hover:bg-ds-secondary"
+                onClick={() => {
+                  setCloseoutOpen(false);
+                  setCloseoutFor(null);
+                }}
+              >
+                Close
+              </button>
+            </div>
+            <div className="mt-5 space-y-4">
+              <div>
+                <label className={LABEL} htmlFor="proj-closeout-summary">
+                  Summary (optional)
+                </label>
+                <textarea
+                  id="proj-closeout-summary"
+                  rows={4}
+                  className={FIELD}
+                  value={closeoutSummary}
+                  onChange={(e) => setCloseoutSummary(e.target.value)}
+                  placeholder="What happened? Any notes for the team?"
+                />
+              </div>
+            </div>
+            <div className="mt-6 flex flex-wrap justify-end gap-3">
+              <button
+                type="button"
+                className="rounded-lg px-4 py-2.5 text-sm font-semibold text-pulse-muted transition-colors hover:text-pulse-navy dark:hover:text-slate-200"
+                disabled={completingId === closeoutFor.id}
+                onClick={() => {
+                  setCloseoutOpen(false);
+                  setCloseoutFor(null);
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className={PRIMARY_BTN}
+                disabled={completingId === closeoutFor.id}
+                onClick={() => void completeWithCloseout()}
+              >
+                {completingId === closeoutFor.id ? "Completing…" : "Complete project"}
               </button>
             </div>
           </div>

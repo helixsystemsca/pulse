@@ -3,6 +3,8 @@
 import { ChevronDown, Maximize2, Minimize2, Plus, Save } from "lucide-react";
 import { ProjectSelector } from "./ProjectSelector";
 import { cn } from "@/lib/cn";
+import { buttonVariants } from "@/styles/button-variants";
+import { DASH } from "@/styles/dashboardTheme";
 
 const MAP_CATEGORIES = ["General", "Facility map", "Floor plan", "Aerial", "Site", "Other"] as const;
 
@@ -12,8 +14,16 @@ type MapSummary = {
   category: string;
 };
 
-const ctrlBase =
-  "inline-flex h-8 shrink-0 items-center gap-1.5 rounded-[7px] border px-2.5 text-[12.5px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-45";
+const ctrlBase = cn(
+  buttonVariants({ surface: "light", intent: "secondary" }),
+  // Align with the rest of the app controls (compact toolbar sizing).
+  "min-h-8 rounded-lg border px-3 py-1.5 text-xs font-semibold tracking-normal shadow-sm",
+);
+
+const ctrlAccent = cn(
+  buttonVariants({ surface: "light", intent: "accent" }),
+  "min-h-8 rounded-lg border px-3 py-1.5 text-xs font-semibold tracking-normal shadow-sm",
+);
 
 export function DrawingsTopBar({
   mapsToolbarDisabled,
@@ -61,9 +71,7 @@ export function DrawingsTopBar({
     <div className="shrink-0 bg-white shadow-[0_1px_4px_rgba(0,0,0,0.06)] dark:bg-ds-secondary/30 dark:shadow-none">
       <header className="flex flex-col">
         <div className="flex min-h-[50px] flex-wrap items-center gap-x-1.5 gap-y-2 px-3.5 py-2 sm:h-[50px] sm:flex-nowrap sm:py-0">
-        <span className="shrink-0 font-mono text-[10.5px] font-medium uppercase tracking-[0.1em] text-[#96a0b0] dark:text-ds-muted">
-          Drawings
-        </span>
+        <span className={cn(DASH.sectionLabel, "shrink-0")}>Drawings</span>
 
         <span className="hidden h-5 w-px shrink-0 bg-[#d0d6df] sm:block dark:bg-ds-border" aria-hidden />
 
@@ -72,13 +80,13 @@ export function DrawingsTopBar({
             type="button"
             className={cn(
               ctrlBase,
-              "border-[#b2f0e0] bg-[#e6faf5] text-[#0fa07e] hover:border-[#1ec8a0] hover:bg-[#c8f5e8] hover:shadow-[0_0_0_3px_rgba(30,200,160,0.1)] dark:border-emerald-500/40 dark:bg-emerald-950/40 dark:text-emerald-200",
+              "inline-flex items-center gap-2",
             )}
             disabled={mapsToolbarDisabled}
             onClick={onUploadNewMap}
             title="Upload an image — first step for a new facility map"
           >
-            <Plus className="h-3.5 w-3.5 shrink-0" strokeWidth={2} aria-hidden />
+            <Plus className="h-4 w-4 shrink-0" strokeWidth={2.5} aria-hidden />
             <span className="hidden sm:inline">Upload image</span>
           </button>
 
@@ -86,7 +94,7 @@ export function DrawingsTopBar({
             <select
               className={cn(
                 ctrlBase,
-                "w-[128px] cursor-pointer appearance-none border-[#c5d6f5] bg-[#eef3fd] pr-7 text-[#2a5faf] hover:border-[#3a7bd5] hover:bg-[#dce9fb] dark:border-blue-500/40 dark:bg-blue-950/35 dark:text-blue-200",
+                "w-[128px] cursor-pointer appearance-none pr-7",
               )}
               value={newMapCategory}
               onChange={(e) => onNewMapCategoryChange(e.target.value)}
@@ -100,7 +108,7 @@ export function DrawingsTopBar({
                 </option>
               ))}
             </select>
-            <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[#3a7bd5] dark:text-blue-300">
+            <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-ds-muted">
               <ChevronDown className="h-3.5 w-3.5" aria-hidden />
             </span>
           </div>
@@ -109,7 +117,7 @@ export function DrawingsTopBar({
             <select
               className={cn(
                 ctrlBase,
-                "h-8 w-full min-w-0 cursor-pointer appearance-none border-[#d0d6df] bg-[#f8f9fb] pr-8 text-[#5a6478] hover:border-[#1ec8a0] hover:bg-white hover:shadow-[0_0_0_3px_rgba(30,200,160,0.08)] focus:border-[#1ec8a0] focus:shadow-[0_0_0_3px_rgba(30,200,160,0.12)] focus:outline-none dark:border-ds-border dark:bg-ds-secondary/30 dark:text-ds-muted dark:hover:bg-ds-secondary/50",
+                "w-full min-w-0 cursor-pointer appearance-none pr-8 focus:outline-none",
               )}
               aria-label="Select map"
               value={activeMapId}
@@ -136,7 +144,7 @@ export function DrawingsTopBar({
               ))}
               <option value="__upload__">Upload new image…</option>
             </select>
-            <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[#96a0b0] dark:text-ds-muted">
+            <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-ds-muted">
               <ChevronDown className="h-3.5 w-3.5" aria-hidden />
             </span>
           </div>
@@ -144,7 +152,7 @@ export function DrawingsTopBar({
           <span className="hidden h-5 w-px shrink-0 bg-[#d0d6df] sm:block dark:bg-ds-border" aria-hidden />
 
           <div className="flex min-w-0 max-w-[200px] shrink items-center gap-1.5 sm:max-w-[220px]">
-            <span className="hidden shrink-0 text-[10px] font-medium uppercase tracking-wide text-[#96a0b0] lg:inline dark:text-ds-muted">
+            <span className={cn(DASH.sectionLabel, "hidden shrink-0 lg:inline")}>
               Project
             </span>
             <ProjectSelector
@@ -160,41 +168,41 @@ export function DrawingsTopBar({
           <button
             type="button"
             className={cn(
-              ctrlBase,
-              "border-[#0fa07e] bg-[#1ec8a0] px-3 font-semibold text-white hover:border-[#0c8a6c] hover:bg-[#0fa07e] hover:shadow-[0_2px_8px_rgba(30,200,160,0.3)] dark:border-emerald-600 dark:bg-emerald-600 dark:hover:bg-emerald-700",
+              ctrlAccent,
+              "inline-flex items-center gap-2",
             )}
             disabled={saveDisabled}
             onClick={onSaveMap}
             title="Save map overlays and layout to the server"
           >
-            <Save className="h-3.5 w-3.5 shrink-0 opacity-95" aria-hidden />
+            <Save className="h-4 w-4 shrink-0" strokeWidth={2.5} aria-hidden />
             Save
           </button>
           {fullscreen ? (
             <button
               type="button"
-              className={cn(ctrlBase, "border-[#d0d6df] bg-transparent text-[#5a6478] hover:bg-[#f4f6f8] hover:text-[#1a2030] dark:border-ds-border dark:text-ds-muted dark:hover:bg-ds-secondary/40")}
+              className={cn(ctrlBase, "inline-flex items-center gap-2")}
               onClick={onExitFullscreen}
               title="Return to Drawings"
             >
-              <Minimize2 className="h-3.5 w-3.5 shrink-0 opacity-90" aria-hidden />
+              <Minimize2 className="h-4 w-4 shrink-0" strokeWidth={2.5} aria-hidden />
               <span className="hidden sm:inline">Exit</span>
             </button>
           ) : (
             <button
               type="button"
-              className={cn(ctrlBase, "border-[#d0d6df] bg-transparent text-[#5a6478] hover:bg-[#f4f6f8] hover:text-[#1a2030] dark:border-ds-border dark:text-ds-muted dark:hover:bg-ds-secondary/40")}
+              className={cn(ctrlBase, "inline-flex items-center gap-2")}
               onClick={onEnterFullscreen}
               title="Open fullscreen editor"
             >
-              <Maximize2 className="h-3.5 w-3.5 shrink-0 opacity-90" aria-hidden />
+              <Maximize2 className="h-4 w-4 shrink-0" strokeWidth={2.5} aria-hidden />
               <span className="hidden sm:inline">Fullscreen</span>
             </button>
           )}
         </div>
         </div>
         <div
-          className="h-[3px] w-full shrink-0 bg-gradient-to-r from-[#1ec8a0] via-[#3a7bd5] to-[#f25c7a] opacity-70"
+          className={cn(DASH.accentBar, "opacity-80")}
           aria-hidden
         />
       </header>
