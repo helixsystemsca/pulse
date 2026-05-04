@@ -2480,7 +2480,7 @@ export function OperationalDashboard({
       <DashboardBody
         model={demoWithUser}
         workOrdersHref={workOrdersHref}
-        headerLogoUrl="/images/panoramalogo.png"
+        headerLogoUrl="/images/panoramalogo2.png"
         headerCompanyName={session?.company?.name ?? null}
         facilitySetupChecklist={null}
         readOnly={readOnly}
@@ -2522,7 +2522,7 @@ export function OperationalDashboard({
       workOrdersHref={workOrdersHref}
       zonePromptDismissed={zoneDismissed}
       onDismissZonePrompt={() => setZoneDismissed(true)}
-      headerLogoUrl="/images/panoramalogo.png"
+      headerLogoUrl="/images/panoramalogo2.png"
       headerCompanyName={session?.company?.name ?? null}
       facilitySetupChecklist={null}
       readOnly={readOnly}

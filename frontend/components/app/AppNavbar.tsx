@@ -51,7 +51,7 @@ export function AppNavbar() {
           >
             <span className="inline-flex shrink-0 items-center leading-none">
               <Image
-                src="/images/panoramalogo.png"
+                src="/images/panoramalogo2.png"
                 alt=""
                 width={280}
                 height={96}

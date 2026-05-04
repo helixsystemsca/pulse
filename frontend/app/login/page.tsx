@@ -178,7 +178,7 @@ export default function LoginPage() {
                 )}
               >
                 <Image
-                  src="/images/panoramalogo.png"
+                  src="/images/panoramalogo2.png"
                   alt="Panorama"
                   fill
                   priority

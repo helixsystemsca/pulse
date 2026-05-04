@@ -591,7 +591,7 @@ export function ProjectKioskDisplay({ projectId }: { projectId: string }) {
           <div className="flex min-w-0 flex-1 items-start gap-4">
             <div className="relative h-[4.5rem] w-[4.5rem] shrink-0 sm:h-20 sm:w-20">
               <Image
-                src="/images/panoramalogo.png"
+                src="/images/panoramalogo2.png"
                 alt=""
                 fill
                 priority

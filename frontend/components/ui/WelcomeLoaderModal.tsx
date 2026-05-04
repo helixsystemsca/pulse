@@ -235,7 +235,7 @@ export function WelcomeLoaderModal({
                   >
                     <div className="relative h-full w-full overflow-hidden rounded-full bg-white">
                       <Image
-                        src="/images/panoramalogo.png"
+                        src="/images/panoramalogo2.png"
                         alt=""
                         fill
                         priority
