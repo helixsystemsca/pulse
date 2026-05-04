@@ -4,1808 +4,1204 @@
     "start": "2026-04-10",
     "end": "2026-04-18"
   },
-  "methodology": "Critical path = all tile\u2192grout\u2192cure\u2192caulk\u2192cure for pools, steam, changerooms. Parallel = mechanical/features/dry changeroom work in cure windows.",
+  "methodology": "Original shutdownlist line items only; minimal deps (tile\u2192grout, grout\u2192paint/changeroom, caulk after grout on pools); Apr 10\u201318 dates; no synthetic lag tasks.",
   "tasks": [
     {
-      "ref": "G-SAFETY",
-      "import_key": "G-SAFETY",
-      "title": "Shutdown kickoff + safety / lockout coordination",
-      "description": "Brief crews on LOTO, chemical handling, and wet-area sequencing. REF:G-SAFETY",
-      "area": "Facility",
-      "phase": "PH1",
+      "ref": "SR-scrub",
+      "import_key": "SR-scrub",
+      "title": "Steam room: scrub walls and floors",
+      "description": "Original shutdown list.",
+      "area": "Steam Room",
+      "phase": "P1",
       "start_date": "2026-04-10",
-      "end_date": "2026-04-10",
-      "estimated_completion_minutes": 1440,
+      "end_date": "2026-04-11",
+      "estimated_completion_minutes": 2880,
       "depends_on_refs": [],
-      "priority": "high",
+      "priority": "medium",
       "path": "parallel"
     },
     {
-      "ref": "G-INSP-ALL",
-      "import_key": "G-INSP-ALL",
-      "title": "Facility-wide inspection: tiles, joints, fixtures, wet seals",
-      "description": "Document failures; photo log for rework avoidance next shutdown. Drives all demo scopes. REF:G-INSP-ALL",
-      "area": "Facility",
-      "phase": "PH1",
-      "start_date": "2026-04-10",
-      "end_date": "2026-04-11",
-      "estimated_completion_minutes": 2880,
-      "depends_on_refs": [
-        "G-SAFETY"
-      ],
-      "priority": "critical",
-      "path": "critical"
-    },
-    {
-      "ref": "G-DEMO-POOLS",
-      "import_key": "G-DEMO-POOLS",
-      "title": "Pools: remove failed grout, caulking, and damaged tile (all vessels)",
-      "description": "Prep all pool shells for tile repair wave. REF:G-DEMO-POOLS",
-      "area": "Lap Pool; Leisure Pool; Swirl Pool",
-      "phase": "PH1",
-      "start_date": "2026-04-10",
-      "end_date": "2026-04-11",
-      "estimated_completion_minutes": 2880,
-      "depends_on_refs": [
-        "G-INSP-ALL"
-      ],
-      "priority": "critical",
-      "path": "critical"
-    },
-    {
-      "ref": "SR-DEMO",
-      "import_key": "SR-DEMO",
-      "title": "Steam room: remove failed grout/caulk and damaged tile",
-      "description": "Includes inlet-adjacent failures called out in master list. REF:SR-DEMO",
+      "ref": "SR-tile",
+      "import_key": "SR-tile",
+      "title": "Steam room: tile broken pieces under steam inlet",
+      "description": "Original shutdown list.",
       "area": "Steam Room",
-      "phase": "PH1",
-      "start_date": "2026-04-10",
-      "end_date": "2026-04-11",
-      "estimated_completion_minutes": 2880,
-      "depends_on_refs": [
-        "G-INSP-ALL"
-      ],
-      "priority": "critical",
-      "path": "critical"
-    },
-    {
-      "ref": "SR-TILE",
-      "import_key": "SR-TILE",
-      "title": "Steam room: tile repair (walls/floor, steam inlet zone)",
-      "description": "Repair broken pieces under steam inlet per shutdown list. REF:SR-TILE",
-      "area": "Steam Room",
-      "phase": "PH2",
+      "phase": "P2",
       "start_date": "2026-04-11",
       "end_date": "2026-04-12",
       "estimated_completion_minutes": 2880,
       "depends_on_refs": [
-        "SR-DEMO"
+        "SR-scrub"
       ],
-      "priority": "critical",
-      "path": "critical"
+      "priority": "medium",
+      "path": "parallel"
     },
     {
-      "ref": "SR-GROUT",
-      "import_key": "SR-GROUT",
+      "ref": "SR-grout",
+      "import_key": "SR-grout",
       "title": "Steam room: grout walls and floors",
-      "description": "Starts after tile repair + 1d cure buffer (scheduled). REF:SR-GROUT",
+      "description": "Original shutdown list.",
       "area": "Steam Room",
-      "phase": "PH3",
+      "phase": "P3",
       "start_date": "2026-04-13",
       "end_date": "2026-04-14",
       "estimated_completion_minutes": 2880,
       "depends_on_refs": [
-        "SR-TILE"
-      ],
-      "priority": "critical",
-      "path": "critical"
-    },
-    {
-      "ref": "SR-LAG-GROUT",
-      "import_key": "SR-LAG-GROUT",
-      "title": "Steam room: grout cure hold (min 2d before caulk / paint exposure)",
-      "description": "Lag task \u2014 no shortcuts. REF:SR-LAG-GROUT",
-      "area": "Steam Room",
-      "phase": "PH3",
-      "start_date": "2026-04-14",
-      "end_date": "2026-04-16",
-      "estimated_completion_minutes": 4320,
-      "depends_on_refs": [
-        "SR-GROUT"
-      ],
-      "priority": "critical",
-      "path": "critical"
-    },
-    {
-      "ref": "SR-CAULK",
-      "import_key": "SR-CAULK",
-      "title": "Steam room: caulking / perimeter seals after grout cure",
-      "description": "REF:SR-CAULK",
-      "area": "Steam Room",
-      "phase": "PH4",
-      "start_date": "2026-04-16",
-      "end_date": "2026-04-16",
-      "estimated_completion_minutes": 1440,
-      "depends_on_refs": [
-        "SR-LAG-GROUT"
-      ],
-      "priority": "critical",
-      "path": "critical"
-    },
-    {
-      "ref": "SR-LAG-CAULK",
-      "import_key": "SR-LAG-CAULK",
-      "title": "Steam room: sealant cure before heavy cleaning / recommission",
-      "description": "1\u20132d lag before final wet scrub counts as complete. REF:SR-LAG-CAULK",
-      "area": "Steam Room",
-      "phase": "PH4",
-      "start_date": "2026-04-17",
-      "end_date": "2026-04-17",
-      "estimated_completion_minutes": 1440,
-      "depends_on_refs": [
-        "SR-CAULK"
-      ],
-      "priority": "critical",
-      "path": "critical"
-    },
-    {
-      "ref": "SR-SCRUB",
-      "import_key": "SR-SCRUB",
-      "title": "Steam room: scrub walls and floors (non-destructive)",
-      "description": "Parallel where safe; finish quality before final disinfection. REF:SR-SCRUB",
-      "area": "Steam Room",
-      "phase": "PH5",
-      "start_date": "2026-04-11",
-      "end_date": "2026-04-14",
-      "estimated_completion_minutes": 5760,
-      "depends_on_refs": [
-        "SR-DEMO"
-      ],
-      "priority": "medium",
-      "path": "parallel"
-    },
-    {
-      "ref": "SR-GEN-SVC",
-      "import_key": "SR-GEN-SVC",
-      "title": "Steam generator: drain, clean, flush, replace sensors",
-      "description": "Mechanical lane during cure windows. REF:SR-GEN-SVC",
-      "area": "Steam Room",
-      "phase": "PH5",
-      "start_date": "2026-04-12",
-      "end_date": "2026-04-16",
-      "estimated_completion_minutes": 7200,
-      "depends_on_refs": [
-        "G-INSP-ALL"
+        "SR-tile"
       ],
       "priority": "high",
       "path": "parallel"
     },
     {
-      "ref": "SR-GEN-COVER",
-      "import_key": "SR-GEN-COVER",
-      "title": "Steam generator: remove and clean cover",
-      "description": "REF:SR-GEN-COVER",
+      "ref": "SR-gen-cover",
+      "import_key": "SR-gen-cover",
+      "title": "Steam room: remove and clean steam generator cover",
+      "description": "Original shutdown list.",
       "area": "Steam Room",
-      "phase": "PH5",
-      "start_date": "2026-04-12",
-      "end_date": "2026-04-13",
+      "phase": "P1",
+      "start_date": "2026-04-11",
+      "end_date": "2026-04-12",
       "estimated_completion_minutes": 2880,
-      "depends_on_refs": [
-        "G-INSP-ALL"
-      ],
+      "depends_on_refs": [],
       "priority": "medium",
       "path": "parallel"
     },
     {
-      "ref": "SR-FINAL-CLEAN",
-      "import_key": "SR-FINAL-CLEAN",
-      "title": "Steam room: full clean + disinfection",
-      "description": "After sealant cure and generator service lane complete. REF:SR-FINAL-CLEAN",
+      "ref": "SR-gen-svc",
+      "import_key": "SR-gen-svc",
+      "title": "Steam room: generator \u2014 drain, clean, flush, replace sensors",
+      "description": "Original shutdown list.",
       "area": "Steam Room",
-      "phase": "PH7",
+      "phase": "P4",
+      "start_date": "2026-04-14",
+      "end_date": "2026-04-16",
+      "estimated_completion_minutes": 4320,
+      "depends_on_refs": [],
+      "priority": "medium",
+      "path": "parallel"
+    },
+    {
+      "ref": "SR-full-clean",
+      "import_key": "SR-full-clean",
+      "title": "Steam room: full clean of room",
+      "description": "Original shutdown list.",
+      "area": "Steam Room",
+      "phase": "P5",
       "start_date": "2026-04-17",
       "end_date": "2026-04-18",
       "estimated_completion_minutes": 2880,
       "depends_on_refs": [
-        "SR-LAG-CAULK",
-        "SR-GEN-SVC"
+        "SR-grout"
       ],
-      "priority": "high",
-      "path": "critical"
+      "priority": "medium",
+      "path": "parallel"
     },
     {
-      "ref": "FCR-DEMO",
-      "import_key": "FCR-DEMO",
-      "title": "Family Changeroom: remove failed grout/caulk and damaged tile",
-      "description": "Demolition lane after inspection. REF:FCR-DEMO",
-      "area": "Family Changeroom",
-      "phase": "PH1",
-      "start_date": "2026-04-10",
-      "end_date": "2026-04-11",
-      "estimated_completion_minutes": 2880,
-      "depends_on_refs": [
-        "G-INSP-ALL"
-      ],
-      "priority": "critical",
-      "path": "critical"
-    },
-    {
-      "ref": "FCR-TILE",
-      "import_key": "FCR-TILE",
-      "title": "Family Changeroom: tile repair",
-      "description": "REF:FCR-TILE",
-      "area": "Family Changeroom",
-      "phase": "PH2",
-      "start_date": "2026-04-11",
-      "end_date": "2026-04-13",
-      "estimated_completion_minutes": 4320,
-      "depends_on_refs": [
-        "FCR-DEMO"
-      ],
-      "priority": "critical",
-      "path": "critical"
-    },
-    {
-      "ref": "FCR-GROUT",
-      "import_key": "FCR-GROUT",
-      "title": "Family Changeroom: grout tile",
-      "description": "Starts after tile repair + 1d buffer. REF:FCR-GROUT",
-      "area": "Family Changeroom",
-      "phase": "PH3",
-      "start_date": "2026-04-13",
-      "end_date": "2026-04-14",
-      "estimated_completion_minutes": 2880,
-      "depends_on_refs": [
-        "FCR-TILE"
-      ],
-      "priority": "critical",
-      "path": "critical"
-    },
-    {
-      "ref": "FCR-LAG-GROUT",
-      "import_key": "FCR-LAG-GROUT",
-      "title": "Family Changeroom: grout cure hold (min 2d) before caulk / paint",
-      "description": "Lag task. REF:FCR-LAG-GROUT",
-      "area": "Family Changeroom",
-      "phase": "PH3",
-      "start_date": "2026-04-14",
-      "end_date": "2026-04-16",
-      "estimated_completion_minutes": 4320,
-      "depends_on_refs": [
-        "FCR-GROUT"
-      ],
-      "priority": "critical",
-      "path": "critical"
-    },
-    {
-      "ref": "FCR-CAULK",
-      "import_key": "FCR-CAULK",
-      "title": "Family Changeroom: caulking / wet-area perimeter seals",
-      "description": "After grout cure. REF:FCR-CAULK",
-      "area": "Family Changeroom",
-      "phase": "PH4",
-      "start_date": "2026-04-16",
-      "end_date": "2026-04-16",
-      "estimated_completion_minutes": 1440,
-      "depends_on_refs": [
-        "FCR-LAG-GROUT"
-      ],
-      "priority": "critical",
-      "path": "critical"
-    },
-    {
-      "ref": "FCR-LAG-CAULK",
-      "import_key": "FCR-LAG-CAULK",
-      "title": "Family Changeroom: sealant cure before grate reinstall / heavy use",
-      "description": "REF:FCR-LAG-CAULK",
-      "area": "Family Changeroom",
-      "phase": "PH4",
-      "start_date": "2026-04-17",
-      "end_date": "2026-04-17",
-      "estimated_completion_minutes": 1440,
-      "depends_on_refs": [
-        "FCR-CAULK"
-      ],
-      "priority": "critical",
-      "path": "critical"
-    },
-    {
-      "ref": "FCR-SCRUB-F",
-      "import_key": "FCR-SCRUB-F",
+      "ref": "FCR-scrub-floors",
+      "import_key": "FCR-scrub-floors",
       "title": "Family Changeroom: scrub floors",
-      "description": "REF:FCR-SCRUB-F",
+      "description": "Original shutdown list.",
       "area": "Family Changeroom",
-      "phase": "PH5",
-      "start_date": "2026-04-11",
-      "end_date": "2026-04-12",
+      "phase": "P1",
+      "start_date": "2026-04-10",
+      "end_date": "2026-04-11",
       "estimated_completion_minutes": 2880,
-      "depends_on_refs": [
-        "FCR-DEMO"
-      ],
+      "depends_on_refs": [],
       "priority": "medium",
       "path": "parallel"
     },
     {
-      "ref": "FCR-PW-WALL",
-      "import_key": "FCR-PW-WALL",
+      "ref": "FCR-pw-walls",
+      "import_key": "FCR-pw-walls",
       "title": "Family Changeroom: powerwash or scrub walls",
-      "description": "REF:FCR-PW-WALL",
+      "description": "Original shutdown list.",
       "area": "Family Changeroom",
-      "phase": "PH5",
+      "phase": "P1",
+      "start_date": "2026-04-10",
+      "end_date": "2026-04-12",
+      "estimated_completion_minutes": 4320,
+      "depends_on_refs": [],
+      "priority": "medium",
+      "path": "parallel"
+    },
+    {
+      "ref": "FCR-dust",
+      "import_key": "FCR-dust",
+      "title": "Family Changeroom: dust everything (vents, locker tops, partitions, lights, ceilings)",
+      "description": "Original shutdown list.",
+      "area": "Family Changeroom",
+      "phase": "P1",
+      "start_date": "2026-04-11",
+      "end_date": "2026-04-14",
+      "estimated_completion_minutes": 5760,
+      "depends_on_refs": [],
+      "priority": "medium",
+      "path": "parallel"
+    },
+    {
+      "ref": "FCR-lockers",
+      "import_key": "FCR-lockers",
+      "title": "Family Changeroom: inspect and repair/replace damaged locker mechanisms",
+      "description": "Original shutdown list.",
+      "area": "Family Changeroom",
+      "phase": "P2",
+      "start_date": "2026-04-12",
+      "end_date": "2026-04-14",
+      "estimated_completion_minutes": 4320,
+      "depends_on_refs": [],
+      "priority": "medium",
+      "path": "parallel"
+    },
+    {
+      "ref": "FCR-plumb",
+      "import_key": "FCR-plumb",
+      "title": "Family Changeroom: inspect toilets, sinks, and showers for leaks and damage",
+      "description": "Original shutdown list.",
+      "area": "Family Changeroom",
+      "phase": "P2",
+      "start_date": "2026-04-12",
+      "end_date": "2026-04-14",
+      "estimated_completion_minutes": 4320,
+      "depends_on_refs": [],
+      "priority": "medium",
+      "path": "parallel"
+    },
+    {
+      "ref": "FCR-tile",
+      "import_key": "FCR-tile",
+      "title": "Family Changeroom: tile repair",
+      "description": "Original shutdown list.",
+      "area": "Family Changeroom",
+      "phase": "P1",
       "start_date": "2026-04-11",
       "end_date": "2026-04-13",
       "estimated_completion_minutes": 4320,
-      "depends_on_refs": [
-        "FCR-DEMO"
-      ],
+      "depends_on_refs": [],
       "priority": "medium",
       "path": "parallel"
     },
     {
-      "ref": "FCR-DUST",
-      "import_key": "FCR-DUST",
-      "title": "Family Changeroom: dust vents, locker tops, partitions, lights, ceilings",
-      "description": "REF:FCR-DUST",
+      "ref": "FCR-grout",
+      "import_key": "FCR-grout",
+      "title": "Family Changeroom: grout tile",
+      "description": "Original shutdown list.",
       "area": "Family Changeroom",
-      "phase": "PH5",
-      "start_date": "2026-04-11",
-      "end_date": "2026-04-16",
-      "estimated_completion_minutes": 8640,
-      "depends_on_refs": [
-        "FCR-DEMO"
-      ],
-      "priority": "low",
-      "path": "parallel"
-    },
-    {
-      "ref": "FCR-LKR",
-      "import_key": "FCR-LKR",
-      "title": "Family Changeroom: inspect / repair locker mechanisms",
-      "description": "REF:FCR-LKR",
-      "area": "Family Changeroom",
-      "phase": "PH5",
-      "start_date": "2026-04-12",
+      "phase": "P2",
+      "start_date": "2026-04-13",
       "end_date": "2026-04-15",
-      "estimated_completion_minutes": 5760,
+      "estimated_completion_minutes": 4320,
       "depends_on_refs": [
-        "FCR-DEMO"
-      ],
-      "priority": "medium",
-      "path": "parallel"
-    },
-    {
-      "ref": "FCR-PLUMB",
-      "import_key": "FCR-PLUMB",
-      "title": "Family Changeroom: inspect toilets, sinks, showers (leaks / damage)",
-      "description": "REF:FCR-PLUMB",
-      "area": "Family Changeroom",
-      "phase": "PH5",
-      "start_date": "2026-04-12",
-      "end_date": "2026-04-15",
-      "estimated_completion_minutes": 5760,
-      "depends_on_refs": [
-        "FCR-DEMO"
-      ],
-      "priority": "medium",
-      "path": "parallel"
-    },
-    {
-      "ref": "FCR-PAINT",
-      "import_key": "FCR-PAINT",
-      "title": "Family Changeroom: paint partitions, walls, ceilings",
-      "description": "Only after grout cure hold completes (moisture rule). REF:FCR-PAINT",
-      "area": "Family Changeroom",
-      "phase": "PH6",
-      "start_date": "2026-04-16",
-      "end_date": "2026-04-17",
-      "estimated_completion_minutes": 2880,
-      "depends_on_refs": [
-        "FCR-LAG-GROUT"
+        "FCR-tile"
       ],
       "priority": "high",
       "path": "parallel"
     },
     {
-      "ref": "FCR-GRATES",
-      "import_key": "FCR-GRATES",
+      "ref": "FCR-paint",
+      "import_key": "FCR-paint",
+      "title": "Family Changeroom: paint (partitions, walls, ceilings)",
+      "description": "Original shutdown list.",
+      "area": "Family Changeroom",
+      "phase": "P3",
+      "start_date": "2026-04-16",
+      "end_date": "2026-04-17",
+      "estimated_completion_minutes": 2880,
+      "depends_on_refs": [
+        "FCR-grout"
+      ],
+      "priority": "medium",
+      "path": "parallel"
+    },
+    {
+      "ref": "FCR-grates",
+      "import_key": "FCR-grates",
       "title": "Family Changeroom: inspect and clean grates",
-      "description": "After caulk cure where grates interface wet seals. REF:FCR-GRATES",
+      "description": "Original shutdown list.",
       "area": "Family Changeroom",
-      "phase": "PH7",
-      "start_date": "2026-04-17",
+      "phase": "P3",
+      "start_date": "2026-04-16",
       "end_date": "2026-04-17",
-      "estimated_completion_minutes": 1440,
-      "depends_on_refs": [
-        "FCR-LAG-CAULK"
-      ],
+      "estimated_completion_minutes": 2880,
+      "depends_on_refs": [],
       "priority": "medium",
       "path": "parallel"
     },
     {
-      "ref": "FCR-SS-POLISH",
-      "import_key": "FCR-SS-POLISH",
+      "ref": "FCR-ss",
+      "import_key": "FCR-ss",
       "title": "Family Changeroom: polish stainless steel",
-      "description": "REF:FCR-SS-POLISH",
+      "description": "Original shutdown list.",
       "area": "Family Changeroom",
-      "phase": "PH6",
+      "phase": "P3",
       "start_date": "2026-04-16",
       "end_date": "2026-04-17",
       "estimated_completion_minutes": 2880,
-      "depends_on_refs": [
-        "FCR-LAG-GROUT"
-      ],
-      "priority": "low",
+      "depends_on_refs": [],
+      "priority": "medium",
       "path": "parallel"
     },
     {
-      "ref": "FCR-LIGHTS",
-      "import_key": "FCR-LIGHTS",
-      "title": "Family Changeroom: change light tubes or ballasts (as needed)",
-      "description": "REF:FCR-LIGHTS",
+      "ref": "FCR-lights",
+      "import_key": "FCR-lights",
+      "title": "Family Changeroom: change light tubes or ballasts",
+      "description": "Original shutdown list.",
       "area": "Family Changeroom",
-      "phase": "PH5",
+      "phase": "P2",
       "start_date": "2026-04-12",
       "end_date": "2026-04-16",
       "estimated_completion_minutes": 7200,
-      "depends_on_refs": [
-        "FCR-DEMO"
-      ],
-      "priority": "low",
+      "depends_on_refs": [],
+      "priority": "medium",
       "path": "parallel"
     },
     {
-      "ref": "FCR-DOORS-SEAL",
-      "import_key": "FCR-DOORS-SEAL",
+      "ref": "FCR-door-seals",
+      "import_key": "FCR-door-seals",
       "title": "Family Changeroom: check rubber seals on doors",
-      "description": "REF:FCR-DOORS-SEAL",
+      "description": "Original shutdown list.",
       "area": "Family Changeroom",
-      "phase": "PH5",
+      "phase": "P2",
       "start_date": "2026-04-12",
       "end_date": "2026-04-15",
       "estimated_completion_minutes": 5760,
-      "depends_on_refs": [
-        "FCR-DEMO"
-      ],
-      "priority": "low",
+      "depends_on_refs": [],
+      "priority": "medium",
       "path": "parallel"
     },
     {
-      "ref": "FCR-DOORS-HW",
-      "import_key": "FCR-DOORS-HW",
+      "ref": "FCR-door-hw",
+      "import_key": "FCR-door-hw",
       "title": "Family Changeroom: check door hardware",
-      "description": "REF:FCR-DOORS-HW",
+      "description": "Original shutdown list.",
       "area": "Family Changeroom",
-      "phase": "PH5",
+      "phase": "P2",
       "start_date": "2026-04-12",
       "end_date": "2026-04-15",
       "estimated_completion_minutes": 5760,
-      "depends_on_refs": [
-        "FCR-DEMO"
-      ],
-      "priority": "low",
-      "path": "parallel"
-    },
-    {
-      "ref": "FCR-PARTITIONS",
-      "import_key": "FCR-PARTITIONS",
-      "title": "Family Changeroom: inspect partitions for structural damage / movement",
-      "description": "REF:FCR-PARTITIONS",
-      "area": "Family Changeroom",
-      "phase": "PH5",
-      "start_date": "2026-04-12",
-      "end_date": "2026-04-15",
-      "estimated_completion_minutes": 5760,
-      "depends_on_refs": [
-        "FCR-DEMO"
-      ],
+      "depends_on_refs": [],
       "priority": "medium",
       "path": "parallel"
     },
     {
-      "ref": "FCR-SHOWER-HEAD",
-      "import_key": "FCR-SHOWER-HEAD",
+      "ref": "FCR-partitions",
+      "import_key": "FCR-partitions",
+      "title": "Family Changeroom: inspect partitions for structural damage and movement",
+      "description": "Original shutdown list.",
+      "area": "Family Changeroom",
+      "phase": "P2",
+      "start_date": "2026-04-12",
+      "end_date": "2026-04-15",
+      "estimated_completion_minutes": 5760,
+      "depends_on_refs": [],
+      "priority": "medium",
+      "path": "parallel"
+    },
+    {
+      "ref": "FCR-shower-heads",
+      "import_key": "FCR-shower-heads",
       "title": "Family Changeroom: remove and clean shower heads",
-      "description": "REF:FCR-SHOWER-HEAD",
+      "description": "Original shutdown list.",
       "area": "Family Changeroom",
-      "phase": "PH5",
-      "start_date": "2026-04-13",
-      "end_date": "2026-04-15",
-      "estimated_completion_minutes": 4320,
+      "phase": "P3",
+      "start_date": "2026-04-15",
+      "end_date": "2026-04-16",
+      "estimated_completion_minutes": 2880,
       "depends_on_refs": [
-        "FCR-GROUT"
+        "FCR-grout"
       ],
       "priority": "medium",
       "path": "parallel"
     },
     {
-      "ref": "FCR-SHOWER-BTN",
-      "import_key": "FCR-SHOWER-BTN",
-      "title": "Family Changeroom: clean / repair shower buttons",
-      "description": "REF:FCR-SHOWER-BTN",
+      "ref": "FCR-shower-btns",
+      "import_key": "FCR-shower-btns",
+      "title": "Family Changeroom: clean/repair shower buttons",
+      "description": "Original shutdown list.",
       "area": "Family Changeroom",
-      "phase": "PH5",
-      "start_date": "2026-04-13",
-      "end_date": "2026-04-15",
-      "estimated_completion_minutes": 4320,
+      "phase": "P3",
+      "start_date": "2026-04-15",
+      "end_date": "2026-04-16",
+      "estimated_completion_minutes": 2880,
       "depends_on_refs": [
-        "FCR-GROUT"
+        "FCR-grout"
       ],
-      "priority": "low",
+      "priority": "medium",
       "path": "parallel"
     },
     {
-      "ref": "FCR-FINAL-CLEAN",
-      "import_key": "FCR-FINAL-CLEAN",
-      "title": "Family Changeroom: full clean + disinfection",
-      "description": "Closeout after paint / hardware / grate lane. REF:FCR-FINAL-CLEAN",
+      "ref": "FCR-final",
+      "import_key": "FCR-final",
+      "title": "Family Changeroom: full clean and disinfection",
+      "description": "Original shutdown list.",
       "area": "Family Changeroom",
-      "phase": "PH7",
+      "phase": "P3",
       "start_date": "2026-04-17",
       "end_date": "2026-04-18",
       "estimated_completion_minutes": 2880,
       "depends_on_refs": [
-        "FCR-PAINT",
-        "FCR-GRATES",
-        "FCR-SHOWER-HEAD"
+        "FCR-grout",
+        "FCR-paint"
       ],
-      "priority": "high",
+      "priority": "medium",
       "path": "parallel"
     },
     {
-      "ref": "MCR-DEMO",
-      "import_key": "MCR-DEMO",
-      "title": "Mens Changeroom: remove failed grout/caulk and damaged tile",
-      "description": "Demolition lane after inspection. REF:MCR-DEMO",
-      "area": "Mens Changeroom",
-      "phase": "PH1",
-      "start_date": "2026-04-10",
-      "end_date": "2026-04-11",
-      "estimated_completion_minutes": 2880,
-      "depends_on_refs": [
-        "G-INSP-ALL"
-      ],
-      "priority": "critical",
-      "path": "critical"
-    },
-    {
-      "ref": "MCR-TILE",
-      "import_key": "MCR-TILE",
-      "title": "Mens Changeroom: tile repair",
-      "description": "REF:MCR-TILE",
-      "area": "Mens Changeroom",
-      "phase": "PH2",
-      "start_date": "2026-04-11",
-      "end_date": "2026-04-13",
-      "estimated_completion_minutes": 4320,
-      "depends_on_refs": [
-        "MCR-DEMO"
-      ],
-      "priority": "critical",
-      "path": "critical"
-    },
-    {
-      "ref": "MCR-GROUT",
-      "import_key": "MCR-GROUT",
-      "title": "Mens Changeroom: grout tile",
-      "description": "Starts after tile repair + 1d buffer. REF:MCR-GROUT",
-      "area": "Mens Changeroom",
-      "phase": "PH3",
-      "start_date": "2026-04-13",
-      "end_date": "2026-04-14",
-      "estimated_completion_minutes": 2880,
-      "depends_on_refs": [
-        "MCR-TILE"
-      ],
-      "priority": "critical",
-      "path": "critical"
-    },
-    {
-      "ref": "MCR-LAG-GROUT",
-      "import_key": "MCR-LAG-GROUT",
-      "title": "Mens Changeroom: grout cure hold (min 2d) before caulk / paint",
-      "description": "Lag task. REF:MCR-LAG-GROUT",
-      "area": "Mens Changeroom",
-      "phase": "PH3",
-      "start_date": "2026-04-14",
-      "end_date": "2026-04-16",
-      "estimated_completion_minutes": 4320,
-      "depends_on_refs": [
-        "MCR-GROUT"
-      ],
-      "priority": "critical",
-      "path": "critical"
-    },
-    {
-      "ref": "MCR-CAULK",
-      "import_key": "MCR-CAULK",
-      "title": "Mens Changeroom: caulking / wet-area perimeter seals",
-      "description": "After grout cure. REF:MCR-CAULK",
-      "area": "Mens Changeroom",
-      "phase": "PH4",
-      "start_date": "2026-04-16",
-      "end_date": "2026-04-16",
-      "estimated_completion_minutes": 1440,
-      "depends_on_refs": [
-        "MCR-LAG-GROUT"
-      ],
-      "priority": "critical",
-      "path": "critical"
-    },
-    {
-      "ref": "MCR-LAG-CAULK",
-      "import_key": "MCR-LAG-CAULK",
-      "title": "Mens Changeroom: sealant cure before grate reinstall / heavy use",
-      "description": "REF:MCR-LAG-CAULK",
-      "area": "Mens Changeroom",
-      "phase": "PH4",
-      "start_date": "2026-04-17",
-      "end_date": "2026-04-17",
-      "estimated_completion_minutes": 1440,
-      "depends_on_refs": [
-        "MCR-CAULK"
-      ],
-      "priority": "critical",
-      "path": "critical"
-    },
-    {
-      "ref": "MCR-SCRUB-F",
-      "import_key": "MCR-SCRUB-F",
+      "ref": "MCR-scrub-floors",
+      "import_key": "MCR-scrub-floors",
       "title": "Mens Changeroom: scrub floors",
-      "description": "REF:MCR-SCRUB-F",
+      "description": "Original shutdown list.",
       "area": "Mens Changeroom",
-      "phase": "PH5",
-      "start_date": "2026-04-11",
-      "end_date": "2026-04-12",
+      "phase": "P1",
+      "start_date": "2026-04-10",
+      "end_date": "2026-04-11",
       "estimated_completion_minutes": 2880,
-      "depends_on_refs": [
-        "MCR-DEMO"
-      ],
+      "depends_on_refs": [],
       "priority": "medium",
       "path": "parallel"
     },
     {
-      "ref": "MCR-PW-WALL",
-      "import_key": "MCR-PW-WALL",
+      "ref": "MCR-pw-walls",
+      "import_key": "MCR-pw-walls",
       "title": "Mens Changeroom: powerwash or scrub walls",
-      "description": "REF:MCR-PW-WALL",
+      "description": "Original shutdown list.",
       "area": "Mens Changeroom",
-      "phase": "PH5",
-      "start_date": "2026-04-11",
-      "end_date": "2026-04-13",
-      "estimated_completion_minutes": 4320,
-      "depends_on_refs": [
-        "MCR-DEMO"
-      ],
-      "priority": "medium",
-      "path": "parallel"
-    },
-    {
-      "ref": "MCR-DUST",
-      "import_key": "MCR-DUST",
-      "title": "Mens Changeroom: dust vents, locker tops, partitions, lights, ceilings",
-      "description": "REF:MCR-DUST",
-      "area": "Mens Changeroom",
-      "phase": "PH5",
-      "start_date": "2026-04-11",
-      "end_date": "2026-04-16",
-      "estimated_completion_minutes": 8640,
-      "depends_on_refs": [
-        "MCR-DEMO"
-      ],
-      "priority": "low",
-      "path": "parallel"
-    },
-    {
-      "ref": "MCR-LKR",
-      "import_key": "MCR-LKR",
-      "title": "Mens Changeroom: inspect / repair locker mechanisms",
-      "description": "REF:MCR-LKR",
-      "area": "Mens Changeroom",
-      "phase": "PH5",
-      "start_date": "2026-04-12",
-      "end_date": "2026-04-15",
-      "estimated_completion_minutes": 5760,
-      "depends_on_refs": [
-        "MCR-DEMO"
-      ],
-      "priority": "medium",
-      "path": "parallel"
-    },
-    {
-      "ref": "MCR-PLUMB",
-      "import_key": "MCR-PLUMB",
-      "title": "Mens Changeroom: inspect toilets, sinks, showers (leaks / damage)",
-      "description": "REF:MCR-PLUMB",
-      "area": "Mens Changeroom",
-      "phase": "PH5",
-      "start_date": "2026-04-12",
-      "end_date": "2026-04-15",
-      "estimated_completion_minutes": 5760,
-      "depends_on_refs": [
-        "MCR-DEMO"
-      ],
-      "priority": "medium",
-      "path": "parallel"
-    },
-    {
-      "ref": "MCR-PAINT",
-      "import_key": "MCR-PAINT",
-      "title": "Mens Changeroom: paint partitions, walls, ceilings",
-      "description": "Only after grout cure hold completes (moisture rule). REF:MCR-PAINT",
-      "area": "Mens Changeroom",
-      "phase": "PH6",
-      "start_date": "2026-04-16",
-      "end_date": "2026-04-17",
-      "estimated_completion_minutes": 2880,
-      "depends_on_refs": [
-        "MCR-LAG-GROUT"
-      ],
-      "priority": "high",
-      "path": "parallel"
-    },
-    {
-      "ref": "MCR-GRATES",
-      "import_key": "MCR-GRATES",
-      "title": "Mens Changeroom: inspect and clean grates",
-      "description": "After caulk cure where grates interface wet seals. REF:MCR-GRATES",
-      "area": "Mens Changeroom",
-      "phase": "PH7",
-      "start_date": "2026-04-17",
-      "end_date": "2026-04-17",
-      "estimated_completion_minutes": 1440,
-      "depends_on_refs": [
-        "MCR-LAG-CAULK"
-      ],
-      "priority": "medium",
-      "path": "parallel"
-    },
-    {
-      "ref": "MCR-SS-POLISH",
-      "import_key": "MCR-SS-POLISH",
-      "title": "Mens Changeroom: polish stainless steel",
-      "description": "REF:MCR-SS-POLISH",
-      "area": "Mens Changeroom",
-      "phase": "PH6",
-      "start_date": "2026-04-16",
-      "end_date": "2026-04-17",
-      "estimated_completion_minutes": 2880,
-      "depends_on_refs": [
-        "MCR-LAG-GROUT"
-      ],
-      "priority": "low",
-      "path": "parallel"
-    },
-    {
-      "ref": "MCR-LIGHTS",
-      "import_key": "MCR-LIGHTS",
-      "title": "Mens Changeroom: change light tubes or ballasts (as needed)",
-      "description": "REF:MCR-LIGHTS",
-      "area": "Mens Changeroom",
-      "phase": "PH5",
-      "start_date": "2026-04-12",
-      "end_date": "2026-04-16",
-      "estimated_completion_minutes": 7200,
-      "depends_on_refs": [
-        "MCR-DEMO"
-      ],
-      "priority": "low",
-      "path": "parallel"
-    },
-    {
-      "ref": "MCR-DOORS-SEAL",
-      "import_key": "MCR-DOORS-SEAL",
-      "title": "Mens Changeroom: check rubber seals on doors",
-      "description": "REF:MCR-DOORS-SEAL",
-      "area": "Mens Changeroom",
-      "phase": "PH5",
-      "start_date": "2026-04-12",
-      "end_date": "2026-04-15",
-      "estimated_completion_minutes": 5760,
-      "depends_on_refs": [
-        "MCR-DEMO"
-      ],
-      "priority": "low",
-      "path": "parallel"
-    },
-    {
-      "ref": "MCR-DOORS-HW",
-      "import_key": "MCR-DOORS-HW",
-      "title": "Mens Changeroom: check door hardware",
-      "description": "REF:MCR-DOORS-HW",
-      "area": "Mens Changeroom",
-      "phase": "PH5",
-      "start_date": "2026-04-12",
-      "end_date": "2026-04-15",
-      "estimated_completion_minutes": 5760,
-      "depends_on_refs": [
-        "MCR-DEMO"
-      ],
-      "priority": "low",
-      "path": "parallel"
-    },
-    {
-      "ref": "MCR-PARTITIONS",
-      "import_key": "MCR-PARTITIONS",
-      "title": "Mens Changeroom: inspect partitions for structural damage / movement",
-      "description": "REF:MCR-PARTITIONS",
-      "area": "Mens Changeroom",
-      "phase": "PH5",
-      "start_date": "2026-04-12",
-      "end_date": "2026-04-15",
-      "estimated_completion_minutes": 5760,
-      "depends_on_refs": [
-        "MCR-DEMO"
-      ],
-      "priority": "medium",
-      "path": "parallel"
-    },
-    {
-      "ref": "MCR-SHOWER-HEAD",
-      "import_key": "MCR-SHOWER-HEAD",
-      "title": "Mens Changeroom: remove and clean shower heads",
-      "description": "REF:MCR-SHOWER-HEAD",
-      "area": "Mens Changeroom",
-      "phase": "PH5",
-      "start_date": "2026-04-13",
-      "end_date": "2026-04-15",
-      "estimated_completion_minutes": 4320,
-      "depends_on_refs": [
-        "MCR-GROUT"
-      ],
-      "priority": "medium",
-      "path": "parallel"
-    },
-    {
-      "ref": "MCR-SHOWER-BTN",
-      "import_key": "MCR-SHOWER-BTN",
-      "title": "Mens Changeroom: clean / repair shower buttons",
-      "description": "REF:MCR-SHOWER-BTN",
-      "area": "Mens Changeroom",
-      "phase": "PH5",
-      "start_date": "2026-04-13",
-      "end_date": "2026-04-15",
-      "estimated_completion_minutes": 4320,
-      "depends_on_refs": [
-        "MCR-GROUT"
-      ],
-      "priority": "low",
-      "path": "parallel"
-    },
-    {
-      "ref": "MCR-FINAL-CLEAN",
-      "import_key": "MCR-FINAL-CLEAN",
-      "title": "Mens Changeroom: full clean + disinfection",
-      "description": "Closeout after paint / hardware / grate lane. REF:MCR-FINAL-CLEAN",
-      "area": "Mens Changeroom",
-      "phase": "PH7",
-      "start_date": "2026-04-17",
-      "end_date": "2026-04-18",
-      "estimated_completion_minutes": 2880,
-      "depends_on_refs": [
-        "MCR-PAINT",
-        "MCR-GRATES",
-        "MCR-SHOWER-HEAD"
-      ],
-      "priority": "high",
-      "path": "parallel"
-    },
-    {
-      "ref": "WCR-DEMO",
-      "import_key": "WCR-DEMO",
-      "title": "Womens Changeroom: remove failed grout/caulk and damaged tile",
-      "description": "Demolition lane after inspection. REF:WCR-DEMO",
-      "area": "Womens Changeroom",
-      "phase": "PH1",
+      "phase": "P1",
       "start_date": "2026-04-10",
-      "end_date": "2026-04-11",
-      "estimated_completion_minutes": 2880,
-      "depends_on_refs": [
-        "G-INSP-ALL"
-      ],
-      "priority": "critical",
-      "path": "critical"
-    },
-    {
-      "ref": "WCR-TILE",
-      "import_key": "WCR-TILE",
-      "title": "Womens Changeroom: tile repair",
-      "description": "REF:WCR-TILE",
-      "area": "Womens Changeroom",
-      "phase": "PH2",
-      "start_date": "2026-04-11",
-      "end_date": "2026-04-13",
-      "estimated_completion_minutes": 4320,
-      "depends_on_refs": [
-        "WCR-DEMO"
-      ],
-      "priority": "critical",
-      "path": "critical"
-    },
-    {
-      "ref": "WCR-GROUT",
-      "import_key": "WCR-GROUT",
-      "title": "Womens Changeroom: grout tile",
-      "description": "Starts after tile repair + 1d buffer. REF:WCR-GROUT",
-      "area": "Womens Changeroom",
-      "phase": "PH3",
-      "start_date": "2026-04-13",
-      "end_date": "2026-04-14",
-      "estimated_completion_minutes": 2880,
-      "depends_on_refs": [
-        "WCR-TILE"
-      ],
-      "priority": "critical",
-      "path": "critical"
-    },
-    {
-      "ref": "WCR-LAG-GROUT",
-      "import_key": "WCR-LAG-GROUT",
-      "title": "Womens Changeroom: grout cure hold (min 2d) before caulk / paint",
-      "description": "Lag task. REF:WCR-LAG-GROUT",
-      "area": "Womens Changeroom",
-      "phase": "PH3",
-      "start_date": "2026-04-14",
-      "end_date": "2026-04-16",
-      "estimated_completion_minutes": 4320,
-      "depends_on_refs": [
-        "WCR-GROUT"
-      ],
-      "priority": "critical",
-      "path": "critical"
-    },
-    {
-      "ref": "WCR-CAULK",
-      "import_key": "WCR-CAULK",
-      "title": "Womens Changeroom: caulking / wet-area perimeter seals",
-      "description": "After grout cure. REF:WCR-CAULK",
-      "area": "Womens Changeroom",
-      "phase": "PH4",
-      "start_date": "2026-04-16",
-      "end_date": "2026-04-16",
-      "estimated_completion_minutes": 1440,
-      "depends_on_refs": [
-        "WCR-LAG-GROUT"
-      ],
-      "priority": "critical",
-      "path": "critical"
-    },
-    {
-      "ref": "WCR-LAG-CAULK",
-      "import_key": "WCR-LAG-CAULK",
-      "title": "Womens Changeroom: sealant cure before grate reinstall / heavy use",
-      "description": "REF:WCR-LAG-CAULK",
-      "area": "Womens Changeroom",
-      "phase": "PH4",
-      "start_date": "2026-04-17",
-      "end_date": "2026-04-17",
-      "estimated_completion_minutes": 1440,
-      "depends_on_refs": [
-        "WCR-CAULK"
-      ],
-      "priority": "critical",
-      "path": "critical"
-    },
-    {
-      "ref": "WCR-SCRUB-F",
-      "import_key": "WCR-SCRUB-F",
-      "title": "Womens Changeroom: scrub floors",
-      "description": "REF:WCR-SCRUB-F",
-      "area": "Womens Changeroom",
-      "phase": "PH5",
-      "start_date": "2026-04-11",
       "end_date": "2026-04-12",
+      "estimated_completion_minutes": 4320,
+      "depends_on_refs": [],
+      "priority": "medium",
+      "path": "parallel"
+    },
+    {
+      "ref": "MCR-dust",
+      "import_key": "MCR-dust",
+      "title": "Mens Changeroom: dust everything (vents, locker tops, partitions, lights, ceilings)",
+      "description": "Original shutdown list.",
+      "area": "Mens Changeroom",
+      "phase": "P1",
+      "start_date": "2026-04-11",
+      "end_date": "2026-04-14",
+      "estimated_completion_minutes": 5760,
+      "depends_on_refs": [],
+      "priority": "medium",
+      "path": "parallel"
+    },
+    {
+      "ref": "MCR-lockers",
+      "import_key": "MCR-lockers",
+      "title": "Mens Changeroom: inspect and repair/replace damaged locker mechanisms",
+      "description": "Original shutdown list.",
+      "area": "Mens Changeroom",
+      "phase": "P2",
+      "start_date": "2026-04-12",
+      "end_date": "2026-04-14",
+      "estimated_completion_minutes": 4320,
+      "depends_on_refs": [],
+      "priority": "medium",
+      "path": "parallel"
+    },
+    {
+      "ref": "MCR-plumb",
+      "import_key": "MCR-plumb",
+      "title": "Mens Changeroom: inspect toilets, sinks, and showers for leaks and damage",
+      "description": "Original shutdown list.",
+      "area": "Mens Changeroom",
+      "phase": "P2",
+      "start_date": "2026-04-12",
+      "end_date": "2026-04-14",
+      "estimated_completion_minutes": 4320,
+      "depends_on_refs": [],
+      "priority": "medium",
+      "path": "parallel"
+    },
+    {
+      "ref": "MCR-tile",
+      "import_key": "MCR-tile",
+      "title": "Mens Changeroom: tile repair",
+      "description": "Original shutdown list.",
+      "area": "Mens Changeroom",
+      "phase": "P1",
+      "start_date": "2026-04-11",
+      "end_date": "2026-04-13",
+      "estimated_completion_minutes": 4320,
+      "depends_on_refs": [],
+      "priority": "medium",
+      "path": "parallel"
+    },
+    {
+      "ref": "MCR-grout",
+      "import_key": "MCR-grout",
+      "title": "Mens Changeroom: grout tile",
+      "description": "Original shutdown list.",
+      "area": "Mens Changeroom",
+      "phase": "P2",
+      "start_date": "2026-04-13",
+      "end_date": "2026-04-15",
+      "estimated_completion_minutes": 4320,
+      "depends_on_refs": [
+        "MCR-tile"
+      ],
+      "priority": "high",
+      "path": "parallel"
+    },
+    {
+      "ref": "MCR-paint",
+      "import_key": "MCR-paint",
+      "title": "Mens Changeroom: paint (partitions, walls, ceilings)",
+      "description": "Original shutdown list.",
+      "area": "Mens Changeroom",
+      "phase": "P3",
+      "start_date": "2026-04-16",
+      "end_date": "2026-04-17",
       "estimated_completion_minutes": 2880,
       "depends_on_refs": [
-        "WCR-DEMO"
+        "MCR-grout"
       ],
       "priority": "medium",
       "path": "parallel"
     },
     {
-      "ref": "WCR-PW-WALL",
-      "import_key": "WCR-PW-WALL",
+      "ref": "MCR-grates",
+      "import_key": "MCR-grates",
+      "title": "Mens Changeroom: inspect and clean grates",
+      "description": "Original shutdown list.",
+      "area": "Mens Changeroom",
+      "phase": "P3",
+      "start_date": "2026-04-16",
+      "end_date": "2026-04-17",
+      "estimated_completion_minutes": 2880,
+      "depends_on_refs": [],
+      "priority": "medium",
+      "path": "parallel"
+    },
+    {
+      "ref": "MCR-ss",
+      "import_key": "MCR-ss",
+      "title": "Mens Changeroom: polish stainless steel",
+      "description": "Original shutdown list.",
+      "area": "Mens Changeroom",
+      "phase": "P3",
+      "start_date": "2026-04-16",
+      "end_date": "2026-04-17",
+      "estimated_completion_minutes": 2880,
+      "depends_on_refs": [],
+      "priority": "medium",
+      "path": "parallel"
+    },
+    {
+      "ref": "MCR-lights",
+      "import_key": "MCR-lights",
+      "title": "Mens Changeroom: change light tubes or ballasts",
+      "description": "Original shutdown list.",
+      "area": "Mens Changeroom",
+      "phase": "P2",
+      "start_date": "2026-04-12",
+      "end_date": "2026-04-16",
+      "estimated_completion_minutes": 7200,
+      "depends_on_refs": [],
+      "priority": "medium",
+      "path": "parallel"
+    },
+    {
+      "ref": "MCR-door-seals",
+      "import_key": "MCR-door-seals",
+      "title": "Mens Changeroom: check rubber seals on doors",
+      "description": "Original shutdown list.",
+      "area": "Mens Changeroom",
+      "phase": "P2",
+      "start_date": "2026-04-12",
+      "end_date": "2026-04-15",
+      "estimated_completion_minutes": 5760,
+      "depends_on_refs": [],
+      "priority": "medium",
+      "path": "parallel"
+    },
+    {
+      "ref": "MCR-door-hw",
+      "import_key": "MCR-door-hw",
+      "title": "Mens Changeroom: check door hardware",
+      "description": "Original shutdown list.",
+      "area": "Mens Changeroom",
+      "phase": "P2",
+      "start_date": "2026-04-12",
+      "end_date": "2026-04-15",
+      "estimated_completion_minutes": 5760,
+      "depends_on_refs": [],
+      "priority": "medium",
+      "path": "parallel"
+    },
+    {
+      "ref": "MCR-partitions",
+      "import_key": "MCR-partitions",
+      "title": "Mens Changeroom: inspect partitions for structural damage and movement",
+      "description": "Original shutdown list.",
+      "area": "Mens Changeroom",
+      "phase": "P2",
+      "start_date": "2026-04-12",
+      "end_date": "2026-04-15",
+      "estimated_completion_minutes": 5760,
+      "depends_on_refs": [],
+      "priority": "medium",
+      "path": "parallel"
+    },
+    {
+      "ref": "MCR-shower-heads",
+      "import_key": "MCR-shower-heads",
+      "title": "Mens Changeroom: remove and clean shower heads",
+      "description": "Original shutdown list.",
+      "area": "Mens Changeroom",
+      "phase": "P3",
+      "start_date": "2026-04-15",
+      "end_date": "2026-04-16",
+      "estimated_completion_minutes": 2880,
+      "depends_on_refs": [
+        "MCR-grout"
+      ],
+      "priority": "medium",
+      "path": "parallel"
+    },
+    {
+      "ref": "MCR-shower-btns",
+      "import_key": "MCR-shower-btns",
+      "title": "Mens Changeroom: clean/repair shower buttons",
+      "description": "Original shutdown list.",
+      "area": "Mens Changeroom",
+      "phase": "P3",
+      "start_date": "2026-04-15",
+      "end_date": "2026-04-16",
+      "estimated_completion_minutes": 2880,
+      "depends_on_refs": [
+        "MCR-grout"
+      ],
+      "priority": "medium",
+      "path": "parallel"
+    },
+    {
+      "ref": "MCR-final",
+      "import_key": "MCR-final",
+      "title": "Mens Changeroom: full clean and disinfection",
+      "description": "Original shutdown list.",
+      "area": "Mens Changeroom",
+      "phase": "P3",
+      "start_date": "2026-04-17",
+      "end_date": "2026-04-18",
+      "estimated_completion_minutes": 2880,
+      "depends_on_refs": [
+        "MCR-grout",
+        "MCR-paint"
+      ],
+      "priority": "medium",
+      "path": "parallel"
+    },
+    {
+      "ref": "WCR-scrub-floors",
+      "import_key": "WCR-scrub-floors",
+      "title": "Womens Changeroom: scrub floors",
+      "description": "Original shutdown list.",
+      "area": "Womens Changeroom",
+      "phase": "P1",
+      "start_date": "2026-04-10",
+      "end_date": "2026-04-11",
+      "estimated_completion_minutes": 2880,
+      "depends_on_refs": [],
+      "priority": "medium",
+      "path": "parallel"
+    },
+    {
+      "ref": "WCR-pw-walls",
+      "import_key": "WCR-pw-walls",
       "title": "Womens Changeroom: powerwash or scrub walls",
-      "description": "REF:WCR-PW-WALL",
+      "description": "Original shutdown list.",
       "area": "Womens Changeroom",
-      "phase": "PH5",
+      "phase": "P1",
+      "start_date": "2026-04-10",
+      "end_date": "2026-04-12",
+      "estimated_completion_minutes": 4320,
+      "depends_on_refs": [],
+      "priority": "medium",
+      "path": "parallel"
+    },
+    {
+      "ref": "WCR-dust",
+      "import_key": "WCR-dust",
+      "title": "Womens Changeroom: dust everything (vents, locker tops, partitions, lights, ceilings)",
+      "description": "Original shutdown list.",
+      "area": "Womens Changeroom",
+      "phase": "P1",
+      "start_date": "2026-04-11",
+      "end_date": "2026-04-14",
+      "estimated_completion_minutes": 5760,
+      "depends_on_refs": [],
+      "priority": "medium",
+      "path": "parallel"
+    },
+    {
+      "ref": "WCR-lockers",
+      "import_key": "WCR-lockers",
+      "title": "Womens Changeroom: inspect and repair/replace damaged locker mechanisms",
+      "description": "Original shutdown list.",
+      "area": "Womens Changeroom",
+      "phase": "P2",
+      "start_date": "2026-04-12",
+      "end_date": "2026-04-14",
+      "estimated_completion_minutes": 4320,
+      "depends_on_refs": [],
+      "priority": "medium",
+      "path": "parallel"
+    },
+    {
+      "ref": "WCR-plumb",
+      "import_key": "WCR-plumb",
+      "title": "Womens Changeroom: inspect toilets, sinks, and showers for leaks and damage",
+      "description": "Original shutdown list.",
+      "area": "Womens Changeroom",
+      "phase": "P2",
+      "start_date": "2026-04-12",
+      "end_date": "2026-04-14",
+      "estimated_completion_minutes": 4320,
+      "depends_on_refs": [],
+      "priority": "medium",
+      "path": "parallel"
+    },
+    {
+      "ref": "WCR-tile",
+      "import_key": "WCR-tile",
+      "title": "Womens Changeroom: tile repair",
+      "description": "Original shutdown list.",
+      "area": "Womens Changeroom",
+      "phase": "P1",
       "start_date": "2026-04-11",
       "end_date": "2026-04-13",
       "estimated_completion_minutes": 4320,
-      "depends_on_refs": [
-        "WCR-DEMO"
-      ],
+      "depends_on_refs": [],
       "priority": "medium",
       "path": "parallel"
     },
     {
-      "ref": "WCR-DUST",
-      "import_key": "WCR-DUST",
-      "title": "Womens Changeroom: dust vents, locker tops, partitions, lights, ceilings",
-      "description": "REF:WCR-DUST",
+      "ref": "WCR-grout",
+      "import_key": "WCR-grout",
+      "title": "Womens Changeroom: grout tile",
+      "description": "Original shutdown list.",
       "area": "Womens Changeroom",
-      "phase": "PH5",
-      "start_date": "2026-04-11",
-      "end_date": "2026-04-16",
-      "estimated_completion_minutes": 8640,
-      "depends_on_refs": [
-        "WCR-DEMO"
-      ],
-      "priority": "low",
-      "path": "parallel"
-    },
-    {
-      "ref": "WCR-LKR",
-      "import_key": "WCR-LKR",
-      "title": "Womens Changeroom: inspect / repair locker mechanisms",
-      "description": "REF:WCR-LKR",
-      "area": "Womens Changeroom",
-      "phase": "PH5",
-      "start_date": "2026-04-12",
+      "phase": "P2",
+      "start_date": "2026-04-13",
       "end_date": "2026-04-15",
-      "estimated_completion_minutes": 5760,
+      "estimated_completion_minutes": 4320,
       "depends_on_refs": [
-        "WCR-DEMO"
-      ],
-      "priority": "medium",
-      "path": "parallel"
-    },
-    {
-      "ref": "WCR-PLUMB",
-      "import_key": "WCR-PLUMB",
-      "title": "Womens Changeroom: inspect toilets, sinks, showers (leaks / damage)",
-      "description": "REF:WCR-PLUMB",
-      "area": "Womens Changeroom",
-      "phase": "PH5",
-      "start_date": "2026-04-12",
-      "end_date": "2026-04-15",
-      "estimated_completion_minutes": 5760,
-      "depends_on_refs": [
-        "WCR-DEMO"
-      ],
-      "priority": "medium",
-      "path": "parallel"
-    },
-    {
-      "ref": "WCR-PAINT",
-      "import_key": "WCR-PAINT",
-      "title": "Womens Changeroom: paint partitions, walls, ceilings",
-      "description": "Only after grout cure hold completes (moisture rule). REF:WCR-PAINT",
-      "area": "Womens Changeroom",
-      "phase": "PH6",
-      "start_date": "2026-04-16",
-      "end_date": "2026-04-17",
-      "estimated_completion_minutes": 2880,
-      "depends_on_refs": [
-        "WCR-LAG-GROUT"
+        "WCR-tile"
       ],
       "priority": "high",
       "path": "parallel"
     },
     {
-      "ref": "WCR-GRATES",
-      "import_key": "WCR-GRATES",
+      "ref": "WCR-paint",
+      "import_key": "WCR-paint",
+      "title": "Womens Changeroom: paint (partitions, walls, ceilings)",
+      "description": "Original shutdown list.",
+      "area": "Womens Changeroom",
+      "phase": "P3",
+      "start_date": "2026-04-16",
+      "end_date": "2026-04-17",
+      "estimated_completion_minutes": 2880,
+      "depends_on_refs": [
+        "WCR-grout"
+      ],
+      "priority": "medium",
+      "path": "parallel"
+    },
+    {
+      "ref": "WCR-grates",
+      "import_key": "WCR-grates",
       "title": "Womens Changeroom: inspect and clean grates",
-      "description": "After caulk cure where grates interface wet seals. REF:WCR-GRATES",
+      "description": "Original shutdown list.",
       "area": "Womens Changeroom",
-      "phase": "PH7",
-      "start_date": "2026-04-17",
+      "phase": "P3",
+      "start_date": "2026-04-16",
       "end_date": "2026-04-17",
-      "estimated_completion_minutes": 1440,
-      "depends_on_refs": [
-        "WCR-LAG-CAULK"
-      ],
+      "estimated_completion_minutes": 2880,
+      "depends_on_refs": [],
       "priority": "medium",
       "path": "parallel"
     },
     {
-      "ref": "WCR-SS-POLISH",
-      "import_key": "WCR-SS-POLISH",
+      "ref": "WCR-ss",
+      "import_key": "WCR-ss",
       "title": "Womens Changeroom: polish stainless steel",
-      "description": "REF:WCR-SS-POLISH",
+      "description": "Original shutdown list.",
       "area": "Womens Changeroom",
-      "phase": "PH6",
+      "phase": "P3",
       "start_date": "2026-04-16",
       "end_date": "2026-04-17",
       "estimated_completion_minutes": 2880,
-      "depends_on_refs": [
-        "WCR-LAG-GROUT"
-      ],
-      "priority": "low",
+      "depends_on_refs": [],
+      "priority": "medium",
       "path": "parallel"
     },
     {
-      "ref": "WCR-LIGHTS",
-      "import_key": "WCR-LIGHTS",
-      "title": "Womens Changeroom: change light tubes or ballasts (as needed)",
-      "description": "REF:WCR-LIGHTS",
+      "ref": "WCR-lights",
+      "import_key": "WCR-lights",
+      "title": "Womens Changeroom: change light tubes or ballasts",
+      "description": "Original shutdown list.",
       "area": "Womens Changeroom",
-      "phase": "PH5",
+      "phase": "P2",
       "start_date": "2026-04-12",
       "end_date": "2026-04-16",
       "estimated_completion_minutes": 7200,
-      "depends_on_refs": [
-        "WCR-DEMO"
-      ],
-      "priority": "low",
+      "depends_on_refs": [],
+      "priority": "medium",
       "path": "parallel"
     },
     {
-      "ref": "WCR-DOORS-SEAL",
-      "import_key": "WCR-DOORS-SEAL",
+      "ref": "WCR-door-seals",
+      "import_key": "WCR-door-seals",
       "title": "Womens Changeroom: check rubber seals on doors",
-      "description": "REF:WCR-DOORS-SEAL",
+      "description": "Original shutdown list.",
       "area": "Womens Changeroom",
-      "phase": "PH5",
+      "phase": "P2",
       "start_date": "2026-04-12",
       "end_date": "2026-04-15",
       "estimated_completion_minutes": 5760,
-      "depends_on_refs": [
-        "WCR-DEMO"
-      ],
-      "priority": "low",
+      "depends_on_refs": [],
+      "priority": "medium",
       "path": "parallel"
     },
     {
-      "ref": "WCR-DOORS-HW",
-      "import_key": "WCR-DOORS-HW",
+      "ref": "WCR-door-hw",
+      "import_key": "WCR-door-hw",
       "title": "Womens Changeroom: check door hardware",
-      "description": "REF:WCR-DOORS-HW",
+      "description": "Original shutdown list.",
       "area": "Womens Changeroom",
-      "phase": "PH5",
+      "phase": "P2",
       "start_date": "2026-04-12",
       "end_date": "2026-04-15",
       "estimated_completion_minutes": 5760,
-      "depends_on_refs": [
-        "WCR-DEMO"
-      ],
-      "priority": "low",
-      "path": "parallel"
-    },
-    {
-      "ref": "WCR-PARTITIONS",
-      "import_key": "WCR-PARTITIONS",
-      "title": "Womens Changeroom: inspect partitions for structural damage / movement",
-      "description": "REF:WCR-PARTITIONS",
-      "area": "Womens Changeroom",
-      "phase": "PH5",
-      "start_date": "2026-04-12",
-      "end_date": "2026-04-15",
-      "estimated_completion_minutes": 5760,
-      "depends_on_refs": [
-        "WCR-DEMO"
-      ],
+      "depends_on_refs": [],
       "priority": "medium",
       "path": "parallel"
     },
     {
-      "ref": "WCR-SHOWER-HEAD",
-      "import_key": "WCR-SHOWER-HEAD",
+      "ref": "WCR-partitions",
+      "import_key": "WCR-partitions",
+      "title": "Womens Changeroom: inspect partitions for structural damage and movement",
+      "description": "Original shutdown list.",
+      "area": "Womens Changeroom",
+      "phase": "P2",
+      "start_date": "2026-04-12",
+      "end_date": "2026-04-15",
+      "estimated_completion_minutes": 5760,
+      "depends_on_refs": [],
+      "priority": "medium",
+      "path": "parallel"
+    },
+    {
+      "ref": "WCR-shower-heads",
+      "import_key": "WCR-shower-heads",
       "title": "Womens Changeroom: remove and clean shower heads",
-      "description": "REF:WCR-SHOWER-HEAD",
+      "description": "Original shutdown list.",
       "area": "Womens Changeroom",
-      "phase": "PH5",
+      "phase": "P3",
+      "start_date": "2026-04-15",
+      "end_date": "2026-04-16",
+      "estimated_completion_minutes": 2880,
+      "depends_on_refs": [
+        "WCR-grout"
+      ],
+      "priority": "medium",
+      "path": "parallel"
+    },
+    {
+      "ref": "WCR-shower-btns",
+      "import_key": "WCR-shower-btns",
+      "title": "Womens Changeroom: clean/repair shower buttons",
+      "description": "Original shutdown list.",
+      "area": "Womens Changeroom",
+      "phase": "P3",
+      "start_date": "2026-04-15",
+      "end_date": "2026-04-16",
+      "estimated_completion_minutes": 2880,
+      "depends_on_refs": [
+        "WCR-grout"
+      ],
+      "priority": "medium",
+      "path": "parallel"
+    },
+    {
+      "ref": "WCR-final",
+      "import_key": "WCR-final",
+      "title": "Womens Changeroom: full clean and disinfection",
+      "description": "Original shutdown list.",
+      "area": "Womens Changeroom",
+      "phase": "P3",
+      "start_date": "2026-04-17",
+      "end_date": "2026-04-18",
+      "estimated_completion_minutes": 2880,
+      "depends_on_refs": [
+        "WCR-grout",
+        "WCR-paint"
+      ],
+      "priority": "medium",
+      "path": "parallel"
+    },
+    {
+      "ref": "FEAT-diving",
+      "import_key": "FEAT-diving",
+      "title": "Toys & features: diving board \u2014 scrub, bleach or re-paint; inspect bolts and hardware; polish stainless",
+      "description": "Original shutdown list.",
+      "area": "Toys and Features",
+      "phase": "P2",
+      "start_date": "2026-04-11",
+      "end_date": "2026-04-16",
+      "estimated_completion_minutes": 8640,
+      "depends_on_refs": [],
+      "priority": "medium",
+      "path": "parallel"
+    },
+    {
+      "ref": "FEAT-pipe",
+      "import_key": "FEAT-pipe",
+      "title": "Toys & features: pipe falls \u2014 inspect and replace anodes; remove rust and repaint",
+      "description": "Original shutdown list.",
+      "area": "Toys and Features",
+      "phase": "P2",
+      "start_date": "2026-04-11",
+      "end_date": "2026-04-16",
+      "estimated_completion_minutes": 8640,
+      "depends_on_refs": [],
+      "priority": "medium",
+      "path": "parallel"
+    },
+    {
+      "ref": "FEAT-wall",
+      "import_key": "FEAT-wall",
+      "title": "Toys & features: climbing wall \u2014 powerwash wall, scrub grips, inspect hardware",
+      "description": "Original shutdown list.",
+      "area": "Toys and Features",
+      "phase": "P2",
+      "start_date": "2026-04-11",
+      "end_date": "2026-04-15",
+      "estimated_completion_minutes": 7200,
+      "depends_on_refs": [],
+      "priority": "medium",
+      "path": "parallel"
+    },
+    {
+      "ref": "FEAT-kids",
+      "import_key": "FEAT-kids",
+      "title": "Toys & features: leisure pool kids features \u2014 function test; rust/repaint; bleach teacup; full clean; purge airlines",
+      "description": "Original shutdown list.",
+      "area": "Toys and Features",
+      "phase": "P2",
+      "start_date": "2026-04-12",
+      "end_date": "2026-04-17",
+      "estimated_completion_minutes": 8640,
+      "depends_on_refs": [],
+      "priority": "medium",
+      "path": "parallel"
+    },
+    {
+      "ref": "FEAT-blocks",
+      "import_key": "FEAT-blocks",
+      "title": "Toys & features: diving blocks \u2014 inspect hardware; inspect for damage; degrease and scrub; disinfect",
+      "description": "Original shutdown list.",
+      "area": "Toys and Features",
+      "phase": "P2",
+      "start_date": "2026-04-12",
+      "end_date": "2026-04-16",
+      "estimated_completion_minutes": 7200,
+      "depends_on_refs": [],
+      "priority": "medium",
+      "path": "parallel"
+    },
+    {
+      "ref": "SWI-jets",
+      "import_key": "SWI-jets",
+      "title": "Swirl pool: inspect and repair jets/covers",
+      "description": "Original shutdown list.",
+      "area": "Swirl Pool",
+      "phase": "P2",
+      "start_date": "2026-04-11",
+      "end_date": "2026-04-13",
+      "estimated_completion_minutes": 4320,
+      "depends_on_refs": [],
+      "priority": "medium",
+      "path": "parallel"
+    },
+    {
+      "ref": "SWI-caulk",
+      "import_key": "SWI-caulk",
+      "title": "Swirl pool: re-caulk expansion joints",
+      "description": "Original shutdown list.",
+      "area": "Swirl Pool",
+      "phase": "P4",
+      "start_date": "2026-04-15",
+      "end_date": "2026-04-16",
+      "estimated_completion_minutes": 2880,
+      "depends_on_refs": [
+        "SWI-grout"
+      ],
+      "priority": "medium",
+      "path": "parallel"
+    },
+    {
+      "ref": "SWI-drains",
+      "import_key": "SWI-drains",
+      "title": "Swirl pool: inspect drains",
+      "description": "Original shutdown list.",
+      "area": "Swirl Pool",
+      "phase": "P2",
+      "start_date": "2026-04-12",
+      "end_date": "2026-04-14",
+      "estimated_completion_minutes": 4320,
+      "depends_on_refs": [],
+      "priority": "medium",
+      "path": "parallel"
+    },
+    {
+      "ref": "SWI-lights",
+      "import_key": "SWI-lights",
+      "title": "Swirl pool: replace dead lights",
+      "description": "Original shutdown list.",
+      "area": "Swirl Pool",
+      "phase": "P2",
+      "start_date": "2026-04-12",
+      "end_date": "2026-04-15",
+      "estimated_completion_minutes": 5760,
+      "depends_on_refs": [],
+      "priority": "medium",
+      "path": "parallel"
+    },
+    {
+      "ref": "SWI-scrub",
+      "import_key": "SWI-scrub",
+      "title": "Swirl pool: full scrub (especially scum line)",
+      "description": "Original shutdown list.",
+      "area": "Swirl Pool",
+      "phase": "P3",
+      "start_date": "2026-04-14",
+      "end_date": "2026-04-16",
+      "estimated_completion_minutes": 4320,
+      "depends_on_refs": [],
+      "priority": "medium",
+      "path": "parallel"
+    },
+    {
+      "ref": "SWI-tile",
+      "import_key": "SWI-tile",
+      "title": "Swirl pool: tile repair",
+      "description": "Original shutdown list.",
+      "area": "Swirl Pool",
+      "phase": "P2",
+      "start_date": "2026-04-11",
+      "end_date": "2026-04-13",
+      "estimated_completion_minutes": 4320,
+      "depends_on_refs": [],
+      "priority": "medium",
+      "path": "parallel"
+    },
+    {
+      "ref": "SWI-grout",
+      "import_key": "SWI-grout",
+      "title": "Swirl pool: grout tile",
+      "description": "Original shutdown list.",
+      "area": "Swirl Pool",
+      "phase": "P3",
       "start_date": "2026-04-13",
       "end_date": "2026-04-15",
       "estimated_completion_minutes": 4320,
       "depends_on_refs": [
-        "WCR-GROUT"
+        "SWI-tile"
+      ],
+      "priority": "high",
+      "path": "parallel"
+    },
+    {
+      "ref": "LEI-jets",
+      "import_key": "LEI-jets",
+      "title": "Leisure pool: inspect and repair jets/covers",
+      "description": "Original shutdown list.",
+      "area": "Leisure Pool",
+      "phase": "P2",
+      "start_date": "2026-04-11",
+      "end_date": "2026-04-13",
+      "estimated_completion_minutes": 4320,
+      "depends_on_refs": [],
+      "priority": "medium",
+      "path": "parallel"
+    },
+    {
+      "ref": "LEI-caulk",
+      "import_key": "LEI-caulk",
+      "title": "Leisure pool: re-caulk expansion joints",
+      "description": "Original shutdown list.",
+      "area": "Leisure Pool",
+      "phase": "P4",
+      "start_date": "2026-04-15",
+      "end_date": "2026-04-16",
+      "estimated_completion_minutes": 2880,
+      "depends_on_refs": [
+        "LEI-grout"
       ],
       "priority": "medium",
       "path": "parallel"
     },
     {
-      "ref": "WCR-SHOWER-BTN",
-      "import_key": "WCR-SHOWER-BTN",
-      "title": "Womens Changeroom: clean / repair shower buttons",
-      "description": "REF:WCR-SHOWER-BTN",
-      "area": "Womens Changeroom",
-      "phase": "PH5",
+      "ref": "LEI-drains",
+      "import_key": "LEI-drains",
+      "title": "Leisure pool: inspect drains",
+      "description": "Original shutdown list.",
+      "area": "Leisure Pool",
+      "phase": "P2",
+      "start_date": "2026-04-12",
+      "end_date": "2026-04-14",
+      "estimated_completion_minutes": 4320,
+      "depends_on_refs": [],
+      "priority": "medium",
+      "path": "parallel"
+    },
+    {
+      "ref": "LEI-lights",
+      "import_key": "LEI-lights",
+      "title": "Leisure pool: replace dead lights",
+      "description": "Original shutdown list.",
+      "area": "Leisure Pool",
+      "phase": "P2",
+      "start_date": "2026-04-12",
+      "end_date": "2026-04-15",
+      "estimated_completion_minutes": 5760,
+      "depends_on_refs": [],
+      "priority": "medium",
+      "path": "parallel"
+    },
+    {
+      "ref": "LEI-scrub",
+      "import_key": "LEI-scrub",
+      "title": "Leisure pool: full scrub (especially scum line)",
+      "description": "Original shutdown list.",
+      "area": "Leisure Pool",
+      "phase": "P3",
+      "start_date": "2026-04-14",
+      "end_date": "2026-04-16",
+      "estimated_completion_minutes": 4320,
+      "depends_on_refs": [],
+      "priority": "medium",
+      "path": "parallel"
+    },
+    {
+      "ref": "LEI-tile",
+      "import_key": "LEI-tile",
+      "title": "Leisure pool: tile repair",
+      "description": "Original shutdown list.",
+      "area": "Leisure Pool",
+      "phase": "P2",
+      "start_date": "2026-04-11",
+      "end_date": "2026-04-13",
+      "estimated_completion_minutes": 4320,
+      "depends_on_refs": [],
+      "priority": "medium",
+      "path": "parallel"
+    },
+    {
+      "ref": "LEI-grout",
+      "import_key": "LEI-grout",
+      "title": "Leisure pool: grout tile",
+      "description": "Original shutdown list.",
+      "area": "Leisure Pool",
+      "phase": "P3",
       "start_date": "2026-04-13",
       "end_date": "2026-04-15",
       "estimated_completion_minutes": 4320,
       "depends_on_refs": [
-        "WCR-GROUT"
-      ],
-      "priority": "low",
-      "path": "parallel"
-    },
-    {
-      "ref": "WCR-FINAL-CLEAN",
-      "import_key": "WCR-FINAL-CLEAN",
-      "title": "Womens Changeroom: full clean + disinfection",
-      "description": "Closeout after paint / hardware / grate lane. REF:WCR-FINAL-CLEAN",
-      "area": "Womens Changeroom",
-      "phase": "PH7",
-      "start_date": "2026-04-17",
-      "end_date": "2026-04-18",
-      "estimated_completion_minutes": 2880,
-      "depends_on_refs": [
-        "WCR-PAINT",
-        "WCR-GRATES",
-        "WCR-SHOWER-HEAD"
+        "LEI-tile"
       ],
       "priority": "high",
       "path": "parallel"
     },
     {
-      "ref": "LAP-DEMO",
-      "import_key": "LAP-DEMO",
-      "title": "Lap Pool: remove failed grout, caulking, damaged tile",
-      "description": "Tied to global pools demo wave where overlap applies. REF:LAP-DEMO",
-      "area": "Lap Pool",
-      "phase": "PH1",
-      "start_date": "2026-04-10",
-      "end_date": "2026-04-11",
-      "estimated_completion_minutes": 2880,
-      "depends_on_refs": [
-        "G-DEMO-POOLS"
-      ],
-      "priority": "critical",
-      "path": "critical"
-    },
-    {
-      "ref": "LAP-TILE",
-      "import_key": "LAP-TILE",
-      "title": "Lap Pool: tile repair",
-      "description": "REF:LAP-TILE",
-      "area": "Lap Pool",
-      "phase": "PH2",
-      "start_date": "2026-04-11",
-      "end_date": "2026-04-13",
-      "estimated_completion_minutes": 4320,
-      "depends_on_refs": [
-        "LAP-DEMO"
-      ],
-      "priority": "critical",
-      "path": "critical"
-    },
-    {
-      "ref": "LAP-GROUT",
-      "import_key": "LAP-GROUT",
-      "title": "Lap Pool: grout tile",
-      "description": "REF:LAP-GROUT",
-      "area": "Lap Pool",
-      "phase": "PH3",
-      "start_date": "2026-04-13",
-      "end_date": "2026-04-14",
-      "estimated_completion_minutes": 2880,
-      "depends_on_refs": [
-        "LAP-TILE"
-      ],
-      "priority": "critical",
-      "path": "critical"
-    },
-    {
-      "ref": "LAP-LAG-GROUT",
-      "import_key": "LAP-LAG-GROUT",
-      "title": "Lap Pool: grout cure hold (2\u20133d) before water exposure / caulk stress",
-      "description": "Lag task. REF:LAP-LAG-GROUT",
-      "area": "Lap Pool",
-      "phase": "PH3",
-      "start_date": "2026-04-14",
-      "end_date": "2026-04-16",
-      "estimated_completion_minutes": 4320,
-      "depends_on_refs": [
-        "LAP-GROUT"
-      ],
-      "priority": "critical",
-      "path": "critical"
-    },
-    {
-      "ref": "LAP-CAULK",
-      "import_key": "LAP-CAULK",
-      "title": "Lap Pool: re-caulk expansion joints / wet transitions",
-      "description": "REF:LAP-CAULK",
-      "area": "Lap Pool",
-      "phase": "PH4",
-      "start_date": "2026-04-16",
-      "end_date": "2026-04-16",
-      "estimated_completion_minutes": 1440,
-      "depends_on_refs": [
-        "LAP-LAG-GROUT"
-      ],
-      "priority": "critical",
-      "path": "critical"
-    },
-    {
-      "ref": "LAP-LAG-CAULK",
-      "import_key": "LAP-LAG-CAULK",
-      "title": "Lap Pool: sealant cure before grate reinstall / refilling",
-      "description": "REF:LAP-LAG-CAULK",
-      "area": "Lap Pool",
-      "phase": "PH4",
-      "start_date": "2026-04-17",
-      "end_date": "2026-04-17",
-      "estimated_completion_minutes": 1440,
-      "depends_on_refs": [
-        "LAP-CAULK"
-      ],
-      "priority": "critical",
-      "path": "critical"
-    },
-    {
-      "ref": "LAP-MECH",
-      "import_key": "LAP-MECH",
-      "title": "Lap Pool: jets/covers, drains, lights (as listed)",
-      "description": "Parallel mechanical lane. REF:LAP-MECH",
-      "area": "Lap Pool",
-      "phase": "PH5",
-      "start_date": "2026-04-11",
-      "end_date": "2026-04-16",
-      "estimated_completion_minutes": 8640,
-      "depends_on_refs": [
-        "G-INSP-ALL"
-      ],
-      "priority": "high",
-      "path": "parallel"
-    },
-    {
-      "ref": "LAP-SCRUB",
-      "import_key": "LAP-SCRUB",
-      "title": "Lap Pool: full scrub (scum line emphasis)",
-      "description": "Water exposure lane after grout cure hold. REF:LAP-SCRUB",
-      "area": "Lap Pool",
-      "phase": "PH6",
+      "ref": "LEI-ss",
+      "import_key": "LEI-ss",
+      "title": "Leisure pool: polish stainless steel",
+      "description": "Original shutdown list.",
+      "area": "Leisure Pool",
+      "phase": "P4",
       "start_date": "2026-04-16",
       "end_date": "2026-04-17",
       "estimated_completion_minutes": 2880,
-      "depends_on_refs": [
-        "LAP-LAG-GROUT"
-      ],
-      "priority": "high",
-      "path": "parallel"
-    },
-    {
-      "ref": "LEI-DEMO",
-      "import_key": "LEI-DEMO",
-      "title": "Leisure Pool: remove failed grout, caulking, damaged tile",
-      "description": "Tied to global pools demo wave where overlap applies. REF:LEI-DEMO",
-      "area": "Leisure Pool",
-      "phase": "PH1",
-      "start_date": "2026-04-10",
-      "end_date": "2026-04-11",
-      "estimated_completion_minutes": 2880,
-      "depends_on_refs": [
-        "G-DEMO-POOLS"
-      ],
-      "priority": "critical",
-      "path": "critical"
-    },
-    {
-      "ref": "LEI-TILE",
-      "import_key": "LEI-TILE",
-      "title": "Leisure Pool: tile repair",
-      "description": "REF:LEI-TILE",
-      "area": "Leisure Pool",
-      "phase": "PH2",
-      "start_date": "2026-04-11",
-      "end_date": "2026-04-13",
-      "estimated_completion_minutes": 4320,
-      "depends_on_refs": [
-        "LEI-DEMO"
-      ],
-      "priority": "critical",
-      "path": "critical"
-    },
-    {
-      "ref": "LEI-GROUT",
-      "import_key": "LEI-GROUT",
-      "title": "Leisure Pool: grout tile",
-      "description": "REF:LEI-GROUT",
-      "area": "Leisure Pool",
-      "phase": "PH3",
-      "start_date": "2026-04-13",
-      "end_date": "2026-04-14",
-      "estimated_completion_minutes": 2880,
-      "depends_on_refs": [
-        "LEI-TILE"
-      ],
-      "priority": "critical",
-      "path": "critical"
-    },
-    {
-      "ref": "LEI-LAG-GROUT",
-      "import_key": "LEI-LAG-GROUT",
-      "title": "Leisure Pool: grout cure hold (2\u20133d) before water exposure / caulk stress",
-      "description": "Lag task. REF:LEI-LAG-GROUT",
-      "area": "Leisure Pool",
-      "phase": "PH3",
-      "start_date": "2026-04-14",
-      "end_date": "2026-04-16",
-      "estimated_completion_minutes": 4320,
-      "depends_on_refs": [
-        "LEI-GROUT"
-      ],
-      "priority": "critical",
-      "path": "critical"
-    },
-    {
-      "ref": "LEI-CAULK",
-      "import_key": "LEI-CAULK",
-      "title": "Leisure Pool: re-caulk expansion joints / wet transitions",
-      "description": "REF:LEI-CAULK",
-      "area": "Leisure Pool",
-      "phase": "PH4",
-      "start_date": "2026-04-16",
-      "end_date": "2026-04-16",
-      "estimated_completion_minutes": 1440,
-      "depends_on_refs": [
-        "LEI-LAG-GROUT"
-      ],
-      "priority": "critical",
-      "path": "critical"
-    },
-    {
-      "ref": "LEI-LAG-CAULK",
-      "import_key": "LEI-LAG-CAULK",
-      "title": "Leisure Pool: sealant cure before grate reinstall / refilling",
-      "description": "REF:LEI-LAG-CAULK",
-      "area": "Leisure Pool",
-      "phase": "PH4",
-      "start_date": "2026-04-17",
-      "end_date": "2026-04-17",
-      "estimated_completion_minutes": 1440,
-      "depends_on_refs": [
-        "LEI-CAULK"
-      ],
-      "priority": "critical",
-      "path": "critical"
-    },
-    {
-      "ref": "LEI-MECH",
-      "import_key": "LEI-MECH",
-      "title": "Leisure Pool: jets/covers, drains, lights (as listed)",
-      "description": "Parallel mechanical lane. REF:LEI-MECH",
-      "area": "Leisure Pool",
-      "phase": "PH5",
-      "start_date": "2026-04-11",
-      "end_date": "2026-04-16",
-      "estimated_completion_minutes": 8640,
-      "depends_on_refs": [
-        "G-INSP-ALL"
-      ],
-      "priority": "high",
-      "path": "parallel"
-    },
-    {
-      "ref": "LEI-SCRUB",
-      "import_key": "LEI-SCRUB",
-      "title": "Leisure Pool: full scrub (scum line emphasis)",
-      "description": "Water exposure lane after grout cure hold. REF:LEI-SCRUB",
-      "area": "Leisure Pool",
-      "phase": "PH6",
-      "start_date": "2026-04-16",
-      "end_date": "2026-04-17",
-      "estimated_completion_minutes": 2880,
-      "depends_on_refs": [
-        "LEI-LAG-GROUT"
-      ],
-      "priority": "high",
-      "path": "parallel"
-    },
-    {
-      "ref": "LEI-SS",
-      "import_key": "LEI-SS",
-      "title": "Leisure Pool: polish stainless steel",
-      "description": "REF:LEI-SS",
-      "area": "Leisure Pool",
-      "phase": "PH6",
-      "start_date": "2026-04-16",
-      "end_date": "2026-04-17",
-      "estimated_completion_minutes": 2880,
-      "depends_on_refs": [
-        "LEI-LAG-GROUT"
-      ],
-      "priority": "low",
-      "path": "parallel"
-    },
-    {
-      "ref": "SWI-DEMO",
-      "import_key": "SWI-DEMO",
-      "title": "Swirl Pool: remove failed grout, caulking, damaged tile",
-      "description": "Tied to global pools demo wave where overlap applies. REF:SWI-DEMO",
-      "area": "Swirl Pool",
-      "phase": "PH1",
-      "start_date": "2026-04-10",
-      "end_date": "2026-04-11",
-      "estimated_completion_minutes": 2880,
-      "depends_on_refs": [
-        "G-DEMO-POOLS"
-      ],
-      "priority": "critical",
-      "path": "critical"
-    },
-    {
-      "ref": "SWI-TILE",
-      "import_key": "SWI-TILE",
-      "title": "Swirl Pool: tile repair",
-      "description": "REF:SWI-TILE",
-      "area": "Swirl Pool",
-      "phase": "PH2",
-      "start_date": "2026-04-11",
-      "end_date": "2026-04-13",
-      "estimated_completion_minutes": 4320,
-      "depends_on_refs": [
-        "SWI-DEMO"
-      ],
-      "priority": "critical",
-      "path": "critical"
-    },
-    {
-      "ref": "SWI-GROUT",
-      "import_key": "SWI-GROUT",
-      "title": "Swirl Pool: grout tile",
-      "description": "REF:SWI-GROUT",
-      "area": "Swirl Pool",
-      "phase": "PH3",
-      "start_date": "2026-04-13",
-      "end_date": "2026-04-14",
-      "estimated_completion_minutes": 2880,
-      "depends_on_refs": [
-        "SWI-TILE"
-      ],
-      "priority": "critical",
-      "path": "critical"
-    },
-    {
-      "ref": "SWI-LAG-GROUT",
-      "import_key": "SWI-LAG-GROUT",
-      "title": "Swirl Pool: grout cure hold (2\u20133d) before water exposure / caulk stress",
-      "description": "Lag task. REF:SWI-LAG-GROUT",
-      "area": "Swirl Pool",
-      "phase": "PH3",
-      "start_date": "2026-04-14",
-      "end_date": "2026-04-16",
-      "estimated_completion_minutes": 4320,
-      "depends_on_refs": [
-        "SWI-GROUT"
-      ],
-      "priority": "critical",
-      "path": "critical"
-    },
-    {
-      "ref": "SWI-CAULK",
-      "import_key": "SWI-CAULK",
-      "title": "Swirl Pool: re-caulk expansion joints / wet transitions",
-      "description": "REF:SWI-CAULK",
-      "area": "Swirl Pool",
-      "phase": "PH4",
-      "start_date": "2026-04-16",
-      "end_date": "2026-04-16",
-      "estimated_completion_minutes": 1440,
-      "depends_on_refs": [
-        "SWI-LAG-GROUT"
-      ],
-      "priority": "critical",
-      "path": "critical"
-    },
-    {
-      "ref": "SWI-LAG-CAULK",
-      "import_key": "SWI-LAG-CAULK",
-      "title": "Swirl Pool: sealant cure before grate reinstall / refilling",
-      "description": "REF:SWI-LAG-CAULK",
-      "area": "Swirl Pool",
-      "phase": "PH4",
-      "start_date": "2026-04-17",
-      "end_date": "2026-04-17",
-      "estimated_completion_minutes": 1440,
-      "depends_on_refs": [
-        "SWI-CAULK"
-      ],
-      "priority": "critical",
-      "path": "critical"
-    },
-    {
-      "ref": "SWI-MECH",
-      "import_key": "SWI-MECH",
-      "title": "Swirl Pool: jets/covers, drains, lights (as listed)",
-      "description": "Parallel mechanical lane. REF:SWI-MECH",
-      "area": "Swirl Pool",
-      "phase": "PH5",
-      "start_date": "2026-04-11",
-      "end_date": "2026-04-16",
-      "estimated_completion_minutes": 8640,
-      "depends_on_refs": [
-        "G-INSP-ALL"
-      ],
-      "priority": "high",
-      "path": "parallel"
-    },
-    {
-      "ref": "SWI-SCRUB",
-      "import_key": "SWI-SCRUB",
-      "title": "Swirl Pool: full scrub (scum line emphasis)",
-      "description": "Water exposure lane after grout cure hold. REF:SWI-SCRUB",
-      "area": "Swirl Pool",
-      "phase": "PH6",
-      "start_date": "2026-04-16",
-      "end_date": "2026-04-17",
-      "estimated_completion_minutes": 2880,
-      "depends_on_refs": [
-        "SWI-LAG-GROUT"
-      ],
-      "priority": "high",
-      "path": "parallel"
-    },
-    {
-      "ref": "LAP-HYDRO",
-      "import_key": "LAP-HYDRO",
-      "title": "Lap pool: charge filters, clean cells, repair chlorinator boards",
-      "description": "Mechanical closeout lane. REF:LAP-HYDRO",
-      "area": "Lap Pool",
-      "phase": "PH5",
-      "start_date": "2026-04-12",
-      "end_date": "2026-04-17",
-      "estimated_completion_minutes": 8640,
-      "depends_on_refs": [
-        "G-INSP-ALL"
-      ],
-      "priority": "high",
-      "path": "parallel"
-    },
-    {
-      "ref": "FEAT-DIVE",
-      "import_key": "FEAT-DIVE",
-      "title": "Diving board: scrub, bleach or repaint; inspect bolts; polish stainless",
-      "description": "REF:FEAT-DIVE",
-      "area": "Features & Equipment",
-      "phase": "PH5",
-      "start_date": "2026-04-11",
-      "end_date": "2026-04-16",
-      "estimated_completion_minutes": 8640,
-      "depends_on_refs": [
-        "G-INSP-ALL"
-      ],
+      "depends_on_refs": [],
       "priority": "medium",
       "path": "parallel"
     },
     {
-      "ref": "FEAT-PIPE",
-      "import_key": "FEAT-PIPE",
-      "title": "Pipe falls: inspect/replace anodes; remove rust and repaint",
-      "description": "REF:FEAT-PIPE",
-      "area": "Features & Equipment",
-      "phase": "PH5",
+      "ref": "LAP-tile",
+      "import_key": "LAP-tile",
+      "title": "Lap pool: tile repair",
+      "description": "Original shutdown list.",
+      "area": "Lap Pool",
+      "phase": "P2",
       "start_date": "2026-04-11",
-      "end_date": "2026-04-16",
-      "estimated_completion_minutes": 8640,
-      "depends_on_refs": [
-        "G-INSP-ALL"
-      ],
+      "end_date": "2026-04-13",
+      "estimated_completion_minutes": 4320,
+      "depends_on_refs": [],
       "priority": "medium",
       "path": "parallel"
     },
     {
-      "ref": "FEAT-WALL",
-      "import_key": "FEAT-WALL",
-      "title": "Climbing wall: powerwash, scrub grips, inspect hardware",
-      "description": "REF:FEAT-WALL",
-      "area": "Features & Equipment",
-      "phase": "PH5",
-      "start_date": "2026-04-11",
+      "ref": "LAP-grout",
+      "import_key": "LAP-grout",
+      "title": "Lap pool: grout tile",
+      "description": "Original shutdown list.",
+      "area": "Lap Pool",
+      "phase": "P3",
+      "start_date": "2026-04-13",
       "end_date": "2026-04-15",
-      "estimated_completion_minutes": 7200,
+      "estimated_completion_minutes": 4320,
       "depends_on_refs": [
-        "G-INSP-ALL"
-      ],
-      "priority": "medium",
-      "path": "parallel"
-    },
-    {
-      "ref": "FEAT-KIDS",
-      "import_key": "FEAT-KIDS",
-      "title": "Leisure pool kids features: function test, rust/repaint, bleach teacup, clean, purge airlines",
-      "description": "REF:FEAT-KIDS",
-      "area": "Features & Equipment",
-      "phase": "PH5",
-      "start_date": "2026-04-12",
-      "end_date": "2026-04-17",
-      "estimated_completion_minutes": 8640,
-      "depends_on_refs": [
-        "G-DEMO-POOLS"
+        "LAP-tile"
       ],
       "priority": "high",
       "path": "parallel"
     },
     {
-      "ref": "FEAT-BLOCK",
-      "import_key": "FEAT-BLOCK",
-      "title": "Diving blocks: inspect hardware/damage; degrease, scrub, disinfect",
-      "description": "REF:FEAT-BLOCK",
-      "area": "Features & Equipment",
-      "phase": "PH5",
+      "ref": "LAP-filters",
+      "import_key": "LAP-filters",
+      "title": "Lap pool: charge filters",
+      "description": "Original shutdown list.",
+      "area": "Lap Pool",
+      "phase": "P4",
       "start_date": "2026-04-12",
       "end_date": "2026-04-16",
       "estimated_completion_minutes": 7200,
-      "depends_on_refs": [
-        "G-INSP-ALL"
-      ],
+      "depends_on_refs": [],
       "priority": "medium",
       "path": "parallel"
     },
     {
-      "ref": "MECH-STEAM-FEED",
-      "import_key": "MECH-STEAM-FEED",
-      "title": "Mechanical: steam system checks tied to generator service window",
-      "description": "Cross-coord with steam generator tasks. REF:MECH-STEAM-FEED",
-      "area": "Features & Equipment",
-      "phase": "PH5",
+      "ref": "LAP-cells",
+      "import_key": "LAP-cells",
+      "title": "Lap pool: clean cells",
+      "description": "Original shutdown list.",
+      "area": "Lap Pool",
+      "phase": "P4",
       "start_date": "2026-04-12",
       "end_date": "2026-04-16",
       "estimated_completion_minutes": 7200,
-      "depends_on_refs": [
-        "G-INSP-ALL"
-      ],
+      "depends_on_refs": [],
       "priority": "medium",
       "path": "parallel"
     },
     {
-      "ref": "MECH-FILTERS-GLOBAL",
-      "import_key": "MECH-FILTERS-GLOBAL",
-      "title": "Mechanical: filters, chlorinator, jets, drains, lights (facility-wide pass)",
-      "description": "Fills cure windows with crew efficiency. REF:MECH-FILTERS-GLOBAL",
-      "area": "Features & Equipment",
-      "phase": "PH5",
-      "start_date": "2026-04-11",
+      "ref": "LAP-chlor",
+      "import_key": "LAP-chlor",
+      "title": "Lap pool: repair chlorinator electronic boards",
+      "description": "Original shutdown list.",
+      "area": "Lap Pool",
+      "phase": "P4",
+      "start_date": "2026-04-14",
       "end_date": "2026-04-17",
-      "estimated_completion_minutes": 10080,
-      "depends_on_refs": [
-        "G-INSP-ALL"
-      ],
-      "priority": "high",
-      "path": "parallel"
-    },
-    {
-      "ref": "G-REINSTALL-GRATES",
-      "import_key": "G-REINSTALL-GRATES",
-      "title": "Reinstall pool grates / covers after caulk cure (all vessels)",
-      "description": "Depends on last vessel caulk-cure tasks. REF:G-REINSTALL-GRATES",
-      "area": "Facility",
-      "phase": "PH7",
-      "start_date": "2026-04-17",
-      "end_date": "2026-04-18",
-      "estimated_completion_minutes": 2880,
-      "depends_on_refs": [
-        "LAP-LAG-CAULK",
-        "LEI-LAG-CAULK",
-        "SWI-LAG-CAULK"
-      ],
-      "priority": "critical",
-      "path": "critical"
-    },
-    {
-      "ref": "G-FIXTURES-HW",
-      "import_key": "G-FIXTURES-HW",
-      "title": "Reinstall fixtures / hardware checks (wet decks)",
-      "description": "REF:G-FIXTURES-HW",
-      "area": "Facility",
-      "phase": "PH7",
-      "start_date": "2026-04-17",
-      "end_date": "2026-04-18",
-      "estimated_completion_minutes": 2880,
-      "depends_on_refs": [
-        "G-REINSTALL-GRATES"
-      ],
+      "estimated_completion_minutes": 5760,
+      "depends_on_refs": [],
       "priority": "medium",
       "path": "parallel"
-    },
-    {
-      "ref": "G-WATER-QUALITY",
-      "import_key": "G-WATER-QUALITY",
-      "title": "System startup + water balance + disinfection verification",
-      "description": "Final commissioning gate. REF:G-WATER-QUALITY",
-      "area": "Facility",
-      "phase": "PH7",
-      "start_date": "2026-04-17",
-      "end_date": "2026-04-18",
-      "estimated_completion_minutes": 2880,
-      "depends_on_refs": [
-        "G-FIXTURES-HW",
-        "LAP-HYDRO",
-        "MECH-FILTERS-GLOBAL"
-      ],
-      "priority": "critical",
-      "path": "critical"
     }
   ]
 }

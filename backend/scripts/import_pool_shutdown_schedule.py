@@ -91,7 +91,7 @@ def _emit_json(out_path: Path) -> None:
     payload = {
         "project_name": "Pool Shutdown",
         "date_range": {"start": "2026-04-10", "end": "2026-04-18"},
-        "methodology": "Critical path = all tile→grout→cure→caulk→cure for pools, steam, changerooms. Parallel = mechanical/features/dry changeroom work in cure windows.",
+        "methodology": "Original shutdownlist line items only; minimal deps (tile→grout, grout→paint/changeroom, caulk after grout on pools); Apr 10–18 dates; no synthetic lag tasks.",
         "tasks": blueprint_to_jsonable(rows),
     }
     out_path.parent.mkdir(parents=True, exist_ok=True)
@@ -147,13 +147,10 @@ async def _run(project_id: str, *, replace: bool) -> None:
             if f"import_key:{r.ref}" not in desc:
                 desc = f"{desc}\nimport_key:{r.ref}".strip()
 
-            phase_note = f"[{r.path.upper()}] " if r.path == "critical" else ""
-            title = f"{phase_note}{r.title}".strip()
-
             t = PulseProjectTask(
                 company_id=cid,
                 project_id=project_id,
-                title=title[:512],
+                title=r.title.strip()[:512],
                 description=desc,
                 priority=pr,
                 status=PulseTaskStatus.todo,
