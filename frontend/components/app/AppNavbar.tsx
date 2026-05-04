@@ -46,17 +46,17 @@ export function AppNavbar() {
         <div className="flex min-w-0 items-center">
           <Link
             href={logoHref}
-            className="flex min-w-0 shrink-0 items-center gap-3 sm:gap-3.5 no-underline hover:opacity-[0.97]"
+            className="flex min-w-0 shrink-0 items-center gap-1.5 sm:gap-2 no-underline hover:opacity-[0.97]"
             aria-label="Home"
           >
-            <span className="relative block h-9 w-[9.5rem] shrink-0 sm:h-10 sm:w-[10.5rem]">
+            <span className="inline-flex shrink-0 items-center leading-none">
               <Image
                 src="/images/panoramalogo.png"
                 alt=""
-                fill
+                width={280}
+                height={96}
                 priority
-                sizes="(max-width:640px) 152px, 168px"
-                className="object-contain object-left"
+                className="h-9 w-auto max-w-[10.5rem] object-contain object-left sm:h-10 sm:max-w-[12rem]"
               />
             </span>
             <span
