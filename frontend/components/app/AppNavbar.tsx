@@ -49,22 +49,15 @@ export function AppNavbar() {
             className="flex min-w-0 shrink-0 items-center gap-3 sm:gap-3.5 no-underline hover:opacity-[0.97]"
             aria-label="Home"
           >
-            <span
-              className={cn(
-                "inline-flex shrink-0 rounded-full bg-[var(--ds-chrome-gradient)] p-[3px] shadow-[var(--ds-shadow-card)]",
-                "ring-1 ring-black/[0.04] dark:ring-white/10",
-              )}
-            >
-              <span className="relative block h-[4.5rem] w-[4.5rem] overflow-hidden rounded-full bg-white dark:bg-white sm:h-20 sm:w-20">
-                <Image
-                  src="/images/panoramalogo.png"
-                  alt=""
-                  fill
-                  priority
-                  sizes="96px"
-                  className="object-contain object-left-top p-[10%]"
-                />
-              </span>
+            <span className="relative block h-9 w-[9.5rem] shrink-0 sm:h-10 sm:w-[10.5rem]">
+              <Image
+                src="/images/panoramalogo.png"
+                alt=""
+                fill
+                priority
+                sizes="(max-width:640px) 152px, 168px"
+                className="object-contain object-left"
+              />
             </span>
             <span
               className={cn(
@@ -93,7 +86,7 @@ export function AppNavbar() {
               <button
                 type="button"
                 onClick={() => setUserOpen((o) => !o)}
-                className="flex items-center gap-2 rounded-md border border-ds-border bg-ds-primary py-1 pl-1.5 pr-1.5 shadow-[var(--ds-shadow-card)] transition-colors hover:bg-ds-secondary sm:py-1.5 sm:pl-2 sm:pr-2.5"
+                className="flex items-center gap-2 rounded-md border border-ds-border bg-ds-primary py-0.5 pl-1.5 pr-1.5 shadow-[var(--ds-shadow-card)] transition-colors hover:bg-ds-secondary sm:py-1 sm:pl-2 sm:pr-2.5"
                 aria-expanded={userOpen}
                 aria-haspopup="menu"
               >
@@ -102,12 +95,12 @@ export function AppNavbar() {
                     <UserProfileAvatarPreview
                       avatarUrl={session.avatar_url}
                       nameFallback={session.full_name || session.email}
-                      sizeClassName="h-8 w-8"
+                      sizeClassName="h-7 w-7"
                       fallback="initials"
                       className="!border-gray-200 !bg-gray-100 !text-gray-900 !ring-1 !ring-gray-200 dark:!border-ds-border dark:!bg-ds-secondary dark:!text-gray-100 dark:!ring-ds-border"
                     />
                   ) : (
-                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 text-xs font-bold text-gray-900 ring-1 ring-gray-200 dark:bg-ds-secondary dark:text-gray-100 dark:ring-ds-border">
+                    <span className="flex h-7 w-7 items-center justify-center rounded-full bg-gray-100 text-xs font-bold text-gray-900 ring-1 ring-gray-200 dark:bg-ds-secondary dark:text-gray-100 dark:ring-ds-border">
                       ?
                     </span>
                   )}
