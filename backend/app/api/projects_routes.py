@@ -11,6 +11,7 @@ from sqlalchemy import delete, func, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import require_tenant_user
+from app.core.user_roles import user_has_tenant_full_admin
 from app.services.notifications import seed_default_notification_rules
 from app.core.database import get_db
 from app.models.domain import Company, FacilityEquipment, InventoryItem, User
@@ -89,6 +90,18 @@ from app.schemas.projects import (
 
 router = APIRouter(tags=["projects"])
 tasks_router = APIRouter(tags=["tasks"])
+
+
+def _actor_can_manage_pulse_project(actor: User, p: PulseProject) -> bool:
+    """Creator, assigned owner, or tenant full admin (company_admin / in-facility delegate)."""
+    aid = str(actor.id)
+    cb = getattr(p, "created_by_user_id", None)
+    if cb is not None and str(cb) == aid:
+        return True
+    ow = getattr(p, "owner_user_id", None)
+    if ow is not None and str(ow) == aid:
+        return True
+    return user_has_tenant_full_admin(actor)
 
 
 def _category_out(c: PulseCategory) -> CategoryOut:
@@ -1031,11 +1044,10 @@ async def patch_project(
     if "status" in data and data["status"] is not None:
         new_st = proj_svc.parse_project_status(str(data["status"]))
         if new_st == PulseProjectStatus.completed:
-            creator_id = getattr(p, "created_by_user_id", None)
-            if not creator_id or str(creator_id) != str(actor.id):
+            if not _actor_can_manage_pulse_project(actor, p):
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
-                    detail="Only the project creator can mark this project complete",
+                    detail="Only the project creator, owner, or a company administrator can mark this project complete",
                 )
         p.status = new_st
         del data["status"]
@@ -1459,11 +1471,10 @@ async def delete_project(
     p = await db.get(PulseProject, project_id)
     if not p or str(p.company_id) != cid:
         raise HTTPException(status_code=404, detail="Not found")
-    creator_id = getattr(p, "created_by_user_id", None)
-    if not creator_id or str(creator_id) != str(actor.id):
+    if not _actor_can_manage_pulse_project(actor, p):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only the project creator can delete this project",
+            detail="Only the project creator, owner, or a company administrator can delete this project",
         )
     tq = await db.execute(select(PulseProjectTask).where(PulseProjectTask.project_id == project_id))
     for t in tq.scalars().all():

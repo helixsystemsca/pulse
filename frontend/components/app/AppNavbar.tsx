@@ -46,12 +46,12 @@ export function AppNavbar() {
         <div className="flex min-w-0 items-center">
           <Link
             href={logoHref}
-            className="flex min-w-0 shrink-0 items-center no-underline hover:opacity-[0.97]"
+            className="flex min-w-0 shrink-0 items-center gap-3 sm:gap-3.5 no-underline hover:opacity-[0.97]"
             aria-label="Home"
           >
             <span
               className={cn(
-                "inline-flex rounded-full bg-[var(--ds-chrome-gradient)] p-[3px] shadow-[var(--ds-shadow-card)]",
+                "inline-flex shrink-0 rounded-full bg-[var(--ds-chrome-gradient)] p-[3px] shadow-[var(--ds-shadow-card)]",
                 "ring-1 ring-black/[0.04] dark:ring-white/10",
               )}
             >
@@ -66,10 +66,18 @@ export function AppNavbar() {
                 />
               </span>
             </span>
+            <span
+              className={cn(
+                "font-panoramaBrand min-w-0 whitespace-nowrap text-[clamp(1.125rem,2.1vw,1.375rem)] leading-none tracking-[0.04em]",
+                "text-[#1f3a4a] dark:text-[#b8cad6]",
+              )}
+            >
+              <span className="font-semibold">panorama</span> <span className="font-medium">pulse</span>
+            </span>
           </Link>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-stretch gap-2">
           {authed ? <ThemeToggle /> : null}
           {!authed ? (
             pathname !== "/login" ? (

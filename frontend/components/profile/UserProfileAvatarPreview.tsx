@@ -6,6 +6,24 @@
 import { User } from "lucide-react";
 import { useResolvedAvatarSrc } from "@/lib/useResolvedAvatarSrc";
 
+/** Two-letter avatar fallback: first + last initial when possible (not first two chars of one word). */
+export function initialsFromDisplayName(raw: string | null | undefined): string {
+  const s = raw?.trim() || "";
+  if (!s) return "?";
+  const parts = s.split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) {
+    const a = parts[0]?.[0] ?? "";
+    const b = parts[parts.length - 1]?.[0] ?? "";
+    const out = (a + b).toUpperCase();
+    return out || "?";
+  }
+  if (s.includes("@")) {
+    const local = s.split("@")[0]?.trim() || "";
+    return (local.slice(0, 2) || "?").toUpperCase();
+  }
+  return (s.slice(0, 2) || "?").toUpperCase();
+}
+
 type Props = {
   avatarUrl?: string | null;
   nameFallback?: string | null;
@@ -23,7 +41,7 @@ export function UserProfileAvatarPreview({
   fallback = "profile",
 }: Props) {
   const src = useResolvedAvatarSrc(avatarUrl ?? null);
-  const initials = (nameFallback?.trim() || "?").slice(0, 2).toUpperCase();
+  const initials = initialsFromDisplayName(nameFallback);
 
   return (
     <div

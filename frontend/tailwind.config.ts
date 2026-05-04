@@ -12,6 +12,8 @@ const config: Config = {
       fontFamily: {
         headline: ["var(--font-app)", "system-ui", "sans-serif"],
         body: ["var(--font-app)", "system-ui", "sans-serif"],
+        /** Navbar “panorama pulse” — set in root layout via `next/font` */
+        panoramaBrand: ["var(--font-panorama-brand)", "Poppins", "system-ui", "sans-serif"],
       },
       colors: {
         helix: {

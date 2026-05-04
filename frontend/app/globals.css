@@ -236,6 +236,31 @@ html.pulse-welcome-blur [data-pulse-app-shell] {
   .dark :is(.ds-card-primary, .ds-card-secondary, .ds-card-elevated, .app-glass-elevated):hover {
     filter: brightness(1.05);
   }
+
+  /** Opt out of default card lift / tint — use interactive children for affordances instead. */
+  .ds-card-static.ds-card-primary:hover,
+  .ds-card-static.ds-card-secondary:hover,
+  .ds-card-static.ds-card-elevated:hover {
+    transform: none;
+    filter: none;
+  }
+  .ds-card-static.ds-card-primary:hover,
+  .ds-card-static.ds-card-secondary:hover {
+    box-shadow: var(--ds-shadow-card);
+  }
+  .ds-card-static.ds-card-elevated:hover {
+    box-shadow: var(--ds-shadow-diffuse);
+  }
+  html:not(.dark) .ds-card-static.ds-card-primary:hover {
+    background-color: var(--ds-surface-primary);
+  }
+  html:not(.dark) .ds-card-static.ds-card-secondary:hover {
+    background-color: var(--ds-surface-secondary);
+  }
+  html:not(.dark) .ds-card-static.ds-card-elevated:hover {
+    background-color: var(--ds-surface-elevated);
+  }
+
   .app-glass-card > *,
   .app-card > *,
   .ds-card-primary > *,

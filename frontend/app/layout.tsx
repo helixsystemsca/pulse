@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Inter, Poppins } from "next/font/google";
 import Script from "next/script";
 import { ThemeRoot } from "@/components/theme/ThemeRoot";
 import { THEME_STORAGE_KEY } from "@/lib/theme-constants";
@@ -12,6 +12,14 @@ const inter = Inter({
   subsets: ["latin"],
   weight: ["400", "500", "600", "700", "800"],
   variable: "--font-app",
+  display: "swap",
+});
+
+/** Header wordmark “panorama pulse” — weights 500 / 600 only. */
+const panoramaBrand = Poppins({
+  subsets: ["latin"],
+  weight: ["500", "600"],
+  variable: "--font-panorama-brand",
   display: "swap",
 });
 
@@ -35,7 +43,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={inter.variable} suppressHydrationWarning>
+    <html lang="en" className={`${inter.variable} ${panoramaBrand.variable}`} suppressHydrationWarning>
       <body className="font-body antialiased bg-ds-bg text-ds-foreground">
         <Script id="pulse-theme-init" strategy="beforeInteractive">
           {themeInitScript}

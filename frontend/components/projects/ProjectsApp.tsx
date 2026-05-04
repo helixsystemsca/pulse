@@ -27,6 +27,7 @@ import {
 } from "@/lib/projectsService";
 import type { PulseWorkerApi } from "@/lib/schedule/pulse-bridge";
 import { cn } from "@/lib/cn";
+import { sessionHasAnyRole } from "@/lib/pulse-roles";
 import { buttonVariants } from "@/styles/button-variants";
 
 const PRIMARY_BTN = cn(buttonVariants({ surface: "light", intent: "accent" }), "px-5 py-2.5");
@@ -73,9 +74,14 @@ function categoryMatchByName(categories: CategoryRow[], name: string): CategoryR
   return categories.find((c) => c.name.trim().toLowerCase() === q) ?? null;
 }
 
+const ICON_BTN =
+  "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] border border-slate-200/90 bg-white text-pulse-navy shadow-sm transition-colors hover:bg-slate-50 dark:border-ds-border dark:bg-ds-secondary dark:text-slate-100 dark:hover:bg-ds-interactive-hover";
+
 export function ProjectsApp() {
   const { session } = usePulseAuth();
   const myUserId = session?.sub ?? null;
+  const isTenantFullAdmin =
+    Boolean(session && sessionHasAnyRole(session, "company_admin")) || Boolean(session?.facility_tenant_admin);
   const [rows, setRows] = useState<ProjectRow[] | null>(null);
   const [workers, setWorkers] = useState<PulseWorkerApi[]>([]);
   const [err, setErr] = useState<string | null>(null);
@@ -552,7 +558,9 @@ export function ProjectsApp() {
                   {groupRows.map((p) => {
                     const owner = p.owner_user_id ? workerById.get(p.owner_user_id) : undefined;
                     const creatorIsYou = Boolean(myUserId && p.created_by_user_id && p.created_by_user_id === myUserId);
-                    const creatorCanComplete = creatorIsYou && p.status !== "completed";
+                    const ownerIsYou = Boolean(myUserId && p.owner_user_id && p.owner_user_id === myUserId);
+                    const canManageProjectCard = creatorIsYou || ownerIsYou || isTenantFullAdmin;
+                    const canMarkComplete = canManageProjectCard && p.status !== "completed";
                     const lastTs = (p.last_activity_at || p.updated_at || p.created_at || "").trim();
                     const lastUpdateLabel = (() => {
                       if (!lastTs) return "";
@@ -564,28 +572,35 @@ export function ProjectsApp() {
                       return `Last update: ${days} days ago`;
                     })();
                     return (
-                      <Card key={p.id} padding="md" className="h-full">
+                      <Card key={p.id} padding="md" className="ds-card-static h-full">
                         <div className="flex items-start gap-3">
-                          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-slate-200/80 bg-slate-50 text-pulse-accent dark:border-ds-border dark:bg-ds-secondary">
+                          <Link
+                            href={`/projects/${p.id}`}
+                            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-slate-200/80 bg-slate-50 text-pulse-accent no-underline transition-colors hover:border-slate-300/90 hover:bg-slate-100 dark:border-ds-border dark:bg-ds-secondary dark:hover:border-ds-border dark:hover:bg-ds-interactive-hover"
+                            aria-label={`Open ${p.name}`}
+                            title="Open project"
+                          >
                             <FolderKanban className="h-5 w-5" aria-hidden />
-                          </span>
+                          </Link>
                           <div className="min-w-0 flex-1">
                             <div className="flex items-start justify-between gap-2">
                               <p className="min-w-0 font-headline text-base font-semibold text-pulse-navy dark:text-slate-100">
                                 {p.name}
                               </p>
-                              <button
-                                type="button"
-                                className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] border border-slate-200/90 bg-white text-pulse-navy shadow-sm transition-colors hover:bg-slate-50 dark:border-ds-border dark:bg-ds-secondary dark:text-slate-100 dark:hover:bg-ds-interactive-hover"
-                                aria-label={`Settings for ${p.name}`}
-                                title="Project settings"
-                                onClick={() => {
-                                  setSettingsFor(p);
-                                  setSettingsOpen(true);
-                                }}
-                              >
-                                <Settings2 className="h-4 w-4" aria-hidden />
-                              </button>
+                              {canManageProjectCard ? (
+                                <button
+                                  type="button"
+                                  className={ICON_BTN}
+                                  aria-label={`Settings for ${p.name}`}
+                                  title="Project settings"
+                                  onClick={() => {
+                                    setSettingsFor(p);
+                                    setSettingsOpen(true);
+                                  }}
+                                >
+                                  <Settings2 className="h-4 w-4" aria-hidden />
+                                </button>
+                              ) : null}
                             </div>
                             <p className="mt-1.5 inline-flex items-center gap-1.5 text-xs text-pulse-muted">
                               <CalendarRange className="h-3.5 w-3.5 shrink-0 opacity-80" aria-hidden />
@@ -637,7 +652,7 @@ export function ProjectsApp() {
                               </p>
                             </div>
                             <div className="mt-4 flex flex-col gap-2">
-                              {creatorIsYou ? (
+                              {canManageProjectCard ? (
                                 <div className="flex flex-col gap-2 sm:flex-row">
                                   <button
                                     type="button"
@@ -650,7 +665,7 @@ export function ProjectsApp() {
                                       Edit
                                     </span>
                                   </button>
-                                  {creatorCanComplete ? (
+                                  {canMarkComplete ? (
                                     <button
                                       type="button"
                                       className={`${SECONDARY_BTN} w-full sm:flex-1`}
@@ -662,7 +677,7 @@ export function ProjectsApp() {
                                   ) : null}
                                   <button
                                     type="button"
-                                    className={`${DANGER_BTN} w-full ${creatorCanComplete ? "sm:flex-1" : ""}`}
+                                    className={`${DANGER_BTN} w-full ${canMarkComplete ? "sm:flex-1" : ""}`}
                                     disabled={deletingId === p.id || completingId === p.id}
                                     onClick={() => void removeProject(p)}
                                   >
@@ -672,7 +687,7 @@ export function ProjectsApp() {
                               ) : null}
                               <Link
                                 href={`/projects/${p.id}`}
-                                className={`${PRIMARY_BTN} inline-flex w-full items-center justify-center no-underline`}
+                                className={`${PRIMARY_BTN} inline-flex w-full items-center justify-center no-underline transition-colors`}
                               >
                                 Open project
                               </Link>
