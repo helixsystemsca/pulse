@@ -1,0 +1,26 @@
+{
+  "files.watcherExclude": {
+    "**/node_modules/**": true,
+    "**/.venv/**": true,
+    "**/__pycache__/**": true,
+    "**/dist/**": true,
+    "**/build/**": true,
+    "**/.next/**": true,
+    "**/rpi5/**": true,
+    "**/firmware/**": true,
+    "**/hardware/**": true,
+    "**/MobileApp/**": true,
+    "**/*.zip": true
+  },
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/.venv": true,
+    "**/dist": true,
+    "**/build": true,
+    "**/.next": true,
+    "**/rpi5": true,
+    "**/firmware": true,
+    "**/hardware": true,
+    "**/MobileApp": true
+  }
+}
