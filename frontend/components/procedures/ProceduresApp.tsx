@@ -781,12 +781,6 @@ export function ProceduresApp() {
                   >
                     <div className="min-w-0">
                       <span className="font-medium">{r.title}</span>
-                      {(canReview || isCompanyAdmin) && (r.search_keywords?.length ?? 0) > 0 ? (
-                        <p className="mt-0.5 truncate text-[10px] text-ds-muted" title={(r.search_keywords ?? []).join(", ")}>
-                          Tags: {(r.search_keywords ?? []).slice(0, 4).join(" · ")}
-                          {(r.search_keywords ?? []).length > 4 ? "…" : ""}
-                        </p>
-                      ) : null}
                       <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] font-semibold text-ds-muted">
                         <span>By {r.created_by_name?.trim() || "—"}</span>
                         {r.review_required ? (
@@ -1015,12 +1009,6 @@ export function ProceduresApp() {
                   <p className="text-sm font-semibold text-ds-foreground">Title</p>
                   <p className="mt-1 text-sm text-ds-muted">{selected.title}</p>
                 </div>
-                {(canReview || isCompanyAdmin || canEditSelected) && (selected.search_keywords?.length ?? 0) > 0 ? (
-                  <p className="text-xs text-ds-muted">
-                    <span className="font-semibold text-ds-foreground">Internal tags: </span>
-                    {(selected.search_keywords ?? []).join(", ")}
-                  </p>
-                ) : null}
                 <ol className="space-y-3">
                   {selected.steps.map((s, idx) => {
                     return (

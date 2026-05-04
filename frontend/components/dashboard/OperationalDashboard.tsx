@@ -2037,6 +2037,11 @@ function DashboardBody({
     );
   }
 
+  const row = "w-full";
+  const queue = kioskWorkQueueRows(model);
+  const rightKpis = kioskKpis.slice(0, 4);
+  const onSiteShow = model.workforce.onSite.slice(0, 5);
+
   return (
     <div className={cn(DASH.page, "space-y-6")}>
       <DashboardAccentCard>
@@ -2072,6 +2077,72 @@ function DashboardBody({
         {model.bannerNote ? (
           <div className="mt-4 border-t border-ds-border pt-4 text-sm font-semibold text-ds-foreground">{model.bannerNote}</div>
         ) : null}
+      </DashboardAccentCard>
+
+      <DashboardAccentCard mutedAccent innerClassName="space-y-4">
+        <div className={cn(DASH.grid12, "gap-4")}>
+          <div className="col-span-12 min-h-0 lg:col-span-3">
+            <DashboardColumnPanel title="Today's focus" accent="teal">
+              <ul className="space-y-2">
+                {queue.length === 0 ? (
+                  <li className="text-sm text-ds-muted">No queued work items.</li>
+                ) : (
+                  queue.map((q) => (
+                    <li key={q.key} className={cn(DASH.listRow, "flex items-start justify-between gap-2")}>
+                      <span className="min-w-0 truncate text-sm font-semibold text-ds-foreground">{q.title}</span>
+                      <span
+                        className={cn(
+                          DASH.pill,
+                          q.tone === "critical" &&
+                            "border-red-200/80 bg-red-50 text-red-800 dark:border-red-500/35 dark:bg-red-950/40 dark:text-red-100",
+                          q.tone === "warn" &&
+                            "border-amber-200/80 bg-amber-50 text-amber-900 dark:border-amber-500/35 dark:bg-amber-950/35 dark:text-amber-100",
+                          q.tone === "ok" && "border-ds-border bg-ds-secondary text-ds-muted",
+                        )}
+                      >
+                        {q.status}
+                      </span>
+                    </li>
+                  ))
+                )}
+              </ul>
+            </DashboardColumnPanel>
+          </div>
+
+          <div className="col-span-12 min-h-0 lg:col-span-6">
+            <OverviewView rowClass={row} />
+          </div>
+
+          <div className="col-span-12 min-h-0 lg:col-span-3">
+            <DashboardColumnPanel title="Team snapshot" accent="dusk">
+              <div className="grid grid-cols-2 gap-2">
+                {rightKpis.map((k) => (
+                  <KioskTile key={k.label} label={k.label} value={k.value} />
+                ))}
+              </div>
+              <p className={cn(DASH.sectionLabel, "mt-4")}>On site</p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {onSiteShow.length === 0 ? (
+                  <p className="text-sm text-ds-muted">No workers on site.</p>
+                ) : (
+                  onSiteShow.map((b) => (
+                    <WorkforceBubbleStack
+                      key={b.id}
+                      bubble={b}
+                      faceClassName={onsiteAvatarClass()}
+                      badges={
+                        <>
+                          {b.badge ? <WorkforceRoleLetterBadge letter={b.badge} /> : null}
+                          <WorkforceStatusDot color="green" />
+                        </>
+                      }
+                    />
+                  ))
+                )}
+              </div>
+            </DashboardColumnPanel>
+          </div>
+        </div>
       </DashboardAccentCard>
 
       <DashboardAccentCard mutedAccent innerClassName="space-y-5">
