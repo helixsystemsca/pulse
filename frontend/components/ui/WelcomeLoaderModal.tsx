@@ -226,24 +226,15 @@ export function WelcomeLoaderModal({
                   phase === "loading" ? "pb-20 sm:pb-24" : "pb-12 sm:pb-14",
                 ].join(" ")}
               >
-                <div className="mx-auto flex justify-center">
-                  <div
-                    className={cn(
-                      "rounded-full border-[3px] border-[#4c6085] bg-white shadow-[0_6px_28px_rgba(76,96,133,0.16)] dark:border-ds-border dark:bg-white",
-                      "h-[5.25rem] w-[5.25rem] sm:h-24 sm:w-24",
-                    )}
-                  >
-                    <div className="relative h-full w-full overflow-hidden rounded-full bg-white">
-                      <Image
-                        src="/images/panoramalogo2.png"
-                        alt=""
-                        fill
-                        priority
-                        sizes="112px"
-                        className="object-contain object-left-top p-[12%]"
-                      />
-                    </div>
-                  </div>
+                <div className="relative mx-auto h-[5.25rem] w-[5.25rem] sm:h-24 sm:w-24">
+                  <Image
+                    src="/images/panoramalogo2.png"
+                    alt=""
+                    fill
+                    priority
+                    sizes="(max-width: 640px) 84px, 96px"
+                    className="object-contain object-center"
+                  />
                 </div>
 
               {phase === "loading" ? (
