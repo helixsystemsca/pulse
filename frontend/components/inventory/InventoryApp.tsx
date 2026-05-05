@@ -42,7 +42,7 @@ import {
   postInventoryMove,
   postInventoryUse,
 } from "@/lib/inventoryService";
-import { managerOrAbove } from "@/lib/pulse-roles";
+import { canAccessCompanyConfiguration, managerOrAbove } from "@/lib/pulse-roles";
 import { readSession } from "@/lib/pulse-session";
 import { fetchWorkRequestList } from "@/lib/workRequestsService";
 import { cn } from "@/lib/cn";
@@ -215,6 +215,7 @@ function InventoryTableQtyCell(props: {
 
 export function InventoryApp() {
   const session = readSession();
+  const canConfigureOrg = canAccessCompanyConfiguration(session);
   const isSystemAdmin = Boolean(session?.is_system_admin || session?.role === "system_admin");
   const sessionCompanyId = session?.company_id ?? null;
   const canManage = managerOrAbove(session);
@@ -830,14 +831,16 @@ export function InventoryApp() {
               <Download className="h-4 w-4" aria-hidden />
               Export CSV
             </button>
-            <button
-              type="button"
-              className={cn(buttonVariants({ surface: "light", intent: "secondary" }), "inline-flex items-center gap-2 px-4 py-2.5")}
-              onClick={() => setSettingsOpen(true)}
-            >
-              <Settings className="h-4 w-4" aria-hidden />
-              Settings
-            </button>
+            {canConfigureOrg ? (
+              <button
+                type="button"
+                className={cn(buttonVariants({ surface: "light", intent: "secondary" }), "inline-flex items-center gap-2 px-4 py-2.5")}
+                onClick={() => setSettingsOpen(true)}
+              >
+                <Settings className="h-4 w-4" aria-hidden />
+                Settings
+              </button>
+            ) : null}
             <button type="button" className={PRIMARY_BTN} onClick={() => openCreate()} disabled={!dataEnabled}>
               + Register item
             </button>

@@ -37,7 +37,7 @@ import {
 } from "@/lib/projectsService";
 import type { PulseWorkerApi } from "@/lib/schedule/pulse-bridge";
 import { cn } from "@/lib/cn";
-import { sessionHasAnyRole } from "@/lib/pulse-roles";
+import { canAccessCompanyConfiguration, sessionHasAnyRole } from "@/lib/pulse-roles";
 import { buttonVariants } from "@/styles/button-variants";
 
 const PRIMARY_BTN = cn(buttonVariants({ surface: "light", intent: "accent" }), "px-5 py-2.5");
@@ -99,6 +99,7 @@ export function ProjectsApp() {
   const myUserId = session?.sub ?? null;
   const isTenantFullAdmin =
     Boolean(session && sessionHasAnyRole(session, "company_admin")) || Boolean(session?.facility_tenant_admin);
+  const canConfigureOrg = canAccessCompanyConfiguration(session);
   const [rows, setRows] = useState<ProjectRow[] | null>(null);
   const [workers, setWorkers] = useState<PulseWorkerApi[]>([]);
   const [err, setErr] = useState<string | null>(null);
@@ -614,7 +615,7 @@ export function ProjectsApp() {
                             <p className="min-w-0 flex-1 font-headline text-base font-semibold leading-snug text-pulse-navy dark:text-slate-100">
                               {p.name}
                             </p>
-                            {canManageProjectCard ? (
+                            {canConfigureOrg ? (
                               <button
                                 type="button"
                                 className={`${ICON_BTN} h-8 w-8 shrink-0 rounded-lg`}

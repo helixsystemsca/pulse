@@ -53,7 +53,7 @@ import {
 import { computeAlerts, computeWorkforceSummary } from "@/lib/schedule/selectors";
 import { useScheduleStore } from "@/lib/schedule/schedule-store";
 import type { ScheduleDragSession, Shift } from "@/lib/schedule/types";
-import { sessionHasAnyRole } from "@/lib/pulse-roles";
+import { canAccessCompanyConfiguration, sessionHasAnyRole } from "@/lib/pulse-roles";
 import { readSession } from "@/lib/pulse-session";
 import { ScheduleAlertsBanner } from "./ScheduleAlertsBanner";
 import { useModuleSettings } from "@/providers/ModuleSettingsProvider";
@@ -109,6 +109,7 @@ function weeklyAssignedHours(
 
 export function ScheduleApp() {
   const session = readSession();
+  const canConfigureOrg = canAccessCompanyConfiguration(session);
   const currentUserId = session?.sub ?? null;
   const canPublishSchedule = sessionHasAnyRole(session, "manager", "supervisor", "company_admin", "system_admin");
   const canEdit = canPublishSchedule;
@@ -861,14 +862,16 @@ export function ScheduleApp() {
                   <CalendarPlus className="h-4 w-4" />
                   Time off
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setSettingsOpen(true)}
-                  className="inline-flex items-center gap-2 rounded-md border border-pulseShell-border bg-pulseShell-surface px-4 py-2 text-sm font-semibold text-ds-foreground shadow-sm hover:bg-ds-interactive-hover dark:text-gray-100"
-                >
-                  <Settings className="h-4 w-4" />
-                  Settings
-                </button>
+                {canConfigureOrg ? (
+                  <button
+                    type="button"
+                    onClick={() => setSettingsOpen(true)}
+                    className="inline-flex items-center gap-2 rounded-md border border-pulseShell-border bg-pulseShell-surface px-4 py-2 text-sm font-semibold text-ds-foreground shadow-sm hover:bg-ds-interactive-hover dark:text-gray-100"
+                  >
+                    <Settings className="h-4 w-4" />
+                    Settings
+                  </button>
+                ) : null}
               </>
             }
           />

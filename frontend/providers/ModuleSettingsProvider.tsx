@@ -11,7 +11,7 @@ import {
 } from "@/lib/moduleSettings/defaults";
 import { fetchOrgModuleSettings, patchOrgModuleSettings } from "@/lib/moduleSettings/service";
 import { readModuleSettingsCache, writeModuleSettingsCache } from "@/lib/moduleSettings/storage";
-import { sessionHasAnyRole } from "@/lib/pulse-roles";
+import { canAccessCompanyConfiguration } from "@/lib/pulse-roles";
 import { canAccessPulseTenantApis, readSession } from "@/lib/pulse-session";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
 
@@ -38,12 +38,7 @@ export function ModuleSettingsProvider({ children }: { children: ReactNode }) {
   const [loadedCompanyId, setLoadedCompanyId] = useState<string | null>(null);
 
   const isSystemAdmin = Boolean(session?.is_system_admin || session?.role === "system_admin");
-  const canConfigure = Boolean(
-    session &&
-      (sessionHasAnyRole(session, "company_admin", "system_admin") ||
-        session.is_system_admin ||
-        session.role === "system_admin"),
-  );
+  const canConfigure = canAccessCompanyConfiguration(session);
 
   const loadForCompany = useCallback(
     async (companyId: string | null) => {

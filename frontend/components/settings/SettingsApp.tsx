@@ -35,6 +35,7 @@ import {
 import { useAllConfig } from "@/lib/config/useConfig";
 import type { ConfigModule, ModuleConfig } from "@/lib/config/service";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
+import { canAccessCompanyConfiguration } from "@/lib/pulse-roles";
 import { PageHeader } from "@/components/ui/PageHeader";
 
 // ── Tab definitions ───────────────────────────────────────────────────────────
@@ -390,6 +391,8 @@ export function SettingsApp() {
   const [activeTab, setActiveTab] = useState<string>(initialTab);
 
   const companyId = session?.company_id ?? null;
+  const isSystemAdmin = Boolean(session?.is_system_admin || session?.role === "system_admin");
+  const mayAccessOrgSettings = isSystemAdmin || canAccessCompanyConfiguration(session);
   const { config, loading, error, canEdit, patch } = useAllConfig(companyId);
 
   const switchTab = useCallback((id: string) => {
@@ -402,6 +405,17 @@ export function SettingsApp() {
   }, [patch]);
 
   const activeConfig = config?.[activeTab as ConfigModule];
+
+  if (session && !mayAccessOrgSettings) {
+    return (
+      <div className="space-y-6">
+        <PageHeader title="Settings" description="Configure Pulse for your facility." icon={Settings} />
+        <p className="text-sm text-ds-muted">
+          Organization settings are restricted to company administrators. Contact an administrator if you need changes.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

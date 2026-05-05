@@ -39,7 +39,12 @@ type SidebarNavItem = { href: string; label: string; icon: PulseSidebarIcon };
 import { isPulseNavActive } from "@/lib/pulse-nav-active";
 import { isTenantNavFeatureEnabled } from "@/lib/pulse-nav-features";
 import { isTenantNavPermissionGranted } from "@/lib/pulse-nav-permissions";
-import { sessionHasAnyRole, sessionPrimaryRole, sessionRoleDisplayLabel } from "@/lib/pulse-roles";
+import {
+  canAccessCompanyConfiguration,
+  sessionHasAnyRole,
+  sessionPrimaryRole,
+  sessionRoleDisplayLabel,
+} from "@/lib/pulse-roles";
 
 const ICONS: Record<PulseSidebarIcon, LucideIcon> = {
   layout: LayoutDashboard,
@@ -90,6 +95,7 @@ export function AppSideNav() {
   const [navSearch, setNavSearch] = useState("");
 
   const isSystemAdmin = Boolean(session?.is_system_admin || session?.role === "system_admin");
+  const canOpenOrgSettings = isSystemAdmin || canAccessCompanyConfiguration(session);
   const rawNav = isSystemAdmin ? pulseSystemSidebarNav : pulseTenantSidebarNav;
   let items: SidebarNavItem[] = (
     !isSystemAdmin && sessionPrimaryRole(session) === "worker"
@@ -179,13 +185,15 @@ export function AppSideNav() {
         </div>
 
         <div className="border-t border-ds-border px-3 pt-3">
-          <Link
-            href="/settings"
-            className="mb-2 flex w-full items-center justify-center gap-2 rounded-lg border border-ds-border bg-ds-secondary px-3 py-1.5 text-sm font-semibold text-foreground transition-colors hover:bg-ds-interactive-hover"
-          >
-            <Settings className="h-4 w-4" aria-hidden />
-            Settings
-          </Link>
+          {canOpenOrgSettings ? (
+            <Link
+              href="/settings"
+              className="mb-2 flex w-full items-center justify-center gap-2 rounded-lg border border-ds-border bg-ds-secondary px-3 py-1.5 text-sm font-semibold text-foreground transition-colors hover:bg-ds-interactive-hover"
+            >
+              <Settings className="h-4 w-4" aria-hidden />
+              Settings
+            </Link>
+          ) : null}
           <div className="pb-3" />
         </div>
       </div>

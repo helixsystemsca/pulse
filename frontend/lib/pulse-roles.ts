@@ -63,6 +63,20 @@ export function complianceManagerFlagAllowed(
   return sessionHasAnyRole(session, "manager", "company_admin");
 }
 
+/**
+ * Organization-wide configuration: Helix `/settings`, module gear modals, schedule/inventory/WR org drawers, etc.
+ * Platform admins always; on tenant JWTs: `company_admin` role or in-facility `facility_tenant_admin` delegate.
+ */
+export function canAccessCompanyConfiguration(
+  session: Pick<PulseAuthSession, "role" | "roles" | "is_system_admin" | "facility_tenant_admin"> | null | undefined,
+): boolean {
+  if (!session) return false;
+  if (session.is_system_admin || sessionHasAnyRole(session, "system_admin")) return true;
+  if (sessionHasAnyRole(session, "company_admin")) return true;
+  if (session.facility_tenant_admin) return true;
+  return false;
+}
+
 /** Managers/supervisors without company_admin: limited invite/create role options. */
 export function isCreateRoleLimitedSession(
   session: Pick<PulseAuthSession, "role" | "roles" | "facility_tenant_admin"> | null | undefined,

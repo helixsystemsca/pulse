@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { readSession } from "@/lib/pulse-session";
-import { sessionHasAnyRole } from "@/lib/pulse-roles";
+import { canAccessCompanyConfiguration } from "@/lib/pulse-roles";
 import {
   configApi,
   type AllConfigOut,
@@ -36,10 +36,7 @@ export function useConfig<T extends ModuleConfig = ModuleConfig>(
 
   const session = readSession();
   const companyId = options.companyId ?? session?.company_id ?? null;
-  const canEdit = Boolean(
-    session &&
-      (sessionHasAnyRole(session, "company_admin", "system_admin") || session.is_system_admin),
-  );
+  const canEdit = canAccessCompanyConfiguration(session);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -89,10 +86,7 @@ export function useAllConfig(companyId?: string | null) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const canEdit = Boolean(
-    session &&
-      (sessionHasAnyRole(session, "company_admin", "system_admin") || session.is_system_admin),
-  );
+  const canEdit = canAccessCompanyConfiguration(session);
 
   const load = useCallback(async () => {
     setLoading(true);

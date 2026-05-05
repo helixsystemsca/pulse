@@ -28,12 +28,11 @@ import { PulseDrawer } from "@/components/schedule/PulseDrawer";
 import { ModuleSettingsModal } from "@/components/module-settings/ModuleSettingsModal";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PageBody } from "@/components/ui/PageBody";
-import { managerOrAbove } from "@/lib/pulse-roles";
+import { canAccessCompanyConfiguration, managerOrAbove, sessionHasAnyRole } from "@/lib/pulse-roles";
 import { isTenantNavFeatureEnabled } from "@/lib/pulse-nav-features";
 import { isTenantNavPermissionGranted } from "@/lib/pulse-nav-permissions";
 import type { PulseAuthSession } from "@/lib/pulse-session";
 import { readSession } from "@/lib/pulse-session";
-import { sessionHasAnyRole } from "@/lib/pulse-roles";
 import { fetchWorkerSettings } from "@/lib/workersService";
 import type {
   WorkRequestDetail,
@@ -273,6 +272,7 @@ export function WorkRequestsApp() {
     [workItemPrefixes],
   );
   const session = readSession();
+  const canConfigureOrg = canAccessCompanyConfiguration(session);
   const isSystemAdmin = Boolean(session?.is_system_admin || session?.role === "system_admin");
   const sessionCompanyId = session?.company_id ?? null;
   const canManage = managerOrAbove(session);
@@ -1225,19 +1225,21 @@ export function WorkRequestsApp() {
                 Locations
               </button>
             ) : null}
-            <button
-              type="button"
-              className="inline-flex items-center justify-center rounded-lg border border-slate-200/90 bg-white p-2.5 text-pulse-navy shadow-sm transition-colors hover:bg-slate-50 dark:border-ds-border dark:bg-ds-primary dark:text-slate-100 dark:hover:bg-ds-interactive-hover"
-              aria-label="Work request settings"
-              title="Work request settings"
-              onClick={(e) => {
-                const r = (e.currentTarget as HTMLButtonElement).getBoundingClientRect();
-                setHeaderSettingsAnchor({ top: r.bottom + 8, left: Math.max(12, r.right - 240) });
-                setHeaderSettingsOpen((v) => !v);
-              }}
-            >
-              <Settings className="h-4 w-4" aria-hidden />
-            </button>
+            {canManageZones || canConfigureOrg ? (
+              <button
+                type="button"
+                className="inline-flex items-center justify-center rounded-lg border border-slate-200/90 bg-white p-2.5 text-pulse-navy shadow-sm transition-colors hover:bg-slate-50 dark:border-ds-border dark:bg-ds-primary dark:text-slate-100 dark:hover:bg-ds-interactive-hover"
+                aria-label="Work request settings"
+                title="Work request settings"
+                onClick={(e) => {
+                  const r = (e.currentTarget as HTMLButtonElement).getBoundingClientRect();
+                  setHeaderSettingsAnchor({ top: r.bottom + 8, left: Math.max(12, r.right - 240) });
+                  setHeaderSettingsOpen((v) => !v);
+                }}
+              >
+                <Settings className="h-4 w-4" aria-hidden />
+              </button>
+            ) : null}
             <button
               type="button"
               className={cn(buttonVariants({ surface: "light", intent: "secondary" }), "inline-flex items-center gap-2 px-4 py-2.5")}
@@ -1279,17 +1281,19 @@ export function WorkRequestsApp() {
           role="menu"
           aria-label="Work request settings"
         >
-          <button
-            type="button"
-            className="block w-full px-3 py-2 text-left text-sm text-pulse-navy hover:bg-slate-50 dark:text-gray-100 dark:hover:bg-ds-interactive-hover"
-            onClick={() => {
-              setHeaderSettingsOpen(false);
-              setHeaderSettingsAnchor(null);
-              setSettingsOpen(true);
-            }}
-          >
-            Workflow &amp; notifications
-          </button>
+          {canConfigureOrg ? (
+            <button
+              type="button"
+              className="block w-full px-3 py-2 text-left text-sm text-pulse-navy hover:bg-slate-50 dark:text-gray-100 dark:hover:bg-ds-interactive-hover"
+              onClick={() => {
+                setHeaderSettingsOpen(false);
+                setHeaderSettingsAnchor(null);
+                setSettingsOpen(true);
+              }}
+            >
+              Workflow &amp; notifications
+            </button>
+          ) : null}
           {moduleSettingsCtx?.canConfigure ? (
             <button
               type="button"
