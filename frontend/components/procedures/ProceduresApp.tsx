@@ -547,8 +547,9 @@ export function ProceduresApp() {
   );
 
   return (
-    <div className="flex min-h-[calc(100dvh-7rem)] flex-col gap-6">
+    <div className="flex h-[calc(100dvh-7rem)] max-h-[calc(100dvh-7rem)] min-h-0 flex-col gap-6 overflow-hidden sm:h-[calc(100dvh-6.5rem)] sm:max-h-[calc(100dvh-6.5rem)]">
       <PageHeader
+        className="shrink-0"
         title="Procedures"
         description="Reusable maintenance procedures with numbered steps, optional photos, and acknowledgments."
         icon={ClipboardList}
@@ -602,7 +603,7 @@ export function ProceduresApp() {
         }
       />
 
-      <PageBody className="flex min-h-0 flex-1 flex-col">
+      <PageBody className="flex min-h-0 flex-1 flex-col overflow-hidden">
 
       {assignOpen ? (
         <div className="rounded-xl border border-ds-border bg-white p-4 shadow-[var(--ds-shadow-card)] dark:bg-ds-surface-primary">
@@ -680,14 +681,14 @@ export function ProceduresApp() {
 
       <div
         className={cn(
-          "min-h-0 flex-1",
-          isCreating && "grid gap-6 lg:grid-cols-2",
-          !isCreating && selected && "flex flex-col gap-6 lg:flex-row lg:items-stretch",
-          !isCreating && !selected && "flex flex-col gap-6",
+          "min-h-0 flex-1 overflow-hidden",
+          isCreating && "grid min-h-0 gap-6 lg:grid-cols-2",
+          !isCreating && selected && "flex min-h-0 flex-col gap-6 lg:flex-row lg:items-stretch",
+          !isCreating && !selected && "flex min-h-0 flex-col gap-6",
         )}
       >
         {isCreating ? (
-          <section className="rounded-xl border border-ds-border bg-ds-primary p-6 shadow-[var(--ds-shadow-card)]">
+          <section className="min-h-0 overflow-y-auto rounded-xl border border-ds-border bg-ds-primary p-6 shadow-[var(--ds-shadow-card)]">
             <h2 className="text-base font-semibold text-ds-foreground" id={`${formId}-new-title`}>
               New procedure
             </h2>
@@ -757,7 +758,7 @@ export function ProceduresApp() {
         {!isCreating && selected ? (
           <section
             className={cn(
-              "min-w-0 rounded-xl border border-ds-border bg-ds-primary p-6 shadow-[var(--ds-shadow-card)]",
+              "min-h-0 min-w-0 overflow-y-auto rounded-xl border border-ds-border bg-ds-primary p-6 shadow-[var(--ds-shadow-card)]",
               "flex-1 lg:min-h-0",
             )}
           >
@@ -957,12 +958,14 @@ export function ProceduresApp() {
 
         <section
             className={cn(
-              "min-h-0 overflow-hidden rounded-xl border border-ds-border bg-ds-primary shadow-[var(--ds-shadow-card)]",
-              !selected && !isCreating && "flex min-h-0 flex-1 flex-col",
-              selected && "lg:sticky lg:top-20 lg:flex lg:w-72 lg:shrink-0 lg:flex-col lg:self-start xl:w-80",
+              "flex min-h-0 flex-col overflow-hidden rounded-xl border border-ds-border bg-ds-primary shadow-[var(--ds-shadow-card)]",
+              !selected && !isCreating && "flex-1",
+              isCreating && "h-full min-h-0",
+              selected &&
+                "lg:sticky lg:top-20 lg:flex lg:w-72 lg:shrink-0 lg:flex-col lg:self-stretch xl:w-80",
             )}
           >
-            <div className="space-y-2 border-b border-ds-border bg-ds-surface-secondary px-4 py-2.5">
+            <div className="shrink-0 space-y-2 border-b border-ds-border bg-ds-surface-secondary px-4 py-2.5">
               <h2 className="text-sm font-semibold uppercase tracking-wide text-ds-foreground">Library</h2>
               <div>
                 <label className="block text-[10px] font-semibold uppercase tracking-wide text-ds-muted" htmlFor={`${formId}-lib-kw`}>
@@ -982,30 +985,18 @@ export function ProceduresApp() {
             </div>
             <div
               className={cn(
-                "flex flex-col",
-                selected && "lg:min-h-0 lg:flex-1",
+                "flex min-h-0 flex-1 flex-col overflow-hidden",
                 isCreating && "pointer-events-none opacity-50",
               )}
               aria-hidden={isCreating}
             >
-              <div className={cn("p-4", selected && "lg:min-h-0 lg:flex-1 lg:overflow-hidden lg:p-3")}>
+              <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-3">
                 {loading ? (
                   <p className="text-sm text-ds-muted">Loading…</p>
                 ) : rows.length === 0 ? (
                   <p className="text-sm text-ds-muted">No procedures yet.</p>
                 ) : (
-                  <ul
-                    className={cn(
-                      "divide-y divide-ds-border overflow-y-auto overscroll-contain",
-                      selected && "max-h-[calc(100dvh-13rem)]",
-                      !selected &&
-                        isCreating &&
-                        "min-h-[10rem] max-h-[calc(100dvh-22rem)] lg:max-h-[calc(100dvh-18rem)]",
-                      !selected &&
-                        !isCreating &&
-                        "min-h-[12rem] h-[calc(100dvh-15rem)] md:h-[calc(100dvh-14rem)]",
-                    )}
-                  >
+                  <ul className="divide-y divide-ds-border">
                     {rows.map((r) => (
                       <li key={r.id}>
                         <button

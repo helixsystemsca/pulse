@@ -12,6 +12,9 @@ DEFAULT_ORG_MODULE_SETTINGS: dict[str, Any] = {
         "enablePriorityLevels": True,
         "lockAfterCompletion": False,
         "allowManualOverride": True,
+        "workItemCodePrefixIssue": "ISS",
+        "workItemCodePrefixPreventative": "PM",
+        "workItemCodePrefixSetup": "SET",
     },
     "schedule": {
         "allowShiftOverrides": True,

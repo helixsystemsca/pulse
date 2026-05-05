@@ -1,6 +1,6 @@
 import type { ModuleId } from "./defaults";
 
-export type SettingFieldType = "toggle" | "number" | "json";
+export type SettingFieldType = "toggle" | "number" | "json" | "text";
 
 export type SettingFieldMeta = {
   key: string;
@@ -22,6 +22,35 @@ export const MODULE_SETTINGS_UI: Record<ModuleId, { title: string; sections: Set
   workRequests: {
     title: "Work requests & work orders",
     sections: [
+      {
+        id: "work_item_codes",
+        title: "Work item codes",
+        description:
+          "Prefix shown in lists and headers before a short id (e.g. WR-194AC9). Use letters/numbers only — a hyphen is added automatically. Does not change stored ids.",
+        fields: [
+          {
+            key: "workItemCodePrefixIssue",
+            type: "text",
+            label: "Work requests & issues",
+            description: "Default ISS. Examples: WR, WO, WR for work-order style labels.",
+            placeholder: "ISS",
+          },
+          {
+            key: "workItemCodePrefixPreventative",
+            type: "text",
+            label: "Preventative maintenance",
+            description: "PM tasks from schedules and PM rules.",
+            placeholder: "PM",
+          },
+          {
+            key: "workItemCodePrefixSetup",
+            type: "text",
+            label: "Setup / other",
+            description: "Used when the work item is categorized as setup in the hub.",
+            placeholder: "SET",
+          },
+        ],
+      },
       {
         id: "general",
         title: "General",

@@ -8,6 +8,10 @@ export const DEFAULT_ORG_MODULE_SETTINGS = {
     enablePriorityLevels: true,
     lockAfterCompletion: false,
     allowManualOverride: true,
+    /** Shown before the short id (e.g. ISS-194AC9). Letters, numbers, underscore; max 12 chars. */
+    workItemCodePrefixIssue: "ISS",
+    workItemCodePrefixPreventative: "PM",
+    workItemCodePrefixSetup: "SET",
   },
   schedule: {
     allowShiftOverrides: true,

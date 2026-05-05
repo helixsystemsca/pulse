@@ -122,6 +122,22 @@ export function ModuleSettingsForm({ moduleId, closeOnSave = false, onClose, onC
                           <span className="mt-0.5 block text-xs text-pulse-muted">{f.description}</span>
                         </span>
                       </label>
+                    ) : f.type === "text" ? (
+                      <label className="block">
+                        <span className="text-sm font-medium text-pulse-navy dark:text-slate-100">{f.label}</span>
+                        <p className="text-xs text-pulse-muted">{f.description}</p>
+                        <input
+                          type="text"
+                          className="mt-1.5 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm dark:border-ds-border dark:bg-ds-secondary"
+                          value={String((draft as Record<string, unknown>)[f.key] ?? "")}
+                          placeholder={f.placeholder}
+                          disabled={!canConfigure}
+                          maxLength={12}
+                          onChange={(e) =>
+                            setDraft((d) => ({ ...d, [f.key]: e.target.value }) as typeof draft)
+                          }
+                        />
+                      </label>
                     ) : f.type === "json" ? (
                       <label className="block">
                         <span className="text-sm font-medium text-pulse-navy dark:text-slate-100">{f.label}</span>

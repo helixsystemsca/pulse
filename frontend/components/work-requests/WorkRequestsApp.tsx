@@ -199,18 +199,12 @@ function activityStatusSummary(meta: Record<string, unknown>, action: string): s
   return parts.length > 0 ? parts.join(" · ") : null;
 }
 
-function categoryCodeFromRow(row: WorkRequestRow): { code: "ISS" | "PM" | "SET"; category: "issue" | "preventative" | "setup" } {
-  const k = (row.category_key ?? "").toLowerCase();
-  if (k === "preventative") return { code: "PM", category: "preventative" };
-  if (k === "setup") return { code: "SET", category: "setup" };
-  return { code: "ISS", category: "issue" };
-}
-
-function workItemDisplayId(row: WorkRequestRow): string {
-  const raw = (row.display_id ?? row.id).trim();
-  if (/^[A-Z]{2,5}-\d{1,8}$/.test(raw)) return raw;
-  const { code } = categoryCodeFromRow(row);
-  return `${code}-${row.id.slice(0, 6).toUpperCase()}`;
+/** Allowed chars for configurable prefixes; capped length (hyphen is added when rendering). */
+function sanitizeWorkItemPrefix(raw: string | undefined, fallback: string): string {
+  let s = (raw ?? "").trim();
+  if (!s) return fallback;
+  s = s.replace(/[^A-Za-z0-9_-]/g, "").replace(/-+$/g, "").slice(0, 12);
+  return s ? s.toUpperCase() : fallback;
 }
 
 const DEFAULT_WR_ACCESS_ROLES = ["manager", "supervisor"] as const;
@@ -250,8 +244,34 @@ export function WorkRequestsApp() {
   const hubQ = searchParams.get("hub") ?? "";
   const kindQ = searchParams.get("kind") ?? "";
   const statusQ = searchParams.get("status") ?? "";
-  useModuleSettings("workRequests");
+  const wrOrgSettings = useModuleSettings("workRequests");
   const moduleSettingsCtx = useModuleSettingsOptional();
+
+  const workItemPrefixes = useMemo(
+    () => ({
+      issue: sanitizeWorkItemPrefix(wrOrgSettings.settings.workItemCodePrefixIssue, "ISS"),
+      preventative: sanitizeWorkItemPrefix(wrOrgSettings.settings.workItemCodePrefixPreventative, "PM"),
+      setup: sanitizeWorkItemPrefix(wrOrgSettings.settings.workItemCodePrefixSetup, "SET"),
+    }),
+    [
+      wrOrgSettings.settings.workItemCodePrefixIssue,
+      wrOrgSettings.settings.workItemCodePrefixPreventative,
+      wrOrgSettings.settings.workItemCodePrefixSetup,
+    ],
+  );
+
+  const workItemDisplayId = useCallback(
+    (row: WorkRequestRow): string => {
+      const raw = (row.display_id ?? row.id).trim();
+      if (/^[A-Z]{2,5}-\d{1,8}$/.test(raw)) return raw;
+      const k = (row.category_key ?? "").toLowerCase();
+      let prefix = workItemPrefixes.issue;
+      if (k === "preventative") prefix = workItemPrefixes.preventative;
+      else if (k === "setup") prefix = workItemPrefixes.setup;
+      return `${prefix}-${row.id.slice(0, 6).toUpperCase()}`;
+    },
+    [workItemPrefixes],
+  );
   const session = readSession();
   const isSystemAdmin = Boolean(session?.is_system_admin || session?.role === "system_admin");
   const sessionCompanyId = session?.company_id ?? null;
