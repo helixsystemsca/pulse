@@ -72,7 +72,7 @@ export type PulseAuthSession = {
   facility_tenant_admin?: boolean;
   /** Prefer over humanized `role` when present (e.g. ``Worker (Admin)``). */
   role_display_label?: string | null;
-  /** From `/auth/me`; when true, user should change password (may redirect after welcome). */
+  /** From `/auth/me`; tenant workers with a temp password — UI prompts via header badge (not demo_viewer). */
   must_change_password?: boolean;
   iat: number;
   exp: number;
@@ -260,7 +260,12 @@ export function writeApiSession(
     can_use_pm_features: user.can_use_pm_features,
     facility_tenant_admin: user.facility_tenant_admin,
     role_display_label: user.role_display_label ?? undefined,
-    must_change_password: user.must_change_password === true ? true : undefined,
+    must_change_password:
+      user.must_change_password === true &&
+      user.role !== "demo_viewer" &&
+      !user.roles?.includes("demo_viewer")
+        ? true
+        : undefined,
     iat: now,
     exp,
     remember,

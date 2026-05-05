@@ -113,22 +113,53 @@ export function navigateToPulseOverview(): void {
 /** Minimal fields from `/auth/me` or stored session for routing after sign-in. */
 export type PulsePostLoginIdentity = {
   role?: string;
+  roles?: string[];
   is_system_admin?: boolean;
   must_change_password?: boolean;
 };
 
+/** Mirrors `sessionPrimaryRole` precedence without importing `pulse-roles` (avoids cycle with `pulse-session`). */
+const POST_LOGIN_ROLE_PRECEDENCE = [
+  "system_admin",
+  "company_admin",
+  "manager",
+  "supervisor",
+  "lead",
+  "worker",
+  "demo_viewer",
+] as const;
+
+function primaryRoleForPostLogin(user: PulsePostLoginIdentity): string {
+  const list = user.roles?.length ? [...user.roles] : user.role ? [user.role] : [];
+  if (!list.length) return "worker";
+  let best = list[0]!;
+  let bi = 999;
+  for (const r of list) {
+    const i = POST_LOGIN_ROLE_PRECEDENCE.indexOf(r as (typeof POST_LOGIN_ROLE_PRECEDENCE)[number]);
+    const idx = i === -1 ? 999 : i;
+    if (idx < bi) {
+      bi = idx;
+      best = r;
+    }
+  }
+  return best;
+}
+
 /**
- * System operators use `/system`; everyone else (tenant / company users) uses `/overview`.
- * Impersonation tokens look like a tenant — they stay on `/overview`.
+ * Post sign-in landing: system admins → `/system`; primary **worker** → `/worker`; everyone else (lead,
+ * supervisor, manager, company_admin, demo_viewer, …) → `/overview`. Workers with a temp password see a
+ * header badge linking to profile settings (no forced redirect).
  */
-/**
- * First landing after sign-in: tenant users → `/overview` (welcome + dashboard shell).
- * Do not send `must_change_password` users straight to `/settings` — that skips the welcome flow;
- * overview redirects to `/settings` after the welcome overlay completes (see overview page).
- */
-export function pulsePostLoginPath(user: PulsePostLoginIdentity): "/system" | "/overview" {
-  if (user.is_system_admin === true || user.role === "system_admin") {
+export function pulsePostLoginPath(user: PulsePostLoginIdentity): "/system" | "/overview" | "/worker" {
+  if (
+    user.is_system_admin === true ||
+    user.role === "system_admin" ||
+    Boolean(user.roles?.includes("system_admin"))
+  ) {
     return "/system";
+  }
+  if (primaryRoleForPostLogin(user) === "worker") {
+    return "/worker";
   }
   return "/overview";
 }

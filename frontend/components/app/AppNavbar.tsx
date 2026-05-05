@@ -6,14 +6,18 @@
 import { usePathname } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
-import { ChevronDown, Image as ImageIcon, LogOut, Settings } from "lucide-react";
+import { ChevronDown, Image as ImageIcon, KeyRound, LogOut, Settings } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
-import { navigateToPulseLogin, pulseApp, pulseRoutes } from "@/lib/pulse-app";
+import { navigateToPulseLogin, pulseApp, pulsePostLoginPath, pulseRoutes } from "@/lib/pulse-app";
 import { dispatchPulseLogoutSuccessUi } from "@/lib/pulse-logout-ui";
 import { clearSession } from "@/lib/pulse-session";
 import { UserProfileAvatarPreview } from "@/components/profile/UserProfileAvatarPreview";
-import { canAccessCompanyConfiguration, sessionHasAnyRole } from "@/lib/pulse-roles";
+import {
+  canAccessCompanyConfiguration,
+  sessionHasAnyRole,
+  shouldShowWorkerMandatoryPasswordBadge,
+} from "@/lib/pulse-roles";
 import { cn } from "@/lib/cn";
 export function AppNavbar() {
   const pathname = usePathname();
@@ -21,11 +25,13 @@ export function AppNavbar() {
   const [userOpen, setUserOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
 
-  const logoHref = authed ? pulseApp.to(pulseRoutes.overview) : pulseRoutes.pulseLanding;
+  const logoHref =
+    authed && session ? pulseApp.to(pulsePostLoginPath(session)) : pulseRoutes.pulseLanding;
   const isDemoViewer = session?.role === "demo_viewer";
   const isSystemAdmin = Boolean(session?.is_system_admin || session?.role === "system_admin");
   const canOpenOrgSettings = session ? isSystemAdmin || canAccessCompanyConfiguration(session) : false;
   const settingsActive = pathname === "/settings" || pathname.startsWith("/settings/");
+  const showWorkerPasswordBadge = session ? shouldShowWorkerMandatoryPasswordBadge(session) : false;
 
   useEffect(() => {
     if (!userOpen) return;
@@ -90,7 +96,21 @@ export function AppNavbar() {
               </Link>
             ) : null
           ) : (
-            <div className="flex items-center gap-2">
+            <div className="flex min-w-0 items-center gap-2">
+              {showWorkerPasswordBadge ? (
+                <Link
+                  href={pulseApp.to("/dashboard/profile-settings")}
+                  className={cn(
+                    "flex min-w-0 max-w-[11rem] items-center gap-1.5 rounded-md border border-amber-400/70 bg-amber-50 px-2 py-1 text-[11px] font-semibold text-amber-950 shadow-sm hover:bg-amber-100 sm:max-w-[14rem] sm:gap-2 sm:px-2.5 sm:py-1.5 sm:text-xs",
+                    "dark:border-amber-500/45 dark:bg-amber-950/55 dark:text-amber-50 dark:hover:bg-amber-900/65",
+                  )}
+                  title="Your administrator assigned a temporary password. Update it in Profile Settings."
+                  aria-label="Change your temporary password — open profile settings"
+                >
+                  <KeyRound className="h-3.5 w-3.5 shrink-0 opacity-90 sm:h-4 sm:w-4" strokeWidth={2} aria-hidden />
+                  <span className="min-w-0 truncate">Change password</span>
+                </Link>
+              ) : null}
               {canOpenOrgSettings ? (
                 <Link
                   href={pulseApp.to("/settings")}

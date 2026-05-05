@@ -36,6 +36,18 @@ export function sessionHasAnyRole(
   return need.some((n) => set.has(n));
 }
 
+/**
+ * Header badge: temp password for **worker** accounts (e.g. created by company admin). Excludes demo viewer
+ * and non-worker primaries (manager, lead, …).
+ */
+export function shouldShowWorkerMandatoryPasswordBadge(
+  session: Pick<PulseAuthSession, "must_change_password" | "role" | "roles"> | null | undefined,
+): boolean {
+  if (!session?.must_change_password) return false;
+  if (sessionHasAnyRole(session, "demo_viewer")) return false;
+  return sessionPrimaryRole(session) === "worker";
+}
+
 /** Any object with optional `roles` / `role` (worker row, API payload, etc.). */
 export function principalHasAnyRole(
   p: { roles?: string[]; role?: string } | null | undefined,

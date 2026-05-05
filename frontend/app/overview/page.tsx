@@ -10,7 +10,7 @@ import { WelcomeLoaderModal } from "@/components/ui/WelcomeLoaderModal";
 import { UI } from "@/styles/ui";
 import { isApiMode } from "@/lib/api";
 import { navigateToPulseLogin, pulsePostLoginPath } from "@/lib/pulse-app";
-import { PULSE_WELCOME_SESSION_KEY, readSession } from "@/lib/pulse-session";
+import { readSession } from "@/lib/pulse-session";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -50,28 +50,11 @@ export default function OverviewPage() {
       router.replace("/system");
       return;
     }
+    if (isApiMode() && pulsePostLoginPath(s) === "/worker") {
+      router.replace("/worker");
+      return;
+    }
     setReady(true);
-  }, [router]);
-
-  /** Returning visits in the same tab: welcome already dismissed → send password-change users to settings. */
-  useEffect(() => {
-    if (!ready) return;
-    const s = readSession();
-    if (!s?.must_change_password) return;
-    try {
-      if (sessionStorage.getItem(PULSE_WELCOME_SESSION_KEY) === "true") {
-        router.replace("/settings");
-      }
-    } catch {
-      /* private mode */
-    }
-  }, [ready, router]);
-
-  const onWelcomeComplete = useCallback(() => {
-    const s = readSession();
-    if (s?.must_change_password) {
-      router.replace("/settings");
-    }
   }, [router]);
 
   const userName = useMemo(() => {
@@ -99,7 +82,6 @@ export default function OverviewPage() {
           isReady={dashboardDataReady}
           criticalCount={welcomeAlertContext.criticalCount}
           warningCount={welcomeAlertContext.warningCount}
-          onWelcomeComplete={onWelcomeComplete}
         />
       </div>
     </PageWrapper>

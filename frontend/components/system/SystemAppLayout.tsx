@@ -13,8 +13,9 @@ export function SystemAppLayout({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
   const [me, setMe] = useState<UserOut | null>(null);
 
-  const bounceTenantToOverview = useCallback(() => {
-    router.replace("/overview");
+  const bounceNonSystemUserHome = useCallback(() => {
+    const s = readSession();
+    router.replace(s ? pulsePostLoginPath(s) : "/overview");
   }, [router]);
 
   const loadMe = useCallback(async () => {
@@ -24,14 +25,14 @@ export function SystemAppLayout({ children }: { children: ReactNode }) {
       return;
     }
     if (pulsePostLoginPath(s) !== "/system") {
-      bounceTenantToOverview();
+      bounceNonSystemUserHome();
       return;
     }
     try {
       const u = await apiFetch<UserOut>("/api/v1/auth/me");
       applyServerTimeFromUserOut(u);
       if (pulsePostLoginPath(u) !== "/system") {
-        bounceTenantToOverview();
+        bounceNonSystemUserHome();
         return;
       }
       setMe(u);
@@ -43,9 +44,9 @@ export function SystemAppLayout({ children }: { children: ReactNode }) {
         navigateToPulseLogin();
         return;
       }
-      bounceTenantToOverview();
+      bounceNonSystemUserHome();
     }
-  }, [bounceTenantToOverview]);
+  }, [bounceNonSystemUserHome]);
 
   useEffect(() => {
     void loadMe();

@@ -3,8 +3,8 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: { template: "%s | Panorama", default: "Kiosk" },
   icons: {
-    icon: [{ url: "/images/favicon.png", type: "image/png" }],
-    apple: [{ url: "/images/favicon.png", type: "image/png" }],
+    icon: [{ url: "/images/panoramalogo2.png", type: "image/png" }],
+    apple: [{ url: "/images/panoramalogo2.png", type: "image/png" }],
   },
   robots: { index: false, follow: false },
 };

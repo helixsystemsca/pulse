@@ -32,8 +32,8 @@ export const metadata: Metadata = {
   description:
     "Helix Systems builds software for industrial operations—field teams, assets, and real-time intelligence. Panorama is our operational intelligence platform.",
   icons: {
-    icon: [{ url: "/images/favicon.png", type: "image/png" }],
-    apple: [{ url: "/images/favicon.png", type: "image/png" }],
+    icon: [{ url: "/images/panoramalogo2.png", type: "image/png" }],
+    apple: [{ url: "/images/panoramalogo2.png", type: "image/png" }],
   },
   openGraph: {
     siteName: "Helix Systems",

@@ -25,7 +25,7 @@ import {
   UserCog,
   Wrench,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
 import type { PulseAuthSession } from "@/lib/pulse-session";
 import {
@@ -76,6 +76,18 @@ export function AppSideNav() {
   const pathname = usePathname();
   const { authed, session } = usePulseAuth();
   const [railExpanded, setRailExpanded] = useState(false);
+  const asideRef = useRef<HTMLElement | null>(null);
+
+  /** Clicks leave focus on the `<Link>`; `focus-within` used to widen the rail and matched inconsistently across routes. Collapse and blur after navigation. */
+  useEffect(() => {
+    setRailExpanded(false);
+    const root = asideRef.current;
+    if (!root) return;
+    const ae = document.activeElement;
+    if (ae instanceof HTMLElement && root.contains(ae)) {
+      ae.blur();
+    }
+  }, [pathname]);
 
   const isSystemAdmin = Boolean(session?.is_system_admin || session?.role === "system_admin");
   const rawNav = isSystemAdmin ? pulseSystemSidebarNav : pulseTenantSidebarNav;
@@ -110,6 +122,7 @@ export function AppSideNav() {
 
   return (
     <aside
+      ref={asideRef}
       onMouseEnter={() => setRailExpanded(true)}
       onMouseLeave={() => setRailExpanded(false)}
       className={cn(
@@ -117,7 +130,6 @@ export function AppSideNav() {
         "top-[calc(3.625rem+1px+4px)] sm:top-[calc(3.5rem+1px+4px)] bottom-10",
         "shadow-[var(--ds-shadow-card)] motion-safe:transition-[width] motion-safe:duration-300 motion-safe:ease-in-out",
         railExpanded ? "w-[220px]" : "w-16",
-        "focus-within:w-[220px]",
       )}
       style={{ background: "var(--ds-sidebar-rail-gradient)" }}
       aria-label={systemRail ? "System navigation" : "App navigation"}
