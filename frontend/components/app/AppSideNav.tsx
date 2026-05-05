@@ -45,6 +45,7 @@ import {
   sessionPrimaryRole,
   sessionRoleDisplayLabel,
 } from "@/lib/pulse-roles";
+import { useSidebarState } from "@/components/app/SidebarState";
 
 const ICONS: Record<PulseSidebarIcon, LucideIcon> = {
   layout: LayoutDashboard,
@@ -93,8 +94,10 @@ export function AppSideNav() {
   const pathname = usePathname();
   const { authed, session } = usePulseAuth();
   const [navSearch, setNavSearch] = useState("");
+  const { isSidebarOpen, closeSidebar } = useSidebarState();
 
   const isSystemAdmin = Boolean(session?.is_system_admin || session?.role === "system_admin");
+  const isDemoViewer = session?.role === "demo_viewer";
   const canOpenOrgSettings = isSystemAdmin || canAccessCompanyConfiguration(session);
   const rawNav = isSystemAdmin ? pulseSystemSidebarNav : pulseTenantSidebarNav;
   let items: SidebarNavItem[] = (
@@ -103,15 +106,18 @@ export function AppSideNav() {
       : [...rawNav]
   ).map((i) => ({ href: i.href, label: i.label, icon: i.icon }));
   if (!isSystemAdmin && session) {
-    items = items.filter((i) => isTenantNavFeatureEnabled(i.href, session.enabled_features));
-    items = items.filter((i) => {
-      if (i.href === "/dashboard/workers" || i.href.startsWith("/dashboard/workers")) {
-        if (!showWorkersNavItem(session, isSystemAdmin)) return false;
-        if (!isTenantNavPermissionGranted(i.href, session.permissions)) return false;
-        return true;
-      }
-      return isTenantNavPermissionGranted(i.href, session.permissions);
-    });
+    // Demo viewer: show all pages/tabs in the nav (still view-only; writes blocked server-side).
+    if (!isDemoViewer) {
+      items = items.filter((i) => isTenantNavFeatureEnabled(i.href, session.enabled_features));
+      items = items.filter((i) => {
+        if (i.href === "/dashboard/workers" || i.href.startsWith("/dashboard/workers")) {
+          if (!showWorkersNavItem(session, isSystemAdmin)) return false;
+          if (!isTenantNavPermissionGranted(i.href, session.permissions)) return false;
+          return true;
+        }
+        return isTenantNavPermissionGranted(i.href, session.permissions);
+      });
+    }
   }
   // Settings lives in the persistent bottom section (not the main nav list).
   items = items.filter((i) => i.href !== "/settings");
@@ -127,49 +133,32 @@ export function AppSideNav() {
 
   if (!authed || !session) return null;
 
-  const shell =
-    "relative z-20 hidden w-64 min-w-[16rem] flex-shrink-0 flex-col justify-between border-r border-ds-border bg-ds-primary lg:flex";
+  const collapsedWidth = "w-16";
+  const expandedWidth = "w-[17rem]";
+  const railShell =
+    "fixed left-0 top-0 z-[70] hidden h-[100dvh] flex-col justify-between border-r border-ds-border bg-ds-primary lg:flex";
 
   return (
-    <aside className={shell} aria-label={systemRail ? "System navigation" : "App navigation"}>
-      <div className="flex min-h-0 flex-1 flex-col">
-        <div className="min-h-0 flex-1 space-y-2 overflow-y-auto pb-2 pt-3">
-          <div className="px-3 pb-1">
-            <div className="relative">
-              <Search
-                className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
-                strokeWidth={2}
-                aria-hidden
-              />
-              <input
-                type="search"
-                value={navSearch}
-                onChange={(e) => setNavSearch(e.target.value)}
-                placeholder="Search…"
-                className="w-full rounded-full border border-ds-border bg-ds-secondary py-2 pl-9 pr-3 text-sm text-foreground shadow-inner placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--ds-accent)_32%,transparent)]"
-                aria-label="Filter navigation"
-              />
-            </div>
-          </div>
-
-          <nav className="space-y-0.5 px-2" aria-label="Navigation">
+    <>
+      {/* Collapsed rail (always visible on desktop). */}
+      <aside className={`${railShell} ${collapsedWidth}`} aria-label={systemRail ? "System navigation" : "App navigation"}>
+        <div className="flex min-h-0 flex-1 flex-col">
+          <nav className="space-y-1 px-2 pt-3" aria-label="Navigation">
             {filteredNavItems.map((item) => {
               const active = isPulseNavActive(item.href, pathname);
               const Icon = ICONS[item.icon];
               return (
                 <Link
-                  key={`${item.href}-${item.label}`}
+                  key={`${item.href}-${item.label}-collapsed`}
                   href={item.href}
                   title={item.label}
                   data-guided-tour-anchor={item.href === "/dashboard/maintenance" ? "sidebar-work-requests" : undefined}
-                  className={`group flex items-center gap-3 rounded-xl px-3 py-2 text-[13px] font-semibold leading-tight transition-colors ${
-                    active
-                      ? "bg-ds-interactive-hover-strong text-ds-foreground shadow-sm"
-                      : "text-foreground/80 hover:bg-ds-interactive-hover"
+                  className={`group flex items-center justify-center rounded-xl px-2 py-2 text-[13px] font-semibold leading-tight transition-colors ${
+                    active ? "bg-ds-interactive-hover-strong text-ds-foreground shadow-sm" : "text-foreground/80 hover:bg-ds-interactive-hover"
                   }`}
                 >
                   <span
-                    className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
+                    className={`flex h-9 w-9 items-center justify-center rounded-lg ${
                       active
                         ? "bg-ds-secondary text-ds-accent shadow-sm ring-1 ring-[color-mix(in_srgb,var(--ds-accent)_26%,transparent)]"
                         : "bg-ds-secondary/60 text-muted-foreground group-hover:text-foreground"
@@ -177,26 +166,125 @@ export function AppSideNav() {
                   >
                     <Icon className="h-[18px] w-[18px]" strokeWidth={2} aria-hidden />
                   </span>
-                  <span className="min-w-0 flex-1 truncate">{item.label}</span>
+                  <span className="sr-only">{item.label}</span>
                 </Link>
               );
             })}
           </nav>
-        </div>
 
-        <div className="border-t border-ds-border px-3 pt-3">
-          {canOpenOrgSettings ? (
-            <Link
-              href="/settings"
-              className="mb-2 flex w-full items-center justify-center gap-2 rounded-lg border border-ds-border bg-ds-secondary px-3 py-1.5 text-sm font-semibold text-foreground transition-colors hover:bg-ds-interactive-hover"
-            >
-              <Settings className="h-4 w-4" aria-hidden />
-              Settings
-            </Link>
-          ) : null}
-          <div className="pb-3" />
+          <div className="mt-auto border-t border-ds-border px-2 py-3">
+            {canOpenOrgSettings ? (
+              <Link
+                href="/settings"
+                title="Settings"
+                className="flex items-center justify-center rounded-xl px-2 py-2 text-foreground/80 transition-colors hover:bg-ds-interactive-hover"
+              >
+                <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-ds-secondary/60 text-muted-foreground">
+                  <Settings className="h-[18px] w-[18px]" strokeWidth={2} aria-hidden />
+                </span>
+                <span className="sr-only">Settings</span>
+              </Link>
+            ) : null}
+          </div>
         </div>
-      </div>
-    </aside>
+      </aside>
+
+      {/* Backdrop when expanded. */}
+      {isSidebarOpen ? (
+        <button
+          type="button"
+          aria-label="Close sidebar"
+          className="fixed inset-0 z-[79] hidden bg-black/35 lg:block"
+          onClick={closeSidebar}
+        />
+      ) : null}
+
+      {/* Expanded overlay panel (desktop). */}
+      <aside
+        className={[
+          "fixed left-0 top-0 z-[80] hidden h-[100dvh] flex-col justify-between border-r border-ds-border bg-ds-primary lg:flex",
+          expandedWidth,
+          "transition-transform duration-200 ease-out",
+          isSidebarOpen ? "translate-x-0" : "-translate-x-full",
+        ].join(" ")}
+        aria-hidden={!isSidebarOpen}
+      >
+        <div className="flex min-h-0 flex-1 flex-col">
+          <div className="min-h-0 flex-1 space-y-2 overflow-y-auto pb-2 pt-3">
+            <div className="px-3 pb-1">
+              <div className="relative">
+                <Search
+                  className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+                  strokeWidth={2}
+                  aria-hidden
+                />
+                <input
+                  type="search"
+                  value={navSearch}
+                  onChange={(e) => setNavSearch(e.target.value)}
+                  placeholder="Search…"
+                  className="w-full rounded-full border border-ds-border bg-ds-secondary py-2 pl-9 pr-3 text-sm text-foreground shadow-inner placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--ds-accent)_32%,transparent)]"
+                  aria-label="Filter navigation"
+                />
+              </div>
+            </div>
+
+            <nav className="space-y-0.5 px-2" aria-label="Navigation">
+              {filteredNavItems.map((item) => {
+                const active = isPulseNavActive(item.href, pathname);
+                const Icon = ICONS[item.icon];
+                return (
+                  <Link
+                    key={`${item.href}-${item.label}`}
+                    href={item.href}
+                    title={item.label}
+                    onClick={() => closeSidebar()}
+                    data-guided-tour-anchor={item.href === "/dashboard/maintenance" ? "sidebar-work-requests" : undefined}
+                    className={`group flex items-center gap-3 rounded-xl px-3 py-2 text-[13px] font-semibold leading-tight transition-colors ${
+                      active
+                        ? "bg-ds-interactive-hover-strong text-ds-foreground shadow-sm"
+                        : "text-foreground/80 hover:bg-ds-interactive-hover"
+                    }`}
+                  >
+                    <span
+                      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
+                        active
+                          ? "bg-ds-secondary text-ds-accent shadow-sm ring-1 ring-[color-mix(in_srgb,var(--ds-accent)_26%,transparent)]"
+                          : "bg-ds-secondary/60 text-muted-foreground group-hover:text-foreground"
+                      }`}
+                    >
+                      <Icon className="h-[18px] w-[18px]" strokeWidth={2} aria-hidden />
+                    </span>
+                    <span className="min-w-0 flex-1 truncate">{item.label}</span>
+                  </Link>
+                );
+              })}
+            </nav>
+          </div>
+
+          <div className="border-t border-ds-border px-3 pt-3">
+            {canOpenOrgSettings ? (
+              <Link
+                href="/settings"
+                onClick={() => closeSidebar()}
+                className="mb-2 flex w-full items-center justify-center gap-2 rounded-lg border border-ds-border bg-ds-secondary px-3 py-1.5 text-sm font-semibold text-foreground transition-colors hover:bg-ds-interactive-hover"
+              >
+                <Settings className="h-4 w-4" aria-hidden />
+                Settings
+              </Link>
+            ) : null}
+            {isDemoViewer ? (
+              <div
+                className="mb-2 rounded-lg border border-[rgba(255,105,180,0.35)] bg-[linear-gradient(135deg,#ff7aa2_0%,#ff5f87_40%,#ff3d6e_100%)] px-3 py-2 text-xs font-semibold text-white shadow-sm"
+                style={{ boxShadow: "0 10px 22px rgba(255, 61, 110, 0.18)" }}
+              >
+                Demo Mode – View only
+              </div>
+            ) : null}
+            <div className="pb-3" />
+          </div>
+        </div>
+      </aside>
+    </>
   );
 }

@@ -547,7 +547,7 @@ export function ProceduresApp() {
   );
 
   return (
-    <div className="flex h-[calc(100dvh-7rem)] max-h-[calc(100dvh-7rem)] min-h-0 flex-col gap-6 overflow-hidden sm:h-[calc(100dvh-6.5rem)] sm:max-h-[calc(100dvh-6.5rem)]">
+    <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-hidden">
       <PageHeader
         className="shrink-0"
         title="Procedures"

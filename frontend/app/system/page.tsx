@@ -26,6 +26,7 @@ export default function SystemOverviewPage() {
   const [data, setData] = useState<Overview | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [pageReady, setPageReady] = useState(false);
+  const [userInteracted, setUserInteracted] = useState(false);
 
   const userName = useMemo(() => {
     const s = readSession();
@@ -45,18 +46,28 @@ export default function SystemOverviewPage() {
     })();
   }, []);
 
+  useEffect(() => {
+    const mark = () => setUserInteracted(true);
+    window.addEventListener("pointerdown", mark, { once: true });
+    window.addEventListener("keydown", mark, { once: true });
+    return () => {
+      window.removeEventListener("pointerdown", mark);
+      window.removeEventListener("keydown", mark);
+    };
+  }, []);
+
   if (err)
     return (
       <div className="relative">
         <p className="text-red-600 dark:text-red-400">{err}</p>
-        <WelcomeLoaderModal userName={userName} isReady={pageReady} />
+        {userInteracted ? null : <WelcomeLoaderModal userName={userName} isReady={pageReady} />}
       </div>
     );
   if (!data)
     return (
       <div className="relative">
         <p className="text-gray-500 dark:text-zinc-500">Loading…</p>
-        <WelcomeLoaderModal userName={userName} isReady={pageReady} />
+        {userInteracted ? null : <WelcomeLoaderModal userName={userName} isReady={pageReady} />}
       </div>
     );
 
@@ -89,7 +100,7 @@ export default function SystemOverviewPage() {
           </ul>
         </div>
       </div>
-      <WelcomeLoaderModal userName={userName} isReady={pageReady} />
+      {userInteracted ? null : <WelcomeLoaderModal userName={userName} isReady={pageReady} />}
     </div>
   );
 }

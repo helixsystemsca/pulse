@@ -30,6 +30,7 @@ export default function OverviewPage() {
   const router = useRouter();
   const [ready, setReady] = useState(false);
   const [dashboardDataReady, setDashboardDataReady] = useState(false);
+  const [userInteracted, setUserInteracted] = useState(false);
   const [welcomeAlertContext, setWelcomeAlertContext] = useState<OperationalDashboardReadyPayload>({
     criticalCount: 0,
     warningCount: 0,
@@ -52,10 +53,21 @@ export default function OverviewPage() {
     setReady(true);
   }, [router]);
 
+  useEffect(() => {
+    if (!ready) return;
+    const mark = () => setUserInteracted(true);
+    window.addEventListener("pointerdown", mark, { once: true });
+    window.addEventListener("keydown", mark, { once: true });
+    return () => {
+      window.removeEventListener("pointerdown", mark);
+      window.removeEventListener("keydown", mark);
+    };
+  }, [ready]);
+
   const userName = useMemo(() => {
     const s = readSession();
     return welcomeFromSession(s?.email, s?.full_name);
-  }, [ready]);
+  }, []);
 
   if (!ready) {
     return (
@@ -72,12 +84,14 @@ export default function OverviewPage() {
       <div className="relative space-y-4">
         <DashboardViewTabs />
         <OperationalDashboard variant={isApiMode() ? "live" : "demo"} onReady={onDashboardReady} />
-        <WelcomeLoaderModal
-          userName={userName}
-          isReady={dashboardDataReady}
-          criticalCount={welcomeAlertContext.criticalCount}
-          warningCount={welcomeAlertContext.warningCount}
-        />
+        {userInteracted ? null : (
+          <WelcomeLoaderModal
+            userName={userName}
+            isReady={dashboardDataReady}
+            criticalCount={welcomeAlertContext.criticalCount}
+            warningCount={welcomeAlertContext.warningCount}
+          />
+        )}
       </div>
     </PageWrapper>
   );

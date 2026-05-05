@@ -43,7 +43,7 @@ export async function createRoutine(body: {
 }): Promise<RoutineDetail> {
   return apiFetch<RoutineDetail>(`/api/v1/routines`, {
     method: "POST",
-    body: JSON.stringify(body),
+    json: body,
   });
 }
 
@@ -57,7 +57,7 @@ export async function patchRoutine(
 ): Promise<RoutineDetail> {
   return apiFetch<RoutineDetail>(`/api/v1/routines/${routineId}`, {
     method: "PATCH",
-    body: JSON.stringify(body),
+    json: body,
   });
 }
 
@@ -127,7 +127,7 @@ export async function createRoutineRun(body: {
 }): Promise<RoutineRunOut> {
   return apiFetch<RoutineRunOut>(`/api/v1/routines/runs`, {
     method: "POST",
-    body: JSON.stringify(body),
+    json: body,
   });
 }
 

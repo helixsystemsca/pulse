@@ -11,6 +11,7 @@ import { ModuleSettingsProvider } from "@/providers/ModuleSettingsProvider";
 import { ProximityPromptHost } from "./ProximityPromptHost";
 import { AppLayoutFooter } from "./AppLayoutFooter";
 import { GamificationProvider } from "@/components/gamification/GamificationProvider";
+import { SidebarStateProvider } from "@/components/app/SidebarState";
 
 type AppLayoutProps = {
   children: ReactNode;
@@ -33,12 +34,13 @@ export function AppLayout({
 }: AppLayoutProps) {
   return (
     <div className="flex h-screen w-screen flex-col overflow-hidden bg-ds-secondary">
-        <ModuleSettingsProvider>
+      <ModuleSettingsProvider>
         <GamificationProvider>
-        <InactivitySessionGuard />
-        <ServerTimeSync />
-        <ProximityPromptHost />
-        <div data-pulse-app-shell className="flex h-full w-full flex-col overflow-hidden">
+          <SidebarStateProvider>
+            <InactivitySessionGuard />
+            <ServerTimeSync />
+            <ProximityPromptHost />
+            <div data-pulse-app-shell className="flex h-full w-full flex-col overflow-hidden">
           {chrome ? (
             <header className="relative z-50 flex shrink-0 flex-col bg-ds-primary shadow-none">
               <div className="flex min-h-[3.625rem] items-center border-b border-ds-border px-4 py-2 sm:min-h-14 sm:py-2">
@@ -52,10 +54,9 @@ export function AppLayout({
 
           {chrome ? <ImpersonationBanner /> : null}
 
-          <div className="flex min-h-0 flex-1 overflow-hidden">
+          <div className="relative flex min-h-0 flex-1 overflow-hidden">
             {chrome ? <AppSideNav /> : null}
-
-            <div className="relative z-0 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+            <div className="relative z-0 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden lg:pl-16">
               <main
                 className={["relative z-0 flex-1 overflow-y-auto bg-ds-bg", mainClassName].filter(Boolean).join(" ")}
               >
@@ -74,9 +75,10 @@ export function AppLayout({
           </div>
 
           {chrome ? <AppLayoutFooter /> : null}
-        </div>
+            </div>
+          </SidebarStateProvider>
         </GamificationProvider>
-        </ModuleSettingsProvider>
+      </ModuleSettingsProvider>
     </div>
   );
 }
