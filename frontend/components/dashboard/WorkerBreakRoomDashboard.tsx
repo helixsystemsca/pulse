@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AlertTriangle, Cloud, Maximize2, ShieldAlert, Sparkles } from "lucide-react";
 
 import { DashboardAccentCard, DashboardColumnPanel } from "@/components/dashboard/DashboardChrome";
@@ -157,6 +157,7 @@ export function WorkerBreakRoomDashboard({ kiosk = false }: Props) {
   const [criticalAlert, setCriticalAlert] = useState<CriticalAlert | null>(null);
   const [weather, setWeather] = useState<Weather>({ tempC: null, code: null, windKph: null });
   const [facilitySchedule, setFacilitySchedule] = useState<ScheduleEvent[]>([]);
+  const facilityScheduleSupported = useRef(true);
 
   const notifications: Notification[] = useMemo(
     () => [
@@ -176,7 +177,13 @@ export function WorkerBreakRoomDashboard({ kiosk = false }: Props) {
     let cancel = false;
     const load = async () => {
       try {
+        if (!facilityScheduleSupported.current) return;
         const res = await fetch("/api/schedule", { cache: "no-store" });
+        if (res.status === 404) {
+          facilityScheduleSupported.current = false;
+          if (!cancel) setFacilitySchedule([]);
+          return;
+        }
         if (!res.ok) throw new Error("schedule_fetch_failed");
         const data = (await res.json()) as ScheduleEvent[];
         if (!cancel) setFacilitySchedule(Array.isArray(data) ? data : []);
@@ -320,6 +327,21 @@ export function WorkerBreakRoomDashboard({ kiosk = false }: Props) {
   const canEdit = !kiosk && Boolean(readSession()?.access_token);
   const [editMode, setEditMode] = useState(false);
   const [layoutHydrated, setLayoutHydrated] = useState(false);
+
+  const DASHBOARD_BASE_COLS = 12;
+  const DASHBOARD_BLOCK_COLS = 3;
+  const normalizeToBlocks = useCallback((next: Layout): Layout => {
+    const snap = (n: number, step: number) => Math.max(step, Math.round(n / step) * step);
+    const clamp = (n: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, n));
+    return next.map((it) => {
+      const w = clamp(snap(it.w ?? DASHBOARD_BLOCK_COLS, DASHBOARD_BLOCK_COLS), DASHBOARD_BLOCK_COLS, DASHBOARD_BASE_COLS);
+      const minWRaw = typeof it.minW === "number" ? it.minW : DASHBOARD_BLOCK_COLS;
+      const minW = clamp(snap(minWRaw, DASHBOARD_BLOCK_COLS), DASHBOARD_BLOCK_COLS, w);
+      const xRaw = typeof it.x === "number" ? it.x : 0;
+      const x = clamp(Math.round(xRaw / DASHBOARD_BLOCK_COLS) * DASHBOARD_BLOCK_COLS, 0, Math.max(0, DASHBOARD_BASE_COLS - w));
+      return { ...it, w, minW, x };
+    });
+  }, []);
   const defaultLayout = useMemo(
     (): Layout => [
       { i: "who", x: 0, y: 0, w: 8, h: 5, minW: 6, minH: 4 },
@@ -337,13 +359,13 @@ export function WorkerBreakRoomDashboard({ kiosk = false }: Props) {
     if (!DASH_LAYOUT_STORAGE) return;
     try {
       const raw = window.localStorage.getItem(DASH_LAYOUT_STORAGE);
-      if (raw) setLayout(JSON.parse(raw) as Layout);
+      if (raw) setLayout(normalizeToBlocks(JSON.parse(raw) as Layout));
     } catch {
       /* ignore */
     } finally {
       setLayoutHydrated(true);
     }
-  }, [DASH_LAYOUT_STORAGE]);
+  }, [DASH_LAYOUT_STORAGE, normalizeToBlocks]);
 
   useEffect(() => {
     if (!DASH_LAYOUT_STORAGE || !layoutHydrated) return;
@@ -426,11 +448,11 @@ export function WorkerBreakRoomDashboard({ kiosk = false }: Props) {
         </div>
       </DashboardAccentCard>
 
-      <div className="pulse-dashboard-surface p-4 sm:p-5">
+      <div className={editMode ? "pulse-dashboard-edit" : ""}>
         <div ref={containerRef as any}>
           {mounted ? (
             <GridLayout
-              layout={layout}
+              layout={normalizeToBlocks(layout)}
               width={width}
               gridConfig={{
                 cols: width < 640 ? 1 : width < 1024 ? 6 : 12,
@@ -438,12 +460,16 @@ export function WorkerBreakRoomDashboard({ kiosk = false }: Props) {
                 margin: [12, 12],
                 containerPadding: [0, 0],
               }}
-              dragConfig={{ enabled: canEdit && editMode, bounded: false, handle: ".dashboard-drag-handle" }}
-              resizeConfig={{ enabled: canEdit && editMode, handles: ["se"] }}
+              dragConfig={{
+                enabled: canEdit && editMode,
+                bounded: false,
+                cancel: "button, a, input, textarea, select, option, [role='button'], .dashboard-no-drag",
+              }}
+              resizeConfig={{ enabled: canEdit && editMode, handles: ["n", "s", "e", "w", "ne", "nw", "se", "sw"] }}
               compactor={noCompactor}
               onLayoutChange={(next) => {
                 if (!canEdit || !editMode) return;
-                setLayout(next as Layout);
+                setLayout(normalizeToBlocks(next as Layout));
               }}
             >
               <div key="who" className={editMode ? "cursor-grab active:cursor-grabbing" : ""}>

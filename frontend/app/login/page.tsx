@@ -2,7 +2,7 @@
 
 import { AlertCircle, Eye, EyeOff, Loader2, Lock, Mail } from "lucide-react";
 import Image from "next/image";
-import { FormEvent, useEffect, useId, useState } from "react";
+import { FormEvent, useEffect, useId, useRef, useState } from "react";
 import { AuthScreenShell } from "@/components/auth/AuthScreenShell";
 import { isApiMode } from "@/lib/api";
 import {
@@ -42,6 +42,9 @@ function LoginRipples() {
 }
 
 export default function LoginPage() {
+  const [hydrated, setHydrated] = useState(false);
+  const [logoVisible, setLogoVisible] = useState(false);
+  const logoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const emailFieldId = useId();
   const passwordFieldId = useId();
 
@@ -53,9 +56,16 @@ export default function LoginPage() {
   const [fieldErrors, setFieldErrors] = useState<{ identifier?: string; password?: string }>({});
 
   useEffect(() => {
+    setHydrated(true);
     if (!isLoggedIn()) return;
     const s = readSession();
     if (s) navigateAfterPulseLogin(s);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (logoTimer.current) window.clearTimeout(logoTimer.current);
+    };
   }, []);
 
   async function onSubmit(e: FormEvent) {
@@ -166,7 +176,15 @@ export default function LoginPage() {
                   fill
                   priority
                   sizes="(max-width: 640px) 90vw, (max-width: 768px) 26rem, 30rem"
-                  className="object-contain object-center"
+                  className={cn(
+                    "object-contain object-center transition-opacity duration-500 ease-out will-change-[opacity]",
+                    hydrated && logoVisible ? "opacity-100" : "opacity-0",
+                  )}
+                  onLoadingComplete={() => {
+                    if (logoVisible) return;
+                    if (logoTimer.current) window.clearTimeout(logoTimer.current);
+                    logoTimer.current = window.setTimeout(() => setLogoVisible(true), 140);
+                  }}
                 />
               </div>
             </div>

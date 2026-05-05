@@ -5,12 +5,12 @@ import {
   OperationalDashboard,
   type OperationalDashboardReadyPayload,
 } from "@/components/dashboard/OperationalDashboard";
-import { PageWrapper } from "@/components/ui/PageWrapper";
 import { WelcomeLoaderModal } from "@/components/ui/WelcomeLoaderModal";
 import { UI } from "@/styles/ui";
 import { isApiMode } from "@/lib/api";
 import { navigateToPulseLogin, pulsePostLoginPath } from "@/lib/pulse-app";
 import { readSession } from "@/lib/pulse-session";
+import { sessionHasAnyRole } from "@/lib/pulse-roles";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -50,7 +50,8 @@ export default function OverviewPage() {
       router.replace("/system");
       return;
     }
-    if (isApiMode() && pulsePostLoginPath(s) === "/worker") {
+    const canSeeBoth = sessionHasAnyRole(s, "company_admin", "manager");
+    if (isApiMode() && pulsePostLoginPath(s) === "/worker" && !canSeeBoth) {
       router.replace("/worker");
       return;
     }
@@ -64,21 +65,17 @@ export default function OverviewPage() {
 
   if (!ready) {
     return (
-      <PageWrapper>
-        <div className="flex min-h-[40vh] items-center justify-center">
-          <p className={UI.subheader}>Loading…</p>
-        </div>
-      </PageWrapper>
+      <div className="flex min-h-[40vh] items-center justify-center">
+        <p className={UI.subheader}>Loading…</p>
+      </div>
     );
   }
 
   return (
-    <PageWrapper>
-      <div className="relative space-y-4">
+    <div className="relative">
+      <div className="pulse-dashboard-canvas -mx-3 space-y-4 px-3 py-4 sm:-mx-4 sm:px-4 sm:py-5 lg:-mx-4 lg:px-4">
         <DashboardViewTabs />
-        <div className="pulse-dashboard-surface p-4 sm:p-5">
-          <OperationalDashboard variant={isApiMode() ? "live" : "demo"} onReady={onDashboardReady} />
-        </div>
+        <OperationalDashboard variant={isApiMode() ? "live" : "demo"} onReady={onDashboardReady} />
         <WelcomeLoaderModal
           userName={userName}
           isReady={dashboardDataReady}
@@ -86,6 +83,6 @@ export default function OverviewPage() {
           warningCount={welcomeAlertContext.warningCount}
         />
       </div>
-    </PageWrapper>
+    </div>
   );
 }

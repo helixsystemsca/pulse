@@ -60,8 +60,9 @@ const ICONS: Record<PulseSidebarIcon, LucideIcon> = {
   settings: Settings,
 };
 
-/** Icon column: `w-16` matches collapsed rail; `h-11` rows pack more links before scroll. */
-const ICON_COL = "h-11 w-16 shrink-0";
+/** Icon column: keep in sync with the navbar logo square width. */
+const COLLAPSED_RAIL_W = "w-14";
+const ICON_COL = `h-11 ${COLLAPSED_RAIL_W} shrink-0`;
 
 /** Team Management: tenant feature `team_management` + route permission; roster delegation still grants access. */
 function showWorkersNavItem(session: PulseAuthSession, isSystemAdmin: boolean): boolean {
@@ -129,7 +130,7 @@ export function AppSideNav() {
         "group/sidenav hidden lg:flex fixed left-0 z-[70] flex-col overflow-x-hidden overflow-y-auto rounded-none border-r border-[var(--ds-sidebar-tile-divider)]",
         "top-[calc(3.625rem+1px+4px)] sm:top-[calc(3.5rem+1px+4px)] bottom-10",
         "shadow-[var(--ds-shadow-card)] motion-safe:transition-[width] motion-safe:duration-300 motion-safe:ease-in-out",
-        railExpanded ? "w-[220px]" : "w-16",
+        railExpanded ? "w-[220px]" : COLLAPSED_RAIL_W,
       )}
       style={{ background: "var(--ds-sidebar-rail-gradient)" }}
       aria-label={systemRail ? "System navigation" : "App navigation"}

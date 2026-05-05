@@ -82,7 +82,7 @@ export function AppLayout({
           </div>
 
           {chrome ? (
-            <div className="shrink-0 lg:pl-16">
+            <div className="shrink-0 lg:pl-14">
               <AppLayoutFooter />
             </div>
           ) : null}

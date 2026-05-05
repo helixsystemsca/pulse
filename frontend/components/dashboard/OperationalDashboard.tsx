@@ -2215,7 +2215,7 @@ function DashboardBody({
           </div>
         ) : null}
 
-        <div ref={containerRef as any}>
+        <div ref={containerRef as any} className={editMode ? "pulse-dashboard-edit" : ""}>
           {mounted ? (
             <GridLayout
               layout={layoutForCols(layout, width < 640 ? 1 : width < 1024 ? 6 : 12)}
@@ -2226,12 +2226,21 @@ function DashboardBody({
                 margin: [12, 12],
                 containerPadding: [0, 0],
               }}
-              dragConfig={{ enabled: !readOnly && editMode, bounded: false, handle: ".dashboard-drag-handle" }}
-              resizeConfig={{ enabled: !readOnly && editMode, handles: ["se"] }}
+              dragConfig={{
+                enabled: !readOnly && editMode,
+                bounded: false,
+                // Whole widget is draggable in edit mode; cancel common interactive controls.
+                cancel: "button, a, input, textarea, select, option, [role='button'], .dashboard-no-drag",
+              }}
+              resizeConfig={{
+                enabled: !readOnly && editMode,
+                // Allow edge pulls (not just the corner) while respecting each widget's minW/minH.
+                handles: ["n", "s", "e", "w", "ne", "nw", "se", "sw"],
+              }}
               compactor={noCompactor}
               onLayoutChange={(next) => {
                 if (readOnly || !editMode) return;
-                // Persist snapped-to-block widths. (We keep the current col space; normalization snaps widths and prevents drift.)
+                // Persist snapped-to-block widths. Normalization snaps widths and prevents drift.
                 setLayout(normalizeToBlocks(next as Layout));
               }}
             >

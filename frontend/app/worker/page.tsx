@@ -2,12 +2,12 @@
 
 import { DashboardViewTabs } from "@/components/dashboard/DashboardViewTabs";
 import { WorkerDashboard } from "@/components/dashboard/WorkerBreakRoomDashboard";
-import { PageWrapper } from "@/components/ui/PageWrapper";
 import { WelcomeLoaderModal } from "@/components/ui/WelcomeLoaderModal";
 import { UI } from "@/styles/ui";
 import { isApiMode } from "@/lib/api";
 import { navigateToPulseLogin, pulsePostLoginPath } from "@/lib/pulse-app";
 import { readSession } from "@/lib/pulse-session";
+import { sessionHasAnyRole } from "@/lib/pulse-roles";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
@@ -32,7 +32,8 @@ export default function WorkerDashboardPage() {
       router.replace("/system");
       return;
     }
-    if (isApiMode() && pulsePostLoginPath(s) === "/overview") {
+    const canSeeBoth = sessionHasAnyRole(s, "company_admin", "manager");
+    if (isApiMode() && pulsePostLoginPath(s) === "/overview" && !canSeeBoth) {
       router.replace("/overview");
       return;
     }
@@ -52,23 +53,19 @@ export default function WorkerDashboardPage() {
 
   if (!ready) {
     return (
-      <PageWrapper>
-        <div className="flex min-h-[40vh] items-center justify-center">
-          <p className={UI.subheader}>Loading…</p>
-        </div>
-      </PageWrapper>
+      <div className="flex min-h-[40vh] items-center justify-center">
+        <p className={UI.subheader}>Loading…</p>
+      </div>
     );
   }
 
   return (
-    <PageWrapper>
-      <div className="relative space-y-4">
+    <div className="relative">
+      <div className="pulse-dashboard-canvas -mx-3 space-y-4 px-3 py-4 sm:-mx-4 sm:px-4 sm:py-5 lg:-mx-4 lg:px-4">
         <DashboardViewTabs />
-        <div className="pulse-dashboard-surface p-4 sm:p-5">
-          <WorkerDashboard kiosk={false} />
-        </div>
+        <WorkerDashboard kiosk={false} />
         <WelcomeLoaderModal userName={userName} isReady={workerShellReady} />
       </div>
-    </PageWrapper>
+    </div>
   );
 }

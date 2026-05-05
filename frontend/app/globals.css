@@ -779,6 +779,47 @@ html.pulse-welcome-blur [data-pulse-app-shell] {
     backdrop-filter: blur(18px);
   }
 
+  /**
+   * Full-width dashboard canvas (no "parent card").
+   * Uses the same glass look as `.pulse-dashboard-surface`, but spans edge-to-edge.
+   */
+  .pulse-dashboard-canvas {
+    background:
+      radial-gradient(1200px 520px at 20% 5%, rgb(255 255 255 / 0.62), transparent 55%),
+      radial-gradient(900px 520px at 85% 10%, rgb(44 143 130 / 0.12), transparent 52%),
+      radial-gradient(900px 520px at 70% 95%, rgb(92 107 184 / 0.12), transparent 55%),
+      color-mix(in srgb, var(--ds-bg) 65%, #ffffff 35%);
+    backdrop-filter: blur(16px);
+  }
+  .dark .pulse-dashboard-canvas {
+    background:
+      radial-gradient(1200px 520px at 20% 5%, color-mix(in srgb, var(--ds-surface-primary) 30%, transparent), transparent 55%),
+      radial-gradient(900px 520px at 85% 10%, color-mix(in srgb, var(--ds-accent) 18%, transparent), transparent 52%),
+      radial-gradient(900px 520px at 70% 95%, color-mix(in srgb, var(--ds-accent-dusk) 18%, transparent), transparent 55%),
+      color-mix(in srgb, var(--ds-bg) 82%, #000000 18%);
+    backdrop-filter: blur(18px);
+  }
+
+  /* Dashboard grid UX (edit mode): darker grab cursor + clearer drop placeholder */
+  .pulse-dashboard-edit .react-grid-item {
+    cursor: grab;
+  }
+  .pulse-dashboard-edit .react-grid-item.react-draggable-dragging {
+    cursor: grabbing;
+  }
+  .pulse-dashboard-edit .react-grid-item > * {
+    outline: 1px dashed rgba(15, 23, 42, 0.26);
+    outline-offset: 2px;
+  }
+  .dark .pulse-dashboard-edit .react-grid-item > * {
+    outline-color: rgba(255, 255, 255, 0.22);
+  }
+  .pulse-dashboard-edit .react-grid-placeholder {
+    background: color-mix(in srgb, var(--ds-accent) 14%, transparent) !important;
+    border: 1px solid color-mix(in srgb, var(--ds-accent) 35%, transparent) !important;
+    border-radius: var(--pulse-dashboard-card-radius) !important;
+  }
+
   .ds-inset-panel {
     border-radius: var(--ds-radius-card);
     border: 1px solid var(--ds-border);

@@ -3,6 +3,8 @@
 import { usePathname, useRouter } from "next/navigation";
 
 import { cn } from "@/lib/cn";
+import { usePulseAuth } from "@/hooks/usePulseAuth";
+import { sessionHasAnyRole, sessionPrimaryRole } from "@/lib/pulse-roles";
 
 const tabBtn =
   "min-h-9 flex-1 rounded-md px-3 py-2 text-center text-sm font-semibold outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-[var(--ds-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-ds-secondary sm:px-4";
@@ -18,9 +20,17 @@ const tabInactive =
 export function DashboardViewTabs() {
   const pathname = usePathname() || "";
   const router = useRouter();
+  const { session } = usePulseAuth();
   const isProjectTab = pathname === "/overview/project" || pathname.startsWith("/overview/project/");
   const isOverview = pathname === "/overview" || (pathname.startsWith("/overview/") && !isProjectTab);
   const isWorker = pathname === "/worker" || pathname.startsWith("/worker/");
+
+  const canSeeBoth = sessionHasAnyRole(session, "company_admin", "manager");
+  const primary = sessionPrimaryRole(session);
+  const showWorkerTab = true;
+  const showOverviewTab = primary !== "worker" || canSeeBoth;
+  // Projects are a separate dashboard model; hide until it’s wired into the same system.
+  const showProjectTab = false;
 
   return (
     <div
@@ -28,19 +38,33 @@ export function DashboardViewTabs() {
       role="navigation"
       aria-label="Dashboards"
     >
-      <button type="button" className={cn(tabBtn, isWorker ? tabActive : tabInactive)} onClick={() => router.push("/worker")}>
-        Worker
-      </button>
-      <button type="button" className={cn(tabBtn, isOverview ? tabActive : tabInactive)} onClick={() => router.push("/overview")}>
-        Overview
-      </button>
-      <button
-        type="button"
-        className={cn(tabBtn, isProjectTab ? tabActive : tabInactive)}
-        onClick={() => router.push("/overview/project")}
-      >
-        Project
-      </button>
+      {showWorkerTab ? (
+        <button
+          type="button"
+          className={cn(tabBtn, isWorker ? tabActive : tabInactive)}
+          onClick={() => router.push("/worker")}
+        >
+          Worker
+        </button>
+      ) : null}
+      {showOverviewTab ? (
+        <button
+          type="button"
+          className={cn(tabBtn, isOverview ? tabActive : tabInactive)}
+          onClick={() => router.push("/overview")}
+        >
+          Overview
+        </button>
+      ) : null}
+      {showProjectTab ? (
+        <button
+          type="button"
+          className={cn(tabBtn, isProjectTab ? tabActive : tabInactive)}
+          onClick={() => router.push("/overview/project")}
+        >
+          Project
+        </button>
+      ) : null}
     </div>
   );
 }
