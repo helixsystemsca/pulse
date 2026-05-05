@@ -214,7 +214,7 @@ export function WelcomeLoaderModal({
 
           <div className="pointer-events-none absolute inset-0 z-[1] flex min-h-[100dvh] items-center justify-center p-6">
             <motion.div
-              className="pointer-events-none relative w-full max-w-2xl overflow-hidden rounded-[22px] border border-[rgba(76,96,133,0.18)] bg-[#f8fafc] text-center shadow-[0_20px_55px_rgba(76,96,133,0.14)]"
+              className="pointer-events-none relative w-full max-w-lg overflow-hidden rounded-[22px] border border-[rgba(76,96,133,0.18)] bg-[#f8fafc] text-center shadow-[0_20px_55px_rgba(76,96,133,0.14)] sm:max-w-xl"
               initial={{ opacity: 0, scale: 0.985, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.99, y: 6 }}
@@ -222,17 +222,17 @@ export function WelcomeLoaderModal({
             >
               <div
                 className={[
-                  "relative z-[3] px-10 pt-12 text-center sm:px-14 sm:pt-14",
-                  phase === "loading" ? "pb-20 sm:pb-24" : "pb-12 sm:pb-14",
+                  "relative z-[3] px-7 pt-9 text-center sm:px-10 sm:pt-10",
+                  phase === "loading" ? "pb-16 sm:pb-18" : "pb-10 sm:pb-12",
                 ].join(" ")}
               >
-                <div className="relative mx-auto h-[5.25rem] w-[5.25rem] sm:h-24 sm:w-24">
+                <div className="relative mx-auto h-[6.5rem] w-[6.5rem] sm:h-28 sm:w-28">
                   <Image
                     src="/images/panoramalogo2.png"
                     alt=""
                     fill
                     priority
-                    sizes="(max-width: 640px) 84px, 96px"
+                    sizes="(max-width: 640px) 104px, 112px"
                     className="object-contain object-center"
                   />
                 </div>
@@ -241,11 +241,11 @@ export function WelcomeLoaderModal({
                 <>
                   <h1
                     id="welcome-loader-title"
-                    className="mt-8 font-headline text-2xl font-extrabold tracking-tight text-[#1f2a44] sm:text-3xl"
+                    className="mt-6 font-headline text-xl font-extrabold tracking-tight text-[#1f2a44] sm:text-2xl"
                   >
                     Preparing your workspace...
                   </h1>
-                  <p className="mt-2 text-sm font-medium text-[#51647a] sm:text-base">
+                  <p className="mt-2 text-sm font-medium text-[#51647a]">
                     Gathering the latest from your operation
                   </p>
                 </>
@@ -257,11 +257,11 @@ export function WelcomeLoaderModal({
                 >
                   <h1
                     id="welcome-loader-title"
-                    className="mt-8 font-headline text-2xl font-extrabold tracking-tight text-[#1f2a44] sm:text-3xl"
+                    className="mt-6 font-headline text-xl font-extrabold tracking-tight text-[#1f2a44] sm:text-2xl"
                   >
                     {welcomeLine}
                   </h1>
-                  <p className="mt-2 text-sm font-medium text-[#51647a] sm:text-base">
+                  <p className="mt-2 text-sm font-medium text-[#51647a]">
                     {welcomeSub}
                   </p>
                 </motion.div>

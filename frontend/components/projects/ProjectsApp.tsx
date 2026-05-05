@@ -464,6 +464,17 @@ export function ProjectsApp() {
       setToast("End date must be on or after start date.");
       return;
     }
+    const todayStr = (() => {
+      const d = new Date();
+      d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+      return d.toISOString().slice(0, 10);
+    })();
+    const nextStatus: typeof formStatus =
+      formStatus === "on_hold" || formStatus === "completed"
+        ? formStatus
+        : formStart > todayStr
+          ? "future"
+          : "active";
     setSaving(true);
     try {
       const out = await patchProject(editFor.id, {
@@ -472,7 +483,7 @@ export function ProjectsApp() {
         start_date: formStart,
         end_date: formEnd,
         owner_user_id: formOwner.trim() || null,
-        status: formStatus,
+        status: nextStatus,
         category_id: categoryId || null,
         repopulation_frequency: formRepop || "Once",
       });
@@ -597,7 +608,7 @@ export function ProjectsApp() {
                     const creatorIsYou = Boolean(myUserId && p.created_by_user_id && p.created_by_user_id === myUserId);
                     const ownerIsYou = Boolean(myUserId && p.owner_user_id && p.owner_user_id === myUserId);
                     const canManageProjectCard = creatorIsYou || ownerIsYou || isTenantFullAdmin;
-                    const canMarkComplete = canManageProjectCard && p.status !== "completed";
+                    const canMarkComplete = creatorIsYou && p.status !== "completed";
                     const lastTs = (p.last_activity_at || p.updated_at || p.created_at || "").trim();
                     const lastUpdateLabel = (() => {
                       if (!lastTs) return "";

@@ -1437,7 +1437,7 @@ export function ProjectDetailApp({ projectId }: { projectId: string }) {
                     setEditingTask(t);
                     setTaskModalOpen(true);
                   }}
-                  onComplete={() => {}}
+                  onComplete={(t) => void markComplete(t)}
                   workerMap={workerMap}
                   completedStyle
                   canDelete={isProjectOwner}
