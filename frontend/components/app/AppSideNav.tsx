@@ -1,8 +1,8 @@
 "use client";
 
 /**
- * Tenant / system left rail: fixed square icon cells (64×64), hover-expands width for labels.
- * Rows stay h-16 so expanding the rail does not scale tiles (avoids aspect-square blow-up).
+ * Tenant / system left rail: fixed-height rows, hover-expands width for labels.
+ * Rows use a modest height (not aspect-square) so expanding the rail does not blow up tile scale.
  */
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -38,11 +38,7 @@ type SidebarNavItem = { href: string; label: string; icon: PulseSidebarIcon };
 import { isPulseNavActive } from "@/lib/pulse-nav-active";
 import { isTenantNavFeatureEnabled } from "@/lib/pulse-nav-features";
 import { isTenantNavPermissionGranted } from "@/lib/pulse-nav-permissions";
-import {
-  canAccessCompanyConfiguration,
-  sessionHasAnyRole,
-  sessionPrimaryRole,
-} from "@/lib/pulse-roles";
+import { sessionHasAnyRole, sessionPrimaryRole } from "@/lib/pulse-roles";
 import { cn } from "@/lib/cn";
 
 const ICONS: Record<PulseSidebarIcon, LucideIcon> = {
@@ -64,8 +60,8 @@ const ICONS: Record<PulseSidebarIcon, LucideIcon> = {
   settings: Settings,
 };
 
-/** Fixed icon column width — matches collapsed rail (w-16) for square tiles. */
-const ICON_COL = "h-16 w-16 shrink-0";
+/** Icon column: `w-16` matches collapsed rail; `h-11` rows pack more links before scroll. */
+const ICON_COL = "h-11 w-16 shrink-0";
 
 /** Team Management: tenant feature `team_management` + route permission; roster delegation still grants access. */
 function showWorkersNavItem(session: PulseAuthSession, isSystemAdmin: boolean): boolean {
@@ -82,7 +78,6 @@ export function AppSideNav() {
   const [railExpanded, setRailExpanded] = useState(false);
 
   const isSystemAdmin = Boolean(session?.is_system_admin || session?.role === "system_admin");
-  const canOpenOrgSettings = isSystemAdmin || canAccessCompanyConfiguration(session);
   const rawNav = isSystemAdmin ? pulseSystemSidebarNav : pulseTenantSidebarNav;
   let items: SidebarNavItem[] = (
     !isSystemAdmin && sessionPrimaryRole(session) === "worker"
@@ -106,8 +101,6 @@ export function AppSideNav() {
   const systemRail = isSystemAdmin;
 
   if (!authed || !session) return null;
-
-  const settingsActive = isPulseNavActive("/settings", pathname);
 
   const labelVisibility = cn(
     "min-w-0 truncate text-left text-[13px] font-semibold transition-[opacity,max-width,margin] duration-300 ease-in-out motion-reduce:transition-none",
@@ -143,7 +136,7 @@ export function AppSideNav() {
               title={item.label}
               data-guided-tour-anchor={item.href === "/dashboard/maintenance" ? "sidebar-work-requests" : undefined}
               className={cn(
-                "group/nav flex h-16 w-full shrink-0 items-stretch rounded-none border-0 outline-none transition-colors duration-200 ease-out motion-reduce:transition-none",
+                "group/nav flex h-11 w-full shrink-0 items-stretch rounded-none border-0 outline-none transition-colors duration-200 ease-out motion-reduce:transition-none",
                 active
                   ? "bg-[var(--ds-sidebar-tile-active-bg)]"
                   : "bg-transparent hover:bg-[var(--ds-sidebar-tile-hover-solid)]",
@@ -157,11 +150,7 @@ export function AppSideNav() {
                   active ? "text-[var(--ds-sidebar-tile-active-fg)]" : "text-white",
                 )}
               >
-                <Icon
-                  className="h-5 w-5 shrink-0"
-                  strokeWidth={2}
-                  aria-hidden
-                />
+                <Icon className="h-[17px] w-[17px] shrink-0" strokeWidth={2} aria-hidden />
               </span>
               <span
                 className={cn(
@@ -177,42 +166,6 @@ export function AppSideNav() {
           );
         })}
       </nav>
-
-      {canOpenOrgSettings ? (
-        <div className="mt-auto shrink-0 border-t border-[var(--ds-sidebar-tile-divider)]">
-          <Link
-            href="/settings"
-            title="Settings"
-            className={cn(
-              "group/nav flex h-16 w-full shrink-0 items-stretch rounded-none border-0 outline-none transition-colors duration-200 ease-out motion-reduce:transition-none",
-              settingsActive
-                ? "bg-[var(--ds-sidebar-tile-active-bg)]"
-                : "bg-transparent hover:bg-[var(--ds-sidebar-tile-hover-solid)]",
-              "focus-visible:ring-2 focus-visible:ring-[var(--ds-sidebar-tile-hover-solid)] focus-visible:ring-offset-0",
-            )}
-          >
-            <span
-              className={cn(
-                ICON_COL,
-                "flex items-center justify-center",
-                settingsActive ? "text-[var(--ds-sidebar-tile-active-fg)]" : "text-white",
-              )}
-            >
-              <Settings className="h-5 w-5 shrink-0" strokeWidth={2} aria-hidden />
-            </span>
-            <span
-              className={cn(
-                labelVisibility,
-                "flex min-w-0 flex-1 items-center pr-3",
-                settingsActive ? "text-[var(--ds-sidebar-tile-active-fg)]" : "text-white",
-                !settingsActive && "group-hover/nav:text-white",
-              )}
-            >
-              Settings
-            </span>
-          </Link>
-        </div>
-      ) : null}
     </aside>
   );
 }

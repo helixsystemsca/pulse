@@ -13,7 +13,7 @@ import { navigateToPulseLogin, pulseApp, pulseRoutes } from "@/lib/pulse-app";
 import { dispatchPulseLogoutSuccessUi } from "@/lib/pulse-logout-ui";
 import { clearSession } from "@/lib/pulse-session";
 import { UserProfileAvatarPreview } from "@/components/profile/UserProfileAvatarPreview";
-import { sessionHasAnyRole } from "@/lib/pulse-roles";
+import { canAccessCompanyConfiguration, sessionHasAnyRole } from "@/lib/pulse-roles";
 import { cn } from "@/lib/cn";
 export function AppNavbar() {
   const pathname = usePathname();
@@ -23,6 +23,9 @@ export function AppNavbar() {
 
   const logoHref = authed ? pulseApp.to(pulseRoutes.overview) : pulseRoutes.pulseLanding;
   const isDemoViewer = session?.role === "demo_viewer";
+  const isSystemAdmin = Boolean(session?.is_system_admin || session?.role === "system_admin");
+  const canOpenOrgSettings = session ? isSystemAdmin || canAccessCompanyConfiguration(session) : false;
+  const settingsActive = pathname === "/settings" || pathname.startsWith("/settings/");
 
   useEffect(() => {
     if (!userOpen) return;
@@ -87,86 +90,102 @@ export function AppNavbar() {
               </Link>
             ) : null
           ) : (
-            <div className="relative" ref={userMenuRef}>
-              <button
-                type="button"
-                onClick={() => setUserOpen((o) => !o)}
-                className="flex items-center gap-2 rounded-md border border-ds-border bg-ds-primary py-0.5 pl-1.5 pr-1.5 shadow-[var(--ds-shadow-card)] transition-colors hover:bg-ds-secondary sm:py-1 sm:pl-2 sm:pr-2.5"
-                aria-expanded={userOpen}
-                aria-haspopup="menu"
-                aria-label={isDemoViewer ? "Demo mode account menu" : undefined}
-              >
-                <span title={session?.email} className="shrink-0">
-                  {session ? (
-                    <UserProfileAvatarPreview
-                      avatarUrl={isDemoViewer ? null : session.avatar_url}
-                      nameFallback={
-                        isDemoViewer ? "Demo Profile" : session.full_name || session.email
-                      }
-                      sizeClassName="h-7 w-7"
-                      fallback="initials"
-                      className="!border-gray-200 !bg-gray-100 !text-gray-900 !ring-1 !ring-gray-200 dark:!border-ds-border dark:!bg-ds-secondary dark:!text-gray-100 dark:!ring-ds-border"
-                    />
-                  ) : (
-                    <span className="flex h-7 w-7 items-center justify-center rounded-full bg-gray-100 text-xs font-bold text-gray-900 ring-1 ring-gray-200 dark:bg-ds-secondary dark:text-gray-100 dark:ring-ds-border">
-                      ?
-                    </span>
+            <div className="flex items-center gap-2">
+              {canOpenOrgSettings ? (
+                <Link
+                  href={pulseApp.to("/settings")}
+                  className={cn(
+                    "flex items-center justify-center rounded-md border border-ds-border bg-ds-primary py-0.5 pl-1.5 pr-1.5 shadow-[var(--ds-shadow-card)] transition-colors hover:bg-ds-secondary sm:py-1 sm:pl-2 sm:pr-2",
+                    settingsActive ? "bg-ds-secondary" : null,
                   )}
-                </span>
-                <span className="hidden max-w-[11rem] truncate text-left md:block">
-                  <span className="block truncate text-sm font-semibold text-ds-foreground">
-                    {isDemoViewer
-                      ? "Demo Profile"
-                      : session?.full_name?.trim() || session?.email?.split("@")[0] || "Account"}
-                  </span>
-                  <span className="block truncate text-[11px] font-semibold capitalize text-ds-muted">
-                    {isDemoViewer ? "Demo Viewer" : session ? session.role?.replace(/_/g, " ") || "member" : ""}
-                  </span>
-                </span>
-                <ChevronDown className="h-4 w-4 shrink-0 text-ds-muted" aria-hidden />
-              </button>
-              {userOpen ? (
-                <div
-                  className="absolute right-0 z-50 mt-1 w-56 rounded-md border border-ds-border bg-ds-elevated py-1 shadow-[var(--ds-shadow-diffuse)]"
-                  role="menu"
+                  aria-label="Settings"
                 >
-                  {session?.email ? (
-                    <div className="px-3 pb-2 pt-2">
-                      <p className="truncate text-xs font-semibold text-ds-muted">{session.email}</p>
-                    </div>
-                  ) : null}
-                  <div className="h-px w-full bg-ds-border" aria-hidden />
-                  <Link
-                    href={pulseApp.to("/dashboard/profile-settings")}
-                    className="flex items-center gap-2 px-3 py-2 text-sm text-ds-foreground hover:bg-ds-secondary"
-                    onClick={() => setUserOpen(false)}
-                    role="menuitem"
+                  <span className="flex h-7 w-7 items-center justify-center">
+                    <Settings className="h-[18px] w-[18px] text-ds-muted" strokeWidth={2} aria-hidden />
+                  </span>
+                </Link>
+              ) : null}
+              <div className="relative" ref={userMenuRef}>
+                <button
+                  type="button"
+                  onClick={() => setUserOpen((o) => !o)}
+                  className="flex items-center gap-2 rounded-md border border-ds-border bg-ds-primary py-0.5 pl-1.5 pr-1.5 shadow-[var(--ds-shadow-card)] transition-colors hover:bg-ds-secondary sm:py-1 sm:pl-2 sm:pr-2.5"
+                  aria-expanded={userOpen}
+                  aria-haspopup="menu"
+                  aria-label={isDemoViewer ? "Demo mode account menu" : undefined}
+                >
+                  <span title={session?.email} className="shrink-0">
+                    {session ? (
+                      <UserProfileAvatarPreview
+                        avatarUrl={isDemoViewer ? null : session.avatar_url}
+                        nameFallback={
+                          isDemoViewer ? "Demo Profile" : session.full_name || session.email
+                        }
+                        sizeClassName="h-7 w-7"
+                        fallback="initials"
+                        className="!border-gray-200 !bg-gray-100 !text-gray-900 !ring-1 !ring-gray-200 dark:!border-ds-border dark:!bg-ds-secondary dark:!text-gray-100 dark:!ring-ds-border"
+                      />
+                    ) : (
+                      <span className="flex h-7 w-7 items-center justify-center rounded-full bg-gray-100 text-xs font-bold text-gray-900 ring-1 ring-gray-200 dark:bg-ds-secondary dark:text-gray-100 dark:ring-ds-border">
+                        ?
+                      </span>
+                    )}
+                  </span>
+                  <span className="hidden max-w-[11rem] truncate text-left md:block">
+                    <span className="block truncate text-sm font-semibold text-ds-foreground">
+                      {isDemoViewer
+                        ? "Demo Profile"
+                        : session?.full_name?.trim() || session?.email?.split("@")[0] || "Account"}
+                    </span>
+                    <span className="block truncate text-[11px] font-semibold capitalize text-ds-muted">
+                      {isDemoViewer ? "Demo Viewer" : session ? session.role?.replace(/_/g, " ") || "member" : ""}
+                    </span>
+                  </span>
+                  <ChevronDown className="h-4 w-4 shrink-0 text-ds-muted" aria-hidden />
+                </button>
+                {userOpen ? (
+                  <div
+                    className="absolute right-0 z-50 mt-1 w-56 rounded-md border border-ds-border bg-ds-elevated py-1 shadow-[var(--ds-shadow-diffuse)]"
+                    role="menu"
                   >
-                    <Settings className="h-4 w-4 text-ds-muted" strokeWidth={2} aria-hidden />
-                    Profile Settings
-                  </Link>
-                  {session && sessionHasAnyRole(session, "company_admin") ? (
+                    {session?.email ? (
+                      <div className="px-3 pb-2 pt-2">
+                        <p className="truncate text-xs font-semibold text-ds-muted">{session.email}</p>
+                      </div>
+                    ) : null}
+                    <div className="h-px w-full bg-ds-border" aria-hidden />
                     <Link
-                      href={pulseApp.to("/dashboard/organization")}
+                      href={pulseApp.to("/dashboard/profile-settings")}
                       className="flex items-center gap-2 px-3 py-2 text-sm text-ds-foreground hover:bg-ds-secondary"
                       onClick={() => setUserOpen(false)}
                       role="menuitem"
                     >
-                      <ImageIcon className="h-4 w-4 text-ds-muted" strokeWidth={2} aria-hidden />
-                      Organization & branding
+                      <Settings className="h-4 w-4 text-ds-muted" strokeWidth={2} aria-hidden />
+                      Profile Settings
                     </Link>
-                  ) : null}
-                  <button
-                    type="button"
-                    onClick={signOut}
-                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-ds-foreground hover:bg-ds-secondary"
-                    role="menuitem"
-                  >
-                    <LogOut className="h-4 w-4 text-ds-muted" strokeWidth={2} aria-hidden />
-                    Sign out
-                  </button>
-                </div>
-              ) : null}
+                    {session && sessionHasAnyRole(session, "company_admin") ? (
+                      <Link
+                        href={pulseApp.to("/dashboard/organization")}
+                        className="flex items-center gap-2 px-3 py-2 text-sm text-ds-foreground hover:bg-ds-secondary"
+                        onClick={() => setUserOpen(false)}
+                        role="menuitem"
+                      >
+                        <ImageIcon className="h-4 w-4 text-ds-muted" strokeWidth={2} aria-hidden />
+                        Organization & branding
+                      </Link>
+                    ) : null}
+                    <button
+                      type="button"
+                      onClick={signOut}
+                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-ds-foreground hover:bg-ds-secondary"
+                      role="menuitem"
+                    >
+                      <LogOut className="h-4 w-4 text-ds-muted" strokeWidth={2} aria-hidden />
+                      Sign out
+                    </button>
+                  </div>
+                ) : null}
+              </div>
             </div>
           )}
         </div>
