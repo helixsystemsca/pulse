@@ -1,3 +1,5 @@
+import { isPulseAuthTeardown } from "@/lib/pulse-session";
+
 /**
  * Normalizes errors thrown by `apiFetch` (or fetch failures) into a message suitable for UI banners.
  * Keeps HTTP status and request URL when present for debugging user-reported issues.
@@ -7,6 +9,9 @@ export function parseClientApiError(err: unknown): {
   status?: number;
   requestUrl?: string;
 } {
+  if (typeof window !== "undefined" && isPulseAuthTeardown()) {
+    return { message: "" };
+  }
   let msg = "Request failed";
   let status: number | undefined;
   let requestUrl: string | undefined;

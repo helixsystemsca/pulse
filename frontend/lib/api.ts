@@ -8,6 +8,7 @@ import { getImpersonationOverlayAccessToken, setImpersonationOverlayAccessToken 
 import { navigateToPulseLogin } from "@/lib/pulse-app";
 import {
   clearSession,
+  isPulseAuthTeardown,
   isPulsePublicPath,
   readSession,
   writeApiSession,
@@ -123,7 +124,8 @@ export async function apiFetch<T>(
   }
   if (!res.ok) {
     handleSessionExpiredFromApiResponse(url, res.status, Boolean(bearer));
-    const err = new Error(`API ${res.status}`) as Error & { status: number; body: unknown; requestUrl: string };
+    const msg = isPulseAuthTeardown() ? "" : `API ${res.status}`;
+    const err = new Error(msg) as Error & { status: number; body: unknown; requestUrl: string };
     err.status = res.status;
     err.body = data;
     err.requestUrl = url;
@@ -156,7 +158,8 @@ export async function apiPostFormData<T>(path: string, formData: FormData): Prom
   }
   if (!res.ok) {
     handleSessionExpiredFromApiResponse(url, res.status, Boolean(bearer));
-    const err = new Error(`API ${res.status}`) as Error & { status: number; body: unknown; requestUrl: string };
+    const msg = isPulseAuthTeardown() ? "" : `API ${res.status}`;
+    const err = new Error(msg) as Error & { status: number; body: unknown; requestUrl: string };
     err.status = res.status;
     err.body = data;
     err.requestUrl = url;

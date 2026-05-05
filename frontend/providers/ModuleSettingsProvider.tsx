@@ -12,7 +12,7 @@ import {
 import { fetchOrgModuleSettings, patchOrgModuleSettings } from "@/lib/moduleSettings/service";
 import { readModuleSettingsCache, writeModuleSettingsCache } from "@/lib/moduleSettings/storage";
 import { canAccessCompanyConfiguration } from "@/lib/pulse-roles";
-import { canAccessPulseTenantApis, readSession } from "@/lib/pulse-session";
+import { canAccessPulseTenantApis, isPulseAuthTeardown, readSession } from "@/lib/pulse-session";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
 
 type Ctx = {
@@ -75,7 +75,9 @@ export function ModuleSettingsProvider({ children }: { children: ReactNode }) {
         if (cacheKey) writeModuleSettingsCache(cacheKey, data);
         setLoadedCompanyId(cacheKey ?? null);
       } catch (e) {
-        setError(e instanceof Error ? e.message : "Could not load organization settings");
+        if (!isPulseAuthTeardown()) {
+          setError(e instanceof Error ? e.message : "Could not load organization settings");
+        }
         if (cached) setSettings(mergeOrgModuleSettings(cached));
       } finally {
         setLoading(false);
@@ -98,6 +100,7 @@ export function ModuleSettingsProvider({ children }: { children: ReactNode }) {
     void (async () => {
       if (!authed) {
         setLoading(false);
+        setError(null);
         return;
       }
       const s = readSession();

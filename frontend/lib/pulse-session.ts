@@ -109,6 +109,24 @@ function emitAuthChange() {
   window.dispatchEvent(new Event("pulse-auth-change"));
 }
 
+/**
+ * While true, API error surfaces should stay quiet: in-flight requests often complete with 401/403/404
+ * right after `clearSession()`, which briefly showed confusing messages before the login route rendered.
+ */
+let pulseAuthTeardown = false;
+
+export function isPulseAuthTeardown(): boolean {
+  return pulseAuthTeardown;
+}
+
+export function endPulseAuthTeardown(): void {
+  pulseAuthTeardown = false;
+}
+
+function beginPulseAuthTeardown(): void {
+  pulseAuthTeardown = true;
+}
+
 function decodeJwtImpersonating(token: string | undefined): boolean | undefined {
   if (!token) return undefined;
   try {
@@ -171,6 +189,7 @@ function clearSessionQuiet() {
 }
 
 export function clearSession() {
+  beginPulseAuthTeardown();
   clearSessionQuiet();
   emitAuthChange();
 }
@@ -190,6 +209,7 @@ export function canAccessPulseTenantApis(session: PulseAuthSession | null): bool
 
 export function writeSession(email: string, remember: boolean) {
   if (typeof window === "undefined") return;
+  endPulseAuthTeardown();
   const now = Math.floor(Date.now() / 1000);
   const ttlSec = SESSION_FALLBACK_TTL_SEC;
   const payload: PulseAuthSession = {
@@ -210,6 +230,7 @@ export function writeApiSession(
   remember: boolean,
 ) {
   if (typeof window === "undefined") return;
+  endPulseAuthTeardown();
   const jwtExp = decodeJwtExp(accessToken);
   const now = Math.floor(Date.now() / 1000);
   const exp = jwtExp ?? now + SESSION_FALLBACK_TTL_SEC;

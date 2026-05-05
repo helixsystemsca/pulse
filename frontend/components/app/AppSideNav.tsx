@@ -1,8 +1,8 @@
 "use client";
 
 /**
- * Tenant / system left rail: square tiles, hover-expands (64px → 220px), fixed overlay.
- * Routing and item set unchanged from `pulseTenantSidebarNav` / `pulseSystemSidebarNav`.
+ * Tenant / system left rail: fixed square icon cells (64×64), hover-expands width for labels.
+ * Rows stay h-16 so expanding the rail does not scale tiles (avoids aspect-square blow-up).
  */
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -64,6 +64,9 @@ const ICONS: Record<PulseSidebarIcon, LucideIcon> = {
   settings: Settings,
 };
 
+/** Fixed icon column width — matches collapsed rail (w-16) for square tiles. */
+const ICON_COL = "h-16 w-16 shrink-0";
+
 /** Team Management: tenant feature `team_management` + route permission; roster delegation still grants access. */
 function showWorkersNavItem(session: PulseAuthSession, isSystemAdmin: boolean): boolean {
   if (isSystemAdmin) return true;
@@ -108,32 +111,29 @@ export function AppSideNav() {
   const settingsActive = isPulseNavActive("/settings", pathname);
 
   const labelVisibility = cn(
-    "min-w-0 truncate text-left text-[13px] font-semibold text-ds-sidebar-fg transition-[opacity,max-width] duration-300 ease-in-out motion-reduce:transition-none",
+    "min-w-0 truncate text-left text-[13px] font-semibold transition-[opacity,max-width,margin] duration-300 ease-in-out motion-reduce:transition-none",
     railExpanded ? "max-w-[200px] opacity-100" : "max-w-0 opacity-0",
     "group-focus-within/sidenav:max-w-[200px] group-focus-within/sidenav:opacity-100",
   );
-
-  const tileGradientActive =
-    "linear-gradient(135deg, var(--ds-accent), color-mix(in srgb, var(--ds-accent-dusk) 65%, var(--ds-accent)))";
 
   return (
     <aside
       onMouseEnter={() => setRailExpanded(true)}
       onMouseLeave={() => setRailExpanded(false)}
       className={cn(
-        "group/sidenav hidden lg:flex fixed left-0 z-[70] flex-col overflow-x-hidden overflow-y-auto border-r border-ds-sidebar-border",
+        "group/sidenav hidden lg:flex fixed left-0 z-[70] flex-col overflow-x-hidden overflow-y-auto rounded-none border-r border-[var(--ds-sidebar-tile-divider)]",
         "top-[calc(3.625rem+1px+4px)] sm:top-[calc(3.5rem+1px+4px)] bottom-10",
         "shadow-[var(--ds-shadow-card)] motion-safe:transition-[width] motion-safe:duration-300 motion-safe:ease-in-out",
         railExpanded ? "w-[220px]" : "w-16",
         "focus-within:w-[220px]",
       )}
-      style={{
-        background:
-          "linear-gradient(180deg, var(--ds-sidebar), color-mix(in srgb, var(--ds-sidebar) 82%, var(--ds-text-primary)))",
-      }}
+      style={{ background: "var(--ds-sidebar-rail-gradient)" }}
       aria-label={systemRail ? "System navigation" : "App navigation"}
     >
-      <nav className="flex min-h-0 flex-1 flex-col gap-1 p-2" aria-label="Navigation">
+      <nav
+        className="flex min-h-0 flex-1 flex-col divide-y divide-[var(--ds-sidebar-tile-divider)]"
+        aria-label="Navigation"
+      >
         {items.map((item) => {
           const active = isPulseNavActive(item.href, pathname);
           const Icon = ICONS[item.icon];
@@ -144,82 +144,89 @@ export function AppSideNav() {
               title={item.label}
               data-guided-tour-anchor={item.href === "/dashboard/maintenance" ? "sidebar-work-requests" : undefined}
               className={cn(
-                "group/nav relative flex w-full aspect-square min-h-0 items-center overflow-hidden rounded-[10px] border border-ds-sidebar-border outline-none",
-                "focus-visible:ring-2 focus-visible:ring-ds-sidebar-accent focus-visible:ring-offset-2 focus-visible:ring-offset-ds-sidebar",
-                "[&:focus-visible_.nav-tile-fill]:opacity-100",
-                "[&:focus-visible_.nav-icon-wrap]:text-ds-accent-foreground",
+                "group/nav flex h-16 w-full shrink-0 items-stretch rounded-none border-0 outline-none transition-colors duration-200 ease-out motion-reduce:transition-none",
+                active
+                  ? "bg-[var(--ds-sidebar-tile-active-bg)]"
+                  : "bg-transparent hover:bg-[var(--ds-sidebar-tile-hover-solid)]",
+                "focus-visible:ring-2 focus-visible:ring-[var(--ds-sidebar-tile-hover-solid)] focus-visible:ring-offset-0",
               )}
             >
               <span
-                aria-hidden
                 className={cn(
-                  "nav-tile-fill pointer-events-none absolute inset-0 z-0 rounded-[10px] transition-opacity duration-200 ease-out motion-reduce:transition-none",
-                  active ? "opacity-100" : "opacity-0 group-hover/nav:opacity-100",
+                  ICON_COL,
+                  "flex items-center justify-center",
+                  active ? "text-[var(--ds-sidebar-tile-active-fg)]" : "text-white",
                 )}
-                style={{ background: tileGradientActive }}
-              />
-              <div className="relative z-10 flex h-full w-full min-w-0 items-center gap-2 px-2">
-                <span className="nav-icon-wrap flex size-10 shrink-0 items-center justify-center text-ds-sidebar-fg transition-colors duration-200 group-hover/nav:text-ds-accent-foreground">
-                  <Icon
-                    className={cn(
-                      "h-[18px] w-[18px] transition-colors duration-200",
-                      active && "text-ds-accent-foreground",
-                    )}
-                    strokeWidth={2}
-                    aria-hidden
-                  />
-                </span>
-                <span className={labelVisibility}>{item.label}</span>
-              </div>
+              >
+                <Icon
+                  className="h-5 w-5 shrink-0"
+                  strokeWidth={2}
+                  aria-hidden
+                />
+              </span>
+              <span
+                className={cn(
+                  labelVisibility,
+                  "flex min-w-0 flex-1 items-center pr-3",
+                  active ? "text-[var(--ds-sidebar-tile-active-fg)]" : "text-white",
+                  !active && "group-hover/nav:text-white",
+                )}
+              >
+                {item.label}
+              </span>
             </Link>
           );
         })}
       </nav>
 
-      <div className="mt-auto shrink-0 space-y-1 border-t border-ds-sidebar-border p-2">
-        {canOpenOrgSettings ? (
-          <Link
-            href="/settings"
-            title="Settings"
-            className={cn(
-              "group/nav relative flex w-full aspect-square min-h-0 items-center overflow-hidden rounded-[10px] border border-ds-sidebar-border outline-none",
-              "focus-visible:ring-2 focus-visible:ring-ds-sidebar-accent focus-visible:ring-offset-2 focus-visible:ring-offset-ds-sidebar",
-              "[&:focus-visible_.nav-tile-fill]:opacity-100",
-              "[&:focus-visible_.nav-icon-wrap]:text-ds-accent-foreground",
-            )}
-          >
-            <span
-              aria-hidden
+      {canOpenOrgSettings || isDemoViewer ? (
+        <div className="mt-auto shrink-0 divide-y divide-[var(--ds-sidebar-tile-divider)] border-t border-[var(--ds-sidebar-tile-divider)]">
+          {canOpenOrgSettings ? (
+            <Link
+              href="/settings"
+              title="Settings"
               className={cn(
-                "nav-tile-fill pointer-events-none absolute inset-0 z-0 rounded-[10px] transition-opacity duration-200 ease-out motion-reduce:transition-none",
-                settingsActive ? "opacity-100" : "opacity-0 group-hover/nav:opacity-100",
+                "group/nav flex h-16 w-full shrink-0 items-stretch rounded-none border-0 outline-none transition-colors duration-200 ease-out motion-reduce:transition-none",
+                settingsActive
+                  ? "bg-[var(--ds-sidebar-tile-active-bg)]"
+                  : "bg-transparent hover:bg-[var(--ds-sidebar-tile-hover-solid)]",
+                "focus-visible:ring-2 focus-visible:ring-[var(--ds-sidebar-tile-hover-solid)] focus-visible:ring-offset-0",
               )}
-              style={{ background: tileGradientActive }}
-            />
-            <div className="relative z-10 flex h-full w-full min-w-0 items-center gap-2 px-2">
-              <span className="nav-icon-wrap flex size-10 shrink-0 items-center justify-center text-ds-sidebar-fg transition-colors duration-200 group-hover/nav:text-ds-accent-foreground">
-                <Settings
-                  className={cn(
-                    "h-[18px] w-[18px] transition-colors duration-200",
-                    settingsActive && "text-ds-accent-foreground",
-                  )}
-                  strokeWidth={2}
-                  aria-hidden
-                />
+            >
+              <span
+                className={cn(
+                  ICON_COL,
+                  "flex items-center justify-center",
+                  settingsActive ? "text-[var(--ds-sidebar-tile-active-fg)]" : "text-white",
+                )}
+              >
+                <Settings className="h-5 w-5 shrink-0" strokeWidth={2} aria-hidden />
               </span>
-              <span className={labelVisibility}>Settings</span>
+              <span
+                className={cn(
+                  labelVisibility,
+                  "flex min-w-0 flex-1 items-center pr-3",
+                  settingsActive ? "text-[var(--ds-sidebar-tile-active-fg)]" : "text-white",
+                  !settingsActive && "group-hover/nav:text-white",
+                )}
+              >
+                Settings
+              </span>
+            </Link>
+          ) : null}
+          {isDemoViewer ? (
+            <div
+              className="px-3 py-3 text-xs font-semibold text-white"
+              style={{
+                background: "linear-gradient(135deg,#ff7aa2 0%,#ff5f87 40%,#ff3d6e 100%)",
+                boxShadow: "0 10px 22px rgba(255, 61, 110, 0.18)",
+              }}
+            >
+              Demo Mode – View only
             </div>
-          </Link>
-        ) : null}
-        {isDemoViewer ? (
-          <div
-            className="rounded-[10px] border border-[rgba(255,105,180,0.35)] bg-[linear-gradient(135deg,#ff7aa2_0%,#ff5f87_40%,#ff3d6e_100%)] px-2 py-2 text-xs font-semibold text-white shadow-sm"
-            style={{ boxShadow: "0 10px 22px rgba(255, 61, 110, 0.18)" }}
-          >
-            Demo Mode – View only
-          </div>
-        ) : null}
-      </div>
+          ) : null}
+        </div>
+      ) : null}
     </aside>
   );
 }
