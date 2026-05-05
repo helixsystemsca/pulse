@@ -136,7 +136,7 @@ export function AppSideNav() {
   const collapsedWidth = "w-16";
   const expandedWidth = "w-[17rem]";
   const railShell =
-    "fixed left-0 top-0 z-[70] hidden h-[100dvh] flex-col justify-between border-r border-ds-border bg-ds-primary lg:flex";
+    "fixed left-0 top-0 z-[70] hidden h-[100dvh] flex-col justify-between border-r border-ds-sidebar-border bg-ds-sidebar text-ds-sidebar-fg lg:flex";
 
   return (
     <>
@@ -154,14 +154,16 @@ export function AppSideNav() {
                   title={item.label}
                   data-guided-tour-anchor={item.href === "/dashboard/maintenance" ? "sidebar-work-requests" : undefined}
                   className={`group flex items-center justify-center rounded-xl px-2 py-2 text-[13px] font-semibold leading-tight transition-colors ${
-                    active ? "bg-ds-interactive-hover-strong text-ds-foreground shadow-sm" : "text-foreground/80 hover:bg-ds-interactive-hover"
+                    active
+                      ? "bg-ds-sidebar-hover-strong text-ds-sidebar-fg shadow-sm"
+                      : "text-ds-sidebar-muted hover:bg-ds-sidebar-hover hover:text-ds-sidebar-fg"
                   }`}
                 >
                   <span
                     className={`flex h-9 w-9 items-center justify-center rounded-lg ${
                       active
-                        ? "bg-ds-secondary text-ds-accent shadow-sm ring-1 ring-[color-mix(in_srgb,var(--ds-accent)_26%,transparent)]"
-                        : "bg-ds-secondary/60 text-muted-foreground group-hover:text-foreground"
+                        ? "bg-ds-sidebar-well text-ds-accent shadow-sm ring-1 ring-[color-mix(in_srgb,var(--ds-accent)_26%,transparent)]"
+                        : "bg-ds-sidebar-well-muted text-ds-sidebar-muted group-hover:text-ds-sidebar-fg"
                     }`}
                   >
                     <Icon className="h-[18px] w-[18px]" strokeWidth={2} aria-hidden />
@@ -172,14 +174,14 @@ export function AppSideNav() {
             })}
           </nav>
 
-          <div className="mt-auto border-t border-ds-border px-2 py-3">
+          <div className="mt-auto border-t border-ds-sidebar-border px-2 py-3">
             {canOpenOrgSettings ? (
               <Link
                 href="/settings"
                 title="Settings"
-                className="flex items-center justify-center rounded-xl px-2 py-2 text-foreground/80 transition-colors hover:bg-ds-interactive-hover"
+                className="group flex items-center justify-center rounded-xl px-2 py-2 text-ds-sidebar-muted transition-colors hover:bg-ds-sidebar-hover hover:text-ds-sidebar-fg"
               >
-                <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-ds-secondary/60 text-muted-foreground">
+                <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-ds-sidebar-well-muted text-ds-sidebar-muted group-hover:text-ds-sidebar-fg">
                   <Settings className="h-[18px] w-[18px]" strokeWidth={2} aria-hidden />
                 </span>
                 <span className="sr-only">Settings</span>
@@ -202,7 +204,7 @@ export function AppSideNav() {
       {/* Expanded overlay panel (desktop). */}
       <aside
         className={[
-          "fixed left-0 top-0 z-[80] hidden h-[100dvh] flex-col justify-between border-r border-ds-border bg-ds-primary lg:flex",
+          "fixed left-0 top-0 z-[80] hidden h-[100dvh] flex-col justify-between border-r border-ds-sidebar-border bg-ds-sidebar text-ds-sidebar-fg lg:flex",
           expandedWidth,
           "transition-transform duration-200 ease-out",
           isSidebarOpen ? "translate-x-0" : "-translate-x-full",
@@ -214,7 +216,7 @@ export function AppSideNav() {
             <div className="px-3 pb-1">
               <div className="relative">
                 <Search
-                  className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+                  className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ds-sidebar-muted"
                   strokeWidth={2}
                   aria-hidden
                 />
@@ -223,7 +225,7 @@ export function AppSideNav() {
                   value={navSearch}
                   onChange={(e) => setNavSearch(e.target.value)}
                   placeholder="Search…"
-                  className="w-full rounded-full border border-ds-border bg-ds-secondary py-2 pl-9 pr-3 text-sm text-foreground shadow-inner placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--ds-accent)_32%,transparent)]"
+                  className="w-full rounded-full border border-ds-sidebar-border bg-ds-sidebar-well py-2 pl-9 pr-3 text-sm text-ds-sidebar-fg shadow-inner placeholder:text-ds-sidebar-muted focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--ds-accent)_32%,transparent)]"
                   aria-label="Filter navigation"
                 />
               </div>
@@ -242,15 +244,15 @@ export function AppSideNav() {
                     data-guided-tour-anchor={item.href === "/dashboard/maintenance" ? "sidebar-work-requests" : undefined}
                     className={`group flex items-center gap-3 rounded-xl px-3 py-2 text-[13px] font-semibold leading-tight transition-colors ${
                       active
-                        ? "bg-ds-interactive-hover-strong text-ds-foreground shadow-sm"
-                        : "text-foreground/80 hover:bg-ds-interactive-hover"
+                        ? "bg-ds-sidebar-hover-strong text-ds-sidebar-fg shadow-sm"
+                        : "text-ds-sidebar-muted hover:bg-ds-sidebar-hover hover:text-ds-sidebar-fg"
                     }`}
                   >
                     <span
                       className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
                         active
-                          ? "bg-ds-secondary text-ds-accent shadow-sm ring-1 ring-[color-mix(in_srgb,var(--ds-accent)_26%,transparent)]"
-                          : "bg-ds-secondary/60 text-muted-foreground group-hover:text-foreground"
+                          ? "bg-ds-sidebar-well text-ds-accent shadow-sm ring-1 ring-[color-mix(in_srgb,var(--ds-accent)_26%,transparent)]"
+                          : "bg-ds-sidebar-well-muted text-ds-sidebar-muted group-hover:text-ds-sidebar-fg"
                       }`}
                     >
                       <Icon className="h-[18px] w-[18px]" strokeWidth={2} aria-hidden />
@@ -262,12 +264,12 @@ export function AppSideNav() {
             </nav>
           </div>
 
-          <div className="border-t border-ds-border px-3 pt-3">
+          <div className="border-t border-ds-sidebar-border px-3 pt-3">
             {canOpenOrgSettings ? (
               <Link
                 href="/settings"
                 onClick={() => closeSidebar()}
-                className="mb-2 flex w-full items-center justify-center gap-2 rounded-lg border border-ds-border bg-ds-secondary px-3 py-1.5 text-sm font-semibold text-foreground transition-colors hover:bg-ds-interactive-hover"
+                className="mb-2 flex w-full items-center justify-center gap-2 rounded-lg border border-ds-sidebar-border bg-ds-sidebar-well px-3 py-1.5 text-sm font-semibold text-ds-sidebar-fg transition-colors hover:bg-ds-sidebar-hover-strong"
               >
                 <Settings className="h-4 w-4" aria-hidden />
                 Settings
