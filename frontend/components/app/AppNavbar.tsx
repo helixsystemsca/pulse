@@ -10,7 +10,7 @@ import { ChevronDown, Image as ImageIcon, KeyRound, LogOut, Settings } from "luc
 import { useCallback, useEffect, useRef, useState } from "react";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
 import { navigateToPulseLogin, pulseApp, pulsePostLoginPath, pulseRoutes } from "@/lib/pulse-app";
-import { dispatchPulseLogoutSuccessUi } from "@/lib/pulse-logout-ui";
+import { dispatchPulseLogoutSuccessUi, pulseLogoutNavigationDelayMs } from "@/lib/pulse-logout-ui";
 import { clearSession } from "@/lib/pulse-session";
 import { UserProfileAvatarPreview } from "@/components/profile/UserProfileAvatarPreview";
 import {
@@ -47,12 +47,10 @@ export function AppNavbar() {
   const signOut = useCallback(() => {
     setUserOpen(false);
     dispatchPulseLogoutSuccessUi();
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        clearSession();
-        navigateToPulseLogin();
-      });
-    });
+    window.setTimeout(() => {
+      clearSession();
+      navigateToPulseLogin();
+    }, pulseLogoutNavigationDelayMs());
   }, []);
 
   return (

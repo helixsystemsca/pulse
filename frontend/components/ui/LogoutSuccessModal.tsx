@@ -7,10 +7,11 @@ import { AnimatePresence, motion } from "framer-motion";
 import Image from "next/image";
 import { useCallback, useEffect, useId, useState } from "react";
 import { createPortal } from "react-dom";
-import { PULSE_LOGOUT_SUCCESS_EVENT } from "@/lib/pulse-logout-ui";
-
-const DISPLAY_MS = 2000;
-const EXIT_MS = 220;
+import {
+  PULSE_LOGOUT_SUCCESS_DISPLAY_MS,
+  PULSE_LOGOUT_SUCCESS_EVENT,
+  PULSE_LOGOUT_SUCCESS_EXIT_MS,
+} from "@/lib/pulse-logout-ui";
 
 export function LogoutSuccessModal() {
   const [hydrated, setHydrated] = useState(false);
@@ -33,7 +34,7 @@ export function LogoutSuccessModal() {
     if (!hydrated || !open) return;
     const root = document.documentElement;
     root.classList.add("pulse-welcome-blur");
-    const t = window.setTimeout(() => setOpen(false), DISPLAY_MS);
+    const t = window.setTimeout(() => setOpen(false), PULSE_LOGOUT_SUCCESS_DISPLAY_MS);
     return () => {
       root.classList.remove("pulse-welcome-blur");
       window.clearTimeout(t);
@@ -54,7 +55,7 @@ export function LogoutSuccessModal() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          transition={{ duration: EXIT_MS / 1000, ease: [0.4, 0, 0.2, 1] }}
+          transition={{ duration: PULSE_LOGOUT_SUCCESS_EXIT_MS / 1000, ease: [0.4, 0, 0.2, 1] }}
         >
           <motion.div
             className="relative w-full max-w-md overflow-hidden rounded-[22px] border border-[rgba(76,96,133,0.18)] bg-[#f8fafc] px-8 py-10 text-center shadow-[0_20px_55px_rgba(76,96,133,0.14)] sm:px-10"

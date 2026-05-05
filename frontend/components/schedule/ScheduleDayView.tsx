@@ -528,16 +528,21 @@ export function ScheduleDayView({
           </div>
 
           <div className="rounded-md border border-pulseShell-border bg-pulseShell-surface p-4 shadow-[var(--pulse-shell-shadow)]">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="flex items-center gap-2 font-headline text-sm font-bold text-ds-foreground">
-                    <ClipboardList className="h-4 w-4 text-ds-muted" aria-hidden />
-                    Assignments
-                  </p>
-                  <p className="mt-0.5 text-xs text-ds-muted">Areas and notes for this day (per shift type).</p>
-                </div>
+              <div>
+                <p className="flex items-center gap-2 font-headline text-sm font-bold text-ds-foreground">
+                  <ClipboardList className="h-4 w-4 text-ds-muted" aria-hidden />
+                  Assignments
+                </p>
+                <p className="mt-0.5 text-xs text-ds-muted">Areas and notes for this day (per shift type).</p>
+              </div>
+
+              <div className="mt-3">
+                <label htmlFor="schedule-assign-shift-type" className="text-[11px] font-semibold uppercase tracking-wide text-ds-muted">
+                  Shift
+                </label>
                 <select
-                  className="rounded-md border border-pulseShell-border bg-pulseShell-elevated px-2 py-1.5 text-xs font-semibold text-ds-foreground"
+                  id="schedule-assign-shift-type"
+                  className="mt-1.5 w-full rounded-md border border-pulseShell-border bg-pulseShell-elevated px-3 py-2 text-sm font-semibold text-ds-foreground"
                   value={assignShiftType}
                   onChange={(e) => setAssignShiftType(e.target.value)}
                 >
@@ -547,6 +552,7 @@ export function ScheduleDayView({
                     </option>
                   ))}
                 </select>
+                <p className="mt-1.5 text-[11px] text-ds-muted">Pick day, afternoon, or night before adding checklist rows below.</p>
               </div>
 
               <div className="mt-3 rounded-md border border-pulseShell-border bg-pulseShell-elevated p-3">
@@ -769,19 +775,15 @@ export function ScheduleDayView({
             </div>
         </aside>
       </div>
-      {(() => {
-        const dayShift = shifts.find((s) => s.shiftKind !== "project_task");
-        if (!dayShift) return null;
-        return (
-          <RoutineAssignModal
-            open={assignRoutineOpen}
-            onClose={() => setAssignRoutineOpen(false)}
-            shiftId={dayShift.id}
-            shiftDate={date}
-            workers={workers}
-          />
-        );
-      })()}
+      <RoutineAssignModal
+        open={assignRoutineOpen}
+        onClose={() => setAssignRoutineOpen(false)}
+        shiftDate={date}
+        workers={workers}
+        shiftTypes={shiftTypes}
+        shiftsOnDay={dayShiftsAll}
+        initialShiftType={assignShiftType}
+      />
     </div>
   );
 }

@@ -5,7 +5,7 @@ import { Loader2, Plus, Save, X } from "lucide-react";
 import { PulseDrawer } from "@/components/schedule/PulseDrawer";
 import { cn } from "@/lib/cn";
 import { buttonVariants } from "@/styles/button-variants";
-import type { Worker } from "@/lib/schedule/types";
+import type { Shift, ShiftTypeConfig, Worker } from "@/lib/schedule/types";
 import { parseClientApiError } from "@/lib/parse-client-api-error";
 import { apiFetch } from "@/lib/api";
 
@@ -31,16 +31,21 @@ function newKey() {
 export function RoutineAssignModal({
   open,
   onClose,
-  shiftId,
   shiftDate,
   workers,
+  shiftTypes,
+  shiftsOnDay,
+  initialShiftType,
 }: {
   open: boolean;
   onClose: () => void;
-  shiftId: string;
   shiftDate: string; // YYYY-MM-DD
   workers: Worker[];
+  shiftTypes: ShiftTypeConfig[];
+  shiftsOnDay: Shift[];
+  initialShiftType: string;
 }) {
+  const [selectedShiftType, setSelectedShiftType] = useState(initialShiftType);
   const [routines, setRoutines] = useState<RoutineRow[] | null>(null);
   const [routineId, setRoutineId] = useState("");
   const [routine, setRoutine] = useState<RoutineDetail | null>(null);
@@ -53,6 +58,25 @@ export function RoutineAssignModal({
   const [toast, setToast] = useState<string | null>(null);
 
   const activeWorkers = useMemo(() => workers.filter((w) => w.active), [workers]);
+
+  const resolvedShift = useMemo(() => {
+    const candidates = shiftsOnDay
+      .filter((s) => s.date === shiftDate && s.shiftKind !== "project_task" && s.shiftType === selectedShiftType)
+      .slice()
+      .sort((a, b) => a.startTime.localeCompare(b.startTime));
+    return candidates[0] ?? null;
+  }, [shiftsOnDay, shiftDate, selectedShiftType]);
+
+  useEffect(() => {
+    if (!open) return;
+    setSelectedShiftType(initialShiftType);
+    setRoutineId("");
+    setRoutine(null);
+    setItemAssignments({});
+    setExtras([]);
+    setPrimaryUserId("");
+    setErr(null);
+  }, [open, initialShiftType]);
 
   useEffect(() => {
     if (!open) return;
@@ -111,7 +135,7 @@ export function RoutineAssignModal({
   }, [toast]);
 
   async function saveAssignment() {
-    if (!routineId || !primaryUserId || saving) return;
+    if (!routineId || !primaryUserId || !resolvedShift || saving) return;
     setSaving(true);
     setErr(null);
     try {
@@ -121,7 +145,7 @@ export function RoutineAssignModal({
           routine_id: routineId,
           primary_user_id: primaryUserId,
           date: shiftDate,
-          shift_id: shiftId,
+          shift_id: resolvedShift.id,
           item_assignments: Object.entries(itemAssignments)
             .filter(([, uid]) => uid)
             .map(([routine_item_id, assigned_to_user_id]) => ({
@@ -160,7 +184,12 @@ export function RoutineAssignModal({
               Cancel
             </span>
           </button>
-          <button type="button" className={PRIMARY_BTN} onClick={() => void saveAssignment()} disabled={saving || !routineId || !primaryUserId}>
+          <button
+            type="button"
+            className={PRIMARY_BTN}
+            onClick={() => void saveAssignment()}
+            disabled={saving || !routineId || !primaryUserId || !resolvedShift}
+          >
             <span className="inline-flex items-center gap-2">
               {saving ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Save className="h-4 w-4" aria-hidden />}
               {saving ? "Saving…" : "Save assignment"}
@@ -183,10 +212,54 @@ export function RoutineAssignModal({
 
       <div className="space-y-4">
         <div>
+          <label className={LABEL} htmlFor="ra-shift-type">
+            Shift
+          </label>
+          <select
+            id="ra-shift-type"
+            className={FIELD}
+            value={selectedShiftType}
+            onChange={(e) => {
+              setSelectedShiftType(e.target.value);
+              setRoutineId("");
+              setRoutine(null);
+              setItemAssignments({});
+              setExtras([]);
+            }}
+            disabled={saving}
+          >
+            {shiftTypes.map((t) => (
+              <option key={t.key} value={t.key}>
+                {t.label || t.key}
+              </option>
+            ))}
+          </select>
+          {!resolvedShift ? (
+            <p className="mt-2 text-sm text-ds-danger">
+              No workforce shift for this type on this day. Add or pick a shift on the calendar first.
+            </p>
+          ) : (
+            <p className="mt-2 text-xs text-ds-muted">
+              Assigning to{" "}
+              <span className="font-semibold text-ds-foreground">
+                {resolvedShift.startTime}–{resolvedShift.endTime}
+              </span>
+              .
+            </p>
+          )}
+        </div>
+
+        <div>
           <label className={LABEL} htmlFor="ra-routine">
             Routine
           </label>
-          <select id="ra-routine" className={FIELD} value={routineId} onChange={(e) => setRoutineId(e.target.value)} disabled={saving}>
+          <select
+            id="ra-routine"
+            className={FIELD}
+            value={routineId}
+            onChange={(e) => setRoutineId(e.target.value)}
+            disabled={saving || !resolvedShift}
+          >
             <option value="">{routines === null ? "Loading…" : "Select routine…"}</option>
             {(routines ?? []).map((r) => (
               <option key={r.id} value={r.id}>
@@ -200,7 +273,13 @@ export function RoutineAssignModal({
           <label className={LABEL} htmlFor="ra-primary">
             Primary worker
           </label>
-          <select id="ra-primary" className={FIELD} value={primaryUserId} onChange={(e) => setPrimaryUserId(e.target.value)} disabled={saving}>
+          <select
+            id="ra-primary"
+            className={FIELD}
+            value={primaryUserId}
+            onChange={(e) => setPrimaryUserId(e.target.value)}
+            disabled={saving || !resolvedShift}
+          >
             <option value="">Select worker…</option>
             {activeWorkers.map((w) => (
               <option key={w.id} value={w.id}>
