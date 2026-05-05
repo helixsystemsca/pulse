@@ -547,7 +547,7 @@ export function ProceduresApp() {
   );
 
   return (
-    <div className="space-y-6">
+    <div className="flex min-h-[calc(100dvh-7rem)] flex-col gap-6">
       <PageHeader
         title="Procedures"
         description="Reusable maintenance procedures with numbered steps, optional photos, and acknowledgments."
@@ -602,7 +602,7 @@ export function ProceduresApp() {
         }
       />
 
-      <PageBody>
+      <PageBody className="flex min-h-0 flex-1 flex-col">
 
       {assignOpen ? (
         <div className="rounded-xl border border-ds-border bg-white p-4 shadow-[var(--ds-shadow-card)] dark:bg-ds-surface-primary">
@@ -680,9 +680,10 @@ export function ProceduresApp() {
 
       <div
         className={cn(
+          "min-h-0 flex-1",
           isCreating && "grid gap-6 lg:grid-cols-2",
           !isCreating && selected && "flex flex-col gap-6 lg:flex-row lg:items-stretch",
-          !isCreating && !selected && "space-y-6",
+          !isCreating && !selected && "flex flex-col gap-6",
         )}
       >
         {isCreating ? (
@@ -956,7 +957,8 @@ export function ProceduresApp() {
 
         <section
             className={cn(
-              "overflow-hidden rounded-xl border border-ds-border bg-ds-primary shadow-[var(--ds-shadow-card)]",
+              "min-h-0 overflow-hidden rounded-xl border border-ds-border bg-ds-primary shadow-[var(--ds-shadow-card)]",
+              !selected && !isCreating && "flex min-h-0 flex-1 flex-col",
               selected && "lg:sticky lg:top-20 lg:flex lg:w-72 lg:shrink-0 lg:flex-col lg:self-start xl:w-80",
             )}
           >
@@ -994,10 +996,14 @@ export function ProceduresApp() {
                 ) : (
                   <ul
                     className={cn(
-                      "divide-y divide-ds-border overflow-auto",
-                      selected
-                        ? "max-h-[min(50vh,24rem)] lg:max-h-[calc(100vh-14rem)]"
-                        : "max-h-[min(50vh,24rem)]",
+                      "divide-y divide-ds-border overflow-y-auto overscroll-contain",
+                      selected && "max-h-[calc(100dvh-13rem)]",
+                      !selected &&
+                        isCreating &&
+                        "min-h-[10rem] max-h-[calc(100dvh-22rem)] lg:max-h-[calc(100dvh-18rem)]",
+                      !selected &&
+                        !isCreating &&
+                        "min-h-[12rem] h-[calc(100dvh-15rem)] md:h-[calc(100dvh-14rem)]",
                     )}
                   >
                     {rows.map((r) => (

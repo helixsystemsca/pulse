@@ -6,16 +6,5 @@ export const metadata: Metadata = {
 };
 
 export default function MaintenanceLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="w-full">
-      <div className="mb-6">
-        <h1 className="text-xl font-semibold text-ds-foreground">Work Requests</h1>
-        <p className="mt-1 text-sm text-pulse-muted">
-          Central hub for intake, assignments, and status — with optional preventative rules. Reusable procedures live
-          under <span className="font-medium text-ds-foreground">Procedures</span> in the sidebar.
-        </p>
-      </div>
-      {children}
-    </div>
-  );
+  return <div className="w-full">{children}</div>;
 }
