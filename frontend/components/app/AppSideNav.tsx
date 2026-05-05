@@ -82,7 +82,6 @@ export function AppSideNav() {
   const [railExpanded, setRailExpanded] = useState(false);
 
   const isSystemAdmin = Boolean(session?.is_system_admin || session?.role === "system_admin");
-  const isDemoViewer = session?.role === "demo_viewer";
   const canOpenOrgSettings = isSystemAdmin || canAccessCompanyConfiguration(session);
   const rawNav = isSystemAdmin ? pulseSystemSidebarNav : pulseTenantSidebarNav;
   let items: SidebarNavItem[] = (
@@ -179,52 +178,39 @@ export function AppSideNav() {
         })}
       </nav>
 
-      {canOpenOrgSettings || isDemoViewer ? (
-        <div className="mt-auto shrink-0 divide-y divide-[var(--ds-sidebar-tile-divider)] border-t border-[var(--ds-sidebar-tile-divider)]">
-          {canOpenOrgSettings ? (
-            <Link
-              href="/settings"
-              title="Settings"
+      {canOpenOrgSettings ? (
+        <div className="mt-auto shrink-0 border-t border-[var(--ds-sidebar-tile-divider)]">
+          <Link
+            href="/settings"
+            title="Settings"
+            className={cn(
+              "group/nav flex h-16 w-full shrink-0 items-stretch rounded-none border-0 outline-none transition-colors duration-200 ease-out motion-reduce:transition-none",
+              settingsActive
+                ? "bg-[var(--ds-sidebar-tile-active-bg)]"
+                : "bg-transparent hover:bg-[var(--ds-sidebar-tile-hover-solid)]",
+              "focus-visible:ring-2 focus-visible:ring-[var(--ds-sidebar-tile-hover-solid)] focus-visible:ring-offset-0",
+            )}
+          >
+            <span
               className={cn(
-                "group/nav flex h-16 w-full shrink-0 items-stretch rounded-none border-0 outline-none transition-colors duration-200 ease-out motion-reduce:transition-none",
-                settingsActive
-                  ? "bg-[var(--ds-sidebar-tile-active-bg)]"
-                  : "bg-transparent hover:bg-[var(--ds-sidebar-tile-hover-solid)]",
-                "focus-visible:ring-2 focus-visible:ring-[var(--ds-sidebar-tile-hover-solid)] focus-visible:ring-offset-0",
+                ICON_COL,
+                "flex items-center justify-center",
+                settingsActive ? "text-[var(--ds-sidebar-tile-active-fg)]" : "text-white",
               )}
             >
-              <span
-                className={cn(
-                  ICON_COL,
-                  "flex items-center justify-center",
-                  settingsActive ? "text-[var(--ds-sidebar-tile-active-fg)]" : "text-white",
-                )}
-              >
-                <Settings className="h-5 w-5 shrink-0" strokeWidth={2} aria-hidden />
-              </span>
-              <span
-                className={cn(
-                  labelVisibility,
-                  "flex min-w-0 flex-1 items-center pr-3",
-                  settingsActive ? "text-[var(--ds-sidebar-tile-active-fg)]" : "text-white",
-                  !settingsActive && "group-hover/nav:text-white",
-                )}
-              >
-                Settings
-              </span>
-            </Link>
-          ) : null}
-          {isDemoViewer ? (
-            <div
-              className="px-3 py-3 text-xs font-semibold text-white"
-              style={{
-                background: "linear-gradient(135deg,#ff7aa2 0%,#ff5f87 40%,#ff3d6e 100%)",
-                boxShadow: "0 10px 22px rgba(255, 61, 110, 0.18)",
-              }}
+              <Settings className="h-5 w-5 shrink-0" strokeWidth={2} aria-hidden />
+            </span>
+            <span
+              className={cn(
+                labelVisibility,
+                "flex min-w-0 flex-1 items-center pr-3",
+                settingsActive ? "text-[var(--ds-sidebar-tile-active-fg)]" : "text-white",
+                !settingsActive && "group-hover/nav:text-white",
+              )}
             >
-              Demo Mode – View only
-            </div>
-          ) : null}
+              Settings
+            </span>
+          </Link>
         </div>
       ) : null}
     </aside>

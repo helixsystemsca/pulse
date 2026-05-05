@@ -21,7 +21,7 @@ export function AppNavbar() {
   const userMenuRef = useRef<HTMLDivElement>(null);
 
   const logoHref = authed ? pulseApp.to(pulseRoutes.overview) : pulseRoutes.pulseLanding;
-  void session;
+  const isDemoViewer = session?.role === "demo_viewer";
 
   useEffect(() => {
     if (!userOpen) return;
@@ -88,12 +88,15 @@ export function AppNavbar() {
                 className="flex items-center gap-2 rounded-md border border-ds-border bg-ds-primary py-0.5 pl-1.5 pr-1.5 shadow-[var(--ds-shadow-card)] transition-colors hover:bg-ds-secondary sm:py-1 sm:pl-2 sm:pr-2.5"
                 aria-expanded={userOpen}
                 aria-haspopup="menu"
+                aria-label={isDemoViewer ? "Demo mode account menu" : undefined}
               >
                 <span title={session?.email} className="shrink-0">
                   {session ? (
                     <UserProfileAvatarPreview
-                      avatarUrl={session.avatar_url}
-                      nameFallback={session.full_name || session.email}
+                      avatarUrl={isDemoViewer ? null : session.avatar_url}
+                      nameFallback={
+                        isDemoViewer ? "Demo Profile" : session.full_name || session.email
+                      }
                       sizeClassName="h-7 w-7"
                       fallback="initials"
                       className="!border-gray-200 !bg-gray-100 !text-gray-900 !ring-1 !ring-gray-200 dark:!border-ds-border dark:!bg-ds-secondary dark:!text-gray-100 dark:!ring-ds-border"
@@ -106,10 +109,12 @@ export function AppNavbar() {
                 </span>
                 <span className="hidden max-w-[11rem] truncate text-left md:block">
                   <span className="block truncate text-sm font-semibold text-ds-foreground">
-                    {session?.full_name?.trim() || session?.email?.split("@")[0] || "Account"}
+                    {isDemoViewer
+                      ? "Demo Profile"
+                      : session?.full_name?.trim() || session?.email?.split("@")[0] || "Account"}
                   </span>
                   <span className="block truncate text-[11px] font-semibold capitalize text-ds-muted">
-                    {session ? session.role?.replace(/_/g, " ") || "member" : ""}
+                    {isDemoViewer ? "Demo Viewer" : session ? session.role?.replace(/_/g, " ") || "member" : ""}
                   </span>
                 </span>
                 <ChevronDown className="h-4 w-4 shrink-0 text-ds-muted" aria-hidden />
