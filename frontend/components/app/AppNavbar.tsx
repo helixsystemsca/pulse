@@ -23,6 +23,7 @@ export function AppNavbar() {
   const userMenuRef = useRef<HTMLDivElement>(null);
 
   const logoHref = authed ? pulseApp.to(pulseRoutes.overview) : pulseRoutes.pulseLanding;
+  const isDemoViewer = session?.role === "demo_viewer";
 
   useEffect(() => {
     if (!userOpen) return;
@@ -42,7 +43,13 @@ export function AppNavbar() {
   }, []);
 
   return (
-      <nav className="flex w-full items-center justify-between gap-4" aria-label="Main">
+      <div className="w-full">
+        {authed && isDemoViewer ? (
+          <div className="mb-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-900 dark:border-amber-500/35 dark:bg-amber-950/40 dark:text-amber-100">
+            Demo Mode – Changes are limited and may not persist
+          </div>
+        ) : null}
+        <nav className="flex w-full items-center justify-between gap-4" aria-label="Main">
         <div className="flex min-w-0 items-center">
           <Link
             href={logoHref}
@@ -160,6 +167,7 @@ export function AppNavbar() {
             </div>
           )}
         </div>
-      </nav>
+        </nav>
+      </div>
   );
 }

@@ -73,6 +73,7 @@ from app.core.config import get_settings
 from app.core.database import AsyncSessionLocal
 from app.limiter import limiter
 from app.middleware.feature_gate import FeatureGateMiddleware
+from app.middleware.demo_viewer_guard import DemoViewerGuardMiddleware
 from app.middleware.require_https import RequireHttpsMiddleware
 from app.middleware.security_headers import SecurityHeadersMiddleware
 from app.modules.pulse.router import router as pulse_router
@@ -123,6 +124,8 @@ app.add_middleware(
     enable_hsts=settings.enable_hsts,
 )
 app.add_middleware(FeatureGateMiddleware)
+# Demo Viewer safety: block **all** writes (POST/PUT/PATCH/DELETE).
+app.add_middleware(DemoViewerGuardMiddleware, allow_mutating_prefixes=[])
 if settings.trusted_host_list:
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=settings.trusted_host_list)
 # HTTPS enforcement must sit *inside* CORS: if RequireHttpsMiddleware is outermost and returns 403 without

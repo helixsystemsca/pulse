@@ -14,6 +14,7 @@ _ROLE_PRECEDENCE: tuple[UserRole, ...] = (
     UserRole.supervisor,
     UserRole.lead,
     UserRole.worker,
+    UserRole.demo_viewer,
 )
 
 _PRECEDENCE_INDEX = {r: i for i, r in enumerate(_ROLE_PRECEDENCE)}
@@ -35,6 +36,7 @@ TENANT_ROLE_VALUES: frozenset[str] = frozenset(
         UserRole.supervisor.value,
         UserRole.lead.value,
         UserRole.worker.value,
+        UserRole.demo_viewer.value,
     }
 )
 

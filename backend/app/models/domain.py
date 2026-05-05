@@ -35,6 +35,7 @@ class UserRole(str, enum.Enum):
     supervisor = "supervisor"
     lead = "lead"
     worker = "worker"
+    demo_viewer = "demo_viewer"
 
 
 class OperationalRole(str, enum.Enum):
