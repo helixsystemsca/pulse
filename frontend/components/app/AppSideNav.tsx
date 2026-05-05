@@ -46,6 +46,17 @@ import {
   sessionRoleDisplayLabel,
 } from "@/lib/pulse-roles";
 import { useSidebarState } from "@/components/app/SidebarState";
+import { cn } from "@/lib/cn";
+
+/** Icon tile: white square, dark glyph (white fill + white icon is illegible); active = solid teal/ice (`--ds-accent`) + black icon; hover scales up. */
+const navIconTile = (active: boolean) =>
+  cn(
+    "flex shrink-0 items-center justify-center rounded-lg shadow-sm transition-transform duration-200 ease-out motion-safe:will-change-transform",
+    "ring-1 ring-black/[0.08] dark:ring-black/[0.1]",
+    active
+      ? "bg-[var(--ds-accent)] text-black shadow-md ring-0 motion-safe:group-hover:scale-110"
+      : "bg-white text-zinc-900 motion-safe:group-hover:scale-110 dark:bg-white dark:text-zinc-900",
+  );
 
 const ICONS: Record<PulseSidebarIcon, LucideIcon> = {
   layout: LayoutDashboard,
@@ -136,11 +147,11 @@ export function AppSideNav() {
   const collapsedWidth = "w-16";
   const expandedWidth = "w-[17rem]";
   const railShell =
-    "fixed left-0 top-0 z-[70] hidden h-[100dvh] flex-col justify-between border-r border-ds-sidebar-border bg-ds-sidebar text-ds-sidebar-fg lg:flex";
+    "flex h-full min-h-0 flex-col justify-between border-r border-ds-sidebar-border bg-ds-sidebar text-ds-sidebar-fg";
 
   return (
-    <>
-      {/* Collapsed rail (always visible on desktop). */}
+    <div className="relative z-20 hidden h-full w-16 shrink-0 overflow-visible lg:block">
+      {/* Collapsed rail (in-flow below header; reserves horizontal space for main). */}
       <aside className={`${railShell} ${collapsedWidth}`} aria-label={systemRail ? "System navigation" : "App navigation"}>
         <div className="flex min-h-0 flex-1 flex-col">
           <nav className="space-y-1 px-2 pt-3" aria-label="Navigation">
@@ -153,19 +164,9 @@ export function AppSideNav() {
                   href={item.href}
                   title={item.label}
                   data-guided-tour-anchor={item.href === "/dashboard/maintenance" ? "sidebar-work-requests" : undefined}
-                  className={`group flex items-center justify-center rounded-xl px-2 py-2 text-[13px] font-semibold leading-tight transition-colors ${
-                    active
-                      ? "bg-ds-sidebar-hover-strong text-ds-sidebar-fg shadow-sm"
-                      : "text-ds-sidebar-muted hover:bg-ds-sidebar-hover hover:text-ds-sidebar-fg"
-                  }`}
+                  className="group flex items-center justify-center rounded-xl px-2 py-2 text-[13px] font-semibold leading-tight outline-none focus-visible:ring-2 focus-visible:ring-[var(--ds-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--ds-sidebar)]"
                 >
-                  <span
-                    className={`flex h-9 w-9 items-center justify-center rounded-lg ${
-                      active
-                        ? "bg-ds-sidebar-well text-ds-accent shadow-sm ring-1 ring-[color-mix(in_srgb,var(--ds-accent)_26%,transparent)]"
-                        : "bg-ds-sidebar-well-muted text-ds-sidebar-muted group-hover:text-ds-sidebar-fg"
-                    }`}
-                  >
+                  <span className={cn(navIconTile(active), "h-9 w-9")}>
                     <Icon className="h-[18px] w-[18px]" strokeWidth={2} aria-hidden />
                   </span>
                   <span className="sr-only">{item.label}</span>
@@ -179,9 +180,9 @@ export function AppSideNav() {
               <Link
                 href="/settings"
                 title="Settings"
-                className="group flex items-center justify-center rounded-xl px-2 py-2 text-ds-sidebar-muted transition-colors hover:bg-ds-sidebar-hover hover:text-ds-sidebar-fg"
+                className="group flex items-center justify-center rounded-xl px-2 py-2 outline-none focus-visible:ring-2 focus-visible:ring-[var(--ds-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--ds-sidebar)]"
               >
-                <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-ds-sidebar-well-muted text-ds-sidebar-muted group-hover:text-ds-sidebar-fg">
+                <span className={cn(navIconTile(false), "h-9 w-9")}>
                   <Settings className="h-[18px] w-[18px]" strokeWidth={2} aria-hidden />
                 </span>
                 <span className="sr-only">Settings</span>
@@ -191,23 +192,13 @@ export function AppSideNav() {
         </div>
       </aside>
 
-      {/* Backdrop when expanded. */}
-      {isSidebarOpen ? (
-        <button
-          type="button"
-          aria-label="Close sidebar"
-          className="fixed inset-0 z-[79] hidden bg-black/35 lg:block"
-          onClick={closeSidebar}
-        />
-      ) : null}
-
-      {/* Expanded overlay panel (desktop). */}
+      {/* Expanded panel: overlays main (not header); sibling backdrop lives in `AppMainChromeColumn`. */}
       <aside
         className={[
-          "fixed left-0 top-0 z-[80] hidden h-[100dvh] flex-col justify-between border-r border-ds-sidebar-border bg-ds-sidebar text-ds-sidebar-fg lg:flex",
+          "absolute left-0 top-0 z-[80] hidden h-full flex-col justify-between border-r border-ds-sidebar-border bg-ds-sidebar text-ds-sidebar-fg shadow-[4px_0_24px_rgba(0,0,0,0.12)] lg:flex dark:shadow-[4px_0_28px_rgba(0,0,0,0.45)]",
           expandedWidth,
           "transition-transform duration-200 ease-out",
-          isSidebarOpen ? "translate-x-0" : "-translate-x-full",
+          isSidebarOpen ? "pointer-events-auto translate-x-0" : "pointer-events-none -translate-x-full",
         ].join(" ")}
         aria-hidden={!isSidebarOpen}
       >
@@ -242,19 +233,12 @@ export function AppSideNav() {
                     title={item.label}
                     onClick={() => closeSidebar()}
                     data-guided-tour-anchor={item.href === "/dashboard/maintenance" ? "sidebar-work-requests" : undefined}
-                    className={`group flex items-center gap-3 rounded-xl px-3 py-2 text-[13px] font-semibold leading-tight transition-colors ${
-                      active
-                        ? "bg-ds-sidebar-hover-strong text-ds-sidebar-fg shadow-sm"
-                        : "text-ds-sidebar-muted hover:bg-ds-sidebar-hover hover:text-ds-sidebar-fg"
-                    }`}
+                    className={cn(
+                      "group flex items-center gap-3 rounded-xl px-3 py-2 text-[13px] font-semibold leading-tight outline-none transition-colors focus-visible:ring-2 focus-visible:ring-[var(--ds-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--ds-sidebar)]",
+                      active ? "text-ds-sidebar-fg" : "text-ds-sidebar-muted hover:text-ds-sidebar-fg",
+                    )}
                   >
-                    <span
-                      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
-                        active
-                          ? "bg-ds-sidebar-well text-ds-accent shadow-sm ring-1 ring-[color-mix(in_srgb,var(--ds-accent)_26%,transparent)]"
-                          : "bg-ds-sidebar-well-muted text-ds-sidebar-muted group-hover:text-ds-sidebar-fg"
-                      }`}
-                    >
+                    <span className={cn(navIconTile(active), "h-8 w-8")}>
                       <Icon className="h-[18px] w-[18px]" strokeWidth={2} aria-hidden />
                     </span>
                     <span className="min-w-0 flex-1 truncate">{item.label}</span>
@@ -269,9 +253,9 @@ export function AppSideNav() {
               <Link
                 href="/settings"
                 onClick={() => closeSidebar()}
-                className="mb-2 flex w-full items-center justify-center gap-2 rounded-lg border border-ds-sidebar-border bg-ds-sidebar-well px-3 py-1.5 text-sm font-semibold text-ds-sidebar-fg transition-colors hover:bg-ds-sidebar-hover-strong"
+                className="group mb-2 flex w-full items-center justify-center gap-2 rounded-lg border border-ds-sidebar-border bg-white px-3 py-1.5 text-sm font-semibold text-zinc-900 shadow-sm transition-transform duration-200 ease-out motion-safe:hover:scale-[1.02] dark:bg-white"
               >
-                <Settings className="h-4 w-4" aria-hidden />
+                <Settings className="h-4 w-4 shrink-0" strokeWidth={2} aria-hidden />
                 Settings
               </Link>
             ) : null}
@@ -287,6 +271,6 @@ export function AppSideNav() {
           </div>
         </div>
       </aside>
-    </>
+    </div>
   );
 }
