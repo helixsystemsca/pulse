@@ -311,6 +311,15 @@ export function WorkersApp() {
   const [listLoading, setListLoading] = useState(false);
   const [listError, setListError] = useState<string | null>(null);
 
+  /** Client-side filters for roster table columns (applied after API search `q`). */
+  const [filterColName, setFilterColName] = useState("");
+  const [filterColRole, setFilterColRole] = useState("");
+  const [filterColShift, setFilterColShift] = useState("");
+  const [filterColStatus, setFilterColStatus] = useState<"" | "invited" | "active" | "inactive">("");
+  const [filterColLastActive, setFilterColLastActive] = useState<"" | "never" | "7d" | "30d" | "90d">("");
+  const [filterColGeo, setFilterColGeo] = useState("");
+  const [filterColUa, setFilterColUa] = useState("");
+
   const [fullSettings, setFullSettings] = useState<WorkersSettings>({});
 
   const delegatedRoleTargetsForMe = useMemo(() => {
@@ -649,17 +658,101 @@ export function WorkersApp() {
     [apiCompany],
   );
 
+  const filteredList = useMemo(() => {
+    return list.filter((row) => {
+      if (filterColName.trim()) {
+        const needle = filterColName.trim().toLowerCase();
+        const nm = (row.full_name ?? "").toLowerCase();
+        const em = row.email.toLowerCase();
+        if (!nm.includes(needle) && !em.includes(needle)) return false;
+      }
+      if (filterColRole) {
+        const roles = row.roles?.length ? row.roles : [row.role];
+        if (!roles.includes(filterColRole)) return false;
+      }
+      if (filterColShift) {
+        if (filterColShift === "__none__") {
+          if ((row.shift ?? "").trim()) return false;
+        } else if ((row.shift ?? "") !== filterColShift) {
+          return false;
+        }
+      }
+      if (filterColStatus) {
+        const display =
+          (row.account_status ?? "active") === "invited"
+            ? "invited"
+            : row.is_active
+              ? "active"
+              : "inactive";
+        if (display !== filterColStatus) return false;
+      }
+      if (filterColLastActive) {
+        if (filterColLastActive === "never") {
+          if (row.last_active_at) return false;
+        } else {
+          const days = filterColLastActive === "7d" ? 7 : filterColLastActive === "30d" ? 30 : 90;
+          const cutoff = Date.now() - days * 86400000;
+          const ts = row.last_active_at ? Date.parse(row.last_active_at) : 0;
+          if (!row.last_active_at || Number.isNaN(ts) || ts < cutoff) return false;
+        }
+      }
+      if (filterColGeo.trim()) {
+        const needle = filterColGeo.trim().toLowerCase();
+        const place = formatLoginPlace(row).toLowerCase();
+        if (place === "—") return false;
+        if (!place.includes(needle)) return false;
+      }
+      if (filterColUa.trim()) {
+        const needle = filterColUa.trim().toLowerCase();
+        const ua = (row.last_login_user_agent ?? "").toLowerCase();
+        if (!ua.includes(needle)) return false;
+      }
+      return true;
+    });
+  }, [
+    list,
+    filterColName,
+    filterColRole,
+    filterColShift,
+    filterColStatus,
+    filterColLastActive,
+    filterColGeo,
+    filterColUa,
+  ]);
+
+  const rosterColumnFiltersActive = useMemo(
+    () =>
+      Boolean(
+        filterColName.trim() ||
+          filterColRole ||
+          filterColShift ||
+          filterColStatus ||
+          filterColLastActive ||
+          filterColGeo.trim() ||
+          filterColUa.trim(),
+      ),
+    [
+      filterColName,
+      filterColRole,
+      filterColShift,
+      filterColStatus,
+      filterColLastActive,
+      filterColGeo,
+      filterColUa,
+    ],
+  );
+
   const grouped = useMemo(() => {
     const order = ["company_admin", "manager", "supervisor", "lead", "worker"] as const;
     const m = new Map<string, WorkerRow[]>();
     for (const r of order) m.set(r, []);
-    for (const w of list) {
+    for (const w of filteredList) {
       const k = primaryWorkerGroupKey(w);
       if (m.has(k)) m.get(k)!.push(w);
       else m.get("worker")!.push(w);
     }
     return order.map((role) => ({ role, items: m.get(role) ?? [] }));
-  }, [list]);
+  }, [filteredList]);
 
   const canDeleteInvitedFromList = isTenantFullAdmin || isSystemAdmin;
 
@@ -1543,15 +1636,34 @@ export function WorkersApp() {
           </div>
 
           <div className="lg:col-span-8 xl:col-span-9">
-            <div className="relative mb-4">
-              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-ds-muted" />
-              <input
-                type="search"
-                placeholder="Search workers or roles…"
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-                className={`${dsInputClass} py-2 pl-9 pr-3`}
-              />
+            <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div className="relative min-w-0 flex-1">
+                <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-ds-muted" />
+                <input
+                  type="search"
+                  placeholder="Search workers or roles…"
+                  value={q}
+                  onChange={(e) => setQ(e.target.value)}
+                  className={`${dsInputClass} py-2 pl-9 pr-3`}
+                />
+              </div>
+              {rosterColumnFiltersActive ? (
+                <button
+                  type="button"
+                  className="shrink-0 text-xs font-semibold text-ds-muted underline-offset-2 hover:text-ds-foreground hover:underline"
+                  onClick={() => {
+                    setFilterColName("");
+                    setFilterColRole("");
+                    setFilterColShift("");
+                    setFilterColStatus("");
+                    setFilterColLastActive("");
+                    setFilterColGeo("");
+                    setFilterColUa("");
+                  }}
+                >
+                  Clear column filters
+                </button>
+              ) : null}
             </div>
 
             {listLoading ? (
@@ -1561,42 +1673,172 @@ export function WorkersApp() {
               </div>
             ) : listError ? (
               <p className="text-sm text-ds-danger">{listError}</p>
+            ) : list.length > 0 && filteredList.length === 0 ? (
+              <p className="rounded-lg border border-ds-border bg-ds-primary px-4 py-10 text-center text-sm text-ds-muted">
+                No one matches the current column filters. Adjust filters above or use{" "}
+                <button
+                  type="button"
+                  className="font-semibold text-ds-foreground underline-offset-2 hover:underline"
+                  onClick={() => {
+                    setFilterColName("");
+                    setFilterColRole("");
+                    setFilterColShift("");
+                    setFilterColStatus("");
+                    setFilterColLastActive("");
+                    setFilterColGeo("");
+                    setFilterColUa("");
+                  }}
+                >
+                  Clear column filters
+                </button>
+                .
+              </p>
             ) : (
-              <div className="space-y-5">
-                {grouped.map(({ role, items }) =>
-                  items.length === 0 ? null : (
-                    <Card key={role} variant="secondary" padding="none" className="overflow-hidden shadow-sm">
-                      <div className="app-table-head-row px-4 py-2.5">
-                        <p className="text-xs font-bold uppercase tracking-wide text-ds-muted">
-                          {roleGroupTitle(role)} ({items.length})
-                        </p>
-                      </div>
-                      <div className="overflow-x-auto">
-                        <table className="min-w-full border-collapse text-left text-sm">
-                          <thead>
-                            <tr className={dataTableHeadRowClass}>
-                              <th className="px-4 py-3">Name</th>
-                              <th className="px-4 py-3">Role</th>
-                              <th className="px-4 py-3">Shift</th>
-                              <th className="px-4 py-3">Status</th>
-                              <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-ds-muted">
-                                Last active
+              <Card variant="secondary" padding="none" className="overflow-hidden shadow-sm">
+                <div className="overflow-x-auto">
+                  <table className="min-w-full border-collapse text-left text-sm">
+                    <thead>
+                      <tr className={dataTableHeadRowClass}>
+                              <th className="min-w-[12rem] px-2 py-2 align-bottom lg:min-w-[14rem]">
+                                <label className="mb-1 block text-[10px] font-bold uppercase tracking-wide text-ds-muted">
+                                  Name
+                                </label>
+                                <input
+                                  type="search"
+                                  value={filterColName}
+                                  onChange={(e) => setFilterColName(e.target.value)}
+                                  placeholder="Filter…"
+                                  className={cn(dsInputClass, "py-1.5 text-xs")}
+                                  aria-label="Filter by name or email"
+                                  autoComplete="off"
+                                />
                               </th>
-                              <th className="hidden px-4 py-3 text-xs font-semibold uppercase tracking-wide text-ds-muted lg:table-cell">
-                                Last sign-in (geo)
+                              <th className="min-w-[7rem] px-2 py-2 align-bottom">
+                                <label className="mb-1 block text-[10px] font-bold uppercase tracking-wide text-ds-muted">
+                                  Role
+                                </label>
+                                <select
+                                  value={filterColRole}
+                                  onChange={(e) => setFilterColRole(e.target.value)}
+                                  className={cn(dsSelectClass, "py-1.5 text-xs")}
+                                  aria-label="Filter by role"
+                                >
+                                  <option value="">Any</option>
+                                  {(["company_admin", "manager", "supervisor", "lead", "worker"] as const).map((rk) => (
+                                    <option key={rk} value={rk}>
+                                      {humanizeRole(rk)}
+                                    </option>
+                                  ))}
+                                </select>
                               </th>
-                              <th className="hidden px-4 py-3 text-xs font-semibold uppercase tracking-wide text-ds-muted lg:table-cell">
-                                Browser / device
+                              <th className="min-w-[7rem] px-2 py-2 align-bottom">
+                                <label className="mb-1 block text-[10px] font-bold uppercase tracking-wide text-ds-muted">
+                                  Shift
+                                </label>
+                                <select
+                                  value={filterColShift}
+                                  onChange={(e) => setFilterColShift(e.target.value)}
+                                  className={cn(dsSelectClass, "py-1.5 text-xs")}
+                                  aria-label="Filter by shift"
+                                >
+                                  <option value="">Any</option>
+                                  <option value="__none__">None / —</option>
+                                  {(fullSettings.shifts ?? []).map((s) => (
+                                    <option key={s.key} value={s.key}>
+                                      {s.label || s.key}
+                                    </option>
+                                  ))}
+                                </select>
                               </th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {items.map((row) => (
+                              <th className="min-w-[7rem] px-2 py-2 align-bottom">
+                                <label className="mb-1 block text-[10px] font-bold uppercase tracking-wide text-ds-muted">
+                                  Status
+                                </label>
+                                <select
+                                  value={filterColStatus}
+                                  onChange={(e) =>
+                                    setFilterColStatus(e.target.value as typeof filterColStatus)
+                                  }
+                                  className={cn(dsSelectClass, "py-1.5 text-xs")}
+                                  aria-label="Filter by status"
+                                >
+                                  <option value="">Any</option>
+                                  <option value="invited">Invited</option>
+                                  <option value="active">Active</option>
+                                  <option value="inactive">Inactive</option>
+                                </select>
+                              </th>
+                              <th className="min-w-[9rem] px-2 py-2 align-bottom">
+                                <label className="mb-1 block text-[10px] font-bold uppercase tracking-wide text-ds-muted">
+                                  Last active
+                                </label>
+                                <select
+                                  value={filterColLastActive}
+                                  onChange={(e) =>
+                                    setFilterColLastActive(e.target.value as typeof filterColLastActive)
+                                  }
+                                  className={cn(dsSelectClass, "max-w-full py-1.5 text-xs")}
+                                  aria-label="Filter by last active time"
+                                >
+                                  <option value="">Any</option>
+                                  <option value="never">Never</option>
+                                  <option value="7d">Last 7 days</option>
+                                  <option value="30d">Last 30 days</option>
+                                  <option value="90d">Last 90 days</option>
+                                </select>
+                              </th>
+                              <th className="hidden min-w-[8rem] px-2 py-2 align-bottom lg:table-cell">
+                                <label className="mb-1 block text-[10px] font-bold uppercase tracking-wide text-ds-muted">
+                                  Last sign-in (geo)
+                                </label>
+                                <input
+                                  type="search"
+                                  value={filterColGeo}
+                                  onChange={(e) => setFilterColGeo(e.target.value)}
+                                  placeholder="City, region…"
+                                  className={cn(dsInputClass, "py-1.5 text-xs")}
+                                  aria-label="Filter by last sign-in location"
+                                  autoComplete="off"
+                                />
+                              </th>
+                              <th className="hidden min-w-[8rem] px-2 py-2 align-bottom lg:table-cell">
+                                <label className="mb-1 block text-[10px] font-bold uppercase tracking-wide text-ds-muted">
+                                  Browser / device
+                                </label>
+                                <input
+                                  type="search"
+                                  value={filterColUa}
+                                  onChange={(e) => setFilterColUa(e.target.value)}
+                                  placeholder="Contains…"
+                                  className={cn(dsInputClass, "py-1.5 text-xs")}
+                                  aria-label="Filter by browser or device"
+                                  autoComplete="off"
+                                />
+                              </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {grouped.flatMap(({ role, items }) =>
+                        items.length === 0
+                          ? []
+                          : [
                               <tr
-                                key={row.id}
-                                className={`${dataTableBodyRow()} cursor-pointer`}
-                                onClick={() => setProfileId(row.id)}
+                                key={`grp-${role}`}
+                                className="border-b border-ds-border bg-ds-surface-secondary/80"
                               >
+                                <td
+                                  colSpan={7}
+                                  className="px-4 py-2.5 text-xs font-bold uppercase tracking-wide text-ds-muted"
+                                >
+                                  {roleGroupTitle(role)} ({items.length})
+                                </td>
+                              </tr>,
+                              ...items.map((row) => (
+                                <tr
+                                  key={row.id}
+                                  className={`${dataTableBodyRow()} cursor-pointer`}
+                                  onClick={() => setProfileId(row.id)}
+                                >
                                 <td className="px-4 py-3">
                                   <div className="flex items-center justify-between gap-3">
                                     <div className="flex min-w-0 items-center gap-2.5">
@@ -1697,14 +1939,13 @@ export function WorkersApp() {
                                   </span>
                                 </td>
                               </tr>
-                            ))}
+                              )),
+                                  ],
+                            )}
                           </tbody>
                         </table>
-                      </div>
-                    </Card>
-                  ),
-                )}
-              </div>
+                </div>
+              </Card>
             )}
           </div>
         </div>
@@ -1713,7 +1954,7 @@ export function WorkersApp() {
       <PulseDrawer
         open={createOpen}
         title="Add an employee"
-        subtitle="Generate a join link, send an invite email, or (company admins) add a roster profile without activation yet."
+        subtitle="Generate a join link or send an invite for pending activation. Company admins can add an active roster profile (no invite); the person will need a password to sign in."
         onClose={() => {
           if (createBusy) return;
           setCreateModalBanner(null);

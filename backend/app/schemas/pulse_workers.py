@@ -134,7 +134,7 @@ class WorkerCreateIn(BaseModel):
     training: Optional[list[WorkerTrainingIn]] = None
     #: When false, a join token is still issued but no invite email is sent (share link manually).
     send_email: bool = True
-    #: Company admins only: create roster + HR profile without invite token/email (no activation until an invite is issued later).
+    #: Company / tenant admins only: add roster + HR as an **active** account (no invite; use invite/link flows for pending activation).
     roster_profile_only: bool = False
 
     @field_validator("supervisor_id", mode="before")

@@ -823,13 +823,15 @@ async def create_worker(
         if existing:
             if str(existing.company_id) != cid:
                 raise HTTPException(status_code=400, detail="Email already in use")
-            if existing.account_status == UserAccountStatus.active and existing.hashed_password:
+            if existing.hashed_password:
                 raise HTTPException(status_code=400, detail="Email already in use")
             user = existing
             user.roles = [role_enum.value]
             user.operational_role = default_operational_role_for_invite_role(role_enum)
             user.full_name = body.full_name
-            user.account_status = UserAccountStatus.invited
+            user.account_status = UserAccountStatus.active
+            user.invite_token_hash = None
+            user.invite_expires_at = None
             user.hashed_password = None
             user.is_active = True
             user.created_by = actor.id
@@ -842,7 +844,7 @@ async def create_worker(
                 roles=[role_enum.value],
                 operational_role=default_operational_role_for_invite_role(role_enum),
                 created_by=actor.id,
-                account_status=UserAccountStatus.invited,
+                account_status=UserAccountStatus.active,
                 invite_token_hash=None,
                 invite_expires_at=None,
                 is_active=True,
@@ -864,7 +866,7 @@ async def create_worker(
             worker=detail,
             invite_link_path="",
             invite_email_sent=None,
-            message="Profile created — use Join link on the roster row when they are ready to activate.",
+            message="Profile created — user is active on the roster. They still need a password to sign in (send an invite or use password recovery when email is configured).",
         )
 
     exp = datetime.now(timezone.utc) + timedelta(hours=settings.system_invite_expire_hours)
