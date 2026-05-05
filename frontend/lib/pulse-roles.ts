@@ -3,7 +3,7 @@
  */
 import type { PulseAuthSession } from "@/lib/pulse-session";
 
-const ROLE_PRECEDENCE = ["system_admin", "company_admin", "manager", "supervisor", "lead", "worker"] as const;
+const ROLE_PRECEDENCE = ["system_admin", "company_admin", "manager", "supervisor", "lead", "worker", "demo_viewer"] as const;
 
 export function roleListFromPrincipal(p: { roles?: string[]; role?: string } | null | undefined): string[] {
   if (!p) return [];
@@ -102,7 +102,7 @@ export function sessionRoleDisplayLabel(
   return humanizeRole(sessionPrimaryRole(session));
 }
 
-const DISPLAY_ORDER = ["company_admin", "manager", "supervisor", "lead", "worker"];
+const DISPLAY_ORDER = ["company_admin", "manager", "supervisor", "lead", "worker", "demo_viewer"];
 
 export function sortRolesForDisplay(roles: string[]): string[] {
   return [...roles].sort((a, b) => DISPLAY_ORDER.indexOf(a) - DISPLAY_ORDER.indexOf(b));

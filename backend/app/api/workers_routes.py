@@ -192,6 +192,7 @@ _ROSTER_ROLES = (
     UserRole.supervisor,
     UserRole.lead,
     UserRole.worker,
+    UserRole.demo_viewer,
 )
 
 _ROSTER_ROLE_VALUES = {r.value for r in _ROSTER_ROLES}
@@ -726,7 +727,7 @@ async def get_worker(db: Db, _: RosterPageUser, cid: CompanyId, user_id: str) ->
 
 
 def _company_admin_creatable_roles() -> frozenset[str]:
-    return frozenset({"worker", "lead", "supervisor", "manager"})
+    return frozenset({"worker", "lead", "supervisor", "manager", "demo_viewer"})
 
 
 def _manager_creatable_roles() -> frozenset[str]:

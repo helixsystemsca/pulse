@@ -133,7 +133,7 @@ type CreateModalBanner =
   | { kind: "profile"; serverMessage: string }
   | { kind: "error"; message: string };
 
-const PROFILE_ROLE_OPTIONS = ["worker", "lead", "supervisor", "manager"] as const;
+const PROFILE_ROLE_OPTIONS = ["worker", "lead", "supervisor", "manager", "demo_viewer"] as const;
 
 const EMPLOYMENT_TYPE_KEYS = ["full_time", "regular_part_time", "part_time"] as const;
 type EmploymentTypeKey = (typeof EMPLOYMENT_TYPE_KEYS)[number] | "";
@@ -2178,6 +2178,7 @@ export function WorkersApp() {
                 <>
                   <option value="supervisor">Supervisor</option>
                   <option value="manager">Manager</option>
+                  <option value="demo_viewer">Demo viewer</option>
                 </>
               )}
             </select>
