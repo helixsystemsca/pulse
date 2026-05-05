@@ -72,13 +72,22 @@ function toDraftFromProcedure(row: ProcedureRow): DraftStep[] {
   }));
 }
 
-function StepImagePreview({ imageUrl }: { imageUrl: string | null }) {
+function StepImagePreview({ imageUrl, imageClassName }: { imageUrl: string | null; imageClassName?: string }) {
   const { src, loading, failed } = useResolvedProtectedAssetSrc(imageUrl);
   if (!imageUrl) return null;
   if (loading) return <Loader2 className="h-6 w-6 animate-spin text-ds-muted" aria-hidden />;
   if (failed || !src) return <p className="text-xs text-ds-danger">Could not load image</p>;
   // eslint-disable-next-line @next/next/no-img-element
-  return <img src={src} alt="" className="mt-2 max-h-40 w-full rounded-md border border-ds-border object-contain" />;
+  return (
+    <img
+      src={src}
+      alt=""
+      className={cn(
+        "mt-3 max-h-40 w-full rounded-md border border-ds-border object-contain",
+        imageClassName,
+      )}
+    />
+  );
 }
 
 export function ProceduresApp() {
@@ -101,8 +110,6 @@ export function ProceduresApp() {
   const [editCreatorName, setEditCreatorName] = useState("");
   const [ackOpen, setAckOpen] = useState(false);
   const [ackForId, setAckForId] = useState<string | null>(null);
-  /** Step index when reading a not-yet-acknowledged procedure (paginated); modal opens after Next on the last step. */
-  const [readerStep, setReaderStep] = useState(0);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [assignOpen, setAssignOpen] = useState(false);
@@ -172,7 +179,6 @@ export function ProceduresApp() {
       setEditCreatorName("");
       setAckOpen(false);
       setAckForId(null);
-      setReaderStep(0);
       setEditing(false);
       return;
     }
@@ -186,7 +192,6 @@ export function ProceduresApp() {
 
   useEffect(() => {
     if (!selected?.id) return;
-    setReaderStep(0);
     setAckOpen(false);
   }, [selected?.id]);
 
@@ -673,7 +678,13 @@ export function ProceduresApp() {
         </div>
       ) : null}
 
-      <div className={isCreating ? "grid gap-6 lg:grid-cols-2" : "space-y-6"}>
+      <div
+        className={cn(
+          isCreating && "grid gap-6 lg:grid-cols-2",
+          !isCreating && selected && "flex flex-col gap-6 lg:flex-row lg:items-stretch",
+          !isCreating && !selected && "space-y-6",
+        )}
+      >
         {isCreating ? (
           <section className="rounded-xl border border-ds-border bg-ds-primary p-6 shadow-[var(--ds-shadow-card)]">
             <h2 className="text-base font-semibold text-ds-foreground" id={`${formId}-new-title`}>
@@ -742,69 +753,13 @@ export function ProceduresApp() {
           </section>
         ) : null}
 
-        <section className="overflow-hidden rounded-xl border border-ds-border bg-ds-primary shadow-[var(--ds-shadow-card)]">
-          <div className="space-y-2 border-b border-ds-border bg-ds-surface-secondary px-4 py-2.5">
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-ds-foreground">Library</h2>
-            <div>
-              <label className="block text-[10px] font-semibold uppercase tracking-wide text-ds-muted" htmlFor={`${formId}-lib-kw`}>
-                Filter by internal keyword
-              </label>
-              <input
-                id={`${formId}-lib-kw`}
-                type="search"
-                className="mt-1 w-full rounded-md border border-ds-border bg-ds-primary px-2.5 py-1.5 text-sm text-ds-foreground dark:bg-ds-secondary"
-                placeholder="e.g. Tile or Pool Shutdown (comma = any match)"
-                value={libraryKeyword}
-                onChange={(e) => setLibraryKeyword(e.target.value)}
-                autoComplete="off"
-              />
-              <p className="mt-0.5 text-[10px] text-ds-muted">Uses saved procedure tags only — not step text.</p>
-            </div>
-          </div>
-          <div className={`p-6 ${isCreating ? "pointer-events-none opacity-50" : ""}`} aria-hidden={isCreating}>
-          {loading ? (
-            <p className="text-sm text-ds-muted">Loading…</p>
-          ) : rows.length === 0 ? (
-            <p className="text-sm text-ds-muted">No procedures yet.</p>
-          ) : (
-            <ul className="max-h-[min(50vh,24rem)] divide-y divide-ds-border overflow-auto">
-              {rows.map((r) => (
-                <li key={r.id}>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedId(r.id)}
-                    className={`flex w-full items-start justify-between gap-3 rounded-lg px-3 py-3 text-left text-sm transition-all ${
-                      selectedId === r.id
-                        ? "bg-ds-secondary text-ds-foreground"
-                        : "hover:bg-ds-secondary/60 hover:shadow-sm"
-                    }`}
-                  >
-                    <div className="min-w-0">
-                      <span className="font-medium">{r.title}</span>
-                      <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] font-semibold text-ds-muted">
-                        <span>By {r.created_by_name?.trim() || "—"}</span>
-                        {r.review_required ? (
-                          <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-amber-900">
-                            Needs review
-                          </span>
-                        ) : r.reviewed_at ? (
-                          <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-emerald-900">
-                            Reviewed
-                          </span>
-                        ) : null}
-                      </div>
-                    </div>
-                    <span className="shrink-0 text-xs text-ds-muted">{r.steps.length} steps</span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-          </div>
-        </section>
-
         {!isCreating && selected ? (
-          <section className="rounded-xl border border-ds-border bg-ds-primary p-6 shadow-[var(--ds-shadow-card)]">
+          <section
+            className={cn(
+              "min-w-0 rounded-xl border border-ds-border bg-ds-primary p-6 shadow-[var(--ds-shadow-card)]",
+              "flex-1 lg:min-h-0",
+            )}
+          >
             <div className="flex flex-wrap items-start justify-between gap-3">
               <h2 className="text-base font-semibold text-ds-foreground">{editing ? "Edit" : "Procedure"}</h2>
               {canEditSelected ? (
@@ -924,135 +879,162 @@ export function ProceduresApp() {
                   </button>
                 </div>
               </>
-            ) : userId && !hasAcknowledgedProcedure(userId, selected.id) ? (
-              <div className="mt-4 space-y-4">
+            ) : (
+              <div className="mt-4 min-w-0 space-y-5">
                 <div className="rounded-md border border-ds-border bg-ds-secondary/40 p-3">
                   <p className="text-sm font-semibold text-ds-foreground">Title</p>
                   <p className="mt-1 text-sm text-ds-muted">{selected.title}</p>
                 </div>
                 <p className="text-xs font-semibold uppercase tracking-wide text-ds-muted">
-                  Step {readerStep + 1} of {selected.steps.length}
+                  {selected.steps.length} {selected.steps.length === 1 ? "step" : "steps"}
                 </p>
-                {(() => {
-                  const s = selected.steps[readerStep];
-                  if (s === undefined) return null;
-                  const idx = readerStep;
-                  return (
-                    <ol className="space-y-3">
-                      <li className="rounded-md border border-ds-border bg-ds-primary p-4">
-                        <div className="flex items-start gap-3">
-                          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-ds-border bg-ds-secondary text-xs font-bold text-ds-foreground">
-                            {idx + 1}
-                          </span>
-                          <div className="min-w-0 flex-1">
-                            <p className="whitespace-pre-wrap text-sm text-ds-foreground">{procedureStepDisplayText(s)}</p>
-                            {typeof s !== "string" && (s.recommended_workers || (s.tools?.length ?? 0) > 0) ? (
-                              <div className="mt-2 flex flex-wrap gap-2 text-xs text-ds-muted">
-                                {s.recommended_workers ? (
-                                  <span className="rounded-full border border-ds-border bg-ds-secondary/60 px-2 py-0.5 font-semibold">
-                                    Recommended workers: {s.recommended_workers}
-                                  </span>
-                                ) : null}
-                                {(s.tools ?? []).map((t) => (
-                                  <span
-                                    key={t}
-                                    className="rounded-full border border-ds-border bg-ds-secondary/60 px-2 py-0.5 font-semibold"
-                                  >
-                                    {t}
-                                  </span>
-                                ))}
-                              </div>
-                            ) : null}
-                            {typeof s !== "string" ? <StepImagePreview imageUrl={s.image_url ?? null} /> : null}
-                          </div>
+                <ol className="space-y-6">
+                  {selected.steps.map((s, idx) => (
+                    <li
+                      key={idx}
+                      id={`procedure-step-${selected.id}-${idx + 1}`}
+                      className="scroll-mt-28 rounded-lg border border-ds-border bg-ds-primary p-5 shadow-sm"
+                    >
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:gap-4">
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-ds-border bg-ds-secondary text-sm font-bold text-ds-foreground">
+                          {idx + 1}
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <p className="whitespace-pre-wrap text-sm leading-relaxed text-ds-foreground">
+                            {procedureStepDisplayText(s)}
+                          </p>
+                          {typeof s !== "string" && (s.recommended_workers || (s.tools?.length ?? 0) > 0) ? (
+                            <div className="mt-3 flex flex-wrap gap-2 text-xs text-ds-muted">
+                              {s.recommended_workers ? (
+                                <span className="rounded-full border border-ds-border bg-ds-secondary/60 px-2 py-0.5 font-semibold">
+                                  Recommended workers: {s.recommended_workers}
+                                </span>
+                              ) : null}
+                              {(s.tools ?? []).map((t) => (
+                                <span
+                                  key={t}
+                                  className="rounded-full border border-ds-border bg-ds-secondary/60 px-2 py-0.5 font-semibold"
+                                >
+                                  {t}
+                                </span>
+                              ))}
+                            </div>
+                          ) : null}
+                          {typeof s !== "string" ? (
+                            <StepImagePreview
+                              imageUrl={s.image_url ?? null}
+                              imageClassName="max-h-[min(28rem,70vh)] w-full max-w-3xl"
+                            />
+                          ) : null}
                         </div>
-                      </li>
-                    </ol>
-                  );
-                })()}
-                <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-ds-border pt-4">
+                      </div>
+                    </li>
+                  ))}
+                </ol>
+                <div className="flex flex-wrap items-center justify-between gap-3 border-t border-ds-border pt-5">
                   <button
                     type="button"
                     onClick={() => setSelectedId(null)}
                     className="rounded-md border border-ds-border px-4 py-2 text-sm font-semibold text-ds-foreground hover:bg-ds-secondary"
                   >
-                    Close
+                    Back to library
                   </button>
-                  <div className="flex flex-wrap gap-2">
+                  {userId && !hasAcknowledgedProcedure(userId, selected.id) ? (
                     <button
                       type="button"
-                      disabled={readerStep <= 0}
-                      onClick={() => setReaderStep((n) => Math.max(0, n - 1))}
-                      className="rounded-md border border-ds-border px-4 py-2 text-sm font-semibold text-ds-foreground hover:bg-ds-secondary disabled:cursor-not-allowed disabled:opacity-40"
-                    >
-                      Back
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (readerStep < selected.steps.length - 1) {
-                          setReaderStep((n) => Math.min(selected.steps.length - 1, n + 1));
-                        } else {
-                          setAckOpen(true);
-                        }
-                      }}
+                      onClick={() => setAckOpen(true)}
                       className="rounded-md bg-ds-accent px-4 py-2 text-sm font-semibold text-ds-accent-foreground shadow-sm hover:bg-ds-accent/90"
                     >
-                      Next
+                      Continue to acknowledge
                     </button>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="mt-4 space-y-4">
-                <div className="rounded-md border border-ds-border bg-ds-secondary/40 p-3">
-                  <p className="text-sm font-semibold text-ds-foreground">Title</p>
-                  <p className="mt-1 text-sm text-ds-muted">{selected.title}</p>
-                </div>
-                <ol className="space-y-3">
-                  {selected.steps.map((s, idx) => {
-                    return (
-                      <li key={idx} className="rounded-md border border-ds-border bg-ds-primary p-4">
-                        <div className="flex items-start gap-3">
-                          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-ds-border bg-ds-secondary text-xs font-bold text-ds-foreground">
-                            {idx + 1}
-                          </span>
-                          <div className="min-w-0 flex-1">
-                            <p className="whitespace-pre-wrap text-sm text-ds-foreground">{procedureStepDisplayText(s)}</p>
-                            {(typeof s !== "string" && (s.recommended_workers || (s.tools?.length ?? 0) > 0)) ? (
-                              <div className="mt-2 flex flex-wrap gap-2 text-xs text-ds-muted">
-                                {s.recommended_workers ? (
-                                  <span className="rounded-full border border-ds-border bg-ds-secondary/60 px-2 py-0.5 font-semibold">
-                                    Recommended workers: {s.recommended_workers}
-                                  </span>
-                                ) : null}
-                                {(s.tools ?? []).map((t) => (
-                                  <span key={t} className="rounded-full border border-ds-border bg-ds-secondary/60 px-2 py-0.5 font-semibold">
-                                    {t}
-                                  </span>
-                                ))}
-                              </div>
-                            ) : null}
-                            {typeof s !== "string" ? <StepImagePreview imageUrl={s.image_url ?? null} /> : null}
-                          </div>
-                        </div>
-                      </li>
-                    );
-                  })}
-                </ol>
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setSelectedId(null)}
-                    className="rounded-md border border-ds-border px-4 py-2 text-sm font-semibold text-ds-foreground hover:bg-ds-secondary"
-                  >
-                    Close
-                  </button>
+                  ) : null}
                 </div>
               </div>
             )}
           </section>
         ) : null}
+
+        <section
+            className={cn(
+              "overflow-hidden rounded-xl border border-ds-border bg-ds-primary shadow-[var(--ds-shadow-card)]",
+              selected && "lg:sticky lg:top-20 lg:flex lg:w-72 lg:shrink-0 lg:flex-col lg:self-start xl:w-80",
+            )}
+          >
+            <div className="space-y-2 border-b border-ds-border bg-ds-surface-secondary px-4 py-2.5">
+              <h2 className="text-sm font-semibold uppercase tracking-wide text-ds-foreground">Library</h2>
+              <div>
+                <label className="block text-[10px] font-semibold uppercase tracking-wide text-ds-muted" htmlFor={`${formId}-lib-kw`}>
+                  Filter by internal keyword
+                </label>
+                <input
+                  id={`${formId}-lib-kw`}
+                  type="search"
+                  className="mt-1 w-full rounded-md border border-ds-border bg-ds-primary px-2.5 py-1.5 text-sm text-ds-foreground dark:bg-ds-secondary"
+                  placeholder="e.g. Tile or Pool Shutdown (comma = any match)"
+                  value={libraryKeyword}
+                  onChange={(e) => setLibraryKeyword(e.target.value)}
+                  autoComplete="off"
+                />
+                <p className="mt-0.5 text-[10px] text-ds-muted">Uses saved procedure tags only — not step text.</p>
+              </div>
+            </div>
+            <div
+              className={cn(
+                "flex flex-col",
+                selected && "lg:min-h-0 lg:flex-1",
+                isCreating && "pointer-events-none opacity-50",
+              )}
+              aria-hidden={isCreating}
+            >
+              <div className={cn("p-4", selected && "lg:min-h-0 lg:flex-1 lg:overflow-hidden lg:p-3")}>
+                {loading ? (
+                  <p className="text-sm text-ds-muted">Loading…</p>
+                ) : rows.length === 0 ? (
+                  <p className="text-sm text-ds-muted">No procedures yet.</p>
+                ) : (
+                  <ul
+                    className={cn(
+                      "divide-y divide-ds-border overflow-auto",
+                      selected
+                        ? "max-h-[min(50vh,24rem)] lg:max-h-[calc(100vh-14rem)]"
+                        : "max-h-[min(50vh,24rem)]",
+                    )}
+                  >
+                    {rows.map((r) => (
+                      <li key={r.id}>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedId(r.id)}
+                          className={`flex w-full items-start justify-between gap-2 rounded-lg px-2 py-2.5 text-left text-sm transition-all ${
+                            selectedId === r.id
+                              ? "bg-ds-secondary text-ds-foreground"
+                              : "hover:bg-ds-secondary/60 hover:shadow-sm"
+                          }`}
+                        >
+                          <div className="min-w-0">
+                            <span className={`font-medium ${selected ? "line-clamp-2" : ""}`}>{r.title}</span>
+                            <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[10px] font-semibold text-ds-muted">
+                              <span className={selected ? "line-clamp-1" : ""}>By {r.created_by_name?.trim() || "—"}</span>
+                              {r.review_required ? (
+                                <span className="rounded-full border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-amber-900">
+                                  Needs review
+                                </span>
+                              ) : r.reviewed_at ? (
+                                <span className="rounded-full border border-emerald-200 bg-emerald-50 px-1.5 py-0.5 text-emerald-900">
+                                  Reviewed
+                                </span>
+                              ) : null}
+                            </div>
+                          </div>
+                          <span className="shrink-0 text-[11px] text-ds-muted">{r.steps.length}</span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
+          </section>
       </div>
 
       {ackOpen && !editing && selected && ackForId === selected.id ? (
