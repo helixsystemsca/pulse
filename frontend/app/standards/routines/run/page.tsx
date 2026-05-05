@@ -1,11 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { Suspense, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { RoutineRun } from "@/components/routines/RoutineRun";
 import { Card } from "@/components/pulse/Card";
 
-export default function RoutineRunPage() {
+function RoutineRunPageInner() {
   const sp = useSearchParams();
   const shiftId = sp.get("shift_id");
 
@@ -33,6 +33,20 @@ export default function RoutineRunPage() {
       </div>
       <RoutineRun shiftId={shiftId} onCompleted={() => setDone(true)} />
     </div>
+  );
+}
+
+export default function RoutineRunPage() {
+  return (
+    <Suspense
+      fallback={
+        <Card padding="md" className="border-dashed border-slate-200/90 dark:border-ds-border">
+          <p className="text-sm text-ds-muted">Loading…</p>
+        </Card>
+      }
+    >
+      <RoutineRunPageInner />
+    </Suspense>
   );
 }
 

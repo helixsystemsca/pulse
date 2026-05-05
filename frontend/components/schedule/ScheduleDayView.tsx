@@ -4,6 +4,7 @@ import { AlertTriangle, ArrowLeft, Plus, ClipboardList, Trash2, ListChecks } fro
 import { useEffect, useMemo, useRef, useState } from "react";
 import { apiFetch } from "@/lib/api";
 import Link from "next/link";
+import { RoutineAssignModal } from "@/components/schedule/RoutineAssignModal";
 import {
   formatCertCodesShort,
   formatCertCodesWithLabels,
@@ -113,6 +114,7 @@ export function ScheduleDayView({
     overdue_pms: Array<{ id: string; name: string; days_overdue: number }>;
   } | null>(null);
   const [loadingWQ, setLoadingWQ] = useState(false);
+  const [assignRoutineOpen, setAssignRoutineOpen] = useState(false);
 
   const triggerShake = () => {
     if (shakeTimer.current) clearTimeout(shakeTimer.current);
@@ -701,13 +703,22 @@ export function ScheduleDayView({
                       const dayShift = shifts.find((s) => s.shiftKind !== "project_task");
                       if (!dayShift) return null;
                       return (
-                        <Link
-                          href={`/standards/routines/run?shift_id=${encodeURIComponent(dayShift.id)}`}
-                          className="inline-flex items-center gap-2 rounded-md border border-ds-border bg-ds-secondary px-3 py-1.5 text-xs font-semibold text-ds-foreground hover:bg-ds-interactive-hover"
-                        >
-                          <ListChecks className="h-4 w-4" aria-hidden />
-                          Run routine
-                        </Link>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <button
+                            type="button"
+                            className="inline-flex items-center gap-2 rounded-md border border-ds-border bg-ds-secondary px-3 py-1.5 text-xs font-semibold text-ds-foreground hover:bg-ds-interactive-hover"
+                            onClick={() => setAssignRoutineOpen(true)}
+                          >
+                            <ListChecks className="h-4 w-4" aria-hidden />
+                            Assign routine
+                          </button>
+                          <Link
+                            href={`/standards/routines/run?shift_id=${encodeURIComponent(dayShift.id)}`}
+                            className="inline-flex items-center gap-2 rounded-md border border-ds-border bg-ds-secondary px-3 py-1.5 text-xs font-semibold text-ds-foreground hover:bg-ds-interactive-hover"
+                          >
+                            Run routine
+                          </Link>
+                        </div>
                       );
                     })()}
                   </div>
@@ -758,6 +769,19 @@ export function ScheduleDayView({
             </div>
         </aside>
       </div>
+      {(() => {
+        const dayShift = shifts.find((s) => s.shiftKind !== "project_task");
+        if (!dayShift) return null;
+        return (
+          <RoutineAssignModal
+            open={assignRoutineOpen}
+            onClose={() => setAssignRoutineOpen(false)}
+            shiftId={dayShift.id}
+            shiftDate={date}
+            workers={workers}
+          />
+        );
+      })()}
     </div>
   );
 }

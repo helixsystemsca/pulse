@@ -241,6 +241,12 @@ class PulseRoutineRun(Base):
         default=PulseRoutineRunStatus.in_progress,
         index=True,
     )
+    routine_assignment_id: Mapped[Optional[str]] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("pulse_routine_assignments.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
 
     __table_args__ = (
         CheckConstraint(
@@ -272,6 +278,100 @@ class PulseRoutineItemRun(Base):
         index=True,
     )
     completed: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    note: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    completed_by_user_id: Mapped[Optional[str]] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+
+
+class PulseRoutineAssignment(Base):
+    """Shift-scoped assignment of a routine to a primary worker (and optional delegation)."""
+
+    __tablename__ = "pulse_routine_assignments"
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    company_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    routine_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("pulse_routines.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    shift_id: Mapped[Optional[str]] = mapped_column(UUID(as_uuid=False), nullable=True, index=True)
+    date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    primary_user_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    assigned_by_user_id: Mapped[Optional[str]] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+
+
+class PulseRoutineItemAssignment(Base):
+    """Delegation of a specific checklist item to a different worker."""
+
+    __tablename__ = "pulse_routine_item_assignments"
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    company_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    routine_assignment_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("pulse_routine_assignments.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    routine_item_id: Mapped[Optional[str]] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("pulse_routine_items.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    assigned_to_user_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    assigned_by_user_id: Mapped[Optional[str]] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    reason: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+
+
+class PulseRoutineAssignmentExtra(Base):
+    """Ad hoc extra task added to an assignment (can be assigned to any worker)."""
+
+    __tablename__ = "pulse_routine_assignment_extras"
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    company_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    routine_assignment_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("pulse_routine_assignments.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    label: Mapped[str] = mapped_column(String(8000), nullable=False)
+    assigned_to_user_id: Mapped[Optional[str]] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    created_by_user_id: Mapped[Optional[str]] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+    completed: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    completed_by_user_id: Mapped[Optional[str]] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     note: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
 

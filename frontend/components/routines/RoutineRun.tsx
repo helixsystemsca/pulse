@@ -6,10 +6,12 @@ import { Card } from "@/components/pulse/Card";
 import { cn } from "@/lib/cn";
 import { buttonVariants } from "@/styles/button-variants";
 import { parseClientApiError } from "@/lib/parse-client-api-error";
+import { readSession } from "@/lib/pulse-session";
 import {
   createRoutineRun,
   getRoutine,
   listRoutines,
+  listMyRoutineAssignments,
   type RoutineDetail,
   type RoutineRow,
 } from "@/lib/routinesService";
@@ -25,6 +27,7 @@ type RunItem = {
   required: boolean;
   completed: boolean;
   note: string;
+  assigned_to_user_id: string | null;
 };
 
 export function RoutineRun({
@@ -34,9 +37,15 @@ export function RoutineRun({
   shiftId: string;
   onCompleted?: () => void;
 }) {
+  const session = readSession();
+  const currentUserId = session?.sub ?? null;
   const [routines, setRoutines] = useState<RoutineRow[] | null>(null);
   const [routineId, setRoutineId] = useState<string>("");
   const [routine, setRoutine] = useState<RoutineDetail | null>(null);
+  const [assignmentId, setAssignmentId] = useState<string | null>(null);
+  const [assignmentExtras, setAssignmentExtras] = useState<
+    Array<{ id: string; label: string; assigned_to_user_id: string | null; completed: boolean; note: string }>
+  >([]);
 
   const [items, setItems] = useState<RunItem[]>([]);
   const [saving, setSaving] = useState(false);
@@ -49,12 +58,68 @@ export function RoutineRun({
     () => missed.filter((i) => !(i.note || "").trim()),
     [missed],
   );
+  const extraMissed = useMemo(() => assignmentExtras.filter((e) => !e.completed), [assignmentExtras]);
+  const extraMissingNotes = useMemo(
+    () => extraMissed.filter((e) => !(e.note || "").trim()),
+    [extraMissed],
+  );
 
   useEffect(() => {
     if (!toast) return;
     const t = window.setTimeout(() => setToast(null), 3500);
     return () => window.clearTimeout(t);
   }, [toast]);
+
+  // If there are assignments for this shift, prefer execution from the assignment context.
+  useEffect(() => {
+    if (!currentUserId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const list = await listMyRoutineAssignments({ shift_id: shiftId });
+        if (cancelled) return;
+        // MVP: pick the most recent assignment.
+        const a = list[0] ?? null;
+        if (!a) return;
+        setAssignmentId(a.id);
+        setRoutineId(a.routine_id);
+        setRoutine(a.routine);
+        const itemAssignMap = new Map(
+          (a.item_assignments ?? [])
+            .filter((x) => x.routine_item_id)
+            .map((x) => [x.routine_item_id as string, x.assigned_to_user_id]),
+        );
+        const primary = a.primary_user_id ?? null;
+        const next: RunItem[] = (a.routine.items ?? [])
+          .slice()
+          .sort((aa, bb) => (aa.position ?? 0) - (bb.position ?? 0))
+          .map((it) => ({
+            routine_item_id: it.id,
+            label: it.label ?? "",
+            required: it.required !== false,
+            completed: false,
+            note: "",
+            assigned_to_user_id: itemAssignMap.get(it.id) ?? primary,
+          }));
+        setItems(next);
+        setAssignmentExtras(
+          (a.extras ?? []).map((e) => ({
+            id: e.id,
+            label: e.label,
+            assigned_to_user_id: (e.assigned_to_user_id ?? primary) as string | null,
+            completed: Boolean(e.completed),
+            note: (e.note ?? "").toString(),
+          })),
+        );
+        setRequireNotes(false);
+      } catch {
+        // ignore: routine execution can still be manual without assignment context
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [shiftId, currentUserId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -81,6 +146,8 @@ export function RoutineRun({
     if (!routineId) {
       setRoutine(null);
       setItems([]);
+      setAssignmentId(null);
+      setAssignmentExtras([]);
       setRequireNotes(false);
       return;
     }
@@ -99,6 +166,7 @@ export function RoutineRun({
             required: it.required !== false,
             completed: false,
             note: "",
+            assigned_to_user_id: currentUserId,
           }));
         setItems(next);
         setRequireNotes(false);
@@ -121,7 +189,7 @@ export function RoutineRun({
     if (!routine || saving) return;
     setErr(null);
 
-    // Enforce missed-item notes before submit.
+    // Enforce missed-item notes before submit (items + extras).
     const incomplete = items.filter((i) => !i.completed);
     if (incomplete.length > 0) {
       setRequireNotes(true);
@@ -131,17 +199,32 @@ export function RoutineRun({
         return;
       }
     }
+    if (extraMissed.length > 0) {
+      setRequireNotes(true);
+      if (extraMissingNotes.length > 0) {
+        setToast("Add notes for missed extra tasks before sign-off.");
+        return;
+      }
+    }
 
     setSaving(true);
     try {
       await createRoutineRun({
         routine_id: routine.id,
         shift_id: shiftId,
+        routine_assignment_id: assignmentId,
         items: items.map((i) => ({
           routine_item_id: i.routine_item_id,
           completed: Boolean(i.completed),
           note: i.completed ? null : (i.note || "").trim() || null,
         })),
+        extras: assignmentId
+          ? assignmentExtras.map((e) => ({
+              id: e.id,
+              completed: Boolean(e.completed),
+              note: e.completed ? null : (e.note || "").trim() || null,
+            }))
+          : [],
       });
       setToast("Routine signed off.");
       onCompleted?.();
@@ -208,35 +291,42 @@ export function RoutineRun({
             <div className="space-y-2">
               {items.map((it) => (
                 <div key={it.routine_item_id} className="rounded-lg border border-ds-border bg-ds-secondary p-3">
-                  <label className="flex cursor-pointer items-start gap-3">
-                    <input
-                      type="checkbox"
-                      className="mt-1 h-4 w-4 rounded border-ds-border"
-                      checked={it.completed}
-                      onChange={(e) =>
-                        setItems((prev) =>
-                          prev.map((x) =>
-                            x.routine_item_id === it.routine_item_id
-                              ? { ...x, completed: e.target.checked }
-                              : x,
-                          ),
-                        )
-                      }
-                      disabled={saving}
-                    />
-                    <span className="min-w-0 flex-1">
-                      <span className="block text-sm font-semibold text-ds-foreground">
-                        {it.label}
-                        {it.required ? (
-                          <span className="ml-2 text-[10px] font-bold uppercase tracking-wide text-ds-muted">
-                            required
-                          </span>
-                        ) : null}
+                  {currentUserId && it.assigned_to_user_id && it.assigned_to_user_id !== currentUserId ? (
+                    <div className="text-sm text-ds-muted">
+                      <span className="font-semibold text-ds-foreground">{it.label}</span>
+                      <span className="ml-2 text-[11px]">Assigned to another worker</span>
+                    </div>
+                  ) : (
+                    <label className="flex cursor-pointer items-start gap-3">
+                      <input
+                        type="checkbox"
+                        className="mt-1 h-4 w-4 rounded border-ds-border"
+                        checked={it.completed}
+                        onChange={(e) =>
+                          setItems((prev) =>
+                            prev.map((x) =>
+                              x.routine_item_id === it.routine_item_id
+                                ? { ...x, completed: e.target.checked }
+                                : x,
+                            ),
+                          )
+                        }
+                        disabled={saving}
+                      />
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-sm font-semibold text-ds-foreground">
+                          {it.label}
+                          {it.required ? (
+                            <span className="ml-2 text-[10px] font-bold uppercase tracking-wide text-ds-muted">
+                              required
+                            </span>
+                          ) : null}
+                        </span>
                       </span>
-                    </span>
-                  </label>
+                    </label>
+                  )}
 
-                  {requireNotes && !it.completed ? (
+                  {requireNotes && !it.completed && (!it.assigned_to_user_id || it.assigned_to_user_id === currentUserId) ? (
                     <div className="mt-3">
                       <label className={LABEL} htmlFor={`missed-${it.routine_item_id}`}>
                         Missed-item note (required)
@@ -265,10 +355,72 @@ export function RoutineRun({
             </div>
           </div>
 
+          {assignmentId && assignmentExtras.length > 0 ? (
+            <div className="space-y-2">
+              <p className="text-sm font-semibold text-ds-foreground">Extra tasks</p>
+              <div className="space-y-2">
+                {assignmentExtras.map((ex) => {
+                  const mine = !currentUserId || !ex.assigned_to_user_id || ex.assigned_to_user_id === currentUserId;
+                  return (
+                    <div key={ex.id} className="rounded-lg border border-ds-border bg-ds-secondary p-3">
+                      {mine ? (
+                        <label className="flex cursor-pointer items-start gap-3">
+                          <input
+                            type="checkbox"
+                            className="mt-1 h-4 w-4 rounded border-ds-border"
+                            checked={ex.completed}
+                            onChange={(e) =>
+                              setAssignmentExtras((prev) =>
+                                prev.map((x) => (x.id === ex.id ? { ...x, completed: e.target.checked } : x)),
+                              )
+                            }
+                            disabled={saving}
+                          />
+                          <span className="min-w-0 flex-1">
+                            <span className="block text-sm font-semibold text-ds-foreground">{ex.label}</span>
+                            <span className="mt-1 inline-flex rounded-full border border-ds-border bg-ds-primary px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-ds-muted">
+                              extra
+                            </span>
+                          </span>
+                        </label>
+                      ) : (
+                        <div className="text-sm text-ds-muted">
+                          <span className="font-semibold text-ds-foreground">{ex.label}</span>
+                          <span className="ml-2 text-[11px]">Assigned to another worker</span>
+                        </div>
+                      )}
+                      {requireNotes && !ex.completed && mine ? (
+                        <div className="mt-3">
+                          <label className={LABEL} htmlFor={`ex-note-${ex.id}`}>
+                            Missed-item note (required)
+                          </label>
+                          <textarea
+                            id={`ex-note-${ex.id}`}
+                            rows={2}
+                            className={FIELD}
+                            value={ex.note}
+                            onChange={(e) =>
+                              setAssignmentExtras((prev) =>
+                                prev.map((x) => (x.id === ex.id ? { ...x, note: e.target.value } : x)),
+                              )
+                            }
+                            placeholder="Explain why this was not completed"
+                            disabled={saving}
+                          />
+                        </div>
+                      ) : null}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
+
           <div className="flex flex-wrap items-center justify-between gap-3 border-t border-ds-border pt-4">
             <div className="text-xs font-medium text-ds-muted">
               {missed.length > 0 ? `${missed.length} missed item(s)` : "All items completed"}
               {requireNotes && missingNotes.length > 0 ? ` · ${missingNotes.length} note(s) missing` : ""}
+              {assignmentId ? ` · extras: ${assignmentExtras.filter((e) => !e.completed).length} missed` : ""}
             </div>
             <button
               type="button"
