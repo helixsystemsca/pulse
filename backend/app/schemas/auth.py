@@ -61,6 +61,8 @@ class UserOut(BaseModel):
     permissions: Optional[list[str]] = None
     #: Current server time (UTC ISO-8601) for client clock sync; not persisted on the user row.
     server_time: str
+    #: True when the account is using the default temporary password and must set a new one.
+    must_change_password: bool = False
 
     model_config = {"from_attributes": True}
 

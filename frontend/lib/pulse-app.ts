@@ -114,6 +114,7 @@ export function navigateToPulseOverview(): void {
 export type PulsePostLoginIdentity = {
   role?: string;
   is_system_admin?: boolean;
+  must_change_password?: boolean;
 };
 
 /**
@@ -121,6 +122,9 @@ export type PulsePostLoginIdentity = {
  * Impersonation tokens look like a tenant — they stay on `/overview`.
  */
 export function pulsePostLoginPath(user: PulsePostLoginIdentity): "/system" | "/overview" {
+  if (user.must_change_password === true) {
+    return "/settings";
+  }
   if (user.is_system_admin === true || user.role === "system_admin") {
     return "/system";
   }

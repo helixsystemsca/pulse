@@ -98,6 +98,8 @@ export type UserOut = {
   can_use_pm_features?: boolean;
   facility_tenant_admin?: boolean;
   role_display_label?: string | null;
+  /** True when the account is using a temporary default password. */
+  must_change_password?: boolean;
   /** UTC ISO timestamp from `GET /auth/me` for client clock sync. */
   server_time?: string;
 };

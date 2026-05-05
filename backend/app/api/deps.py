@@ -81,6 +81,11 @@ require_auth = get_current_user
 
 def require_role(*roles: UserRole) -> Callable[..., Awaitable[User]]:
     async def _dep(user: User = Depends(get_current_user)) -> User:
+        # Tenant full admins (external company_admin role or in-facility delegate) may perform
+        # actions gated by tenant staff roles (manager/supervisor/lead/worker).
+        # Do not broaden system_admin-only routes.
+        if UserRole.system_admin not in roles and user_has_tenant_full_admin(user):
+            return user
         if not user_has_any_role(user, *roles):
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient role")
         return user

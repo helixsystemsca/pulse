@@ -43,6 +43,7 @@ from app.core.workers_permission_delegation import (
 )
 from app.core.workers_settings_merge import DEFAULT_WORKERS_SETTINGS, merge_workers_settings
 from app.core.email_smtp import send_employee_invite
+from app.core.auth.security import hash_password
 from app.core.system_tokens import generate_raw_token, hash_system_token
 from app.models.domain import (
     Company,
@@ -811,6 +812,9 @@ async def create_worker(
     settings = get_settings()
 
     if body.roster_profile_only:
+        # "Roster-only" adds an active account without invite/join flow.
+        # Use a temporary password so the user can sign in, then prompt them to change it.
+        temp_pw = "Panorama"
         if not user_has_any_role(actor, UserRole.company_admin) and not user_has_facility_tenant_admin_flag(actor):
             raise HTTPException(
                 status_code=403,
@@ -832,14 +836,14 @@ async def create_worker(
             user.account_status = UserAccountStatus.active
             user.invite_token_hash = None
             user.invite_expires_at = None
-            user.hashed_password = None
+            user.hashed_password = hash_password(temp_pw)
             user.is_active = True
             user.created_by = actor.id
         else:
             user = User(
                 company_id=cid,
                 email=email_norm,
-                hashed_password=None,
+                hashed_password=hash_password(temp_pw),
                 full_name=body.full_name,
                 roles=[role_enum.value],
                 operational_role=default_operational_role_for_invite_role(role_enum),
@@ -866,7 +870,7 @@ async def create_worker(
             worker=detail,
             invite_link_path="",
             invite_email_sent=None,
-            message="Profile created — user is active on the roster. They still need a password to sign in (send an invite or use password recovery when email is configured).",
+            message="Profile created — user is active on the roster. Temporary password set; prompt them to change it after sign-in.",
         )
 
     exp = datetime.now(timezone.utc) + timedelta(hours=settings.system_invite_expire_hours)

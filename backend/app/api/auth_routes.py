@@ -208,6 +208,8 @@ async def me(
         eff = await psvc.effective_allow_set(user)
         perm_out = ["*"] if "*" in eff else sorted(eff)
 
+    must_change_password = bool(user.hashed_password) and verify_password("Panorama", user.hashed_password)
+
     return UserOut(
         id=user.id,
         email=user.email,
@@ -230,6 +232,7 @@ async def me(
         role_display_label=tenant_role_display_label(user),
         permissions=perm_out,
         server_time=datetime.now(timezone.utc).isoformat(),
+        must_change_password=must_change_password,
     )
 
 

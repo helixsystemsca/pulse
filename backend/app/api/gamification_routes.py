@@ -776,7 +776,7 @@ async def log_supervisor_one_on_one(
     body: SupervisorOneOnOneIn,
     user: User = Depends(require_tenant_user),
 ) -> SupervisorOneOnOneOut:
-    if not user_has_any_role(user, UserRole.supervisor):
+    if not user_has_any_role(user, UserRole.supervisor, UserRole.company_admin):
         raise HTTPException(status_code=403, detail="Supervisor role required")
     cid = str(user.company_id)
     emp = await db.get(User, body.employee_user_id.strip())

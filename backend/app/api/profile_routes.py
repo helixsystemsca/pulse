@@ -11,10 +11,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import get_current_company_user, get_db
 from app.core.company_logo_upload import normalize_logo_content_type
 from app.core.pulse_storage import read_user_avatar_bytes, read_user_avatar_pending_bytes, write_user_avatar_bytes
+from app.core.auth.security import hash_password, verify_password
 from app.core.user_avatar_upload import INTERNAL_AVATAR_PATH, validate_logo_bytes
 from app.core.user_roles import user_has_any_role
 from app.models.domain import AvatarStatus, Company, User, UserRole
-from app.schemas.profile import ProfileAvatarUploadOut, ProfileSettingsPatch
+from app.schemas.profile import ChangePasswordBody, ProfileAvatarUploadOut, ProfileSettingsPatch
 
 router = APIRouter(prefix="/profile", tags=["profile"])
 
@@ -129,3 +130,20 @@ async def patch_my_profile_settings(
 
     await db.commit()
     return {"message": "Profile updated"}
+
+
+@router.post("/password")
+async def change_my_password(
+    body: ChangePasswordBody,
+    user: Annotated[User, Depends(get_current_company_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> dict[str, str]:
+    if not user.hashed_password:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Password is not set for this account")
+    if body.current_password == body.new_password:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="New password must be different")
+    if not verify_password(body.current_password, user.hashed_password):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid current password")
+    user.hashed_password = hash_password(body.new_password)
+    await db.commit()
+    return {"message": "Password updated"}

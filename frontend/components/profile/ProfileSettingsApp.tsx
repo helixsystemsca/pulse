@@ -48,10 +48,15 @@ export function ProfileSettingsApp() {
   const [coIndustry, setCoIndustry] = useState("");
 
   const [saving, setSaving] = useState(false);
+  const [pwBusy, setPwBusy] = useState(false);
   const [avatarBusy, setAvatarBusy] = useState(false);
   const [logoBusy, setLogoBusy] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
+
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
 
   const isCompanyAdmin = session ? sessionHasAnyRole(session, "company_admin") : false;
   const [procedureAcks, setProcedureAcks] = useState<{ procedure_id: string; procedure_title: string; signed_at: string }[]>(
@@ -163,6 +168,37 @@ export function ProfileSettingsApp() {
       setErr(parseClientApiError(e).message);
     } finally {
       setLogoBusy(false);
+    }
+  }
+
+  async function onChangePassword() {
+    if (!session?.access_token) return;
+    setErr(null);
+    if (!currentPassword || !newPassword) {
+      setErr("Enter your current password and a new password.");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setErr("New passwords do not match.");
+      return;
+    }
+    setPwBusy(true);
+    try {
+      await apiFetch("/api/v1/profile/password", {
+        method: "POST",
+        json: {
+          current_password: currentPassword,
+          new_password: newPassword,
+        },
+      });
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+      setToast("Password updated.");
+    } catch (e) {
+      setErr(parseClientApiError(e).message);
+    } finally {
+      setPwBusy(false);
     }
   }
 
@@ -293,6 +329,64 @@ export function ProfileSettingsApp() {
               ))}
             </ul>
           )}
+        </div>
+      </section>
+
+      <section className={CARD}>
+        <h2 className="text-sm font-bold tracking-tight text-pulse-navy dark:text-slate-100">Security</h2>
+        <p className="mt-1 text-sm text-pulse-muted">Update your sign-in password.</p>
+        <div className="mt-5 grid gap-4 lg:grid-cols-3">
+          <div>
+            <label className={LABEL} htmlFor="current-password">
+              Current password
+            </label>
+            <input
+              id="current-password"
+              className={FIELD}
+              type="password"
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+              autoComplete="current-password"
+            />
+          </div>
+          <div>
+            <label className={LABEL} htmlFor="new-password">
+              New password
+            </label>
+            <input
+              id="new-password"
+              className={FIELD}
+              type="password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              autoComplete="new-password"
+            />
+          </div>
+          <div>
+            <label className={LABEL} htmlFor="confirm-password">
+              Confirm new password
+            </label>
+            <input
+              id="confirm-password"
+              className={FIELD}
+              type="password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              autoComplete="new-password"
+            />
+          </div>
+        </div>
+        <div className="mt-4 flex justify-end">
+          <button type="button" className={SECONDARY} disabled={pwBusy} onClick={() => void onChangePassword()}>
+            {pwBusy ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                Updating...
+              </>
+            ) : (
+              "Change password"
+            )}
+          </button>
         </div>
       </section>
 
