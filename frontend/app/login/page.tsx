@@ -64,7 +64,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     return () => {
-      if (logoTimer.current) window.clearTimeout(logoTimer.current);
+      if (logoTimer.current) clearTimeout(logoTimer.current);
     };
   }, []);
 
@@ -182,8 +182,8 @@ export default function LoginPage() {
                   )}
                   onLoadingComplete={() => {
                     if (logoVisible) return;
-                    if (logoTimer.current) window.clearTimeout(logoTimer.current);
-                    logoTimer.current = window.setTimeout(() => setLogoVisible(true), 140);
+                    if (logoTimer.current) clearTimeout(logoTimer.current);
+                    logoTimer.current = setTimeout(() => setLogoVisible(true), 140);
                   }}
                 />
               </div>
