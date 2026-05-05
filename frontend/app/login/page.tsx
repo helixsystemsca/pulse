@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertCircle, Eye, EyeOff, Loader2, Lock, Mail, Moon, Sun } from "lucide-react";
+import { AlertCircle, Eye, EyeOff, Loader2, Lock, Mail } from "lucide-react";
 import Image from "next/image";
 import { FormEvent, useEffect, useId, useState } from "react";
 import { AuthScreenShell } from "@/components/auth/AuthScreenShell";
@@ -19,7 +19,6 @@ import {
 import { navigateAfterPulseLogin } from "@/lib/pulse-app";
 import { PULSE_BUILD_VERSION } from "@/lib/pulse-build-version";
 import { mailtoInfo, mailtoSupport } from "@/lib/helix-emails";
-import { useTheme } from "@/components/theme/ThemeProvider";
 import { cn } from "@/lib/cn";
 import { buttonVariants } from "@/styles/button-variants";
 
@@ -43,7 +42,6 @@ function LoginRipples() {
 }
 
 export default function LoginPage() {
-  const { theme, toggleTheme } = useTheme();
   const emailFieldId = useId();
   const passwordFieldId = useId();
 
@@ -148,15 +146,7 @@ export default function LoginPage() {
 
         <header className="relative z-10 flex w-full items-center justify-end gap-4 px-5 py-2.5 sm:px-8 sm:py-3 lg:px-12">
           <nav className="flex items-center gap-1 sm:gap-2" aria-label="Login header">
-            <button
-              type="button"
-              onClick={toggleTheme}
-              title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-              aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-              className="ds-btn-auth-icon h-10 w-10 border-transparent text-[#4c6085] hover:border-[color-mix(in_srgb,#4c6085_22%,transparent)] dark:text-ds-muted"
-            >
-              {theme === "dark" ? <Sun className="h-5 w-5" strokeWidth={2} aria-hidden /> : <Moon className="h-5 w-5" strokeWidth={2} aria-hidden />}
-            </button>
+            {/* TEMP: dark/light toggle removed — restore theme button here when re-enabling */}
             <a
               href={mailtoSupport("Pulse — Support")}
               className="inline-flex rounded-full bg-[#4c6085] px-3 py-2 text-[11px] font-bold uppercase tracking-wide text-white shadow-sm transition-colors hover:bg-[#3f5274] sm:px-4 sm:py-2.5 sm:text-xs dark:bg-[#556b8e] dark:hover:bg-[#4c6085]"

@@ -12,7 +12,6 @@ import { usePulseAuth } from "@/hooks/usePulseAuth";
 import { navigateToPulseLogin, pulseApp, pulseRoutes } from "@/lib/pulse-app";
 import { clearSession } from "@/lib/pulse-session";
 import { UserProfileAvatarPreview } from "@/components/profile/UserProfileAvatarPreview";
-import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { sessionHasAnyRole } from "@/lib/pulse-roles";
 import { cn } from "@/lib/cn";
 import { useSidebarState } from "@/components/app/SidebarState";
@@ -84,7 +83,7 @@ export function AppNavbar() {
         </div>
 
         <div className="flex items-stretch gap-2">
-          {authed ? <ThemeToggle /> : null}
+          {/* TEMP: ThemeToggle hidden — restore `{authed ? <ThemeToggle /> : null}` when re-enabling */}
           {!authed ? (
             pathname !== "/login" ? (
               <Link
