@@ -11,7 +11,8 @@ export const DASH = {
   /** Framed board on kiosk pages. */
   kioskFrame: "w-full rounded-[10px] border border-ds-border bg-ds-bg p-3 sm:p-4",
   /** White panel + 1px border (Pool mock: cards on #f7f9fb). */
-  cardBase: "overflow-hidden rounded-2xl border border-ds-border bg-ds-primary shadow-[var(--ds-shadow-card)]",
+  cardBase:
+    "overflow-hidden rounded-[var(--pulse-dashboard-card-radius)] border border-ds-border bg-ds-primary shadow-[var(--ds-shadow-card)]",
   cardInner: "p-4 sm:p-4",
   /** Brand strip under header / column chrome. */
   accentBar: "h-[3px] w-full shrink-0 bg-[var(--ds-chrome-gradient)]",

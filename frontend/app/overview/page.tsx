@@ -76,7 +76,9 @@ export default function OverviewPage() {
     <PageWrapper>
       <div className="relative space-y-4">
         <DashboardViewTabs />
-        <OperationalDashboard variant={isApiMode() ? "live" : "demo"} onReady={onDashboardReady} />
+        <div className="pulse-dashboard-surface p-4 sm:p-5">
+          <OperationalDashboard variant={isApiMode() ? "live" : "demo"} onReady={onDashboardReady} />
+        </div>
         <WelcomeLoaderModal
           userName={userName}
           isReady={dashboardDataReady}

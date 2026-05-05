@@ -54,6 +54,38 @@ import "react-resizable/css/styles.css";
 
 type AlertPriority = "critical" | "high" | "medium" | "low";
 
+const DASHBOARD_BASE_COLS = 12;
+const DASHBOARD_BLOCK_COLS = 3;
+
+function normalizeToBlocks(layout: Layout): Layout {
+  // Stored layout is always in 12-col space, snapped to "block" widths for cohesion.
+  const snap = (n: number, step: number) => Math.max(step, Math.round(n / step) * step);
+  const clamp = (n: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, n));
+  return layout.map((it) => {
+    const w = clamp(snap(it.w ?? DASHBOARD_BLOCK_COLS, DASHBOARD_BLOCK_COLS), DASHBOARD_BLOCK_COLS, DASHBOARD_BASE_COLS);
+    const minWRaw = typeof it.minW === "number" ? it.minW : DASHBOARD_BLOCK_COLS;
+    const minW = clamp(snap(minWRaw, DASHBOARD_BLOCK_COLS), DASHBOARD_BLOCK_COLS, w);
+    const xRaw = typeof it.x === "number" ? it.x : 0;
+    const x = clamp(Math.round(xRaw / DASHBOARD_BLOCK_COLS) * DASHBOARD_BLOCK_COLS, 0, Math.max(0, DASHBOARD_BASE_COLS - w));
+    return { ...it, w, minW, x };
+  });
+}
+
+function layoutForCols(layout: Layout, cols: number): Layout {
+  if (cols >= DASHBOARD_BASE_COLS) return layout;
+  if (cols <= 1) {
+    return layout.map((it) => ({ ...it, x: 0, w: 1, minW: 1 }));
+  }
+  // "Cut cards in half": scale from 12 → 6 for tablets, then clamp.
+  const scale = cols / DASHBOARD_BASE_COLS;
+  return layout.map((it) => {
+    const w = Math.max(1, Math.min(cols, Math.round((it.w ?? 1) * scale)));
+    const minW = Math.max(1, Math.min(w, Math.round(((it.minW ?? 1) as number) * scale)));
+    const x = Math.max(0, Math.min(cols - w, Math.round((it.x ?? 0) * scale)));
+    return { ...it, x, w, minW };
+  });
+}
+
 function WorkerDashCard({
   title,
   headerRight,
@@ -1854,6 +1886,7 @@ function DashboardBody({
       }
     }
     if (!nextLayout) nextLayout = defaultLayout;
+    nextLayout = normalizeToBlocks(nextLayout);
 
     const validBuiltins = new Set(allWidgetKeys);
     const filtered: LayoutItem[] = [];
@@ -1867,7 +1900,7 @@ function DashboardBody({
     }
     const present = new Set(filtered.map((x) => x.i));
     const missing = defaultLayout.filter((l) => !present.has(l.i));
-    setLayout([...filtered, ...missing] as Layout);
+    setLayout(normalizeToBlocks([...filtered, ...missing] as Layout));
     setCustomConfigs(parsedConfigs);
     setLayoutHydrated(true);
   }, [allWidgetKeys, defaultLayout]);
@@ -2185,15 +2218,21 @@ function DashboardBody({
         <div ref={containerRef as any}>
           {mounted ? (
             <GridLayout
-              layout={layout}
+              layout={layoutForCols(layout, width < 640 ? 1 : width < 1024 ? 6 : 12)}
               width={width}
-              gridConfig={{ cols: 12, rowHeight: 100, margin: [24, 24], containerPadding: [0, 0] }}
+              gridConfig={{
+                cols: width < 640 ? 1 : width < 1024 ? 6 : 12,
+                rowHeight: width < 640 ? 84 : 96,
+                margin: [12, 12],
+                containerPadding: [0, 0],
+              }}
               dragConfig={{ enabled: !readOnly && editMode, bounded: false, handle: ".dashboard-drag-handle" }}
               resizeConfig={{ enabled: !readOnly && editMode, handles: ["se"] }}
               compactor={noCompactor}
               onLayoutChange={(next) => {
                 if (readOnly || !editMode) return;
-                setLayout(next);
+                // Persist snapped-to-block widths. (We keep the current col space; normalization snaps widths and prevents drift.)
+                setLayout(normalizeToBlocks(next as Layout));
               }}
             >
               {layout.map((item) => {

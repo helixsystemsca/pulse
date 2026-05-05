@@ -64,7 +64,9 @@ export default function WorkerDashboardPage() {
     <PageWrapper>
       <div className="relative space-y-4">
         <DashboardViewTabs />
-        <WorkerDashboard kiosk={false} />
+        <div className="pulse-dashboard-surface p-4 sm:p-5">
+          <WorkerDashboard kiosk={false} />
+        </div>
         <WelcomeLoaderModal userName={userName} isReady={workerShellReady} />
       </div>
     </PageWrapper>

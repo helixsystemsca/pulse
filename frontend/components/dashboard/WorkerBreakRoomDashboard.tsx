@@ -10,6 +10,7 @@ import { cn } from "@/lib/cn";
 import { DASH } from "@/styles/dashboardTheme";
 import { isApiMode } from "@/lib/api";
 import { readSession } from "@/lib/pulse-session";
+import { GridLayout, noCompactor, useContainerWidth, type Layout } from "react-grid-layout";
 import type { PulseShiftApi, PulseWorkerApi } from "@/lib/schedule/pulse-bridge";
 import { pulseShiftsToSchedule, pulseWorkersToSchedule, type PulseZoneApi } from "@/lib/schedule/pulse-bridge";
 import type { Shift, Worker } from "@/lib/schedule/types";
@@ -315,6 +316,44 @@ export function WorkerBreakRoomDashboard({ kiosk = false }: Props) {
   const weatherLabel = useMemo(() => weatherLabelFromCode(weather.code), [weather.code]);
   const weatherTemp = useMemo(() => (weather.tempC == null ? "—" : `${Math.round(weather.tempC)}°C`), [weather.tempC]);
 
+  const DASH_LAYOUT_STORAGE = kiosk ? null : "worker_dashboard_layout_v1";
+  const canEdit = !kiosk && Boolean(readSession()?.access_token);
+  const [editMode, setEditMode] = useState(false);
+  const [layoutHydrated, setLayoutHydrated] = useState(false);
+  const defaultLayout = useMemo(
+    (): Layout => [
+      { i: "who", x: 0, y: 0, w: 8, h: 5, minW: 6, minH: 4 },
+      { i: "schedule", x: 8, y: 0, w: 4, h: 9, minW: 3, minH: 4 },
+      { i: "assignments", x: 0, y: 5, w: 8, h: 4, minW: 6, minH: 3 },
+      { i: "cadence", x: 0, y: 9, w: 6, h: 3, minW: 3, minH: 2 },
+      { i: "notes", x: 6, y: 9, w: 6, h: 3, minW: 3, minH: 2 },
+    ],
+    [],
+  );
+  const [layout, setLayout] = useState<Layout>(defaultLayout);
+  const { width, containerRef, mounted } = useContainerWidth({ initialWidth: 1200 });
+
+  useEffect(() => {
+    if (!DASH_LAYOUT_STORAGE) return;
+    try {
+      const raw = window.localStorage.getItem(DASH_LAYOUT_STORAGE);
+      if (raw) setLayout(JSON.parse(raw) as Layout);
+    } catch {
+      /* ignore */
+    } finally {
+      setLayoutHydrated(true);
+    }
+  }, [DASH_LAYOUT_STORAGE]);
+
+  useEffect(() => {
+    if (!DASH_LAYOUT_STORAGE || !layoutHydrated) return;
+    try {
+      window.localStorage.setItem(DASH_LAYOUT_STORAGE, JSON.stringify(layout));
+    } catch {
+      /* ignore */
+    }
+  }, [layout, layoutHydrated, DASH_LAYOUT_STORAGE]);
+
   return (
     <div className={cn(DASH.page, "space-y-6")}>
       <KioskCriticalModal alert={criticalAlert} onAcknowledge={() => setCriticalAlert(null)} />
@@ -339,6 +378,18 @@ export function WorkerBreakRoomDashboard({ kiosk = false }: Props) {
               <Button type="button" variant="secondary" className="inline-flex items-center gap-2" onClick={openKiosk}>
                 <Maximize2 className="h-4 w-4" aria-hidden />
                 Fullscreen
+              </Button>
+            ) : null}
+            {canEdit ? (
+              <Button
+                type="button"
+                variant={editMode ? "primary" : "secondary"}
+                className="inline-flex items-center gap-2"
+                onClick={() => setEditMode((v) => !v)}
+                aria-pressed={editMode}
+                title={editMode ? "Done editing layout" : "Edit dashboard layout"}
+              >
+                {editMode ? "Done" : "Edit"}
               </Button>
             ) : null}
             <Button
@@ -375,140 +426,223 @@ export function WorkerBreakRoomDashboard({ kiosk = false }: Props) {
         </div>
       </DashboardAccentCard>
 
-      <div className={cn(DASH.grid12, "gap-6")}>
-        <div className="col-span-12 space-y-6 lg:col-span-8">
-          <DashboardAccentCard mutedAccent innerClassName="space-y-4">
-            <div className="flex flex-wrap items-end justify-between gap-3">
-              <div>
-                <p className={UI.header}>Who’s on shift</p>
-                <p className={`mt-1 ${UI.subheader}`}>Auto from Schedule (today).</p>
-              </div>
-              <p className={`text-xs font-semibold ${UI.subheader}`}>{loading ? "Loading…" : `${todaysWork.length} scheduled`}</p>
-            </div>
-
-            <div className="grid gap-3 sm:grid-cols-3">
-              {(["D", "A", "N"] as const).map((band) => (
-                <div key={band} className="overflow-hidden rounded-xl border border-ds-border bg-ds-primary shadow-[var(--ds-shadow-card)]">
-                  <div className="h-0.5 w-full bg-ds-border" aria-hidden />
-                  <div className="p-3">
-                  <div className="flex items-center justify-between gap-2">
-                    <p className={`text-xs font-extrabold uppercase tracking-[0.16em] ${UI.subheader}`}>{bandLabel(band)}</p>
-                    <span className={`border px-2 py-0.5 text-[11px] font-extrabold ${chipTone(band)}`}>
-                      {grouped[band].length}
-                    </span>
+      <div className="pulse-dashboard-surface p-4 sm:p-5">
+        <div ref={containerRef as any}>
+          {mounted ? (
+            <GridLayout
+              layout={layout}
+              width={width}
+              gridConfig={{
+                cols: width < 640 ? 1 : width < 1024 ? 6 : 12,
+                rowHeight: width < 640 ? 84 : 96,
+                margin: [12, 12],
+                containerPadding: [0, 0],
+              }}
+              dragConfig={{ enabled: canEdit && editMode, bounded: false, handle: ".dashboard-drag-handle" }}
+              resizeConfig={{ enabled: canEdit && editMode, handles: ["se"] }}
+              compactor={noCompactor}
+              onLayoutChange={(next) => {
+                if (!canEdit || !editMode) return;
+                setLayout(next as Layout);
+              }}
+            >
+              <div key="who" className={editMode ? "cursor-grab active:cursor-grabbing" : ""}>
+                <DashboardAccentCard mutedAccent innerClassName="space-y-4 h-full">
+                  <div className="flex flex-wrap items-end justify-between gap-3">
+                    <div>
+                      <p className={UI.header}>Who’s on shift</p>
+                      <p className={`mt-1 ${UI.subheader}`}>Auto from Schedule (today).</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <p className={`text-xs font-semibold ${UI.subheader}`}>{loading ? "Loading…" : `${todaysWork.length} scheduled`}</p>
+                      {canEdit && editMode ? (
+                        <span className="dashboard-drag-handle select-none border border-gray-800 bg-gray-900 px-2 py-1 text-[11px] font-semibold text-white">
+                          Drag
+                        </span>
+                      ) : null}
+                    </div>
                   </div>
-                  <ul className="mt-2 space-y-2 text-sm">
-                    {grouped[band].length === 0 ? (
-                      <li className={UI.subheader}>—</li>
+
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    {(["D", "A", "N"] as const).map((band) => (
+                      <div
+                        key={band}
+                        className="overflow-hidden rounded-[var(--pulse-dashboard-card-radius)] border border-ds-border bg-ds-primary shadow-[var(--ds-shadow-card)]"
+                      >
+                        <div className="h-0.5 w-full bg-ds-border" aria-hidden />
+                        <div className="p-3">
+                          <div className="flex items-center justify-between gap-2">
+                            <p className={`text-xs font-extrabold uppercase tracking-[0.16em] ${UI.subheader}`}>{bandLabel(band)}</p>
+                            <span className={`border px-2 py-0.5 text-[11px] font-extrabold ${chipTone(band)}`}>
+                              {grouped[band].length}
+                            </span>
+                          </div>
+                          <ul className="mt-2 space-y-2 text-sm">
+                            {grouped[band].length === 0 ? (
+                              <li className={UI.subheader}>—</li>
+                            ) : (
+                              grouped[band].slice(0, kiosk ? 14 : 10).map((s) => (
+                                <li
+                                  key={s.id}
+                                  className="flex items-center justify-between gap-2 border border-ds-border bg-ds-secondary/40 px-2.5 py-2"
+                                >
+                                  <span className="min-w-0 truncate font-semibold text-ds-foreground">
+                                    {s.workerId ? byId.get(s.workerId)?.name ?? "Worker" : "Open"}
+                                  </span>
+                                  <span className={`shrink-0 text-xs font-semibold tabular-nums ${UI.subheader}`}>
+                                    {s.startTime}–{s.endTime}
+                                  </span>
+                                </li>
+                              ))
+                            )}
+                          </ul>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </DashboardAccentCard>
+              </div>
+
+              <div key="assignments" className={editMode ? "cursor-grab active:cursor-grabbing" : ""}>
+                <DashboardAccentCard mutedAccent innerClassName="space-y-4 h-full">
+                  <div className="flex flex-wrap items-end justify-between gap-3">
+                    <div>
+                      <p className={UI.header}>Assignments</p>
+                      <p className={`mt-1 ${UI.subheader}`}>Placeholder until Work Requests + Xplor integration.</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <p className={`text-xs font-semibold ${UI.subheader}`}>Today</p>
+                      {canEdit && editMode ? (
+                        <span className="dashboard-drag-handle select-none border border-gray-800 bg-gray-900 px-2 py-1 text-[11px] font-semibold text-white">
+                          Drag
+                        </span>
+                      ) : null}
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    {(todaysWork.length ? todaysWork.slice(0, kiosk ? 14 : 10) : []).map((s) => (
+                      <div
+                        key={`asg-${s.id}`}
+                        className="flex flex-wrap items-center justify-between gap-3 border border-ds-border bg-ds-secondary/40 px-4 py-3"
+                      >
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-extrabold text-ds-foreground">
+                            {s.workerId ? byId.get(s.workerId)?.name ?? "Worker" : "Open slot"}
+                          </p>
+                          <p className={`mt-0.5 text-xs ${UI.subheader}`}>
+                            {bandLabel(shiftBandForWindow(s.startTime, s.endTime))} · {s.zoneId ? `Zone ${s.zoneId.slice(0, 6)}` : "—"}
+                          </p>
+                        </div>
+                        <span className="border border-ds-border bg-ds-secondary px-3 py-1 text-xs font-bold text-ds-foreground">
+                          Placeholder: Ice clean / Setup / Takedown
+                        </span>
+                      </div>
+                    ))}
+                    {todaysWork.length === 0 ? <p className={`text-sm ${UI.subheader}`}>No shifts found for today.</p> : null}
+                  </div>
+                </DashboardAccentCard>
+              </div>
+
+              <div key="schedule" className={editMode ? "cursor-grab active:cursor-grabbing" : ""}>
+                <DashboardAccentCard mutedAccent innerClassName="space-y-4 h-full">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className={UI.header}>Facility schedule</p>
+                    <div className="flex items-center gap-2">
+                      <span className={`text-xs font-semibold tabular-nums ${UI.subheader}`}>{timeInBc(now)}</span>
+                      {canEdit && editMode ? (
+                        <span className="dashboard-drag-handle select-none border border-gray-800 bg-gray-900 px-2 py-1 text-[11px] font-semibold text-white">
+                          Drag
+                        </span>
+                      ) : null}
+                    </div>
+                  </div>
+                  <div className="space-y-4">
+                    {facilitySchedule.length === 0 ? (
+                      <p className={`text-sm ${UI.subheader}`}>Loading schedule…</p>
                     ) : (
-                      grouped[band].slice(0, kiosk ? 14 : 10).map((s) => (
-                        <li key={s.id} className="flex items-center justify-between gap-2 border border-ds-border bg-ds-secondary/40 px-2.5 py-2">
-                          <span className="min-w-0 truncate font-semibold text-ds-foreground">
-                            {s.workerId ? byId.get(s.workerId)?.name ?? "Worker" : "Open"}
-                          </span>
-                          <span className={`shrink-0 text-xs font-semibold tabular-nums ${UI.subheader}`}>
-                            {s.startTime}–{s.endTime}
-                          </span>
-                        </li>
+                      Object.entries(
+                        facilitySchedule.reduce<Record<string, ScheduleEvent[]>>((acc, ev) => {
+                          (acc[ev.location] ||= []).push(ev);
+                          return acc;
+                        }, {}),
+                      ).map(([loc, events]) => (
+                        <div key={loc} className="space-y-2">
+                          <p className={`text-xs font-extrabold uppercase tracking-[0.16em] ${UI.subheader}`}>{loc}</p>
+                          <ul className="space-y-2 text-sm">
+                            {events
+                              .slice()
+                              .sort((a, b) => a.start_time.localeCompare(b.start_time))
+                              .slice(0, kiosk ? 10 : 8)
+                              .map((ev) => (
+                                <li
+                                  key={ev.id}
+                                  className="flex items-start justify-between gap-3 border border-ds-border bg-ds-secondary/40 px-4 py-3"
+                                >
+                                  <div className="min-w-0">
+                                    <p className="truncate font-semibold text-ds-foreground">{ev.program_name}</p>
+                                    {ev.staff?.length ? (
+                                      <p className={`mt-0.5 truncate text-xs ${UI.subheader}`}>{ev.staff.join(", ")}</p>
+                                    ) : null}
+                                  </div>
+                                  <span className={`shrink-0 text-xs font-bold tabular-nums ${UI.subheader}`}>
+                                    {new Date(ev.start_time).toLocaleTimeString(undefined, {
+                                      timeZone: BC_TZ,
+                                      hour: "2-digit",
+                                      minute: "2-digit",
+                                    })}
+                                    –
+                                    {new Date(ev.end_time).toLocaleTimeString(undefined, {
+                                      timeZone: BC_TZ,
+                                      hour: "2-digit",
+                                      minute: "2-digit",
+                                    })}
+                                  </span>
+                                </li>
+                              ))}
+                          </ul>
+                        </div>
                       ))
                     )}
-                  </ul>
                   </div>
-                </div>
-              ))}
-            </div>
-          </DashboardAccentCard>
-
-          <DashboardAccentCard mutedAccent innerClassName="space-y-4">
-            <div className="flex flex-wrap items-end justify-between gap-3">
-              <div>
-                <p className={UI.header}>Assignments</p>
-                <p className={`mt-1 ${UI.subheader}`}>Placeholder until Work Requests + Xplor integration.</p>
+                </DashboardAccentCard>
               </div>
-              <p className={`text-xs font-semibold ${UI.subheader}`}>Today</p>
-            </div>
 
-            <div className="space-y-2">
-              {(todaysWork.length ? todaysWork.slice(0, kiosk ? 14 : 10) : []).map((s) => (
-                <div
-                  key={`asg-${s.id}`}
-                  className="flex flex-wrap items-center justify-between gap-3 border border-ds-border bg-ds-secondary/40 px-4 py-3"
-                >
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-extrabold text-ds-foreground">
-                      {s.workerId ? byId.get(s.workerId)?.name ?? "Worker" : "Open slot"}
-                    </p>
-                    <p className={`mt-0.5 text-xs ${UI.subheader}`}>
-                      {bandLabel(shiftBandForWindow(s.startTime, s.endTime))} · {s.zoneId ? `Zone ${s.zoneId.slice(0, 6)}` : "—"}
-                    </p>
+              <div key="cadence" className={editMode ? "cursor-grab active:cursor-grabbing" : ""}>
+                <DashboardColumnPanel title="Ice & facility cadence" accent="dusk" className="h-full">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className={cn(UI.header, "leading-snug")}>Set-ups • Ice cleans • Takedowns</p>
+                      <p className={cn("mt-2 text-sm leading-relaxed", UI.subheader)}>
+                        Placeholder schedule until Xplor Recreation API is connected.
+                      </p>
+                    </div>
+                    {canEdit && editMode ? (
+                      <span className="dashboard-drag-handle mt-0.5 select-none border border-gray-800 bg-gray-900 px-2 py-1 text-[11px] font-semibold text-white">
+                        Drag
+                      </span>
+                    ) : null}
                   </div>
-                  <span className="border border-ds-border bg-ds-secondary px-3 py-1 text-xs font-bold text-ds-foreground">
-                    Placeholder: Ice clean / Setup / Takedown
-                  </span>
-                </div>
-              ))}
-              {todaysWork.length === 0 ? <p className={`text-sm ${UI.subheader}`}>No shifts found for today.</p> : null}
-            </div>
-          </DashboardAccentCard>
-        </div>
+                </DashboardColumnPanel>
+              </div>
 
-        <div className="col-span-12 space-y-6 lg:col-span-4">
-          <DashboardColumnPanel title="Ice & facility cadence" accent="dusk">
-            <p className={cn(UI.header, "leading-snug")}>Set-ups • Ice cleans • Takedowns</p>
-            <p className={cn("mt-2 text-sm leading-relaxed", UI.subheader)}>
-              Placeholder schedule until Xplor Recreation API is connected.
-            </p>
-          </DashboardColumnPanel>
-
-          <DashboardAccentCard mutedAccent innerClassName="space-y-4">
-            <div className="flex items-center justify-between gap-3">
-              <p className={UI.header}>Facility schedule</p>
-              <span className={`text-xs font-semibold tabular-nums ${UI.subheader}`}>{timeInBc(now)}</span>
-            </div>
-            <div className="space-y-4">
-              {facilitySchedule.length === 0 ? (
-                <p className={`text-sm ${UI.subheader}`}>Loading schedule…</p>
-              ) : (
-                Object.entries(
-                  facilitySchedule.reduce<Record<string, ScheduleEvent[]>>((acc, ev) => {
-                    (acc[ev.location] ||= []).push(ev);
-                    return acc;
-                  }, {}),
-                ).map(([loc, events]) => (
-                  <div key={loc} className="space-y-2">
-                    <p className={`text-xs font-extrabold uppercase tracking-[0.16em] ${UI.subheader}`}>{loc}</p>
-                    <ul className="space-y-2 text-sm">
-                      {events
-                        .slice()
-                        .sort((a, b) => a.start_time.localeCompare(b.start_time))
-                        .slice(0, kiosk ? 10 : 8)
-                        .map((ev) => (
-                          <li key={ev.id} className="flex items-start justify-between gap-3 border border-ds-border bg-ds-secondary/40 px-4 py-3">
-                            <div className="min-w-0">
-                              <p className="truncate font-semibold text-ds-foreground">{ev.program_name}</p>
-                              {ev.staff?.length ? (
-                                <p className={`mt-0.5 truncate text-xs ${UI.subheader}`}>{ev.staff.join(", ")}</p>
-                              ) : null}
-                            </div>
-                            <span className={`shrink-0 text-xs font-bold tabular-nums ${UI.subheader}`}>
-                              {new Date(ev.start_time).toLocaleTimeString(undefined, { timeZone: BC_TZ, hour: "2-digit", minute: "2-digit" })}–
-                              {new Date(ev.end_time).toLocaleTimeString(undefined, { timeZone: BC_TZ, hour: "2-digit", minute: "2-digit" })}
-                            </span>
-                          </li>
-                        ))}
-                    </ul>
+              <div key="notes" className={editMode ? "cursor-grab active:cursor-grabbing" : ""}>
+                <DashboardColumnPanel title="Notes" accent="muted" className="h-full">
+                  <div className="flex items-start justify-between gap-3">
+                    <p className={cn("text-sm leading-relaxed", UI.subheader)}>
+                      This panel is intentionally “kiosk safe” (large text, high contrast). Next we can wire real-time data and
+                      critical alerts into the modal above.
+                    </p>
+                    {canEdit && editMode ? (
+                      <span className="dashboard-drag-handle mt-0.5 select-none border border-gray-800 bg-gray-900 px-2 py-1 text-[11px] font-semibold text-white">
+                        Drag
+                      </span>
+                    ) : null}
                   </div>
-                ))
-              )}
-            </div>
-          </DashboardAccentCard>
-
-          <DashboardColumnPanel title="Notes" accent="muted">
-            <p className={cn("text-sm leading-relaxed", UI.subheader)}>
-              This panel is intentionally “kiosk safe” (large text, high contrast). Next we can wire real-time data and critical
-              alerts into the modal above.
-            </p>
-          </DashboardColumnPanel>
+                </DashboardColumnPanel>
+              </div>
+            </GridLayout>
+          ) : null}
         </div>
       </div>
 
