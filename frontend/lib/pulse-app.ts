@@ -121,7 +121,7 @@ export type PulsePostLoginIdentity = {
  * System operators use `/system`; everyone else (tenant / company users) uses `/overview`.
  * Impersonation tokens look like a tenant — they stay on `/overview`.
  */
-export function pulsePostLoginPath(user: PulsePostLoginIdentity): "/system" | "/overview" {
+export function pulsePostLoginPath(user: PulsePostLoginIdentity): "/system" | "/overview" | "/settings" {
   if (user.must_change_password === true) {
     return "/settings";
   }

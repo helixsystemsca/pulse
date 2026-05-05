@@ -1,38 +1,11 @@
-"use client";
-
-import { usePathname, useRouter } from "next/navigation";
-import { SegmentedControl } from "@/components/schedule/SegmentedControl";
-import { PageBody } from "@/components/ui/PageBody";
-import { PageHeader } from "@/components/ui/PageHeader";
-import { ListChecks } from "lucide-react";
+import { AppLayout } from "@/components/app/AppLayout";
+import { StandardsLayoutClient } from "@/components/standards/StandardsLayoutClient";
 
 export default function StandardsLayout({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname();
-  const router = useRouter();
-
-  const value = pathname.includes("/standards/routines") ? "routines" : "procedures";
-
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Standards"
-        description="Procedures and routines your team runs to stay consistent."
-        icon={ListChecks}
-      />
-      <PageBody>
-        <div className="max-w-md">
-          <SegmentedControl
-            value={value}
-            onChange={(v) => router.push(v === "routines" ? "/standards/routines" : "/standards/procedures")}
-            options={[
-              { value: "procedures", label: "Procedures" },
-              { value: "routines", label: "Routines" },
-            ]}
-          />
-        </div>
-        <div className="mt-6">{children}</div>
-      </PageBody>
-    </div>
+    <AppLayout mainClassName="bg-ds-bg">
+      <StandardsLayoutClient>{children}</StandardsLayoutClient>
+    </AppLayout>
   );
 }
 
