@@ -1,8 +1,9 @@
 "use client";
 
-import { AlertTriangle, ArrowLeft, Plus, ClipboardList, Trash2 } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Plus, ClipboardList, Trash2, ListChecks } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { apiFetch } from "@/lib/api";
+import Link from "next/link";
 import {
   formatCertCodesShort,
   formatCertCodesWithLabels,
@@ -694,7 +695,22 @@ export function ScheduleDayView({
               {workQueue &&
               (workQueue.work_requests.length > 0 || workQueue.overdue_pms.length > 0) ? (
                 <div className="mt-4 space-y-3 border-t border-ds-border pt-4">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-ds-muted">Work queue for this shift</p>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-ds-muted">Work queue for this shift</p>
+                    {(() => {
+                      const dayShift = shifts.find((s) => s.shiftKind !== "project_task");
+                      if (!dayShift) return null;
+                      return (
+                        <Link
+                          href={`/standards/routines/run?shift_id=${encodeURIComponent(dayShift.id)}`}
+                          className="inline-flex items-center gap-2 rounded-md border border-ds-border bg-ds-secondary px-3 py-1.5 text-xs font-semibold text-ds-foreground hover:bg-ds-interactive-hover"
+                        >
+                          <ListChecks className="h-4 w-4" aria-hidden />
+                          Run routine
+                        </Link>
+                      );
+                    })()}
+                  </div>
 
                   {workQueue.overdue_pms.length > 0 ? (
                     <div className="space-y-1.5">

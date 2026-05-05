@@ -1,5 +1,7 @@
 import { ProceduresApp } from "@/components/procedures/ProceduresApp";
+import { redirect } from "next/navigation";
 
 export default function ProceduresPage() {
-  return <ProceduresApp />;
+  void ProceduresApp;
+  redirect("/standards/procedures");
 }

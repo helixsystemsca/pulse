@@ -153,6 +153,128 @@ class PulseProcedureAssignment(Base):
     )
 
 
+class PulseRoutine(Base):
+    """Routine template: a named checklist with ordered items."""
+
+    __tablename__ = "pulse_routines"
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    company_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    zone_id: Mapped[Optional[str]] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("zones.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    created_by_user_id: Mapped[Optional[str]] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+
+class PulseRoutineItem(Base):
+    """Ordered checklist item belonging to a routine template."""
+
+    __tablename__ = "pulse_routine_items"
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    company_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    routine_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("pulse_routines.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    label: Mapped[str] = mapped_column(String(8000), nullable=False)
+    position: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    required: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+
+class PulseRoutineRunStatus(str, enum.Enum):
+    in_progress = "in_progress"
+    completed = "completed"
+
+
+class PulseRoutineRun(Base):
+    """Execution instance of a routine (compliance record)."""
+
+    __tablename__ = "pulse_routine_runs"
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    company_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    routine_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("pulse_routines.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    user_id: Mapped[Optional[str]] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    shift_id: Mapped[Optional[str]] = mapped_column(UUID(as_uuid=False), nullable=True, index=False)
+    started_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+    completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    status: Mapped[PulseRoutineRunStatus] = mapped_column(
+        Enum(PulseRoutineRunStatus),
+        nullable=False,
+        default=PulseRoutineRunStatus.in_progress,
+        index=True,
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            "status in ('in_progress','completed')",
+            name="ck_pulse_routine_runs_status",
+        ),
+    )
+
+
+class PulseRoutineItemRun(Base):
+    """Per-checklist item completion inside a routine run."""
+
+    __tablename__ = "pulse_routine_item_runs"
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    company_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    routine_run_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("pulse_routine_runs.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    routine_item_id: Mapped[Optional[str]] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("pulse_routine_items.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    completed: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    note: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+
 class PulseProcedureAssignmentPhoto(Base):
     """Photo evidence attached to a procedure assignment (worker upload)."""
 
