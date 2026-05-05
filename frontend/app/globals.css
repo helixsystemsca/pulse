@@ -39,17 +39,18 @@ html.pulse-welcome-blur [data-pulse-app-shell] {
   --ds-surface-secondary: #f1f3f5;
   --ds-surface-elevated: #ffffff;
   /**
-   * Left nav rail — inverted from main canvas for contrast:
-   * light app → dark rail + light labels; dark app → pale rail + dark labels.
+   * Left nav rail — taupe base (#615756), frosted blue hover/active (#92D5E6), white labels on taupe, black on frosted.
    */
-  --ds-sidebar: #0f172a;
-  --ds-sidebar-fg: #f8fafc;
-  --ds-sidebar-muted: rgba(248, 250, 252, 0.62);
-  --ds-sidebar-border: rgba(255, 255, 255, 0.12);
-  --ds-sidebar-well: #1e293b;
-  --ds-sidebar-well-muted: color-mix(in srgb, #1e293b 55%, #334155);
-  --ds-sidebar-interactive-hover: rgba(255, 255, 255, 0.08);
-  --ds-sidebar-interactive-hover-strong: rgba(255, 255, 255, 0.14);
+  --ds-sidebar: #615756;
+  --ds-sidebar-fg: #ffffff;
+  --ds-sidebar-muted: rgba(255, 255, 255, 0.72);
+  --ds-sidebar-border: rgba(255, 255, 255, 0.18);
+  --ds-sidebar-accent: #92d5e6;
+  --ds-sidebar-on-accent: #0f1729;
+  --ds-sidebar-well: rgba(255, 255, 255, 0.1);
+  --ds-sidebar-well-muted: rgba(255, 255, 255, 0.06);
+  --ds-sidebar-interactive-hover: #92d5e6;
+  --ds-sidebar-interactive-hover-strong: #92d5e6;
   --ds-header: #ffffff;
   --ds-border: rgba(15, 23, 42, 0.09);
   --ds-text-primary: #111827;
@@ -105,14 +106,16 @@ html.pulse-welcome-blur [data-pulse-app-shell] {
   --ds-surface-primary: #3f5274;
   --ds-surface-secondary: #354766;
   --ds-surface-elevated: #2c3a55;
-  --ds-sidebar: #f1f5f9;
-  --ds-sidebar-fg: #0f172a;
-  --ds-sidebar-muted: rgba(15, 23, 42, 0.55);
-  --ds-sidebar-border: rgba(15, 23, 42, 0.12);
-  --ds-sidebar-well: #e2e8f0;
-  --ds-sidebar-well-muted: color-mix(in srgb, #e2e8f0 65%, #f8fafc);
-  --ds-sidebar-interactive-hover: rgba(15, 23, 42, 0.06);
-  --ds-sidebar-interactive-hover-strong: color-mix(in srgb, var(--ds-accent) 14%, #e2e8f0);
+  --ds-sidebar: #615756;
+  --ds-sidebar-fg: #ffffff;
+  --ds-sidebar-muted: rgba(255, 255, 255, 0.72);
+  --ds-sidebar-border: rgba(255, 255, 255, 0.18);
+  --ds-sidebar-accent: #92d5e6;
+  --ds-sidebar-on-accent: #0f1729;
+  --ds-sidebar-well: rgba(255, 255, 255, 0.1);
+  --ds-sidebar-well-muted: rgba(255, 255, 255, 0.06);
+  --ds-sidebar-interactive-hover: #92d5e6;
+  --ds-sidebar-interactive-hover-strong: #92d5e6;
   --ds-header: color-mix(in srgb, var(--ds-surface-primary) 96%, #0f172a 4%);
   --ds-border: rgba(255, 255, 255, 0.1);
   --ds-text-primary: #ffffff;

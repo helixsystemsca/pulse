@@ -48,14 +48,13 @@ import {
 import { useSidebarState } from "@/components/app/SidebarState";
 import { cn } from "@/lib/cn";
 
-/** Icon tile: white square, dark glyph (white fill + white icon is illegible); active = solid teal/ice (`--ds-accent`) + black icon; hover scales up. */
-const navIconTile = (active: boolean) =>
+/** Collapsed rail only: white icon on taupe (transparent tile); hover/active = frosted blue fill + black icon. */
+const navIconTileCollapsed = (active: boolean) =>
   cn(
-    "flex shrink-0 items-center justify-center rounded-lg shadow-sm transition-transform duration-200 ease-out motion-safe:will-change-transform",
-    "ring-1 ring-black/[0.08] dark:ring-black/[0.1]",
+    "flex shrink-0 items-center justify-center rounded-lg transition-all duration-200 ease-out motion-safe:will-change-transform",
     active
-      ? "bg-[var(--ds-accent)] text-black shadow-md ring-0 motion-safe:group-hover:scale-110"
-      : "bg-white text-zinc-900 motion-safe:group-hover:scale-110 dark:bg-white dark:text-zinc-900",
+      ? "bg-ds-sidebar-accent text-ds-sidebar-on-accent shadow-sm motion-safe:group-hover:scale-110"
+      : "bg-transparent text-white motion-safe:group-hover:scale-110 motion-safe:group-hover:bg-ds-sidebar-accent motion-safe:group-hover:text-ds-sidebar-on-accent motion-safe:group-hover:shadow-sm",
   );
 
 const ICONS: Record<PulseSidebarIcon, LucideIcon> = {
@@ -164,9 +163,9 @@ export function AppSideNav() {
                   href={item.href}
                   title={item.label}
                   data-guided-tour-anchor={item.href === "/dashboard/maintenance" ? "sidebar-work-requests" : undefined}
-                  className="group flex items-center justify-center rounded-xl px-2 py-2 text-[13px] font-semibold leading-tight outline-none focus-visible:ring-2 focus-visible:ring-[var(--ds-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--ds-sidebar)]"
+                  className="group flex items-center justify-center rounded-xl px-2 py-2 text-[13px] font-semibold leading-tight outline-none focus-visible:ring-2 focus-visible:ring-ds-sidebar-accent focus-visible:ring-offset-2 focus-visible:ring-offset-ds-sidebar"
                 >
-                  <span className={cn(navIconTile(active), "h-9 w-9")}>
+                  <span className={cn(navIconTileCollapsed(active), "h-9 w-9")}>
                     <Icon className="h-[18px] w-[18px]" strokeWidth={2} aria-hidden />
                   </span>
                   <span className="sr-only">{item.label}</span>
@@ -180,9 +179,9 @@ export function AppSideNav() {
               <Link
                 href="/settings"
                 title="Settings"
-                className="group flex items-center justify-center rounded-xl px-2 py-2 outline-none focus-visible:ring-2 focus-visible:ring-[var(--ds-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--ds-sidebar)]"
+                className="group flex items-center justify-center rounded-xl px-2 py-2 outline-none focus-visible:ring-2 focus-visible:ring-ds-sidebar-accent focus-visible:ring-offset-2 focus-visible:ring-offset-ds-sidebar"
               >
-                <span className={cn(navIconTile(false), "h-9 w-9")}>
+                <span className={cn(navIconTileCollapsed(false), "h-9 w-9")}>
                   <Settings className="h-[18px] w-[18px]" strokeWidth={2} aria-hidden />
                 </span>
                 <span className="sr-only">Settings</span>
@@ -216,7 +215,7 @@ export function AppSideNav() {
                   value={navSearch}
                   onChange={(e) => setNavSearch(e.target.value)}
                   placeholder="Search…"
-                  className="w-full rounded-full border border-ds-sidebar-border bg-ds-sidebar-well py-2 pl-9 pr-3 text-sm text-ds-sidebar-fg shadow-inner placeholder:text-ds-sidebar-muted focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--ds-accent)_32%,transparent)]"
+                  className="w-full rounded-full border border-ds-sidebar-border bg-ds-sidebar-well py-2 pl-9 pr-3 text-sm text-ds-sidebar-fg shadow-inner placeholder:text-ds-sidebar-muted focus:outline-none focus:ring-2 focus:ring-ds-sidebar-accent focus:ring-offset-1 focus:ring-offset-ds-sidebar"
                   aria-label="Filter navigation"
                 />
               </div>
@@ -234,11 +233,13 @@ export function AppSideNav() {
                     onClick={() => closeSidebar()}
                     data-guided-tour-anchor={item.href === "/dashboard/maintenance" ? "sidebar-work-requests" : undefined}
                     className={cn(
-                      "group flex items-center gap-3 rounded-xl px-3 py-2 text-[13px] font-semibold leading-tight outline-none transition-colors focus-visible:ring-2 focus-visible:ring-[var(--ds-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--ds-sidebar)]",
-                      active ? "text-ds-sidebar-fg" : "text-ds-sidebar-muted hover:text-ds-sidebar-fg",
+                      "group flex items-center gap-3 rounded-xl px-3 py-2 text-[13px] font-semibold leading-tight outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ds-sidebar-accent focus-visible:ring-offset-2 focus-visible:ring-offset-ds-sidebar motion-safe:transition-[transform,background-color,color] motion-safe:duration-200",
+                      active
+                        ? "bg-ds-sidebar-accent text-ds-sidebar-on-accent motion-safe:hover:scale-[1.01]"
+                        : "text-ds-sidebar-fg hover:bg-ds-sidebar-accent hover:text-ds-sidebar-on-accent",
                     )}
                   >
-                    <span className={cn(navIconTile(active), "h-8 w-8")}>
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-inherit motion-safe:transition-transform motion-safe:duration-200 motion-safe:group-hover:scale-105">
                       <Icon className="h-[18px] w-[18px]" strokeWidth={2} aria-hidden />
                     </span>
                     <span className="min-w-0 flex-1 truncate">{item.label}</span>
@@ -253,7 +254,7 @@ export function AppSideNav() {
               <Link
                 href="/settings"
                 onClick={() => closeSidebar()}
-                className="group mb-2 flex w-full items-center justify-center gap-2 rounded-lg border border-ds-sidebar-border bg-white px-3 py-1.5 text-sm font-semibold text-zinc-900 shadow-sm transition-transform duration-200 ease-out motion-safe:hover:scale-[1.02] dark:bg-white"
+                className="group mb-2 flex w-full items-center justify-center gap-2 rounded-lg border border-ds-sidebar-border bg-transparent px-3 py-1.5 text-sm font-semibold text-ds-sidebar-fg transition-all duration-200 ease-out motion-safe:hover:scale-[1.02] hover:border-transparent hover:bg-ds-sidebar-accent hover:text-ds-sidebar-on-accent"
               >
                 <Settings className="h-4 w-4 shrink-0" strokeWidth={2} aria-hidden />
                 Settings

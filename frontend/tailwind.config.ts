@@ -85,6 +85,8 @@ const config: Config = {
           "sidebar-well-muted": "var(--ds-sidebar-well-muted)",
           "sidebar-hover": "var(--ds-sidebar-interactive-hover)",
           "sidebar-hover-strong": "var(--ds-sidebar-interactive-hover-strong)",
+          "sidebar-accent": "var(--ds-sidebar-accent)",
+          "sidebar-on-accent": "var(--ds-sidebar-on-accent)",
           header: "var(--ds-header)",
           accent: "var(--ds-accent)",
           "accent-foreground": "var(--ds-accent-foreground)",
