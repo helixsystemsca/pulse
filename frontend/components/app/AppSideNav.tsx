@@ -90,7 +90,7 @@ export function AppSideNav() {
       : [...rawNav]
   ).map((i) => ({ href: i.href, label: i.label, icon: i.icon }));
   if (!isSystemAdmin && session) {
-    if (!isDemoViewer) {
+    if (session.role !== "demo_viewer") {
       items = items.filter((i) => isTenantNavFeatureEnabled(i.href, session.enabled_features));
       items = items.filter((i) => {
         if (i.href === "/dashboard/workers" || i.href.startsWith("/dashboard/workers")) {

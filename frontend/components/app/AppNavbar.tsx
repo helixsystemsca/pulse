@@ -10,6 +10,7 @@ import { ChevronDown, Image as ImageIcon, LogOut, Settings } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
 import { navigateToPulseLogin, pulseApp, pulseRoutes } from "@/lib/pulse-app";
+import { dispatchPulseLogoutSuccessUi } from "@/lib/pulse-logout-ui";
 import { clearSession } from "@/lib/pulse-session";
 import { UserProfileAvatarPreview } from "@/components/profile/UserProfileAvatarPreview";
 import { sessionHasAnyRole } from "@/lib/pulse-roles";
@@ -35,9 +36,14 @@ export function AppNavbar() {
   }, [userOpen]);
 
   const signOut = useCallback(() => {
-    clearSession();
     setUserOpen(false);
-    navigateToPulseLogin();
+    dispatchPulseLogoutSuccessUi();
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        clearSession();
+        navigateToPulseLogin();
+      });
+    });
   }, []);
 
   return (

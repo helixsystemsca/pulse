@@ -2461,16 +2461,25 @@ export function OperationalDashboard({
 
   const fetchLive = useCallback(async () => {
     const sess = readSession();
-    if (!tokenOverride && !canAccessPulseTenantApis(sess)) {
-      setLoading(false);
-      setError(
-        sess && (sess.is_system_admin === true || sess.role === "system_admin")
-          ? "The operations dashboard is for tenant accounts. Sign in with a company user, or open System admin and use impersonation to view a tenant."
-          : "Your account is not linked to an organization. Contact your administrator.",
-      );
-      setLiveModel(null);
-      notifyReady();
-      return;
+    if (!tokenOverride) {
+      if (!sess?.access_token) {
+        setLoading(false);
+        setError(null);
+        setLiveModel(null);
+        notifyReady();
+        return;
+      }
+      if (!canAccessPulseTenantApis(sess)) {
+        setLoading(false);
+        setError(
+          sess.is_system_admin === true || sess.role === "system_admin"
+            ? "The operations dashboard is for tenant accounts. Sign in with a company user, or open System admin and use impersonation to view a tenant."
+            : "Your account is not linked to an organization. Contact your administrator.",
+        );
+        setLiveModel(null);
+        notifyReady();
+        return;
+      }
     }
 
     let readyPayload: OperationalDashboardReadyPayload = { criticalCount: 0, warningCount: 0 };

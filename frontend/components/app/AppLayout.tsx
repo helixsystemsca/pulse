@@ -81,7 +81,11 @@ export function AppLayout({
             )}
           </div>
 
-          {chrome ? <AppLayoutFooter /> : null}
+          {chrome ? (
+            <div className="shrink-0 lg:pl-16">
+              <AppLayoutFooter />
+            </div>
+          ) : null}
             </div>
           </SidebarStateProvider>
         </GamificationProvider>

@@ -18,7 +18,7 @@ export function AppMainChromeColumn({
   const { isSidebarOpen, closeSidebar } = useSidebarState();
 
   return (
-    <div className="relative z-0 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+    <div className="relative z-0 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden lg:pl-16">
       {isSidebarOpen ? (
         <button
           type="button"
