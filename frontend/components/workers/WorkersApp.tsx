@@ -125,6 +125,14 @@ type InviteLinkBanner = {
   variant: "no_email" | "email_maybe" | "link_only";
 };
 
+/** Inline banner at the top of the Add employee drawer after an action completes. */
+type CreateModalBanner =
+  | { kind: "link"; url: string }
+  | { kind: "invite_ok" }
+  | { kind: "invite_warning"; url: string; serverMessage: string }
+  | { kind: "profile"; serverMessage: string }
+  | { kind: "error"; message: string };
+
 const PROFILE_ROLE_OPTIONS = ["worker", "lead", "supervisor", "manager"] as const;
 
 const EMPLOYMENT_TYPE_KEYS = ["full_time", "regular_part_time", "part_time"] as const;
@@ -396,7 +404,9 @@ export function WorkersApp() {
   useEffect(() => {
     setInviteLinkCopied(false);
   }, [inviteNotice?.inviteUrl]);
-  const [createInviteBusy, setCreateInviteBusy] = useState(false);
+  const [createBusy, setCreateBusy] = useState<null | "link" | "invite" | "profile">(null);
+  const [createModalBanner, setCreateModalBanner] = useState<CreateModalBanner | null>(null);
+  const [createModalLinkCopied, setCreateModalLinkCopied] = useState(false);
   const [createToast, setCreateToast] = useState<{ message: string; variant: "success" | "error" } | null>(
     null,
   );
@@ -653,11 +663,13 @@ export function WorkersApp() {
 
   const canDeleteInvitedFromList = isTenantFullAdmin || isSystemAdmin;
 
+  /** People who can supervise others in the facility org chart — managers/supervisors only.
+   * `company_admin` is permission-tier only (not facility hierarchy); admins who are workers belong with workers. */
   const supervisors = useMemo(
     () =>
       list.filter(
         (u) =>
-          principalHasAnyRole(u, "supervisor", "manager", "company_admin") &&
+          principalHasAnyRole(u, "supervisor", "manager") &&
           u.is_active &&
           (u.account_status ?? "active") === "active",
       ),
@@ -969,55 +981,85 @@ export function WorkersApp() {
     }
   }
 
-  async function submitCreate() {
-    if (!createForm.email.trim() || createInviteBusy) return;
-    setCreateInviteBusy(true);
+  function buildCreateWorkerBody(): Record<string, unknown> {
+    const skills = createForm.skills
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .map((name) => ({ name, level: 3 }));
+    const certLines = createForm.certifications.split("\n").map((l) => l.trim()).filter(Boolean);
+    const certifications = certLines.map((line) => {
+      const [name, exp] = line.split("|").map((x) => x.trim());
+      return exp ? { name, expiry_date: `${exp}T12:00:00.000Z` } : { name };
+    });
+    return {
+      email: createForm.email.trim(),
+      full_name: createForm.full_name.trim() || null,
+      role: createForm.role,
+      employment_type: createForm.employment_type || null,
+      department: createForm.department.trim() || null,
+      shift: createForm.shift || null,
+      start_date: createForm.start_date || null,
+      supervisor_id: createForm.supervisor_id.trim() || null,
+      skills: skills.length ? skills : undefined,
+      certifications: certifications.length ? certifications : undefined,
+    };
+  }
+
+  async function submitCreateFlow(mode: "link" | "invite" | "profile") {
+    if (!createForm.email.trim() || createBusy) return;
+    if (mode === "profile" && !isCompanyAdmin) return;
+    setCreateModalLinkCopied(false);
+    setCreateBusy(mode);
+    setCreateModalBanner(null);
     try {
-      const skills = createForm.skills
-        .split(",")
-        .map((s) => s.trim())
-        .filter(Boolean)
-        .map((name) => ({ name, level: 3 }));
-      const certLines = createForm.certifications.split("\n").map((l) => l.trim()).filter(Boolean);
-      const certifications = certLines.map((line) => {
-        const [name, exp] = line.split("|").map((x) => x.trim());
-        return exp ? { name, expiry_date: `${exp}T12:00:00.000Z` } : { name };
-      });
+      const body: Record<string, unknown> = {
+        ...buildCreateWorkerBody(),
+        send_email: mode === "invite",
+        roster_profile_only: mode === "profile",
+      };
+      const result = await createWorker(apiCompany, body);
       const origin = typeof window !== "undefined" ? window.location.origin : "";
-      const result = await createWorker(apiCompany, {
-        email: createForm.email.trim(),
-        full_name: createForm.full_name.trim() || null,
-        role: createForm.role,
-        employment_type: createForm.employment_type || null,
-        department: createForm.department.trim() || null,
-        shift: createForm.shift || null,
-        start_date: createForm.start_date || null,
-        supervisor_id: createForm.supervisor_id.trim() || null,
-        skills: skills.length ? skills : undefined,
-        certifications: certifications.length ? certifications : undefined,
-      });
-      const absLink = `${origin}${result.invite_link_path}`;
-      if (result.invite_email_sent === false) {
-        setInviteNotice({ inviteUrl: absLink, variant: "no_email" });
-      } else if (result.invite_email_sent === null) {
-        setInviteNotice({ inviteUrl: absLink, variant: "email_maybe" });
+      if (mode === "profile") {
+        setCreateModalBanner({ kind: "profile", serverMessage: result.message });
+      } else if (mode === "invite") {
+        if (result.invite_email_sent === true) {
+          setCreateModalBanner({ kind: "invite_ok" });
+        } else {
+          const path = result.invite_link_path?.trim() ?? "";
+          const absLink = path ? `${origin}${path}` : "";
+          setCreateModalBanner({
+            kind: "invite_warning",
+            url: absLink,
+            serverMessage: result.message,
+          });
+        }
       } else {
-        setInviteNotice(null);
+        const path = result.invite_link_path?.trim() ?? "";
+        if (!path) {
+          setCreateModalBanner({
+            kind: "error",
+            message: "No join link was returned. Check that the request completed successfully.",
+          });
+        } else {
+          setCreateModalBanner({ kind: "link", url: `${origin}${path}` });
+        }
       }
-      setCreateOpen(false);
-      setCreateForm({ ...CREATE_FORM_EMPTY });
-      setCreateToast({ variant: "success", message: "Invite sent successfully" });
       await loadList();
     } catch (e) {
       const { message } = parseClientApiError(e);
-      setCreateToast({
-        variant: "error",
-        message: message && message !== "Request failed" ? message : "Failed to send invite",
+      setCreateModalBanner({
+        kind: "error",
+        message: message && message !== "Request failed" ? message : "Request failed",
       });
     } finally {
-      setCreateInviteBusy(false);
+      setCreateBusy(null);
     }
   }
+
+  useEffect(() => {
+    setCreateModalLinkCopied(false);
+  }, [createModalBanner]);
 
   if (!canOpenWorkers) {
     return (
@@ -1053,11 +1095,12 @@ export function WorkersApp() {
               className={PRIMARY_BTN}
               onClick={() => {
                 setCreateForm((f) => ({ ...f, role: createRoleLimited ? "worker" : f.role }));
+                setCreateModalBanner(null);
                 setCreateOpen(true);
               }}
               disabled={!dataEnabled}
             >
-              + Create & send invite
+              + Add employee
             </button>
           </>
         }
@@ -1670,9 +1713,10 @@ export function WorkersApp() {
       <PulseDrawer
         open={createOpen}
         title="Add an employee"
-        subtitle="Invite a team member to join your organization. They will choose their own password from the email link."
+        subtitle="Generate a join link, send an invite email, or (company admins) add a roster profile without activation yet."
         onClose={() => {
-          if (createInviteBusy) return;
+          if (createBusy) return;
+          setCreateModalBanner(null);
           setCreateOpen(false);
         }}
         belowAppHeader
@@ -1680,36 +1724,188 @@ export function WorkersApp() {
         placement="center"
         labelledBy="worker-create-title"
         footer={
-          <div className="flex flex-wrap justify-end gap-3">
+          <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-3">
             <button
               type="button"
               className="text-sm font-semibold text-ds-muted transition-colors hover:text-ds-foreground disabled:cursor-not-allowed disabled:opacity-50"
-              disabled={createInviteBusy}
-              onClick={() => setCreateOpen(false)}
+              disabled={createBusy !== null}
+              onClick={() => {
+                setCreateModalBanner(null);
+                setCreateOpen(false);
+              }}
             >
               Cancel
             </button>
             <button
               type="button"
-              className={`${PRIMARY_BTN} inline-flex items-center justify-center gap-2`}
-              disabled={createInviteBusy || !createForm.email.trim()}
-              onClick={() => void submitCreate()}
+              className={cn(
+                buttonVariants({ surface: "light", intent: "secondary" }),
+                "inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm",
+              )}
+              disabled={createBusy !== null || !createForm.email.trim()}
+              onClick={() => void submitCreateFlow("link")}
             >
-              {createInviteBusy ? (
+              {createBusy === "link" ? (
                 <>
                   <Loader2 className="h-4 w-4 shrink-0 animate-spin" aria-hidden />
-                  Sending...
+                  Generating…
                 </>
               ) : (
-                "Create & send invite"
+                "Generate link"
               )}
             </button>
+            <button
+              type="button"
+              className={`${PRIMARY_BTN} inline-flex items-center justify-center gap-2`}
+              disabled={createBusy !== null || !createForm.email.trim()}
+              onClick={() => void submitCreateFlow("invite")}
+            >
+              {createBusy === "invite" ? (
+                <>
+                  <Loader2 className="h-4 w-4 shrink-0 animate-spin" aria-hidden />
+                  Sending…
+                </>
+              ) : (
+                "Send invite"
+              )}
+            </button>
+            {isCompanyAdmin ? (
+              <button
+                type="button"
+                className={cn(
+                  buttonVariants({ surface: "light", intent: "secondary" }),
+                  "inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm",
+                )}
+                disabled={createBusy !== null || !createForm.email.trim()}
+                onClick={() => void submitCreateFlow("profile")}
+              >
+                {createBusy === "profile" ? (
+                  <>
+                    <Loader2 className="h-4 w-4 shrink-0 animate-spin" aria-hidden />
+                    Saving…
+                  </>
+                ) : (
+                  "Create profile"
+                )}
+              </button>
+            ) : null}
           </div>
         }
       >
         <p id="worker-create-title" className="sr-only">
           Add an employee
         </p>
+        {createModalBanner ? (
+          <div
+            role="status"
+            className={cn(
+              "mb-4 rounded-lg border px-3 py-3 text-sm",
+              createModalBanner.kind === "error"
+                ? "border-ds-danger bg-[color-mix(in_srgb,var(--ds-danger)_12%,transparent)] text-ds-foreground"
+                : "border-ds-border bg-ds-surface-elevated text-ds-foreground",
+            )}
+          >
+            {createModalBanner.kind === "link" ? (
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+                <div className="min-w-0 space-y-1">
+                  <p className="font-semibold text-ds-foreground">Join link ready</p>
+                  <p className="text-xs leading-relaxed text-ds-muted">
+                    Copy and send this URL yourself. Any previous link for this email no longer works.
+                  </p>
+                  <p className="break-all font-mono text-xs text-ds-muted [word-break:break-word]">
+                    {createModalBanner.url}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className={cn(
+                    buttonVariants({ surface: "light", intent: "accent" }),
+                    "inline-flex shrink-0 items-center justify-center gap-2 self-start px-3 py-2 text-xs",
+                  )}
+                  onClick={() => {
+                    void navigator.clipboard.writeText(createModalBanner.url).then(() => {
+                      setCreateModalLinkCopied(true);
+                      window.setTimeout(() => setCreateModalLinkCopied(false), 2000);
+                    });
+                  }}
+                >
+                  {createModalLinkCopied ? (
+                    <>
+                      <Check className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden />
+                      Copied
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
+                      Copy link
+                    </>
+                  )}
+                </button>
+              </div>
+            ) : null}
+            {createModalBanner.kind === "invite_ok" ? (
+              <div className="flex gap-2">
+                <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-ds-success" strokeWidth={2} aria-hidden />
+                <p className="font-medium text-ds-foreground">Invite sent successfully.</p>
+              </div>
+            ) : null}
+            {createModalBanner.kind === "invite_warning" ? (
+              <div className="space-y-3">
+                <div className="flex gap-2">
+                  <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-ds-warning" aria-hidden />
+                  <div className="min-w-0 space-y-1">
+                    <p className="font-semibold text-ds-foreground">Invite may not have been emailed</p>
+                    <p className="text-xs leading-relaxed text-ds-muted">{createModalBanner.serverMessage}</p>
+                  </div>
+                </div>
+                {createModalBanner.url ? (
+                  <div className="flex flex-col gap-2 border-t border-ds-border pt-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+                    <p className="break-all font-mono text-xs text-ds-muted [word-break:break-word]">
+                      {createModalBanner.url}
+                    </p>
+                    <button
+                      type="button"
+                      className={cn(
+                        buttonVariants({ surface: "light", intent: "accent" }),
+                        "inline-flex shrink-0 items-center justify-center gap-2 self-start px-3 py-2 text-xs",
+                      )}
+                      onClick={() => {
+                        void navigator.clipboard.writeText(createModalBanner.url).then(() => {
+                          setCreateModalLinkCopied(true);
+                          window.setTimeout(() => setCreateModalLinkCopied(false), 2000);
+                        });
+                      }}
+                    >
+                      {createModalLinkCopied ? (
+                        <>
+                          <Check className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden />
+                          Copied
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
+                          Copy link
+                        </>
+                      )}
+                    </button>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+            {createModalBanner.kind === "profile" ? (
+              <div className="flex gap-2">
+                <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-ds-success" strokeWidth={2} aria-hidden />
+                <p className="font-medium text-ds-foreground">{createModalBanner.serverMessage}</p>
+              </div>
+            ) : null}
+            {createModalBanner.kind === "error" ? (
+              <div className="flex gap-2">
+                <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-ds-danger" aria-hidden />
+                <p className="font-medium">{createModalBanner.message}</p>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="sm:col-span-2">
             <label className={LABEL}>Name</label>

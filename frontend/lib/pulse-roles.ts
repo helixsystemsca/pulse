@@ -98,7 +98,11 @@ export function primaryWorkerGroupKey(
   p: Pick<{ roles?: string[]; role?: string }, "roles" | "role">,
 ): (typeof DISPLAY_ORDER)[number] | "worker" {
   const raw = roleListFromPrincipal(p);
-  const prim = sessionPrimaryRole({ roles: raw });
+  // `company_admin` is permission-tier, not facility org chart. If the person also has a facility
+  // role (manager/supervisor/lead/worker), group by that role instead of listing them under Admins.
+  const facilityRoles = raw.filter((r) => r !== "company_admin" && r !== "system_admin");
+  const forGroup = facilityRoles.length ? facilityRoles : raw;
+  const prim = sessionPrimaryRole({ roles: forGroup });
   if (DISPLAY_ORDER.includes(prim as (typeof DISPLAY_ORDER)[number])) {
     return prim as (typeof DISPLAY_ORDER)[number];
   }

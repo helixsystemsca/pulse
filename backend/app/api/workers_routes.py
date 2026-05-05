@@ -809,6 +809,64 @@ async def create_worker(
 
     role_enum = UserRole(body.role)
     settings = get_settings()
+
+    if body.roster_profile_only:
+        if not user_has_any_role(actor, UserRole.company_admin) and not user_has_facility_tenant_admin_flag(actor):
+            raise HTTPException(
+                status_code=403,
+                detail="Only company administrators can create roster-only profiles",
+            )
+
+        existing_q = await db.execute(select(User).where(func.lower(User.email) == email_norm))
+        existing = existing_q.scalar_one_or_none()
+
+        if existing:
+            if str(existing.company_id) != cid:
+                raise HTTPException(status_code=400, detail="Email already in use")
+            if existing.account_status == UserAccountStatus.active and existing.hashed_password:
+                raise HTTPException(status_code=400, detail="Email already in use")
+            user = existing
+            user.roles = [role_enum.value]
+            user.operational_role = default_operational_role_for_invite_role(role_enum)
+            user.full_name = body.full_name
+            user.account_status = UserAccountStatus.invited
+            user.hashed_password = None
+            user.is_active = True
+            user.created_by = actor.id
+        else:
+            user = User(
+                company_id=cid,
+                email=email_norm,
+                hashed_password=None,
+                full_name=body.full_name,
+                roles=[role_enum.value],
+                operational_role=default_operational_role_for_invite_role(role_enum),
+                created_by=actor.id,
+                account_status=UserAccountStatus.invited,
+                invite_token_hash=None,
+                invite_expires_at=None,
+                is_active=True,
+            )
+            db.add(user)
+        await db.flush()
+
+        hr = await _get_hr(db, user.id)
+        await _apply_worker_hr_and_extras(db, cid, user, body, hr_row=hr)
+
+        await db.commit()
+
+        u2 = await pulse_svc._user_in_company(db, cid, user.id)
+        assert u2
+        users_map = await _users_by_company(db, cid)
+        detail = await _build_detail(db, cid, u2, users_map)
+
+        return WorkerCreateResultOut(
+            worker=detail,
+            invite_link_path="",
+            invite_email_sent=None,
+            message="Profile created — use Join link on the roster row when they are ready to activate.",
+        )
+
     exp = datetime.now(timezone.utc) + timedelta(hours=settings.system_invite_expire_hours)
     raw = generate_raw_token()
     token_hash = hash_system_token(raw)
@@ -856,14 +914,19 @@ async def create_worker(
     link_path = _employee_join_path(raw)
     invite_url = _pulse_public_link(link_path)
 
-    invite_email_sent = False
-    if settings.smtp_configured:
+    send_email = body.send_email
+    invite_email_sent: bool | None
+    if send_email and settings.smtp_configured:
         invite_email_sent = await send_employee_invite(
             settings,
             to_email=email_norm,
             company_name=co_name,
             invite_url=invite_url,
         )
+    elif not send_email:
+        invite_email_sent = None
+    else:
+        invite_email_sent = False
 
     await db.commit()
 
@@ -871,12 +934,16 @@ async def create_worker(
     assert u2
     users_map = await _users_by_company(db, cid)
     detail = await _build_detail(db, cid, u2, users_map)
-    if invite_email_sent:
-        create_msg = "Invite sent"
-    elif settings.smtp_configured:
-        create_msg = "Worker saved — email failed to send; share the activation link"
+
+    if send_email:
+        if invite_email_sent:
+            create_msg = "Invite sent"
+        elif settings.smtp_configured:
+            create_msg = "Worker saved — email failed to send; share the activation link"
+        else:
+            create_msg = "Worker saved — SMTP not configured; share the activation link"
     else:
-        create_msg = "Worker saved — SMTP not configured; share the activation link"
+        create_msg = "Join link ready — share manually (no invite email sent for this action)"
 
     return WorkerCreateResultOut(
         worker=detail,
