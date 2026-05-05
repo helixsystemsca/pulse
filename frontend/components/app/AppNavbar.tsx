@@ -6,7 +6,7 @@
 import { usePathname } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
-import { ChevronDown, Image as ImageIcon, LogOut, Menu, Settings } from "lucide-react";
+import { ChevronDown, Image as ImageIcon, LogOut, Settings } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
 import { navigateToPulseLogin, pulseApp, pulseRoutes } from "@/lib/pulse-app";
@@ -14,14 +14,11 @@ import { clearSession } from "@/lib/pulse-session";
 import { UserProfileAvatarPreview } from "@/components/profile/UserProfileAvatarPreview";
 import { sessionHasAnyRole } from "@/lib/pulse-roles";
 import { cn } from "@/lib/cn";
-import { useSidebarState } from "@/components/app/SidebarState";
-
 export function AppNavbar() {
   const pathname = usePathname();
   const { authed, session } = usePulseAuth();
   const [userOpen, setUserOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
-  const { toggleSidebar } = useSidebarState();
 
   const logoHref = authed ? pulseApp.to(pulseRoutes.overview) : pulseRoutes.pulseLanding;
   void session;
@@ -46,16 +43,6 @@ export function AppNavbar() {
   return (
       <nav className="flex w-full items-center justify-between gap-4" aria-label="Main">
         <div className="flex min-w-0 items-center">
-          {authed ? (
-            <button
-              type="button"
-              onClick={toggleSidebar}
-              className="mr-2 inline-flex h-10 w-10 items-center justify-center rounded-lg border border-ds-border bg-ds-primary text-ds-muted transition-colors hover:bg-ds-secondary hover:text-ds-foreground"
-              aria-label="Toggle sidebar"
-            >
-              <Menu className="h-5 w-5" aria-hidden />
-            </button>
-          ) : null}
           <Link
             href={logoHref}
             className="flex min-w-0 shrink-0 items-center gap-1.5 sm:gap-2 no-underline hover:opacity-[0.97]"
