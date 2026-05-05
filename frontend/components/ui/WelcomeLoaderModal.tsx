@@ -25,6 +25,8 @@ export type WelcomeLoaderModalProps = {
   warningCount?: number;
   /** Override session key if needed (default matches product brief). */
   storageKey?: string;
+  /** Fires once after the personalized welcome line has been shown and the overlay closes normally. */
+  onWelcomeComplete?: () => void;
 };
 
 /** Minimum time the ocean wave is visible (fast API / warm Render otherwise flashes past). */
@@ -107,6 +109,7 @@ export function WelcomeLoaderModal({
   criticalCount = 0,
   warningCount = 0,
   storageKey = PULSE_WELCOME_SESSION_KEY,
+  onWelcomeComplete,
 }: WelcomeLoaderModalProps) {
   const [hydrated, setHydrated] = useState(false);
   const [skipEntirely, setSkipEntirely] = useState(false);
@@ -171,12 +174,13 @@ export function WelcomeLoaderModal({
         /* ignore */
       }
       setOpen(false);
+      onWelcomeComplete?.();
     }, WELCOME_PHASE_MS);
     return () => {
       if (welcomeTimerRef.current) clearTimeout(welcomeTimerRef.current);
       welcomeTimerRef.current = null;
     };
-  }, [hydrated, isReady, skipEntirely, storageKey, phase]);
+  }, [hydrated, isReady, skipEntirely, storageKey, phase, onWelcomeComplete]);
 
   if (!hydrated || skipEntirely) {
     return null;

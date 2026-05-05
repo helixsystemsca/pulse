@@ -10,7 +10,7 @@ import { WelcomeLoaderModal } from "@/components/ui/WelcomeLoaderModal";
 import { UI } from "@/styles/ui";
 import { isApiMode } from "@/lib/api";
 import { navigateToPulseLogin, pulsePostLoginPath } from "@/lib/pulse-app";
-import { readSession } from "@/lib/pulse-session";
+import { PULSE_WELCOME_SESSION_KEY, readSession } from "@/lib/pulse-session";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -30,11 +30,11 @@ export default function OverviewPage() {
   const router = useRouter();
   const [ready, setReady] = useState(false);
   const [dashboardDataReady, setDashboardDataReady] = useState(false);
-  const [userInteracted, setUserInteracted] = useState(false);
   const [welcomeAlertContext, setWelcomeAlertContext] = useState<OperationalDashboardReadyPayload>({
     criticalCount: 0,
     warningCount: 0,
   });
+
   const onDashboardReady = useCallback((payload?: OperationalDashboardReadyPayload) => {
     setWelcomeAlertContext(payload ?? { criticalCount: 0, warningCount: 0 });
     setDashboardDataReady(true);
@@ -53,16 +53,26 @@ export default function OverviewPage() {
     setReady(true);
   }, [router]);
 
+  /** Returning visits in the same tab: welcome already dismissed → send password-change users to settings. */
   useEffect(() => {
     if (!ready) return;
-    const mark = () => setUserInteracted(true);
-    window.addEventListener("pointerdown", mark, { once: true });
-    window.addEventListener("keydown", mark, { once: true });
-    return () => {
-      window.removeEventListener("pointerdown", mark);
-      window.removeEventListener("keydown", mark);
-    };
-  }, [ready]);
+    const s = readSession();
+    if (!s?.must_change_password) return;
+    try {
+      if (sessionStorage.getItem(PULSE_WELCOME_SESSION_KEY) === "true") {
+        router.replace("/settings");
+      }
+    } catch {
+      /* private mode */
+    }
+  }, [ready, router]);
+
+  const onWelcomeComplete = useCallback(() => {
+    const s = readSession();
+    if (s?.must_change_password) {
+      router.replace("/settings");
+    }
+  }, [router]);
 
   const userName = useMemo(() => {
     const s = readSession();
@@ -84,14 +94,13 @@ export default function OverviewPage() {
       <div className="relative space-y-4">
         <DashboardViewTabs />
         <OperationalDashboard variant={isApiMode() ? "live" : "demo"} onReady={onDashboardReady} />
-        {userInteracted ? null : (
-          <WelcomeLoaderModal
-            userName={userName}
-            isReady={dashboardDataReady}
-            criticalCount={welcomeAlertContext.criticalCount}
-            warningCount={welcomeAlertContext.warningCount}
-          />
-        )}
+        <WelcomeLoaderModal
+          userName={userName}
+          isReady={dashboardDataReady}
+          criticalCount={welcomeAlertContext.criticalCount}
+          warningCount={welcomeAlertContext.warningCount}
+          onWelcomeComplete={onWelcomeComplete}
+        />
       </div>
     </PageWrapper>
   );

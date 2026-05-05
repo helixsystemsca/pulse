@@ -72,6 +72,8 @@ export type PulseAuthSession = {
   facility_tenant_admin?: boolean;
   /** Prefer over humanized `role` when present (e.g. ``Worker (Admin)``). */
   role_display_label?: string | null;
+  /** From `/auth/me`; when true, user should change password (may redirect after welcome). */
+  must_change_password?: boolean;
   iat: number;
   exp: number;
   /** Legacy: was tied to removed “Keep me signed in”; new sessions always use `false`. */
@@ -258,6 +260,7 @@ export function writeApiSession(
     can_use_pm_features: user.can_use_pm_features,
     facility_tenant_admin: user.facility_tenant_admin,
     role_display_label: user.role_display_label ?? undefined,
+    must_change_password: user.must_change_password === true ? true : undefined,
     iat: now,
     exp,
     remember,

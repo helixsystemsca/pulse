@@ -54,8 +54,9 @@ html.pulse-welcome-blur [data-pulse-app-shell] {
   /** Rail background + tiles (AppSideNav): taupe gradient, solid frozen-blue hover, white active chip */
   --ds-sidebar-rail-gradient: linear-gradient(180deg, #9a928a 0%, #7f7770 42%, #625b55 100%);
   --ds-sidebar-tile-hover-solid: #6eb0dc;
-  --ds-sidebar-tile-active-bg: #ffffff;
-  --ds-sidebar-tile-active-fg: #171717;
+  /** Active tile: darker frost blue (not white) so row height reads even with borders */
+  --ds-sidebar-tile-active-bg: color-mix(in srgb, var(--ds-sidebar-tile-hover-solid) 52%, #1a3a52 48%);
+  --ds-sidebar-tile-active-fg: #f8fafc;
   --ds-sidebar-tile-divider: rgba(255, 255, 255, 0.28);
   --ds-header: #ffffff;
   --ds-border: rgba(15, 23, 42, 0.09);
@@ -124,8 +125,9 @@ html.pulse-welcome-blur [data-pulse-app-shell] {
   --ds-sidebar-interactive-hover-strong: #92d5e6;
   --ds-sidebar-rail-gradient: linear-gradient(180deg, #8f8780 0%, #726b65 42%, #524c47 100%);
   --ds-sidebar-tile-hover-solid: #6eb0dc;
-  --ds-sidebar-tile-active-bg: #ffffff;
-  --ds-sidebar-tile-active-fg: #171717;
+  /** Active tile: darker frost blue (not white) so row height reads even with borders */
+  --ds-sidebar-tile-active-bg: color-mix(in srgb, var(--ds-sidebar-tile-hover-solid) 52%, #1a3a52 48%);
+  --ds-sidebar-tile-active-fg: #f8fafc;
   --ds-sidebar-tile-divider: rgba(255, 255, 255, 0.28);
   --ds-header: color-mix(in srgb, var(--ds-surface-primary) 96%, #0f172a 4%);
   --ds-border: rgba(255, 255, 255, 0.1);

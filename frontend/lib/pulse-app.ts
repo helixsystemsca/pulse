@@ -121,10 +121,12 @@ export type PulsePostLoginIdentity = {
  * System operators use `/system`; everyone else (tenant / company users) uses `/overview`.
  * Impersonation tokens look like a tenant — they stay on `/overview`.
  */
-export function pulsePostLoginPath(user: PulsePostLoginIdentity): "/system" | "/overview" | "/settings" {
-  if (user.must_change_password === true) {
-    return "/settings";
-  }
+/**
+ * First landing after sign-in: tenant users → `/overview` (welcome + dashboard shell).
+ * Do not send `must_change_password` users straight to `/settings` — that skips the welcome flow;
+ * overview redirects to `/settings` after the welcome overlay completes (see overview page).
+ */
+export function pulsePostLoginPath(user: PulsePostLoginIdentity): "/system" | "/overview" {
   if (user.is_system_admin === true || user.role === "system_admin") {
     return "/system";
   }

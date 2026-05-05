@@ -123,7 +123,7 @@ export function AppSideNav() {
       aria-label={systemRail ? "System navigation" : "App navigation"}
     >
       <nav
-        className="flex min-h-0 flex-1 flex-col divide-y divide-[var(--ds-sidebar-tile-divider)]"
+        className="flex min-h-0 flex-1 flex-col border-t border-[var(--ds-sidebar-tile-divider)]"
         aria-label="Navigation"
       >
         {items.map((item) => {
@@ -136,7 +136,7 @@ export function AppSideNav() {
               title={item.label}
               data-guided-tour-anchor={item.href === "/dashboard/maintenance" ? "sidebar-work-requests" : undefined}
               className={cn(
-                "group/nav flex h-11 w-full shrink-0 items-stretch rounded-none border-0 outline-none transition-colors duration-200 ease-out motion-reduce:transition-none",
+                "group/nav box-border flex min-h-11 h-11 w-full shrink-0 items-stretch rounded-none border-0 border-b border-[var(--ds-sidebar-tile-divider)] outline-none transition-colors duration-200 ease-out last:border-b-0 motion-reduce:transition-none",
                 active
                   ? "bg-[var(--ds-sidebar-tile-active-bg)]"
                   : "bg-transparent hover:bg-[var(--ds-sidebar-tile-hover-solid)]",
