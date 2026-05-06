@@ -29,7 +29,7 @@ import { apiFetch, isApiMode } from "@/lib/api";
 import { useAuthenticatedAssetSrc } from "@/hooks/useAuthenticatedAssetSrc";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
 import { pulseRoutes, pulseTenantNav } from "@/lib/pulse-app";
-import { canAccessPulseTenantApis, readSession } from "@/lib/pulse-session";
+import { canAccessPulseTenantApis, readSession, type PulseAuthSession } from "@/lib/pulse-session";
 import { getServerDate, getServerNow } from "@/lib/serverTime";
 import { useResolvedAvatarSrc } from "@/lib/useResolvedAvatarSrc";
 import {
@@ -55,20 +55,15 @@ import "react-resizable/css/styles.css";
 type AlertPriority = "critical" | "high" | "medium" | "low";
 
 const DASHBOARD_BASE_COLS = 12;
-const DASHBOARD_BLOCK_COLS = 3;
+const DASHBOARD_GRID_UNIT_PX = 140;
+const DASHBOARD_GRID_GAP_PX = 12;
+const DASHBOARD_MAX_COLS_STANDARD = 12;
+const DASHBOARD_MAX_COLS_KIOSK = 16;
 
-function normalizeToBlocks(layout: Layout): Layout {
-  // Stored layout is always in 12-col space, snapped to "block" widths for cohesion.
-  const snap = (n: number, step: number) => Math.max(step, Math.round(n / step) * step);
-  const clamp = (n: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, n));
-  return layout.map((it) => {
-    const w = clamp(snap(it.w ?? DASHBOARD_BLOCK_COLS, DASHBOARD_BLOCK_COLS), DASHBOARD_BLOCK_COLS, DASHBOARD_BASE_COLS);
-    const minWRaw = typeof it.minW === "number" ? it.minW : DASHBOARD_BLOCK_COLS;
-    const minW = clamp(snap(minWRaw, DASHBOARD_BLOCK_COLS), DASHBOARD_BLOCK_COLS, w);
-    const xRaw = typeof it.x === "number" ? it.x : 0;
-    const x = clamp(Math.round(xRaw / DASHBOARD_BLOCK_COLS) * DASHBOARD_BLOCK_COLS, 0, Math.max(0, DASHBOARD_BASE_COLS - w));
-    return { ...it, w, minW, x };
-  });
+function gridColsForWidth(widthPx: number, kiosk: boolean): number {
+  const max = kiosk ? DASHBOARD_MAX_COLS_KIOSK : DASHBOARD_MAX_COLS_STANDARD;
+  const cols = Math.floor((Math.max(0, widthPx) + DASHBOARD_GRID_GAP_PX) / (DASHBOARD_GRID_UNIT_PX + DASHBOARD_GRID_GAP_PX));
+  return Math.max(1, Math.min(max, cols));
 }
 
 function layoutForCols(layout: Layout, cols: number): Layout {
@@ -1135,6 +1130,8 @@ function OperationsHeaderLogoMark({
 
 function DashboardBody({
   model,
+  session,
+  dashboardContext,
   workOrdersHref,
   hideHeaderWelcome,
   zonePromptDismissed,
@@ -1145,6 +1142,8 @@ function DashboardBody({
   readOnly = false,
 }: {
   model: DashboardViewModel;
+  session: PulseAuthSession | null | undefined;
+  dashboardContext: "operations" | "admin";
   workOrdersHref: string;
   hideHeaderWelcome?: boolean;
   zonePromptDismissed?: boolean;
@@ -1186,10 +1185,29 @@ function DashboardBody({
       window.clearInterval(t);
     };
   }, []);
+  const canEditLayout = useMemo(() => {
+    if (readOnly || isKiosk) return false;
+    if (dashboardContext === "admin") return sessionHasAnyRole(session, "company_admin", "system_admin");
+    return sessionHasAnyRole(session, "company_admin", "manager", "supervisor", "lead", "system_admin");
+  }, [dashboardContext, isKiosk, readOnly, session]);
+
+  const layoutStorageKey = useMemo(() => {
+    const mode = isKiosk ? "kiosk" : "standard";
+    return `pulse_dashboard_layout_v3_${dashboardContext}_${mode}`;
+  }, [dashboardContext, isKiosk]);
+
+  const customWidgetStorageKey = useMemo(() => {
+    const mode = isKiosk ? "kiosk" : "standard";
+    return `pulse_dashboard_widgets_v3_${dashboardContext}_${mode}`;
+  }, [dashboardContext, isKiosk]);
+
   const [editMode, setEditMode] = useState(false);
   useEffect(() => {
     if (readOnly) setEditMode(false);
   }, [readOnly]);
+  useEffect(() => {
+    if (!canEditLayout) setEditMode(false);
+  }, [canEditLayout]);
   const [showAddWidget, setShowAddWidget] = useState(false);
   const [showPeekWizard, setShowPeekWizard] = useState(false);
   const [peekWizardMode, setPeekWizardMode] = useState<"create" | "edit">("create");
@@ -1857,7 +1875,7 @@ function DashboardBody({
   useEffect(() => {
     let parsedConfigs: Record<string, CustomDashboardWidgetConfig> = {};
     try {
-      const cw = window.localStorage.getItem(DASHBOARD_CUSTOM_WIDGETS_STORAGE);
+      const cw = window.localStorage.getItem(customWidgetStorageKey) ?? window.localStorage.getItem(DASHBOARD_CUSTOM_WIDGETS_STORAGE);
       if (cw) parsedConfigs = JSON.parse(cw) as Record<string, CustomDashboardWidgetConfig>;
     } catch {
       parsedConfigs = {};
@@ -1865,20 +1883,20 @@ function DashboardBody({
 
     let nextLayout: Layout | null = null;
     try {
-      const v2 = window.localStorage.getItem(DASHBOARD_LAYOUT_STORAGE_V2);
-      if (v2) nextLayout = JSON.parse(v2) as Layout;
+      const v3 = window.localStorage.getItem(layoutStorageKey);
+      if (v3) nextLayout = JSON.parse(v3) as Layout;
     } catch {
       nextLayout = null;
     }
     if (!nextLayout) {
       try {
-        const v1 = window.localStorage.getItem(DASHBOARD_LAYOUT_STORAGE_V1);
-        if (v1) {
-          nextLayout = JSON.parse(v1) as Layout;
-          try {
-            window.localStorage.setItem(DASHBOARD_LAYOUT_STORAGE_V2, v1);
-          } catch {
-            /* ignore */
+        // Migrate legacy layouts only for the operations standard dashboard (one-time best-effort).
+        if (dashboardContext === "operations" && !isKiosk) {
+          const v2 = window.localStorage.getItem(DASHBOARD_LAYOUT_STORAGE_V2);
+          if (v2) nextLayout = JSON.parse(v2) as Layout;
+          if (!nextLayout) {
+            const v1 = window.localStorage.getItem(DASHBOARD_LAYOUT_STORAGE_V1);
+            if (v1) nextLayout = JSON.parse(v1) as Layout;
           }
         }
       } catch {
@@ -1886,7 +1904,6 @@ function DashboardBody({
       }
     }
     if (!nextLayout) nextLayout = defaultLayout;
-    nextLayout = normalizeToBlocks(nextLayout);
 
     const validBuiltins = new Set(allWidgetKeys);
     const filtered: LayoutItem[] = [];
@@ -1900,28 +1917,28 @@ function DashboardBody({
     }
     const present = new Set(filtered.map((x) => x.i));
     const missing = defaultLayout.filter((l) => !present.has(l.i));
-    setLayout(normalizeToBlocks([...filtered, ...missing] as Layout));
+    setLayout([...filtered, ...missing] as Layout);
     setCustomConfigs(parsedConfigs);
     setLayoutHydrated(true);
-  }, [allWidgetKeys, defaultLayout]);
+  }, [allWidgetKeys, customWidgetStorageKey, dashboardContext, defaultLayout, isKiosk, layoutStorageKey]);
 
   useEffect(() => {
     if (!layoutHydrated) return;
     try {
-      window.localStorage.setItem(DASHBOARD_LAYOUT_STORAGE_V2, JSON.stringify(layout));
+      window.localStorage.setItem(layoutStorageKey, JSON.stringify(layout));
     } catch {
       /* ignore quota / privacy mode */
     }
-  }, [layout, layoutHydrated]);
+  }, [layout, layoutHydrated, layoutStorageKey]);
 
   useEffect(() => {
     if (!layoutHydrated) return;
     try {
-      window.localStorage.setItem(DASHBOARD_CUSTOM_WIDGETS_STORAGE, JSON.stringify(customConfigs));
+      window.localStorage.setItem(customWidgetStorageKey, JSON.stringify(customConfigs));
     } catch {
       /* ignore */
     }
-  }, [customConfigs, layoutHydrated]);
+  }, [customConfigs, customWidgetStorageKey, layoutHydrated]);
 
   const layoutKeys = useMemo(() => new Set(layout.map((l) => l.i)), [layout]);
   const availableToAdd = useMemo(() => allWidgetKeys.filter((k) => !layoutKeys.has(k)), [allWidgetKeys, layoutKeys]);
@@ -2179,7 +2196,7 @@ function DashboardBody({
       </DashboardAccentCard>
 
       <DashboardAccentCard mutedAccent innerClassName="space-y-5">
-        {!readOnly ? (
+        {canEditLayout ? (
           <div className="flex flex-wrap items-center gap-2">
             <div className="inline-flex items-center gap-1 rounded-lg border border-ds-border p-1" role="group" aria-label="Dashboard layout">
               <Button
@@ -2217,31 +2234,33 @@ function DashboardBody({
 
         <div ref={containerRef as any} className={editMode ? "pulse-dashboard-edit" : ""}>
           {mounted ? (
+            (() => {
+              const cols = gridColsForWidth(width, isKiosk);
+              return (
             <GridLayout
-              layout={layoutForCols(layout, width < 640 ? 1 : width < 1024 ? 6 : 12)}
+              layout={layoutForCols(layout, cols)}
               width={width}
               gridConfig={{
-                cols: width < 640 ? 1 : width < 1024 ? 6 : 12,
-                rowHeight: width < 640 ? 84 : 96,
-                margin: [12, 12],
+                cols,
+                rowHeight: DASHBOARD_GRID_UNIT_PX,
+                margin: [DASHBOARD_GRID_GAP_PX, DASHBOARD_GRID_GAP_PX],
                 containerPadding: [0, 0],
               }}
               dragConfig={{
-                enabled: !readOnly && editMode,
+                enabled: canEditLayout && editMode,
                 bounded: false,
                 // Whole widget is draggable in edit mode; cancel common interactive controls.
                 cancel: "button, a, input, textarea, select, option, [role='button'], .dashboard-no-drag",
               }}
               resizeConfig={{
-                enabled: !readOnly && editMode,
+                enabled: canEditLayout && editMode,
                 // Allow edge pulls (not just the corner) while respecting each widget's minW/minH.
                 handles: ["n", "s", "e", "w", "ne", "nw", "se", "sw"],
               }}
               compactor={noCompactor}
               onLayoutChange={(next) => {
-                if (readOnly || !editMode) return;
-                // Persist snapped-to-block widths. Normalization snaps widths and prevents drift.
-                setLayout(normalizeToBlocks(next as Layout));
+                if (!canEditLayout || !editMode) return;
+                setLayout(next as Layout);
               }}
             >
               {layout.map((item) => {
@@ -2372,6 +2391,8 @@ function DashboardBody({
                 );
               })}
             </GridLayout>
+              );
+            })()
           ) : null}
         </div>
 
@@ -2467,6 +2488,7 @@ export function OperationalDashboard({
   onReady,
   readOnly = false,
   tokenOverride = null,
+  dashboardContext = "operations",
 }: {
   variant: OperationalDashboardVariant;
   /** Fires once when the dashboard has finished its initial load (live fetch done or demo mounted). */
@@ -2475,6 +2497,7 @@ export function OperationalDashboard({
   readOnly?: boolean;
   /** Optional bearer token for kiosk links (`?token=`) when no session exists. */
   tokenOverride?: string | null;
+  dashboardContext?: "operations" | "admin";
 }) {
   const { session } = usePulseAuth();
   const [liveModel, setLiveModel] = useState<DashboardViewModel | null>(null);
@@ -2607,6 +2630,8 @@ export function OperationalDashboard({
     return (
       <DashboardBody
         model={demoWithUser}
+        session={session}
+        dashboardContext={dashboardContext}
         workOrdersHref={workOrdersHref}
         headerLogoUrl="/images/panoramalogo2.png"
         headerCompanyName={session?.company?.name ?? null}
@@ -2647,6 +2672,8 @@ export function OperationalDashboard({
   return (
     <DashboardBody
       model={liveModel}
+      session={session}
+      dashboardContext={dashboardContext}
       workOrdersHref={workOrdersHref}
       zonePromptDismissed={zoneDismissed}
       onDismissZonePrompt={() => setZoneDismissed(true)}

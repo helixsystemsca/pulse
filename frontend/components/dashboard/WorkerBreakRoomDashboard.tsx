@@ -10,6 +10,7 @@ import { cn } from "@/lib/cn";
 import { DASH } from "@/styles/dashboardTheme";
 import { isApiMode } from "@/lib/api";
 import { readSession } from "@/lib/pulse-session";
+import { sessionHasAnyRole, sessionPrimaryRole } from "@/lib/pulse-roles";
 import { GridLayout, noCompactor, useContainerWidth, type Layout } from "react-grid-layout";
 import type { PulseShiftApi, PulseWorkerApi } from "@/lib/schedule/pulse-bridge";
 import { pulseShiftsToSchedule, pulseWorkersToSchedule, type PulseZoneApi } from "@/lib/schedule/pulse-bridge";
@@ -323,25 +324,40 @@ export function WorkerBreakRoomDashboard({ kiosk = false }: Props) {
   const weatherLabel = useMemo(() => weatherLabelFromCode(weather.code), [weather.code]);
   const weatherTemp = useMemo(() => (weather.tempC == null ? "—" : `${Math.round(weather.tempC)}°C`), [weather.tempC]);
 
-  const DASH_LAYOUT_STORAGE = kiosk ? null : "worker_dashboard_layout_v1";
-  const canEdit = !kiosk && Boolean(readSession()?.access_token);
-  const [editMode, setEditMode] = useState(false);
-  const [layoutHydrated, setLayoutHydrated] = useState(false);
-
   const DASHBOARD_BASE_COLS = 12;
-  const DASHBOARD_BLOCK_COLS = 3;
-  const normalizeToBlocks = useCallback((next: Layout): Layout => {
-    const snap = (n: number, step: number) => Math.max(step, Math.round(n / step) * step);
-    const clamp = (n: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, n));
-    return next.map((it) => {
-      const w = clamp(snap(it.w ?? DASHBOARD_BLOCK_COLS, DASHBOARD_BLOCK_COLS), DASHBOARD_BLOCK_COLS, DASHBOARD_BASE_COLS);
-      const minWRaw = typeof it.minW === "number" ? it.minW : DASHBOARD_BLOCK_COLS;
-      const minW = clamp(snap(minWRaw, DASHBOARD_BLOCK_COLS), DASHBOARD_BLOCK_COLS, w);
-      const xRaw = typeof it.x === "number" ? it.x : 0;
-      const x = clamp(Math.round(xRaw / DASHBOARD_BLOCK_COLS) * DASHBOARD_BLOCK_COLS, 0, Math.max(0, DASHBOARD_BASE_COLS - w));
-      return { ...it, w, minW, x };
+  const DASHBOARD_GRID_UNIT_PX = 140;
+  const DASHBOARD_GRID_GAP_PX = 12;
+  const DASHBOARD_MAX_COLS_STANDARD = 12;
+  const DASHBOARD_MAX_COLS_KIOSK = 16;
+
+  const DASH_LAYOUT_STORAGE = kiosk ? null : "pulse_dashboard_layout_v3_worker_standard";
+  const sess = readSession();
+  const primaryRole = sessionPrimaryRole(sess);
+  const canEdit = !kiosk && primaryRole !== "worker" && sessionHasAnyRole(sess, "company_admin", "manager", "supervisor", "lead", "system_admin");
+
+  function gridColsForWidth(widthPx: number, kioskMode: boolean): number {
+    const max = kioskMode ? DASHBOARD_MAX_COLS_KIOSK : DASHBOARD_MAX_COLS_STANDARD;
+    const cols = Math.floor((Math.max(0, widthPx) + DASHBOARD_GRID_GAP_PX) / (DASHBOARD_GRID_UNIT_PX + DASHBOARD_GRID_GAP_PX));
+    return Math.max(1, Math.min(max, cols));
+  }
+
+  function layoutForCols(layout: Layout, cols: number): Layout {
+    if (cols >= DASHBOARD_BASE_COLS) return layout;
+    if (cols <= 1) return layout.map((it) => ({ ...it, x: 0, w: 1, minW: 1 }));
+    const scale = cols / DASHBOARD_BASE_COLS;
+    return layout.map((it) => {
+      const w = Math.max(1, Math.min(cols, Math.round((it.w ?? 1) * scale)));
+      const minW = Math.max(1, Math.min(w, Math.round(((it.minW ?? 1) as number) * scale)));
+      const x = Math.max(0, Math.min(cols - w, Math.round((it.x ?? 0) * scale)));
+      return { ...it, x, w, minW };
     });
-  }, []);
+  }
+
+  const [editMode, setEditMode] = useState(false);
+  useEffect(() => {
+    if (!canEdit) setEditMode(false);
+  }, [canEdit]);
+  const [layoutHydrated, setLayoutHydrated] = useState(false);
   const defaultLayout = useMemo(
     (): Layout => [
       { i: "who", x: 0, y: 0, w: 8, h: 5, minW: 6, minH: 4 },
@@ -358,14 +374,25 @@ export function WorkerBreakRoomDashboard({ kiosk = false }: Props) {
   useEffect(() => {
     if (!DASH_LAYOUT_STORAGE) return;
     try {
-      const raw = window.localStorage.getItem(DASH_LAYOUT_STORAGE);
-      if (raw) setLayout(normalizeToBlocks(JSON.parse(raw) as Layout));
+      let raw = window.localStorage.getItem(DASH_LAYOUT_STORAGE);
+      if (!raw) {
+        const legacy = window.localStorage.getItem("worker_dashboard_layout_v1");
+        if (legacy) {
+          raw = legacy;
+          try {
+            window.localStorage.setItem(DASH_LAYOUT_STORAGE, legacy);
+          } catch {
+            /* ignore */
+          }
+        }
+      }
+      if (raw) setLayout(JSON.parse(raw) as Layout);
     } catch {
       /* ignore */
     } finally {
       setLayoutHydrated(true);
     }
-  }, [DASH_LAYOUT_STORAGE, normalizeToBlocks]);
+  }, [DASH_LAYOUT_STORAGE]);
 
   useEffect(() => {
     if (!DASH_LAYOUT_STORAGE || !layoutHydrated) return;
@@ -452,12 +479,12 @@ export function WorkerBreakRoomDashboard({ kiosk = false }: Props) {
         <div ref={containerRef as any}>
           {mounted ? (
             <GridLayout
-              layout={normalizeToBlocks(layout)}
+              layout={layoutForCols(layout, gridColsForWidth(width, kiosk))}
               width={width}
               gridConfig={{
-                cols: width < 640 ? 1 : width < 1024 ? 6 : 12,
-                rowHeight: width < 640 ? 84 : 96,
-                margin: [12, 12],
+                cols: gridColsForWidth(width, kiosk),
+                rowHeight: DASHBOARD_GRID_UNIT_PX,
+                margin: [DASHBOARD_GRID_GAP_PX, DASHBOARD_GRID_GAP_PX],
                 containerPadding: [0, 0],
               }}
               dragConfig={{
@@ -469,7 +496,7 @@ export function WorkerBreakRoomDashboard({ kiosk = false }: Props) {
               compactor={noCompactor}
               onLayoutChange={(next) => {
                 if (!canEdit || !editMode) return;
-                setLayout(normalizeToBlocks(next as Layout));
+                setLayout(next as Layout);
               }}
             >
               <div key="who" className={editMode ? "cursor-grab active:cursor-grabbing" : ""}>

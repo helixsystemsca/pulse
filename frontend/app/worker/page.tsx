@@ -32,7 +32,7 @@ export default function WorkerDashboardPage() {
       router.replace("/system");
       return;
     }
-    const canSeeBoth = sessionHasAnyRole(s, "company_admin", "manager");
+    const canSeeBoth = sessionHasAnyRole(s, "company_admin", "manager", "supervisor", "lead");
     if (isApiMode() && pulsePostLoginPath(s) === "/overview" && !canSeeBoth) {
       router.replace("/overview");
       return;

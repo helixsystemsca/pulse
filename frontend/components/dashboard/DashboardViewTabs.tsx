@@ -23,12 +23,14 @@ export function DashboardViewTabs() {
   const { session } = usePulseAuth();
   const isProjectTab = pathname === "/overview/project" || pathname.startsWith("/overview/project/");
   const isOverview = pathname === "/overview" || (pathname.startsWith("/overview/") && !isProjectTab);
+  const isAdmin = pathname === "/overview/admin" || pathname.startsWith("/overview/admin/");
   const isWorker = pathname === "/worker" || pathname.startsWith("/worker/");
 
-  const canSeeBoth = sessionHasAnyRole(session, "company_admin", "manager");
+  const canSeeBoth = sessionHasAnyRole(session, "company_admin", "manager", "supervisor", "lead");
   const primary = sessionPrimaryRole(session);
   const showWorkerTab = true;
   const showOverviewTab = primary !== "worker" || canSeeBoth;
+  const showAdminTab = sessionHasAnyRole(session, "company_admin", "system_admin");
   // Projects are a separate dashboard model; hide until it’s wired into the same system.
   const showProjectTab = false;
 
@@ -53,7 +55,16 @@ export function DashboardViewTabs() {
           className={cn(tabBtn, isOverview ? tabActive : tabInactive)}
           onClick={() => router.push("/overview")}
         >
-          Overview
+          Operations
+        </button>
+      ) : null}
+      {showAdminTab ? (
+        <button
+          type="button"
+          className={cn(tabBtn, isAdmin ? tabActive : tabInactive)}
+          onClick={() => router.push("/overview/admin")}
+        >
+          Admin
         </button>
       ) : null}
       {showProjectTab ? (

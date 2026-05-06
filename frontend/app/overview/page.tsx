@@ -50,7 +50,7 @@ export default function OverviewPage() {
       router.replace("/system");
       return;
     }
-    const canSeeBoth = sessionHasAnyRole(s, "company_admin", "manager");
+    const canSeeBoth = sessionHasAnyRole(s, "company_admin", "manager", "supervisor", "lead");
     if (isApiMode() && pulsePostLoginPath(s) === "/worker" && !canSeeBoth) {
       router.replace("/worker");
       return;
