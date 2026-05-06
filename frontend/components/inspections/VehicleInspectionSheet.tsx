@@ -37,6 +37,17 @@ type PassFail = "unset" | "pass" | "fail";
 
 type PhotoItem = { id: string; file: File; url: string };
 
+/** Snapshot passed to parent when the sheet is submitted (for local archive). */
+export type VehicleInspectionArchivePayload = {
+  vehicle: string;
+  operatorName: string;
+  department: string;
+  shift: string;
+  submittedAtIso: string;
+  distanceKm: number | null;
+  timeOutDuration: string | null;
+};
+
 type VehicleInspectionState = {
   vehicle: "" | "F250" | "Silverado EV" | "Cruze";
   operatorName: string;
@@ -102,16 +113,56 @@ function numberOrNull(raw: string): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+/** Parse HTML `type="time"` value `HH:MM` to minutes from midnight. */
+function parseTimeToMinutes(hhmm: string): number | null {
+  const t = hhmm.trim();
+  if (!t) return null;
+  const m = /^(\d{1,2}):(\d{2})$/.exec(t);
+  if (!m) return null;
+  const h = Number(m[1]);
+  const min = Number(m[2]);
+  if (!Number.isInteger(h) || !Number.isInteger(min) || h < 0 || h > 23 || min < 0 || min > 59) return null;
+  return h * 60 + min;
+}
+
+/** Minutes between checkout and return (same day; if return earlier, treat as next calendar day). */
+function durationMinutesOut(timeOut: string, timeIn: string): number | null {
+  const a = parseTimeToMinutes(timeOut);
+  const b = parseTimeToMinutes(timeIn);
+  if (a === null || b === null) return null;
+  let d = b - a;
+  if (d < 0) d += 24 * 60;
+  return d;
+}
+
+/** e.g. `45m`, `1h 30m`, `2h` */
+function formatDurationMinutes(totalMin: number): string {
+  if (!Number.isFinite(totalMin) || totalMin < 0) return "—";
+  if (totalMin < 60) return `${totalMin}m`;
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  if (m === 0) return `${h}h`;
+  return `${h}h ${m}m`;
+}
+
+/** Subtle frosted inset cards (inspection sheet). */
+const frostInset =
+  "rounded-2xl border border-ds-border/45 bg-white/45 p-4 shadow-sm backdrop-blur-md dark:bg-ds-secondary/35 dark:border-ds-border/35";
+
 function StatusPill({ status }: { status: InspectionStatus }) {
   const cls =
     status === "submitted"
-      ? "border-emerald-300/40 bg-emerald-500/15 text-emerald-100 dark:text-emerald-100"
+      ? "border-stone-200/90 bg-stone-50/95 text-stone-800 dark:border-stone-600/50 dark:bg-stone-900/45 dark:text-stone-100"
       : status === "in_progress"
-        ? "border-sky-300/35 bg-sky-500/15 text-sky-950 dark:text-sky-100"
-        : "border-amber-300/35 bg-amber-500/15 text-amber-950 dark:text-amber-100";
+        ? "border-[color-mix(in_srgb,var(--ds-accent)_38%,var(--ds-border))] bg-[color-mix(in_srgb,var(--ds-accent)_12%,var(--ds-primary))] text-ds-foreground"
+        : "border-amber-200/60 bg-amber-50/80 text-amber-950 dark:border-amber-500/25 dark:bg-amber-950/30 dark:text-amber-100";
 
   const dot =
-    status === "submitted" ? "bg-emerald-400" : status === "in_progress" ? "bg-sky-400" : "bg-amber-400";
+    status === "submitted"
+      ? "bg-stone-400 dark:bg-stone-500"
+      : status === "in_progress"
+        ? "bg-[var(--ds-accent)]"
+        : "bg-amber-400";
 
   return (
     <span
@@ -143,25 +194,24 @@ function GlassSection({
   return (
     <Card
       className={cn(
-        "relative overflow-hidden rounded-2xl border border-ds-border/80 bg-[radial-gradient(900px_circle_at_20%_0%,rgba(56,189,248,0.16),transparent_42%),radial-gradient(900px_circle_at_90%_10%,rgba(34,197,94,0.12),transparent_40%)] shadow-[0_18px_45px_rgba(15,23,42,0.10)] dark:shadow-[0_18px_50px_rgba(0,0,0,0.35)]",
-        "backdrop-blur supports-[backdrop-filter]:bg-ds-secondary/55",
+        "relative overflow-hidden rounded-2xl border border-ds-border/50 bg-ds-primary/20 shadow-sm backdrop-blur-xl dark:bg-ds-secondary/25 dark:shadow-[0_8px_32px_rgba(0,0,0,0.12)]",
       )}
     >
-      <div className="absolute inset-0 opacity-60 [mask-image:radial-gradient(60%_45%_at_10%_0%,black,transparent)]">
-        <div className="h-full w-full bg-[linear-gradient(135deg,rgba(56,189,248,0.18),rgba(34,197,94,0.10),rgba(99,102,241,0.12))]" />
+      <div className="pointer-events-none absolute inset-0 opacity-[0.55] [mask-image:radial-gradient(70%_50%_at_15%_0%,black,transparent)]">
+        <div className="h-full w-full bg-[linear-gradient(145deg,color-mix(in_srgb,var(--ds-accent)_14%,transparent),color-mix(in_srgb,var(--ds-accent)_6%,transparent),transparent)]" />
       </div>
       <div className="relative p-5 sm:p-6">
         <div
           id={stickyId}
           className={cn(
-            "sticky top-2 z-[2] -mx-2 mb-4 flex items-start justify-between gap-4 rounded-xl border border-ds-border/70 bg-ds-secondary/70 px-4 py-3 shadow-sm backdrop-blur",
-            "sm:static sm:mx-0 sm:rounded-none sm:border-0 sm:bg-transparent sm:px-0 sm:py-0 sm:shadow-none",
+            "sticky top-2 z-[2] -mx-2 mb-4 flex items-start justify-between gap-4 rounded-xl border border-ds-border/40 bg-white/55 px-4 py-3 shadow-sm backdrop-blur-md dark:bg-ds-secondary/45",
+            "sm:static sm:mx-0 sm:rounded-none sm:border-0 sm:bg-transparent sm:px-0 sm:py-0 sm:shadow-none dark:sm:bg-transparent",
           )}
         >
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-ds-border bg-ds-primary/70 shadow-sm">
-                <Icon className="h-4 w-4 text-ds-foreground" aria-hidden />
+              <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-ds-border/50 bg-white/50 shadow-sm backdrop-blur-sm dark:bg-ds-secondary/50">
+                <Icon className="h-4 w-4 text-[var(--ds-accent)]" aria-hidden />
               </span>
               <div className="min-w-0">
                 <p className="truncate text-sm font-extrabold tracking-tight text-ds-foreground">{title}</p>
@@ -220,10 +270,10 @@ function ChecklistRow({
   const Icon = icon;
   const tone =
     value === "pass"
-      ? "border-emerald-400/35 bg-emerald-500/10 shadow-[0_0_0_1px_rgba(16,185,129,0.22),0_10px_26px_rgba(16,185,129,0.12)]"
+      ? "border-stone-200/80 bg-stone-50/90 shadow-[0_0_0_1px_rgba(231,229,228,0.6)] dark:border-stone-600/40 dark:bg-stone-900/35"
       : value === "fail"
-        ? "border-rose-400/35 bg-rose-500/10 shadow-[0_0_0_1px_rgba(244,63,94,0.22),0_10px_26px_rgba(244,63,94,0.10)]"
-        : "border-ds-border bg-ds-primary/45 shadow-sm";
+        ? "border-rose-300/40 bg-rose-50/70 shadow-sm dark:border-rose-500/25 dark:bg-rose-950/25"
+        : "border-ds-border/50 bg-white/35 shadow-sm backdrop-blur-sm dark:bg-ds-secondary/30";
 
   const cycle = useCallback(() => {
     onChange(value === "unset" ? "pass" : value === "pass" ? "fail" : "unset");
@@ -243,7 +293,7 @@ function ChecklistRow({
     >
       <span className="absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.35),transparent)] opacity-50" />
       <div className="flex min-w-0 items-center gap-3">
-        <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-ds-border bg-ds-secondary/60 shadow-sm backdrop-blur">
+        <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-ds-border/50 bg-white/45 shadow-sm backdrop-blur-sm dark:bg-ds-secondary/45">
           <Icon className="h-4.5 w-4.5 text-ds-foreground" aria-hidden />
         </span>
         <span className="min-w-0">
@@ -259,8 +309,8 @@ function ChecklistRow({
           className={cn(
             "inline-flex h-9 w-9 items-center justify-center rounded-xl border transition-colors",
             value === "pass"
-              ? "border-emerald-400/40 bg-emerald-500/20 text-emerald-50"
-              : "border-ds-border bg-ds-secondary/60 text-ds-muted group-hover:text-ds-foreground",
+              ? "border-stone-300/60 bg-stone-100/90 text-stone-800 dark:border-stone-500/40 dark:bg-stone-800/60 dark:text-stone-100"
+              : "border-ds-border/50 bg-white/40 text-ds-muted backdrop-blur-sm group-hover:text-ds-foreground dark:bg-ds-secondary/40",
           )}
           aria-label="Pass"
         >
@@ -345,11 +395,11 @@ function GradientPrimaryButton({
       onClick={onClick}
       title={title}
       className={cn(
-        "relative inline-flex items-center justify-center gap-2 rounded-2xl px-5 py-3 text-sm font-extrabold tracking-tight text-white",
-        "shadow-[0_18px_40px_rgba(16,185,129,0.24)] transition-[transform,box-shadow,filter] duration-200",
-        "bg-[linear-gradient(135deg,rgba(16,185,129,0.98),rgba(56,189,248,0.96),rgba(99,102,241,0.94))]",
-        "hover:-translate-y-[1px] hover:shadow-[0_22px_50px_rgba(56,189,248,0.22)] focus:outline-none focus:ring-2 focus:ring-[var(--ds-focus-ring)]",
-        "disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:shadow-[0_18px_40px_rgba(16,185,129,0.24)]",
+        "relative inline-flex items-center justify-center gap-2 rounded-2xl px-5 py-3 text-sm font-extrabold tracking-tight text-[var(--ds-on-accent)]",
+        "shadow-[0_12px_32px_color-mix(in_srgb,var(--ds-accent)_35%,transparent)] transition-[transform,box-shadow,filter] duration-200",
+        "bg-[linear-gradient(135deg,var(--ds-accent),color-mix(in_srgb,var(--ds-accent)_82%,#0f766e))]",
+        "hover:-translate-y-[1px] hover:shadow-[0_16px_40px_color-mix(in_srgb,var(--ds-accent)_40%,transparent)] focus:outline-none focus:ring-2 focus:ring-[var(--ds-focus-ring)]",
+        "disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0",
       )}
     >
       <span className="absolute inset-0 rounded-2xl bg-[radial-gradient(700px_circle_at_20%_0%,rgba(255,255,255,0.35),transparent_42%)] opacity-70" />
@@ -358,7 +408,12 @@ function GradientPrimaryButton({
   );
 }
 
-export function VehicleInspectionSheet() {
+export function VehicleInspectionSheet({
+  onArchived,
+}: {
+  /** Called after a successful submit so the host can archive, collapse, and show confirmation. */
+  onArchived?: (payload: VehicleInspectionArchivePayload) => void;
+} = {}) {
   const [generatedAt] = useState(() => nowStamp());
   const [state, setState] = useState<VehicleInspectionState>(() => ({
     vehicle: "",
@@ -406,6 +461,12 @@ export function VehicleInspectionSheet() {
     if (!Number.isFinite(d)) return null;
     return d >= 0 ? d : null;
   }, [odoIn, odoOut]);
+
+  const timeOutDuration = useMemo(() => {
+    const mins = durationMinutesOut(state.timeOut, state.timeIn);
+    if (mins === null) return null;
+    return formatDurationMinutes(mins);
+  }, [state.timeIn, state.timeOut]);
 
   const requiredOk = useMemo(() => {
     if (!state.vehicle) return false;
@@ -557,35 +618,55 @@ export function VehicleInspectionSheet() {
 
   const submit = useCallback(() => {
     if (!requiredOk) return;
-    setState((s) => ({ ...s, submittedAtIso: new Date().toISOString() }));
-  }, [requiredOk]);
+    const submittedAtIso = new Date().toISOString();
+    onArchived?.({
+      vehicle: state.vehicle,
+      operatorName: state.operatorName.trim(),
+      department: state.department,
+      shift: state.shift,
+      submittedAtIso,
+      distanceKm: distanceDriven,
+      timeOutDuration: timeOutDuration,
+    });
+    clearForm();
+  }, [
+    clearForm,
+    distanceDriven,
+    onArchived,
+    requiredOk,
+    state.department,
+    state.operatorName,
+    state.shift,
+    state.vehicle,
+    timeOutDuration,
+  ]);
 
   const headerGlow =
     status === "submitted"
-      ? "from-emerald-500/16 via-sky-500/10 to-indigo-500/12"
+      ? "from-stone-200/25 via-[color-mix(in_srgb,var(--ds-accent)_8%,transparent)] to-transparent"
       : status === "in_progress"
-        ? "from-sky-500/16 via-emerald-500/10 to-indigo-500/12"
-        : "from-amber-500/14 via-sky-500/10 to-indigo-500/12";
+        ? "from-[color-mix(in_srgb,var(--ds-accent)_14%,transparent)] via-stone-100/20 to-transparent"
+        : "from-amber-100/40 via-[color-mix(in_srgb,var(--ds-accent)_10%,transparent)] to-transparent dark:from-amber-950/20";
 
   return (
     <div className="relative">
       <div className="mx-auto w-full max-w-[1100px] space-y-6 pb-28">
         <Card
           className={cn(
-            "relative overflow-hidden rounded-2xl border border-ds-border bg-ds-secondary/50 shadow-[0_18px_55px_rgba(15,23,42,0.12)] backdrop-blur",
+            "relative overflow-hidden rounded-2xl border border-ds-border/50 bg-white/35 shadow-sm backdrop-blur-xl dark:bg-ds-secondary/30",
           )}
         >
           <div className={cn("absolute inset-0 bg-[linear-gradient(135deg,var(--tw-gradient-stops))]", headerGlow)} />
-          <div className="absolute inset-0 opacity-60 [mask-image:radial-gradient(55%_45%_at_20%_0%,black,transparent)]">
-            <div className="h-full w-full bg-[linear-gradient(135deg,rgba(255,255,255,0.20),transparent_45%)]" />
+          <div className="pointer-events-none absolute inset-0 opacity-50 [mask-image:radial-gradient(55%_45%_at_20%_0%,black,transparent)]">
+            <div className="h-full w-full bg-[linear-gradient(135deg,rgba(255,255,255,0.35),transparent_50%)] dark:bg-[linear-gradient(135deg,rgba(255,255,255,0.06),transparent_50%)]" />
           </div>
 
           <div className="relative p-5 sm:p-6">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div className="min-w-0">
                 <div className="flex items-center gap-3">
-                  <span className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-ds-border bg-ds-primary/70 shadow-sm">
-                    <ClipboardCheck className="h-5 w-5 text-ds-foreground" aria-hidden />
+                  <span className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-ds-border/50 bg-white/50 shadow-sm backdrop-blur-sm dark:bg-ds-secondary/50">
+                    <ClipboardCheck className="h-5 w-5 text-[var(--ds-accent)]" aria-hidden />
                   </span>
                   <div className="min-w-0">
                     <h1 className="text-lg font-extrabold tracking-tight text-ds-foreground sm:text-xl">
@@ -603,9 +684,9 @@ export function VehicleInspectionSheet() {
                     <span>Completion</span>
                     <span className="tabular-nums text-ds-foreground">{completion}%</span>
                   </div>
-                  <div className="h-2 w-full overflow-hidden rounded-full border border-ds-border bg-ds-primary/40">
+                  <div className="h-2 w-full overflow-hidden rounded-full border border-ds-border/50 bg-stone-100/80 dark:bg-stone-900/40">
                     <motion.div
-                      className="h-full rounded-full bg-[linear-gradient(90deg,rgba(16,185,129,0.95),rgba(56,189,248,0.95),rgba(99,102,241,0.92))]"
+                      className="h-full rounded-full bg-[linear-gradient(90deg,rgba(245,245,244,0.95),color-mix(in_srgb,var(--ds-accent)_88%,#0d9488))]"
                       initial={{ width: 0 }}
                       animate={{ width: `${completion}%` }}
                       transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
@@ -616,17 +697,17 @@ export function VehicleInspectionSheet() {
             </div>
 
             <div className="mt-5 grid gap-3 sm:grid-cols-3">
-              <div className="rounded-2xl border border-ds-border bg-ds-primary/40 p-4 shadow-sm">
+              <div className={frostInset}>
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-ds-muted">Last inspection</p>
                 <p className="mt-1 text-sm font-semibold text-ds-foreground">Yesterday · 4:12 PM</p>
                 <p className="mt-0.5 text-xs font-medium text-ds-muted">Completed by J. Rivera</p>
               </div>
-              <div className="rounded-2xl border border-ds-border bg-ds-primary/40 p-4 shadow-sm">
+              <div className={frostInset}>
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-ds-muted">Vehicle profile</p>
                 <p className="mt-1 text-sm font-semibold text-ds-foreground">Industrial fleet · Tablet flow</p>
                 <p className="mt-0.5 text-xs font-medium text-ds-muted">Optimized for fast line-item capture</p>
               </div>
-              <div className="rounded-2xl border border-ds-border bg-ds-primary/40 p-4 shadow-sm">
+              <div className={frostInset}>
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-ds-muted">Shift context</p>
                 <p className="mt-1 text-sm font-semibold text-ds-foreground">
                   {state.shift ? `${state.shift} shift` : "Select shift"}
@@ -706,14 +787,14 @@ export function VehicleInspectionSheet() {
           stickyId="checkout-info"
         >
           <div className="grid gap-4 sm:grid-cols-3">
-            <Field label="Odometer out" required hint="Numbers only">
+            <Field label="Odometer out (km)" required hint="Metric · whole km">
               <input
                 type="number"
                 inputMode="numeric"
                 value={state.odometerOut}
                 onChange={(e) => setState((s) => ({ ...s, odometerOut: e.target.value }))}
                 className={cn(dsInputClass, !state.odometerOut.trim() ? "border-rose-400/50" : "")}
-                placeholder="e.g. 15320"
+                placeholder="e.g. 24650"
               />
             </Field>
 
@@ -831,8 +912,8 @@ export function VehicleInspectionSheet() {
                     "group flex w-full items-center justify-between gap-3 rounded-2xl border p-4 text-left shadow-sm transition-[transform,box-shadow,border-color,background-color] duration-200",
                     "hover:-translate-y-[1px] hover:border-ds-border/80 focus:outline-none focus:ring-2 focus:ring-[var(--ds-focus-ring)]",
                     on
-                      ? "border-amber-400/40 bg-amber-500/10 shadow-[0_0_0_1px_rgba(245,158,11,0.22),0_12px_30px_rgba(245,158,11,0.10)]"
-                      : "border-ds-border bg-ds-primary/45",
+                      ? "border-amber-300/45 bg-amber-50/70 shadow-sm backdrop-blur-sm dark:border-amber-500/20 dark:bg-amber-950/25"
+                      : "border-ds-border/50 bg-white/35 shadow-sm backdrop-blur-sm dark:bg-ds-secondary/30",
                   )}
                 >
                   <div className="min-w-0">
@@ -893,13 +974,13 @@ export function VehicleInspectionSheet() {
             }}
             onDrop={onDrop}
             className={cn(
-              "group relative flex min-h-[140px] flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-ds-border bg-ds-primary/35 p-6 text-center shadow-sm",
-              "transition-[transform,box-shadow,border-color,background-color] duration-200 hover:-translate-y-[1px] hover:border-ds-border/80",
+              "group relative flex min-h-[140px] flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-ds-border/50 bg-white/35 p-6 text-center shadow-sm backdrop-blur-md",
+              "transition-[transform,box-shadow,border-color,background-color] duration-200 hover:-translate-y-[1px] hover:border-[color-mix(in_srgb,var(--ds-accent)_35%,var(--ds-border))] dark:bg-ds-secondary/25",
             )}
           >
-            <div className="pointer-events-none absolute inset-0 rounded-2xl bg-[radial-gradient(650px_circle_at_30%_0%,rgba(56,189,248,0.16),transparent_45%)] opacity-70" />
-            <span className="relative inline-flex h-12 w-12 items-center justify-center rounded-2xl border border-ds-border bg-ds-secondary/60 shadow-sm backdrop-blur">
-              <Upload className="h-5 w-5 text-ds-foreground" aria-hidden />
+            <div className="pointer-events-none absolute inset-0 rounded-2xl bg-[radial-gradient(650px_circle_at_30%_0%,color-mix(in_srgb,var(--ds-accent)_12%,transparent),transparent_50%)] opacity-80" />
+            <span className="relative inline-flex h-12 w-12 items-center justify-center rounded-2xl border border-ds-border/45 bg-white/50 shadow-sm backdrop-blur-sm dark:bg-ds-secondary/45">
+              <Upload className="h-5 w-5 text-[var(--ds-accent)]" aria-hidden />
             </span>
             <div className="relative">
               <p className="text-sm font-extrabold tracking-tight text-ds-foreground">Upload Vehicle Photos</p>
@@ -969,19 +1050,19 @@ export function VehicleInspectionSheet() {
 
         <GlassSection
           title="Return information"
-          subtitle="Capture end readings and automatically calculate distance driven."
+          subtitle="Capture end readings; distance is calculated in kilometres and time out from checkout to return."
           icon={Gauge}
           stickyId="return"
         >
           <div className="grid gap-4 sm:grid-cols-3">
-            <Field label="Odometer in" hint="Numbers only">
+            <Field label="Odometer in (km)" hint="Metric · whole km">
               <input
                 type="number"
                 inputMode="numeric"
                 value={state.odometerIn}
                 onChange={(e) => setState((s) => ({ ...s, odometerIn: e.target.value }))}
                 className={dsInputClass}
-                placeholder="e.g. 15408"
+                placeholder="e.g. 24728"
               />
             </Field>
 
@@ -1013,28 +1094,32 @@ export function VehicleInspectionSheet() {
           </div>
 
           <div className="mt-4 grid gap-3 sm:grid-cols-3">
-            <div className="rounded-2xl border border-ds-border bg-ds-primary/40 p-4 shadow-sm">
+            <div className={frostInset}>
               <p className="text-[11px] font-semibold uppercase tracking-wider text-ds-muted">Distance driven</p>
               <p className="mt-1 text-lg font-extrabold tracking-tight text-ds-foreground tabular-nums">
-                {distanceDriven === null ? "—" : `${distanceDriven} mi`}
+                {distanceDriven === null ? "—" : `${distanceDriven} km`}
               </p>
               <p className="mt-0.5 text-xs font-medium text-ds-muted">
-                {distanceDriven === null ? "Enter odometer in/out to calculate." : "Calculated automatically."}
+                {distanceDriven === null ? "Enter odometer in/out (km) to calculate." : "Calculated automatically."}
               </p>
             </div>
-            <div className="rounded-2xl border border-ds-border bg-ds-primary/40 p-4 shadow-sm">
+            <div className={frostInset}>
               <p className="text-[11px] font-semibold uppercase tracking-wider text-ds-muted">Usage signals</p>
               <p className="mt-1 text-sm font-semibold text-ds-foreground">
                 {state.fuelOut && state.fuelIn ? `${state.fuelOut} → ${state.fuelIn}` : "—"}
               </p>
               <p className="mt-0.5 text-xs font-medium text-ds-muted">Fuel / battery delta (manual review)</p>
             </div>
-            <div className="rounded-2xl border border-ds-border bg-ds-primary/40 p-4 shadow-sm">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-ds-muted">Return window</p>
-              <p className="mt-1 text-sm font-semibold text-ds-foreground">
-                {state.timeOut && state.timeIn ? `${state.timeOut} → ${state.timeIn}` : "—"}
+            <div className={frostInset}>
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-ds-muted">Time out</p>
+              <p className="mt-1 text-lg font-extrabold tracking-tight text-[var(--ds-accent)] tabular-nums">
+                {timeOutDuration ?? "—"}
               </p>
-              <p className="mt-0.5 text-xs font-medium text-ds-muted">Time checked out vs returned</p>
+              <p className="mt-0.5 text-xs font-medium text-ds-muted">
+                {timeOutDuration === null
+                  ? "Enter checked-out and returned times to show duration (e.g. 45m, 1h 30m)."
+                  : "From checkout time to return time."}
+              </p>
             </div>
           </div>
         </GlassSection>
@@ -1046,7 +1131,7 @@ export function VehicleInspectionSheet() {
           stickyId="signature"
         >
           <div className="grid gap-4 lg:grid-cols-2">
-            <div className="rounded-2xl border border-ds-border bg-ds-primary/35 p-4 shadow-sm">
+            <div className={frostInset}>
               <label className="flex items-start gap-3">
                 <input
                   type="checkbox"
@@ -1065,16 +1150,16 @@ export function VehicleInspectionSheet() {
               </label>
             </div>
 
-            <div className="rounded-2xl border border-ds-border bg-ds-primary/35 p-4 shadow-sm">
+            <div className={frostInset}>
               <div className="flex items-center justify-between gap-3">
                 <p className="text-sm font-extrabold tracking-tight text-ds-foreground">Digital signature</p>
                 <span className="text-xs font-semibold text-ds-muted">{new Date().toLocaleDateString()}</span>
               </div>
 
               <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                <div className="rounded-2xl border border-ds-border bg-ds-secondary/60 p-4 shadow-sm">
+                <div className="rounded-2xl border border-ds-border/45 bg-white/40 p-4 shadow-sm backdrop-blur-md dark:bg-ds-secondary/40">
                   <p className="text-xs font-semibold text-ds-muted">Signature pad</p>
-                  <div className="mt-2 flex h-16 items-center justify-center rounded-xl border border-ds-border bg-ds-primary/35 text-xs font-semibold text-ds-muted">
+                  <div className="mt-2 flex h-16 items-center justify-center rounded-xl border border-ds-border/50 bg-white/30 text-xs font-semibold text-ds-muted backdrop-blur-sm dark:bg-ds-primary/25">
                     (placeholder)
                   </div>
                 </div>
@@ -1091,8 +1176,8 @@ export function VehicleInspectionSheet() {
               </div>
 
               {state.submittedAtIso ? (
-                <div className="mt-3 inline-flex items-center gap-2 rounded-xl border border-emerald-400/30 bg-emerald-500/10 px-3 py-2 text-xs font-semibold text-emerald-950 dark:text-emerald-100">
-                  <CheckCircle2 className="h-4 w-4" aria-hidden />
+                <div className="mt-3 inline-flex items-center gap-2 rounded-xl border border-stone-200/90 bg-stone-50/95 px-3 py-2 text-xs font-semibold text-stone-800 dark:border-stone-600/50 dark:bg-stone-900/45 dark:text-stone-100">
+                  <CheckCircle2 className="h-4 w-4 text-[var(--ds-accent)]" aria-hidden />
                   Submitted {new Date(state.submittedAtIso).toLocaleString()}
                 </div>
               ) : null}
@@ -1101,7 +1186,7 @@ export function VehicleInspectionSheet() {
         </GlassSection>
       </div>
 
-      <div className="fixed inset-x-0 bottom-0 z-[60] border-t border-ds-border bg-ds-secondary/80 backdrop-blur supports-[backdrop-filter]:bg-ds-secondary/65">
+      <div className="fixed inset-x-0 bottom-0 z-[60] border-t border-ds-border/50 bg-white/55 backdrop-blur-xl supports-[backdrop-filter]:bg-white/45 dark:bg-ds-secondary/55">
         <div className="mx-auto flex w-full max-w-[1100px] flex-wrap items-center justify-between gap-3 px-4 py-3">
           <div className="flex items-center gap-2">
             <Button
@@ -1120,8 +1205,12 @@ export function VehicleInspectionSheet() {
           </div>
 
           <div className="flex flex-wrap items-center justify-end gap-2">
-            <div className="hidden sm:flex items-center gap-2 rounded-2xl border border-ds-border bg-ds-primary/35 px-3 py-2 text-xs font-semibold text-ds-muted">
-              <span className={cn(!requiredOk ? "text-amber-700 dark:text-amber-200" : "text-emerald-700 dark:text-emerald-200")}>
+            <div className="hidden sm:flex items-center gap-2 rounded-2xl border border-ds-border/45 bg-white/50 px-3 py-2 text-xs font-semibold text-ds-muted backdrop-blur-sm dark:bg-ds-secondary/40">
+              <span
+                className={cn(
+                  !requiredOk ? "text-amber-800 dark:text-amber-200" : "text-[var(--ds-accent)] dark:text-teal-300",
+                )}
+              >
                 {!requiredOk ? "Complete required fields to submit" : "Ready to submit"}
               </span>
             </div>

@@ -1,8 +1,9 @@
 "use client";
 
-import { ClipboardList, Eye, Pencil, Trash2 } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
+import { CheckCircle2, ClipboardList, Eye, Pencil, Trash2 } from "lucide-react";
 import type { ReactNode } from "react";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { useInspectionsLogsStore } from "@/hooks/useInspectionsLogsStore";
 import type {
@@ -19,7 +20,10 @@ import { InspectionBuilder } from "./InspectionBuilder";
 import { LogBuilder } from "./LogBuilder";
 import { cn } from "@/lib/cn";
 import { buttonVariants } from "@/styles/button-variants";
-import { VehicleInspectionSheet } from "@/components/inspections/VehicleInspectionSheet";
+import {
+  VehicleInspectionSheet,
+  type VehicleInspectionArchivePayload,
+} from "@/components/inspections/VehicleInspectionSheet";
 import { HarnessInspectionForm } from "@/components/compliance/HarnessInspectionForm";
 
 const TABLE_WRAP =
@@ -31,9 +35,30 @@ const ROW =
   "ds-table-row-hover border-t border-ds-border bg-white transition-colors dark:bg-ds-secondary";
 const LINKISH =
   "ds-link text-xs font-semibold disabled:opacity-40";
-const TAB_ACTIVE = "border-b-2 border-ds-success bg-ds-primary text-ds-foreground";
-const TAB_IDLE =
-  "border-b-2 border-transparent text-ds-muted hover:bg-ds-secondary hover:text-ds-foreground";
+
+/** Match schedule “Show” segmented control (`ScheduleApp` workers/projects/combined). */
+const SEGMENT_TRACK =
+  "flex flex-wrap rounded-md border border-pulseShell-border bg-pulseShell-surface p-1 shadow-[var(--pulse-shell-shadow)]";
+const SEGMENT_ACTIVE =
+  "bg-[var(--pulse-segment-active-bg)] text-[var(--pulse-segment-active-fg)] shadow-sm ring-1 ring-[color-mix(in_srgb,var(--ds-success)_28%,transparent)] dark:ring-sky-400/30";
+const SEGMENT_IDLE =
+  "text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:text-slate-400 dark:hover:bg-white/[0.06] dark:hover:text-slate-100";
+
+const ARCHIVE_ROLE_TAGS = [
+  { id: "lead", label: "Lead" },
+  { id: "supervisor", label: "Supervisor" },
+  { id: "manager", label: "Manager" },
+  { id: "company_admin", label: "Company admin" },
+] as const;
+
+type ArchivedVehicleInspection = VehicleInspectionArchivePayload & {
+  id: string;
+  submittedBy: string | null;
+};
+
+function newArchiveId(): string {
+  return `vinv_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+}
 
 function formatWhen(iso: string | null): string {
   if (!iso) return "—";
@@ -55,8 +80,11 @@ export function InspectionsLogsApp() {
   const session = readSession();
   const userId = session?.email ?? session?.sub ?? null;
 
-  const [tab, setTab] = useState<"inspections" | "logs">("inspections");
+  const [tab, setTab] = useState<"inspections" | "logs" | "archive">("inspections");
   const [showVehicleInspection, setShowVehicleInspection] = useState(false);
+  const [vehicleSheetKey, setVehicleSheetKey] = useState(0);
+  const [vehicleArchive, setVehicleArchive] = useState<ArchivedVehicleInspection[]>([]);
+  const [inspectionCompleteFlash, setInspectionCompleteFlash] = useState(false);
   const [showHarnessInspection, setShowHarnessInspection] = useState(false);
   const [builder, setBuilder] = useState<null | { kind: "inspection" | "log"; editId: string | null }>(
     null,
@@ -96,6 +124,26 @@ export function InspectionsLogsApp() {
     setBuilder(null);
   };
 
+  const onVehicleInspectionArchived = useCallback(
+    (payload: VehicleInspectionArchivePayload) => {
+      setVehicleArchive((prev) => [
+        { ...payload, id: newArchiveId(), submittedBy: userId },
+        ...prev,
+      ]);
+      setShowVehicleInspection(false);
+      setVehicleSheetKey((k) => k + 1);
+      setInspectionCompleteFlash(true);
+      setTab("archive");
+    },
+    [userId],
+  );
+
+  useEffect(() => {
+    if (!inspectionCompleteFlash) return;
+    const t = window.setTimeout(() => setInspectionCompleteFlash(false), 8000);
+    return () => window.clearTimeout(t);
+  }, [inspectionCompleteFlash]);
+
   return (
     <div className="space-y-8">
       <PageHeader
@@ -105,30 +153,72 @@ export function InspectionsLogsApp() {
         actions={<CreateDropdown onNewInspection={openNewInspection} onNewLog={openNewLog} />}
       />
 
-      <div className="rounded-md border border-ds-border bg-white p-1 dark:bg-ds-secondary">
-        <nav className="flex flex-wrap gap-1" aria-label="Module tabs">
-          <button
-            type="button"
-            className={`rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${tab === "inspections" ? TAB_ACTIVE : TAB_IDLE}`}
-            onClick={() => {
-              setTab("inspections");
-              setBuilder(null);
-            }}
+      <AnimatePresence initial={false}>
+        {inspectionCompleteFlash ? (
+          <motion.div
+            role="status"
+            initial={{ opacity: 0, y: -6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+            className="flex items-center gap-3 rounded-lg border border-[color-mix(in_srgb,var(--ds-success)_32%,var(--ds-border))] bg-[color-mix(in_srgb,var(--ds-success)_10%,var(--ds-primary))] px-4 py-3 text-sm font-semibold text-ds-foreground shadow-[var(--ds-shadow-card)]"
           >
-            Inspections
-          </button>
-          <button
-            type="button"
-            className={`rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${tab === "logs" ? TAB_ACTIVE : TAB_IDLE}`}
-            onClick={() => {
-              setTab("logs");
-              setBuilder(null);
-            }}
-          >
-            Logs
-          </button>
-        </nav>
-      </div>
+            <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-ds-border/60 bg-ds-secondary/80 text-ds-success">
+              <CheckCircle2 className="h-5 w-5" strokeWidth={2.25} aria-hidden />
+            </span>
+            <span>Inspection complete — saved to Archive.</span>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
+
+      <nav className={SEGMENT_TRACK} aria-label="Module tabs">
+        <button
+          type="button"
+          className={`rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${
+            tab === "inspections" ? SEGMENT_ACTIVE : SEGMENT_IDLE
+          }`}
+          onClick={() => {
+            setTab("inspections");
+            setBuilder(null);
+          }}
+        >
+          Inspections
+        </button>
+        <button
+          type="button"
+          className={`rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${
+            tab === "logs" ? SEGMENT_ACTIVE : SEGMENT_IDLE
+          }`}
+          onClick={() => {
+            setTab("logs");
+            setBuilder(null);
+          }}
+        >
+          Logs
+        </button>
+        <button
+          type="button"
+          className={`inline-flex max-w-full flex-wrap items-center gap-x-2 gap-y-1 rounded-lg px-3 py-2 text-left text-sm font-semibold transition-colors ${
+            tab === "archive" ? SEGMENT_ACTIVE : SEGMENT_IDLE
+          }`}
+          onClick={() => {
+            setTab("archive");
+            setBuilder(null);
+          }}
+        >
+          <span>Archive</span>
+          <span className="flex flex-wrap items-center gap-1" aria-label="Visible to roles">
+            {ARCHIVE_ROLE_TAGS.map((r) => (
+              <span
+                key={r.id}
+                className="rounded-md border border-ds-border/55 bg-ds-primary/45 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-ds-muted dark:bg-ds-secondary/80"
+              >
+                {r.label}
+              </span>
+            ))}
+          </span>
+        </button>
+      </nav>
 
       {builder?.kind === "inspection" ? (
         <InspectionBuilder
@@ -170,7 +260,7 @@ export function InspectionsLogsApp() {
             </div>
             {showVehicleInspection ? (
               <div className="mt-4">
-                <VehicleInspectionSheet />
+                <VehicleInspectionSheet key={vehicleSheetKey} onArchived={onVehicleInspectionArchived} />
               </div>
             ) : null}
           </section>
@@ -321,6 +411,68 @@ export function InspectionsLogsApp() {
             </div>
           </section>
         </>
+      ) : null}
+
+      {!builder && tab === "archive" ? (
+        <section className="space-y-4">
+          <div>
+            <h2 className="text-sm font-semibold text-ds-foreground">Inspection archive</h2>
+            <p className="mt-1 max-w-2xl text-xs font-medium text-ds-muted">
+              Vehicle inspections you submit are listed here. Access is intended for{" "}
+              {ARCHIVE_ROLE_TAGS.map((r) => r.label).join(", ")}.
+            </p>
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              {ARCHIVE_ROLE_TAGS.map((r) => (
+                <span
+                  key={r.id}
+                  className="rounded-lg border border-ds-border/60 bg-ds-secondary/70 px-2 py-1 text-[11px] font-semibold text-ds-foreground"
+                >
+                  {r.label}
+                </span>
+              ))}
+            </div>
+          </div>
+          <div className={TABLE_WRAP}>
+            <table className="w-full border-collapse text-left">
+              <thead>
+                <tr className="bg-ds-primary">
+                  <th className={TH}>Vehicle</th>
+                  <th className={TH}>Operator</th>
+                  <th className={TH}>Department</th>
+                  <th className={TH}>Submitted</th>
+                  <th className={TH}>Distance</th>
+                  <th className={TH}>Time out</th>
+                  <th className={TH}>By</th>
+                </tr>
+              </thead>
+              <tbody>
+                {vehicleArchive.length === 0 ? (
+                  <tr>
+                    <td className={`${TD} text-ds-muted`} colSpan={7}>
+                      No archived vehicle inspections yet. Submit a digital vehicle inspection to see it here.
+                    </td>
+                  </tr>
+                ) : (
+                  vehicleArchive.map((row) => (
+                    <tr key={row.id} className={ROW}>
+                      <td className={TD}>
+                        <span className="font-medium">{row.vehicle}</span>
+                      </td>
+                      <td className={TD}>{row.operatorName}</td>
+                      <td className={`${TD} text-ds-muted`}>{row.department}</td>
+                      <td className={`${TD} text-ds-muted`}>{formatWhen(row.submittedAtIso)}</td>
+                      <td className={`${TD} tabular-nums text-ds-muted`}>
+                        {row.distanceKm === null ? "—" : `${row.distanceKm} km`}
+                      </td>
+                      <td className={`${TD} text-ds-muted`}>{row.timeOutDuration ?? "—"}</td>
+                      <td className={`${TD} text-ds-muted`}>{row.submittedBy ?? "—"}</td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </section>
       ) : null}
 
       {!builder && tab === "logs" ? (
