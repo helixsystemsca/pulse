@@ -83,21 +83,27 @@ function WaveTile({ uid }: { uid: string }) {
 }
 
 /** Seamless ocean wave along the card bottom while loading (CSS keyframes for reliable motion). */
-function OceanWaveBar() {
+function OceanWaveBar({ progress }: { progress: number }) {
   const gid = useId().replace(/:/g, "");
+  const p = Math.max(0, Math.min(100, progress));
   return (
     <div
       className="pointer-events-none absolute inset-x-0 bottom-0 z-[2] h-[3.25rem] overflow-hidden sm:h-16"
       aria-hidden
     >
       <div
-        className={cn(
-          "flex h-full w-[200%] will-change-transform",
-          "animate-welcome-ocean motion-reduce:animate-none",
-        )}
+        className="h-full w-full motion-safe:transition-[clip-path] motion-safe:duration-200 motion-safe:ease-out"
+        style={{ clipPath: `inset(0 ${100 - p}% 0 0)` }}
       >
-        <WaveTile uid={`${gid}-a`} />
-        <WaveTile uid={`${gid}-b`} />
+        <div
+          className={cn(
+            "flex h-full w-[200%] will-change-transform",
+            "animate-welcome-ocean motion-reduce:animate-none",
+          )}
+        >
+          <WaveTile uid={`${gid}-a`} />
+          <WaveTile uid={`${gid}-b`} />
+        </div>
       </div>
     </div>
   );
@@ -115,10 +121,14 @@ export function WelcomeLoaderModal({
   const [skipEntirely, setSkipEntirely] = useState(false);
   const [open, setOpen] = useState(true);
   const [phase, setPhase] = useState<WelcomePhase>("loading");
+  /** 0–100: wave bar reveals left-to-right while preparing; completes when data is ready. */
+  const [loadProgress, setLoadProgress] = useState(0);
   const loadingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const welcomeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   /** When the overlay first shows the loading wave for this visit (for minimum wave duration). */
   const waveSessionStartRef = useRef<number | null>(null);
+  const isReadyForWaveRef = useRef(isReady);
+  isReadyForWaveRef.current = isReady;
 
   useEffect(() => {
     setHydrated(true);
@@ -145,6 +155,27 @@ export function WelcomeLoaderModal({
       waveSessionStartRef.current = Date.now();
     }
   }, [hydrated, skipEntirely, open]);
+
+  // Wave bar fill: eases toward a cap while waiting, then runs to 100% once `isReady` (ref avoids resetting elapsed).
+  useEffect(() => {
+    if (!hydrated || skipEntirely || !open || phase !== "loading") return;
+    const start = Date.now();
+    const tick = () => {
+      const elapsed = Date.now() - start;
+      const ready = isReadyForWaveRef.current;
+      setLoadProgress((prev) => {
+        if (ready) {
+          const n = prev + (100 - prev) * 0.22 + 0.35;
+          return n >= 99.85 ? 100 : n;
+        }
+        const cap = 88;
+        const eased = cap * (1 - Math.exp(-elapsed / 4200));
+        return Math.max(prev, Math.min(cap, eased));
+      });
+    };
+    const id = window.setInterval(tick, 48);
+    return () => window.clearInterval(id);
+  }, [hydrated, skipEntirely, open, phase]);
 
   // After the dashboard is ready: keep the wave at least MIN_WAVE_DISPLAY_MS total, then switch to welcome.
   useEffect(() => {
@@ -226,17 +257,17 @@ export function WelcomeLoaderModal({
             >
               <div
                 className={[
-                  "relative z-[3] px-7 pt-9 text-center sm:px-10 sm:pt-10",
-                  phase === "loading" ? "pb-16 sm:pb-18" : "pb-10 sm:pb-12",
+                  "relative z-[3] px-5 pt-6 text-center sm:px-7 sm:pt-7",
+                  phase === "loading" ? "pb-14 sm:pb-16" : "pb-8 sm:pb-10",
                 ].join(" ")}
               >
-                <div className="relative mx-auto h-[6.5rem] w-[6.5rem] sm:h-28 sm:w-28">
+                <div className="relative mx-auto h-[8.25rem] w-[8.25rem] sm:h-36 sm:w-36">
                   <Image
                     src="/images/panoramalogo2.png"
                     alt=""
                     fill
                     priority
-                    sizes="(max-width: 640px) 104px, 112px"
+                    sizes="(max-width: 640px) 132px, 144px"
                     className="object-contain object-center"
                   />
                 </div>
@@ -272,7 +303,7 @@ export function WelcomeLoaderModal({
               )}
               </div>
 
-              {phase === "loading" ? <OceanWaveBar /> : null}
+              {phase === "loading" ? <OceanWaveBar progress={loadProgress} /> : null}
             </motion.div>
           </div>
         </motion.div>

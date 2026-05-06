@@ -19,6 +19,7 @@ import { InspectionBuilder } from "./InspectionBuilder";
 import { LogBuilder } from "./LogBuilder";
 import { cn } from "@/lib/cn";
 import { buttonVariants } from "@/styles/button-variants";
+import { VehicleInspectionSheet } from "@/components/inspections/VehicleInspectionSheet";
 
 const TABLE_WRAP =
   "mt-6 overflow-hidden rounded-md border border-ds-border bg-white shadow-sm dark:bg-ds-secondary";
@@ -54,6 +55,7 @@ export function InspectionsLogsApp() {
   const userId = session?.email ?? session?.sub ?? null;
 
   const [tab, setTab] = useState<"inspections" | "logs">("inspections");
+  const [showVehicleInspection, setShowVehicleInspection] = useState(false);
   const [builder, setBuilder] = useState<null | { kind: "inspection" | "log"; editId: string | null }>(
     null,
   );
@@ -146,6 +148,31 @@ export function InspectionsLogsApp() {
 
       {!builder && tab === "inspections" ? (
         <>
+          <section className="rounded-md border border-ds-border bg-white p-4 shadow-sm dark:bg-ds-secondary">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="min-w-0">
+                <h2 className="text-sm font-semibold text-ds-foreground">Digital Vehicle Inspection</h2>
+                <p className="mt-0.5 text-xs font-medium text-ds-muted">
+                  Premium tablet-first inspection sheet (mock local state).
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  className={cn(buttonVariants({ surface: "light", intent: "secondary" }), "px-3 py-2 text-sm")}
+                  onClick={() => setShowVehicleInspection((v) => !v)}
+                >
+                  {showVehicleInspection ? "Hide sheet" : "New vehicle inspection"}
+                </button>
+              </div>
+            </div>
+            {showVehicleInspection ? (
+              <div className="mt-4">
+                <VehicleInspectionSheet />
+              </div>
+            ) : null}
+          </section>
+
           <section>
             <h2 className="text-sm font-semibold text-ds-muted">Inspection templates</h2>
             <div className={TABLE_WRAP}>
