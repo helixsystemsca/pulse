@@ -55,32 +55,18 @@ import "react-resizable/css/styles.css";
 
 type AlertPriority = "critical" | "high" | "medium" | "low";
 
-const DASHBOARD_BASE_COLS = 12;
-const DASHBOARD_GRID_UNIT_PX = 140;
-const DASHBOARD_GRID_GAP_PX = 12;
-const DASHBOARD_MAX_COLS_STANDARD = 12;
-const DASHBOARD_MAX_COLS_KIOSK = 16;
+/** Fixed logical columns: column width tracks container ÷ cols (~7+ narrow cards across on typical widths). */
+const DASHBOARD_GRID_COLS = 12;
+/** Vertical pitch (~half of legacy 140px for a denser board). */
+const DASHBOARD_GRID_ROW_HEIGHT_PX = 72;
+/** Horizontal + vertical gutter between cards. */
+const DASHBOARD_GRID_GAP_PX = 18;
 
-function gridColsForWidth(widthPx: number, kiosk: boolean): number {
-  const max = kiosk ? DASHBOARD_MAX_COLS_KIOSK : DASHBOARD_MAX_COLS_STANDARD;
-  const cols = Math.floor((Math.max(0, widthPx) + DASHBOARD_GRID_GAP_PX) / (DASHBOARD_GRID_UNIT_PX + DASHBOARD_GRID_GAP_PX));
-  return Math.max(1, Math.min(max, cols));
-}
-
-function layoutForCols(layout: Layout, cols: number): Layout {
-  if (cols >= DASHBOARD_BASE_COLS) return layout;
-  if (cols <= 1) {
-    return layout.map((it) => ({ ...it, x: 0, w: 1, minW: 1 }));
-  }
-  // "Cut cards in half": scale from 12 → 6 for tablets, then clamp.
-  const scale = cols / DASHBOARD_BASE_COLS;
-  return layout.map((it) => {
-    const w = Math.max(1, Math.min(cols, Math.round((it.w ?? 1) * scale)));
-    const minW = Math.max(1, Math.min(w, Math.round(((it.minW ?? 1) as number) * scale)));
-    const x = Math.max(0, Math.min(cols - w, Math.round((it.x ?? 0) * scale)));
-    return { ...it, x, w, minW };
-  });
-}
+/** Operations dashboard header: icon tools get a teal hover inside the unified actions card. */
+const OPS_DASH_HEADER_TOOL =
+  "h-10 w-10 min-h-0 rounded-lg !border-2 border-ds-border bg-transparent !px-0 !py-0 text-ds-foreground shadow-none transition-colors hover:!border-[var(--ds-accent)] hover:!bg-[color-mix(in_srgb,var(--ds-accent)_14%,var(--ds-bg))] hover:!text-[var(--ds-accent)] focus-visible:!outline-[var(--ds-accent)] dark:hover:!bg-[color-mix(in_srgb,var(--ds-accent)_20%,transparent)]";
+const OPS_DASH_HEADER_TOOL_ACTIVE =
+  "h-10 w-10 min-h-0 rounded-lg !border-2 !border-[var(--ds-accent)] !bg-[var(--ds-accent)] !px-0 !py-0 !text-white shadow-none transition-colors hover:!border-[var(--ds-accent)] hover:!bg-[color-mix(in_srgb,var(--ds-accent)_88%,#0f172a)] hover:!text-white";
 
 function WorkerDashCard({
   title,
@@ -1939,21 +1925,21 @@ function DashboardBody({
   const defaultLayout = useMemo((): Layout => {
     const leadershipBand: Layout = [
       { i: "todays_focus", x: 0, y: 0, w: 3, h: 9, minW: 2, minH: 4 },
-      { i: "leadership_overview", x: 3, y: 0, w: 6, h: 9, minW: 4, minH: 6 },
+      { i: "leadership_overview", x: 3, y: 0, w: 6, h: 9, minW: 3, minH: 6 },
       { i: "team_snapshot", x: 9, y: 0, w: 3, h: 9, minW: 2, minH: 4 },
     ];
     const core: Layout = [
-      { i: "alerts", x: 0, y: 9, w: 12, h: 3, minW: 6, minH: 2 },
-      { i: "workforce", x: 0, y: 12, w: 4, h: 4, minW: 3, minH: 3 },
-      { i: "inventory", x: 4, y: 12, w: 4, h: 4, minW: 3, minH: 3 },
-      { i: "equipment", x: 8, y: 12, w: 4, h: 4, minW: 3, minH: 3 },
-      { i: "workRequests", x: 0, y: 16, w: 12, h: 4, minW: 6, minH: 3 },
-      { i: "xp", x: 0, y: 20, w: 12, h: 3, minW: 6, minH: 2 },
+      { i: "alerts", x: 0, y: 9, w: 12, h: 3, minW: 4, minH: 2 },
+      { i: "workforce", x: 0, y: 12, w: 4, h: 4, minW: 2, minH: 3 },
+      { i: "inventory", x: 4, y: 12, w: 4, h: 4, minW: 2, minH: 3 },
+      { i: "equipment", x: 8, y: 12, w: 4, h: 4, minW: 2, minH: 3 },
+      { i: "workRequests", x: 0, y: 16, w: 12, h: 4, minW: 4, minH: 3 },
+      { i: "xp", x: 0, y: 20, w: 12, h: 3, minW: 4, minH: 2 },
     ];
     if (!widgetRegistry.setup) return [...leadershipBand, ...core];
     const setupOffset = 3;
     return [
-      { i: "setup", x: 0, y: 0, w: 12, h: setupOffset, minW: 6, minH: 2 },
+      { i: "setup", x: 0, y: 0, w: 12, h: setupOffset, minW: 4, minH: 2 },
       ...leadershipBand.map((it) => ({ ...it, y: it.y + setupOffset })),
       ...core.map((it) => ({ ...it, y: it.y + setupOffset })),
     ];
@@ -2177,6 +2163,10 @@ function DashboardBody({
     );
   }
 
+  const headerShowWelcome = !hideHeaderWelcome && Boolean(model.welcomeName.trim());
+  const headerShowLayoutTools = canEditLayout && !readOnly;
+  const headerShowFullscreen = !isKiosk;
+
   return (
     <div className={cn(DASH.page, "space-y-6")}>
       <DashboardAccentCard>
@@ -2195,57 +2185,68 @@ function DashboardBody({
             </p>
           </div>
           <div className="flex flex-wrap items-center justify-end gap-2">
-            {!isKiosk ? (
-              <Button
-                type="button"
-                variant="secondary"
-                className="flex h-10 w-10 items-center justify-center p-0"
-                onClick={openKiosk}
-                title="Fullscreen"
-                aria-label="Fullscreen"
-              >
-                <Monitor className="h-4 w-4" aria-hidden />
-              </Button>
-            ) : null}
-            {canEditLayout && !readOnly ? (
+            {headerShowFullscreen || headerShowLayoutTools || headerShowWelcome ? (
               <div
-                className="inline-flex items-center gap-1 rounded-lg border border-ds-border p-1"
+                className="inline-flex max-w-full flex-wrap items-center gap-1 rounded-xl border border-ds-border bg-ds-primary p-1 shadow-sm dark:bg-ds-secondary/70"
                 role="group"
-                aria-label="Dashboard layout"
+                aria-label="Dashboard header actions"
               >
-                <Button
-                  type="button"
-                  variant={editMode ? "primary" : "secondary"}
-                  onClick={() => setEditMode((v) => !v)}
-                  title={editMode ? "Done editing layout" : "Edit dashboard layout"}
-                  aria-label={editMode ? "Done editing layout" : "Edit dashboard layout"}
-                  aria-pressed={editMode}
-                  className="flex h-10 w-10 shrink-0 items-center justify-center p-0"
-                >
-                  {editMode ? (
-                    <Check className="h-[1.125rem] w-[1.125rem] shrink-0" strokeWidth={2.5} aria-hidden />
-                  ) : (
-                    <Pencil className="h-[1.125rem] w-[1.125rem] shrink-0" strokeWidth={2.5} aria-hidden />
-                  )}
-                </Button>
-                <span className="mx-0.5 h-6 w-px shrink-0 bg-ds-border" aria-hidden />
-                <Button
-                  type="button"
-                  variant="secondary"
-                  disabled={!editMode}
-                  onClick={() => editMode && setShowAddWidget(true)}
-                  title={editMode ? "Add a widget" : "Turn on edit mode to add widgets"}
-                  aria-label="Add widget"
-                  className="flex h-10 w-10 shrink-0 items-center justify-center p-0 disabled:opacity-40"
-                >
-                  <Plus className="h-[1.125rem] w-[1.125rem] shrink-0" strokeWidth={2.5} aria-hidden />
-                </Button>
+                {headerShowFullscreen ? (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className={OPS_DASH_HEADER_TOOL}
+                    onClick={openKiosk}
+                    title="Fullscreen"
+                    aria-label="Fullscreen"
+                  >
+                    <Monitor className="h-4 w-4" aria-hidden />
+                  </Button>
+                ) : null}
+                {headerShowFullscreen && (headerShowLayoutTools || headerShowWelcome) ? (
+                  <span className="mx-0.5 h-6 w-px shrink-0 bg-ds-border" aria-hidden />
+                ) : null}
+                {headerShowLayoutTools ? (
+                  <>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={() => setEditMode((v) => !v)}
+                      title={editMode ? "Done editing layout" : "Edit dashboard layout"}
+                      aria-label={editMode ? "Done editing layout" : "Edit dashboard layout"}
+                      aria-pressed={editMode}
+                      className={cn(OPS_DASH_HEADER_TOOL, editMode && OPS_DASH_HEADER_TOOL_ACTIVE)}
+                    >
+                      {editMode ? (
+                        <Check className="h-[1.125rem] w-[1.125rem] shrink-0" strokeWidth={2.5} aria-hidden />
+                      ) : (
+                        <Pencil className="h-[1.125rem] w-[1.125rem] shrink-0" strokeWidth={2.5} aria-hidden />
+                      )}
+                    </Button>
+                    <span className="mx-0.5 h-6 w-px shrink-0 bg-ds-border" aria-hidden />
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      disabled={!editMode}
+                      onClick={() => editMode && setShowAddWidget(true)}
+                      title={editMode ? "Add a widget" : "Turn on edit mode to add widgets"}
+                      aria-label="Add widget"
+                      className={cn(OPS_DASH_HEADER_TOOL, "disabled:pointer-events-none disabled:opacity-40")}
+                    >
+                      <Plus className="h-[1.125rem] w-[1.125rem] shrink-0" strokeWidth={2.5} aria-hidden />
+                    </Button>
+                  </>
+                ) : null}
+                {headerShowLayoutTools && headerShowWelcome ? (
+                  <span className="mx-0.5 h-6 w-px shrink-0 bg-ds-border" aria-hidden />
+                ) : null}
+                {headerShowWelcome ? (
+                  <span className="inline-flex max-w-[min(100%,16rem)] items-center gap-1.5 truncate rounded-full bg-[var(--ds-accent)] px-3.5 py-2 text-sm font-semibold text-white shadow-sm sm:max-w-[20rem]">
+                    <span className="hidden sm:inline">Welcome,</span>
+                    <span className="truncate">{model.welcomeName}</span>
+                  </span>
+                ) : null}
               </div>
-            ) : null}
-            {!hideHeaderWelcome && model.welcomeName.trim() ? (
-              <span className="inline-flex items-center gap-2 rounded-lg border border-ds-border bg-ds-secondary/60 px-3 py-2 text-sm font-semibold text-ds-foreground">
-                <span className="hidden sm:inline">Welcome,</span> {model.welcomeName}
-              </span>
             ) : null}
           </div>
         </div>
@@ -2258,15 +2259,12 @@ function DashboardBody({
       <DashboardAccentCard mutedAccent innerClassName="space-y-0">
         <div ref={containerRef as any} className={editMode ? "pulse-dashboard-edit" : ""}>
           {mounted ? (
-            (() => {
-              const cols = gridColsForWidth(width, isKiosk);
-              return (
             <GridLayout
-              layout={layoutForCols(layout, cols)}
+              layout={layout}
               width={width}
               gridConfig={{
-                cols,
-                rowHeight: DASHBOARD_GRID_UNIT_PX,
+                cols: DASHBOARD_GRID_COLS,
+                rowHeight: DASHBOARD_GRID_ROW_HEIGHT_PX,
                 margin: [DASHBOARD_GRID_GAP_PX, DASHBOARD_GRID_GAP_PX],
                 containerPadding: [0, 0],
               }}
@@ -2415,8 +2413,6 @@ function DashboardBody({
                 );
               })}
             </GridLayout>
-              );
-            })()
           ) : null}
         </div>
 
