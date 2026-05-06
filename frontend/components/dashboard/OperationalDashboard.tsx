@@ -1196,7 +1196,8 @@ function DashboardBody({
 
   const layoutStorageKey = useMemo(() => {
     const mode = isKiosk ? "kiosk" : "standard";
-    return `pulse_dashboard_layout_v3_${dashboardContext}_${mode}`;
+    /** v4: leadership band is part of the main grid (no separate static section). */
+    return `pulse_dashboard_layout_v4_${dashboardContext}_${mode}`;
   }, [dashboardContext, isKiosk]);
 
   const customWidgetStorageKey = useMemo(() => {
@@ -1480,7 +1481,85 @@ function DashboardBody({
   }
 
   const widgetRegistry = useMemo(() => {
+    const queueRows = kioskWorkQueueRows(model);
+    const snapshotKpis = kioskKpis.slice(0, 4);
+    const onSiteLimited = model.workforce.onSite.slice(0, 5);
+
     return {
+      /** Leadership band widgets — live in the main grid so the whole dashboard is one editable canvas. */
+      todays_focus: {
+        title: "Today's focus",
+        accent: "green" as const,
+        render: () => (
+          <div className="min-h-0 flex-1 overflow-auto">
+            <ul className="space-y-2">
+              {queueRows.length === 0 ? (
+                <li className="text-sm text-ds-muted">No queued work items.</li>
+              ) : (
+                queueRows.map((q) => (
+                  <li key={q.key} className={cn(DASH.listRow, "flex items-start justify-between gap-2")}>
+                    <span className="min-w-0 truncate text-sm font-semibold text-ds-foreground">{q.title}</span>
+                    <span
+                      className={cn(
+                        DASH.pill,
+                        q.tone === "critical" &&
+                          "border-red-200/80 bg-red-50 text-red-800 dark:border-red-500/35 dark:bg-red-950/40 dark:text-red-100",
+                        q.tone === "warn" &&
+                          "border-amber-200/80 bg-amber-50 text-amber-900 dark:border-amber-500/35 dark:bg-amber-950/35 dark:text-amber-100",
+                        q.tone === "ok" && "border-ds-border bg-ds-secondary text-ds-muted",
+                      )}
+                    >
+                      {q.status}
+                    </span>
+                  </li>
+                ))
+              )}
+            </ul>
+          </div>
+        ),
+      },
+      leadership_overview: {
+        title: "Operational overview",
+        accent: "none" as const,
+        render: () => (
+          <div className="min-h-0 flex-1 overflow-auto pr-0.5">
+            <OverviewView rowClass="w-full" />
+          </div>
+        ),
+      },
+      team_snapshot: {
+        title: "Team snapshot",
+        accent: "none" as const,
+        render: () => (
+          <div className="min-h-0 flex-1 overflow-auto">
+            <div className="grid grid-cols-2 gap-2">
+              {snapshotKpis.map((k) => (
+                <KioskTile key={k.label} label={k.label} value={k.value} />
+              ))}
+            </div>
+            <p className={cn(DASH.sectionLabel, "mt-4")}>On site</p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {onSiteLimited.length === 0 ? (
+                <p className="text-sm text-ds-muted">No workers on site.</p>
+              ) : (
+                onSiteLimited.map((b) => (
+                  <WorkforceBubbleStack
+                    key={b.id}
+                    bubble={b}
+                    faceClassName={onsiteAvatarClass()}
+                    badges={
+                      <>
+                        {b.badge ? <WorkforceRoleLetterBadge letter={b.badge} /> : null}
+                        <WorkforceStatusDot color="green" />
+                      </>
+                    }
+                  />
+                ))
+              )}
+            </div>
+          </div>
+        ),
+      },
       alerts: {
         title: "Active Alerts",
         accent: "yellow" as const,
@@ -1850,26 +1929,34 @@ function DashboardBody({
           }
         : null,
     } as const;
-  }, [activeAlertRows, facilitySetupChecklist, model, onDismissZonePrompt, workOrdersHref, zonePromptDismissed]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- OverviewView is an inner renderer; deps cover upstream data.
+  }, [activeAlertRows, facilitySetupChecklist, kioskKpis, model, onDismissZonePrompt, workOrdersHref, zonePromptDismissed]);
 
   const allWidgetKeys = useMemo(() => {
     return Object.keys(widgetRegistry).filter((k) => (widgetRegistry as Record<string, unknown>)[k] != null);
   }, [widgetRegistry]);
 
   const defaultLayout = useMemo((): Layout => {
-    const base: Layout = [
-      { i: "alerts", x: 0, y: 0, w: 12, h: 3, minW: 6, minH: 2 },
-      // Three-up row so Equipment can sit beside Workforce + Inventory.
-      { i: "workforce", x: 0, y: 3, w: 4, h: 4, minW: 3, minH: 3 },
-      { i: "inventory", x: 4, y: 3, w: 4, h: 4, minW: 3, minH: 3 },
-      { i: "equipment", x: 8, y: 3, w: 4, h: 4, minW: 3, minH: 3 },
-      // Full-width row for the detailed list card.
-      { i: "workRequests", x: 0, y: 7, w: 12, h: 4, minW: 6, minH: 3 },
-      { i: "xp", x: 0, y: 11, w: 12, h: 3, minW: 6, minH: 2 },
+    const leadershipBand: Layout = [
+      { i: "todays_focus", x: 0, y: 0, w: 3, h: 9, minW: 2, minH: 4 },
+      { i: "leadership_overview", x: 3, y: 0, w: 6, h: 9, minW: 4, minH: 6 },
+      { i: "team_snapshot", x: 9, y: 0, w: 3, h: 9, minW: 2, minH: 4 },
     ];
-    return widgetRegistry.setup
-      ? ([{ i: "setup", x: 0, y: 0, w: 12, h: 3, minW: 6, minH: 2 }, ...base] as const)
-      : base;
+    const core: Layout = [
+      { i: "alerts", x: 0, y: 9, w: 12, h: 3, minW: 6, minH: 2 },
+      { i: "workforce", x: 0, y: 12, w: 4, h: 4, minW: 3, minH: 3 },
+      { i: "inventory", x: 4, y: 12, w: 4, h: 4, minW: 3, minH: 3 },
+      { i: "equipment", x: 8, y: 12, w: 4, h: 4, minW: 3, minH: 3 },
+      { i: "workRequests", x: 0, y: 16, w: 12, h: 4, minW: 6, minH: 3 },
+      { i: "xp", x: 0, y: 20, w: 12, h: 3, minW: 6, minH: 2 },
+    ];
+    if (!widgetRegistry.setup) return [...leadershipBand, ...core];
+    const setupOffset = 3;
+    return [
+      { i: "setup", x: 0, y: 0, w: 12, h: setupOffset, minW: 6, minH: 2 },
+      ...leadershipBand.map((it) => ({ ...it, y: it.y + setupOffset })),
+      ...core.map((it) => ({ ...it, y: it.y + setupOffset })),
+    ];
   }, [widgetRegistry.setup]);
 
   const [layout, setLayout] = useState<Layout>(defaultLayout);
@@ -2090,11 +2177,6 @@ function DashboardBody({
     );
   }
 
-  const row = "w-full";
-  const queue = kioskWorkQueueRows(model);
-  const rightKpis = kioskKpis.slice(0, 4);
-  const onSiteShow = model.workforce.onSite.slice(0, 5);
-
   return (
     <div className={cn(DASH.page, "space-y-6")}>
       <DashboardAccentCard>
@@ -2171,72 +2253,6 @@ function DashboardBody({
         {model.bannerNote ? (
           <div className="mt-4 border-t border-ds-border pt-4 text-sm font-semibold text-ds-foreground">{model.bannerNote}</div>
         ) : null}
-      </DashboardAccentCard>
-
-      <DashboardAccentCard mutedAccent innerClassName="space-y-4">
-        <div className={cn(DASH.grid12, "gap-4")}>
-          <div className="col-span-12 min-h-0 lg:col-span-3">
-            <DashboardColumnPanel title="Today's focus" accent="teal">
-              <ul className="space-y-2">
-                {queue.length === 0 ? (
-                  <li className="text-sm text-ds-muted">No queued work items.</li>
-                ) : (
-                  queue.map((q) => (
-                    <li key={q.key} className={cn(DASH.listRow, "flex items-start justify-between gap-2")}>
-                      <span className="min-w-0 truncate text-sm font-semibold text-ds-foreground">{q.title}</span>
-                      <span
-                        className={cn(
-                          DASH.pill,
-                          q.tone === "critical" &&
-                            "border-red-200/80 bg-red-50 text-red-800 dark:border-red-500/35 dark:bg-red-950/40 dark:text-red-100",
-                          q.tone === "warn" &&
-                            "border-amber-200/80 bg-amber-50 text-amber-900 dark:border-amber-500/35 dark:bg-amber-950/35 dark:text-amber-100",
-                          q.tone === "ok" && "border-ds-border bg-ds-secondary text-ds-muted",
-                        )}
-                      >
-                        {q.status}
-                      </span>
-                    </li>
-                  ))
-                )}
-              </ul>
-            </DashboardColumnPanel>
-          </div>
-
-          <div className="col-span-12 min-h-0 lg:col-span-6">
-            <OverviewView rowClass={row} />
-          </div>
-
-          <div className="col-span-12 min-h-0 lg:col-span-3">
-            <DashboardColumnPanel title="Team snapshot" accent="dusk">
-              <div className="grid grid-cols-2 gap-2">
-                {rightKpis.map((k) => (
-                  <KioskTile key={k.label} label={k.label} value={k.value} />
-                ))}
-              </div>
-              <p className={cn(DASH.sectionLabel, "mt-4")}>On site</p>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {onSiteShow.length === 0 ? (
-                  <p className="text-sm text-ds-muted">No workers on site.</p>
-                ) : (
-                  onSiteShow.map((b) => (
-                    <WorkforceBubbleStack
-                      key={b.id}
-                      bubble={b}
-                      faceClassName={onsiteAvatarClass()}
-                      badges={
-                        <>
-                          {b.badge ? <WorkforceRoleLetterBadge letter={b.badge} /> : null}
-                          <WorkforceStatusDot color="green" />
-                        </>
-                      }
-                    />
-                  ))
-                )}
-              </div>
-            </DashboardColumnPanel>
-          </div>
-        </div>
       </DashboardAccentCard>
 
       <DashboardAccentCard mutedAccent innerClassName="space-y-0">

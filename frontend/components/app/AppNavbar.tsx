@@ -85,11 +85,11 @@ export function AppNavbar() {
 
             <span
               className={cn(
-                "font-panoramaBrand min-w-0 whitespace-nowrap pl-4 text-[clamp(1.3125rem,2.75vw,1.875rem)] leading-none tracking-[0.04em]",
+                "font-panoramaBrand min-w-0 whitespace-nowrap pl-4 text-[clamp(1.3125rem,2.75vw,1.875rem)] font-semibold uppercase leading-none tracking-[0.08em]",
                 "text-[#1f3a4a] dark:text-[#b8cad6]",
               )}
             >
-              <span className="font-semibold">panorama</span> <span className="font-medium">pulse</span>
+              Panorama Pulse
             </span>
           </div>
         </div>

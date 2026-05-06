@@ -10,10 +10,14 @@ const config: Config = {
   theme: {
     extend: {
       fontFamily: {
-        headline: ["var(--font-headline)", "var(--font-app)", "system-ui", "sans-serif"],
+        /** App UI typography (Inter via `next/font` → `--font-app`). */
         body: ["var(--font-app)", "system-ui", "sans-serif"],
-        /** Navbar “panorama pulse” — set in root layout via `next/font` */
-        panoramaBrand: ["var(--font-panorama-brand)", "Poppins", "system-ui", "sans-serif"],
+        /** Prefer `font-body`; `font-headline` kept for legacy classnames — same Inter stack. */
+        headline: ["var(--font-app)", "system-ui", "sans-serif"],
+        /** Manrope — app chrome wordmark only (`PANORAMA PULSE` in `AppNavbar`). */
+        manrope: ["var(--font-headline)", "var(--font-app)", "system-ui", "sans-serif"],
+        /** Same as `manrope`; top bar product lockup uses Manrope + uppercase in components. */
+        panoramaBrand: ["var(--font-headline)", "var(--font-app)", "system-ui", "sans-serif"],
       },
       colors: {
         helix: {

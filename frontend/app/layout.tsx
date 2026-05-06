@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter, Manrope, Poppins } from "next/font/google";
+import { Inter, Manrope } from "next/font/google";
 import Script from "next/script";
 import { ThemeRoot } from "@/components/theme/ThemeRoot";
 import { THEME_STORAGE_KEY } from "@/lib/theme-constants";
@@ -15,19 +15,11 @@ const inter = Inter({
   display: "swap",
 });
 
-/** Headlines — premium UI headers (Manrope). */
+/** Manrope — top bar “PANORAMA PULSE” wordmark only; all other UI uses Inter (`--font-app`). */
 const manrope = Manrope({
   subsets: ["latin"],
   weight: ["400", "500", "600", "700", "800"],
   variable: "--font-headline",
-  display: "swap",
-});
-
-/** Header wordmark “panorama pulse” — weights 500 / 600 only. */
-const panoramaBrand = Poppins({
-  subsets: ["latin"],
-  weight: ["500", "600"],
-  variable: "--font-panorama-brand",
   display: "swap",
 });
 
@@ -53,7 +45,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html
       lang="en"
-      className={`${inter.variable} ${manrope.variable} ${panoramaBrand.variable}`}
+      className={`${inter.variable} ${manrope.variable}`}
       suppressHydrationWarning
     >
       <body className="font-body antialiased bg-ds-bg text-ds-foreground">
