@@ -30,6 +30,7 @@ import { useAuthenticatedAssetSrc } from "@/hooks/useAuthenticatedAssetSrc";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
 import { pulseRoutes, pulseTenantNav } from "@/lib/pulse-app";
 import { canAccessPulseTenantApis, readSession, type PulseAuthSession } from "@/lib/pulse-session";
+import { sessionHasAnyRole } from "@/lib/pulse-roles";
 import { getServerDate, getServerNow } from "@/lib/serverTime";
 import { useResolvedAvatarSrc } from "@/lib/useResolvedAvatarSrc";
 import {

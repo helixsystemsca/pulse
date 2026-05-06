@@ -31,7 +31,8 @@ html.pulse-welcome-blur [data-pulse-app-shell] {
   --pulse-header-height: 80px;
   --pulse-header-accent-height: 4px;
   --pulse-header-bar-height: calc(var(--pulse-header-height) - var(--pulse-header-accent-height));
-  --pulse-sidebar-collapsed-width: 72px;
+  /* Single source of truth: matches the header logo column exactly. */
+  --pulse-sidebar-collapsed-width: 80px;
   --pulse-sidebar-expanded-width: 260px;
 
   /* —— Brand (reference: Gantt / PM dashboard) —— */

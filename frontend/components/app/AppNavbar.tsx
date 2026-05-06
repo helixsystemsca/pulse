@@ -54,21 +54,22 @@ export function AppNavbar() {
   }, []);
 
   return (
-      <nav className="flex w-full items-center justify-between gap-4" aria-label="Main">
+      <nav className="flex h-[var(--pulse-header-height)] w-full items-center justify-between gap-4 pr-4" aria-label="Main">
         <div className="flex min-w-0 items-center">
           <Link
             href={logoHref}
-            className="flex min-w-0 shrink-0 items-center gap-3 no-underline hover:opacity-[0.97]"
+            className="flex min-w-0 shrink-0 items-center gap-0 no-underline hover:opacity-[0.97]"
             aria-label="Home"
           >
-            <span className="flex min-w-0 items-center">
-              <span
-                className={cn(
-                  "inline-flex shrink-0 items-center justify-center border border-black/80 bg-white/70 dark:bg-white/10",
-                  "h-14 w-14",
-                )}
-                aria-hidden
-              >
+            {/* Brand column (must match collapsed nav width) */}
+            <span
+              className="inline-flex shrink-0 items-center justify-center bg-white/70 dark:bg-white/10"
+              style={{
+                width: "var(--pulse-sidebar-collapsed-width)",
+                height: "var(--pulse-header-height)",
+              }}
+              aria-hidden
+            >
               <Image
                 src="/images/panoramalogo2.png"
                 alt=""
@@ -78,20 +79,21 @@ export function AppNavbar() {
                 className="h-10 w-10 object-contain object-center"
               />
             </span>
-              <span className="px-4" aria-hidden>
-                <span
-                  className="block w-px bg-black/80"
-                  style={{ height: "calc(var(--pulse-header-bar-height) - 16px)" }}
-                />
-              </span>
+
+            {/* Structural divider: single full-height stroke */}
+            <span
+              className="w-px shrink-0 self-stretch"
+              style={{ background: "rgba(0,0,0,0.75)" }}
+              aria-hidden
+            />
+
             <span
               className={cn(
-                "font-panoramaBrand min-w-0 whitespace-nowrap text-[clamp(1.3125rem,2.75vw,1.875rem)] leading-none tracking-[0.04em]",
+                "font-panoramaBrand min-w-0 whitespace-nowrap pl-4 text-[clamp(1.3125rem,2.75vw,1.875rem)] leading-none tracking-[0.04em]",
                 "text-[#1f3a4a] dark:text-[#b8cad6]",
               )}
             >
               <span className="font-semibold">panorama</span> <span className="font-medium">pulse</span>
-            </span>
             </span>
           </Link>
         </div>
