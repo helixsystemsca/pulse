@@ -47,12 +47,13 @@ export function AppLayout({
               className="sticky top-0 z-[50] shrink-0 border-b border-ds-border bg-ds-primary shadow-none"
               style={{ height: "var(--pulse-header-height)" }}
             >
-              <div className="relative flex h-full w-full items-center">
-                <div className="absolute inset-x-0 bottom-0 app-chrome-accent" aria-hidden style={{ height: "var(--pulse-header-accent-height)" }} />
-                <div className="relative z-[1] w-full">
+              <div className="flex w-full items-center" style={{ height: "var(--pulse-header-bar-height)" }}>
+                <div className="w-full">
                   <AppNavbar />
                 </div>
               </div>
+              {/* Continuous accent line (must span under logo + content). */}
+              <div className="app-chrome-accent" aria-hidden style={{ height: "var(--pulse-header-accent-height)" }} />
             </header>
           ) : null}
 
