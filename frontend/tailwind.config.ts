@@ -34,7 +34,7 @@ const config: Config = {
         pulse: {
           bg: "#f7f8fa",
           accent: "var(--ds-accent)",
-          "accent-hover": "#248a7d",
+          "accent-hover": "#168677",
           navy: "#2c3a55",
           muted: "#64748b",
           border: "#e2e8f0",

@@ -43,17 +43,8 @@ export function AppLayout({
             <ProximityPromptHost />
             <div data-pulse-app-shell className="flex h-full w-full flex-col overflow-hidden">
           {chrome ? (
-            <header
-              className="sticky top-0 z-[50] shrink-0 bg-ds-primary shadow-none"
-              style={{ height: "var(--pulse-header-height)" }}
-            >
-              <div className="flex w-full items-center" style={{ height: "var(--pulse-header-bar-height)" }}>
-                <div className="w-full">
-                  <AppNavbar />
-                </div>
-              </div>
-              {/* Continuous accent line (must span under logo + content). */}
-              <div className="app-chrome-accent" aria-hidden style={{ height: "var(--pulse-header-accent-height)" }} />
+            <header className="sticky top-0 z-[50] shrink-0 shadow-[0_4px_28px_rgba(0,0,0,0.18)]">
+              <AppNavbar />
             </header>
           ) : null}
 

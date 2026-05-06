@@ -1,12 +1,11 @@
 "use client";
 
 /**
- * Sticky top bar: product logo, login CTA, or user menu (profile/settings/sign-out links).
+ * Sticky top bar: wordmark, login CTA, or icon row (notifications, messages, settings, profile).
  */
 import { usePathname } from "next/navigation";
-import Image from "next/image";
 import Link from "next/link";
-import { ChevronDown, Image as ImageIcon, KeyRound, LogOut, Settings } from "lucide-react";
+import { Bell, ChevronDown, Image as ImageIcon, KeyRound, LogOut, MessageSquare, Settings } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
 import { navigateToPulseLogin, pulseApp, pulsePostLoginPath, pulseRoutes } from "@/lib/pulse-app";
@@ -19,7 +18,29 @@ import {
   shouldShowWorkerMandatoryPasswordBadge,
 } from "@/lib/pulse-roles";
 import { cn } from "@/lib/cn";
-export function AppNavbar() {
+
+
+function IconBadgeCount({ count }: { count: number }) {
+  if (count <= 0) return null;
+  const label = count > 99 ? "99+" : String(count);
+  return (
+    <span
+      className="pointer-events-none absolute -right-1 -top-1 flex h-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-full bg-[var(--ds-accent)] px-1 text-[10px] font-bold leading-none text-white shadow-sm ring-2 ring-[var(--ds-palette-iron-grey)]"
+      aria-hidden
+    >
+      {label}
+    </span>
+  );
+}
+
+export type AppNavbarProps = {
+  /** Shown on the notifications bell when &gt; 0 (wire from API / store when available). */
+  notificationCount?: number;
+  /** Shown on the messages icon when &gt; 0. */
+  messagesCount?: number;
+};
+
+export function AppNavbar({ notificationCount = 0, messagesCount = 0 }: AppNavbarProps) {
   const pathname = usePathname();
   const { authed, session } = usePulseAuth();
   const [userOpen, setUserOpen] = useState(false);
@@ -30,7 +51,11 @@ export function AppNavbar() {
   const isDemoViewer = session?.role === "demo_viewer";
   const isSystemAdmin = Boolean(session?.is_system_admin || session?.role === "system_admin");
   const canOpenOrgSettings = session ? isSystemAdmin || canAccessCompanyConfiguration(session) : false;
-  const settingsActive = pathname === "/settings" || pathname.startsWith("/settings/");
+  const settingsActive =
+    pathname === "/settings" ||
+    pathname.startsWith("/settings/") ||
+    pathname === "/dashboard/profile-settings" ||
+    pathname.startsWith("/dashboard/profile-settings/");
   const showWorkerPasswordBadge = session ? shouldShowWorkerMandatoryPasswordBadge(session) : false;
 
   useEffect(() => {
@@ -53,97 +78,98 @@ export function AppNavbar() {
     }, pulseLogoutNavigationDelayMs());
   }, []);
 
+  const chromeIconBtn =
+    "relative flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-white/85 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/40";
+
   return (
-      <nav className="flex h-[var(--pulse-header-bar-height)] w-full items-center justify-between gap-4 pr-4" aria-label="Main">
-        <div className="flex min-w-0 items-center">
-          <div className="flex min-w-0 shrink-0 items-center gap-0" aria-label="Panorama Pulse">
-            {/* Brand column (must match collapsed nav width) */}
-            <span
-              className="inline-flex shrink-0 items-center justify-center bg-white/70 dark:bg-white/10"
-              style={{
-                width: "var(--pulse-sidebar-collapsed-width)",
-                height: "var(--pulse-header-bar-height)",
-              }}
-              aria-hidden
-            >
-              <Image
-                src="/images/panoramalogo2.png"
-                alt=""
-                width={280}
-                height={96}
-                priority
-                className="h-10 w-10 object-contain object-center"
-              />
-            </span>
-
-            {/* Structural divider: single full-height vertical stroke */}
-            <span
-              className="w-px shrink-0 self-stretch"
-              style={{ background: "rgba(0,0,0,0.75)" }}
-              aria-hidden
-            />
-
-            <span
-              className={cn(
-                "font-panoramaBrand inline-flex min-w-0 items-baseline gap-[0.06em] whitespace-nowrap pl-4 text-[clamp(1.3125rem,2.75vw,1.875rem)] uppercase leading-none",
-                "text-[#1f3a4a] dark:text-[#b8cad6]",
-              )}
-            >
-              <span className="font-black tracking-[0.06em]">Panorama</span>
-              <span className="font-semibold tracking-[0.06em]">Pulse</span>
-            </span>
-          </div>
+    <nav
+      className="flex w-full flex-col"
+      style={{
+        height: "var(--pulse-header-height)",
+        background: "var(--pulse-header-radial-gradient)",
+      }}
+      aria-label="Main"
+    >
+      <div
+        className="flex min-h-0 w-full flex-1 items-center justify-between gap-4 pr-3 sm:pr-4"
+        style={{ minHeight: "var(--pulse-header-bar-height)" }}
+      >
+        <div className="flex min-w-0 flex-1 items-center pl-3 sm:pl-4 lg:pl-[calc(var(--pulse-sidebar-collapsed-width)+0.75rem)]">
+          <Link
+            href={logoHref}
+            className={cn(
+              "font-panoramaBrand inline-flex min-w-0 items-baseline gap-[0.06em] whitespace-nowrap text-[clamp(1.25rem,2.5vw,1.75rem)] uppercase leading-none text-white drop-shadow-sm",
+            )}
+          >
+            <span className="font-extrabold tracking-[0.06em]">Panorama</span>
+            <span className="font-semibold tracking-[0.06em]">Pulse</span>
+          </Link>
         </div>
 
-        <div className="flex items-stretch gap-2">
-          {/* TEMP: ThemeToggle hidden — restore `{authed ? <ThemeToggle /> : null}` when re-enabling */}
+        <div className="flex shrink-0 items-center gap-1 sm:gap-2">
           {!authed ? (
             pathname !== "/login" ? (
               <Link
                 href={pulseApp.login()}
-                className="rounded-lg px-2 py-2 text-sm font-semibold text-gray-900 hover:bg-gray-100 dark:text-gray-100 dark:hover:bg-white/10 sm:px-3"
+                className="rounded-lg px-3 py-2 text-sm font-semibold text-white/95 hover:bg-white/10"
               >
                 Login
               </Link>
             ) : null
           ) : (
-            <div className="flex min-w-0 items-center gap-2">
+            <>
               {showWorkerPasswordBadge ? (
                 <Link
                   href={pulseApp.to("/dashboard/profile-settings")}
                   className={cn(
-                    "flex min-w-0 max-w-[11rem] items-center gap-1.5 rounded-md border border-amber-400/70 bg-amber-50 px-2 py-1 text-[11px] font-semibold text-amber-950 shadow-sm hover:bg-amber-100 sm:max-w-[14rem] sm:gap-2 sm:px-2.5 sm:py-1.5 sm:text-xs",
-                    "dark:border-amber-500/45 dark:bg-amber-950/55 dark:text-amber-50 dark:hover:bg-amber-900/65",
+                    "mr-1 flex min-w-0 max-w-[10rem] items-center gap-1 rounded-lg px-2 py-1.5 text-[11px] font-semibold sm:max-w-[13rem] sm:text-xs",
+                    "border border-amber-400/50 bg-amber-500/15 text-amber-50 hover:bg-amber-500/25",
                   )}
                   title="Your administrator assigned a temporary password. Update it in Profile Settings."
                   aria-label="Change your temporary password — open profile settings"
                 >
                   <KeyRound className="h-3.5 w-3.5 shrink-0 opacity-90 sm:h-4 sm:w-4" strokeWidth={2} aria-hidden />
-                  <span className="min-w-0 truncate">Change password</span>
+                  <span className="min-w-0 truncate">Password</span>
                 </Link>
               ) : null}
-              {canOpenOrgSettings ? (
-                <Link
-                  href={pulseApp.to("/settings")}
-                  className={cn(
-                    "flex items-center justify-center rounded-md border border-ds-border bg-ds-primary py-0.5 pl-1.5 pr-1.5 shadow-[var(--ds-shadow-card)] transition-colors hover:bg-ds-secondary sm:py-1 sm:pl-2 sm:pr-2",
-                    settingsActive ? "bg-ds-secondary" : null,
-                  )}
-                  aria-label="Settings"
-                >
-                  <span className="flex h-7 w-7 items-center justify-center">
-                    <Settings className="h-[18px] w-[18px] text-ds-muted" strokeWidth={2} aria-hidden />
-                  </span>
-                </Link>
-              ) : null}
-              <div className="relative" ref={userMenuRef}>
+
+              <Link
+                href={pulseApp.to("/monitoring")}
+                className={chromeIconBtn}
+                aria-label={`Notifications${notificationCount > 0 ? `, ${notificationCount} unread` : ""}`}
+                title="Notifications"
+              >
+                <Bell className="h-[1.125rem] w-[1.125rem]" strokeWidth={1.75} aria-hidden />
+                <IconBadgeCount count={notificationCount} />
+              </Link>
+
+              <Link
+                href={pulseApp.to("/dashboard/profile-settings")}
+                className={chromeIconBtn}
+                aria-label={`Messages${messagesCount > 0 ? `, ${messagesCount} unread` : ""}`}
+                title="Messages"
+              >
+                <MessageSquare className="h-[1.125rem] w-[1.125rem]" strokeWidth={1.75} aria-hidden />
+                <IconBadgeCount count={messagesCount} />
+              </Link>
+
+              <Link
+                href={pulseApp.to(canOpenOrgSettings ? "/settings" : "/dashboard/profile-settings")}
+                className={cn(chromeIconBtn, settingsActive && "bg-white/10 text-white")}
+                aria-label={canOpenOrgSettings ? "Organization settings" : "Profile settings"}
+                title="Settings"
+              >
+                <Settings className="h-[1.125rem] w-[1.125rem]" strokeWidth={1.75} aria-hidden />
+              </Link>
+
+              <div className="relative pl-0.5" ref={userMenuRef}>
                 <button
                   type="button"
                   onClick={() => setUserOpen((o) => !o)}
-                  className="flex items-center gap-2 rounded-md border border-ds-border bg-ds-primary py-0.5 pl-1.5 pr-1.5 shadow-[var(--ds-shadow-card)] transition-colors hover:bg-ds-secondary sm:py-1 sm:pl-2 sm:pr-2.5"
+                  className="flex items-center gap-1.5 rounded-lg py-1 pl-1 pr-1 text-white transition-colors hover:bg-white/10 sm:gap-2 sm:pr-1.5"
                   aria-expanded={userOpen}
                   aria-haspopup="menu"
-                  aria-label={isDemoViewer ? "Demo mode account menu" : undefined}
+                  aria-label={isDemoViewer ? "Demo mode account menu" : "Account menu"}
                 >
                   <span title={session?.email} className="shrink-0">
                     {session ? (
@@ -152,27 +178,27 @@ export function AppNavbar() {
                         nameFallback={
                           isDemoViewer ? "Demo Profile" : session.full_name || session.email
                         }
-                        sizeClassName="h-7 w-7"
+                        sizeClassName="h-8 w-8"
                         fallback="initials"
-                        className="!border-gray-200 !bg-gray-100 !text-gray-900 !ring-1 !ring-gray-200 dark:!border-ds-border dark:!bg-ds-secondary dark:!text-gray-100 dark:!ring-ds-border"
+                        className="!border-white/25 !bg-white/15 !text-white !ring-1 !ring-white/20"
                       />
                     ) : (
-                      <span className="flex h-7 w-7 items-center justify-center rounded-full bg-gray-100 text-xs font-bold text-gray-900 ring-1 ring-gray-200 dark:bg-ds-secondary dark:text-gray-100 dark:ring-ds-border">
+                      <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white/15 text-xs font-bold text-white ring-1 ring-white/25">
                         ?
                       </span>
                     )}
                   </span>
-                  <span className="hidden max-w-[11rem] truncate text-left md:block">
-                    <span className="block truncate text-sm font-semibold text-ds-foreground">
+                  <span className="hidden max-w-[10rem] truncate text-left text-white/95 md:block">
+                    <span className="block truncate text-sm font-semibold">
                       {isDemoViewer
                         ? "Demo Profile"
                         : session?.full_name?.trim() || session?.email?.split("@")[0] || "Account"}
                     </span>
-                    <span className="block truncate text-[11px] font-semibold capitalize text-ds-muted">
+                    <span className="block truncate text-[11px] font-medium capitalize text-white/65">
                       {isDemoViewer ? "Demo Viewer" : session ? session.role?.replace(/_/g, " ") || "member" : ""}
                     </span>
                   </span>
-                  <ChevronDown className="h-4 w-4 shrink-0 text-ds-muted" aria-hidden />
+                  <ChevronDown className="h-4 w-4 shrink-0 text-white/70" aria-hidden />
                 </button>
                 {userOpen ? (
                   <div
@@ -217,9 +243,11 @@ export function AppNavbar() {
                   </div>
                 ) : null}
               </div>
-            </div>
+            </>
           )}
         </div>
-      </nav>
+      </div>
+      <div className="h-px w-full shrink-0 bg-gradient-to-r from-transparent via-white/12 to-transparent" aria-hidden />
+    </nav>
   );
 }

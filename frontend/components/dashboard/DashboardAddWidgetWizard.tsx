@@ -107,7 +107,7 @@ export function DashboardAddWidgetWizard({
     const layoutItem: LayoutItem | null =
       mode === "edit"
         ? null
-        : { i: id, x: 0, y: Infinity, w: 6, h: 3, minW: 3, minH: 2 };
+        : { i: id, x: 0, y: Infinity, w: 4, h: 2, minW: 2, minH: 2 };
     onSave(config, layoutItem);
     onClose();
   }

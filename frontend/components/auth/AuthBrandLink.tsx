@@ -11,7 +11,7 @@ export function AuthBrandLink() {
         <img src="/images/pulse-mark.svg" width={36} height={36} alt="" className="h-9 w-9 object-cover" />
       </span>
       <span className="inline-flex items-baseline gap-[0.06em] leading-none tracking-normal">
-        <span className="font-black tracking-[0.06em]">Panorama</span>
+        <span className="font-extrabold tracking-[0.06em]">Panorama</span>
         <span className="font-semibold tracking-[0.06em]">Pulse</span>
       </span>
     </Link>

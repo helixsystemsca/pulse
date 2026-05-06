@@ -19,8 +19,7 @@ html.pulse-welcome-blur [data-pulse-app-shell] {
 }
 
 /**
- * Pulse design system — light: white chrome, 1px neutral borders, muted teal + dusk blue brand.
- * Dark: Dusk Blue shell; accents stay readable (slightly brighter teal than light).
+ * Pulse design system — Verdigris / Iron Grey / Platinum / Deep Mocha (+ Crimson Carrot alerts).
  * Legacy `--pulse-shell-*` aliases remain for gradual migration.
  */
 :root {
@@ -35,47 +34,55 @@ html.pulse-welcome-blur [data-pulse-app-shell] {
   --pulse-sidebar-collapsed-width: 80px;
   --pulse-sidebar-expanded-width: 260px;
 
-  /* —— Brand (reference: Gantt / PM dashboard) —— */
-  --ds-accent-teal-deep: #1a6b62;
-  --ds-accent-dusk: #5c6bb8;
-  --ds-accent: #2c8f82;
-  --ds-accent-foreground: #ffffff;
-  /** Top-shell strip only: slightly lighter teal than `--ds-accent-teal-deep` for readability at a glance. */
-  --ds-chrome-gradient: linear-gradient(90deg, color-mix(in srgb, var(--ds-accent-teal-deep) 72%, #ffffff 28%) 0%, var(--ds-accent-dusk) 100%);
+  /* —— Brand — Verdigris #1EA896 · Deep Mocha #523F38 · Iron Grey #4C5454 */
+  --ds-palette-verdigris: #1ea896;
+  --ds-palette-iron-grey: #4c5454;
+  --ds-palette-platinum: #ebebeb;
+  --ds-palette-deep-mocha: #523f38;
+  --ds-palette-crimson-carrot: #f6511d;
 
-  /* —— Core tokens (light) —— */
-  --ds-bg: #f6f7f9;
-  --ds-surface-primary: #ffffff;
-  --ds-surface-secondary: #f1f3f5;
-  --ds-surface-elevated: #ffffff;
-  /**
-   * Left nav rail — taupe base (#615756), frosted blue hover/active (#92D5E6), white labels on taupe, black on frosted.
-   */
-  --ds-sidebar: #615756;
+  --ds-accent-teal-deep: #157a6f;
+  --ds-accent-dusk: var(--ds-palette-deep-mocha);
+  --ds-accent: var(--ds-palette-verdigris);
+  --ds-accent-foreground: #ffffff;
+  --ds-chrome-gradient: linear-gradient(90deg, var(--ds-accent) 0%, color-mix(in srgb, var(--ds-palette-deep-mocha) 78%, var(--ds-accent)) 100%);
+  /** App chrome header (navbar) — large radial: verdigris glow into iron grey */
+  --pulse-header-radial-gradient: radial-gradient(
+    ellipse 185% 260% at 50% -35%,
+    var(--ds-accent) 0%,
+    color-mix(in srgb, var(--ds-accent) 22%, var(--ds-palette-iron-grey)) 44%,
+    var(--ds-palette-iron-grey) 100%
+  );
+
+  /* —— Core tokens (light) —— platinum surfaces, iron grey type */
+  --ds-bg: color-mix(in srgb, var(--ds-palette-platinum) 55%, #d8d8d8 45%);
+  --ds-surface-primary: var(--ds-palette-platinum);
+  --ds-surface-secondary: var(--ds-palette-platinum);
+  --ds-surface-elevated: color-mix(in srgb, var(--ds-palette-platinum) 82%, #ffffff 18%);
+  /** Left nav — solid Deep Mocha; hover/active Verdigris */
+  --ds-sidebar: var(--ds-palette-deep-mocha);
   --ds-sidebar-fg: #ffffff;
-  --ds-sidebar-muted: rgba(255, 255, 255, 0.72);
-  --ds-sidebar-border: rgba(255, 255, 255, 0.18);
-  --ds-sidebar-accent: #92d5e6;
-  --ds-sidebar-on-accent: #0f1729;
-  --ds-sidebar-well: rgba(255, 255, 255, 0.1);
-  --ds-sidebar-well-muted: rgba(255, 255, 255, 0.06);
-  --ds-sidebar-interactive-hover: #92d5e6;
-  --ds-sidebar-interactive-hover-strong: #92d5e6;
-  /** Rail background + tiles (AppSideNav): taupe gradient, solid frozen-blue hover, white active chip */
-  --ds-sidebar-rail-gradient: linear-gradient(180deg, #9a928a 0%, #7f7770 42%, #625b55 100%);
-  --ds-sidebar-tile-hover-solid: #6eb0dc;
-  /** Active tile: darker frost blue (not white) so row height reads even with borders */
-  --ds-sidebar-tile-active-bg: color-mix(in srgb, var(--ds-sidebar-tile-hover-solid) 52%, #1a3a52 48%);
-  --ds-sidebar-tile-active-fg: #f8fafc;
-  --ds-sidebar-tile-divider: rgba(255, 255, 255, 0.28);
-  --ds-header: #ffffff;
-  --ds-border: rgba(15, 23, 42, 0.09);
-  --ds-text-primary: #111827;
-  --ds-text-secondary: rgba(15, 23, 42, 0.55);
-  --ds-success: #2c8f82;
+  --ds-sidebar-muted: rgba(255, 255, 255, 0.76);
+  --ds-sidebar-border: rgba(255, 255, 255, 0.14);
+  --ds-sidebar-accent: var(--ds-palette-verdigris);
+  --ds-sidebar-on-accent: #ffffff;
+  --ds-sidebar-well: rgba(255, 255, 255, 0.08);
+  --ds-sidebar-well-muted: rgba(255, 255, 255, 0.05);
+  --ds-sidebar-interactive-hover: var(--ds-palette-verdigris);
+  --ds-sidebar-interactive-hover-strong: var(--ds-palette-verdigris);
+  --ds-sidebar-rail-gradient: linear-gradient(180deg, var(--ds-palette-deep-mocha) 0%, color-mix(in srgb, var(--ds-palette-deep-mocha) 88%, #000000) 100%);
+  --ds-sidebar-tile-hover-solid: var(--ds-palette-verdigris);
+  --ds-sidebar-tile-active-bg: var(--ds-palette-verdigris);
+  --ds-sidebar-tile-active-fg: #ffffff;
+  --ds-sidebar-tile-divider: rgba(255, 255, 255, 0.14);
+  --ds-header: var(--ds-palette-platinum);
+  --ds-border: color-mix(in srgb, var(--ds-palette-iron-grey) 14%, transparent);
+  --ds-text-primary: var(--ds-palette-iron-grey);
+  --ds-text-secondary: color-mix(in srgb, var(--ds-palette-iron-grey) 58%, transparent);
+  --ds-success: var(--ds-palette-verdigris);
   --ds-warning: #c9932e;
-  --ds-info: #6b7280;
-  --ds-danger: #e56565;
+  --ds-info: #5f6e6c;
+  --ds-danger: var(--ds-palette-crimson-carrot);
   /** Text on solid success / warning / danger fills */
   --ds-on-accent: #ffffff;
   --ds-interactive-hover: color-mix(in srgb, var(--ds-accent) 10%, transparent);
@@ -120,40 +127,45 @@ html.pulse-welcome-blur [data-pulse-app-shell] {
 }
 
 .dark {
-  --ds-accent-teal-deep: #164a45;
-  --ds-accent-dusk: #7e8fd4;
-  --ds-accent: #3daf9e;
+  --ds-accent-teal-deep: #157a6f;
+  --ds-accent-dusk: #6b534a;
+  --ds-accent: #2bc4b0;
   --ds-accent-foreground: #0b1220;
-  --ds-chrome-gradient: linear-gradient(90deg, color-mix(in srgb, #1f7a72 55%, var(--ds-accent) 45%) 0%, #6b7ec8 100%);
+  --ds-chrome-gradient: linear-gradient(90deg, var(--ds-accent) 0%, color-mix(in srgb, var(--ds-palette-deep-mocha) 65%, var(--ds-accent)) 100%);
+  --pulse-header-radial-gradient: radial-gradient(
+    ellipse 185% 260% at 50% -35%,
+    var(--ds-accent) 0%,
+    color-mix(in srgb, var(--ds-accent) 28%, var(--ds-palette-iron-grey)) 46%,
+    color-mix(in srgb, var(--ds-palette-iron-grey) 92%, #000000) 100%
+  );
 
-  --ds-bg: #4c6085;
-  --ds-surface-primary: #3f5274;
-  --ds-surface-secondary: #354766;
-  --ds-surface-elevated: #2c3a55;
-  --ds-sidebar: #615756;
+  --ds-bg: color-mix(in srgb, var(--ds-palette-iron-grey) 72%, #1a1f1f 28%);
+  --ds-surface-primary: color-mix(in srgb, var(--ds-palette-iron-grey) 88%, #0f1212 12%);
+  --ds-surface-secondary: color-mix(in srgb, var(--ds-palette-iron-grey) 78%, #0c0f0f 22%);
+  --ds-surface-elevated: color-mix(in srgb, var(--ds-palette-iron-grey) 65%, #080a0a 35%);
+  --ds-sidebar: var(--ds-palette-deep-mocha);
   --ds-sidebar-fg: #ffffff;
-  --ds-sidebar-muted: rgba(255, 255, 255, 0.72);
-  --ds-sidebar-border: rgba(255, 255, 255, 0.18);
-  --ds-sidebar-accent: #92d5e6;
-  --ds-sidebar-on-accent: #0f1729;
-  --ds-sidebar-well: rgba(255, 255, 255, 0.1);
-  --ds-sidebar-well-muted: rgba(255, 255, 255, 0.06);
-  --ds-sidebar-interactive-hover: #92d5e6;
-  --ds-sidebar-interactive-hover-strong: #92d5e6;
-  --ds-sidebar-rail-gradient: linear-gradient(180deg, #8f8780 0%, #726b65 42%, #524c47 100%);
-  --ds-sidebar-tile-hover-solid: #6eb0dc;
-  /** Active tile: darker frost blue (not white) so row height reads even with borders */
-  --ds-sidebar-tile-active-bg: color-mix(in srgb, var(--ds-sidebar-tile-hover-solid) 52%, #1a3a52 48%);
-  --ds-sidebar-tile-active-fg: #f8fafc;
-  --ds-sidebar-tile-divider: rgba(255, 255, 255, 0.28);
-  --ds-header: color-mix(in srgb, var(--ds-surface-primary) 96%, #0f172a 4%);
-  --ds-border: rgba(255, 255, 255, 0.1);
-  --ds-text-primary: #ffffff;
-  --ds-text-secondary: rgba(255, 255, 255, 0.72);
-  --ds-success: #4dc4b4;
+  --ds-sidebar-muted: rgba(255, 255, 255, 0.76);
+  --ds-sidebar-border: rgba(255, 255, 255, 0.14);
+  --ds-sidebar-accent: var(--ds-palette-verdigris);
+  --ds-sidebar-on-accent: #ffffff;
+  --ds-sidebar-well: rgba(255, 255, 255, 0.08);
+  --ds-sidebar-well-muted: rgba(255, 255, 255, 0.05);
+  --ds-sidebar-interactive-hover: var(--ds-palette-verdigris);
+  --ds-sidebar-interactive-hover-strong: var(--ds-palette-verdigris);
+  --ds-sidebar-rail-gradient: linear-gradient(180deg, var(--ds-palette-deep-mocha) 0%, color-mix(in srgb, var(--ds-palette-deep-mocha) 82%, #000000) 100%);
+  --ds-sidebar-tile-hover-solid: var(--ds-palette-verdigris);
+  --ds-sidebar-tile-active-bg: var(--ds-palette-verdigris);
+  --ds-sidebar-tile-active-fg: #ffffff;
+  --ds-sidebar-tile-divider: rgba(255, 255, 255, 0.14);
+  --ds-header: color-mix(in srgb, var(--ds-surface-primary) 94%, #000000 6%);
+  --ds-border: rgba(255, 255, 255, 0.12);
+  --ds-text-primary: color-mix(in srgb, var(--ds-palette-platinum) 94%, #a8a8a8 6%);
+  --ds-text-secondary: rgba(235, 235, 235, 0.68);
+  --ds-success: #3dd9c4;
   --ds-warning: #e3b655;
   --ds-info: #9ca3af;
-  --ds-danger: #f08080;
+  --ds-danger: #f6511d;
   --ds-on-accent: #0b1220;
   --ds-interactive-hover: color-mix(in srgb, var(--ds-accent) 18%, transparent);
   --ds-interactive-hover-strong: color-mix(in srgb, var(--ds-accent) 26%, transparent);

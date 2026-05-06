@@ -66,13 +66,13 @@ function WaveTile({ uid }: { uid: string }) {
     >
       <defs>
         <linearGradient id={fill} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#8fd9d4" stopOpacity="0.92" />
-          <stop offset="45%" stopColor="#2c8f82" stopOpacity="0.9" />
-          <stop offset="100%" stopColor="#3d5a80" stopOpacity="0.65" />
+          <stop offset="0%" stopColor="#7dd9ce" stopOpacity="0.92" />
+          <stop offset="45%" stopColor="#1ea896" stopOpacity="0.9" />
+          <stop offset="100%" stopColor="#4c5454" stopOpacity="0.65" />
         </linearGradient>
         <linearGradient id={foam} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor="#ecfeff" stopOpacity="0.55" />
-          <stop offset="100%" stopColor="#2c8f82" stopOpacity="0" />
+          <stop offset="100%" stopColor="#1ea896" stopOpacity="0" />
         </linearGradient>
       </defs>
       {/* Period 400: Q + T chain keeps y equal at x=0 and x=400 for seamless tiling */}

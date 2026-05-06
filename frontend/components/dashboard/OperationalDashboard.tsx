@@ -55,8 +55,8 @@ import "react-resizable/css/styles.css";
 
 type AlertPriority = "critical" | "high" | "medium" | "low";
 
-/** Fixed logical columns: column width tracks container ÷ cols (~7+ narrow cards across on typical widths). */
-const DASHBOARD_GRID_COLS = 12;
+/** Fixed logical columns — 8-wide grid fits more small widgets per row. */
+const DASHBOARD_GRID_COLS = 8;
 /** Vertical pitch (~half of legacy 140px for a denser board). */
 const DASHBOARD_GRID_ROW_HEIGHT_PX = 72;
 /** Horizontal + vertical gutter between cards. */
@@ -80,15 +80,17 @@ function WorkerDashCard({
   className?: string;
 }) {
   return (
-    <div className={cn(DASH.cardBase, "flex h-full min-h-0 flex-col", className)}>
-      <div className={DASH.accentBarMuted} aria-hidden />
-      <div className={cn(DASH.cardInner, "min-h-0 flex-1")}>
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <p className="text-[13px] font-bold tracking-[0.06em] text-ds-muted">{title}</p>
-          {headerRight ? <div className="text-[11px] font-semibold text-ds-muted">{headerRight}</div> : null}
-        </div>
-        <div className="mt-3 min-h-0">{children}</div>
+    <div
+      className={cn(
+        "flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-ds-border/70 bg-[color-mix(in_srgb,var(--ds-primary)_88%,transparent)] shadow-[0_1px_0_rgba(255,255,255,0.65)] dark:bg-ds-secondary/35 dark:shadow-none",
+        className,
+      )}
+    >
+      <div className="flex shrink-0 items-start justify-between gap-2 border-b border-ds-border/55 px-2.5 py-1.5 sm:px-3 sm:py-2">
+        <p className="min-w-0 text-[11px] font-bold uppercase tracking-[0.14em] text-ds-muted">{title}</p>
+        {headerRight ? <div className="shrink-0 text-[10px] font-semibold text-ds-muted">{headerRight}</div> : null}
       </div>
+      <div className="min-h-0 flex-1 px-2.5 py-2 sm:px-3 sm:py-2.5">{children}</div>
     </div>
   );
 }
@@ -266,14 +268,6 @@ function activeAlertCardRows(alerts: AlertItem[]): AlertItem[] {
 function ActiveAlertsRow({ alert: a }: { alert: AlertItem }) {
   const p = alertPriority(a);
   const isPad = a.countsTowardTotals === false && a.title === NO_ADDITIONAL_ALERTS_TITLE;
-  const accent =
-    p === "critical"
-      ? "ds-notification-critical"
-      : p === "high"
-        ? "ds-notification-warning"
-        : p === "medium"
-          ? ""
-          : "ds-notification-muted";
   const style =
     p === "medium"
       ? ({
@@ -284,27 +278,45 @@ function ActiveAlertsRow({ alert: a }: { alert: AlertItem }) {
 
   const icon =
     p === "critical" ? (
-      <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-ds-danger" aria-hidden />
+      <AlertTriangle className="h-4 w-4 shrink-0 text-ds-danger" aria-hidden />
     ) : p === "high" ? (
-      <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-ds-warning" aria-hidden />
+      <AlertCircle className="h-4 w-4 shrink-0 text-ds-warning" aria-hidden />
     ) : p === "medium" ? (
-      <Info className="mt-0.5 h-5 w-5 shrink-0 text-[var(--ds-info)]" aria-hidden />
+      <Info className="h-4 w-4 shrink-0 text-[var(--ds-info)]" aria-hidden />
     ) : isPad ? (
-      <Minus className="mt-0.5 h-5 w-5 shrink-0 text-ds-muted" aria-hidden />
+      <Minus className="h-4 w-4 shrink-0 text-ds-muted" aria-hidden />
     ) : (
-      <Radio className="mt-0.5 h-5 w-5 shrink-0 text-ds-muted" aria-hidden />
+      <Radio className="h-4 w-4 shrink-0 text-ds-muted" aria-hidden />
     );
+
+  const strip =
+    p === "critical"
+      ? "border-l-[var(--ds-danger)]"
+      : p === "high"
+        ? "border-l-ds-warning"
+        : p === "medium"
+          ? "border-l-[var(--ds-info)]"
+          : "border-l-ds-border";
 
   return (
     <li
-      className={`ds-notification flex gap-3 p-4 ${accent}`.trim()}
-      style={style}
+      className={cn(
+        "flex gap-2 rounded-md border border-ds-border/40 py-2 pl-2 pr-2",
+        strip,
+        "border-l-[3px]",
+        !isPad && p === "critical" && "bg-[color-mix(in_srgb,var(--ds-danger)_7%,transparent)]",
+        !isPad && p === "high" && "bg-[color-mix(in_srgb,var(--ds-warning)_8%,transparent)]",
+        isPad && "opacity-80",
+      )}
+      style={p === "medium" ? style : undefined}
     >
-      {icon}
+      <span className="shrink-0 pt-0.5">{icon}</span>
       <div className="min-w-0 flex-1">
-        <p className={`text-sm font-bold ${isPad ? "text-ds-muted" : "text-ds-foreground"}`}>{a.title}</p>
+        <p className={`text-xs font-bold leading-snug sm:text-sm ${isPad ? "text-ds-muted" : "text-ds-foreground"}`}>
+          {a.title}
+        </p>
         {a.subtitle ? (
-          <p className="mt-1 whitespace-pre-line text-xs leading-relaxed text-ds-muted">{a.subtitle}</p>
+          <p className="mt-0.5 line-clamp-2 whitespace-pre-line text-[11px] leading-relaxed text-ds-muted">{a.subtitle}</p>
         ) : null}
       </div>
     </li>
@@ -1182,8 +1194,8 @@ function DashboardBody({
 
   const layoutStorageKey = useMemo(() => {
     const mode = isKiosk ? "kiosk" : "standard";
-    /** v4: leadership band is part of the main grid (no separate static section). */
-    return `pulse_dashboard_layout_v4_${dashboardContext}_${mode}`;
+    /** v5: 8-column grid + denser default tile heights (v4 was 12-col). */
+    return `pulse_dashboard_layout_v5_${dashboardContext}_${mode}`;
   }, [dashboardContext, isKiosk]);
 
   const customWidgetStorageKey = useMemo(() => {
@@ -1478,21 +1490,22 @@ function DashboardBody({
         accent: "green" as const,
         render: () => (
           <div className="min-h-0 flex-1 overflow-auto">
-            <ul className="space-y-2">
+            <ul className="divide-y divide-ds-border/50">
               {queueRows.length === 0 ? (
-                <li className="text-sm text-ds-muted">No queued work items.</li>
+                <li className="py-2 text-xs text-ds-muted">No queued work items.</li>
               ) : (
                 queueRows.map((q) => (
-                  <li key={q.key} className={cn(DASH.listRow, "flex items-start justify-between gap-2")}>
-                    <span className="min-w-0 truncate text-sm font-semibold text-ds-foreground">{q.title}</span>
+                  <li key={q.key} className="flex items-start justify-between gap-2 py-2">
+                    <span className="min-w-0 truncate text-xs font-semibold leading-snug text-ds-foreground sm:text-sm">
+                      {q.title}
+                    </span>
                     <span
                       className={cn(
-                        DASH.pill,
-                        q.tone === "critical" &&
-                          "border-red-200/80 bg-red-50 text-red-800 dark:border-red-500/35 dark:bg-red-950/40 dark:text-red-100",
+                        "shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide",
+                        q.tone === "critical" && "bg-[color-mix(in_srgb,var(--ds-danger)_14%,transparent)] text-ds-danger",
                         q.tone === "warn" &&
-                          "border-amber-200/80 bg-amber-50 text-amber-900 dark:border-amber-500/35 dark:bg-amber-950/35 dark:text-amber-100",
-                        q.tone === "ok" && "border-ds-border bg-ds-secondary text-ds-muted",
+                          "bg-[color-mix(in_srgb,var(--ds-warning)_16%,transparent)] text-amber-900 dark:text-amber-100",
+                        q.tone === "ok" && "bg-ds-secondary/80 text-ds-muted",
                       )}
                     >
                       {q.status}
@@ -1508,8 +1521,43 @@ function DashboardBody({
         title: "Operational overview",
         accent: "none" as const,
         render: () => (
-          <div className="min-h-0 flex-1 overflow-auto pr-0.5">
-            <OverviewView rowClass="w-full" />
+          <div className="min-h-0 flex-1 space-y-3 overflow-auto pr-0.5">
+            <div className="flex flex-wrap gap-1.5">
+              {kioskKpis.map((k) => (
+                <div
+                  key={k.label}
+                  className="flex min-w-[5.5rem] items-baseline gap-1.5 rounded-md bg-ds-secondary/55 px-2 py-1 dark:bg-ds-secondary/40"
+                >
+                  <span className="text-[10px] font-semibold uppercase leading-none text-ds-muted">{k.label}</span>
+                  <span className="text-sm font-bold tabular-nums text-ds-foreground">{k.value}</span>
+                </div>
+              ))}
+            </div>
+            <div className="space-y-1.5">
+              {kioskAlerts.slice(0, 3).map((a, idx) => {
+                const p = alertPriority(a);
+                const strip =
+                  p === "critical"
+                    ? "border-l-[var(--ds-danger)]"
+                    : p === "high"
+                      ? "border-l-ds-warning"
+                      : p === "medium"
+                        ? "border-l-[var(--ds-info)]"
+                        : "border-l-ds-border";
+                return (
+                  <div
+                    key={`${a.title}-${idx}`}
+                    className={cn(
+                      "flex min-w-0 gap-2 rounded-md border border-ds-border/35 py-1.5 pl-2 pr-1.5 text-xs",
+                      strip,
+                      "border-l-[3px]",
+                    )}
+                  >
+                    <span className="min-w-0 truncate font-semibold text-ds-foreground">{a.title}</span>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         ),
       },
@@ -1518,15 +1566,18 @@ function DashboardBody({
         accent: "none" as const,
         render: () => (
           <div className="min-h-0 flex-1 overflow-auto">
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-x-2 gap-y-1.5">
               {snapshotKpis.map((k) => (
-                <KioskTile key={k.label} label={k.label} value={k.value} />
+                <div key={k.label} className="min-w-0">
+                  <p className="text-[10px] font-semibold uppercase leading-tight text-ds-muted">{k.label}</p>
+                  <p className="text-base font-bold tabular-nums leading-none text-ds-foreground">{k.value}</p>
+                </div>
               ))}
             </div>
-            <p className={cn(DASH.sectionLabel, "mt-4")}>On site</p>
-            <div className="mt-2 flex flex-wrap gap-2">
+            <p className={cn(DASH.sectionLabel, "mt-3")}>On site</p>
+            <div className="mt-1.5 flex flex-wrap gap-1.5">
               {onSiteLimited.length === 0 ? (
-                <p className="text-sm text-ds-muted">No workers on site.</p>
+                <p className="text-xs text-ds-muted">No workers on site.</p>
               ) : (
                 onSiteLimited.map((b) => (
                   <WorkforceBubbleStack
@@ -1550,7 +1601,7 @@ function DashboardBody({
         title: "Active Alerts",
         accent: "yellow" as const,
         render: () => (
-          <ul className="flex flex-1 flex-col gap-3">
+          <ul className="flex flex-1 flex-col gap-2">
             {activeAlertRows.map((a, idx) => (
               <ActiveAlertsRow key={`${a.title}-${idx}`} alert={a} />
             ))}
@@ -1561,18 +1612,18 @@ function DashboardBody({
         title: "Workforce",
         accent: "blue" as const,
         render: () => (
-          <>
-            <p className="text-sm font-semibold text-ds-foreground">Today – {model.workforce.dateLabel}</p>
-            <p className="mt-2 text-xs text-ds-muted">{model.workforce.summaryLine}</p>
+          <div className="space-y-3">
+            <div>
+              <p className="text-xs font-semibold text-ds-foreground">Today – {model.workforce.dateLabel}</p>
+              <p className="mt-0.5 text-[11px] leading-snug text-ds-muted">{model.workforce.summaryLine}</p>
+            </div>
 
-            <div className="mt-4 space-y-5">
-              <div className="space-y-3">
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-ds-success">
-                  On Site
-                </p>
-                <div className="flex flex-wrap gap-3">
+            <div className="space-y-2.5">
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-ds-success">On site</p>
+                <div className="mt-1 flex flex-wrap gap-2">
                   {model.workforce.onSite.length === 0 ? (
-                    <p className="text-sm text-ds-muted">No workers currently on site</p>
+                    <p className="text-xs text-ds-muted">No one on site</p>
                   ) : (
                     model.workforce.onSite.map((b) => (
                       <WorkforceBubbleStack
@@ -1591,13 +1642,11 @@ function DashboardBody({
                 </div>
               </div>
 
-              <div className="space-y-3">
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-[var(--ds-info)]">
-                  On Shift Now
-                </p>
-                <div className="flex flex-wrap gap-3">
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--ds-info)]">On shift</p>
+                <div className="mt-1 flex flex-wrap gap-2">
                   {model.workforce.onShiftNow.length === 0 ? (
-                    <p className="text-sm text-ds-muted">—</p>
+                    <p className="text-xs text-ds-muted">—</p>
                   ) : (
                     model.workforce.onShiftNow.map((b) => (
                       <WorkforceBubbleStack
@@ -1617,11 +1666,9 @@ function DashboardBody({
               </div>
 
               {model.workforce.upcomingToday.length > 0 ? (
-                <div className="space-y-3">
-                  <p className="text-[11px] font-semibold uppercase tracking-wider text-[var(--ds-info)]">
-                    Upcoming Today
-                  </p>
-                  <div className="flex flex-wrap gap-3">
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--ds-info)]">Upcoming</p>
+                  <div className="mt-1 flex flex-wrap gap-2">
                     {model.workforce.upcomingToday.map((b) => (
                       <WorkforceBubbleStack
                         key={b.id}
@@ -1640,11 +1687,11 @@ function DashboardBody({
               ) : null}
 
               {model.workforce.onScheduleToday.length > 0 ? (
-                <div className="space-y-3">
-                  <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">
-                    On today&apos;s schedule
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400">
+                    Scheduled today
                   </p>
-                  <div className="flex flex-wrap gap-3">
+                  <div className="mt-1 flex flex-wrap gap-2">
                     {model.workforce.onScheduleToday.map((b) => (
                       <WorkforceBubbleStack
                         key={b.id}
@@ -1663,9 +1710,9 @@ function DashboardBody({
               ) : null}
 
               {model.workforce.offSite.length > 0 ? (
-                <div className="space-y-3 border-t border-ds-border pt-4">
-                  <p className="text-[11px] font-semibold uppercase tracking-wider text-ds-muted">Off Site</p>
-                  <div className="flex flex-wrap gap-3 opacity-90">
+                <div className="border-t border-ds-border/60 pt-2">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-ds-muted">Off site</p>
+                  <div className="mt-1 flex flex-wrap gap-2 opacity-90">
                     {model.workforce.offSite.map((b) => (
                       <WorkforceBubbleStack
                         key={b.id}
@@ -1683,7 +1730,7 @@ function DashboardBody({
                 </div>
               ) : null}
             </div>
-          </>
+          </div>
         ),
       },
       workRequests: {
@@ -1691,71 +1738,65 @@ function DashboardBody({
         accent: "red" as const,
         render: () => (
           <>
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <span className="inline-flex items-center border border-gray-200 bg-gray-100 px-3 py-1 text-xs font-bold tracking-tight text-gray-900">
-                {model.workRequests.awaitingCount} requests awaiting assignment
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span className="rounded-md bg-ds-secondary/80 px-2 py-1 text-[11px] font-bold text-ds-foreground">
+                {model.workRequests.awaitingCount} awaiting assignment
               </span>
-            </div>
-            <p className="mt-2 text-xs">
-              <Link href={workOrdersHref} className="ds-link">
-                Open work orders view →
+              <Link href={workOrdersHref} className="ds-link text-[11px] font-semibold">
+                Work orders →
               </Link>
-            </p>
-            <div className="mt-4 flex flex-col gap-4">
+            </div>
+            <div className="mt-3 flex flex-col gap-3">
               {model.workRequests.newest ? (
-                <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-wider text-ds-muted">Newest</p>
-                  <div className="mt-2 border border-gray-200 p-4">
-                    <div className="flex flex-wrap items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <p className="text-sm font-semibold text-ds-foreground">{model.workRequests.newest.title}</p>
-                        <p className="mt-1 text-xs text-ds-muted">{model.workRequests.newest.subtitle}</p>
-                      </div>
-                      <TagPill tag={model.workRequests.newest.tag} />
+                <div className="border-b border-ds-border/50 pb-2">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-ds-muted">Newest</p>
+                  <div className="mt-1 flex flex-wrap items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold text-ds-foreground">{model.workRequests.newest.title}</p>
+                      <p className="mt-0.5 text-[11px] text-ds-muted">{model.workRequests.newest.subtitle}</p>
                     </div>
+                    <TagPill tag={model.workRequests.newest.tag} />
                   </div>
                 </div>
               ) : (
-                <p className="text-sm text-ds-muted">
-                  No open work requests yet.{" "}
+                <p className="text-xs text-ds-muted">
+                  No open requests.{" "}
                   <Link href={workOrdersHref} className="ds-link">
                     Open work orders
-                  </Link>{" "}
-                  to create the first tracked item.
+                  </Link>
                 </p>
               )}
 
               {model.workRequests.oldest ? (
-                <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-wider text-ds-muted">Oldest</p>
-                  <div className="mt-2 border border-gray-200 p-4">
-                    <div className="flex flex-wrap items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <p className="text-sm font-semibold text-ds-foreground">{model.workRequests.oldest.title}</p>
-                        <p className="mt-1 text-xs text-ds-muted">{model.workRequests.oldest.subtitle}</p>
-                      </div>
-                      <TagPill tag={model.workRequests.oldest.tag} />
+                <div className="border-b border-ds-border/50 pb-2">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-ds-muted">Oldest</p>
+                  <div className="mt-1 flex flex-wrap items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold text-ds-foreground">{model.workRequests.oldest.title}</p>
+                      <p className="mt-0.5 text-[11px] text-ds-muted">{model.workRequests.oldest.subtitle}</p>
                     </div>
+                    <TagPill tag={model.workRequests.oldest.tag} />
                   </div>
                 </div>
               ) : null}
 
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-ds-danger">
-                  High priority / Critical
-                </p>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-ds-danger">Critical</p>
                 {model.workRequests.critical.length === 0 ? (
-                  <p className="mt-2 text-sm text-ds-muted">No high-priority items right now.</p>
+                  <p className="mt-1 text-xs text-ds-muted">None right now.</p>
                 ) : (
-                  <ul className="mt-2 flex flex-col gap-3">
+                  <ul className="mt-1.5 space-y-1.5">
                     {model.workRequests.critical.map((row) => (
-                      <li key={row.title} className="ds-notification ds-notification-critical flex gap-3 p-3">
-                        <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-ds-danger" aria-hidden />
+                      <li
+                        key={row.title}
+                        className="flex gap-2 rounded-md border-l-[3px] border-l-ds-danger bg-[color-mix(in_srgb,var(--ds-danger)_6%,transparent)] py-1.5 pl-2 pr-1"
+                      >
+                        <AlertTriangle className="h-4 w-4 shrink-0 text-ds-danger" aria-hidden />
                         <div className="min-w-0 flex-1">
-                          <p className="text-sm font-bold text-ds-foreground">{row.title}</p>
-                          <p className="mt-0.5 text-xs text-ds-muted">{row.subtitle}</p>
+                          <p className="text-xs font-bold text-ds-foreground">{row.title}</p>
+                          <p className="text-[11px] text-ds-muted">{row.subtitle}</p>
                         </div>
-                        <span className="app-badge-red shrink-0 self-start border border-red-200 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide">
+                        <span className="shrink-0 self-start rounded bg-red-100 px-1.5 py-0.5 text-[9px] font-bold uppercase text-red-800 dark:bg-red-950/50 dark:text-red-100">
                           Urgent
                         </span>
                       </li>
@@ -1772,52 +1813,44 @@ function DashboardBody({
         accent: "none" as const,
         render: () => (
           <>
-            <p className="text-2xl font-bold tabular-nums text-ds-foreground md:text-3xl">
-              {model.equipment.activeCount} Active Tools
+            <p className="text-lg font-bold tabular-nums text-ds-foreground sm:text-xl">
+              {model.equipment.activeCount}{" "}
+              <span className="text-sm font-semibold text-ds-muted">active tools</span>
             </p>
-            <div className="mt-3 flex flex-wrap gap-2">
-              <span className="inline-flex items-center gap-1.5 border border-gray-200 bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-900">
-                <span className="h-1.5 w-1.5 bg-current opacity-90" />
-                {model.equipment.missingCount} Missing
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              <span className="rounded-md bg-ds-secondary/80 px-2 py-0.5 text-[11px] font-semibold text-ds-foreground">
+                {model.equipment.missingCount} missing
               </span>
-              <span className="app-badge-red inline-flex items-center gap-1.5 border border-red-200 px-3 py-1 text-xs font-semibold">
-                <span className="h-1.5 w-1.5 bg-current opacity-90" />
-                {model.equipment.outOfServiceCount} Out of Service
+              <span className="rounded-md bg-[color-mix(in_srgb,var(--ds-danger)_12%,transparent)] px-2 py-0.5 text-[11px] font-semibold text-ds-danger">
+                {model.equipment.outOfServiceCount} out of service
               </span>
             </div>
-            <div className="mt-4 flex flex-1 flex-col gap-4 border-t border-ds-border pt-4">
+            <div className="mt-3 flex flex-1 flex-col gap-2 border-t border-ds-border/50 pt-2">
               {model.equipment.showZonePrompt && !zonePromptDismissed ? (
-                <div className="ds-notification ds-notification-warning p-4">
-                  <div className="flex gap-3">
-                    <MapPin className="mt-0.5 h-5 w-5 shrink-0 text-ds-warning" aria-hidden />
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold leading-snug text-ds-foreground">
-                        Several tools are accounted for, but may need zone checks.
-                      </p>
-                      <p className="mt-1 text-xs text-ds-muted">Schedule a cleanup?</p>
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        <ButtonLink
-                          href={pulseTenantNav.find((n) => n.href === "/dashboard/inventory")?.href ?? "/dashboard/inventory"}
-                          className="text-xs"
-                        >
-                          Review inventory
-                        </ButtonLink>
-                        <Button type="button" variant="secondary" className="text-xs" onClick={onDismissZonePrompt}>
-                          Dismiss
-                        </Button>
-                      </div>
+                <div className="flex gap-2 rounded-md border-l-[3px] border-l-ds-warning bg-[color-mix(in_srgb,var(--ds-warning)_8%,transparent)] py-2 pl-2 pr-1">
+                  <MapPin className="h-4 w-4 shrink-0 text-ds-warning" aria-hidden />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-semibold leading-snug text-ds-foreground">
+                      Tools may need zone checks — schedule a cleanup?
+                    </p>
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      <ButtonLink
+                        href={pulseTenantNav.find((n) => n.href === "/dashboard/inventory")?.href ?? "/dashboard/inventory"}
+                        className="!min-h-0 !px-2 !py-1 text-[11px]"
+                      >
+                        Review inventory
+                      </ButtonLink>
+                      <Button type="button" variant="secondary" className="!min-h-0 !px-2 !py-1 text-[11px]" onClick={onDismissZonePrompt}>
+                        Dismiss
+                      </Button>
                     </div>
                   </div>
                 </div>
               ) : null}
               {model.equipment.showBatteryNote ? (
-                <div className="ds-notification ds-notification-muted p-4">
-                  <div className="flex gap-3">
-                    <Battery className="mt-0.5 h-5 w-5 shrink-0 text-ds-muted" aria-hidden />
-                    <p className="min-w-0 flex-1 text-sm leading-relaxed text-ds-foreground">
-                      Beacon equipment registered — confirm batteries and swaps on the floor before the next shift.
-                    </p>
-                  </div>
+                <div className="flex gap-2 text-[11px] leading-snug text-ds-foreground">
+                  <Battery className="h-4 w-4 shrink-0 text-ds-muted" aria-hidden />
+                  <p className="min-w-0 text-ds-muted">Confirm beacon batteries and swaps before the next shift.</p>
                 </div>
               ) : null}
             </div>
@@ -1828,19 +1861,19 @@ function DashboardBody({
         title: "Inventory Status",
         accent: "green" as const,
         render: () => (
-          <div className="mt-1 flex flex-1 flex-col gap-4">
-            <div className="flex items-start justify-between gap-4 border border-gray-200 p-4">
-              <div>
-                <p className="text-sm font-semibold text-ds-foreground">Consumables</p>
-                <p className="mt-1 text-xs text-ds-muted">
-                  {model.inventory.consumablesOk ? "Stock within target range" : "One or more items need attention"}
+          <div className="flex flex-1 flex-col gap-2.5">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <p className="text-xs font-semibold text-ds-foreground">Consumables</p>
+                <p className="mt-0.5 text-[11px] text-ds-muted">
+                  {model.inventory.consumablesOk ? "Within target range" : "Needs attention"}
                 </p>
               </div>
               <span
-                className={`shrink-0 border px-2 py-0.5 text-[11px] font-semibold ${
+                className={`shrink-0 rounded-md px-2 py-0.5 text-[10px] font-bold uppercase ${
                   model.inventory.consumablesOk
-                    ? "border-gray-200 bg-gray-100 text-gray-900"
-                    : "border-gray-200 bg-gray-100 text-blue-700"
+                    ? "bg-ds-secondary/80 text-ds-foreground"
+                    : "bg-[color-mix(in_srgb,var(--ds-info)_16%,transparent)] text-[var(--ds-info)]"
                 }`}
               >
                 {model.inventory.consumablesOk ? "OK" : "Review"}
@@ -1848,51 +1881,47 @@ function DashboardBody({
             </div>
 
             {model.inventory.alert ? (
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-ds-muted">Inventory Alert</p>
-                <div className="ds-notification ds-notification-warning mt-3 flex items-start justify-between gap-4 p-4">
-                  <Package className="mt-0.5 h-5 w-5 shrink-0 text-ds-warning" aria-hidden />
+              <div className="rounded-md border-l-[3px] border-l-ds-warning bg-[color-mix(in_srgb,var(--ds-warning)_8%,transparent)] py-2 pl-2 pr-1">
+                <div className="flex items-start gap-2">
+                  <Package className="h-4 w-4 shrink-0 text-ds-warning" aria-hidden />
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold text-ds-foreground">{model.inventory.alert.category}</p>
-                    <p className="mt-2 text-xs font-medium text-ds-foreground">{model.inventory.alert.message}</p>
+                    <p className="text-[11px] font-bold text-ds-foreground">{model.inventory.alert.category}</p>
+                    <p className="mt-0.5 text-[11px] text-ds-muted">{model.inventory.alert.message}</p>
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      <ButtonLink
+                        href={pulseTenantNav.find((n) => n.href === "/dashboard/inventory")?.href ?? "/dashboard/inventory"}
+                        variant="secondary"
+                        className="!min-h-0 !px-2 !py-1 text-[11px]"
+                      >
+                        View stock
+                      </ButtonLink>
+                      <ButtonLink
+                        href={pulseTenantNav.find((n) => n.href === "/dashboard/inventory")?.href ?? "/dashboard/inventory"}
+                        className="!min-h-0 !px-2 !py-1 text-[11px]"
+                      >
+                        Order
+                      </ButtonLink>
+                    </div>
                   </div>
-                  <span className="shrink-0 border border-gray-200 bg-gray-100 px-2 py-0.5 text-[11px] font-semibold text-blue-700">
+                  <span className="shrink-0 rounded bg-ds-secondary/80 px-1.5 py-0.5 text-[10px] font-semibold text-ds-muted">
                     Soon
                   </span>
                 </div>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <ButtonLink
-                    href={pulseTenantNav.find((n) => n.href === "/dashboard/inventory")?.href ?? "/dashboard/inventory"}
-                    variant="secondary"
-                    className="text-xs"
-                  >
-                    View stock
-                  </ButtonLink>
-                  <ButtonLink
-                    href={pulseTenantNav.find((n) => n.href === "/dashboard/inventory")?.href ?? "/dashboard/inventory"}
-                    className="text-xs"
-                  >
-                    Order Now
-                  </ButtonLink>
-                </div>
               </div>
             ) : (
-              <p className="text-sm text-ds-muted">No low-stock alerts.</p>
+              <p className="text-xs text-ds-muted">No low-stock alerts.</p>
             )}
 
-            <div className="border-t border-ds-border pt-4">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-ds-muted">Shopping List</p>
+            <div className="border-t border-ds-border/50 pt-2">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-ds-muted">Shopping list</p>
               {model.inventory.shoppingList.length === 0 ? (
-                <p className="mt-3 text-sm text-ds-muted">Add items from low-stock alerts.</p>
+                <p className="mt-1 text-xs text-ds-muted">Empty.</p>
               ) : (
-                <ul className="mt-3 space-y-2">
+                <ul className="mt-1.5 space-y-1">
                   {model.inventory.shoppingList.map((item) => (
-                    <li
-                      key={item}
-                      className="ds-table-row-hover flex cursor-default items-center gap-2 border border-gray-200 px-3 py-2 text-sm text-gray-900"
-                    >
-                      <span className="flex h-4 w-4 shrink-0 border border-gray-300 bg-transparent" aria-hidden />
-                      {item}
+                    <li key={item} className="flex items-center gap-2 text-xs text-ds-foreground">
+                      <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-ds-muted" aria-hidden />
+                      <span className="min-w-0 truncate">{item}</span>
                     </li>
                   ))}
                 </ul>
@@ -1915,31 +1944,32 @@ function DashboardBody({
           }
         : null,
     } as const;
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- OverviewView is an inner renderer; deps cover upstream data.
-  }, [activeAlertRows, facilitySetupChecklist, kioskKpis, model, onDismissZonePrompt, workOrdersHref, zonePromptDismissed]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- kiosk paths + model cover upstream data.
+  }, [activeAlertRows, facilitySetupChecklist, kioskAlerts, kioskKpis, model, onDismissZonePrompt, workOrdersHref, zonePromptDismissed]);
 
   const allWidgetKeys = useMemo(() => {
     return Object.keys(widgetRegistry).filter((k) => (widgetRegistry as Record<string, unknown>)[k] != null);
   }, [widgetRegistry]);
 
   const defaultLayout = useMemo((): Layout => {
+    /** 8-column grid; heights ~half of prior 12-col defaults for denser tiles. */
     const leadershipBand: Layout = [
-      { i: "todays_focus", x: 0, y: 0, w: 3, h: 9, minW: 2, minH: 4 },
-      { i: "leadership_overview", x: 3, y: 0, w: 6, h: 9, minW: 3, minH: 6 },
-      { i: "team_snapshot", x: 9, y: 0, w: 3, h: 9, minW: 2, minH: 4 },
+      { i: "todays_focus", x: 0, y: 0, w: 2, h: 5, minW: 2, minH: 3 },
+      { i: "leadership_overview", x: 2, y: 0, w: 4, h: 5, minW: 2, minH: 3 },
+      { i: "team_snapshot", x: 6, y: 0, w: 2, h: 5, minW: 2, minH: 3 },
     ];
     const core: Layout = [
-      { i: "alerts", x: 0, y: 9, w: 12, h: 3, minW: 4, minH: 2 },
-      { i: "workforce", x: 0, y: 12, w: 4, h: 4, minW: 2, minH: 3 },
-      { i: "inventory", x: 4, y: 12, w: 4, h: 4, minW: 2, minH: 3 },
-      { i: "equipment", x: 8, y: 12, w: 4, h: 4, minW: 2, minH: 3 },
-      { i: "workRequests", x: 0, y: 16, w: 12, h: 4, minW: 4, minH: 3 },
-      { i: "xp", x: 0, y: 20, w: 12, h: 3, minW: 4, minH: 2 },
+      { i: "alerts", x: 0, y: 5, w: 8, h: 2, minW: 3, minH: 2 },
+      { i: "workforce", x: 0, y: 7, w: 2, h: 2, minW: 2, minH: 2 },
+      { i: "inventory", x: 2, y: 7, w: 3, h: 2, minW: 2, minH: 2 },
+      { i: "equipment", x: 5, y: 7, w: 3, h: 2, minW: 2, minH: 2 },
+      { i: "workRequests", x: 0, y: 9, w: 8, h: 2, minW: 3, minH: 2 },
+      { i: "xp", x: 0, y: 11, w: 8, h: 2, minW: 3, minH: 2 },
     ];
     if (!widgetRegistry.setup) return [...leadershipBand, ...core];
-    const setupOffset = 3;
+    const setupOffset = 2;
     return [
-      { i: "setup", x: 0, y: 0, w: 12, h: setupOffset, minW: 4, minH: 2 },
+      { i: "setup", x: 0, y: 0, w: 8, h: setupOffset, minW: 3, minH: 2 },
       ...leadershipBand.map((it) => ({ ...it, y: it.y + setupOffset })),
       ...core.map((it) => ({ ...it, y: it.y + setupOffset })),
     ];
@@ -2034,7 +2064,7 @@ function DashboardBody({
     (id: string) => {
       if (layoutKeys.has(id)) return;
       const base = defaultLayout.find((l) => l.i === id);
-      const next: LayoutItem = base ?? { i: id, x: 0, y: Infinity, w: 6, h: 3 };
+      const next: LayoutItem = base ?? { i: id, x: 0, y: Infinity, w: 4, h: 2 };
       setLayout((prev) => [...prev, { ...next, x: 0, y: Infinity }]);
     },
     [defaultLayout, layoutKeys],

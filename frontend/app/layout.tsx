@@ -18,7 +18,7 @@ const inter = Inter({
 /** Manrope — top bar “PANORAMA PULSE” wordmark only; all other UI uses Inter (`--font-app`). */
 const manrope = Manrope({
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700", "800", "900"],
+  weight: ["400", "500", "600", "700", "800"],
   variable: "--font-headline",
   display: "swap",
 });
