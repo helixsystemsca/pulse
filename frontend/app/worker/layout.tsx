@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import { AppLayout } from "@/components/app/AppLayout";
 
 export const metadata: Metadata = {
-  title: { absolute: "Worker Dashboard | Panorama" },
-  description: "Worker dashboard embedded in the Pulse app.",
+  title: { absolute: "Operations Dashboard | Panorama" },
+  description: "Operations dashboard embedded in the Pulse app.",
 };
 
 export default function WorkerLayout({ children }: { children: React.ReactNode }) {

@@ -1188,9 +1188,8 @@ function DashboardBody({
   }, []);
   const canEditLayout = useMemo(() => {
     if (readOnly || isKiosk) return false;
-    if (dashboardContext === "admin") return sessionHasAnyRole(session, "company_admin", "system_admin");
-    return sessionHasAnyRole(session, "company_admin", "manager", "supervisor", "lead", "system_admin");
-  }, [dashboardContext, isKiosk, readOnly, session]);
+    return sessionHasAnyRole(session, "company_admin");
+  }, [isKiosk, readOnly, session]);
 
   const layoutStorageKey = useMemo(() => {
     const mode = isKiosk ? "kiosk" : "standard";

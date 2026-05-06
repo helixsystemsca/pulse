@@ -76,6 +76,13 @@ export function AppNavbar() {
               />
             </span>
 
+            {/* Structural divider: single full-height vertical stroke */}
+            <span
+              className="mx-4 w-px shrink-0 self-stretch"
+              style={{ background: "rgba(0,0,0,0.75)" }}
+              aria-hidden
+            />
+
             <span
               className={cn(
                 "font-panoramaBrand min-w-0 whitespace-nowrap text-[clamp(1.3125rem,2.75vw,1.875rem)] leading-none tracking-[0.04em]",

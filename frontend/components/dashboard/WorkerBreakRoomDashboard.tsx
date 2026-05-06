@@ -333,7 +333,7 @@ export function WorkerBreakRoomDashboard({ kiosk = false }: Props) {
   const DASH_LAYOUT_STORAGE = kiosk ? null : "pulse_dashboard_layout_v3_worker_standard";
   const sess = readSession();
   const primaryRole = sessionPrimaryRole(sess);
-  const canEdit = !kiosk && primaryRole !== "worker" && sessionHasAnyRole(sess, "company_admin", "manager", "supervisor", "lead", "system_admin");
+  const canEdit = !kiosk && sessionHasAnyRole(sess, "company_admin");
 
   function gridColsForWidth(widthPx: number, kioskMode: boolean): number {
     const max = kioskMode ? DASHBOARD_MAX_COLS_KIOSK : DASHBOARD_MAX_COLS_STANDARD;
@@ -410,7 +410,7 @@ export function WorkerBreakRoomDashboard({ kiosk = false }: Props) {
       <DashboardAccentCard>
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="min-w-0">
-            <p className={DASH.sectionLabel}>Worker dashboard</p>
+            <p className={DASH.sectionLabel}>Operations dashboard</p>
             <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm font-semibold text-ds-foreground">
               <span>{dateInBc(now)}</span>
               <span className="text-ds-muted">•</span>
