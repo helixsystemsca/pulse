@@ -43,13 +43,16 @@ export function AppLayout({
             <ProximityPromptHost />
             <div data-pulse-app-shell className="flex h-full w-full flex-col overflow-hidden">
           {chrome ? (
-            <header className="relative z-[100] flex shrink-0 flex-col bg-ds-primary shadow-none">
-              <div className="flex min-h-[3.625rem] items-center border-b border-ds-border px-4 py-2 sm:min-h-14 sm:py-2">
+            <header className="sticky top-0 z-[50] flex shrink-0 flex-col border-b border-ds-border bg-ds-primary shadow-none">
+              <div
+                className="flex items-center px-4"
+                style={{ height: "var(--pulse-header-bar-height)" }}
+              >
                 <div className="w-full">
                   <AppNavbar />
                 </div>
               </div>
-              <div className="app-chrome-accent" aria-hidden />
+              <div className="app-chrome-accent" aria-hidden style={{ height: "var(--pulse-header-accent-height)" }} />
             </header>
           ) : null}
 
@@ -82,7 +85,7 @@ export function AppLayout({
           </div>
 
           {chrome ? (
-            <div className="shrink-0 lg:pl-14">
+            <div className="shrink-0 lg:pl-[var(--pulse-sidebar-collapsed-width)]">
               <AppLayoutFooter />
             </div>
           ) : null}

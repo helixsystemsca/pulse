@@ -61,13 +61,14 @@ export function AppNavbar() {
             className="flex min-w-0 shrink-0 items-center gap-3 no-underline hover:opacity-[0.97]"
             aria-label="Home"
           >
-            <span
-              className={cn(
-                "inline-flex shrink-0 items-center justify-center border border-black/80 border-r-0 bg-white/70 dark:bg-white/10",
-                "h-14 w-14",
-              )}
-              aria-hidden
-            >
+            <span className="flex min-w-0 items-center">
+              <span
+                className={cn(
+                  "inline-flex shrink-0 items-center justify-center border border-black/80 bg-white/70 dark:bg-white/10",
+                  "h-14 w-14",
+                )}
+                aria-hidden
+              >
               <Image
                 src="/images/panoramalogo2.png"
                 alt=""
@@ -77,7 +78,12 @@ export function AppNavbar() {
                 className="h-10 w-10 object-contain object-center"
               />
             </span>
-            <span className="h-14 w-px shrink-0 bg-black/80" aria-hidden />
+              <span className="px-4" aria-hidden>
+                <span
+                  className="block w-px bg-black/80"
+                  style={{ height: "calc(var(--pulse-header-bar-height) - 16px)" }}
+                />
+              </span>
             <span
               className={cn(
                 "font-panoramaBrand min-w-0 whitespace-nowrap text-[clamp(1.3125rem,2.75vw,1.875rem)] leading-none tracking-[0.04em]",
@@ -85,6 +91,7 @@ export function AppNavbar() {
               )}
             >
               <span className="font-semibold">panorama</span> <span className="font-medium">pulse</span>
+            </span>
             </span>
           </Link>
         </div>

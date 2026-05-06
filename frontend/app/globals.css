@@ -4,8 +4,7 @@
 
 html {
   scroll-behavior: smooth;
-  /* App header (circular logo + padding) + chrome accent strip */
-  scroll-padding-top: 6.75rem;
+  scroll-padding-top: var(--pulse-header-height);
 }
 
 /**
@@ -25,6 +24,16 @@ html.pulse-welcome-blur [data-pulse-app-shell] {
  * Legacy `--pulse-shell-*` aliases remain for gradual migration.
  */
 :root {
+  /**
+   * App shell layout tokens (authoritative sizing + containment).
+   * Keep header/sidebar/content aligned across Tailwind components.
+   */
+  --pulse-header-height: 80px;
+  --pulse-header-accent-height: 4px;
+  --pulse-header-bar-height: calc(var(--pulse-header-height) - var(--pulse-header-accent-height));
+  --pulse-sidebar-collapsed-width: 72px;
+  --pulse-sidebar-expanded-width: 260px;
+
   /* —— Brand (reference: Gantt / PM dashboard) —— */
   --ds-accent-teal-deep: #1a6b62;
   --ds-accent-dusk: #5c6bb8;

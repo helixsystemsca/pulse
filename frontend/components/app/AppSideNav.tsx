@@ -61,7 +61,7 @@ const ICONS: Record<PulseSidebarIcon, LucideIcon> = {
 };
 
 /** Icon column: keep in sync with the navbar logo square width. */
-const COLLAPSED_RAIL_W = "w-14";
+const COLLAPSED_RAIL_W = "w-[var(--pulse-sidebar-collapsed-width)]";
 const ICON_COL = `h-11 ${COLLAPSED_RAIL_W} shrink-0`;
 
 /** Team Management: tenant feature `team_management` + route permission; roster delegation still grants access. */
@@ -127,10 +127,10 @@ export function AppSideNav() {
       onMouseEnter={() => setRailExpanded(true)}
       onMouseLeave={() => setRailExpanded(false)}
       className={cn(
-        "group/sidenav hidden lg:flex fixed left-0 z-[70] flex-col overflow-x-hidden overflow-y-auto rounded-none border-r border-[var(--ds-sidebar-tile-divider)]",
-        "top-[calc(3.625rem+1px+4px)] sm:top-[calc(3.5rem+1px+4px)] bottom-10",
+        "group/sidenav hidden lg:flex fixed left-0 z-[40] flex-col overflow-x-hidden overflow-y-auto rounded-none border-r border-[var(--ds-sidebar-tile-divider)]",
+        "top-[var(--pulse-header-height)] h-[calc(100vh-var(--pulse-header-height))]",
         "shadow-[var(--ds-shadow-card)] motion-safe:transition-[width] motion-safe:duration-300 motion-safe:ease-in-out",
-        railExpanded ? "w-[220px]" : COLLAPSED_RAIL_W,
+        railExpanded ? "w-[var(--pulse-sidebar-expanded-width)]" : COLLAPSED_RAIL_W,
       )}
       style={{ background: "var(--ds-sidebar-rail-gradient)" }}
       aria-label={systemRail ? "System navigation" : "App navigation"}

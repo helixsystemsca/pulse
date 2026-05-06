@@ -18,12 +18,12 @@ export function AppMainChromeColumn({
   const { isSidebarOpen, closeSidebar } = useSidebarState();
 
   return (
-    <div className="relative z-0 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden lg:pl-14">
+    <div className="relative z-[1] flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden lg:pl-[var(--pulse-sidebar-collapsed-width)]">
       {isSidebarOpen ? (
         <button
           type="button"
           aria-label="Close sidebar"
-          className="absolute inset-0 z-40 hidden bg-black/35 lg:block"
+          className="absolute inset-0 z-30 hidden bg-black/35 lg:block"
           onClick={closeSidebar}
         />
       ) : null}
