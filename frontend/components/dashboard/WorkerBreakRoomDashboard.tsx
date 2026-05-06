@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { AlertTriangle, Cloud, Maximize2, ShieldAlert, Sparkles } from "lucide-react";
+import { AlertTriangle, Cloud, Monitor, ShieldAlert, Sparkles } from "lucide-react";
 
 import { DashboardAccentCard, DashboardColumnPanel } from "@/components/dashboard/DashboardChrome";
 import { Button } from "@/components/ui/Button";
@@ -10,7 +10,7 @@ import { cn } from "@/lib/cn";
 import { DASH } from "@/styles/dashboardTheme";
 import { isApiMode } from "@/lib/api";
 import { readSession } from "@/lib/pulse-session";
-import { sessionHasAnyRole, sessionPrimaryRole } from "@/lib/pulse-roles";
+import { canAccessCompanyConfiguration, sessionHasAnyRole, sessionPrimaryRole } from "@/lib/pulse-roles";
 import { GridLayout, noCompactor, useContainerWidth, type Layout } from "react-grid-layout";
 import type { PulseShiftApi, PulseWorkerApi } from "@/lib/schedule/pulse-bridge";
 import { pulseShiftsToSchedule, pulseWorkersToSchedule, type PulseZoneApi } from "@/lib/schedule/pulse-bridge";
@@ -333,7 +333,7 @@ export function WorkerBreakRoomDashboard({ kiosk = false }: Props) {
   const DASH_LAYOUT_STORAGE = kiosk ? null : "pulse_dashboard_layout_v3_worker_standard";
   const sess = readSession();
   const primaryRole = sessionPrimaryRole(sess);
-  const canEdit = !kiosk && sessionHasAnyRole(sess, "company_admin");
+  const canEdit = !kiosk && canAccessCompanyConfiguration(sess);
 
   function gridColsForWidth(widthPx: number, kioskMode: boolean): number {
     const max = kioskMode ? DASHBOARD_MAX_COLS_KIOSK : DASHBOARD_MAX_COLS_STANDARD;
@@ -424,9 +424,15 @@ export function WorkerBreakRoomDashboard({ kiosk = false }: Props) {
           </div>
           <div className="flex items-center gap-2">
             {!kiosk ? (
-              <Button type="button" variant="secondary" className="inline-flex items-center gap-2" onClick={openKiosk}>
-                <Maximize2 className="h-4 w-4" aria-hidden />
-                Fullscreen
+              <Button
+                type="button"
+                variant="secondary"
+                className="flex h-10 w-10 items-center justify-center p-0"
+                onClick={openKiosk}
+                title="Fullscreen"
+                aria-label="Fullscreen"
+              >
+                <Monitor className="h-4 w-4" aria-hidden />
               </Button>
             ) : null}
             {canEdit ? (

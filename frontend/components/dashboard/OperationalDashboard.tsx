@@ -8,7 +8,7 @@ import {
   Cloud,
   Info,
   MapPin,
-  Maximize2,
+  Monitor,
   Minus,
   Package,
   Pencil,
@@ -30,7 +30,7 @@ import { useAuthenticatedAssetSrc } from "@/hooks/useAuthenticatedAssetSrc";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
 import { pulseRoutes, pulseTenantNav } from "@/lib/pulse-app";
 import { canAccessPulseTenantApis, readSession, type PulseAuthSession } from "@/lib/pulse-session";
-import { sessionHasAnyRole } from "@/lib/pulse-roles";
+import { canAccessCompanyConfiguration, sessionHasAnyRole } from "@/lib/pulse-roles";
 import { getServerDate, getServerNow } from "@/lib/serverTime";
 import { useResolvedAvatarSrc } from "@/lib/useResolvedAvatarSrc";
 import {
@@ -1191,7 +1191,7 @@ function DashboardBody({
   }, []);
   const canEditLayout = useMemo(() => {
     if (readOnly || isKiosk) return false;
-    return sessionHasAnyRole(session, "company_admin");
+    return canAccessCompanyConfiguration(session);
   }, [isKiosk, readOnly, session]);
 
   const layoutStorageKey = useMemo(() => {
@@ -2114,9 +2114,15 @@ function DashboardBody({
           </div>
           <div className="flex items-center gap-2">
             {!isKiosk ? (
-              <Button type="button" variant="secondary" className="inline-flex items-center gap-2" onClick={openKiosk}>
-                <Maximize2 className="h-4 w-4" aria-hidden />
-                Fullscreen
+              <Button
+                type="button"
+                variant="secondary"
+                className="flex h-10 w-10 items-center justify-center p-0"
+                onClick={openKiosk}
+                title="Fullscreen"
+                aria-label="Fullscreen"
+              >
+                <Monitor className="h-4 w-4" aria-hidden />
               </Button>
             ) : null}
             {!hideHeaderWelcome && model.welcomeName.trim() ? (

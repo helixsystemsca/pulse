@@ -2,17 +2,8 @@
 
 import { usePathname, useRouter } from "next/navigation";
 
-import { cn } from "@/lib/cn";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
 import { sessionHasAnyRole, sessionPrimaryRole } from "@/lib/pulse-roles";
-
-const tabBtn =
-  "min-h-9 flex-1 rounded-md px-3 py-2 text-center text-sm font-semibold outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-[var(--ds-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-ds-secondary sm:px-4";
-
-const tabActive = "bg-ds-primary text-ds-foreground shadow-sm ring-1 ring-ds-border";
-
-const tabInactive =
-  "text-ds-muted hover:bg-ds-interactive-hover hover:text-ds-foreground active:bg-ds-muted/40 dark:hover:bg-ds-interactive-hover";
 
 /**
  * Switches between overview (supervisor) and worker dashboards. URL is the source of truth.
@@ -40,7 +31,11 @@ export function DashboardViewTabs() {
       {showWorkerTab ? (
         <button
           type="button"
-          className={cn(tabBtn, isWorker ? tabActive : tabInactive)}
+          className={`flex-1 rounded-md px-2 py-2 text-center text-xs font-semibold transition-colors sm:text-sm ${
+            isWorker
+              ? "bg-ds-success text-ds-on-accent shadow-sm"
+              : "text-ds-muted hover:bg-ds-interactive-hover hover:text-ds-foreground"
+          }`}
           onClick={() => router.push("/worker")}
         >
           Operations
@@ -49,7 +44,11 @@ export function DashboardViewTabs() {
       {showOverviewTab ? (
         <button
           type="button"
-          className={cn(tabBtn, isOverview ? tabActive : tabInactive)}
+          className={`flex-1 rounded-md px-2 py-2 text-center text-xs font-semibold transition-colors sm:text-sm ${
+            isOverview
+              ? "bg-ds-success text-ds-on-accent shadow-sm"
+              : "text-ds-muted hover:bg-ds-interactive-hover hover:text-ds-foreground"
+          }`}
           onClick={() => router.push("/overview")}
         >
           Leadership
@@ -58,7 +57,11 @@ export function DashboardViewTabs() {
       {showProjectTab ? (
         <button
           type="button"
-          className={cn(tabBtn, isProjectTab ? tabActive : tabInactive)}
+          className={`flex-1 rounded-md px-2 py-2 text-center text-xs font-semibold transition-colors sm:text-sm ${
+            isProjectTab
+              ? "bg-ds-success text-ds-on-accent shadow-sm"
+              : "text-ds-muted hover:bg-ds-interactive-hover hover:text-ds-foreground"
+          }`}
           onClick={() => router.push("/overview/project")}
         >
           Projects
