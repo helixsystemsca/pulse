@@ -84,7 +84,7 @@ export function DashboardColumnPanel({
       <div className={cn("h-[3px] w-full shrink-0", strip)} aria-hidden />
       <div className="flex min-h-0 flex-1 flex-col p-3">
         <p className={DASH.sectionLabel}>{title}</p>
-        <div className="mt-3 min-h-0 flex-1 overflow-y-auto">{children}</div>
+        <div className="ds-scroll mt-3 min-h-0 flex-1 overflow-y-auto">{children}</div>
       </div>
     </div>
   );

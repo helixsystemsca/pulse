@@ -2384,7 +2384,7 @@ function DashboardBody({
                     <WorkerDashCard
                       title={w.title}
                       headerRight={headerRight}
-                      className={["h-full", item.i === "setup" ? "overflow-auto" : ""].join(" ")}
+                      className={["h-full", item.i === "setup" ? "ds-scroll overflow-auto" : ""].join(" ")}
                     >
                       {w.render()}
                     </WorkerDashCard>
