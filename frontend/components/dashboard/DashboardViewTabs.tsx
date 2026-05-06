@@ -24,14 +24,14 @@ export function DashboardViewTabs() {
 
   return (
     <div
-      className="mb-4 flex rounded-lg border border-ds-border bg-ds-secondary p-1 shadow-[var(--ds-shadow-card)]"
+      className="mb-4 inline-flex w-fit max-w-full rounded-lg border border-ds-border bg-ds-secondary p-1 shadow-[var(--ds-shadow-card)]"
       role="navigation"
       aria-label="Dashboards"
     >
       {showWorkerTab ? (
         <button
           type="button"
-          className={`flex-1 rounded-md px-2 py-2 text-center text-xs font-semibold transition-colors sm:text-sm ${
+          className={`rounded-md px-4 py-2 text-center text-xs font-semibold transition-colors sm:text-sm ${
             isWorker
               ? "bg-ds-success text-ds-on-accent shadow-sm"
               : "text-ds-muted hover:bg-ds-interactive-hover hover:text-ds-foreground"
@@ -44,7 +44,7 @@ export function DashboardViewTabs() {
       {showOverviewTab ? (
         <button
           type="button"
-          className={`flex-1 rounded-md px-2 py-2 text-center text-xs font-semibold transition-colors sm:text-sm ${
+          className={`rounded-md px-4 py-2 text-center text-xs font-semibold transition-colors sm:text-sm ${
             isOverview
               ? "bg-ds-success text-ds-on-accent shadow-sm"
               : "text-ds-muted hover:bg-ds-interactive-hover hover:text-ds-foreground"
@@ -57,7 +57,7 @@ export function DashboardViewTabs() {
       {showProjectTab ? (
         <button
           type="button"
-          className={`flex-1 rounded-md px-2 py-2 text-center text-xs font-semibold transition-colors sm:text-sm ${
+          className={`rounded-md px-4 py-2 text-center text-xs font-semibold transition-colors sm:text-sm ${
             isProjectTab
               ? "bg-ds-success text-ds-on-accent shadow-sm"
               : "text-ds-muted hover:bg-ds-interactive-hover hover:text-ds-foreground"

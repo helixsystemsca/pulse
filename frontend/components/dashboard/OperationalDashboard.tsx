@@ -2205,41 +2205,42 @@ function DashboardBody({
       </DashboardAccentCard>
 
       <DashboardAccentCard mutedAccent innerClassName="space-y-5">
-        {canEditLayout ? (
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="inline-flex items-center gap-1 rounded-lg border border-ds-border p-1" role="group" aria-label="Dashboard layout">
-              <Button
-                type="button"
-                variant={editMode ? "primary" : "secondary"}
-                onClick={() => setEditMode((v) => !v)}
-                title={editMode ? "Done editing layout" : "Edit dashboard layout"}
-                aria-label={editMode ? "Done editing layout" : "Edit dashboard layout"}
-                aria-pressed={editMode}
-                className="flex h-10 w-10 shrink-0 items-center justify-center p-0"
-              >
-                {editMode ? (
-                  <Check className="h-[1.125rem] w-[1.125rem] shrink-0" strokeWidth={2.5} aria-hidden />
-                ) : (
-                  <Pencil className="h-[1.125rem] w-[1.125rem] shrink-0" strokeWidth={2.5} aria-hidden />
-                )}
-              </Button>
-              <span className="mx-0.5 h-6 w-px shrink-0 bg-ds-border" aria-hidden />
-              <Button
-                type="button"
-                variant="secondary"
-                disabled={!editMode}
-                onClick={() => editMode && setShowAddWidget(true)}
-                title={
-                  editMode ? "Add a built-in card or a custom page peek" : "Turn on edit mode to add widgets"
-                }
-                aria-label="Add widget"
-                className="flex h-10 w-10 shrink-0 items-center justify-center p-0 disabled:opacity-40"
-              >
-                <Plus className="h-[1.125rem] w-[1.125rem] shrink-0" strokeWidth={2.5} aria-hidden />
-              </Button>
-            </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <div
+            className="inline-flex items-center gap-1 rounded-lg border border-ds-border p-1"
+            role="group"
+            aria-label="Dashboard layout"
+          >
+            <Button
+              type="button"
+              variant={editMode ? "primary" : "secondary"}
+              onClick={() => canEditLayout && setEditMode((v) => !v)}
+              title={canEditLayout ? (editMode ? "Done editing layout" : "Edit dashboard layout") : "Company admin only"}
+              aria-label={canEditLayout ? (editMode ? "Done editing layout" : "Edit dashboard layout") : "Edit dashboard layout (company admin only)"}
+              aria-pressed={editMode}
+              disabled={!canEditLayout}
+              className="flex h-10 w-10 shrink-0 items-center justify-center p-0 disabled:opacity-40"
+            >
+              {editMode ? (
+                <Check className="h-[1.125rem] w-[1.125rem] shrink-0" strokeWidth={2.5} aria-hidden />
+              ) : (
+                <Pencil className="h-[1.125rem] w-[1.125rem] shrink-0" strokeWidth={2.5} aria-hidden />
+              )}
+            </Button>
+            <span className="mx-0.5 h-6 w-px shrink-0 bg-ds-border" aria-hidden />
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={!canEditLayout || !editMode}
+              onClick={() => canEditLayout && editMode && setShowAddWidget(true)}
+              title={canEditLayout ? (editMode ? "Add a widget" : "Turn on edit mode to add widgets") : "Company admin only"}
+              aria-label="Add widget"
+              className="flex h-10 w-10 shrink-0 items-center justify-center p-0 disabled:opacity-40"
+            >
+              <Plus className="h-[1.125rem] w-[1.125rem] shrink-0" strokeWidth={2.5} aria-hidden />
+            </Button>
           </div>
-        ) : null}
+        </div>
 
         <div ref={containerRef as any} className={editMode ? "pulse-dashboard-edit" : ""}>
           {mounted ? (

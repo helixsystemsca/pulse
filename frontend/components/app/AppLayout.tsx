@@ -44,7 +44,7 @@ export function AppLayout({
             <div data-pulse-app-shell className="flex h-full w-full flex-col overflow-hidden">
           {chrome ? (
             <header
-              className="sticky top-0 z-[50] shrink-0 border-b border-ds-border bg-ds-primary shadow-none"
+              className="sticky top-0 z-[50] shrink-0 bg-ds-primary shadow-none"
               style={{ height: "var(--pulse-header-height)" }}
             >
               <div className="flex w-full items-center" style={{ height: "var(--pulse-header-bar-height)" }}>
