@@ -25,6 +25,7 @@ import {
   X,
   XCircle,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/cn";
 import { Button } from "@/components/ui/Button";
@@ -134,7 +135,7 @@ function GlassSection({
 }: {
   title: string;
   subtitle?: string;
-  icon: React.ComponentType<{ className?: string; "aria-hidden"?: boolean }>;
+  icon: LucideIcon;
   children: React.ReactNode;
   stickyId: string;
 }) {
@@ -211,7 +212,7 @@ function ChecklistRow({
   value,
   onChange,
 }: {
-  icon: React.ComponentType<{ className?: string; "aria-hidden"?: boolean }>;
+  icon: LucideIcon;
   label: string;
   value: PassFail;
   onChange: (next: PassFail) => void;

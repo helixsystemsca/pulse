@@ -20,6 +20,7 @@ import { LogBuilder } from "./LogBuilder";
 import { cn } from "@/lib/cn";
 import { buttonVariants } from "@/styles/button-variants";
 import { VehicleInspectionSheet } from "@/components/inspections/VehicleInspectionSheet";
+import { HarnessInspectionForm } from "@/components/compliance/HarnessInspectionForm";
 
 const TABLE_WRAP =
   "mt-6 overflow-hidden rounded-md border border-ds-border bg-white shadow-sm dark:bg-ds-secondary";
@@ -56,6 +57,7 @@ export function InspectionsLogsApp() {
 
   const [tab, setTab] = useState<"inspections" | "logs">("inspections");
   const [showVehicleInspection, setShowVehicleInspection] = useState(false);
+  const [showHarnessInspection, setShowHarnessInspection] = useState(false);
   const [builder, setBuilder] = useState<null | { kind: "inspection" | "log"; editId: string | null }>(
     null,
   );
@@ -169,6 +171,38 @@ export function InspectionsLogsApp() {
             {showVehicleInspection ? (
               <div className="mt-4">
                 <VehicleInspectionSheet />
+              </div>
+            ) : null}
+          </section>
+
+          <section className="rounded-md border border-ds-border bg-white p-4 shadow-sm dark:bg-ds-secondary">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="min-w-0">
+                <h2 className="text-sm font-semibold text-ds-foreground">Harness Inspection</h2>
+                <p className="mt-0.5 text-xs font-medium text-ds-muted">
+                  Mobile-friendly fall-protection harness inspection form (client-side submit for now).
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  className={cn(buttonVariants({ surface: "light", intent: "secondary" }), "px-3 py-2 text-sm")}
+                  onClick={() => setShowHarnessInspection((v) => !v)}
+                >
+                  {showHarnessInspection ? "Hide form" : "New harness inspection"}
+                </button>
+              </div>
+            </div>
+            {showHarnessInspection ? (
+              <div className="mt-4">
+                <HarnessInspectionForm
+                  onSubmit={(payload) => {
+                    // Temporary client-side integration point. Backend saving will plug in here.
+                    // eslint-disable-next-line no-console
+                    console.log("Harness inspection submit", payload);
+                    window.alert("Harness inspection captured (client-side). Ready to wire into Work Items.");
+                  }}
+                />
               </div>
             ) : null}
           </section>

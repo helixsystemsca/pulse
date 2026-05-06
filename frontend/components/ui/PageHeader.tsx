@@ -33,7 +33,7 @@ export function PageHeader({
             <Icon className="h-5 w-5" strokeWidth={2} />
           </span>
           <div className="min-w-0">
-            <h1 className="font-headline text-xl font-bold tracking-tight text-ds-foreground md:text-2xl">
+            <h1 className="font-headline text-xl font-bold uppercase tracking-[0.12em] text-ds-foreground md:text-2xl">
               {title}
             </h1>
             {description ? (
