@@ -94,13 +94,16 @@ function WorkerDashCard({
   className?: string;
 }) {
   return (
-    <Card className={className}>
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <p className={UI.header}>{title}</p>
-        {headerRight ? <div className={`${UI.subheader} font-semibold text-gray-600`}>{headerRight}</div> : null}
+    <div className={cn(DASH.cardBase, "flex h-full min-h-0 flex-col", className)}>
+      <div className={DASH.accentBarMuted} aria-hidden />
+      <div className={cn(DASH.cardInner, "min-h-0 flex-1")}>
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <p className="text-[13px] font-bold tracking-[0.06em] text-ds-muted">{title}</p>
+          {headerRight ? <div className="text-[11px] font-semibold text-ds-muted">{headerRight}</div> : null}
+        </div>
+        <div className="mt-3 min-h-0">{children}</div>
       </div>
-      <div className="mt-4">{children}</div>
-    </Card>
+    </div>
   );
 }
 

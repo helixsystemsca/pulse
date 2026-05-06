@@ -56,7 +56,7 @@ export function AppNavbar() {
   return (
       <nav className="flex h-[var(--pulse-header-bar-height)] w-full items-center justify-between gap-4 pr-4" aria-label="Main">
         <div className="flex min-w-0 items-center">
-          <div className="flex min-w-0 shrink-0 items-center gap-4" aria-label="Panorama Pulse">
+          <div className="flex min-w-0 shrink-0 items-center gap-0" aria-label="Panorama Pulse">
             {/* Brand column (must match collapsed nav width) */}
             <span
               className="inline-flex shrink-0 items-center justify-center bg-white/70 dark:bg-white/10"
@@ -78,14 +78,14 @@ export function AppNavbar() {
 
             {/* Structural divider: single full-height vertical stroke */}
             <span
-              className="mx-4 w-px shrink-0 self-stretch"
+              className="w-px shrink-0 self-stretch"
               style={{ background: "rgba(0,0,0,0.75)" }}
               aria-hidden
             />
 
             <span
               className={cn(
-                "font-panoramaBrand min-w-0 whitespace-nowrap text-[clamp(1.3125rem,2.75vw,1.875rem)] leading-none tracking-[0.04em]",
+                "font-panoramaBrand min-w-0 whitespace-nowrap pl-4 text-[clamp(1.3125rem,2.75vw,1.875rem)] leading-none tracking-[0.04em]",
                 "text-[#1f3a4a] dark:text-[#b8cad6]",
               )}
             >
