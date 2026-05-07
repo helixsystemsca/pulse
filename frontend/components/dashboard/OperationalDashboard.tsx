@@ -35,8 +35,6 @@ import { getServerDate, getServerNow } from "@/lib/serverTime";
 import { useResolvedAvatarSrc } from "@/lib/useResolvedAvatarSrc";
 import {
   DASHBOARD_CUSTOM_WIDGETS_STORAGE,
-  DASHBOARD_LAYOUT_STORAGE_V1,
-  DASHBOARD_LAYOUT_STORAGE_V2,
   type CustomDashboardWidgetConfig,
 } from "@/lib/dashboardPageWidgetCatalog";
 import {
@@ -61,6 +59,56 @@ const DASHBOARD_GRID_COLS = 8;
 const DASHBOARD_GRID_ROW_HEIGHT_PX = 72;
 /** Horizontal + vertical gutter between cards. */
 const DASHBOARD_GRID_GAP_PX = 18;
+
+function layoutItemsCollide(a: LayoutItem, b: LayoutItem): boolean {
+  if (a.i === b.i) return false;
+  const ax = a.x ?? 0;
+  const ay = a.y ?? 0;
+  const aw = a.w ?? 1;
+  const ah = a.h ?? 1;
+  const bx = b.x ?? 0;
+  const by = b.y ?? 0;
+  const bw = b.w ?? 1;
+  const bh = b.h ?? 1;
+  return ax < bx + bw && ax + aw > bx && ay < by + bh && ay + ah > by;
+}
+
+/**
+ * Legacy 12-col layouts saved to localStorage become overlapping when `cols` is 8 (correctBounds forces
+ * multiple full-width tiles to x=0). Clamp geometry and push colliding rows down so the grid is valid.
+ */
+function sanitizeLayoutForGrid(layout: Layout, cols: number): Layout {
+  const ids = layout.map((l) => l.i);
+  const clamped = layout.map((item) => {
+    const minW = Math.max(1, Math.min(Number(item.minW ?? 1), cols));
+    let w = Math.max(minW, Math.min(Number(item.w ?? 1), cols));
+    let x = Number(item.x ?? 0);
+    x = Math.max(0, Math.min(x, cols - w));
+    if (x + w > cols) x = Math.max(0, cols - w);
+    const minH = Math.max(1, Number(item.minH ?? 1));
+    const h = Math.max(minH, Number(item.h ?? 1));
+    return {
+      ...item,
+      x,
+      w,
+      h,
+      minW: Math.min(minW, cols) as number,
+    };
+  });
+  const sorted = [...clamped].sort((a, b) => (a.y ?? 0) - (b.y ?? 0) || (a.x ?? 0) - (b.x ?? 0));
+  const placed: LayoutItem[] = [];
+  for (const raw of sorted) {
+    let y = Number(raw.y ?? 0);
+    let guard = 0;
+    while (guard < 500 && placed.some((p) => layoutItemsCollide({ ...raw, y }, p))) {
+      y++;
+      guard++;
+    }
+    placed.push({ ...raw, y });
+  }
+  const byId = new Map(placed.map((p) => [p.i, p]));
+  return ids.map((i) => byId.get(i)).filter((x): x is LayoutItem => x != null);
+}
 
 /** Operations dashboard header: icon tools get a teal hover inside the unified actions card. */
 const OPS_DASH_HEADER_TOOL =
@@ -1994,21 +2042,7 @@ function DashboardBody({
     } catch {
       nextLayout = null;
     }
-    if (!nextLayout) {
-      try {
-        // Migrate legacy layouts only for the operations standard dashboard (one-time best-effort).
-        if (dashboardContext === "operations" && !isKiosk) {
-          const v2 = window.localStorage.getItem(DASHBOARD_LAYOUT_STORAGE_V2);
-          if (v2) nextLayout = JSON.parse(v2) as Layout;
-          if (!nextLayout) {
-            const v1 = window.localStorage.getItem(DASHBOARD_LAYOUT_STORAGE_V1);
-            if (v1) nextLayout = JSON.parse(v1) as Layout;
-          }
-        }
-      } catch {
-        nextLayout = null;
-      }
-    }
+    // Do not load pre-v5 12-column layouts into the 8-col grid (they overlap after bounds correction).
     if (!nextLayout) nextLayout = defaultLayout;
 
     const validBuiltins = new Set(allWidgetKeys);
@@ -2023,7 +2057,8 @@ function DashboardBody({
     }
     const present = new Set(filtered.map((x) => x.i));
     const missing = defaultLayout.filter((l) => !present.has(l.i));
-    setLayout([...filtered, ...missing] as Layout);
+    const merged = sanitizeLayoutForGrid([...filtered, ...missing] as Layout, DASHBOARD_GRID_COLS);
+    setLayout(merged);
     setCustomConfigs(parsedConfigs);
     setLayoutHydrated(true);
   }, [allWidgetKeys, customWidgetStorageKey, dashboardContext, defaultLayout, isKiosk, layoutStorageKey]);
@@ -2287,7 +2322,10 @@ function DashboardBody({
       </DashboardAccentCard>
 
       <DashboardAccentCard mutedAccent innerClassName="space-y-0">
-        <div ref={containerRef as any} className={editMode ? "pulse-dashboard-edit" : ""}>
+        <div
+          ref={containerRef as any}
+          className={["pulse-dashboard-grid min-w-0", editMode ? "pulse-dashboard-edit" : ""].filter(Boolean).join(" ")}
+        >
           {mounted ? (
             <GridLayout
               layout={layout}

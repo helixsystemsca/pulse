@@ -27,12 +27,12 @@ html.pulse-welcome-blur [data-pulse-app-shell] {
    * App shell layout tokens (authoritative sizing + containment).
    * Keep header/sidebar/content aligned across Tailwind components.
    */
-  --pulse-header-height: 80px;
+  --pulse-header-height: 64px;
   --pulse-header-accent-height: 4px;
   --pulse-header-bar-height: calc(var(--pulse-header-height) - var(--pulse-header-accent-height));
   /* Single source of truth: matches the header logo column exactly. */
-  --pulse-sidebar-collapsed-width: 80px;
-  --pulse-sidebar-expanded-width: 260px;
+  --pulse-sidebar-collapsed-width: 64px;
+  --pulse-sidebar-expanded-width: 232px;
 
   /* —— Brand — Verdigris #1EA896 · Deep Mocha #523F38 · Iron Grey #4C5454 */
   --ds-palette-verdigris: #1ea896;
@@ -860,6 +860,11 @@ html.pulse-welcome-blur [data-pulse-app-shell] {
     background: rgba(255, 255, 255, 0.2);
     border: 3px solid transparent;
     background-clip: padding-box;
+  }
+
+  /* Keep dashboard tiles clipped to their grid cells (avoids visual bleed when layouts are tight). */
+  .pulse-dashboard-grid:not(.pulse-dashboard-edit) .react-grid-item {
+    overflow: hidden;
   }
 
   /* Dashboard grid UX (edit mode): darker grab cursor + clearer drop placeholder */
