@@ -31,7 +31,7 @@ html.pulse-welcome-blur [data-pulse-app-shell] {
   --pulse-header-accent-height: 4px;
   --pulse-header-bar-height: calc(var(--pulse-header-height) - var(--pulse-header-accent-height));
   /* Single source of truth: matches the header logo column exactly. */
-  --pulse-sidebar-collapsed-width: 64px;
+  --pulse-sidebar-collapsed-width: 60px;
   --pulse-sidebar-expanded-width: 232px;
 
   /* —— Brand — Verdigris #1EA896 · Deep Mocha #523F38 · Iron Grey #4C5454 */
@@ -98,8 +98,8 @@ html.pulse-welcome-blur [data-pulse-app-shell] {
    * Dashboard sizing tokens.
    * Dashboards override these via `.pulse-dashboard-surface` to get the tighter, cohesive look.
    */
-  --pulse-dashboard-card-radius: 1rem;
-  --pulse-dashboard-grid-gap: 12px;
+  --pulse-dashboard-card-radius: 2rem;
+  --pulse-dashboard-grid-gap: 14px;
 
   /** PM planning shell — alias tokens (use with `style` or arbitrary props). */
   --pm-color-primary: var(--ds-accent);
