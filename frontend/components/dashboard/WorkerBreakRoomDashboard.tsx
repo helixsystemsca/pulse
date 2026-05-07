@@ -11,7 +11,7 @@ import { DASH } from "@/styles/dashboardTheme";
 import { isApiMode } from "@/lib/api";
 import { readSession } from "@/lib/pulse-session";
 import { canAccessCompanyConfiguration, sessionHasAnyRole, sessionPrimaryRole } from "@/lib/pulse-roles";
-import { GridLayout, noCompactor, useContainerWidth, type Layout } from "react-grid-layout";
+import { GridLayout, useContainerWidth, verticalCompactor, type Layout } from "react-grid-layout";
 import type { PulseShiftApi, PulseWorkerApi } from "@/lib/schedule/pulse-bridge";
 import { pulseShiftsToSchedule, pulseWorkersToSchedule, type PulseZoneApi } from "@/lib/schedule/pulse-bridge";
 import type { Shift, Worker } from "@/lib/schedule/types";
@@ -373,6 +373,18 @@ export function WorkerBreakRoomDashboard({ kiosk = false }: Props) {
     [],
   );
   const [layout, setLayout] = useState<Layout>(defaultLayout);
+  const [isInteracting, setIsInteracting] = useState(false);
+  const persistLayout = useCallback(
+    (next: Layout) => {
+      if (!DASH_LAYOUT_STORAGE || !layoutHydrated) return;
+      try {
+        window.localStorage.setItem(DASH_LAYOUT_STORAGE, JSON.stringify(next));
+      } catch {
+        /* ignore */
+      }
+    },
+    [DASH_LAYOUT_STORAGE, layoutHydrated],
+  );
   const { width, containerRef, mounted } = useContainerWidth({ initialWidth: 1200 });
 
   useEffect(() => {
@@ -398,14 +410,7 @@ export function WorkerBreakRoomDashboard({ kiosk = false }: Props) {
     }
   }, [DASH_LAYOUT_STORAGE]);
 
-  useEffect(() => {
-    if (!DASH_LAYOUT_STORAGE || !layoutHydrated) return;
-    try {
-      window.localStorage.setItem(DASH_LAYOUT_STORAGE, JSON.stringify(layout));
-    } catch {
-      /* ignore */
-    }
-  }, [layout, layoutHydrated, DASH_LAYOUT_STORAGE]);
+  // Persist layout only on drag/resize stop (and explicit add/remove actions).
 
   const widgetStyleStorageKey = useMemo(() => {
     const mode = kiosk ? "kiosk" : "standard";
@@ -529,10 +534,46 @@ export function WorkerBreakRoomDashboard({ kiosk = false }: Props) {
                 cancel: "button, a, input, textarea, select, option, [role='button'], .dashboard-no-drag",
               }}
               resizeConfig={{ enabled: canEdit && editMode, handles: ["n", "s", "e", "w", "ne", "nw", "se", "sw"] }}
-              compactor={noCompactor}
-              onLayoutChange={(next) => {
+              compactor={
+                isInteracting
+                  ? ({
+                      type: null,
+                      allowOverlap: true,
+                      compact: (l: Layout) => l,
+                    } as any)
+                  : verticalCompactor
+              }
+              onDragStart={() => {
+                if (!canEdit || !editMode) return;
+                setIsInteracting(true);
+              }}
+              onResizeStart={() => {
+                if (!canEdit || !editMode) return;
+                setIsInteracting(true);
+              }}
+              onDrag={(next) => {
                 if (!canEdit || !editMode) return;
                 setLayout(next as Layout);
+              }}
+              onResize={(next) => {
+                if (!canEdit || !editMode) return;
+                setLayout(next as Layout);
+              }}
+              onDragStop={(next) => {
+                if (!canEdit || !editMode) return;
+                setIsInteracting(false);
+                const cols = gridColsForWidth(width, kiosk);
+                const compacted = verticalCompactor.compact(next as Layout, cols) as Layout;
+                setLayout(compacted);
+                persistLayout(compacted);
+              }}
+              onResizeStop={(next) => {
+                if (!canEdit || !editMode) return;
+                setIsInteracting(false);
+                const cols = gridColsForWidth(width, kiosk);
+                const compacted = verticalCompactor.compact(next as Layout, cols) as Layout;
+                setLayout(compacted);
+                persistLayout(compacted);
               }}
             >
               <div key="who" className={editMode ? "cursor-grab active:cursor-grabbing" : ""}>

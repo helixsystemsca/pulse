@@ -20,7 +20,7 @@ import {
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { GridLayout, noCompactor, useContainerWidth, type Layout, type LayoutItem } from "react-grid-layout";
+import { GridLayout, useContainerWidth, verticalCompactor, type Layout, type LayoutItem } from "react-grid-layout";
 import { DashboardAddWidgetWizard } from "@/components/dashboard/DashboardAddWidgetWizard";
 import { DashboardCustomPeekWidget } from "@/components/dashboard/DashboardCustomPeekWidget";
 import { Button, ButtonLink } from "@/components/ui/Button";
@@ -50,6 +50,8 @@ import { DashboardAccentCard, DashboardColumnPanel, KioskRotateFooter } from "@/
 import { cn } from "@/lib/cn";
 import { DASH } from "@/styles/dashboardTheme";
 import { UI } from "@/styles/ui";
+import { getWidgetMode, type WidgetMode, type WidgetRenderContext } from "@/components/dashboard/widgets/widgetSizing";
+import { AlertsWidget, type AlertsWidgetAlert } from "@/components/dashboard/widgets/alerts/AlertsWidget";
 
 import "react-grid-layout/css/styles.css";
 import "react-resizable/css/styles.css";
@@ -62,6 +64,30 @@ const DASHBOARD_GRID_COLS = 16;
 const DASHBOARD_GRID_ROW_HEIGHT_PX = 36;
 /** Horizontal + vertical gutter between cards (scaled down with the grid). */
 const DASHBOARD_GRID_GAP_PX = 9;
+
+function widgetPixelSizeFromGridUnits({
+  gridWidthPx,
+  cols,
+  w,
+  h,
+  rowHeight,
+  gap,
+}: {
+  gridWidthPx: number;
+  cols: number;
+  w: number;
+  h: number;
+  rowHeight: number;
+  gap: number;
+}) {
+  const safeCols = Math.max(1, cols);
+  const marginX = gap;
+  const marginY = gap;
+  const colWidth = (Math.max(0, gridWidthPx) - marginX * (safeCols - 1)) / safeCols;
+  const widthPx = w * colWidth + (w - 1) * marginX;
+  const heightPx = h * rowHeight + (h - 1) * marginY;
+  return { widthPx: Math.max(0, widthPx), heightPx: Math.max(0, heightPx), colWidth: Math.max(0, colWidth) };
+}
 
 function layoutItemsCollide(a: LayoutItem, b: LayoutItem): boolean {
   if (a.i === b.i) return false;
@@ -141,19 +167,13 @@ function WorkerDashCard({
     <div
       style={styleVars}
       className={cn(
-        [
-          "flex h-full min-h-0 flex-col overflow-hidden rounded-xl border shadow-sm",
-          "border-white/35 bg-white/55 text-[var(--widget-fg,var(--ds-text-primary))] backdrop-blur-xl",
-          "supports-[backdrop-filter]:bg-white/45",
-          "dark:border-white/10 dark:bg-white/5 dark:text-[var(--widget-fg,var(--ds-text-primary))] dark:backdrop-blur-2xl",
-          "dark:supports-[backdrop-filter]:bg-white/6",
-          "bg-[color-mix(in_srgb,var(--widget-tint,white)_22%,transparent)]",
-          "dark:bg-[color-mix(in_srgb,var(--widget-tint,white)_10%,transparent)]",
-        ].join(" "),
+        DASH.cardBase,
+        "flex h-full min-h-0 flex-col text-[var(--widget-fg,var(--ds-text-primary))]",
+        "bg-[color-mix(in_srgb,var(--widget-tint,white)_10%,var(--ds-bg))]",
         className,
       )}
     >
-      <div className="flex shrink-0 items-start justify-between gap-2 border-b border-white/25 px-2.5 py-1.5 sm:px-3 sm:py-2 dark:border-white/10">
+      <div className="flex shrink-0 items-start justify-between gap-2 border-b border-ds-border bg-ds-secondary/30 px-3 py-2">
         <p className="min-w-0 text-[11px] font-bold uppercase tracking-[0.14em] text-[color-mix(in_srgb,var(--widget-fg,var(--ds-text-primary))_65%,transparent)]">
           {title}
         </p>
@@ -163,7 +183,7 @@ function WorkerDashCard({
           </div>
         ) : null}
       </div>
-      <div className="min-h-0 flex-1 px-2.5 py-2 sm:px-3 sm:py-2.5">{children}</div>
+      <div className="min-h-0 flex-1 p-3">{children}</div>
     </div>
   );
 }
@@ -245,9 +265,6 @@ function alertCountsFromAlerts(alerts: AlertItem[]): OperationalDashboardReadyPa
   };
 }
 
-const NO_ACTIVE_ALERTS_TITLE = "No active alerts";
-const NO_ADDITIONAL_ALERTS_TITLE = "No additional alerts";
-
 function alertPriority(a: AlertItem): AlertPriority {
   if (a.priority) return a.priority;
   return a.severity === "critical" ? "critical" : "medium";
@@ -304,97 +321,7 @@ function kioskWorkQueueRows(model: DashboardViewModel): {
   return out.slice(0, 8);
 }
 
-/** Active Alerts card: always three rows, highest priority first; pad with neutral rows. */
-function activeAlertCardRows(alerts: AlertItem[]): AlertItem[] {
-  const real = alerts
-    .filter((a) => a.countsTowardTotals !== false)
-    .filter((a) => a.title !== NO_ACTIVE_ALERTS_TITLE)
-    .slice()
-    .sort(compareAlerts);
-
-  const rows: AlertItem[] = [];
-
-  if (real.length === 0) {
-    rows.push({
-      severity: "warning",
-      priority: "low",
-      title: NO_ACTIVE_ALERTS_TITLE,
-      subtitle: "Operations look clear. New exceptions will surface here.",
-      countsTowardTotals: false,
-    });
-  } else {
-    for (const item of real.slice(0, 3)) rows.push(item);
-  }
-
-  while (rows.length < 3) {
-    rows.push({
-      severity: "warning",
-      priority: "low",
-      title: NO_ADDITIONAL_ALERTS_TITLE,
-      subtitle: "No further high-priority exceptions in this snapshot.",
-      countsTowardTotals: false,
-    });
-  }
-  return rows.slice(0, 3);
-}
-
-function ActiveAlertsRow({ alert: a }: { alert: AlertItem }) {
-  const p = alertPriority(a);
-  const isPad = a.countsTowardTotals === false && a.title === NO_ADDITIONAL_ALERTS_TITLE;
-  const style =
-    p === "medium"
-      ? ({
-          borderLeftColor: "var(--ds-info)",
-          background: "color-mix(in srgb, var(--ds-info) 12%, transparent)",
-        } as const)
-      : undefined;
-
-  const icon =
-    p === "critical" ? (
-      <AlertTriangle className="h-4 w-4 shrink-0 text-ds-danger" aria-hidden />
-    ) : p === "high" ? (
-      <AlertCircle className="h-4 w-4 shrink-0 text-ds-warning" aria-hidden />
-    ) : p === "medium" ? (
-      <Info className="h-4 w-4 shrink-0 text-[var(--ds-info)]" aria-hidden />
-    ) : isPad ? (
-      <Minus className="h-4 w-4 shrink-0 text-ds-muted" aria-hidden />
-    ) : (
-      <Radio className="h-4 w-4 shrink-0 text-ds-muted" aria-hidden />
-    );
-
-  const strip =
-    p === "critical"
-      ? "border-l-[var(--ds-danger)]"
-      : p === "high"
-        ? "border-l-ds-warning"
-        : p === "medium"
-          ? "border-l-[var(--ds-info)]"
-          : "border-l-ds-border";
-
-  return (
-    <li
-      className={cn(
-        "flex gap-2 rounded-md border border-ds-border/40 py-2 pl-2 pr-2",
-        strip,
-        "border-l-[3px]",
-        !isPad && p === "critical" && "bg-[color-mix(in_srgb,var(--ds-danger)_7%,transparent)]",
-        !isPad && p === "high" && "bg-[color-mix(in_srgb,var(--ds-warning)_8%,transparent)]",
-        isPad && "opacity-80",
-      )}
-      style={p === "medium" ? style : undefined}
-    >
-      <span className="shrink-0 pt-0.5">{icon}</span>
-      <div className="min-w-0 flex-1">
-        <p className={`text-xs font-bold leading-snug sm:text-sm ${isPad ? "text-ds-muted" : "text-ds-foreground"}`}>
-          {a.title}
-        </p>
-        {a.subtitle ? (
-          <p className="mt-0.5 line-clamp-2 whitespace-pre-line text-[11px] leading-relaxed text-ds-muted">{a.subtitle}</p>
-        ) : null}
-      </div>
-    </li>
-  );
-}
+const NO_ACTIVE_ALERTS_TITLE = "No active alerts";
 
 type WorkforceBubble = {
   id: string;
@@ -1294,8 +1221,6 @@ function DashboardBody({
   const [layoutHydrated, setLayoutHydrated] = useState(false);
   const { width, containerRef, mounted } = useContainerWidth({ initialWidth: 1200 });
 
-  const activeAlertRows = useMemo(() => activeAlertCardRows(model.alerts), [model.alerts]);
-
   const kioskAlerts = useMemo(() => {
     const real = model.alerts
       .filter((a) => a.countsTowardTotals !== false)
@@ -1303,10 +1228,9 @@ function DashboardBody({
       .slice()
       .sort(compareAlerts)
       .slice(0, 3);
-    if (real.length === 0) return activeAlertRows;
-    if (real.length >= 3) return real;
-    return [...real, ...activeAlertRows].slice(0, 3);
-  }, [activeAlertRows, model.alerts]);
+    if (real.length === 0) return model.alerts.slice(0, 3);
+    return real;
+  }, [model.alerts]);
 
   const mockKPIs = useMemo(
     () => ({
@@ -1676,13 +1600,7 @@ function DashboardBody({
       alerts: {
         title: "Active Alerts",
         accent: "yellow" as const,
-        render: () => (
-          <ul className="flex flex-1 flex-col gap-2">
-            {activeAlertRows.map((a, idx) => (
-              <ActiveAlertsRow key={`${a.title}-${idx}`} alert={a} />
-            ))}
-          </ul>
-        ),
+        render: (ctx?: WidgetRenderContext) => <AlertsWidget alerts={model.alerts as AlertsWidgetAlert[]} ctx={ctx} />,
       },
       workforce: {
         title: "Workforce",
@@ -1990,7 +1908,7 @@ function DashboardBody({
         : null,
     } as const;
     // eslint-disable-next-line react-hooks/exhaustive-deps -- kiosk paths + model cover upstream data.
-  }, [activeAlertRows, facilitySetupChecklist, kioskAlerts, kioskKpis, model, onDismissZonePrompt, workOrdersHref, zonePromptDismissed]);
+  }, [facilitySetupChecklist, kioskAlerts, kioskKpis, model, onDismissZonePrompt, workOrdersHref, zonePromptDismissed]);
 
   const allWidgetKeys = useMemo(() => {
     return Object.keys(widgetRegistry).filter((k) => (widgetRegistry as Record<string, unknown>)[k] != null);
@@ -2021,6 +1939,11 @@ function DashboardBody({
   }, [widgetRegistry.setup]);
 
   const [layout, setLayout] = useState<Layout>(defaultLayout);
+  const [isInteracting, setIsInteracting] = useState(false);
+  const isInteractingRef = useRef(false);
+  useEffect(() => {
+    isInteractingRef.current = isInteracting;
+  }, [isInteracting]);
 
   // Load saved layout (v2) and custom peek configs; migrate legacy v1 layout once.
   useEffect(() => {
@@ -2060,14 +1983,17 @@ function DashboardBody({
     setLayoutHydrated(true);
   }, [allWidgetKeys, customWidgetStorageKey, dashboardContext, defaultLayout, isKiosk, layoutStorageKey]);
 
-  useEffect(() => {
-    if (!layoutHydrated) return;
-    try {
-      window.localStorage.setItem(layoutStorageKey, JSON.stringify(layout));
-    } catch {
-      /* ignore quota / privacy mode */
-    }
-  }, [layout, layoutHydrated, layoutStorageKey]);
+  const persistLayout = useCallback(
+    (next: Layout) => {
+      if (!layoutHydrated) return;
+      try {
+        window.localStorage.setItem(layoutStorageKey, JSON.stringify(next));
+      } catch {
+        /* ignore quota / privacy mode */
+      }
+    },
+    [layoutHydrated, layoutStorageKey],
+  );
 
   useEffect(() => {
     if (!layoutHydrated) return;
@@ -2108,7 +2034,11 @@ function DashboardBody({
   const availableToAdd = useMemo(() => allWidgetKeys.filter((k) => !layoutKeys.has(k)), [allWidgetKeys, layoutKeys]);
 
   const removeWidget = useCallback((id: string) => {
-    setLayout((prev) => prev.filter((l) => l.i !== id));
+    setLayout((prev) => {
+      const next = prev.filter((l) => l.i !== id);
+      persistLayout(next);
+      return next;
+    });
     if (id.startsWith("cw_")) {
       setCustomConfigs((prev) => {
         const next = { ...prev };
@@ -2123,15 +2053,57 @@ function DashboardBody({
       if (layoutKeys.has(id)) return;
       const base = defaultLayout.find((l) => l.i === id);
       const next: LayoutItem = base ?? { i: id, x: 0, y: Infinity, w: 4, h: 2 };
-      setLayout((prev) => [...prev, { ...next, x: 0, y: Infinity }]);
+      setLayout((prev) => {
+        const merged = [...prev, { ...next, x: 0, y: Infinity }] as Layout;
+        persistLayout(merged);
+        return merged;
+      });
     },
-    [defaultLayout, layoutKeys],
+    [defaultLayout, layoutKeys, persistLayout],
   );
 
   const saveCustomPeek = useCallback((config: CustomDashboardWidgetConfig, layoutItem: LayoutItem | null) => {
     setCustomConfigs((prev) => ({ ...prev, [config.id]: config }));
-    if (layoutItem) setLayout((prev) => [...prev, layoutItem]);
+    if (layoutItem) {
+      setLayout((prev) => {
+        const next = [...prev, layoutItem] as Layout;
+        persistLayout(next);
+        return next;
+      });
+    }
   }, []);
+
+  const dragCompactor = useMemo(
+    () => ({
+      type: null,
+      allowOverlap: true,
+      compact: (l: Layout) => l,
+    }),
+    [],
+  );
+  const stableCompactor = useMemo(() => verticalCompactor, []);
+  const activeCompactor = isInteracting ? dragCompactor : stableCompactor;
+
+  const buildWidgetContext = useCallback(
+    (item: LayoutItem): WidgetRenderContext => {
+      const { widthPx, heightPx } = widgetPixelSizeFromGridUnits({
+        gridWidthPx: width,
+        cols: DASHBOARD_GRID_COLS,
+        w: item.w ?? 1,
+        h: item.h ?? 1,
+        rowHeight: DASHBOARD_GRID_ROW_HEIGHT_PX,
+        gap: DASHBOARD_GRID_GAP_PX,
+      });
+      const mode: WidgetMode = getWidgetMode({
+        gridW: item.w ?? 1,
+        gridH: item.h ?? 1,
+        widthPx,
+        heightPx,
+      });
+      return { mode, gridW: item.w ?? 1, gridH: item.h ?? 1, widthPx, heightPx };
+    },
+    [width],
+  );
 
   const weatherLabel = useMemo(() => weatherLabelFromCode(weather.code), [weather.code]);
   const weatherTemp = useMemo(() => (weather.tempC == null ? "—" : `${Math.round(weather.tempC)}°C`), [weather.tempC]);
@@ -2370,10 +2342,37 @@ function DashboardBody({
                 // Allow edge pulls (not just the corner) while respecting each widget's minW/minH.
                 handles: ["n", "s", "e", "w", "ne", "nw", "se", "sw"],
               }}
-              compactor={noCompactor}
-              onLayoutChange={(next) => {
+              compactor={activeCompactor}
+              onDragStart={() => {
+                if (!canEditLayout || !editMode) return;
+                setIsInteracting(true);
+              }}
+              onResizeStart={() => {
+                if (!canEditLayout || !editMode) return;
+                setIsInteracting(true);
+              }}
+              onDrag={(next) => {
+                if (!canEditLayout || !editMode) return;
+                // Keep UI responsive while dragging, but don't persist here.
+                setLayout(next as Layout);
+              }}
+              onResize={(next) => {
                 if (!canEditLayout || !editMode) return;
                 setLayout(next as Layout);
+              }}
+              onDragStop={(next) => {
+                if (!canEditLayout || !editMode) return;
+                setIsInteracting(false);
+                const compacted = stableCompactor.compact(next as Layout, DASHBOARD_GRID_COLS) as Layout;
+                setLayout(compacted);
+                persistLayout(compacted);
+              }}
+              onResizeStop={(next) => {
+                if (!canEditLayout || !editMode) return;
+                setIsInteracting(false);
+                const compacted = stableCompactor.compact(next as Layout, DASHBOARD_GRID_COLS) as Layout;
+                setLayout(compacted);
+                persistLayout(compacted);
               }}
             >
               {layout.map((item) => {
@@ -2450,14 +2449,18 @@ function DashboardBody({
                       className={["transition-transform", editMode ? "cursor-grab active:cursor-grabbing" : ""].join(" ")}
                     >
                       <WorkerDashCard title={cfg.title} headerRight={headerRight} className="h-full" styleOverride={styleOverride}>
-                        <DashboardCustomPeekWidget config={cfg} model={model} />
+                        <DashboardCustomPeekWidget config={cfg} model={model} mode={buildWidgetContext(item).mode} />
                       </WorkerDashCard>
                     </div>
                   );
                 }
 
                 const w = (widgetRegistry as Record<string, any>)[item.i] as
-                  | { title: string; accent: "yellow" | "red" | "blue" | "green" | "none"; render: () => ReactNode }
+                  | {
+                      title: string;
+                      accent: "yellow" | "red" | "blue" | "green" | "none";
+                      render: (ctx?: WidgetRenderContext) => ReactNode;
+                    }
                   | null
                   | undefined;
                 if (!w) return <div key={item.i} />;
@@ -2528,7 +2531,7 @@ function DashboardBody({
                       className={["h-full", item.i === "setup" ? "ds-scroll overflow-auto" : ""].join(" ")}
                       styleOverride={styleOverride}
                     >
-                      {w.render()}
+                      {w.render(buildWidgetContext(item))}
                     </WorkerDashCard>
                   </div>
                 );

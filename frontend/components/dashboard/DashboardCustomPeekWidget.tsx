@@ -7,6 +7,7 @@ import type { DashboardViewModel } from "@/components/dashboard/OperationalDashb
 import { TankIndicator } from "@/components/monitoring/TankIndicator";
 import { co2Tanks, poolControllers } from "@/lib/monitoringMockData";
 import { cn } from "@/lib/cn";
+import type { WidgetMode } from "@/components/dashboard/widgets/widgetSizing";
 
 const CO2_LEVEL_MAX = 1000;
 
@@ -23,25 +24,32 @@ function optBool(opts: Record<string, boolean | number> | undefined, key: string
 export function DashboardCustomPeekWidget({
   config,
   model,
+  mode = "md",
 }: {
   config: CustomDashboardWidgetConfig;
   model: DashboardViewModel;
+  mode?: WidgetMode;
 }) {
   const page = catalogPage(config.pageId);
   const href = page?.href ?? "/overview";
+  const dense = mode === "lg" || mode === "xl";
+  const compact = mode === "xs" || mode === "sm";
+  const sliceIds = compact ? config.sliceIds.slice(0, 2) : config.sliceIds;
+  const sectionGap = compact ? "space-y-3" : "space-y-5";
+  const bodyOverflow = compact ? "overflow-hidden" : "overflow-auto";
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-4">
+    <div className={cn("flex min-h-0 flex-1 flex-col", compact ? "gap-3" : "gap-4")}>
       <div className="flex flex-wrap items-start justify-between gap-2">
         <p className="text-sm font-semibold text-ds-foreground">{config.title}</p>
         <Link href={href} className="ds-link text-xs font-semibold">
           Open page →
         </Link>
       </div>
-      <div className="min-h-0 flex-1 space-y-5 overflow-auto">
-        {config.sliceIds.map((sid) => (
+      <div className={cn("min-h-0 flex-1", sectionGap, bodyOverflow)}>
+        {sliceIds.map((sid) => (
           <section key={sid} className="space-y-2 border-b border-ds-border pb-4 last:border-b-0 last:pb-0">
-            {renderSlice(config, model, sid)}
+            {renderSlice(config, model, sid, { dense, compact })}
           </section>
         ))}
       </div>
@@ -49,7 +57,12 @@ export function DashboardCustomPeekWidget({
   );
 }
 
-function renderSlice(config: CustomDashboardWidgetConfig, model: DashboardViewModel, sliceId: string) {
+function renderSlice(
+  config: CustomDashboardWidgetConfig,
+  model: DashboardViewModel,
+  sliceId: string,
+  ui: { dense: boolean; compact: boolean },
+) {
   const page = catalogPage(config.pageId);
   const slice = page?.slices.find((s) => s.id === sliceId);
   const label = slice?.label ?? sliceId;
@@ -68,7 +81,7 @@ function renderSlice(config: CustomDashboardWidgetConfig, model: DashboardViewMo
         <>
           <p className="text-[11px] font-semibold uppercase tracking-wider text-ds-muted">{label}</p>
           <div className="grid gap-2 sm:gap-3">
-            {poolControllers.slice(0, 4).map((c) => (
+            {poolControllers.slice(0, ui.dense ? 5 : ui.compact ? 2 : 4).map((c) => (
               <div key={c.id} className="rounded-lg border border-ds-border/70 bg-ds-secondary/35 px-3 py-2">
                 <div className="flex items-center justify-between gap-2">
                   <p className="truncate text-xs font-semibold text-ds-foreground">{c.name}</p>
@@ -134,7 +147,7 @@ function renderSlice(config: CustomDashboardWidgetConfig, model: DashboardViewMo
             <span className="text-xs text-ds-muted">Mock until sensors are wired</span>
           </div>
 
-          {showPerTank ? (
+          {showPerTank && !ui.compact ? (
             <div className="mt-3 flex flex-wrap items-end justify-center gap-x-6 gap-y-6 sm:gap-x-8">
               {co2Tanks.map((t) => (
                 <TankIndicator key={t.id} label={t.name} value={t.level} max={CO2_LEVEL_MAX} sublabel={t.location} />
@@ -186,7 +199,8 @@ function renderSlice(config: CustomDashboardWidgetConfig, model: DashboardViewMo
     }
     if (sliceId === "shopping_list") {
       const maxItems = Math.min(20, Math.max(1, Math.floor(optNum(opts, "maxItems", 5))));
-      const items = model.inventory.shoppingList.slice(0, maxItems);
+      const limit = ui.dense ? Math.max(6, maxItems) : ui.compact ? Math.min(3, maxItems) : maxItems;
+      const items = model.inventory.shoppingList.slice(0, limit);
       return (
         <>
           <p className="text-[11px] font-semibold uppercase tracking-wider text-ds-muted">{label}</p>
@@ -225,7 +239,8 @@ function renderSlice(config: CustomDashboardWidgetConfig, model: DashboardViewMo
     }
     if (sliceId === "wr_critical") {
       const maxItems = Math.min(12, Math.max(1, Math.floor(optNum(opts, "maxItems", 4))));
-      const rows = model.workRequests.critical.slice(0, maxItems);
+      const limit = ui.dense ? Math.max(6, maxItems) : ui.compact ? Math.min(2, maxItems) : maxItems;
+      const rows = model.workRequests.critical.slice(0, limit);
       return (
         <>
           <p className="text-[11px] font-semibold uppercase tracking-wider text-ds-muted">{label}</p>
