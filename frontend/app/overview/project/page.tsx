@@ -5,13 +5,10 @@ import { usePulseAuth } from "@/hooks/usePulseAuth";
 import { isApiMode } from "@/lib/api";
 import { DEFAULT_KIOSK_WIDGETS, loadKioskWidgetConfig, saveKioskWidgetConfig } from "@/lib/project-kiosk/kioskWidgetConfig";
 import type { KioskWidgetDefinition } from "@/lib/project-kiosk/types";
-import { buildProjectKioskView } from "@/lib/project-kiosk/buildProjectKioskView";
 import { useProjectKioskRealtime } from "@/lib/project-kiosk/useProjectKioskRealtime";
 import { navigateToPulseLogin, pulseApp } from "@/lib/pulse-app";
 import { readSession } from "@/lib/pulse-session";
-import { listProjects, getProject, listProjectActivity, type ProjectRow } from "@/lib/projectsService";
-import { apiFetch } from "@/lib/api";
-import type { PulseWorkerApi } from "@/lib/schedule/pulse-bridge";
+import { listProjects, type ProjectRow } from "@/lib/projectsService";
 import { UI } from "@/styles/ui";
 import { buttonVariants } from "@/styles/button-variants";
 import { cn } from "@/lib/cn";
@@ -30,8 +27,6 @@ export default function OverviewProjectTabPage() {
   const [projects, setProjects] = useState<ProjectRow[]>([]);
   const [selectedId, setSelectedId] = useState("");
   const [widgets, setWidgets] = useState<KioskWidgetDefinition[]>(DEFAULT_KIOSK_WIDGETS);
-  const [previewJson, setPreviewJson] = useState<string>("");
-  const [previewErr, setPreviewErr] = useState<string | null>(null);
 
   useEffect(() => {
     const s = readSession();
@@ -85,31 +80,12 @@ export default function OverviewProjectTabPage() {
     }
   }, [selectedId]);
 
-  const recomputePreview = useCallback(async () => {
-    if (!selectedId) return;
-    setPreviewErr(null);
-    try {
-      const [detail, activity, workers] = await Promise.all([
-        getProject(selectedId),
-        listProjectActivity(selectedId),
-        apiFetch<PulseWorkerApi[]>("/api/v1/pulse/workers"),
-      ]);
-      const view = buildProjectKioskView(detail, activity ?? [], workers ?? [], loadKioskWidgetConfig());
-      setPreviewJson(JSON.stringify(view, null, 2));
-    } catch (e: unknown) {
-      setPreviewErr(e instanceof Error ? e.message : "Preview failed");
-      setPreviewJson("");
-    }
-  }, [selectedId]);
-
-  useEffect(() => {
-    void recomputePreview();
-  }, [recomputePreview, widgets]);
-
   useProjectKioskRealtime({
     projectId: selectedId,
     enabled: Boolean(ready && session?.can_use_pm_features && selectedId),
-    onInvalidate: () => void recomputePreview(),
+    onInvalidate: () => {
+      // Keep widget/high-value state synced; view preview is intentionally hidden for now.
+    },
   });
 
   const openKiosk = () => {
@@ -123,8 +99,6 @@ export default function OverviewProjectTabPage() {
     setWidgets(w);
     saveKioskWidgetConfig(w);
   };
-
-  const selectedLabel = useMemo(() => projects.find((p) => p.id === selectedId)?.name ?? "", [projects, selectedId]);
 
   if (!ready || !session?.can_use_pm_features) {
     return (
@@ -188,25 +162,6 @@ export default function OverviewProjectTabPage() {
                 </li>
               ))}
             </ul>
-          </div>
-
-          <div className="mt-8 border-t border-ds-border pt-6">
-            <h2 className="text-sm font-bold text-ds-foreground">View model preview</h2>
-            <p className="mt-1 text-xs text-ds-muted">
-              Live shape from <code className="rounded bg-ds-secondary px-1">getProjectKioskView</code> for{" "}
-              <strong>{selectedLabel || "—"}</strong>.
-            </p>
-            {previewErr ? <p className="mt-2 text-sm text-ds-danger">{previewErr}</p> : null}
-            {previewJson ? (
-              <pre className="mt-3 max-h-[min(24rem,50vh)] overflow-auto rounded-lg border border-ds-border bg-black/80 p-3 text-[11px] leading-relaxed text-emerald-100/90">
-                {previewJson}
-              </pre>
-            ) : (
-              !previewErr && <p className="mt-2 text-sm text-ds-muted">Select a project to generate the view model.</p>
-            )}
-            <button type="button" className={`${BTN_SEC} mt-3`} disabled={!selectedId} onClick={() => void recomputePreview()}>
-              Refresh preview
-            </button>
           </div>
         </div>
       </div>
