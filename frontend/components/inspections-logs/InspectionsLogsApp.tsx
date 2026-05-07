@@ -207,16 +207,6 @@ export function InspectionsLogsApp() {
           }}
         >
           <span>Archive</span>
-          <span className="flex flex-wrap items-center gap-1" aria-label="Visible to roles">
-            {ARCHIVE_ROLE_TAGS.map((r) => (
-              <span
-                key={r.id}
-                className="rounded-md border border-ds-border/55 bg-ds-primary/45 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-ds-muted dark:bg-ds-secondary/80"
-              >
-                {r.label}
-              </span>
-            ))}
-          </span>
         </button>
       </nav>
 

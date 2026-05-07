@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from urllib.parse import urlparse
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
@@ -10,15 +11,22 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_company_user, get_db
 from app.core.company_logo_upload import normalize_logo_content_type
+from app.core.supabase_storage import create_signed_upload_url, public_object_url
 from app.core.pulse_storage import read_user_avatar_bytes, read_user_avatar_pending_bytes, write_user_avatar_bytes
 from app.core.auth.security import hash_password, verify_password
 from app.core.user_avatar_upload import INTERNAL_AVATAR_PATH, validate_logo_bytes
 from app.core.user_roles import user_has_any_role
 from app.models.domain import AvatarStatus, Company, User, UserRole
-from app.schemas.profile import ChangePasswordBody, ProfileAvatarUploadOut, ProfileSettingsPatch
+from app.schemas.profile import (
+    ChangePasswordBody,
+    ProfileAvatarSignedUploadOut,
+    ProfileAvatarUploadOut,
+    ProfileSettingsPatch,
+)
 
 router = APIRouter(prefix="/profile", tags=["profile"])
 
+_AVATAR_BUCKET = "avatars"
 
 @router.get("/avatar")
 async def get_my_avatar_file(
@@ -90,6 +98,45 @@ async def upload_my_avatar(
     return ProfileAvatarUploadOut(avatar_url=INTERNAL_AVATAR_PATH, message="Avatar updated")
 
 
+@router.post("/avatar/signed-upload", response_model=ProfileAvatarSignedUploadOut)
+async def create_my_avatar_signed_upload(
+    user: Annotated[User, Depends(get_current_company_user)],
+) -> ProfileAvatarSignedUploadOut:
+    """
+    Create a short-lived signed upload URL for the current user's avatar.
+
+    The client uploads directly to Supabase Storage at `avatars/{userId}/profile.webp`, overwriting existing content.
+    """
+    uid = str(user.id)
+    path = f"{uid}/profile.webp"
+    signed = await create_signed_upload_url(_AVATAR_BUCKET, path, expires_in=600, upsert=True)
+    public_url = public_object_url(_AVATAR_BUCKET, signed.path)
+    return ProfileAvatarSignedUploadOut(
+        bucket=_AVATAR_BUCKET,
+        path=signed.path,
+        token=signed.token,
+        signed_url=signed.signed_url,
+        public_url=public_url,
+    )
+
+
+def _avatar_url_safe_for_user(uid: str, url: str) -> bool:
+    s = (url or "").strip()
+    if not s:
+        return False
+    low = s.lower()
+    if low.startswith("http://") or low.startswith("https://"):
+        try:
+            parsed = urlparse(s)
+        except Exception:
+            return False
+        # Basic sanity: must end in /{uid}/profile.webp ignoring query.
+        path = (parsed.path or "").rstrip("/")
+        return path.endswith(f"/{uid}/profile.webp")
+    # Allow internal legacy storage path.
+    return s == INTERNAL_AVATAR_PATH
+
+
 @router.patch("/settings")
 async def patch_my_profile_settings(
     body: ProfileSettingsPatch,
@@ -106,6 +153,18 @@ async def patch_my_profile_settings(
         user.job_title = str(v).strip() or None if v is not None else None
     if "operational_role" in udata:
         user.operational_role = udata["operational_role"]
+    if "avatar_url" in udata:
+        v = udata["avatar_url"]
+        if v is None:
+            user.avatar_url = None
+        else:
+            s = str(v).strip()
+            if not s:
+                user.avatar_url = None
+            elif not _avatar_url_safe_for_user(str(user.id), s):
+                raise HTTPException(status_code=400, detail="Invalid avatar_url")
+            else:
+                user.avatar_url = s
 
     if body.company is not None:
         co_data = body.company.model_dump(exclude_unset=True)

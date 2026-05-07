@@ -215,6 +215,17 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("SCHEDULE_CACHE_TTL_SECONDS", "schedule_cache_ttl_seconds"),
     )
 
+    # --- Supabase Storage (avatars, attachments, media)
+    supabase_url: str = Field(default="", validation_alias=AliasChoices("SUPABASE_URL", "supabase_url"))
+    supabase_service_role_key: str = Field(
+        default="",
+        validation_alias=AliasChoices(
+            "SUPABASE_SERVICE_ROLE_KEY",
+            "SUPABASE_SERVICE_KEY",
+            "supabase_service_role_key",
+        ),
+    )
+
     @property
     def cors_origin_list(self) -> List[str]:
         """Browser Origin values: comma- or semicolon-separated, no paths or trailing slashes."""

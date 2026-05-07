@@ -5,13 +5,12 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { CompanyLogo } from "@/components/branding/CompanyLogo";
 import { useTheme } from "@/components/theme/ThemeProvider";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { UserProfileAvatarPreview } from "@/components/profile/UserProfileAvatarPreview";
+import { AvatarUpload } from "@/components/common/AvatarUpload";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
 import { apiFetch, refreshPulseUserFromServer } from "@/lib/api";
 import { uploadTenantCompanyLogoFile } from "@/lib/companyBrandingUpload";
 import { getImpersonationOverlayAccessToken } from "@/lib/impersonation-overlay-token";
 import { parseClientApiError } from "@/lib/parse-client-api-error";
-import { uploadProfileAvatarFile } from "@/lib/profileAvatarUpload";
 import { sessionHasAnyRole } from "@/lib/pulse-roles";
 import type { CompanySummary } from "@/lib/pulse-session";
 import { listProcedureAcknowledgments } from "@/lib/procedureAcknowledgments";
@@ -32,7 +31,6 @@ const OP_ROLES = ["worker", "manager", "supervisor"] as const;
 export function ProfileSettingsApp() {
   const { session } = usePulseAuth();
   const { theme } = useTheme();
-  const avatarRef = useRef<HTMLInputElement>(null);
   const logoRef = useRef<HTMLInputElement>(null);
 
   const [fullName, setFullName] = useState("");
@@ -49,7 +47,6 @@ export function ProfileSettingsApp() {
 
   const [saving, setSaving] = useState(false);
   const [pwBusy, setPwBusy] = useState(false);
-  const [avatarBusy, setAvatarBusy] = useState(false);
   const [logoBusy, setLogoBusy] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -128,27 +125,6 @@ export function ProfileSettingsApp() {
       setErr(parseClientApiError(e).message);
     } finally {
       setSaving(false);
-    }
-  }
-
-  async function onAvatarFile(f: File | null) {
-    if (!f) return;
-    setErr(null);
-    setAvatarBusy(true);
-    try {
-      await uploadProfileAvatarFile(f);
-      await refreshPulseUserFromServer();
-      setAvatarUrl("/api/v1/profile/avatar");
-      // `refreshPulseUserFromServer` returns early when the in-memory impersonation overlay is active
-      // (no `writeApiSession` → no `pulse-auth-change`). Still bump avatar resolution in that case.
-      if (typeof window !== "undefined" && getImpersonationOverlayAccessToken()) {
-        window.dispatchEvent(new Event("pulse-auth-change"));
-      }
-      setToast("Profile photo updated.");
-    } catch (e) {
-      setErr(parseClientApiError(e).message);
-    } finally {
-      setAvatarBusy(false);
     }
   }
 
@@ -238,33 +214,19 @@ export function ProfileSettingsApp() {
         <p className="mt-1 text-sm text-pulse-muted">Photo, name, and contact details.</p>
         <div className="mt-5 flex flex-col gap-6 sm:flex-row sm:items-start">
           <div className="flex flex-col items-center gap-3 sm:items-start">
-            <UserProfileAvatarPreview
-              avatarUrl={avatarUrl}
-              nameFallback={fullName || email}
-              sizeClassName="h-28 w-28"
+            <AvatarUpload
+              userId={session?.sub ?? ""}
+              currentAvatarUrl={avatarUrl}
+              displayName={fullName || email}
+              size="h-28 w-28"
+              onUploadComplete={(next) => {
+                setAvatarUrl(next);
+                if (typeof window !== "undefined" && getImpersonationOverlayAccessToken()) {
+                  window.dispatchEvent(new Event("pulse-auth-change"));
+                }
+                setToast("Profile photo updated.");
+              }}
             />
-            <input
-              ref={avatarRef}
-              type="file"
-              accept="image/jpeg,image/png,image/webp,image/gif"
-              className="hidden"
-              onChange={(e) => void onAvatarFile(e.target.files?.[0] ?? null)}
-            />
-            <button
-              type="button"
-              className={SECONDARY}
-              disabled={avatarBusy}
-              onClick={() => avatarRef.current?.click()}
-            >
-              {avatarBusy ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-                  Uploading...
-                </>
-              ) : (
-                "Change photo"
-              )}
-            </button>
           </div>
           <div className="min-w-0 flex-1 space-y-4">
             <div>

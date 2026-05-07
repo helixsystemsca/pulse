@@ -16,6 +16,7 @@ class CompanySettingsPatchInline(BaseModel):
 class ProfileSettingsPatch(BaseModel):
     full_name: Optional[str] = Field(None, max_length=255)
     job_title: Optional[str] = Field(None, max_length=255)
+    avatar_url: Optional[str] = Field(None, max_length=2048)
     #: Set to null to opt out of workforce operations.
     operational_role: Optional[str] = Field(None, max_length=32)
     company: Optional[CompanySettingsPatchInline] = None
@@ -33,6 +34,14 @@ class ProfileSettingsPatch(BaseModel):
 class ProfileAvatarUploadOut(BaseModel):
     avatar_url: str
     message: str = "Avatar updated"
+
+
+class ProfileAvatarSignedUploadOut(BaseModel):
+    bucket: str = "avatars"
+    path: str
+    token: str
+    signed_url: str
+    public_url: str
 
 
 class ChangePasswordBody(BaseModel):
