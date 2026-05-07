@@ -194,12 +194,9 @@ function GlassSection({
   return (
     <Card
       className={cn(
-        "relative overflow-hidden rounded-2xl border border-ds-border/50 bg-ds-primary/20 shadow-sm backdrop-blur-xl dark:bg-ds-secondary/25 dark:shadow-[0_8px_32px_rgba(0,0,0,0.12)]",
+        "relative overflow-hidden rounded-2xl border border-ds-border/50 bg-ds-primary shadow-sm dark:bg-ds-secondary",
       )}
     >
-      <div className="pointer-events-none absolute inset-0 opacity-[0.55] [mask-image:radial-gradient(70%_50%_at_15%_0%,black,transparent)]">
-        <div className="h-full w-full bg-[linear-gradient(145deg,color-mix(in_srgb,var(--ds-accent)_14%,transparent),color-mix(in_srgb,var(--ds-accent)_6%,transparent),transparent)]" />
-      </div>
       <div className="relative p-5 sm:p-6">
         <div
           id={stickyId}
@@ -656,10 +653,7 @@ export function VehicleInspectionSheet({
             "relative overflow-hidden rounded-2xl border border-ds-border/50 bg-white/35 shadow-sm backdrop-blur-xl dark:bg-ds-secondary/30",
           )}
         >
-          <div className={cn("absolute inset-0 bg-[linear-gradient(135deg,var(--tw-gradient-stops))]", headerGlow)} />
-          <div className="pointer-events-none absolute inset-0 opacity-50 [mask-image:radial-gradient(55%_45%_at_20%_0%,black,transparent)]">
-            <div className="h-full w-full bg-[linear-gradient(135deg,rgba(255,255,255,0.35),transparent_50%)] dark:bg-[linear-gradient(135deg,rgba(255,255,255,0.06),transparent_50%)]" />
-          </div>
+          {/* header gradients removed (solid surface) */}
 
           <div className="relative p-5 sm:p-6">
             <div className="flex flex-wrap items-start justify-between gap-4">
@@ -686,7 +680,7 @@ export function VehicleInspectionSheet({
                   </div>
                   <div className="h-2 w-full overflow-hidden rounded-full border border-ds-border/50 bg-stone-100/80 dark:bg-stone-900/40">
                     <motion.div
-                      className="h-full rounded-full bg-[linear-gradient(90deg,rgba(245,245,244,0.95),color-mix(in_srgb,var(--ds-accent)_88%,#0d9488))]"
+                      className="h-full rounded-full bg-[var(--ds-accent)]"
                       initial={{ width: 0 }}
                       animate={{ width: `${completion}%` }}
                       transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
