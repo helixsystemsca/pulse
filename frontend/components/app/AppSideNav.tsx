@@ -64,6 +64,14 @@ const ICONS: Record<PulseSidebarIcon, LucideIcon> = {
 const COLLAPSED_RAIL_W = "w-[var(--pulse-sidebar-collapsed-width)]";
 const ICON_COL = `h-11 ${COLLAPSED_RAIL_W} shrink-0`;
 
+/**
+ * Row highlight: identical for hover and active — subtle tint on {@link --ds-surface-primary}
+ * (platinum in light theme).
+ */
+const SIDENAV_ROW_ACTIVE_HOVER =
+  "bg-[color-mix(in_srgb,var(--ds-text-primary)_10%,var(--ds-surface-primary))]";
+const SIDENAV_ROW_ACTIVE_HOVER_HOVER = "hover:bg-[color-mix(in_srgb,var(--ds-text-primary)_10%,var(--ds-surface-primary))]";
+
 /** Team Management: tenant feature `team_management` + route permission; roster delegation still grants access. */
 function showWorkersNavItem(session: PulseAuthSession, isSystemAdmin: boolean): boolean {
   if (isSystemAdmin) return true;
@@ -127,18 +135,14 @@ export function AppSideNav() {
       onMouseEnter={() => setRailExpanded(true)}
       onMouseLeave={() => setRailExpanded(false)}
       className={cn(
-        "group/sidenav hidden lg:flex fixed left-0 z-[40] flex-col overflow-x-hidden overflow-y-auto rounded-none border-r border-[var(--ds-sidebar-tile-divider)]",
+        "group/sidenav hidden lg:flex fixed left-0 z-[40] flex-col overflow-x-hidden overflow-y-auto rounded-none border-r border-ds-border bg-ds-surface-primary",
         "top-[var(--pulse-header-height)] h-[calc(100vh-var(--pulse-header-height))]",
         "shadow-[var(--ds-shadow-card)] motion-safe:transition-[width] motion-safe:duration-300 motion-safe:ease-in-out",
         railExpanded ? "w-[var(--pulse-sidebar-expanded-width)]" : COLLAPSED_RAIL_W,
       )}
-      style={{ background: "var(--ds-sidebar-rail-gradient)" }}
       aria-label={systemRail ? "System navigation" : "App navigation"}
     >
-      <nav
-        className="flex min-h-0 flex-1 flex-col border-t border-[var(--ds-sidebar-tile-divider)]"
-        aria-label="Navigation"
-      >
+      <nav className="flex min-h-0 flex-1 flex-col border-t border-ds-border" aria-label="Navigation">
         {items.map((item) => {
           const active = isPulseNavActive(item.href, pathname);
           const Icon = ICONS[item.icon];
@@ -150,17 +154,14 @@ export function AppSideNav() {
               data-guided-tour-anchor={item.href === "/dashboard/maintenance" ? "sidebar-work-requests" : undefined}
               className={cn(
                 "group/nav box-border flex min-h-11 h-11 w-full shrink-0 items-stretch rounded-none border-0 outline-none transition-colors duration-200 ease-out motion-reduce:transition-none",
-                active
-                  ? "bg-[var(--ds-sidebar-tile-active-bg)]"
-                  : "bg-transparent hover:bg-[var(--ds-sidebar-tile-hover-solid)]",
-                "focus-visible:ring-2 focus-visible:ring-[var(--ds-sidebar-tile-hover-solid)] focus-visible:ring-offset-0",
+                active ? SIDENAV_ROW_ACTIVE_HOVER : cn("bg-transparent", SIDENAV_ROW_ACTIVE_HOVER_HOVER),
+                "focus-visible:ring-2 focus-visible:ring-[var(--ds-focus-ring)] focus-visible:ring-offset-0",
               )}
             >
               <span
                 className={cn(
                   ICON_COL,
-                  "flex items-center justify-center",
-                  active ? "text-[var(--ds-sidebar-tile-active-fg)]" : "text-white",
+                  "flex items-center justify-center text-[var(--ds-text-primary)]",
                 )}
               >
                 <Icon className="h-[17px] w-[17px] shrink-0" strokeWidth={2} aria-hidden />
@@ -168,9 +169,7 @@ export function AppSideNav() {
               <span
                 className={cn(
                   labelVisibility,
-                  "flex min-w-0 flex-1 items-center pr-3",
-                  active ? "text-[var(--ds-sidebar-tile-active-fg)]" : "text-white",
-                  !active && "group-hover/nav:text-white",
+                  "flex min-w-0 flex-1 items-center pr-3 text-[var(--ds-text-primary)]",
                 )}
               >
                 {item.label}

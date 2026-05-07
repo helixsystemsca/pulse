@@ -102,7 +102,7 @@ export function AppNavbar({ notificationCount = 0, messagesCount = 0 }: AppNavba
             )}
           >
             <span className="font-extrabold tracking-[0.06em]">Panorama</span>
-            <span className="font-semibold tracking-[0.06em]">Pulse</span>
+            <span className="font-light tracking-[0.06em]">Pulse</span>
           </Link>
         </div>
 
