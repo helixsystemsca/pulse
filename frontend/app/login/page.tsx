@@ -19,6 +19,7 @@ import {
 import { navigateAfterPulseLogin } from "@/lib/pulse-app";
 import { PULSE_BUILD_VERSION } from "@/lib/pulse-build-version";
 import { mailtoInfo, mailtoSupport } from "@/lib/helix-emails";
+import { isMicrosoftSsoConfigured, startMicrosoftSignIn } from "@/lib/microsoft-auth";
 import { cn } from "@/lib/cn";
 import { buttonVariants } from "@/styles/button-variants";
 
@@ -41,6 +42,17 @@ function LoginRipples() {
   );
 }
 
+function MicrosoftLogo({ className = "" }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 23 23" aria-hidden="true">
+      <path fill="#f25022" d="M1 1h10v10H1z" />
+      <path fill="#7fba00" d="M12 1h10v10H12z" />
+      <path fill="#00a4ef" d="M1 12h10v10H1z" />
+      <path fill="#ffb900" d="M12 12h10v10H12z" />
+    </svg>
+  );
+}
+
 export default function LoginPage() {
   const [hydrated, setHydrated] = useState(false);
   const [logoVisible, setLogoVisible] = useState(false);
@@ -52,11 +64,18 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [microsoftSubmitting, setMicrosoftSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<{ identifier?: string; password?: string }>({});
+  const microsoftConfigured = isMicrosoftSsoConfigured();
 
   useEffect(() => {
     setHydrated(true);
+    const params = new URLSearchParams(window.location.search);
+    const authError = params.get("auth_error");
+    if (authError) {
+      setFormError(authError);
+    }
     if (!isLoggedIn()) return;
     const s = readSession();
     if (s) navigateAfterPulseLogin(s);
@@ -142,6 +161,20 @@ export default function LoginPage() {
     }
   }
 
+  async function onMicrosoftSignIn() {
+    setFormError(null);
+    setFieldErrors({});
+    setMicrosoftSubmitting(true);
+    try {
+      const result = await startMicrosoftSignIn();
+      if (!result.ok) {
+        setFormError(result.message);
+      }
+    } finally {
+      setMicrosoftSubmitting(false);
+    }
+  }
+
   const labelClass =
     "mb-1 block text-[11px] font-bold uppercase tracking-[0.14em] text-[color-mix(in_srgb,var(--ds-text-primary)_72%,transparent)] dark:text-ds-muted";
   const inputShell =
@@ -222,7 +255,7 @@ export default function LoginPage() {
                         placeholder="operator@company.com"
                         value={identifier}
                         onChange={(e) => setIdentifier(e.target.value)}
-                        disabled={submitting}
+                        disabled={submitting || microsoftSubmitting}
                         aria-invalid={Boolean(fieldErrors.identifier)}
                         className={`${inputInner} ${fieldErrors.identifier ? "text-ds-danger placeholder:text-ds-danger/70" : ""}`}
                       />
@@ -246,7 +279,7 @@ export default function LoginPage() {
                         placeholder="••••••••"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
-                        disabled={submitting}
+                        disabled={submitting || microsoftSubmitting}
                         aria-invalid={Boolean(fieldErrors.password)}
                         className={`${inputInner} pr-1 ${fieldErrors.password ? "text-ds-danger" : ""}`}
                       />
@@ -255,7 +288,7 @@ export default function LoginPage() {
                         onClick={() => setShowPassword((s) => !s)}
                         className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-[#4c6085]/70 transition-colors hover:bg-[color-mix(in_srgb,#4c6085_12%,transparent)] hover:text-[#3f5274] dark:text-ds-muted dark:hover:bg-ds-interactive-hover dark:hover:text-ds-foreground"
                         aria-label={showPassword ? "Hide password" : "Show password"}
-                        disabled={submitting}
+                        disabled={submitting || microsoftSubmitting}
                       >
                         {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                       </button>
@@ -268,7 +301,7 @@ export default function LoginPage() {
 
                   <button
                     type="submit"
-                    disabled={submitting}
+                    disabled={submitting || microsoftSubmitting}
                     className={cn(
                       buttonVariants({ surface: "light", intent: "accent" }),
                       "w-full gap-2 py-2.5 text-xs font-extrabold uppercase tracking-[0.18em] disabled:opacity-60",
@@ -296,6 +329,29 @@ export default function LoginPage() {
                     </span>
                   </div>
                 </form>
+
+                <div className="my-4 flex items-center gap-3" aria-hidden="true">
+                  <div className="h-px flex-1 bg-[color-mix(in_srgb,#4c6085_14%,transparent)] dark:bg-ds-border" />
+                  <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-[color-mix(in_srgb,var(--ds-text-primary)_38%,transparent)] dark:text-ds-muted">
+                    OR
+                  </span>
+                  <div className="h-px flex-1 bg-[color-mix(in_srgb,#4c6085_14%,transparent)] dark:bg-ds-border" />
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => void onMicrosoftSignIn()}
+                  disabled={submitting || microsoftSubmitting || !microsoftConfigured}
+                  title={microsoftConfigured ? "Sign in with Microsoft" : "Microsoft sign-in is not configured"}
+                  className="flex w-full items-center justify-center gap-3 rounded-xl border border-[color-mix(in_srgb,#4c6085_18%,transparent)] bg-white px-4 py-2.5 text-sm font-extrabold text-[#2f3d52] shadow-sm transition-colors hover:border-[color-mix(in_srgb,#4c6085_30%,transparent)] hover:bg-[color-mix(in_srgb,#cfe8ff_36%,#ffffff)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#4c6085] disabled:cursor-not-allowed disabled:opacity-60 dark:border-ds-border dark:bg-ds-secondary dark:text-ds-foreground dark:hover:bg-ds-interactive-hover"
+                >
+                  {microsoftSubmitting ? (
+                    <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                  ) : (
+                    <MicrosoftLogo className="h-4 w-4 shrink-0" />
+                  )}
+                  Sign in with Microsoft
+                </button>
               </div>
             </div>
 

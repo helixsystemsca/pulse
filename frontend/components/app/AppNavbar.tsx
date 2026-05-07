@@ -11,6 +11,7 @@ import { usePulseAuth } from "@/hooks/usePulseAuth";
 import { navigateToPulseLogin, pulseApp, pulsePostLoginPath, pulseRoutes } from "@/lib/pulse-app";
 import { dispatchPulseLogoutSuccessUi, pulseLogoutNavigationDelayMs } from "@/lib/pulse-logout-ui";
 import { clearSession } from "@/lib/pulse-session";
+import { signOutSupabaseIdentity } from "@/lib/microsoft-auth";
 import { UserProfileAvatarPreview } from "@/components/profile/UserProfileAvatarPreview";
 import {
   canAccessCompanyConfiguration,
@@ -73,6 +74,7 @@ export function AppNavbar({ notificationCount = 0, messagesCount = 0 }: AppNavba
     setUserOpen(false);
     dispatchPulseLogoutSuccessUi();
     window.setTimeout(() => {
+      signOutSupabaseIdentity();
       clearSession();
       navigateToPulseLogin();
     }, pulseLogoutNavigationDelayMs());

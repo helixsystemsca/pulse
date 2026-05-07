@@ -252,6 +252,17 @@ export function ProfileSettingsApp() {
                 readOnly
                 title="Contact your administrator to change the sign-in email."
               />
+              {session.auth_provider === "microsoft" ? (
+                <div className="mt-2 inline-flex items-center gap-2 rounded-full border border-[#4c6085]/15 bg-[#cfe8ff]/45 px-3 py-1 text-xs font-bold text-[#2f3d52] dark:border-ds-border dark:bg-ds-secondary dark:text-ds-foreground">
+                  <span className="grid h-3.5 w-3.5 grid-cols-2 gap-[1px]" aria-hidden>
+                    <span className="bg-[#f25022]" />
+                    <span className="bg-[#7fba00]" />
+                    <span className="bg-[#00a4ef]" />
+                    <span className="bg-[#ffb900]" />
+                  </span>
+                  Signed in with Microsoft
+                </div>
+              ) : null}
             </div>
             <div>
               <label className={LABEL} htmlFor="profile-job">

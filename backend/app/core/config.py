@@ -217,6 +217,14 @@ class Settings(BaseSettings):
 
     # --- Supabase Storage (avatars, attachments, media)
     supabase_url: str = Field(default="", validation_alias=AliasChoices("SUPABASE_URL", "supabase_url"))
+    supabase_anon_key: str = Field(
+        default="",
+        validation_alias=AliasChoices(
+            "SUPABASE_ANON_KEY",
+            "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+            "supabase_anon_key",
+        ),
+    )
     supabase_service_role_key: str = Field(
         default="",
         validation_alias=AliasChoices(

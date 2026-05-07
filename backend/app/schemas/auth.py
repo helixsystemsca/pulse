@@ -22,6 +22,10 @@ class LoginRequest(BaseModel):
     password: str = Field(..., min_length=8, max_length=128)
 
 
+class MicrosoftOAuthRequest(BaseModel):
+    access_token: str = Field(..., min_length=16, max_length=8192)
+
+
 class CompanySummaryOut(BaseModel):
     id: str
     name: str
@@ -39,6 +43,7 @@ class UserOut(BaseModel):
     role: str
     roles: list[str] = []
     full_name: Optional[str]
+    auth_provider: str = "email"
     avatar_url: Optional[str] = None
     avatar_status: Optional[str] = None
     job_title: Optional[str] = None

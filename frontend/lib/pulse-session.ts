@@ -13,7 +13,7 @@ import { applyServerTimeFromUserOut } from "@/lib/serverTime";
 
 export const PULSE_AUTH_STORAGE_KEY = "pulse_auth_v1";
 
-const PUBLIC_PATH_PREFIXES = ["/login", "/invite", "/reset-password"] as const;
+const PUBLIC_PATH_PREFIXES = ["/login", "/auth/callback", "/invite", "/reset-password"] as const;
 
 /** Routes where we do not redirect to sign-in when the stored session is cleared (login, invite, password reset). */
 export function isPulsePublicPath(pathname: string | null): boolean {
@@ -49,6 +49,7 @@ export type PulseAuthSession = {
   roles?: string[];
   company_id?: string | null;
   full_name?: string | null;
+  auth_provider?: "email" | "microsoft" | string;
   avatar_url?: string | null;
   job_title?: string | null;
   /** Workforce / monitoring capacity (`worker` | `manager` | `supervisor`), separate from permission roles. */
@@ -87,6 +88,7 @@ export type UserOut = {
   role: string;
   roles?: string[];
   full_name?: string | null;
+  auth_provider?: "email" | "microsoft" | string;
   avatar_url?: string | null;
   job_title?: string | null;
   operational_role?: string | null;
@@ -244,6 +246,7 @@ export function writeApiSession(
     roles: user.roles?.length ? user.roles : user.role ? [user.role] : undefined,
     company_id: user.company_id ?? null,
     full_name: user.full_name ?? null,
+    auth_provider: user.auth_provider ?? "email",
     avatar_url: user.avatar_url ?? null,
     job_title: user.job_title ?? null,
     operational_role: user.operational_role ?? null,

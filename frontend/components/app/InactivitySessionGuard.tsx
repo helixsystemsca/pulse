@@ -8,6 +8,7 @@ import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
 import { navigateToPulseLogin } from "@/lib/pulse-app";
+import { signOutSupabaseIdentity } from "@/lib/microsoft-auth";
 import { clearSession, isPulsePublicPath } from "@/lib/pulse-session";
 
 const THROTTLE_MS = 1000;
@@ -36,6 +37,7 @@ export function InactivitySessionGuard() {
   const performLogout = useCallback(() => {
     clearTimers();
     setWarningOpen(false);
+    signOutSupabaseIdentity();
     clearSession();
     navigateToPulseLogin();
   }, [clearTimers]);
