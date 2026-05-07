@@ -98,11 +98,11 @@ export function AppNavbar({ notificationCount = 0, messagesCount = 0 }: AppNavba
           <Link
             href={logoHref}
             className={cn(
-              "font-panoramaBrand inline-flex min-w-0 items-baseline gap-[0.06em] whitespace-nowrap text-[clamp(1.05rem,2.1vw,1.45rem)] uppercase leading-none text-white drop-shadow-sm",
+              "font-panoramaBrand inline-flex min-w-0 items-baseline gap-[0.06em] whitespace-nowrap text-[clamp(1.05rem,2.1vw,1.45rem)] uppercase leading-none text-white",
             )}
           >
             <span className="font-normal tracking-[0.06em]">Panorama</span>
-            <span className="font-light tracking-[0.06em]">Pulse</span>
+            <span className="font-extralight tracking-[0.06em]">Pulse</span>
           </Link>
         </div>
 

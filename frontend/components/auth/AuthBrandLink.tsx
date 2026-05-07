@@ -12,7 +12,7 @@ export function AuthBrandLink() {
       </span>
       <span className="inline-flex items-baseline gap-[0.06em] leading-none tracking-normal">
         <span className="font-normal tracking-[0.06em]">Panorama</span>
-        <span className="font-light tracking-[0.06em]">Pulse</span>
+        <span className="font-extralight tracking-[0.06em]">Pulse</span>
       </span>
     </Link>
   );

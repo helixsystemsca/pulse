@@ -14,9 +14,9 @@ const config: Config = {
         body: ["var(--font-app)", "system-ui", "sans-serif"],
         /** Prefer `font-body`; `font-headline` kept for legacy classnames — same Inter stack. */
         headline: ["var(--font-app)", "system-ui", "sans-serif"],
-        /** Manrope — app chrome wordmark only (`PANORAMA PULSE` in `AppNavbar`). */
+        /** Poppins — app chrome wordmark only (`PANORAMA PULSE` in `AppNavbar`). */
         manrope: ["var(--font-headline)", "var(--font-app)", "system-ui", "sans-serif"],
-        /** Same as `manrope`; top bar product lockup uses Manrope + uppercase in components. */
+        /** Same as `manrope`; top bar product lockup uses Poppins + uppercase in components. */
         panoramaBrand: ["var(--font-headline)", "var(--font-app)", "system-ui", "sans-serif"],
       },
       colors: {

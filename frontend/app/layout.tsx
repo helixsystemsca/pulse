@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter, Manrope } from "next/font/google";
+import { Inter, Poppins } from "next/font/google";
 import Script from "next/script";
 import { ThemeRoot } from "@/components/theme/ThemeRoot";
 import { THEME_STORAGE_KEY } from "@/lib/theme-constants";
@@ -15,10 +15,10 @@ const inter = Inter({
   display: "swap",
 });
 
-/** Manrope — top bar “PANORAMA PULSE” wordmark only; all other UI uses Inter (`--font-app`). */
-const manrope = Manrope({
+/** Poppins — top bar “PANORAMA PULSE” wordmark only; all other UI uses Inter (`--font-app`). */
+const poppins = Poppins({
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700", "800"],
+  weight: ["200", "300", "400", "500", "600", "700", "800"],
   variable: "--font-headline",
   display: "swap",
 });
@@ -45,7 +45,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html
       lang="en"
-      className={`${inter.variable} ${manrope.variable}`}
+      className={`${inter.variable} ${poppins.variable}`}
       suppressHydrationWarning
     >
       <body className="font-body antialiased bg-ds-bg text-ds-foreground">
