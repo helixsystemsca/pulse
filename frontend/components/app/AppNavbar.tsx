@@ -86,7 +86,7 @@ export function AppNavbar({ notificationCount = 0, messagesCount = 0 }: AppNavba
       className="flex w-full flex-col"
       style={{
         height: "var(--pulse-header-height)",
-        background: "var(--pulse-header-radial-gradient)",
+        background: "var(--ds-palette-iron-grey)",
       }}
       aria-label="Main"
     >

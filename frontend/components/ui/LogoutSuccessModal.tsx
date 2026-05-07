@@ -51,7 +51,7 @@ export function LogoutSuccessModal() {
           role="dialog"
           aria-modal="true"
           aria-labelledby={titleId}
-          className="pointer-events-none fixed inset-0 z-[200] flex min-h-[100dvh] items-center justify-center p-6"
+          className="auth-background pointer-events-none fixed inset-0 z-[200] flex min-h-[100dvh] items-center justify-center p-6"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}

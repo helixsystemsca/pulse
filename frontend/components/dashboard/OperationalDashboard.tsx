@@ -112,9 +112,9 @@ function sanitizeLayoutForGrid(layout: Layout, cols: number): Layout {
 
 /** Operations dashboard header: icon tools get a teal hover inside the unified actions card. */
 const OPS_DASH_HEADER_TOOL =
-  "h-10 w-10 min-h-0 rounded-lg !border-2 border-ds-border bg-transparent !px-0 !py-0 text-ds-foreground shadow-none transition-colors hover:!border-[var(--ds-accent)] hover:!bg-[color-mix(in_srgb,var(--ds-accent)_14%,var(--ds-bg))] hover:!text-[var(--ds-accent)] focus-visible:!outline-[var(--ds-accent)] dark:hover:!bg-[color-mix(in_srgb,var(--ds-accent)_20%,transparent)]";
+  "h-10 w-10 min-h-0 rounded-lg !border-2 !border-ds-border bg-transparent !px-0 !py-0 text-ds-foreground shadow-none ring-0 transition-colors hover:!border-[var(--ds-accent)] hover:!bg-[color-mix(in_srgb,var(--ds-accent)_14%,var(--ds-bg))] hover:!text-[var(--ds-accent)] focus-visible:!outline focus-visible:!outline-2 focus-visible:!outline-offset-2 focus-visible:!outline-[var(--ds-accent)] dark:hover:!bg-[color-mix(in_srgb,var(--ds-accent)_20%,transparent)]";
 const OPS_DASH_HEADER_TOOL_ACTIVE =
-  "h-10 w-10 min-h-0 rounded-lg !border-2 !border-[var(--ds-accent)] !bg-[var(--ds-accent)] !px-0 !py-0 !text-white shadow-none transition-colors hover:!border-[var(--ds-accent)] hover:!bg-[color-mix(in_srgb,var(--ds-accent)_88%,#0f172a)] hover:!text-white";
+  "h-10 w-10 min-h-0 rounded-lg !border-0 !bg-[var(--ds-accent)] !px-0 !py-0 !text-white shadow-none ring-0 transition-colors hover:!border-0 hover:!bg-[color-mix(in_srgb,var(--ds-accent)_88%,#0f172a)] hover:!text-white focus-visible:!outline focus-visible:!outline-2 focus-visible:!outline-offset-2 focus-visible:!outline-white/80";
 
 function WorkerDashCard({
   title,
@@ -2252,7 +2252,7 @@ function DashboardBody({
           <div className="flex flex-wrap items-center justify-end gap-2">
             {headerShowFullscreen || headerShowLayoutTools || headerShowWelcome ? (
               <div
-                className="inline-flex max-w-full flex-wrap items-center gap-1 rounded-xl border border-ds-border bg-ds-primary p-1 shadow-sm dark:bg-ds-secondary/70"
+                className="inline-flex max-w-full flex-wrap items-center gap-1"
                 role="group"
                 aria-label="Dashboard header actions"
               >

@@ -27,7 +27,7 @@ html.pulse-welcome-blur [data-pulse-app-shell] {
    * App shell layout tokens (authoritative sizing + containment).
    * Keep header/sidebar/content aligned across Tailwind components.
    */
-  --pulse-header-height: 64px;
+  --pulse-header-height: 60px;
   --pulse-header-accent-height: 4px;
   --pulse-header-bar-height: calc(var(--pulse-header-height) - var(--pulse-header-accent-height));
   /* Single source of truth: matches the header logo column exactly. */
