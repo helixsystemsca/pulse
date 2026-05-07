@@ -4,6 +4,11 @@ import Link from "next/link";
 import type { CustomDashboardWidgetConfig } from "@/lib/dashboardPageWidgetCatalog";
 import { catalogPage } from "@/lib/dashboardPageWidgetCatalog";
 import type { DashboardViewModel } from "@/components/dashboard/OperationalDashboard";
+import { TankIndicator } from "@/components/monitoring/TankIndicator";
+import { co2Tanks, poolControllers } from "@/lib/monitoringMockData";
+import { cn } from "@/lib/cn";
+
+const CO2_LEVEL_MAX = 1000;
 
 function optNum(opts: Record<string, boolean | number> | undefined, key: string, fallback: number): number {
   const v = opts?.[key];
@@ -51,14 +56,91 @@ function renderSlice(config: CustomDashboardWidgetConfig, model: DashboardViewMo
   const opts = config.sliceOptions[sliceId] ?? {};
 
   if (config.pageId === "monitoring") {
-    if (sliceId === "pool_controllers" || sliceId === "co2_tanks") {
+    if (sliceId === "pool_controllers") {
+      const showChlorine = optBool(opts, "showChlorine", true);
+      const showPh = optBool(opts, "showPh", true);
+      const showFlow = optBool(opts, "showFlow", true);
+      const showTemp = optBool(opts, "showTemp", true);
+      const cols =
+        (showChlorine ? 1 : 0) + (showPh ? 1 : 0) + (showFlow ? 1 : 0) + (showTemp ? 1 : 0);
+
       return (
         <>
           <p className="text-[11px] font-semibold uppercase tracking-wider text-ds-muted">{label}</p>
-          <p className="text-sm text-ds-muted">
-            Monitoring widgets show your tenant&apos;s live data once sensors are connected. Add tiles after telemetry is
-            available.
-          </p>
+          <div className="grid gap-2 sm:gap-3">
+            {poolControllers.slice(0, 4).map((c) => (
+              <div key={c.id} className="rounded-lg border border-ds-border/70 bg-ds-secondary/35 px-3 py-2">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="truncate text-xs font-semibold text-ds-foreground">{c.name}</p>
+                  <span
+                    className={cn(
+                      "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide",
+                      c.co2FeederActive || c.chlorineFeederActive
+                        ? "bg-[color-mix(in_srgb,var(--ds-success)_18%,transparent)] text-ds-foreground"
+                        : "bg-ds-secondary text-ds-muted",
+                    )}
+                  >
+                    {c.co2FeederActive || c.chlorineFeederActive ? "Active" : "Idle"}
+                  </span>
+                </div>
+
+                <dl className={cn("mt-2 grid gap-2 text-[11px]", cols >= 3 ? "grid-cols-2" : "grid-cols-1")}>
+                  {showChlorine ? (
+                    <div className="flex items-baseline justify-between gap-2">
+                      <dt className="text-ds-muted">Chlorine</dt>
+                      <dd className="font-semibold tabular-nums text-ds-foreground">{c.chlorine} ppm</dd>
+                    </div>
+                  ) : null}
+                  {showPh ? (
+                    <div className="flex items-baseline justify-between gap-2">
+                      <dt className="text-ds-muted">pH</dt>
+                      <dd className="font-semibold tabular-nums text-ds-foreground">{c.ph}</dd>
+                    </div>
+                  ) : null}
+                  {showFlow ? (
+                    <div className="flex items-baseline justify-between gap-2">
+                      <dt className="text-ds-muted">Flow</dt>
+                      <dd className="font-semibold tabular-nums text-ds-foreground">{c.flow} gpm</dd>
+                    </div>
+                  ) : null}
+                  {showTemp ? (
+                    <div className="flex items-baseline justify-between gap-2">
+                      <dt className="text-ds-muted">Temp</dt>
+                      <dd className="font-semibold tabular-nums text-ds-foreground">{c.temp} °C</dd>
+                    </div>
+                  ) : null}
+                </dl>
+              </div>
+            ))}
+          </div>
+        </>
+      );
+    }
+
+    if (sliceId === "co2_tanks") {
+      const minLevel = Math.min(1000, Math.max(0, Math.floor(optNum(opts, "minLevel", 300))));
+      const showPerTank = optBool(opts, "showPerTank", true);
+      const allOk = co2Tanks.every((t) => t.level >= minLevel);
+      return (
+        <>
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-ds-muted">{label}</p>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-sm font-semibold text-ds-foreground">
+              <span className={cn("mr-2 inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide", allOk ? "app-badge-emerald" : "app-badge-amber")}>
+                {allOk ? "OK" : "Review"}
+              </span>
+              Healthy if every tank ≥ <span className="tabular-nums">{minLevel}</span>
+            </p>
+            <span className="text-xs text-ds-muted">Mock until sensors are wired</span>
+          </div>
+
+          {showPerTank ? (
+            <div className="mt-3 flex flex-wrap items-end justify-center gap-x-6 gap-y-6 sm:gap-x-8">
+              {co2Tanks.map((t) => (
+                <TankIndicator key={t.id} label={t.name} value={t.level} max={CO2_LEVEL_MAX} sublabel={t.location} />
+              ))}
+            </div>
+          ) : null}
         </>
       );
     }

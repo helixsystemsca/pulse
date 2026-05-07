@@ -126,6 +126,17 @@ export type CustomDashboardWidgetConfig = {
 };
 
 export const DASHBOARD_LAYOUT_STORAGE_V2 = "dashboard_layout_v2";
+
+export type DashboardWidgetStyleOverride = {
+  /** Used as a tint for the frosted surface. Any valid CSS color string. */
+  backgroundColor?: string;
+  /** Foreground color for the widget chrome (title + default text). Any valid CSS color string. */
+  textColor?: string;
+  /** CSS font-family string (e.g. `var(--font-app)` or `Poppins, system-ui, sans-serif`). */
+  fontFamily?: string;
+};
+
+export const DASHBOARD_WIDGET_STYLE_STORAGE = "dashboard_widget_styles_v1";
 export const DASHBOARD_LAYOUT_STORAGE_V1 = "dashboard_layout_v1";
 export const DASHBOARD_CUSTOM_WIDGETS_STORAGE = "dashboard_custom_widgets_v1";
 

@@ -1,5 +1,5 @@
 /**
- * App canvas behind cards: clean white base (light) with neutral grid / soft depth (dark).
+ * App canvas behind cards: premium neutral spotlight gradient (consistent across pages).
  */
 export function PulseThemedBackground() {
   return (
@@ -8,15 +8,21 @@ export function PulseThemedBackground() {
       <div
         className="absolute inset-0 dark:hidden"
         style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32'%3E%3Cg fill='none' stroke='%23000000' stroke-width='0.75' stroke-opacity='0.05'%3E%3Cpath d='M16 6v20M6 16h20'/%3E%3C/g%3E%3C/svg%3E")`,
-          backgroundSize: "32px 32px",
+          background:
+            "radial-gradient(1200px 700px at 18% 12%, rgba(255,255,255,0.92), rgba(255,255,255,0.35) 55%, transparent 72%)," +
+            "radial-gradient(900px 520px at 85% 10%, rgba(76,84,84,0.08), transparent 60%)," +
+            "radial-gradient(1000px 650px at 70% 92%, rgba(30,168,150,0.10), transparent 62%)," +
+            "linear-gradient(180deg, rgba(250,251,252,1) 0%, rgba(244,246,248,1) 55%, rgba(239,242,245,1) 100%)",
         }}
       />
       <div
         className="absolute inset-0 hidden dark:block"
         style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32'%3E%3Cg fill='none' stroke='%23ffffff' stroke-width='0.75' stroke-opacity='0.06'%3E%3Cpath d='M16 6v20M6 16h20'/%3E%3C/g%3E%3C/svg%3E")`,
-          backgroundSize: "32px 32px",
+          background:
+            "radial-gradient(1200px 700px at 18% 12%, rgba(255,255,255,0.10), transparent 60%)," +
+            "radial-gradient(900px 560px at 85% 10%, rgba(43,196,176,0.14), transparent 62%)," +
+            "radial-gradient(1100px 700px at 70% 95%, rgba(227,182,85,0.10), transparent 60%)," +
+            "linear-gradient(180deg, rgba(11,15,20,1) 0%, rgba(12,16,21,1) 55%, rgba(9,12,16,1) 100%)",
         }}
       />
       <svg
@@ -32,24 +38,6 @@ export function PulseThemedBackground() {
           <path vectorEffect="nonScalingStroke" strokeWidth={1.05} opacity={0.24} d="M -4 62 C 18 72, 38 52, 58 64 S 92 58, 108 68" />
         </g>
       </svg>
-      <div
-        className="absolute inset-0 dark:hidden"
-        style={{
-          background: `radial-gradient(ellipse 78% 58% at 100% 0%, color-mix(in srgb, var(--ds-success) 5%, transparent), transparent 52%)`,
-        }}
-      />
-      <div
-        className="absolute inset-0 hidden dark:block"
-        style={{
-          background: `radial-gradient(ellipse 85% 65% at 0% 0%, color-mix(in srgb, var(--ds-success) 16%, transparent), transparent 55%)`,
-        }}
-      />
-      <div
-        className="absolute inset-0 hidden dark:block"
-        style={{
-          background: `radial-gradient(ellipse 75% 60% at 100% 100%, color-mix(in srgb, var(--ds-warning) 12%, transparent), transparent 48%)`,
-        }}
-      />
     </div>
   );
 }

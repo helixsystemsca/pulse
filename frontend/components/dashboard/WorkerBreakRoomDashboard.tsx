@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { AlertTriangle, Cloud, Monitor, ShieldAlert, Sparkles } from "lucide-react";
+import { AlertTriangle, Cloud, Monitor, Palette, ShieldAlert, Sparkles } from "lucide-react";
 
 import { DashboardAccentCard, DashboardColumnPanel } from "@/components/dashboard/DashboardChrome";
 import { Button } from "@/components/ui/Button";
@@ -17,6 +17,7 @@ import { pulseShiftsToSchedule, pulseWorkersToSchedule, type PulseZoneApi } from
 import type { Shift, Worker } from "@/lib/schedule/types";
 import { shiftBandForWindow } from "@/lib/schedule/shift-codes";
 import { UI } from "@/styles/ui";
+import { DASHBOARD_WIDGET_STYLE_STORAGE, type DashboardWidgetStyleOverride } from "@/lib/dashboardPageWidgetCatalog";
 
 type Props = {
   kiosk?: boolean;
@@ -357,6 +358,9 @@ export function WorkerBreakRoomDashboard({ kiosk = false }: Props) {
   useEffect(() => {
     if (!canEdit) setEditMode(false);
   }, [canEdit]);
+  const [widgetStyles, setWidgetStyles] = useState<Record<string, DashboardWidgetStyleOverride>>({});
+  const [styleEditorOpen, setStyleEditorOpen] = useState(false);
+  const [styleEditorTarget, setStyleEditorTarget] = useState<{ id: string; title: string } | null>(null);
   const [layoutHydrated, setLayoutHydrated] = useState(false);
   const defaultLayout = useMemo(
     (): Layout => [
@@ -402,6 +406,32 @@ export function WorkerBreakRoomDashboard({ kiosk = false }: Props) {
       /* ignore */
     }
   }, [layout, layoutHydrated, DASH_LAYOUT_STORAGE]);
+
+  const widgetStyleStorageKey = useMemo(() => {
+    const mode = kiosk ? "kiosk" : "standard";
+    return `${DASHBOARD_WIDGET_STYLE_STORAGE}_worker_${mode}`;
+  }, [kiosk]);
+
+  useEffect(() => {
+    if (!mounted) return;
+    try {
+      const raw = window.localStorage.getItem(widgetStyleStorageKey);
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as Record<string, DashboardWidgetStyleOverride>;
+      if (parsed && typeof parsed === "object") setWidgetStyles(parsed);
+    } catch {
+      /* ignore */
+    }
+  }, [mounted, widgetStyleStorageKey]);
+
+  useEffect(() => {
+    if (!layoutHydrated) return;
+    try {
+      window.localStorage.setItem(widgetStyleStorageKey, JSON.stringify(widgetStyles));
+    } catch {
+      /* ignore */
+    }
+  }, [layoutHydrated, widgetStyles, widgetStyleStorageKey]);
 
   return (
     <div className={cn(DASH.page, "space-y-6")}>
@@ -506,7 +536,7 @@ export function WorkerBreakRoomDashboard({ kiosk = false }: Props) {
               }}
             >
               <div key="who" className={editMode ? "cursor-grab active:cursor-grabbing" : ""}>
-                <DashboardAccentCard mutedAccent innerClassName="space-y-4 h-full">
+                <DashboardAccentCard mutedAccent innerClassName="space-y-4 h-full" styleOverride={widgetStyles.who}>
                   <div className="flex flex-wrap items-end justify-between gap-3">
                     <div>
                       <p className={UI.header}>Who’s on shift</p>
@@ -514,6 +544,21 @@ export function WorkerBreakRoomDashboard({ kiosk = false }: Props) {
                     </div>
                     <div className="flex items-center gap-2">
                       <p className={`text-xs font-semibold ${UI.subheader}`}>{loading ? "Loading…" : `${todaysWork.length} scheduled`}</p>
+                      {canEdit && editMode ? (
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          className="h-8 w-8 min-w-0 px-0"
+                          onClick={() => {
+                            setStyleEditorTarget({ id: "who", title: "Who’s on shift" });
+                            setStyleEditorOpen(true);
+                          }}
+                          aria-label="Widget style"
+                          title="Widget style"
+                        >
+                          <Palette className="h-4 w-4" aria-hidden />
+                        </Button>
+                      ) : null}
                       {canEdit && editMode ? (
                         <span className="dashboard-drag-handle select-none border border-gray-800 bg-gray-900 px-2 py-1 text-[11px] font-semibold text-white">
                           Drag
@@ -563,7 +608,7 @@ export function WorkerBreakRoomDashboard({ kiosk = false }: Props) {
               </div>
 
               <div key="assignments" className={editMode ? "cursor-grab active:cursor-grabbing" : ""}>
-                <DashboardAccentCard mutedAccent innerClassName="space-y-4 h-full">
+                <DashboardAccentCard mutedAccent innerClassName="space-y-4 h-full" styleOverride={widgetStyles.assignments}>
                   <div className="flex flex-wrap items-end justify-between gap-3">
                     <div>
                       <p className={UI.header}>Assignments</p>
@@ -571,6 +616,21 @@ export function WorkerBreakRoomDashboard({ kiosk = false }: Props) {
                     </div>
                     <div className="flex items-center gap-2">
                       <p className={`text-xs font-semibold ${UI.subheader}`}>Today</p>
+                      {canEdit && editMode ? (
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          className="h-8 w-8 min-w-0 px-0"
+                          onClick={() => {
+                            setStyleEditorTarget({ id: "assignments", title: "Assignments" });
+                            setStyleEditorOpen(true);
+                          }}
+                          aria-label="Widget style"
+                          title="Widget style"
+                        >
+                          <Palette className="h-4 w-4" aria-hidden />
+                        </Button>
+                      ) : null}
                       {canEdit && editMode ? (
                         <span className="dashboard-drag-handle select-none border border-gray-800 bg-gray-900 px-2 py-1 text-[11px] font-semibold text-white">
                           Drag
@@ -604,11 +664,26 @@ export function WorkerBreakRoomDashboard({ kiosk = false }: Props) {
               </div>
 
               <div key="schedule" className={editMode ? "cursor-grab active:cursor-grabbing" : ""}>
-                <DashboardAccentCard mutedAccent innerClassName="space-y-4 h-full">
+                <DashboardAccentCard mutedAccent innerClassName="space-y-4 h-full" styleOverride={widgetStyles.schedule}>
                   <div className="flex items-center justify-between gap-3">
                     <p className={UI.header}>Facility schedule</p>
                     <div className="flex items-center gap-2">
                       <span className={`text-xs font-semibold tabular-nums ${UI.subheader}`}>{timeInBc(now)}</span>
+                      {canEdit && editMode ? (
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          className="h-8 w-8 min-w-0 px-0"
+                          onClick={() => {
+                            setStyleEditorTarget({ id: "schedule", title: "Facility schedule" });
+                            setStyleEditorOpen(true);
+                          }}
+                          aria-label="Widget style"
+                          title="Widget style"
+                        >
+                          <Palette className="h-4 w-4" aria-hidden />
+                        </Button>
+                      ) : null}
                       {canEdit && editMode ? (
                         <span className="dashboard-drag-handle select-none border border-gray-800 bg-gray-900 px-2 py-1 text-[11px] font-semibold text-white">
                           Drag
@@ -668,7 +743,12 @@ export function WorkerBreakRoomDashboard({ kiosk = false }: Props) {
               </div>
 
               <div key="cadence" className={editMode ? "cursor-grab active:cursor-grabbing" : ""}>
-                <DashboardColumnPanel title="Ice & facility cadence" accent="dusk" className="h-full">
+                <DashboardColumnPanel
+                  title="Ice & facility cadence"
+                  accent="dusk"
+                  className="h-full"
+                  styleOverride={widgetStyles.cadence}
+                >
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <p className={cn(UI.header, "leading-snug")}>Set-ups • Ice cleans • Takedowns</p>
@@ -677,25 +757,55 @@ export function WorkerBreakRoomDashboard({ kiosk = false }: Props) {
                       </p>
                     </div>
                     {canEdit && editMode ? (
-                      <span className="dashboard-drag-handle mt-0.5 select-none border border-gray-800 bg-gray-900 px-2 py-1 text-[11px] font-semibold text-white">
-                        Drag
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          className="h-8 w-8 min-w-0 px-0"
+                          onClick={() => {
+                            setStyleEditorTarget({ id: "cadence", title: "Ice & facility cadence" });
+                            setStyleEditorOpen(true);
+                          }}
+                          aria-label="Widget style"
+                          title="Widget style"
+                        >
+                          <Palette className="h-4 w-4" aria-hidden />
+                        </Button>
+                        <span className="dashboard-drag-handle mt-0.5 select-none border border-gray-800 bg-gray-900 px-2 py-1 text-[11px] font-semibold text-white">
+                          Drag
+                        </span>
+                      </div>
                     ) : null}
                   </div>
                 </DashboardColumnPanel>
               </div>
 
               <div key="notes" className={editMode ? "cursor-grab active:cursor-grabbing" : ""}>
-                <DashboardColumnPanel title="Notes" accent="muted" className="h-full">
+                <DashboardColumnPanel title="Notes" accent="muted" className="h-full" styleOverride={widgetStyles.notes}>
                   <div className="flex items-start justify-between gap-3">
                     <p className={cn("text-sm leading-relaxed", UI.subheader)}>
                       This panel is intentionally “kiosk safe” (large text, high contrast). Next we can wire real-time data and
                       critical alerts into the modal above.
                     </p>
                     {canEdit && editMode ? (
-                      <span className="dashboard-drag-handle mt-0.5 select-none border border-gray-800 bg-gray-900 px-2 py-1 text-[11px] font-semibold text-white">
-                        Drag
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          className="h-8 w-8 min-w-0 px-0"
+                          onClick={() => {
+                            setStyleEditorTarget({ id: "notes", title: "Notes" });
+                            setStyleEditorOpen(true);
+                          }}
+                          aria-label="Widget style"
+                          title="Widget style"
+                        >
+                          <Palette className="h-4 w-4" aria-hidden />
+                        </Button>
+                        <span className="dashboard-drag-handle mt-0.5 select-none border border-gray-800 bg-gray-900 px-2 py-1 text-[11px] font-semibold text-white">
+                          Drag
+                        </span>
+                      </div>
                     ) : null}
                   </div>
                 </DashboardColumnPanel>
@@ -704,6 +814,99 @@ export function WorkerBreakRoomDashboard({ kiosk = false }: Props) {
           ) : null}
         </div>
       </div>
+
+      {styleEditorOpen && styleEditorTarget ? (
+        <div className="fixed inset-0 z-[240] flex items-center justify-center p-4">
+          <div className="ds-modal-backdrop absolute inset-0" onClick={() => setStyleEditorOpen(false)} aria-hidden />
+          <Card className="relative z-10 w-full max-w-md border border-ds-border shadow-[var(--ds-shadow-diffuse)]">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-base font-semibold text-ds-foreground">Widget style</p>
+                <p className="mt-1 text-sm font-medium text-ds-muted">{styleEditorTarget.title}</p>
+              </div>
+              <Button type="button" variant="secondary" onClick={() => setStyleEditorOpen(false)} className="h-9 px-3">
+                Close
+              </Button>
+            </div>
+            <div className="mt-4 space-y-4">
+              <div className="space-y-1.5">
+                <p className="text-xs font-semibold uppercase tracking-wide text-ds-muted">Font</p>
+                <select
+                  className="app-field !py-2"
+                  value={widgetStyles[styleEditorTarget.id]?.fontFamily ?? ""}
+                  onChange={(e) => {
+                    const value = e.target.value || undefined;
+                    setWidgetStyles((prev) => ({
+                      ...prev,
+                      [styleEditorTarget.id]: { ...(prev[styleEditorTarget.id] ?? {}), fontFamily: value },
+                    }));
+                  }}
+                >
+                  <option value="">Default</option>
+                  <option value="var(--font-app), system-ui, sans-serif">Inter (app default)</option>
+                  <option value="var(--font-headline), system-ui, sans-serif">Poppins</option>
+                  <option value="system-ui, sans-serif">System</option>
+                  <option value="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace">Monospace</option>
+                </select>
+              </div>
+
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-ds-muted">Background tint</p>
+                  <input
+                    type="color"
+                    className="h-10 w-full cursor-pointer rounded-md border border-ds-border bg-transparent"
+                    value={widgetStyles[styleEditorTarget.id]?.backgroundColor ?? "#ffffff"}
+                    onChange={(e) => {
+                      const value = e.target.value || undefined;
+                      setWidgetStyles((prev) => ({
+                        ...prev,
+                        [styleEditorTarget.id]: { ...(prev[styleEditorTarget.id] ?? {}), backgroundColor: value },
+                      }));
+                    }}
+                    aria-label="Widget background tint"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-ds-muted">Text color</p>
+                  <input
+                    type="color"
+                    className="h-10 w-full cursor-pointer rounded-md border border-ds-border bg-transparent"
+                    value={widgetStyles[styleEditorTarget.id]?.textColor ?? "#4c5454"}
+                    onChange={(e) => {
+                      const value = e.target.value || undefined;
+                      setWidgetStyles((prev) => ({
+                        ...prev,
+                        [styleEditorTarget.id]: { ...(prev[styleEditorTarget.id] ?? {}), textColor: value },
+                      }));
+                    }}
+                    aria-label="Widget text color"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between gap-3">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => {
+                    setWidgetStyles((prev) => {
+                      const next = { ...prev };
+                      delete next[styleEditorTarget.id];
+                      return next;
+                    });
+                  }}
+                >
+                  Reset to default
+                </Button>
+                <Button type="button" variant="primary" onClick={() => setStyleEditorOpen(false)}>
+                  Done
+                </Button>
+              </div>
+            </div>
+          </Card>
+        </div>
+      ) : null}
 
       <style jsx>{`
         .kiosk-marquee {

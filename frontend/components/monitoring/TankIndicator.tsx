@@ -41,13 +41,33 @@ export function TankIndicator({ label, value, max, sublabel }: TankIndicatorProp
     <div className="flex flex-col items-center">
       <div className="mb-1 h-2 w-6 rounded bg-ds-muted/30" aria-hidden />
       <div
-        className="relative h-40 w-16 overflow-hidden rounded-full border border-ds-border bg-ds-secondary/60"
+        className="relative h-40 w-16 overflow-hidden rounded-full border border-ds-border bg-ds-secondary/60 shadow-[0_10px_24px_rgba(15,23,42,0.10)]"
         role="img"
         aria-label={`${label} indicator`}
       >
+        {/* Glass highlight */}
+        <div
+          className="pointer-events-none absolute inset-0"
+          style={{
+            background:
+              "linear-gradient(120deg, rgba(255,255,255,0.28) 0%, rgba(255,255,255,0.10) 35%, rgba(255,255,255,0.0) 60%)",
+          }}
+          aria-hidden
+        />
         <div
           className={`absolute bottom-0 left-0 right-0 transition-all duration-300 ${statusColors[status]}`}
           style={{ height: `${percent}%` }}
+          aria-hidden
+        />
+        {/* Liquid sheen */}
+        <div
+          className="pointer-events-none absolute bottom-0 left-0 right-0"
+          style={{
+            height: `${percent}%`,
+            background:
+              "linear-gradient(90deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.0) 35%, rgba(255,255,255,0.12) 70%, rgba(255,255,255,0.0) 100%)",
+            mixBlendMode: "overlay",
+          }}
           aria-hidden
         />
         <div className="absolute inset-0 flex items-center justify-center">

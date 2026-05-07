@@ -1,9 +1,10 @@
 "use client";
 
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { motion } from "framer-motion";
 import { DASH } from "@/styles/dashboardTheme";
 import { cn } from "@/lib/cn";
+import type { DashboardWidgetStyleOverride } from "@/lib/dashboardPageWidgetCatalog";
 
 function KioskRotationCountdownRing({ durationMs, cycleKey }: { durationMs: number; cycleKey: number }) {
   const r = 15;
@@ -42,15 +43,30 @@ export function DashboardAccentCard({
   className,
   mutedAccent,
   innerClassName,
+  styleOverride,
 }: {
   children: ReactNode;
   className?: string;
   /** Softer top rule instead of brand gradient. */
   mutedAccent?: boolean;
   innerClassName?: string;
+  styleOverride?: DashboardWidgetStyleOverride;
 }) {
+  const styleVars: CSSProperties = {
+    ...(styleOverride?.backgroundColor ? ({ ["--widget-tint" as any]: styleOverride.backgroundColor } as any) : null),
+    ...(styleOverride?.textColor ? ({ ["--widget-fg" as any]: styleOverride.textColor } as any) : null),
+    ...(styleOverride?.fontFamily ? ({ fontFamily: styleOverride.fontFamily } as any) : null),
+  };
   return (
-    <div className={cn(DASH.cardBase, className)}>
+    <div
+      style={styleVars}
+      className={cn(
+        DASH.cardBase,
+        "text-[var(--widget-fg,var(--ds-text-primary))] bg-[color-mix(in_srgb,var(--widget-tint,white)_18%,transparent)]",
+        "dark:bg-[color-mix(in_srgb,var(--widget-tint,white)_10%,transparent)]",
+        className,
+      )}
+    >
       <div className={mutedAccent ? DASH.accentBarMuted : DASH.accentBar} aria-hidden />
       <div className={cn(DASH.cardInner, innerClassName)}>{children}</div>
     </div>
@@ -63,12 +79,19 @@ export function DashboardColumnPanel({
   accent = "muted",
   children,
   className,
+  styleOverride,
 }: {
   title: string;
   accent?: "muted" | "teal" | "danger" | "success" | "dusk";
   children: ReactNode;
   className?: string;
+  styleOverride?: DashboardWidgetStyleOverride;
 }) {
+  const styleVars: CSSProperties = {
+    ...(styleOverride?.backgroundColor ? ({ ["--widget-tint" as any]: styleOverride.backgroundColor } as any) : null),
+    ...(styleOverride?.textColor ? ({ ["--widget-fg" as any]: styleOverride.textColor } as any) : null),
+    ...(styleOverride?.fontFamily ? ({ fontFamily: styleOverride.fontFamily } as any) : null),
+  };
   const strip =
     accent === "teal"
       ? "bg-[color-mix(in_srgb,var(--ds-accent)_88%,transparent)]"
@@ -80,7 +103,14 @@ export function DashboardColumnPanel({
             ? "bg-[color-mix(in_srgb,var(--ds-accent-dusk)_70%,transparent)]"
             : "bg-ds-border";
   return (
-    <div className={cn(DASH.cardBase, "flex h-full min-h-0 flex-col", className)}>
+    <div
+      style={styleVars}
+      className={cn(
+        DASH.cardBase,
+        "flex h-full min-h-0 flex-col text-[var(--widget-fg,var(--ds-text-primary))] bg-[color-mix(in_srgb,var(--widget-tint,white)_18%,transparent)] dark:bg-[color-mix(in_srgb,var(--widget-tint,white)_10%,transparent)]",
+        className,
+      )}
+    >
       <div className={cn("h-[3px] w-full shrink-0", strip)} aria-hidden />
       <div className="flex min-h-0 flex-1 flex-col p-3">
         <p className={DASH.sectionLabel}>{title}</p>

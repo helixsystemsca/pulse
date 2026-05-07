@@ -11,6 +11,7 @@ import {
   Monitor,
   Minus,
   Package,
+  Palette,
   Pencil,
   Plus,
   Radio,
@@ -35,7 +36,9 @@ import { getServerDate, getServerNow } from "@/lib/serverTime";
 import { useResolvedAvatarSrc } from "@/lib/useResolvedAvatarSrc";
 import {
   DASHBOARD_CUSTOM_WIDGETS_STORAGE,
+  DASHBOARD_WIDGET_STYLE_STORAGE,
   type CustomDashboardWidgetConfig,
+  type DashboardWidgetStyleOverride,
 } from "@/lib/dashboardPageWidgetCatalog";
 import {
   localScheduleDateKey,
@@ -53,12 +56,12 @@ import "react-resizable/css/styles.css";
 
 type AlertPriority = "critical" | "high" | "medium" | "low";
 
-/** Fixed logical columns — 8-wide grid fits more small widgets per row. */
-const DASHBOARD_GRID_COLS = 8;
-/** Vertical pitch (~half of legacy 140px for a denser board). */
-const DASHBOARD_GRID_ROW_HEIGHT_PX = 72;
-/** Horizontal + vertical gutter between cards. */
-const DASHBOARD_GRID_GAP_PX = 18;
+/** Fixed logical columns — 16-wide grid for 1x1/2x2 sizing and smaller base tiles. */
+const DASHBOARD_GRID_COLS = 16;
+/** Vertical pitch: half of prior (yields ~25% tile area at same w/h). */
+const DASHBOARD_GRID_ROW_HEIGHT_PX = 36;
+/** Horizontal + vertical gutter between cards (scaled down with the grid). */
+const DASHBOARD_GRID_GAP_PX = 9;
 
 function layoutItemsCollide(a: LayoutItem, b: LayoutItem): boolean {
   if (a.i === b.i) return false;
@@ -121,22 +124,44 @@ function WorkerDashCard({
   headerRight,
   children,
   className = "",
+  styleOverride,
 }: {
   title: string;
   headerRight?: ReactNode;
   children: ReactNode;
   className?: string;
+  styleOverride?: DashboardWidgetStyleOverride;
 }) {
+  const styleVars: React.CSSProperties = {
+    ...(styleOverride?.backgroundColor ? ({ ["--widget-tint" as any]: styleOverride.backgroundColor } as any) : null),
+    ...(styleOverride?.textColor ? ({ ["--widget-fg" as any]: styleOverride.textColor } as any) : null),
+    ...(styleOverride?.fontFamily ? ({ fontFamily: styleOverride.fontFamily } as any) : null),
+  };
   return (
     <div
+      style={styleVars}
       className={cn(
-        "flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-ds-border/70 bg-[color-mix(in_srgb,var(--ds-primary)_88%,transparent)] shadow-[0_1px_0_rgba(255,255,255,0.65)] dark:bg-ds-secondary/35 dark:shadow-none",
+        [
+          "flex h-full min-h-0 flex-col overflow-hidden rounded-xl border shadow-sm",
+          "border-white/35 bg-white/55 text-[var(--widget-fg,var(--ds-text-primary))] backdrop-blur-xl",
+          "supports-[backdrop-filter]:bg-white/45",
+          "dark:border-white/10 dark:bg-white/5 dark:text-[var(--widget-fg,var(--ds-text-primary))] dark:backdrop-blur-2xl",
+          "dark:supports-[backdrop-filter]:bg-white/6",
+          "bg-[color-mix(in_srgb,var(--widget-tint,white)_22%,transparent)]",
+          "dark:bg-[color-mix(in_srgb,var(--widget-tint,white)_10%,transparent)]",
+        ].join(" "),
         className,
       )}
     >
-      <div className="flex shrink-0 items-start justify-between gap-2 border-b border-ds-border/55 px-2.5 py-1.5 sm:px-3 sm:py-2">
-        <p className="min-w-0 text-[11px] font-bold uppercase tracking-[0.14em] text-ds-muted">{title}</p>
-        {headerRight ? <div className="shrink-0 text-[10px] font-semibold text-ds-muted">{headerRight}</div> : null}
+      <div className="flex shrink-0 items-start justify-between gap-2 border-b border-white/25 px-2.5 py-1.5 sm:px-3 sm:py-2 dark:border-white/10">
+        <p className="min-w-0 text-[11px] font-bold uppercase tracking-[0.14em] text-[color-mix(in_srgb,var(--widget-fg,var(--ds-text-primary))_65%,transparent)]">
+          {title}
+        </p>
+        {headerRight ? (
+          <div className="shrink-0 text-[10px] font-semibold text-[color-mix(in_srgb,var(--widget-fg,var(--ds-text-primary))_58%,transparent)]">
+            {headerRight}
+          </div>
+        ) : null}
       </div>
       <div className="min-h-0 flex-1 px-2.5 py-2 sm:px-3 sm:py-2.5">{children}</div>
     </div>
@@ -1242,8 +1267,8 @@ function DashboardBody({
 
   const layoutStorageKey = useMemo(() => {
     const mode = isKiosk ? "kiosk" : "standard";
-    /** v5: 8-column grid + denser default tile heights (v4 was 12-col). */
-    return `pulse_dashboard_layout_v5_${dashboardContext}_${mode}`;
+    /** v6: 16-column grid + smaller base tile unit (v5 was 8-col). */
+    return `pulse_dashboard_layout_v6_${dashboardContext}_${mode}`;
   }, [dashboardContext, isKiosk]);
 
   const customWidgetStorageKey = useMemo(() => {
@@ -1263,6 +1288,9 @@ function DashboardBody({
   const [peekWizardMode, setPeekWizardMode] = useState<"create" | "edit">("create");
   const [peekWizardInitial, setPeekWizardInitial] = useState<CustomDashboardWidgetConfig | null>(null);
   const [customConfigs, setCustomConfigs] = useState<Record<string, CustomDashboardWidgetConfig>>({});
+  const [widgetStyles, setWidgetStyles] = useState<Record<string, DashboardWidgetStyleOverride>>({});
+  const [styleEditorOpen, setStyleEditorOpen] = useState(false);
+  const [styleEditorTarget, setStyleEditorTarget] = useState<{ id: string; title: string } | null>(null);
   const [layoutHydrated, setLayoutHydrated] = useState(false);
   const { width, containerRef, mounted } = useContainerWidth({ initialWidth: 1200 });
 
@@ -1660,36 +1688,14 @@ function DashboardBody({
         title: "Workforce",
         accent: "blue" as const,
         render: () => (
-          <div className="space-y-3">
+          <div className="flex min-h-0 flex-1 flex-col gap-3">
             <div>
               <p className="text-xs font-semibold text-ds-foreground">Today – {model.workforce.dateLabel}</p>
               <p className="mt-0.5 text-[11px] leading-snug text-ds-muted">{model.workforce.summaryLine}</p>
             </div>
 
-            <div className="space-y-2.5">
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-wider text-ds-success">On site</p>
-                <div className="mt-1 flex flex-wrap gap-2">
-                  {model.workforce.onSite.length === 0 ? (
-                    <p className="text-xs text-ds-muted">No one on site</p>
-                  ) : (
-                    model.workforce.onSite.map((b) => (
-                      <WorkforceBubbleStack
-                        key={b.id}
-                        bubble={b}
-                        faceClassName={onsiteAvatarClass()}
-                        badges={
-                          <>
-                            {b.badge ? <WorkforceRoleLetterBadge letter={b.badge} /> : null}
-                            <WorkforceStatusDot color="green" />
-                          </>
-                        }
-                      />
-                    ))
-                  )}
-                </div>
-              </div>
-
+            {/* Disable on-site telemetry preview; show schedule-only buckets. */}
+            <div className="min-h-0 flex-1 space-y-2.5 overflow-auto pr-1">
               <div>
                 <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--ds-info)]">On shift</p>
                 <div className="mt-1 flex flex-wrap gap-2">
@@ -1745,12 +1751,7 @@ function DashboardBody({
                         key={b.id}
                         bubble={b}
                         faceClassName={scheduledAvatarClass()}
-                        badges={
-                          <>
-                            {b.badge ? <WorkforceRoleLetterBadge letter={b.badge} /> : null}
-                            <WorkforceStatusDot color="yellow" />
-                          </>
-                        }
+                        badges={b.badge ? <WorkforceRoleLetterBadge letter={b.badge} /> : null}
                       />
                     ))}
                   </div>
@@ -1759,7 +1760,7 @@ function DashboardBody({
 
               {model.workforce.offSite.length > 0 ? (
                 <div className="border-t border-ds-border/60 pt-2">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-ds-muted">Off site</p>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-ds-muted">Not scheduled / off site</p>
                   <div className="mt-1 flex flex-wrap gap-2 opacity-90">
                     {model.workforce.offSite.map((b) => (
                       <WorkforceBubbleStack
@@ -1785,97 +1786,93 @@ function DashboardBody({
         title: "Work Requests",
         accent: "red" as const,
         render: () => (
-          <>
+          <div className="min-h-0 flex-1 space-y-3 overflow-auto pr-0.5">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <span className="rounded-md bg-ds-secondary/80 px-2 py-1 text-[11px] font-bold text-ds-foreground">
-                {model.workRequests.awaitingCount} awaiting assignment
-              </span>
+              <div className="flex flex-wrap gap-1.5">
+                <div className="flex min-w-[5.5rem] items-baseline gap-1.5 rounded-md bg-ds-secondary/55 px-2 py-1 dark:bg-ds-secondary/40">
+                  <span className="text-[10px] font-semibold uppercase leading-none text-ds-muted">Awaiting</span>
+                  <span className="text-sm font-bold tabular-nums text-ds-foreground">{model.workRequests.awaitingCount}</span>
+                </div>
+                <div className="flex min-w-[5.5rem] items-baseline gap-1.5 rounded-md bg-[color-mix(in_srgb,var(--ds-danger)_10%,transparent)] px-2 py-1">
+                  <span className="text-[10px] font-semibold uppercase leading-none text-ds-danger">Critical</span>
+                  <span className="text-sm font-bold tabular-nums text-ds-foreground">{model.workRequests.critical.length}</span>
+                </div>
+              </div>
               <Link href={workOrdersHref} className="ds-link text-[11px] font-semibold">
                 Work orders →
               </Link>
             </div>
-            <div className="mt-3 flex flex-col gap-3">
+
+            <div className="space-y-1.5">
               {model.workRequests.newest ? (
-                <div className="border-b border-ds-border/50 pb-2">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-ds-muted">Newest</p>
-                  <div className="mt-1 flex flex-wrap items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="text-xs font-semibold text-ds-foreground">{model.workRequests.newest.title}</p>
-                      <p className="mt-0.5 text-[11px] text-ds-muted">{model.workRequests.newest.subtitle}</p>
-                    </div>
-                    <TagPill tag={model.workRequests.newest.tag} />
+                <div className="flex min-w-0 items-start justify-between gap-2 rounded-md border border-ds-border/35 py-1.5 pl-2 pr-1 text-xs">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-semibold text-ds-foreground">Newest: {model.workRequests.newest.title}</p>
+                    <p className="mt-0.5 truncate text-[11px] text-ds-muted">{model.workRequests.newest.subtitle}</p>
                   </div>
+                  <TagPill tag={model.workRequests.newest.tag} />
                 </div>
               ) : (
-                <p className="text-xs text-ds-muted">
-                  No open requests.{" "}
-                  <Link href={workOrdersHref} className="ds-link">
-                    Open work orders
-                  </Link>
-                </p>
+                <p className="text-xs text-ds-muted">No open requests.</p>
               )}
 
               {model.workRequests.oldest ? (
-                <div className="border-b border-ds-border/50 pb-2">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-ds-muted">Oldest</p>
-                  <div className="mt-1 flex flex-wrap items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="text-xs font-semibold text-ds-foreground">{model.workRequests.oldest.title}</p>
-                      <p className="mt-0.5 text-[11px] text-ds-muted">{model.workRequests.oldest.subtitle}</p>
-                    </div>
-                    <TagPill tag={model.workRequests.oldest.tag} />
+                <div className="flex min-w-0 items-start justify-between gap-2 rounded-md border border-ds-border/35 py-1.5 pl-2 pr-1 text-xs">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-semibold text-ds-foreground">Oldest: {model.workRequests.oldest.title}</p>
+                    <p className="mt-0.5 truncate text-[11px] text-ds-muted">{model.workRequests.oldest.subtitle}</p>
                   </div>
+                  <TagPill tag={model.workRequests.oldest.tag} />
                 </div>
               ) : null}
 
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-wider text-ds-danger">Critical</p>
-                {model.workRequests.critical.length === 0 ? (
-                  <p className="mt-1 text-xs text-ds-muted">None right now.</p>
-                ) : (
-                  <ul className="mt-1.5 space-y-1.5">
-                    {model.workRequests.critical.map((row) => (
-                      <li
-                        key={row.title}
-                        className="flex gap-2 rounded-md border-l-[3px] border-l-ds-danger bg-[color-mix(in_srgb,var(--ds-danger)_6%,transparent)] py-1.5 pl-2 pr-1"
-                      >
-                        <AlertTriangle className="h-4 w-4 shrink-0 text-ds-danger" aria-hidden />
-                        <div className="min-w-0 flex-1">
-                          <p className="text-xs font-bold text-ds-foreground">{row.title}</p>
-                          <p className="text-[11px] text-ds-muted">{row.subtitle}</p>
-                        </div>
-                        <span className="shrink-0 self-start rounded bg-red-100 px-1.5 py-0.5 text-[9px] font-bold uppercase text-red-800 dark:bg-red-950/50 dark:text-red-100">
-                          Urgent
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
+              {model.workRequests.critical.slice(0, 4).map((row) => (
+                <div
+                  key={row.title}
+                  className="flex min-w-0 gap-2 rounded-md border border-ds-border/35 py-1.5 pl-2 pr-1 text-xs border-l-[3px] border-l-ds-danger bg-[color-mix(in_srgb,var(--ds-danger)_6%,transparent)]"
+                >
+                  <AlertTriangle className="h-4 w-4 shrink-0 text-ds-danger" aria-hidden />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-semibold text-ds-foreground">{row.title}</p>
+                    <p className="mt-0.5 truncate text-[11px] text-ds-muted">{row.subtitle}</p>
+                  </div>
+                </div>
+              ))}
             </div>
-          </>
+          </div>
         ),
       },
       equipment: {
         title: "Equipment Update",
         accent: "none" as const,
         render: () => (
-          <>
-            <p className="text-lg font-bold tabular-nums text-ds-foreground sm:text-xl">
-              {model.equipment.activeCount}{" "}
-              <span className="text-sm font-semibold text-ds-muted">active tools</span>
-            </p>
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              <span className="rounded-md bg-ds-secondary/80 px-2 py-0.5 text-[11px] font-semibold text-ds-foreground">
-                {model.equipment.missingCount} missing
-              </span>
-              <span className="rounded-md bg-[color-mix(in_srgb,var(--ds-danger)_12%,transparent)] px-2 py-0.5 text-[11px] font-semibold text-ds-danger">
-                {model.equipment.outOfServiceCount} out of service
-              </span>
+          <div className="min-h-0 flex-1 space-y-3 overflow-auto pr-0.5">
+            <div className="flex flex-wrap gap-1.5">
+              {[
+                { label: "Active", value: model.equipment.activeCount, tone: "neutral" as const },
+                { label: "Missing", value: model.equipment.missingCount, tone: "muted" as const },
+                { label: "OOS", value: model.equipment.outOfServiceCount, tone: "danger" as const },
+              ].map((k) => (
+                <div
+                  key={k.label}
+                  className={cn(
+                    "flex min-w-[5.5rem] items-baseline gap-1.5 rounded-md px-2 py-1",
+                    k.tone === "danger"
+                      ? "bg-[color-mix(in_srgb,var(--ds-danger)_10%,transparent)]"
+                      : "bg-ds-secondary/55 dark:bg-ds-secondary/40",
+                  )}
+                >
+                  <span className={cn("text-[10px] font-semibold uppercase leading-none", k.tone === "danger" ? "text-ds-danger" : "text-ds-muted")}>
+                    {k.label}
+                  </span>
+                  <span className="text-sm font-bold tabular-nums text-ds-foreground">{k.value}</span>
+                </div>
+              ))}
             </div>
-            <div className="mt-3 flex flex-1 flex-col gap-2 border-t border-ds-border/50 pt-2">
+
+            <div className="space-y-1.5">
               {model.equipment.showZonePrompt && !zonePromptDismissed ? (
-                <div className="flex gap-2 rounded-md border-l-[3px] border-l-ds-warning bg-[color-mix(in_srgb,var(--ds-warning)_8%,transparent)] py-2 pl-2 pr-1">
+                <div className="flex gap-2 rounded-md border border-ds-border/35 py-1.5 pl-2 pr-1 text-xs border-l-[3px] border-l-ds-warning bg-[color-mix(in_srgb,var(--ds-warning)_8%,transparent)]">
                   <MapPin className="h-4 w-4 shrink-0 text-ds-warning" aria-hidden />
                   <div className="min-w-0 flex-1">
                     <p className="text-xs font-semibold leading-snug text-ds-foreground">
@@ -1896,20 +1893,20 @@ function DashboardBody({
                 </div>
               ) : null}
               {model.equipment.showBatteryNote ? (
-                <div className="flex gap-2 text-[11px] leading-snug text-ds-foreground">
+                <div className="flex min-w-0 gap-2 rounded-md border border-ds-border/35 py-1.5 pl-2 pr-1 text-xs">
                   <Battery className="h-4 w-4 shrink-0 text-ds-muted" aria-hidden />
                   <p className="min-w-0 text-ds-muted">Confirm beacon batteries and swaps before the next shift.</p>
                 </div>
               ) : null}
             </div>
-          </>
+          </div>
         ),
       },
       inventory: {
         title: "Inventory Status",
         accent: "green" as const,
         render: () => (
-          <div className="flex flex-1 flex-col gap-2.5">
+          <div className="min-h-0 flex-1 space-y-3 overflow-auto pr-0.5">
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
                 <p className="text-xs font-semibold text-ds-foreground">Consumables</p>
@@ -1929,7 +1926,7 @@ function DashboardBody({
             </div>
 
             {model.inventory.alert ? (
-              <div className="rounded-md border-l-[3px] border-l-ds-warning bg-[color-mix(in_srgb,var(--ds-warning)_8%,transparent)] py-2 pl-2 pr-1">
+              <div className="rounded-md border border-ds-border/35 py-1.5 pl-2 pr-1 text-xs border-l-[3px] border-l-ds-warning bg-[color-mix(in_srgb,var(--ds-warning)_8%,transparent)]">
                 <div className="flex items-start gap-2">
                   <Package className="h-4 w-4 shrink-0 text-ds-warning" aria-hidden />
                   <div className="min-w-0 flex-1">
@@ -1960,7 +1957,7 @@ function DashboardBody({
               <p className="text-xs text-ds-muted">No low-stock alerts.</p>
             )}
 
-            <div className="border-t border-ds-border/50 pt-2">
+            <div className="space-y-1.5">
               <p className="text-[10px] font-bold uppercase tracking-wider text-ds-muted">Shopping list</p>
               {model.inventory.shoppingList.length === 0 ? (
                 <p className="mt-1 text-xs text-ds-muted">Empty.</p>
@@ -2000,24 +1997,24 @@ function DashboardBody({
   }, [widgetRegistry]);
 
   const defaultLayout = useMemo((): Layout => {
-    /** 8-column grid; heights ~half of prior 12-col defaults for denser tiles. */
+    /** 16-column grid (v6): keep the same visual layout by scaling v5 coords by 2. */
     const leadershipBand: Layout = [
-      { i: "todays_focus", x: 0, y: 0, w: 2, h: 5, minW: 2, minH: 3 },
-      { i: "leadership_overview", x: 2, y: 0, w: 4, h: 5, minW: 2, minH: 3 },
-      { i: "team_snapshot", x: 6, y: 0, w: 2, h: 5, minW: 2, minH: 3 },
+      { i: "todays_focus", x: 0, y: 0, w: 4, h: 10, minW: 2, minH: 4 },
+      { i: "leadership_overview", x: 4, y: 0, w: 8, h: 10, minW: 4, minH: 4 },
+      { i: "team_snapshot", x: 12, y: 0, w: 4, h: 10, minW: 2, minH: 4 },
     ];
     const core: Layout = [
-      { i: "alerts", x: 0, y: 5, w: 8, h: 2, minW: 3, minH: 2 },
-      { i: "workforce", x: 0, y: 7, w: 2, h: 2, minW: 2, minH: 2 },
-      { i: "inventory", x: 2, y: 7, w: 3, h: 2, minW: 2, minH: 2 },
-      { i: "equipment", x: 5, y: 7, w: 3, h: 2, minW: 2, minH: 2 },
-      { i: "workRequests", x: 0, y: 9, w: 8, h: 2, minW: 3, minH: 2 },
-      { i: "xp", x: 0, y: 11, w: 8, h: 2, minW: 3, minH: 2 },
+      { i: "alerts", x: 0, y: 10, w: 16, h: 4, minW: 6, minH: 3 },
+      { i: "workforce", x: 0, y: 14, w: 4, h: 4, minW: 2, minH: 2 },
+      { i: "inventory", x: 4, y: 14, w: 6, h: 4, minW: 2, minH: 2 },
+      { i: "equipment", x: 10, y: 14, w: 6, h: 4, minW: 2, minH: 2 },
+      { i: "workRequests", x: 0, y: 18, w: 16, h: 4, minW: 6, minH: 3 },
+      { i: "xp", x: 0, y: 22, w: 16, h: 4, minW: 6, minH: 3 },
     ];
     if (!widgetRegistry.setup) return [...leadershipBand, ...core];
-    const setupOffset = 2;
+    const setupOffset = 4;
     return [
-      { i: "setup", x: 0, y: 0, w: 8, h: setupOffset, minW: 3, minH: 2 },
+      { i: "setup", x: 0, y: 0, w: 16, h: setupOffset, minW: 6, minH: 3 },
       ...leadershipBand.map((it) => ({ ...it, y: it.y + setupOffset })),
       ...core.map((it) => ({ ...it, y: it.y + setupOffset })),
     ];
@@ -2080,6 +2077,32 @@ function DashboardBody({
       /* ignore */
     }
   }, [customConfigs, customWidgetStorageKey, layoutHydrated]);
+
+  const widgetStyleStorageKey = useMemo(() => {
+    const mode = isKiosk ? "kiosk" : "standard";
+    return `${DASHBOARD_WIDGET_STYLE_STORAGE}_${dashboardContext}_${mode}`;
+  }, [dashboardContext, isKiosk]);
+
+  useEffect(() => {
+    if (!mounted) return;
+    try {
+      const raw = window.localStorage.getItem(widgetStyleStorageKey);
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as Record<string, DashboardWidgetStyleOverride>;
+      if (parsed && typeof parsed === "object") setWidgetStyles(parsed);
+    } catch {
+      /* ignore */
+    }
+  }, [mounted, widgetStyleStorageKey]);
+
+  useEffect(() => {
+    if (!layoutHydrated) return;
+    try {
+      window.localStorage.setItem(widgetStyleStorageKey, JSON.stringify(widgetStyles));
+    } catch {
+      /* ignore */
+    }
+  }, [layoutHydrated, widgetStyles, widgetStyleStorageKey]);
 
   const layoutKeys = useMemo(() => new Set(layout.map((l) => l.i)), [layout]);
   const availableToAdd = useMemo(() => allWidgetKeys.filter((k) => !layoutKeys.has(k)), [allWidgetKeys, layoutKeys]);
@@ -2354,6 +2377,7 @@ function DashboardBody({
               }}
             >
               {layout.map((item) => {
+                const styleOverride = widgetStyles[item.i];
                 if (item.i.startsWith("cw_")) {
                   const cfg = customConfigs[item.i];
                   if (!cfg) return <div key={item.i} />;
@@ -2373,6 +2397,21 @@ function DashboardBody({
                           title="Customize"
                         >
                           <Settings className="h-3.5 w-3.5" aria-hidden />
+                        </Button>
+                      ) : null}
+                      {!readOnly && editMode ? (
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          onClick={() => {
+                            setStyleEditorTarget({ id: item.i, title: cfg.title });
+                            setStyleEditorOpen(true);
+                          }}
+                          className="inline-flex items-center px-2 py-1"
+                          aria-label="Widget style"
+                          title="Widget style"
+                        >
+                          <Palette className="h-3.5 w-3.5" aria-hidden />
                         </Button>
                       ) : null}
                       {!readOnly && editMode ? (
@@ -2410,7 +2449,7 @@ function DashboardBody({
                       key={item.i}
                       className={["transition-transform", editMode ? "cursor-grab active:cursor-grabbing" : ""].join(" ")}
                     >
-                      <WorkerDashCard title={cfg.title} headerRight={headerRight} className="h-full">
+                      <WorkerDashCard title={cfg.title} headerRight={headerRight} className="h-full" styleOverride={styleOverride}>
                         <DashboardCustomPeekWidget config={cfg} model={model} />
                       </WorkerDashCard>
                     </div>
@@ -2435,6 +2474,19 @@ function DashboardBody({
                     {alertsPeek}
                     {!readOnly && editMode ? (
                       <>
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          onClick={() => {
+                            setStyleEditorTarget({ id: item.i, title: w.title });
+                            setStyleEditorOpen(true);
+                          }}
+                          className="inline-flex items-center px-2 py-1"
+                          aria-label="Widget style"
+                          title="Widget style"
+                        >
+                          <Palette className="h-3.5 w-3.5" aria-hidden />
+                        </Button>
                         <span className="dashboard-drag-handle select-none border border-gray-800 bg-gray-900 px-2 py-1 text-[11px] font-semibold text-white">
                           Drag
                         </span>
@@ -2474,6 +2526,7 @@ function DashboardBody({
                       title={w.title}
                       headerRight={headerRight}
                       className={["h-full", item.i === "setup" ? "ds-scroll overflow-auto" : ""].join(" ")}
+                      styleOverride={styleOverride}
                     >
                       {w.render()}
                     </WorkerDashCard>
@@ -2483,6 +2536,99 @@ function DashboardBody({
             </GridLayout>
           ) : null}
         </div>
+
+        {styleEditorOpen && styleEditorTarget ? (
+          <div className="fixed inset-0 z-[160] flex items-center justify-center p-4">
+            <div className="ds-modal-backdrop absolute inset-0" onClick={() => setStyleEditorOpen(false)} aria-hidden />
+            <Card className="relative z-10 w-full max-w-md border border-ds-border shadow-[var(--ds-shadow-diffuse)]">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-base font-semibold text-ds-foreground">Widget style</p>
+                  <p className="mt-1 text-sm font-medium text-ds-muted">{styleEditorTarget.title}</p>
+                </div>
+                <Button type="button" variant="secondary" onClick={() => setStyleEditorOpen(false)} className="h-9 px-3">
+                  Close
+                </Button>
+              </div>
+              <div className="mt-4 space-y-4">
+                <div className="space-y-1.5">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-ds-muted">Font</p>
+                  <select
+                    className="app-field !py-2"
+                    value={widgetStyles[styleEditorTarget.id]?.fontFamily ?? ""}
+                    onChange={(e) => {
+                      const value = e.target.value || undefined;
+                      setWidgetStyles((prev) => ({
+                        ...prev,
+                        [styleEditorTarget.id]: { ...(prev[styleEditorTarget.id] ?? {}), fontFamily: value },
+                      }));
+                    }}
+                  >
+                    <option value="">Default</option>
+                    <option value="var(--font-app), system-ui, sans-serif">Inter (app default)</option>
+                    <option value="var(--font-headline), system-ui, sans-serif">Poppins</option>
+                    <option value="system-ui, sans-serif">System</option>
+                    <option value="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace">Monospace</option>
+                  </select>
+                </div>
+
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-ds-muted">Background tint</p>
+                    <input
+                      type="color"
+                      className="h-10 w-full cursor-pointer rounded-md border border-ds-border bg-transparent"
+                      value={widgetStyles[styleEditorTarget.id]?.backgroundColor ?? "#ffffff"}
+                      onChange={(e) => {
+                        const value = e.target.value || undefined;
+                        setWidgetStyles((prev) => ({
+                          ...prev,
+                          [styleEditorTarget.id]: { ...(prev[styleEditorTarget.id] ?? {}), backgroundColor: value },
+                        }));
+                      }}
+                      aria-label="Widget background tint"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-ds-muted">Text color</p>
+                    <input
+                      type="color"
+                      className="h-10 w-full cursor-pointer rounded-md border border-ds-border bg-transparent"
+                      value={widgetStyles[styleEditorTarget.id]?.textColor ?? "#4c5454"}
+                      onChange={(e) => {
+                        const value = e.target.value || undefined;
+                        setWidgetStyles((prev) => ({
+                          ...prev,
+                          [styleEditorTarget.id]: { ...(prev[styleEditorTarget.id] ?? {}), textColor: value },
+                        }));
+                      }}
+                      aria-label="Widget text color"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between gap-3">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={() => {
+                      setWidgetStyles((prev) => {
+                        const next = { ...prev };
+                        delete next[styleEditorTarget.id];
+                        return next;
+                      });
+                    }}
+                  >
+                    Reset to default
+                  </Button>
+                  <Button type="button" variant="primary" onClick={() => setStyleEditorOpen(false)}>
+                    Done
+                  </Button>
+                </div>
+              </div>
+            </Card>
+          </div>
+        ) : null}
 
         {showAddWidget ? (
           <div className="fixed inset-0 z-[140] flex items-center justify-center p-4">
