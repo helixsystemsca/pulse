@@ -170,6 +170,12 @@ class User(Base):
     )
     email: Mapped[str] = mapped_column(String(320), nullable=False)
     hashed_password: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    auth_provider: Mapped[str] = mapped_column(
+        String(32),
+        nullable=False,
+        default="email",
+        server_default=text("'email'"),
+    )
     full_name: Mapped[Optional[str]] = mapped_column(String(255))
     avatar_url: Mapped[Optional[str]] = mapped_column(String(2048), nullable=True)
     avatar_pending_url: Mapped[Optional[str]] = mapped_column(String(2048), nullable=True)

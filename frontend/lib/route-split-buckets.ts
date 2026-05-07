@@ -22,6 +22,7 @@ export const MARKETING_PATH_PREFIXES = [
  */
 export const PRODUCT_PATH_PREFIXES = [
   "/login",
+  "/auth",
   "/invite",
   "/reset-password",
   "/overview",

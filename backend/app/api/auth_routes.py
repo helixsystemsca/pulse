@@ -7,13 +7,16 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user, require_system_admin
 from app.core.audit.service import record_audit
 from app.core.auth.security import create_access_token, decode_token, hash_password, verify_password
+from app.core.config import Settings, get_settings
 from app.core.database import get_db
 from app.core.login_activity import log_login_event
+from app.core.microsoft_oauth import MicrosoftOAuthError, MicrosoftIdentity, verify_supabase_microsoft_access_token
 from app.core.permissions.service import PermissionService
 from app.core.tenant_feature_access import contract_and_effective_features_for_me
 from app.core.system_audit import record_system_log
@@ -40,6 +43,7 @@ from app.schemas.auth import (
     ImpersonateRequest,
     InviteAcceptBody,
     LoginRequest,
+    MicrosoftOAuthRequest,
     PasswordResetConfirmBody,
     Token,
     UserOut,
@@ -75,6 +79,76 @@ def _token_for_user(
         },
     )
     return Token(access_token=token)
+
+
+def _oauth_error_response(exc: MicrosoftOAuthError) -> HTTPException:
+    if exc.reason == "supabase_not_configured":
+        return HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Microsoft sign-in is not configured.",
+        )
+    if exc.reason == "missing_email":
+        return HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Microsoft did not provide an email address for this account.",
+        )
+    if exc.reason == "provider_not_microsoft":
+        return HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="This Supabase session was not issued by Microsoft.",
+        )
+    if exc.reason == "invalid_supabase_session":
+        return HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Microsoft sign-in session expired. Try signing in again.",
+        )
+    return HTTPException(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        detail="Microsoft sign-in is temporarily unavailable.",
+    )
+
+
+async def _upsert_microsoft_user(
+    db: AsyncSession,
+    identity: MicrosoftIdentity,
+) -> tuple[User, bool]:
+    q = await db.execute(select(User).where(func.lower(User.email) == identity.email))
+    user = q.scalar_one_or_none()
+    created = False
+
+    if user is None:
+        created = True
+        user = User(
+            email=identity.email,
+            hashed_password=None,
+            auth_provider="microsoft",
+            full_name=identity.display_name,
+            avatar_url=identity.avatar_url,
+            roles=[UserRole.worker.value],
+            operational_role=UserRole.worker.value,
+            account_status=UserAccountStatus.active,
+            is_active=True,
+        )
+        db.add(user)
+        try:
+            await db.flush()
+        except IntegrityError:
+            await db.rollback()
+            created = False
+            q = await db.execute(select(User).where(func.lower(User.email) == identity.email))
+            user = q.scalar_one_or_none()
+            if user is None:
+                raise
+
+    if not user.is_active or user.account_status != UserAccountStatus.active:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Account is not active.")
+
+    user.auth_provider = "microsoft"
+    if identity.display_name and not (user.full_name or "").strip():
+        user.full_name = identity.display_name
+    if identity.avatar_url and not (user.avatar_url or "").strip():
+        user.avatar_url = identity.avatar_url
+    return user, created
 
 
 @router.post("/login", response_model=Token)
@@ -117,6 +191,7 @@ async def login(
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
 
     now = datetime.now(timezone.utc)
+    user.auth_provider = "email"
     user.last_login = now
     user.last_active_at = now
     await record_audit(
@@ -125,6 +200,40 @@ async def login(
         actor_user_id=user.id,
         company_id=user.company_id,
         metadata={"email": user.email},
+    )
+    await log_login_event(db, request, user)
+    await db.commit()
+    return _token_for_user(user)
+
+
+@router.post("/oauth/microsoft", response_model=Token)
+@limiter.limit("30/minute")
+async def microsoft_oauth_login(
+    request: Request,
+    body: MicrosoftOAuthRequest,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> Token:
+    try:
+        identity = await verify_supabase_microsoft_access_token(settings, body.access_token)
+    except MicrosoftOAuthError as exc:
+        raise _oauth_error_response(exc) from exc
+
+    user, created = await _upsert_microsoft_user(db, identity)
+    now = datetime.now(timezone.utc)
+    user.last_login = now
+    user.last_active_at = now
+    await record_audit(
+        db,
+        action="auth.microsoft_login",
+        actor_user_id=user.id,
+        company_id=user.company_id,
+        metadata={
+            "email": user.email,
+            "provider": "microsoft",
+            "supabase_user_id": identity.supabase_user_id,
+            "created_internal_user": created,
+        },
     )
     await log_login_event(db, request, user)
     await db.commit()
@@ -217,6 +326,7 @@ async def me(
         role=prim.value,
         roles=list(user.roles),
         full_name=user.full_name,
+        auth_provider=getattr(user, "auth_provider", None) or "email",
         avatar_url=user.avatar_url,
         avatar_status=getattr(user, "avatar_status", None).value if getattr(user, "avatar_status", None) else None,
         job_title=user.job_title,
