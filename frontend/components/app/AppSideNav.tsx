@@ -64,13 +64,9 @@ const ICONS: Record<PulseSidebarIcon, LucideIcon> = {
 const COLLAPSED_RAIL_W = "w-[var(--pulse-sidebar-collapsed-width)]";
 const ICON_COL = `h-11 ${COLLAPSED_RAIL_W} shrink-0`;
 
-/**
- * Row highlight: identical for hover and active — subtle tint on {@link --ds-surface-primary}
- * (platinum in light theme).
- */
-const SIDENAV_ROW_ACTIVE_HOVER =
-  "bg-[color-mix(in_srgb,var(--ds-text-primary)_10%,var(--ds-surface-primary))]";
-const SIDENAV_ROW_ACTIVE_HOVER_HOVER = "hover:bg-[color-mix(in_srgb,var(--ds-text-primary)_10%,var(--ds-surface-primary))]";
+/** Row highlight: identical hover + active — solid Verdigris ({@link --ds-accent}). */
+const SIDENAV_ROW_ACTIVE_HOVER = "bg-[var(--ds-accent)]";
+const SIDENAV_ROW_ACTIVE_HOVER_HOVER = "hover:bg-[var(--ds-accent)]";
 
 /** Team Management: tenant feature `team_management` + route permission; roster delegation still grants access. */
 function showWorkersNavItem(session: PulseAuthSession, isSystemAdmin: boolean): boolean {
@@ -135,14 +131,17 @@ export function AppSideNav() {
       onMouseEnter={() => setRailExpanded(true)}
       onMouseLeave={() => setRailExpanded(false)}
       className={cn(
-        "group/sidenav hidden lg:flex fixed left-0 z-[40] flex-col overflow-x-hidden overflow-y-auto rounded-none border-r border-ds-border bg-ds-surface-primary",
+        "group/sidenav hidden lg:flex fixed left-0 z-[40] flex-col overflow-x-hidden overflow-y-auto rounded-none border-r border-ds-border bg-ds-primary",
         "top-[var(--pulse-header-height)] h-[calc(100vh-var(--pulse-header-height))]",
         "shadow-[var(--ds-shadow-card)] motion-safe:transition-[width] motion-safe:duration-300 motion-safe:ease-in-out",
         railExpanded ? "w-[var(--pulse-sidebar-expanded-width)]" : COLLAPSED_RAIL_W,
       )}
       aria-label={systemRail ? "System navigation" : "App navigation"}
     >
-      <nav className="flex min-h-0 flex-1 flex-col border-t border-ds-border" aria-label="Navigation">
+      <nav
+        className="flex min-h-0 flex-1 flex-col border-t border-ds-border bg-ds-primary"
+        aria-label="Navigation"
+      >
         {items.map((item) => {
           const active = isPulseNavActive(item.href, pathname);
           const Icon = ICONS[item.icon];
@@ -162,6 +161,7 @@ export function AppSideNav() {
                 className={cn(
                   ICON_COL,
                   "flex items-center justify-center text-[var(--ds-text-primary)]",
+                  active ? "text-white" : "group-hover/nav:text-white",
                 )}
               >
                 <Icon className="h-[17px] w-[17px] shrink-0" strokeWidth={2} aria-hidden />
@@ -170,6 +170,7 @@ export function AppSideNav() {
                 className={cn(
                   labelVisibility,
                   "flex min-w-0 flex-1 items-center pr-3 text-[var(--ds-text-primary)]",
+                  active ? "text-white" : "group-hover/nav:text-white",
                 )}
               >
                 {item.label}

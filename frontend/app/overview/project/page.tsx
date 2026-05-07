@@ -1,6 +1,5 @@
 "use client";
 
-import { PageWrapper } from "@/components/ui/PageWrapper";
 import { DashboardViewTabs } from "@/components/dashboard/DashboardViewTabs";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
 import { isApiMode } from "@/lib/api";
@@ -129,17 +128,15 @@ export default function OverviewProjectTabPage() {
 
   if (!ready || !session?.can_use_pm_features) {
     return (
-      <PageWrapper>
-        <div className="flex min-h-[40vh] items-center justify-center">
-          <p className={UI.subheader}>Loading…</p>
-        </div>
-      </PageWrapper>
+      <div className="flex min-h-[40vh] items-center justify-center">
+        <p className={UI.subheader}>Loading…</p>
+      </div>
     );
   }
 
   return (
-    <PageWrapper>
-      <div className="relative space-y-4 px-3 py-4 lg:px-4">
+    <div className="relative">
+      <div className="pulse-dashboard-canvas space-y-4 px-2 py-4 sm:px-2 sm:py-5">
         <DashboardViewTabs />
         <div className="rounded-xl border border-ds-border bg-ds-primary p-5 shadow-[var(--ds-shadow-card)]">
           <h1 className="text-xl font-bold text-ds-foreground">Project kiosk</h1>
@@ -213,6 +210,6 @@ export default function OverviewProjectTabPage() {
           </div>
         </div>
       </div>
-    </PageWrapper>
+    </div>
   );
 }
