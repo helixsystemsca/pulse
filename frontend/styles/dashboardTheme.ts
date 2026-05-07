@@ -13,7 +13,9 @@ export const DASH = {
     "w-full rounded-[16px] border border-[rgba(120,140,160,0.16)] bg-white/55 p-3 shadow-[0_10px_34px_rgba(15,23,42,0.06)] backdrop-blur-md dark:border-ds-border dark:bg-ds-bg dark:shadow-[0_14px_46px_rgba(0,0,0,0.28)]",
   /** Operational widget surface (match Team Insights cards). */
   cardBase:
-    "ds-card-primary overflow-hidden rounded-2xl border border-ds-border shadow-[var(--ds-shadow-card)] transition-[transform,box-shadow] hover:-translate-y-[1px] hover:shadow-[var(--ds-shadow-card-hover)]",
+    // Use ds-card-static to opt out of default hover tint (gray wash),
+    // then re-add the lift/shadow behavior explicitly.
+    "ds-card-primary ds-card-static overflow-hidden rounded-2xl border border-ds-border shadow-[var(--ds-shadow-card)] transition-[transform,box-shadow] hover:-translate-y-[1px] hover:shadow-[var(--ds-shadow-card-hover)]",
   cardInner: "p-3.5 sm:p-4",
   /** Brand strip under header / column chrome. */
   accentBar: "h-[3px] w-full shrink-0 bg-[var(--ds-chrome-gradient)]",
