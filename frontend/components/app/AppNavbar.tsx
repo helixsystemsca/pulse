@@ -5,6 +5,7 @@
  */
 import { usePathname } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { Bell, ChevronDown, Image as ImageIcon, KeyRound, LogOut, MessageSquare, Settings } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
@@ -100,9 +101,17 @@ export function AppNavbar({ notificationCount = 0, messagesCount = 0 }: AppNavba
           <Link
             href={logoHref}
             className={cn(
-              "font-panoramaBrand inline-flex min-w-0 items-baseline gap-[0.06em] whitespace-nowrap text-[clamp(1.05rem,2.1vw,1.45rem)] uppercase leading-none text-white",
+              "font-panoramaBrand inline-flex min-w-0 items-center gap-2 whitespace-nowrap text-[clamp(1.05rem,2.1vw,1.45rem)] uppercase leading-none text-white",
             )}
           >
+            <Image
+              src="/images/panoicon.png"
+              alt=""
+              width={22}
+              height={22}
+              priority
+              className="h-[22px] w-[22px] shrink-0 opacity-95"
+            />
             <span className="font-normal tracking-[0.06em]">Panorama</span>
             <span className="font-extralight tracking-[0.06em]">Pulse</span>
           </Link>
