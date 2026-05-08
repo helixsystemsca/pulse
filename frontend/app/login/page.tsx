@@ -316,18 +316,6 @@ export default function LoginPage() {
                       "Authenticate"
                     )}
                   </button>
-
-                  <div className="flex flex-wrap items-center justify-between gap-2 pt-0.5 text-[11px] font-semibold uppercase tracking-wide">
-                    <a
-                      href={mailtoInfo("Pulse — credentials help")}
-                      className="text-[color-mix(in_srgb,var(--ds-success)_78%,#1a4d44)] no-underline hover:underline dark:text-ds-success"
-                    >
-                      Forgot credentials?
-                    </a>
-                    <span className="tabular-nums text-[color-mix(in_srgb,var(--ds-text-primary)_45%,transparent)] dark:text-ds-muted">
-                      Terminal {PULSE_BUILD_VERSION}
-                    </span>
-                  </div>
                 </form>
 
                 <div className="my-4 flex items-center gap-3" aria-hidden="true">
@@ -352,6 +340,18 @@ export default function LoginPage() {
                   )}
                   Sign in with Microsoft
                 </button>
+
+                <div className="mt-4 flex flex-wrap items-center justify-between gap-2 pt-0.5 text-[11px] font-semibold uppercase tracking-wide">
+                  <a
+                    href={mailtoInfo("Pulse — credentials help")}
+                    className="text-[color-mix(in_srgb,var(--ds-success)_78%,#1a4d44)] no-underline hover:underline dark:text-ds-success"
+                  >
+                    Forgot credentials?
+                  </a>
+                  <span className="tabular-nums text-[color-mix(in_srgb,var(--ds-text-primary)_45%,transparent)] dark:text-ds-muted">
+                    Terminal {PULSE_BUILD_VERSION}
+                  </span>
+                </div>
               </div>
             </div>
 
