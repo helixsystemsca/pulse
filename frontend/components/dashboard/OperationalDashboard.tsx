@@ -397,9 +397,9 @@ export type DashboardViewModel = {
 const roleBadgeBase =
   "pointer-events-none absolute -top-0.5 -right-0.5 z-10 flex h-[18px] w-[18px] items-center justify-center rounded-full text-[9px] font-bold leading-none text-ds-on-accent shadow-[var(--ds-shadow-card)] ring-2 ring-[var(--ds-surface-primary)]";
 
-/** Dashboard workforce bubbles: gold fill + black initials; photo replaces initials when `avatar_url` resolves. */
+/** Dashboard workforce bubbles: neutral glassy fill; photo replaces initials when `avatar_url` resolves. */
 const workforceAvatarGoldBase =
-  "rounded-full bg-ds-warning font-bold text-ds-on-accent shadow-sm ring-1 ring-black/20 ring-offset-2 ring-offset-[var(--ds-surface-primary)]";
+  "rounded-full bg-[color-mix(in_srgb,var(--ds-text-primary)_10%,transparent)] backdrop-blur-md font-bold text-[color-mix(in_srgb,var(--ds-text-primary)_88%,transparent)] shadow-sm ring-1 ring-[color-mix(in_srgb,var(--ds-text-primary)_18%,transparent)] ring-offset-2 ring-offset-[var(--ds-surface-primary)]";
 
 function workforceRoleBadgeAndRank(role: string): { badge?: "M" | "S" | "L"; rank: number } {
   const r = role.toLowerCase();
