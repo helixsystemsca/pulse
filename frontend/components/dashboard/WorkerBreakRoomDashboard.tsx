@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { AlertTriangle, Cloud, Monitor, Palette, ShieldAlert, Sparkles } from "lucide-react";
+import { AlertTriangle, Check, Cloud, Monitor, Palette, Pencil, ShieldAlert, Sparkles } from "lucide-react";
 
 import { DashboardAccentCard, DashboardColumnPanel } from "@/components/dashboard/DashboardChrome";
 import { Button } from "@/components/ui/Button";
@@ -28,6 +28,11 @@ type CriticalAlert = { id: string; title: string; detail?: string; source?: stri
 
 const BC_TZ = "America/Vancouver";
 const NORTH_SAANICH = { lat: 48.6548, lon: -123.4207 };
+
+const OPS_DASH_HEADER_TOOL =
+  "h-10 w-10 min-h-0 rounded-lg !border-2 !border-ds-border bg-transparent !px-0 !py-0 text-ds-foreground shadow-none ring-0 transition-colors hover:!border-[var(--ds-accent)] hover:!bg-[color-mix(in_srgb,var(--ds-accent)_14%,var(--ds-bg))] hover:!text-[var(--ds-accent)] focus-visible:!outline focus-visible:!outline-2 focus-visible:!outline-offset-2 focus-visible:!outline-[var(--ds-accent)] dark:hover:!bg-[color-mix(in_srgb,var(--ds-accent)_20%,transparent)]";
+const OPS_DASH_HEADER_TOOL_ACTIVE =
+  "h-10 w-10 min-h-0 rounded-lg !border-0 !bg-[var(--ds-accent)] !px-0 !py-0 !text-white shadow-none ring-0 transition-colors hover:!border-0 hover:!bg-[color-mix(in_srgb,var(--ds-accent)_88%,#0f172a)] hover:!text-white focus-visible:!outline focus-visible:!outline-2 focus-visible:!outline-offset-2 focus-visible:!outline-white/80";
 
 function timeInBc(d: Date): string {
   return d.toLocaleTimeString(undefined, { timeZone: BC_TZ, hour: "2-digit", minute: "2-digit" });
@@ -462,7 +467,7 @@ export function WorkerBreakRoomDashboard({ kiosk = false }: Props) {
               <Button
                 type="button"
                 variant="secondary"
-                className="flex h-10 w-10 items-center justify-center p-0"
+                className={OPS_DASH_HEADER_TOOL}
                 onClick={openKiosk}
                 title="Fullscreen"
                 aria-label="Fullscreen"
@@ -473,13 +478,18 @@ export function WorkerBreakRoomDashboard({ kiosk = false }: Props) {
             {canEdit ? (
               <Button
                 type="button"
-                variant={editMode ? "primary" : "secondary"}
-                className="inline-flex items-center gap-2"
+                variant="secondary"
+                className={cn(OPS_DASH_HEADER_TOOL, editMode && OPS_DASH_HEADER_TOOL_ACTIVE)}
                 onClick={() => setEditMode((v) => !v)}
                 aria-pressed={editMode}
                 title={editMode ? "Done editing layout" : "Edit dashboard layout"}
+                aria-label={editMode ? "Done editing layout" : "Edit dashboard layout"}
               >
-                {editMode ? "Done" : "Edit"}
+                {editMode ? (
+                  <Check className="h-[1.125rem] w-[1.125rem] shrink-0" strokeWidth={2.5} aria-hidden />
+                ) : (
+                  <Pencil className="h-[1.125rem] w-[1.125rem] shrink-0" strokeWidth={2.5} aria-hidden />
+                )}
               </Button>
             ) : null}
             <Button
@@ -893,7 +903,7 @@ export function WorkerBreakRoomDashboard({ kiosk = false }: Props) {
 
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="space-y-1.5">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-ds-muted">Background tint</p>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-ds-muted">Background</p>
                   <input
                     type="color"
                     className="h-10 w-full cursor-pointer rounded-md border border-ds-border bg-transparent"
@@ -905,7 +915,7 @@ export function WorkerBreakRoomDashboard({ kiosk = false }: Props) {
                         [styleEditorTarget.id]: { ...(prev[styleEditorTarget.id] ?? {}), backgroundColor: value },
                       }));
                     }}
-                    aria-label="Widget background tint"
+                      aria-label="Widget background color"
                   />
                 </div>
                 <div className="space-y-1.5">
@@ -925,6 +935,55 @@ export function WorkerBreakRoomDashboard({ kiosk = false }: Props) {
                   />
                 </div>
               </div>
+
+                <div className="rounded-xl border border-ds-border bg-ds-secondary/40 p-3">
+                  <label className="flex cursor-pointer items-center justify-between gap-3">
+                    <span className="text-xs font-semibold uppercase tracking-wide text-ds-muted">Advanced theme</span>
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4"
+                      checked={(widgetStyles[styleEditorTarget.id]?.theme ?? "tint") !== "tint"}
+                      onChange={(e) => {
+                        const checked = e.target.checked;
+                        setWidgetStyles((prev) => ({
+                          ...prev,
+                          [styleEditorTarget.id]: {
+                            ...(prev[styleEditorTarget.id] ?? {}),
+                            theme: checked ? (prev[styleEditorTarget.id]?.theme ?? "solid") : "tint",
+                          },
+                        }));
+                      }}
+                      aria-label="Enable advanced theme"
+                    />
+                  </label>
+                  {(widgetStyles[styleEditorTarget.id]?.theme ?? "tint") !== "tint" ? (
+                    <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                      {(["solid", "glass", "gradient"] as const).map((opt) => {
+                        const active = (widgetStyles[styleEditorTarget.id]?.theme ?? "tint") === opt;
+                        return (
+                          <button
+                            key={opt}
+                            type="button"
+                            className={cn(
+                              "rounded-lg border px-2 py-2 text-xs font-semibold capitalize transition-colors",
+                              active
+                                ? "border-[var(--ds-accent)] bg-[color-mix(in_srgb,var(--ds-accent)_12%,transparent)] text-ds-foreground"
+                                : "border-ds-border bg-transparent text-ds-muted hover:bg-ds-interactive-hover",
+                            )}
+                            onClick={() => {
+                              setWidgetStyles((prev) => ({
+                                ...prev,
+                                [styleEditorTarget.id]: { ...(prev[styleEditorTarget.id] ?? {}), theme: opt },
+                              }));
+                            }}
+                          >
+                            {opt}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ) : null}
+                </div>
 
               <div className="flex items-center justify-between gap-3">
                 <Button

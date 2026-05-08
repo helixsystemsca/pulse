@@ -170,7 +170,7 @@ function WorkerDashCard({
     theme === "solid"
       ? "bg-[var(--widget-tint,white)]"
       : theme === "glass"
-        ? "bg-[color-mix(in_srgb,var(--widget-tint,white)_18%,transparent)] backdrop-blur-md"
+        ? "pulse-apple-glass"
         : theme === "gradient"
           ? "bg-[radial-gradient(900px_420px_at_20%_10%,color-mix(in_srgb,var(--widget-tint,white)_38%,transparent),transparent_58%),radial-gradient(700px_420px_at_85%_15%,color-mix(in_srgb,var(--ds-accent)_18%,transparent),transparent_60%),color-mix(in_srgb,var(--ds-bg)_62%,#ffffff_38%)]"
           : "bg-[color-mix(in_srgb,var(--widget-tint,white)_10%,var(--ds-bg))]";

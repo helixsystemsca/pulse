@@ -52,18 +52,27 @@ export function DashboardAccentCard({
   innerClassName?: string;
   styleOverride?: DashboardWidgetStyleOverride;
 }) {
+  const theme = styleOverride?.theme ?? "tint";
   const styleVars: CSSProperties = {
     ...(styleOverride?.backgroundColor ? ({ ["--widget-tint" as any]: styleOverride.backgroundColor } as any) : null),
     ...(styleOverride?.textColor ? ({ ["--widget-fg" as any]: styleOverride.textColor } as any) : null),
     ...(styleOverride?.fontFamily ? ({ fontFamily: styleOverride.fontFamily } as any) : null),
   };
+  const backgroundClass =
+    theme === "solid"
+      ? "bg-[var(--widget-tint,white)]"
+      : theme === "glass"
+        ? "pulse-apple-glass"
+        : theme === "gradient"
+          ? "bg-[radial-gradient(900px_420px_at_20%_10%,color-mix(in_srgb,var(--widget-tint,white)_38%,transparent),transparent_58%),radial-gradient(700px_420px_at_85%_15%,color-mix(in_srgb,var(--ds-accent)_18%,transparent),transparent_60%),color-mix(in_srgb,var(--ds-bg)_62%,#ffffff_38%)]"
+          : "bg-[color-mix(in_srgb,var(--widget-tint,white)_18%,transparent)] dark:bg-[color-mix(in_srgb,var(--widget-tint,white)_10%,transparent)]";
   return (
     <div
       style={styleVars}
       className={cn(
         DASH.cardBase,
-        "text-[var(--widget-fg,var(--ds-text-primary))] bg-[color-mix(in_srgb,var(--widget-tint,white)_18%,transparent)]",
-        "dark:bg-[color-mix(in_srgb,var(--widget-tint,white)_10%,transparent)]",
+        "text-[var(--widget-fg,var(--ds-text-primary))]",
+        backgroundClass,
         className,
       )}
     >
@@ -87,11 +96,20 @@ export function DashboardColumnPanel({
   className?: string;
   styleOverride?: DashboardWidgetStyleOverride;
 }) {
+  const theme = styleOverride?.theme ?? "tint";
   const styleVars: CSSProperties = {
     ...(styleOverride?.backgroundColor ? ({ ["--widget-tint" as any]: styleOverride.backgroundColor } as any) : null),
     ...(styleOverride?.textColor ? ({ ["--widget-fg" as any]: styleOverride.textColor } as any) : null),
     ...(styleOverride?.fontFamily ? ({ fontFamily: styleOverride.fontFamily } as any) : null),
   };
+  const backgroundClass =
+    theme === "solid"
+      ? "bg-[var(--widget-tint,white)]"
+      : theme === "glass"
+        ? "pulse-apple-glass"
+        : theme === "gradient"
+          ? "bg-[radial-gradient(900px_420px_at_20%_10%,color-mix(in_srgb,var(--widget-tint,white)_38%,transparent),transparent_58%),radial-gradient(700px_420px_at_85%_15%,color-mix(in_srgb,var(--ds-accent)_18%,transparent),transparent_60%),color-mix(in_srgb,var(--ds-bg)_62%,#ffffff_38%)]"
+          : "bg-[color-mix(in_srgb,var(--widget-tint,white)_18%,transparent)] dark:bg-[color-mix(in_srgb,var(--widget-tint,white)_10%,transparent)]";
   const strip =
     accent === "teal"
       ? "bg-[color-mix(in_srgb,var(--ds-accent)_88%,transparent)]"
@@ -107,7 +125,8 @@ export function DashboardColumnPanel({
       style={styleVars}
       className={cn(
         DASH.cardBase,
-        "flex h-full min-h-0 flex-col text-[var(--widget-fg,var(--ds-text-primary))] bg-[color-mix(in_srgb,var(--widget-tint,white)_18%,transparent)] dark:bg-[color-mix(in_srgb,var(--widget-tint,white)_10%,transparent)]",
+        "flex h-full min-h-0 flex-col text-[var(--widget-fg,var(--ds-text-primary))]",
+        backgroundClass,
         className,
       )}
     >

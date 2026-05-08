@@ -197,6 +197,81 @@ html.pulse-welcome-blur [data-pulse-app-shell] {
  * Level 1: `app-surface-inset` · Level 2: `app-glass-card` · Level 3: `app-glass-elevated` (modals, emphasis).
  */
 @layer components {
+  /**
+   * Apple-style glass surface (dashboard widgets).
+   * Uses layered highlights + border + stronger blur/saturation so it reads as glass,
+   * not just "lower opacity".
+   *
+   * Tint comes from `--widget-tint` (falls back to white).
+   */
+  .pulse-apple-glass {
+    position: relative;
+    overflow: hidden;
+    background:
+      radial-gradient(1200px 560px at 20% 0%, rgba(255, 255, 255, 0.75), transparent 60%),
+      radial-gradient(
+        900px 520px at 85% 12%,
+        color-mix(in srgb, var(--widget-tint, #ffffff) 22%, transparent),
+        transparent 58%
+      ),
+      linear-gradient(
+        180deg,
+        color-mix(in srgb, var(--widget-tint, #ffffff) 24%, transparent) 0%,
+        color-mix(in srgb, var(--widget-tint, #ffffff) 14%, transparent) 55%,
+        color-mix(in srgb, var(--widget-tint, #ffffff) 18%, transparent) 100%
+      );
+    border: 1px solid color-mix(in srgb, var(--ds-text-primary) 14%, transparent);
+    box-shadow:
+      0 1px 0 rgba(255, 255, 255, 0.55) inset,
+      0 10px 30px rgba(15, 23, 42, 0.12);
+    backdrop-filter: blur(18px) saturate(1.35);
+  }
+  .pulse-apple-glass::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+      linear-gradient(125deg, rgba(255, 255, 255, 0.55) 0%, transparent 48%),
+      radial-gradient(900px 420px at 25% 20%, rgba(255, 255, 255, 0.35), transparent 60%);
+    opacity: 0.75;
+    mix-blend-mode: overlay;
+  }
+  .pulse-apple-glass::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(0deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.06));
+    opacity: 0.55;
+  }
+
+  .dark .pulse-apple-glass {
+    background:
+      radial-gradient(1200px 560px at 20% 0%, rgba(255, 255, 255, 0.14), transparent 60%),
+      radial-gradient(
+        900px 520px at 85% 12%,
+        color-mix(in srgb, var(--widget-tint, #111827) 22%, transparent),
+        transparent 58%
+      ),
+      linear-gradient(
+        180deg,
+        color-mix(in srgb, var(--widget-tint, #111827) 18%, transparent) 0%,
+        color-mix(in srgb, var(--widget-tint, #111827) 12%, transparent) 55%,
+        color-mix(in srgb, var(--widget-tint, #111827) 16%, transparent) 100%
+      );
+    border-color: rgba(255, 255, 255, 0.12);
+    box-shadow:
+      0 1px 0 rgba(255, 255, 255, 0.1) inset,
+      0 14px 40px rgba(0, 0, 0, 0.35);
+    backdrop-filter: blur(20px) saturate(1.2);
+  }
+  .dark .pulse-apple-glass::before {
+    opacity: 0.5;
+  }
+  .dark .pulse-apple-glass::after {
+    opacity: 0.35;
+  }
   /** Brand strip — teal → dusk (authenticated shell, below navbar). */
   .app-chrome-accent {
     flex-shrink: 0;
@@ -313,14 +388,11 @@ html.pulse-welcome-blur [data-pulse-app-shell] {
   .ds-card-static.ds-card-elevated:hover {
     box-shadow: var(--ds-shadow-diffuse);
   }
-  html:not(.dark) .ds-card-static.ds-card-primary:hover {
-    background-color: var(--ds-surface-primary);
-  }
-  html:not(.dark) .ds-card-static.ds-card-secondary:hover {
-    background-color: var(--ds-surface-secondary);
-  }
+  /* Keep authored background colors intact (no hover wash). */
+  html:not(.dark) .ds-card-static.ds-card-primary:hover,
+  html:not(.dark) .ds-card-static.ds-card-secondary:hover,
   html:not(.dark) .ds-card-static.ds-card-elevated:hover {
-    background-color: var(--ds-surface-elevated);
+    background-color: inherit;
   }
 
   .app-glass-card > *,
