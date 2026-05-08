@@ -25,6 +25,8 @@ export type TrainingProgram = {
   requires_acknowledgement: boolean;
   /** Months until certification expires after completion; null = non-expiring */
   expiry_months: number | null;
+  /** Optional compliance window: mandatory items should be complete within this many days of assignment. */
+  due_within_days?: number | null;
   active: boolean;
 };
 

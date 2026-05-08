@@ -22,7 +22,7 @@ export function TrainingTierBadge({ tier, className }: { tier: TrainingTier; cla
   return (
     <span
       className={cn(
-        "inline-flex shrink-0 rounded-md border px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide",
+        "inline-flex shrink-0 rounded-md border px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide leading-none",
         tierClass[tier],
         className,
       )}

@@ -88,6 +88,7 @@ class PulseProcedure(Base):
     )
     revised_by_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     revised_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    content_revision: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
@@ -96,6 +97,145 @@ class PulseProcedure(Base):
         default=lambda: datetime.now(timezone.utc),
         onupdate=lambda: datetime.now(timezone.utc),
     )
+
+
+class PulseProcedureComplianceSettings(Base):
+    """Standards/training tier + acknowledgement rules per CMMS procedure (tenant-scoped)."""
+
+    __tablename__ = "pulse_procedure_compliance_settings"
+
+    procedure_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("pulse_procedures.id", ondelete="CASCADE"), primary_key=True
+    )
+    company_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    tier: Mapped[str] = mapped_column(String(32), nullable=False, default="general")
+    due_within_days: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    requires_acknowledgement: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+    updated_by_user_id: Mapped[Optional[str]] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+
+
+class PulseProcedureTrainingAssignment(Base):
+    """Training matrix assignment lifecycle (distinct from pulse_procedure_assignments mobile runs)."""
+
+    __tablename__ = "pulse_procedure_training_assignments"
+    __table_args__ = (
+        UniqueConstraint("company_id", "employee_user_id", "procedure_id", name="uq_pulse_proc_training_assign_emp_proc"),
+    )
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    company_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    employee_user_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    procedure_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("pulse_procedures.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    assigned_by_user_id: Mapped[Optional[str]] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    assigned_date: Mapped[date] = mapped_column(Date, nullable=False)
+    due_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    expiry_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    acknowledgement_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    supervisor_signoff: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+
+class PulseProcedureCompletionSignoff(Base):
+    __tablename__ = "pulse_procedure_completion_signoffs"
+    __table_args__ = (
+        UniqueConstraint(
+            "company_id",
+            "employee_user_id",
+            "procedure_id",
+            "revision_marker",
+            name="uq_pulse_proc_signoff_idem",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    company_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    employee_user_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    procedure_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("pulse_procedures.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    completed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    completed_by_user_id: Mapped[Optional[str]] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    revision_marker: Mapped[str] = mapped_column(String(64), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+
+
+class PulseProcedureTrainingAcknowledgement(Base):
+    __tablename__ = "pulse_procedure_acknowledgements"
+    __table_args__ = (
+        UniqueConstraint(
+            "company_id",
+            "employee_user_id",
+            "procedure_id",
+            "revision_number",
+            name="uq_pulse_proc_ack_idem",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    company_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    employee_user_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    procedure_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("pulse_procedures.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    revision_number: Mapped[int] = mapped_column(Integer, nullable=False)
+    acknowledged_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+
+
+class PulseTrainingNotificationEvent(Base):
+    __tablename__ = "pulse_training_notification_events"
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    company_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    kind: Mapped[str] = mapped_column(String(64), nullable=False)
+    payload: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        index=True,
+    )
+    dedupe_key: Mapped[str] = mapped_column(String(256), nullable=False, unique=True)
 
 
 class PulseProcedureAssignmentStatus(str, enum.Enum):

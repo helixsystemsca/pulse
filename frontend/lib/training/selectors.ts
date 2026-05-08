@@ -4,7 +4,7 @@ import {
   MOCK_TRAINING_ACKNOWLEDGEMENTS,
   MOCK_TRAINING_EMPLOYEES,
   MOCK_TRAINING_PROGRAMS,
-  effectiveAssignmentStatus,
+  cellAssignmentStatus,
   resolvedAssignments,
 } from "./mockData";
 
@@ -82,18 +82,22 @@ export function passesMatrixFilters(
   assignments: TrainingAssignment[],
   acks: typeof MOCK_TRAINING_ACKNOWLEDGEMENTS,
   filters: TrainingMatrixFilters,
+  opts?: { trustAssignmentStatus?: boolean },
 ): boolean {
   if (filters.department !== "all" && employee.department !== filters.department) return false;
   if (!filterEmployees([employee], filters.search).length) return false;
 
   const activePrograms = programs.filter((p) => p.active);
+  const cellStatus = (p: TrainingProgram, a: TrainingAssignment | undefined) =>
+    cellAssignmentStatus(p, a, acks, opts);
+
   const hasTierMatch =
     filters.tier === "all"
       ? true
       : activePrograms.some((p) => {
           if (p.tier !== filters.tier) return false;
           const a = assignmentFor(employee.id, p.id, assignments);
-          const eff = effectiveAssignmentStatus(p, a, acks);
+          const eff = cellStatus(p, a);
           return cellPassesStatusFilters(eff, filters);
         });
 
@@ -104,7 +108,7 @@ export function passesMatrixFilters(
   return activePrograms.some((p) => {
     if (filters.tier !== "all" && p.tier !== filters.tier) return false;
     const a = assignmentFor(employee.id, p.id, assignments);
-    const eff = effectiveAssignmentStatus(p, a, acks);
+    const eff = cellStatus(p, a);
     return cellPassesStatusFilters(eff, filters);
   });
 }
@@ -137,8 +141,11 @@ export function computeComplianceSummary(
   programs: TrainingProgram[],
   assignments: TrainingAssignment[],
   acks: typeof MOCK_TRAINING_ACKNOWLEDGEMENTS,
+  opts?: { trustAssignmentStatus?: boolean },
 ): ComplianceSummary {
-  const resolved = resolvedAssignments(programs, assignments, acks);
+  const resolved = opts?.trustAssignmentStatus
+    ? assignments
+    : resolvedAssignments(programs, assignments, acks);
   const mandatory = programs.filter(isMandatoryProgram);
 
   let fullyCompliant = 0;
@@ -148,11 +155,14 @@ export function computeComplianceSummary(
 
   const today = new Date();
 
+  const effFor = (p: TrainingProgram, a: TrainingAssignment | undefined) =>
+    cellAssignmentStatus(p, a, acks, opts);
+
   for (const e of employees) {
     let empOk = true;
     for (const p of mandatory) {
       const a = assignmentFor(e.id, p.id, resolved);
-      const eff = effectiveAssignmentStatus(p, a, acks);
+      const eff = effFor(p, a);
       if (eff !== "completed" && eff !== "expiring_soon") empOk = false;
       if (eff === "expired") empOk = false;
       if (eff === "revision_pending") empOk = false;
@@ -162,7 +172,7 @@ export function computeComplianceSummary(
 
     for (const p of programs.filter((x) => x.active)) {
       const a = assignmentFor(e.id, p.id, resolved);
-      const eff = effectiveAssignmentStatus(p, a, acks);
+      const eff = effFor(p, a);
       if (eff === "expired") expiredCertifications++;
 
       if (eff === "revision_pending") pendingAcknowledgements++;

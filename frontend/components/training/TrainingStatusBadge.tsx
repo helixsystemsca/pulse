@@ -33,7 +33,7 @@ export function TrainingStatusBadge({
   return (
     <span
       className={cn(
-        "inline-flex max-w-full truncate rounded-md border px-2 py-0.5 text-[11px] font-semibold tabular-nums",
+        "inline-flex max-w-full truncate rounded-md border px-1.5 py-0.5 text-[10px] font-semibold leading-none tabular-nums",
         STYLE[status],
         className,
       )}

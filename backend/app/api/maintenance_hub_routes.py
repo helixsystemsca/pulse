@@ -7,12 +7,12 @@ from typing import Annotated, Optional
 
 from uuid import uuid4
 
-from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
+from fastapi import APIRouter, Body, Depends, File, HTTPException, Query, UploadFile, status
 from sqlalchemy import and_, delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.responses import Response
 
-from app.api.deps import require_tenant_user
+from app.api.deps import require_manager_or_above, require_tenant_user
 from app.core.database import get_db
 from app.core.events.engine import event_engine
 from app.core.events.types import DomainEvent
@@ -22,7 +22,8 @@ from app.core.pulse_storage import (
     write_procedure_assignment_photo_bytes,
     write_procedure_step_image_bytes,
 )
-from app.models.domain import User, Zone
+from app.models.domain import User, UserRole, Zone
+from app.core.user_roles import user_has_any_role, user_has_tenant_full_admin
 from app.models.pulse_models import (
     PulsePreventativeRule,
     PulseProcedure,
@@ -34,9 +35,23 @@ from app.models.pulse_models import (
     PulseWorkRequest,
     PulseWorkRequestPriority,
     PulseWorkRequestStatus,
+    PulseProcedureComplianceSettings,
 )
 from app.modules.pulse import service as pulse_svc
 from app.services.pm_task_service import sync_pm_task_after_work_order_completed
+from app.services.procedure_training.service import (
+    record_procedure_acknowledgement,
+    record_procedure_signoff,
+    revision_marker_from_procedure,
+)
+from app.schemas.training import (
+    ProcedureAcknowledgementPostIn,
+    ProcedureAcknowledgementOut,
+    ProcedureComplianceOut,
+    ProcedureCompliancePatchIn,
+    ProcedureSignoffOut,
+    ProcedureSignoffPostIn,
+)
 from app.schemas.maintenance_hub import (
     PreventativeRuleCreate,
     PreventativeRuleOut,
@@ -384,6 +399,167 @@ async def get_procedure(db: Db, cid: CompanyId, procedure_id: str) -> ProcedureO
     return ProcedureOut.model_validate(row)
 
 
+@router.get("/procedures/{procedure_id}/compliance", response_model=ProcedureComplianceOut)
+async def get_procedure_compliance(
+    procedure_id: str,
+    db: Db,
+    cid: CompanyId,
+    _: Annotated[User, Depends(require_tenant_user)],
+) -> ProcedureComplianceOut:
+    row = await db.get(PulseProcedure, procedure_id)
+    if not row or row.company_id != cid:
+        raise HTTPException(status_code=404, detail="Not found")
+    cs = await db.get(PulseProcedureComplianceSettings, procedure_id)
+    now = datetime.now(timezone.utc)
+    baseline = row.updated_at or now
+    if cs is None:
+        return ProcedureComplianceOut(
+            procedure_id=str(row.id),
+            company_id=str(row.company_id),
+            tier="general",
+            due_within_days=None,
+            requires_acknowledgement=False,
+            updated_at=baseline,
+            updated_by_user_id=None,
+        )
+    return ProcedureComplianceOut(
+        procedure_id=str(cs.procedure_id),
+        company_id=str(cs.company_id),
+        tier=str(cs.tier),  # type: ignore[arg-type]
+        due_within_days=cs.due_within_days,
+        requires_acknowledgement=bool(cs.requires_acknowledgement),
+        updated_at=cs.updated_at,
+        updated_by_user_id=str(cs.updated_by_user_id) if cs.updated_by_user_id else None,
+    )
+
+
+@router.patch("/procedures/{procedure_id}/compliance", response_model=ProcedureComplianceOut)
+async def patch_procedure_compliance(
+    procedure_id: str,
+    db: Db,
+    cid: CompanyId,
+    body: ProcedureCompliancePatchIn,
+    user: Annotated[User, Depends(require_manager_or_above)],
+) -> ProcedureComplianceOut:
+    row = await db.get(PulseProcedure, procedure_id)
+    if not row or row.company_id != cid:
+        raise HTTPException(status_code=404, detail="Not found")
+    now = datetime.now(timezone.utc)
+    cs = await db.get(PulseProcedureComplianceSettings, procedure_id)
+    if cs is None:
+        cs = PulseProcedureComplianceSettings(
+            procedure_id=str(row.id),
+            company_id=str(row.company_id),
+            tier=str(body.tier),
+            due_within_days=body.due_within_days,
+            requires_acknowledgement=bool(body.requires_acknowledgement),
+            updated_at=now,
+            updated_by_user_id=str(user.id),
+        )
+        db.add(cs)
+    else:
+        cs.tier = str(body.tier)
+        cs.due_within_days = body.due_within_days
+        cs.requires_acknowledgement = bool(body.requires_acknowledgement)
+        cs.updated_at = now
+        cs.updated_by_user_id = str(user.id)
+    await db.commit()
+    await db.refresh(cs)
+    return ProcedureComplianceOut(
+        procedure_id=str(cs.procedure_id),
+        company_id=str(cs.company_id),
+        tier=str(cs.tier),  # type: ignore[arg-type]
+        due_within_days=cs.due_within_days,
+        requires_acknowledgement=bool(cs.requires_acknowledgement),
+        updated_at=cs.updated_at,
+        updated_by_user_id=str(cs.updated_by_user_id) if cs.updated_by_user_id else None,
+    )
+
+
+@router.post("/procedures/{procedure_id}/sign-off", response_model=ProcedureSignoffOut)
+async def post_procedure_training_sign_off(
+    procedure_id: str,
+    db: Db,
+    cid: CompanyId,
+    body: ProcedureSignoffPostIn,
+    actor: Annotated[User, Depends(require_tenant_user)],
+) -> ProcedureSignoffOut:
+    proc = await db.get(PulseProcedure, procedure_id)
+    if not proc or proc.company_id != cid:
+        raise HTTPException(status_code=404, detail="Not found")
+    target_employee_id = body.employee_id if body.employee_id else str(actor.id)
+    if target_employee_id != str(actor.id):
+        ok = (
+            user_has_tenant_full_admin(actor)
+            or user_has_any_role(actor, UserRole.company_admin, UserRole.manager, UserRole.supervisor)
+        )
+        if not ok:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Managers or supervisors only")
+        if not await pulse_svc._user_in_company(db, cid, target_employee_id):
+            raise HTTPException(status_code=400, detail="Unknown employee_id")
+    else:
+        if not await pulse_svc._user_in_company(db, cid, target_employee_id):
+            raise HTTPException(status_code=400, detail="Unknown employee")
+
+    marker = (
+        body.revision_marker.strip()
+        if body.revision_marker and str(body.revision_marker).strip()
+        else revision_marker_from_procedure(proc)
+    )
+    if marker != revision_marker_from_procedure(proc):
+        raise HTTPException(status_code=409, detail="revision_marker does not match current procedure revision")
+
+    row, created = await record_procedure_signoff(
+        db,
+        cid,
+        employee_user_id=str(target_employee_id),
+        procedure=proc,
+        completed_by_user_id=str(actor.id),
+        supervisor_signoff=bool(body.supervisor_signoff),
+        revision_marker=marker,
+    )
+    await db.commit()
+    return ProcedureSignoffOut(id=str(row.id), revision_marker=str(row.revision_marker), created=created)
+
+
+@router.post("/procedures/{procedure_id}/acknowledgement", response_model=ProcedureAcknowledgementOut)
+async def post_procedure_training_acknowledgement(
+    procedure_id: str,
+    db: Db,
+    cid: CompanyId,
+    actor: Annotated[User, Depends(require_tenant_user)],
+    body: ProcedureAcknowledgementPostIn = Body(default_factory=ProcedureAcknowledgementPostIn),
+) -> ProcedureAcknowledgementOut:
+    proc = await db.get(PulseProcedure, procedure_id)
+    if not proc or proc.company_id != cid:
+        raise HTTPException(status_code=404, detail="Not found")
+    target_employee_id = body.employee_id if body.employee_id else str(actor.id)
+    if target_employee_id != str(actor.id):
+        ok = (
+            user_has_tenant_full_admin(actor)
+            or user_has_any_role(actor, UserRole.company_admin, UserRole.manager, UserRole.supervisor)
+        )
+        if not ok:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Managers or supervisors only")
+        if not await pulse_svc._user_in_company(db, cid, target_employee_id):
+            raise HTTPException(status_code=400, detail="Unknown employee_id")
+    else:
+        if not await pulse_svc._user_in_company(db, cid, target_employee_id):
+            raise HTTPException(status_code=400, detail="Unknown employee")
+
+    ak, _ = await record_procedure_acknowledgement(
+        db,
+        cid,
+        employee_user_id=str(target_employee_id),
+        procedure=proc,
+    )
+    await db.commit()
+    return ProcedureAcknowledgementOut(
+        revision_number=int(ak.revision_number),
+        acknowledged_at=ak.acknowledged_at,
+    )
+
+
 @router.patch("/procedures/{procedure_id}", response_model=ProcedureOut)
 async def update_procedure(
     db: Db,
@@ -427,6 +603,7 @@ async def update_procedure(
         rn = patch.get("revised_by_name") or (str(user.full_name or "").strip() or str(user.email))
         row.revised_by_name = (str(rn).strip() or None) if rn is not None else None
         row.revised_at = patch.get("revised_at") or datetime.now(timezone.utc)
+        row.content_revision = int(row.content_revision or 1) + 1
     row.updated_at = datetime.now(timezone.utc)
     await db.commit()
     await db.refresh(row)
@@ -488,6 +665,7 @@ async def upload_procedure_step_image(
     as_dict[step_index]["image_url"] = url
     row.steps = as_dict
     row.updated_at = datetime.now(timezone.utc)
+    row.content_revision = int(row.content_revision or 1) + 1
     await db.commit()
     await db.refresh(row)
     return ProcedureStepImageOut(image_url=url)

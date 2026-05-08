@@ -17,6 +17,7 @@ from sqlalchemy.dialects.postgresql import array as pg_array
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user, get_db
+from app.api.training_routes import build_worker_training_bundle
 from app.core.user_roles import (
     default_operational_role_for_invite_role,
     primary_jwt_role,
@@ -65,6 +66,7 @@ from app.models.pulse_models import (
 )
 from app.modules.compliance.service import effective_status, repeat_offender_user_ids
 from app.modules.pulse import service as pulse_svc
+from app.schemas.training import WorkerTrainingOut
 from app.schemas.pulse_workers import (
     WorkerCertificationOut,
     WorkerComplianceSummaryOut,
@@ -698,6 +700,22 @@ async def list_workers(
             )
         )
     return WorkerListOut(items=items)
+
+
+@router.get("/{user_id}/training", response_model=WorkerTrainingOut)
+async def worker_training_matrix(
+    db: Db,
+    user: Annotated[User, Depends(get_current_user)],
+    cid: CompanyId,
+    user_id: str,
+) -> WorkerTrainingOut:
+    if str(user.id) != user_id:
+        await require_workers_roster_page(user, db, cid)
+    else:
+        u = await pulse_svc._user_in_company(db, cid, user_id)
+        if not u:
+            raise HTTPException(status_code=404, detail="User not found")
+    return await build_worker_training_bundle(db, cid, user_id)
 
 
 @router.get("/{user_id}/compliance-summary", response_model=WorkerComplianceSummaryOut)

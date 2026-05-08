@@ -516,6 +516,22 @@ export function effectiveAssignmentStatus(
   return assignment.status;
 }
 
+/**
+ * When assignments carry authoritative `status` from the API, skip client-side revision re-derivation
+ * so filters and badges match the server.
+ */
+export function cellAssignmentStatus(
+  program: TrainingProgram,
+  assignment: TrainingAssignment | undefined,
+  acks: TrainingAcknowledgement[],
+  opts?: { trustAssignmentStatus?: boolean },
+): TrainingAssignmentStatus {
+  if (opts?.trustAssignmentStatus && assignment && assignment.status !== "not_assigned") {
+    return assignment.status;
+  }
+  return effectiveAssignmentStatus(program, assignment, acks);
+}
+
 /** Assignments adjusted for demo revision_pending where applicable */
 export function resolvedAssignments(
   programs: TrainingProgram[],

@@ -18,6 +18,16 @@ import { parseClientApiError } from "@/lib/parse-client-api-error";
 import { sessionHasAnyRole } from "@/lib/pulse-roles";
 import { readSession } from "@/lib/pulse-session";
 import { acknowledgeProcedure, hasAcknowledgedProcedure } from "@/lib/procedureAcknowledgments";
+import { hasSignedOffProcedure, signoffProcedure } from "@/lib/procedureSignoffs";
+import { isApiMode } from "@/lib/api";
+import {
+  fetchWorkerTraining,
+  postProcedureTrainingAcknowledgement,
+  postProcedureTrainingSignOff,
+  procedureHasTrainingSignOff,
+  showProcedureAcknowledgeCTA,
+  type WorkerTrainingApiResponse,
+} from "@/lib/trainingApi";
 import { fetchWorkerList, fetchWorkerSettings } from "@/lib/workersService";
 import { cn } from "@/lib/cn";
 import { buttonVariants } from "@/styles/button-variants";
@@ -121,6 +131,7 @@ export function ProceduresApp() {
   const session = readSession();
   const canReview = sessionHasAnyRole(session, "lead", "supervisor", "manager", "company_admin");
   const userId = session?.sub ?? null;
+  const [myTraining, setMyTraining] = useState<WorkerTrainingApiResponse | null>(null);
   const [proceduresEditRoles, setProceduresEditRoles] = useState<string[]>(["manager", "supervisor", "lead"]);
 
   const sessionRoleSet = useMemo(() => {
@@ -156,6 +167,20 @@ export function ProceduresApp() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  const reloadMyTraining = useCallback(async () => {
+    if (!userId || !isApiMode()) return;
+    try {
+      const t = await fetchWorkerTraining(userId);
+      setMyTraining(t);
+    } catch {
+      setMyTraining(null);
+    }
+  }, [userId]);
+
+  useEffect(() => {
+    void reloadMyTraining();
+  }, [reloadMyTraining]);
 
   useEffect(() => {
     void (async () => {
@@ -395,12 +420,64 @@ export function ProceduresApp() {
 
   const signAcknowledgment = async () => {
     if (!userId || !selected) return;
+    if (isApiMode()) {
+      setErr(null);
+      try {
+        await postProcedureTrainingAcknowledgement(selected.id);
+        await reloadMyTraining();
+      } catch (e) {
+        setErr(parseClientApiError(e).message);
+      } finally {
+        setAckOpen(false);
+      }
+      return;
+    }
     try {
       acknowledgeProcedure(userId, selected.id, selected.title);
     } finally {
       setAckOpen(false);
     }
   };
+
+  const signCompletion = async () => {
+    if (!userId || !selected) return;
+    if (isApiMode()) {
+      setErr(null);
+      try {
+        await postProcedureTrainingSignOff(selected.id, {
+          supervisor_signoff: sessionHasAnyRole(session, "supervisor", "manager", "company_admin"),
+        });
+        await reloadMyTraining();
+      } catch (e) {
+        setErr(parseClientApiError(e).message);
+      }
+      return;
+    }
+    const name = (session?.full_name?.trim() || session?.email?.trim() || "User").slice(0, 120);
+    const rev =
+      typeof selected.content_revision === "number"
+        ? String(selected.content_revision)
+        : selected.revised_at
+          ? `rev:${selected.revised_at}`
+          : `upd:${selected.updated_at}`;
+    signoffProcedure(userId, selected.id, selected.title, {
+      completed_by_user_id: session?.sub ?? null,
+      completed_by_name: name,
+      revision_marker: rev,
+    });
+  };
+
+  const showAckCta =
+    userId &&
+    selected &&
+    (isApiMode() ? showProcedureAcknowledgeCTA(myTraining, selected.id) : !hasAcknowledgedProcedure(userId, selected.id));
+
+  const signedOffForSelected =
+    userId && selected
+      ? isApiMode()
+        ? procedureHasTrainingSignOff(myTraining, selected.id)
+        : hasSignedOffProcedure(userId, selected.id)
+      : false;
 
   const markReviewed = async () => {
     if (!selectedId || !selected) return;
@@ -941,15 +1018,31 @@ export function ProceduresApp() {
                   >
                     Back to library
                   </button>
-                  {userId && !hasAcknowledgedProcedure(userId, selected.id) ? (
-                    <button
-                      type="button"
-                      onClick={() => setAckOpen(true)}
-                      className="rounded-md bg-ds-accent px-4 py-2 text-sm font-semibold text-ds-accent-foreground shadow-sm hover:bg-ds-accent/90"
-                    >
-                      Continue to acknowledge
-                    </button>
-                  ) : null}
+                  <div className="flex flex-wrap items-center gap-2">
+                    {showAckCta ? (
+                      <button
+                        type="button"
+                        onClick={() => setAckOpen(true)}
+                        className="rounded-md bg-ds-accent px-4 py-2 text-sm font-semibold text-ds-accent-foreground shadow-sm hover:bg-ds-accent/90"
+                      >
+                        Continue to acknowledge
+                      </button>
+                    ) : null}
+                    {userId ? (
+                      <button
+                        type="button"
+                        onClick={() => void signCompletion()}
+                        className="rounded-md border border-ds-border bg-ds-primary px-4 py-2 text-sm font-semibold text-ds-foreground shadow-sm hover:bg-ds-secondary"
+                        title={
+                          signedOffForSelected
+                            ? "Signed off (click again to update timestamp)"
+                            : "Sign off completion"
+                        }
+                      >
+                        {signedOffForSelected ? "Signed off" : "Sign off complete"}
+                      </button>
+                    ) : null}
+                  </div>
                 </div>
               </div>
             )}

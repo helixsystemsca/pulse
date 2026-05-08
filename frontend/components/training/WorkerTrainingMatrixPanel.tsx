@@ -1,16 +1,26 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { MOCK_TRAINING_PROGRAMS, effectiveAssignmentStatus } from "@/lib/training/mockData";
 import { assignmentFor, trainingAcknowledgementsForPersona, trainingAssignmentsForPersona } from "@/lib/training/selectors";
-import type { TrainingProgram, TrainingTier } from "@/lib/training/types";
+import type { TrainingAcknowledgement, TrainingAssignment, TrainingProgram } from "@/lib/training/types";
 import { TrainingStatusBadge } from "@/components/training/TrainingStatusBadge";
 import { TrainingTierBadge } from "@/components/training/TrainingTierBadge";
 import { cn } from "@/lib/cn";
+import { isApiMode } from "@/lib/api";
+import { parseClientApiError } from "@/lib/parse-client-api-error";
+import {
+  acknowledgementsFromWorkerTraining,
+  fetchWorkerTraining,
+  mapApiAssignments,
+  mapApiPrograms,
+  type WorkerTrainingApiResponse,
+} from "@/lib/trainingApi";
 
-const TIER_ORDER: TrainingTier[] = ["mandatory", "high_risk", "general"];
+const TIER_ORDER: TrainingProgram["tier"][] = ["mandatory", "high_risk", "general"];
 
-const TIER_HEADING: Record<TrainingTier, string> = {
+const TIER_HEADING: Record<TrainingProgram["tier"], string> = {
   mandatory: "Mandatory",
   high_risk: "High risk",
   general: "General",
@@ -23,9 +33,43 @@ export function WorkerTrainingMatrixPanel({
   employeeId: string;
   employeeName: string;
 }) {
-  const assignments = trainingAssignmentsForPersona(employeeId);
-  const acks = trainingAcknowledgementsForPersona(employeeId);
-  const programs = MOCK_TRAINING_PROGRAMS.filter((p) => p.active);
+  const api = isApiMode();
+  const [bundle, setBundle] = useState<WorkerTrainingApiResponse | null>(null);
+  const [loadErr, setLoadErr] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!api || !employeeId) {
+      setBundle(null);
+      return;
+    }
+    let cancelled = false;
+    setLoading(true);
+    setLoadErr(null);
+    void (async () => {
+      try {
+        const data = await fetchWorkerTraining(employeeId);
+        if (!cancelled) setBundle(data);
+      } catch (e) {
+        if (!cancelled) setLoadErr(parseClientApiError(e).message);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [api, employeeId]);
+
+  const useLive = Boolean(api && bundle && !loadErr);
+
+  const programs = useLive ? mapApiPrograms(bundle!.programs).filter((p) => p.active) : MOCK_TRAINING_PROGRAMS.filter((p) => p.active);
+  const assignments: TrainingAssignment[] = useLive
+    ? mapApiAssignments(bundle!.assignments)
+    : trainingAssignmentsForPersona(employeeId);
+  const acks: TrainingAcknowledgement[] = useLive
+    ? acknowledgementsFromWorkerTraining(employeeId, bundle!)
+    : trainingAcknowledgementsForPersona(employeeId);
 
   const overdue = assignments.filter((a) => {
     const p = programs.find((x) => x.id === a.training_program_id);
@@ -39,9 +83,12 @@ export function WorkerTrainingMatrixPanel({
       <div className="rounded-lg border border-ds-border bg-ds-secondary/40 px-3 py-3 text-sm">
         <p className="font-semibold text-ds-foreground">{employeeName}</p>
         <p className="mt-1 text-xs leading-relaxed text-ds-muted">
-          Demo training snapshot mapped deterministically to this profile for UI testing. Production will pull assignments
-          from your workforce backend.
+          {useLive
+            ? "Training assignments and acknowledgements from your organization backend."
+            : "Demo training snapshot mapped deterministically to this profile for UI testing."}
         </p>
+        {loading ? <p className="mt-2 text-xs text-ds-muted">Loading training…</p> : null}
+        {loadErr ? <p className="mt-2 text-xs font-semibold text-ds-danger">Could not load training: {loadErr}</p> : null}
         <p className="mt-2">
           <Link href="/standards/training" className="ds-link text-xs font-semibold">
             Open org training overview →
@@ -77,7 +124,7 @@ export function WorkerTrainingMatrixPanel({
             </div>
             <ul className="mt-3 space-y-3">
               {tierPrograms.map((p) => (
-                <ProgramRow key={p.id} program={p} employeeId={employeeId} assignments={assignments} acks={acks} />
+                <ProgramRow key={p.id} program={p} employeeId={employeeId} assignments={assignments} acks={acks} trustServer={useLive} />
               ))}
             </ul>
           </section>
@@ -88,10 +135,10 @@ export function WorkerTrainingMatrixPanel({
         <h4 className="text-[11px] font-bold uppercase tracking-[0.14em] text-ds-muted">Acknowledgement history</h4>
         <ul className="mt-2 space-y-2 text-sm">
           {acks.length === 0 ? (
-            <li className="text-ds-muted">No acknowledgement records on file (demo).</li>
+            <li className="text-ds-muted">No acknowledgement records on file.</li>
           ) : (
             acks.map((k) => {
-              const p = MOCK_TRAINING_PROGRAMS.find((x) => x.id === k.training_program_id);
+              const p = programs.find((x) => x.id === k.training_program_id);
               return (
                 <li key={k.id} className="flex flex-wrap items-baseline justify-between gap-2 border-b border-ds-border/60 pb-2">
                   <span className="font-medium text-ds-foreground">{p?.title ?? k.training_program_id}</span>
@@ -113,14 +160,17 @@ function ProgramRow({
   employeeId,
   assignments,
   acks,
+  trustServer,
 }: {
   program: TrainingProgram;
   employeeId: string;
-  assignments: ReturnType<typeof trainingAssignmentsForPersona>;
-  acks: ReturnType<typeof trainingAcknowledgementsForPersona>;
+  assignments: TrainingAssignment[];
+  acks: TrainingAcknowledgement[];
+  trustServer: boolean;
 }) {
   const a = assignmentFor(employeeId, program.id, assignments);
-  const eff = effectiveAssignmentStatus(program, a, acks);
+  const eff =
+    trustServer && a && a.status !== "not_assigned" ? a.status : effectiveAssignmentStatus(program, a, acks);
   return (
     <li className={cn("rounded-lg border border-ds-border bg-ds-primary px-3 py-3")}>
       <div className="flex flex-wrap items-start justify-between gap-2">
@@ -141,7 +191,7 @@ function ProgramRow({
         </div>
         <div>
           <dt className="inline font-semibold text-ds-muted">Completed: </dt>
-          <dd className="inline tabular-nums">{a?.completed_date ?? "—"}</dd>
+          <dd className="inline tabular-nums">{a?.completed_date ? String(a.completed_date).slice(0, 10) : "—"}</dd>
         </div>
         <div>
           <dt className="inline font-semibold text-ds-muted">Expires: </dt>

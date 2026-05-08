@@ -152,6 +152,7 @@ class ProcedureOut(BaseModel):
     revised_by_user_id: Optional[str] = None
     revised_by_name: Optional[str] = None
     revised_at: Optional[datetime] = None
+    content_revision: int = 1
     created_at: datetime
     updated_at: datetime
 

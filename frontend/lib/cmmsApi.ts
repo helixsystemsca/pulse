@@ -62,6 +62,8 @@ export type ProcedureRow = {
   revised_by_user_id?: string | null;
   revised_by_name?: string | null;
   revised_at?: string | null;
+  /** Content revision counter (training sign-off / acknowledgement idempotency). */
+  content_revision?: number;
   created_at: string;
   updated_at: string;
 };
