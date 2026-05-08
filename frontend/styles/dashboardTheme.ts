@@ -14,8 +14,8 @@ export const DASH = {
   /** Operational widget surface (match Team Insights cards). */
   cardBase:
     // Use ds-card-static to opt out of default hover tint (gray wash),
-    // then re-add the lift/shadow behavior explicitly.
-    "ds-card-primary ds-card-static overflow-hidden rounded-2xl border border-ds-border shadow-[var(--ds-shadow-card)] transition-[transform,box-shadow] hover:-translate-y-[1px] hover:shadow-[var(--ds-shadow-card-hover)]",
+    // then re-add a subtle glow (no tint shift) explicitly.
+    "ds-card-primary ds-card-static overflow-hidden rounded-2xl border border-ds-border shadow-[var(--ds-shadow-card)] transition-[box-shadow] hover:shadow-[0_0_0_1px_color-mix(in_srgb,var(--ds-accent)_22%,transparent),0_8px_26px_rgba(15,23,42,0.10)] dark:hover:shadow-[0_0_0_1px_color-mix(in_srgb,var(--ds-accent)_28%,transparent),0_10px_30px_rgba(0,0,0,0.32)]",
   cardInner: "p-3.5 sm:p-4",
   /** Brand strip under header / column chrome. */
   accentBar: "h-[3px] w-full shrink-0 bg-[var(--ds-chrome-gradient)]",

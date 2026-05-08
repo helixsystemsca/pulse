@@ -158,18 +158,29 @@ function WorkerDashCard({
   className?: string;
   styleOverride?: DashboardWidgetStyleOverride;
 }) {
+  const theme = styleOverride?.theme ?? "tint";
   const styleVars: React.CSSProperties = {
     ...(styleOverride?.backgroundColor ? ({ ["--widget-tint" as any]: styleOverride.backgroundColor } as any) : null),
     ...(styleOverride?.textColor ? ({ ["--widget-fg" as any]: styleOverride.textColor } as any) : null),
     ...(styleOverride?.fontFamily ? ({ fontFamily: styleOverride.fontFamily } as any) : null),
+    ...(theme ? ({ ["--widget-theme" as any]: theme } as any) : null),
   };
+
+  const backgroundClass =
+    theme === "solid"
+      ? "bg-[var(--widget-tint,white)]"
+      : theme === "glass"
+        ? "bg-[color-mix(in_srgb,var(--widget-tint,white)_18%,transparent)] backdrop-blur-md"
+        : theme === "gradient"
+          ? "bg-[radial-gradient(900px_420px_at_20%_10%,color-mix(in_srgb,var(--widget-tint,white)_38%,transparent),transparent_58%),radial-gradient(700px_420px_at_85%_15%,color-mix(in_srgb,var(--ds-accent)_18%,transparent),transparent_60%),color-mix(in_srgb,var(--ds-bg)_62%,#ffffff_38%)]"
+          : "bg-[color-mix(in_srgb,var(--widget-tint,white)_10%,var(--ds-bg))]";
   return (
     <div
       style={styleVars}
       className={cn(
         DASH.cardBase,
         "flex h-full min-h-0 flex-col text-[var(--widget-fg,var(--ds-text-primary))]",
-        "bg-[color-mix(in_srgb,var(--widget-tint,white)_10%,var(--ds-bg))]",
+        backgroundClass,
         className,
       )}
     >
@@ -1613,7 +1624,7 @@ function DashboardBody({
             </div>
 
             {/* Disable on-site telemetry preview; show schedule-only buckets. */}
-            <div className="min-h-0 flex-1 space-y-2.5 overflow-auto pr-1">
+            <div className="space-y-2.5">
               <div>
                 <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--ds-info)]">On shift</p>
                 <div className="mt-1 flex flex-wrap gap-2">
@@ -1636,66 +1647,6 @@ function DashboardBody({
                   )}
                 </div>
               </div>
-
-              {model.workforce.upcomingToday.length > 0 ? (
-                <div>
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--ds-info)]">Upcoming</p>
-                  <div className="mt-1 flex flex-wrap gap-2">
-                    {model.workforce.upcomingToday.map((b) => (
-                      <WorkforceBubbleStack
-                        key={b.id}
-                        bubble={b}
-                        faceClassName={scheduledAvatarClass()}
-                        badges={
-                          <>
-                            {b.badge ? <WorkforceRoleLetterBadge letter={b.badge} /> : null}
-                            <WorkforceUpcomingPill />
-                          </>
-                        }
-                      />
-                    ))}
-                  </div>
-                </div>
-              ) : null}
-
-              {model.workforce.onScheduleToday.length > 0 ? (
-                <div>
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400">
-                    Scheduled today
-                  </p>
-                  <div className="mt-1 flex flex-wrap gap-2">
-                    {model.workforce.onScheduleToday.map((b) => (
-                      <WorkforceBubbleStack
-                        key={b.id}
-                        bubble={b}
-                        faceClassName={scheduledAvatarClass()}
-                        badges={b.badge ? <WorkforceRoleLetterBadge letter={b.badge} /> : null}
-                      />
-                    ))}
-                  </div>
-                </div>
-              ) : null}
-
-              {model.workforce.offSite.length > 0 ? (
-                <div className="border-t border-ds-border/60 pt-2">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-ds-muted">Not scheduled / off site</p>
-                  <div className="mt-1 flex flex-wrap gap-2 opacity-90">
-                    {model.workforce.offSite.map((b) => (
-                      <WorkforceBubbleStack
-                        key={b.id}
-                        bubble={b}
-                        faceClassName={offsiteAvatarClass()}
-                        badges={
-                          <>
-                            {b.badge ? <WorkforceRoleLetterBadge letter={b.badge} /> : null}
-                            <WorkforceStatusDot color="gray" />
-                          </>
-                        }
-                      />
-                    ))}
-                  </div>
-                </div>
-              ) : null}
             </div>
           </div>
         ),
@@ -2413,9 +2364,7 @@ function DashboardBody({
                         </Button>
                       ) : null}
                       {!readOnly && editMode ? (
-                        <span className="dashboard-drag-handle select-none border border-gray-800 bg-gray-900 px-2 py-1 text-[11px] font-semibold text-white">
-                          Drag
-                        </span>
+                        null
                       ) : null}
                       {!readOnly && editMode ? (
                         <Button
@@ -2489,9 +2438,6 @@ function DashboardBody({
                         >
                           <Palette className="h-3.5 w-3.5" aria-hidden />
                         </Button>
-                        <span className="dashboard-drag-handle select-none border border-gray-800 bg-gray-900 px-2 py-1 text-[11px] font-semibold text-white">
-                          Drag
-                        </span>
                         <Button
                           type="button"
                           variant="secondary"
@@ -2576,7 +2522,7 @@ function DashboardBody({
 
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div className="space-y-1.5">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-ds-muted">Background tint</p>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-ds-muted">Background</p>
                     <input
                       type="color"
                       className="h-10 w-full cursor-pointer rounded-md border border-ds-border bg-transparent"
@@ -2588,7 +2534,7 @@ function DashboardBody({
                           [styleEditorTarget.id]: { ...(prev[styleEditorTarget.id] ?? {}), backgroundColor: value },
                         }));
                       }}
-                      aria-label="Widget background tint"
+                      aria-label="Widget background color"
                     />
                   </div>
                   <div className="space-y-1.5">
@@ -2607,6 +2553,55 @@ function DashboardBody({
                       aria-label="Widget text color"
                     />
                   </div>
+                </div>
+
+                <div className="rounded-xl border border-ds-border bg-ds-secondary/40 p-3">
+                  <label className="flex cursor-pointer items-center justify-between gap-3">
+                    <span className="text-xs font-semibold uppercase tracking-wide text-ds-muted">Advanced theme</span>
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4"
+                      checked={(widgetStyles[styleEditorTarget.id]?.theme ?? "tint") !== "tint"}
+                      onChange={(e) => {
+                        const checked = e.target.checked;
+                        setWidgetStyles((prev) => ({
+                          ...prev,
+                          [styleEditorTarget.id]: {
+                            ...(prev[styleEditorTarget.id] ?? {}),
+                            theme: checked ? (prev[styleEditorTarget.id]?.theme ?? "solid") : "tint",
+                          },
+                        }));
+                      }}
+                      aria-label="Enable advanced theme"
+                    />
+                  </label>
+                  {(widgetStyles[styleEditorTarget.id]?.theme ?? "tint") !== "tint" ? (
+                    <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                      {(["solid", "glass", "gradient"] as const).map((opt) => {
+                        const active = (widgetStyles[styleEditorTarget.id]?.theme ?? "tint") === opt;
+                        return (
+                          <button
+                            key={opt}
+                            type="button"
+                            className={cn(
+                              "rounded-lg border px-2 py-2 text-xs font-semibold capitalize transition-colors",
+                              active
+                                ? "border-[var(--ds-accent)] bg-[color-mix(in_srgb,var(--ds-accent)_12%,transparent)] text-ds-foreground"
+                                : "border-ds-border bg-transparent text-ds-muted hover:bg-ds-interactive-hover",
+                            )}
+                            onClick={() => {
+                              setWidgetStyles((prev) => ({
+                                ...prev,
+                                [styleEditorTarget.id]: { ...(prev[styleEditorTarget.id] ?? {}), theme: opt },
+                              }));
+                            }}
+                          >
+                            {opt}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ) : null}
                 </div>
 
                 <div className="flex items-center justify-between gap-3">
