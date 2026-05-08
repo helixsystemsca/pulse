@@ -2287,9 +2287,8 @@ function DashboardBody({
                     <Button
                       type="button"
                       variant="secondary"
-                      disabled={!editMode}
-                      onClick={() => editMode && setShowAddWidget(true)}
-                      title={editMode ? "Add a widget" : "Turn on edit mode to add widgets"}
+                      onClick={() => setShowAddWidget(true)}
+                      title="Add a widget"
                       aria-label="Add widget"
                       className={cn(OPS_DASH_HEADER_TOOL, "disabled:pointer-events-none disabled:opacity-40")}
                     >
