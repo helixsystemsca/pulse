@@ -62,6 +62,7 @@ import {
   patchWorkerSettings,
   resendWorkerInvite,
 } from "@/lib/workersService";
+import { WorkerTrainingMatrixPanel } from "@/components/training/WorkerTrainingMatrixPanel";
 import { UserProfileAvatarPreview } from "@/components/profile/UserProfileAvatarPreview";
 import { useResolvedAvatarSrc } from "@/lib/useResolvedAvatarSrc";
 import { cn } from "@/lib/cn";
@@ -351,6 +352,7 @@ export function WorkersApp() {
   }, [session, fullSettings]);
 
   const [profileId, setProfileId] = useState<string | null>(null);
+  const [profileDrawerTab, setProfileDrawerTab] = useState<"profile" | "training">("profile");
 
   useEffect(() => {
     const p = searchParams.get("profile")?.trim();
@@ -2277,6 +2279,7 @@ export function WorkersApp() {
         subtitle={profile ? profile.email : undefined}
         onClose={() => {
           setProfileId(null);
+          setProfileDrawerTab("profile");
           clearProfileQueryFromUrl();
         }}
         belowAppHeader
@@ -2343,6 +2346,46 @@ export function WorkersApp() {
           </div>
         ) : (
           <div className="space-y-8" id="worker-profile-title">
+            <div className="flex flex-wrap gap-2 border-b border-ds-border pb-3" role="tablist" aria-label="Profile sections">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={profileDrawerTab === "profile"}
+                className={cn(
+                  "rounded-lg px-3 py-2 text-sm font-semibold transition-colors",
+                  profileDrawerTab === "profile"
+                    ? "bg-ds-success text-ds-on-accent shadow-sm"
+                    : "text-ds-muted hover:bg-ds-interactive-hover hover:text-ds-foreground",
+                )}
+                onClick={() => setProfileDrawerTab("profile")}
+              >
+                Profile
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={profileDrawerTab === "training"}
+                className={cn(
+                  "rounded-lg px-3 py-2 text-sm font-semibold transition-colors",
+                  profileDrawerTab === "training"
+                    ? "bg-ds-success text-ds-on-accent shadow-sm"
+                    : "text-ds-muted hover:bg-ds-interactive-hover hover:text-ds-foreground",
+                )}
+                onClick={() => setProfileDrawerTab("training")}
+              >
+                Training matrix
+              </button>
+            </div>
+
+            {profileDrawerTab === "training" ? (
+              <WorkerTrainingMatrixPanel
+                employeeId={profile.id}
+                employeeName={profile.full_name?.trim() || profile.email}
+              />
+            ) : null}
+
+            {profileDrawerTab === "profile" ? (
+              <>
             <section>
               <h3 className={SECTION_KICKER}>Basic info</h3>
               <p className="mt-1 max-w-prose text-xs text-pulse-muted">
@@ -2933,6 +2976,8 @@ export function WorkersApp() {
                 </div>
               </div>
             </section>
+              </>
+            ) : null}
           </div>
         )}
       </PulseDrawer>
