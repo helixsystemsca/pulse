@@ -5,6 +5,7 @@
  */
 import { usePathname } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { Bell, ChevronDown, Image as ImageIcon, KeyRound, LogOut, MessageSquare, Settings } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
@@ -100,11 +101,27 @@ export function AppNavbar({ notificationCount = 0, messagesCount = 0 }: AppNavba
           <Link
             href={logoHref}
             className={cn(
-              "font-panoramaBrand inline-flex min-w-0 items-center gap-2 whitespace-nowrap text-[clamp(1.05rem,2.1vw,1.45rem)] uppercase leading-none text-white",
+              "font-panoramaBrand inline-flex min-w-0 items-center gap-3 whitespace-nowrap text-[clamp(1.05rem,2.1vw,1.45rem)] uppercase leading-none text-white",
             )}
           >
+            <span
+              className="relative flex shrink-0 overflow-hidden rounded-md bg-white/[0.06] ring-1 ring-white/10"
+              style={{
+                width: "calc(var(--pulse-header-bar-height) - 10px)",
+                height: "calc(var(--pulse-header-bar-height) - 10px)",
+              }}
+            >
+              <Image
+                src="/images/prwhite.png"
+                alt=""
+                width={48}
+                height={48}
+                className="h-full w-full object-contain p-1"
+                priority
+              />
+            </span>
             <span className="font-normal tracking-[0.06em]">Panorama</span>
-            <span className="font-extralight tracking-[0.06em]">Pulse</span>
+            <span className="font-extralight tracking-[0.06em]">Rec</span>
           </Link>
         </div>
 
