@@ -1,4 +1,10 @@
-import type { TrainingAssignment, TrainingAssignmentStatus, TrainingEmployee, TrainingProgram, TrainingTier } from "./types";
+import type {
+  TrainingAssignment,
+  TrainingAssignmentStatus,
+  TrainingEmployee,
+  TrainingProgram,
+  TrainingTier,
+} from "./types";
 import {
   MOCK_RESOLVED_ASSIGNMENTS,
   MOCK_TRAINING_ACKNOWLEDGEMENTS,
@@ -12,7 +18,6 @@ export type TrainingMatrixFilters = {
   department: string;
   tier: TrainingTier | "all";
   status: TrainingAssignmentStatus | "all";
-  expiringSoonOnly: boolean;
   search: string;
 };
 
@@ -76,47 +81,10 @@ export function filterEmployees(employees: TrainingEmployee[], search: string): 
   );
 }
 
-export function passesMatrixFilters(
-  employee: TrainingEmployee,
-  programs: TrainingProgram[],
-  assignments: TrainingAssignment[],
-  acks: typeof MOCK_TRAINING_ACKNOWLEDGEMENTS,
-  filters: TrainingMatrixFilters,
-  opts?: { trustAssignmentStatus?: boolean },
-): boolean {
+/** Department + employee search only — tier/status scope the matrix columns and cells, not which rows appear. */
+export function passesMatrixFilters(employee: TrainingEmployee, filters: TrainingMatrixFilters): boolean {
   if (filters.department !== "all" && employee.department !== filters.department) return false;
-  if (!filterEmployees([employee], filters.search).length) return false;
-
-  const activePrograms = programs.filter((p) => p.active);
-  const cellStatus = (p: TrainingProgram, a: TrainingAssignment | undefined) =>
-    cellAssignmentStatus(p, a, acks, opts);
-
-  const hasTierMatch =
-    filters.tier === "all"
-      ? true
-      : activePrograms.some((p) => {
-          if (p.tier !== filters.tier) return false;
-          const a = assignmentFor(employee.id, p.id, assignments);
-          const eff = cellStatus(p, a);
-          return cellPassesStatusFilters(eff, filters);
-        });
-
-  if (filters.tier !== "all" && !hasTierMatch) return false;
-
-  if (filters.status === "all" && !filters.expiringSoonOnly) return true;
-
-  return activePrograms.some((p) => {
-    if (filters.tier !== "all" && p.tier !== filters.tier) return false;
-    const a = assignmentFor(employee.id, p.id, assignments);
-    const eff = cellStatus(p, a);
-    return cellPassesStatusFilters(eff, filters);
-  });
-}
-
-function cellPassesStatusFilters(eff: TrainingAssignmentStatus, filters: TrainingMatrixFilters): boolean {
-  if (filters.expiringSoonOnly && eff !== "expiring_soon") return false;
-  if (filters.status !== "all" && eff !== filters.status) return false;
-  return true;
+  return filterEmployees([employee], filters.search).length > 0;
 }
 
 export type ComplianceSummary = {

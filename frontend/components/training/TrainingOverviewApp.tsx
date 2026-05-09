@@ -19,7 +19,6 @@ import type {
 } from "@/lib/training/types";
 import {
   computeComplianceSummary,
-  filterEmployees,
   passesMatrixFilters,
   uniqueDepartments,
   type TrainingMatrixFilters,
@@ -90,7 +89,6 @@ function TrainingLeadershipOverviewInner() {
     department: "all",
     tier: "all",
     status: "all",
-    expiringSoonOnly: false,
     search: "",
   });
 
@@ -244,18 +242,13 @@ function TrainingLeadershipOverviewInner() {
   }, [matrixBundle, employees, employeesLive, procedures, programs]);
 
   const filteredEmployees = useMemo(() => {
-    let rows = employees;
-    rows = filterEmployees(rows, filters.search);
-    if (filters.department !== "all") {
-      rows = rows.filter((e) => e.department === filters.department);
-    }
-    rows = rows.filter((e) =>
-      passesMatrixFilters(e, programs, generated.assignments, generated.acknowledgements, filters, {
-        trustAssignmentStatus: trustServerStatus,
-      }),
-    );
-    return rows;
-  }, [filters, employees, programs, generated.assignments, generated.acknowledgements, trustServerStatus]);
+    return employees.filter((e) => passesMatrixFilters(e, filters));
+  }, [filters, employees]);
+
+  const matrixPrograms = useMemo(() => {
+    if (filters.tier === "all") return programs;
+    return programs.filter((p) => p.tier === filters.tier);
+  }, [programs, filters.tier]);
 
   const summary = useMemo(
     () =>
@@ -359,11 +352,13 @@ function TrainingLeadershipOverviewInner() {
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <h3 className="text-sm font-bold uppercase tracking-wide text-ds-muted">Team compliance matrix</h3>
-            <p className="mt-1 text-sm text-ds-muted">Rows = people · Columns = procedures · Cells = status</p>
+            <p className="mt-1 text-sm text-ds-muted">
+              Rows = people · Columns = procedures (use training tier to show a subset) · Cells = assignment status
+            </p>
           </div>
         </div>
 
-        <div className="grid gap-3 rounded-xl border border-ds-border bg-ds-secondary/40 p-4 lg:grid-cols-6">
+        <div className="grid gap-3 rounded-xl border border-ds-border bg-ds-secondary/40 p-4 lg:grid-cols-5">
           <div className="lg:col-span-2">
             <label className={dsLabelClass} htmlFor="training-filter-search">
               Employee search
@@ -427,25 +422,15 @@ function TrainingLeadershipOverviewInner() {
               ))}
             </select>
           </div>
-          <div className="flex flex-col justify-end">
-            <label className={`${dsLabelClass} flex cursor-pointer items-center gap-2`}>
-              <input
-                type="checkbox"
-                className="h-4 w-4 rounded border-ds-border"
-                checked={filters.expiringSoonOnly}
-                onChange={(e) => setFilters((f) => ({ ...f, expiringSoonOnly: e.target.checked }))}
-              />
-              Expiring soon only
-            </label>
-          </div>
         </div>
 
         <TrainingMatrixTable
           employees={filteredEmployees}
-          programs={programs}
+          programs={matrixPrograms}
           assignments={generated.assignments}
           acknowledgements={generated.acknowledgements}
           trustAssignmentStatus={trustServerStatus}
+          statusColumnFilter={filters.status}
         />
       </section>
 

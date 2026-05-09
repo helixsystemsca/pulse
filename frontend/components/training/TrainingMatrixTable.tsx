@@ -1,6 +1,12 @@
 "use client";
 
-import type { TrainingAcknowledgement, TrainingAssignment, TrainingEmployee, TrainingProgram } from "@/lib/training/types";
+import type {
+  TrainingAcknowledgement,
+  TrainingAssignment,
+  TrainingAssignmentStatus,
+  TrainingEmployee,
+  TrainingProgram,
+} from "@/lib/training/types";
 import { cellAssignmentStatus } from "@/lib/training/mockData";
 import { assignmentFor } from "@/lib/training/selectors";
 import { TrainingStatusBadge } from "@/components/training/TrainingStatusBadge";
@@ -18,6 +24,7 @@ export function TrainingMatrixTable({
   assignments,
   acknowledgements,
   trustAssignmentStatus = false,
+  statusColumnFilter = "all",
 }: {
   employees: TrainingEmployee[];
   programs: TrainingProgram[];
@@ -25,6 +32,8 @@ export function TrainingMatrixTable({
   acknowledgements: TrainingAcknowledgement[];
   /** When true, use each assignment's `status` from the server (training matrix API). */
   trustAssignmentStatus?: boolean;
+  /** When not `all`, cells that do not match this status show a placeholder so every employee row stays visible. */
+  statusColumnFilter?: TrainingAssignmentStatus | "all";
 }) {
   const cols = sortPrograms(programs.filter((p) => p.active));
 
@@ -71,15 +80,32 @@ export function TrainingMatrixTable({
                 {cols.map((p) => {
                   const a = assignmentFor(e.id, p.id, assignments);
                   const eff = cellAssignmentStatus(p, a, acknowledgements, { trustAssignmentStatus });
+                  const statusHidden =
+                    statusColumnFilter !== "all" && eff !== statusColumnFilter;
                   return (
                     <td key={p.id} className="px-2 py-1.5 align-middle">
                       <div className="flex flex-col gap-1">
-                        <TrainingStatusBadge status={eff} />
-                        {a?.expiry_date && eff !== "not_assigned" ? (
-                          <span className="text-[9px] font-medium text-ds-muted tabular-nums">
-                            Expires {a.expiry_date}
-                          </span>
-                        ) : null}
+                        {statusHidden ? (
+                          <>
+                            <span className="sr-only">{`Assignment status: ${eff.replaceAll("_", " ")}`}</span>
+                            <span
+                              className="text-[11px] font-medium tabular-nums text-ds-muted/40"
+                              title={`Assignment status: ${eff.replaceAll("_", " ")}`}
+                              aria-hidden
+                            >
+                              —
+                            </span>
+                          </>
+                        ) : (
+                          <>
+                            <TrainingStatusBadge status={eff} />
+                            {a?.expiry_date && eff !== "not_assigned" ? (
+                              <span className="text-[9px] font-medium text-ds-muted tabular-nums">
+                                Expires {a.expiry_date}
+                              </span>
+                            ) : null}
+                          </>
+                        )}
                       </div>
                     </td>
                   );
