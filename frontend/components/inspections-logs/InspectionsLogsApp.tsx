@@ -48,7 +48,7 @@ const ARCHIVE_ROLE_TAGS = [
   { id: "lead", label: "Lead" },
   { id: "supervisor", label: "Supervisor" },
   { id: "manager", label: "Manager" },
-  { id: "company_admin", label: "Company admin" },
+  { id: "company_admin", label: "Operations / Admin" },
 ] as const;
 
 type ArchivedVehicleInspection = VehicleInspectionArchivePayload & {

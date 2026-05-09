@@ -110,7 +110,7 @@ def primary_facility_staff_role(user: User) -> UserRole:
 
 
 _FACILITY_ROLE_LABEL: dict[UserRole, str] = {
-    UserRole.worker: "Worker",
+    UserRole.worker: "Operations",
     UserRole.lead: "Lead",
     UserRole.supervisor: "Supervisor",
     UserRole.manager: "Manager",
@@ -118,7 +118,7 @@ _FACILITY_ROLE_LABEL: dict[UserRole, str] = {
 
 
 def tenant_role_display_label(user: User) -> str | None:
-    """Sidebar / profile label override, e.g. ``Worker (Admin)``. ``None`` = use primary JWT role + existing humanize."""
+    """Sidebar / profile label override, e.g. ``Operations (Admin)``. ``None`` = use primary JWT role + client humanize."""
     if user_is_external_company_admin(user):
         return None
     if user_has_facility_tenant_admin_flag(user):

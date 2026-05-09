@@ -16,7 +16,7 @@ export const defaultZones: Zone[] = [
 ];
 
 export const defaultRoles: ScheduleRoleDefinition[] = [
-  { id: "worker", label: "Worker" },
+  { id: "worker", label: "Operations" },
   { id: "supervisor", label: "Supervisor" },
   { id: "lead", label: "Lead" },
 ];

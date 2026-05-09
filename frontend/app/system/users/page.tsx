@@ -77,9 +77,9 @@ type UsersDirectory = {
 const ROLE_OPTIONS: { value: string; label: string }[] = [
   { value: "", label: "All roles" },
   { value: "system_admin", label: "System admin" },
-  { value: "company_admin", label: "Company admin" },
+  { value: "company_admin", label: "Operations / Admin" },
   { value: "manager", label: "Manager" },
-  { value: "worker", label: "Worker" },
+  { value: "worker", label: "Operations" },
 ];
 
 const INPUT = dsInputClass;
@@ -88,7 +88,7 @@ const BTN_SECONDARY = cn(buttonVariants({ surface: "light", intent: "secondary" 
 
 /** Role for the outgoing tenant owner after `company_admin` is removed (system transfer-tenant-owner). */
 const PREVIOUS_OWNER_ROLE_OPTIONS = [
-  { value: "worker" as const, label: "Worker" },
+  { value: "worker" as const, label: "Operations" },
   { value: "lead" as const, label: "Lead" },
   { value: "supervisor" as const, label: "Supervisor" },
   { value: "manager" as const, label: "Manager" },

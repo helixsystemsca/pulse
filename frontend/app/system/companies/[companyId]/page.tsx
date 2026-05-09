@@ -31,7 +31,7 @@ type CompanyMember = {
 };
 
 const PREVIOUS_OWNER_ROLE_OPTIONS = [
-  { value: "worker" as const, label: "Worker" },
+  { value: "worker" as const, label: "Operations" },
   { value: "lead" as const, label: "Lead" },
   { value: "supervisor" as const, label: "Supervisor" },
   { value: "manager" as const, label: "Manager" },

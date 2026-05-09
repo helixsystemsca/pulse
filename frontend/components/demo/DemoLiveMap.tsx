@@ -432,7 +432,7 @@ export function DemoLiveMap() {
           {/* Legend */}
           <div className="absolute bottom-3 right-3 flex flex-col gap-1 rounded-md bg-black/40 p-2 backdrop-blur-sm">
             {[
-              { color: "bg-emerald-400", label: "Worker" },
+              { color: "bg-emerald-400", label: "Operations" },
               { color: "bg-blue-400",    label: "Tool" },
               { color: "bg-red-500",     label: "Equip · PM due" },
               { color: "bg-blue-400 ring-2 ring-blue-400/30", label: "ESP32 node" },

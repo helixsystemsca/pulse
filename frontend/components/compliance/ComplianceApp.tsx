@@ -24,7 +24,7 @@ import {
   type ComplianceRecordRow,
 } from "@/lib/complianceService";
 import { readSession } from "@/lib/pulse-session";
-import { complianceManagerFlagAllowed } from "@/lib/pulse-roles";
+import { complianceManagerFlagAllowed, humanizeRole } from "@/lib/pulse-roles";
 import { useModuleSettings } from "@/providers/ModuleSettingsProvider";
 import { ModuleSettingsGear } from "@/components/module-settings/ModuleSettingsGear";
 import { Card } from "@/components/pulse/Card";
@@ -49,7 +49,7 @@ const TAB_CATS = [
 
 function roleLabel(role: string | null | undefined): string {
   if (!role) return "—";
-  return role.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+  return humanizeRole(role);
 }
 
 function formatWhen(iso: string): { date: string; time: string } {

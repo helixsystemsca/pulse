@@ -2735,7 +2735,7 @@ export function WorkRequestsApp() {
               })()}
             </p>
             <label className="mt-4 block">
-              <span className={LABEL}>Worker</span>
+              <span className={LABEL}>Assignee</span>
               <select
                 className={FIELD}
                 value={assignPickUserId}

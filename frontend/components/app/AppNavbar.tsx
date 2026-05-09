@@ -17,6 +17,7 @@ import { UserProfileAvatarPreview } from "@/components/profile/UserProfileAvatar
 import {
   canAccessCompanyConfiguration,
   sessionHasAnyRole,
+  sessionRoleDisplayLabel,
   shouldShowWorkerMandatoryPasswordBadge,
 } from "@/lib/pulse-roles";
 import { cn } from "@/lib/cn";
@@ -215,8 +216,8 @@ export function AppNavbar({ notificationCount = 0, messagesCount = 0 }: AppNavba
                         ? "Demo Profile"
                         : session?.full_name?.trim() || session?.email?.split("@")[0] || "Account"}
                     </span>
-                    <span className="block truncate text-[11px] font-medium capitalize text-white/65">
-                      {isDemoViewer ? "Demo Viewer" : session ? session.role?.replace(/_/g, " ") || "member" : ""}
+                    <span className="block truncate text-[11px] font-medium text-white/65">
+                      {isDemoViewer ? "Demo Viewer" : session ? sessionRoleDisplayLabel(session) : ""}
                     </span>
                   </span>
                   <ChevronDown className="h-4 w-4 shrink-0 text-white/70" aria-hidden />

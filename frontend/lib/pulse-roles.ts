@@ -122,7 +122,11 @@ export function isCreateRoleLimitedSession(
   );
 }
 
+/** User-facing role title (headers, Workers UI, compliance tables). */
 export function humanizeRole(role: string): string {
+  const key = role.trim().toLowerCase();
+  if (key === "worker") return "Operations";
+  if (key === "company_admin") return "Operations / Admin";
   return role.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 

@@ -6,16 +6,14 @@ import { WowXpBar } from "@/components/gamification/WowXpBar";
 import { Card } from "@/components/pulse/Card";
 import { fetchWorkerProfile, type WorkerProfilePayload } from "@/lib/workerProfileService";
 import { useResolvedAvatarSrc } from "@/lib/useResolvedAvatarSrc";
+import { humanizeRole } from "@/lib/pulse-roles";
 
 export type WorkerProfileMode = "insights" | "admin";
 
 function roleTitle(role: string) {
-  const r = (role || "worker").toLowerCase();
-  if (r === "supervisor") return "Supervisor";
-  if (r === "lead") return "Lead";
-  if (r === "worker") return "Worker";
-  if (r === "company_admin") return "Admin";
-  return role || "Worker";
+  const r = (role || "worker").trim();
+  if (!r) return humanizeRole("worker");
+  return humanizeRole(r);
 }
 
 function borderRing(border: string | null | undefined): string {

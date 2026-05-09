@@ -18,6 +18,7 @@ import type {
 import { fetchScheduleAssignments, type ScheduleAssignment } from "@/lib/schedule/assignments";
 import { formatLocalDate } from "@/lib/schedule/calendar";
 import type { PulseShiftApi, PulseWorkerApi } from "@/lib/schedule/pulse-bridge";
+import { humanizeRole } from "@/lib/pulse-roles";
 import {
   getProject,
   listProjectActivity,
@@ -308,9 +309,9 @@ function taskInsightStats(tasks: TaskRow[]): TeamInsightsPanelData["stats"] {
 }
 
 function displayRole(w: PulseWorkerApi | undefined): string {
-  const r = (w?.role ?? "").trim().replace(/_/g, " ");
+  const r = (w?.role ?? "").trim();
   if (!r) return "Team member";
-  return r.charAt(0).toUpperCase() + r.slice(1);
+  return humanizeRole(r);
 }
 
 function inferTagVariant(badge: string, description: string): TeamInsightTag["variant"] {
