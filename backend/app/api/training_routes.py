@@ -11,7 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import array as pg_array
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_db, require_manager_or_above, require_tenant_user
+from app.api.deps import get_db, require_training_matrix_access, require_tenant_user
 from app.models.domain import User, UserRole
 from app.models.pulse_models import (
     PulseProcedure,
@@ -116,7 +116,7 @@ def _assignment_to_out(
 async def training_matrix(
     db: Db,
     cid: CompanyId,
-    _: Annotated[User, Depends(require_manager_or_above)],
+    _: Annotated[User, Depends(require_training_matrix_access)],
 ) -> TrainingMatrixOut:
     roster_vals = [r.value for r in _ROSTER_ROLES]
     uq = await db.execute(
@@ -213,7 +213,7 @@ async def create_training_assignments(
     db: Db,
     cid: CompanyId,
     body: TrainingAssignmentCreateIn,
-    actor: Annotated[User, Depends(require_manager_or_above)],
+    actor: Annotated[User, Depends(require_training_matrix_access)],
 ) -> list[TrainingAssignmentOut]:
     proc = await db.get(PulseProcedure, body.procedure_id)
     if not proc or str(proc.company_id) != cid:

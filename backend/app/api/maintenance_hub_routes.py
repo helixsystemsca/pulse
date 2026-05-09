@@ -12,7 +12,7 @@ from sqlalchemy import and_, delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.responses import Response
 
-from app.api.deps import require_manager_or_above, require_tenant_user
+from app.api.deps import require_tenant_user, require_training_matrix_access
 from app.core.database import get_db
 from app.core.events.engine import event_engine
 from app.core.events.types import DomainEvent
@@ -439,7 +439,7 @@ async def patch_procedure_compliance(
     db: Db,
     cid: CompanyId,
     body: ProcedureCompliancePatchIn,
-    user: Annotated[User, Depends(require_manager_or_above)],
+    user: Annotated[User, Depends(require_training_matrix_access)],
 ) -> ProcedureComplianceOut:
     row = await db.get(PulseProcedure, procedure_id)
     if not row or row.company_id != cid:

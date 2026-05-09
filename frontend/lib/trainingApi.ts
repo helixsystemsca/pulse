@@ -1,5 +1,10 @@
 /**
- * Training matrix & procedure compliance — `/api/v1/training/matrix`, CMMS procedure compliance PATCH, worker training GET.
+ * Training matrix & procedure compliance — wired to FastAPI:
+ * - `GET /api/v1/training/matrix` → TrainingMatrixApiResponse
+ * - `POST /api/v1/training/assignments` → assignment rows (same shape as matrix assignments)
+ * - `PATCH /api/v1/cmms/procedures/{procedureId}/compliance` → procedure tier / acknowledgement rules
+ * - `GET /api/workers/{userId}/training` → single-worker bundle (programs + assignments + acknowledgement_summary)
+ * Sign-off / acknowledgement POSTs live on CMMS procedure routes (see below).
  */
 import { apiFetch } from "@/lib/api";
 import type {
@@ -67,6 +72,20 @@ export type ProcedureComplianceApiResponse = {
   updated_by_user_id: string | null;
 };
 
+/** Calendar fields from FastAPI (`date` or ISO datetime serialized as string). */
+function normalizeApiDateOnly(value: unknown): string | null {
+  if (value == null || value === "") return null;
+  const s = typeof value === "string" ? value.trim() : String(value).trim();
+  if (!s) return null;
+  return s.length >= 10 ? s.slice(0, 10) : s;
+}
+
+/** Preserve completion / acknowledgement timestamps (`datetime` → ISO string). */
+function normalizeApiDateTime(value: unknown): string | null {
+  if (value == null || value === "") return null;
+  return typeof value === "string" ? value : null;
+}
+
 export function mapApiPrograms(rows: TrainingMatrixApiResponse["programs"]): TrainingProgram[] {
   return rows.map(
     (p) =>
@@ -77,7 +96,7 @@ export function mapApiPrograms(rows: TrainingMatrixApiResponse["programs"]): Tra
         tier: p.tier,
         category: p.category ?? "procedure",
         revision_number: p.revision_number,
-        revision_date: (p.revision_date ?? "").slice(0, 10),
+        revision_date: normalizeApiDateOnly(p.revision_date) ?? "",
         requires_acknowledgement: Boolean(p.requires_acknowledgement),
         expiry_months: p.expiry_months ?? null,
         due_within_days: p.due_within_days ?? null,
@@ -92,12 +111,12 @@ export function mapApiAssignments(rows: TrainingMatrixApiResponse["assignments"]
     employee_id: a.employee_id,
     training_program_id: a.training_program_id,
     assigned_by: a.assigned_by,
-    assigned_date: (a.assigned_date ?? "").slice(0, 10),
-    due_date: a.due_date ? a.due_date.slice(0, 10) : null,
+    assigned_date: normalizeApiDateOnly(a.assigned_date) ?? "",
+    due_date: normalizeApiDateOnly(a.due_date),
     status: a.status,
-    completed_date: a.completed_date,
-    expiry_date: a.expiry_date ? a.expiry_date.slice(0, 10) : null,
-    acknowledgement_date: a.acknowledgement_date,
+    completed_date: normalizeApiDateTime(a.completed_date),
+    expiry_date: normalizeApiDateOnly(a.expiry_date),
+    acknowledgement_date: normalizeApiDateTime(a.acknowledgement_date),
     supervisor_signoff: Boolean(a.supervisor_signoff),
   }));
 }
@@ -126,6 +145,28 @@ export function trainingProgramsToComplianceMap(programs: TrainingProgram[]): Pr
 
 export async function fetchTrainingMatrix(): Promise<TrainingMatrixApiResponse> {
   return apiFetch<TrainingMatrixApiResponse>("/api/v1/training/matrix");
+}
+
+export type TrainingAssignmentCreatePayload = {
+  procedure_id: string;
+  employee_user_ids: string[];
+  /** ISO date (YYYY-MM-DD); omit to use compliance window when `use_compliance_due_window` is true. */
+  due_date?: string | null;
+  use_compliance_due_window?: boolean;
+};
+
+/** Creates or updates assignments for the given workers (matches `TrainingAssignmentCreateIn` on the API). */
+export async function postTrainingAssignments(body: TrainingAssignmentCreatePayload): Promise<TrainingAssignment[]> {
+  const raw = await apiFetch<TrainingMatrixApiResponse["assignments"]>("/api/v1/training/assignments", {
+    method: "POST",
+    json: {
+      procedure_id: body.procedure_id,
+      employee_user_ids: body.employee_user_ids,
+      due_date: body.due_date ?? null,
+      use_compliance_due_window: body.use_compliance_due_window ?? true,
+    },
+  });
+  return mapApiAssignments(raw);
 }
 
 export async function fetchWorkerTraining(workerUserId: string): Promise<WorkerTrainingApiResponse> {

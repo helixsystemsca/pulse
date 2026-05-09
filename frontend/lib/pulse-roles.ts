@@ -65,6 +65,19 @@ export function managerOrAbove(
   return sessionHasAnyRole(session, "manager", "company_admin", "supervisor");
 }
 
+/**
+ * Standards → Training: team matrix, org-wide compliance, assignments, and reporting.
+ * Employees without these roles get a self-only training record (assignments, completions, acknowledgements).
+ */
+export function trainingStandardsLeadershipAccess(
+  session: Pick<PulseAuthSession, "role" | "roles" | "is_system_admin" | "facility_tenant_admin"> | null | undefined,
+): boolean {
+  if (!session) return false;
+  if (session.is_system_admin || sessionHasAnyRole(session, "system_admin")) return true;
+  if (session.facility_tenant_admin) return true;
+  return sessionHasAnyRole(session, "company_admin", "manager", "supervisor", "lead");
+}
+
 /** Managers and company admins only (excludes supervisor) — matches strict compliance-flag rules. */
 export function complianceManagerFlagAllowed(
   session: Pick<PulseAuthSession, "role" | "roles" | "is_system_admin" | "facility_tenant_admin"> | null | undefined,

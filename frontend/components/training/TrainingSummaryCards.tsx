@@ -32,16 +32,16 @@ function Card({
 export function TrainingSummaryCards({ summary }: { summary: ComplianceSummary }) {
   return (
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-      <Card label="Total employees" value={summary.totalEmployees} hint="Roster in Pulse (demo seed)" />
+      <Card label="High-risk overdue" value={summary.highRiskOverdue} emphasis="danger" hint="Due past & still open" />
+      <Card label="Expired certifications" value={summary.expiredCertifications} emphasis="danger" />
+      <Card label="Pending acknowledgements" value={summary.pendingAcknowledgements} emphasis="warn" />
       <Card
         label="Fully compliant"
         value={summary.fullyCompliant}
         hint="Mandatory items complete & current"
         emphasis="neutral"
       />
-      <Card label="Expired certifications" value={summary.expiredCertifications} emphasis="danger" />
-      <Card label="Pending acknowledgements" value={summary.pendingAcknowledgements} emphasis="warn" />
-      <Card label="High-risk overdue" value={summary.highRiskOverdue} emphasis="danger" />
+      <Card label="Total employees" value={summary.totalEmployees} hint="Roster in Pulse (demo seed)" />
     </div>
   );
 }

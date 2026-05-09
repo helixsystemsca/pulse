@@ -91,7 +91,7 @@ export function WorkerTrainingMatrixPanel({
         {loadErr ? <p className="mt-2 text-xs font-semibold text-ds-danger">Could not load training: {loadErr}</p> : null}
         <p className="mt-2">
           <Link href="/standards/training" className="ds-link text-xs font-semibold">
-            Open org training overview →
+            Open Standards → Training →
           </Link>
         </p>
       </div>

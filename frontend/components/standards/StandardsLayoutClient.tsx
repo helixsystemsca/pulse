@@ -6,23 +6,23 @@ import { SegmentedControl } from "@/components/schedule/SegmentedControl";
 import { PageBody } from "@/components/ui/PageBody";
 import { PageHeader } from "@/components/ui/PageHeader";
 
-type StandardsSegment = "procedures" | "routines" | "training";
+type StandardsSegment = "procedures" | "documents" | "training";
 
 export function StandardsLayoutClient({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
 
-  const value: StandardsSegment = pathname.includes("/standards/routines")
-    ? "routines"
-    : pathname.includes("/standards/training")
-      ? "training"
+  const value: StandardsSegment = pathname.includes("/standards/training")
+    ? "training"
+    : pathname.includes("/standards/documents")
+      ? "documents"
       : "procedures";
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="Standards"
-        description="Procedures, routines, and workforce training visibility for consistent operations."
+        description="Procedures, facility documents, and role-aware training compliance — consistent operations."
         icon={ListChecks}
       />
       <PageBody>
@@ -30,13 +30,13 @@ export function StandardsLayoutClient({ children }: { children: React.ReactNode 
           <SegmentedControl<StandardsSegment>
             value={value}
             onChange={(v) => {
-              if (v === "routines") router.push("/standards/routines");
+              if (v === "documents") router.push("/standards/documents");
               else if (v === "training") router.push("/standards/training");
               else router.push("/standards/procedures");
             }}
             options={[
               { value: "procedures", label: "Procedures" },
-              { value: "routines", label: "Routines" },
+              { value: "documents", label: "Documents" },
               { value: "training", label: "Training" },
             ]}
           />

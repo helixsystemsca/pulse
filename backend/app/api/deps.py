@@ -168,6 +168,23 @@ async def require_manager_or_above(user: Annotated[User, Depends(get_current_use
     return user
 
 
+async def require_training_matrix_access(user: Annotated[User, Depends(get_current_user)]) -> User:
+    """Training matrix / bulk assignments: supervisors, managers, tenant admins, and facility leads."""
+    if not (
+        user_has_any_role(
+            user,
+            UserRole.system_admin,
+            UserRole.company_admin,
+            UserRole.manager,
+            UserRole.supervisor,
+            UserRole.lead,
+        )
+        or user_has_facility_tenant_admin_flag(user)
+    ):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="training matrix access required")
+    return user
+
+
 async def require_pm_features_user(user: Annotated[User, Depends(get_current_company_user)]) -> User:
     """Internal PM coordination APIs (`/api/v1/pm-coord/*`). Gated by user flag, not tenant role."""
     if not bool(getattr(user, "can_use_pm_features", False)):

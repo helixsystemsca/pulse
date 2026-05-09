@@ -24,6 +24,7 @@ import {
   uniqueDepartments,
   type TrainingMatrixFilters,
 } from "@/lib/training/selectors";
+import { TrainingEmployeeSelfView } from "@/components/training/TrainingEmployeeSelfView";
 import { TrainingMatrixTable } from "@/components/training/TrainingMatrixTable";
 import { TrainingSummaryCards } from "@/components/training/TrainingSummaryCards";
 import { isApiMode } from "@/lib/api";
@@ -41,7 +42,7 @@ import {
 import { generateDemoAssignmentsForMatrix } from "@/lib/training/generatedAssignments";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
-import { sessionHasAnyRole } from "@/lib/pulse-roles";
+import { trainingStandardsLeadershipAccess } from "@/lib/pulse-roles";
 import { notifyLeadershipMandatoryOverdue } from "@/lib/training/notifications";
 import { listProcedureSignoffs } from "@/lib/procedureSignoffs";
 import {
@@ -77,6 +78,13 @@ type MatrixBundle = {
 };
 
 export function TrainingOverviewApp() {
+  if (!trainingStandardsLeadershipAccess(readSession())) {
+    return <TrainingEmployeeSelfView />;
+  }
+  return <TrainingLeadershipOverviewInner />;
+}
+
+function TrainingLeadershipOverviewInner() {
   const api = isApiMode();
   const [filters, setFilters] = useState<TrainingMatrixFilters>({
     department: "all",
@@ -107,13 +115,7 @@ export function TrainingOverviewApp() {
       try {
         const session = readSession();
         const companyId = session?.company_id ?? null;
-        const canMatrix = sessionHasAnyRole(
-          session,
-          "manager",
-          "supervisor",
-          "company_admin",
-          "system_admin",
-        );
+        const canMatrix = trainingStandardsLeadershipAccess(session);
 
         let loadedFromMatrix = false;
         if (canMatrix) {
@@ -177,7 +179,7 @@ export function TrainingOverviewApp() {
     if (!api) return;
     if (matrixBundle) return;
     const session = readSession();
-    if (!sessionHasAnyRole(session, "manager", "supervisor", "company_admin", "system_admin")) return;
+    if (!trainingStandardsLeadershipAccess(session)) return;
     if (!employeesLive || !procedures || procedures.length === 0) return;
 
     const programsLive = proceduresToTrainingPrograms(procedures, procConfig);
@@ -314,17 +316,17 @@ export function TrainingOverviewApp() {
             <GraduationCap className="h-5 w-5" aria-hidden />
           </div>
           <div className="min-w-0 flex-1">
-            <h2 className="text-base font-semibold text-ds-foreground">Training & compliance</h2>
+            <h2 className="text-base font-semibold text-ds-foreground">Maintenance training compliance board</h2>
             <p className="mt-1 max-w-3xl text-sm leading-relaxed text-ds-muted">
-              Operational visibility for onboarding, certifications, and high-risk competencies. Acknowledgements and
-              revision cycles are tracked for audit readiness.
+              Scan missing critical training, expired certifications, overdue onboarding, and pending acknowledgements across
+              your roster. Acknowledgements and revision cycles stay audit-ready.
             </p>
             <p className="mt-2 text-xs font-medium text-ds-muted">
-              Supervisors: use{" "}
+              Per-person drill-down:{" "}
               <Link href="/dashboard/workers" className="ds-link font-semibold">
                 Team Management
               </Link>{" "}
-              → open a profile → <span className="font-semibold text-ds-foreground">Training matrix</span> tab.
+              → profile → <span className="font-semibold text-ds-foreground">Training matrix</span>.
             </p>
             <div className="mt-3 flex flex-wrap items-center gap-2">
               <Button type="button" variant="secondary" className="h-9 px-3 text-xs" onClick={() => setConfigOpen(true)}>
@@ -343,9 +345,7 @@ export function TrainingOverviewApp() {
               ) : null}
               {!loading && api && !err && !matrixBundle ? (
                 <span className="text-xs text-ds-muted">
-                  {sessionHasAnyRole(readSession(), "manager", "supervisor", "company_admin", "system_admin")
-                    ? "Using roster + procedures; matrix uses demo statuses until the training API is available."
-                    : "Using roster + procedures; open this page as a manager to load the live matrix."}
+                  Using roster + procedures; matrix uses demo statuses until the training API is available.
                 </span>
               ) : null}
             </div>
@@ -358,8 +358,8 @@ export function TrainingOverviewApp() {
       <section className="space-y-4">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <h3 className="text-sm font-bold uppercase tracking-wide text-ds-muted">Training matrix</h3>
-            <p className="mt-1 text-sm text-ds-muted">Rows = people · Columns = programs · Chips = status</p>
+            <h3 className="text-sm font-bold uppercase tracking-wide text-ds-muted">Team compliance matrix</h3>
+            <p className="mt-1 text-sm text-ds-muted">Rows = people · Columns = procedures · Cells = status</p>
           </div>
         </div>
 

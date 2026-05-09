@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import uuid
+
 import pytest
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from tests.conftest import auth_headers
 
@@ -121,3 +124,38 @@ async def test_procedure_revision_requires_reacknowledgement(client, seeded_tena
         if a["training_program_id"] == pid and a["employee_id"] == wid
     ]
     assert "completed" in statuses2
+
+
+@pytest.mark.asyncio
+async def test_training_matrix_forbidden_for_worker(client, seeded_tenant) -> None:
+    r = await client.get("/api/v1/training/matrix", headers=auth_headers(seeded_tenant.worker_token))
+    assert r.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_training_matrix_allowed_for_lead(client, seeded_tenant, db_session: AsyncSession) -> None:
+    from app.core.auth.security import create_access_token, hash_password
+    from app.models.domain import User, UserRole
+
+    lead_id = str(uuid.uuid4())
+    suffix = uuid.uuid4().hex[:8]
+    lead = User(
+        id=lead_id,
+        company_id=seeded_tenant.company_id,
+        email=f"lead_{suffix}@pytest.test",
+        hashed_password=hash_password(seeded_tenant.password),
+        full_name="Pytest Lead",
+        roles=[UserRole.lead.value],
+        operational_role="worker",
+        is_active=True,
+        is_system_admin=False,
+    )
+    db_session.add(lead)
+    await db_session.commit()
+
+    token = create_access_token(
+        subject=lead_id,
+        extra_claims={"company_id": seeded_tenant.company_id, "role": UserRole.lead.value},
+    )
+    r = await client.get("/api/v1/training/matrix", headers=auth_headers(token))
+    assert r.status_code == 200, r.text
