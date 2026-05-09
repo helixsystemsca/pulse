@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Hexagon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { apiFetch, isApiMode } from "@/lib/api";
 import type { BlueprintElement, BlueprintLayer } from "@/components/zones-devices/blueprint-types";
@@ -863,7 +862,7 @@ export default function DrawingsPage({ fullscreen = false }: { fullscreen?: bool
             </div>
           ) : maps.length === 0 ? (
             <div className="flex flex-1 flex-col items-center justify-center border-l border-[#e2e6ec] bg-[#f4f6f8] px-6 py-8 dark:border-ds-border/40 dark:bg-ds-secondary/25">
-              <p className="max-w-md text-center text-sm font-semibold text-ds-foreground">Upload a map image to start</p>
+              <p className="max-w-md text-center text-sm font-normal text-ds-foreground">Upload a map image to start</p>
               <p className="mt-2 max-w-md text-center text-xs text-ds-muted">
                 {
                   'Add a floor plan, aerial, or site image, then draw infrastructure on top. Use the "Facility map" category for building or zone layouts. Link a project later when this drawing is for a specific job.'
@@ -894,21 +893,21 @@ export default function DrawingsPage({ fullscreen = false }: { fullscreen?: bool
               <div className="pointer-events-none absolute left-0 right-0 top-0 z-10 flex flex-wrap items-start justify-between gap-2 border-b border-ds-border/30 bg-ds-primary/85 px-2 py-1 backdrop-blur-[2px]">
                 <div className="flex flex-wrap items-center gap-2">
                   {connectMode && connectFlow === "pick" && connectDraftFromId ? (
-                    <span className="pointer-events-none text-[11px] font-semibold text-ds-muted">Connect: pick destination…</span>
+                    <span className="pointer-events-none text-[11px] font-normal text-ds-muted">Connect: pick destination…</span>
                   ) : null}
                   {traceMode ? (
-                    <span className="pointer-events-none text-[11px] font-semibold text-ds-muted">
+                    <span className="pointer-events-none text-[11px] font-normal text-ds-muted">
                       Trace: {traceStartId ? "pick end asset…" : "pick start asset…"}
                     </span>
                   ) : null}
                 </div>
                 {traceResult ? (
                   <div className="text-[11px] text-ds-muted">
-                    Hops: <span className="font-semibold text-ds-foreground">{Math.max(0, traceResult.asset_ids.length - 1)}</span>
+                    Hops: <span className="font-normal text-ds-foreground">{Math.max(0, traceResult.asset_ids.length - 1)}</span>
                   </div>
                 ) : null}
                 {traceResult?.reason ? (
-                  <div className="text-[11px] font-semibold text-ds-warning">{traceResult.reason}</div>
+                  <div className="text-[11px] font-normal text-ds-warning">{traceResult.reason}</div>
                 ) : null}
               </div>
 
@@ -985,7 +984,7 @@ export default function DrawingsPage({ fullscreen = false }: { fullscreen?: bool
                 {!hasBaseImage ? (
                   <div className="absolute inset-0 z-20 flex items-center justify-center bg-ds-primary/40">
                     <div className="mx-4 max-w-md rounded-lg border border-ds-border/60 bg-background/90 px-6 py-5 text-center shadow-lg backdrop-blur">
-                      <h2 className="text-lg font-semibold text-ds-foreground">No base image</h2>
+                      <h2 className="text-lg font-normal text-ds-foreground">No base image</h2>
                       <p className="mt-2 text-sm text-ds-muted">
                         Upload a top-down image (aerial or floor plan) to start mapping your facility.
                       </p>
@@ -1049,8 +1048,8 @@ export default function DrawingsPage({ fullscreen = false }: { fullscreen?: bool
     <div
       className={
         fullscreen
-          ? "flex h-full min-h-0 w-full flex-col overflow-hidden bg-background"
-          : "flex min-h-0 w-full flex-1 flex-col overflow-hidden min-h-[calc(100dvh-7rem)]"
+          ? "flex h-full min-h-0 w-full flex-col overflow-hidden bg-background font-manrope font-normal"
+          : "flex min-h-0 min-h-[calc(100dvh-7rem)] w-full flex-1 flex-col overflow-hidden font-manrope font-normal"
       }
     >
       <input
@@ -1080,13 +1079,6 @@ export default function DrawingsPage({ fullscreen = false }: { fullscreen?: bool
       />
       {errorBanner}
       <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">{workspaceChrome}</div>
-      {!fullscreen ? (
-        <footer className="flex h-9 shrink-0 items-center justify-center gap-1.5 border-t border-[#e2e6ec] bg-white font-mono text-[11px] tracking-[0.04em] text-[#96a0b0] dark:border-ds-border dark:bg-ds-secondary/30 dark:text-ds-muted">
-          <span>Powered by</span>
-          <Hexagon className="h-3.5 w-3.5 shrink-0 text-[#1ec8a0]" strokeWidth={1.35} aria-hidden />
-          <span className="font-sans font-medium text-[#5a6478] dark:text-ds-muted">Helix</span>
-        </footer>
-      ) : null}
     </div>
   );
 }

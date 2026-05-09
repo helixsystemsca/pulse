@@ -12,12 +12,13 @@ import {
 import { useState } from "react";
 import { cn } from "@/lib/cn";
 import { buttonVariants } from "@/styles/button-variants";
-import { DASH } from "@/styles/dashboardTheme";
+/** Field labels — Poppins regular via drawings workspace root. */
+const FIELD_LABEL = "text-xs font-normal text-ds-muted";
 
-/** Narrow rail: match app `text-xs` controls, centered label, tight line-height (overrides variant `text-sm` / `min-h-9`). */
+/** Narrow rail: uniform weight with the drawings toolbar. */
 const GRAPH_PANEL_BTN = cn(
   buttonVariants({ surface: "light", intent: "secondary" }),
-  "inline-flex min-h-8 w-full items-center justify-center px-3 py-1.5 text-center text-xs font-semibold leading-tight tracking-normal",
+  "inline-flex min-h-8 w-full items-center justify-center px-3 py-1.5 text-center text-xs font-normal leading-tight tracking-normal",
 );
 import type { FilterRule, SystemType, TraceRouteResult } from "../utils/graphHelpers";
 import type { AnnotateKind, AssetDrawShape, ConnectFlow, PrimaryMode } from "../mapBuilderTypes";
@@ -111,7 +112,7 @@ export function ToolPanel({
   const sysRow = (s: SystemType, label: string, dot: string) => (
     <label
       key={s}
-      className="flex cursor-pointer items-center justify-between gap-2 border-b border-ds-border/40 px-2.5 py-2 text-xs font-medium text-ds-foreground last:border-b-0 hover:bg-ds-interactive-hover"
+      className="flex cursor-pointer items-center justify-between gap-2 border-b border-ds-border/40 px-2.5 py-2 text-xs font-normal text-ds-foreground last:border-b-0 hover:bg-ds-interactive-hover"
     >
       <span className="flex min-w-0 flex-1 items-center gap-2">
         <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${dot}`} aria-hidden />
@@ -151,7 +152,7 @@ export function ToolPanel({
   const modeEntries = (Object.keys(MODES) as BuilderSemanticMode[]).map((k) => ({ key: k, cfg: MODES[k] }));
 
   const panelTitle = (t: string) => (
-    <p className="border-b border-[#e2e6ec] px-4 py-2 font-mono text-[9.5px] font-medium uppercase tracking-[0.13em] text-[#7a8494] dark:border-ds-border/60 dark:text-ds-muted">
+    <p className="border-b border-[#e2e6ec] px-4 py-2.5 text-sm font-normal text-ds-muted dark:border-ds-border/60">
       {t}
     </p>
   );
@@ -192,7 +193,7 @@ export function ToolPanel({
       {panelTitle("Graph & filters")}
       <div className="space-y-3 border-b border-ds-border/70 px-3 py-3">
         <div className="space-y-1">
-          <p className={DASH.sectionLabel}>Semantic mode</p>
+          <p className={FIELD_LABEL}>Semantic mode</p>
           <select
             className="app-field min-h-9 w-full !py-1.5 !text-xs leading-snug"
             value={semanticMode}
@@ -210,7 +211,7 @@ export function ToolPanel({
 
         {modeConfig.ui.showSystemLayerToggles ? (
           <div>
-            <p className={cn(DASH.sectionLabel, "mb-1")}>System layers</p>
+            <p className={cn(FIELD_LABEL, "mb-1")}>System layers</p>
             <div className="overflow-hidden rounded-md border border-ds-border/60">
               {sysRow("fiber", "Fiber", "bg-blue-500")}
               {sysRow("irrigation", "Irrigation", "bg-emerald-500")}
@@ -222,7 +223,7 @@ export function ToolPanel({
 
         {modeConfig.ui.showInfrastructureFilters ? (
           <div className="space-y-2">
-            <p className={DASH.sectionLabel}>Attribute filters</p>
+            <p className={FIELD_LABEL}>Attribute filters</p>
             <div className="space-y-2 border border-ds-border/60 bg-ds-primary/20 p-2">
               <div className="grid grid-cols-2 gap-1.5">
                 <select
@@ -265,7 +266,7 @@ export function ToolPanel({
               </div>
             </div>
             <div>
-              <p className={cn(DASH.sectionLabel, "mb-1")}>Presets</p>
+              <p className={cn(FIELD_LABEL, "mb-1")}>Presets</p>
               <div className="flex flex-col gap-1.5">
                 <button type="button" className={GRAPH_PANEL_BTN} onClick={onPresetAvailableFiber} title="strands_available &gt; 0">
                   Available fiber
@@ -280,7 +281,7 @@ export function ToolPanel({
             </div>
             {filterRules.length > 0 ? (
               <div>
-                <p className={cn(DASH.sectionLabel, "mb-1")}>Active filters</p>
+                <p className={cn(FIELD_LABEL, "mb-1")}>Active filters</p>
                 <div className="max-h-40 space-y-1 overflow-y-auto">
                   {filterRules.map((r, i) => (
                     <div
@@ -288,8 +289,8 @@ export function ToolPanel({
                       className="flex items-center justify-between gap-2 border border-ds-border/50 bg-ds-primary/15 px-2 py-1 text-[11px] text-ds-muted"
                     >
                       <span className="min-w-0 truncate">
-                        <span className="font-semibold text-ds-foreground">{r.entity}</span> · {r.key} {r.operator}{" "}
-                        <span className="font-semibold text-ds-foreground">{String(r.value)}</span>
+                        <span className="font-normal text-ds-foreground">{r.entity}</span> · {r.key} {r.operator}{" "}
+                        <span className="font-normal text-ds-foreground">{String(r.value)}</span>
                       </span>
                       <button type="button" className="shrink-0 px-1 text-xs hover:bg-ds-interactive-hover-strong" onClick={() => onRemoveFilterRule(i)} aria-label="Remove filter">
                         ×
@@ -306,17 +307,17 @@ export function ToolPanel({
 
         {modeConfig.ui.showTraceRoute ? (
           <div className="space-y-2 border-t border-ds-border/50 pt-2">
-            <p className={DASH.sectionLabel}>Trace route</p>
+            <p className={FIELD_LABEL}>Trace route</p>
             <p className="text-[10px] leading-relaxed text-ds-muted">
               Pick a start asset, then an end asset on the map. Filters above constrain the graph used for routing.
             </p>
             <div className="space-y-1 rounded border border-ds-border/60 bg-ds-primary/15 px-2 py-1.5 text-[11px] text-ds-muted">
               <div>
-                <span className="font-semibold text-ds-foreground">Start:</span>{" "}
+                <span className="font-normal text-ds-foreground">Start:</span>{" "}
                 {traceStartLabel ?? (traceMode && !traceStartId ? "…pick on map" : "—")}
               </div>
               <div>
-                <span className="font-semibold text-ds-foreground">End:</span>{" "}
+                <span className="font-normal text-ds-foreground">End:</span>{" "}
                 {traceEndLabel ?? (traceMode && traceStartId && !traceEndId ? "…pick on map" : "—")}
               </div>
             </div>
@@ -337,9 +338,9 @@ export function ToolPanel({
               <div className="space-y-1 border border-ds-border/60 bg-ds-primary/20 px-2 py-2 text-[11px] text-ds-muted">
                 <div>
                   Hops:{" "}
-                  <span className="font-semibold text-ds-foreground">{Math.max(0, traceResult.asset_ids.length - 1)}</span>
+                  <span className="font-normal text-ds-foreground">{Math.max(0, traceResult.asset_ids.length - 1)}</span>
                 </div>
-                {traceResult.reason ? <div className="font-semibold text-ds-warning">{traceResult.reason}</div> : null}
+                {traceResult.reason ? <div className="font-normal text-ds-warning">{traceResult.reason}</div> : null}
                 <div className="border-t border-ds-border/40 pt-1.5 text-[10px] italic text-ds-muted">
                   Weak-link analysis: coming soon (constraint-weighted edges).
                 </div>
@@ -359,7 +360,7 @@ export function ToolPanel({
               <>
                 {modeConfig.ui.showDefaultSystemPicker ? (
                   <div className="space-y-1">
-                    <p className={DASH.sectionLabel}>Default system</p>
+                    <p className={FIELD_LABEL}>Default system</p>
                     <select
                       className="app-field min-h-9 w-full !py-1.5 !text-xs leading-snug"
                       value={defaultSystemType}
@@ -375,13 +376,13 @@ export function ToolPanel({
                   </div>
                 ) : (
                   <p className="text-[10px] text-ds-muted">
-                    Mode <span className="font-semibold text-ds-foreground">{modeConfig.label}</span> uses{" "}
-                    <span className="font-semibold text-ds-foreground">{modeConfig.defaultSystemType}</span> for new elements.
+                    Mode <span className="font-normal text-ds-foreground">{modeConfig.label}</span> uses{" "}
+                    <span className="font-normal text-ds-foreground">{modeConfig.defaultSystemType}</span> for new elements.
                   </p>
                 )}
                 {primaryMode === "add_asset" && apiConnected ? (
                   <div>
-                    <p className={cn(DASH.sectionLabel, "mb-2")}>Asset type</p>
+                    <p className={cn(FIELD_LABEL, "mb-2")}>Asset type</p>
                     <div className="grid grid-cols-3 gap-1 border border-ds-border/60 p-2">
                       <button
                         type="button"
@@ -434,7 +435,7 @@ export function ToolPanel({
                         type="button"
                         title={toolsLocked ? toolsLockedHint : undefined}
                         disabled={toolsLocked}
-                        className={`inline-flex min-h-8 items-center justify-center px-2 py-1.5 text-center text-xs font-semibold leading-tight ${connectFlow === "pick" ? "bg-ds-success/20 text-ds-foreground" : "text-ds-muted hover:bg-ds-interactive-hover-strong"}`}
+                        className={`inline-flex min-h-8 items-center justify-center px-2 py-1.5 text-center text-xs font-normal leading-tight ${connectFlow === "pick" ? "bg-ds-success/20 text-ds-foreground" : "text-ds-muted hover:bg-ds-interactive-hover-strong"}`}
                         onClick={() => !toolsLocked && onConnectFlowChange("pick")}
                       >
                         Pick 2 assets
@@ -443,7 +444,7 @@ export function ToolPanel({
                         type="button"
                         title={toolsLocked ? toolsLockedHint : undefined}
                         disabled={toolsLocked}
-                        className={`inline-flex min-h-8 items-center justify-center px-2 py-1.5 text-center text-xs font-semibold leading-tight ${connectFlow === "draw" ? "bg-ds-success/20 text-ds-foreground" : "text-ds-muted hover:bg-ds-interactive-hover-strong"}`}
+                        className={`inline-flex min-h-8 items-center justify-center px-2 py-1.5 text-center text-xs font-normal leading-tight ${connectFlow === "draw" ? "bg-ds-success/20 text-ds-foreground" : "text-ds-muted hover:bg-ds-interactive-hover-strong"}`}
                         onClick={() => !toolsLocked && onConnectFlowChange("draw")}
                       >
                         Draw
@@ -489,7 +490,7 @@ export function ToolPanel({
                 <p>Use the Trace route section above for start/end and results. The rail keeps trace mode in sync with the map.</p>
                 {traceResult ? (
                   <p>
-                    Route length: <span className="font-semibold text-ds-foreground">{traceResult.asset_ids.length}</span> assets
+                    Route length: <span className="font-normal text-ds-foreground">{traceResult.asset_ids.length}</span> assets
                   </p>
                 ) : null}
               </div>

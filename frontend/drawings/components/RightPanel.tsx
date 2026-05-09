@@ -152,10 +152,10 @@ export function RightPanel({
       <aside className="w-[300px] shrink-0 bg-ds-secondary/15 p-2 shadow-[0_8px_24px_rgba(0,0,0,0.12)] transition-all duration-150 ease-out">
         <div className="flex items-start justify-between gap-2">
           <div>
-            <p className="text-sm font-bold text-ds-foreground">{title}</p>
+            <p className="text-sm font-normal text-ds-foreground">{title}</p>
             <p className="text-[11px] text-ds-muted break-all">{blueprintElement.id}</p>
           </div>
-          <button type="button" className="rounded-lg px-2 py-1 text-sm font-semibold text-ds-muted hover:bg-ds-interactive-hover hover:text-ds-foreground" onClick={onClose}>
+          <button type="button" className="rounded-lg px-2 py-1 text-sm font-normal text-ds-muted hover:bg-ds-interactive-hover hover:text-ds-foreground" onClick={onClose}>
             ×
           </button>
         </div>
@@ -168,14 +168,14 @@ export function RightPanel({
 
         <div className="mt-2 space-y-2">
           <label className="block">
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-ds-muted">{isZone ? "Name" : "Label"}</span>
+            <span className="text-xs font-normal text-ds-muted">{isZone ? "Name" : "Label"}</span>
             <input className="app-field mt-1.5 w-full" value={bpDraftName} onChange={(e) => setBpDraftName(e.target.value)} disabled={disabled} />
           </label>
 
           {isZone ? (
             <>
               <label className="block">
-                <span className="text-[11px] font-semibold uppercase tracking-wider text-ds-muted">Zone type</span>
+                <span className="text-xs font-normal text-ds-muted">Zone type</span>
                 <input
                   className="app-field mt-1.5 w-full"
                   value={bpZoneType}
@@ -185,7 +185,7 @@ export function RightPanel({
                 />
               </label>
               <label className="block">
-                <span className="text-[11px] font-semibold uppercase tracking-wider text-ds-muted">Notes</span>
+                <span className="text-xs font-normal text-ds-muted">Notes</span>
                 <textarea className="app-field mt-1.5 w-full min-h-20" value={bpZoneNotes} onChange={(e) => setBpZoneNotes(e.target.value)} disabled={disabled} />
               </label>
             </>
@@ -193,7 +193,7 @@ export function RightPanel({
 
           {isAnnotSymbol ? (
             <label className="block">
-              <span className="text-[11px] font-semibold uppercase tracking-wider text-ds-muted">Symbol</span>
+              <span className="text-xs font-normal text-ds-muted">Symbol</span>
               <select className="app-field mt-1.5 w-full" value={bpSymbolType} onChange={(e) => setBpSymbolType(e.target.value)} disabled={disabled || bpInfraLinked}>
                 <option value="marker">Marker</option>
                 <option value="label">Text plate</option>
@@ -205,7 +205,7 @@ export function RightPanel({
 
           {(isAnnotSymbol || isAnnotPath) && !bpInfraLinked ? (
             <label className="block">
-              <span className="text-[11px] font-semibold uppercase tracking-wider text-ds-muted">Overlay notes</span>
+              <span className="text-xs font-normal text-ds-muted">Overlay notes</span>
               <textarea
                 className="app-field mt-1.5 w-full min-h-16"
                 value={bpOverlayNotes}
@@ -265,7 +265,7 @@ export function RightPanel({
     <aside className="w-[300px] shrink-0 bg-ds-secondary/15 p-2 shadow-[0_8px_24px_rgba(0,0,0,0.12)] transition-all duration-150 ease-out">
       <div className="flex items-start justify-between gap-2">
         <div>
-          <p className="text-sm font-bold text-ds-foreground">{title}</p>
+          <p className="text-sm font-normal text-ds-foreground">{title}</p>
           {selectedAssets.length + selectedConnections.length > 1 ? (
             <p className="text-[11px] text-ds-muted">
               {selectedAssets.length} assets, {selectedConnections.length} connections selected
@@ -274,7 +274,7 @@ export function RightPanel({
             <p className="text-[11px] text-ds-muted break-all">{entity.id}</p>
           )}
         </div>
-        <button type="button" className="rounded-lg px-2 py-1 text-sm font-semibold text-ds-muted hover:bg-ds-interactive-hover hover:text-ds-foreground" onClick={onClose}>
+        <button type="button" className="rounded-lg px-2 py-1 text-sm font-normal text-ds-muted hover:bg-ds-interactive-hover hover:text-ds-foreground" onClick={onClose}>
           ×
         </button>
       </div>
@@ -282,14 +282,14 @@ export function RightPanel({
       <div className="mt-2 flex gap-1 rounded-md border border-ds-border/70 bg-ds-primary/30 p-1">
         <button
           type="button"
-          className={`flex-1 rounded px-2 py-1 text-xs font-semibold ${tab === "details" ? "bg-ds-primary text-ds-foreground" : "text-ds-muted hover:text-ds-foreground"}`}
+          className={`flex-1 rounded px-2 py-1 text-xs font-normal ${tab === "details" ? "bg-ds-primary text-ds-foreground" : "text-ds-muted hover:text-ds-foreground"}`}
           onClick={() => setTab("details")}
         >
           Details
         </button>
         <button
           type="button"
-          className={`flex-1 rounded px-2 py-1 text-xs font-semibold ${tab === "attributes" ? "bg-ds-primary text-ds-foreground" : "text-ds-muted hover:text-ds-foreground"}`}
+          className={`flex-1 rounded px-2 py-1 text-xs font-normal ${tab === "attributes" ? "bg-ds-primary text-ds-foreground" : "text-ds-muted hover:text-ds-foreground"}`}
           onClick={() => setTab("attributes")}
         >
           Attributes
@@ -305,15 +305,15 @@ export function RightPanel({
           {asset ? (
             <>
               <label className="block">
-                <span className="text-[11px] font-semibold uppercase tracking-wider text-ds-muted">Name</span>
+                <span className="text-xs font-normal text-ds-muted">Name</span>
                 <input className="app-field mt-1.5 w-full" value={draftName} onChange={(e) => setDraftName(e.target.value)} disabled={disabled} />
               </label>
               <label className="block">
-                <span className="text-[11px] font-semibold uppercase tracking-wider text-ds-muted">Type</span>
+                <span className="text-xs font-normal text-ds-muted">Type</span>
                 <input className="app-field mt-1.5 w-full" value={draftType} onChange={(e) => setDraftType(e.target.value)} disabled={disabled} />
               </label>
               <label className="block">
-                <span className="text-[11px] font-semibold uppercase tracking-wider text-ds-muted">System</span>
+                <span className="text-xs font-normal text-ds-muted">System</span>
                 <select className="app-field mt-1.5 w-full" value={draftSystem} onChange={(e) => setDraftSystem(e.target.value as SystemType)} disabled={disabled}>
                   <option value="fiber">Fiber</option>
                   <option value="irrigation">Irrigation</option>
@@ -322,11 +322,11 @@ export function RightPanel({
                 </select>
               </label>
               <label className="block">
-                <span className="text-[11px] font-semibold uppercase tracking-wider text-ds-muted">Notes</span>
+                <span className="text-xs font-normal text-ds-muted">Notes</span>
                 <textarea className="app-field mt-1.5 w-full min-h-24" value={draftNotes} onChange={(e) => setDraftNotes(e.target.value)} disabled={disabled} />
               </label>
               <label className="block">
-                <span className="text-[11px] font-semibold uppercase tracking-wider text-ds-muted">Procedures</span>
+                <span className="text-xs font-normal text-ds-muted">Procedures</span>
                 <span className="mt-1 block text-[10px] text-ds-muted">One step per line (stored as a JSON array on the asset).</span>
                 <textarea
                   className="app-field mt-1.5 w-full min-h-28"
@@ -364,20 +364,20 @@ export function RightPanel({
             </>
           ) : connection ? (
             <>
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-ds-muted">Endpoints</p>
+              <p className="text-xs font-normal text-ds-muted">Endpoints</p>
               <p className="break-all text-xs text-ds-foreground">{connection.from_asset_id}</p>
               <p className="break-all text-xs text-ds-foreground">{connection.to_asset_id}</p>
               <label className="block">
-                <span className="text-[11px] font-semibold uppercase tracking-wider text-ds-muted">System</span>
+                <span className="text-xs font-normal text-ds-muted">System</span>
                 <input className="app-field mt-1.5 w-full opacity-80" readOnly value={connection.system_type} />
               </label>
               <label className="block">
-                <span className="text-[11px] font-semibold uppercase tracking-wider text-ds-muted">Connection type</span>
+                <span className="text-xs font-normal text-ds-muted">Connection type</span>
                 <input className="app-field mt-1.5 w-full opacity-80" readOnly value={connection.connection_type} />
               </label>
               <label className="block">
-                <span className="text-[11px] font-semibold uppercase tracking-wider text-ds-muted">Notes</span>
-                <span className="mt-1 block text-[10px] text-ds-muted">Stored as attribute <span className="font-mono">notes</span>.</span>
+                <span className="text-xs font-normal text-ds-muted">Notes</span>
+                <span className="mt-1 block text-[10px] font-normal text-ds-muted">Stored as attribute notes.</span>
                 <textarea className="app-field mt-1.5 w-full min-h-24" value={draftConnNotes} onChange={(e) => setDraftConnNotes(e.target.value)} disabled={disabled} />
               </label>
               <button
@@ -412,7 +412,7 @@ export function RightPanel({
             <ul className="space-y-2">
               {attrs.map((a) => (
                 <li key={a.id} className="rounded-md border border-ds-border/70 bg-ds-primary/25 px-2 py-1.5">
-                  <p className="text-[11px] font-semibold uppercase tracking-wider text-ds-muted">{a.key}</p>
+                  <p className="text-xs font-normal text-ds-muted">{a.key}</p>
                   <p className="mt-0.5 text-sm text-ds-foreground break-words">{a.value}</p>
                 </li>
               ))}
@@ -420,7 +420,7 @@ export function RightPanel({
           )}
 
           <div className="rounded-md border border-ds-border/70 bg-ds-primary/25 p-2">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-ds-muted">Add attribute</p>
+            <p className="text-xs font-normal text-ds-muted">Add attribute</p>
             <div className="mt-2 space-y-2">
               <input className="app-field w-full" placeholder="key" value={attrKey} onChange={(e) => setAttrKey(e.target.value)} disabled={disabled} />
               <input className="app-field w-full" placeholder="value" value={attrValue} onChange={(e) => setAttrValue(e.target.value)} disabled={disabled} />

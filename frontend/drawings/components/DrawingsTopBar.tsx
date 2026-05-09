@@ -8,6 +8,9 @@ import { DASH } from "@/styles/dashboardTheme";
 
 const MAP_CATEGORIES = ["General", "Facility map", "Floor plan", "Aerial", "Site", "Other"] as const;
 
+/** Uniform toolbar copy — Poppins regular via parent `font-manrope`. */
+const TOOLBAR_TEXT = "text-sm font-normal leading-normal text-ds-foreground";
+
 type MapSummary = {
   id: string;
   name: string;
@@ -16,13 +19,12 @@ type MapSummary = {
 
 const ctrlBase = cn(
   buttonVariants({ surface: "light", intent: "secondary" }),
-  // Align with the rest of the app controls (compact toolbar sizing).
-  "min-h-8 rounded-lg border px-3 py-1.5 text-xs font-semibold tracking-normal shadow-sm",
+  "min-h-9 rounded-lg border px-3 py-2 text-sm font-normal tracking-normal shadow-sm",
 );
 
 const ctrlAccent = cn(
   buttonVariants({ surface: "light", intent: "accent" }),
-  "min-h-8 rounded-lg border px-3 py-1.5 text-xs font-semibold tracking-normal shadow-sm",
+  "min-h-9 rounded-lg border px-3 py-2 text-sm font-normal tracking-normal shadow-sm",
 );
 
 export function DrawingsTopBar({
@@ -70,8 +72,8 @@ export function DrawingsTopBar({
   return (
     <div className="shrink-0 bg-white shadow-[0_1px_4px_rgba(0,0,0,0.06)] dark:bg-ds-secondary/30 dark:shadow-none">
       <header className="flex flex-col">
-        <div className="flex min-h-[50px] flex-wrap items-center gap-x-1.5 gap-y-2 px-3.5 py-2 sm:h-[50px] sm:flex-nowrap sm:py-0">
-        <span className={cn(DASH.sectionLabel, "shrink-0")}>Drawings</span>
+        <div className="flex min-h-[52px] flex-wrap items-center gap-x-2 gap-y-2.5 px-4 py-3 sm:flex-nowrap">
+        <span className={cn(TOOLBAR_TEXT, "shrink-0")}>Drawings</span>
 
         <span className="hidden h-5 w-px shrink-0 bg-[#d0d6df] sm:block dark:bg-ds-border" aria-hidden />
 
@@ -151,10 +153,8 @@ export function DrawingsTopBar({
 
           <span className="hidden h-5 w-px shrink-0 bg-[#d0d6df] sm:block dark:bg-ds-border" aria-hidden />
 
-          <div className="flex min-w-0 max-w-[200px] shrink items-center gap-1.5 sm:max-w-[220px]">
-            <span className={cn(DASH.sectionLabel, "hidden shrink-0 lg:inline")}>
-              Project
-            </span>
+          <div className="flex min-w-0 max-w-[200px] shrink items-center gap-2 sm:max-w-[220px]">
+            <span className={cn(TOOLBAR_TEXT, "hidden shrink-0 text-ds-muted lg:inline")}>Project</span>
             <ProjectSelector
               variant="toolbar"
               value={activeProjectId}

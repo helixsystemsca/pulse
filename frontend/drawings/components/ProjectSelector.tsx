@@ -42,7 +42,7 @@ export function ProjectSelector({ value, onChange, disabled, variant = "default"
     <select
       className={
         variant === "toolbar"
-          ? "h-8 min-h-0 w-[min(100%,12rem)] shrink-0 rounded-[7px] border border-[#d0d6df] bg-[#f8f9fb] px-2.5 py-1 text-[12.5px] font-medium leading-normal text-[#1a2030] outline-none transition hover:border-[#38bdf8] hover:bg-sky-100/90 focus:border-[#38bdf8] focus:ring-2 focus:ring-sky-400/25 dark:border-ds-border dark:bg-ds-secondary/40 dark:text-ds-foreground"
+          ? "h-9 min-h-0 w-[min(100%,12rem)] shrink-0 rounded-lg border border-[#d0d6df] bg-[#f8f9fb] px-3 py-2 text-sm font-normal leading-normal text-[#1a2030] outline-none transition hover:border-[#38bdf8] hover:bg-sky-100/90 focus:border-[#38bdf8] focus:ring-2 focus:ring-sky-400/25 dark:border-ds-border dark:bg-ds-secondary/40 dark:text-ds-foreground"
           : variant === "inline"
             ? "app-field h-9 min-h-0 w-[min(100%,14rem)] py-1.5 text-sm leading-normal"
             : "app-field min-h-9 text-sm"
@@ -72,7 +72,7 @@ export function ProjectSelector({ value, onChange, disabled, variant = "default"
 
   return (
     <label className="flex min-w-[min(100%,14rem)] flex-col gap-0.5">
-      <span className="text-[10px] font-semibold uppercase tracking-wider text-ds-muted">Project</span>
+      <span className="text-xs font-normal text-ds-muted">Project</span>
       {select}
       {error ? <span className="text-[10px] text-ds-danger">{error}</span> : null}
     </label>

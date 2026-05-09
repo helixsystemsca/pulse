@@ -63,7 +63,7 @@ export function DrawingCanvasToolbar({
       </button>
       {helpOpen ? (
         <div className="max-w-[220px] rounded-lg border border-ds-border/60 bg-background/98 p-2 text-[10px] leading-snug text-ds-muted shadow-sm">
-          <p className="font-semibold text-ds-foreground">Typical workflow</p>
+          <p className="font-normal text-ds-foreground">Typical workflow</p>
           <ol className="mt-1.5 list-decimal space-y-1 pl-3.5">
             <li>Pick a project and map in the header; upload an image if needed.</li>
             <li>
