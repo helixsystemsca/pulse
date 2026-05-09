@@ -8,4 +8,5 @@ export {
   DashboardColumnPanel,
   KioskRotateFooter,
 } from "./DashboardChrome";
-export { DASH } from "@/styles/dashboardTheme";
+export { DASH, dashboardAccentShell, dashboardColumnShell, dashboardWidgetShell } from "@/styles/dashboardTheme";
+export type { DashboardCardTier, DashboardSurfaceTheme } from "@/styles/dashboardTheme";

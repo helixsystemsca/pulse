@@ -447,7 +447,7 @@ export function WorkerBreakRoomDashboard({ kiosk = false }: Props) {
     <div className={cn(DASH.page, "space-y-6")}>
       <KioskCriticalModal alert={criticalAlert} onAcknowledge={() => setCriticalAlert(null)} />
 
-      <DashboardAccentCard>
+      <DashboardAccentCard tier="hero">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="min-w-0">
             <p className={DASH.sectionLabel}>Operations dashboard</p>
@@ -622,9 +622,9 @@ export function WorkerBreakRoomDashboard({ kiosk = false }: Props) {
                     {(["D", "A", "N"] as const).map((band) => (
                       <div
                         key={band}
-                        className="overflow-hidden rounded-[var(--pulse-dashboard-card-radius)] border border-ds-border bg-ds-primary shadow-[var(--ds-shadow-card)]"
+                        className={cn(DASH.cardBase, "overflow-hidden")}
                       >
-                        <div className="h-0.5 w-full bg-ds-border" aria-hidden />
+                        <div className="h-0.5 w-full bg-[linear-gradient(90deg,transparent,color-mix(in_srgb,var(--ds-accent)_55%,transparent),transparent)] opacity-80" aria-hidden />
                         <div className="p-3">
                           <div className="flex items-center justify-between gap-2">
                             <p className={`text-xs font-extrabold uppercase tracking-[0.16em] ${UI.subheader}`}>{bandLabel(band)}</p>

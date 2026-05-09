@@ -2,7 +2,13 @@
 
 import type { CSSProperties, ReactNode } from "react";
 import { motion } from "framer-motion";
-import { DASH } from "@/styles/dashboardTheme";
+import {
+  DASH,
+  dashboardAccentShell,
+  dashboardColumnShell,
+  type DashboardCardTier,
+  type DashboardSurfaceTheme,
+} from "@/styles/dashboardTheme";
 import { cn } from "@/lib/cn";
 import type { DashboardWidgetStyleOverride } from "@/lib/dashboardPageWidgetCatalog";
 
@@ -37,13 +43,16 @@ function KioskRotationCountdownRing({ durationMs, cycleKey }: { durationMs: numb
   );
 }
 
-/** White card with thin teal → dusk accent (Pool Shutdown header pattern). */
+/**
+ * Primary dashboard header / hero surfaces — layered gradients, premium shadow (see `.dash-card--*`).
+ */
 export function DashboardAccentCard({
   children,
   className,
   mutedAccent,
   innerClassName,
   styleOverride,
+  tier = "standard",
 }: {
   children: ReactNode;
   className?: string;
@@ -51,31 +60,18 @@ export function DashboardAccentCard({
   mutedAccent?: boolean;
   innerClassName?: string;
   styleOverride?: DashboardWidgetStyleOverride;
+  /** Visual hierarchy: hero (colorful), standard (default), board (large static canvas). */
+  tier?: DashboardCardTier;
 }) {
-  const theme = styleOverride?.theme ?? "tint";
+  const theme = (styleOverride?.theme ?? "tint") as DashboardSurfaceTheme;
   const styleVars: CSSProperties = {
-    ...(styleOverride?.backgroundColor ? ({ ["--widget-tint" as any]: styleOverride.backgroundColor } as any) : null),
-    ...(styleOverride?.textColor ? ({ ["--widget-fg" as any]: styleOverride.textColor } as any) : null),
-    ...(styleOverride?.fontFamily ? ({ fontFamily: styleOverride.fontFamily } as any) : null),
+    ...(styleOverride?.backgroundColor ? ({ ["--widget-tint" as string]: styleOverride.backgroundColor } as CSSProperties) : null),
+    ...(styleOverride?.textColor ? ({ ["--widget-fg" as string]: styleOverride.textColor } as CSSProperties) : null),
+    ...(styleOverride?.fontFamily ? ({ fontFamily: styleOverride.fontFamily } as CSSProperties) : null),
   };
-  const backgroundClass =
-    theme === "solid"
-      ? "bg-[var(--widget-tint,white)]"
-      : theme === "glass"
-        ? "pulse-apple-glass"
-        : theme === "gradient"
-          ? "bg-[radial-gradient(900px_420px_at_20%_10%,color-mix(in_srgb,var(--widget-tint,white)_38%,transparent),transparent_58%),radial-gradient(700px_420px_at_85%_15%,color-mix(in_srgb,var(--ds-accent)_18%,transparent),transparent_60%),color-mix(in_srgb,var(--ds-bg)_62%,#ffffff_38%)]"
-          : "bg-[color-mix(in_srgb,var(--widget-tint,white)_18%,transparent)] dark:bg-[color-mix(in_srgb,var(--widget-tint,white)_10%,transparent)]";
+  const shell = dashboardAccentShell(theme, tier);
   return (
-    <div
-      style={styleVars}
-      className={cn(
-        DASH.cardBase,
-        "text-[var(--widget-fg,var(--ds-text-primary))]",
-        backgroundClass,
-        className,
-      )}
-    >
+    <div style={styleVars} className={cn(shell, "text-[var(--widget-fg,var(--ds-text-primary))]", className)}>
       <div className={mutedAccent ? DASH.accentBarMuted : DASH.accentBar} aria-hidden />
       <div className={cn(DASH.cardInner, innerClassName)}>{children}</div>
     </div>
@@ -96,20 +92,13 @@ export function DashboardColumnPanel({
   className?: string;
   styleOverride?: DashboardWidgetStyleOverride;
 }) {
-  const theme = styleOverride?.theme ?? "tint";
+  const theme = (styleOverride?.theme ?? "tint") as DashboardSurfaceTheme;
   const styleVars: CSSProperties = {
-    ...(styleOverride?.backgroundColor ? ({ ["--widget-tint" as any]: styleOverride.backgroundColor } as any) : null),
-    ...(styleOverride?.textColor ? ({ ["--widget-fg" as any]: styleOverride.textColor } as any) : null),
-    ...(styleOverride?.fontFamily ? ({ fontFamily: styleOverride.fontFamily } as any) : null),
+    ...(styleOverride?.backgroundColor ? ({ ["--widget-tint" as string]: styleOverride.backgroundColor } as CSSProperties) : null),
+    ...(styleOverride?.textColor ? ({ ["--widget-fg" as string]: styleOverride.textColor } as CSSProperties) : null),
+    ...(styleOverride?.fontFamily ? ({ fontFamily: styleOverride.fontFamily } as CSSProperties) : null),
   };
-  const backgroundClass =
-    theme === "solid"
-      ? "bg-[var(--widget-tint,white)]"
-      : theme === "glass"
-        ? "pulse-apple-glass"
-        : theme === "gradient"
-          ? "bg-[radial-gradient(900px_420px_at_20%_10%,color-mix(in_srgb,var(--widget-tint,white)_38%,transparent),transparent_58%),radial-gradient(700px_420px_at_85%_15%,color-mix(in_srgb,var(--ds-accent)_18%,transparent),transparent_60%),color-mix(in_srgb,var(--ds-bg)_62%,#ffffff_38%)]"
-          : "bg-[color-mix(in_srgb,var(--widget-tint,white)_18%,transparent)] dark:bg-[color-mix(in_srgb,var(--widget-tint,white)_10%,transparent)]";
+  const shell = dashboardColumnShell(theme);
   const strip =
     accent === "teal"
       ? "bg-[color-mix(in_srgb,var(--ds-accent)_88%,transparent)]"
@@ -119,19 +108,11 @@ export function DashboardColumnPanel({
           ? "bg-[color-mix(in_srgb,var(--ds-success)_70%,#166534_30%)]"
           : accent === "dusk"
             ? "bg-[color-mix(in_srgb,var(--ds-accent-dusk)_70%,transparent)]"
-            : "bg-ds-border";
+            : "bg-[color-mix(in_srgb,var(--ds-text-primary)_14%,transparent)]";
   return (
-    <div
-      style={styleVars}
-      className={cn(
-        DASH.cardBase,
-        "flex h-full min-h-0 flex-col text-[var(--widget-fg,var(--ds-text-primary))]",
-        backgroundClass,
-        className,
-      )}
-    >
+    <div style={styleVars} className={cn(shell, "flex h-full min-h-0 flex-col text-[var(--widget-fg,var(--ds-text-primary))]", className)}>
       <div className={cn("h-[3px] w-full shrink-0", strip)} aria-hidden />
-      <div className="flex min-h-0 flex-1 flex-col p-3">
+      <div className="flex min-h-0 flex-1 flex-col p-3.5">
         <p className={DASH.sectionLabel}>{title}</p>
         <div className="ds-scroll mt-3 min-h-0 flex-1 overflow-y-auto">{children}</div>
       </div>
@@ -155,7 +136,7 @@ export function KioskRotateFooter({
   showCountdownRing?: boolean;
 }) {
   return (
-    <div className="col-span-12 flex w-full flex-wrap items-center justify-between gap-4 rounded-xl border border-ds-border bg-ds-primary px-4 py-3 text-xs text-ds-muted">
+    <div className="col-span-12 flex w-full flex-wrap items-center justify-between gap-4 rounded-[var(--dash-card-radius)] border border-[color-mix(in_srgb,var(--ds-text-primary)_9%,transparent)] bg-[linear-gradient(180deg,rgb(255_255_255_/0.82),rgb(248_250_252_/0.92))] px-4 py-3 text-xs text-ds-muted shadow-[var(--dash-shadow-card-soft)] backdrop-blur-md dark:border-[rgb(255_255_255_/0.1)] dark:bg-[color-mix(in_srgb,var(--ds-surface-primary)_92%,transparent)]">
       <div className="flex min-w-0 flex-1 flex-wrap items-center justify-center gap-4">
         <span>{intervalLabel}</span>
         <div className="flex items-center gap-2" role="tablist" aria-label="Dashboard view rotation">
@@ -164,7 +145,7 @@ export function KioskRotateFooter({
               key={i}
               className={cn(
                 "h-2.5 w-2.5 rounded-full transition-colors",
-                i === activeIndex ? "bg-ds-accent" : "bg-ds-border",
+                i === activeIndex ? "bg-ds-accent shadow-[0_0_10px_color-mix(in_srgb,var(--ds-accent)_55%,transparent)]" : "bg-ds-border",
               )}
               aria-current={i === activeIndex ? "step" : undefined}
             />

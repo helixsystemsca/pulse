@@ -48,7 +48,7 @@ import {
 import type { PulseShiftApi, PulseWorkerApi } from "@/lib/schedule/pulse-bridge";
 import { DashboardAccentCard, DashboardColumnPanel, KioskRotateFooter } from "@/components/dashboard/DashboardChrome";
 import { cn } from "@/lib/cn";
-import { DASH } from "@/styles/dashboardTheme";
+import { DASH, dashboardWidgetShell, type DashboardSurfaceTheme } from "@/styles/dashboardTheme";
 import { UI } from "@/styles/ui";
 import { getWidgetMode, type WidgetMode, type WidgetRenderContext } from "@/components/dashboard/widgets/widgetSizing";
 import { AlertsWidget, type AlertsWidgetAlert } from "@/components/dashboard/widgets/alerts/AlertsWidget";
@@ -158,34 +158,20 @@ function WorkerDashCard({
   className?: string;
   styleOverride?: DashboardWidgetStyleOverride;
 }) {
-  const theme = styleOverride?.theme ?? "tint";
+  const theme = (styleOverride?.theme ?? "tint") as DashboardSurfaceTheme;
   const styleVars: React.CSSProperties = {
-    ...(styleOverride?.backgroundColor ? ({ ["--widget-tint" as any]: styleOverride.backgroundColor } as any) : null),
-    ...(styleOverride?.textColor ? ({ ["--widget-fg" as any]: styleOverride.textColor } as any) : null),
-    ...(styleOverride?.fontFamily ? ({ fontFamily: styleOverride.fontFamily } as any) : null),
-    ...(theme ? ({ ["--widget-theme" as any]: theme } as any) : null),
+    ...(styleOverride?.backgroundColor ? ({ ["--widget-tint" as string]: styleOverride.backgroundColor } as React.CSSProperties) : null),
+    ...(styleOverride?.textColor ? ({ ["--widget-fg" as string]: styleOverride.textColor } as React.CSSProperties) : null),
+    ...(styleOverride?.fontFamily ? ({ fontFamily: styleOverride.fontFamily } as React.CSSProperties) : null),
   };
-
-  const backgroundClass =
-    theme === "solid"
-      ? "bg-[var(--widget-tint,white)]"
-      : theme === "glass"
-        ? "pulse-apple-glass"
-        : theme === "gradient"
-          ? "bg-[radial-gradient(900px_420px_at_20%_10%,color-mix(in_srgb,var(--widget-tint,white)_38%,transparent),transparent_58%),radial-gradient(700px_420px_at_85%_15%,color-mix(in_srgb,var(--ds-accent)_18%,transparent),transparent_60%),color-mix(in_srgb,var(--ds-bg)_62%,#ffffff_38%)]"
-          : "bg-[color-mix(in_srgb,var(--widget-tint,white)_10%,var(--ds-bg))]";
+  const shell = dashboardWidgetShell(theme);
   return (
     <div
       style={styleVars}
-      className={cn(
-        DASH.cardBase,
-        "flex h-full min-h-0 flex-col text-[var(--widget-fg,var(--ds-text-primary))]",
-        backgroundClass,
-        className,
-      )}
+      className={cn(shell, "flex h-full min-h-0 flex-col text-[var(--widget-fg,var(--ds-text-primary))]", className)}
     >
-      <div className="flex shrink-0 items-start justify-between gap-2 border-b border-ds-border bg-ds-secondary/30 px-3 py-2">
-        <p className="min-w-0 text-[11px] font-bold uppercase tracking-[0.14em] text-[color-mix(in_srgb,var(--widget-fg,var(--ds-text-primary))_65%,transparent)]">
+      <div className="flex shrink-0 items-start justify-between gap-2 border-b border-[color-mix(in_srgb,var(--widget-fg,var(--ds-text-primary))_12%,transparent)] bg-[color-mix(in_srgb,white_42%,transparent)] px-3 py-2.5 backdrop-blur-md dark:bg-[color-mix(in_srgb,var(--ds-surface-primary)_55%,transparent)]">
+        <p className={cn(DASH.sectionLabel, "tracking-[0.14em] text-[color-mix(in_srgb,var(--widget-fg,var(--ds-text-primary))_72%,transparent)]")}>
           {title}
         </p>
         {headerRight ? (
@@ -194,7 +180,7 @@ function WorkerDashCard({
           </div>
         ) : null}
       </div>
-      <div className="min-h-0 flex-1 p-3">{children}</div>
+      <div className="min-h-0 flex-1 p-3.5">{children}</div>
     </div>
   );
 }
@@ -2068,7 +2054,7 @@ function DashboardBody({
       <div className={cn(DASH.page, DASH.kioskFrame)}>
         <div className={DASH.grid12}>
           <div className="col-span-12">
-            <DashboardAccentCard>
+            <DashboardAccentCard tier="hero">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex min-w-0 items-center gap-3">
                   <OperationsHeaderLogoMark logoUrl={headerLogoUrl} companyName={headerCompanyName} />
@@ -2180,7 +2166,7 @@ function DashboardBody({
 
   return (
     <div className={cn(DASH.page, "space-y-6")}>
-      <DashboardAccentCard>
+      <DashboardAccentCard tier="hero">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="min-w-0">
             <p className={cn(DASH.sectionLabel)}>Operations dashboard</p>
@@ -2266,7 +2252,7 @@ function DashboardBody({
         ) : null}
       </DashboardAccentCard>
 
-      <DashboardAccentCard mutedAccent innerClassName="space-y-0">
+      <DashboardAccentCard tier="board" mutedAccent innerClassName="space-y-0">
         <div
           ref={containerRef as any}
           className={["pulse-dashboard-grid min-w-0", editMode ? "pulse-dashboard-edit" : ""].filter(Boolean).join(" ")}
