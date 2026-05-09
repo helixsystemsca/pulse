@@ -1,20 +1,23 @@
 "use client";
 
-import { Check, Clock, X } from "lucide-react";
+import { AlertTriangle, BookOpen, Check, ClipboardCheck, Clock, X } from "lucide-react";
 import type { TrainingAssignmentStatus, TrainingTier } from "@/lib/training/types";
 import { cn } from "@/lib/cn";
 
 /** Screen reader / tooltip — full phrase */
 const STATUS_LABEL: Record<TrainingAssignmentStatus, string> = {
-  completed: "Completed",
+  completed: "Completed — verified",
   expiring_soon: "Expiring soon",
   expired: "Expired",
-  pending: "Pending",
+  pending: "Not started",
   revision_pending: "Revision pending",
   not_assigned: "Not assigned",
+  in_progress: "In progress — reviewing",
+  acknowledged: "Acknowledged — knowledge check pending",
+  quiz_failed: "Knowledge check not passed — retry",
 };
 
-/** Teal = complete; yellow = expiring soon; lobster pink = gap on mandatory; peach = gap on non-mandatory */
+/** Green = verified complete; blue = reviewing; yellow = acknowledged / quiz pending; red = quiz failed; gray = not engaged */
 function matrixClasses(status: TrainingAssignmentStatus, tier: TrainingTier): string {
   if (status === "completed") {
     return cn(
@@ -24,13 +27,38 @@ function matrixClasses(status: TrainingAssignmentStatus, tier: TrainingTier): st
   }
   if (status === "expiring_soon") {
     return cn(
-      "border-yellow-500/40 bg-yellow-100 text-yellow-950",
-      "dark:border-yellow-400/35 dark:bg-yellow-950/45 dark:text-yellow-100",
+      "border-amber-500/40 bg-amber-100 text-amber-950",
+      "dark:border-amber-400/35 dark:bg-amber-950/45 dark:text-amber-50",
+    );
+  }
+  if (status === "quiz_failed") {
+    return cn(
+      "border-[color-mix(in_srgb,var(--ds-danger)_45%,transparent)] bg-[color-mix(in_srgb,var(--ds-danger)_14%,transparent)] text-ds-danger",
+      "dark:border-red-400/35 dark:bg-[color-mix(in_srgb,#7f1d1d_45%,#1f1516)] dark:text-red-100",
+    );
+  }
+  if (status === "acknowledged") {
+    return cn(
+      "border-yellow-500/45 bg-yellow-100 text-yellow-950",
+      "dark:border-yellow-400/35 dark:bg-yellow-950/40 dark:text-yellow-50",
+    );
+  }
+  if (status === "in_progress") {
+    return cn(
+      "border-sky-500/40 bg-sky-100 text-sky-950",
+      "dark:border-sky-400/35 dark:bg-sky-950/45 dark:text-sky-50",
     );
   }
 
-  const incomplete =
-    status === "not_assigned" || status === "expired" || status === "pending" || status === "revision_pending";
+  const notEngaged = status === "not_assigned" || status === "pending";
+  if (notEngaged) {
+    return cn(
+      "border-zinc-300/80 bg-zinc-100 text-zinc-800",
+      "dark:border-zinc-600/60 dark:bg-zinc-900/50 dark:text-zinc-100",
+    );
+  }
+
+  const incomplete = status === "expired" || status === "revision_pending";
   if (incomplete) {
     if (tier === "mandatory") {
       return cn(
@@ -54,6 +82,15 @@ function MatrixIcon({ status }: { status: TrainingAssignmentStatus }) {
   }
   if (status === "expiring_soon") {
     return <Clock className={iconClass} aria-hidden />;
+  }
+  if (status === "in_progress") {
+    return <BookOpen className={iconClass} aria-hidden />;
+  }
+  if (status === "acknowledged") {
+    return <ClipboardCheck className={iconClass} aria-hidden />;
+  }
+  if (status === "quiz_failed") {
+    return <AlertTriangle className={iconClass} aria-hidden />;
   }
   return <X className={iconClass} aria-hidden />;
 }

@@ -829,7 +829,7 @@ export function ScheduleApp() {
                       }}
                       className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${
                         view === key
-                          ? "bg-[var(--pulse-segment-active-bg)] text-[var(--pulse-segment-active-fg)] shadow-sm ring-1 ring-[color-mix(in_srgb,var(--ds-success)_28%,transparent)] dark:ring-sky-400/30"
+                          ? "bg-[var(--pulse-segment-active-bg)] text-[var(--pulse-segment-active-fg)] shadow-sm ring-1 ring-[color-mix(in_srgb,var(--ds-accent)_28%,transparent)] dark:ring-sky-400/30"
                           : "text-gray-500 hover:bg-ds-interactive-hover-strong hover:text-gray-900 dark:text-slate-400 dark:hover:bg-ds-interactive-hover dark:hover:text-slate-100"
                       }`}
                     >
@@ -901,7 +901,7 @@ export function ScheduleApp() {
                     onClick={() => setCalendarScale(key)}
                     className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${
                       calendarScale === key
-                        ? "bg-[var(--pulse-segment-active-bg)] text-[var(--pulse-segment-active-fg)] shadow-sm ring-1 ring-[color-mix(in_srgb,var(--ds-success)_28%,transparent)] dark:ring-sky-400/30"
+                        ? "bg-[var(--pulse-segment-active-bg)] text-[var(--pulse-segment-active-fg)] shadow-sm ring-1 ring-[color-mix(in_srgb,var(--ds-accent)_28%,transparent)] dark:ring-sky-400/30"
                         : "text-gray-500 hover:bg-ds-interactive-hover-strong hover:text-gray-900 dark:text-slate-400 dark:hover:bg-ds-interactive-hover dark:hover:text-slate-100"
                     }`}
                   >
@@ -963,7 +963,7 @@ export function ScheduleApp() {
                     onClick={() => setContentFilter(key)}
                     className={`rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${
                       contentFilter === key
-                        ? "bg-[var(--pulse-segment-active-bg)] text-[var(--pulse-segment-active-fg)] shadow-sm ring-1 ring-[color-mix(in_srgb,var(--ds-success)_28%,transparent)] dark:ring-sky-400/30"
+                        ? "bg-[var(--pulse-segment-active-bg)] text-[var(--pulse-segment-active-fg)] shadow-sm ring-1 ring-[color-mix(in_srgb,var(--ds-accent)_28%,transparent)] dark:ring-sky-400/30"
                         : "text-gray-500 hover:bg-ds-interactive-hover-strong hover:text-gray-900 dark:text-slate-400 dark:hover:bg-ds-interactive-hover dark:hover:text-slate-100"
                     }`}
                   >

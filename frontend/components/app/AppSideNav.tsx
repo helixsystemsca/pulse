@@ -64,7 +64,7 @@ const ICONS: Record<PulseSidebarIcon, LucideIcon> = {
 const COLLAPSED_RAIL_W = "w-[var(--pulse-sidebar-collapsed-width)]";
 const ICON_COL = `h-11 ${COLLAPSED_RAIL_W} shrink-0`;
 
-/** Row highlight: identical hover + active — solid Verdigris ({@link --ds-accent}). */
+/** Row highlight: identical hover + active — primary accent ({@link --ds-accent}, ice blue). */
 const SIDENAV_ROW_ACTIVE_HOVER = "bg-[var(--ds-accent)]";
 const SIDENAV_ROW_ACTIVE_HOVER_HOVER = "hover:bg-[var(--ds-accent)]";
 

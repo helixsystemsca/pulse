@@ -96,6 +96,15 @@ function rowAlert(
     };
   }
 
+  if ((program.tier === "mandatory" || program.tier === "high_risk") && eff === "quiz_failed") {
+    return {
+      programId: program.id,
+      title: program.title,
+      priority: 3,
+      label: "Knowledge check not passed — review procedure and retry",
+    };
+  }
+
   if (eff === "expiring_soon") {
     return { programId: program.id, title: program.title, priority: 4, label: "Expiring soon" };
   }

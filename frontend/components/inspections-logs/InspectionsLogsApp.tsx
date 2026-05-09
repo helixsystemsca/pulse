@@ -40,7 +40,7 @@ const LINKISH =
 const SEGMENT_TRACK =
   "flex flex-wrap rounded-md border border-pulseShell-border bg-pulseShell-surface p-1 shadow-[var(--pulse-shell-shadow)]";
 const SEGMENT_ACTIVE =
-  "bg-[var(--pulse-segment-active-bg)] text-[var(--pulse-segment-active-fg)] shadow-sm ring-1 ring-[color-mix(in_srgb,var(--ds-success)_28%,transparent)] dark:ring-sky-400/30";
+  "bg-[var(--pulse-segment-active-bg)] text-[var(--pulse-segment-active-fg)] shadow-sm ring-1 ring-[color-mix(in_srgb,var(--ds-accent)_28%,transparent)] dark:ring-sky-400/30";
 const SEGMENT_IDLE =
   "text-gray-500 hover:bg-ds-interactive-hover-strong hover:text-gray-900 dark:text-slate-400 dark:hover:bg-ds-interactive-hover dark:hover:text-slate-100";
 

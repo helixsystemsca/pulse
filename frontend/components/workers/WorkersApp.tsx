@@ -2354,7 +2354,7 @@ export function WorkersApp() {
                 className={cn(
                   "rounded-lg px-3 py-2 text-sm font-semibold transition-colors",
                   profileDrawerTab === "profile"
-                    ? "bg-ds-success text-ds-on-accent shadow-sm"
+                    ? "bg-[var(--pulse-segment-active-bg)] text-[var(--pulse-segment-active-fg)] shadow-sm"
                     : "text-ds-muted hover:bg-ds-interactive-hover hover:text-ds-foreground",
                 )}
                 onClick={() => setProfileDrawerTab("profile")}
@@ -2368,7 +2368,7 @@ export function WorkersApp() {
                 className={cn(
                   "rounded-lg px-3 py-2 text-sm font-semibold transition-colors",
                   profileDrawerTab === "training"
-                    ? "bg-ds-success text-ds-on-accent shadow-sm"
+                    ? "bg-[var(--pulse-segment-active-bg)] text-[var(--pulse-segment-active-fg)] shadow-sm"
                     : "text-ds-muted hover:bg-ds-interactive-hover hover:text-ds-foreground",
                 )}
                 onClick={() => setProfileDrawerTab("training")}

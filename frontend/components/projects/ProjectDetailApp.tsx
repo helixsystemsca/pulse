@@ -532,7 +532,7 @@ export function ProjectDetailApp({ projectId }: { projectId: string }) {
   const topTabClass = (active: boolean) =>
     `rounded-md px-3 py-2 text-sm font-semibold transition-colors ${
       active
-        ? "bg-ds-success text-ds-on-accent shadow-sm"
+        ? "bg-[var(--pulse-segment-active-bg)] text-[var(--pulse-segment-active-fg)] shadow-sm"
         : "text-ds-muted hover:bg-ds-interactive-hover hover:text-ds-foreground"
     }`;
 
@@ -1337,7 +1337,7 @@ export function ProjectDetailApp({ projectId }: { projectId: string }) {
                   type="button"
                   className={`inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm font-semibold transition-colors ${
                     viewTab === "tasks"
-                      ? "bg-ds-success text-ds-on-accent shadow-sm"
+                      ? "bg-[var(--pulse-segment-active-bg)] text-[var(--pulse-segment-active-fg)] shadow-sm"
                       : "text-ds-muted hover:bg-ds-interactive-hover hover:text-ds-foreground"
                   }`}
                   onClick={() => setViewTab("tasks")}
@@ -1349,7 +1349,7 @@ export function ProjectDetailApp({ projectId }: { projectId: string }) {
                   type="button"
                   className={`inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm font-semibold transition-colors ${
                     viewTab === "board"
-                      ? "bg-ds-success text-ds-on-accent shadow-sm"
+                      ? "bg-[var(--pulse-segment-active-bg)] text-[var(--pulse-segment-active-fg)] shadow-sm"
                       : "text-ds-muted hover:bg-ds-interactive-hover hover:text-ds-foreground"
                   }`}
                   onClick={() => setViewTab("board")}
@@ -1361,7 +1361,7 @@ export function ProjectDetailApp({ projectId }: { projectId: string }) {
                   type="button"
                   className={`inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm font-semibold transition-colors ${
                     viewTab === "automation"
-                      ? "bg-ds-success text-ds-on-accent shadow-sm"
+                      ? "bg-[var(--pulse-segment-active-bg)] text-[var(--pulse-segment-active-fg)] shadow-sm"
                       : "text-ds-muted hover:bg-ds-interactive-hover hover:text-ds-foreground"
                   }`}
                   onClick={() => setViewTab("automation")}

@@ -99,6 +99,17 @@ export function TrainingMatrixTable({
                         ) : (
                           <>
                             <TrainingMatrixCell status={eff} tier={p.tier} />
+                            {trustAssignmentStatus && a && (a.quiz_attempt_count ?? 0) > 0 ? (
+                              <span
+                                className="text-[9px] font-medium tabular-nums text-ds-muted"
+                                title="Knowledge verification attempts on current revision"
+                              >
+                                Checks: {a.quiz_attempt_count}
+                                {typeof a.quiz_latest_score_percent === "number"
+                                  ? ` · ${a.quiz_latest_score_percent}%`
+                                  : ""}
+                              </span>
+                            ) : null}
                             {a?.expiry_date && eff !== "not_assigned" ? (
                               <span className="text-[9px] font-medium text-ds-muted tabular-nums">
                                 Expires {a.expiry_date}

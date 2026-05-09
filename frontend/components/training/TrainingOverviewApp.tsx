@@ -55,10 +55,13 @@ import {
 
 const STATUS_OPTIONS: Array<{ value: TrainingAssignment["status"] | "all"; label: string }> = [
   { value: "all", label: "Any status" },
-  { value: "completed", label: "Completed" },
+  { value: "completed", label: "Verified complete" },
   { value: "expiring_soon", label: "Expiring soon" },
   { value: "expired", label: "Expired" },
-  { value: "pending", label: "Pending" },
+  { value: "pending", label: "Not started" },
+  { value: "in_progress", label: "Reviewing" },
+  { value: "acknowledged", label: "Acknowledged (quiz pending)" },
+  { value: "quiz_failed", label: "Knowledge check — retry" },
   { value: "revision_pending", label: "Revision pending" },
   { value: "not_assigned", label: "Not assigned" },
 ];

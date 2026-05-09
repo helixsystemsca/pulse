@@ -33,7 +33,7 @@ export function DashboardViewTabs() {
           type="button"
           className={`rounded-md px-4 py-2 text-center text-xs font-semibold transition-colors sm:text-sm ${
             isWorker
-              ? "bg-ds-success text-ds-on-accent shadow-sm"
+              ? "bg-[var(--pulse-segment-active-bg)] text-[var(--pulse-segment-active-fg)] shadow-sm"
               : "text-ds-muted hover:bg-ds-interactive-hover hover:text-ds-foreground"
           }`}
           onClick={() => router.push("/worker")}
@@ -46,7 +46,7 @@ export function DashboardViewTabs() {
           type="button"
           className={`rounded-md px-4 py-2 text-center text-xs font-semibold transition-colors sm:text-sm ${
             isOverview
-              ? "bg-ds-success text-ds-on-accent shadow-sm"
+              ? "bg-[var(--pulse-segment-active-bg)] text-[var(--pulse-segment-active-fg)] shadow-sm"
               : "text-ds-muted hover:bg-ds-interactive-hover hover:text-ds-foreground"
           }`}
           onClick={() => router.push("/overview")}
@@ -59,7 +59,7 @@ export function DashboardViewTabs() {
           type="button"
           className={`rounded-md px-4 py-2 text-center text-xs font-semibold transition-colors sm:text-sm ${
             isProjectTab
-              ? "bg-ds-success text-ds-on-accent shadow-sm"
+              ? "bg-[var(--pulse-segment-active-bg)] text-[var(--pulse-segment-active-fg)] shadow-sm"
               : "text-ds-muted hover:bg-ds-interactive-hover hover:text-ds-foreground"
           }`}
           onClick={() => router.push("/overview/project")}

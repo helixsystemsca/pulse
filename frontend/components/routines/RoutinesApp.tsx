@@ -478,7 +478,7 @@ export function RoutinesApp() {
                         onClick={() => setCreateActiveBand(b)}
                         className={`rounded-md px-3 py-2 text-xs font-semibold transition ${
                           active
-                            ? "bg-ds-success text-ds-on-accent shadow-sm"
+                            ? "bg-[var(--pulse-segment-active-bg)] text-[var(--pulse-segment-active-fg)] shadow-sm"
                             : "text-ds-muted hover:bg-ds-interactive-hover hover:text-ds-foreground"
                         }`}
                       >
@@ -640,7 +640,7 @@ export function RoutinesApp() {
                     onClick={() => setEditTab(t.id)}
                     className={`rounded-md px-3 py-2 text-xs font-semibold transition ${
                       active
-                        ? "bg-ds-success text-ds-on-accent shadow-sm"
+                        ? "bg-[var(--pulse-segment-active-bg)] text-[var(--pulse-segment-active-fg)] shadow-sm"
                         : "text-ds-muted hover:bg-ds-interactive-hover hover:text-ds-foreground"
                     }`}
                   >

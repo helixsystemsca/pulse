@@ -23,7 +23,7 @@ export function SegmentedControl<T extends string>({
             onClick={() => onChange(o.value)}
             className={`flex-1 rounded-md px-2 py-2 text-center text-xs font-semibold transition-colors sm:text-sm ${
               active
-                ? "bg-ds-success text-ds-on-accent shadow-sm"
+                ? "bg-[var(--pulse-segment-active-bg)] text-[var(--pulse-segment-active-fg)] shadow-sm"
                 : "text-ds-muted hover:bg-ds-interactive-hover hover:text-ds-foreground"
             }`}
           >

@@ -19,8 +19,8 @@ html.pulse-welcome-blur [data-pulse-app-shell] {
 }
 
 /**
- * Pulse design system — Verdigris / Iron Grey / Platinum / Deep Mocha (+ Crimson Carrot alerts).
- * Interactive hovers / taps use ice blue (`--ds-palette-ice*`, `--ds-interactive-*`); brand accent stays Verdigris.
+ * Pulse design system — Ice blue primary chrome / Iron Grey / Platinum / Deep Mocha (+ Crimson Carrot alerts).
+ * Legacy Verdigris lives on `--ds-palette-verdigris` and `--ds-success` for semantic “OK / completed” affordances.
  * Legacy `--pulse-shell-*` aliases remain for gradual migration.
  */
 :root {
@@ -51,10 +51,11 @@ html.pulse-welcome-blur [data-pulse-app-shell] {
 
   --ds-accent-teal-deep: #157a6f;
   --ds-accent-dusk: var(--ds-palette-deep-mocha);
-  --ds-accent: var(--ds-palette-verdigris);
+  /** Primary UI accent — ice blue (nav active, filled buttons, segment selections share this via tokens). */
+  --ds-accent: var(--ds-palette-ice-active);
   --ds-accent-foreground: #ffffff;
   --ds-chrome-gradient: linear-gradient(90deg, var(--ds-accent) 0%, color-mix(in srgb, var(--ds-palette-deep-mocha) 78%, var(--ds-accent)) 100%);
-  /** App chrome header (navbar) — large radial: verdigris glow into iron grey */
+  /** App chrome header (navbar) — radial: accent glow into iron grey */
   --pulse-header-radial-gradient: radial-gradient(
     ellipse 185% 260% at 50% -35%,
     var(--ds-accent) 0%,
@@ -67,12 +68,12 @@ html.pulse-welcome-blur [data-pulse-app-shell] {
   --ds-surface-primary: var(--ds-palette-platinum);
   --ds-surface-secondary: var(--ds-palette-platinum);
   --ds-surface-elevated: color-mix(in srgb, var(--ds-palette-platinum) 52%, #ffffff 48%);
-  /** Left nav — solid Deep Mocha; hover/active Verdigris */
+  /** Left nav — solid Deep Mocha; hover/active use accent (ice) */
   --ds-sidebar: var(--ds-palette-deep-mocha);
   --ds-sidebar-fg: #ffffff;
   --ds-sidebar-muted: rgba(255, 255, 255, 0.76);
   --ds-sidebar-border: rgba(255, 255, 255, 0.14);
-  --ds-sidebar-accent: var(--ds-palette-verdigris);
+  --ds-sidebar-accent: var(--ds-accent);
   --ds-sidebar-on-accent: #ffffff;
   --ds-sidebar-well: rgba(255, 255, 255, 0.08);
   --ds-sidebar-well-muted: rgba(255, 255, 255, 0.05);
@@ -134,14 +135,14 @@ html.pulse-welcome-blur [data-pulse-app-shell] {
   --pulse-header-bg: var(--ds-header);
   --pulse-header-border: var(--ds-border);
   --pulse-header-shadow: var(--ds-shadow-card);
-  --pulse-segment-active-bg: var(--ds-success);
-  --pulse-segment-active-fg: var(--ds-on-accent);
+  --pulse-segment-active-bg: var(--ds-accent);
+  --pulse-segment-active-fg: var(--ds-accent-foreground);
 }
 
 .dark {
   --ds-accent-teal-deep: #157a6f;
   --ds-accent-dusk: #6b534a;
-  --ds-accent: #2bc4b0;
+  --ds-accent: #38bdf8;
   --ds-accent-foreground: #0b1220;
   --ds-chrome-gradient: linear-gradient(90deg, var(--ds-accent) 0%, color-mix(in srgb, var(--ds-palette-deep-mocha) 65%, var(--ds-accent)) 100%);
   --pulse-header-radial-gradient: radial-gradient(
@@ -159,7 +160,7 @@ html.pulse-welcome-blur [data-pulse-app-shell] {
   --ds-sidebar-fg: #ffffff;
   --ds-sidebar-muted: rgba(255, 255, 255, 0.76);
   --ds-sidebar-border: rgba(255, 255, 255, 0.14);
-  --ds-sidebar-accent: var(--ds-palette-verdigris);
+  --ds-sidebar-accent: var(--ds-accent);
   --ds-sidebar-on-accent: #ffffff;
   --ds-sidebar-well: rgba(255, 255, 255, 0.08);
   --ds-sidebar-well-muted: rgba(255, 255, 255, 0.05);
@@ -203,8 +204,8 @@ html.pulse-welcome-blur [data-pulse-app-shell] {
   --pulse-header-bg: color-mix(in srgb, var(--ds-surface-primary) 94%, transparent);
   --pulse-header-border: var(--ds-border);
   --pulse-header-shadow: var(--ds-shadow-card);
-  --pulse-segment-active-bg: var(--ds-success);
-  --pulse-segment-active-fg: var(--ds-on-accent);
+  --pulse-segment-active-bg: var(--ds-accent);
+  --pulse-segment-active-fg: var(--ds-accent-foreground);
 }
 
 /**
