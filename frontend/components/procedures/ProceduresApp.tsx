@@ -624,10 +624,10 @@ export function ProceduresApp() {
       {steps.map((step, index) => (
         <li
           key={step.key}
-          className="rounded-lg border border-ds-border bg-ds-secondary/40 p-4 shadow-sm dark:bg-ds-secondary/30"
+          className="ds-premium-inset p-4"
         >
           <div className="flex items-start justify-between gap-2">
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-ds-primary text-sm font-bold text-ds-foreground ring-1 ring-ds-border">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-sky-500 text-sm font-bold text-white shadow-md ring-1 ring-white/25">
               {index + 1}
             </span>
             <button
@@ -644,7 +644,7 @@ export function ProceduresApp() {
           </label>
           <textarea
             id={`${idPrefix}-t-${step.key}`}
-            className="mt-1 min-h-[4rem] w-full rounded-md border border-ds-border bg-ds-primary px-3 py-2 text-sm text-ds-foreground dark:bg-ds-secondary"
+            className="mt-1 min-h-[4rem] w-full rounded-md border border-ds-border/90 bg-white px-3 py-2 text-sm text-ds-foreground dark:bg-ds-secondary"
             placeholder={`Describe step ${index + 1}…`}
             value={step.text}
             onChange={(e) =>
@@ -667,7 +667,7 @@ export function ProceduresApp() {
                 type="number"
                 min={1}
                 inputMode="numeric"
-                className="mt-1 w-full rounded-md border border-ds-border bg-ds-primary px-3 py-2 text-sm text-ds-foreground dark:bg-ds-secondary"
+                className="mt-1 w-full rounded-md border border-ds-border/90 bg-white px-3 py-2 text-sm text-ds-foreground dark:bg-ds-secondary"
                 placeholder="e.g. 2"
                 value={step.recommended_workers ?? ""}
                 onChange={(e) => {
@@ -686,7 +686,7 @@ export function ProceduresApp() {
               </label>
               <input
                 id={`${idPrefix}-tools-${step.key}`}
-                className="mt-1 w-full rounded-md border border-ds-border bg-ds-primary px-3 py-2 text-sm text-ds-foreground dark:bg-ds-secondary"
+                className="mt-1 w-full rounded-md border border-ds-border/90 bg-white px-3 py-2 text-sm text-ds-foreground dark:bg-ds-secondary"
                 placeholder="e.g. Wrench, Ladder, Gloves"
                 value={step.tools_csv}
                 onChange={(e) =>
@@ -703,7 +703,7 @@ export function ProceduresApp() {
                     .map((tool) => (
                       <span
                         key={tool}
-                        className="rounded-full border border-ds-border bg-ds-primary px-2 py-0.5 text-[11px] font-semibold text-ds-foreground"
+                        className="rounded-full border border-ds-border/80 bg-white px-2 py-0.5 text-[11px] font-semibold text-ds-foreground dark:bg-ds-secondary"
                       >
                         {tool}
                       </span>
@@ -743,13 +743,13 @@ export function ProceduresApp() {
       <PageHeader
         className="shrink-0"
         title="Procedures"
-        description="Numbered steps with optional photos. Set training priority (Mandatory / High / Low) for the compliance matrix; finish with sign-off — timestamps are stored for audit."
+        description="Operational procedures with optional photos. Set priority for the compliance matrix; assigned workers complete acknowledgment and knowledge verification (or legacy sign-off when verification is off) — timestamps are retained for audit."
         icon={ClipboardList}
         actions={
           isCreating ? (
             <button
               type="button"
-              className="rounded-[10px] border border-ds-border bg-ds-primary px-5 py-2.5 text-sm font-semibold text-ds-foreground shadow-sm transition-colors hover:bg-ds-secondary disabled:opacity-50 dark:bg-ds-secondary"
+              className="rounded-[10px] border border-dashed border-violet-200/90 bg-white px-5 py-2.5 text-sm font-semibold text-ds-foreground shadow-sm transition-colors hover:bg-violet-50/80 disabled:opacity-50 dark:border-violet-400/35 dark:bg-ds-secondary dark:hover:bg-ds-secondary/90"
               onClick={() => {
                 setIsCreating(false);
                 setCreateKeywordsCsv("");
@@ -888,7 +888,7 @@ export function ProceduresApp() {
         )}
       >
         {isCreating ? (
-          <section className="min-h-0 overflow-y-auto rounded-xl border border-ds-border bg-ds-primary p-6 shadow-[var(--ds-shadow-card)]">
+          <section className="ds-premium-panel min-h-0 overflow-y-auto p-6">
             <h2 className="text-base font-semibold text-ds-foreground" id={`${formId}-new-title`}>
               New procedure
             </h2>
@@ -901,7 +901,7 @@ export function ProceduresApp() {
               </label>
               <input
                 id={`${formId}-title`}
-                className="w-full rounded-md border border-ds-border bg-ds-primary px-3 py-2 text-sm dark:bg-ds-secondary"
+                className="w-full rounded-md border border-ds-border/90 bg-white px-3 py-2 text-sm dark:bg-ds-secondary"
                 placeholder="e.g. Monthly pump inspection"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
@@ -911,7 +911,7 @@ export function ProceduresApp() {
               </label>
               <input
                 id={`${formId}-new-kw`}
-                className="mt-1 w-full rounded-md border border-ds-border bg-ds-primary px-3 py-2 text-sm dark:bg-ds-secondary"
+                className="mt-1 w-full rounded-md border border-ds-border/90 bg-white px-3 py-2 text-sm dark:bg-ds-secondary"
                 placeholder="e.g. Tile, Pool, Arena, Pool Shutdown"
                 value={createKeywordsCsv}
                 onChange={(e) => setCreateKeywordsCsv(e.target.value)}
@@ -924,7 +924,7 @@ export function ProceduresApp() {
               </label>
               <select
                 id={`${formId}-new-priority`}
-                className="mt-1 w-full rounded-md border border-ds-border bg-ds-primary px-3 py-2 text-sm dark:bg-ds-secondary"
+                className="mt-1 w-full rounded-md border border-ds-border/90 bg-white px-3 py-2 text-sm dark:bg-ds-secondary"
                 value={createTrainingTier}
                 onChange={(e) => setCreateTrainingTier(e.target.value as TrainingTier)}
                 disabled={saving || (isApiMode() && !canSetProcedureTrainingTier)}
@@ -984,7 +984,7 @@ export function ProceduresApp() {
         {!isCreating && selected ? (
           <section
             className={cn(
-              "min-h-0 min-w-0 overflow-y-auto rounded-xl border border-ds-border bg-ds-primary p-6 shadow-[var(--ds-shadow-card)]",
+              "ds-premium-panel min-h-0 min-w-0 overflow-y-auto p-6",
               "flex-1 lg:min-h-0",
             )}
           >
@@ -1051,7 +1051,7 @@ export function ProceduresApp() {
                     </label>
                     <input
                       id={`${formId}-edit-created-by`}
-                      className="mt-1 w-full rounded-md border border-ds-border bg-ds-primary px-3 py-2 text-sm dark:bg-ds-secondary"
+                      className="mt-1 w-full rounded-md border border-ds-border/90 bg-white px-3 py-2 text-sm dark:bg-ds-secondary"
                       placeholder="Name or email"
                       value={editCreatorName}
                       onChange={(e) => setEditCreatorName(e.target.value)}
@@ -1063,7 +1063,7 @@ export function ProceduresApp() {
                 </label>
                 <input
                   id={`${formId}-edit-title`}
-                  className="mt-1 w-full rounded-md border border-ds-border bg-ds-primary px-3 py-2 text-sm dark:bg-ds-secondary"
+                  className="mt-1 w-full rounded-md border border-ds-border/90 bg-white px-3 py-2 text-sm dark:bg-ds-secondary"
                   value={editTitle}
                   onChange={(e) => setEditTitle(e.target.value)}
                 />
@@ -1072,7 +1072,7 @@ export function ProceduresApp() {
                 </label>
                 <input
                   id={`${formId}-edit-kw`}
-                  className="mt-1 w-full rounded-md border border-ds-border bg-ds-primary px-3 py-2 text-sm dark:bg-ds-secondary"
+                  className="mt-1 w-full rounded-md border border-ds-border/90 bg-white px-3 py-2 text-sm dark:bg-ds-secondary"
                   placeholder="Comma-separated tags for filtering"
                   value={editKeywordsCsv}
                   onChange={(e) => setEditKeywordsCsv(e.target.value)}
@@ -1082,7 +1082,7 @@ export function ProceduresApp() {
                 </label>
                 <select
                   id={`${formId}-edit-priority`}
-                  className="mt-1 w-full rounded-md border border-ds-border bg-ds-primary px-3 py-2 text-sm dark:bg-ds-secondary"
+                  className="mt-1 w-full rounded-md border border-ds-border/90 bg-white px-3 py-2 text-sm dark:bg-ds-secondary"
                   value={editTrainingTier}
                   onChange={(e) => setEditTrainingTier(e.target.value as TrainingTier)}
                   disabled={saving || (isApiMode() && !canSetProcedureTrainingTier)}
@@ -1144,7 +1144,7 @@ export function ProceduresApp() {
               </>
             ) : (
               <div className="mt-4 min-w-0 space-y-5">
-                <div className="rounded-md border border-ds-border bg-ds-secondary/40 p-3">
+                <div className="ds-premium-inset p-3">
                   <p className="text-sm font-semibold text-ds-foreground">Title</p>
                   <p className="mt-1 text-sm text-ds-muted">{selected.title}</p>
                 </div>
@@ -1156,10 +1156,10 @@ export function ProceduresApp() {
                     <li
                       key={idx}
                       id={`procedure-step-${selected.id}-${idx + 1}`}
-                      className="scroll-mt-28 rounded-lg border border-ds-border bg-ds-primary p-5 shadow-sm"
+                      className="ds-premium-inset scroll-mt-28 p-5"
                     >
                       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:gap-4">
-                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-ds-border bg-ds-secondary text-sm font-bold text-ds-foreground">
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-sky-500 text-sm font-bold text-white shadow-md ring-1 ring-white/25">
                           {idx + 1}
                         </span>
                         <div className="min-w-0 flex-1">
@@ -1244,7 +1244,7 @@ export function ProceduresApp() {
                       <button
                         type="button"
                         onClick={() => void signCompletion()}
-                        className="rounded-md border border-ds-border bg-ds-primary px-4 py-2 text-sm font-semibold text-ds-foreground shadow-sm hover:bg-ds-secondary"
+                        className="rounded-md border border-ds-border/90 bg-white px-4 py-2 text-sm font-semibold text-ds-foreground shadow-sm hover:bg-slate-50 dark:bg-ds-secondary dark:hover:bg-ds-secondary/90"
                         title={
                           signedOffForSelected
                             ? "Signed off (click again to update timestamp)"
@@ -1263,7 +1263,7 @@ export function ProceduresApp() {
 
         <section
             className={cn(
-              "flex min-h-0 flex-col overflow-hidden rounded-xl border border-ds-border bg-ds-primary shadow-[var(--ds-shadow-card)]",
+              "ds-premium-panel flex min-h-0 flex-col overflow-hidden",
               !selected && !isCreating && "flex-1",
               isCreating && "h-full min-h-0",
               selected &&
@@ -1279,7 +1279,7 @@ export function ProceduresApp() {
                 <input
                   id={`${formId}-lib-kw`}
                   type="search"
-                  className="mt-1 w-full rounded-md border border-ds-border bg-ds-primary px-2.5 py-1.5 text-sm text-ds-foreground dark:bg-ds-secondary"
+                  className="mt-1 w-full rounded-md border border-ds-border/90 bg-white px-2.5 py-1.5 text-sm text-ds-foreground dark:bg-ds-secondary"
                   placeholder="e.g. Tile or Pool Shutdown (comma = any match)"
                   value={libraryKeyword}
                   onChange={(e) => setLibraryKeyword(e.target.value)}
@@ -1346,7 +1346,7 @@ export function ProceduresApp() {
             <p className="mt-2 text-sm text-ds-muted">
               Please confirm you’ve read and understand this procedure. This will be recorded in your profile under Compliance.
             </p>
-            <div className="mt-4 rounded-md border border-ds-border bg-ds-primary p-3 text-sm text-ds-foreground">
+            <div className="ds-premium-inset mt-4 p-3 text-sm text-ds-foreground">
               <span className="font-semibold">Procedure:</span> {selected.title}
             </div>
             <div className="mt-4 flex flex-wrap justify-end gap-2">

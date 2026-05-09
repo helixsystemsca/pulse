@@ -177,7 +177,14 @@ async def test_acknowledgement_requires_prior_view_when_verification_enabled(cli
     )
     assert view.status_code == 204, view.text
 
-    ok_ack = await client.post(f"/api/v1/cmms/procedures/{pid}/acknowledgement", headers=worker_headers, json={})
+    no_confirm = await client.post(f"/api/v1/cmms/procedures/{pid}/acknowledgement", headers=worker_headers, json={})
+    assert no_confirm.status_code == 400, no_confirm.text
+
+    ok_ack = await client.post(
+        f"/api/v1/cmms/procedures/{pid}/acknowledgement",
+        headers=worker_headers,
+        json={"read_understood_confirmed": True},
+    )
     assert ok_ack.status_code == 200, ok_ack.text
 
 

@@ -18,8 +18,8 @@ import {
   Package,
   Search,
   Settings,
+  TrendingUp,
   Truck,
-  UserPlus,
   Wrench,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState, type KeyboardEvent } from "react";
@@ -937,7 +937,7 @@ export function InventoryApp() {
           ) : null}
 
           {inventoryTab === "items" && sum ? (
-            <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+            <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-7">
               {[
                 {
                   label: "Total items",
@@ -961,21 +961,18 @@ export function InventoryApp() {
                   tone: "text-amber-800",
                   alert: sum.low_stock > 0,
                 },
-                {
-                  label: "Assigned / in use",
-                  value: sum.assigned,
-                  icon: UserPlus,
-                  sub: null,
-                  tone: "text-[#2B4C7E]",
-                },
-                {
-                  label: "Missing",
-                  value: sum.missing,
-                  icon: AlertTriangle,
-                  sub: sum.missing > 0 ? "Alert" : null,
-                  tone: "text-[#c05621]",
-                  alert: sum.missing > 0,
-                },
+                ...([0, 1, 2] as const).map((i) => {
+                  const row = sum.most_used?.[i];
+                  return {
+                    label: `Top ${i + 1} by uses`,
+                    value: row ? row.usage_count.toLocaleString() : "—",
+                    icon: TrendingUp,
+                    sub: row
+                      ? `${row.name}${row.sku ? ` · ${row.sku}` : ""}`
+                      : "No logged usage yet",
+                    tone: "text-emerald-800 dark:text-emerald-400/90",
+                  };
+                }),
                 {
                   label: "Inventory value",
                   value: sum.estimated_value != null ? `$${sum.estimated_value.toLocaleString()}` : "—",

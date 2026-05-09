@@ -42,6 +42,7 @@ from app.schemas.inventory_portal import (
     InventorySettingsOut,
     InventorySettingsPatchIn,
     InventorySummaryOut,
+    InventoryTopUsedOut,
     InventoryUseIn,
     InventoryUsageOut,
     InventoryVendorCreateIn,
@@ -450,6 +451,23 @@ async def _summary(db: AsyncSession, cid: str, conds: list) -> InventorySummaryO
         )
     )
     ev = float(val_q.scalar_one() or 0)
+    top_used_rows = (
+        await db.execute(
+            select(InventoryItem.id, InventoryItem.name, InventoryItem.sku, InventoryItem.usage_count)
+            .where(and_(where_base, InventoryItem.usage_count > 0))
+            .order_by(InventoryItem.usage_count.desc(), InventoryItem.name.asc())
+            .limit(3)
+        )
+    ).all()
+    most_used = [
+        InventoryTopUsedOut(
+            id=str(r.id),
+            name=r.name,
+            sku=r.sku or "",
+            usage_count=int(r.usage_count or 0),
+        )
+        for r in top_used_rows
+    ]
     return InventorySummaryOut(
         total_items=total,
         in_stock=in_stock,
@@ -458,6 +476,7 @@ async def _summary(db: AsyncSession, cid: str, conds: list) -> InventorySummaryO
         missing=missing,
         maintenance=maint,
         estimated_value=round(ev, 2) if ev else None,
+        most_used=most_used,
     )
 
 

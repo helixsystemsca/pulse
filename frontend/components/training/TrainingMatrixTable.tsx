@@ -7,6 +7,43 @@ import type {
   TrainingEmployee,
   TrainingProgram,
 } from "@/lib/training/types";
+
+function verificationDetailTitle(a: TrainingAssignment | undefined, programRequiresKv: boolean): string | undefined {
+  if (!a || !programRequiresKv) return undefined;
+  const parts: string[] = [`Status: ${a.status.replace(/_/g, " ")}`];
+  if (a.verification_first_viewed_at) {
+    parts.push(`First viewed: ${new Date(a.verification_first_viewed_at).toLocaleString()}`);
+  }
+  if (a.verification_last_viewed_at) {
+    parts.push(`Last viewed: ${new Date(a.verification_last_viewed_at).toLocaleString()}`);
+  }
+  const secs = a.verification_total_view_seconds ?? 0;
+  if (secs > 0) {
+    parts.push(`Review time: ${secs < 120 ? `${secs}s` : `${Math.round(secs / 60)} min`}`);
+  }
+  if (a.acknowledgement_date) {
+    parts.push(`Acknowledgment: ${new Date(a.acknowledgement_date).toLocaleString()}`);
+  }
+  if ((a.quiz_attempt_count ?? 0) > 0) {
+    parts.push(`Knowledge checks: ${a.quiz_attempt_count}`);
+    if (typeof a.quiz_latest_score_percent === "number") {
+      parts.push(`Latest score: ${a.quiz_latest_score_percent}%`);
+    }
+    if (typeof a.quiz_latest_passed === "boolean") {
+      parts.push(`Latest attempt passed: ${a.quiz_latest_passed ? "yes" : "no"}`);
+    }
+  }
+  if (a.quiz_passed_at) {
+    parts.push(`Knowledge check passed: ${new Date(a.quiz_passed_at).toLocaleString()}`);
+  }
+  if (a.completed_date) {
+    parts.push(`Compliance recorded: ${new Date(a.completed_date).toLocaleString()}`);
+  }
+  if (a.due_date) {
+    parts.push(`Due: ${a.due_date}`);
+  }
+  return parts.join("\n");
+}
 import { cellAssignmentStatus } from "@/lib/training/mockData";
 import { assignmentFor } from "@/lib/training/selectors";
 import { TrainingMatrixCell } from "@/components/training/TrainingMatrixCell";
@@ -36,10 +73,25 @@ export function TrainingMatrixTable({
   statusColumnFilter?: TrainingAssignmentStatus | "all";
 }) {
   const cols = sortPrograms(programs.filter((p) => p.active));
+  /**
+   * Normalized grid: each program column is exactly 1/12 of the table width.
+   * Employee column absorbs the remainder so a single procedure column stays narrow.
+   * With 12+ programs, fall back to a fixed employee rail + equal split of the rest (prevents impossible percentages).
+   */
+  const manyPrograms = cols.length >= 12;
+  const programColShare = manyPrograms ? `calc((100% - 11rem) / ${cols.length})` : "calc(100% / 12)";
+  const employeeColShare =
+    cols.length === 0 ? "100%" : manyPrograms ? "11rem" : `calc(100% - ${cols.length} * (100% / 12))`;
 
   return (
     <div className="overflow-x-auto rounded-xl border border-ds-border bg-ds-primary shadow-[var(--ds-shadow-card)]">
-      <table className="min-w-[640px] w-full border-collapse text-sm">
+      <table className="min-w-[640px] w-full table-fixed border-collapse text-sm">
+        <colgroup>
+          <col style={{ width: employeeColShare }} />
+          {cols.map((p) => (
+            <col key={p.id} style={{ width: programColShare }} />
+          ))}
+        </colgroup>
         <thead>
           <tr className={dataTableHeadRowClass}>
             <th
@@ -49,9 +101,9 @@ export function TrainingMatrixTable({
               Employee
             </th>
             {cols.map((p) => (
-              <th key={p.id} scope="col" className="min-w-[118px] px-2 py-2 text-left align-bottom">
-                <div className="flex flex-col gap-1.5">
-                  <span className="text-[11px] font-semibold leading-tight text-ds-foreground">{p.title}</span>
+              <th key={p.id} scope="col" className="min-w-0 px-2 py-2 text-left align-bottom">
+                <div className="flex min-w-0 flex-col items-start gap-1.5">
+                  <span className="line-clamp-3 text-[11px] font-semibold leading-tight text-ds-foreground">{p.title}</span>
                   <TrainingTierBadge tier={p.tier} />
                 </div>
               </th>
@@ -82,9 +134,13 @@ export function TrainingMatrixTable({
                   const eff = cellAssignmentStatus(p, a, acknowledgements, { trustAssignmentStatus });
                   const statusHidden =
                     statusColumnFilter !== "all" && eff !== statusColumnFilter;
+                  const mgrKvTitle =
+                    trustAssignmentStatus && a
+                      ? verificationDetailTitle(a, p.requires_knowledge_verification !== false)
+                      : undefined;
                   return (
                     <td key={p.id} className="px-2 py-1.5 align-middle">
-                      <div className="flex flex-col gap-1">
+                      <div className="flex flex-col gap-1" title={mgrKvTitle}>
                         {statusHidden ? (
                           <>
                             <span className="sr-only">{`Assignment status: ${eff.replaceAll("_", " ")}`}</span>

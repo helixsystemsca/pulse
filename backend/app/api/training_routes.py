@@ -135,6 +135,11 @@ def _assignment_to_out(
         supervisor_signoff=bool(row.supervisor_signoff),
         quiz_attempt_count=att.attempt_count,
         quiz_latest_score_percent=att.latest_score_percent,
+        quiz_latest_passed=att.latest_passed,
+        verification_first_viewed_at=eng.first_viewed_at if eng else None,
+        verification_last_viewed_at=eng.last_viewed_at if eng else None,
+        verification_total_view_seconds=int(eng.total_view_seconds or 0) if eng else 0,
+        quiz_passed_at=eng.quiz_passed_at if eng else None,
     )
 
 

@@ -127,7 +127,11 @@ class PulseProcedureComplianceSettings(Base):
 
 
 class PulseProcedureEngagement(Base):
-    """Per-revision view + quiz-pass markers for procedure knowledge verification."""
+    """Per-revision view + quiz-pass markers for procedure knowledge verification.
+
+    Extension hooks (future): supervisor sign-off, practical competency, recert cycles —
+    prefer new columns or a dedicated ``meta`` JSONB rather than overloading timestamps.
+    """
 
     __tablename__ = "pulse_procedure_engagement"
     __table_args__ = (
@@ -180,7 +184,10 @@ class PulseProcedureQuizSession(Base):
 
 
 class PulseProcedureQuizAttempt(Base):
-    """Audit trail for knowledge verification quiz submissions."""
+    """Audit trail for knowledge verification quiz submissions (each row = one attempt).
+
+    Future: question pools / difficulty could snapshot ``question_set_id`` alongside ``revision_number``.
+    """
 
     __tablename__ = "pulse_procedure_quiz_attempts"
 

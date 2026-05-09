@@ -52,6 +52,11 @@ export type TrainingMatrixApiResponse = {
     supervisor_signoff: boolean;
     quiz_attempt_count?: number;
     quiz_latest_score_percent?: number | null;
+    quiz_latest_passed?: boolean | null;
+    verification_first_viewed_at?: string | null;
+    verification_last_viewed_at?: string | null;
+    verification_total_view_seconds?: number;
+    quiz_passed_at?: string | null;
   }>;
 };
 
@@ -126,6 +131,12 @@ export function mapApiAssignments(rows: TrainingMatrixApiResponse["assignments"]
     quiz_attempt_count: typeof a.quiz_attempt_count === "number" ? a.quiz_attempt_count : 0,
     quiz_latest_score_percent:
       typeof a.quiz_latest_score_percent === "number" ? a.quiz_latest_score_percent : null,
+    quiz_latest_passed: typeof a.quiz_latest_passed === "boolean" ? a.quiz_latest_passed : null,
+    verification_first_viewed_at: normalizeApiDateTime(a.verification_first_viewed_at),
+    verification_last_viewed_at: normalizeApiDateTime(a.verification_last_viewed_at),
+    verification_total_view_seconds:
+      typeof a.verification_total_view_seconds === "number" ? a.verification_total_view_seconds : 0,
+    quiz_passed_at: normalizeApiDateTime(a.quiz_passed_at),
   }));
 }
 
@@ -270,7 +281,7 @@ export async function postProcedureQuizSubmit(
 
 export async function postProcedureTrainingAcknowledgement(
   procedureId: string,
-  body?: { employee_id?: string | null },
+  body?: { employee_id?: string | null; read_understood_confirmed?: boolean },
 ): Promise<{ revision_number: number; acknowledged_at: string }> {
   return apiFetch(`/api/v1/cmms/procedures/${encodeURIComponent(procedureId)}/acknowledgement`, {
     method: "POST",

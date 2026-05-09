@@ -60,6 +60,19 @@ class TrainingAssignmentOut(BaseModel):
     supervisor_signoff: bool = False
     quiz_attempt_count: int = 0
     quiz_latest_score_percent: Optional[int] = None
+    quiz_latest_passed: Optional[bool] = None
+    verification_first_viewed_at: Optional[datetime] = Field(
+        None, description="First content view timestamp for current revision (knowledge verification)."
+    )
+    verification_last_viewed_at: Optional[datetime] = Field(
+        None, description="Most recent view heartbeat for current revision."
+    )
+    verification_total_view_seconds: int = Field(
+        0, description="Accumulated review seconds recorded for current revision."
+    )
+    quiz_passed_at: Optional[datetime] = Field(
+        None, description="When a perfect-score verification quiz was submitted for current revision."
+    )
 
 
 class ProcedureComplianceOut(BaseModel):
@@ -140,6 +153,10 @@ class ProcedureAcknowledgementOut(BaseModel):
 
 class ProcedureAcknowledgementPostIn(BaseModel):
     employee_id: Optional[str] = None
+    read_understood_confirmed: bool = Field(
+        False,
+        description="Must be true when knowledge verification is required (explicit read/understand acknowledgment).",
+    )
 
 
 class TrainingAssignmentCreateIn(BaseModel):

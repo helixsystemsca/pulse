@@ -50,6 +50,13 @@ export type TrainingAssignment = {
   /** Manager visibility — verification quiz attempts for current revision */
   quiz_attempt_count?: number;
   quiz_latest_score_percent?: number | null;
+  quiz_latest_passed?: boolean | null;
+  /** Current revision — first time worker opened verification-tracked procedure view */
+  verification_first_viewed_at?: string | null;
+  verification_last_viewed_at?: string | null;
+  verification_total_view_seconds?: number;
+  /** When perfect-score knowledge verification was recorded for current revision */
+  quiz_passed_at?: string | null;
 };
 
 export type TrainingAcknowledgement = {

@@ -95,7 +95,7 @@ export function ProcedureKnowledgeVerification({
     setBusy(true);
     setLoadErr(null);
     try {
-      await postProcedureTrainingAcknowledgement(procedureId);
+      await postProcedureTrainingAcknowledgement(procedureId, { read_understood_confirmed: true });
       setAckConfirm(false);
       await reload();
       await onRefreshTraining();
@@ -223,6 +223,12 @@ export function ProcedureKnowledgeVerification({
           : `${Math.round(state.total_view_seconds / 60)} min`}{" "}
         cumulative on this revision
         {state.first_viewed_at ? "" : " — keep this panel open while you read the steps above."}
+        {state.acknowledgement_at ? (
+          <span className="mt-2 block text-xs text-ds-muted">
+            Acknowledgment recorded{" "}
+            <time dateTime={state.acknowledgement_at}>{new Date(state.acknowledgement_at).toLocaleString()}</time>
+          </span>
+        ) : null}
       </div>
 
       {step === 2 && state.can_acknowledge ? (

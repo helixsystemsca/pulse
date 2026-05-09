@@ -8,6 +8,13 @@ from typing import Any, Optional
 from pydantic import BaseModel, ConfigDict, Field
 
 
+class InventoryTopUsedOut(BaseModel):
+    id: str
+    name: str
+    sku: str
+    usage_count: int
+
+
 class InventorySummaryOut(BaseModel):
     total_items: int
     in_stock: int
@@ -16,6 +23,7 @@ class InventorySummaryOut(BaseModel):
     missing: int
     maintenance: int
     estimated_value: Optional[float] = None
+    most_used: list[InventoryTopUsedOut] = Field(default_factory=list)
 
 
 class InventoryMovementOut(BaseModel):

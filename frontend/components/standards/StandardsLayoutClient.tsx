@@ -6,7 +6,7 @@ import { SegmentedControl } from "@/components/schedule/SegmentedControl";
 import { PageBody } from "@/components/ui/PageBody";
 import { PageHeader } from "@/components/ui/PageHeader";
 
-type StandardsSegment = "procedures" | "routines" | "documents" | "training";
+type StandardsSegment = "procedures" | "routines" | "training";
 
 export function StandardsLayoutClient({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -14,17 +14,15 @@ export function StandardsLayoutClient({ children }: { children: React.ReactNode 
 
   const value: StandardsSegment = pathname.includes("/standards/training")
     ? "training"
-    : pathname.includes("/standards/documents")
-      ? "documents"
-      : pathname.includes("/standards/routines")
-        ? "routines"
-        : "procedures";
+    : pathname.includes("/standards/routines")
+      ? "routines"
+      : "procedures";
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="Standards"
-        description="Procedures, shift routines, facility documents, and training compliance — consistent operations."
+        description="Procedures, shift routines, and training compliance — operational knowledge stays where it's used; general file storage stays in SharePoint."
         icon={ListChecks}
       />
       <PageBody>
@@ -33,14 +31,12 @@ export function StandardsLayoutClient({ children }: { children: React.ReactNode 
             value={value}
             onChange={(v) => {
               if (v === "routines") router.push("/standards/routines");
-              else if (v === "documents") router.push("/standards/documents");
               else if (v === "training") router.push("/standards/training");
               else router.push("/standards/procedures");
             }}
             options={[
               { value: "procedures", label: "Procedures" },
               { value: "routines", label: "Routines" },
-              { value: "documents", label: "Documents" },
               { value: "training", label: "Training" },
             ]}
           />

@@ -36,6 +36,7 @@ from app.models.pulse_models import (
     PulseWorkRequestPriority,
     PulseWorkRequestStatus,
     PulseProcedureComplianceSettings,
+    PulseProcedureTrainingAcknowledgement,
 )
 from app.modules.pulse import service as pulse_svc
 from app.services.pm_task_service import sync_pm_task_after_work_order_completed
@@ -524,6 +525,16 @@ async def get_procedure_verification_state(
     st = stats.get((str(actor.id), procedure_id), QuizAttemptStats(0, None, None))
     can_ack = bool(vreq and snap.first_viewed_at is not None and not acknowledged_for_revision)
     can_quiz = bool(vreq and acknowledged_for_revision and snap.quiz_passed_at is None)
+    ack_row_q = await db.execute(
+        select(PulseProcedureTrainingAcknowledgement).where(
+            PulseProcedureTrainingAcknowledgement.company_id == cid,
+            PulseProcedureTrainingAcknowledgement.employee_user_id == str(actor.id),
+            PulseProcedureTrainingAcknowledgement.procedure_id == procedure_id,
+            PulseProcedureTrainingAcknowledgement.revision_number == rev,
+        )
+    )
+    ack_for_rev = ack_row_q.scalar_one_or_none()
+    acknowledgement_at = ack_for_rev.acknowledged_at if ack_for_rev else None
     return ProcedureVerificationStateOut(
         revision_number=rev,
         verification_required=vreq,
@@ -532,7 +543,7 @@ async def get_procedure_verification_state(
         total_view_seconds=snap.total_view_seconds,
         quiz_passed_at=snap.quiz_passed_at,
         acknowledged_for_revision=acknowledged_for_revision,
-        acknowledgement_at=None,
+        acknowledgement_at=acknowledgement_at,
         quiz_attempt_count=st.attempt_count,
         quiz_latest_score_percent=st.latest_score_percent,
         can_acknowledge=can_ack,
@@ -742,6 +753,11 @@ async def post_procedure_training_acknowledgement(
 
     cs_ack = await db.get(PulseProcedureComplianceSettings, procedure_id)
     if verification_requires_quiz(cs_ack):
+        if not body.read_understood_confirmed:
+            raise HTTPException(
+                status_code=400,
+                detail="Confirm read and understood (read_understood_confirmed) before acknowledging.",
+            )
         rev_n = int(proc.content_revision or 1)
         snap = await get_engagement_snapshot(db, cid, str(target_employee_id), procedure_id, rev_n)
         if snap.first_viewed_at is None:

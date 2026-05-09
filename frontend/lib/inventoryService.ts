@@ -4,6 +4,13 @@
  */
 import { apiFetch } from "@/lib/api";
 
+export type InventoryTopUsedItem = {
+  id: string;
+  name: string;
+  sku: string;
+  usage_count: number;
+};
+
 export type InventorySummary = {
   total_items: number;
   in_stock: number;
@@ -12,6 +19,7 @@ export type InventorySummary = {
   missing: number;
   maintenance: number;
   estimated_value: number | null;
+  most_used: InventoryTopUsedItem[];
 };
 
 export type InventoryMovement = {
