@@ -117,7 +117,7 @@ export function InactivitySessionGuard() {
           <button
             type="button"
             onClick={performLogout}
-            className="rounded-md border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-pulse-navy hover:bg-slate-50"
+            className="rounded-md border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-pulse-navy hover:bg-ds-interactive-hover"
           >
             Sign out now
           </button>

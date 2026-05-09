@@ -266,7 +266,7 @@ export function EquipmentDetailApp({ equipmentId }: Props) {
         <PageHeader title={data.name} description={subtitle} icon={Wrench} />
         <Link
           href="/equipment"
-          className="inline-flex items-center gap-2 rounded-[10px] border border-slate-200/90 bg-white px-4 py-2 text-sm font-semibold text-pulse-navy shadow-sm transition-colors hover:bg-slate-50"
+          className="inline-flex items-center gap-2 rounded-[10px] border border-slate-200/90 bg-white px-4 py-2 text-sm font-semibold text-pulse-navy shadow-sm transition-colors hover:bg-ds-interactive-hover"
         >
           <ArrowLeft className="h-4 w-4" aria-hidden />
           All equipment
@@ -321,7 +321,7 @@ export function EquipmentDetailApp({ equipmentId }: Props) {
             </div>
           )}
           {canMutate ? (
-            <label className="inline-flex cursor-pointer items-center gap-2 rounded-[10px] border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-pulse-navy shadow-sm hover:bg-slate-50">
+            <label className="inline-flex cursor-pointer items-center gap-2 rounded-[10px] border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-pulse-navy shadow-sm hover:bg-ds-interactive-hover">
               <Camera className="h-4 w-4" aria-hidden />
               {uploadingImage ? "Uploading…" : "Add / replace photo"}
               <input
@@ -514,7 +514,7 @@ export function EquipmentDetailApp({ equipmentId }: Props) {
                 <li key={wo.id} className="px-4 py-3">
                   <Link
                     href={`/dashboard/maintenance?wr=${encodeURIComponent(wo.id)}`}
-                    className="group block hover:bg-slate-50/80"
+                    className="group block hover:bg-ds-interactive-hover"
                   >
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <p className="font-semibold text-pulse-navy group-hover:text-[#2B4C7E]">{wo.title}</p>

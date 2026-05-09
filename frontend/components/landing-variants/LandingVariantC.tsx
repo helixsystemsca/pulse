@@ -85,7 +85,7 @@ export function LandingVariantC({ homePath }: { homePath: string }) {
               {howWeWork.steps.map(({ Icon, title, body }, i) => (
                 <div
                   key={title}
-                  className="grid gap-8 px-6 py-10 transition-colors duration-200 hover:bg-slate-50/60 md:grid-cols-[88px_1fr_auto] md:items-center md:px-10"
+                  className="grid gap-8 px-6 py-10 transition-colors duration-200 hover:bg-ds-interactive-hover md:grid-cols-[88px_1fr_auto] md:items-center md:px-10"
                 >
                   <div className="flex items-center gap-4 md:block">
                     <div className="flex h-14 w-14 items-center justify-center rounded-md border border-slate-200 bg-slate-50 text-slate-900">

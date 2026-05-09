@@ -249,7 +249,7 @@ export function LiveFacilityMap({ className = "", compact = false, pollMs = 5000
             return (
               <div
                 key={zone.id}
-                className="absolute border border-ds-border/60 bg-ds-primary/20 hover:bg-ds-primary/30 transition-colors"
+                className="absolute border border-ds-border/60 bg-ds-primary/20 hover:bg-ds-interactive-hover transition-colors"
                 style={{
                   left: `${(col / cols) * 100}%`,
                   top: `${(row / rows) * 100}%`,

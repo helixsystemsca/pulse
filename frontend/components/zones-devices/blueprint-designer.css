@@ -1022,11 +1022,12 @@
 }
 
 .bp-btn:hover {
-  background: rgba(59, 130, 246, 0.26);
-  box-shadow: 0 0 20px rgba(59, 130, 246, 0.12);
+  background: color-mix(in srgb, var(--ds-palette-ice-deep, #38bdf8) 30%, transparent);
+  box-shadow: 0 0 20px color-mix(in srgb, var(--ds-palette-ice-mid, #7dd3fc) 14%, transparent);
 }
 
 .bp-btn:active {
+  background: color-mix(in srgb, var(--ds-palette-ice-active, #0ea5e9) 38%, transparent);
   transform: scale(0.98);
 }
 
@@ -1037,7 +1038,7 @@
 }
 
 .bp-btn--ghost:hover {
-  background: rgba(255, 255, 255, 0.05);
+  background: color-mix(in srgb, var(--ds-palette-ice-mid, #7dd3fc) 16%, transparent);
   color: var(--bp-text);
   box-shadow: none;
 }

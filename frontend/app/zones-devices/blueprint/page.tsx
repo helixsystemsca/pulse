@@ -124,7 +124,7 @@ export default function BlueprintPage() {
           </h2>
           <button
             type="button"
-            className="flex-shrink-0 rounded-lg p-2 text-pulse-muted hover:bg-slate-100 hover:text-pulse-navy dark:hover:bg-ds-interactive-hover"
+            className="flex-shrink-0 rounded-lg p-2 text-pulse-muted hover:bg-ds-interactive-hover-strong hover:text-pulse-navy dark:hover:bg-ds-interactive-hover"
             onClick={close}
             aria-label="Close"
           >

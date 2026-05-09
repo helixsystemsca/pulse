@@ -1,7 +1,5 @@
 /**
- * Shared button appearance: outlined “ghost” controls (no contrast-aware surface pairing).
- * Light surfaces: transparent fill, black border, black text.
- * Dark surfaces (e.g. accent bars): transparent fill, white border, white text.
+ * Shared button appearance: outlined “ghost” controls (ice-blue hover / deeper ice on press).
  */
 
 export type ButtonIntent = "primary" | "secondary" | "accent" | "danger" | "highlight" | "pink";
@@ -12,13 +10,13 @@ const LAYOUT =
   "inline-flex min-h-9 items-center justify-center gap-2 rounded-xl border-2 px-4 py-2.5 text-sm font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 disabled:pointer-events-none disabled:opacity-50";
 
 const LIGHT_BASE =
-  "border-black bg-transparent text-black hover:bg-black/[0.06] active:bg-black/[0.10] focus-visible:outline-black";
+  "border-sky-400/85 bg-transparent text-slate-800 hover:bg-sky-400/16 active:bg-sky-500/24 focus-visible:outline-sky-500/70";
 
 const LIGHT_DANGER =
   "border-black bg-transparent text-red-700 hover:bg-red-50 active:bg-red-100 focus-visible:outline-black";
 
 const DARK_BASE =
-  "border-white bg-transparent text-white hover:bg-white/10 active:bg-white/[0.15] focus-visible:outline-white";
+  "border-sky-200/70 bg-transparent text-white hover:bg-sky-300/22 active:bg-sky-400/32 focus-visible:outline-sky-200/55";
 
 const DARK_DANGER =
   "border-white bg-transparent text-red-200 hover:bg-red-500/25 active:bg-red-500/35 focus-visible:outline-white";

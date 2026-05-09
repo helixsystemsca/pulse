@@ -42,7 +42,7 @@ export function ProjectSelector({ value, onChange, disabled, variant = "default"
     <select
       className={
         variant === "toolbar"
-          ? "h-8 min-h-0 w-[min(100%,12rem)] shrink-0 rounded-[7px] border border-[#d0d6df] bg-[#f8f9fb] px-2.5 py-1 text-[12.5px] font-medium leading-normal text-[#1a2030] outline-none transition hover:border-[#1ec8a0] hover:bg-white focus:border-[#1ec8a0] focus:ring-2 focus:ring-[#1ec8a0]/20 dark:border-ds-border dark:bg-ds-secondary/40 dark:text-ds-foreground"
+          ? "h-8 min-h-0 w-[min(100%,12rem)] shrink-0 rounded-[7px] border border-[#d0d6df] bg-[#f8f9fb] px-2.5 py-1 text-[12.5px] font-medium leading-normal text-[#1a2030] outline-none transition hover:border-[#38bdf8] hover:bg-sky-100/90 focus:border-[#38bdf8] focus:ring-2 focus:ring-sky-400/25 dark:border-ds-border dark:bg-ds-secondary/40 dark:text-ds-foreground"
           : variant === "inline"
             ? "app-field h-9 min-h-0 w-[min(100%,14rem)] py-1.5 text-sm leading-normal"
             : "app-field min-h-9 text-sm"

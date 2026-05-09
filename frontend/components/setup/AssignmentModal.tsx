@@ -34,7 +34,7 @@ export function AssignmentModal({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg p-1.5 text-pulse-muted hover:bg-slate-100 hover:text-pulse-navy"
+            className="rounded-lg p-1.5 text-pulse-muted hover:bg-ds-interactive-hover-strong hover:text-pulse-navy"
             aria-label="Close"
           >
             <X className="h-5 w-5" />

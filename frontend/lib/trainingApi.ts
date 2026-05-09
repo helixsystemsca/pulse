@@ -33,6 +33,7 @@ export type TrainingMatrixApiResponse = {
     revision_number: number;
     revision_date: string;
     requires_acknowledgement: boolean;
+    requires_knowledge_verification?: boolean;
     expiry_months: number | null;
     due_within_days?: number | null;
     active: boolean;
@@ -49,6 +50,8 @@ export type TrainingMatrixApiResponse = {
     expiry_date: string | null;
     acknowledgement_date: string | null;
     supervisor_signoff: boolean;
+    quiz_attempt_count?: number;
+    quiz_latest_score_percent?: number | null;
   }>;
 };
 
@@ -68,6 +71,7 @@ export type ProcedureComplianceApiResponse = {
   tier: TrainingTier;
   due_within_days: number | null;
   requires_acknowledgement: boolean;
+  requires_knowledge_verification?: boolean;
   updated_at: string;
   updated_by_user_id: string | null;
 };
@@ -98,6 +102,7 @@ export function mapApiPrograms(rows: TrainingMatrixApiResponse["programs"]): Tra
         revision_number: p.revision_number,
         revision_date: normalizeApiDateOnly(p.revision_date) ?? "",
         requires_acknowledgement: Boolean(p.requires_acknowledgement),
+        requires_knowledge_verification: p.requires_knowledge_verification !== false,
         expiry_months: p.expiry_months ?? null,
         due_within_days: p.due_within_days ?? null,
         active: p.active !== false,
@@ -118,6 +123,9 @@ export function mapApiAssignments(rows: TrainingMatrixApiResponse["assignments"]
     expiry_date: normalizeApiDateOnly(a.expiry_date),
     acknowledgement_date: normalizeApiDateTime(a.acknowledgement_date),
     supervisor_signoff: Boolean(a.supervisor_signoff),
+    quiz_attempt_count: typeof a.quiz_attempt_count === "number" ? a.quiz_attempt_count : 0,
+    quiz_latest_score_percent:
+      typeof a.quiz_latest_score_percent === "number" ? a.quiz_latest_score_percent : null,
   }));
 }
 
@@ -138,6 +146,7 @@ export function trainingProgramsToComplianceMap(programs: TrainingProgram[]): Pr
       tier: p.tier,
       due_within_days: p.due_within_days ?? null,
       requires_acknowledgement: p.requires_acknowledgement,
+      requires_knowledge_verification: p.requires_knowledge_verification !== false,
     } satisfies ProcedureComplianceConfig;
   }
   return m;
@@ -175,7 +184,12 @@ export async function fetchWorkerTraining(workerUserId: string): Promise<WorkerT
 
 export async function patchProcedureCompliance(
   procedureId: string,
-  body: { tier: TrainingTier; due_within_days: number | null; requires_acknowledgement: boolean },
+  body: {
+    tier: TrainingTier;
+    due_within_days: number | null;
+    requires_acknowledgement: boolean;
+    requires_knowledge_verification?: boolean | null;
+  },
 ): Promise<ProcedureComplianceApiResponse> {
   return apiFetch<ProcedureComplianceApiResponse>(`/api/v1/cmms/procedures/${encodeURIComponent(procedureId)}/compliance`, {
     method: "PATCH",
@@ -196,6 +210,61 @@ export async function postProcedureTrainingSignOff(
   return apiFetch(`/api/v1/cmms/procedures/${encodeURIComponent(procedureId)}/sign-off`, {
     method: "POST",
     json: body ?? {},
+  });
+}
+
+export type ProcedureVerificationStateApi = {
+  revision_number: number;
+  verification_required: boolean;
+  first_viewed_at: string | null;
+  last_viewed_at: string | null;
+  total_view_seconds: number;
+  quiz_passed_at: string | null;
+  acknowledged_for_revision: boolean;
+  acknowledgement_at: string | null;
+  quiz_attempt_count: number;
+  quiz_latest_score_percent: number | null;
+  can_acknowledge: boolean;
+  can_start_quiz: boolean;
+};
+
+export async function fetchProcedureVerificationState(procedureId: string): Promise<ProcedureVerificationStateApi> {
+  return apiFetch<ProcedureVerificationStateApi>(
+    `/api/v1/cmms/procedures/${encodeURIComponent(procedureId)}/verification/state`,
+  );
+}
+
+export async function postProcedureVerificationView(
+  procedureId: string,
+  accumulatedSeconds: number,
+): Promise<void> {
+  await apiFetch(`/api/v1/cmms/procedures/${encodeURIComponent(procedureId)}/verification/view`, {
+    method: "POST",
+    json: { accumulated_seconds: accumulatedSeconds },
+  });
+}
+
+export async function postProcedureQuizStart(procedureId: string): Promise<{ session_id: string; questions: unknown[] }> {
+  return apiFetch(`/api/v1/cmms/procedures/${encodeURIComponent(procedureId)}/verification/quiz/start`, {
+    method: "POST",
+  });
+}
+
+export async function postProcedureQuizSubmit(
+  procedureId: string,
+  body: { session_id: string; answers: Record<string, number> },
+): Promise<{
+  score_percent: number;
+  correct_count: number;
+  total_questions: number;
+  passed: boolean;
+  reveal: Record<string, { correct_index: number; your_index: number; was_correct: boolean }>;
+  completion_id: string | null;
+  completion_created: boolean;
+}> {
+  return apiFetch(`/api/v1/cmms/procedures/${encodeURIComponent(procedureId)}/verification/quiz/submit`, {
+    method: "POST",
+    json: body,
   });
 }
 

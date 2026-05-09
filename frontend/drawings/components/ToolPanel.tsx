@@ -111,7 +111,7 @@ export function ToolPanel({
   const sysRow = (s: SystemType, label: string, dot: string) => (
     <label
       key={s}
-      className="flex cursor-pointer items-center justify-between gap-2 border-b border-ds-border/40 px-2.5 py-2 text-xs font-medium text-ds-foreground last:border-b-0 hover:bg-ds-primary/30"
+      className="flex cursor-pointer items-center justify-between gap-2 border-b border-ds-border/40 px-2.5 py-2 text-xs font-medium text-ds-foreground last:border-b-0 hover:bg-ds-interactive-hover"
     >
       <span className="flex min-w-0 flex-1 items-center gap-2">
         <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${dot}`} aria-hidden />
@@ -139,7 +139,7 @@ export function ToolPanel({
             ? "cursor-not-allowed opacity-35"
             : annotateKind === kind
               ? "border-ds-success/80 bg-ds-success/15"
-              : "hover:bg-ds-primary/40"
+              : "hover:bg-ds-interactive-hover-strong"
         }`}
         onClick={() => allowed && onAnnotateKindChange(kind)}
       >
@@ -291,7 +291,7 @@ export function ToolPanel({
                         <span className="font-semibold text-ds-foreground">{r.entity}</span> · {r.key} {r.operator}{" "}
                         <span className="font-semibold text-ds-foreground">{String(r.value)}</span>
                       </span>
-                      <button type="button" className="shrink-0 px-1 text-xs hover:bg-ds-primary/40" onClick={() => onRemoveFilterRule(i)} aria-label="Remove filter">
+                      <button type="button" className="shrink-0 px-1 text-xs hover:bg-ds-interactive-hover-strong" onClick={() => onRemoveFilterRule(i)} aria-label="Remove filter">
                         ×
                       </button>
                     </div>
@@ -388,7 +388,7 @@ export function ToolPanel({
                         title={toolsLocked ? toolsLockedHint : "Building footprint"}
                         disabled={toolsLocked}
                         className={`inline-flex h-10 items-center justify-center border text-xs ${
-                          assetShape === "rectangle" ? "border-ds-success bg-ds-success/15" : "border-transparent hover:bg-ds-primary/40"
+                          assetShape === "rectangle" ? "border-ds-success bg-ds-success/15" : "border-transparent hover:bg-ds-interactive-hover-strong"
                         }`}
                         onClick={() => !toolsLocked && onAssetShapeChange("rectangle")}
                       >
@@ -399,7 +399,7 @@ export function ToolPanel({
                         title={toolsLocked ? toolsLockedHint : "Node / junction"}
                         disabled={toolsLocked}
                         className={`inline-flex h-10 items-center justify-center border text-xs ${
-                          assetShape === "ellipse" ? "border-ds-success bg-ds-success/15" : "border-transparent hover:bg-ds-primary/40"
+                          assetShape === "ellipse" ? "border-ds-success bg-ds-success/15" : "border-transparent hover:bg-ds-interactive-hover-strong"
                         }`}
                         onClick={() => !toolsLocked && onAssetShapeChange("ellipse")}
                       >
@@ -410,7 +410,7 @@ export function ToolPanel({
                         title={toolsLocked ? toolsLockedHint : "Custom area"}
                         disabled={toolsLocked}
                         className={`inline-flex h-10 items-center justify-center border text-xs ${
-                          assetShape === "polygon" ? "border-ds-success bg-ds-success/15" : "border-transparent hover:bg-ds-primary/40"
+                          assetShape === "polygon" ? "border-ds-success bg-ds-success/15" : "border-transparent hover:bg-ds-interactive-hover-strong"
                         }`}
                         onClick={() => !toolsLocked && onAssetShapeChange("polygon")}
                       >
@@ -434,7 +434,7 @@ export function ToolPanel({
                         type="button"
                         title={toolsLocked ? toolsLockedHint : undefined}
                         disabled={toolsLocked}
-                        className={`inline-flex min-h-8 items-center justify-center px-2 py-1.5 text-center text-xs font-semibold leading-tight ${connectFlow === "pick" ? "bg-ds-success/20 text-ds-foreground" : "text-ds-muted hover:bg-ds-primary/40"}`}
+                        className={`inline-flex min-h-8 items-center justify-center px-2 py-1.5 text-center text-xs font-semibold leading-tight ${connectFlow === "pick" ? "bg-ds-success/20 text-ds-foreground" : "text-ds-muted hover:bg-ds-interactive-hover-strong"}`}
                         onClick={() => !toolsLocked && onConnectFlowChange("pick")}
                       >
                         Pick 2 assets
@@ -443,7 +443,7 @@ export function ToolPanel({
                         type="button"
                         title={toolsLocked ? toolsLockedHint : undefined}
                         disabled={toolsLocked}
-                        className={`inline-flex min-h-8 items-center justify-center px-2 py-1.5 text-center text-xs font-semibold leading-tight ${connectFlow === "draw" ? "bg-ds-success/20 text-ds-foreground" : "text-ds-muted hover:bg-ds-primary/40"}`}
+                        className={`inline-flex min-h-8 items-center justify-center px-2 py-1.5 text-center text-xs font-semibold leading-tight ${connectFlow === "draw" ? "bg-ds-success/20 text-ds-foreground" : "text-ds-muted hover:bg-ds-interactive-hover-strong"}`}
                         onClick={() => !toolsLocked && onConnectFlowChange("draw")}
                       >
                         Draw

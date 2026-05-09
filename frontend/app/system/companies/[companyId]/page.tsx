@@ -46,7 +46,7 @@ const labelCls = "text-xs font-medium uppercase text-gray-500 dark:text-zinc-500
 const btnPrimary =
   "rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-500 hover:shadow disabled:opacity-40";
 const btnSecondary =
-  "rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-gray-800 shadow-sm transition hover:bg-gray-50 disabled:opacity-40 dark:border-ds-border dark:bg-ds-elevated dark:text-ds-foreground dark:hover:bg-ds-interactive-hover";
+  "rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-gray-800 shadow-sm transition hover:bg-ds-interactive-hover disabled:opacity-40 dark:border-ds-border dark:bg-ds-elevated dark:text-ds-foreground dark:hover:bg-ds-interactive-hover";
 
 export default function SystemCompanyDetailPage() {
   const { theme } = useTheme();

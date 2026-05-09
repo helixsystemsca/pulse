@@ -2104,7 +2104,7 @@ function ProjectTaskModal({
                     const on = skillsSel.includes(s);
                     return (
                       <li key={s}>
-                        <label className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-xs hover:bg-slate-50 dark:hover:bg-ds-interactive-hover">
+                        <label className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-xs hover:bg-ds-interactive-hover dark:hover:bg-ds-interactive-hover">
                           <input
                             type="checkbox"
                             className="h-3.5 w-3.5 rounded border-slate-300 text-blue-600"

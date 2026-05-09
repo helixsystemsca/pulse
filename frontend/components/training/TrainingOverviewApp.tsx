@@ -41,7 +41,7 @@ import {
 import { generateDemoAssignmentsForMatrix } from "@/lib/training/generatedAssignments";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
-import { trainingStandardsLeadershipAccess } from "@/lib/pulse-roles";
+import { trainingTeamMatrixAccess } from "@/lib/pulse-roles";
 import { notifyLeadershipMandatoryOverdue } from "@/lib/training/notifications";
 import { listProcedureSignoffs } from "@/lib/procedureSignoffs";
 import {
@@ -77,7 +77,7 @@ type MatrixBundle = {
 };
 
 export function TrainingOverviewApp() {
-  if (!trainingStandardsLeadershipAccess(readSession())) {
+  if (!trainingTeamMatrixAccess(readSession())) {
     return <TrainingEmployeeSelfView />;
   }
   return <TrainingLeadershipOverviewInner />;
@@ -113,7 +113,7 @@ function TrainingLeadershipOverviewInner() {
       try {
         const session = readSession();
         const companyId = session?.company_id ?? null;
-        const canMatrix = trainingStandardsLeadershipAccess(session);
+        const canMatrix = trainingTeamMatrixAccess(session);
 
         let loadedFromMatrix = false;
         if (canMatrix) {
@@ -177,7 +177,7 @@ function TrainingLeadershipOverviewInner() {
     if (!api) return;
     if (matrixBundle) return;
     const session = readSession();
-    if (!trainingStandardsLeadershipAccess(session)) return;
+    if (!trainingTeamMatrixAccess(session)) return;
     if (!employeesLive || !procedures || procedures.length === 0) return;
 
     const programsLive = proceduresToTrainingPrograms(procedures, procConfig);

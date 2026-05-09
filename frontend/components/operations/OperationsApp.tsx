@@ -201,7 +201,7 @@ export function OperationsApp() {
               </thead>
               <tbody>
                 {data.missed_proximity.map((m) => (
-                  <tr key={m.id} className="border-b border-slate-50 last:border-0 hover:bg-slate-50/60">
+                  <tr key={m.id} className="border-b border-slate-50 last:border-0 hover:bg-ds-interactive-hover">
                     <td className="px-3 py-3 text-pulse-navy">{userLabel(m)}</td>
                     <td className="px-3 py-3 text-pulse-muted">
                       {m.equipment_label?.trim() ? m.equipment_label : m.location_tag_id}
@@ -266,7 +266,7 @@ function WorkerPerformanceTable({ rows }: { rows: UserPerformanceInsightRow[] })
         </thead>
         <tbody>
           {rows.map((u) => (
-            <tr key={u.user_id} className="border-b border-slate-50 last:border-0 hover:bg-slate-50/60">
+            <tr key={u.user_id} className="border-b border-slate-50 last:border-0 hover:bg-ds-interactive-hover">
               <td className="px-3 py-3 font-medium text-pulse-navy">{u.name}</td>
               <td className="px-3 py-3">
                 <span
@@ -316,7 +316,7 @@ function LocationBottleneckTable({
         </thead>
         <tbody>
           {rows.map((r) => (
-            <tr key={r.location_tag_id} className="border-b border-slate-50 last:border-0 hover:bg-slate-50/60">
+            <tr key={r.location_tag_id} className="border-b border-slate-50 last:border-0 hover:bg-ds-interactive-hover">
               <td className="px-3 py-3 text-pulse-navy">{r.equipment_label?.trim() ? r.equipment_label : r.location_tag_id}</td>
               <td className="px-3 py-3 tabular-nums text-pulse-muted">{r.missed_events_count}</td>
               <td className="px-3 py-3 tabular-nums text-pulse-muted">{r.overdue_tasks_count}</td>
@@ -348,7 +348,7 @@ function ProjectBottleneckTable({ rows }: { rows: OperationsInsights["project_bo
         </thead>
         <tbody>
           {rows.map((r) => (
-            <tr key={r.project_id} className="border-b border-slate-50 last:border-0 hover:bg-slate-50/60">
+            <tr key={r.project_id} className="border-b border-slate-50 last:border-0 hover:bg-ds-interactive-hover">
               <td className="px-3 py-3">
                 <Link href={`/projects/${r.project_id}`} className="font-medium text-pulse-navy hover:text-pulse-accent">
                   {r.project_name?.trim() ? r.project_name : r.project_id}
@@ -380,7 +380,7 @@ function HealthTaskTable({ rows, showRisk }: { rows: TaskHealthItemRow[]; showRi
         </thead>
         <tbody>
           {rows.map((t) => (
-            <tr key={t.id} className="border-b border-slate-50 last:border-0 hover:bg-slate-50/60">
+            <tr key={t.id} className="border-b border-slate-50 last:border-0 hover:bg-ds-interactive-hover">
               <td className="px-3 py-3">
                 <Link href={`/projects/${t.project_id}`} className="font-medium text-pulse-navy hover:text-pulse-accent">
                   {t.title}

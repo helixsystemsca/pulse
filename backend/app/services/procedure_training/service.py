@@ -27,6 +27,9 @@ TrainingAssignmentStatusApi = Literal[
     "pending",
     "revision_pending",
     "not_assigned",
+    "in_progress",
+    "acknowledged",
+    "quiz_failed",
 ]
 
 _EXPIRING_SOON_DAYS = 14
@@ -45,6 +48,13 @@ def resolve_compliance_defaults(
     return tier, req_ack, due_within
 
 
+def verification_requires_quiz(cs: PulseProcedureComplianceSettings | None) -> bool:
+    """When true, matrix completion requires view → acknowledge → 100% quiz (sign-off row)."""
+    if cs is None:
+        return True
+    return bool(getattr(cs, "requires_knowledge_verification", True))
+
+
 def _ack_satisfied(proc_rev: int, latest_ack_rev: Optional[int], requires_ack: bool) -> bool:
     if not requires_ack:
         return True
@@ -57,19 +67,61 @@ def compute_training_assignment_status(
     procedure: PulseProcedure,
     compliance: PulseProcedureComplianceSettings | None,
     latest_ack_revision: Optional[int],
+    signoff_for_current_revision: bool,
+    engagement_first_viewed_at: Optional[datetime] = None,
+    engagement_quiz_passed_at: Optional[datetime] = None,
+    quiz_attempt_count: int = 0,
+    quiz_latest_passed: Optional[bool] = None,
 ) -> TrainingAssignmentStatusApi:
     if assignment is None:
         return "not_assigned"
 
     tier, req_ack, _ = resolve_compliance_defaults(compliance)
     proc_rev = int(procedure.content_revision or 1)
-    ack_ok = _ack_satisfied(proc_rev, latest_ack_revision, req_ack)
-    has_completion = assignment.completed_at is not None
+    today = datetime.now(timezone.utc).date()
 
+    v_on = verification_requires_quiz(compliance)
+    if v_on:
+        ack_ok = latest_ack_revision is not None and latest_ack_revision >= proc_rev
+    else:
+        ack_ok = _ack_satisfied(proc_rev, latest_ack_revision, req_ack)
+
+    if v_on:
+        stale_completed = assignment.completed_at is not None and not signoff_for_current_revision
+        if stale_completed and req_ack and not ack_ok:
+            return "revision_pending"
+
+        if req_ack and not ack_ok:
+            return "revision_pending"
+
+        if signoff_for_current_revision and ack_ok:
+            exp = assignment.expiry_date
+            if exp is not None:
+                if today > exp:
+                    return "expired"
+                days_left = (exp - today).days
+                if 0 <= days_left <= _EXPIRING_SOON_DAYS:
+                    return "expiring_soon"
+            return "completed"
+
+        if tier == "mandatory" and assignment.due_date is not None and today > assignment.due_date:
+            if not signoff_for_current_revision:
+                return "expired"
+
+        viewed = engagement_first_viewed_at is not None
+        quiz_passed = engagement_quiz_passed_at is not None
+        if quiz_attempt_count > 0 and not quiz_passed and quiz_latest_passed is False:
+            return "quiz_failed"
+        if ack_ok and not quiz_passed:
+            return "acknowledged"
+        if viewed and not ack_ok:
+            return "in_progress"
+        return "pending"
+
+    # Legacy: verification disabled — completion follows assignment timestamps + acknowledgement alignment.
+    has_completion = assignment.completed_at is not None
     if has_completion and req_ack and not ack_ok:
         return "revision_pending"
-
-    today = datetime.now(timezone.utc).date()
 
     if has_completion and ack_ok:
         exp = assignment.expiry_date
@@ -102,6 +154,7 @@ async def enqueue_mandatory_overdue_if_needed(
     latest_ack_revision: Optional[int],
     procedure: PulseProcedure,
     as_of: date,
+    signoff_for_current_revision: bool = False,
 ) -> None:
     tier, req_ack, _ = resolve_compliance_defaults(compliance)
     if tier != "mandatory":
@@ -109,8 +162,15 @@ async def enqueue_mandatory_overdue_if_needed(
     if assignment.due_date is None or as_of <= assignment.due_date:
         return
     proc_rev = int(procedure.content_revision or 1)
-    ack_ok = _ack_satisfied(proc_rev, latest_ack_revision, req_ack)
-    if assignment.completed_at is not None and ack_ok:
+    v_on = verification_requires_quiz(compliance)
+    if v_on:
+        ack_ok_ov = latest_ack_revision is not None and latest_ack_revision >= proc_rev
+    else:
+        ack_ok_ov = _ack_satisfied(proc_rev, latest_ack_revision, req_ack)
+    if v_on:
+        if signoff_for_current_revision and ack_ok_ov:
+            return
+    elif assignment.completed_at is not None and ack_ok_ov:
         return
 
     dedupe_key = f"mandatory_overdue:{company_id}:{employee_user_id}:{procedure_id}:{as_of.isoformat()}"

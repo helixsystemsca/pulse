@@ -7,7 +7,7 @@ import { cn } from "@/lib/cn";
 import type { BlueprintViewportHandle } from "@/components/zones-devices/BlueprintReadOnlyCanvas";
 
 const railBtn =
-  "flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-ds-border/70 bg-background/95 text-ds-foreground shadow-sm transition-colors hover:bg-ds-primary/40 disabled:cursor-not-allowed disabled:opacity-40";
+  "flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-ds-border/70 bg-background/95 text-ds-foreground shadow-sm transition-colors hover:bg-ds-interactive-hover-strong disabled:cursor-not-allowed disabled:opacity-40";
 
 export function DrawingCanvasToolbar({
   disabled,

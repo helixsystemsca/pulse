@@ -2,11 +2,10 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { ClipboardCheck } from "lucide-react";
-import { TrainingStatusBadge } from "@/components/training/TrainingStatusBadge";
-import { TrainingTierBadge } from "@/components/training/TrainingTierBadge";
+import { TrainingMatrixTable } from "@/components/training/TrainingMatrixTable";
 import { isApiMode } from "@/lib/api";
 import { complianceAlertsForEmployee } from "@/lib/training/complianceAlerts";
-import { MOCK_TRAINING_PROGRAMS, cellAssignmentStatus } from "@/lib/training/mockData";
+import { MOCK_TRAINING_PROGRAMS } from "@/lib/training/mockData";
 import { parseClientApiError } from "@/lib/parse-client-api-error";
 import { readSession } from "@/lib/pulse-session";
 import {
@@ -16,12 +15,8 @@ import {
   mapApiPrograms,
   type WorkerTrainingApiResponse,
 } from "@/lib/trainingApi";
-import {
-  assignmentFor,
-  trainingAcknowledgementsForPersona,
-  trainingAssignmentsForPersona,
-} from "@/lib/training/selectors";
-import type { TrainingAcknowledgement, TrainingAssignment, TrainingProgram } from "@/lib/training/types";
+import { trainingAcknowledgementsForPersona, trainingAssignmentsForPersona } from "@/lib/training/selectors";
+import type { TrainingAcknowledgement, TrainingAssignment, TrainingEmployee, TrainingProgram } from "@/lib/training/types";
 
 const TIER_SORT: TrainingProgram["tier"][] = ["mandatory", "high_risk", "general"];
 
@@ -80,6 +75,15 @@ export function TrainingEmployeeSelfView() {
 
   const trustServer = useLive;
 
+  const meRow: TrainingEmployee = useMemo(
+    () => ({
+      id: workerId,
+      display_name: displayName,
+      department: session?.job_title?.trim() || "—",
+    }),
+    [workerId, displayName, session?.job_title],
+  );
+
   const alerts = useMemo(
     () =>
       workerId
@@ -106,8 +110,8 @@ export function TrainingEmployeeSelfView() {
           <div className="min-w-0 flex-1">
             <h2 className="text-base font-semibold text-ds-foreground">My training record</h2>
             <p className="mt-1 max-w-3xl text-sm leading-relaxed text-ds-muted">
-              Your assigned procedures, completions, and acknowledgements. Team-wide compliance visibility is limited to
-              supervisors and managers.
+              Your assigned procedures, completions, and acknowledgements — same matrix layout as the team board, scoped to
+              you. Leads, supervisors, managers, and tenant admins see everyone&apos;s rows on this page.
             </p>
             <p className="mt-2 text-xs font-medium text-ds-foreground">{displayName}</p>
             {loading ? <p className="mt-2 text-xs text-ds-muted">Loading…</p> : null}
@@ -143,30 +147,22 @@ export function TrainingEmployeeSelfView() {
         </section>
       ) : null}
 
-      <section className="overflow-hidden rounded-xl border border-ds-border bg-ds-primary shadow-[var(--ds-shadow-card)]">
-        <div className="border-b border-ds-border bg-ds-secondary/50 px-4 py-3">
-          <h3 className="text-[11px] font-bold uppercase tracking-wide text-ds-muted">Assignments & status</h3>
-          <p className="mt-1 text-xs text-ds-muted">Dense grid for quick scanning — same signals supervisors see per person.</p>
+      <section className="space-y-2">
+        <div>
+          <h3 className="text-[11px] font-bold uppercase tracking-wide text-ds-muted">Your training matrix</h3>
+          <p className="mt-1 text-xs text-ds-muted">
+            One row (you) × procedures. Teal = complete · Yellow = expiring soon · Pink = mandatory gap · Peach = optional /
+            general gap.
+          </p>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[720px] border-collapse text-left text-sm">
-            <thead>
-              <tr className="border-b border-ds-border bg-ds-secondary/30 text-[11px] font-bold uppercase tracking-wide text-ds-muted">
-                <th className="whitespace-nowrap px-3 py-2">Procedure</th>
-                <th className="whitespace-nowrap px-3 py-2">Tier</th>
-                <th className="whitespace-nowrap px-3 py-2">Status</th>
-                <th className="whitespace-nowrap px-3 py-2">Due</th>
-                <th className="whitespace-nowrap px-3 py-2">Expires</th>
-                <th className="whitespace-nowrap px-3 py-2">Ack</th>
-              </tr>
-            </thead>
-            <tbody>
-              {programs.map((p) => (
-                <SelfRow key={p.id} program={p} employeeId={workerId} assignments={assignments} acks={acks} trustServer={trustServer} />
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <TrainingMatrixTable
+          employees={[meRow]}
+          programs={programs}
+          assignments={assignments}
+          acknowledgements={acks}
+          trustAssignmentStatus={trustServer}
+          statusColumnFilter="all"
+        />
       </section>
 
       <section className="rounded-xl border border-ds-border bg-ds-secondary/30 p-4">
@@ -190,41 +186,5 @@ export function TrainingEmployeeSelfView() {
         </ul>
       </section>
     </div>
-  );
-}
-
-function SelfRow({
-  program,
-  employeeId,
-  assignments,
-  acks,
-  trustServer,
-}: {
-  program: TrainingProgram;
-  employeeId: string;
-  assignments: TrainingAssignment[];
-  acks: TrainingAcknowledgement[];
-  trustServer: boolean;
-}) {
-  const a = assignmentFor(employeeId, program.id, assignments);
-  const eff = cellAssignmentStatus(program, a, acks, { trustAssignmentStatus: trustServer });
-  return (
-    <tr className="border-b border-ds-border/70 hover:bg-ds-interactive-hover/40">
-      <td className="max-w-[280px] px-3 py-2 align-top">
-        <div className="font-medium leading-snug text-ds-foreground">{program.title}</div>
-        {program.description ? <div className="mt-0.5 line-clamp-2 text-xs text-ds-muted">{program.description}</div> : null}
-      </td>
-      <td className="whitespace-nowrap px-3 py-2 align-top">
-        <TrainingTierBadge tier={program.tier} />
-      </td>
-      <td className="whitespace-nowrap px-3 py-2 align-top">
-        <TrainingStatusBadge status={eff} />
-      </td>
-      <td className="whitespace-nowrap px-3 py-2 align-top tabular-nums text-ds-muted">{a?.due_date ?? "—"}</td>
-      <td className="whitespace-nowrap px-3 py-2 align-top tabular-nums text-ds-muted">{a?.expiry_date ?? "—"}</td>
-      <td className="whitespace-nowrap px-3 py-2 align-top tabular-nums text-ds-muted">
-        {a?.acknowledgement_date ? a.acknowledgement_date.slice(0, 10) : "—"}
-      </td>
-    </tr>
   );
 }

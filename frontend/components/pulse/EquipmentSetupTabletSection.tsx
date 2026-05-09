@@ -50,7 +50,7 @@ function EquipmentSetupScreen() {
       <header className="flex shrink-0 items-center gap-2 border-b border-slate-200 bg-white px-2 py-1.5">
         <button
           type="button"
-          className="flex h-7 w-7 items-center justify-center rounded-lg text-pulse-navy hover:bg-slate-100"
+          className="flex h-7 w-7 items-center justify-center rounded-lg text-pulse-navy hover:bg-ds-interactive-hover-strong"
           aria-label="Back"
         >
           <ArrowLeft className="h-4 w-4" strokeWidth={2} />

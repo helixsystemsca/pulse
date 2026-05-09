@@ -82,7 +82,7 @@ export function AppNavbar({ notificationCount = 0, messagesCount = 0 }: AppNavba
   }, []);
 
   const chromeIconBtn =
-    "relative flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-white/85 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/40";
+    "relative flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-white/85 transition-colors hover:bg-ds-chrome-hover hover:text-white active:bg-ds-chrome-active focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-200/45";
 
   return (
     <nav
@@ -132,7 +132,7 @@ export function AppNavbar({ notificationCount = 0, messagesCount = 0 }: AppNavba
             pathname !== "/login" ? (
               <Link
                 href={pulseApp.login()}
-                className="rounded-lg px-3 py-2 text-sm font-semibold text-white/95 hover:bg-white/10"
+                className="rounded-lg px-3 py-2 text-sm font-semibold text-white/95 hover:bg-ds-chrome-hover active:bg-ds-chrome-active"
               >
                 Login
               </Link>
@@ -176,7 +176,7 @@ export function AppNavbar({ notificationCount = 0, messagesCount = 0 }: AppNavba
 
               <Link
                 href={pulseApp.to(canOpenOrgSettings ? "/settings" : "/dashboard/profile-settings")}
-                className={cn(chromeIconBtn, settingsActive && "bg-white/10 text-white")}
+                className={cn(chromeIconBtn, settingsActive && "bg-ds-chrome-active text-white")}
                 aria-label={canOpenOrgSettings ? "Organization settings" : "Profile settings"}
                 title="Settings"
               >
@@ -187,7 +187,7 @@ export function AppNavbar({ notificationCount = 0, messagesCount = 0 }: AppNavba
                 <button
                   type="button"
                   onClick={() => setUserOpen((o) => !o)}
-                  className="flex items-center gap-1.5 rounded-lg py-1 pl-1 pr-1 text-white transition-colors hover:bg-white/10 sm:gap-2 sm:pr-1.5"
+                  className="flex items-center gap-1.5 rounded-lg py-1 pl-1 pr-1 text-white transition-colors hover:bg-ds-chrome-hover active:bg-ds-chrome-active sm:gap-2 sm:pr-1.5"
                   aria-expanded={userOpen}
                   aria-haspopup="menu"
                   aria-label={isDemoViewer ? "Demo mode account menu" : "Account menu"}

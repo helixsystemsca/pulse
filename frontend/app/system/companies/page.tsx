@@ -260,7 +260,7 @@ export default function SystemCompaniesPage() {
         <button
           type="button"
           onClick={() => void load()}
-          className="rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 dark:border-ds-border dark:text-ds-muted dark:hover:bg-ds-interactive-hover"
+          className="rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700 hover:bg-ds-interactive-hover dark:border-ds-border dark:text-ds-muted dark:hover:bg-ds-interactive-hover"
         >
           Search
         </button>
@@ -371,7 +371,7 @@ export default function SystemCompaniesPage() {
                       router.push(`/system/companies/${r.id}`);
                     }
                   }}
-                  className={`ds-table-row-hover cursor-pointer transition-colors hover:bg-gray-50 ${
+                  className={`ds-table-row-hover cursor-pointer transition-colors hover:bg-ds-interactive-hover ${
                     r.is_active ? "" : "opacity-60"
                   }`}
                 >

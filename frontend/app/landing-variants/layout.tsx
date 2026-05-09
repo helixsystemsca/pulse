@@ -21,7 +21,7 @@ export default function LandingVariantsLayout({ children }: { children: React.Re
             <Link
               key={l.href}
               href={l.href}
-              className="rounded-full px-2.5 py-1 text-slate-700 no-underline transition-colors hover:bg-slate-100 hover:text-slate-900 sm:px-3 font-medium"
+              className="rounded-full px-2.5 py-1 text-slate-700 no-underline transition-colors hover:bg-ds-interactive-hover-strong hover:text-slate-900 sm:px-3 font-medium"
             >
               {l.label}
             </Link>

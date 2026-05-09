@@ -3074,7 +3074,7 @@ export function WorkersApp() {
                   className={`rounded-lg px-2.5 py-2 text-center text-xs font-semibold transition-colors sm:text-sm ${
                     settingsTab === t
                       ? "bg-ds-primary text-ds-success shadow-sm ring-1 ring-ds-border"
-                      : "text-ds-muted hover:bg-ds-primary"
+                      : "text-ds-muted hover:bg-ds-interactive-hover"
                   }`}
                 >
                   {t}

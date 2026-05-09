@@ -141,7 +141,7 @@ export function ProximityPromptHost() {
           </div>
           <button
             type="button"
-            className="shrink-0 rounded-lg p-2 text-pulse-muted transition-colors hover:bg-slate-100 hover:text-pulse-navy"
+            className="shrink-0 rounded-lg p-2 text-pulse-muted transition-colors hover:bg-ds-interactive-hover-strong hover:text-pulse-navy"
             aria-label="Dismiss"
             onClick={dismissPromptWithoutAction}
           >

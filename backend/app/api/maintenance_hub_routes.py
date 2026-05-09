@@ -40,17 +40,33 @@ from app.models.pulse_models import (
 from app.modules.pulse import service as pulse_svc
 from app.services.pm_task_service import sync_pm_task_after_work_order_completed
 from app.services.procedure_training.service import (
+    latest_ack_revision_map,
     record_procedure_acknowledgement,
     record_procedure_signoff,
+    resolve_compliance_defaults,
     revision_marker_from_procedure,
+    verification_requires_quiz,
+)
+from app.services.procedure_verification.service import (
+    QuizAttemptStats,
+    complete_verification_quiz_session,
+    create_quiz_session_for_employee,
+    get_engagement_snapshot,
+    load_attempt_stats_for_pairs,
+    record_engagement_view,
 )
 from app.schemas.training import (
     ProcedureAcknowledgementPostIn,
     ProcedureAcknowledgementOut,
     ProcedureComplianceOut,
     ProcedureCompliancePatchIn,
+    ProcedureQuizStartOut,
+    ProcedureQuizSubmitIn,
+    ProcedureQuizSubmitOut,
     ProcedureSignoffOut,
     ProcedureSignoffPostIn,
+    ProcedureVerificationStateOut,
+    ProcedureVerificationViewPostIn,
 )
 from app.schemas.maintenance_hub import (
     PreventativeRuleCreate,
@@ -419,6 +435,7 @@ async def get_procedure_compliance(
             tier="general",
             due_within_days=None,
             requires_acknowledgement=False,
+            requires_knowledge_verification=True,
             updated_at=baseline,
             updated_by_user_id=None,
         )
@@ -428,6 +445,7 @@ async def get_procedure_compliance(
         tier=str(cs.tier),  # type: ignore[arg-type]
         due_within_days=cs.due_within_days,
         requires_acknowledgement=bool(cs.requires_acknowledgement),
+        requires_knowledge_verification=bool(getattr(cs, "requires_knowledge_verification", True)),
         updated_at=cs.updated_at,
         updated_by_user_id=str(cs.updated_by_user_id) if cs.updated_by_user_id else None,
     )
@@ -453,6 +471,9 @@ async def patch_procedure_compliance(
             tier=str(body.tier),
             due_within_days=body.due_within_days,
             requires_acknowledgement=bool(body.requires_acknowledgement),
+            requires_knowledge_verification=bool(body.requires_knowledge_verification)
+            if body.requires_knowledge_verification is not None
+            else True,
             updated_at=now,
             updated_by_user_id=str(user.id),
         )
@@ -461,6 +482,8 @@ async def patch_procedure_compliance(
         cs.tier = str(body.tier)
         cs.due_within_days = body.due_within_days
         cs.requires_acknowledgement = bool(body.requires_acknowledgement)
+        if body.requires_knowledge_verification is not None:
+            cs.requires_knowledge_verification = bool(body.requires_knowledge_verification)
         cs.updated_at = now
         cs.updated_by_user_id = str(user.id)
     await db.commit()
@@ -471,8 +494,152 @@ async def patch_procedure_compliance(
         tier=str(cs.tier),  # type: ignore[arg-type]
         due_within_days=cs.due_within_days,
         requires_acknowledgement=bool(cs.requires_acknowledgement),
+        requires_knowledge_verification=bool(getattr(cs, "requires_knowledge_verification", True)),
         updated_at=cs.updated_at,
         updated_by_user_id=str(cs.updated_by_user_id) if cs.updated_by_user_id else None,
+    )
+
+
+@router.get("/procedures/{procedure_id}/verification/state", response_model=ProcedureVerificationStateOut)
+async def get_procedure_verification_state(
+    procedure_id: str,
+    db: Db,
+    cid: CompanyId,
+    actor: Annotated[User, Depends(require_tenant_user)],
+) -> ProcedureVerificationStateOut:
+    proc = await db.get(PulseProcedure, procedure_id)
+    if not proc or proc.company_id != cid:
+        raise HTTPException(status_code=404, detail="Not found")
+    if not await pulse_svc._user_in_company(db, cid, str(actor.id)):
+        raise HTTPException(status_code=400, detail="Unknown user")
+    cs = await db.get(PulseProcedureComplianceSettings, procedure_id)
+    rev = int(proc.content_revision or 1)
+    vreq = verification_requires_quiz(cs)
+    snap = await get_engagement_snapshot(db, cid, str(actor.id), procedure_id, rev)
+    ack_map = await latest_ack_revision_map(db, cid, [str(actor.id)], [procedure_id])
+    latest_ack = ack_map.get((str(actor.id), procedure_id))
+    acknowledged_for_revision = latest_ack is not None and latest_ack >= rev
+    tier, _, _ = resolve_compliance_defaults(cs)
+    stats = await load_attempt_stats_for_pairs(db, cid, [str(actor.id)], [procedure_id], {procedure_id: rev})
+    st = stats.get((str(actor.id), procedure_id), QuizAttemptStats(0, None, None))
+    can_ack = bool(vreq and snap.first_viewed_at is not None and not acknowledged_for_revision)
+    can_quiz = bool(vreq and acknowledged_for_revision and snap.quiz_passed_at is None)
+    return ProcedureVerificationStateOut(
+        revision_number=rev,
+        verification_required=vreq,
+        first_viewed_at=snap.first_viewed_at,
+        last_viewed_at=snap.last_viewed_at,
+        total_view_seconds=snap.total_view_seconds,
+        quiz_passed_at=snap.quiz_passed_at,
+        acknowledged_for_revision=acknowledged_for_revision,
+        acknowledgement_at=None,
+        quiz_attempt_count=st.attempt_count,
+        quiz_latest_score_percent=st.latest_score_percent,
+        can_acknowledge=can_ack,
+        can_start_quiz=can_quiz,
+    )
+
+
+@router.post("/procedures/{procedure_id}/verification/view", status_code=status.HTTP_204_NO_CONTENT)
+async def post_procedure_verification_view(
+    procedure_id: str,
+    db: Db,
+    cid: CompanyId,
+    actor: Annotated[User, Depends(require_tenant_user)],
+    body: ProcedureVerificationViewPostIn = Body(default_factory=ProcedureVerificationViewPostIn),
+) -> Response:
+    proc = await db.get(PulseProcedure, procedure_id)
+    if not proc or proc.company_id != cid:
+        raise HTTPException(status_code=404, detail="Not found")
+    rev = int(proc.content_revision or 1)
+    await record_engagement_view(
+        db,
+        cid,
+        str(actor.id),
+        procedure_id,
+        rev,
+        delta_seconds=body.accumulated_seconds,
+    )
+    await db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post("/procedures/{procedure_id}/verification/quiz/start", response_model=ProcedureQuizStartOut)
+async def post_procedure_verification_quiz_start(
+    procedure_id: str,
+    db: Db,
+    cid: CompanyId,
+    actor: Annotated[User, Depends(require_tenant_user)],
+) -> ProcedureQuizStartOut:
+    proc = await db.get(PulseProcedure, procedure_id)
+    if not proc or proc.company_id != cid:
+        raise HTTPException(status_code=404, detail="Not found")
+    cs = await db.get(PulseProcedureComplianceSettings, procedure_id)
+    if not verification_requires_quiz(cs):
+        raise HTTPException(status_code=400, detail="Knowledge verification is disabled for this procedure")
+    rev = int(proc.content_revision or 1)
+    ack_map = await latest_ack_revision_map(db, cid, [str(actor.id)], [procedure_id])
+    latest_ack = ack_map.get((str(actor.id), procedure_id))
+    if latest_ack is None or latest_ack < rev:
+        raise HTTPException(status_code=400, detail="Acknowledge the procedure before starting verification")
+    tier, _, _ = resolve_compliance_defaults(cs)
+    sid, qs = await create_quiz_session_for_employee(db, cid, str(actor.id), proc, tier=str(tier))
+    await db.commit()
+    return ProcedureQuizStartOut(session_id=sid, questions=qs)
+
+
+@router.post("/procedures/{procedure_id}/verification/quiz/submit", response_model=ProcedureQuizSubmitOut)
+async def post_procedure_verification_quiz_submit(
+    procedure_id: str,
+    db: Db,
+    cid: CompanyId,
+    actor: Annotated[User, Depends(require_tenant_user)],
+    body: ProcedureQuizSubmitIn,
+) -> ProcedureQuizSubmitOut:
+    proc = await db.get(PulseProcedure, procedure_id)
+    if not proc or proc.company_id != cid:
+        raise HTTPException(status_code=404, detail="Not found")
+    cs = await db.get(PulseProcedureComplianceSettings, procedure_id)
+    tier, _, _ = resolve_compliance_defaults(cs)
+    sup = user_has_any_role(actor, UserRole.supervisor, UserRole.manager, UserRole.company_admin)
+    try:
+        result = await complete_verification_quiz_session(
+            db,
+            cid,
+            str(actor.id),
+            proc,
+            session_id=body.session_id,
+            answers=body.answers,
+            tier=str(tier),
+            completed_by_user_id=str(actor.id),
+            supervisor_signoff=bool(sup),
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    await db.commit()
+    if result.get("passed"):
+        await event_engine.publish(
+            DomainEvent(
+                event_type="ops.procedure_completed",
+                company_id=str(cid),
+                entity_id=str(proc.id),
+                source_module="cmms",
+                metadata={
+                    "procedure_id": str(proc.id),
+                    "completed_by": str(actor.id),
+                    "verification_quiz": True,
+                    "all_steps_completed": False,
+                },
+            )
+        )
+    return ProcedureQuizSubmitOut(
+        score_percent=int(result["score_percent"]),
+        correct_count=int(result["correct_count"]),
+        total_questions=int(result["total_questions"]),
+        passed=bool(result["passed"]),
+        reveal=dict(result.get("reveal") or {}),
+        completion_id=result.get("completion_id"),
+        completion_created=bool(result.get("completion_created")),
     )
 
 
@@ -509,6 +676,13 @@ async def post_procedure_training_sign_off(
     if marker != revision_marker_from_procedure(proc):
         raise HTTPException(status_code=409, detail="revision_marker does not match current procedure revision")
 
+    cs_row = await db.get(PulseProcedureComplianceSettings, procedure_id)
+    if verification_requires_quiz(cs_row):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Knowledge verification is required — complete the acknowledgment and quiz instead of legacy sign-off.",
+        )
+
     row, created = await record_procedure_signoff(
         db,
         cid,
@@ -519,6 +693,20 @@ async def post_procedure_training_sign_off(
         revision_marker=marker,
     )
     await db.commit()
+    await event_engine.publish(
+        DomainEvent(
+            event_type="ops.procedure_completed",
+            company_id=str(cid),
+            entity_id=str(proc.id),
+            source_module="cmms",
+            metadata={
+                "procedure_id": str(proc.id),
+                "completed_by": str(actor.id),
+                "verification_quiz": False,
+                "all_steps_completed": False,
+            },
+        )
+    )
     return ProcedureSignoffOut(
         id=str(row.id),
         revision_marker=str(row.revision_marker),
@@ -551,6 +739,16 @@ async def post_procedure_training_acknowledgement(
     else:
         if not await pulse_svc._user_in_company(db, cid, target_employee_id):
             raise HTTPException(status_code=400, detail="Unknown employee")
+
+    cs_ack = await db.get(PulseProcedureComplianceSettings, procedure_id)
+    if verification_requires_quiz(cs_ack):
+        rev_n = int(proc.content_revision or 1)
+        snap = await get_engagement_snapshot(db, cid, str(target_employee_id), procedure_id, rev_n)
+        if snap.first_viewed_at is None:
+            raise HTTPException(
+                status_code=400,
+                detail="Review the procedure content before acknowledging.",
+            )
 
     ak, _ = await record_procedure_acknowledgement(
         db,

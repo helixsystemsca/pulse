@@ -12,7 +12,10 @@ export type TrainingAssignmentStatus =
   | "expired"
   | "pending"
   | "revision_pending"
-  | "not_assigned";
+  | "not_assigned"
+  | "in_progress"
+  | "acknowledged"
+  | "quiz_failed";
 
 export type TrainingProgram = {
   id: string;
@@ -23,6 +26,8 @@ export type TrainingProgram = {
   revision_number: number;
   revision_date: string; // ISO date
   requires_acknowledgement: boolean;
+  /** When true (default), completion requires read → acknowledge → 100% quiz. */
+  requires_knowledge_verification?: boolean;
   /** Months until certification expires after completion; null = non-expiring */
   expiry_months: number | null;
   /** Optional compliance window: mandatory items should be complete within this many days of assignment. */
@@ -42,6 +47,9 @@ export type TrainingAssignment = {
   expiry_date: string | null;
   acknowledgement_date: string | null;
   supervisor_signoff: boolean;
+  /** Manager visibility — verification quiz attempts for current revision */
+  quiz_attempt_count?: number;
+  quiz_latest_score_percent?: number | null;
 };
 
 export type TrainingAcknowledgement = {

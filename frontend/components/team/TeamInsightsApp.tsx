@@ -302,7 +302,7 @@ export function TeamInsightsApp() {
           </div>
           <button
             type="button"
-            className="inline-flex items-center justify-center rounded-lg border border-white/45 bg-white/12 px-4 py-2.5 text-sm font-semibold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.28),0_6px_22px_rgba(15,23,42,0.38),0_0_0_1px_rgba(0,0,0,0.06)_inset] backdrop-blur-sm transition-[background-color,box-shadow,border-color,transform] hover:border-white/65 hover:bg-white/22 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.4),0_8px_28px_rgba(15,23,42,0.48),0_0_0_1px_rgba(0,0,0,0.08)_inset] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/75 focus-visible:ring-offset-2 focus-visible:ring-offset-[color-mix(in_srgb,var(--ds-success)_55%,transparent)]"
+            className="inline-flex items-center justify-center rounded-lg border border-sky-200/45 bg-sky-200/14 px-4 py-2.5 text-sm font-semibold text-white shadow-[inset_0_1px_0_rgba(186,230,253,0.35),0_6px_22px_rgba(15,23,42,0.38),0_0_0_1px_rgba(0,0,0,0.06)_inset] backdrop-blur-sm transition-[background-color,box-shadow,border-color,transform] hover:border-sky-200/70 hover:bg-sky-300/28 hover:shadow-[inset_0_1px_0_rgba(186,230,253,0.5),0_8px_28px_rgba(15,23,42,0.48),0_0_0_1px_rgba(0,0,0,0.08)_inset] active:scale-[0.98] active:bg-sky-400/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-200/80 focus-visible:ring-offset-2 focus-visible:ring-offset-[color-mix(in_srgb,var(--ds-palette-ice-deep)_45%,transparent)]"
           >
             View Leaderboard
           </button>

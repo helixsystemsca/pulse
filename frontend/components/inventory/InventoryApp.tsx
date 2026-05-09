@@ -18,6 +18,7 @@ import {
   Package,
   Search,
   Settings,
+  Truck,
   UserPlus,
   Wrench,
 } from "lucide-react";
@@ -45,6 +46,7 @@ import {
 import { canAccessCompanyConfiguration, managerOrAbove } from "@/lib/pulse-roles";
 import { readSession } from "@/lib/pulse-session";
 import { fetchWorkRequestList } from "@/lib/workRequestsService";
+import { InventoryVendorsPanel } from "@/components/inventory/InventoryVendorsPanel";
 import { cn } from "@/lib/cn";
 import { buttonVariants } from "@/styles/button-variants";
 
@@ -150,7 +152,7 @@ function typeIcon(t: string) {
 }
 
 const QTY_STEP_BTN =
-  "inline-flex h-7 w-7 shrink-0 select-none items-center justify-center rounded-md border border-slate-200/90 bg-white text-sm font-medium text-pulse-navy shadow-sm outline-none transition-[transform,colors] hover:bg-slate-50 focus-visible:ring-2 focus-visible:ring-[#2B4C7E]/25 active:scale-95 disabled:pointer-events-none disabled:opacity-40 dark:border-ds-border dark:bg-ds-secondary dark:hover:bg-white/10";
+  "inline-flex h-7 w-7 shrink-0 select-none items-center justify-center rounded-md border border-slate-200/90 bg-white text-sm font-medium text-pulse-navy shadow-sm outline-none transition-[transform,colors] hover:bg-ds-interactive-hover active:bg-ds-interactive-active focus-visible:ring-2 focus-visible:ring-sky-400/35 active:scale-95 disabled:pointer-events-none disabled:opacity-40 dark:border-ds-border dark:bg-ds-secondary dark:hover:bg-ds-interactive-hover dark:active:bg-ds-interactive-active";
 
 function InventoryTableQtyCell(props: {
   row: InventoryRow;
@@ -221,6 +223,8 @@ export function InventoryApp() {
   const effectiveCompanyId = isSystemAdmin ? companyPick : sessionCompanyId;
   const dataEnabled = Boolean(effectiveCompanyId) && canManage;
   const apiCompany = isSystemAdmin ? effectiveCompanyId : null;
+
+  const [inventoryTab, setInventoryTab] = useState<"items" | "vendors">("items");
 
   const [q, setQ] = useState("");
   const [qDebounced, setQDebounced] = useState("");
@@ -824,32 +828,53 @@ export function InventoryApp() {
     <div className="space-y-6">
       <PageHeader
         title="Inventory"
-        description="Tools, spare parts, and consumables — locations, assignments, and work request usage."
-        icon={Package}
+        description={
+          inventoryTab === "items"
+            ? "Tools, spare parts, and consumables — locations, assignments, and work request usage."
+            : "Vendor directory — contacts, account references, specialties, and addresses. Filter any column in the grid."
+        }
+        icon={inventoryTab === "items" ? Package : Truck}
         actions={
           <>
-            <button
-              type="button"
-              className={cn(buttonVariants({ surface: "light", intent: "secondary" }), "inline-flex items-center gap-2 px-4 py-2.5 disabled:opacity-50")}
-              onClick={() => exportCsv()}
-              disabled={rows.length === 0}
-            >
-              <Download className="h-4 w-4" aria-hidden />
-              Export CSV
-            </button>
-            {canConfigureOrg ? (
-              <button
-                type="button"
-                className={cn(buttonVariants({ surface: "light", intent: "secondary" }), "inline-flex items-center gap-2 px-4 py-2.5")}
-                onClick={() => setSettingsOpen(true)}
-              >
-                <Settings className="h-4 w-4" aria-hidden />
-                Settings
-              </button>
-            ) : null}
-            <button type="button" className={PRIMARY_BTN} onClick={() => openCreate()} disabled={!dataEnabled}>
-              + Register item
-            </button>
+            {inventoryTab === "items" ? (
+              <>
+                <button
+                  type="button"
+                  className={cn(buttonVariants({ surface: "light", intent: "secondary" }), "inline-flex items-center gap-2 px-4 py-2.5 disabled:opacity-50")}
+                  onClick={() => exportCsv()}
+                  disabled={rows.length === 0}
+                >
+                  <Download className="h-4 w-4" aria-hidden />
+                  Export CSV
+                </button>
+                {canConfigureOrg ? (
+                  <button
+                    type="button"
+                    className={cn(buttonVariants({ surface: "light", intent: "secondary" }), "inline-flex items-center gap-2 px-4 py-2.5")}
+                    onClick={() => setSettingsOpen(true)}
+                  >
+                    <Settings className="h-4 w-4" aria-hidden />
+                    Settings
+                  </button>
+                ) : null}
+                <button type="button" className={PRIMARY_BTN} onClick={() => openCreate()} disabled={!dataEnabled}>
+                  + Register item
+                </button>
+              </>
+            ) : (
+              <>
+                {canConfigureOrg ? (
+                  <button
+                    type="button"
+                    className={cn(buttonVariants({ surface: "light", intent: "secondary" }), "inline-flex items-center gap-2 px-4 py-2.5")}
+                    onClick={() => setSettingsOpen(true)}
+                  >
+                    <Settings className="h-4 w-4" aria-hidden />
+                    Settings
+                  </button>
+                ) : null}
+              </>
+            )}
           </>
         }
       />
@@ -881,7 +906,37 @@ export function InventoryApp() {
         </p>
       ) : (
         <>
-          {sum ? (
+          <div className="flex flex-wrap gap-1 rounded-lg border border-pulse-border bg-white p-1 shadow-sm dark:border-ds-border dark:bg-ds-primary dark:shadow-[0_2px_8px_rgba(0,0,0,0.35)]">
+            <button
+              type="button"
+              onClick={() => setInventoryTab("items")}
+              className={`rounded-md px-4 py-2 text-sm font-semibold transition ${
+                inventoryTab === "items"
+                  ? "bg-[#2B4C7E] text-white shadow-sm dark:bg-emerald-700"
+                  : "text-pulse-muted hover:bg-ds-interactive-hover dark:hover:bg-ds-interactive-hover"
+              }`}
+            >
+              Items
+            </button>
+            <button
+              type="button"
+              onClick={() => setInventoryTab("vendors")}
+              className={`inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm font-semibold transition ${
+                inventoryTab === "vendors"
+                  ? "bg-[#2B4C7E] text-white shadow-sm dark:bg-emerald-700"
+                  : "text-pulse-muted hover:bg-ds-interactive-hover dark:hover:bg-ds-interactive-hover"
+              }`}
+            >
+              <Truck className="h-4 w-4" aria-hidden />
+              Vendors
+            </button>
+          </div>
+
+          {inventoryTab === "vendors" ? (
+            <InventoryVendorsPanel apiCompany={apiCompany} />
+          ) : null}
+
+          {inventoryTab === "items" && sum ? (
             <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
               {[
                 {
@@ -956,6 +1011,8 @@ export function InventoryApp() {
             </div>
           ) : null}
 
+          {inventoryTab === "items" ? (
+          <>
           <div className="mt-4 flex flex-wrap gap-2">
             {[
               { id: "", label: "All" },
@@ -973,7 +1030,7 @@ export function InventoryApp() {
                 className={`rounded-full px-3.5 py-1.5 text-xs font-bold transition-colors ${
                   statusFilter === t.id
                     ? "bg-[#2B4C7E] text-white shadow-sm dark:bg-[#3B82F6]"
-                    : "bg-slate-100 text-pulse-navy hover:bg-slate-200/90 dark:bg-ds-secondary dark:text-white dark:hover:bg-ds-interactive-hover"
+                    : "bg-slate-100 text-pulse-navy hover:bg-ds-interactive-hover-strong dark:bg-ds-secondary dark:text-white dark:hover:bg-ds-interactive-hover"
                 }`}
               >
                 {t.label}
@@ -1098,7 +1155,7 @@ export function InventoryApp() {
                       return (
                         <tr
                           key={row.id}
-                          className="ds-table-row-hover cursor-pointer border-b border-slate-100 last:border-0 hover:bg-slate-50/60 dark:border-ds-border"
+                          className="ds-table-row-hover cursor-pointer border-b border-slate-100 last:border-0 hover:bg-ds-interactive-hover dark:border-ds-border"
                           onClick={() => {
                             setDetailPanel("none");
                             setDetailId(row.id);
@@ -1188,7 +1245,7 @@ export function InventoryApp() {
                           <td className="relative px-4 py-3 text-right align-top" onClick={(e) => e.stopPropagation()}>
                             <button
                               type="button"
-                              className="rounded-lg p-2 text-pulse-muted hover:bg-slate-100 hover:text-pulse-navy"
+                              className="rounded-lg p-2 text-pulse-muted hover:bg-ds-interactive-hover-strong hover:text-pulse-navy"
                               aria-label="Actions"
                               onClick={() => setMenuFor(menuFor === row.id ? null : row.id)}
                             >
@@ -1198,7 +1255,7 @@ export function InventoryApp() {
                               <div className="absolute right-3 z-10 mt-1 w-52 rounded-md border border-slate-200 bg-white py-1 text-left shadow-lg dark:border-ds-border dark:bg-ds-elevated">
                                 <button
                                   type="button"
-                                  className="block w-full px-3 py-2 text-left text-sm hover:bg-slate-50"
+                                  className="block w-full px-3 py-2 text-left text-sm hover:bg-ds-interactive-hover"
                                   onClick={() => {
                                     setMenuFor(null);
                                     openEdit(row);
@@ -1208,7 +1265,7 @@ export function InventoryApp() {
                                 </button>
                                 <button
                                   type="button"
-                                  className="block w-full px-3 py-2 text-left text-sm hover:bg-slate-50"
+                                  className="block w-full px-3 py-2 text-left text-sm hover:bg-ds-interactive-hover"
                                   onClick={() => {
                                     setMenuFor(null);
                                     setDetailId(row.id);
@@ -1219,28 +1276,28 @@ export function InventoryApp() {
                                 </button>
                                 <button
                                   type="button"
-                                  className="block w-full px-3 py-2 text-left text-sm hover:bg-slate-50"
+                                  className="block w-full px-3 py-2 text-left text-sm hover:bg-ds-interactive-hover"
                                   onClick={() => quickPatch(row.id, { reorder_flag: !row.reorder_flag })}
                                 >
                                   {row.reorder_flag ? "Clear reorder flag" : "Flag for reorder"}
                                 </button>
                                 <button
                                   type="button"
-                                  className="block w-full px-3 py-2 text-left text-sm hover:bg-slate-50"
+                                  className="block w-full px-3 py-2 text-left text-sm hover:bg-ds-interactive-hover"
                                   onClick={() => quickPatch(row.id, { inv_status: "missing" })}
                                 >
                                   Mark missing
                                 </button>
                                 <button
                                   type="button"
-                                  className="block w-full px-3 py-2 text-left text-sm hover:bg-slate-50"
+                                  className="block w-full px-3 py-2 text-left text-sm hover:bg-ds-interactive-hover"
                                   onClick={() => quickPatch(row.id, { inv_status: "maintenance" })}
                                 >
                                   Send to maintenance
                                 </button>
                                 <button
                                   type="button"
-                                  className="block w-full px-3 py-2 text-left text-sm hover:bg-slate-50"
+                                  className="block w-full px-3 py-2 text-left text-sm hover:bg-ds-interactive-hover"
                                   onClick={() => quickPatch(row.id, { inv_status: "in_stock" })}
                                 >
                                   Mark in stock
@@ -1283,6 +1340,8 @@ export function InventoryApp() {
               </button>
             </div>
           </div>
+          </>
+          ) : null}
         </>
       )}
 
@@ -1303,21 +1362,21 @@ export function InventoryApp() {
               </button>
               <button
                 type="button"
-                className="rounded-[10px] border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-pulse-navy hover:bg-slate-50 dark:border-ds-border dark:bg-ds-elevated dark:text-gray-100 dark:hover:bg-ds-interactive-hover"
+                className="rounded-[10px] border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-pulse-navy hover:bg-ds-interactive-hover dark:border-ds-border dark:bg-ds-elevated dark:text-gray-100 dark:hover:bg-ds-interactive-hover"
                 onClick={() => setDetailPanel(detailPanel === "assign" ? "none" : "assign")}
               >
                 Assign
               </button>
               <button
                 type="button"
-                className="rounded-[10px] border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-pulse-navy hover:bg-slate-50 dark:border-ds-border dark:bg-ds-elevated dark:text-gray-100 dark:hover:bg-ds-interactive-hover"
+                className="rounded-[10px] border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-pulse-navy hover:bg-ds-interactive-hover dark:border-ds-border dark:bg-ds-elevated dark:text-gray-100 dark:hover:bg-ds-interactive-hover"
                 onClick={() => setDetailPanel(detailPanel === "move" ? "none" : "move")}
               >
                 Move
               </button>
               <button
                 type="button"
-                className="rounded-[10px] border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-pulse-navy hover:bg-slate-50 dark:border-ds-border dark:bg-ds-elevated dark:text-gray-100 dark:hover:bg-ds-interactive-hover"
+                className="rounded-[10px] border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-pulse-navy hover:bg-ds-interactive-hover dark:border-ds-border dark:bg-ds-elevated dark:text-gray-100 dark:hover:bg-ds-interactive-hover"
                 onClick={() => setDetailPanel(detailPanel === "use" ? "none" : "use")}
               >
                 Use in WR
@@ -1708,7 +1767,7 @@ export function InventoryApp() {
                   type="button"
                   onClick={() => setSettingsTab(t)}
                   className={`rounded-lg px-3 py-2 text-left text-sm font-semibold ${
-                    settingsTab === t ? "bg-[#ebf8ff] text-[#2B4C7E]" : "text-pulse-navy hover:bg-slate-50"
+                    settingsTab === t ? "bg-[#ebf8ff] text-[#2B4C7E]" : "text-pulse-navy hover:bg-ds-interactive-hover"
                   }`}
                 >
                   {t}

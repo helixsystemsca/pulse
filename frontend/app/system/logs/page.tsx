@@ -38,10 +38,10 @@ const EMPTY_FILTERS: Omit<FilterPayload, "limit" | "offset"> = {
 const INPUT =
   "rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 dark:border-ds-border dark:bg-ds-secondary dark:text-ds-foreground dark:placeholder:text-ds-muted";
 const BTN_SECONDARY =
-  "rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-800 hover:bg-gray-50 dark:border-ds-border dark:bg-ds-secondary dark:text-ds-foreground dark:hover:bg-ds-interactive-hover";
+  "rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-800 hover:bg-ds-interactive-hover dark:border-ds-border dark:bg-ds-secondary dark:text-ds-foreground dark:hover:bg-ds-interactive-hover";
 const BTN_PRIMARY = "rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500";
 const BTN_GHOST =
-  "rounded-lg px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-ds-muted dark:hover:bg-ds-interactive-hover dark:hover:text-ds-foreground";
+  "rounded-lg px-3 py-2 text-sm font-medium text-gray-600 hover:bg-ds-interactive-hover-strong hover:text-gray-900 dark:text-ds-muted dark:hover:bg-ds-interactive-hover dark:hover:text-ds-foreground";
 
 function buildQuery(p: FilterPayload): string {
   const q = new URLSearchParams();
@@ -189,7 +189,7 @@ export default function SystemLogsPage() {
           <button
             type="button"
             onClick={() => setFilterOpen(true)}
-            className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-900 shadow-sm hover:bg-gray-50 dark:border-ds-border dark:bg-ds-secondary dark:text-ds-foreground dark:hover:bg-ds-interactive-hover"
+            className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-900 shadow-sm hover:bg-ds-interactive-hover dark:border-ds-border dark:bg-ds-secondary dark:text-ds-foreground dark:hover:bg-ds-interactive-hover"
           >
             Filters
             {activeCount > 0 ? (

@@ -274,7 +274,7 @@ export function ModuleSettingsModal({ moduleId, open, onClose }: ModalProps) {
           </div>
           <button
             type="button"
-            className="rounded-lg p-2 text-pulse-muted hover:bg-slate-100 hover:text-pulse-navy dark:hover:bg-ds-interactive-hover"
+            className="rounded-lg p-2 text-pulse-muted hover:bg-ds-interactive-hover-strong hover:text-pulse-navy dark:hover:bg-ds-interactive-hover"
             onClick={onClose}
           >
             <X className="h-5 w-5" aria-hidden />

@@ -65,18 +65,27 @@ export function managerOrAbove(
   return sessionHasAnyRole(session, "manager", "company_admin", "supervisor");
 }
 
+/** Roles allowed to load the org-wide training matrix API (`GET /api/v1/training/matrix`) — matches backend `require_training_matrix_access`. */
+const TRAINING_TEAM_MATRIX_ROLES = ["company_admin", "manager", "supervisor", "lead"] as const;
+
 /**
- * Standards → Training: team matrix, org-wide compliance, assignments, and reporting.
- * Employees without these roles get a self-only training record (assignments, completions, acknowledgements).
+ * Full **team** training matrix (Standards → Training): leads, supervisors, managers, company / tenant admins,
+ * facility tenant admins, and system admins. Matches backend `require_training_matrix_access`.
+ *
+ * Accounts with **only** worker-level roles (`worker`, `demo_viewer`, etc.) without any of the roles above should
+ * use the personal training view (`GET /api/workers/{self}/training`).
  */
-export function trainingStandardsLeadershipAccess(
+export function trainingTeamMatrixAccess(
   session: Pick<PulseAuthSession, "role" | "roles" | "is_system_admin" | "facility_tenant_admin"> | null | undefined,
 ): boolean {
   if (!session) return false;
   if (session.is_system_admin || sessionHasAnyRole(session, "system_admin")) return true;
   if (session.facility_tenant_admin) return true;
-  return sessionHasAnyRole(session, "company_admin", "manager", "supervisor", "lead");
+  return sessionHasAnyRole(session, ...TRAINING_TEAM_MATRIX_ROLES);
 }
+
+/** @deprecated Use {@link trainingTeamMatrixAccess} — kept for existing imports. */
+export const trainingStandardsLeadershipAccess = trainingTeamMatrixAccess;
 
 /** Managers and company admins only (excludes supervisor) — matches strict compliance-flag rules. */
 export function complianceManagerFlagAllowed(

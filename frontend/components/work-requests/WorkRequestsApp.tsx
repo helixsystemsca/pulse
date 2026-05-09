@@ -1218,7 +1218,7 @@ export function WorkRequestsApp() {
             {canManageZones ? (
               <button
                 type="button"
-                className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200/90 bg-white px-3 py-2.5 text-sm font-semibold text-pulse-navy shadow-sm transition-colors hover:bg-slate-50 dark:border-ds-border dark:bg-ds-primary dark:text-slate-100 dark:hover:bg-ds-interactive-hover"
+                className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200/90 bg-white px-3 py-2.5 text-sm font-semibold text-pulse-navy shadow-sm transition-colors hover:bg-ds-interactive-hover dark:border-ds-border dark:bg-ds-primary dark:text-slate-100 dark:hover:bg-ds-interactive-hover"
                 onClick={() => setZonesEditorOpen(true)}
               >
                 <MapPin className="h-4 w-4 shrink-0" aria-hidden />
@@ -1228,7 +1228,7 @@ export function WorkRequestsApp() {
             {canManageZones || canConfigureOrg ? (
               <button
                 type="button"
-                className="inline-flex items-center justify-center rounded-lg border border-slate-200/90 bg-white p-2.5 text-pulse-navy shadow-sm transition-colors hover:bg-slate-50 dark:border-ds-border dark:bg-ds-primary dark:text-slate-100 dark:hover:bg-ds-interactive-hover"
+                className="inline-flex items-center justify-center rounded-lg border border-slate-200/90 bg-white p-2.5 text-pulse-navy shadow-sm transition-colors hover:bg-ds-interactive-hover dark:border-ds-border dark:bg-ds-primary dark:text-slate-100 dark:hover:bg-ds-interactive-hover"
                 aria-label="Work request settings"
                 title="Work request settings"
                 onClick={(e) => {
@@ -1284,7 +1284,7 @@ export function WorkRequestsApp() {
           {canConfigureOrg ? (
             <button
               type="button"
-              className="block w-full px-3 py-2 text-left text-sm text-pulse-navy hover:bg-slate-50 dark:text-gray-100 dark:hover:bg-ds-interactive-hover"
+              className="block w-full px-3 py-2 text-left text-sm text-pulse-navy hover:bg-ds-interactive-hover dark:text-gray-100 dark:hover:bg-ds-interactive-hover"
               onClick={() => {
                 setHeaderSettingsOpen(false);
                 setHeaderSettingsAnchor(null);
@@ -1297,7 +1297,7 @@ export function WorkRequestsApp() {
           {moduleSettingsCtx?.canConfigure ? (
             <button
               type="button"
-              className="block w-full px-3 py-2 text-left text-sm text-pulse-navy hover:bg-slate-50 dark:text-gray-100 dark:hover:bg-ds-interactive-hover"
+              className="block w-full px-3 py-2 text-left text-sm text-pulse-navy hover:bg-ds-interactive-hover dark:text-gray-100 dark:hover:bg-ds-interactive-hover"
               onClick={() => {
                 setHeaderSettingsOpen(false);
                 setHeaderSettingsAnchor(null);
@@ -1310,7 +1310,7 @@ export function WorkRequestsApp() {
           {canManageZones ? (
             <button
               type="button"
-              className="block w-full px-3 py-2 text-left text-sm text-pulse-navy hover:bg-slate-50 dark:text-gray-100 dark:hover:bg-ds-interactive-hover"
+              className="block w-full px-3 py-2 text-left text-sm text-pulse-navy hover:bg-ds-interactive-hover dark:text-gray-100 dark:hover:bg-ds-interactive-hover"
               onClick={() => {
                 setHeaderSettingsOpen(false);
                 setHeaderSettingsAnchor(null);
@@ -1330,7 +1330,7 @@ export function WorkRequestsApp() {
           type="button"
           onClick={() => setTab("my_work")}
           className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
-            tab === "my_work" ? "border-[#2B4C7E] bg-[#2B4C7E]/10 text-[#2B4C7E]" : "border-slate-200 bg-white text-pulse-muted hover:bg-slate-50"
+            tab === "my_work" ? "border-[#2B4C7E] bg-[#2B4C7E]/10 text-[#2B4C7E]" : "border-slate-200 bg-white text-pulse-muted hover:bg-ds-interactive-hover"
           }`}
         >
           Assigned to Me
@@ -1340,7 +1340,7 @@ export function WorkRequestsApp() {
             type="button"
             onClick={() => setTab("approval")}
             className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
-              tab === "approval" ? "border-[#2B4C7E] bg-[#2B4C7E]/10 text-[#2B4C7E]" : "border-slate-200 bg-white text-pulse-muted hover:bg-slate-50"
+              tab === "approval" ? "border-[#2B4C7E] bg-[#2B4C7E]/10 text-[#2B4C7E]" : "border-slate-200 bg-white text-pulse-muted hover:bg-ds-interactive-hover"
             }`}
           >
             Pending Approval
@@ -1351,7 +1351,7 @@ export function WorkRequestsApp() {
             type="button"
             onClick={() => setTab("all")}
             className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
-              tab === "all" ? "border-[#2B4C7E] bg-[#2B4C7E]/10 text-[#2B4C7E]" : "border-slate-200 bg-white text-pulse-muted hover:bg-slate-50"
+              tab === "all" ? "border-[#2B4C7E] bg-[#2B4C7E]/10 text-[#2B4C7E]" : "border-slate-200 bg-white text-pulse-muted hover:bg-ds-interactive-hover"
             }`}
           >
             All Requests
@@ -1547,7 +1547,7 @@ export function WorkRequestsApp() {
                       return (
                         <tr
                           key={row.id}
-                          className="ds-table-row-hover cursor-pointer border-b border-slate-100 last:border-0 hover:bg-slate-50/60 dark:border-ds-border"
+                          className="ds-table-row-hover cursor-pointer border-b border-slate-100 last:border-0 hover:bg-ds-interactive-hover dark:border-ds-border"
                           onClick={() => setDetailId(row.id)}
                         >
                           <td className="px-4 py-3 align-top">
@@ -1603,7 +1603,7 @@ export function WorkRequestsApp() {
                           <td className="relative px-4 py-3 text-right align-top" onClick={(e) => e.stopPropagation()}>
                             <button
                               type="button"
-                              className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-pulse-navy hover:bg-slate-50 dark:border-ds-border dark:bg-ds-secondary dark:text-gray-100 dark:hover:bg-ds-interactive-hover"
+                              className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-pulse-navy hover:bg-ds-interactive-hover dark:border-ds-border dark:bg-ds-secondary dark:text-gray-100 dark:hover:bg-ds-interactive-hover"
                               aria-label="Row actions"
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -1755,14 +1755,14 @@ export function WorkRequestsApp() {
               <>
                 <button
                   type="button"
-                  className="block w-full px-3 py-2 text-left text-sm text-pulse-navy hover:bg-slate-50 dark:text-gray-100 dark:hover:bg-ds-interactive-hover"
+                  className="block w-full px-3 py-2 text-left text-sm text-pulse-navy hover:bg-ds-interactive-hover dark:text-gray-100 dark:hover:bg-ds-interactive-hover"
                   onClick={() => void approveItem(row.id)}
                 >
                   Approve
                 </button>
                 <button
                   type="button"
-                  className="block w-full px-3 py-2 text-left text-sm text-rose-700 hover:bg-slate-50 dark:text-rose-200 dark:hover:bg-ds-interactive-hover"
+                  className="block w-full px-3 py-2 text-left text-sm text-rose-700 hover:bg-ds-interactive-hover dark:text-rose-200 dark:hover:bg-ds-interactive-hover"
                   onClick={() => void rejectItem(row.id)}
                 >
                   Reject
@@ -1772,7 +1772,7 @@ export function WorkRequestsApp() {
             {canEditWorkRequest(row) && !terminalRowStatus(row.status) ? (
               <button
                 type="button"
-                className="block w-full px-3 py-2 text-left text-sm text-pulse-navy hover:bg-slate-50 dark:text-gray-100 dark:hover:bg-ds-interactive-hover"
+                className="block w-full px-3 py-2 text-left text-sm text-pulse-navy hover:bg-ds-interactive-hover dark:text-gray-100 dark:hover:bg-ds-interactive-hover"
                 onClick={() => {
                   setMenuFor(null);
                   setMenuAnchor(null);
@@ -1786,7 +1786,7 @@ export function WorkRequestsApp() {
             {row.status === "assigned" ? (
               <button
                 type="button"
-                className="block w-full px-3 py-2 text-left text-sm text-pulse-navy hover:bg-slate-50 dark:text-gray-100 dark:hover:bg-ds-interactive-hover"
+                className="block w-full px-3 py-2 text-left text-sm text-pulse-navy hover:bg-ds-interactive-hover dark:text-gray-100 dark:hover:bg-ds-interactive-hover"
                 onClick={() => void startItem(row.id)}
               >
                 Start work
@@ -1795,7 +1795,7 @@ export function WorkRequestsApp() {
             {row.status !== "pending_approval" && !terminalRowStatus(row.status) ? (
               <button
                 type="button"
-                className="block w-full px-3 py-2 text-left text-sm text-pulse-navy hover:bg-slate-50 dark:text-gray-100 dark:hover:bg-ds-interactive-hover"
+                className="block w-full px-3 py-2 text-left text-sm text-pulse-navy hover:bg-ds-interactive-hover dark:text-gray-100 dark:hover:bg-ds-interactive-hover"
                 onClick={() => {
                   setMenuFor(null);
                   setMenuAnchor(null);
@@ -1808,7 +1808,7 @@ export function WorkRequestsApp() {
             {!terminalRowStatus(row.status) ? (
               <button
                 type="button"
-                className="block w-full px-3 py-2 text-left text-sm text-pulse-navy hover:bg-slate-50 dark:text-gray-100 dark:hover:bg-ds-interactive-hover"
+                className="block w-full px-3 py-2 text-left text-sm text-pulse-navy hover:bg-ds-interactive-hover dark:text-gray-100 dark:hover:bg-ds-interactive-hover"
                 onClick={() => {
                   setMenuFor(null);
                   setMenuAnchor(null);
@@ -1822,7 +1822,7 @@ export function WorkRequestsApp() {
             {!terminalRowStatus(row.status) && row.status !== "hold" ? (
               <button
                 type="button"
-                className="block w-full px-3 py-2 text-left text-sm text-pulse-navy hover:bg-slate-50 dark:text-gray-100 dark:hover:bg-ds-interactive-hover"
+                className="block w-full px-3 py-2 text-left text-sm text-pulse-navy hover:bg-ds-interactive-hover dark:text-gray-100 dark:hover:bg-ds-interactive-hover"
                 onClick={() => {
                   setMenuFor(null);
                   setMenuAnchor(null);
@@ -2585,7 +2585,7 @@ export function WorkRequestsApp() {
                     className={`rounded-lg px-2.5 py-2 text-center text-xs font-semibold transition-colors sm:text-sm ${
                       settingsTab === t
                         ? "bg-white text-[#2B4C7E] shadow-sm ring-1 ring-slate-200/90 dark:bg-[#1e3a5f] dark:text-sky-100 dark:ring-sky-500/35"
-                        : "text-pulse-muted hover:bg-white/70 hover:text-pulse-navy dark:text-gray-400 dark:hover:bg-ds-interactive-hover"
+                        : "text-pulse-muted hover:bg-ds-interactive-hover-strong hover:text-pulse-navy dark:text-gray-400 dark:hover:bg-ds-interactive-hover"
                     }`}
                   >
                     {t}

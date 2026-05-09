@@ -85,11 +85,11 @@ function categoryMatchByName(categories: CategoryRow[], name: string): CategoryR
 }
 
 const ICON_BTN =
-  "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] border border-slate-200/90 bg-white text-pulse-navy shadow-sm transition-colors hover:border-slate-300/90 hover:bg-slate-50 active:bg-slate-100 dark:border-ds-border dark:bg-ds-secondary dark:text-slate-100 dark:hover:border-ds-border dark:hover:bg-ds-interactive-hover";
+  "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] border border-slate-200/90 bg-white text-pulse-navy shadow-sm transition-colors hover:border-slate-300/90 hover:bg-ds-interactive-hover active:bg-slate-100 dark:border-ds-border dark:bg-ds-secondary dark:text-slate-100 dark:hover:border-ds-border dark:hover:bg-ds-interactive-hover";
 
 /** Compact icon actions on project cards (matches bordered icon pattern used in work requests). */
 const PROJECT_CARD_ACTION_BTN =
-  "inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-slate-200/90 bg-white text-pulse-navy shadow-sm transition-colors hover:border-slate-300/90 hover:bg-slate-50 active:bg-slate-100 disabled:pointer-events-none disabled:opacity-50 dark:border-ds-border dark:bg-ds-secondary dark:text-slate-100 dark:hover:border-ds-border dark:hover:bg-ds-interactive-hover";
+  "inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-slate-200/90 bg-white text-pulse-navy shadow-sm transition-colors hover:border-slate-300/90 hover:bg-ds-interactive-hover active:bg-slate-100 disabled:pointer-events-none disabled:opacity-50 dark:border-ds-border dark:bg-ds-secondary dark:text-slate-100 dark:hover:border-ds-border dark:hover:bg-ds-interactive-hover";
 
 const PROJECT_CARD_ACTION_DANGER =
   "inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-slate-200/90 bg-white text-red-700 shadow-sm transition-colors hover:border-red-200/80 hover:bg-red-50 active:bg-red-100 disabled:pointer-events-none disabled:opacity-50 dark:border-ds-border dark:bg-ds-secondary dark:text-red-400 dark:hover:border-red-500/30 dark:hover:bg-red-500/15";
@@ -772,7 +772,7 @@ export function ProjectsApp() {
               </div>
               <button
                 type="button"
-                className="rounded-lg px-2 py-1 text-sm font-semibold text-pulse-muted hover:bg-slate-100 dark:hover:bg-ds-secondary"
+                className="rounded-lg px-2 py-1 text-sm font-semibold text-pulse-muted hover:bg-ds-interactive-hover-strong dark:hover:bg-ds-secondary"
                 onClick={() => {
                   setSettingsOpen(false);
                   setSettingsFor(null);
@@ -952,7 +952,7 @@ export function ProjectsApp() {
                         <button
                           key={name}
                           type="button"
-                          className="rounded-full border border-slate-200/90 bg-white px-3 py-1.5 text-xs font-semibold text-pulse-navy hover:bg-slate-50 dark:border-ds-border dark:bg-ds-secondary dark:text-slate-100 dark:hover:bg-ds-interactive-hover"
+                          className="rounded-full border border-slate-200/90 bg-white px-3 py-1.5 text-xs font-semibold text-pulse-navy hover:bg-ds-interactive-hover dark:border-ds-border dark:bg-ds-secondary dark:text-slate-100 dark:hover:bg-ds-interactive-hover"
                           onClick={async () => {
                             const c = await ensureCategory(name);
                             if (c) {
@@ -979,7 +979,7 @@ export function ProjectsApp() {
                             <li key={c.id}>
                               <button
                                 type="button"
-                                className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm font-semibold text-pulse-navy hover:bg-slate-50 dark:text-slate-100 dark:hover:bg-ds-interactive-hover"
+                                className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm font-semibold text-pulse-navy hover:bg-ds-interactive-hover dark:text-slate-100 dark:hover:bg-ds-interactive-hover"
                                 onClick={() => {
                                   setCategoryId(c.id);
                                   setCategoryQuery(c.name);
@@ -1196,7 +1196,7 @@ export function ProjectsApp() {
               </div>
               <button
                 type="button"
-                className="rounded-lg px-2 py-1 text-sm font-semibold text-pulse-muted hover:bg-slate-100 dark:hover:bg-ds-secondary"
+                className="rounded-lg px-2 py-1 text-sm font-semibold text-pulse-muted hover:bg-ds-interactive-hover-strong dark:hover:bg-ds-secondary"
                 onClick={() => {
                   setCloseoutOpen(false);
                   setCloseoutFor(null);
@@ -1282,7 +1282,7 @@ export function ProjectsApp() {
                         <button
                           key={name}
                           type="button"
-                          className="rounded-full border border-slate-200/90 bg-white px-3 py-1.5 text-xs font-semibold text-pulse-navy hover:bg-slate-50 dark:border-ds-border dark:bg-ds-secondary dark:text-slate-100 dark:hover:bg-ds-interactive-hover"
+                          className="rounded-full border border-slate-200/90 bg-white px-3 py-1.5 text-xs font-semibold text-pulse-navy hover:bg-ds-interactive-hover dark:border-ds-border dark:bg-ds-secondary dark:text-slate-100 dark:hover:bg-ds-interactive-hover"
                           onClick={async () => {
                             const c = await ensureCategory(name);
                             if (c) {
@@ -1309,7 +1309,7 @@ export function ProjectsApp() {
                             <li key={c.id}>
                               <button
                                 type="button"
-                                className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm font-semibold text-pulse-navy hover:bg-slate-50 dark:text-slate-100 dark:hover:bg-ds-interactive-hover"
+                                className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm font-semibold text-pulse-navy hover:bg-ds-interactive-hover dark:text-slate-100 dark:hover:bg-ds-interactive-hover"
                                 onClick={() => {
                                   setCategoryId(c.id);
                                   setCategoryQuery(c.name);

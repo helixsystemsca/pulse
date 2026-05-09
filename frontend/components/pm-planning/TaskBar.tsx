@@ -76,7 +76,7 @@ export function TaskBar({
                 e.stopPropagation();
                 onResizePointerDown(e);
               }}
-              className="absolute right-0 top-0 h-full w-2 cursor-ew-resize bg-white/25 hover:bg-white/40"
+              className="absolute right-0 top-0 h-full w-2 cursor-ew-resize bg-sky-300/25 hover:bg-sky-400/45"
             />
           ) : null}
         </div>

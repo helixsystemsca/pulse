@@ -44,7 +44,7 @@ export default function LiveMapPage() {
       className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${
         tab === id
           ? "border-b-2 border-ds-success bg-ds-primary text-ds-foreground"
-          : "border-b-2 border-transparent text-ds-muted hover:bg-ds-primary hover:text-ds-foreground"
+          : "border-b-2 border-transparent text-ds-muted hover:bg-ds-interactive-hover hover:text-ds-foreground"
       }`}
     >
       {label}

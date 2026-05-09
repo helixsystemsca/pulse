@@ -20,6 +20,7 @@ html.pulse-welcome-blur [data-pulse-app-shell] {
 
 /**
  * Pulse design system — Verdigris / Iron Grey / Platinum / Deep Mocha (+ Crimson Carrot alerts).
+ * Interactive hovers / taps use ice blue (`--ds-palette-ice*`, `--ds-interactive-*`); brand accent stays Verdigris.
  * Legacy `--pulse-shell-*` aliases remain for gradual migration.
  */
 :root {
@@ -41,6 +42,12 @@ html.pulse-welcome-blur [data-pulse-app-shell] {
   --ds-palette-platinum: #f0efec;
   --ds-palette-deep-mocha: #523f38;
   --ds-palette-crimson-carrot: #f6511d;
+
+  /** Ice blue — hover / pressed fills (sky family); Verdigris remains primary accent */
+  --ds-palette-ice: #bae6fd;
+  --ds-palette-ice-mid: #7dd3fc;
+  --ds-palette-ice-deep: #38bdf8;
+  --ds-palette-ice-active: #0ea5e9;
 
   --ds-accent-teal-deep: #157a6f;
   --ds-accent-dusk: var(--ds-palette-deep-mocha);
@@ -69,11 +76,11 @@ html.pulse-welcome-blur [data-pulse-app-shell] {
   --ds-sidebar-on-accent: #ffffff;
   --ds-sidebar-well: rgba(255, 255, 255, 0.08);
   --ds-sidebar-well-muted: rgba(255, 255, 255, 0.05);
-  --ds-sidebar-interactive-hover: var(--ds-palette-verdigris);
-  --ds-sidebar-interactive-hover-strong: var(--ds-palette-verdigris);
+  --ds-sidebar-interactive-hover: color-mix(in srgb, var(--ds-palette-ice-mid) 34%, transparent);
+  --ds-sidebar-interactive-hover-strong: color-mix(in srgb, var(--ds-palette-ice-mid) 48%, transparent);
   --ds-sidebar-rail-gradient: linear-gradient(180deg, var(--ds-palette-deep-mocha) 0%, color-mix(in srgb, var(--ds-palette-deep-mocha) 88%, #000000) 100%);
-  --ds-sidebar-tile-hover-solid: var(--ds-palette-verdigris);
-  --ds-sidebar-tile-active-bg: var(--ds-palette-verdigris);
+  --ds-sidebar-tile-hover-solid: color-mix(in srgb, var(--ds-palette-ice-deep) 72%, var(--ds-palette-deep-mocha));
+  --ds-sidebar-tile-active-bg: color-mix(in srgb, var(--ds-palette-ice-active) 55%, var(--ds-palette-deep-mocha));
   --ds-sidebar-tile-active-fg: #ffffff;
   --ds-sidebar-tile-divider: rgba(255, 255, 255, 0.14);
   --ds-header: var(--ds-palette-platinum);
@@ -86,13 +93,17 @@ html.pulse-welcome-blur [data-pulse-app-shell] {
   --ds-danger: var(--ds-palette-crimson-carrot);
   /** Text on solid success / warning / danger fills */
   --ds-on-accent: #ffffff;
-  --ds-interactive-hover: color-mix(in srgb, var(--ds-accent) 10%, transparent);
-  --ds-interactive-hover-strong: color-mix(in srgb, var(--ds-accent) 16%, transparent);
+  --ds-interactive-hover: color-mix(in srgb, var(--ds-palette-ice-deep) 16%, transparent);
+  --ds-interactive-hover-strong: color-mix(in srgb, var(--ds-palette-ice-deep) 26%, transparent);
+  --ds-interactive-active: color-mix(in srgb, var(--ds-palette-ice-active) 22%, transparent);
+  /** Top bar (iron grey): translucent ice overlays */
+  --ds-chrome-interactive-hover: color-mix(in srgb, var(--ds-palette-ice-mid) 28%, transparent);
+  --ds-chrome-interactive-active: color-mix(in srgb, var(--ds-palette-ice-deep) 34%, transparent);
   --ds-shadow-card: 0 1px 0 rgba(15, 23, 42, 0.04), 0 1px 2px rgba(15, 23, 42, 0.04);
   --ds-shadow-card-hover: 0 2px 6px rgba(15, 23, 42, 0.05), 0 4px 14px rgba(15, 23, 42, 0.06);
   --ds-shadow-diffuse: 0 2px 14px rgba(15, 23, 42, 0.05);
   --ds-chart-grid: rgba(15, 23, 42, 0.06);
-  --ds-focus-ring: color-mix(in srgb, var(--ds-accent) 38%, transparent);
+  --ds-focus-ring: color-mix(in srgb, var(--ds-palette-ice-deep) 42%, transparent);
   --ds-radius-card: 0.75rem;
 
   /**
@@ -152,11 +163,11 @@ html.pulse-welcome-blur [data-pulse-app-shell] {
   --ds-sidebar-on-accent: #ffffff;
   --ds-sidebar-well: rgba(255, 255, 255, 0.08);
   --ds-sidebar-well-muted: rgba(255, 255, 255, 0.05);
-  --ds-sidebar-interactive-hover: var(--ds-palette-verdigris);
-  --ds-sidebar-interactive-hover-strong: var(--ds-palette-verdigris);
+  --ds-sidebar-interactive-hover: color-mix(in srgb, var(--ds-palette-ice-mid) 26%, transparent);
+  --ds-sidebar-interactive-hover-strong: color-mix(in srgb, var(--ds-palette-ice-mid) 38%, transparent);
   --ds-sidebar-rail-gradient: linear-gradient(180deg, var(--ds-palette-deep-mocha) 0%, color-mix(in srgb, var(--ds-palette-deep-mocha) 82%, #000000) 100%);
-  --ds-sidebar-tile-hover-solid: var(--ds-palette-verdigris);
-  --ds-sidebar-tile-active-bg: var(--ds-palette-verdigris);
+  --ds-sidebar-tile-hover-solid: color-mix(in srgb, var(--ds-palette-ice-deep) 68%, var(--ds-palette-deep-mocha));
+  --ds-sidebar-tile-active-bg: color-mix(in srgb, var(--ds-palette-ice-active) 52%, var(--ds-palette-deep-mocha));
   --ds-sidebar-tile-active-fg: #ffffff;
   --ds-sidebar-tile-divider: rgba(255, 255, 255, 0.14);
   --ds-header: color-mix(in srgb, var(--ds-surface-primary) 94%, #000000 6%);
@@ -168,13 +179,16 @@ html.pulse-welcome-blur [data-pulse-app-shell] {
   --ds-info: #9ca3af;
   --ds-danger: #f6511d;
   --ds-on-accent: #0b1220;
-  --ds-interactive-hover: color-mix(in srgb, var(--ds-accent) 18%, transparent);
-  --ds-interactive-hover-strong: color-mix(in srgb, var(--ds-accent) 26%, transparent);
+  --ds-interactive-hover: color-mix(in srgb, var(--ds-palette-ice-mid) 18%, transparent);
+  --ds-interactive-hover-strong: color-mix(in srgb, var(--ds-palette-ice-mid) 28%, transparent);
+  --ds-interactive-active: color-mix(in srgb, var(--ds-palette-ice-deep) 30%, transparent);
+  --ds-chrome-interactive-hover: color-mix(in srgb, var(--ds-palette-ice-mid) 26%, transparent);
+  --ds-chrome-interactive-active: color-mix(in srgb, var(--ds-palette-ice-deep) 36%, transparent);
   --ds-shadow-card: 0 2px 12px rgba(0, 0, 0, 0.2), 0 1px 3px rgba(0, 0, 0, 0.18);
   --ds-shadow-card-hover: 0 4px 22px rgba(0, 0, 0, 0.28), 0 2px 8px rgba(0, 0, 0, 0.2);
   --ds-shadow-diffuse: 0 2px 20px rgba(0, 0, 0, 0.22);
   --ds-chart-grid: rgba(255, 255, 255, 0.08);
-  --ds-focus-ring: color-mix(in srgb, var(--ds-accent) 45%, transparent);
+  --ds-focus-ring: color-mix(in srgb, var(--ds-palette-ice-mid) 48%, transparent);
 
   --pulse-shell-canvas: var(--ds-bg);
   --pulse-shell-surface: var(--ds-surface-primary);
@@ -660,7 +674,7 @@ html.pulse-welcome-blur [data-pulse-app-shell] {
   }
   .app-field:focus {
     border-color: #000;
-    box-shadow: 0 0 0 2px color-mix(in srgb, var(--ds-success) 45%, transparent);
+    box-shadow: 0 0 0 2px var(--ds-focus-ring);
   }
   .dark .app-field {
     border-color: #fff;
@@ -1006,7 +1020,7 @@ html.pulse-welcome-blur [data-pulse-app-shell] {
   .ds-alert-success:hover,
   .ds-alert-warning:hover,
   .ds-alert-critical:hover {
-    background: rgba(0, 0, 0, 0.02);
+    background: var(--ds-interactive-hover);
   }
 
   .dark .ds-notification:hover,
@@ -1017,17 +1031,23 @@ html.pulse-welcome-blur [data-pulse-app-shell] {
   .dark .ds-alert-success:hover,
   .dark .ds-alert-warning:hover,
   .dark .ds-alert-critical:hover {
-    background: rgba(255, 255, 255, 0.02);
+    background: var(--ds-interactive-hover);
   }
 
   .ds-table-row-hover {
     transition: background-color 150ms ease;
   }
   .ds-table-row-hover:hover {
-    background-color: color-mix(in srgb, var(--ds-accent) 7%, transparent);
+    background-color: var(--ds-interactive-hover);
+  }
+  .ds-table-row-hover:active {
+    background-color: var(--ds-interactive-active);
   }
   .dark .ds-table-row-hover:hover {
-    background-color: color-mix(in srgb, var(--ds-accent) 10%, transparent);
+    background-color: var(--ds-interactive-hover);
+  }
+  .dark .ds-table-row-hover:active {
+    background-color: var(--ds-interactive-active);
   }
 }
 

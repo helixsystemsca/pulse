@@ -35,6 +35,15 @@ from app.services.procedure_training.service import (
     enqueue_mandatory_overdue_if_needed,
     latest_ack_revision_map,
     resolve_compliance_defaults,
+    revision_marker_from_procedure,
+    verification_requires_quiz,
+)
+from app.services.procedure_verification.service import (
+    EngagementSnapshot,
+    QuizAttemptStats,
+    load_attempt_stats_for_pairs,
+    load_engagement_map,
+    load_signoff_keys,
 )
 
 router = APIRouter(prefix="/training", tags=["training"])
@@ -79,6 +88,7 @@ def _procedure_to_program(p: PulseProcedure, cs: PulseProcedureComplianceSetting
         revision_number=int(p.content_revision or 1),
         revision_date=rev_date,
         requires_acknowledgement=req_ack,
+        requires_knowledge_verification=verification_requires_quiz(cs),
         expiry_months=None,
         due_within_days=due_w,
         active=True,
@@ -90,12 +100,26 @@ def _assignment_to_out(
     proc: PulseProcedure,
     cs: PulseProcedureComplianceSettings | None,
     latest_ack: Optional[int],
+    employee_user_id: str,
+    signoff_set: set[tuple[str, str, str]],
+    engagement_map: dict[tuple[str, str], EngagementSnapshot],
+    attempt_map: dict[tuple[str, str], QuizAttemptStats],
 ) -> TrainingAssignmentOut:
+    proc_id = str(proc.id)
+    marker = revision_marker_from_procedure(proc)
+    sig_ok = (employee_user_id, proc_id, marker) in signoff_set
+    eng = engagement_map.get((employee_user_id, proc_id))
+    att = attempt_map.get((employee_user_id, proc_id), QuizAttemptStats(0, None, None))
     st = compute_training_assignment_status(
         assignment=row,
         procedure=proc,
         compliance=cs,
         latest_ack_revision=latest_ack,
+        signoff_for_current_revision=sig_ok,
+        engagement_first_viewed_at=eng.first_viewed_at if eng else None,
+        engagement_quiz_passed_at=eng.quiz_passed_at if eng else None,
+        quiz_attempt_count=att.attempt_count,
+        quiz_latest_passed=att.latest_passed,
     )
     return TrainingAssignmentOut(
         id=str(row.id),
@@ -109,6 +133,8 @@ def _assignment_to_out(
         expiry_date=row.expiry_date,
         acknowledgement_date=row.acknowledgement_at,
         supervisor_signoff=bool(row.supervisor_signoff),
+        quiz_attempt_count=att.attempt_count,
+        quiz_latest_score_percent=att.latest_score_percent,
     )
 
 
@@ -157,6 +183,20 @@ async def training_matrix(
 
     ack_map = await latest_ack_revision_map(db, cid, user_ids, proc_ids)
     proc_by_id = {str(p.id): p for p in procedures}
+    revision_by_procedure = {str(p.id): int(p.content_revision or 1) for p in procedures}
+    signoff_set = (
+        await load_signoff_keys(db, cid, user_ids, proc_ids) if user_ids and proc_ids else set()
+    )
+    engagement_map = (
+        await load_engagement_map(db, cid, user_ids, proc_ids, revision_by_procedure)
+        if user_ids and proc_ids
+        else {}
+    )
+    attempt_map = (
+        await load_attempt_stats_for_pairs(db, cid, user_ids, proc_ids, revision_by_procedure)
+        if user_ids and proc_ids
+        else {}
+    )
 
     as_of = datetime.now(timezone.utc).date()
     assignments_out: list[TrainingAssignmentOut] = []
@@ -166,6 +206,8 @@ async def training_matrix(
             continue
         cs = comp_by_proc.get(str(a.procedure_id))
         ack = ack_map.get((str(a.employee_user_id), str(a.procedure_id)))
+        marker = revision_marker_from_procedure(proc)
+        sig_ok = (str(a.employee_user_id), str(a.procedure_id), marker) in signoff_set
         await enqueue_mandatory_overdue_if_needed(
             db,
             cid,
@@ -176,8 +218,20 @@ async def training_matrix(
             latest_ack_revision=ack,
             procedure=proc,
             as_of=as_of,
+            signoff_for_current_revision=sig_ok,
         )
-        assignments_out.append(_assignment_to_out(a, proc, cs, ack))
+        assignments_out.append(
+            _assignment_to_out(
+                a,
+                proc,
+                cs,
+                ack,
+                str(a.employee_user_id),
+                signoff_set,
+                engagement_map,
+                attempt_map,
+            )
+        )
 
     await db.commit()
 
@@ -226,6 +280,14 @@ async def create_training_assignments(
     now = datetime.now(timezone.utc)
     today = now.date()
     ack_map = await latest_ack_revision_map(db, cid, body.employee_user_ids, [str(proc.id)])
+    revision_by_procedure = {str(proc.id): int(proc.content_revision or 1)}
+    signoff_set = await load_signoff_keys(db, cid, body.employee_user_ids, [str(proc.id)])
+    engagement_map = await load_engagement_map(
+        db, cid, body.employee_user_ids, [str(proc.id)], revision_by_procedure
+    )
+    attempt_map = await load_attempt_stats_for_pairs(
+        db, cid, body.employee_user_ids, [str(proc.id)], revision_by_procedure
+    )
 
     for eid in body.employee_user_ids:
         if not await pulse_svc._user_in_company(db, cid, eid):
@@ -263,7 +325,7 @@ async def create_training_assignments(
 
         await db.flush()
         ack = ack_map.get((str(eid), str(proc.id)))
-        out.append(_assignment_to_out(row, proc, cs, ack))
+        out.append(_assignment_to_out(row, proc, cs, ack, str(eid), signoff_set, engagement_map, attempt_map))
 
     await db.commit()
     return out
@@ -295,6 +357,20 @@ async def build_worker_training_bundle(db: AsyncSession, cid: str, user_id: str)
 
     ack_map = await latest_ack_revision_map(db, cid, [user_id], proc_ids)
     proc_by_id = {str(p.id): p for p in procedures}
+    revision_by_procedure = {str(p.id): int(p.content_revision or 1) for p in procedures}
+    signoff_set = (
+        await load_signoff_keys(db, cid, [user_id], proc_ids) if proc_ids else set()
+    )
+    engagement_map = (
+        await load_engagement_map(db, cid, [user_id], proc_ids, revision_by_procedure)
+        if proc_ids
+        else {}
+    )
+    attempt_map = (
+        await load_attempt_stats_for_pairs(db, cid, [user_id], proc_ids, revision_by_procedure)
+        if proc_ids
+        else {}
+    )
 
     assignments_out: list[TrainingAssignmentOut] = []
     as_of = datetime.now(timezone.utc).date()
@@ -304,6 +380,8 @@ async def build_worker_training_bundle(db: AsyncSession, cid: str, user_id: str)
             continue
         cs = comp_by_proc.get(str(a.procedure_id))
         ack = ack_map.get((str(user_id), str(a.procedure_id)))
+        marker = revision_marker_from_procedure(proc)
+        sig_ok = (str(user_id), str(a.procedure_id), marker) in signoff_set
         await enqueue_mandatory_overdue_if_needed(
             db,
             cid,
@@ -314,8 +392,11 @@ async def build_worker_training_bundle(db: AsyncSession, cid: str, user_id: str)
             latest_ack_revision=ack,
             procedure=proc,
             as_of=as_of,
+            signoff_for_current_revision=sig_ok,
         )
-        assignments_out.append(_assignment_to_out(a, proc, cs, ack))
+        assignments_out.append(
+            _assignment_to_out(a, proc, cs, ack, str(user_id), signoff_set, engagement_map, attempt_map)
+        )
 
     ack_rows_raw: list[dict] = []
     if proc_ids:

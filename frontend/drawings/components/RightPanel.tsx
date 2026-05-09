@@ -155,7 +155,7 @@ export function RightPanel({
             <p className="text-sm font-bold text-ds-foreground">{title}</p>
             <p className="text-[11px] text-ds-muted break-all">{blueprintElement.id}</p>
           </div>
-          <button type="button" className="rounded-lg px-2 py-1 text-sm font-semibold text-ds-muted hover:bg-ds-secondary/50 hover:text-ds-foreground" onClick={onClose}>
+          <button type="button" className="rounded-lg px-2 py-1 text-sm font-semibold text-ds-muted hover:bg-ds-interactive-hover hover:text-ds-foreground" onClick={onClose}>
             ×
           </button>
         </div>
@@ -274,7 +274,7 @@ export function RightPanel({
             <p className="text-[11px] text-ds-muted break-all">{entity.id}</p>
           )}
         </div>
-        <button type="button" className="rounded-lg px-2 py-1 text-sm font-semibold text-ds-muted hover:bg-ds-secondary/50 hover:text-ds-foreground" onClick={onClose}>
+        <button type="button" className="rounded-lg px-2 py-1 text-sm font-semibold text-ds-muted hover:bg-ds-interactive-hover hover:text-ds-foreground" onClick={onClose}>
           ×
         </button>
       </div>

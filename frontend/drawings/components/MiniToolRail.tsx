@@ -70,7 +70,7 @@ export function MiniToolRail({
         className={`${BTN} relative mx-auto ${
           canvasNavMode === "select"
             ? "bg-[#e6faf5] text-[#0fa07e] dark:bg-emerald-950/40 dark:text-emerald-200"
-            : "text-[#96a0b0] hover:bg-[#f4f6f8] hover:text-[#1a2030] dark:text-ds-muted dark:hover:bg-ds-primary/30 dark:hover:text-ds-foreground"
+            : "text-[#96a0b0] hover:bg-ds-interactive-hover hover:text-[#1a2030] dark:text-ds-muted dark:hover:bg-ds-interactive-hover dark:hover:text-ds-foreground"
         } ${canvasNavMode === "select" ? "before:absolute before:left-0 before:top-1/2 before:h-[18px] before:w-[3px] before:-translate-y-1/2 before:rounded-r before:bg-[#1ec8a0]" : ""}`}
         onClick={() => !navLocked && onCanvasSelectMode()}
       >
@@ -85,7 +85,7 @@ export function MiniToolRail({
         className={`${BTN} relative mx-auto mt-0.5 ${
           canvasNavMode === "pan"
             ? "bg-[#e6faf5] text-[#0fa07e] dark:bg-emerald-950/40 dark:text-emerald-200"
-            : "text-[#96a0b0] hover:bg-[#f4f6f8] hover:text-[#1a2030] dark:text-ds-muted dark:hover:bg-ds-primary/30 dark:hover:text-ds-foreground"
+            : "text-[#96a0b0] hover:bg-ds-interactive-hover hover:text-[#1a2030] dark:text-ds-muted dark:hover:bg-ds-interactive-hover dark:hover:text-ds-foreground"
         } ${canvasNavMode === "pan" ? "before:absolute before:left-0 before:top-1/2 before:h-[18px] before:w-[3px] before:-translate-y-1/2 before:rounded-r before:bg-[#1ec8a0]" : ""}`}
         onClick={() => !navLocked && onCanvasPanMode()}
       >
@@ -110,7 +110,7 @@ export function MiniToolRail({
             className={`${BTN} relative mx-auto mt-0.5 ${
               on
                 ? "bg-[#e6faf5] text-[#0fa07e] before:absolute before:left-0 before:top-1/2 before:h-[18px] before:w-[3px] before:-translate-y-1/2 before:rounded-r before:bg-[#1ec8a0] dark:bg-emerald-950/40 dark:text-emerald-200"
-                : "text-[#96a0b0] hover:bg-[#f4f6f8] hover:text-[#1a2030] dark:text-ds-muted dark:hover:bg-ds-primary/30 dark:hover:text-ds-foreground"
+                : "text-[#96a0b0] hover:bg-ds-interactive-hover hover:text-[#1a2030] dark:text-ds-muted dark:hover:bg-ds-interactive-hover dark:hover:text-ds-foreground"
             }`}
             onClick={() => !effectiveDisabled && onToolChange(tool)}
           >

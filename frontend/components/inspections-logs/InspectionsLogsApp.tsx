@@ -42,7 +42,7 @@ const SEGMENT_TRACK =
 const SEGMENT_ACTIVE =
   "bg-[var(--pulse-segment-active-bg)] text-[var(--pulse-segment-active-fg)] shadow-sm ring-1 ring-[color-mix(in_srgb,var(--ds-success)_28%,transparent)] dark:ring-sky-400/30";
 const SEGMENT_IDLE =
-  "text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:text-slate-400 dark:hover:bg-white/[0.06] dark:hover:text-slate-100";
+  "text-gray-500 hover:bg-ds-interactive-hover-strong hover:text-gray-900 dark:text-slate-400 dark:hover:bg-ds-interactive-hover dark:hover:text-slate-100";
 
 const ARCHIVE_ROLE_TAGS = [
   { id: "lead", label: "Lead" },

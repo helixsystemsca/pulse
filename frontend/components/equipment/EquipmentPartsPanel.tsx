@@ -502,7 +502,7 @@ export function EquipmentPartsPanel({ equipmentId, equipmentName, canMutate, onP
                           ) : null}
                           {canMutate ? (
                             <div className="flex flex-wrap gap-1">
-                              <label className="inline-flex cursor-pointer items-center gap-1 rounded-lg border border-slate-200 px-2 py-1 text-xs font-semibold text-pulse-navy hover:bg-slate-50">
+                              <label className="inline-flex cursor-pointer items-center gap-1 rounded-lg border border-slate-200 px-2 py-1 text-xs font-semibold text-pulse-navy hover:bg-ds-interactive-hover">
                                 <Camera className="h-3.5 w-3.5" aria-hidden />
                                 Photo
                                 <input
@@ -515,7 +515,7 @@ export function EquipmentPartsPanel({ equipmentId, equipmentName, canMutate, onP
                               </label>
                               <button
                                 type="button"
-                                className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2 py-1 text-xs font-semibold text-pulse-navy hover:bg-slate-50"
+                                className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2 py-1 text-xs font-semibold text-pulse-navy hover:bg-ds-interactive-hover"
                                 onClick={() => startEdit(p)}
                               >
                                 <Pencil className="h-3.5 w-3.5" aria-hidden />

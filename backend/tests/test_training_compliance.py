@@ -32,7 +32,12 @@ async def test_training_assign_signoff_matrix_and_profile(client, seeded_tenant)
     comp = await client.patch(
         f"/api/v1/cmms/procedures/{pid}/compliance",
         headers=mgr_headers,
-        json={"tier": "mandatory", "due_within_days": 7, "requires_acknowledgement": True},
+        json={
+            "tier": "mandatory",
+            "due_within_days": 7,
+            "requires_acknowledgement": True,
+            "requires_knowledge_verification": False,
+        },
     )
     assert comp.status_code == 200, comp.text
 
@@ -89,7 +94,12 @@ async def test_procedure_revision_requires_reacknowledgement(client, seeded_tena
     await client.patch(
         f"/api/v1/cmms/procedures/{pid}/compliance",
         headers=mgr_headers,
-        json={"tier": "general", "due_within_days": None, "requires_acknowledgement": True},
+        json={
+            "tier": "general",
+            "due_within_days": None,
+            "requires_acknowledgement": True,
+            "requires_knowledge_verification": False,
+        },
     )
     await client.post(
         "/api/v1/training/assignments",
@@ -130,6 +140,79 @@ async def test_procedure_revision_requires_reacknowledgement(client, seeded_tena
 async def test_training_matrix_forbidden_for_worker(client, seeded_tenant) -> None:
     r = await client.get("/api/v1/training/matrix", headers=auth_headers(seeded_tenant.worker_token))
     assert r.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_acknowledgement_requires_prior_view_when_verification_enabled(client, seeded_tenant) -> None:
+    mgr_headers = auth_headers(seeded_tenant.manager_token)
+    worker_headers = auth_headers(seeded_tenant.worker_token)
+    wid = seeded_tenant.worker_id
+
+    proc = await client.post(
+        "/api/v1/cmms/procedures",
+        headers=mgr_headers,
+        json={"title": "Cooling tower walkdown", "steps": [{"content": "Inspect drift eliminators.", "type": "instruction"}]},
+    )
+    assert proc.status_code == 201, proc.text
+    pid = proc.json()["id"]
+
+    await client.patch(
+        f"/api/v1/cmms/procedures/{pid}/compliance",
+        headers=mgr_headers,
+        json={
+            "tier": "general",
+            "due_within_days": None,
+            "requires_acknowledgement": True,
+            "requires_knowledge_verification": True,
+        },
+    )
+
+    bad_ack = await client.post(f"/api/v1/cmms/procedures/{pid}/acknowledgement", headers=worker_headers, json={})
+    assert bad_ack.status_code == 400, bad_ack.text
+
+    view = await client.post(
+        f"/api/v1/cmms/procedures/{pid}/verification/view",
+        headers=worker_headers,
+        json={"accumulated_seconds": 3},
+    )
+    assert view.status_code == 204, view.text
+
+    ok_ack = await client.post(f"/api/v1/cmms/procedures/{pid}/acknowledgement", headers=worker_headers, json={})
+    assert ok_ack.status_code == 200, ok_ack.text
+
+
+@pytest.mark.asyncio
+async def test_legacy_sign_off_blocked_when_verification_enabled(client, seeded_tenant) -> None:
+    mgr_headers = auth_headers(seeded_tenant.manager_token)
+    worker_headers = auth_headers(seeded_tenant.worker_token)
+    wid = seeded_tenant.worker_id
+
+    proc = await client.post(
+        "/api/v1/cmms/procedures",
+        headers=mgr_headers,
+        json={"title": "Drain line purge", "steps": [{"content": "Isolate upstream valve.", "type": "instruction"}]},
+    )
+    assert proc.status_code == 201, proc.text
+    pid = proc.json()["id"]
+
+    await client.patch(
+        f"/api/v1/cmms/procedures/{pid}/compliance",
+        headers=mgr_headers,
+        json={
+            "tier": "general",
+            "due_within_days": None,
+            "requires_acknowledgement": True,
+            "requires_knowledge_verification": True,
+        },
+    )
+    await client.post(
+        "/api/v1/training/assignments",
+        headers=mgr_headers,
+        json={"procedure_id": pid, "employee_user_ids": [wid]},
+    )
+
+    so = await client.post(f"/api/v1/cmms/procedures/{pid}/sign-off", headers=worker_headers, json={})
+    assert so.status_code == 409, so.text
 
 
 @pytest.mark.asyncio

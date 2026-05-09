@@ -16,6 +16,9 @@ TrainingAssignmentStatusApi = Literal[
     "pending",
     "revision_pending",
     "not_assigned",
+    "in_progress",
+    "acknowledged",
+    "quiz_failed",
 ]
 
 
@@ -37,6 +40,7 @@ class TrainingProgramOut(BaseModel):
     revision_number: int
     revision_date: date
     requires_acknowledgement: bool
+    requires_knowledge_verification: bool = True
     expiry_months: Optional[int] = None
     due_within_days: Optional[int] = None
     active: bool = True
@@ -54,6 +58,8 @@ class TrainingAssignmentOut(BaseModel):
     expiry_date: Optional[date] = None
     acknowledgement_date: Optional[datetime] = None
     supervisor_signoff: bool = False
+    quiz_attempt_count: int = 0
+    quiz_latest_score_percent: Optional[int] = None
 
 
 class ProcedureComplianceOut(BaseModel):
@@ -62,6 +68,7 @@ class ProcedureComplianceOut(BaseModel):
     tier: TrainingTierApi
     due_within_days: Optional[int] = None
     requires_acknowledgement: bool = False
+    requires_knowledge_verification: bool = True
     updated_at: datetime
     updated_by_user_id: Optional[str] = None
 
@@ -70,6 +77,46 @@ class ProcedureCompliancePatchIn(BaseModel):
     tier: TrainingTierApi
     due_within_days: Optional[int] = Field(None, ge=1, le=3650)
     requires_acknowledgement: bool
+    requires_knowledge_verification: Optional[bool] = None
+
+
+class ProcedureVerificationViewPostIn(BaseModel):
+    accumulated_seconds: int = Field(0, ge=0, le=8 * 3600)
+
+
+class ProcedureVerificationStateOut(BaseModel):
+    revision_number: int
+    verification_required: bool
+    first_viewed_at: Optional[datetime] = None
+    last_viewed_at: Optional[datetime] = None
+    total_view_seconds: int = 0
+    quiz_passed_at: Optional[datetime] = None
+    acknowledged_for_revision: bool = False
+    acknowledgement_at: Optional[datetime] = None
+    quiz_attempt_count: int = 0
+    quiz_latest_score_percent: Optional[int] = None
+    can_acknowledge: bool = False
+    can_start_quiz: bool = False
+
+
+class ProcedureQuizStartOut(BaseModel):
+    session_id: str
+    questions: list[dict] = Field(default_factory=list)
+
+
+class ProcedureQuizSubmitIn(BaseModel):
+    session_id: str
+    answers: dict[str, int] = Field(default_factory=dict)
+
+
+class ProcedureQuizSubmitOut(BaseModel):
+    score_percent: int
+    correct_count: int
+    total_questions: int
+    passed: bool
+    reveal: dict = Field(default_factory=dict)
+    completion_id: Optional[str] = None
+    completion_created: bool = False
 
 
 class ProcedureSignoffPostIn(BaseModel):

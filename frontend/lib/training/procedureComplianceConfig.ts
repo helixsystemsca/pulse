@@ -6,6 +6,8 @@ export type ProcedureComplianceConfig = {
   due_within_days: number | null;
   /** Whether to treat as needing acknowledgement when revised. */
   requires_acknowledgement: boolean;
+  /** When true (default in live API), completion requires review + acknowledgment + knowledge check. */
+  requires_knowledge_verification?: boolean;
 };
 
 export type ProcedureComplianceConfigMap = Record<string, ProcedureComplianceConfig>;
@@ -16,6 +18,7 @@ const DEFAULT_CONFIG: ProcedureComplianceConfig = {
   tier: "general",
   due_within_days: null,
   requires_acknowledgement: true,
+  requires_knowledge_verification: true,
 };
 
 export function readProcedureComplianceConfig(): ProcedureComplianceConfigMap {
@@ -33,11 +36,14 @@ export function readProcedureComplianceConfig(): ProcedureComplianceConfigMap {
       const tier = o.tier;
       const due = o.due_within_days;
       const reqAck = o.requires_acknowledgement;
+      const reqKv = o.requires_knowledge_verification;
       if (tier !== "mandatory" && tier !== "high_risk" && tier !== "general") continue;
       out[k] = {
         tier,
         due_within_days: typeof due === "number" && Number.isFinite(due) ? Math.max(0, Math.round(due)) : null,
         requires_acknowledgement: typeof reqAck === "boolean" ? reqAck : DEFAULT_CONFIG.requires_acknowledgement,
+        requires_knowledge_verification:
+          typeof reqKv === "boolean" ? reqKv : DEFAULT_CONFIG.requires_knowledge_verification,
       };
     }
     return out;
@@ -56,6 +62,13 @@ export function writeProcedureComplianceConfig(next: ProcedureComplianceConfigMa
 }
 
 export function configForProcedure(id: string, map: ProcedureComplianceConfigMap): ProcedureComplianceConfig {
-  return map[id] ?? DEFAULT_CONFIG;
+  const row = map[id];
+  if (!row) return { ...DEFAULT_CONFIG };
+  return {
+    ...DEFAULT_CONFIG,
+    ...row,
+    requires_knowledge_verification:
+      row.requires_knowledge_verification ?? DEFAULT_CONFIG.requires_knowledge_verification,
+  };
 }
 

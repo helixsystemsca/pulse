@@ -9,7 +9,7 @@ import type {
 } from "@/lib/training/types";
 import { cellAssignmentStatus } from "@/lib/training/mockData";
 import { assignmentFor } from "@/lib/training/selectors";
-import { TrainingStatusBadge } from "@/components/training/TrainingStatusBadge";
+import { TrainingMatrixCell } from "@/components/training/TrainingMatrixCell";
 import { TrainingTierBadge } from "@/components/training/TrainingTierBadge";
 import { dataTableHeadRowClass } from "@/components/ui/DataTable";
 
@@ -98,7 +98,7 @@ export function TrainingMatrixTable({
                           </>
                         ) : (
                           <>
-                            <TrainingStatusBadge status={eff} />
+                            <TrainingMatrixCell status={eff} tier={p.tier} />
                             {a?.expiry_date && eff !== "not_assigned" ? (
                               <span className="text-[9px] font-medium text-ds-muted tabular-nums">
                                 Expires {a.expiry_date}

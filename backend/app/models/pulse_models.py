@@ -89,6 +89,8 @@ class PulseProcedure(Base):
     revised_by_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     revised_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     content_revision: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    # Multiple-choice knowledge verification questions for assigned training (JSON array).
+    verification_quiz: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, server_default=text("'[]'::jsonb"))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
@@ -113,6 +115,7 @@ class PulseProcedureComplianceSettings(Base):
     tier: Mapped[str] = mapped_column(String(32), nullable=False, default="general")
     due_within_days: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     requires_acknowledgement: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    requires_knowledge_verification: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
@@ -121,6 +124,84 @@ class PulseProcedureComplianceSettings(Base):
     updated_by_user_id: Mapped[Optional[str]] = mapped_column(
         UUID(as_uuid=False), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
+
+
+class PulseProcedureEngagement(Base):
+    """Per-revision view + quiz-pass markers for procedure knowledge verification."""
+
+    __tablename__ = "pulse_procedure_engagement"
+    __table_args__ = (
+        UniqueConstraint(
+            "company_id",
+            "employee_user_id",
+            "procedure_id",
+            "revision_number",
+            name="uq_pulse_proc_engagement_emp_proc_rev",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    company_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    employee_user_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    procedure_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("pulse_procedures.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    revision_number: Mapped[int] = mapped_column(Integer, nullable=False)
+    first_viewed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_viewed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    total_view_seconds: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    quiz_passed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class PulseProcedureQuizSession(Base):
+    """Server-held shuffle order for one quiz attempt (mutiple choice)."""
+
+    __tablename__ = "pulse_procedure_quiz_sessions"
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    company_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    employee_user_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    procedure_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("pulse_procedures.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    revision_number: Mapped[int] = mapped_column(Integer, nullable=False)
+    question_order: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, server_default=text("'[]'::jsonb"))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False
+    )
+
+
+class PulseProcedureQuizAttempt(Base):
+    """Audit trail for knowledge verification quiz submissions."""
+
+    __tablename__ = "pulse_procedure_quiz_attempts"
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    company_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    employee_user_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    procedure_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("pulse_procedures.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    revision_number: Mapped[int] = mapped_column(Integer, nullable=False)
+    submitted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    score_percent: Mapped[int] = mapped_column(Integer, nullable=False)
+    correct_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    total_questions: Mapped[int] = mapped_column(Integer, nullable=False)
+    passed: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    answers_json: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
+    reveal_json: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
 
 
 class PulseProcedureTrainingAssignment(Base):

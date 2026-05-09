@@ -384,7 +384,7 @@ export function ComplianceApp() {
               className={`rounded-t-lg px-3 py-2 text-sm font-semibold transition-colors ${
                 tab === t.id
                   ? "bg-ds-secondary text-ds-foreground ring-1 ring-ds-border ring-b-0"
-                  : "text-ds-muted hover:bg-ds-primary hover:text-ds-foreground"
+                  : "text-ds-muted hover:bg-ds-interactive-hover hover:text-ds-foreground"
               }`}
             >
               {t.label}

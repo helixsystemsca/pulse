@@ -891,7 +891,7 @@ function QuickEditPanel({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg p-1.5 text-pulse-muted transition hover:bg-white hover:text-pulse-navy"
+            className="rounded-lg p-1.5 text-pulse-muted transition hover:bg-ds-interactive-hover hover:text-pulse-navy"
             aria-label="Close"
           >
             <X className="h-4 w-4" strokeWidth={2} />
@@ -1096,7 +1096,7 @@ function ProfileMiniPopover({
         <button
           type="button"
           onClick={onClose}
-          className="rounded p-0.5 text-pulse-muted hover:bg-slate-100"
+          className="rounded p-0.5 text-pulse-muted hover:bg-ds-interactive-hover-strong"
           aria-label="Close profile"
         >
           <X className="h-3.5 w-3.5" strokeWidth={2} />
@@ -1119,7 +1119,7 @@ function ProfileMiniPopover({
           onViewFullProfile(member.id);
           onClose();
         }}
-        className="mt-3 w-full rounded-md border border-slate-200 bg-slate-50 py-1.5 text-[10px] font-bold text-pulse-navy hover:bg-slate-100"
+        className="mt-3 w-full rounded-md border border-slate-200 bg-slate-50 py-1.5 text-[10px] font-bold text-pulse-navy hover:bg-ds-interactive-hover-strong"
       >
         Open full profile
       </button>
@@ -1210,7 +1210,7 @@ function SchedulingCalendarMock() {
                 className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-[10px] font-bold ${
                   (item.id === "calendar" && navTab === "calendar") || (item.id === "personnel" && navTab === "personnel")
                     ? "bg-slate-100 text-pulse-navy ring-1 ring-slate-200"
-                    : "text-pulse-muted hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-45"
+                    : "text-pulse-muted hover:bg-ds-interactive-hover disabled:cursor-not-allowed disabled:opacity-45"
                 }`}
               >
                 <item.Icon className="h-3 w-3" strokeWidth={2} aria-hidden />

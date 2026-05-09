@@ -39,6 +39,7 @@ import {
 import { fetchWorkerList, fetchWorkerSettings } from "@/lib/workersService";
 import { cn } from "@/lib/cn";
 import { buttonVariants } from "@/styles/button-variants";
+import { ProcedureKnowledgeVerification } from "@/components/procedures/ProcedureKnowledgeVerification";
 
 const PROCEDURES_HEADER_BTN = cn(
   buttonVariants({ surface: "light", intent: "accent" }),
@@ -491,7 +492,12 @@ export function ProceduresApp() {
   };
 
   async function persistProcedureTrainingTier(procedureId: string, tier: TrainingTier) {
-    const payload = { tier, due_within_days: null as number | null, requires_acknowledgement: true };
+    const payload = {
+      tier,
+      due_within_days: null as number | null,
+      requires_acknowledgement: true,
+      requires_knowledge_verification: true,
+    };
     if (isApiMode()) {
       if (!sessionHasAnyRole(readSession(), "lead", "supervisor", "manager", "company_admin", "system_admin")) {
         return;
@@ -502,7 +508,12 @@ export function ProceduresApp() {
     const prev = readProcedureComplianceConfig();
     writeProcedureComplianceConfig({
       ...prev,
-      [procedureId]: { tier, due_within_days: null, requires_acknowledgement: true },
+      [procedureId]: {
+        tier,
+        due_within_days: null,
+        requires_acknowledgement: true,
+        requires_knowledge_verification: true,
+      },
     });
   }
 
@@ -561,7 +572,17 @@ export function ProceduresApp() {
     });
   };
 
+  const programMetaForSelected = useMemo(() => {
+    if (!selected?.id || !myTraining?.programs) return null;
+    return myTraining.programs.find((p) => p.id === selected.id) ?? null;
+  }, [selected?.id, myTraining?.programs]);
+
+  /** Default matches server: verification on unless explicitly disabled on the program. */
+  const knowledgeVerificationEnabled =
+    isApiMode() && Boolean(userId && selected && (programMetaForSelected?.requires_knowledge_verification ?? true));
+
   const showAckCta =
+    !knowledgeVerificationEnabled &&
     userId &&
     selected &&
     (isApiMode() ? showProcedureAcknowledgeCTA(myTraining, selected.id) : !hasAcknowledgedProcedure(userId, selected.id));
@@ -1078,7 +1099,8 @@ export function ProceduresApp() {
                   ))}
                 </select>
                 <p className="mt-1 text-[10px] text-ds-muted">
-                  Saved to compliance settings with acknowledgement required. Matrix reflects completion after workers sign off (timestamp archived).
+                  Saved to compliance settings with acknowledgement required. When knowledge verification is on, the matrix
+                  stays incomplete until workers finish review, acknowledgment, and the knowledge check.
                 </p>
                 {renderStepEditor(editSteps, setEditSteps, `${formId}-edit`)}
                 <button
@@ -1172,6 +1194,17 @@ export function ProceduresApp() {
                     </li>
                   ))}
                 </ol>
+
+                {knowledgeVerificationEnabled && selected ? (
+                  <div className="border-t border-ds-border pt-5">
+                    <ProcedureKnowledgeVerification
+                      procedureId={selected.id}
+                      procedureTitle={selected.title}
+                      onRefreshTraining={reloadMyTraining}
+                    />
+                  </div>
+                ) : null}
+
                 <div className="flex flex-wrap items-center justify-between gap-3 border-t border-ds-border pt-5">
                   <div className="min-w-0 space-y-1">
                     <button
@@ -1182,10 +1215,19 @@ export function ProceduresApp() {
                       Back to library
                     </button>
                     <p className="max-w-xl text-[11px] leading-snug text-ds-muted">
-                      Use <span className="font-semibold text-ds-foreground">Sign off complete</span> after finishing steps —
-                      {isApiMode()
-                        ? " the server stores a timestamp on your compliance record and updates the training matrix when this procedure is assigned to you."
-                        : " completion is tracked locally for demo mode."}
+                      {knowledgeVerificationEnabled ? (
+                        <>
+                          Finish <span className="font-semibold text-ds-foreground">review → acknowledgment → knowledge check</span>{" "}
+                          above to record verified completion on your training assignment.
+                        </>
+                      ) : (
+                        <>
+                          Use <span className="font-semibold text-ds-foreground">Sign off complete</span> after finishing steps —
+                          {isApiMode()
+                            ? " the server stores a timestamp on your compliance record and updates the training matrix when this procedure is assigned to you."
+                            : " completion is tracked locally for demo mode."}
+                        </>
+                      )}
                     </p>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
@@ -1198,7 +1240,7 @@ export function ProceduresApp() {
                         Continue to acknowledge
                       </button>
                     ) : null}
-                    {userId ? (
+                    {!knowledgeVerificationEnabled && userId ? (
                       <button
                         type="button"
                         onClick={() => void signCompletion()}

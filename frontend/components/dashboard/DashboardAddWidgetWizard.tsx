@@ -14,9 +14,9 @@ import {
 type Step = 1 | 2 | 3;
 
 const BTN =
-  "rounded-lg px-4 py-2 text-sm font-semibold transition-colors disabled:opacity-50 border border-ds-border bg-ds-secondary text-ds-foreground hover:bg-ds-interactive-hover";
+  "rounded-lg px-4 py-2 text-sm font-semibold transition-colors disabled:opacity-50 border border-ds-border bg-ds-secondary text-ds-foreground hover:bg-ds-interactive-hover active:bg-ds-interactive-active";
 const BTN_PRIMARY =
-  "rounded-lg px-4 py-2 text-sm font-semibold text-white disabled:opacity-50 bg-[#2B4C7E] hover:bg-[#234066] dark:bg-sky-600 dark:hover:bg-sky-500";
+  "rounded-lg px-4 py-2 text-sm font-semibold text-white disabled:opacity-50 bg-sky-600 hover:bg-sky-700 active:bg-sky-800 dark:bg-sky-600 dark:hover:bg-sky-500 dark:active:bg-sky-700";
 
 export function DashboardAddWidgetWizard({
   open,
@@ -132,7 +132,7 @@ export function DashboardAddWidgetWizard({
           </div>
           <button
             type="button"
-            className="rounded-md px-2 py-1 text-sm font-semibold text-slate-600 hover:bg-slate-100 dark:text-ds-muted dark:hover:bg-ds-interactive-hover"
+            className="rounded-md px-2 py-1 text-sm font-semibold text-slate-600 hover:bg-ds-interactive-hover-strong dark:text-ds-muted dark:hover:bg-ds-interactive-hover"
             onClick={onClose}
           >
             ×
@@ -156,7 +156,7 @@ export function DashboardAddWidgetWizard({
                   className={`rounded-xl border px-3 py-3 text-left text-sm transition-colors ${
                     pageId === p.id
                       ? "border-[#2B4C7E] bg-sky-50/80 font-semibold text-[#2B4C7E] dark:border-sky-500 dark:bg-sky-950/40 dark:text-sky-100"
-                      : "border-black/10 hover:bg-slate-50 dark:border-ds-border dark:hover:bg-ds-interactive-hover"
+                      : "border-black/10 hover:bg-ds-interactive-hover dark:border-ds-border dark:hover:bg-ds-interactive-hover"
                   }`}
                 >
                   <span className="block font-semibold text-slate-900 dark:text-gray-100">{p.label}</span>
