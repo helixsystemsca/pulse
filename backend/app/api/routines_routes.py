@@ -36,6 +36,7 @@ from app.schemas.routines import (
     RoutineRunDetailOut,
     RoutineRunOut,
 )
+from app.services.routine_shift_band import filter_items_for_shift_band, resolve_shift_band_for_shift_id
 
 router = APIRouter(prefix="/routines", tags=["routines"])
 
@@ -99,6 +100,8 @@ async def create_routine(
     items_sorted = sorted(list(body.items or []), key=lambda x: (x.position, x.label.strip().lower()))
     created_items: list[PulseRoutineItem] = []
     for idx, it in enumerate(items_sorted):
+        sb = it.shift_band
+        sb_s = str(sb).strip().lower() if sb else None
         created_items.append(
             PulseRoutineItem(
                 company_id=cid,
@@ -106,6 +109,7 @@ async def create_routine(
                 label=it.label.strip(),
                 position=int(it.position if it.position is not None else idx),
                 required=bool(it.required),
+                shift_band=sb_s,
                 created_at=now,
                 updated_at=now,
             )
@@ -170,6 +174,10 @@ async def patch_routine(
         items_sorted = sorted(list(data["items"] or []), key=lambda x: (x.get("position", 0), (x.get("label") or "").strip().lower()))
         new_items: list[PulseRoutineItem] = []
         for idx, it in enumerate(items_sorted):
+            raw_band = it.get("shift_band")
+            sb_s = str(raw_band).strip().lower() if raw_band else None
+            if sb_s and sb_s not in ("day", "afternoon", "night"):
+                sb_s = None
             new_items.append(
                 PulseRoutineItem(
                     company_id=cid,
@@ -177,6 +185,7 @@ async def patch_routine(
                     label=str(it.get("label") or "").strip(),
                     position=int(it.get("position", idx)),
                     required=bool(it.get("required", True)),
+                    shift_band=sb_s,
                     created_at=now,
                     updated_at=now,
                 )
@@ -470,6 +479,8 @@ async def list_my_routine_assignments(
             .order_by(PulseRoutineItem.position.asc(), PulseRoutineItem.created_at.asc())
         )
         items = iq.scalars().all()
+        band = await resolve_shift_band_for_shift_id(db, cid, str(a.shift_id)) if a.shift_id else None
+        items = filter_items_for_shift_band(items, band)
         routine_out = RoutineDetailOut(
             **RoutineOut.model_validate(routine).model_dump(),
             items=[RoutineItemOut.model_validate(i) for i in items],

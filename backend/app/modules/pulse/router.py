@@ -53,6 +53,7 @@ from app.modules.pulse import project_service as proj_task_svc
 from app.modules.pulse import service as pulse_svc
 from app.schemas.devices import ZoneCreateIn, ZoneUpdateIn
 from app.services.devices.device_service import DeviceService
+from app.services.routine_shift_band import band_from_shift_and_definition
 from app.services.schedule_facility_zones import ensure_schedule_facility_zones
 from app.services.gamification_service import ensure_task_for_work_request
 from app.schemas.pulse import (
@@ -224,6 +225,8 @@ def _shift_to_out(
     sh: PulseScheduleShift,
     task: Optional[PulseProjectTask] = None,
     project: Optional[PulseProject] = None,
+    *,
+    routine_shift_band: Optional[str] = None,
 ) -> ShiftOut:
     sk = getattr(sh, "shift_kind", None) or "workforce"
     tp: Optional[str] = None
@@ -250,6 +253,7 @@ def _shift_to_out(
         project_id=str(project.id) if project else None,
         project_name=project.name if project else None,
         task_priority=tp,
+        routine_shift_band=routine_shift_band,
     )
 
 
@@ -645,6 +649,27 @@ async def list_shifts(
         proj = projects_by_id.get(str(t.project_id)) if t else None
         out.append(_shift_to_out(r, t, proj))
     return out
+
+
+@router.get("/schedule/shifts/{shift_id}", response_model=ShiftOut)
+async def get_schedule_shift(db: Db, cid: CompanyId, shift_id: str) -> ShiftOut:
+    q = await db.execute(
+        select(PulseScheduleShift).where(
+            PulseScheduleShift.id == shift_id,
+            PulseScheduleShift.company_id == cid,
+        )
+    )
+    sh = q.scalar_one_or_none()
+    if not sh:
+        raise HTTPException(status_code=404, detail="Shift not found")
+    defn: PulseScheduleShiftDefinition | None = None
+    if sh.shift_definition_id:
+        defn = await db.get(PulseScheduleShiftDefinition, str(sh.shift_definition_id))
+        if defn and str(defn.company_id) != cid:
+            defn = None
+    band = band_from_shift_and_definition(sh, defn)
+    band_s = band if band is None else str(band)
+    return _shift_to_out(sh, None, None, routine_shift_band=band_s)
 
 
 @router.get("/schedule/assignments", response_model=list[ScheduleAssignmentOut])

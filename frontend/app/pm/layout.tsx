@@ -6,7 +6,7 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: { absolute: "PM Planning | Panorama" },
-  description: "Internal project planning views (Gantt, network, resources, critical path).",
+  description: "Internal project planning views (Gantt, network diagram, critical path).",
 };
 
 export default function PmLayout({ children }: { children: React.ReactNode }) {

@@ -9,12 +9,14 @@ import { parseClientApiError } from "@/lib/parse-client-api-error";
 import { readSession } from "@/lib/pulse-session";
 import {
   createRoutineRun,
+  fetchScheduleShift,
   getRoutine,
   listRoutines,
   listMyRoutineAssignments,
   type RoutineDetail,
   type RoutineRow,
 } from "@/lib/routinesService";
+import { filterRoutineItemsForShiftBand } from "@/lib/routines/shiftBands";
 
 const PRIMARY_BTN = cn(buttonVariants({ surface: "light", intent: "accent" }), "px-4 py-2.5");
 const FIELD =
@@ -151,23 +153,33 @@ export function RoutineRun({
       setRequireNotes(false);
       return;
     }
+    // Assignment context loads routine + items from server (shift-filtered).
+    if (assignmentId) {
+      return;
+    }
     let cancelled = false;
     (async () => {
       try {
         const d = await getRoutine(routineId);
         if (cancelled) return;
         setRoutine(d);
-        const next: RunItem[] = (d.items ?? [])
-          .slice()
-          .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
-          .map((it) => ({
-            routine_item_id: it.id,
-            label: it.label ?? "",
-            required: it.required !== false,
-            completed: false,
-            note: "",
-            assigned_to_user_id: currentUserId,
-          }));
+        let template = (d.items ?? []).slice().sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
+        if (shiftId) {
+          try {
+            const sh = await fetchScheduleShift(shiftId);
+            template = filterRoutineItemsForShiftBand(template, sh.routine_shift_band ?? null);
+          } catch {
+            /* keep full template if shift lookup fails */
+          }
+        }
+        const next: RunItem[] = template.map((it) => ({
+          routine_item_id: it.id,
+          label: it.label ?? "",
+          required: it.required !== false,
+          completed: false,
+          note: "",
+          assigned_to_user_id: currentUserId,
+        }));
         setItems(next);
         setRequireNotes(false);
         setErr(null);
@@ -183,7 +195,7 @@ export function RoutineRun({
     return () => {
       cancelled = true;
     };
-  }, [routineId]);
+  }, [routineId, assignmentId, shiftId, currentUserId]);
 
   async function signOff() {
     if (!routine || saving) return;

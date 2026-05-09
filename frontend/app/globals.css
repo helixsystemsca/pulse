@@ -37,7 +37,8 @@ html.pulse-welcome-blur [data-pulse-app-shell] {
   /* —— Brand — Verdigris #1EA896 · Deep Mocha #523F38 · Iron Grey #4C5454 */
   --ds-palette-verdigris: #1ea896;
   --ds-palette-iron-grey: #4c5454;
-  --ds-palette-platinum: #ebebeb;
+  /** Light neutral / paper (was darker #ebebeb “platinum”) */
+  --ds-palette-platinum: #f0efec;
   --ds-palette-deep-mocha: #523f38;
   --ds-palette-crimson-carrot: #f6511d;
 
@@ -54,11 +55,11 @@ html.pulse-welcome-blur [data-pulse-app-shell] {
     var(--ds-palette-iron-grey) 100%
   );
 
-  /* —— Core tokens (light) —— platinum surfaces, iron grey type */
-  --ds-bg: color-mix(in srgb, var(--ds-palette-platinum) 55%, #d8d8d8 45%);
+  /* —— Core tokens (light) —— airy off-white surfaces, iron grey type */
+  --ds-bg: color-mix(in srgb, var(--ds-palette-platinum) 22%, #ffffff 78%);
   --ds-surface-primary: var(--ds-palette-platinum);
   --ds-surface-secondary: var(--ds-palette-platinum);
-  --ds-surface-elevated: color-mix(in srgb, var(--ds-palette-platinum) 82%, #ffffff 18%);
+  --ds-surface-elevated: color-mix(in srgb, var(--ds-palette-platinum) 52%, #ffffff 48%);
   /** Left nav — solid Deep Mocha; hover/active Verdigris */
   --ds-sidebar: var(--ds-palette-deep-mocha);
   --ds-sidebar-fg: #ffffff;

@@ -1,5 +1,7 @@
 import { apiFetch } from "@/lib/api";
 
+export type RoutineShiftBand = "day" | "afternoon" | "night";
+
 export type RoutineItemRow = {
   id: string;
   company_id: string;
@@ -7,6 +9,8 @@ export type RoutineItemRow = {
   label: string;
   position: number;
   required: boolean;
+  /** When set, this line applies only to that shift band; omitted = all shifts (legacy). */
+  shift_band?: RoutineShiftBand | null;
   created_at: string;
   updated_at: string;
 };
@@ -23,7 +27,13 @@ export type RoutineRow = {
 
 export type RoutineDetail = RoutineRow & { items: RoutineItemRow[] };
 
-export type RoutineItemIn = { id?: string; label: string; position: number; required: boolean };
+export type RoutineItemIn = {
+  id?: string;
+  label: string;
+  position: number;
+  required: boolean;
+  shift_band?: RoutineShiftBand | null;
+};
 
 export async function listRoutines(params?: { zone_id?: string | null }): Promise<RoutineRow[]> {
   const sp = new URLSearchParams();
@@ -139,5 +149,15 @@ export async function listMyRoutineAssignments(params: { shift_id: string }): Pr
 
 export async function getRoutineRun(runId: string): Promise<RoutineRunDetail> {
   return apiFetch<RoutineRunDetail>(`/api/v1/routines/runs/${runId}`);
+}
+
+export type ScheduleShiftOut = {
+  id: string;
+  routine_shift_band?: string | null;
+};
+
+/** Resolve day / afternoon / night for routine variant filtering when running a checklist. */
+export async function fetchScheduleShift(shiftId: string): Promise<ScheduleShiftOut> {
+  return apiFetch<ScheduleShiftOut>(`/api/v1/pulse/schedule/shifts/${encodeURIComponent(shiftId)}`);
 }
 

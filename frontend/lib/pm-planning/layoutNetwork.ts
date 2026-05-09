@@ -15,10 +15,11 @@ export function layoutPoolNetwork(tasks: PmTask[]): {
   svgHeight: number;
   layerIndex: Record<string, number>;
 } {
-  const nodeW = 220;
-  const nodeH = 92;
-  const hGap = 56;
-  const vGap = 24;
+  /** Compact nodes with wider gaps so dependency lines cross less and the graph is easier to scan. */
+  const nodeW = 176;
+  const nodeH = 76;
+  const hGap = 100;
+  const vGap = 44;
 
   const byId = new Map(tasks.map((t) => [t.id, t]));
   const preds = new Map<string, string[]>();
@@ -72,15 +73,15 @@ export function layoutPoolNetwork(tasks: PmTask[]): {
   for (let L = 0; L <= maxL; L++) {
     const ids = byLayer.get(L) ?? [];
     ids.forEach((id, idx) => {
-      const x = 32 + L * (nodeW + hGap);
-      const y = 32 + idx * (nodeH + vGap);
+      const x = 40 + L * (nodeW + hGap);
+      const y = 40 + idx * (nodeH + vGap);
       positions.set(id, { id, x, y, width: nodeW, height: nodeH });
       maxY = Math.max(maxY, y + nodeH);
     });
   }
 
-  const svgWidth = 32 + (maxL + 1) * (nodeW + hGap) + 32;
-  const svgHeight = maxY + 48;
+  const svgWidth = 40 + (maxL + 1) * (nodeW + hGap) + 40;
+  const svgHeight = maxY + 56;
 
   return { positions, svgWidth, svgHeight, layerIndex };
 }

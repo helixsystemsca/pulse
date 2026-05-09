@@ -7,12 +7,18 @@ from typing import Literal, Optional
 
 from pydantic import BaseModel, Field, model_validator
 
+RoutineShiftBand = Literal["day", "afternoon", "night"]
+
 
 class RoutineItemIn(BaseModel):
     id: Optional[str] = None
     label: str = Field(..., min_length=1, max_length=8000)
     position: int = Field(..., ge=0, le=100000)
     required: bool = True
+    shift_band: Optional[RoutineShiftBand] = Field(
+        default=None,
+        description="If set, checklist line applies only to this shift band; omit for universal (legacy) lines.",
+    )
 
 
 class RoutineOut(BaseModel):
@@ -38,6 +44,7 @@ class RoutineItemOut(BaseModel):
     label: str
     position: int
     required: bool
+    shift_band: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 

@@ -15,7 +15,7 @@ export type PmTask = {
   isCritical?: boolean;
 };
 
-export type PmPlanningTab = "gantt" | "network" | "resource" | "critical";
+export type PmPlanningTab = "gantt" | "network" | "critical";
 
 export type PmProjectMeta = {
   id: string;

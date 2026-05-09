@@ -209,6 +209,8 @@ class ShiftOut(BaseModel):
     project_id: Optional[str] = None
     project_name: Optional[str] = None
     task_priority: Optional[str] = None
+    # day | afternoon | night — routine checklist variants; null if unknown.
+    routine_shift_band: Optional[str] = None
 
     model_config = {"from_attributes": True}
 

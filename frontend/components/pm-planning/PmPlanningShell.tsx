@@ -7,12 +7,10 @@ import { Sparkles } from "lucide-react";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
 import { MOCK_PM_TASKS, POOL_SHUTDOWN_META } from "@/lib/pm-planning/mockPoolShutdown";
 import { computePlanningCPMWithOverrides } from "@/lib/pm-planning/computePlanningCPM";
-import { findResourceConflicts } from "@/lib/pm-planning/resourceConflicts";
 import type { PmPlanningTab, PmProjectMeta, PmTask } from "@/lib/pm-planning/types";
 import { PmCriticalPath } from "@/components/pm-planning/PmCriticalPath";
 import { PmGantt } from "@/components/pm-planning/PmGantt";
 import { PmNetworkDiagram } from "@/components/pm-planning/PmNetworkDiagram";
-import { PmResourceView } from "@/components/pm-planning/PmResourceView";
 
 export type PmPlanningEmbeddedProps = {
   meta: PmProjectMeta;
@@ -47,8 +45,6 @@ export function PmPlanningShell(props: PmPlanningShellProps = {}) {
     () => computePlanningCPMWithOverrides(tasks, durationOverrides, meta.projectStart),
     [tasks, durationOverrides, meta.projectStart],
   );
-
-  const conflicts = useMemo(() => findResourceConflicts(tasks, cpm), [tasks, cpm]);
 
   const maxFloat = useMemo(() => {
     let m = 0;
@@ -183,7 +179,6 @@ export function PmPlanningShell(props: PmPlanningShellProps = {}) {
       <nav className="flex flex-wrap gap-1 border-b border-ds-border">
         {tabBtn("gantt", "Gantt")}
         {tabBtn("critical", "Critical path")}
-        {tabBtn("resource", "Resource")}
         {tabBtn("network", "Network diagram")}
       </nav>
 
@@ -199,9 +194,6 @@ export function PmPlanningShell(props: PmPlanningShellProps = {}) {
         />
       ) : null}
       {tab === "network" ? <PmNetworkDiagram tasks={tasks} cpm={cpm} /> : null}
-      {tab === "resource" ? (
-        <PmResourceView tasks={tasks} cpm={cpm} projectStart={meta.projectStart} conflicts={conflicts} />
-      ) : null}
       {tab === "critical" ? (
         <div className="space-y-8">
           <PmCriticalPath tasks={tasks} cpm={cpm} projectStart={meta.projectStart} />
