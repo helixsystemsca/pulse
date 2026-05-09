@@ -311,15 +311,15 @@ function TrainingLeadershipOverviewInner() {
           <div className="min-w-0 flex-1">
             <h2 className="text-base font-semibold text-ds-foreground">Maintenance training compliance board</h2>
             <p className="mt-1 max-w-3xl text-sm leading-relaxed text-ds-muted">
-              Scan missing critical training, expired certifications, overdue onboarding, and pending acknowledgements across
-              your roster. Acknowledgements and revision cycles stay audit-ready.
+              See which staff are missing training, have expired certifications, overdue onboarding, or unread procedures.
+              Everything stays tracked and recorded for audits.
             </p>
             <p className="mt-2 text-xs font-medium text-ds-muted">
-              Per-person drill-down:{" "}
+              View employee details in:{" "}
               <Link href="/dashboard/workers" className="ds-link font-semibold">
                 Team Management
               </Link>{" "}
-              → profile → <span className="font-semibold text-ds-foreground">Training matrix</span>.
+              → Profile → <span className="font-semibold text-ds-foreground">Training</span>.
             </p>
             <div className="mt-3 flex flex-wrap items-center gap-2">
               <Button type="button" variant="secondary" className="h-9 px-3 text-xs" onClick={() => setConfigOpen(true)}>

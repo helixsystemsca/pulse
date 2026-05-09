@@ -35,11 +35,8 @@ export default function StandardsDocumentsPage() {
       </ul>
 
       <p className="text-xs text-ds-muted">
-        Shift and checklist routines remain available at{" "}
-        <Link href="/standards/routines" className="ds-link font-semibold">
-          /standards/routines
-        </Link>
-        .
+        Shift and checklist routines are under the <span className="font-semibold text-ds-foreground">Routines</span> tab
+        in Standards.
       </p>
     </div>
   );
