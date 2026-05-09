@@ -14,7 +14,7 @@ export function filterRoutineItemsForShiftBand<T extends Pick<RoutineItemRow, "s
   const b = band.toLowerCase();
   return items.filter((i) => {
     const sb = i.shift_band;
-    if (sb == null || sb === "") return true;
+    if (sb == null || String(sb).trim() === "") return true;
     return String(sb).toLowerCase() === b;
   });
 }
