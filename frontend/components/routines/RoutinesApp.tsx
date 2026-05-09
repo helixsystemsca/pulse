@@ -99,7 +99,11 @@ export function RoutinesApp() {
   const canSaveEdit = useMemo(() => editName.trim().length > 0 && Boolean(selectedId), [editName, selectedId]);
 
   const editHasUniversal = useMemo(
-    () => (selected?.items ?? []).some((i) => !i.shift_band || i.shift_band === ""),
+    () =>
+      (selected?.items ?? []).some((i) => {
+        const sb = i.shift_band;
+        return sb == null || String(sb).trim() === "";
+      }),
     [selected],
   );
 
