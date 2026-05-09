@@ -76,6 +76,9 @@ export default function RoutineRunDetailPage() {
   }
 
   const itemLabelById = new Map((routine.items ?? []).map((i) => [i.id, i.label]));
+  const itemProcedureById = new Map(
+    (routine.items ?? []).filter((i) => i.procedure_id?.trim()).map((i) => [i.id, i.procedure_id as string]),
+  );
   const completedAt = run.completed_at || run.started_at;
 
   return (
@@ -117,10 +120,21 @@ export default function RoutineRunDetailPage() {
         <div className="space-y-2">
           {run.items.map((it) => {
             const label = it.routine_item_id ? itemLabelById.get(it.routine_item_id) : null;
+            const procId = it.routine_item_id ? itemProcedureById.get(it.routine_item_id) : undefined;
             return (
               <div key={it.id} className="rounded-lg border border-ds-border bg-ds-secondary p-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <p className="text-sm font-semibold text-ds-foreground">{label ?? it.routine_item_id ?? "Item"}</p>
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-ds-foreground">{label ?? it.routine_item_id ?? "Item"}</p>
+                    {procId ? (
+                      <Link
+                        href="/standards/procedures"
+                        className="mt-1 inline-block text-xs font-semibold text-ds-foreground underline underline-offset-2"
+                      >
+                        Linked procedure (SOP)
+                      </Link>
+                    ) : null}
+                  </div>
                   <span
                     className={`rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
                       it.completed

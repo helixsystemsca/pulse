@@ -13,6 +13,7 @@ from app.api.deps import require_tenant_user
 from app.core.database import get_db
 from app.models.domain import User, Zone
 from app.models.pulse_models import (
+    PulseProcedure,
     PulseRoutine,
     PulseRoutineItem,
     PulseRoutineItemRun,
@@ -59,6 +60,27 @@ def _item_to_out(i: PulseRoutineItem) -> RoutineItemOut:
     return RoutineItemOut.model_validate(i)
 
 
+async def _resolve_routine_item_label_and_procedure(
+    db: AsyncSession,
+    cid: str,
+    label: str,
+    procedure_id: Optional[str],
+) -> tuple[str, Optional[str]]:
+    """Validate optional procedure belongs to tenant; default checklist label from procedure title."""
+    lab = (label or "").strip()
+    pid = (procedure_id or "").strip() or None
+    if pid:
+        proc = await db.get(PulseProcedure, pid)
+        if not proc or str(proc.company_id) != cid:
+            raise HTTPException(status_code=400, detail="Unknown procedure")
+        title = (proc.title or "").strip()
+        final = lab or title or "Procedure"
+        return final, pid
+    if not lab:
+        raise HTTPException(status_code=400, detail="Each checklist line needs a procedure or label")
+    return lab, None
+
+
 @router.get("", response_model=list[RoutineOut])
 async def list_routines(
     db: Db,
@@ -102,11 +124,13 @@ async def create_routine(
     for idx, it in enumerate(items_sorted):
         sb = it.shift_band
         sb_s = str(sb).strip().lower() if sb else None
+        lab, pid = await _resolve_routine_item_label_and_procedure(db, cid, it.label, it.procedure_id)
         created_items.append(
             PulseRoutineItem(
                 company_id=cid,
                 routine_id=str(row.id),
-                label=it.label.strip(),
+                label=lab,
+                procedure_id=pid,
                 position=int(it.position if it.position is not None else idx),
                 required=bool(it.required),
                 shift_band=sb_s,
@@ -163,7 +187,7 @@ async def patch_routine(
         r.zone_id = data["zone_id"] or None
     r.updated_at = datetime.now(timezone.utc)
 
-    if "items" in data and data["items"] is not None:
+    if body.items is not None:
         # Replace item list (simple MVP semantics).
         await db.execute(
             delete(PulseRoutineItem).where(
@@ -171,20 +195,22 @@ async def patch_routine(
             )
         )
         now = datetime.now(timezone.utc)
-        items_sorted = sorted(list(data["items"] or []), key=lambda x: (x.get("position", 0), (x.get("label") or "").strip().lower()))
+        items_sorted = sorted(list(body.items), key=lambda x: (x.position, x.label.strip().lower()))
         new_items: list[PulseRoutineItem] = []
         for idx, it in enumerate(items_sorted):
-            raw_band = it.get("shift_band")
-            sb_s = str(raw_band).strip().lower() if raw_band else None
+            sb = it.shift_band
+            sb_s = str(sb).strip().lower() if sb else None
             if sb_s and sb_s not in ("day", "afternoon", "night"):
                 sb_s = None
+            lab, pid = await _resolve_routine_item_label_and_procedure(db, cid, it.label, it.procedure_id)
             new_items.append(
                 PulseRoutineItem(
                     company_id=cid,
                     routine_id=routine_id,
-                    label=str(it.get("label") or "").strip(),
-                    position=int(it.get("position", idx)),
-                    required=bool(it.get("required", True)),
+                    label=lab,
+                    procedure_id=pid,
+                    position=int(it.position if it.position is not None else idx),
+                    required=bool(it.required),
                     shift_band=sb_s,
                     created_at=now,
                     updated_at=now,

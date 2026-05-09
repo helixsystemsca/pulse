@@ -9,6 +9,8 @@ export type RoutineItemRow = {
   label: string;
   position: number;
   required: boolean;
+  /** Same entity as Standards → Procedures / training matrix when set. */
+  procedure_id?: string | null;
   /** When set, this line applies only to that shift band; omitted = all shifts (legacy). */
   shift_band?: RoutineShiftBand | null;
   created_at: string;
@@ -32,6 +34,7 @@ export type RoutineItemIn = {
   label: string;
   position: number;
   required: boolean;
+  procedure_id?: string | null;
   shift_band?: RoutineShiftBand | null;
 };
 

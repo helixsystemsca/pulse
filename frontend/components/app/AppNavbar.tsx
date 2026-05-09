@@ -97,11 +97,11 @@ export function AppNavbar({ notificationCount = 0, messagesCount = 0 }: AppNavba
         className="flex min-h-0 w-full flex-1 items-center justify-between gap-4 pr-3 sm:pr-4"
         style={{ minHeight: "var(--pulse-header-bar-height)" }}
       >
-        <div className="flex min-w-0 flex-1 items-center pl-3 sm:pl-4 lg:pl-[calc(var(--pulse-sidebar-collapsed-width)+0.75rem)]">
+        <div className="flex min-w-0 flex-1 items-center pl-1.5 sm:pl-2">
           <Link
             href={logoHref}
             className={cn(
-              "font-panoramaBrand inline-flex min-w-0 items-center gap-3 whitespace-nowrap text-[clamp(1.05rem,2.1vw,1.45rem)] uppercase leading-none text-white",
+              "font-panoramaBrand inline-flex min-w-0 items-center gap-2 whitespace-nowrap text-[clamp(1.05rem,2.1vw,1.45rem)] uppercase leading-none text-white",
             )}
           >
             <span
@@ -120,8 +120,10 @@ export function AppNavbar({ notificationCount = 0, messagesCount = 0 }: AppNavba
                 priority
               />
             </span>
-            <span className="font-normal tracking-[0.06em]">Panorama</span>
-            <span className="font-extralight tracking-[0.06em]">Rec</span>
+            <span className="inline-flex items-baseline gap-0.5">
+              <span className="font-normal tracking-[0.04em]">Panorama</span>
+              <span className="font-extralight tracking-[0.04em]">Rec</span>
+            </span>
           </Link>
         </div>
 

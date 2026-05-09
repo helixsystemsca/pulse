@@ -183,10 +183,16 @@ export async function patchProcedureCompliance(
   });
 }
 
+export async function fetchProcedureCompliance(procedureId: string): Promise<ProcedureComplianceApiResponse> {
+  return apiFetch<ProcedureComplianceApiResponse>(
+    `/api/v1/cmms/procedures/${encodeURIComponent(procedureId)}/compliance`,
+  );
+}
+
 export async function postProcedureTrainingSignOff(
   procedureId: string,
   body?: { revision_marker?: string | null; employee_id?: string | null; supervisor_signoff?: boolean },
-): Promise<{ id: string; revision_marker: string; created: boolean }> {
+): Promise<{ id: string; revision_marker: string; created: boolean; completed_at: string }> {
   return apiFetch(`/api/v1/cmms/procedures/${encodeURIComponent(procedureId)}/sign-off`, {
     method: "POST",
     json: body ?? {},

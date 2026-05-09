@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { Loader2, Save } from "lucide-react";
 import { Card } from "@/components/pulse/Card";
 import { cn } from "@/lib/cn";
@@ -26,6 +27,7 @@ const LABEL = "text-[11px] font-semibold uppercase tracking-wider text-ds-muted"
 type RunItem = {
   routine_item_id: string;
   label: string;
+  procedure_id: string | null;
   required: boolean;
   completed: boolean;
   note: string;
@@ -98,6 +100,7 @@ export function RoutineRun({
           .map((it) => ({
             routine_item_id: it.id,
             label: it.label ?? "",
+            procedure_id: it.procedure_id?.trim() ? it.procedure_id : null,
             required: it.required !== false,
             completed: false,
             note: "",
@@ -175,6 +178,7 @@ export function RoutineRun({
         const next: RunItem[] = template.map((it) => ({
           routine_item_id: it.id,
           label: it.label ?? "",
+          procedure_id: it.procedure_id?.trim() ? it.procedure_id : null,
           required: it.required !== false,
           completed: false,
           note: "",
@@ -307,6 +311,16 @@ export function RoutineRun({
                     <div className="text-sm text-ds-muted">
                       <span className="font-semibold text-ds-foreground">{it.label}</span>
                       <span className="ml-2 text-[11px]">Assigned to another worker</span>
+                      {it.procedure_id ? (
+                        <div className="mt-1">
+                          <Link
+                            href="/standards/procedures"
+                            className="text-xs font-semibold text-ds-foreground underline decoration-ds-border underline-offset-2"
+                          >
+                            Open procedure (SOP)
+                          </Link>
+                        </div>
+                      ) : null}
                     </div>
                   ) : (
                     <label className="flex cursor-pointer items-start gap-3">
@@ -334,6 +348,14 @@ export function RoutineRun({
                             </span>
                           ) : null}
                         </span>
+                        {it.procedure_id ? (
+                          <Link
+                            href="/standards/procedures"
+                            className="mt-1 inline-block text-xs font-semibold text-ds-foreground underline decoration-ds-border underline-offset-2 hover:decoration-ds-foreground"
+                          >
+                            Open procedure (SOP)
+                          </Link>
+                        ) : null}
                       </span>
                     </label>
                   )}

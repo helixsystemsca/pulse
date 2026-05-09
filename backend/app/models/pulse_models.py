@@ -334,6 +334,12 @@ class PulseRoutineItem(Base):
         nullable=False,
         index=True,
     )
+    procedure_id: Mapped[Optional[str]] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("pulse_procedures.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     label: Mapped[str] = mapped_column(String(8000), nullable=False)
     position: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     required: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)

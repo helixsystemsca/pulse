@@ -5,20 +5,39 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Literal, Optional
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 RoutineShiftBand = Literal["day", "afternoon", "night"]
 
 
 class RoutineItemIn(BaseModel):
     id: Optional[str] = None
-    label: str = Field(..., min_length=1, max_length=8000)
+    label: str = Field(default="", max_length=8000)
     position: int = Field(..., ge=0, le=100000)
     required: bool = True
+    procedure_id: Optional[str] = Field(
+        default=None,
+        description="Links this checklist step to a Procedures library SOP (training matrix entity).",
+    )
     shift_band: Optional[RoutineShiftBand] = Field(
         default=None,
         description="If set, checklist line applies only to this shift band; omit for universal (legacy) lines.",
     )
+
+    @field_validator("procedure_id", mode="before")
+    @classmethod
+    def empty_pid_none(cls, v: object) -> Optional[str]:
+        if v is None or v == "":
+            return None
+        return str(v)
+
+    @model_validator(mode="after")
+    def label_or_procedure(self) -> "RoutineItemIn":
+        pid = (self.procedure_id or "").strip()
+        lab = (self.label or "").strip()
+        if not pid and not lab:
+            raise ValueError("Each checklist line needs a linked procedure or a label (legacy).")
+        return self
 
 
 class RoutineOut(BaseModel):
@@ -45,6 +64,7 @@ class RoutineItemOut(BaseModel):
     position: int
     required: bool
     shift_band: Optional[str] = None
+    procedure_id: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 

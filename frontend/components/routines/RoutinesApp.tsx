@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { ChevronRight, Loader2, Plus, Save, X } from "lucide-react";
 import { Card } from "@/components/pulse/Card";
 import { cn } from "@/lib/cn";
+import { fetchProcedures, type ProcedureRow } from "@/lib/cmmsApi";
 import { buttonVariants } from "@/styles/button-variants";
 import { parseClientApiError } from "@/lib/parse-client-api-error";
 import {
@@ -23,15 +25,16 @@ const SECONDARY_BTN = cn(buttonVariants({ surface: "light", intent: "secondary" 
 const FIELD =
   "mt-1.5 w-full rounded-[10px] border border-ds-border bg-ds-secondary px-3 py-2.5 text-sm text-ds-foreground shadow-sm focus:outline-none focus:ring-1 focus:ring-[color-mix(in_srgb,var(--ds-success)_28%,transparent)]";
 const LABEL = "text-[11px] font-semibold uppercase tracking-wider text-ds-muted";
+const PROCEDURE_SELECT = cn(FIELD, "mt-0 min-w-[12rem] flex-1 bg-ds-primary");
 
-type DraftItem = { key: string; label: string; required: boolean };
+type DraftItem = { key: string; procedureId: string | null; label: string; required: boolean };
 
 function newKey() {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 }
 
 function oneEmptyDraft(): DraftItem {
-  return { key: newKey(), label: "", required: true };
+  return { key: newKey(), procedureId: null, label: "", required: true };
 }
 
 function emptyBandMap(): Record<RoutineShiftBand, DraftItem[]> {
@@ -45,11 +48,15 @@ function emptyBandMap(): Record<RoutineShiftBand, DraftItem[]> {
 /** Strip empties; positions assigned in flatten/build. */
 function normalizeBandDraft(items: DraftItem[]): Omit<RoutineItemIn, "position" | "shift_band">[] {
   return items
-    .map((it) => ({
-      label: it.label.trim(),
-      required: Boolean(it.required),
-    }))
-    .filter((it) => it.label);
+    .filter((it) => Boolean(it.procedureId?.trim()) || Boolean(it.label.trim()))
+    .map((it) => {
+      const pid = it.procedureId?.trim() || null;
+      return {
+        label: it.label.trim(),
+        required: Boolean(it.required),
+        ...(pid ? { procedure_id: pid } : {}),
+      };
+    });
 }
 
 function flattenBandsToPayload(
@@ -76,6 +83,12 @@ export function RoutinesApp() {
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [procedures, setProcedures] = useState<ProcedureRow[]>([]);
+
+  const proceduresSorted = useMemo(
+    () => [...procedures].sort((a, b) => a.title.localeCompare(b.title)),
+    [procedures],
+  );
 
   /** Create: name step → shift checklist steps */
   const [createOpen, setCreateOpen] = useState(false);
@@ -93,8 +106,18 @@ export function RoutinesApp() {
   const canSaveCreateName = useMemo(() => createName.trim().length > 0, [createName]);
   const canCompleteCreate = useMemo(() => {
     if (!createName.trim()) return false;
-    return createBands.some((b) => normalizeBandDraft(createByBand[b] ?? []).length > 0);
-  }, [createName, createBands, createByBand]);
+    if (procedures.length === 0) return false;
+    const hasLine = createBands.some((b) => normalizeBandDraft(createByBand[b] ?? []).length > 0);
+    if (!hasLine) return false;
+    return createBands.every((b) => {
+      const drafts = createByBand[b] ?? [];
+      return drafts.every((it) => {
+        const empty = !it.procedureId?.trim() && !it.label.trim();
+        if (empty) return true;
+        return Boolean(it.procedureId?.trim());
+      });
+    });
+  }, [createName, createBands, createByBand, procedures.length]);
 
   const canSaveEdit = useMemo(() => editName.trim().length > 0 && Boolean(selectedId), [editName, selectedId]);
 
@@ -131,6 +154,21 @@ export function RoutinesApp() {
   }, []);
 
   useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const list = await fetchProcedures();
+        if (!cancelled) setProcedures(list);
+      } catch {
+        if (!cancelled) setProcedures([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
     if (!toast) return;
     const t = window.setTimeout(() => setToast(null), 3500);
     return () => window.clearTimeout(t);
@@ -159,6 +197,7 @@ export function RoutinesApp() {
     for (const it of d.items ?? []) {
       const row: DraftItem = {
         key: it.id ? `id:${it.id}` : newKey(),
+        procedureId: it.procedure_id?.trim() ? it.procedure_id : null,
         label: it.label ?? "",
         required: it.required !== false,
       };
@@ -449,20 +488,62 @@ export function RoutinesApp() {
                   })}
                 </div>
 
+                {procedures.length === 0 ? (
+                  <p className="rounded-lg border border-ds-border bg-ds-secondary px-3 py-2 text-sm text-ds-foreground">
+                    Add at least one procedure under{" "}
+                    <Link href="/standards/procedures" className="font-semibold underline">
+                      Standards → Procedures
+                    </Link>{" "}
+                    before building a routine checklist. Procedures are the same records used on the training matrix.
+                  </p>
+                ) : (
+                  <p className="text-xs text-ds-muted">
+                    Each line links to a procedure from your library. Edit full steps under Procedures; assign training from
+                    the matrix as usual.
+                  </p>
+                )}
+
                 <div>
                   <p className={LABEL}>Checklist items ({ROUTINE_SHIFT_TABS.find((t) => t.id === createActiveBand)?.label})</p>
                   <div className="mt-2 space-y-2">
                     {currentCreateDrafts.map((it, idx) => (
-                      <div key={it.key} className="flex flex-wrap items-center gap-2 rounded-lg border border-ds-border bg-ds-secondary p-3">
+                      <div
+                        key={it.key}
+                        className="flex flex-col gap-2 rounded-lg border border-ds-border bg-ds-secondary p-3 sm:flex-row sm:flex-wrap sm:items-center"
+                      >
+                        <select
+                          aria-label={`Procedure for checklist item ${idx + 1}`}
+                          className={PROCEDURE_SELECT}
+                          value={it.procedureId ?? ""}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            setDraftsForActiveCreate((prev) =>
+                              prev.map((x) => {
+                                if (x.key !== it.key) return x;
+                                if (!v) return { ...x, procedureId: null };
+                                const p = proceduresSorted.find((pr) => pr.id === v);
+                                return { ...x, procedureId: v, label: p?.title ?? x.label };
+                              }),
+                            );
+                          }}
+                          disabled={busy || procedures.length === 0}
+                        >
+                          <option value="">{procedures.length ? "Select procedure…" : "No procedures yet"}</option>
+                          {proceduresSorted.map((p) => (
+                            <option key={p.id} value={p.id}>
+                              {p.title}
+                            </option>
+                          ))}
+                        </select>
                         <input
-                          className={cn(FIELD, "mt-0 flex-1 bg-ds-primary")}
+                          className={cn(FIELD, "mt-0 min-w-[8rem] flex-1 bg-ds-primary sm:max-w-xs")}
                           value={it.label}
                           onChange={(e) =>
                             setDraftsForActiveCreate((prev) =>
                               prev.map((x) => (x.key === it.key ? { ...x, label: e.target.value } : x)),
                             )
                           }
-                          placeholder={`Item ${idx + 1}`}
+                          placeholder="Checklist label (defaults to procedure title)"
                         />
                         <label className="inline-flex items-center gap-2 text-sm font-semibold text-ds-foreground">
                           <input
@@ -576,17 +657,58 @@ export function RoutinesApp() {
                   <span className="ml-2 font-normal normal-case text-ds-muted">(shown for every shift)</span>
                 ) : null}
               </p>
+              {procedures.length === 0 ? (
+                <p className="mt-2 rounded-lg border border-ds-border bg-ds-secondary px-3 py-2 text-xs text-ds-foreground">
+                  No procedures loaded — add some under{" "}
+                  <Link href="/standards/procedures" className="font-semibold underline">
+                    Procedures
+                  </Link>{" "}
+                  to link checklist lines to the same SOPs as the training matrix.
+                </p>
+              ) : null}
               <div className="mt-2 space-y-2">
                 {editDraftList.map((it, idx) => (
-                  <div key={it.key} className="flex flex-wrap items-center gap-2 rounded-lg border border-ds-border bg-ds-secondary p-3">
+                  <div
+                    key={it.key}
+                    className="flex flex-col gap-2 rounded-lg border border-ds-border bg-ds-secondary p-3 sm:flex-row sm:flex-wrap sm:items-center"
+                  >
+                    <select
+                      aria-label={`Procedure for checklist item ${idx + 1}`}
+                      className={PROCEDURE_SELECT}
+                      value={it.procedureId ?? ""}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        setEditDraftList((prev) =>
+                          prev.map((x) => {
+                            if (x.key !== it.key) return x;
+                            if (!v) return { ...x, procedureId: null };
+                            const p = proceduresSorted.find((pr) => pr.id === v);
+                            return { ...x, procedureId: v, label: p?.title ?? x.label };
+                          }),
+                        );
+                      }}
+                      disabled={busy || procedures.length === 0}
+                    >
+                      <option value="">{procedures.length ? "Select procedure…" : "No procedures yet"}</option>
+                      {proceduresSorted.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.title}
+                        </option>
+                      ))}
+                    </select>
                     <input
-                      className={cn(FIELD, "mt-0 flex-1 bg-ds-primary")}
+                      className={cn(FIELD, "mt-0 min-w-[8rem] flex-1 bg-ds-primary sm:max-w-xs")}
                       value={it.label}
                       onChange={(e) =>
                         setEditDraftList((prev) => prev.map((x) => (x.key === it.key ? { ...x, label: e.target.value } : x)))
                       }
-                      placeholder={`Item ${idx + 1}`}
+                      placeholder="Checklist label (defaults to procedure title)"
                     />
+                    {!it.procedureId && it.label.trim() ? (
+                      <p className="w-full text-[11px] text-amber-800 dark:text-amber-200">
+                        Legacy line — choose a procedure to align with training matrix columns.
+                      </p>
+                    ) : null}
                     <label className="inline-flex items-center gap-2 text-sm font-semibold text-ds-foreground">
                       <input
                         type="checkbox"

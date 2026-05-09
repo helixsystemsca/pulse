@@ -21,13 +21,21 @@ import { acknowledgeProcedure, hasAcknowledgedProcedure } from "@/lib/procedureA
 import { hasSignedOffProcedure, signoffProcedure } from "@/lib/procedureSignoffs";
 import { isApiMode } from "@/lib/api";
 import {
+  fetchProcedureCompliance,
   fetchWorkerTraining,
+  patchProcedureCompliance,
   postProcedureTrainingAcknowledgement,
   postProcedureTrainingSignOff,
   procedureHasTrainingSignOff,
   showProcedureAcknowledgeCTA,
   type WorkerTrainingApiResponse,
 } from "@/lib/trainingApi";
+import type { TrainingTier } from "@/lib/training/types";
+import {
+  configForProcedure,
+  readProcedureComplianceConfig,
+  writeProcedureComplianceConfig,
+} from "@/lib/training/procedureComplianceConfig";
 import { fetchWorkerList, fetchWorkerSettings } from "@/lib/workersService";
 import { cn } from "@/lib/cn";
 import { buttonVariants } from "@/styles/button-variants";
@@ -69,6 +77,17 @@ function parseKeywordCsv(csv: string): string[] {
     if (out.length >= 32) break;
   }
   return out;
+}
+
+/** Maps to training matrix tiers (`PulseProcedureComplianceSettings.tier`). */
+const PROCEDURE_TRAINING_PRIORITY_OPTIONS: { value: TrainingTier; label: string }[] = [
+  { value: "mandatory", label: "Mandatory" },
+  { value: "high_risk", label: "High" },
+  { value: "general", label: "Low" },
+];
+
+function trainingTierLabel(tier: TrainingTier): string {
+  return PROCEDURE_TRAINING_PRIORITY_OPTIONS.find((o) => o.value === tier)?.label ?? tier;
 }
 
 function toDraftFromProcedure(row: ProcedureRow): DraftStep[] {
@@ -128,8 +147,20 @@ export function ProceduresApp() {
   const [assignNote, setAssignNote] = useState("");
   const [workerOptions, setWorkerOptions] = useState<{ id: string; label: string }[]>([]);
   const [assigning, setAssigning] = useState(false);
+  const [createTrainingTier, setCreateTrainingTier] = useState<TrainingTier>("general");
+  const [editTrainingTier, setEditTrainingTier] = useState<TrainingTier>("general");
+  const [notice, setNotice] = useState<string | null>(null);
   const session = readSession();
   const canReview = sessionHasAnyRole(session, "lead", "supervisor", "manager", "company_admin");
+  /** Same gate as training matrix compliance PATCH (lead+). */
+  const canSetProcedureTrainingTier = sessionHasAnyRole(
+    session,
+    "lead",
+    "supervisor",
+    "manager",
+    "company_admin",
+    "system_admin",
+  );
   const userId = session?.sub ?? null;
   const [myTraining, setMyTraining] = useState<WorkerTrainingApiResponse | null>(null);
   const [proceduresEditRoles, setProceduresEditRoles] = useState<string[]>(["manager", "supervisor", "lead"]);
@@ -181,6 +212,36 @@ export function ProceduresApp() {
   useEffect(() => {
     void reloadMyTraining();
   }, [reloadMyTraining]);
+
+  useEffect(() => {
+    if (!notice) return;
+    const t = window.setTimeout(() => setNotice(null), 6000);
+    return () => window.clearTimeout(t);
+  }, [notice]);
+
+  useEffect(() => {
+    if (!selectedId) {
+      setEditTrainingTier("general");
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      if (isApiMode()) {
+        try {
+          const c = await fetchProcedureCompliance(selectedId);
+          if (!cancelled) setEditTrainingTier(c.tier as TrainingTier);
+        } catch {
+          if (!cancelled) setEditTrainingTier("general");
+        }
+      } else {
+        const cfg = configForProcedure(selectedId, readProcedureComplianceConfig());
+        if (!cancelled) setEditTrainingTier(cfg.tier);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedId]);
 
   useEffect(() => {
     void (async () => {
@@ -286,8 +347,14 @@ export function ProceduresApp() {
         review_required: needsReview,
       });
       await uploadPendingFiles(proc.id, draftSteps);
+      try {
+        await persistProcedureTrainingTier(proc.id, createTrainingTier);
+      } catch (e) {
+        setNotice(parseClientApiError(e).message || "Could not save training priority — update it under Standards → Training.");
+      }
       setTitle("");
       setCreateKeywordsCsv("");
+      setCreateTrainingTier("general");
       setDraftSteps([{ key: newKey(), text: "", file: null, image_url: null, recommended_workers: null, tools_csv: "" }]);
       await load();
       setIsCreating(false);
@@ -410,6 +477,11 @@ export function ProceduresApp() {
           : {}),
       });
       await uploadPendingFiles(selectedId, editSteps);
+      try {
+        await persistProcedureTrainingTier(selectedId, editTrainingTier);
+      } catch (e) {
+        setNotice(parseClientApiError(e).message || "Procedure saved; training priority could not be updated.");
+      }
       await load();
     } catch (e) {
       setErr(parseClientApiError(e).message);
@@ -417,6 +489,22 @@ export function ProceduresApp() {
       setSaving(false);
     }
   };
+
+  async function persistProcedureTrainingTier(procedureId: string, tier: TrainingTier) {
+    const payload = { tier, due_within_days: null as number | null, requires_acknowledgement: true };
+    if (isApiMode()) {
+      if (!sessionHasAnyRole(readSession(), "lead", "supervisor", "manager", "company_admin", "system_admin")) {
+        return;
+      }
+      await patchProcedureCompliance(procedureId, payload);
+      return;
+    }
+    const prev = readProcedureComplianceConfig();
+    writeProcedureComplianceConfig({
+      ...prev,
+      [procedureId]: { tier, due_within_days: null, requires_acknowledgement: true },
+    });
+  }
 
   const signAcknowledgment = async () => {
     if (!userId || !selected) return;
@@ -444,9 +532,15 @@ export function ProceduresApp() {
     if (isApiMode()) {
       setErr(null);
       try {
-        await postProcedureTrainingSignOff(selected.id, {
+        const out = await postProcedureTrainingSignOff(selected.id, {
           supervisor_signoff: sessionHasAnyRole(session, "supervisor", "manager", "company_admin"),
         });
+        const when = out.completed_at ? new Date(out.completed_at).toLocaleString() : "";
+        setNotice(
+          when
+            ? `Completion sign-off archived for compliance (${when}). It appears on your training matrix when assigned.`
+            : "Completion sign-off recorded for compliance.",
+        );
         await reloadMyTraining();
       } catch (e) {
         setErr(parseClientApiError(e).message);
@@ -628,7 +722,7 @@ export function ProceduresApp() {
       <PageHeader
         className="shrink-0"
         title="Procedures"
-        description="Reusable maintenance procedures with numbered steps, optional photos, and acknowledgments."
+        description="Numbered steps with optional photos. Set training priority (Mandatory / High / Low) for the compliance matrix; finish with sign-off — timestamps are stored for audit."
         icon={ClipboardList}
         actions={
           isCreating ? (
@@ -638,6 +732,7 @@ export function ProceduresApp() {
               onClick={() => {
                 setIsCreating(false);
                 setCreateKeywordsCsv("");
+                setCreateTrainingTier("general");
                 setErr(null);
               }}
               disabled={saving}
@@ -654,6 +749,7 @@ export function ProceduresApp() {
                   setSelectedId(null);
                   setEditing(false);
                   setCreateKeywordsCsv("");
+                  setCreateTrainingTier("general");
                   setErr(null);
                 }}
               >
@@ -750,6 +846,12 @@ export function ProceduresApp() {
         </div>
       ) : null}
 
+      {notice ? (
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-950 shadow-sm dark:border-emerald-500/35 dark:bg-emerald-950/40 dark:text-emerald-50">
+          {notice}
+        </div>
+      ) : null}
+
       {err ? (
         <div className="rounded-xl border border-ds-border bg-ds-primary px-4 py-3 text-sm font-medium text-ds-danger shadow-sm">
           {err}
@@ -796,6 +898,31 @@ export function ProceduresApp() {
               <p className="mt-1 text-[10px] text-ds-muted">
                 Comma-separated. Used only for lookup and filtering here — not shown on worker procedure steps.
               </p>
+              <label className="mt-3 block text-xs font-semibold uppercase text-ds-muted" htmlFor={`${formId}-new-priority`}>
+                Training priority (training matrix)
+              </label>
+              <select
+                id={`${formId}-new-priority`}
+                className="mt-1 w-full rounded-md border border-ds-border bg-ds-primary px-3 py-2 text-sm dark:bg-ds-secondary"
+                value={createTrainingTier}
+                onChange={(e) => setCreateTrainingTier(e.target.value as TrainingTier)}
+                disabled={saving || (isApiMode() && !canSetProcedureTrainingTier)}
+                title={
+                  isApiMode() && !canSetProcedureTrainingTier
+                    ? "Lead, supervisor, or manager can set training priority."
+                    : undefined
+                }
+              >
+                {PROCEDURE_TRAINING_PRIORITY_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+              <p className="mt-1 text-[10px] text-ds-muted">
+                Drives Mandatory / High risk / General columns on the team training matrix. Completion still requires{" "}
+                <span className="font-semibold text-ds-foreground">Sign off complete</span> (timestamped for compliance).
+              </p>
               {renderStepEditor(draftSteps, setDraftSteps, `${formId}-new`)}
               <button
                 type="button"
@@ -812,6 +939,7 @@ export function ProceduresApp() {
                   onClick={() => {
                     setIsCreating(false);
                     setCreateKeywordsCsv("");
+                    setCreateTrainingTier("general");
                     setErr(null);
                   }}
                   disabled={saving}
@@ -880,6 +1008,16 @@ export function ProceduresApp() {
               ) : null}
             </div>
 
+            {!editing ? (
+              <p className="mt-3 text-sm text-ds-muted">
+                <span className="font-semibold text-ds-foreground">Training priority:</span>{" "}
+                {trainingTierLabel(editTrainingTier)}
+                {isApiMode() && !canSetProcedureTrainingTier ? (
+                  <span className="block pt-1 text-xs">Ask a lead or supervisor to change priority — it controls the training matrix tier.</span>
+                ) : null}
+              </p>
+            ) : null}
+
             {editing ? (
               <>
                 {canReview ? (
@@ -918,6 +1056,30 @@ export function ProceduresApp() {
                   value={editKeywordsCsv}
                   onChange={(e) => setEditKeywordsCsv(e.target.value)}
                 />
+                <label className="mt-3 block text-xs font-semibold uppercase text-ds-muted" htmlFor={`${formId}-edit-priority`}>
+                  Training priority (training matrix)
+                </label>
+                <select
+                  id={`${formId}-edit-priority`}
+                  className="mt-1 w-full rounded-md border border-ds-border bg-ds-primary px-3 py-2 text-sm dark:bg-ds-secondary"
+                  value={editTrainingTier}
+                  onChange={(e) => setEditTrainingTier(e.target.value as TrainingTier)}
+                  disabled={saving || (isApiMode() && !canSetProcedureTrainingTier)}
+                  title={
+                    isApiMode() && !canSetProcedureTrainingTier
+                      ? "Lead, supervisor, or manager can set training priority."
+                      : undefined
+                  }
+                >
+                  {PROCEDURE_TRAINING_PRIORITY_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-1 text-[10px] text-ds-muted">
+                  Saved to compliance settings with acknowledgement required. Matrix reflects completion after workers sign off (timestamp archived).
+                </p>
                 {renderStepEditor(editSteps, setEditSteps, `${formId}-edit`)}
                 <button
                   type="button"
@@ -1011,13 +1173,21 @@ export function ProceduresApp() {
                   ))}
                 </ol>
                 <div className="flex flex-wrap items-center justify-between gap-3 border-t border-ds-border pt-5">
-                  <button
-                    type="button"
-                    onClick={() => setSelectedId(null)}
-                    className="rounded-md border border-ds-border px-4 py-2 text-sm font-semibold text-ds-foreground hover:bg-ds-secondary"
-                  >
-                    Back to library
-                  </button>
+                  <div className="min-w-0 space-y-1">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedId(null)}
+                      className="rounded-md border border-ds-border px-4 py-2 text-sm font-semibold text-ds-foreground hover:bg-ds-secondary"
+                    >
+                      Back to library
+                    </button>
+                    <p className="max-w-xl text-[11px] leading-snug text-ds-muted">
+                      Use <span className="font-semibold text-ds-foreground">Sign off complete</span> after finishing steps —
+                      {isApiMode()
+                        ? " the server stores a timestamp on your compliance record and updates the training matrix when this procedure is assigned to you."
+                        : " completion is tracked locally for demo mode."}
+                    </p>
+                  </div>
                   <div className="flex flex-wrap items-center gap-2">
                     {showAckCta ? (
                       <button

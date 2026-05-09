@@ -10,7 +10,7 @@ export default function StandardsRoutinesPage() {
     <div className="space-y-6">
       <PageHeader
         title="Routines"
-        description="Reusable shift checklists and recurring task templates. Staff run them from the schedule; completed runs live in the archive."
+        description="Shift checklists built from Procedures library records—the same SOPs that drive the training matrix. Author steps under Procedures; link them here as checklist lines."
         icon={ListTodo}
         actions={
           <Link

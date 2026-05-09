@@ -82,6 +82,8 @@ class ProcedureSignoffOut(BaseModel):
     id: str
     revision_marker: str
     created: bool
+    # UTC timestamp on the compliance sign-off row (audit archive).
+    completed_at: datetime
 
 
 class ProcedureAcknowledgementOut(BaseModel):

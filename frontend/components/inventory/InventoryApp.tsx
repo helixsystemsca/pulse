@@ -95,15 +95,6 @@ const SETTINGS_TABS = [
 ] as const;
 type SettingsTab = (typeof SETTINGS_TABS)[number];
 
-function initials(name: string | null | undefined, email: string | null | undefined): string {
-  if (name?.trim()) {
-    const p = name.trim().split(/\s+/).filter(Boolean);
-    if (p.length >= 2) return (p[0][0] + p[p.length - 1][0]).toUpperCase();
-    return p[0].slice(0, 2).toUpperCase();
-  }
-  return (email?.split("@")[0] ?? "").slice(0, 2).toUpperCase() || "?";
-}
-
 function formatTs(iso: string | null | undefined): string {
   if (!iso) return "—";
   return new Date(iso).toLocaleString(undefined, {
@@ -1071,14 +1062,13 @@ export function InventoryApp() {
               <p className="p-6 text-sm text-rose-600">{listError}</p>
             ) : (
               <div className="overflow-x-auto">
-                <table className="min-w-[1200px] w-full border-collapse text-left text-sm">
+                <table className="min-w-[1080px] w-full border-collapse text-left text-sm">
                   <thead>
                     <tr className="app-table-head-row border-pulse-border">
                       <th className="px-4 py-3">Item</th>
                       <th className="px-4 py-3">Category / type</th>
                       <th className="px-4 py-3">Status</th>
                       <th className="px-4 py-3">Quantity</th>
-                      <th className="px-4 py-3">Assigned to</th>
                       <th className="px-4 py-3">Location</th>
                       <th className="px-4 py-3">Last movement</th>
                       <th className="px-4 py-3">Condition</th>
@@ -1143,18 +1133,6 @@ export function InventoryApp() {
                               pending={Boolean(qtyPending[row.id])}
                               onUpdateQuantity={updateQuantity}
                             />
-                          </td>
-                          <td className="px-4 py-3 align-top">
-                            {row.assignee_name ? (
-                              <div className="flex items-center gap-2">
-                                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-100 text-[10px] font-bold text-pulse-navy">
-                                  {initials(row.assignee_name, null)}
-                                </span>
-                                <span className="text-pulse-navy">{row.assignee_name}</span>
-                              </div>
-                            ) : (
-                              <span className="text-pulse-muted">—</span>
-                            )}
                           </td>
                           <td className="px-4 py-3 align-top">
                             <span className="inline-flex items-center gap-1 text-pulse-navy">

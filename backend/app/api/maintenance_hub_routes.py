@@ -519,7 +519,12 @@ async def post_procedure_training_sign_off(
         revision_marker=marker,
     )
     await db.commit()
-    return ProcedureSignoffOut(id=str(row.id), revision_marker=str(row.revision_marker), created=created)
+    return ProcedureSignoffOut(
+        id=str(row.id),
+        revision_marker=str(row.revision_marker),
+        created=created,
+        completed_at=row.completed_at,
+    )
 
 
 @router.post("/procedures/{procedure_id}/acknowledgement", response_model=ProcedureAcknowledgementOut)
