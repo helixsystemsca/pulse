@@ -469,6 +469,7 @@ class InventoryItem(Base):
     item_condition: Mapped[str] = mapped_column(String(32), nullable=False, default="good")
     reorder_flag: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     unit_cost: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    vendor: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     last_movement_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
 
 

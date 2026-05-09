@@ -62,10 +62,11 @@ class InventoryRowOut(BaseModel):
     last_movement_at: Optional[datetime] = None
     last_used_at: Optional[datetime] = None
     usage_count: int
+    unit_cost: Optional[float] = None
+    vendor: Optional[str] = None
 
 
 class InventoryDetailOut(InventoryRowOut):
-    unit_cost: Optional[float] = None
     movements: list[InventoryMovementOut] = []
     usage: list[InventoryUsageOut] = []
     linked_work_requests: list[dict[str, str]] = []
@@ -91,6 +92,7 @@ class InventoryCreateIn(BaseModel):
     linked_tool_id: Optional[str] = None
     condition: str = Field("good", pattern="^(good|needs_maintenance|critical)$")
     unit_cost: Optional[float] = Field(None, ge=0)
+    vendor: Optional[str] = Field(None, max_length=255)
     reorder_flag: bool = False
 
 
@@ -107,6 +109,7 @@ class InventoryPatchIn(BaseModel):
     linked_tool_id: Optional[str] = None
     condition: Optional[str] = Field(None, pattern="^(good|needs_maintenance|critical)$")
     unit_cost: Optional[float] = Field(None, ge=0)
+    vendor: Optional[str] = Field(None, max_length=255)
     reorder_flag: Optional[bool] = None
 
 

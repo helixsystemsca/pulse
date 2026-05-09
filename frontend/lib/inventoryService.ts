@@ -57,10 +57,12 @@ export type InventoryRow = {
   last_movement_at: string | null;
   last_used_at: string | null;
   usage_count: number;
+  /** Unit cost (same field used for inventory value KPI). */
+  unit_cost?: number | null;
+  vendor?: string | null;
 };
 
 export type InventoryDetail = InventoryRow & {
-  unit_cost: number | null;
   movements: InventoryMovement[];
   usage: InventoryUsageRow[];
   linked_work_requests: { id: string; title: string }[];
@@ -144,6 +146,7 @@ export async function createInventoryItem(
     linked_tool_id?: string | null;
     condition: string;
     unit_cost?: number | null;
+    vendor?: string | null;
     reorder_flag?: boolean;
   },
 ): Promise<InventoryDetail> {

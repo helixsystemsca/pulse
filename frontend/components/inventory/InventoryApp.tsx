@@ -106,6 +106,11 @@ function formatTs(iso: string | null | undefined): string {
   });
 }
 
+function formatUnitCost(value: number | null | undefined): string {
+  if (value == null || Number.isNaN(Number(value))) return "—";
+  return `$${Number(value).toFixed(2)}`;
+}
+
 function statusBadge(status: string): string {
   switch (status) {
     case "assigned":
@@ -281,6 +286,7 @@ export function InventoryApp() {
     linked_tool_id: "",
     condition: "good",
     unit_cost: "",
+    vendor: "",
     reorder_flag: false,
   });
 
@@ -513,6 +519,7 @@ export function InventoryApp() {
       linked_tool_id: "",
       condition: "good",
       unit_cost: "",
+      vendor: "",
       reorder_flag: false,
     });
     setEditOpen(true);
@@ -533,7 +540,8 @@ export function InventoryApp() {
       assigned_user_id: row.assigned_user_id ?? "",
       linked_tool_id: row.linked_tool_id ?? "",
       condition: row.condition,
-      unit_cost: "",
+      unit_cost: row.unit_cost != null ? String(row.unit_cost) : "",
+      vendor: row.vendor ?? "",
       reorder_flag: row.reorder_flag,
     });
     setEditOpen(true);
@@ -555,6 +563,7 @@ export function InventoryApp() {
       linked_tool_id: d.linked_tool_id ?? "",
       condition: d.condition,
       unit_cost: d.unit_cost != null ? String(d.unit_cost) : "",
+      vendor: d.vendor ?? "",
       reorder_flag: d.reorder_flag,
     });
     setEditOpen(true);
@@ -579,6 +588,7 @@ export function InventoryApp() {
           linked_tool_id: d.linked_tool_id ?? "",
           condition: d.condition,
           unit_cost: d.unit_cost != null ? String(d.unit_cost) : "",
+          vendor: d.vendor ?? "",
           reorder_flag: d.reorder_flag,
         });
       } catch {
@@ -608,6 +618,7 @@ export function InventoryApp() {
         linked_tool_id: form.linked_tool_id || null,
         condition: form.condition,
         unit_cost: unit_cost != null && !Number.isNaN(unit_cost) ? unit_cost : null,
+        vendor: form.vendor.trim() || null,
         reorder_flag: form.reorder_flag,
       };
       if (editMode === "create") {
@@ -769,6 +780,8 @@ export function InventoryApp() {
       "Status",
       "Qty",
       "Unit",
+      "Vendor",
+      "Unit cost",
       "Assignee",
       "Location",
       "Condition",
@@ -782,6 +795,8 @@ export function InventoryApp() {
         r.inv_status,
         String(r.quantity),
         r.unit,
+        r.vendor ?? "",
+        r.unit_cost != null ? String(r.unit_cost) : "",
         r.assignee_name ?? "",
         r.location_name ?? "",
         r.condition,
@@ -1062,13 +1077,15 @@ export function InventoryApp() {
               <p className="p-6 text-sm text-rose-600">{listError}</p>
             ) : (
               <div className="overflow-x-auto">
-                <table className="min-w-[1080px] w-full border-collapse text-left text-sm">
+                <table className="min-w-[1240px] w-full border-collapse text-left text-sm">
                   <thead>
                     <tr className="app-table-head-row border-pulse-border">
                       <th className="px-4 py-3">Item</th>
                       <th className="px-4 py-3">Category / type</th>
                       <th className="px-4 py-3">Status</th>
                       <th className="px-4 py-3">Quantity</th>
+                      <th className="px-4 py-3">Vendor</th>
+                      <th className="px-4 py-3">Cost</th>
                       <th className="px-4 py-3">Location</th>
                       <th className="px-4 py-3">Last movement</th>
                       <th className="px-4 py-3">Condition</th>
@@ -1133,6 +1150,14 @@ export function InventoryApp() {
                               pending={Boolean(qtyPending[row.id])}
                               onUpdateQuantity={updateQuantity}
                             />
+                          </td>
+                          <td className="max-w-[12rem] px-4 py-3 align-top text-pulse-navy">
+                            <span className="line-clamp-2" title={row.vendor ?? undefined}>
+                              {row.vendor?.trim() ? row.vendor : "—"}
+                            </span>
+                          </td>
+                          <td className="whitespace-nowrap px-4 py-3 align-top tabular-nums text-pulse-navy">
+                            {formatUnitCost(row.unit_cost)}
                           </td>
                           <td className="px-4 py-3 align-top">
                             <span className="inline-flex items-center gap-1 text-pulse-navy">
@@ -1378,8 +1403,11 @@ export function InventoryApp() {
                 <p className="text-sm text-pulse-muted">
                   Qty: {detail.item_type === "tool" ? "1 (tracked)" : `${detail.quantity} ${detail.unit}`}
                 </p>
+                {detail.vendor?.trim() ? (
+                  <p className="text-sm text-pulse-muted">Vendor: {detail.vendor}</p>
+                ) : null}
                 {detail.unit_cost != null ? (
-                  <p className="text-sm text-pulse-muted">Unit cost: ${detail.unit_cost}</p>
+                  <p className="text-sm text-pulse-muted">Unit cost: {formatUnitCost(detail.unit_cost)}</p>
                 ) : null}
               </div>
               <div className="rounded-md border border-slate-200 bg-white p-4 shadow-sm dark:border-ds-border dark:bg-ds-primary dark:shadow-[0_2px_8px_rgba(0,0,0,0.35)]">
@@ -1615,6 +1643,15 @@ export function InventoryApp() {
                 </option>
               ))}
             </select>
+          </div>
+          <div>
+            <label className={LABEL}>Vendor (optional)</label>
+            <input
+              className={FIELD}
+              value={form.vendor}
+              onChange={(e) => setForm((f) => ({ ...f, vendor: e.target.value }))}
+              placeholder="Supplier or manufacturer"
+            />
           </div>
           <div>
             <label className={LABEL}>Unit cost (optional)</label>

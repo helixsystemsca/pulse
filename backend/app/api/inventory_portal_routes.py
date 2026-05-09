@@ -189,6 +189,8 @@ def _row(
         last_movement_at=item.last_movement_at,
         last_used_at=last_used,
         usage_count=item.usage_count,
+        unit_cost=item.unit_cost,
+        vendor=item.vendor,
     )
 
 
@@ -429,7 +431,6 @@ async def get_inventory_item(db: Db, _: MgrUser, cid: CompanyId, item_id: str) -
 
     return InventoryDetailOut(
         **base.model_dump(),
-        unit_cost=item.unit_cost,
         movements=movements,
         usage=usage_out,
         linked_work_requests=linked_wr,
@@ -474,6 +475,7 @@ async def create_inventory_item(
         item_condition=body.condition,
         reorder_flag=body.reorder_flag,
         unit_cost=body.unit_cost,
+        vendor=(body.vendor or "").strip() or None,
     )
     if body.assigned_user_id:
         item.inv_status = "assigned"
@@ -537,6 +539,9 @@ async def patch_inventory_item(
     ):
         if k in data and data[k] is not None:
             setattr(item, k, data[k])
+    if "vendor" in data:
+        vraw = data["vendor"]
+        item.vendor = None if vraw is None else (str(vraw).strip() or None)
     if "inv_status" not in data:
         _recompute_status(item)
     item.last_movement_at = datetime.now(timezone.utc)
