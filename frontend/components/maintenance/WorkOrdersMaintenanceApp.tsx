@@ -149,7 +149,7 @@ function WorkOrdersMaintenanceAppInner() {
 
   return (
     <div className="grid gap-6 lg:grid-cols-2">
-      <section className="rounded-md border border-ds-border bg-ds-primary p-4 shadow-[var(--ds-shadow-card)]">
+      <section className="ds-premium-panel p-4">
         <div className="flex flex-wrap items-center gap-3">
           <label className="text-xs font-semibold uppercase text-pulse-muted">
             Type
@@ -229,7 +229,7 @@ function WorkOrdersMaintenanceAppInner() {
         </div>
       </section>
 
-      <aside className="rounded-md border border-ds-border bg-ds-primary p-4 shadow-[var(--ds-shadow-card)]">
+      <aside className="ds-premium-panel p-4">
         {!detail ? (
           <p className="text-sm text-pulse-muted">Select a work order to view asset link and procedure steps.</p>
         ) : (

@@ -73,7 +73,7 @@ type CompanyOption = { id: string; name: string };
 const PRIMARY_BTN = cn(buttonVariants({ surface: "light", intent: "accent" }), "px-5 py-2.5");
 const FIELD = dsInputStackedClass;
 const LABEL = dsLabelClass;
-const SECTION_KICKER = "text-[11px] font-semibold uppercase tracking-wider text-ds-success";
+const SECTION_KICKER = "text-[11px] font-semibold uppercase tracking-wider text-ds-accent";
 
 const EMPTY_ROTATION_DAYS: boolean[] = [false, false, false, false, false, false, false];
 
@@ -3073,7 +3073,7 @@ export function WorkersApp() {
                   onClick={() => setSettingsTab(t)}
                   className={`rounded-lg px-2.5 py-2 text-center text-xs font-semibold transition-colors sm:text-sm ${
                     settingsTab === t
-                      ? "bg-ds-primary text-ds-success shadow-sm ring-1 ring-ds-border"
+                      ? "bg-[var(--pulse-segment-active-bg)] text-[var(--pulse-segment-active-fg)] shadow-sm"
                       : "text-ds-muted hover:bg-ds-interactive-hover"
                   }`}
                 >

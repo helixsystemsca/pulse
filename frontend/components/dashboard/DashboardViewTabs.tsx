@@ -24,7 +24,7 @@ export function DashboardViewTabs() {
 
   return (
     <div
-      className="mb-4 inline-flex w-fit max-w-full rounded-lg border border-ds-border bg-ds-secondary p-1 shadow-[var(--ds-shadow-card)]"
+      className="ds-card-secondary ds-card-static mb-4 inline-flex w-fit max-w-full rounded-lg p-1"
       role="navigation"
       aria-label="Dashboards"
     >

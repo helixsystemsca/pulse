@@ -13,7 +13,7 @@ export function SegmentedControl<T extends string>({
   options: { value: T; label: string }[];
 }) {
   return (
-    <div className="flex rounded-lg border border-ds-border bg-ds-secondary p-1 shadow-[var(--ds-shadow-card)]">
+    <div className="ds-card-secondary ds-card-static flex rounded-lg p-1">
       {options.map((o) => {
         const active = o.value === value;
         return (

@@ -53,7 +53,7 @@ function SafetyTile({ card }: { card: SafetyReminderCard }) {
   const Icon = ICONS[card.icon];
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col rounded-xl border border-ds-border bg-ds-primary p-3 shadow-[var(--ds-shadow-card)] sm:p-4">
+    <div className="ds-premium-panel flex min-h-0 flex-1 flex-col rounded-xl p-3 sm:p-4">
       <div className={cn("flex h-11 w-11 items-center justify-center rounded-lg", shell.iconWrap)}>
         <Icon className={cn("h-5 w-5", shell.icon)} aria-hidden />
       </div>

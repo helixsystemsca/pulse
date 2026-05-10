@@ -14,7 +14,7 @@ export function FeatureCard({
   icon: Icon,
   title,
   description,
-  iconClassName = "text-ds-success",
+  iconClassName = "text-ds-accent",
   variant = "default",
 }: FeatureCardProps) {
   return (
@@ -45,8 +45,8 @@ type SmallFeatureCardProps = {
 
 export function SmallFeatureCard({ icon, title, description }: SmallFeatureCardProps) {
   return (
-    <Card className="flex items-start gap-3 !p-5 shadow-[var(--ds-shadow-card)] md:!p-6" variant="primary">
-      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-ds-border bg-ds-secondary text-ds-success">
+    <Card className="flex items-start gap-3 !p-5 md:!p-6" variant="primary">
+      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-ds-border bg-ds-secondary text-ds-accent">
         {icon}
       </div>
       <div className="min-w-0">

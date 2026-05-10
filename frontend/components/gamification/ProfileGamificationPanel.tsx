@@ -84,7 +84,7 @@ export function ProfileGamificationPanel() {
 
   if (loading) {
     return (
-      <section className="ds-card-elevated flex items-center gap-2 border border-ds-border p-5 shadow-[var(--ds-shadow-card)]">
+      <section className="ds-card-elevated flex items-center gap-2 border border-ds-border p-5">
         <Loader2 className="h-4 w-4 animate-spin text-ds-muted" aria-hidden />
         <span className="text-sm text-ds-muted">Loading gamification…</span>
       </section>
@@ -103,7 +103,7 @@ export function ProfileGamificationPanel() {
   const unlocked = new Set(a.unlockedAvatarBorders ?? []);
 
   return (
-    <section className="ds-card-elevated space-y-5 border border-ds-border p-5 shadow-[var(--ds-shadow-card)]">
+    <section className="ds-card-elevated space-y-5 border border-ds-border p-5">
       <div>
         <h2 className="text-sm font-bold text-ds-foreground">Experience &amp; recognition</h2>
         <p className="mt-1 text-sm text-ds-muted">Level, XP segments, streak, badges, and avatar border (unlocks at levels 10 / 20 / 30 / 50).</p>

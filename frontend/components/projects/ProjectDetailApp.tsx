@@ -742,7 +742,7 @@ export function ProjectDetailApp({ projectId }: { projectId: string }) {
             </p>
           ) : null}
 
-          <div className="flex flex-wrap gap-2 rounded-lg border border-ds-border bg-ds-secondary p-1 shadow-[var(--ds-shadow-card)]">
+          <div className="ds-card-secondary ds-card-static flex flex-wrap gap-2 rounded-lg p-1">
             <button type="button" className={topTabClass(detailTab === "overview")} onClick={() => setDetailTab("overview")}>
               Overview
             </button>
@@ -1332,7 +1332,7 @@ export function ProjectDetailApp({ projectId }: { projectId: string }) {
 
           {detailTab === "work" ? (
             <>
-              <div className="flex max-w-2xl flex-wrap gap-2 rounded-lg border border-ds-border bg-ds-secondary p-1 shadow-[var(--ds-shadow-card)]">
+              <div className="ds-card-secondary ds-card-static flex max-w-2xl flex-wrap gap-2 rounded-lg p-1">
                 <button
                   type="button"
                   className={`inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm font-semibold transition-colors ${

@@ -37,13 +37,13 @@ export function CreateDropdown({
   return (
     <div className="relative" ref={ref}>
       <button type="button" className={BTN} aria-expanded={open} onClick={() => setOpen((o) => !o)}>
-        <Plus className="h-4 w-4 text-ds-success" strokeWidth={2} aria-hidden />
+        <Plus className="h-4 w-4 text-ds-accent" strokeWidth={2} aria-hidden />
         Create
         <ChevronDown className={`h-4 w-4 opacity-70 transition-transform ${open ? "rotate-180" : ""}`} />
       </button>
       {open ? (
         <div
-          className="absolute right-0 z-50 mt-1.5 min-w-[11rem] rounded-md border border-ds-border bg-ds-elevated py-1 shadow-[var(--ds-shadow-card)]"
+          className="ds-premium-panel absolute right-0 z-50 mt-1.5 min-w-[11rem] rounded-md py-1"
           role="menu"
         >
           <button

@@ -177,7 +177,7 @@ export function ScheduleWeekView({
             <div
               key={date}
               className={`bg-pulseShell-header-row px-1 py-2 text-center text-[11px] font-semibold uppercase tracking-wide ${
-                isToday ? "text-ds-success" : "text-ds-muted"
+                isToday ? "text-ds-accent" : "text-ds-muted"
               }`}
             >
               <div>{dow}</div>
@@ -278,7 +278,7 @@ export function ScheduleWeekView({
                 <button
                   type="button"
                   data-schedule-interactive
-                  className="rounded-md p-1 text-ds-muted hover:bg-ds-interactive-hover hover:text-ds-success"
+                  className="rounded-md p-1 text-ds-muted hover:bg-ds-interactive-hover hover:text-ds-accent"
                   aria-label={`Add shift on ${date}`}
                   onClick={() => onAddForDate(date)}
                 >

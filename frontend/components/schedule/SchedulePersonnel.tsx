@@ -63,7 +63,7 @@ export function SchedulePersonnel({
                 <td className="px-5 py-3 font-medium text-ds-foreground">
                   <Link
                     href={`/dashboard/workers?profile=${encodeURIComponent(w.id)}`}
-                    className="text-ds-foreground underline decoration-dotted underline-offset-2 hover:text-ds-success"
+                    className="text-ds-foreground underline decoration-dotted underline-offset-2 hover:text-ds-accent"
                   >
                     {w.name}
                   </Link>

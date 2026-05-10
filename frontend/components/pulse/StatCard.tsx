@@ -35,7 +35,7 @@ export function StatCard({ icon: Icon, title, subtitle, children, className = ""
   return (
     <Card className={className} variant="primary" padding="lg">
       <div className="mb-5 flex items-start gap-3">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-ds-border bg-ds-secondary text-ds-success">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-ds-border bg-ds-secondary text-ds-accent">
           <Icon className="h-5 w-5" strokeWidth={2} />
         </div>
         <div className="min-w-0 pt-0.5">

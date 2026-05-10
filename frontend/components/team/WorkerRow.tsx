@@ -44,7 +44,7 @@ export function WorkerRow({
     <button
       type="button"
       onClick={onClick}
-      className="group flex w-full items-center justify-between gap-3 rounded-xl border border-ds-border bg-white px-4 py-3 text-left shadow-[var(--ds-shadow-card)] transition-[transform,box-shadow,background-color] hover:-translate-y-[1px] hover:bg-[#F7F9FB] hover:shadow-[var(--ds-shadow-card-hover)] dark:bg-ds-surface-primary"
+      className="group ds-card-primary flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
     >
       <div className="flex min-w-0 items-center gap-3">
         <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-ds-secondary text-xs font-extrabold text-ds-muted tabular-nums">

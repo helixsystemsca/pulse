@@ -18,7 +18,7 @@ export function NodeCard({
     <button
       type="button"
       onClick={onClick}
-      className={`flex h-full w-full flex-col rounded-lg border-2 bg-[var(--ds-surface-primary)] px-2 py-1.5 text-left shadow-[var(--ds-shadow-card)] transition hover:shadow-[var(--ds-shadow-card-hover)] ${
+      className={`ds-card-primary flex h-full w-full flex-col rounded-lg border-2 px-2 py-1.5 text-left ${
         isCritical ? "border-[var(--pm-color-critical)]" : "border-[var(--ds-border)]"
       } `}
     >

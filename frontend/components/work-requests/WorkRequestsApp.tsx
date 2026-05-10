@@ -1330,7 +1330,9 @@ export function WorkRequestsApp() {
           type="button"
           onClick={() => setTab("my_work")}
           className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
-            tab === "my_work" ? "border-[#2B4C7E] bg-[#2B4C7E]/10 text-[#2B4C7E]" : "border-slate-200 bg-white text-pulse-muted hover:bg-ds-interactive-hover"
+            tab === "my_work"
+              ? "border-ds-accent bg-ds-accent/10 text-ds-accent dark:border-ds-accent dark:bg-ds-accent/15"
+              : "border-slate-200 bg-white text-pulse-muted hover:bg-ds-interactive-hover dark:border-ds-border dark:bg-ds-primary"
           }`}
         >
           Assigned to Me
@@ -1340,7 +1342,9 @@ export function WorkRequestsApp() {
             type="button"
             onClick={() => setTab("approval")}
             className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
-              tab === "approval" ? "border-[#2B4C7E] bg-[#2B4C7E]/10 text-[#2B4C7E]" : "border-slate-200 bg-white text-pulse-muted hover:bg-ds-interactive-hover"
+              tab === "approval"
+                ? "border-ds-accent bg-ds-accent/10 text-ds-accent dark:border-ds-accent dark:bg-ds-accent/15"
+                : "border-slate-200 bg-white text-pulse-muted hover:bg-ds-interactive-hover dark:border-ds-border dark:bg-ds-primary"
             }`}
           >
             Pending Approval
@@ -1351,7 +1355,9 @@ export function WorkRequestsApp() {
             type="button"
             onClick={() => setTab("all")}
             className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
-              tab === "all" ? "border-[#2B4C7E] bg-[#2B4C7E]/10 text-[#2B4C7E]" : "border-slate-200 bg-white text-pulse-muted hover:bg-ds-interactive-hover"
+              tab === "all"
+                ? "border-ds-accent bg-ds-accent/10 text-ds-accent dark:border-ds-accent dark:bg-ds-accent/15"
+                : "border-slate-200 bg-white text-pulse-muted hover:bg-ds-interactive-hover dark:border-ds-border dark:bg-ds-primary"
             }`}
           >
             All Requests
@@ -1467,7 +1473,7 @@ export function WorkRequestsApp() {
               </div>
               <button
                 type="button"
-                className="shrink-0 text-sm font-semibold text-[#2B4C7E] hover:underline dark:text-ds-success"
+                className="shrink-0 text-sm font-semibold text-ds-accent hover:underline"
                 onClick={clearFilters}
               >
                 Clear filters
@@ -2294,7 +2300,7 @@ export function WorkRequestsApp() {
                   <p className="mt-1.5 text-sm font-medium text-pulse-navy">
                     <Link
                       href={`/equipment/${encodeURIComponent(detail.equipment_id)}`}
-                      className="text-[#2B4C7E] underline-offset-2 hover:underline"
+                      className="text-ds-accent underline-offset-2 hover:underline"
                     >
                       {detail.equipment_name}
                     </Link>
@@ -2584,7 +2590,7 @@ export function WorkRequestsApp() {
                     onClick={() => setSettingsTab(t)}
                     className={`rounded-lg px-2.5 py-2 text-center text-xs font-semibold transition-colors sm:text-sm ${
                       settingsTab === t
-                        ? "bg-white text-[#2B4C7E] shadow-sm ring-1 ring-slate-200/90 dark:bg-[#1e3a5f] dark:text-sky-100 dark:ring-sky-500/35"
+                        ? "bg-ds-accent text-ds-accent-foreground shadow-sm ring-1 ring-ds-accent/25 dark:bg-[var(--pulse-segment-active-bg)] dark:text-[var(--pulse-segment-active-fg)] dark:ring-sky-400/35"
                         : "text-pulse-muted hover:bg-ds-interactive-hover-strong hover:text-pulse-navy dark:text-gray-400 dark:hover:bg-ds-interactive-hover"
                     }`}
                   >

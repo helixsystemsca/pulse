@@ -20,7 +20,7 @@ export function ZoneMapSection({
   assignedTagCount: number;
 }) {
   return (
-    <section className="rounded-md border border-ds-border bg-ds-primary p-5 shadow-[var(--ds-shadow-card)] md:p-6">
+    <section className="ds-premium-panel p-5 md:p-6">
       <div className="flex items-center gap-2">
         <MapPin className="h-5 w-5 text-ds-foreground" aria-hidden />
         <div>

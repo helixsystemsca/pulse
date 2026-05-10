@@ -95,7 +95,7 @@ function PassFailToggle({
 
 function SectionCard({ title, subtitle, children }: { title: string; subtitle?: string; children: ReactNode }) {
   return (
-    <section className="overflow-hidden rounded-2xl border border-ds-border bg-ds-primary shadow-[var(--ds-shadow-card)]">
+    <section className="ds-premium-panel overflow-hidden rounded-2xl">
       <div className="h-1 w-full bg-ds-success" aria-hidden />
       <div className="px-5 pb-5 pt-4">
         <div className="flex items-start justify-between gap-3">

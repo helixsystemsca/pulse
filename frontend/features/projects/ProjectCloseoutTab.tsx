@@ -71,7 +71,7 @@ export function ProjectCloseoutTab({ projectId, canManageSummary }: ProjectClose
     <div className="space-y-6">
       <Card padding="md" className="space-y-4">
         <div className="flex flex-wrap items-start gap-3">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-ds-border bg-ds-secondary text-ds-success shadow-[var(--ds-shadow-card)]">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-ds-border bg-ds-secondary text-ds-accent shadow-[var(--ds-shadow-card)]">
             <FileText className="h-5 w-5" strokeWidth={2} aria-hidden />
           </span>
           <div className="min-w-0 flex-1">

@@ -117,7 +117,7 @@ export function ScheduleSettingsModal({ open, onClose }: Props) {
                 }}
                 className={`rounded-lg px-2.5 py-2 text-center text-xs font-semibold transition-colors sm:text-sm ${
                   tab === t
-                    ? "bg-white text-[#2B4C7E] shadow-sm ring-1 ring-gray-200/90 dark:bg-[var(--pulse-segment-active-bg)] dark:text-[var(--pulse-segment-active-fg)] dark:shadow-sm dark:ring-1 dark:ring-sky-400/28"
+                    ? "bg-ds-accent text-ds-accent-foreground shadow-sm ring-1 ring-ds-accent/25 dark:bg-[var(--pulse-segment-active-bg)] dark:text-[var(--pulse-segment-active-fg)] dark:shadow-sm dark:ring-1 dark:ring-sky-400/28"
                     : "text-gray-500 hover:bg-ds-interactive-hover-strong hover:text-gray-900 dark:text-slate-400 dark:hover:bg-ds-interactive-hover dark:hover:text-slate-100"
                 }`}
               >

@@ -800,7 +800,7 @@ export function ProceduresApp() {
       <PageBody className="flex min-h-0 flex-1 flex-col overflow-hidden">
 
       {assignOpen ? (
-        <div className="rounded-xl border border-ds-border bg-white p-4 shadow-[var(--ds-shadow-card)] dark:bg-ds-surface-primary">
+        <div className="ds-premium-panel rounded-xl p-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="text-sm font-semibold text-ds-foreground">

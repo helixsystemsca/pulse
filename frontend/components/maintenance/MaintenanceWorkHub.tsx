@@ -17,7 +17,7 @@ export function MaintenanceWorkHub() {
         <WorkRequestsApp />
       </Suspense>
 
-      <details className="group rounded-md border border-ds-border bg-ds-primary shadow-[var(--ds-shadow-card)]">
+      <details className="group ds-premium-panel">
         <summary className="cursor-pointer list-none px-4 py-3 text-sm font-semibold text-ds-foreground marker:content-none md:px-5 md:py-4 [&::-webkit-details-marker]:hidden">
           <span className="text-ds-muted group-open:hidden">Preventative scheduling (rules)</span>
           <span className="hidden text-ds-muted group-open:inline">Preventative scheduling — hide</span>

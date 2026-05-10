@@ -68,7 +68,7 @@ export function PmNetworkDiagram({ tasks, cpm }: { tasks: PmTask[]; cpm: CPMResu
   const scaledH = svgHeight * scale;
 
   return (
-    <div className="flex min-h-[480px] flex-col overflow-hidden rounded-lg border border-[var(--ds-border)] bg-[var(--ds-surface-secondary)] shadow-[var(--ds-shadow-card)]">
+    <div className="ds-premium-panel flex min-h-[480px] flex-col overflow-hidden">
       <div className="flex flex-wrap items-center gap-2 border-b border-[var(--ds-border)] bg-[var(--ds-primary)] px-3 py-2">
         <span className="text-[10px] font-bold uppercase tracking-wide text-[var(--pm-color-muted)]">Zoom</span>
         <button

@@ -278,7 +278,7 @@ function HighlightStripLight({ highlights, large }: { highlights: TeamHighlight[
       {highlights.map((h, i) => (
         <div
           key={`${h.user}-${i}`}
-          className="flex gap-3 rounded-xl border border-ds-border bg-ds-primary p-3 shadow-[var(--ds-shadow-card)]"
+          className="ds-premium-panel flex gap-3 rounded-xl p-3"
         >
           <Award className="mt-0.5 h-5 w-5 shrink-0 text-ds-accent" aria-hidden />
           <div className="min-w-0">
@@ -328,7 +328,7 @@ function OnShiftWorkersRail({
               return (
                 <div
                   key={w.workerId}
-                  className="shrink-0 rounded-lg border border-ds-border bg-ds-primary px-2.5 py-2 shadow-[var(--ds-shadow-card)]"
+                  className="ds-premium-panel shrink-0 rounded-lg px-2.5 py-2"
                 >
                   <div className="flex gap-2.5">
                     {w.avatarUrl ? (
@@ -441,7 +441,7 @@ function KioskSectionBody({ section, dense }: { section: KioskSection; dense?: b
           <p className="text-sm text-ds-muted">No blocked tasks.</p>
         ) : (
           b.items.map((it) => (
-            <div key={it.title} className="rounded-xl border border-ds-danger/35 bg-ds-primary px-4 py-3 shadow-[var(--ds-shadow-card)]">
+            <div key={it.title} className="ds-premium-panel rounded-xl border border-ds-danger/35 px-4 py-3">
               <p className="text-sm font-bold text-ds-foreground">{it.title}</p>
               {it.subtitle ? <p className="mt-1 text-xs text-ds-muted">{it.subtitle}</p> : null}
             </div>
@@ -459,7 +459,7 @@ function KioskSectionBody({ section, dense }: { section: KioskSection; dense?: b
           return (
             <li
               key={line}
-              className="flex min-h-0 items-start justify-between gap-3 rounded-lg border border-ds-border bg-ds-primary px-3 py-2 shadow-[var(--ds-shadow-card)]"
+              className="ds-premium-panel flex min-h-0 items-start justify-between gap-3 rounded-lg px-3 py-2"
             >
               <div className="min-w-0">
                 <p className="truncate text-sm font-semibold text-ds-foreground">{title}</p>
@@ -608,7 +608,7 @@ export function ProjectKioskDisplay({ projectId }: { projectId: string }) {
         <p className="mt-4 max-w-lg text-lg text-ds-muted">{err}</p>
         <button
           type="button"
-          className="mt-8 rounded-lg border border-ds-border bg-ds-primary px-6 py-3 text-lg font-semibold shadow-[var(--ds-shadow-card)] hover:bg-ds-secondary"
+          className="ds-premium-panel mt-8 rounded-lg px-6 py-3 text-lg font-semibold transition hover:brightness-[1.03] dark:hover:brightness-110"
           onClick={() => void exit()}
         >
           Exit
@@ -642,7 +642,7 @@ export function ProjectKioskDisplay({ projectId }: { projectId: string }) {
         "flex h-[100dvh] max-h-[100dvh] flex-col overflow-hidden bg-ds-bg text-ds-foreground",
       )}
     >
-      <header className="shrink-0 border-b border-ds-border bg-ds-primary px-2.5 py-1.5 shadow-[var(--ds-shadow-card)] sm:px-3 sm:py-1.5">
+      <header className="ds-premium-panel shrink-0 rounded-none border-x-0 border-t-0 border-b border-ds-border px-2.5 py-1.5 sm:px-3 sm:py-1.5">
         <div className="flex flex-wrap items-start gap-x-3 gap-y-1.5 xl:flex-nowrap xl:justify-between">
           <div className="flex min-w-0 shrink-0 items-start gap-2.5">
             <div className="relative mt-0.5 h-10 w-10 shrink-0 sm:h-11 sm:w-11">

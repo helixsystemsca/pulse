@@ -291,7 +291,7 @@ export function ScheduleCalendarGrid({
                   <button
                     type="button"
                     data-schedule-interactive
-                    className="rounded-md p-1 text-ds-muted hover:bg-ds-interactive-hover hover:text-ds-success"
+                    className="rounded-md p-1 text-ds-muted hover:bg-ds-interactive-hover hover:text-ds-accent"
                     aria-label={`Add shift on ${c.date}`}
                     onClick={() => onAddForDate(c.date)}
                   >

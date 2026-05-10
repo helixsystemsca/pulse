@@ -55,7 +55,7 @@ export function PmGantt({
   const rows = useMemo(() => tasks.map((t) => ({ t, row: cpm.byId[t.id] })), [tasks, cpm]);
 
   return (
-    <div className="flex min-h-[420px] flex-col rounded-lg border border-[var(--ds-border)] bg-[var(--ds-surface-primary)] shadow-[var(--ds-shadow-card)]">
+    <div className="ds-premium-panel flex min-h-[420px] flex-col">
       <div className="flex min-h-0 flex-1 overflow-hidden">
         <div className="w-72 shrink-0 overflow-y-auto border-r border-[var(--ds-border)] bg-[var(--ds-surface-primary)]">
           <div className="sticky top-0 z-10 h-9 border-b border-[var(--ds-border)] bg-[var(--ds-header)]" />

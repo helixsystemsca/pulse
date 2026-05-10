@@ -3603,7 +3603,7 @@ export function BlueprintDesigner({
       return <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col">{node}</div>;
     }
     return (
-      <div className="flex min-h-0 flex-1 flex-col rounded-lg border border-ds-border bg-ds-primary p-2 shadow-[var(--ds-shadow-card)]">
+      <div className="ds-premium-panel flex min-h-0 flex-1 flex-col p-2">
         {node}
       </div>
     );

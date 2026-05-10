@@ -9,7 +9,7 @@ function HandoverCard({ card }: { card: HandoverNoteCard }) {
     return (
       <div
         className={cn(
-          "flex min-h-0 flex-1 flex-col rounded-xl border border-ds-border bg-ds-primary p-4 shadow-[var(--ds-shadow-card)] sm:p-5",
+          "flex min-h-0 flex-1 flex-col ds-premium-panel rounded-xl p-4 sm:p-5",
           "opacity-[0.72]",
         )}
       >
@@ -28,7 +28,7 @@ function HandoverCard({ card }: { card: HandoverNoteCard }) {
   return (
     <div
       className={cn(
-        "flex min-h-0 flex-1 flex-col rounded-xl border border-ds-border border-t-4 bg-ds-primary p-4 shadow-[var(--ds-shadow-card)] sm:p-5",
+        "flex min-h-0 flex-1 flex-col ds-premium-panel rounded-xl border-t-4 p-4 sm:p-5",
         accent,
       )}
     >

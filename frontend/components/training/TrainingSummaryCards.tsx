@@ -21,7 +21,7 @@ function Card({
         ? "border-[color-mix(in_srgb,var(--ds-warning)_35%,transparent)]"
         : "border-ds-border";
   return (
-    <div className={cn("rounded-xl border bg-ds-primary p-4 shadow-[var(--ds-shadow-card)]", border)}>
+    <div className={cn("ds-premium-panel p-4", border)}>
       <p className="text-[11px] font-bold uppercase tracking-wide text-ds-muted">{label}</p>
       <p className="mt-2 font-headline text-3xl font-semibold tabular-nums text-ds-foreground">{value}</p>
       {hint ? <p className="mt-1 text-xs text-ds-muted">{hint}</p> : null}

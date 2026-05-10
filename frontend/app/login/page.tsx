@@ -344,7 +344,7 @@ export default function LoginPage() {
                 <div className="mt-4 flex flex-wrap items-center justify-between gap-2 pt-0.5 text-[11px] font-semibold uppercase tracking-wide">
                   <a
                     href={mailtoInfo("Pulse — credentials help")}
-                    className="text-[color-mix(in_srgb,var(--ds-success)_78%,#1a4d44)] no-underline hover:underline dark:text-ds-success"
+                    className="text-ds-accent no-underline hover:underline"
                   >
                     Forgot credentials?
                   </a>

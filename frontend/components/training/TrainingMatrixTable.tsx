@@ -84,7 +84,7 @@ export function TrainingMatrixTable({
     cols.length === 0 ? "100%" : manyPrograms ? "11rem" : `calc(100% - ${cols.length} * (100% / 12))`;
 
   return (
-    <div className="overflow-x-auto rounded-xl border border-ds-border bg-ds-primary shadow-[var(--ds-shadow-card)]">
+    <div className="ds-premium-panel overflow-x-auto">
       <table className="min-w-[640px] w-full table-fixed border-collapse text-sm">
         <colgroup>
           <col style={{ width: employeeColShare }} />

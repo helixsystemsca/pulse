@@ -234,7 +234,7 @@ export function LiveActivityFeed({
 
   return (
     <section
-      className="rounded-md border border-ds-border bg-ds-primary p-5 shadow-[var(--ds-shadow-card)] md:p-6"
+      className="ds-premium-panel p-5 md:p-6"
       onPointerEnter={() => {
         pauseLiveUpdatesRef.current = true;
         if (catchUpTimerRef.current != null) window.clearTimeout(catchUpTimerRef.current);

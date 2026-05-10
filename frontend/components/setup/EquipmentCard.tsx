@@ -4,7 +4,7 @@ import { Link2, Wrench } from "lucide-react";
 import type { EquipmentOut } from "@/lib/setup-api";
 
 const cardBase =
-  "rounded-md border border-ds-border bg-ds-primary p-5 shadow-[var(--ds-shadow-card)]";
+  "ds-premium-panel p-5";
 
 export function EquipmentCard({
   equipment,
@@ -49,7 +49,7 @@ export function EquipmentCard({
           <button
             type="button"
             onClick={onLinkBle}
-            className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-[#2B4C7E] hover:underline"
+            className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-ds-accent hover:underline"
           >
             <Link2 className="h-3.5 w-3.5" aria-hidden />
             {linked ? "Change tag" : "Link BLE tag"}

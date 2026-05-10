@@ -110,8 +110,8 @@ export function SetupProgress({
 
   const sectionClass =
     phase === "exit"
-      ? "setup-progress-card-exit rounded-md border border-ds-border bg-ds-primary p-5 shadow-[var(--ds-shadow-card)] md:p-6"
-      : "rounded-md border border-ds-border bg-ds-primary p-5 shadow-[var(--ds-shadow-card)] md:p-6";
+      ? "setup-progress-card-exit ds-premium-panel p-5 md:p-6"
+      : "ds-premium-panel p-5 md:p-6";
 
   const pctClass =
     phase === "pulse"

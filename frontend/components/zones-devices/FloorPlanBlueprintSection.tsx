@@ -178,7 +178,7 @@ export function FloorPlanBlueprintSection() {
   }
 
   return (
-    <div className="rounded-lg border border-ds-border bg-ds-primary p-4 shadow-[var(--ds-shadow-card)]">
+    <div className="ds-premium-panel p-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div className="min-w-0 flex-1">
           <label htmlFor="floor-plan-blueprint" className="text-xs font-semibold uppercase tracking-wide text-ds-muted">

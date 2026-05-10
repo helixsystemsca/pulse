@@ -912,7 +912,7 @@ export function InventoryApp() {
               onClick={() => setInventoryTab("items")}
               className={`rounded-md px-4 py-2 text-sm font-semibold transition ${
                 inventoryTab === "items"
-                  ? "bg-[#2B4C7E] text-white shadow-sm dark:bg-emerald-700"
+                  ? "bg-ds-accent text-ds-accent-foreground shadow-sm"
                   : "text-pulse-muted hover:bg-ds-interactive-hover dark:hover:bg-ds-interactive-hover"
               }`}
             >
@@ -923,7 +923,7 @@ export function InventoryApp() {
               onClick={() => setInventoryTab("vendors")}
               className={`inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm font-semibold transition ${
                 inventoryTab === "vendors"
-                  ? "bg-[#2B4C7E] text-white shadow-sm dark:bg-emerald-700"
+                  ? "bg-ds-accent text-ds-accent-foreground shadow-sm"
                   : "text-pulse-muted hover:bg-ds-interactive-hover dark:hover:bg-ds-interactive-hover"
               }`}
             >
@@ -944,7 +944,7 @@ export function InventoryApp() {
                   value: sum.total_items,
                   icon: Package,
                   sub: null as string | null,
-                  tone: "text-[#2B4C7E]",
+                  tone: "text-ds-accent",
                 },
                 {
                   label: "In stock",
@@ -1026,7 +1026,7 @@ export function InventoryApp() {
                 }}
                 className={`rounded-full px-3.5 py-1.5 text-xs font-bold transition-colors ${
                   statusFilter === t.id
-                    ? "bg-[#2B4C7E] text-white shadow-sm dark:bg-[#3B82F6]"
+                    ? "bg-ds-accent text-ds-accent-foreground shadow-sm"
                     : "bg-slate-100 text-pulse-navy hover:bg-ds-interactive-hover-strong dark:bg-ds-secondary dark:text-white dark:hover:bg-ds-interactive-hover"
                 }`}
               >
@@ -1764,7 +1764,9 @@ export function InventoryApp() {
                   type="button"
                   onClick={() => setSettingsTab(t)}
                   className={`rounded-lg px-3 py-2 text-left text-sm font-semibold ${
-                    settingsTab === t ? "bg-[#ebf8ff] text-[#2B4C7E]" : "text-pulse-navy hover:bg-ds-interactive-hover"
+                    settingsTab === t
+                      ? "bg-ds-accent/10 text-ds-accent dark:bg-ds-accent/15"
+                      : "text-pulse-navy hover:bg-ds-interactive-hover dark:text-gray-100"
                   }`}
                 >
                   {t}

@@ -42,7 +42,7 @@ export function PmResourceView({
   }, [conflicts]);
 
   return (
-    <div className="overflow-hidden rounded-lg border border-[var(--ds-border)] bg-[var(--ds-surface-primary)] shadow-[var(--ds-shadow-card)]">
+    <div className="ds-premium-panel overflow-hidden">
       {conflicts.length === 0 ? (
         <div className="flex items-center gap-2 border-b border-[var(--ds-border)] bg-[color-mix(in_srgb,var(--pm-color-primary)_12%,transparent)] px-4 py-2 text-sm font-medium text-[var(--ds-text-primary)]">
           <span aria-hidden>✓</span>

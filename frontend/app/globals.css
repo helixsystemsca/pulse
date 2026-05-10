@@ -100,21 +100,21 @@ html.pulse-welcome-blur [data-pulse-app-shell] {
   /** Top bar (iron grey): translucent ice overlays */
   --ds-chrome-interactive-hover: color-mix(in srgb, var(--ds-palette-ice-mid) 28%, transparent);
   --ds-chrome-interactive-active: color-mix(in srgb, var(--ds-palette-ice-deep) 34%, transparent);
-  /** Soft outer glow + inset highlight — premium SaaS panels (light). */
+  /** Soft shadow + subtle accent fringe — premium panels (light); keep fringe faint vs. UI noise. */
   --ds-shadow-card:
     0 1px 0 rgba(255, 255, 255, 0.78) inset,
     0 2px 6px rgba(15, 23, 42, 0.05),
-    0 14px 46px -16px rgba(99, 102, 241, 0.2),
-    0 26px 58px -22px rgba(56, 189, 248, 0.18);
+    0 12px 40px -18px rgba(99, 102, 241, 0.1),
+    0 22px 52px -24px rgba(56, 189, 248, 0.09);
   --ds-shadow-card-hover:
     0 1px 0 rgba(255, 255, 255, 0.88) inset,
     0 8px 22px -8px rgba(15, 23, 42, 0.08),
-    0 22px 52px -18px rgba(129, 140, 248, 0.22),
-    0 36px 72px -26px rgba(56, 189, 248, 0.22);
+    0 18px 48px -20px rgba(129, 140, 248, 0.12),
+    0 30px 64px -26px rgba(56, 189, 248, 0.13);
   --ds-shadow-diffuse:
     0 1px 0 rgba(255, 255, 255, 0.65) inset,
     0 4px 16px rgba(15, 23, 42, 0.05),
-    0 20px 48px -20px rgba(99, 102, 241, 0.14);
+    0 16px 42px -22px rgba(99, 102, 241, 0.07);
   --ds-chart-grid: rgba(15, 23, 42, 0.06);
   --ds-focus-ring: color-mix(in srgb, var(--ds-palette-ice-deep) 42%, transparent);
   --ds-radius-card: 1rem;
@@ -146,10 +146,10 @@ html.pulse-welcome-blur [data-pulse-app-shell] {
     0 1px 0 rgb(255 255 255 / 0.72) inset, 0 2px 4px rgb(15 23 42 / 0.04), 0 14px 36px -12px rgb(15 23 42 / 0.14);
   --dash-shadow-card-mid:
     0 1px 0 rgb(255 255 255 / 0.65) inset, 0 4px 14px -4px rgb(15 23 42 / 0.07),
-    0 22px 48px -16px rgb(59 130 246 / 0.18);
+    0 20px 44px -18px rgb(59 130 246 / 0.1);
   --dash-shadow-card-hover:
     0 1px 0 rgb(255 255 255 / 0.88) inset, 0 10px 28px -6px rgb(15 23 42 / 0.1),
-    0 32px 64px -18px rgb(56 189 248 / 0.26);
+    0 28px 58px -20px rgb(56 189 248 / 0.14);
 
   /** PM planning shell — alias tokens (use with `style` or arbitrary props). */
   --pm-color-primary: var(--ds-accent);
@@ -225,12 +225,12 @@ html.pulse-welcome-blur [data-pulse-app-shell] {
   --ds-shadow-card:
     0 1px 0 rgba(255, 255, 255, 0.06) inset,
     0 2px 12px rgba(0, 0, 0, 0.22),
-    0 18px 44px -18px rgba(56, 189, 248, 0.16);
+    0 16px 40px -20px rgba(56, 189, 248, 0.09);
   --ds-shadow-card-hover:
     0 1px 0 rgba(255, 255, 255, 0.08) inset,
     0 6px 22px rgba(0, 0, 0, 0.28),
-    0 26px 52px -20px rgba(129, 140, 248, 0.18);
-  --ds-shadow-diffuse: 0 2px 20px rgba(0, 0, 0, 0.22), 0 16px 40px -18px rgba(56, 189, 248, 0.1);
+    0 22px 48px -22px rgba(129, 140, 248, 0.11);
+  --ds-shadow-diffuse: 0 2px 20px rgba(0, 0, 0, 0.22), 0 14px 36px -20px rgba(56, 189, 248, 0.06);
   --ds-premium-card-bg:
     radial-gradient(900px 480px at 90% -6%, color-mix(in srgb, var(--ds-accent) 18%, transparent), transparent 52%),
     radial-gradient(720px 400px at -4% 102%, color-mix(in srgb, #818cf8 14%, transparent), transparent 48%),
@@ -460,8 +460,10 @@ html.pulse-welcome-blur [data-pulse-app-shell] {
     background-image: var(--ds-premium-card-elevated-bg);
   }
 
-  /** Panels that are not `Card` — procedures, settings sections, etc. */
-  .ds-premium-panel {
+  /**
+   * Premium panel surfaces — shared by standalone panels, data shells, and dashboard wrappers.
+   */
+  :is(.ds-premium-panel, .app-data-shell, .ds-dashboard-shell) {
     position: relative;
     overflow: hidden;
     border-radius: var(--ds-radius-card);
@@ -470,10 +472,14 @@ html.pulse-welcome-blur [data-pulse-app-shell] {
     background-image: var(--ds-premium-card-bg);
     box-shadow: var(--ds-shadow-card);
   }
-  .dark .ds-premium-panel {
+  .dark :is(.ds-premium-panel, .app-data-shell, .ds-dashboard-shell) {
     border-color: var(--ds-border);
     background-image: var(--ds-premium-card-bg);
     box-shadow: var(--ds-shadow-card);
+  }
+  .ds-dashboard-shell {
+    display: flex;
+    flex-direction: column;
   }
   .ds-premium-inset {
     position: relative;
@@ -484,7 +490,7 @@ html.pulse-welcome-blur [data-pulse-app-shell] {
     background-image: var(--ds-premium-inset-bg);
     box-shadow:
       0 1px 0 rgba(255, 255, 255, 0.75) inset,
-      0 4px 20px -8px rgba(99, 102, 241, 0.12);
+      0 4px 18px -10px rgba(99, 102, 241, 0.06);
   }
   .dark .ds-premium-inset {
     border-color: var(--ds-border);
@@ -581,14 +587,6 @@ html.pulse-welcome-blur [data-pulse-app-shell] {
     border-radius: var(--ds-radius-card);
     border: 1px solid var(--ds-border);
     background-color: var(--ds-surface-secondary);
-  }
-
-  .app-data-shell {
-    overflow: hidden;
-    border-radius: var(--ds-radius-card);
-    border: 1px solid var(--ds-border);
-    background-color: var(--ds-surface-primary);
-    box-shadow: var(--ds-shadow-card);
   }
 
   /**
@@ -989,24 +987,13 @@ html.pulse-welcome-blur [data-pulse-app-shell] {
 
   .ds-link {
     font-weight: 600;
-    color: var(--ds-success);
+    color: var(--ds-accent);
     text-decoration: underline;
     text-underline-offset: 2px;
     transition: filter 150ms ease;
   }
   .ds-link:hover {
     filter: brightness(1.12);
-  }
-
-  /** Dashboard / nested panels */
-  .ds-dashboard-shell {
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    border-radius: var(--ds-radius-card);
-    border: 1px solid var(--ds-border);
-    background-color: var(--ds-surface-primary);
-    box-shadow: var(--ds-shadow-card);
   }
 
   /**
@@ -1087,7 +1074,7 @@ html.pulse-welcome-blur [data-pulse-app-shell] {
     box-shadow: 0 2px 14px rgb(0 0 0 / 0.35), 0 14px 44px -12px rgb(0 0 0 / 0.45);
   }
   .dark .dash-card:hover {
-    box-shadow: 0 4px 22px rgb(0 0 0 / 0.42), 0 26px 52px -14px rgb(56 189 248 / 0.18);
+    box-shadow: 0 4px 22px rgb(0 0 0 / 0.42), 0 24px 48px -16px rgb(56 189 248 / 0.09);
   }
   .dark .dash-card--static:hover {
     box-shadow: 0 2px 14px rgb(0 0 0 / 0.35), 0 14px 44px -12px rgb(0 0 0 / 0.45);

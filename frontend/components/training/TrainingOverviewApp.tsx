@@ -306,7 +306,7 @@ function TrainingLeadershipOverviewInner() {
 
   return (
     <div className="space-y-8">
-      <div className="rounded-xl border border-ds-border bg-ds-primary/80 p-4 shadow-[var(--ds-shadow-card)] sm:p-5">
+      <div className="ds-premium-panel p-4 sm:p-5">
         <div className="flex flex-wrap items-start gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[color-mix(in_srgb,var(--ds-accent)_14%,transparent)] text-[var(--ds-accent)]">
             <GraduationCap className="h-5 w-5" aria-hidden />

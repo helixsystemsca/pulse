@@ -72,7 +72,7 @@ const TAB_IDLE =
 
 /** Matches former Assignments overview inset cards. */
 const TAB_SUMMARY_PANEL =
-  "rounded-md border border-ds-border bg-ds-primary p-5 shadow-[var(--ds-shadow-card)] md:p-6";
+  "ds-premium-panel p-5 md:p-6";
 const TAB_SUMMARY_INSET =
   "flex flex-col rounded-lg bg-ds-secondary/60 px-3 py-2 ring-1 ring-ds-border text-sm";
 const ICON_BTN =
@@ -1013,7 +1013,7 @@ export function SetupApp({ defaultTab }: { defaultTab?: TabId }) {
                 </p>
               ) : null}
             </div>
-            <div className="rounded-md border border-ds-border bg-ds-primary p-5 shadow-[var(--ds-shadow-card)]">
+            <div className="ds-premium-panel p-5">
               <h3 className="font-semibold text-ds-foreground">Add gateway</h3>
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
                 <div className="sm:col-span-2">
@@ -1176,7 +1176,7 @@ export function SetupApp({ defaultTab }: { defaultTab?: TabId }) {
             </div>
             <div
               ref={registerTagFormRef}
-              className="rounded-md border border-ds-border bg-ds-primary p-5 shadow-[var(--ds-shadow-card)]"
+              className="ds-premium-panel p-5"
             >
               <h3 className="font-semibold text-ds-foreground">Register tag</h3>
               <div className="mt-4 grid gap-3">
@@ -1272,7 +1272,7 @@ export function SetupApp({ defaultTab }: { defaultTab?: TabId }) {
             <strong className="text-ds-foreground">Gateways &amp; sensors</strong> tab, or use Assign on each tag card. Roster
             for reference:
           </p>
-          <div className="overflow-hidden rounded-md border border-ds-border bg-ds-primary shadow-[var(--ds-shadow-card)]">
+          <div className="ds-premium-panel overflow-hidden">
             <table className="w-full text-left text-sm">
               <thead className="bg-ds-secondary/60 text-[11px] font-semibold uppercase tracking-wider text-ds-muted">
                 <tr>
@@ -1445,7 +1445,7 @@ export function SetupApp({ defaultTab }: { defaultTab?: TabId }) {
               No zones yet. Create regions of your facility, then assign gateways.
             </p>
           ) : null}
-          <div className="rounded-md border border-ds-border bg-ds-primary p-5 shadow-[var(--ds-shadow-card)] md:max-w-lg">
+          <div className="ds-premium-panel p-5 md:max-w-lg">
             <h3 className="font-semibold text-ds-foreground">Create zone</h3>
             <label className={LABEL}>Name</label>
             <input className={FIELD} value={zoneName} onChange={(e) => setZoneName(e.target.value)} placeholder="Receiving" />

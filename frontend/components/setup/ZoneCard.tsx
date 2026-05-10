@@ -4,8 +4,7 @@ import { Loader2, MapPin, Pencil, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { ZoneOut } from "@/lib/setup-api";
 
-const cardBase =
-  "rounded-md border border-ds-border bg-ds-primary p-5 shadow-[var(--ds-shadow-card)]";
+const cardBase = "ds-premium-panel p-5";
 
 const FIELD =
   "mt-1.5 w-full rounded-md border border-ds-border bg-ds-primary px-3 py-2 text-sm text-ds-foreground shadow-[var(--ds-shadow-card)] placeholder:text-ds-muted focus:outline-none focus:ring-1 focus:ring-ds-border/50 dark:bg-ds-secondary";

@@ -18,7 +18,7 @@ function ActivityRow({ row }: { row: TeamInsightsActivity }) {
   return (
     <button
       type="button"
-      className="flex w-full items-start justify-between gap-3 rounded-xl border border-ds-border bg-white px-4 py-3 text-left shadow-[var(--ds-shadow-card)] transition-[transform,box-shadow,background-color] hover:-translate-y-[1px] hover:bg-[#F7F9FB] hover:shadow-[var(--ds-shadow-card-hover)] dark:bg-ds-surface-primary"
+      className="ds-card-primary flex w-full items-start justify-between gap-3 px-4 py-3 text-left"
     >
       <div className="min-w-0">
         <p className="truncate text-sm font-extrabold text-ds-foreground">{row.userName}</p>
@@ -128,16 +128,13 @@ export function TeamInsightsApp() {
 
       <PageBody>
         {err ? (
-          <div className="rounded-xl border border-ds-border bg-ds-primary px-4 py-3 text-sm font-medium text-ds-danger shadow-sm">
+          <div className="ds-premium-panel rounded-xl px-4 py-3 text-sm font-medium text-ds-danger">
             {err}
           </div>
         ) : null}
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-        <Card
-          padding="md"
-          className="group transition-[transform,box-shadow] hover:-translate-y-[1px] hover:shadow-[var(--ds-shadow-card-hover)]"
-        >
+        <Card padding="md">
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-ds-muted">Team XP Earned</p>
@@ -153,10 +150,7 @@ export function TeamInsightsApp() {
           </div>
         </Card>
 
-        <Card
-          padding="md"
-          className="group transition-[transform,box-shadow] hover:-translate-y-[1px] hover:shadow-[var(--ds-shadow-card-hover)]"
-        >
+        <Card padding="md">
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-ds-muted">Active Streaks</p>
@@ -172,10 +166,7 @@ export function TeamInsightsApp() {
           </div>
         </Card>
 
-        <Card
-          padding="md"
-          className="group transition-[transform,box-shadow] hover:-translate-y-[1px] hover:shadow-[var(--ds-shadow-card-hover)]"
-        >
+        <Card padding="md">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-ds-muted">Top Performer</p>
@@ -188,10 +179,7 @@ export function TeamInsightsApp() {
           </div>
         </Card>
 
-        <Card
-          padding="md"
-          className="group transition-[transform,box-shadow] hover:-translate-y-[1px] hover:shadow-[var(--ds-shadow-card-hover)]"
-        >
+        <Card padding="md">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-ds-muted">Most Improved</p>
@@ -204,10 +192,7 @@ export function TeamInsightsApp() {
           </div>
         </Card>
 
-        <Card
-          padding="md"
-          className="group transition-[transform,box-shadow] hover:-translate-y-[1px] hover:shadow-[var(--ds-shadow-card-hover)]"
-        >
+        <Card padding="md">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-ds-muted">Badges Unlocked</p>

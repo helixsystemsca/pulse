@@ -366,7 +366,7 @@ export function ProfileSettingsApp() {
       {isCompanyAdmin && company ? (
         <section className={CARD}>
           <div className="flex items-center gap-2 text-pulse-navy dark:text-slate-100">
-            <Building2 className="h-5 w-5 text-[#2B4C7E]" aria-hidden />
+            <Building2 className="h-5 w-5 text-ds-accent" aria-hidden />
             <h2 className="text-sm font-bold tracking-tight">Organization</h2>
           </div>
           <p className="mt-1 text-sm text-pulse-muted">
@@ -460,7 +460,7 @@ export function ProfileSettingsApp() {
               aria-checked={participate}
               onClick={() => setParticipate((p) => !p)}
               className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${
-                participate ? "bg-[#2B4C7E]" : "bg-slate-200 dark:bg-ds-elevated"
+                participate ? "bg-ds-accent" : "bg-slate-200 dark:bg-ds-elevated"
               }`}
             >
               <span

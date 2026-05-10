@@ -428,10 +428,10 @@ export function EquipmentApp() {
         if (tab === "form") resetForm();
         setTab(id);
       }}
-      className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${
+      className={`inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm font-semibold transition-colors ${
         tab === id
-          ? "border-b-2 border-ds-success bg-ds-primary text-ds-foreground"
-          : "border-b-2 border-transparent text-ds-muted hover:bg-ds-interactive-hover hover:text-ds-foreground"
+          ? "bg-[var(--pulse-segment-active-bg)] text-[var(--pulse-segment-active-fg)] shadow-sm"
+          : "text-ds-muted hover:bg-ds-interactive-hover hover:text-ds-foreground"
       }`}
     >
       <Icon className="h-4 w-4 shrink-0" strokeWidth={2} aria-hidden />
@@ -465,7 +465,7 @@ export function EquipmentApp() {
       ) : null}
 
       <nav
-        className="flex flex-wrap gap-1 rounded-md border border-ds-border bg-ds-secondary p-1"
+        className="ds-card-secondary ds-card-static flex flex-wrap gap-1 rounded-lg p-1"
         aria-label="Equipment sections"
       >
         {tabBtn("overview", "Overview", LayoutGrid)}
@@ -650,7 +650,7 @@ export function EquipmentApp() {
                       <th key={col} className="px-4 py-3 font-semibold text-ds-foreground">
                         <button
                           type="button"
-                          className="inline-flex items-center gap-1 hover:text-ds-success"
+                          className="inline-flex items-center gap-1 hover:text-ds-accent"
                           onClick={() => toggleSort(col)}
                         >
                           {label}

@@ -22,7 +22,7 @@ function PoolControllerMockCard({
   chlorineFeederActive,
 }: (typeof poolControllers)[number]) {
   return (
-    <div className="rounded-xl border border-ds-border bg-ds-primary p-4 shadow-sm">
+    <div className="ds-premium-panel rounded-xl p-4">
       <p className="font-headline text-sm font-bold text-ds-foreground">{name}</p>
       <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 text-xs">
         <div className="flex items-center gap-1.5 text-ds-muted">

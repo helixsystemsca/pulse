@@ -7,7 +7,7 @@ import type { DetectionMatchType } from "@/lib/detectionTest";
 import type { BleDeviceOut, GatewayOut } from "@/lib/setup-api";
 
 const cardBase =
-  "rounded-md border border-ds-border bg-ds-primary p-5 shadow-[var(--ds-shadow-card)]";
+  "ds-premium-panel p-5";
 
 type GatewayProps = {
   variant: "gateway";

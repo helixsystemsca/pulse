@@ -112,7 +112,7 @@ export default function OverviewProjectTabPage() {
     <div className="relative">
       <div className="pulse-dashboard-canvas space-y-4 px-2 py-4 sm:px-2 sm:py-5">
         <DashboardViewTabs />
-        <div className="rounded-xl border border-ds-border bg-ds-primary p-5 shadow-[var(--ds-shadow-card)]">
+        <div className="ds-premium-panel p-5">
           <h1 className="text-xl font-bold text-ds-foreground">Project kiosk</h1>
           <p className="mt-1 text-sm text-ds-muted">
             Pick a tenant project, tune which panels stay pinned versus rotating on the TV, then open kiosk mode in a

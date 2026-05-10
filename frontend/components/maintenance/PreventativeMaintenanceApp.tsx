@@ -93,7 +93,7 @@ export function PreventativeMaintenanceApp() {
 
   return (
     <div className="space-y-6">
-      <section className="rounded-md border border-ds-border bg-ds-secondary p-4 shadow-[var(--ds-shadow-card)]">
+      <section className="ds-card-secondary ds-card-static p-4">
         <h2 className="text-sm font-semibold text-ds-foreground">Preventative rules (deprecated)</h2>
         <p className="mt-1 text-xs text-ds-muted">
           Preventative rules have been deprecated in favor of PM Tasks. Existing rules are shown for reference only.
@@ -101,7 +101,7 @@ export function PreventativeMaintenanceApp() {
         </p>
       </section>
 
-      <section className="rounded-md border border-ds-border bg-ds-primary p-4 shadow-[var(--ds-shadow-card)]">
+      <section className="ds-premium-panel p-4">
         <h2 className="text-sm font-semibold text-pulse-navy dark:text-slate-100">Add rule</h2>
         <p className="mt-1 text-xs text-pulse-muted">
           Tie a facility equipment id to a frequency string. Generation of work orders from rules is not automated yet.
@@ -143,7 +143,7 @@ export function PreventativeMaintenanceApp() {
 
       {err ? <p className="text-sm text-red-600 dark:text-red-400">{err}</p> : null}
 
-      <section className="rounded-md border border-ds-border bg-ds-primary p-4 shadow-[var(--ds-shadow-card)]">
+      <section className="ds-premium-panel p-4">
         <h2 className="text-sm font-semibold text-pulse-navy dark:text-slate-100">Rules</h2>
         {loading ? (
           <p className="mt-2 text-sm text-pulse-muted">Loading…</p>

@@ -35,7 +35,7 @@ export function PmCriticalPath({
   };
 
   return (
-    <div className="rounded-lg border border-[var(--ds-border)] bg-[var(--ds-surface-primary)] shadow-[var(--ds-shadow-card)]">
+    <div className="ds-premium-panel">
       <div className="flex items-center justify-between border-b border-[var(--ds-border)] px-4 py-3">
         <div className="flex items-center gap-2">
           <span className="h-2 w-2 rounded-full bg-[var(--pm-color-critical)]" aria-hidden />
