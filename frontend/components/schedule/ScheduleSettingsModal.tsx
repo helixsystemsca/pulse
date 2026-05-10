@@ -1,17 +1,18 @@
 "use client";
 
-import { Plus, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronUp, Plus, RotateCcw, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { ModuleSettingsForm } from "@/components/module-settings/ModuleSettingsModal";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
 import { sessionHasAnyRole } from "@/lib/pulse-roles";
 import { useScheduleStore } from "@/lib/schedule/schedule-store";
-import type { ShiftTypeConfig } from "@/lib/schedule/types";
+import { resolvePlacementBandOptions } from "@/lib/schedule/placement-panel-options";
+import type { PlacementBandOption, ShiftTypeConfig } from "@/lib/schedule/types";
 import { PulseDrawer } from "./PulseDrawer";
 import { cn } from "@/lib/cn";
 import { buttonVariants } from "@/styles/button-variants";
 
-const TABS = ["Organization", "General", "Roles", "Shift types", "Staffing"] as const;
+const TABS = ["Organization", "General", "Placement panel", "Roles", "Shift types", "Staffing"] as const;
 type Tab = (typeof TABS)[number];
 
 type Props = {
@@ -233,6 +234,206 @@ export function ScheduleSettingsModal({ open, onClose }: Props) {
                 >
                   Reset demo data
                 </button>
+              </div>
+            </div>
+          ) : null}
+
+          {tab === "Placement panel" ? (
+            <div className="space-y-6">
+              <div className="rounded-xl border border-pulseShell-border bg-gradient-to-b from-white to-slate-50/90 p-4 shadow-sm dark:from-slate-950 dark:to-slate-900/80">
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div>
+                    <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">Shift window menu</p>
+                    <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                      Labels and order for the Workers sidebar “Shift window” dropdown. Band hours still follow schedule
+                      presets (day / afternoon / night) unless you change defaults in code.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    className="inline-flex items-center gap-1 rounded-lg border border-pulseShell-border bg-pulseShell-surface px-2.5 py-1.5 text-xs font-semibold text-ds-foreground hover:bg-ds-interactive-hover"
+                    onClick={() => setSettings({ placementBandOptions: undefined })}
+                  >
+                    <RotateCcw className="h-3.5 w-3.5" aria-hidden />
+                    Reset windows
+                  </button>
+                </div>
+                <ul className="mt-4 space-y-2">
+                  {resolvePlacementBandOptions(settings).map((o, idx, arr) => {
+                    const enabledCount = arr.filter((x) => x.enabled !== false).length;
+                    const canDisable = o.enabled !== false && enabledCount > 1;
+                    return (
+                      <li
+                        key={o.band}
+                        className="flex flex-wrap items-center gap-2 rounded-lg border border-pulseShell-border bg-white/80 px-2 py-2 dark:bg-slate-900/40"
+                      >
+                        <div className="flex flex-col gap-0.5">
+                          <button
+                            type="button"
+                            className="rounded p-0.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700 disabled:opacity-30 dark:hover:bg-slate-800"
+                            disabled={idx === 0}
+                            aria-label="Move up"
+                            onClick={() => {
+                              const opts = [...resolvePlacementBandOptions(settings)] as PlacementBandOption[];
+                              [opts[idx - 1], opts[idx]] = [opts[idx]!, opts[idx - 1]!];
+                              setSettings({ placementBandOptions: opts });
+                            }}
+                          >
+                            <ChevronUp className="h-4 w-4" />
+                          </button>
+                          <button
+                            type="button"
+                            className="rounded p-0.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700 disabled:opacity-30 dark:hover:bg-slate-800"
+                            disabled={idx >= arr.length - 1}
+                            aria-label="Move down"
+                            onClick={() => {
+                              const opts = [...resolvePlacementBandOptions(settings)] as PlacementBandOption[];
+                              [opts[idx], opts[idx + 1]] = [opts[idx + 1]!, opts[idx]!];
+                              setSettings({ placementBandOptions: opts });
+                            }}
+                          >
+                            <ChevronDown className="h-4 w-4" />
+                          </button>
+                        </div>
+                        <code className="w-24 shrink-0 truncate rounded bg-gray-100 px-2 py-1 text-[11px] text-gray-600 dark:bg-pulseShell-elevated dark:text-slate-400">
+                          {o.band}
+                        </code>
+                        <input
+                          className="min-w-[12rem] flex-1 rounded-lg border border-pulseShell-border px-3 py-2 text-sm"
+                          value={o.label}
+                          onChange={(e) => {
+                            const opts = [...resolvePlacementBandOptions(settings)] as PlacementBandOption[];
+                            opts[idx] = { ...opts[idx]!, label: e.target.value };
+                            setSettings({ placementBandOptions: opts });
+                          }}
+                          aria-label={`Label for ${o.band}`}
+                        />
+                        <label className="flex shrink-0 items-center gap-1.5 text-xs font-medium text-gray-600 dark:text-gray-300">
+                          <input
+                            type="checkbox"
+                            className="rounded border-pulseShell-border"
+                            checked={o.enabled !== false}
+                            disabled={!canDisable && o.enabled !== false}
+                            onChange={(e) => {
+                              const opts = [...resolvePlacementBandOptions(settings)] as PlacementBandOption[];
+                              opts[idx] = { ...opts[idx]!, enabled: e.target.checked };
+                              setSettings({ placementBandOptions: opts });
+                            }}
+                          />
+                          Show
+                        </label>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+
+              <div className="rounded-xl border border-pulseShell-border bg-gradient-to-b from-white to-slate-50/90 p-4 shadow-sm dark:from-slate-950 dark:to-slate-900/80">
+                <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">Role when placing</p>
+                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                  Choose which duty roles appear in the Workers sidebar dropdown and in what order. Add or rename roles
+                  in the <span className="font-semibold text-gray-700 dark:text-gray-200">Roles</span> tab.
+                </p>
+                <button
+                  type="button"
+                  className="mt-3 inline-flex items-center gap-1 rounded-lg border border-pulseShell-border bg-pulseShell-surface px-2.5 py-1.5 text-xs font-semibold text-ds-foreground hover:bg-ds-interactive-hover"
+                  onClick={() => setSettings({ placementPanelRoleIds: undefined })}
+                >
+                  <RotateCcw className="h-3.5 w-3.5" aria-hidden />
+                  Use all roles (default order)
+                </button>
+                <ul className="mt-4 space-y-2">
+                  {(() => {
+                    const allIds = roles.map((r) => r.id);
+                    const rawSel = settings.placementPanelRoleIds;
+                    const hasCustom =
+                      Array.isArray(rawSel) &&
+                      rawSel.length > 0 &&
+                      rawSel.some((id) => allIds.includes(id));
+                    const menuIds = hasCustom
+                      ? rawSel.filter((id) => allIds.includes(id))
+                      : [...allIds];
+                    const extras = roles.filter((r) => !menuIds.includes(r.id));
+                    const rows = [
+                      ...menuIds.map((id) => roles.find((r) => r.id === id)).filter(Boolean),
+                      ...extras,
+                    ] as typeof roles;
+
+                    function setMenuIds(nextMenu: string[]) {
+                      const cleaned = nextMenu.filter((id) => allIds.includes(id));
+                      if (cleaned.length === 0) return;
+                      setSettings({
+                        placementPanelRoleIds: cleaned.length === allIds.length ? undefined : cleaned,
+                      });
+                    }
+
+                    return rows.map((r) => {
+                      const checked = menuIds.includes(r.id);
+                      const mi = menuIds.indexOf(r.id);
+                      const canMoveUp = checked && mi > 0;
+                      const canMoveDown = checked && mi >= 0 && mi < menuIds.length - 1;
+                      const cannotUncheckLast = checked && menuIds.length <= 1;
+
+                      return (
+                        <li
+                          key={r.id}
+                          className="flex flex-wrap items-center gap-2 rounded-lg border border-pulseShell-border bg-white/80 px-2 py-2 dark:bg-slate-900/40"
+                        >
+                          <div className="flex flex-col gap-0.5">
+                            <button
+                              type="button"
+                              className="rounded p-0.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700 disabled:opacity-30 dark:hover:bg-slate-800"
+                              disabled={!canMoveUp}
+                              aria-label="Move role up"
+                              onClick={() => {
+                                const next = [...menuIds];
+                                [next[mi - 1], next[mi]] = [next[mi]!, next[mi - 1]!];
+                                setMenuIds(next);
+                              }}
+                            >
+                              <ChevronUp className="h-4 w-4" />
+                            </button>
+                            <button
+                              type="button"
+                              className="rounded p-0.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700 disabled:opacity-30 dark:hover:bg-slate-800"
+                              disabled={!canMoveDown}
+                              aria-label="Move role down"
+                              onClick={() => {
+                                const next = [...menuIds];
+                                [next[mi], next[mi + 1]] = [next[mi + 1]!, next[mi]!];
+                                setMenuIds(next);
+                              }}
+                            >
+                              <ChevronDown className="h-4 w-4" />
+                            </button>
+                          </div>
+                          <code className="w-28 shrink-0 truncate rounded bg-gray-100 px-2 py-1 text-[11px] text-gray-600 dark:bg-pulseShell-elevated dark:text-slate-400">
+                            {r.id}
+                          </code>
+                          <span className="min-w-0 flex-1 truncate text-sm font-medium text-gray-900 dark:text-gray-100">
+                            {r.label}
+                          </span>
+                          <label className="flex shrink-0 items-center gap-1.5 text-xs font-medium text-gray-600 dark:text-gray-300">
+                            <input
+                              type="checkbox"
+                              className="rounded border-pulseShell-border"
+                              checked={checked}
+                              disabled={cannotUncheckLast}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setMenuIds([...menuIds, r.id]);
+                                } else {
+                                  setMenuIds(menuIds.filter((id) => id !== r.id));
+                                }
+                              }}
+                            />
+                            In menu
+                          </label>
+                        </li>
+                      );
+                    });
+                  })()}
+                </ul>
               </div>
             </div>
           ) : null}

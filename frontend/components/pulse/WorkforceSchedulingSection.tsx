@@ -210,8 +210,8 @@ function enrichCalendarMeta(days: DayMeta[]): DayMeta[] {
 const NEXT_MONTH_SCHEDULE = {
   label: "October 2024",
   unscheduledDays: 12,
-  daysMissingSupervisor: 3,
-  detail: "Includes weekends and days with no day supervisor assigned.",
+  roP4BandGaps: 3,
+  detail: "Includes weekends and bands with staffed shifts but no RO/P4-qualified worker.",
 } as const;
 
 const MONTH_LABEL = "September 2024";
@@ -715,10 +715,10 @@ function ScheduleCompletionBanner({ onFinish }: { onFinish: () => void }) {
         </p>
         <p className="text-amber-900/85">
           <span className="font-semibold tabular-nums">{NEXT_MONTH_SCHEDULE.unscheduledDays}d</span> open
-          {NEXT_MONTH_SCHEDULE.daysMissingSupervisor > 0 ? (
+          {NEXT_MONTH_SCHEDULE.roP4BandGaps > 0 ? (
             <>
               {" "}
-              · <span className="font-semibold">{NEXT_MONTH_SCHEDULE.daysMissingSupervisor}</span> no sup.
+              · <span className="font-semibold">{NEXT_MONTH_SCHEDULE.roP4BandGaps}</span> RO/P4 gaps
             </>
           ) : null}
         </p>

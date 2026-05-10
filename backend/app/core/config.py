@@ -24,6 +24,20 @@ STANDARD_LOCAL_DEV_ORIGINS: tuple[str, ...] = (
 _DEFAULT_PRODUCTION_FRONTEND_ORIGIN = "https://panorama.helixsystems.ca"
 
 
+def _origin_netloc_is_safe(origin: str) -> bool:
+    """Reject wildcard / malformed origins (never use ``*`` with credential-bearing browser requests)."""
+    try:
+        parsed = urlparse(origin)
+    except Exception:
+        return False
+    host = (parsed.netloc or "").strip().lower()
+    if not host or host == "*":
+        return False
+    if "*" in host:
+        return False
+    return True
+
+
 def _browser_origin_from_token(raw: str) -> Optional[str]:
     """Return scheme://host[:port] or None if ``raw`` is not a valid browser Origin (common typo: ``https:host``)."""
     o = raw.strip()
@@ -258,7 +272,7 @@ class Settings(BaseSettings):
             if not raw:
                 continue
             o = _browser_origin_from_token(raw)
-            if not o:
+            if not o or not _origin_netloc_is_safe(o):
                 _log.warning(
                     "CORS_ORIGINS skipped invalid origin token %r (use https://host, e.g. https://pulse.example.com)",
                     raw[:120],
@@ -273,7 +287,7 @@ class Settings(BaseSettings):
             if not raw:
                 continue
             o = _browser_origin_from_token(raw)
-            if not o:
+            if not o or not _origin_netloc_is_safe(o):
                 _log.warning(
                     "CORS_EXTRA_ORIGINS skipped invalid origin token %r",
                     raw[:120],
@@ -286,31 +300,31 @@ class Settings(BaseSettings):
         # production only listed marketing apex/www origins.
         pulse_o = self.pulse_app_public_origin
         if pulse_o:
-            host = (urlparse(pulse_o).netloc or "").lower()
-            if host.endswith(".onrender.com") or host.endswith(".railway.app") or host.endswith(".fly.dev"):
-                _log.warning(
-                    "PULSE_APP_PUBLIC_URL resolves to %r — this often points at a PaaS **API** host. "
-                    "CORS must allow the **browser SPA** origin (e.g. https://panorama.helixsystems.ca), "
-                    "not the API URL. If users load Pulse from Panorama, set PULSE_APP_PUBLIC_URL and/or "
-                    "CORS_ORIGINS to that SPA origin.",
-                    pulse_o,
-                )
-            if pulse_o not in seen:
-                seen.add(pulse_o)
-                out.append(pulse_o)
+            if not _origin_netloc_is_safe(pulse_o):
+                _log.warning("PULSE_APP_PUBLIC_URL origin %r is not allowlist-safe — skipped for CORS.", pulse_o)
+            else:
+                host = (urlparse(pulse_o).netloc or "").lower()
+                if host.endswith(".onrender.com") or host.endswith(".railway.app") or host.endswith(".fly.dev"):
+                    _log.warning(
+                        "PULSE_APP_PUBLIC_URL resolves to %r — this often points at a PaaS **API** host. "
+                        "Browsers send the **SPA** Origin (e.g. https://panorama.helixsystems.ca). "
+                        "That SPA origin is always merged in production; still set PULSE_APP_PUBLIC_URL to the SPA "
+                        "for correct email links.",
+                        pulse_o,
+                    )
+                if pulse_o not in seen:
+                    seen.add(pulse_o)
+                    out.append(pulse_o)
 
-        if not self.is_production:
-            for o in STANDARD_LOCAL_DEV_ORIGINS:
-                if o not in seen:
-                    seen.add(o)
-                    out.append(o)
+        # Next/Vite local dev: merged in every environment so a localhost SPA can call a deployed API.
+        for o in STANDARD_LOCAL_DEV_ORIGINS:
+            if o not in seen:
+                seen.add(o)
+                out.append(o)
 
-        if self.is_production and not out and not self.cors_origin_regex_pattern:
-            _log.warning(
-                "CORS allow_origins is empty after parsing env — applying fallback %r. "
-                "Set CORS_ORIGINS (comma-separated) and PULSE_APP_PUBLIC_URL to your real SPA origin.",
-                _DEFAULT_PRODUCTION_FRONTEND_ORIGIN,
-            )
+        # Primary hosted Pulse / Panorama SPA — always merged in production so Render misconfiguration
+        # (API URL in PULSE_APP_PUBLIC_URL or empty CORS_ORIGINS) cannot block avatar/API traffic from the real site.
+        if self.is_production:
             if _DEFAULT_PRODUCTION_FRONTEND_ORIGIN not in seen:
                 seen.add(_DEFAULT_PRODUCTION_FRONTEND_ORIGIN)
                 out.append(_DEFAULT_PRODUCTION_FRONTEND_ORIGIN)

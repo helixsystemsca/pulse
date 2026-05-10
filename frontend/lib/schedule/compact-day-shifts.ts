@@ -1,3 +1,4 @@
+import { displayStandardShiftCode } from "@/lib/schedule/shift-definition-catalog";
 import { buildShiftCodeMapForDay, shiftCodeForWindowFromMap } from "./shift-codes";
 import type { Shift, Worker } from "./types";
 
@@ -25,8 +26,10 @@ export function shiftDisplayCode(s: Shift, codeMap: Map<string, string>): string
     const t = (s.taskTitle || "Task").trim();
     return t.length > 22 ? `${t.slice(0, 20)}…` : t;
   }
-  if (s.shiftCode && String(s.shiftCode).trim()) {
-    return String(s.shiftCode).trim().toUpperCase();
+  if (s.shiftKind === "workforce" && s.eventType === "work") {
+    return displayStandardShiftCode(s, {
+      fallbackCode: shiftCodeForWindowFromMap(s.startTime, s.endTime, codeMap),
+    });
   }
   return shiftCodeForWindowFromMap(s.startTime, s.endTime, codeMap);
 }

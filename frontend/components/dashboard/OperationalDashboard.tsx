@@ -44,6 +44,8 @@ import {
 import { accentPresetWidgetTint } from "@/lib/dashboardAccentPresets";
 import { fetchTrainingMatrix, mapApiAssignments, mapApiEmployees, mapApiPrograms } from "@/lib/trainingApi";
 import { computeComplianceRadialSummary } from "@/lib/training/selectors";
+import type { WorkerDayAttendanceMark } from "@/lib/dashboard/worker-day-attendance-store";
+import { useWorkerDayAttendanceStore, workerDayAttendanceKey } from "@/lib/dashboard/worker-day-attendance-store";
 import {
   localScheduleDateKey,
   mergedScheduleShiftsForCalendarDate,
@@ -360,6 +362,8 @@ type WorkforceBubble = {
   /** Sort key: 0 = manager tier … 3 = worker. */
   roleSortRank: number;
   avatar_url?: string | null;
+  /** Sick / DNS mark from schedule UI (local) until attendance telemetry. */
+  attendanceMark?: WorkerDayAttendanceMark;
 };
 
 type WorkTag = { kind: "progress" | "overdue" | "urgent"; label: string };
@@ -417,6 +421,35 @@ export type DashboardViewModel = {
   };
 };
 
+function mergeAttendanceMarksIntoBubbles(
+  bubbles: WorkforceBubble[],
+  marks: Record<string, WorkerDayAttendanceMark>,
+  dateKey: string,
+): WorkforceBubble[] {
+  return bubbles.map((b) => ({
+    ...b,
+    attendanceMark: marks[workerDayAttendanceKey(b.id, dateKey)],
+  }));
+}
+
+function mergeAttendanceIntoDashboardModel(
+  model: DashboardViewModel,
+  marks: Record<string, WorkerDayAttendanceMark>,
+): DashboardViewModel {
+  const dateKey = localScheduleDateKey(getServerNow());
+  return {
+    ...model,
+    workforce: {
+      ...model.workforce,
+      onSite: mergeAttendanceMarksIntoBubbles(model.workforce.onSite, marks, dateKey),
+      onShiftNow: mergeAttendanceMarksIntoBubbles(model.workforce.onShiftNow, marks, dateKey),
+      upcomingToday: mergeAttendanceMarksIntoBubbles(model.workforce.upcomingToday, marks, dateKey),
+      onScheduleToday: mergeAttendanceMarksIntoBubbles(model.workforce.onScheduleToday, marks, dateKey),
+      offSite: mergeAttendanceMarksIntoBubbles(model.workforce.offSite, marks, dateKey),
+    },
+  };
+}
+
 const roleBadgeBase =
   "pointer-events-none absolute -top-0.5 -right-0.5 z-10 flex h-[18px] w-[18px] items-center justify-center rounded-full text-[9px] font-bold leading-none text-ds-on-accent shadow-[var(--ds-shadow-card)] ring-2 ring-[var(--ds-surface-primary)]";
 
@@ -465,7 +498,7 @@ function WorkforceStatusDot({
 }) {
   const bg =
     color === "green"
-      ? "bg-ds-success"
+      ? "bg-emerald-500 dark:bg-emerald-400"
       : color === "yellow"
         ? "bg-[var(--ds-info)]"
         : "bg-ds-muted";
@@ -474,6 +507,18 @@ function WorkforceStatusDot({
       className={`absolute -bottom-0.5 -right-0.5 z-10 h-2.5 w-2.5 rounded-full ${bg} ring-2 ring-[var(--ds-surface-primary)]`}
       aria-hidden
     />
+  );
+}
+
+function WorkforceAttendanceBadge({ mark }: { mark: WorkerDayAttendanceMark }) {
+  const label = mark === "dns" ? "DNS" : "Sick";
+  return (
+    <span
+      className="pointer-events-none absolute bottom-0 left-1/2 z-20 -translate-x-1/2 translate-y-[42%] whitespace-nowrap rounded px-1 py-px text-[7px] font-bold uppercase tracking-wide text-white shadow-sm ring-2 ring-[var(--ds-surface-primary)] bg-[#e8706f]"
+      aria-label={label}
+    >
+      {label}
+    </span>
   );
 }
 
@@ -1457,6 +1502,7 @@ function DashboardBody({
                         badges={
                           <>
                             {b.badge ? <WorkforceRoleLetterBadge letter={b.badge} /> : null}
+                            {b.attendanceMark ? <WorkforceAttendanceBadge mark={b.attendanceMark} /> : null}
                             <WorkforceStatusDot color="green" />
                           </>
                         }
@@ -1645,6 +1691,7 @@ function DashboardBody({
                     badges={
                       <>
                         {b.badge ? <WorkforceRoleLetterBadge letter={b.badge} /> : null}
+                        {b.attendanceMark ? <WorkforceAttendanceBadge mark={b.attendanceMark} /> : null}
                         <WorkforceStatusDot color="green" />
                       </>
                     }
@@ -1686,7 +1733,8 @@ function DashboardBody({
                         badges={
                           <>
                             {b.badge ? <WorkforceRoleLetterBadge letter={b.badge} /> : null}
-                            <WorkforceStatusDot color="yellow" />
+                            {b.attendanceMark ? <WorkforceAttendanceBadge mark={b.attendanceMark} /> : null}
+                            <WorkforceStatusDot color="green" />
                           </>
                         }
                       />
@@ -2211,6 +2259,7 @@ function DashboardBody({
                       badges={
                         <>
                           {b.badge ? <WorkforceRoleLetterBadge letter={b.badge} /> : null}
+                          {b.attendanceMark ? <WorkforceAttendanceBadge mark={b.attendanceMark} /> : null}
                           <WorkforceStatusDot color="green" />
                         </>
                       }
@@ -2808,12 +2857,21 @@ export function OperationalDashboard({
     }
   }, [variant, notifyReady]);
 
-  if (variant === "demo") {
+  const attendanceMarks = useWorkerDayAttendanceStore((s) => s.marks);
+  const mergedDemoModel = useMemo(() => {
     const welcome = welcomeFromSession(session?.email, session?.full_name);
-    const demoWithUser: DashboardViewModel = { ...demoModel(), welcomeName: welcome };
+    return mergeAttendanceIntoDashboardModel({ ...demoModel(), welcomeName: welcome }, attendanceMarks);
+  }, [session?.email, session?.full_name, attendanceMarks]);
+
+  const mergedLiveModel = useMemo(() => {
+    if (!liveModel) return null;
+    return mergeAttendanceIntoDashboardModel(liveModel, attendanceMarks);
+  }, [liveModel, attendanceMarks]);
+
+  if (variant === "demo") {
     return (
       <DashboardBody
-        model={demoWithUser}
+        model={mergedDemoModel}
         session={session}
         dashboardContext={dashboardContext}
         workOrdersHref={workOrdersHref}
@@ -2855,7 +2913,7 @@ export function OperationalDashboard({
 
   return (
     <DashboardBody
-      model={liveModel}
+      model={mergedLiveModel ?? liveModel}
       session={session}
       dashboardContext={dashboardContext}
       workOrdersHref={workOrdersHref}

@@ -1,23 +1,9 @@
 "use client";
 
-import {
-  BarChart2,
-  CalendarDays,
-  CalendarPlus,
-  CalendarRange,
-  ChevronLeft,
-  ChevronRight,
-  LayoutGrid,
-  LayoutList,
-  Save,
-  Settings,
-  User,
-  Users,
-} from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { SettingsGear } from "@/components/settings/SettingsGear";
-import { PageHeader } from "@/components/ui/PageHeader";
 import { apiFetch, isApiMode } from "@/lib/api";
 import { getServerDate } from "@/lib/serverTime";
 import { listProjects, type ProjectRow } from "@/lib/projectsService";
@@ -43,6 +29,7 @@ import {
 } from "@/lib/schedule/recurring";
 import { logScheduleAuditEvent } from "@/lib/schedule/schedule-audit-log";
 import { inferStandardShiftCode } from "@/lib/schedule/shift-definition-catalog";
+import { placementBandDropdownOptions, resolvePlacementRoles } from "@/lib/schedule/placement-panel-options";
 import { suggestReplacementLabel } from "@/lib/schedule/suggest-replacement";
 import { buildWorkerDragHighlightMap, evaluateWorkerDrop } from "@/lib/schedule/worker-drag-highlights";
 import {
@@ -55,12 +42,22 @@ import {
   type PulseWorkerApi,
   type PulseZoneApi,
 } from "@/lib/schedule/pulse-bridge";
+import {
+  auxiliaryWorkers,
+  countPendingSubmissions,
+  loadSubmissionMap,
+} from "@/lib/schedule/availability-supervisor-local";
 import { computeAlerts, computeWorkforceSummary } from "@/lib/schedule/selectors";
 import { useScheduleStore } from "@/lib/schedule/schedule-store";
 import type { ScheduleDragSession, SchedulePlacementBand, Shift } from "@/lib/schedule/types";
 import { canAccessCompanyConfiguration, sessionHasAnyRole } from "@/lib/pulse-roles";
 import { readSession } from "@/lib/pulse-session";
+import { AvailabilitySupervisorDrawer } from "./availability/AvailabilitySupervisorDrawer";
+import { EmployeeAvailabilityDrawer } from "./availability/EmployeeAvailabilityDrawer";
 import { ScheduleAlertsBanner } from "./ScheduleAlertsBanner";
+import { ScheduleBuilderHeader } from "./ScheduleBuilderHeader";
+import { ScheduleCoverageStrip } from "./ScheduleCoverageStrip";
+import { ScheduleOperationalSidebar, type ScheduleWorkspaceView } from "./ScheduleOperationalSidebar";
 import { useModuleSettings } from "@/providers/ModuleSettingsProvider";
 import { ScheduleCalendarGrid } from "./ScheduleCalendarGrid";
 import { ScheduleDayView } from "./ScheduleDayView";
@@ -76,15 +73,18 @@ import { Card } from "@/components/pulse/Card";
 import { ScheduleWeekView } from "./ScheduleWeekView";
 import { ScheduleDraftPanel, type DraftResult } from "./ScheduleDraftPanel";
 import { SchedulePeriodModal, type SchedulePeriodLite } from "./SchedulePeriodModal";
+import {
+  ScheduleToolbar,
+  type ScheduleContentFilter,
+  type ScheduleLayoutMode,
+  type ScheduleTimeScale,
+} from "./ScheduleToolbar";
 import { ScheduleWorkerPanel } from "./ScheduleWorkerPanel";
 import { ScheduleWorkforceBar } from "./ScheduleWorkforceBar";
 import type { ShiftDraft } from "./ShiftEditModal";
 import { ShiftEditModal } from "./ShiftEditModal";
 import { TimeOffRequestModal } from "./TimeOffRequestModal";
-
-type View = "calendar" | "personnel" | "reports" | "my-shifts";
-type CalendarScale = "month" | "week" | "day" | "operational";
-type ScheduleContentFilter = "workers" | "projects" | "combined";
+import { WorkerAttendanceModal } from "./WorkerAttendanceModal";
 
 function shiftLengthHours(sh: Pick<Shift, "startTime" | "endTime">): number {
   const [shh, smm] = sh.startTime.split(":").map(Number);
@@ -131,10 +131,18 @@ export function ScheduleApp() {
     const n = getServerDate();
     return { y: n.getFullYear(), m: n.getMonth() };
   });
-  const [view, setView] = useState<View>("calendar");
-  const [calendarScale, setCalendarScale] = useState<CalendarScale>("month");
+  const [workspaceView, setWorkspaceView] = useState<ScheduleWorkspaceView>("calendar");
+  const [timeScale, setTimeScale] = useState<ScheduleTimeScale>("month");
+  const [scheduleLayout, setScheduleLayout] = useState<ScheduleLayoutMode>("calendar");
   const [focusDate, setFocusDate] = useState(() => formatLocalDate(getServerDate()));
   const [contentFilter, setContentFilter] = useState<ScheduleContentFilter>("combined");
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarSearch, setSidebarSearch] = useState("");
+  const [facilityFilterIds, setFacilityFilterIds] = useState<string[]>([]);
+  const [availabilitySupervisorOpen, setAvailabilitySupervisorOpen] = useState(false);
+  const [employeeAvailabilityOpen, setEmployeeAvailabilityOpen] = useState(false);
+  const [availabilityMatrixVersion, setAvailabilityMatrixVersion] = useState(0);
+  const [publishBusy, setPublishBusy] = useState(false);
   const [shiftDefinitions, setShiftDefinitions] = useState<{ id: string; code: string; name?: string | null }[]>([]);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [timeOffOpen, setTimeOffOpen] = useState(false);
@@ -159,6 +167,11 @@ export function ScheduleApp() {
     null,
   );
   const [scheduleToast, setScheduleToast] = useState<string | null>(null);
+  const [workerAttendanceModal, setWorkerAttendanceModal] = useState<{
+    workerId: string;
+    date: string;
+    label: string;
+  } | null>(null);
 
   const shifts = useScheduleStore((s) => s.shifts);
   const workers = useScheduleStore((s) => s.workers);
@@ -173,14 +186,32 @@ export function ScheduleApp() {
   const deleteShift = useScheduleStore((s) => s.deleteShift);
   const addTimeOffBlock = useScheduleStore((s) => s.addTimeOffBlock);
   const applyPulseScheduleSnapshot = useScheduleStore((s) => s.applyPulseScheduleSnapshot);
+  const setWorkers = useScheduleStore((s) => s.setWorkers);
+
+  const placementRoleChoices = useMemo(
+    () => resolvePlacementRoles(roles, settings.placementPanelRoleIds),
+    [roles, settings.placementPanelRoleIds],
+  );
+
+  const allowedPlacementBands = useMemo(
+    () => placementBandDropdownOptions(settings).map((o) => o.band),
+    [settings],
+  );
 
   useEffect(() => {
-    const ids = roles.map((r) => r.id);
+    const ids = placementRoleChoices.map((r) => r.id);
     if (ids.length === 0) return;
     if (!ids.includes(placementDutyRole)) {
       setPlacementDutyRole(ids[0]!);
     }
-  }, [roles, placementDutyRole]);
+  }, [placementRoleChoices, placementDutyRole]);
+
+  useEffect(() => {
+    if (!allowedPlacementBands.length) return;
+    if (!allowedPlacementBands.includes(placementBand)) {
+      setPlacementBand(allowedPlacementBands[0]!);
+    }
+  }, [allowedPlacementBands, placementBand]);
 
   const [hydrated, setHydrated] = useState(false);
   const [scheduleModuleBlocked, setScheduleModuleBlocked] = useState(false);
@@ -214,14 +245,14 @@ export function ScheduleApp() {
     if (!isApiMode()) return;
     let from: Date;
     let to: Date;
-    if (calendarScale === "month") {
+    if (timeScale === "month" && scheduleLayout === "calendar") {
       const first = new Date(cursor.y, cursor.m, 1);
       const last = new Date(cursor.y, cursor.m + 1, 0);
       from = new Date(first);
       from.setHours(0, 0, 0, 0);
       to = new Date(last);
       to.setHours(23, 59, 59, 999);
-    } else if (calendarScale === "week" || calendarScale === "operational") {
+    } else if (timeScale === "week" || scheduleLayout === "ops-grid") {
       const dates = weekDatesFromSunday(focusDate);
       from = parseLocalDate(dates[0]);
       from.setHours(0, 0, 0, 0);
@@ -262,7 +293,7 @@ export function ScheduleApp() {
     const shiftsMapped = pulseShiftsToSchedule(sh, fallbackZ);
     applyPulseScheduleSnapshot(workersMapped, zonesMapped, shiftsMapped);
     setShiftDefinitions(defs);
-  }, [applyPulseScheduleSnapshot, calendarScale, cursor.m, cursor.y, focusDate]);
+  }, [applyPulseScheduleSnapshot, scheduleLayout, timeScale, cursor.m, cursor.y, focusDate]);
 
   const reloadActivePeriod = useCallback(async () => {
     if (!hydrated || !canEdit || !isApiMode()) return;
@@ -388,10 +419,11 @@ export function ScheduleApp() {
   }, [reloadPulseSchedule]);
 
   const visibleDatesForScheduleMerge = useMemo(() => {
-    if (calendarScale === "month") return monthGrid(cursor.y, cursor.m).map((c) => c.date);
-    if (calendarScale === "week" || calendarScale === "operational") return weekDatesFromSunday(focusDate);
+    if (scheduleLayout === "ops-grid") return weekDatesFromSunday(focusDate);
+    if (timeScale === "month") return monthGrid(cursor.y, cursor.m).map((c) => c.date);
+    if (timeScale === "week") return weekDatesFromSunday(focusDate);
     return [focusDate];
-  }, [calendarScale, cursor.y, cursor.m, focusDate]);
+  }, [scheduleLayout, timeScale, cursor.y, cursor.m, focusDate]);
 
   const placementDropWindow = useMemo(
     () => (placementBand === "template" ? null : defaultWindowForShiftBand(placementBand)),
@@ -431,15 +463,32 @@ export function ScheduleApp() {
     return v.filter((s) => !(s.shiftKind === "project_task" && s.workerId));
   }, [shiftsForView, contentFilter]);
 
+  const displayShiftsForGrid = useMemo(() => {
+    if (!facilityFilterIds.length) return displayShifts;
+    return displayShifts.filter((s) => facilityFilterIds.includes(s.zoneId));
+  }, [displayShifts, facilityFilterIds]);
+
+  const workersForPanel = useMemo(() => {
+    const q = sidebarSearch.trim().toLowerCase();
+    if (!q) return workers;
+    return workers.filter((w) => w.name.toLowerCase().includes(q));
+  }, [workers, sidebarSearch]);
+
+  const pendingAvailabilityCount = useMemo(() => {
+    void availabilityMatrixVersion;
+    const ids = auxiliaryWorkers(workers).map((w) => w.id);
+    return countPendingSubmissions(loadSubmissionMap(), ids);
+  }, [workers, availabilityMatrixVersion]);
+
   const workerHighlightMap = useMemo(() => {
     if (dragSession?.kind !== "worker") return null;
     const w = workers.find((x) => x.id === dragSession.workerId);
     if (!w) return null;
     const dates =
-      calendarScale === "month"
-        ? monthGrid(cursor.y, cursor.m).map((c) => c.date)
-        : calendarScale === "week" || calendarScale === "operational"
-          ? weekDatesFromSunday(focusDate)
+      scheduleLayout === "ops-grid" || timeScale === "week"
+        ? weekDatesFromSunday(focusDate)
+        : timeScale === "month"
+          ? monthGrid(cursor.y, cursor.m).map((c) => c.date)
           : [focusDate];
     return buildWorkerDragHighlightMap(w, dates, shiftsForView, settings, timeOffBlocks, placementDropWindow);
   }, [
@@ -448,7 +497,8 @@ export function ScheduleApp() {
     shiftsForView,
     settings,
     timeOffBlocks,
-    calendarScale,
+    scheduleLayout,
+    timeScale,
     cursor.y,
     cursor.m,
     focusDate,
@@ -458,25 +508,25 @@ export function ScheduleApp() {
   const weekDates = useMemo(() => weekDatesFromSunday(focusDate), [focusDate]);
 
   const metricsMonth = useMemo(() => {
-    if (calendarScale === "month") {
+    if (timeScale === "month" && scheduleLayout === "calendar") {
       return { y: cursor.y, m: cursor.m };
     }
     const d = parseLocalDate(focusDate);
     return { y: d.getFullYear(), m: d.getMonth() };
-  }, [calendarScale, cursor.y, cursor.m, focusDate]);
+  }, [timeScale, scheduleLayout, cursor.y, cursor.m, focusDate]);
 
   const defaultDate = useMemo(() => {
-    if (calendarScale === "day") return focusDate;
+    if (timeScale === "day" && scheduleLayout === "calendar") return focusDate;
     const today = getServerDate();
     if (today.getFullYear() === cursor.y && today.getMonth() === cursor.m) {
       return formatLocalDate(today);
     }
     return formatLocalDate(new Date(cursor.y, cursor.m, 1));
-  }, [calendarScale, focusDate, cursor.y, cursor.m]);
+  }, [timeScale, scheduleLayout, focusDate, cursor.y, cursor.m]);
 
   const alerts = useMemo(
     () => {
-      const base = computeAlerts(shiftsForView, metricsMonth.y, metricsMonth.m, settings);
+      const base = computeAlerts(shiftsForView, workers, metricsMonth.y, metricsMonth.m, settings);
       const dates = monthGrid(metricsMonth.y, metricsMonth.m)
         .filter((c) => c.inMonth)
         .map((c) => c.date);
@@ -511,6 +561,7 @@ export function ScheduleApp() {
 
   const handlePublish = useCallback(async () => {
     if (!visibleDatesForScheduleMerge.length) return;
+    setPublishBusy(true);
     try {
       const url = "/api/v1/pulse/schedule/publish";
       await apiFetch(url, {
@@ -521,11 +572,14 @@ export function ScheduleApp() {
           notify_workers: true,
         }),
       });
-      // TODO: show a success toast when toast system is available
+      setScheduleToast("Schedule published and workers notified.");
     } catch (e) {
       console.error("Publish failed", e);
+      setScheduleToast("Publish failed — check your connection and try again.");
+    } finally {
+      setPublishBusy(false);
     }
-  }, [visibleDatesForScheduleMerge]);
+  }, [visibleDatesForScheduleMerge, setScheduleToast]);
 
   const handleBuildDraft = useCallback(async () => {
     if (!visibleDatesForScheduleMerge.length) return;
@@ -833,15 +887,15 @@ export function ScheduleApp() {
   }, [scheduleProjects]);
 
   const dayProjectBar = useMemo(() => {
-    if (calendarScale !== "day" || !projectBarItems) return null;
+    if (scheduleLayout !== "calendar" || timeScale !== "day" || !projectBarItems) return null;
     return projectBarItems
       .filter((p) => focusDate >= p.start_date && focusDate <= p.end_date)
       .map((p) => ({ id: p.id, name: p.name, tintClass: p.tintClass }));
-  }, [calendarScale, focusDate, projectBarItems]);
+  }, [scheduleLayout, timeScale, focusDate, projectBarItems]);
 
   const dayDisplayShifts = useMemo(
-    () => displayShifts.filter((s) => s.date === focusDate),
-    [displayShifts, focusDate],
+    () => displayShiftsForGrid.filter((s) => s.date === focusDate),
+    [displayShiftsForGrid, focusDate],
   );
 
   const dayAllShifts = useMemo(() => shiftsForView.filter((s) => s.date === focusDate), [shiftsForView, focusDate]);
@@ -896,229 +950,119 @@ export function ScheduleApp() {
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
-      <div className="flex-1 pb-2">
-        <div className={scheduleDragLock ? "pointer-events-none" : ""}>
-          <PageHeader
-            title="Schedule"
-            description="Plan shifts by facility and coverage across your operation (facilities are configured under Schedule organization settings)."
-            icon={CalendarDays}
-            actions={
-              <>
-                <SettingsGear module="schedule" />
-                <nav
-                  className="flex rounded-md border border-pulseShell-border bg-pulseShell-surface p-1 shadow-[var(--pulse-shell-shadow)]"
-                  aria-label="Schedule views"
-                >
-                  {(
-                    [
-                      ["calendar", "Calendar", CalendarDays],
-                      ["my-shifts", "My Shifts", User],
-                      ["personnel", "Personnel", Users],
-                      ["reports", "Reports", BarChart2],
-                    ] as const
-                  ).map(([key, label, Icon]) => (
-                    <button
-                      key={key}
-                      type="button"
-                      onClick={() => {
-                        setView(key);
-                        if (key !== "calendar") setCalendarScale("month");
-                      }}
-                      className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${
-                        view === key
-                          ? "bg-[var(--pulse-segment-active-bg)] text-[var(--pulse-segment-active-fg)] shadow-sm ring-1 ring-[color-mix(in_srgb,var(--ds-accent)_28%,transparent)] dark:ring-sky-400/30"
-                          : "text-gray-500 hover:bg-ds-interactive-hover-strong hover:text-gray-900 dark:text-slate-400 dark:hover:bg-ds-interactive-hover dark:hover:text-slate-100"
-                      }`}
-                    >
-                      <Icon className="h-4 w-4 opacity-90" />
-                      {label}
-                    </button>
-                  ))}
-                </nav>
-                {isApiMode() ? (
-                  <button
-                    type="button"
-                    disabled={saveBusy || !hasPendingServerSave}
-                    title={
-                      hasPendingServerSave
-                        ? "Write unsaved shifts to the server (new drops and offline edits)"
-                        : "No unsaved shifts — drag a worker to add a shift, then save"
-                    }
-                    onClick={() => void saveScheduleToServer()}
-                    className="inline-flex items-center gap-2 rounded-md border border-pulseShell-border bg-pulseShell-surface px-4 py-2 text-sm font-semibold text-ds-foreground shadow-sm hover:bg-ds-interactive-hover disabled:cursor-not-allowed disabled:opacity-50 dark:text-gray-100"
-                  >
-                    <Save className="h-4 w-4" />
-                    {saveBusy ? "Saving…" : "Save"}
-                  </button>
-                ) : null}
-                <button
-                  type="button"
-                  onClick={() => setTimeOffOpen(true)}
-                  className="inline-flex items-center gap-2 rounded-md border border-pulseShell-border bg-pulseShell-surface px-4 py-2 text-sm font-semibold text-ds-foreground shadow-sm hover:bg-ds-interactive-hover dark:text-gray-100"
-                >
-                  <CalendarPlus className="h-4 w-4" />
-                  Time off
-                </button>
-                {canConfigureOrg ? (
-                  <button
-                    type="button"
-                    onClick={() => setSettingsOpen(true)}
-                    className="inline-flex items-center gap-2 rounded-md border border-pulseShell-border bg-pulseShell-surface px-4 py-2 text-sm font-semibold text-ds-foreground shadow-sm hover:bg-ds-interactive-hover dark:text-gray-100"
-                  >
-                    <Settings className="h-4 w-4" />
-                    Settings
-                  </button>
-                ) : null}
-              </>
-            }
-          />
-        </div>
-
-        {view === "calendar" ? (
-          <>
-          <div
-            className={`mt-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center ${scheduleDragLock ? "pointer-events-none" : ""}`}
-          >
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-[11px] font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400">View</span>
-              <nav
-                className="flex rounded-md border border-pulseShell-border bg-pulseShell-surface p-1 shadow-[var(--pulse-shell-shadow)]"
-                aria-label="Calendar scale"
-              >
-                {(
-                  [
-                    ["month", "Month", LayoutGrid],
-                    ["week", "Week", CalendarRange],
-                    ["operational", "Ops grid", LayoutList],
-                    ["day", "Day", CalendarDays],
-                  ] as const
-                ).map(([key, label, Icon]) => (
-                  <button
-                    key={key}
-                    type="button"
-                    onClick={() => setCalendarScale(key)}
-                    className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${
-                      calendarScale === key
-                        ? "bg-[var(--pulse-segment-active-bg)] text-[var(--pulse-segment-active-fg)] shadow-sm ring-1 ring-[color-mix(in_srgb,var(--ds-accent)_28%,transparent)] dark:ring-sky-400/30"
-                        : "text-gray-500 hover:bg-ds-interactive-hover-strong hover:text-gray-900 dark:text-slate-400 dark:hover:bg-ds-interactive-hover dark:hover:text-slate-100"
-                    }`}
-                  >
-                    <Icon className="h-4 w-4 opacity-90" />
-                    {label}
-                  </button>
-                ))}
-              </nav>
+    <div className="flex min-h-0 flex-1 flex-col gap-3 pb-2">
+      <div className={`min-h-0 flex-1 space-y-4 ${scheduleDragLock ? "pointer-events-none" : ""}`}>
+        <ScheduleBuilderHeader
+          period={
+            activePeriod
+              ? {
+                  kind: "active",
+                  status: activePeriod.status === "open" ? "open" : "draft",
+                  rangeLabel: `${activePeriod.start_date} – ${activePeriod.end_date}`,
+                  deadlineLabel: activePeriod.availability_deadline
+                    ? ` · Due ${new Date(activePeriod.availability_deadline).toLocaleDateString()}`
+                    : null,
+                }
+              : { kind: "empty", allowCreate: canEdit }
+          }
+          onManagePeriod={() => setShowPeriodModal(true)}
+          onCreatePeriod={() => setShowPeriodModal(true)}
+          showSaveDraft={isApiMode() && canEdit}
+          saveDraftDisabled={saveBusy || !hasPendingServerSave}
+          saveBusy={saveBusy}
+          onSaveDraft={() => void saveScheduleToServer()}
+          showPublish={canPublishSchedule && isApiMode()}
+          publishBusy={publishBusy}
+          onPublish={() => void handlePublish()}
+          showBuildDraft={Boolean(canPublishSchedule && isApiMode() && !draftResult)}
+          buildingDraft={buildingDraft}
+          onBuildDraft={() => void handleBuildDraft()}
+          moreMenu={
+            <div className="flex flex-col gap-1">
               <button
                 type="button"
-                onClick={() => setShowProjectOverlay((v) => !v)}
-                className={`inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[11px] font-semibold transition-colors ${
-                  showProjectOverlay
-                    ? "border-ds-accent/40 bg-ds-accent/10 text-ds-accent"
-                    : "border-ds-border bg-ds-primary text-ds-muted hover:text-ds-foreground"
-                }`}
-                title={showProjectOverlay ? "Hide project overlay" : "Show project overlay"}
+                className="rounded-lg px-3 py-2 text-left text-sm font-medium text-ds-foreground hover:bg-ds-interactive-hover"
+                onClick={() => setTimeOffOpen(true)}
               >
-                Projects
+                Time off
               </button>
-              {canPublishSchedule && isApiMode() ? (
+              {canConfigureOrg ? (
                 <button
                   type="button"
-                  onClick={() => void handlePublish()}
-                  className="inline-flex items-center gap-1.5 rounded-md bg-ds-accent px-3 py-1.5 text-xs font-bold text-ds-accent-foreground hover:bg-ds-accent/90"
+                  className="rounded-lg px-3 py-2 text-left text-sm font-medium text-ds-foreground hover:bg-ds-interactive-hover"
+                  onClick={() => setSettingsOpen(true)}
                 >
-                  Publish schedule
+                  Schedule settings
                 </button>
               ) : null}
-              {canPublishSchedule && isApiMode() && !draftResult ? (
-                <button
-                  type="button"
-                  onClick={() => void handleBuildDraft()}
-                  disabled={buildingDraft}
-                  className="inline-flex items-center gap-1.5 rounded-md border border-ds-border bg-ds-primary px-3 py-1.5 text-xs font-semibold text-ds-muted hover:text-ds-foreground disabled:opacity-60"
-                >
-                  {buildingDraft ? "Building…" : "✦ Build Draft"}
-                </button>
-              ) : null}
-            </div>
-            <div className="hidden h-6 w-px bg-pulseShell-border sm:block" aria-hidden />
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-[11px] font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400">Show</span>
-              <nav
-                id="schedule-toggle"
-                className="flex rounded-md border border-pulseShell-border bg-pulseShell-surface p-1 shadow-[var(--pulse-shell-shadow)]"
-                aria-label="Schedule content filter"
-              >
-                {(
-                  [
-                    ["workers", "Workers"],
-                    ["projects", "Projects"],
-                    ["combined", "Combined"],
-                  ] as const
-                ).map(([key, label]) => (
-                  <button
-                    key={key}
-                    type="button"
-                    onClick={() => setContentFilter(key)}
-                    className={`rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${
-                      contentFilter === key
-                        ? "bg-[var(--pulse-segment-active-bg)] text-[var(--pulse-segment-active-fg)] shadow-sm ring-1 ring-[color-mix(in_srgb,var(--ds-accent)_28%,transparent)] dark:ring-sky-400/30"
-                        : "text-gray-500 hover:bg-ds-interactive-hover-strong hover:text-gray-900 dark:text-slate-400 dark:hover:bg-ds-interactive-hover dark:hover:text-slate-100"
-                    }`}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </nav>
-            </div>
-          </div>
-          {canEdit ? (
-            <div className={`mt-3 ${scheduleDragLock ? "pointer-events-none" : ""}`}>
-              <div className="flex items-center justify-between gap-3 rounded-md border border-ds-border bg-ds-secondary px-4 py-2 text-xs">
-                {activePeriod ? (
-                  <>
-                    <div className="flex items-center gap-2">
-                      <span
-                        className={`h-2 w-2 rounded-full ${
-                          activePeriod.status === "open" ? "bg-emerald-500" : "bg-amber-400"
-                        }`}
-                      />
-                      <span className="font-semibold text-ds-foreground">
-                        {activePeriod.status === "open" ? "Availability open" : "Period draft"}
-                        {" · "}
-                        {activePeriod.start_date} – {activePeriod.end_date}
-                      </span>
-                      {activePeriod.availability_deadline ? (
-                        <span className="text-ds-muted">
-                          {" · "}Due {new Date(activePeriod.availability_deadline).toLocaleDateString()}
-                        </span>
-                      ) : null}
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setShowPeriodModal(true)}
-                      className="font-semibold text-ds-accent hover:underline"
-                    >
-                      Manage period
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <span className="text-ds-muted">No active period. Create one to collect availability.</span>
-                    <button
-                      type="button"
-                      onClick={() => setShowPeriodModal(true)}
-                      className="inline-flex items-center gap-1 rounded-md bg-ds-accent px-3 py-1 text-xs font-bold text-ds-accent-foreground hover:bg-ds-accent/90"
-                    >
-                      + Create period
-                    </button>
-                  </>
-                )}
+              <div className="border-t border-pulseShell-border pt-2 dark:border-slate-700">
+                <SettingsGear
+                  module="schedule"
+                  label="Module preferences"
+                  className="w-full justify-center border-pulseShell-border"
+                />
               </div>
             </div>
-          ) : null}
-          {draftResult ? (
-            <div className="mt-3">
+          }
+        />
+
+        <div className="flex min-h-0 flex-1 flex-col gap-4 lg:flex-row">
+          <ScheduleOperationalSidebar
+            collapsed={sidebarCollapsed}
+            onToggleCollapsed={() => setSidebarCollapsed((c) => !c)}
+            searchQuery={sidebarSearch}
+            onSearchChange={setSidebarSearch}
+            workspaceView={workspaceView}
+            onWorkspaceViewChange={(v) => {
+              setWorkspaceView(v);
+              if (v !== "calendar") {
+                setTimeScale("month");
+                setScheduleLayout("calendar");
+              }
+            }}
+            zones={zones}
+            facilityFilterIds={facilityFilterIds}
+            onFacilityFilterToggle={(id) =>
+              setFacilityFilterIds((prev) => (prev.includes(id) ? prev.filter((z) => z !== id) : [...prev, id]))
+            }
+            onClearFacilityFilter={() => setFacilityFilterIds([])}
+            alerts={alerts}
+            onOpenSettings={() => setSettingsOpen(true)}
+            onOpenTimeOff={() => setTimeOffOpen(true)}
+            onOpenAvailabilitySupervisor={() => setAvailabilitySupervisorOpen(true)}
+            onOpenEmployeeAvailability={() => setEmployeeAvailabilityOpen(true)}
+            canConfigureOrg={canConfigureOrg}
+            disabled={scheduleDragLock}
+          />
+
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-4">
+            {workspaceView === "calendar" ? (
+              <>
+                <ScheduleToolbar
+                  timeScale={timeScale}
+                  onTimeScaleChange={setTimeScale}
+                  scheduleLayout={scheduleLayout}
+                  onScheduleLayoutChange={(layout) => {
+                    setScheduleLayout(layout);
+                    if (layout === "ops-grid") setTimeScale("week");
+                  }}
+                  contentFilter={contentFilter}
+                  onContentFilterChange={setContentFilter}
+                  showProjectOverlay={showProjectOverlay}
+                  onToggleProjectOverlay={() => setShowProjectOverlay((v) => !v)}
+                  disabled={scheduleDragLock}
+                />
+                <ScheduleCoverageStrip
+                  alerts={alerts}
+                  pendingAvailability={pendingAvailabilityCount}
+                  unpublishedChanges={hasPendingServerSave}
+                  trainingConflicts={0}
+                  onAvailabilityClick={() => setAvailabilitySupervisorOpen(true)}
+                />
+              </>
+            ) : null}
+
+            {draftResult ? (
               <ScheduleDraftPanel
                 draft={draftResult}
                 companyId={null}
@@ -1128,41 +1072,36 @@ export function ScheduleApp() {
                 }}
                 onDiscard={() => setDraftResult(null)}
               />
-            </div>
-          ) : null}
-          </>
-        ) : null}
+            ) : null}
 
-        <div className={`mt-5 ${scheduleDragLock ? "pointer-events-none" : ""}`}>
-          <ScheduleAlertsBanner alerts={alerts} />
-        </div>
+            <ScheduleAlertsBanner alerts={alerts} />
 
-        <div className="relative mt-5">
-          {scheduleDragLock ? (
-            <div
-              className="pointer-events-none fixed inset-0 z-[115] bg-[color-mix(in_srgb,var(--ds-text-primary)_6%,transparent)] dark:bg-ds-bg/35"
-              aria-hidden
-            />
-          ) : null}
-          {view === "calendar" ? (
-            <div className="flex flex-col gap-6 xl:flex-row xl:items-start">
-              <div className="flex w-full shrink-0 flex-col gap-4 xl:order-first xl:w-72">
-                <ScheduleWorkerPanel
-                  workers={workers}
-                  rosterDragEnabled={workerDragEnabled}
-                  dragSession={dragSession}
-                  shifts={shifts}
-                  roles={roles}
-                  placementDutyRole={placementDutyRole}
-                  onPlacementDutyRoleChange={setPlacementDutyRole}
-                  placementBand={placementBand}
-                  onPlacementBandChange={setPlacementBand}
-                  onDragSessionStart={setDragSession}
-                  onDragSessionEnd={() => {
-                    setDragSession(null);
-                    setTrashHovering(false);
-                  }}
+            <div className="relative min-h-0 flex-1">
+              {scheduleDragLock ? (
+                <div
+                  className="pointer-events-none fixed inset-0 z-[115] bg-[color-mix(in_srgb,var(--ds-text-primary)_6%,transparent)] dark:bg-ds-bg/35"
+                  aria-hidden
                 />
+              ) : null}
+              {workspaceView === "calendar" ? (
+                <div className="flex flex-col gap-6 xl:flex-row xl:items-start">
+                  <div className="flex w-full shrink-0 flex-col gap-4 xl:order-first xl:w-72">
+                    <ScheduleWorkerPanel
+                      workers={workersForPanel}
+                      rosterDragEnabled={workerDragEnabled}
+                      dragSession={dragSession}
+                      shifts={shifts}
+                      roles={roles}
+                      placementDutyRole={placementDutyRole}
+                      onPlacementDutyRoleChange={setPlacementDutyRole}
+                      placementBand={placementBand}
+                      onPlacementBandChange={setPlacementBand}
+                      onDragSessionStart={setDragSession}
+                      onDragSessionEnd={() => {
+                        setDragSession(null);
+                        setTrashHovering(false);
+                      }}
+                    />
                 <ScheduleLegendPanel
                   shiftTypes={shiftTypes}
                   shifts={displayShifts}
@@ -1173,7 +1112,7 @@ export function ScheduleApp() {
                 />
               </div>
               <div className="min-w-0 flex-1 space-y-4">
-                {calendarScale === "day" ? (
+                {scheduleLayout === "calendar" && timeScale === "day" ? (
                   <div className="space-y-3">
                     <div
                       className={`flex flex-wrap items-center justify-between gap-2 rounded-md border border-pulseShell-border bg-pulseShell-surface px-3 py-2 shadow-[var(--pulse-shell-shadow)] ${scheduleDragLock ? "pointer-events-none" : ""}`}
@@ -1206,7 +1145,7 @@ export function ScheduleApp() {
                     </div>
                     <ScheduleDayView
                       date={focusDate}
-                      onClose={() => setCalendarScale("month")}
+                      onClose={() => setTimeScale("month")}
                       shifts={dayDisplayShifts}
                       contextShifts={shiftsForView}
                       dayShiftsAll={dayAllShifts}
@@ -1235,13 +1174,13 @@ export function ScheduleApp() {
                     />
                   </div>
                 ) : null}
-                {calendarScale === "week" ? (
+                {scheduleLayout === "calendar" && timeScale === "week" ? (
                   <ScheduleWeekView
                     weekDates={weekDates}
                     onPrevWeek={() => setFocusDate((p) => addDaysToIso(p, -7))}
                     onNextWeek={() => setFocusDate((p) => addDaysToIso(p, 7))}
                     onToday={goToday}
-                    shifts={displayShifts}
+                    shifts={displayShiftsForGrid}
                     workers={workers}
                     zones={zones}
                     roles={roles}
@@ -1254,7 +1193,8 @@ export function ScheduleApp() {
                     onWorkerDrop={handleWorkerDrop}
                     onOpenDay={(iso) => {
                       setFocusDate(iso);
-                      setCalendarScale("day");
+                      setScheduleLayout("calendar");
+                      setTimeScale("day");
                     }}
                     projectBarItems={showProjectOverlay ? projectBarItems : null}
                     scheduleDragLock={scheduleDragLock}
@@ -1269,9 +1209,12 @@ export function ScheduleApp() {
                       setDragSession(null);
                       setTrashHovering(false);
                     }}
+                    onOpenWorkerAttendance={
+                      canPublishSchedule ? (p) => setWorkerAttendanceModal(p) : undefined
+                    }
                   />
                 ) : null}
-                {calendarScale === "operational" ? (
+                {scheduleLayout === "ops-grid" ? (
                   <div className="space-y-3">
                     <div
                       className={`flex flex-wrap items-center justify-between gap-2 rounded-md border border-pulseShell-border bg-pulseShell-surface px-3 py-2 shadow-[var(--pulse-shell-shadow)] ${scheduleDragLock ? "pointer-events-none" : ""}`}
@@ -1306,7 +1249,7 @@ export function ScheduleApp() {
                     <ScheduleEmployeeWeekGrid
                       weekDates={weekDates}
                       workers={workers}
-                      shifts={displayShifts}
+                      shifts={displayShiftsForGrid}
                       zones={zones}
                       settings={settings}
                       timeOffBlocks={timeOffBlocks}
@@ -1324,13 +1267,13 @@ export function ScheduleApp() {
                     />
                   </div>
                 ) : null}
-                {calendarScale === "month" ? (
+                {scheduleLayout === "calendar" && timeScale === "month" ? (
                   <ScheduleCalendarGrid
                     year={cursor.y}
                     monthIndex={cursor.m}
                     onPrevMonth={prevMonth}
                     onNextMonth={nextMonth}
-                    shifts={displayShifts}
+                    shifts={displayShiftsForGrid}
                     workers={workers}
                     zones={zones}
                     roles={roles}
@@ -1343,7 +1286,8 @@ export function ScheduleApp() {
                     onWorkerDrop={handleWorkerDrop}
                     onOpenDay={(iso) => {
                       setFocusDate(iso);
-                      setCalendarScale("day");
+                      setScheduleLayout("calendar");
+                      setTimeScale("day");
                     }}
                     projectBarItems={showProjectOverlay ? projectBarItems : null}
                     scheduleDragLock={scheduleDragLock}
@@ -1358,12 +1302,15 @@ export function ScheduleApp() {
                       setDragSession(null);
                       setTrashHovering(false);
                     }}
+                    onOpenWorkerAttendance={
+                      canPublishSchedule ? (p) => setWorkerAttendanceModal(p) : undefined
+                    }
                   />
                 ) : null}
               </div>
             </div>
           ) : null}
-          {view === "my-shifts" ? (
+          {workspaceView === "my-shifts" ? (
             <ScheduleMyShiftsView
               shifts={myShifts}
               workers={workers}
@@ -1372,7 +1319,7 @@ export function ScheduleApp() {
               onSelectShift={openEdit}
             />
           ) : null}
-          {view === "personnel" ? (
+          {workspaceView === "personnel" ? (
             <SchedulePersonnel
               workers={workers}
               shifts={shifts}
@@ -1382,13 +1329,25 @@ export function ScheduleApp() {
               scheduleDragLocked={scheduleDragLock}
             />
           ) : null}
-          {view === "reports" ? <ScheduleReports /> : null}
+          {workspaceView === "reports" ? <ScheduleReports /> : null}
+            </div>
+          </div>
         </div>
       </div>
 
       <div className={scheduleDragLock ? "pointer-events-none" : ""}>
         <ScheduleWorkforceBar summary={summary} />
       </div>
+
+      {workerAttendanceModal ? (
+        <WorkerAttendanceModal
+          open
+          onClose={() => setWorkerAttendanceModal(null)}
+          workerId={workerAttendanceModal.workerId}
+          date={workerAttendanceModal.date}
+          workerLabel={workerAttendanceModal.label}
+        />
+      ) : null}
 
       <ShiftEditModal
         open={shiftModal !== null}
@@ -1480,6 +1439,22 @@ export function ScheduleApp() {
         workers={workers}
         onClose={() => setTimeOffOpen(false)}
         onSubmit={(p) => addTimeOffBlock(p)}
+      />
+
+      <AvailabilitySupervisorDrawer
+        open={availabilitySupervisorOpen}
+        onClose={() => setAvailabilitySupervisorOpen(false)}
+        workers={workers}
+        periodLabel={activePeriod ? `${activePeriod.start_date} – ${activePeriod.end_date}` : null}
+        onMatrixChanged={() => setAvailabilityMatrixVersion((v) => v + 1)}
+        onNotify={(msg) => setScheduleToast(msg)}
+      />
+
+      <EmployeeAvailabilityDrawer
+        open={employeeAvailabilityOpen}
+        onClose={() => setEmployeeAvailabilityOpen(false)}
+        workers={workers}
+        setWorkers={setWorkers}
       />
 
       <AvailabilityOverrideModal

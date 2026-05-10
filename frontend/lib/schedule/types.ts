@@ -7,6 +7,13 @@ export type ShiftTypeKey = "day" | "afternoon" | "night";
 /** Roster drag: use recurring template vs fixed day/afternoon/night window. */
 export type SchedulePlacementBand = "template" | ShiftTypeKey;
 
+/** One row in Schedule settings → Placement panel → “Shift window” dropdown. */
+export type PlacementBandOption = {
+  band: SchedulePlacementBand;
+  label: string;
+  enabled?: boolean;
+};
+
 export type ShiftEventType = "work" | "training" | "vacation" | "sick";
 
 export type TimeFormat = "12h" | "24h";
@@ -176,15 +183,32 @@ export interface ScheduleSettings {
   /** Approximate slots per day for fill % (mock capacity until headcount API exists). */
   requiredShiftsPerDay: number;
   activeWorkerTarget: number;
+  /**
+   * Workers sidebar — “Shift window” menu: order, labels, and visibility.
+   * Omit to use built-in defaults (template + day / afternoon / night presets).
+   */
+  placementBandOptions?: PlacementBandOption[];
+  /**
+   * Workers sidebar — “Role when placing”: subset of {@link ScheduleRoleDefinition} IDs in display order.
+   * Omit or empty → all roles from the roster definition list.
+   */
+  placementPanelRoleIds?: string[];
 }
 
 export interface ScheduleAlerts {
-  /** Days in the focused month with at least one shift but no supervisor/lead. */
+  /**
+   * Legacy field — supervisor coverage is no longer surfaced as an alert (always 0).
+   * Prefer {@link roP4BandGapCount} for staffing intelligence.
+   */
   daysMissingSupervisor: number;
   /** Shifts with no worker assigned. */
   unassignedShiftCount: number;
-  /** Shifts that violate requireSupervisor (worker-only coverage when rule on). */
+  /** Legacy — always 0; supervisor slot alerts removed. */
   openSupervisorSlots: number;
+  /**
+   * Staffed day / afternoon / night bands in the focused month missing any worker with RO or P4.
+   */
+  roP4BandGapCount: number;
   /** Coverage rule violations (critical). */
   coverageCritical: number;
   /** Coverage rule violations (warning). */

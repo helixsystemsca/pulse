@@ -223,10 +223,10 @@ export default function LoginPage() {
             </div>
 
             <h1 className="mt-5 text-center font-headline text-[1.5rem] font-extrabold leading-tight tracking-tight text-[#2f3d52] dark:text-ds-foreground sm:mt-6 sm:text-[1.65rem] md:text-3xl">
-              Enhance your daily operations.
+              Facility Operations Platform
             </h1>
             <p className="mt-1.5 text-center text-sm font-medium text-[#5a6d82] dark:text-ds-muted">
-              Invite-only access for verified operators.
+              Access only for verified operators.
             </p>
 
             <div className="mt-5 rounded-[1.15rem] bg-[linear-gradient(180deg,rgba(207,231,255,0.85)_0%,rgba(230,236,245,0.55)_100%)] p-[1px] shadow-[0_20px_50px_rgba(76,96,133,0.12)] dark:bg-ds-border dark:p-px dark:shadow-[0_16px_40px_rgba(0,0,0,0.25)] sm:mt-6">

@@ -59,6 +59,7 @@ type Props = {
   onWorkerDropRejected?: (message: string) => void;
   onShiftDragSessionStart: (payload: ScheduleDragSession) => void;
   onShiftDragSessionEnd: () => void;
+  onOpenWorkerAttendance?: (payload: { workerId: string; date: string; label: string }) => void;
 };
 
 export function ScheduleCalendarGrid({
@@ -87,6 +88,7 @@ export function ScheduleCalendarGrid({
   onWorkerDropRejected,
   onShiftDragSessionStart,
   onShiftDragSessionEnd,
+  onOpenWorkerAttendance,
   projectBarItems = null,
 }: Props) {
   const cells = useMemo(() => monthGrid(year, monthIndex), [year, monthIndex]);
@@ -323,6 +325,8 @@ export function ScheduleCalendarGrid({
                 shiftDragEnabled={shiftDragEnabled}
                 onShiftDragSessionStart={onShiftDragSessionStart}
                 onShiftDragSessionEnd={onShiftDragSessionEnd}
+                cellDate={c.date}
+                onOpenWorkerAttendance={onOpenWorkerAttendance}
                 chipDetailLevel="summary"
                 scrollClassName="flex min-h-0 flex-1 flex-col gap-0.5 px-1 pb-1.5 pt-0.5"
               />

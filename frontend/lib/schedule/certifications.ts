@@ -5,6 +5,7 @@ export const CERT_CODE_LABELS: Readonly<Record<string, string>> = {
   RO: "Refrigeration Operator",
   P1: "Pool Operator Level 1",
   P2: "Pool Operator Level 2",
+  P4: "Pool Operator Level 4",
   FA: "First Aid",
 };
 

@@ -138,9 +138,10 @@ app.add_middleware(
     allow_origins=_cors_origins,
     allow_origin_regex=settings.cors_origin_regex_pattern,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    # Include all methods so media/avatar routes and proxies never fail preflight on an uncommon verb.
+    allow_methods=["*"],
     allow_headers=["*"],
-    expose_headers=["Content-Type", "Content-Length"],
+    expose_headers=["Content-Type", "Content-Length", "Cache-Control", "ETag"],
     max_age=600,
 )
 

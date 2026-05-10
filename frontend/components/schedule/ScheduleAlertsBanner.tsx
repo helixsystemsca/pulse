@@ -5,19 +5,14 @@ import type { ScheduleAlerts } from "@/lib/schedule/types";
 
 export function ScheduleAlertsBanner({ alerts }: { alerts: ScheduleAlerts }) {
   const parts: string[] = [];
-  if (alerts.daysMissingSupervisor > 0) {
+  if (alerts.roP4BandGapCount > 0) {
     parts.push(
-      `${alerts.daysMissingSupervisor} day${alerts.daysMissingSupervisor === 1 ? "" : "s"} missing supervisor coverage`,
+      `${alerts.roP4BandGapCount} staffed band${alerts.roP4BandGapCount === 1 ? "" : "s"} (day / afternoon / night) missing RO or P4`,
     );
   }
   if (alerts.unassignedShiftCount > 0) {
     parts.push(
       `${alerts.unassignedShiftCount} open shift${alerts.unassignedShiftCount === 1 ? "" : "s"} unassigned`,
-    );
-  }
-  if (alerts.openSupervisorSlots > 0) {
-    parts.push(
-      `${alerts.openSupervisorSlots} supervisor slot${alerts.openSupervisorSlots === 1 ? "" : "s"} need assignment`,
     );
   }
   if (alerts.coverageCritical > 0) {
@@ -34,7 +29,8 @@ export function ScheduleAlertsBanner({ alerts }: { alerts: ScheduleAlerts }) {
   if (parts.length === 0) {
     return (
       <div className="rounded-md border border-emerald-200/80 bg-emerald-50/50 px-4 py-3 text-sm text-emerald-950 shadow-sm dark:border-emerald-500/25 dark:bg-emerald-950/30 dark:text-emerald-100">
-        <span className="font-medium">Schedule health:</span> no staffing warnings for this month.
+        <span className="font-medium">Schedule health:</span> staffed day / afternoon / night bands include RO or P4 where
+        applicable; no other staffing warnings for this month.
       </div>
     );
   }

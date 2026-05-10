@@ -1,6 +1,7 @@
 "use client";
 
 import { flushSync } from "react-dom";
+import { workerDayAttendanceKey, useWorkerDayAttendanceStore } from "@/lib/dashboard/worker-day-attendance-store";
 import { scheduleShiftHoverSummary } from "@/lib/schedule/certifications";
 import { getShiftConflicts } from "@/lib/schedule/conflicts";
 import type { CompactDayShiftRow } from "@/lib/schedule/compact-day-shifts";
@@ -9,6 +10,7 @@ import {
   setShiftDragData,
 } from "@/lib/schedule/drag";
 import { buildingIndicatorForZone } from "@/lib/schedule/building-indicators";
+import { displayStandardShiftCode } from "@/lib/schedule/shift-definition-catalog";
 import { ScheduleShiftCertChips } from "./ScheduleShiftCertChips";
 import type {
   ScheduleDragSession,
@@ -36,6 +38,10 @@ type Props = {
   shiftDragEnabled?: boolean;
   onShiftDragSessionStart: (payload: ScheduleDragSession) => void;
   onShiftDragSessionEnd: () => void;
+  /** Calendar date (YYYY-MM-DD) for this cell — attendance marks are keyed by worker + date. */
+  cellDate: string;
+  /** Supervisors/managers: tap worker name to mark sick / DNS (stored locally until telemetry). */
+  onOpenWorkerAttendance?: (payload: { workerId: string; date: string; label: string }) => void;
   /** Outer scroll area (month vs week cell height). */
   scrollClassName?: string;
   /**
@@ -78,9 +84,12 @@ export function ScheduleCompactCellRows({
   shiftDragEnabled = true,
   onShiftDragSessionStart,
   onShiftDragSessionEnd,
+  cellDate,
+  onOpenWorkerAttendance,
   scrollClassName = "max-h-[11rem] flex-1 flex-col gap-1 overflow-y-auto px-1 pb-2 pt-1",
   chipDetailLevel = "full",
 }: Props) {
+  const attendanceMarks = useWorkerDayAttendanceStore((s) => s.marks);
   const typeMap = new Map(shiftTypes.map((t) => [t.key, t]));
   const zoneMap = new Map(zones.map((z) => [z.id, z.label]));
   const zoneObjMap = new Map(zones.map((z) => [z.id, z]));
@@ -130,6 +139,17 @@ export function ScheduleCompactCellRows({
           ),
         ] as string[];
 
+        const attendanceMark =
+          s.workerId && s.eventType === "work"
+            ? attendanceMarks[workerDayAttendanceKey(s.workerId, cellDate)]
+            : undefined;
+        const canTapAttendance =
+          Boolean(onOpenWorkerAttendance) &&
+          !scheduleDragLock &&
+          Boolean(s.workerId) &&
+          s.eventType === "work" &&
+          s.shiftKind !== "project_task";
+
         return (
           <div
             key={row.key}
@@ -171,10 +191,36 @@ export function ScheduleCompactCellRows({
                 <div className="flex min-w-0 items-center gap-0.5">
                   {s.shiftCode && s.shiftKind !== "project_task" ? (
                     <span className="mr-1 inline-flex shrink-0 items-center rounded px-1 py-0 text-[9px] font-bold uppercase tracking-wide bg-ds-accent/15 text-ds-accent">
-                      {s.shiftCode}
+                      {s.shiftKind === "workforce" && s.eventType === "work"
+                        ? displayStandardShiftCode(s, { fallbackCode: row.code })
+                        : s.shiftCode}
                     </span>
                   ) : null}
-                  <span className="min-w-0 flex-1 truncate font-semibold leading-tight">{row.name}</span>
+                  {canTapAttendance ? (
+                    <button
+                      type="button"
+                      className="min-w-0 flex-1 truncate text-left font-semibold leading-tight text-ds-foreground underline-offset-2 hover:underline"
+                      title="Mark attendance (sick / DNS)"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (!s.workerId) return;
+                        onOpenWorkerAttendance?.({
+                          workerId: s.workerId,
+                          date: cellDate,
+                          label: row.name,
+                        });
+                      }}
+                    >
+                      {row.name}
+                    </button>
+                  ) : (
+                    <span className="min-w-0 flex-1 truncate font-semibold leading-tight">{row.name}</span>
+                  )}
+                  {attendanceMark ? (
+                    <span className="shrink-0 rounded bg-[#e8706f] px-1 py-px text-[8px] font-bold uppercase leading-none text-white">
+                      {attendanceMark === "dns" ? "DNS" : "Sick"}
+                    </span>
+                  ) : null}
                   <span className="flex min-w-0 shrink-0 items-center gap-0.5">
                     {certUnion.length ? (
                       <ScheduleShiftCertChips shift={s} size="compact" requiredOverride={certUnion} />
@@ -198,10 +244,36 @@ export function ScheduleCompactCellRows({
                   <div className="flex min-w-0 items-center gap-1">
                     {s.shiftCode && s.shiftKind !== "project_task" ? (
                       <span className="inline-flex shrink-0 items-center rounded px-1 py-0 text-[9px] font-bold uppercase tracking-wide bg-ds-accent/15 text-ds-accent">
-                        {s.shiftCode}
+                        {s.shiftKind === "workforce" && s.eventType === "work"
+                          ? displayStandardShiftCode(s, { fallbackCode: row.code })
+                          : s.shiftCode}
                       </span>
                     ) : null}
-                    <p className="min-w-0 flex-1 truncate font-semibold leading-tight">{row.name}</p>
+                    {canTapAttendance ? (
+                      <button
+                        type="button"
+                        className="min-w-0 flex-1 truncate text-left font-semibold leading-tight text-ds-foreground underline-offset-2 hover:underline"
+                        title="Mark attendance (sick / DNS)"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (!s.workerId) return;
+                          onOpenWorkerAttendance?.({
+                            workerId: s.workerId,
+                            date: cellDate,
+                            label: row.name,
+                          });
+                        }}
+                      >
+                        {row.name}
+                      </button>
+                    ) : (
+                      <p className="min-w-0 flex-1 truncate font-semibold leading-tight">{row.name}</p>
+                    )}
+                    {attendanceMark ? (
+                      <span className="shrink-0 rounded bg-[#e8706f] px-1 py-0.5 text-[9px] font-bold uppercase leading-none text-white">
+                        {attendanceMark === "dns" ? "DNS" : "Sick"}
+                      </span>
+                    ) : null}
                   </div>
 
                   <div className="mt-0.5 flex w-full min-w-0 flex-wrap items-center justify-end gap-1">

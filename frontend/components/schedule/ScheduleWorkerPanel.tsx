@@ -14,6 +14,11 @@ import {
   shiftCodeForWorkerPanel,
   type WorkerPrimaryBand,
 } from "@/lib/schedule/scheduleWorkerPanelSort";
+import {
+  placementBandDropdownOptions,
+  resolvePlacementRoles,
+} from "@/lib/schedule/placement-panel-options";
+import { useScheduleStore } from "@/lib/schedule/schedule-store";
 import type { ScheduleDragSession, SchedulePlacementBand, ScheduleRoleDefinition, Shift, Worker } from "@/lib/schedule/types";
 
 const BAND_SECTION_ORDER: WorkerPrimaryBand[] = ["D", "A", "N", "none"];
@@ -52,6 +57,16 @@ export function ScheduleWorkerPanel({
   onDragSessionStart,
   onDragSessionEnd,
 }: Props) {
+  const scheduleSettings = useScheduleStore((s) => s.settings);
+  const placementRoleChoices = useMemo(
+    () => resolvePlacementRoles(roles, scheduleSettings.placementPanelRoleIds),
+    [roles, scheduleSettings.placementPanelRoleIds],
+  );
+  const shiftWindowOptions = useMemo(
+    () => placementBandDropdownOptions(scheduleSettings),
+    [scheduleSettings.placementBandOptions],
+  );
+
   const [open, setOpen] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(BAND_SECTION_ORDER.map((k) => [k, true])),
   );
@@ -104,7 +119,7 @@ export function ScheduleWorkerPanel({
               disabled={!rosterDragEnabled}
               onChange={(e) => onPlacementDutyRoleChange(e.target.value)}
             >
-              {roles.map((r) => (
+              {placementRoleChoices.map((r) => (
                 <option key={r.id} value={r.id}>
                   {r.label}
                 </option>
@@ -122,10 +137,11 @@ export function ScheduleWorkerPanel({
               disabled={!rosterDragEnabled}
               onChange={(e) => onPlacementBandChange(e.target.value as SchedulePlacementBand)}
             >
-              <option value="template">Match worker template</option>
-              <option value="day">Day · 07:00–15:00</option>
-              <option value="afternoon">Afternoon · 14:00–22:00</option>
-              <option value="night">Night · 22:00–06:00</option>
+              {shiftWindowOptions.map((o) => (
+                <option key={o.band} value={o.band}>
+                  {o.label}
+                </option>
+              ))}
             </select>
           </div>
         </div>

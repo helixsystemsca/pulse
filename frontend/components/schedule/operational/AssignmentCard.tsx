@@ -1,6 +1,6 @@
 "use client";
 
-import { inferStandardShiftCode, standardShiftByCode } from "@/lib/schedule/shift-definition-catalog";
+import { displayStandardShiftCode, standardShiftByCode } from "@/lib/schedule/shift-definition-catalog";
 import { ASSIGNMENT_CODE_CHIP } from "@/lib/schedule/schedule-semantic-styles";
 import { formatTimeString } from "@/lib/schedule/time-format";
 import type { ScheduleSettings, Shift, Zone } from "@/lib/schedule/types";
@@ -45,10 +45,7 @@ export function AssignmentCard({
   onOpen?: () => void;
 }) {
   const zoneLabel = zone?.label ?? "—";
-  const code =
-    (shift.shiftCode && shift.shiftCode.trim()) ||
-    inferStandardShiftCode(shift.startTime, shift.endTime) ||
-    shift.shiftType.toUpperCase().slice(0, 1);
+  const code = displayStandardShiftCode(shift);
   const badges = deriveOperationalBadges(shift);
   const tip = buildTooltip({ code, shift, zoneLabel, workerName, settings });
 
