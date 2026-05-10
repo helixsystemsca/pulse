@@ -14,7 +14,7 @@ from app.core.company_logo_upload import normalize_logo_content_type
 from app.core.supabase_storage import create_signed_upload_url, public_object_url
 from app.core.pulse_storage import read_user_avatar_bytes, read_user_avatar_pending_bytes, write_user_avatar_bytes
 from app.core.auth.security import hash_password, verify_password
-from app.core.user_avatar_upload import INTERNAL_AVATAR_PATH, validate_logo_bytes
+from app.core.user_avatar_upload import INTERNAL_AVATAR_PATH, validate_avatar_bytes
 from app.core.user_roles import user_has_any_role
 from app.models.domain import AvatarStatus, Company, User, UserRole
 from app.schemas.profile import (
@@ -77,7 +77,7 @@ async def upload_my_avatar(
     ct = normalize_logo_content_type(file.content_type)
     raw = await file.read()
     try:
-        ext = validate_logo_bytes(ct, raw)
+        ext = validate_avatar_bytes(ct, raw)
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
 

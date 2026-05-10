@@ -14,6 +14,8 @@ export type WorkerRow = {
   job_title: string | null;
   /** HR shift key; label comes from workers settings `shifts`. */
   shift?: string | null;
+  /** GG (or similar) eligibility — stored on scheduling profile, not as a shift preset. */
+  gg_assignable?: boolean;
   /** Scheduling profile from pulse worker profile (full_time | regular_part_time | part_time). */
   employment_type?: string | null;
   avatar_url?: string | null;
@@ -92,6 +94,7 @@ export type WorkerDetail = {
     role?: string | null;
     required_certifications?: string[] | null;
   }[];
+  gg_assignable?: boolean;
   compliance_summary: WorkerComplianceSummary;
   work_summary: WorkerWorkSummary;
   created_at: string;

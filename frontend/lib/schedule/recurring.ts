@@ -35,6 +35,13 @@ export function inferShiftTypeFromStart(start: string): ShiftTypeKey {
   return "day";
 }
 
+/** Standard placement windows when assigning from the roster (matches typical roster presets). */
+export function defaultWindowForShiftBand(key: ShiftTypeKey): { start: string; end: string } {
+  if (key === "night") return { start: "22:00", end: "06:00" };
+  if (key === "afternoon") return { start: "14:00", end: "22:00" };
+  return { start: "07:00", end: "15:00" };
+}
+
 export function approvedTimeOffKind(
   workerId: string,
   date: string,

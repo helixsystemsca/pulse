@@ -4,10 +4,24 @@ from __future__ import annotations
 
 from typing import Optional
 
-from app.core.company_logo_upload import validate_logo_bytes
-
 INTERNAL_AVATAR_PATH = "/api/v1/profile/avatar"
 INTERNAL_AVATAR_PENDING_PATH = "/api/v1/profile/avatar-pending"
+
+_MAX_AVATAR_BYTES = 5 * 1024 * 1024
+_AVATAR_CT_EXT: dict[str, str] = {
+    "image/jpeg": ".jpg",
+    "image/png": ".png",
+    "image/webp": ".webp",
+}
+
+
+def validate_avatar_bytes(ct: str, raw: bytes) -> str:
+    """Return filename suffix (e.g. ``.webp``). Raises ``ValueError`` with a user-facing message."""
+    if ct not in _AVATAR_CT_EXT:
+        raise ValueError("Upload an image (JPEG, PNG, or WebP)")
+    if len(raw) > _MAX_AVATAR_BYTES:
+        raise ValueError("Image too large (max 5MB)")
+    return _AVATAR_CT_EXT[ct]
 
 
 def co_worker_avatar_url(user_id: str, stored_avatar_url: Optional[str]) -> Optional[str]:
@@ -30,5 +44,5 @@ __all__ = [
     "INTERNAL_AVATAR_PATH",
     "INTERNAL_AVATAR_PENDING_PATH",
     "co_worker_avatar_url",
-    "validate_logo_bytes",
+    "validate_avatar_bytes",
 ]

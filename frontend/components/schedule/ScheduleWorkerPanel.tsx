@@ -14,7 +14,7 @@ import {
   shiftCodeForWorkerPanel,
   type WorkerPrimaryBand,
 } from "@/lib/schedule/scheduleWorkerPanelSort";
-import type { ScheduleDragSession, Shift, Worker } from "@/lib/schedule/types";
+import type { ScheduleDragSession, SchedulePlacementBand, ScheduleRoleDefinition, Shift, Worker } from "@/lib/schedule/types";
 
 const BAND_SECTION_ORDER: WorkerPrimaryBand[] = ["D", "A", "N", "none"];
 
@@ -30,6 +30,11 @@ type Props = {
   rosterDragEnabled: boolean;
   dragSession: ScheduleDragSession | null;
   shifts: Shift[];
+  roles: ScheduleRoleDefinition[];
+  placementDutyRole: string;
+  onPlacementDutyRoleChange: (roleId: string) => void;
+  placementBand: SchedulePlacementBand;
+  onPlacementBandChange: (band: SchedulePlacementBand) => void;
   onDragSessionStart: (session: ScheduleDragSession) => void;
   onDragSessionEnd: () => void;
 };
@@ -39,6 +44,11 @@ export function ScheduleWorkerPanel({
   rosterDragEnabled,
   dragSession,
   shifts,
+  roles,
+  placementDutyRole,
+  onPlacementDutyRoleChange,
+  placementBand,
+  onPlacementBandChange,
   onDragSessionStart,
   onDragSessionEnd,
 }: Props) {
@@ -80,8 +90,45 @@ export function ScheduleWorkerPanel({
       <div className="border-b border-pulseShell-border px-3 py-2.5 sm:px-4">
         <h2 className="text-sm font-semibold text-ds-foreground">Workers</h2>
         <p className="mt-0.5 text-[11px] leading-snug text-ds-muted">
-          Ordered day → afternoon → night, then role and employment. Drag onto the calendar to place a shift.
+          Choose the duty role and shift window, then drag someone onto the calendar to create their assignment.
         </p>
+        <div className="mt-3 space-y-2">
+          <div>
+            <label className="text-[10px] font-bold uppercase tracking-wide text-ds-muted" htmlFor="schedule-placement-role">
+              Role when placing
+            </label>
+            <select
+              id="schedule-placement-role"
+              className="mt-1 w-full rounded-md border border-pulseShell-border bg-pulseShell-elevated px-2 py-1.5 text-xs font-medium text-ds-foreground shadow-sm focus:border-[#2B4C7E]/35 focus:outline-none focus:ring-1 focus:ring-[#2B4C7E]/25 dark:bg-ds-secondary"
+              value={placementDutyRole}
+              disabled={!rosterDragEnabled}
+              onChange={(e) => onPlacementDutyRoleChange(e.target.value)}
+            >
+              {roles.map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="text-[10px] font-bold uppercase tracking-wide text-ds-muted" htmlFor="schedule-placement-band">
+              Shift window
+            </label>
+            <select
+              id="schedule-placement-band"
+              className="mt-1 w-full rounded-md border border-pulseShell-border bg-pulseShell-elevated px-2 py-1.5 text-xs font-medium text-ds-foreground shadow-sm focus:border-[#2B4C7E]/35 focus:outline-none focus:ring-1 focus:ring-[#2B4C7E]/25 dark:bg-ds-secondary"
+              value={placementBand}
+              disabled={!rosterDragEnabled}
+              onChange={(e) => onPlacementBandChange(e.target.value as SchedulePlacementBand)}
+            >
+              <option value="template">Match worker template</option>
+              <option value="day">Day · 07:00–15:00</option>
+              <option value="afternoon">Afternoon · 14:00–22:00</option>
+              <option value="night">Night · 22:00–06:00</option>
+            </select>
+          </div>
+        </div>
       </div>
       <div className="max-h-[min(52vh,28rem)] space-y-1 overflow-y-auto px-2 py-2">
         {BAND_SECTION_ORDER.map((band) => {

@@ -32,14 +32,14 @@ export const defaultShiftTypes: ShiftTypeConfig[] = [
   {
     key: "afternoon",
     label: "Afternoon",
-    bg: "bg-[color-mix(in_srgb,var(--ds-warning)_14%,var(--ds-surface-primary))]",
+    bg: "bg-[color-mix(in_srgb,#f59e0b_12%,var(--ds-surface-primary))]",
     border: "border-ds-border",
     text: "text-ds-foreground",
   },
   {
     key: "night",
     label: "Night",
-    bg: "bg-[color-mix(in_srgb,var(--ds-danger)_10%,var(--ds-surface-primary))]",
+    bg: "bg-[color-mix(in_srgb,#a78bfa_11%,var(--ds-surface-primary))]",
     border: "border-ds-border",
     text: "text-ds-foreground",
   },

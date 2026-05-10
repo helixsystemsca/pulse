@@ -4,6 +4,9 @@ export type ScheduleDutyRole = string;
 /** Shift bucket for color / scheduling. */
 export type ShiftTypeKey = "day" | "afternoon" | "night";
 
+/** Roster drag: use recurring template vs fixed day/afternoon/night window. */
+export type SchedulePlacementBand = "template" | ShiftTypeKey;
+
 export type ShiftEventType = "work" | "training" | "vacation" | "sick";
 
 export type TimeFormat = "12h" | "24h";

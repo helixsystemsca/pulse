@@ -525,6 +525,7 @@ async def _build_detail(db: AsyncSession, cid: str, u: User, users_map: dict[str
     if not isinstance(raw_rs, list):
         raw_rs = []
     recurring_shifts = [x for x in raw_rs if isinstance(x, dict)]
+    gg_assignable = bool(sched.get("gg_assignable"))
 
     return WorkerDetailOut(
         id=uid_s,
@@ -553,6 +554,7 @@ async def _build_detail(db: AsyncSession, cid: str, u: User, users_map: dict[str
         supervisor_notes=hr.supervisor_notes if hr else None,
         employment_type=employment_type,
         recurring_shifts=recurring_shifts,
+        gg_assignable=gg_assignable,
         compliance_summary=co,
         work_summary=wo,
         created_at=u.created_at,
@@ -698,9 +700,9 @@ async def list_workers(
         uid_s = str(u.id)
         le = login_latest.get(uid_s)
         prof_row = prof_map.get(uid_s)
-        employment_type = _employment_type_from_scheduling_payload(
-            dict(prof_row.scheduling or {}) if prof_row else None
-        )
+        sched_row: dict[str, Any] | None = dict(prof_row.scheduling or {}) if prof_row else None
+        employment_type = _employment_type_from_scheduling_payload(sched_row)
+        gg_assignable = bool((sched_row or {}).get("gg_assignable"))
         items.append(
             WorkerRowOut(
                 id=uid_s,
@@ -714,6 +716,7 @@ async def list_workers(
                 department=h.department if h else None,
                 job_title=h.job_title if h else None,
                 shift=h.shift if h else None,
+                gg_assignable=gg_assignable,
                 employment_type=employment_type,
                 avatar_url=co_worker_avatar_url(uid_s, u.avatar_url),
                 last_active_at=u.last_active_at,
@@ -1165,7 +1168,7 @@ async def patch_worker(
         prof = await _ensure_profile(db, cid, user_id)
         prof.notes = data["profile_notes"]
 
-    if "employment_type" in data or "recurring_shifts" in data:
+    if "employment_type" in data or "recurring_shifts" in data or "gg_assignable" in data:
         prof = await _ensure_profile(db, cid, user_id)
         cur = dict(prof.scheduling or {})
         if "employment_type" in data:
@@ -1204,6 +1207,12 @@ async def patch_worker(
                     cur["recurring_shifts"] = cleaned
                 else:
                     cur.pop("recurring_shifts", None)
+        if "gg_assignable" in data:
+            ga = data["gg_assignable"]
+            if ga is True:
+                cur["gg_assignable"] = True
+            else:
+                cur.pop("gg_assignable", None)
         prof.scheduling = cur
 
     if body.certifications is not None:

@@ -32,6 +32,7 @@ import {
 } from "@/lib/schedule/calendar";
 import { evaluateCoverageRules } from "@/lib/schedule/coverage-rules";
 import {
+  defaultWindowForShiftBand,
   inferShiftTypeFromStart,
   isEphemeralScheduleShiftId,
   mergeEphemeralSchedule,
@@ -52,7 +53,7 @@ import {
 } from "@/lib/schedule/pulse-bridge";
 import { computeAlerts, computeWorkforceSummary } from "@/lib/schedule/selectors";
 import { useScheduleStore } from "@/lib/schedule/schedule-store";
-import type { ScheduleDragSession, Shift } from "@/lib/schedule/types";
+import type { ScheduleDragSession, SchedulePlacementBand, Shift } from "@/lib/schedule/types";
 import { canAccessCompanyConfiguration, sessionHasAnyRole } from "@/lib/pulse-roles";
 import { readSession } from "@/lib/pulse-session";
 import { ScheduleAlertsBanner } from "./ScheduleAlertsBanner";
@@ -132,6 +133,8 @@ export function ScheduleApp() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [timeOffOpen, setTimeOffOpen] = useState(false);
   const [dragSession, setDragSession] = useState<ScheduleDragSession | null>(null);
+  const [placementDutyRole, setPlacementDutyRole] = useState<string>("worker");
+  const [placementBand, setPlacementBand] = useState<SchedulePlacementBand>("template");
   const [draftResult, setDraftResult] = useState<DraftResult | null>(null);
   const [buildingDraft, setBuildingDraft] = useState(false);
   const [trashHovering, setTrashHovering] = useState(false);
@@ -160,6 +163,14 @@ export function ScheduleApp() {
   const deleteShift = useScheduleStore((s) => s.deleteShift);
   const addTimeOffBlock = useScheduleStore((s) => s.addTimeOffBlock);
   const applyPulseScheduleSnapshot = useScheduleStore((s) => s.applyPulseScheduleSnapshot);
+
+  useEffect(() => {
+    const ids = roles.map((r) => r.id);
+    if (ids.length === 0) return;
+    if (!ids.includes(placementDutyRole)) {
+      setPlacementDutyRole(ids[0]!);
+    }
+  }, [roles, placementDutyRole]);
 
   const [hydrated, setHydrated] = useState(false);
   const [scheduleModuleBlocked, setScheduleModuleBlocked] = useState(false);
@@ -671,8 +682,22 @@ export function ScheduleApp() {
       if (!ev.ok) return;
       const dow = weekdayKeyFromIso(targetDate);
       const rule = w.recurringShifts?.find((r) => normalizeWeekdayKey(String(r.dayOfWeek)) === dow);
-      const start = rule?.start ?? settings.workDayStart;
-      const end = rule?.end ?? settings.workDayEnd;
+      let start: string;
+      let end: string;
+      let shiftType: Shift["shiftType"];
+      let requiredCerts: string[] | undefined;
+      if (placementBand === "template") {
+        start = rule?.start ?? settings.workDayStart;
+        end = rule?.end ?? settings.workDayEnd;
+        shiftType = inferShiftTypeFromStart(start);
+        requiredCerts = rule?.requiredCertifications?.filter(Boolean);
+      } else {
+        const win = defaultWindowForShiftBand(placementBand);
+        start = win.start;
+        end = win.end;
+        shiftType = placementBand;
+        requiredCerts = undefined;
+      }
       const zoneId = zones[0]?.id ?? shifts[0]?.zoneId ?? "";
       if (!zoneId) return;
       addShift({
@@ -680,16 +705,26 @@ export function ScheduleApp() {
         date: targetDate,
         startTime: start,
         endTime: end,
-        shiftType: inferShiftTypeFromStart(start),
+        shiftType,
         eventType: "work",
-        role: (rule?.role ?? w.role) as Shift["role"],
+        role: placementDutyRole as Shift["role"],
         zoneId,
         shiftKind: "workforce",
-        required_certifications: rule?.requiredCertifications?.filter(Boolean),
+        required_certifications: requiredCerts,
         uiFlags: { isNew: true },
       });
     },
-    [addShift, shifts, shiftsForView, settings, timeOffBlocks, workers, zones],
+    [
+      addShift,
+      placementBand,
+      placementDutyRole,
+      shifts,
+      shiftsForView,
+      settings,
+      timeOffBlocks,
+      workers,
+      zones,
+    ],
   );
 
   function prevMonth() {
@@ -1053,6 +1088,11 @@ export function ScheduleApp() {
                   rosterDragEnabled={workerDragEnabled}
                   dragSession={dragSession}
                   shifts={shifts}
+                  roles={roles}
+                  placementDutyRole={placementDutyRole}
+                  onPlacementDutyRoleChange={setPlacementDutyRole}
+                  placementBand={placementBand}
+                  onPlacementBandChange={setPlacementBand}
                   onDragSessionStart={setDragSession}
                   onDragSessionEnd={() => {
                     setDragSession(null);

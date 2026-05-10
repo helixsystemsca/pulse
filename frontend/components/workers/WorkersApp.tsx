@@ -266,14 +266,14 @@ function shiftRosterLabel(
   return k.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-/** Roster shift column: GG family uses violet; standard presets use sky / amber / blue. */
+/** Roster shift column: soft sky / amber / lavender pills (aligned weights). Legacy `gg_*` keys → neutral until migrated. */
 function shiftRosterBadgeClass(shiftKey: string | null | undefined): string {
   const k = (shiftKey ?? "").trim().toLowerCase();
   if (!k) return "app-badge-slate";
-  if (k.startsWith("gg_")) return "app-badge-violet";
+  if (k.startsWith("gg_")) return "app-badge-slate";
   if (k === "day") return "app-badge-sky";
-  if (k === "afternoon") return "app-badge-amber";
-  if (k === "night") return "app-badge-blue";
+  if (k === "afternoon") return "app-badge-amber-soft";
+  if (k === "night") return "app-badge-lavender";
   return "app-badge-slate";
 }
 
@@ -453,6 +453,7 @@ export function WorkersApp() {
   });
   const [rotationDaysDraft, setRotationDaysDraft] = useState<boolean[]>(() => [...EMPTY_ROTATION_DAYS]);
   const [shiftTimeDraft, setShiftTimeDraft] = useState({ start: "07:00", end: "15:00" });
+  const [ggAssignableDraft, setGgAssignableDraft] = useState(false);
 
   const [inviteNotice, setInviteNotice] = useState<InviteLinkBanner | null>(null);
   const [inviteLinkCopied, setInviteLinkCopied] = useState(false);
@@ -631,6 +632,7 @@ export function WorkersApp() {
     });
     setRotationDaysDraft(rotationDaysFromRecurring(recurringRowsFromApi(profile.recurring_shifts ?? [])));
     setShiftTimeDraft(editableShiftWindowFromProfile(profile, fullSettings.shifts ?? []));
+    setGgAssignableDraft(Boolean(profile.gg_assignable));
   }, [profile, fullSettings.shifts]);
 
   /** HR fields (not roles/modules): company admin, or manager/supervisor for non-admin profiles, or lead for workers. */
@@ -1064,6 +1066,10 @@ export function WorkersApp() {
     const prevRotation = recurringRowsFromApi(profile.recurring_shifts ?? []);
     if (canonicalRecurringJson(prevRotation) !== canonicalRecurringJson(nextRotation)) {
       payload.recurring_shifts = nextRotation;
+    }
+    const curGg = Boolean(profile.gg_assignable);
+    if (ggAssignableDraft !== curGg) {
+      payload.gg_assignable = ggAssignableDraft;
     }
     if (Object.keys(payload).length === 0) return;
     setProfileBusy(true);
@@ -1949,13 +1955,28 @@ export function WorkersApp() {
                             </td>
                             <td className="px-4 py-3 text-sm text-ds-foreground">
                               {employmentBucketForRow(row) === "part_time" ? (
-                                "—"
-                              ) : (row.shift ?? "").trim() ? (
-                                <span
-                                  className={`inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide ${shiftRosterBadgeClass(row.shift)}`}
-                                >
-                                  {shiftRosterLabel(row.shift, fullSettings.shifts)}
-                                </span>
+                                row.gg_assignable ? (
+                                  <span className="inline-flex whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide app-badge-violet">
+                                    GG
+                                  </span>
+                                ) : (
+                                  "—"
+                                )
+                              ) : (row.shift ?? "").trim() || row.gg_assignable ? (
+                                <div className="flex flex-wrap items-center gap-1">
+                                  {(row.shift ?? "").trim() ? (
+                                    <span
+                                      className={`inline-flex shrink-0 whitespace-nowrap rounded-full px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide ${shiftRosterBadgeClass(row.shift)}`}
+                                    >
+                                      {shiftRosterLabel(row.shift, fullSettings.shifts)}
+                                    </span>
+                                  ) : null}
+                                  {row.gg_assignable ? (
+                                    <span className="inline-flex shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide app-badge-violet">
+                                      GG
+                                    </span>
+                                  ) : null}
+                                </div>
                               ) : (
                                 "—"
                               )}
@@ -2811,6 +2832,23 @@ export function WorkersApp() {
                     </p>
                   </div>
                   <div className="sm:col-span-2">
+                    <label className="flex cursor-pointer items-start gap-2 text-sm text-ds-foreground">
+                      <input
+                        type="checkbox"
+                        className={dsCheckboxClass}
+                        checked={ggAssignableDraft}
+                        onChange={(e) => setGgAssignableDraft(e.target.checked)}
+                      />
+                      <span>
+                        <span className="font-medium">GG assignable</span>
+                        <span className="mt-0.5 block text-[11px] text-pulse-muted">
+                          Eligible for GG-style assignments. This is separate from day / afternoon / night roster
+                          shifts.
+                        </span>
+                      </span>
+                    </label>
+                  </div>
+                  <div className="sm:col-span-2">
                     <span className={LABEL}>Weekly rotation (schedule)</span>
                     <p className="mt-1 text-xs text-pulse-muted">
                       Choose weekdays for this worker&apos;s repeating pattern. Hours use the shift start/end above.
@@ -2873,11 +2911,20 @@ export function WorkersApp() {
                     <span className="text-pulse-muted">Shift: </span>
                     {normalizeEmploymentDraft(profile.employment_type) === "part_time" ? (
                       "Any shift (based on availability)"
-                    ) : (profile.shift ?? "").trim() ? (
-                      <span
-                        className={`inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide ${shiftRosterBadgeClass(profile.shift)}`}
-                      >
-                        {shiftRosterLabel(profile.shift, fullSettings.shifts)}
+                    ) : (profile.shift ?? "").trim() || profile.gg_assignable ? (
+                      <span className="inline-flex flex-wrap items-center gap-1.5">
+                        {(profile.shift ?? "").trim() ? (
+                          <span
+                            className={`inline-flex shrink-0 whitespace-nowrap rounded-full px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide ${shiftRosterBadgeClass(profile.shift)}`}
+                          >
+                            {shiftRosterLabel(profile.shift, fullSettings.shifts)}
+                          </span>
+                        ) : null}
+                        {profile.gg_assignable ? (
+                          <span className="inline-flex shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide app-badge-violet">
+                            GG eligible
+                          </span>
+                        ) : null}
                       </span>
                     ) : (
                       "—"

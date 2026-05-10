@@ -82,10 +82,10 @@ export function shiftCodeBadgeToneClasses(code: string): string {
     return "border-emerald-200 bg-emerald-100 text-emerald-950 dark:border-emerald-500/35 dark:bg-emerald-950/40 dark:text-emerald-50";
   }
   if (c.startsWith("A")) {
-    return "border-sky-200 bg-sky-100 text-sky-950 dark:border-sky-500/35 dark:bg-sky-950/40 dark:text-sky-50";
+    return "border-amber-200/90 bg-amber-50 text-amber-950 dark:border-amber-500/35 dark:bg-amber-950/40 dark:text-amber-50";
   }
   if (c.startsWith("N")) {
-    return "border-rose-200 bg-rose-100 text-rose-950 dark:border-rose-500/35 dark:bg-rose-950/40 dark:text-rose-50";
+    return "border-violet-200/90 bg-violet-50 text-violet-950 dark:border-violet-500/35 dark:bg-violet-950/45 dark:text-violet-50";
   }
   return "border-pulseShell-border bg-pulseShell-elevated text-ds-foreground";
 }

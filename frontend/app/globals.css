@@ -897,6 +897,13 @@ html.pulse-welcome-blur [data-pulse-app-shell] {
   .app-badge-sky {
     @apply bg-sky-100 text-[#1e4a8a] ring-1 ring-sky-200/75 dark:bg-sky-600 dark:text-white dark:ring-sky-400/40;
   }
+  /** Roster shift presets — soft fills (match day badge weight; avoid solid warning fills). */
+  .app-badge-amber-soft {
+    @apply bg-amber-50 text-amber-950 ring-1 ring-amber-200/85 dark:bg-amber-950/35 dark:text-amber-50 dark:ring-amber-500/30;
+  }
+  .app-badge-lavender {
+    @apply bg-violet-50 text-violet-950 ring-1 ring-violet-200/85 dark:bg-violet-950/40 dark:text-violet-50 dark:ring-violet-400/35;
+  }
 
   /** Charts — use on SVG / Recharts cartesian grid */
   .ds-chart-surface {

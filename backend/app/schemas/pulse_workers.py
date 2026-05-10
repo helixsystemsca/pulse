@@ -72,6 +72,8 @@ class WorkerRowOut(BaseModel):
     department: Optional[str] = None
     job_title: Optional[str] = None
     shift: Optional[str] = None
+    #: General Gauger (or similar) — assignable flag on profile, not a roster shift preset.
+    gg_assignable: bool = False
     #: From pulse worker profile scheduling (`full_time` | `regular_part_time` | `part_time`).
     employment_type: Optional[str] = None
     avatar_url: Optional[str] = None
@@ -115,6 +117,8 @@ class WorkerDetailOut(BaseModel):
     employment_type: Optional[str] = None
     #: Weekly rotation templates for Pulse schedule (`pulse_worker_profiles.scheduling`).
     recurring_shifts: list[dict[str, Any]] = Field(default_factory=list)
+    #: From `pulse_worker_profiles.scheduling` — GG eligibility is separate from shift preset.
+    gg_assignable: bool = False
     compliance_summary: WorkerComplianceSummaryOut
     work_summary: WorkerWorkSummaryOut
     created_at: datetime
@@ -178,6 +182,7 @@ class WorkerPatchIn(BaseModel):
     supervisor_notes: Optional[str] = None
     employment_type: Optional[str] = None
     recurring_shifts: Optional[list[dict[str, Any]]] = None
+    gg_assignable: Optional[bool] = None
     certifications: Optional[list[WorkerCertificationIn]] = None
     skills: Optional[list[WorkerSkillIn]] = None
     training: Optional[list[WorkerTrainingIn]] = None

@@ -3,10 +3,10 @@
 import { Camera, Loader2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { apiFetch, refreshPulseUserFromServer } from "@/lib/api";
+import { refreshPulseUserFromServer } from "@/lib/api";
 import { cn } from "@/lib/cn";
 import { parseClientApiError } from "@/lib/parse-client-api-error";
-import { getSupabaseBrowserClient } from "@/lib/supabaseClient";
+import { uploadProfileAvatarFile } from "@/lib/profileAvatarUpload";
 import { initialsFromDisplayName } from "@/components/profile/UserProfileAvatarPreview";
 import { useResolvedAvatarSrc } from "@/lib/useResolvedAvatarSrc";
 
@@ -39,14 +39,6 @@ async function fileToWebpBlob(file: File, maxSizePx: number): Promise<Blob> {
   });
   return blob;
 }
-
-type SignedOut = {
-  bucket: "avatars";
-  path: string;
-  token: string;
-  signed_url: string;
-  public_url: string;
-};
 
 export type AvatarUploadProps = {
   userId: string;
@@ -112,28 +104,13 @@ export function AvatarUpload({
           return localPreview;
         });
 
-        setStage("Requesting upload URL…");
-        const signed = await apiFetch<SignedOut>("/api/v1/profile/avatar/signed-upload", { method: "POST" });
-
-        // Upload using token. This does not require Supabase Auth; the token is short-lived.
         setStage("Uploading…");
-        const supabase = getSupabaseBrowserClient();
-        const { error } = await supabase.storage.from(signed.bucket).uploadToSignedUrl(signed.path, signed.token, webp, {
-          contentType: "image/webp",
-          cacheControl: "3600",
-        });
-        if (error) throw new Error(error.message);
-
-        // Persist URL on the user record (so session + teammates pick it up).
-        setStage("Saving…");
-        await apiFetch("/api/v1/profile/settings", {
-          method: "PATCH",
-          json: { avatar_url: signed.public_url },
-        });
+        const file = new File([webp], "profile.webp", { type: "image/webp" });
+        const out = await uploadProfileAvatarFile(file);
 
         await refreshPulseUserFromServer();
         if (typeof window !== "undefined") window.dispatchEvent(new Event("pulse-auth-change"));
-        onUploadComplete?.(signed.public_url);
+        onUploadComplete?.(out.avatar_url ?? "/api/v1/profile/avatar");
         setStage("");
       } catch (e) {
         setErr(parseClientApiError(e).message);
