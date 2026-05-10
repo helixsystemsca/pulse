@@ -12,7 +12,7 @@ import { StatusMetricCard } from "./StatusMetricCard";
 import { TrainingMatrixButton } from "./TrainingMatrixButton";
 
 const premiumShell =
-  "rounded-[22px] border border-black/[0.06] bg-gradient-to-b from-white via-white to-[rgb(248,250,252)] shadow-[0_20px_50px_-32px_rgba(15,23,42,0.35),0_8px_24px_-16px_rgba(15,23,42,0.12)] ring-1 ring-black/[0.04] dark:border-white/10 dark:from-slate-950 dark:via-slate-950 dark:to-slate-900/90 dark:shadow-[0_24px_56px_-28px_rgba(0,0,0,0.65)] dark:ring-white/[0.06]";
+  "rounded-xl border border-black/[0.06] bg-gradient-to-b from-white via-white to-[rgb(248,250,252)] shadow-[0_12px_36px_-24px_rgba(15,23,42,0.35)] ring-1 ring-black/[0.04] dark:border-white/10 dark:from-slate-950 dark:via-slate-950 dark:to-slate-900/90 dark:shadow-[0_18px_44px_-26px_rgba(0,0,0,0.55)] dark:ring-white/[0.06]";
 
 /** Fixed intrinsic column width (px) — `ScaledFit` scales this down inside narrow / short grid cells. */
 const DASHBOARD_DESIGN_COL_W = 280;
@@ -134,8 +134,8 @@ export function TrainingComplianceWidget({
 
   if (variant === "dashboard") {
     return (
-      <div className={cn("flex min-h-0 flex-1 flex-col overflow-hidden p-2 sm:p-2.5", premiumShell)}>
-        <ScaledFit designWidthPx={DASHBOARD_DESIGN_COL_W} className="min-h-[120px]">
+      <div className={cn("flex h-full min-h-0 flex-1 flex-col overflow-hidden p-1 sm:p-1.5", premiumShell)}>
+        <ScaledFit designWidthPx={DASHBOARD_DESIGN_COL_W} className="min-h-0 flex-1">
           {dashboardColumn}
         </ScaledFit>
       </div>

@@ -182,8 +182,14 @@ function WorkerDashCard({
       style={{ ...styleVars, ...chrome }}
       className={cn(shell, "flex h-full min-h-0 flex-col text-[var(--widget-fg,var(--ds-text-primary))]", className)}
     >
-      <div className="flex shrink-0 items-start justify-between gap-2 border-b border-[color-mix(in_srgb,var(--widget-fg,var(--ds-text-primary))_12%,transparent)] bg-[color-mix(in_srgb,white_42%,transparent)] px-3 py-2.5 backdrop-blur-md dark:bg-[color-mix(in_srgb,var(--ds-surface-primary)_55%,transparent)]">
-        <p className={cn(DASH.sectionLabel, "tracking-[0.14em] text-[color-mix(in_srgb,var(--widget-fg,var(--ds-text-primary))_72%,transparent)]")}>
+      <div className="flex shrink-0 items-center justify-between gap-2 border-b border-[color-mix(in_srgb,var(--widget-fg,var(--ds-text-primary))_12%,transparent)] bg-[color-mix(in_srgb,white_42%,transparent)] px-2.5 py-1.5 backdrop-blur-md dark:bg-[color-mix(in_srgb,var(--ds-surface-primary)_55%,transparent)]">
+        <p
+          className={cn(
+            DASH.sectionLabel,
+            "min-w-0 flex-1 truncate tracking-[0.1em] text-[color-mix(in_srgb,var(--widget-fg,var(--ds-text-primary))_78%,transparent)]",
+          )}
+          title={title}
+        >
           {title}
         </p>
         {headerRight ? (
@@ -192,7 +198,7 @@ function WorkerDashCard({
           </div>
         ) : null}
       </div>
-      <div className="min-h-0 flex-1 p-3.5">{children}</div>
+      <div className="min-h-0 flex-1 p-2 sm:p-2.5">{children}</div>
     </div>
   );
 }
@@ -2010,14 +2016,18 @@ function DashboardBody({
     }
 
     let nextLayout: Layout | null = null;
+    let loadedFromStorage = false;
     try {
       const v3 = window.localStorage.getItem(layoutStorageKey);
-      if (v3) nextLayout = JSON.parse(v3) as Layout;
+      if (v3) {
+        nextLayout = JSON.parse(v3) as Layout;
+        loadedFromStorage = Array.isArray(nextLayout);
+      }
     } catch {
       nextLayout = null;
     }
     // Do not load pre-v5 12-column layouts into the 8-col grid (they overlap after bounds correction).
-    if (!nextLayout) nextLayout = defaultLayout;
+    if (!loadedFromStorage || !nextLayout) nextLayout = defaultLayout;
 
     const validBuiltins = new Set(allWidgetKeys);
     const filtered: LayoutItem[] = [];
@@ -2029,9 +2039,14 @@ function DashboardBody({
         filtered.push(l);
       }
     }
+    // Only merge in default widgets when there was no saved layout (first visit / cleared storage).
+    // If we always merged missing defaults, removed widgets would reappear on every load / deploy.
     const present = new Set(filtered.map((x) => x.i));
     const missing = defaultLayout.filter((l) => !present.has(l.i));
-    const merged = sanitizeLayoutForGrid([...filtered, ...missing] as Layout, DASHBOARD_GRID_COLS);
+    const merged = sanitizeLayoutForGrid(
+      (loadedFromStorage ? filtered : [...filtered, ...missing]) as Layout,
+      DASHBOARD_GRID_COLS,
+    );
     setLayout(merged);
     setCustomConfigs(parsedConfigs);
     setLayoutHydrated(true);
@@ -2326,7 +2341,17 @@ function DashboardBody({
                     <Button
                       type="button"
                       variant="secondary"
-                      onClick={() => setEditMode((v) => !v)}
+                      onClick={() => {
+                        if (editMode) {
+                          setIsInteracting(false);
+                          setLayout((current) => {
+                            const compacted = stableCompactor.compact(current as Layout, DASHBOARD_GRID_COLS) as Layout;
+                            persistLayout(compacted);
+                            return compacted;
+                          });
+                        }
+                        setEditMode((v) => !v);
+                      }}
                       title={editMode ? "Done editing layout" : "Edit dashboard layout"}
                       aria-label={editMode ? "Done editing layout" : "Edit dashboard layout"}
                       aria-pressed={editMode}

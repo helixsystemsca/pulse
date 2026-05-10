@@ -114,9 +114,11 @@ export function DashboardColumnPanel({
   return (
     <div style={{ ...styleVars, ...chrome }} className={cn(shell, "flex h-full min-h-0 flex-col text-[var(--widget-fg,var(--ds-text-primary))]", className)}>
       <div className={cn("h-[3px] w-full shrink-0", strip)} aria-hidden />
-      <div className="flex min-h-0 flex-1 flex-col p-3.5">
-        <p className={DASH.sectionLabel}>{title}</p>
-        <div className="ds-scroll mt-3 min-h-0 flex-1 overflow-y-auto">{children}</div>
+      <div className="flex min-h-0 flex-1 flex-col p-2.5 sm:p-3">
+        <p className={cn(DASH.sectionLabel, "truncate")} title={title}>
+          {title}
+        </p>
+        <div className="ds-scroll mt-2 min-h-0 flex-1 overflow-y-auto">{children}</div>
       </div>
     </div>
   );

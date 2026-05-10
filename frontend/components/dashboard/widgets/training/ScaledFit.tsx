@@ -4,9 +4,11 @@ import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 
 import { cn } from "@/lib/cn";
 
+const MAX_SCALE = 2.35;
+
 /**
  * Fits fixed-width column content into a dashboard grid cell using `transform: scale`.
- * Prevents flex/grid reflow misalignment when tiles are resized in edit mode.
+ * Scales down when the cell is tight and scales up (to MAX_SCALE) when the cell is larger than the design column.
  */
 export function ScaledFit({
   children,
@@ -35,13 +37,13 @@ export function ScaledFit({
       if (cw <= 0 || ch <= 0) return;
       const pad = 2;
       if (ih <= 0) {
-        const s = Math.min(1, (cw - pad) / iw);
+        const s = Math.min(MAX_SCALE, (cw - pad) / iw);
         setScale(Math.max(0.32, s));
         setContentH(0);
         return;
       }
-      const s = Math.min(1, (cw - pad) / iw, (ch - pad) / ih);
-      const clamped = Math.max(0.32, Math.min(1, s));
+      const s = Math.min((cw - pad) / iw, (ch - pad) / ih);
+      const clamped = Math.max(0.32, Math.min(MAX_SCALE, s));
       setScale(clamped);
       setContentH(ih);
     };
@@ -60,7 +62,7 @@ export function ScaledFit({
 
   return (
     <div ref={containerRef} className={cn("min-h-0 flex-1 overflow-hidden", className)}>
-      <div className="flex h-full min-h-0 w-full items-start justify-center overflow-hidden">
+      <div className="flex h-full min-h-0 w-full items-center justify-center overflow-hidden">
         <div
           className="shrink-0 overflow-hidden"
           style={{

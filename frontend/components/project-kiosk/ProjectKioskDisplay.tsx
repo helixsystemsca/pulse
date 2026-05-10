@@ -512,8 +512,10 @@ function KioskPanelFrame({ title, children, className }: { title: string; childr
     <div className={cn(DASH.cardBase, "flex min-h-0 flex-col", className)}>
       <div className="h-[3px] w-full shrink-0 bg-ds-border" aria-hidden />
       <div className={cn(DASH.cardInner, "flex min-h-0 flex-1 flex-col")}>
-        <p className={DASH.sectionLabel}>{title}</p>
-        <div className="mt-3 flex min-h-0 flex-1 flex-col overflow-hidden">{children}</div>
+        <p className={cn(DASH.sectionLabel, "truncate")} title={title}>
+          {title}
+        </p>
+        <div className="mt-2 flex min-h-0 flex-1 flex-col overflow-hidden">{children}</div>
       </div>
     </div>
   );

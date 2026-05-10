@@ -1150,9 +1150,10 @@ html.pulse-welcome-blur [data-pulse-app-shell] {
     color: color-mix(in srgb, var(--ds-text-primary) 52%, transparent);
   }
   .dash-section-title {
-    font-size: 0.6875rem;
-    font-weight: 750;
-    letter-spacing: 0.18em;
+    font-size: 0.625rem; /* 10px — one line in widget headers */
+    font-weight: 700;
+    line-height: 1.15;
+    letter-spacing: 0.1em;
     text-transform: uppercase;
     color: color-mix(in srgb, var(--ds-text-primary) 48%, transparent);
   }
