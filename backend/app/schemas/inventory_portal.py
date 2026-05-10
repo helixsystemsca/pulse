@@ -203,3 +203,66 @@ class InventoryVendorPatchIn(BaseModel):
     postal_code: Optional[str] = Field(None, max_length=32)
     country: Optional[str] = Field(None, max_length=128)
     is_active: Optional[bool] = None
+
+
+class InventoryContractorOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    company_id: str
+    name: str
+    contact_name: Optional[str] = None
+    contact_email: Optional[str] = None
+    contact_phone: Optional[str] = None
+    account_number: Optional[str] = None
+    payment_terms: Optional[str] = None
+    item_specialty: Optional[str] = None
+    notes: Optional[str] = None
+    website: Optional[str] = None
+    address_line1: Optional[str] = None
+    address_line2: Optional[str] = None
+    city: Optional[str] = None
+    region: Optional[str] = None
+    postal_code: Optional[str] = None
+    country: Optional[str] = None
+    is_active: bool
+    created_at: datetime
+    updated_at: datetime
+
+
+class InventoryContractorCreateIn(BaseModel):
+    name: str = Field(..., min_length=1, max_length=255)
+    contact_name: Optional[str] = Field(None, max_length=255)
+    contact_email: Optional[str] = Field(None, max_length=255)
+    contact_phone: Optional[str] = Field(None, max_length=64)
+    account_number: Optional[str] = Field(None, max_length=128)
+    payment_terms: Optional[str] = Field(None, max_length=255)
+    item_specialty: Optional[str] = None
+    notes: Optional[str] = None
+    website: Optional[str] = Field(None, max_length=512)
+    address_line1: Optional[str] = Field(None, max_length=255)
+    address_line2: Optional[str] = Field(None, max_length=255)
+    city: Optional[str] = Field(None, max_length=128)
+    region: Optional[str] = Field(None, max_length=128)
+    postal_code: Optional[str] = Field(None, max_length=32)
+    country: Optional[str] = Field(None, max_length=128)
+    is_active: bool = True
+
+
+class InventoryContractorPatchIn(BaseModel):
+    name: Optional[str] = Field(None, min_length=1, max_length=255)
+    contact_name: Optional[str] = Field(None, max_length=255)
+    contact_email: Optional[str] = Field(None, max_length=255)
+    contact_phone: Optional[str] = Field(None, max_length=64)
+    account_number: Optional[str] = Field(None, max_length=128)
+    payment_terms: Optional[str] = Field(None, max_length=255)
+    item_specialty: Optional[str] = None
+    notes: Optional[str] = None
+    website: Optional[str] = Field(None, max_length=512)
+    address_line1: Optional[str] = Field(None, max_length=255)
+    address_line2: Optional[str] = Field(None, max_length=255)
+    city: Optional[str] = Field(None, max_length=128)
+    region: Optional[str] = Field(None, max_length=128)
+    postal_code: Optional[str] = Field(None, max_length=32)
+    country: Optional[str] = Field(None, max_length=128)
+    is_active: Optional[bool] = None

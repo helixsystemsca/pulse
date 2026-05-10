@@ -18,6 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import get_current_user, get_db, require_manager_or_above
 from app.core.user_roles import user_has_any_role
 from app.models.domain import (
+    InventoryContractor,
     InventoryItem,
     InventoryModuleSettings,
     InventoryMovement,
@@ -45,6 +46,9 @@ from app.schemas.inventory_portal import (
     InventoryTopUsedOut,
     InventoryUseIn,
     InventoryUsageOut,
+    InventoryContractorCreateIn,
+    InventoryContractorOut,
+    InventoryContractorPatchIn,
     InventoryVendorCreateIn,
     InventoryVendorOut,
     InventoryVendorPatchIn,
@@ -387,6 +391,152 @@ async def delete_inventory_vendor(db: Db, _: MgrUser, cid: CompanyId, vendor_id:
     if not row or row.company_id != cid:
         raise HTTPException(status_code=404, detail="Not found")
     await db.execute(delete(InventoryVendor).where(InventoryVendor.id == vendor_id))
+    await db.commit()
+
+
+@router.get("/contractors", response_model=list[InventoryContractorOut])
+async def list_inventory_contractors(
+    db: Db,
+    _: MgrUser,
+    cid: CompanyId,
+    name_contains: Optional[str] = Query(None),
+    contact_name_contains: Optional[str] = Query(None),
+    contact_email_contains: Optional[str] = Query(None),
+    contact_phone_contains: Optional[str] = Query(None),
+    account_number_contains: Optional[str] = Query(None),
+    payment_terms_contains: Optional[str] = Query(None),
+    item_specialty_contains: Optional[str] = Query(None),
+    notes_contains: Optional[str] = Query(None),
+    website_contains: Optional[str] = Query(None),
+    address_line1_contains: Optional[str] = Query(None),
+    address_line2_contains: Optional[str] = Query(None),
+    city_contains: Optional[str] = Query(None),
+    region_contains: Optional[str] = Query(None),
+    postal_code_contains: Optional[str] = Query(None),
+    country_contains: Optional[str] = Query(None),
+    active: Optional[bool] = Query(None, description="True = active only, False = inactive only, omit = all"),
+    limit: int = Query(500, ge=1, le=1000),
+) -> list[InventoryContractorOut]:
+    conds: list[Any] = [InventoryContractor.company_id == cid]
+    field_filters = [
+        (InventoryContractor.name, name_contains),
+        (InventoryContractor.contact_name, contact_name_contains),
+        (InventoryContractor.contact_email, contact_email_contains),
+        (InventoryContractor.contact_phone, contact_phone_contains),
+        (InventoryContractor.account_number, account_number_contains),
+        (InventoryContractor.payment_terms, payment_terms_contains),
+        (InventoryContractor.item_specialty, item_specialty_contains),
+        (InventoryContractor.notes, notes_contains),
+        (InventoryContractor.website, website_contains),
+        (InventoryContractor.address_line1, address_line1_contains),
+        (InventoryContractor.address_line2, address_line2_contains),
+        (InventoryContractor.city, city_contains),
+        (InventoryContractor.region, region_contains),
+        (InventoryContractor.postal_code, postal_code_contains),
+        (InventoryContractor.country, country_contains),
+    ]
+    for col, term in field_filters:
+        clause = _vendor_ilike(col, term)
+        if clause is not None:
+            conds.append(clause)
+    if active is not None:
+        conds.append(InventoryContractor.is_active.is_(bool(active)))
+
+    stmt = (
+        select(InventoryContractor)
+        .where(and_(*conds))
+        .order_by(InventoryContractor.name.asc())
+        .limit(limit)
+    )
+    rows = list((await db.execute(stmt)).scalars().all())
+    return [InventoryContractorOut.model_validate(r) for r in rows]
+
+
+@router.post("/contractors", response_model=InventoryContractorOut, status_code=status.HTTP_201_CREATED)
+async def create_inventory_contractor(
+    db: Db,
+    _: MgrUser,
+    cid: CompanyId,
+    body: InventoryContractorCreateIn,
+) -> InventoryContractorOut:
+    now = datetime.now(timezone.utc)
+    row = InventoryContractor(
+        id=str(uuid4()),
+        company_id=cid,
+        name=body.name.strip(),
+        contact_name=(body.contact_name or "").strip() or None,
+        contact_email=(body.contact_email or "").strip() or None,
+        contact_phone=(body.contact_phone or "").strip() or None,
+        account_number=(body.account_number or "").strip() or None,
+        payment_terms=(body.payment_terms or "").strip() or None,
+        item_specialty=(body.item_specialty or "").strip() or None,
+        notes=(body.notes or "").strip() or None,
+        website=(body.website or "").strip() or None,
+        address_line1=(body.address_line1 or "").strip() or None,
+        address_line2=(body.address_line2 or "").strip() or None,
+        city=(body.city or "").strip() or None,
+        region=(body.region or "").strip() or None,
+        postal_code=(body.postal_code or "").strip() or None,
+        country=(body.country or "").strip() or None,
+        is_active=bool(body.is_active),
+        created_at=now,
+        updated_at=now,
+    )
+    db.add(row)
+    await db.commit()
+    await db.refresh(row)
+    return InventoryContractorOut.model_validate(row)
+
+
+@router.patch("/contractors/{contractor_id}", response_model=InventoryContractorOut)
+async def patch_inventory_contractor(
+    db: Db,
+    _: MgrUser,
+    cid: CompanyId,
+    contractor_id: str,
+    body: InventoryContractorPatchIn,
+) -> InventoryContractorOut:
+    row = await db.get(InventoryContractor, contractor_id)
+    if not row or row.company_id != cid:
+        raise HTTPException(status_code=404, detail="Not found")
+    data = body.model_dump(exclude_unset=True)
+    if "name" in data and data["name"] is not None:
+        row.name = str(data["name"]).strip()
+    str_fields = (
+        "contact_name",
+        "contact_email",
+        "contact_phone",
+        "account_number",
+        "payment_terms",
+        "item_specialty",
+        "notes",
+        "website",
+        "address_line1",
+        "address_line2",
+        "city",
+        "region",
+        "postal_code",
+        "country",
+    )
+    for k in str_fields:
+        if k not in data:
+            continue
+        v = data[k]
+        setattr(row, k, None if v is None else (str(v).strip() or None))
+    if "is_active" in data and data["is_active"] is not None:
+        row.is_active = bool(data["is_active"])
+    row.updated_at = datetime.now(timezone.utc)
+    await db.commit()
+    await db.refresh(row)
+    return InventoryContractorOut.model_validate(row)
+
+
+@router.delete("/contractors/{contractor_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_inventory_contractor(db: Db, _: MgrUser, cid: CompanyId, contractor_id: str) -> None:
+    row = await db.get(InventoryContractor, contractor_id)
+    if not row or row.company_id != cid:
+        raise HTTPException(status_code=404, detail="Not found")
+    await db.execute(delete(InventoryContractor).where(InventoryContractor.id == contractor_id))
     await db.commit()
 
 

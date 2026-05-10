@@ -12,6 +12,7 @@ import {
   ChevronDown,
   ClipboardList,
   Download,
+  HardHat,
   Loader2,
   MapPin,
   MoreVertical,
@@ -46,6 +47,7 @@ import {
 import { canAccessCompanyConfiguration, managerOrAbove } from "@/lib/pulse-roles";
 import { readSession } from "@/lib/pulse-session";
 import { fetchWorkRequestList } from "@/lib/workRequestsService";
+import { InventoryContractorsPanel } from "@/components/inventory/InventoryContractorsPanel";
 import { InventoryVendorsPanel } from "@/components/inventory/InventoryVendorsPanel";
 import { cn } from "@/lib/cn";
 import { buttonVariants } from "@/styles/button-variants";
@@ -224,7 +226,7 @@ export function InventoryApp() {
   const dataEnabled = Boolean(effectiveCompanyId) && canManage;
   const apiCompany = isSystemAdmin ? effectiveCompanyId : null;
 
-  const [inventoryTab, setInventoryTab] = useState<"items" | "vendors">("items");
+  const [inventoryTab, setInventoryTab] = useState<"items" | "vendors" | "contractors">("items");
 
   const [q, setQ] = useState("");
   const [qDebounced, setQDebounced] = useState("");
@@ -831,9 +833,13 @@ export function InventoryApp() {
         description={
           inventoryTab === "items"
             ? "Tools, spare parts, and consumables — locations, assignments, and work request usage."
-            : "Vendor directory — contacts, account references, specialties, and addresses. Filter any column in the grid."
+            : inventoryTab === "vendors"
+              ? "Vendor directory — contacts, account references, specialties, and addresses. Filter any column in the grid."
+              : "Contractor directory — contacts, account references, trade or specialty, and addresses. Filter any column in the grid."
         }
-        icon={inventoryTab === "items" ? Package : Truck}
+        icon={
+          inventoryTab === "items" ? Package : inventoryTab === "vendors" ? Truck : HardHat
+        }
         actions={
           <>
             {inventoryTab === "items" ? (
@@ -930,10 +936,26 @@ export function InventoryApp() {
               <Truck className="h-4 w-4" aria-hidden />
               Vendors
             </button>
+            <button
+              type="button"
+              onClick={() => setInventoryTab("contractors")}
+              className={`inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm font-semibold transition ${
+                inventoryTab === "contractors"
+                  ? "bg-ds-accent text-ds-accent-foreground shadow-sm"
+                  : "text-pulse-muted hover:bg-ds-interactive-hover dark:hover:bg-ds-interactive-hover"
+              }`}
+            >
+              <HardHat className="h-4 w-4" aria-hidden />
+              Contractors
+            </button>
           </div>
 
           {inventoryTab === "vendors" ? (
             <InventoryVendorsPanel apiCompany={apiCompany} />
+          ) : null}
+
+          {inventoryTab === "contractors" ? (
+            <InventoryContractorsPanel apiCompany={apiCompany} />
           ) : null}
 
           {inventoryTab === "items" && sum ? (

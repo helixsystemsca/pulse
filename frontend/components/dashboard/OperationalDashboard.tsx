@@ -37,6 +37,7 @@ import { useResolvedAvatarSrc } from "@/lib/useResolvedAvatarSrc";
 import {
   DASHBOARD_CUSTOM_WIDGETS_STORAGE,
   DASHBOARD_WIDGET_STYLE_STORAGE,
+  dashboardWidgetChromeStyle,
   type CustomDashboardWidgetConfig,
   type DashboardWidgetStyleOverride,
 } from "@/lib/dashboardPageWidgetCatalog";
@@ -49,6 +50,7 @@ import {
 } from "@/lib/schedule/dashboardScheduleDay";
 import type { PulseShiftApi, PulseWorkerApi } from "@/lib/schedule/pulse-bridge";
 import { DashboardAccentCard, DashboardColumnPanel, KioskRotateFooter } from "@/components/dashboard/DashboardChrome";
+import { DashboardWidgetStyleFields } from "@/components/dashboard/DashboardWidgetStyleFields";
 import { cn } from "@/lib/cn";
 import { DASH, dashboardWidgetShell, type DashboardSurfaceTheme } from "@/styles/dashboardTheme";
 import { UI } from "@/styles/ui";
@@ -166,10 +168,11 @@ function WorkerDashCard({
     ...(styleOverride?.textColor ? ({ ["--widget-fg" as string]: styleOverride.textColor } as React.CSSProperties) : null),
     ...(styleOverride?.fontFamily ? ({ fontFamily: styleOverride.fontFamily } as React.CSSProperties) : null),
   };
+  const chrome = dashboardWidgetChromeStyle(styleOverride);
   const shell = dashboardWidgetShell(theme);
   return (
     <div
-      style={styleVars}
+      style={{ ...styleVars, ...chrome }}
       className={cn(shell, "flex h-full min-h-0 flex-col text-[var(--widget-fg,var(--ds-text-primary))]", className)}
     >
       <div className="flex shrink-0 items-start justify-between gap-2 border-b border-[color-mix(in_srgb,var(--widget-fg,var(--ds-text-primary))_12%,transparent)] bg-[color-mix(in_srgb,white_42%,transparent)] px-3 py-2.5 backdrop-blur-md dark:bg-[color-mix(in_srgb,var(--ds-surface-primary)_55%,transparent)]">
@@ -2509,7 +2512,7 @@ function DashboardBody({
         {styleEditorOpen && styleEditorTarget ? (
           <div className="fixed inset-0 z-[160] flex items-center justify-center p-4">
             <div className="ds-modal-backdrop absolute inset-0" onClick={() => setStyleEditorOpen(false)} aria-hidden />
-            <Card className="relative z-10 w-full max-w-md border border-ds-border shadow-[var(--ds-shadow-diffuse)]">
+            <Card className="relative z-10 max-h-[min(88vh,720px)] w-full max-w-lg overflow-y-auto border border-ds-border shadow-[var(--ds-shadow-diffuse)]">
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="text-base font-semibold text-ds-foreground">Widget style</p>
@@ -2519,130 +2522,24 @@ function DashboardBody({
                   Close
                 </Button>
               </div>
-              <div className="mt-4 space-y-4">
-                <div className="space-y-1.5">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-ds-muted">Font</p>
-                  <select
-                    className="app-field !py-2"
-                    value={widgetStyles[styleEditorTarget.id]?.fontFamily ?? ""}
-                    onChange={(e) => {
-                      const value = e.target.value || undefined;
-                      setWidgetStyles((prev) => ({
-                        ...prev,
-                        [styleEditorTarget.id]: { ...(prev[styleEditorTarget.id] ?? {}), fontFamily: value },
-                      }));
-                    }}
-                  >
-                    <option value="">Default</option>
-                    <option value="var(--font-app), system-ui, sans-serif">Inter (app default)</option>
-                    <option value="var(--font-headline), system-ui, sans-serif">Poppins</option>
-                    <option value="system-ui, sans-serif">System</option>
-                    <option value="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace">Monospace</option>
-                  </select>
-                </div>
-
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <div className="space-y-1.5">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-ds-muted">Background</p>
-                    <input
-                      type="color"
-                      className="h-10 w-full cursor-pointer rounded-md border border-ds-border bg-transparent"
-                      value={widgetStyles[styleEditorTarget.id]?.backgroundColor ?? "#ffffff"}
-                      onChange={(e) => {
-                        const value = e.target.value || undefined;
-                        setWidgetStyles((prev) => ({
-                          ...prev,
-                          [styleEditorTarget.id]: { ...(prev[styleEditorTarget.id] ?? {}), backgroundColor: value },
-                        }));
-                      }}
-                      aria-label="Widget background color"
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-ds-muted">Text color</p>
-                    <input
-                      type="color"
-                      className="h-10 w-full cursor-pointer rounded-md border border-ds-border bg-transparent"
-                      value={widgetStyles[styleEditorTarget.id]?.textColor ?? "#4c5454"}
-                      onChange={(e) => {
-                        const value = e.target.value || undefined;
-                        setWidgetStyles((prev) => ({
-                          ...prev,
-                          [styleEditorTarget.id]: { ...(prev[styleEditorTarget.id] ?? {}), textColor: value },
-                        }));
-                      }}
-                      aria-label="Widget text color"
-                    />
-                  </div>
-                </div>
-
-                <div className="rounded-xl border border-ds-border bg-ds-secondary/40 p-3">
-                  <label className="flex cursor-pointer items-center justify-between gap-3">
-                    <span className="text-xs font-semibold uppercase tracking-wide text-ds-muted">Advanced theme</span>
-                    <input
-                      type="checkbox"
-                      className="h-4 w-4"
-                      checked={(widgetStyles[styleEditorTarget.id]?.theme ?? "tint") !== "tint"}
-                      onChange={(e) => {
-                        const checked = e.target.checked;
-                        setWidgetStyles((prev) => ({
-                          ...prev,
-                          [styleEditorTarget.id]: {
-                            ...(prev[styleEditorTarget.id] ?? {}),
-                            theme: checked ? (prev[styleEditorTarget.id]?.theme ?? "solid") : "tint",
-                          },
-                        }));
-                      }}
-                      aria-label="Enable advanced theme"
-                    />
-                  </label>
-                  {(widgetStyles[styleEditorTarget.id]?.theme ?? "tint") !== "tint" ? (
-                    <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
-                      {(["solid", "glass", "gradient"] as const).map((opt) => {
-                        const active = (widgetStyles[styleEditorTarget.id]?.theme ?? "tint") === opt;
-                        return (
-                          <button
-                            key={opt}
-                            type="button"
-                            className={cn(
-                              "rounded-lg border px-2 py-2 text-xs font-semibold capitalize transition-colors",
-                              active
-                                ? "border-[var(--ds-accent)] bg-[color-mix(in_srgb,var(--ds-accent)_12%,transparent)] text-ds-foreground"
-                                : "border-ds-border bg-transparent text-ds-muted hover:bg-ds-interactive-hover",
-                            )}
-                            onClick={() => {
-                              setWidgetStyles((prev) => ({
-                                ...prev,
-                                [styleEditorTarget.id]: { ...(prev[styleEditorTarget.id] ?? {}), theme: opt },
-                              }));
-                            }}
-                          >
-                            {opt}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  ) : null}
-                </div>
-
-                <div className="flex items-center justify-between gap-3">
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    onClick={() => {
-                      setWidgetStyles((prev) => {
-                        const next = { ...prev };
-                        delete next[styleEditorTarget.id];
-                        return next;
-                      });
-                    }}
-                  >
-                    Reset to default
-                  </Button>
-                  <Button type="button" variant="primary" onClick={() => setStyleEditorOpen(false)}>
-                    Done
-                  </Button>
-                </div>
+              <div className="mt-4">
+                <DashboardWidgetStyleFields
+                  value={widgetStyles[styleEditorTarget.id]}
+                  onPatch={(patch) =>
+                    setWidgetStyles((prev) => ({
+                      ...prev,
+                      [styleEditorTarget.id]: { ...(prev[styleEditorTarget.id] ?? {}), ...patch },
+                    }))
+                  }
+                  onReset={() => {
+                    setWidgetStyles((prev) => {
+                      const next = { ...prev };
+                      delete next[styleEditorTarget.id];
+                      return next;
+                    });
+                  }}
+                  onDone={() => setStyleEditorOpen(false)}
+                />
               </div>
             </Card>
           </div>

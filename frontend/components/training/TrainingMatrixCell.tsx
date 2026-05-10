@@ -17,8 +17,20 @@ const STATUS_LABEL: Record<TrainingAssignmentStatus, string> = {
   quiz_failed: "Knowledge check not passed — retry",
 };
 
-/** Green = verified complete; blue = reviewing; yellow = acknowledged / quiz pending; red = quiz failed; gray = not engaged */
-function matrixClasses(status: TrainingAssignmentStatus, tier: TrainingTier): string {
+/** Lobster pink + soft white sweep — “not complete” (everything except verified complete + expiring-soon warning). */
+function notCompleteLobsterShell(): string {
+  return cn(
+    "border-[color-mix(in_srgb,#c94c54_38%,transparent)]",
+    "bg-[linear-gradient(148deg,rgb(255_255_255_/_0.98)_0%,rgb(255_250_251_/_0.92)_42%,rgb(244_176_184_/_0.88)_100%)]",
+    "text-[#5a1f27] shadow-[inset_0_1px_0_rgb(255_255_255_/_0.65)]",
+    "dark:border-[color-mix(in_srgb,#f4a5aa_32%,transparent)]",
+    "dark:bg-[linear-gradient(152deg,color-mix(in_srgb,#3a1518_92%,#0f0a0a)_0%,color-mix(in_srgb,#6b2830_70%,#141010)_48%,color-mix(in_srgb,#5c2228_85%,#120d0e)_100%)]",
+    "dark:text-[#fecdd3] dark:shadow-[inset_0_1px_0_rgb(255_255_255_/_0.06)]",
+  );
+}
+
+/** Green = verified complete; amber = expiring soon (still highlighted separately); lobster = not complete */
+function matrixClasses(status: TrainingAssignmentStatus): string {
   if (status === "completed") {
     return cn(
       "border-teal-500/35 bg-teal-100 text-teal-900",
@@ -31,48 +43,8 @@ function matrixClasses(status: TrainingAssignmentStatus, tier: TrainingTier): st
       "dark:border-amber-400/35 dark:bg-amber-950/45 dark:text-amber-50",
     );
   }
-  if (status === "quiz_failed") {
-    return cn(
-      "border-[color-mix(in_srgb,var(--ds-danger)_45%,transparent)] bg-[color-mix(in_srgb,var(--ds-danger)_14%,transparent)] text-ds-danger",
-      "dark:border-red-400/35 dark:bg-[color-mix(in_srgb,#7f1d1d_45%,#1f1516)] dark:text-red-100",
-    );
-  }
-  if (status === "acknowledged") {
-    return cn(
-      "border-yellow-500/45 bg-yellow-100 text-yellow-950",
-      "dark:border-yellow-400/35 dark:bg-yellow-950/40 dark:text-yellow-50",
-    );
-  }
-  if (status === "in_progress") {
-    return cn(
-      "border-sky-500/40 bg-sky-100 text-sky-950",
-      "dark:border-sky-400/35 dark:bg-sky-950/45 dark:text-sky-50",
-    );
-  }
 
-  const notEngaged = status === "not_assigned" || status === "pending";
-  if (notEngaged) {
-    return cn(
-      "border-zinc-300/80 bg-zinc-100 text-zinc-800",
-      "dark:border-zinc-600/60 dark:bg-zinc-900/50 dark:text-zinc-100",
-    );
-  }
-
-  const incomplete = status === "expired" || status === "revision_pending";
-  if (incomplete) {
-    if (tier === "mandatory") {
-      return cn(
-        "border-[color-mix(in_srgb,#c94c54_42%,transparent)] bg-[#f2aeb4] text-[#5a1a22]",
-        "dark:border-[#f4a5a8]/35 dark:bg-[color-mix(in_srgb,#7f1d1d_55%,#1f1516)] dark:text-[#fecaca]",
-      );
-    }
-    return cn(
-      "border-[color-mix(in_srgb,#d4a574_45%,transparent)] bg-[#ffe8d9] text-[#5c3d26]",
-      "dark:border-[#fdba74]/25 dark:bg-[color-mix(in_srgb,#9a3412_28%,#1c1410)] dark:text-[#fed7aa]",
-    );
-  }
-
-  return "border-ds-border bg-ds-secondary text-ds-foreground";
+  return notCompleteLobsterShell();
 }
 
 function MatrixIcon({ status }: { status: TrainingAssignmentStatus }) {
@@ -97,7 +69,7 @@ function MatrixIcon({ status }: { status: TrainingAssignmentStatus }) {
 
 export function TrainingMatrixCell({
   status,
-  tier,
+  tier: _tier,
   className,
 }: {
   status: TrainingAssignmentStatus;
@@ -112,7 +84,7 @@ export function TrainingMatrixCell({
       title={label}
       className={cn(
         "inline-flex h-8 w-full min-w-[2.25rem] items-center justify-center rounded-lg border px-1.5",
-        matrixClasses(status, tier),
+        matrixClasses(status),
         className,
       )}
     >

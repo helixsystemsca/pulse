@@ -10,7 +10,7 @@ import {
   type DashboardSurfaceTheme,
 } from "@/styles/dashboardTheme";
 import { cn } from "@/lib/cn";
-import type { DashboardWidgetStyleOverride } from "@/lib/dashboardPageWidgetCatalog";
+import { dashboardWidgetChromeStyle, type DashboardWidgetStyleOverride } from "@/lib/dashboardPageWidgetCatalog";
 
 function KioskRotationCountdownRing({ durationMs, cycleKey }: { durationMs: number; cycleKey: number }) {
   const r = 15;
@@ -69,9 +69,10 @@ export function DashboardAccentCard({
     ...(styleOverride?.textColor ? ({ ["--widget-fg" as string]: styleOverride.textColor } as CSSProperties) : null),
     ...(styleOverride?.fontFamily ? ({ fontFamily: styleOverride.fontFamily } as CSSProperties) : null),
   };
+  const chrome = dashboardWidgetChromeStyle(styleOverride);
   const shell = dashboardAccentShell(theme, tier);
   return (
-    <div style={styleVars} className={cn(shell, "text-[var(--widget-fg,var(--ds-text-primary))]", className)}>
+    <div style={{ ...styleVars, ...chrome }} className={cn(shell, "text-[var(--widget-fg,var(--ds-text-primary))]", className)}>
       <div className={mutedAccent ? DASH.accentBarMuted : DASH.accentBar} aria-hidden />
       <div className={cn(DASH.cardInner, innerClassName)}>{children}</div>
     </div>
@@ -98,6 +99,7 @@ export function DashboardColumnPanel({
     ...(styleOverride?.textColor ? ({ ["--widget-fg" as string]: styleOverride.textColor } as CSSProperties) : null),
     ...(styleOverride?.fontFamily ? ({ fontFamily: styleOverride.fontFamily } as CSSProperties) : null),
   };
+  const chrome = dashboardWidgetChromeStyle(styleOverride);
   const shell = dashboardColumnShell(theme);
   const strip =
     accent === "teal"
@@ -110,7 +112,7 @@ export function DashboardColumnPanel({
             ? "bg-[color-mix(in_srgb,var(--ds-accent-dusk)_70%,transparent)]"
             : "bg-[color-mix(in_srgb,var(--ds-text-primary)_14%,transparent)]";
   return (
-    <div style={styleVars} className={cn(shell, "flex h-full min-h-0 flex-col text-[var(--widget-fg,var(--ds-text-primary))]", className)}>
+    <div style={{ ...styleVars, ...chrome }} className={cn(shell, "flex h-full min-h-0 flex-col text-[var(--widget-fg,var(--ds-text-primary))]", className)}>
       <div className={cn("h-[3px] w-full shrink-0", strip)} aria-hidden />
       <div className="flex min-h-0 flex-1 flex-col p-3.5">
         <p className={DASH.sectionLabel}>{title}</p>

@@ -28,6 +28,7 @@ import { PulseDrawer } from "@/components/schedule/PulseDrawer";
 import { ModuleSettingsModal } from "@/components/module-settings/ModuleSettingsModal";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PageBody } from "@/components/ui/PageBody";
+import { SegmentedControl } from "@/components/schedule/SegmentedControl";
 import { canAccessCompanyConfiguration, managerOrAbove, sessionHasAnyRole } from "@/lib/pulse-roles";
 import { isTenantNavFeatureEnabled } from "@/lib/pulse-nav-features";
 import { isTenantNavPermissionGranted } from "@/lib/pulse-nav-permissions";
@@ -157,12 +158,6 @@ const WR_CATEGORY_CHIPS = [
   { id: "work_requests", label: "Work requests" },
   { id: "projects", label: "Projects" },
 ] as const;
-
-function wrFilterChipClass(active: boolean): string {
-  return active
-    ? "border-ds-accent bg-ds-accent/15 text-ds-foreground ring-1 ring-ds-accent/30"
-    : "border-ds-border bg-ds-secondary/60 text-ds-muted hover:border-ds-border hover:bg-ds-interactive-hover hover:text-ds-foreground";
-}
 
 /** Preset keys stored on activity `meta.hold_reason` when placing a request on hold. */
 const WORK_REQUEST_HOLD_REASONS: { id: string; label: string }[] = [
@@ -801,20 +796,12 @@ export function WorkRequestsApp() {
     writeMaintenanceQuery("", "", "");
   }
 
-  function categoryChipActive(c: (typeof WR_CATEGORY_CHIPS)[number]): boolean {
-    if (c.id === "") return !hubCategoryFilter && !kindFilter;
-    if (c.id === "preventative") {
-      return hubCategoryFilter === "preventative" || kindFilter === "preventative_maintenance";
-    }
-    return hubCategoryFilter === c.id && !kindFilter;
-  }
-
-  function applyCategoryChip(c: (typeof WR_CATEGORY_CHIPS)[number]) {
+  function applyCategorySelectValue(raw: string) {
     setPage(0);
     let nextHub = "";
-    let nextKind = "";
-    if (c.id === "preventative") nextHub = "preventative";
-    else if (c.id) nextHub = c.id;
+    const nextKind = "";
+    if (raw === "preventative") nextHub = "preventative";
+    else if (raw) nextHub = raw;
     setHubCategoryFilter(nextHub);
     setKindFilter(nextKind);
     writeMaintenanceQuery(nextHub, nextKind, statusFilter);
@@ -832,6 +819,26 @@ export function WorkRequestsApp() {
     setPage(0);
     writeMaintenanceQuery(hubCategoryFilter, kindFilter, "overdue");
   }
+
+  const canPickScopeTabs = canApprove || hasWorkRequestEditRole || isSystemAdmin;
+
+  const scopeTabOptions = useMemo((): { value: WorkTab; label: string }[] => {
+    const base: { value: WorkTab; label: string }[] = [{ value: "my_work", label: "My work" }];
+    if (!canPickScopeTabs) return base;
+    return [...base, { value: "approval", label: "Approval queue" }, { value: "all", label: "All requests" }];
+  }, [canPickScopeTabs]);
+
+  const handleScopeTab = useCallback((v: WorkTab) => {
+    setTab(v);
+    setPage(0);
+    if (v === "approval") setStatusFilter("");
+  }, []);
+
+  const categorySelectValue = useMemo(() => {
+    if (hubCategoryFilter === "preventative" || kindFilter === "preventative_maintenance") return "preventative";
+    if (!hubCategoryFilter && !kindFilter) return "";
+    return hubCategoryFilter || "";
+  }, [hubCategoryFilter, kindFilter]);
 
   const filteredRows = useMemo(() => {
     const me = session?.sub ?? null;
@@ -1325,44 +1332,14 @@ export function WorkRequestsApp() {
 
       <ModuleSettingsModal moduleId="workRequests" open={orgSettingsOpen} onClose={() => setOrgSettingsOpen(false)} />
 
-      <div className="flex flex-wrap gap-2">
-        <button
-          type="button"
-          onClick={() => setTab("my_work")}
-          className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
-            tab === "my_work"
-              ? "border-ds-accent bg-ds-accent/10 text-ds-accent dark:border-ds-accent dark:bg-ds-accent/15"
-              : "border-slate-200 bg-white text-pulse-muted hover:bg-ds-interactive-hover dark:border-ds-border dark:bg-ds-primary"
-          }`}
-        >
-          Assigned to Me
-        </button>
-        {(canApprove || hasWorkRequestEditRole || isSystemAdmin) ? (
-          <button
-            type="button"
-            onClick={() => setTab("approval")}
-            className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
-              tab === "approval"
-                ? "border-ds-accent bg-ds-accent/10 text-ds-accent dark:border-ds-accent dark:bg-ds-accent/15"
-                : "border-slate-200 bg-white text-pulse-muted hover:bg-ds-interactive-hover dark:border-ds-border dark:bg-ds-primary"
-            }`}
-          >
-            Pending Approval
-          </button>
-        ) : null}
-        {(canApprove || hasWorkRequestEditRole || isSystemAdmin) ? (
-          <button
-            type="button"
-            onClick={() => setTab("all")}
-            className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
-              tab === "all"
-                ? "border-ds-accent bg-ds-accent/10 text-ds-accent dark:border-ds-accent dark:bg-ds-accent/15"
-                : "border-slate-200 bg-white text-pulse-muted hover:bg-ds-interactive-hover dark:border-ds-border dark:bg-ds-primary"
-            }`}
-          >
-            All Requests
-          </button>
-        ) : null}
+      <div className="mt-4 space-y-2">
+        {scopeTabOptions.length > 1 ? (
+          <div className="max-w-3xl">
+            <SegmentedControl<WorkTab> value={tab} onChange={handleScopeTab} options={scopeTabOptions} />
+          </div>
+        ) : (
+          <p className="text-sm font-medium text-ds-muted">Showing requests assigned to you</p>
+        )}
       </div>
 
       {isSystemAdmin ? (
@@ -1392,10 +1369,10 @@ export function WorkRequestsApp() {
         </p>
       ) : (
         <>
-          <div className="mt-6 rounded-lg border border-slate-200/90 bg-white p-4 shadow-sm dark:border-ds-border dark:bg-ds-primary dark:shadow-[0_2px_8px_rgba(0,0,0,0.2)]">
-            <div className="flex flex-col gap-3 xl:flex-row xl:flex-wrap xl:items-end xl:justify-between">
-              <div className="flex min-w-0 flex-1 flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
-                <div className="min-w-[min(100%,14rem)] flex-1 sm:max-w-md">
+          <div className="ds-premium-panel mt-6 p-4 md:p-5">
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
+                <div className="min-w-[min(100%,18rem)] flex-1 sm:max-w-lg">
                   <label className={LABEL}>Search</label>
                   <div className="relative mt-1.5">
                     <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-pulse-muted" />
@@ -1407,14 +1384,24 @@ export function WorkRequestsApp() {
                         setQ(e.target.value);
                         setPage(0);
                       }}
-                      className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm text-pulse-navy placeholder:text-slate-400 outline-none focus:border-pulse-accent focus:ring-2 focus:ring-pulse-accent/25 dark:border-ds-border dark:bg-ds-secondary dark:text-gray-100 dark:placeholder:text-gray-500"
+                      className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm text-pulse-navy placeholder:text-slate-400 outline-none focus:border-[var(--ds-accent)] focus:ring-2 focus:ring-[color-mix(in_srgb,var(--ds-accent)_35%,transparent)] dark:border-ds-border dark:bg-ds-secondary dark:text-gray-100 dark:placeholder:text-gray-500"
                     />
                   </div>
                 </div>
-                <div className="min-w-[9rem]">
+                <button
+                  type="button"
+                  className="shrink-0 text-sm font-semibold text-[var(--ds-accent)] hover:underline"
+                  onClick={clearFilters}
+                >
+                  Clear filters
+                </button>
+              </div>
+
+              <div className="flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-end">
+                <div className="min-w-[9rem] lg:max-w-[11rem]">
                   <label className={LABEL}>Priority</label>
                   <select
-                    className="mt-1.5 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-pulse-navy outline-none focus:border-pulse-accent focus:ring-2 focus:ring-pulse-accent/25 dark:border-ds-border dark:bg-ds-secondary dark:text-gray-100"
+                    className="mt-1.5 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-pulse-navy outline-none focus:border-[var(--ds-accent)] focus:ring-2 focus:ring-[color-mix(in_srgb,var(--ds-accent)_35%,transparent)] dark:border-ds-border dark:bg-ds-secondary dark:text-gray-100"
                     value={priorityFilter}
                     onChange={(e) => {
                       setPriorityFilter(e.target.value);
@@ -1428,10 +1415,10 @@ export function WorkRequestsApp() {
                     <option value="critical">Critical</option>
                   </select>
                 </div>
-                <div className="min-w-[9rem]">
+                <div className="min-w-[9rem] lg:max-w-[11rem]">
                   <label className={LABEL}>Location</label>
                   <select
-                    className="mt-1.5 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-pulse-navy outline-none focus:border-pulse-accent focus:ring-2 focus:ring-pulse-accent/25 dark:border-ds-border dark:bg-ds-secondary dark:text-gray-100"
+                    className="mt-1.5 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-pulse-navy outline-none focus:border-[var(--ds-accent)] focus:ring-2 focus:ring-[color-mix(in_srgb,var(--ds-accent)_35%,transparent)] dark:border-ds-border dark:bg-ds-secondary dark:text-gray-100"
                     value={zoneFilter}
                     onChange={(e) => {
                       setZoneFilter(e.target.value);
@@ -1446,6 +1433,39 @@ export function WorkRequestsApp() {
                     ))}
                   </select>
                 </div>
+                <div className="min-w-[11rem] lg:max-w-[13rem]">
+                  <label className={LABEL}>Category</label>
+                  <select
+                    className="mt-1.5 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-pulse-navy outline-none focus:border-[var(--ds-accent)] focus:ring-2 focus:ring-[color-mix(in_srgb,var(--ds-accent)_35%,transparent)] dark:border-ds-border dark:bg-ds-secondary dark:text-gray-100"
+                    value={categorySelectValue}
+                    onChange={(e) => applyCategorySelectValue(e.target.value)}
+                    aria-label="Filter by category"
+                  >
+                    {WR_CATEGORY_CHIPS.map((c) => (
+                      <option key={c.id || "all"} value={c.id}>
+                        {c.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                {tab !== "approval" ? (
+                  <div className="min-w-[11rem] lg:max-w-[13rem]">
+                    <label className={LABEL}>Status</label>
+                    <select
+                      className="mt-1.5 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-pulse-navy outline-none focus:border-[var(--ds-accent)] focus:ring-2 focus:ring-[color-mix(in_srgb,var(--ds-accent)_35%,transparent)] dark:border-ds-border dark:bg-ds-secondary dark:text-gray-100"
+                      value={statusFilter}
+                      onChange={(e) => applyStatusChip(e.target.value)}
+                      aria-label="Filter by workflow status"
+                    >
+                      <option value="">All active</option>
+                      {WORKFLOW_STATUSES.map((s) => (
+                        <option key={s.id} value={s.id}>
+                          {s.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ) : null}
                 <div className="min-w-[9.5rem]">
                   <label className={LABEL}>Due from</label>
                   <input
@@ -1455,7 +1475,7 @@ export function WorkRequestsApp() {
                       setDateFrom(e.target.value);
                       setPage(0);
                     }}
-                    className="mt-1.5 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-pulse-navy outline-none focus:border-pulse-accent focus:ring-2 focus:ring-pulse-accent/25 dark:border-ds-border dark:bg-ds-secondary dark:text-gray-100"
+                    className="mt-1.5 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-pulse-navy outline-none focus:border-[var(--ds-accent)] focus:ring-2 focus:ring-[color-mix(in_srgb,var(--ds-accent)_35%,transparent)] dark:border-ds-border dark:bg-ds-secondary dark:text-gray-100"
                   />
                 </div>
                 <div className="min-w-[9.5rem]">
@@ -1467,57 +1487,17 @@ export function WorkRequestsApp() {
                       setDateTo(e.target.value);
                       setPage(0);
                     }}
-                    className="mt-1.5 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-pulse-navy outline-none focus:border-pulse-accent focus:ring-2 focus:ring-pulse-accent/25 dark:border-ds-border dark:bg-ds-secondary dark:text-gray-100"
+                    className="mt-1.5 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-pulse-navy outline-none focus:border-[var(--ds-accent)] focus:ring-2 focus:ring-[color-mix(in_srgb,var(--ds-accent)_35%,transparent)] dark:border-ds-border dark:bg-ds-secondary dark:text-gray-100"
                   />
                 </div>
               </div>
-              <button
-                type="button"
-                className="shrink-0 text-sm font-semibold text-ds-accent hover:underline"
-                onClick={clearFilters}
-              >
-                Clear filters
-              </button>
-            </div>
 
-            <div className="mt-4 flex flex-col gap-4 border-t border-slate-200/80 pt-4 dark:border-ds-border lg:flex-row lg:items-start lg:gap-8">
-              <div className="min-w-0 flex-1">
-                <p className={LABEL}>Category</p>
-                <div className="mt-2 flex flex-wrap gap-2" role="group" aria-label="Category filters">
-                  {WR_CATEGORY_CHIPS.map((c) => (
-                    <button
-                      key={c.id || "all-cat"}
-                      type="button"
-                      className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${wrFilterChipClass(categoryChipActive(c))}`}
-                      onClick={() => applyCategoryChip(c)}
-                    >
-                      {c.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className={LABEL}>Status</p>
-                <div className="mt-2 flex flex-wrap gap-2" role="group" aria-label="Status filters">
-                  <button
-                    type="button"
-                    className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${wrFilterChipClass(!statusFilter)}`}
-                    onClick={() => applyStatusChip("")}
-                  >
-                    All active
-                  </button>
-                  {WORKFLOW_STATUSES.map((s) => (
-                    <button
-                      key={s.id}
-                      type="button"
-                      className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${wrFilterChipClass(statusFilter === s.id)}`}
-                      onClick={() => applyStatusChip(s.id)}
-                    >
-                      {s.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
+              {tab === "approval" ? (
+                <p className="text-xs leading-relaxed text-ds-muted">
+                  Approval queue lists pending and approved items. Switch to{" "}
+                  <span className="font-semibold text-ds-foreground">All requests</span> to filter by workflow status.
+                </p>
+              ) : null}
             </div>
           </div>
 
@@ -1664,7 +1644,7 @@ export function WorkRequestsApp() {
           <div className="mt-6 grid gap-4 lg:grid-cols-4">
             {overdueCritical > 0 ? (
               <>
-                <div className="rounded-md border border-rose-200/80 bg-[#fff5f5] p-5 shadow-sm dark:border-red-500/35 dark:bg-red-950/45 lg:col-span-3">
+                <div className="ds-card-secondary ds-card-static rounded-xl border border-rose-200/80 bg-[#fff5f5] p-5 shadow-sm dark:border-red-500/35 dark:bg-red-950/45 lg:col-span-3">
                   <div className="flex items-start gap-3">
                     <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#c53030] text-white dark:bg-red-600">
                       <AlertTriangle className="h-5 w-5" aria-hidden />
@@ -1685,7 +1665,7 @@ export function WorkRequestsApp() {
                     </div>
                   </div>
                 </div>
-                <div className="rounded-md border border-pulse-border bg-white p-5 shadow-sm ring-1 ring-slate-100/80 border-l-4 border-l-[#2B4C7E] dark:border-ds-border dark:bg-ds-primary dark:ring-white/[0.06] dark:border-l-[#3B82F6]">
+                <div className="ds-card-secondary ds-card-static rounded-xl border border-pulse-border p-5 border-l-4 border-l-[color-mix(in_srgb,var(--ds-accent)_78%,#1e3a5f)] dark:border-ds-border">
                   <span className="text-xs font-semibold uppercase tracking-wide text-pulse-muted dark:text-gray-400">
                     Total requests
                   </span>
@@ -1695,7 +1675,7 @@ export function WorkRequestsApp() {
               </>
             ) : (
               <>
-                <div className="rounded-md border border-pulse-border bg-white p-5 shadow-sm ring-1 ring-slate-100/80 border-l-4 border-l-amber-500/90 dark:border-ds-border dark:bg-ds-primary dark:ring-white/[0.06]">
+                <div className="ds-card-secondary ds-card-static rounded-xl border border-pulse-border p-5 border-l-4 border-l-amber-500/90 dark:border-ds-border">
                   <span className="text-xs font-semibold uppercase tracking-wide text-pulse-muted dark:text-gray-400">
                     Pending approval
                   </span>
@@ -1704,7 +1684,7 @@ export function WorkRequestsApp() {
                   </p>
                   <p className="mt-1 text-sm text-pulse-muted">Matches filters below</p>
                 </div>
-                <div className="rounded-md border border-pulse-border bg-white p-5 shadow-sm ring-1 ring-slate-100/80 border-l-4 border-l-sky-500/90 dark:border-ds-border dark:bg-ds-primary dark:ring-white/[0.06]">
+                <div className="ds-card-secondary ds-card-static rounded-xl border border-pulse-border p-5 border-l-4 border-l-sky-500/90 dark:border-ds-border">
                   <span className="text-xs font-semibold uppercase tracking-wide text-pulse-muted dark:text-gray-400">
                     In progress
                   </span>
@@ -1713,7 +1693,7 @@ export function WorkRequestsApp() {
                   </p>
                   <p className="mt-1 text-sm text-pulse-muted">Matches filters below</p>
                 </div>
-                <div className="rounded-md border border-pulse-border bg-white p-5 shadow-sm ring-1 ring-slate-100/80 border-l-4 border-l-rose-500/85 dark:border-ds-border dark:bg-ds-primary dark:ring-white/[0.06]">
+                <div className="ds-card-secondary ds-card-static rounded-xl border border-pulse-border p-5 border-l-4 border-l-rose-500/85 dark:border-ds-border">
                   <span className="text-xs font-semibold uppercase tracking-wide text-pulse-muted dark:text-gray-400">
                     Overdue (any priority)
                   </span>
@@ -1722,7 +1702,7 @@ export function WorkRequestsApp() {
                   </p>
                   <p className="mt-1 text-sm text-pulse-muted">Matches filters below</p>
                 </div>
-                <div className="rounded-md border border-pulse-border bg-white p-5 shadow-sm ring-1 ring-slate-100/80 border-l-4 border-l-[#2B4C7E] dark:border-ds-border dark:bg-ds-primary dark:ring-white/[0.06] dark:border-l-[#3B82F6]">
+                <div className="ds-card-secondary ds-card-static rounded-xl border border-pulse-border p-5 border-l-4 border-l-[color-mix(in_srgb,var(--ds-accent)_78%,#1e3a5f)] dark:border-ds-border">
                   <span className="text-xs font-semibold uppercase tracking-wide text-pulse-muted dark:text-gray-400">
                     Total requests
                   </span>

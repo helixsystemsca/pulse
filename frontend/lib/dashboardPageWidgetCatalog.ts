@@ -3,6 +3,8 @@
  * which slices to surface. Options are stored per widget instance (localStorage).
  */
 
+import type { CSSProperties } from "react";
+
 export type WidgetFieldType = "boolean" | "number";
 
 export type WidgetCustomField = {
@@ -143,11 +145,64 @@ export type DashboardWidgetStyleOverride = {
   fontFamily?: string;
   /** When set, controls how the widget background is rendered. */
   theme?: "tint" | "solid" | "glass" | "gradient";
+  /** Extra stroke width in px (0 = use default card border only). */
+  widgetBorderWidth?: number;
+  /** Stroke color when `widgetBorderWidth` &gt; 0. */
+  widgetBorderColor?: string;
+  /** Additional drop shadow layered with optional glow. */
+  shadowPreset?: DashboardWidgetShadowPreset;
+  /** Outer glow layered in `box-shadow` after shadow preset. */
+  glowEnabled?: boolean;
+  glowColor?: string;
+  /** 1–100; blur radius scales with this when glow is enabled. */
+  glowStrength?: number;
 };
 
 export const DASHBOARD_WIDGET_STYLE_STORAGE = "dashboard_widget_styles_v1";
 export const DASHBOARD_LAYOUT_STORAGE_V1 = "dashboard_layout_v1";
 export const DASHBOARD_CUSTOM_WIDGETS_STORAGE = "dashboard_custom_widgets_v1";
+
+/** Extra elevation beyond the default `.dash-card` shadow (merged into `box-shadow`). */
+export type DashboardWidgetShadowPreset = "none" | "soft" | "medium" | "deep";
+
+const SHADOW_PRESET_CSS: Record<Exclude<DashboardWidgetShadowPreset, "none">, string> = {
+  soft: "0 4px 18px -4px rgba(15, 23, 42, 0.1), 0 2px 8px -3px rgba(15, 23, 42, 0.06)",
+  medium: "0 14px 36px -12px rgba(15, 23, 42, 0.18), 0 6px 14px -6px rgba(15, 23, 42, 0.1)",
+  deep: "0 24px 52px -16px rgba(15, 23, 42, 0.26), 0 12px 28px -12px rgba(15, 23, 42, 0.14)",
+};
+
+/**
+ * Inline styles for stroke, drop shadow, and glow — merged onto widget shells (`WorkerDashCard`, accent/column panels).
+ * Omits properties when unset so default `.dash-card` chrome still applies.
+ */
+export function dashboardWidgetChromeStyle(o?: DashboardWidgetStyleOverride): CSSProperties {
+  if (!o) return {};
+  const layers: string[] = [];
+  const preset = o.shadowPreset ?? "none";
+  if (preset !== "none" && preset in SHADOW_PRESET_CSS) {
+    layers.push(SHADOW_PRESET_CSS[preset as keyof typeof SHADOW_PRESET_CSS]);
+  }
+  const glowHex = (o.glowColor ?? "").trim();
+  if (o.glowEnabled && glowHex) {
+    const raw = o.glowStrength ?? 48;
+    const strength = Math.min(100, Math.max(1, raw));
+    const blurPx = Math.round(8 + (strength / 100) * 36);
+    layers.push(`0 0 ${blurPx}px ${glowHex}`);
+  }
+
+  const bw = Math.min(6, Math.max(0, o.widgetBorderWidth ?? 0));
+  const out: CSSProperties = {};
+  if (layers.length) {
+    out.boxShadow = layers.join(", ");
+  }
+  if (bw > 0) {
+    out.borderWidth = bw;
+    out.borderStyle = "solid";
+    out.borderColor = (o.widgetBorderColor ?? "").trim() || "rgba(15, 23, 42, 0.16)";
+    out.boxSizing = "border-box";
+  }
+  return out;
+}
 
 export function catalogPage(pageId: string): DashboardPageDefinition | undefined {
   return DASHBOARD_PAGE_WIDGET_CATALOG.find((p) => p.id === pageId);

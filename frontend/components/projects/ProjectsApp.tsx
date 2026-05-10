@@ -84,6 +84,30 @@ function categoryMatchByName(categories: CategoryRow[], name: string): CategoryR
   return categories.find((c) => c.name.trim().toLowerCase() === q) ?? null;
 }
 
+/** Calendar days from local today to `start_date` (YYYY-MM-DD). Negative if the start is in the past. */
+function daysFromTodayToStartDate(startDateStr: string | null | undefined): number | null {
+  if (!startDateStr || typeof startDateStr !== "string") return null;
+  const m = startDateStr.trim().match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!m) return null;
+  const y = Number(m[1]);
+  const mo = Number(m[2]);
+  const d = Number(m[3]);
+  if (!Number.isFinite(y) || !Number.isFinite(mo) || !Number.isFinite(d)) return null;
+  const start = new Date(y, mo - 1, d);
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  return Math.round((start.getTime() - today.getTime()) / 86_400_000);
+}
+
+/** Start more than 14 days away → Future tab; within 14 days (or already started) → Active tab. */
+const FUTURE_TAB_THRESHOLD_DAYS = 14;
+
+function inferredStatusFromStartDate(startDateStr: string): "active" | "future" {
+  const delta = daysFromTodayToStartDate(startDateStr);
+  if (delta === null) return "active";
+  return delta > FUTURE_TAB_THRESHOLD_DAYS ? "future" : "active";
+}
+
 const ICON_BTN =
   "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] border border-slate-200/90 bg-white text-pulse-navy shadow-sm transition-colors hover:border-slate-300/90 hover:bg-ds-interactive-hover active:bg-slate-100 dark:border-ds-border dark:bg-ds-secondary dark:text-slate-100 dark:hover:border-ds-border dark:hover:bg-ds-interactive-hover";
 
@@ -257,8 +281,22 @@ export function ProjectsApp() {
     if (!rows) return [];
     const now = new Date();
     const year = now.getFullYear();
-    if (filter === "active") return rows.filter((p) => p.status !== "completed" && p.status !== "future");
-    if (filter === "future") return rows.filter((p) => p.status === "future" && !p.archived_at);
+    if (filter === "active") {
+      return rows.filter((p) => {
+        if (p.status === "completed" || p.archived_at) return false;
+        const delta = daysFromTodayToStartDate(p.start_date);
+        if (delta === null) return p.status !== "future";
+        return delta <= FUTURE_TAB_THRESHOLD_DAYS;
+      });
+    }
+    if (filter === "future") {
+      return rows.filter((p) => {
+        if (p.status === "completed" || p.archived_at) return false;
+        const delta = daysFromTodayToStartDate(p.start_date);
+        if (delta === null) return p.status === "future";
+        return delta > FUTURE_TAB_THRESHOLD_DAYS;
+      });
+    }
     if (filter === "completed") {
       // Annual snapshot: only show projects completed in the current year.
       return rows.filter((p) => {
@@ -371,7 +409,7 @@ export function ProjectsApp() {
         start_date: formStart,
         end_date: formEnd,
         owner_user_id: formOwner.trim() || null,
-        status: "active",
+        status: inferredStatusFromStartDate(formStart),
         template_id: templateId.trim() || null,
         category_id: categoryId || null,
         repopulation_frequency: formRepop || "Once",
@@ -472,9 +510,7 @@ export function ProjectsApp() {
     const nextStatus: typeof formStatus =
       formStatus === "on_hold" || formStatus === "completed"
         ? formStatus
-        : formStart > todayStr
-          ? "future"
-          : "active";
+        : inferredStatusFromStartDate(formStart);
     setSaving(true);
     try {
       const out = await patchProject(editFor.id, {
@@ -546,7 +582,7 @@ export function ProjectsApp() {
       />
 
       <PageBody>
-        <div className="max-w-md">
+        <div className="max-w-xl space-y-2">
           <SegmentedControl
             value={filter}
             onChange={setFilter}
@@ -557,6 +593,9 @@ export function ProjectsApp() {
               { value: "archive", label: "Archive" },
             ]}
           />
+          <p className="text-xs text-pulse-muted dark:text-ds-muted">
+            Starts within two weeks (or earlier) appear under Active; farther out under Future.
+          </p>
         </div>
 
       {toast ? (
@@ -571,7 +610,7 @@ export function ProjectsApp() {
       {filtered.length === 0 ? (
         <Card
           padding="md"
-          className="space-y-3 border-dashed border-slate-200/90 dark:border-ds-border"
+          className="space-y-3 border border-slate-200/90 dark:border-ds-border"
         >
           {rows.length === 0 ? (
             <HintCallout>
@@ -585,10 +624,10 @@ export function ProjectsApp() {
               : filter === "completed"
                 ? "No completed projects yet this year."
                 : filter === "future"
-                  ? "No upcoming (Future) projects yet."
+                  ? "No projects with a start date more than two weeks away."
                 : filter === "archive"
                   ? "No archived projects yet."
-                  : "No active projects in this filter. Switch to Completed/Archive or create a project."}
+                  : "No projects starting within two weeks (or already underway). Check Future or create a project."}
           </p>
         </Card>
       ) : (

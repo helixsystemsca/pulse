@@ -1636,7 +1636,7 @@ function TaskSection({
       {tasks.length === 0 ? (
         <Card
           padding="md"
-          className="mt-3 border-dashed border-slate-200/90 dark:border-ds-border"
+          className="mt-3 border border-slate-200/90 dark:border-ds-border"
         >
           <p className="text-sm text-pulse-muted">{empty}</p>
         </Card>
