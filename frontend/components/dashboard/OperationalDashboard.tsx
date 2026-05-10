@@ -40,6 +40,8 @@ import {
   type CustomDashboardWidgetConfig,
   type DashboardWidgetStyleOverride,
 } from "@/lib/dashboardPageWidgetCatalog";
+import { fetchTrainingMatrix, mapApiAssignments, mapApiEmployees, mapApiPrograms } from "@/lib/trainingApi";
+import { computeComplianceRadialSummary } from "@/lib/training/selectors";
 import {
   localScheduleDateKey,
   mergedScheduleShiftsForCalendarDate,
@@ -389,6 +391,13 @@ export type DashboardViewModel = {
     alert: { category: string; message: string } | null;
     shoppingList: string[];
   };
+  training: {
+    totalSlots: number;
+    completed: number;
+    expiringSoon: number;
+    missing: number;
+    overallCompliancePercent: number;
+  };
 };
 
 const roleBadgeBase =
@@ -657,6 +666,13 @@ function demoModel(): DashboardViewModel {
       },
       shoppingList: ["Plumbing fittings", "Pipe sealant", "Replacement valves"],
     },
+    training: {
+      totalSlots: 120,
+      completed: 92,
+      expiringSoon: 14,
+      missing: 14,
+      overallCompliancePercent: 88,
+    },
   };
 }
 
@@ -778,6 +794,7 @@ function buildLiveModel(
   lowStock: InventoryItemOut[],
   zones: ZoneOut[],
   beacons: BeaconEquipmentOut[],
+  trainingMatrix: Awaited<ReturnType<typeof fetchTrainingMatrix>> | null,
 ): DashboardViewModel {
   const zoneName = (id: string | null) => (id ? zones.find((z) => z.id === id)?.name ?? "Unknown zone" : "Unassigned");
 
@@ -1011,6 +1028,23 @@ function buildLiveModel(
         }
       : null;
 
+  const training = (() => {
+    if (!trainingMatrix) {
+      return { totalSlots: 0, completed: 0, expiringSoon: 0, missing: 0, overallCompliancePercent: 0 };
+    }
+    const programs = mapApiPrograms(trainingMatrix.programs);
+    const employees = mapApiEmployees(trainingMatrix.employees);
+    const assignments = mapApiAssignments(trainingMatrix.assignments);
+    const sum = computeComplianceRadialSummary(employees, programs, assignments, [], { trustAssignmentStatus: true });
+    return {
+      totalSlots: sum.totalSlots,
+      completed: sum.completed,
+      expiringSoon: sum.expiringSoon,
+      missing: sum.missing,
+      overallCompliancePercent: sum.overallCompliancePercent,
+    };
+  })();
+
   return {
     title: "Operations Dashboard",
     welcomeName: "",
@@ -1055,6 +1089,7 @@ function buildLiveModel(
       alert: invAlert,
       shoppingList: lowStock.slice(0, 6).map((i) => i.name),
     },
+    training,
   };
 }
 
@@ -2780,7 +2815,7 @@ export function OperationalDashboard({
     const to = new Date(dayEndMsExclusive).toISOString();
 
     try {
-      const [dash, wrList, workers, assetList, lowStock, zoneList, beaconList] = await Promise.all([
+      const [dash, wrList, workers, assetList, lowStock, zoneList, beaconList, trainingMatrix] = await Promise.all([
         fetchJson<DashboardPayload>("/api/v1/pulse/dashboard"),
         fetchJson<WorkRequestListOut>("/api/v1/pulse/work-requests?limit=40&offset=0"),
         fetchJson<WorkerOut[]>("/api/v1/pulse/workers"),
@@ -2788,6 +2823,11 @@ export function OperationalDashboard({
         fetchJson<InventoryItemOut[]>("/api/v1/pulse/inventory/low-stock"),
         fetchJson<ZoneOut[]>("/api/v1/pulse/schedule-facilities"),
         fetchJson<BeaconEquipmentOut[]>("/api/v1/pulse/equipment"),
+        fetchTrainingMatrix().catch((e) => {
+          const st = (e as { status?: number })?.status;
+          if (st === 403 || st === 401) return null;
+          throw e;
+        }),
       ]);
       let shiftList: ShiftOut[] = [];
       try {
@@ -2808,6 +2848,7 @@ export function OperationalDashboard({
         lowStock,
         zoneList,
         beaconList,
+        trainingMatrix,
       );
       const welcome = welcomeFromSession(auth?.email ?? session?.email, auth?.full_name ?? session?.full_name);
       const withWelcome: DashboardViewModel = { ...model, welcomeName: welcome, bannerNote: null };

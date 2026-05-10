@@ -95,6 +95,16 @@ export type ComplianceSummary = {
   highRiskOverdue: number;
 };
 
+export type ComplianceRadialSummary = {
+  /** Total mandatory assignment slots (employees × active mandatory programs). */
+  totalSlots: number;
+  completed: number;
+  expiringSoon: number;
+  missing: number;
+  /** \((completed + expiringSoon) / totalSlots\) rounded to nearest integer percent. */
+  overallCompliancePercent: number;
+};
+
 function isMandatoryProgram(p: TrainingProgram): boolean {
   return p.tier === "mandatory" && p.active;
 }
@@ -166,6 +176,52 @@ export function computeComplianceSummary(
     pendingAcknowledgements,
     highRiskOverdue,
   };
+}
+
+/**
+ * Summary for "radial compliance" UI: counts mandatory program slots as completed / expiring soon / missing.
+ * - completed: `completed`
+ * - expiringSoon: `expiring_soon`
+ * - missing: everything else (`expired`, `pending`, `not_assigned`, `revision_pending`, etc.)
+ *
+ * Notes:
+ * - This is intentionally scoped to active mandatory programs; other tiers can be added later.
+ * - When `trustAssignmentStatus` is true, server status is treated as authoritative and `acks` may be empty.
+ */
+export function computeComplianceRadialSummary(
+  employees: TrainingEmployee[],
+  programs: TrainingProgram[],
+  assignments: TrainingAssignment[],
+  acks: typeof MOCK_TRAINING_ACKNOWLEDGEMENTS,
+  opts?: { trustAssignmentStatus?: boolean },
+): ComplianceRadialSummary {
+  const resolved = opts?.trustAssignmentStatus
+    ? assignments
+    : resolvedAssignments(programs, assignments, acks);
+  const mandatory = programs.filter(isMandatoryProgram);
+
+  let completed = 0;
+  let expiringSoon = 0;
+  let missing = 0;
+
+  const effFor = (p: TrainingProgram, a: TrainingAssignment | undefined) =>
+    cellAssignmentStatus(p, a, acks, opts);
+
+  for (const e of employees) {
+    for (const p of mandatory) {
+      const a = assignmentFor(e.id, p.id, resolved);
+      const eff = effFor(p, a);
+      if (eff === "completed") completed++;
+      else if (eff === "expiring_soon") expiringSoon++;
+      else missing++;
+    }
+  }
+
+  const totalSlots = employees.length * mandatory.length;
+  const overallCompliancePercent =
+    totalSlots <= 0 ? 0 : Math.round(((completed + expiringSoon) / totalSlots) * 100);
+
+  return { totalSlots, completed, expiringSoon, missing, overallCompliancePercent };
 }
 
 export function uniqueDepartments(employees: TrainingEmployee[]): string[] {

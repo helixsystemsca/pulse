@@ -8,6 +8,7 @@ import { TankIndicator } from "@/components/monitoring/TankIndicator";
 import { co2Tanks, poolControllers } from "@/lib/monitoringMockData";
 import { cn } from "@/lib/cn";
 import type { WidgetMode } from "@/components/dashboard/widgets/widgetSizing";
+import { TrainingComplianceWidget } from "@/components/dashboard/widgets/training/TrainingComplianceWidget";
 
 const CO2_LEVEL_MAX = 1000;
 
@@ -259,6 +260,10 @@ function renderSlice(
         </>
       );
     }
+  }
+
+  if (config.pageId === "training" && sliceId === "training_compliance") {
+    return <TrainingComplianceWidget training={model.training} mode={ui.compact ? "sm" : ui.dense ? "lg" : "md"} />;
   }
 
   if (config.pageId === "equipment" && sliceId === "equipment_counts") {

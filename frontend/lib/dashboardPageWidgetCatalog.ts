@@ -111,6 +111,13 @@ export const DASHBOARD_PAGE_WIDGET_CATALOG: DashboardPageDefinition[] = [
     description: "Beacon / tool health counts from the dashboard model.",
     slices: [{ id: "equipment_counts", label: "Active, missing, out of service" }],
   },
+  {
+    id: "training",
+    label: "Training",
+    href: "/standards/training",
+    description: "Compliance roll-up for mandatory training programs.",
+    slices: [{ id: "training_compliance", label: "Training compliance" }],
+  },
 ];
 
 export type CustomWidgetSliceOptions = Record<string, Record<string, boolean | number>>;

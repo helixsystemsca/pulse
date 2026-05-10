@@ -389,10 +389,10 @@ export function RoutinesApp() {
                 <li key={r.id}>
                   <button
                     type="button"
-                    className={`w-full rounded-lg border px-3 py-2 text-left text-sm font-semibold transition-colors ${
+                    className={`w-full touch-pan-y rounded-lg border px-3 py-2 text-left text-sm font-semibold transition-colors ${
                       selectedId === r.id
-                        ? "border-[color-mix(in_srgb,var(--ds-success)_35%,var(--ds-border))] bg-ds-interactive-hover text-ds-foreground"
-                        : "border-ds-border bg-ds-secondary text-ds-foreground hover:bg-ds-interactive-hover"
+                        ? "border-[color-mix(in_srgb,var(--ds-accent)_35%,var(--ds-border))] bg-white text-ds-foreground dark:bg-ds-secondary"
+                        : "border-ds-border bg-white/70 text-ds-foreground hover:bg-white dark:bg-ds-secondary/70 dark:hover:bg-ds-secondary"
                     }`}
                     onClick={() => setSelectedId(r.id)}
                   >
@@ -509,7 +509,7 @@ export function RoutinesApp() {
                     {currentCreateDrafts.map((it, idx) => (
                       <div
                         key={it.key}
-                        className="flex flex-col gap-2 rounded-lg border border-ds-border bg-ds-secondary p-3 sm:flex-row sm:flex-wrap sm:items-center"
+                        className="flex flex-col gap-2 rounded-lg border border-ds-border bg-white/70 p-3 sm:flex-row sm:flex-wrap sm:items-center dark:bg-ds-secondary/70"
                       >
                         <select
                           aria-label={`Procedure for checklist item ${idx + 1}`}
@@ -670,7 +670,7 @@ export function RoutinesApp() {
                 {editDraftList.map((it, idx) => (
                   <div
                     key={it.key}
-                    className="flex flex-col gap-2 rounded-lg border border-ds-border bg-ds-secondary p-3 sm:flex-row sm:flex-wrap sm:items-center"
+                    className="flex flex-col gap-2 rounded-lg border border-ds-border bg-white/70 p-3 sm:flex-row sm:flex-wrap sm:items-center dark:bg-ds-secondary/70"
                   >
                     <select
                       aria-label={`Procedure for checklist item ${idx + 1}`}
