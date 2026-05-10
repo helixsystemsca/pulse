@@ -2,7 +2,7 @@
 
 import { flushSync } from "react-dom";
 import { scheduleShiftHoverSummary } from "@/lib/schedule/certifications";
-import { getShiftConflicts, worstConflictSeverity } from "@/lib/schedule/conflicts";
+import { getShiftConflicts } from "@/lib/schedule/conflicts";
 import type { CompactDayShiftRow } from "@/lib/schedule/compact-day-shifts";
 import {
   attachShiftDragPreview,
@@ -45,7 +45,7 @@ type Props = {
   chipDetailLevel?: "summary" | "full";
 };
 
-function aggregateConflictUi(
+function aggregateConflictHoverTip(
   row: CompactDayShiftRow,
   fullDay: Shift[],
   workers: Worker[],
@@ -53,17 +53,14 @@ function aggregateConflictUi(
   timeOffBlocks: TimeOffBlock[],
   zones: Zone[],
   workerMap: Map<string, Worker>,
-) {
-  let worst: ReturnType<typeof worstConflictSeverity> = null;
+): string {
   const tips: string[] = [];
   for (const s of row.shifts) {
     const w = s.workerId ? workerMap.get(s.workerId) : null;
     const c = getShiftConflicts(s, fullDay, workers, settings, timeOffBlocks, zones);
-    const sev = worstConflictSeverity(c);
-    if (sev === "critical" || (sev === "warning" && worst !== "critical")) worst = sev;
     tips.push(scheduleShiftHoverSummary(s, w ?? null, c));
   }
-  return { worst, tip: tips.filter(Boolean).join("\n---\n") };
+  return tips.filter(Boolean).join("\n---\n");
 }
 
 export function ScheduleCompactCellRows({
@@ -107,7 +104,7 @@ export function ScheduleCompactCellRows({
         const openCls = isOpen
           ? "ring-2 ring-dashed ring-ds-success/45 ring-offset-1 ring-offset-pulse-shell-cell dark:ring-offset-pulse-shell-cell"
           : "";
-        const { worst, tip } = aggregateConflictUi(
+        const tip = aggregateConflictHoverTip(
           row,
           fullDayShifts,
           workers,
@@ -140,6 +137,7 @@ export function ScheduleCompactCellRows({
             tabIndex={0}
             data-schedule-interactive
             draggable={canDrag}
+            title={tip || undefined}
             className={`w-full rounded-lg text-left shadow-sm transition-colors hover:brightness-[0.97] ${
               summary ? "px-1 py-px text-[10px] leading-tight" : "px-1.5 py-1.5 text-[11px] leading-snug"
             } ${anyAuto ? "opacity-[0.92]" : ""} ${canDrag ? "cursor-grab active:cursor-grabbing" : "cursor-default"} ${chipLocked ? "pointer-events-none" : ""} ${cardCls} ${openCls}`}
@@ -193,15 +191,6 @@ export function ScheduleCompactCellRows({
                     >
                       {row.code}
                     </span>
-                    {worst ? (
-                      <span
-                        title={tip}
-                        className={`inline-block shrink-0 rounded-full h-1.5 w-1.5 ${
-                          worst === "critical" ? "bg-ds-danger" : "bg-ds-warning"
-                        }`}
-                        aria-label={tip}
-                      />
-                    ) : null}
                   </span>
                 </div>
               ) : (
@@ -229,15 +218,6 @@ export function ScheduleCompactCellRows({
                     >
                       {row.code}
                     </span>
-                    {worst ? (
-                      <span
-                        title={tip}
-                        className={`inline-block shrink-0 rounded-full h-2 w-2 ${
-                          worst === "critical" ? "bg-ds-danger" : "bg-ds-warning"
-                        }`}
-                        aria-label={tip}
-                      />
-                    ) : null}
                   </div>
                 </>
               )}

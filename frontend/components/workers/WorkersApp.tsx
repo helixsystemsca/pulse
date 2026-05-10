@@ -266,6 +266,17 @@ function shiftRosterLabel(
   return k.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
+/** Roster shift column: GG family uses violet; standard presets use sky / amber / blue. */
+function shiftRosterBadgeClass(shiftKey: string | null | undefined): string {
+  const k = (shiftKey ?? "").trim().toLowerCase();
+  if (!k) return "app-badge-slate";
+  if (k.startsWith("gg_")) return "app-badge-violet";
+  if (k === "day") return "app-badge-sky";
+  if (k === "afternoon") return "app-badge-amber";
+  if (k === "night") return "app-badge-blue";
+  return "app-badge-slate";
+}
+
 function roleGroupTitle(role: string): string {
   if (role === "company_admin") return "Company Admin";
   if (role === "manager") return "Managers";
@@ -1937,9 +1948,17 @@ export function WorkersApp() {
                               </div>
                             </td>
                             <td className="px-4 py-3 text-sm text-ds-foreground">
-                              {employmentBucketForRow(row) === "part_time"
-                                ? "—"
-                                : shiftRosterLabel(row.shift, fullSettings.shifts)}
+                              {employmentBucketForRow(row) === "part_time" ? (
+                                "—"
+                              ) : (row.shift ?? "").trim() ? (
+                                <span
+                                  className={`inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide ${shiftRosterBadgeClass(row.shift)}`}
+                                >
+                                  {shiftRosterLabel(row.shift, fullSettings.shifts)}
+                                </span>
+                              ) : (
+                                "—"
+                              )}
                             </td>
                             <td className="px-4 py-3">
                               <span className="inline-flex items-center gap-1.5 text-sm text-ds-foreground">
@@ -2850,11 +2869,19 @@ export function WorkersApp() {
                     <span className="text-pulse-muted">Department: </span>
                     {profile.department ?? "—"}
                   </p>
-                  <p>
+                  <p className="flex flex-wrap items-center gap-2">
                     <span className="text-pulse-muted">Shift: </span>
-                    {normalizeEmploymentDraft(profile.employment_type) === "part_time"
-                      ? "Any shift (based on availability)"
-                      : shiftRosterLabel(profile.shift, fullSettings.shifts)}
+                    {normalizeEmploymentDraft(profile.employment_type) === "part_time" ? (
+                      "Any shift (based on availability)"
+                    ) : (profile.shift ?? "").trim() ? (
+                      <span
+                        className={`inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide ${shiftRosterBadgeClass(profile.shift)}`}
+                      >
+                        {shiftRosterLabel(profile.shift, fullSettings.shifts)}
+                      </span>
+                    ) : (
+                      "—"
+                    )}
                   </p>
                   <p className="sm:col-span-2">
                     <span className="text-pulse-muted">Shift hours: </span>

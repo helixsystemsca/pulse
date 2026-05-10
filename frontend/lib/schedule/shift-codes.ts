@@ -131,6 +131,20 @@ export function recurringWindowLegendFromWorkers(workers: Worker[]): RecurringWi
   return out;
 }
 
+/** Lookup key for matching a worker recurring row to a global D1/A1/N1… code. */
+export function recurringWindowLookupKey(start: string, end: string): string {
+  return windowKey(start, end);
+}
+
+/** Map unique (start|end) windows → codes (same numbering as the schedule legend). */
+export function recurringShiftCodeMapFromWorkers(workers: Worker[]): Map<string, string> {
+  const m = new Map<string, string>();
+  for (const item of recurringWindowLegendFromWorkers(workers)) {
+    m.set(windowKey(item.start, item.end), item.code);
+  }
+  return m;
+}
+
 /** @deprecated Prefer {@link shiftCodesLegendBlurb} */
 export function shiftCodesLegendLines(): string[] {
   return shiftCodesLegendBlurb();
