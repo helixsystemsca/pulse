@@ -8,6 +8,7 @@ import { TankIndicator } from "@/components/monitoring/TankIndicator";
 import { co2Tanks, poolControllers } from "@/lib/monitoringMockData";
 import { cn } from "@/lib/cn";
 import type { WidgetMode } from "@/components/dashboard/widgets/widgetSizing";
+import { DashboardPeekStatCard } from "@/components/dashboard/DashboardPeekStatCard";
 import { TrainingComplianceWidget } from "@/components/dashboard/widgets/training/TrainingComplianceWidget";
 
 const CO2_LEVEL_MAX = 1000;
@@ -136,8 +137,7 @@ function renderSlice(
       const showPerTank = optBool(opts, "showPerTank", true);
       const allOk = co2Tanks.every((t) => t.level >= minLevel);
       return (
-        <>
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-ds-muted">{label}</p>
+        <DashboardPeekStatCard label={label} footer="Mock data until live sensors are wired" tone="iris">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="text-sm font-semibold text-ds-foreground">
               <span className={cn("mr-2 inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide", allOk ? "app-badge-emerald" : "app-badge-amber")}>
@@ -145,7 +145,6 @@ function renderSlice(
               </span>
               Healthy if every tank ≥ <span className="tabular-nums">{minLevel}</span>
             </p>
-            <span className="text-xs text-ds-muted">Mock until sensors are wired</span>
           </div>
 
           {showPerTank && !ui.compact ? (
@@ -155,7 +154,7 @@ function renderSlice(
               ))}
             </div>
           ) : null}
-        </>
+        </DashboardPeekStatCard>
       );
     }
   }
@@ -164,10 +163,13 @@ function renderSlice(
     if (sliceId === "consumables_status") {
       const showLink = optBool(opts, "showLink", true);
       return (
-        <>
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-ds-muted">{label}</p>
-          <div className="flex items-center justify-between gap-2 rounded-md border border-ds-border px-3 py-2">
-            <span className="text-sm text-ds-foreground">Consumables</span>
+        <DashboardPeekStatCard
+          label={label}
+          footer={showLink ? <Link href="/dashboard/inventory" className="ds-link font-semibold text-ds-accent">Open inventory →</Link> : "Same posture as the Inventory module"}
+          tone="emerald"
+        >
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-sm font-medium text-ds-foreground">Consumables posture</span>
             <span
               className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${
                 model.inventory.consumablesOk ? "app-badge-emerald" : "app-badge-amber"
@@ -176,26 +178,20 @@ function renderSlice(
               {model.inventory.consumablesOk ? "OK" : "Review"}
             </span>
           </div>
-          {showLink ? (
-            <Link href="/dashboard/inventory" className="ds-link text-xs">
-              Inventory →
-            </Link>
-          ) : null}
-        </>
+        </DashboardPeekStatCard>
       );
     }
     if (sliceId === "low_stock_alert") {
       return (
-        <>
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-ds-muted">{label}</p>
+        <DashboardPeekStatCard label={label} footer="Matches dashboard inventory filters" tone="amber">
           {model.inventory.alert ? (
-            <p className="text-sm text-ds-foreground">
+            <p className="text-sm leading-snug text-ds-foreground">
               <span className="font-semibold">{model.inventory.alert.category}:</span> {model.inventory.alert.message}
             </p>
           ) : (
             <p className="text-sm text-ds-muted">No active low-stock alert.</p>
           )}
-        </>
+        </DashboardPeekStatCard>
       );
     }
     if (sliceId === "shopping_list") {
@@ -224,18 +220,16 @@ function renderSlice(
   if (config.pageId === "work_requests") {
     if (sliceId === "wr_queue") {
       return (
-        <>
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-ds-muted">{label}</p>
-          <p className="text-sm text-ds-foreground">
-            <span className="font-bold tabular-nums">{model.workRequests.awaitingCount}</span> awaiting assignment
-          </p>
+        <DashboardPeekStatCard label={label} footer="From open work requests on this tenant" tone="ocean">
+          <p className="dash-kpi-value">{model.workRequests.awaitingCount}</p>
+          <p className="mt-1 text-xs font-medium text-ds-muted">Awaiting assignment</p>
           {model.workRequests.newest ? (
-            <div className="rounded-md border border-ds-border px-3 py-2">
+            <div className="mt-3 rounded-md border border-ds-border bg-ds-secondary/30 px-3 py-2">
               <p className="text-xs font-bold text-ds-foreground">{model.workRequests.newest.title}</p>
               <p className="mt-0.5 text-[11px] text-ds-muted">{model.workRequests.newest.subtitle}</p>
             </div>
           ) : null}
-        </>
+        </DashboardPeekStatCard>
       );
     }
     if (sliceId === "wr_critical") {
@@ -263,25 +257,30 @@ function renderSlice(
   }
 
   if (config.pageId === "training" && sliceId === "training_compliance") {
-    return <TrainingComplianceWidget training={model.training} mode={ui.compact ? "sm" : ui.dense ? "lg" : "md"} />;
+    return (
+      <TrainingComplianceWidget
+        training={model.training}
+        mode={ui.compact ? "sm" : ui.dense ? "lg" : "md"}
+        variant="peek"
+      />
+    );
   }
 
   if (config.pageId === "equipment" && sliceId === "equipment_counts") {
     return (
-      <>
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-ds-muted">{label}</p>
-        <div className="flex flex-wrap gap-3 text-sm">
-          <span className="rounded-md border border-ds-border px-2 py-1 font-semibold text-ds-foreground">
+      <DashboardPeekStatCard label={label} footer="Equipment / beacon roster" tone="neutral">
+        <div className="flex flex-wrap gap-2 text-sm">
+          <span className="rounded-md border border-ds-border bg-ds-secondary/35 px-2.5 py-1.5 font-semibold tabular-nums text-ds-foreground">
             Active {model.equipment.activeCount}
           </span>
-          <span className="rounded-md border border-ds-border px-2 py-1 font-semibold text-ds-foreground">
+          <span className="rounded-md border border-ds-border bg-ds-secondary/35 px-2.5 py-1.5 font-semibold tabular-nums text-ds-foreground">
             Missing {model.equipment.missingCount}
           </span>
-          <span className="rounded-md border border-ds-border px-2 py-1 font-semibold text-ds-foreground">
+          <span className="rounded-md border border-ds-border bg-ds-secondary/35 px-2.5 py-1.5 font-semibold tabular-nums text-ds-foreground">
             OOS {model.equipment.outOfServiceCount}
           </span>
         </div>
-      </>
+      </DashboardPeekStatCard>
     );
   }
 

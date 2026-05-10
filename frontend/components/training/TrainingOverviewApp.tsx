@@ -351,7 +351,7 @@ function TrainingLeadershipOverviewInner() {
 
       <TrainingSummaryCards summary={summary} />
 
-      <section className="space-y-4">
+      <section id="training-matrix" className="scroll-mt-24 space-y-4">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <h3 className="text-sm font-bold uppercase tracking-wide text-ds-muted">Team compliance matrix</h3>

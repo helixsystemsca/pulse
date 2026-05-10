@@ -2,6 +2,7 @@
 
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
+import type { DashboardAccentPreset } from "@/lib/dashboardAccentPresets";
 import type { DashboardWidgetStyleOverride } from "@/lib/dashboardPageWidgetCatalog";
 
 type Props = {
@@ -16,6 +17,15 @@ const SHADOW_OPTIONS: { value: NonNullable<DashboardWidgetStyleOverride["shadowP
   { value: "soft", label: "Soft" },
   { value: "medium", label: "Medium" },
   { value: "deep", label: "Deep" },
+];
+
+const ACCENT_PRESET_OPTIONS: { value: DashboardAccentPreset; label: string }[] = [
+  { value: "default", label: "Default surface" },
+  { value: "ocean", label: "Ocean (accent)" },
+  { value: "iris", label: "Iris" },
+  { value: "emerald", label: "Emerald" },
+  { value: "amber", label: "Amber" },
+  { value: "rose", label: "Rose" },
 ];
 
 export function DashboardWidgetStyleFields({ value, onPatch, onReset, onDone }: Props) {
@@ -38,6 +48,25 @@ export function DashboardWidgetStyleFields({ value, onPatch, onReset, onDone }: 
           <option value="var(--font-headline), system-ui, sans-serif">Poppins</option>
           <option value="system-ui, sans-serif">System</option>
           <option value="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace">Monospace</option>
+        </select>
+      </div>
+
+      <div className="space-y-1.5">
+        <p className="text-xs font-semibold uppercase tracking-wide text-ds-muted">Color preset</p>
+        <p className="text-[11px] text-ds-muted">
+          Soft tint when no custom background is set. Custom background color overrides this.
+        </p>
+        <select
+          className="app-field !py-2"
+          value={value?.accentPreset ?? "default"}
+          onChange={(e) => onPatch({ accentPreset: e.target.value as DashboardAccentPreset })}
+          aria-label="Widget color preset"
+        >
+          {ACCENT_PRESET_OPTIONS.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
         </select>
       </div>
 

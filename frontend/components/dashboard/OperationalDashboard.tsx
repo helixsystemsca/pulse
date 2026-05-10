@@ -41,6 +41,7 @@ import {
   type CustomDashboardWidgetConfig,
   type DashboardWidgetStyleOverride,
 } from "@/lib/dashboardPageWidgetCatalog";
+import { accentPresetWidgetTint } from "@/lib/dashboardAccentPresets";
 import { fetchTrainingMatrix, mapApiAssignments, mapApiEmployees, mapApiPrograms } from "@/lib/trainingApi";
 import { computeComplianceRadialSummary } from "@/lib/training/selectors";
 import {
@@ -56,6 +57,7 @@ import { DASH, dashboardWidgetShell, type DashboardSurfaceTheme } from "@/styles
 import { UI } from "@/styles/ui";
 import { getWidgetMode, type WidgetMode, type WidgetRenderContext } from "@/components/dashboard/widgets/widgetSizing";
 import { AlertsWidget, type AlertsWidgetAlert } from "@/components/dashboard/widgets/alerts/AlertsWidget";
+import { TrainingComplianceWidget } from "@/components/dashboard/widgets/training/TrainingComplianceWidget";
 
 import "react-grid-layout/css/styles.css";
 import "react-resizable/css/styles.css";
@@ -163,8 +165,11 @@ function WorkerDashCard({
   styleOverride?: DashboardWidgetStyleOverride;
 }) {
   const theme = (styleOverride?.theme ?? "tint") as DashboardSurfaceTheme;
+  const customBg = styleOverride?.backgroundColor?.trim();
+  const presetTint = !customBg ? accentPresetWidgetTint(styleOverride?.accentPreset) : undefined;
+  const widgetTint = customBg || presetTint;
   const styleVars: React.CSSProperties = {
-    ...(styleOverride?.backgroundColor ? ({ ["--widget-tint" as string]: styleOverride.backgroundColor } as React.CSSProperties) : null),
+    ...(widgetTint ? ({ ["--widget-tint" as string]: widgetTint } as React.CSSProperties) : null),
     ...(styleOverride?.textColor ? ({ ["--widget-fg" as string]: styleOverride.textColor } as React.CSSProperties) : null),
     ...(styleOverride?.fontFamily ? ({ fontFamily: styleOverride.fontFamily } as React.CSSProperties) : null),
   };
@@ -1874,6 +1879,11 @@ function DashboardBody({
         // XP is shown in Profile (subtle WoW-style bar); keep tasks here for quick action.
         render: () => <XpTasksWidget />,
       },
+      training_compliance: {
+        title: "Training compliance",
+        accent: "green" as const,
+        render: () => <TrainingComplianceWidget training={model.training} variant="dashboard" />,
+      },
       setup: facilitySetupChecklist
         ? {
             title: "Setup checklist",
@@ -1902,7 +1912,8 @@ function DashboardBody({
       { i: "inventory", x: 4, y: 14, w: 6, h: 4, minW: 2, minH: 2 },
       { i: "equipment", x: 10, y: 14, w: 6, h: 4, minW: 2, minH: 2 },
       { i: "workRequests", x: 0, y: 18, w: 16, h: 4, minW: 6, minH: 3 },
-      { i: "xp", x: 0, y: 22, w: 16, h: 4, minW: 6, minH: 3 },
+      { i: "xp", x: 0, y: 22, w: 12, h: 4, minW: 6, minH: 3 },
+      { i: "training_compliance", x: 12, y: 22, w: 4, h: 4, minW: 3, minH: 3 },
     ];
     if (!widgetRegistry.setup) return [...leadershipBand, ...core];
     const setupOffset = 4;
@@ -2021,7 +2032,7 @@ function DashboardBody({
         return next;
       });
     }
-  }, []);
+  }, [persistLayout]);
 
   const addWidget = useCallback(
     (id: string) => {
@@ -2046,7 +2057,7 @@ function DashboardBody({
         return next;
       });
     }
-  }, []);
+  }, [persistLayout]);
 
   const dragCompactor = useMemo(
     () => ({

@@ -5,6 +5,8 @@
 
 import type { CSSProperties } from "react";
 
+import type { DashboardAccentPreset } from "@/lib/dashboardAccentPresets";
+
 export type WidgetFieldType = "boolean" | "number";
 
 export type WidgetCustomField = {
@@ -137,6 +139,8 @@ export type CustomDashboardWidgetConfig = {
 export const DASHBOARD_LAYOUT_STORAGE_V2 = "dashboard_layout_v2";
 
 export type DashboardWidgetStyleOverride = {
+  /** Soft color story when no custom `backgroundColor` is set. */
+  accentPreset?: DashboardAccentPreset;
   /** Used as a tint or base background. Any valid CSS color string. */
   backgroundColor?: string;
   /** Foreground color for the widget chrome (title + default text). Any valid CSS color string. */
