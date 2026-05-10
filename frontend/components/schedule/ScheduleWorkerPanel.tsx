@@ -11,7 +11,7 @@ const GROUP_ORDER: EmploymentType[] = ["full_time", "regular_part_time", "part_t
 const GROUP_LABEL: Record<EmploymentType, string> = {
   full_time: "Full time",
   regular_part_time: "Regular part time",
-  part_time: "Part time",
+  part_time: "Auxiliary",
 };
 
 type Props = {

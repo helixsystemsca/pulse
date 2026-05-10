@@ -14,6 +14,8 @@ export type WorkerRow = {
   job_title: string | null;
   /** HR shift key; label comes from workers settings `shifts`. */
   shift?: string | null;
+  /** Scheduling profile from pulse worker profile (full_time | regular_part_time | part_time). */
+  employment_type?: string | null;
   avatar_url?: string | null;
   last_active_at?: string | null;
   last_login_city?: string | null;

@@ -481,7 +481,7 @@ export function ProfileSettingsApp() {
                 value={opRole}
                 onChange={(e) => setOpRole(e.target.value)}
               >
-                <option value="worker">Worker</option>
+                <option value="worker">Operations</option>
                 <option value="manager">Manager</option>
                 <option value="supervisor">Supervisor</option>
               </select>

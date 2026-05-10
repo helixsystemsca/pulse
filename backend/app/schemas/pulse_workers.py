@@ -72,6 +72,8 @@ class WorkerRowOut(BaseModel):
     department: Optional[str] = None
     job_title: Optional[str] = None
     shift: Optional[str] = None
+    #: From pulse worker profile scheduling (`full_time` | `regular_part_time` | `part_time`).
+    employment_type: Optional[str] = None
     avatar_url: Optional[str] = None
     last_active_at: Optional[datetime] = None
     last_login_city: Optional[str] = None

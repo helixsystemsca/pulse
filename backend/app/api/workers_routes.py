@@ -419,6 +419,15 @@ async def _sync_training(db: AsyncSession, cid: str, user_id: str, items: list[A
         )
 
 
+def _employment_type_from_scheduling_payload(scheduling: Any) -> Optional[str]:
+    """Normalize scheduling.employment_type from PulseWorkerProfile.scheduling JSON."""
+    if not isinstance(scheduling, dict):
+        return None
+    raw_et = scheduling.get("employment_type")
+    emp_type = str(raw_et).strip() if raw_et is not None else ""
+    return emp_type if emp_type in ("full_time", "regular_part_time", "part_time") else None
+
+
 def _patch_actor_can_touch_target(actor: User, target: User) -> None:
     if user_has_any_role(actor, UserRole.system_admin) or actor.is_system_admin:
         return
@@ -511,9 +520,7 @@ async def _build_detail(db: AsyncSession, cid: str, u: User, users_map: dict[str
 
     uid_s = str(u.id)
     sched = dict(p.scheduling or {}) if p else {}
-    raw_et = sched.get("employment_type")
-    emp_type = str(raw_et).strip() if raw_et is not None else ""
-    employment_type = emp_type if emp_type in ("full_time", "regular_part_time", "part_time") else None
+    employment_type = _employment_type_from_scheduling_payload(sched)
     raw_rs = sched.get("recurring_shifts") or []
     if not isinstance(raw_rs, list):
         raw_rs = []
@@ -674,11 +681,26 @@ async def list_workers(
         for h in hq.scalars().all():
             hr_map[h.user_id] = h
     login_latest = await latest_login_event_per_user(db, [u.id for u in users])
+    prof_map: dict[str, PulseWorkerProfile] = {}
+    if users:
+        uid_list = [u.id for u in users]
+        pq = await db.execute(
+            select(PulseWorkerProfile).where(
+                PulseWorkerProfile.company_id == cid,
+                PulseWorkerProfile.user_id.in_(uid_list),
+            )
+        )
+        for pr in pq.scalars().all():
+            prof_map[str(pr.user_id)] = pr
     items: list[WorkerRowOut] = []
     for u in users:
         h = hr_map.get(u.id)
         uid_s = str(u.id)
         le = login_latest.get(uid_s)
+        prof_row = prof_map.get(uid_s)
+        employment_type = _employment_type_from_scheduling_payload(
+            dict(prof_row.scheduling or {}) if prof_row else None
+        )
         items.append(
             WorkerRowOut(
                 id=uid_s,
@@ -692,6 +714,7 @@ async def list_workers(
                 department=h.department if h else None,
                 job_title=h.job_title if h else None,
                 shift=h.shift if h else None,
+                employment_type=employment_type,
                 avatar_url=co_worker_avatar_url(uid_s, u.avatar_url),
                 last_active_at=u.last_active_at,
                 last_login_city=le.city if le else None,

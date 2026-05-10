@@ -144,6 +144,42 @@ function normalizeEmploymentDraft(raw: string | null | undefined): EmploymentTyp
   return (EMPLOYMENT_TYPE_KEYS as readonly string[]).includes(s) ? (s as EmploymentTypeKey) : "";
 }
 
+type EmploymentBucketKey = "full_time" | "regular_part_time" | "part_time" | "unset";
+
+const WORKER_EMPLOYMENT_BUCKET_ORDER: EmploymentBucketKey[] = [
+  "full_time",
+  "regular_part_time",
+  "part_time",
+  "unset",
+];
+
+function employmentBucketForRow(row: WorkerRow): EmploymentBucketKey {
+  const e = normalizeEmploymentDraft(row.employment_type);
+  if (e === "full_time") return "full_time";
+  if (e === "regular_part_time") return "regular_part_time";
+  if (e === "part_time") return "part_time";
+  return "unset";
+}
+
+function workerEmploymentBucketLabel(key: EmploymentBucketKey): string {
+  if (key === "full_time") return "Full time";
+  if (key === "regular_part_time") return "Regular part time";
+  if (key === "part_time") return "Auxiliary";
+  return "Employment not set";
+}
+
+function splitOperationsRowsByEmployment(items: WorkerRow[]): { key: EmploymentBucketKey; items: WorkerRow[] }[] {
+  const buckets = new Map<EmploymentBucketKey, WorkerRow[]>();
+  for (const k of WORKER_EMPLOYMENT_BUCKET_ORDER) buckets.set(k, []);
+  for (const w of items) {
+    buckets.get(employmentBucketForRow(w))!.push(w);
+  }
+  return WORKER_EMPLOYMENT_BUCKET_ORDER.map((key) => ({
+    key,
+    items: buckets.get(key) ?? [],
+  })).filter((x) => x.items.length > 0);
+}
+
 function formatRotationReadOnly(profile: WorkerDetail): string {
   const rows = recurringRowsFromApi(profile.recurring_shifts ?? []);
   if (!rows.length) return "—";
@@ -235,7 +271,7 @@ function roleGroupTitle(role: string): string {
   if (role === "manager") return "Managers";
   if (role === "supervisor") return "Supervisors";
   if (role === "lead") return "Leads";
-  return "Workers";
+  return "Operations";
 }
 
 function certBadge(status: string): string {
@@ -578,7 +614,8 @@ export function WorkersApp() {
     setPositionDraft({
       job_title: profile.job_title ?? "",
       department: profile.department ?? "",
-      shift: profile.shift ?? "",
+      shift:
+        normalizeEmploymentDraft(profile.employment_type) === "part_time" ? "" : (profile.shift ?? ""),
       supervisor_id: profile.supervisor_id ?? "",
     });
     setRotationDaysDraft(rotationDaysFromRecurring(recurringRowsFromApi(profile.recurring_shifts ?? [])));
@@ -993,7 +1030,12 @@ export function WorkersApp() {
     if (trim(positionDraft.department) !== (profile.department ?? "").trim()) {
       payload.department = trim(positionDraft.department) || null;
     }
-    if (trim(positionDraft.shift) !== (profile.shift ?? "").trim()) {
+    const auxiliaryEmployment = basicDraft.employment_type === "part_time";
+    if (auxiliaryEmployment) {
+      if ((profile.shift ?? "").trim()) {
+        payload.shift = null;
+      }
+    } else if (trim(positionDraft.shift) !== (profile.shift ?? "").trim()) {
       payload.shift = trim(positionDraft.shift) || null;
     }
     const sid = trim(positionDraft.supervisor_id);
@@ -1093,7 +1135,7 @@ export function WorkersApp() {
       role: createForm.role,
       employment_type: createForm.employment_type || null,
       department: createForm.department.trim() || null,
-      shift: createForm.shift || null,
+      shift: createForm.employment_type === "part_time" ? null : createForm.shift || null,
       start_date: createForm.start_date || null,
       supervisor_id: createForm.supervisor_id.trim() || null,
       skills: skills.length ? skills : undefined,
@@ -1820,130 +1862,154 @@ export function WorkersApp() {
                       </tr>
                     </thead>
                     <tbody>
-                      {grouped.flatMap(({ role, items }) =>
-                        items.length === 0
-                          ? []
-                          : [
-                              <tr
-                                key={`grp-${role}`}
-                                className="border-b border-ds-border bg-ds-surface-secondary/80"
-                              >
-                                <td
-                                  colSpan={7}
-                                  className="px-4 py-2.5 text-xs font-bold uppercase tracking-wide text-ds-muted"
-                                >
-                                  {roleGroupTitle(role)} ({items.length})
-                                </td>
-                              </tr>,
-                              ...items.map((row) => (
-                                <tr
-                                  key={row.id}
-                                  className={`${dataTableBodyRow()} cursor-pointer`}
-                                  onClick={() => setProfileId(row.id)}
-                                >
-                                <td className="px-4 py-3">
-                                  <div className="flex items-center justify-between gap-3">
-                                    <div className="flex min-w-0 items-center gap-2.5">
-                                    <WorkerRosterFace
-                                      avatarUrl={row.avatar_url}
-                                      fullName={row.full_name}
-                                      email={row.email}
-                                    />
-                                    <div className="min-w-0">
-                                      <p className="font-semibold text-ds-foreground">
-                                        {row.full_name ?? row.email.split("@")[0]}
-                                      </p>
-                                      <p className="truncate text-xs text-ds-muted">{row.email}</p>
-                                    </div>
-                                    </div>
-                                    <div className="flex shrink-0 items-center gap-1">
-                                      {(row.account_status ?? "active") === "invited" ? (
-                                        <button
-                                          type="button"
-                                          className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-ds-border bg-ds-primary text-ds-foreground transition-colors hover:bg-ds-secondary disabled:opacity-50 dark:bg-ds-secondary"
-                                          aria-label="Copy join link without sending email"
-                                          title="Copy join link (no email). New link; older invite links stop working."
-                                          disabled={Boolean(inviteLinkBusyId) || profileBusy}
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            void obtainInvitedWorkerJoinLink(row.id, false);
-                                          }}
-                                        >
-                                          {inviteLinkBusyId === row.id ? (
-                                            <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-                                          ) : (
-                                            <Link2 className="h-4 w-4" aria-hidden />
-                                          )}
-                                        </button>
-                                      ) : null}
-                                      {canDeleteInvitedFromList && (row.account_status ?? "active") === "invited" ? (
-                                        <button
-                                          type="button"
-                                          className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-ds-danger/40 bg-[color-mix(in_srgb,var(--ds-danger)_8%,transparent)] text-ds-danger transition-colors hover:bg-[color-mix(in_srgb,var(--ds-danger)_14%,transparent)] disabled:opacity-50"
-                                          aria-label="Delete invited worker"
-                                          title="Delete invited worker"
-                                          disabled={profileBusy}
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            void deleteInvitedWorkerFromList(row);
-                                          }}
-                                        >
-                                          <Trash2 className="h-4 w-4" aria-hidden />
-                                        </button>
-                                      ) : null}
-                                    </div>
+                      {grouped.flatMap(({ role, items }) => {
+                        if (items.length === 0) return [];
+
+                        const rowTr = (row: WorkerRow) => (
+                          <tr
+                            key={row.id}
+                            className={`${dataTableBodyRow()} cursor-pointer`}
+                            onClick={() => setProfileId(row.id)}
+                          >
+                            <td className="px-4 py-3">
+                              <div className="flex items-center justify-between gap-3">
+                                <div className="flex min-w-0 items-center gap-2.5">
+                                  <WorkerRosterFace
+                                    avatarUrl={row.avatar_url}
+                                    fullName={row.full_name}
+                                    email={row.email}
+                                  />
+                                  <div className="min-w-0">
+                                    <p className="font-semibold text-ds-foreground">
+                                      {row.full_name ?? row.email.split("@")[0]}
+                                    </p>
+                                    <p className="truncate text-xs text-ds-muted">{row.email}</p>
                                   </div>
-                                </td>
-                                <td className="px-4 py-3">
-                                  <div className="flex flex-wrap gap-1">
-                                    {sortRolesForDisplay(
-                                      row.roles?.length ? [...row.roles] : [row.role],
-                                    ).map((r) => (
-                                      <span
-                                        key={r}
-                                        className={`inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-bold uppercase ${roleBadge(r)}`}
-                                      >
-                                        {humanizeRole(r)}
-                                      </span>
-                                    ))}
-                                  </div>
-                                </td>
-                                <td className="px-4 py-3 text-sm text-ds-foreground">
-                                  {shiftRosterLabel(row.shift, fullSettings.shifts)}
-                                </td>
-                                <td className="px-4 py-3">
-                                  <span className="inline-flex items-center gap-1.5 text-sm text-ds-foreground">
-                                    <span
-                                      className={`h-2 w-2 rounded-full ${
-                                        (row.account_status ?? "active") === "invited"
-                                          ? "bg-ds-warning"
-                                          : row.is_active
-                                            ? "bg-ds-success"
-                                            : "bg-ds-border"
-                                      }`}
-                                    />
-                                    {(row.account_status ?? "active") === "invited"
-                                      ? "Invited"
+                                </div>
+                                <div className="flex shrink-0 items-center gap-1">
+                                  {(row.account_status ?? "active") === "invited" ? (
+                                    <button
+                                      type="button"
+                                      className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-ds-border bg-ds-primary text-ds-foreground transition-colors hover:bg-ds-secondary disabled:opacity-50 dark:bg-ds-secondary"
+                                      aria-label="Copy join link without sending email"
+                                      title="Copy join link (no email). New link; older invite links stop working."
+                                      disabled={Boolean(inviteLinkBusyId) || profileBusy}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        void obtainInvitedWorkerJoinLink(row.id, false);
+                                      }}
+                                    >
+                                      {inviteLinkBusyId === row.id ? (
+                                        <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                                      ) : (
+                                        <Link2 className="h-4 w-4" aria-hidden />
+                                      )}
+                                    </button>
+                                  ) : null}
+                                  {canDeleteInvitedFromList && (row.account_status ?? "active") === "invited" ? (
+                                    <button
+                                      type="button"
+                                      className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-ds-danger/40 bg-[color-mix(in_srgb,var(--ds-danger)_8%,transparent)] text-ds-danger transition-colors hover:bg-[color-mix(in_srgb,var(--ds-danger)_14%,transparent)] disabled:opacity-50"
+                                      aria-label="Delete invited worker"
+                                      title="Delete invited worker"
+                                      disabled={profileBusy}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        void deleteInvitedWorkerFromList(row);
+                                      }}
+                                    >
+                                      <Trash2 className="h-4 w-4" aria-hidden />
+                                    </button>
+                                  ) : null}
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="flex flex-wrap gap-1">
+                                {sortRolesForDisplay(row.roles?.length ? [...row.roles] : [row.role]).map((r) => (
+                                  <span
+                                    key={r}
+                                    className={`inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-bold uppercase ${roleBadge(r)}`}
+                                  >
+                                    {humanizeRole(r)}
+                                  </span>
+                                ))}
+                              </div>
+                            </td>
+                            <td className="px-4 py-3 text-sm text-ds-foreground">
+                              {employmentBucketForRow(row) === "part_time"
+                                ? "—"
+                                : shiftRosterLabel(row.shift, fullSettings.shifts)}
+                            </td>
+                            <td className="px-4 py-3">
+                              <span className="inline-flex items-center gap-1.5 text-sm text-ds-foreground">
+                                <span
+                                  className={`h-2 w-2 rounded-full ${
+                                    (row.account_status ?? "active") === "invited"
+                                      ? "bg-ds-warning"
                                       : row.is_active
-                                        ? "Active"
-                                        : "Inactive"}
-                                  </span>
-                                </td>
-                                <td className="max-w-[10rem] px-4 py-3 text-xs text-ds-muted">
-                                  {formatLoginWhen(row.last_active_at)}
-                                </td>
-                                <td className="hidden max-w-[12rem] px-4 py-3 text-xs text-ds-muted lg:table-cell">
-                                  {formatLoginPlace(row)}
-                                </td>
-                                <td className="hidden max-w-[14rem] px-4 py-3 text-xs text-ds-muted lg:table-cell">
-                                  <span className="line-clamp-2" title={row.last_login_user_agent ?? ""}>
-                                    {shortenUa(row.last_login_user_agent)}
-                                  </span>
-                                </td>
-                              </tr>
-                              )),
-                                  ],
-                            )}
+                                        ? "bg-ds-success"
+                                        : "bg-ds-border"
+                                  }`}
+                                />
+                                {(row.account_status ?? "active") === "invited"
+                                  ? "Invited"
+                                  : row.is_active
+                                    ? "Active"
+                                    : "Inactive"}
+                              </span>
+                            </td>
+                            <td className="max-w-[10rem] px-4 py-3 text-xs text-ds-muted">
+                              {formatLoginWhen(row.last_active_at)}
+                            </td>
+                            <td className="hidden max-w-[12rem] px-4 py-3 text-xs text-ds-muted lg:table-cell">
+                              {formatLoginPlace(row)}
+                            </td>
+                            <td className="hidden max-w-[14rem] px-4 py-3 text-xs text-ds-muted lg:table-cell">
+                              <span className="line-clamp-2" title={row.last_login_user_agent ?? ""}>
+                                {shortenUa(row.last_login_user_agent)}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+
+                        const sectionHeader = (
+                          <tr
+                            key={`grp-${role}`}
+                            className="border-b border-ds-border bg-ds-surface-secondary/80"
+                          >
+                            <td
+                              colSpan={7}
+                              className="px-4 py-2.5 text-xs font-bold uppercase tracking-wide text-ds-muted"
+                            >
+                              {roleGroupTitle(role)} ({items.length})
+                            </td>
+                          </tr>
+                        );
+
+                        if (role !== "worker") {
+                          return [sectionHeader, ...items.map(rowTr)];
+                        }
+
+                        return [
+                          sectionHeader,
+                          ...splitOperationsRowsByEmployment(items).flatMap(({ key, items: bucket }) => [
+                            <tr
+                              key={`grp-${role}-${key}`}
+                              className="border-b border-ds-border bg-[color-mix(in_srgb,var(--ds-surface-secondary)_65%,transparent)]"
+                            >
+                              <td
+                                colSpan={7}
+                                className="px-4 py-2 pl-9 text-xs font-semibold tracking-wide text-ds-foreground"
+                              >
+                                {workerEmploymentBucketLabel(key)}{" "}
+                                <span className="font-normal text-ds-muted">({bucket.length})</span>
+                              </td>
+                            </tr>,
+                            ...bucket.map(rowTr),
+                          ]),
+                        ];
+                      })}
                           </tbody>
                         </table>
                 </div>
@@ -2174,7 +2240,7 @@ export function WorkersApp() {
               value={createForm.role}
               onChange={(e) => setCreateForm((f) => ({ ...f, role: e.target.value }))}
             >
-              <option value="worker">Worker</option>
+              <option value="worker">Operations</option>
               <option value="lead">Lead</option>
               {createRoleLimited ? null : (
                 <>
@@ -2190,16 +2256,18 @@ export function WorkersApp() {
             <select
               className={FIELD}
               value={createForm.employment_type}
-              onChange={(e) =>
+              onChange={(e) => {
+                const employment_type = e.target.value as CreateFormState["employment_type"];
                 setCreateForm((f) => ({
                   ...f,
-                  employment_type: e.target.value as CreateFormState["employment_type"],
-                }))
-              }
+                  employment_type,
+                  shift: employment_type === "part_time" ? "" : f.shift,
+                }));
+              }}
             >
               <option value="full_time">Full time</option>
               <option value="regular_part_time">Regular part time</option>
-              <option value="part_time">Part time</option>
+              <option value="part_time">Auxiliary</option>
             </select>
           </div>
           <div>
@@ -2210,21 +2278,23 @@ export function WorkersApp() {
               onChange={(e) => setCreateForm((f) => ({ ...f, department: e.target.value }))}
             />
           </div>
-          <div>
-            <label className={LABEL}>Shift</label>
-            <select
-              className={FIELD}
-              value={createForm.shift}
-              onChange={(e) => setCreateForm((f) => ({ ...f, shift: e.target.value }))}
-            >
-              <option value="">—</option>
-              {(fullSettings.shifts ?? []).map((s) => (
-                <option key={s.key} value={s.key}>
-                  {s.label}
-                </option>
-              ))}
-            </select>
-          </div>
+          {createForm.employment_type === "part_time" ? null : (
+            <div>
+              <label className={LABEL}>Shift</label>
+              <select
+                className={FIELD}
+                value={createForm.shift}
+                onChange={(e) => setCreateForm((f) => ({ ...f, shift: e.target.value }))}
+              >
+                <option value="">—</option>
+                {(fullSettings.shifts ?? []).map((s) => (
+                  <option key={s.key} value={s.key}>
+                    {s.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
           <div>
             <label className={LABEL}>Supervisor</label>
             <select
@@ -2494,17 +2564,18 @@ export function WorkersApp() {
                         id="worker-profile-employment"
                         className={FIELD}
                         value={basicDraft.employment_type}
-                        onChange={(e) =>
-                          setBasicDraft((d) => ({
-                            ...d,
-                            employment_type: e.target.value as EmploymentTypeKey,
-                          }))
-                        }
+                        onChange={(e) => {
+                          const employment_type = e.target.value as EmploymentTypeKey;
+                          setBasicDraft((d) => ({ ...d, employment_type }));
+                          if (employment_type === "part_time") {
+                            setPositionDraft((d) => ({ ...d, shift: "" }));
+                          }
+                        }}
                       >
                         <option value="">— Not set —</option>
                         <option value="full_time">Full time</option>
                         <option value="regular_part_time">Regular part time</option>
-                        <option value="part_time">Part time</option>
+                        <option value="part_time">Auxiliary</option>
                       </select>
                       <p className="mt-1 text-xs text-pulse-muted">
                         Used on the schedule roster and worker profile; matches invite defaults when left unset.
@@ -2532,7 +2603,7 @@ export function WorkersApp() {
                         : normalizeEmploymentDraft(profile.employment_type) === "regular_part_time"
                           ? "Regular part time"
                           : normalizeEmploymentDraft(profile.employment_type) === "part_time"
-                            ? "Part time"
+                            ? "Auxiliary"
                             : "—"}
                     </p>
                   </>
@@ -2635,32 +2706,34 @@ export function WorkersApp() {
                       onChange={(e) => setPositionDraft((d) => ({ ...d, department: e.target.value }))}
                     />
                   </div>
-                  <div>
-                    <label className={LABEL} htmlFor="worker-profile-shift">
-                      Shift
-                    </label>
-                    <select
-                      id="worker-profile-shift"
-                      className={FIELD}
-                      value={positionDraft.shift}
-                      onChange={(e) => {
-                        const v = e.target.value;
-                        setPositionDraft((d) => ({ ...d, shift: v }));
-                        const preset = shiftWindowFromRosterKey(v, fullSettings.shifts ?? []);
-                        setShiftTimeDraft({ start: padHm(preset.start), end: padHm(preset.end) });
-                      }}
-                    >
-                      <option value="">—</option>
-                      {(fullSettings.shifts ?? []).map((s) => (
-                        <option key={s.key} value={s.key}>
-                          {s.label}
-                        </option>
-                      ))}
-                    </select>
-                    <p className="mt-1 text-[11px] text-pulse-muted">
-                      Choosing a shift preset fills typical start/end below; adjust the times for an exact window.
-                    </p>
-                  </div>
+                  {basicDraft.employment_type === "part_time" ? null : (
+                    <div>
+                      <label className={LABEL} htmlFor="worker-profile-shift">
+                        Shift
+                      </label>
+                      <select
+                        id="worker-profile-shift"
+                        className={FIELD}
+                        value={positionDraft.shift}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          setPositionDraft((d) => ({ ...d, shift: v }));
+                          const preset = shiftWindowFromRosterKey(v, fullSettings.shifts ?? []);
+                          setShiftTimeDraft({ start: padHm(preset.start), end: padHm(preset.end) });
+                        }}
+                      >
+                        <option value="">—</option>
+                        {(fullSettings.shifts ?? []).map((s) => (
+                          <option key={s.key} value={s.key}>
+                            {s.label}
+                          </option>
+                        ))}
+                      </select>
+                      <p className="mt-1 text-[11px] text-pulse-muted">
+                        Choosing a shift preset fills typical start/end below; adjust the times for an exact window.
+                      </p>
+                    </div>
+                  )}
                   <div>
                     <label className={LABEL} htmlFor="worker-profile-supervisor">
                       Supervisor
@@ -2779,7 +2852,9 @@ export function WorkersApp() {
                   </p>
                   <p>
                     <span className="text-pulse-muted">Shift: </span>
-                    {shiftRosterLabel(profile.shift, fullSettings.shifts)}
+                    {normalizeEmploymentDraft(profile.employment_type) === "part_time"
+                      ? "Any shift (based on availability)"
+                      : shiftRosterLabel(profile.shift, fullSettings.shifts)}
                   </p>
                   <p className="sm:col-span-2">
                     <span className="text-pulse-muted">Shift hours: </span>
