@@ -11,11 +11,18 @@ export type TrainingMatrixButtonProps = {
   className?: string;
   /** Smaller control for peek header */
   compact?: boolean;
+  /** Stretch to container width (narrow dashboard column) */
+  fullWidth?: boolean;
 };
 
-export function TrainingMatrixButton({ href, className, compact = false }: TrainingMatrixButtonProps) {
+export function TrainingMatrixButton({ href, className, compact = false, fullWidth = false }: TrainingMatrixButtonProps) {
   return (
-    <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} transition={{ type: "spring", stiffness: 480, damping: 28 }}>
+    <motion.div
+      whileHover={{ scale: fullWidth ? 1 : 1.02 }}
+      whileTap={{ scale: fullWidth ? 1 : 0.98 }}
+      transition={{ type: "spring", stiffness: 480, damping: 28 }}
+      className={cn(fullWidth && "w-full")}
+    >
       <Link
         href={href}
         className={cn(
@@ -25,6 +32,7 @@ export function TrainingMatrixButton({ href, className, compact = false }: Train
           "ring-1 ring-white/20 hover:shadow-[0_14px_36px_-12px_rgba(79,70,229,0.55)] hover:ring-white/30",
           "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-400",
           compact ? "px-3 py-2 text-xs" : "px-4 py-2.5 text-sm",
+          fullWidth && "w-full min-w-0",
           className,
         )}
       >

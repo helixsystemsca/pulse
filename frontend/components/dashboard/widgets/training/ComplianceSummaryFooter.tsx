@@ -7,33 +7,57 @@ export type ComplianceSummaryFooterProps = {
   className?: string;
   /** Show calendar icon row (dashboard variant) */
   showIconRow?: boolean;
+  /** Tighter copy and spacing for scaled / narrow tiles */
+  dense?: boolean;
 };
 
-export function ComplianceSummaryFooter({ totalSlots, className, showIconRow = true }: ComplianceSummaryFooterProps) {
+export function ComplianceSummaryFooter({
+  totalSlots,
+  className,
+  showIconRow = true,
+  dense = false,
+}: ComplianceSummaryFooterProps) {
   const total = Math.max(0, totalSlots);
 
   return (
-    <div className={cn("border-t border-black/[0.06] pt-4 dark:border-white/[0.08]", className)}>
-      <div className="flex gap-3">
+    <div
+      className={cn(
+        "border-t border-black/[0.06] dark:border-white/[0.08]",
+        dense ? "pt-2.5" : "pt-4",
+        className,
+      )}
+    >
+      <div className={cn("flex gap-2", dense ? "gap-2" : "gap-3")}>
         <span
-          className="mt-0.5 h-10 w-1 shrink-0 rounded-full bg-gradient-to-b from-rose-400/90 to-rose-500/70 shadow-[0_0_12px_-2px_rgba(255,90,122,0.55)]"
+          className={cn(
+            "mt-0.5 w-1 shrink-0 rounded-full bg-gradient-to-b from-rose-400/90 to-rose-500/70 shadow-[0_0_12px_-2px_rgba(255,90,122,0.55)]",
+            dense ? "h-8" : "h-10",
+          )}
           aria-hidden
         />
-        <div className="min-w-0 flex-1 space-y-1">
-          <p className="text-[13px] font-semibold leading-snug text-ds-foreground">Mandatory programs</p>
-          <p className="text-xs font-medium leading-relaxed text-ds-muted">
-            {total.toLocaleString()} assignment slots (completed + expiring + gaps). Slots reflect active mandatory training
-            matrix coverage for this tenant.
+        <div className="min-w-0 flex-1 space-y-0.5">
+          <p className={cn("font-semibold leading-snug text-ds-foreground", dense ? "text-xs" : "text-[13px]")}>
+            Mandatory programs
+          </p>
+          <p className={cn("font-medium leading-snug text-ds-muted", dense ? "text-[10px] leading-relaxed" : "text-xs leading-relaxed")}>
+            {dense ? (
+              <>
+                {total.toLocaleString()} mandatory slots (completed + expiring + gaps) for this tenant.
+              </>
+            ) : (
+              <>
+                {total.toLocaleString()} assignment slots (completed + expiring + gaps). Slots reflect active mandatory training
+                matrix coverage for this tenant.
+              </>
+            )}
           </p>
         </div>
       </div>
 
       {showIconRow ? (
-        <div className="mt-3 flex items-start gap-2 text-xs text-ds-muted">
-          <CalendarRange className="mt-0.5 h-4 w-4 shrink-0 text-ds-muted opacity-80" aria-hidden />
-          <p className="leading-snug">
-            Use the training matrix to close gaps and renew expiring completions before they lapse.
-          </p>
+        <div className={cn("flex items-start gap-2 text-ds-muted", dense ? "mt-2 text-[10px]" : "mt-3 text-xs")}>
+          <CalendarRange className="mt-0.5 h-3.5 w-3.5 shrink-0 opacity-80" aria-hidden />
+          <p className="leading-snug">Use the training matrix to close gaps before completions lapse.</p>
         </div>
       ) : null}
     </div>

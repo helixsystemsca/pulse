@@ -1948,7 +1948,9 @@ function DashboardBody({
       training_compliance: {
         title: "Training compliance",
         accent: "green" as const,
-        render: () => <TrainingComplianceWidget training={model.training} variant="dashboard" />,
+        render: (ctx?: WidgetRenderContext) => (
+          <TrainingComplianceWidget training={model.training} variant="dashboard" layoutContext={ctx ?? null} />
+        ),
       },
       setup: facilitySetupChecklist
         ? {
@@ -1979,7 +1981,7 @@ function DashboardBody({
       { i: "equipment", x: 10, y: 14, w: 6, h: 4, minW: 2, minH: 2 },
       { i: "workRequests", x: 0, y: 18, w: 16, h: 4, minW: 6, minH: 3 },
       { i: "xp", x: 0, y: 22, w: 12, h: 4, minW: 6, minH: 3 },
-      { i: "training_compliance", x: 12, y: 22, w: 4, h: 4, minW: 3, minH: 3 },
+      { i: "training_compliance", x: 12, y: 22, w: 4, h: 4, minW: 2, minH: 4 },
     ];
     if (!widgetRegistry.setup) return [...leadershipBand, ...core];
     const setupOffset = 4;

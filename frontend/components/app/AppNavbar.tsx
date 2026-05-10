@@ -147,8 +147,8 @@ export function AppNavbar({ notificationCount = 0, messagesCount = 0 }: AppNavba
                     "mr-1 flex min-w-0 max-w-[10rem] items-center gap-1 rounded-lg px-2 py-1.5 text-[11px] font-semibold sm:max-w-[13rem] sm:text-xs",
                     "border border-amber-400/50 bg-amber-500/15 text-amber-50 hover:bg-amber-500/25",
                   )}
-                  title="Your administrator assigned a temporary password. Update it in Profile Settings."
-                  aria-label="Change your temporary password — open profile settings"
+                  title="Your administrator assigned a temporary password. Update it in Profile."
+                  aria-label="Change your temporary password — open Profile"
                 >
                   <KeyRound className="h-3.5 w-3.5 shrink-0 opacity-90 sm:h-4 sm:w-4" strokeWidth={2} aria-hidden />
                   <span className="min-w-0 truncate">Password</span>
@@ -178,7 +178,7 @@ export function AppNavbar({ notificationCount = 0, messagesCount = 0 }: AppNavba
               <Link
                 href={pulseApp.to(canOpenOrgSettings ? "/settings" : "/dashboard/profile-settings")}
                 className={cn(chromeIconBtn, settingsActive && "bg-ds-chrome-active text-white")}
-                aria-label={canOpenOrgSettings ? "Organization settings" : "Profile settings"}
+                aria-label={canOpenOrgSettings ? "Organization settings" : "Profile"}
                 title="Settings"
               >
                 <Settings className="h-[1.125rem] w-[1.125rem]" strokeWidth={1.75} aria-hidden />
@@ -240,7 +240,7 @@ export function AppNavbar({ notificationCount = 0, messagesCount = 0 }: AppNavba
                       role="menuitem"
                     >
                       <Settings className="h-4 w-4 text-ds-muted" strokeWidth={2} aria-hidden />
-                      Profile Settings
+                      Profile
                     </Link>
                     {session && sessionHasAnyRole(session, "company_admin") ? (
                       <Link
