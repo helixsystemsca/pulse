@@ -105,8 +105,8 @@ export function AvatarUpload({
         });
 
         setStage("Uploading…");
-        const file = new File([webp], "profile.webp", { type: "image/webp" });
-        const out = await uploadProfileAvatarFile(file);
+        const webpFile = new File([webp], "profile.webp", { type: "image/webp" });
+        const out = await uploadProfileAvatarFile(webpFile);
 
         await refreshPulseUserFromServer();
         if (typeof window !== "undefined") window.dispatchEvent(new Event("pulse-auth-change"));

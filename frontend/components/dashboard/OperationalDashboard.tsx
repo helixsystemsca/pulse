@@ -406,6 +406,15 @@ export type DashboardViewModel = {
     missing: number;
     overallCompliancePercent: number;
   };
+  /** Hero KPI strip — prefer these over placeholder constants so tiles match lists below. */
+  stripCounts: {
+    activeRequests: number;
+    overdue: number;
+    lowStock: number;
+    outOfService: number;
+    onSite: number;
+    completedToday: number;
+  };
 };
 
 const roleBadgeBase =
@@ -681,6 +690,14 @@ function demoModel(): DashboardViewModel {
       missing: 14,
       overallCompliancePercent: 88,
     },
+    stripCounts: {
+      activeRequests: 7,
+      overdue: 2,
+      lowStock: 3,
+      outOfService: 1,
+      onSite: 1,
+      completedToday: 12,
+    },
   };
 }
 
@@ -939,6 +956,10 @@ function buildLiveModel(
   const openItems = wr.items.filter(
     (i) => i.status === "open" || i.status === "in_progress",
   );
+  const overdueOpenCount = openItems.filter((i) => {
+    if (!i.due_date) return false;
+    return new Date(i.due_date).getTime() < now;
+  }).length;
   const unassigned = wr.items.filter((i) => !i.assigned_user_id && i.status === "open").length;
   const sortedByNew = [...openItems].sort(
     (a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime(),
@@ -1098,6 +1119,14 @@ function buildLiveModel(
       shoppingList: lowStock.slice(0, 6).map((i) => i.name),
     },
     training,
+    stripCounts: {
+      activeRequests: dashboard.open_work_requests,
+      overdue: overdueOpenCount,
+      lowStock: dashboard.low_stock_items,
+      outOfService: oos.length,
+      onSite: onSite.length,
+      completedToday: 0,
+    },
   };
 }
 
@@ -1272,28 +1301,17 @@ function DashboardBody({
     return real;
   }, [model.alerts]);
 
-  const mockKPIs = useMemo(
-    () => ({
-      activeRequests: 7,
-      overdue: 2,
-      lowStock: 3,
-      outOfService: 1,
-      onSite: 5,
-      completedToday: 12,
-    }),
-    [],
-  );
-
   const kioskKpis = useMemo(() => {
+    const k = model.stripCounts;
     return [
-      { label: "Active requests", value: mockKPIs.activeRequests },
-      { label: "Overdue", value: mockKPIs.overdue },
-      { label: "Low stock", value: mockKPIs.lowStock },
-      { label: "Out of service", value: mockKPIs.outOfService },
-      { label: "On site", value: mockKPIs.onSite },
-      { label: "Completed today", value: mockKPIs.completedToday },
+      { label: "Active requests", value: k.activeRequests },
+      { label: "Overdue", value: k.overdue },
+      { label: "Low stock", value: k.lowStock },
+      { label: "Out of service", value: k.outOfService },
+      { label: "On site", value: k.onSite },
+      { label: "Completed today", value: k.completedToday },
     ] as const;
-  }, [mockKPIs]);
+  }, [model.stripCounts]);
 
   const views = useMemo(() => ["overview", "workforce", "systems"] as const, []);
   const [viewIndex, setViewIndex] = useState(0);
@@ -1414,11 +1432,11 @@ function DashboardBody({
       <>
         <div className={rowClass}>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-            <KioskTile label="On site" value={mockKPIs.onSite} />
-            <KioskTile label="Active requests" value={mockKPIs.activeRequests} />
+            <KioskTile label="On site" value={model.stripCounts.onSite} />
+            <KioskTile label="Active requests" value={model.stripCounts.activeRequests} />
             <KioskTile label="Awaiting assignment" value={model.workRequests.awaitingCount} />
-            <KioskTile label="Overdue" value={mockKPIs.overdue} />
-            <KioskTile label="Completed today" value={mockKPIs.completedToday} />
+            <KioskTile label="Overdue" value={model.stripCounts.overdue} />
+            <KioskTile label="Completed today" value={model.stripCounts.completedToday} />
             <KioskTile label="Shifts today" value={Math.max(0, Number(model.workforce.summaryLine.match(/\d+/)?.[0] ?? 0))} />
           </div>
         </div>
@@ -1459,16 +1477,16 @@ function DashboardBody({
                     Unassigned: <span className="tabular-nums">{model.workRequests.awaitingCount}</span>
                   </p>
                   <p className="mt-1 text-sm font-semibold text-ds-foreground">
-                    Active: <span className="tabular-nums">{mockKPIs.activeRequests}</span>
+                    Active: <span className="tabular-nums">{model.stripCounts.activeRequests}</span>
                   </p>
                 </div>
                 <div className="rounded-lg border border-ds-border bg-ds-secondary/40 p-3">
                   <p className="text-[11px] font-semibold uppercase tracking-wider text-ds-muted">Today</p>
                   <p className="mt-2 text-sm font-semibold text-ds-foreground">
-                    Completed: <span className="tabular-nums">{mockKPIs.completedToday}</span>
+                    Completed: <span className="tabular-nums">{model.stripCounts.completedToday}</span>
                   </p>
                   <p className="mt-1 text-sm font-semibold text-ds-foreground">
-                    Overdue: <span className="tabular-nums">{mockKPIs.overdue}</span>
+                    Overdue: <span className="tabular-nums">{model.stripCounts.overdue}</span>
                   </p>
                 </div>
               </div>
@@ -1484,12 +1502,12 @@ function DashboardBody({
       <>
         <div className={rowClass}>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-            <KioskTile label="Low stock" value={mockKPIs.lowStock} />
-            <KioskTile label="Out of service" value={mockKPIs.outOfService} />
+            <KioskTile label="Low stock" value={model.stripCounts.lowStock} />
+            <KioskTile label="Out of service" value={model.stripCounts.outOfService} />
             <KioskTile label="Missing tools" value={model.equipment.missingCount} />
             <KioskTile label="Active tools" value={model.equipment.activeCount} />
             <KioskTile label="Inventory items" value={model.inventory.shoppingList.length} />
-            <KioskTile label="Overdue" value={mockKPIs.overdue} />
+            <KioskTile label="Overdue" value={model.stripCounts.overdue} />
           </div>
         </div>
 
