@@ -1,5 +1,6 @@
 import { mondayOfCalendarWeek, parseLocalDate } from "@/lib/schedule/calendar";
-import { approvedTimeOffKind, normalizeWeekdayKey, weekdayKeyFromIso } from "@/lib/schedule/recurring";
+import { evaluateAvailabilityCell } from "@/lib/schedule/availability-layer";
+import { normalizeWeekdayKey, weekdayKeyFromIso } from "@/lib/schedule/recurring";
 import type { ScheduleSettings, Shift, TimeOffBlock, Worker } from "@/lib/schedule/types";
 
 export type WorkerDayHighlightTone = "good" | "warning" | "invalid" | "neutral";
@@ -41,21 +42,6 @@ function weeklyWorkHoursForWorker(
   return total;
 }
 
-function normalizeAvailability(av?: Worker["availability"]): Record<string, { available: boolean; start?: string; end?: string }> {
-  if (!av) return {};
-  const out: Record<string, { available: boolean; start?: string; end?: string }> = {};
-  for (const [k, v] of Object.entries(av)) {
-    if (!v || typeof v !== "object") continue;
-    const key = normalizeWeekdayKey(k);
-    out[key] = {
-      available: v.available !== false,
-      start: typeof v.start === "string" ? v.start : undefined,
-      end: typeof v.end === "string" ? v.end : undefined,
-    };
-  }
-  return out;
-}
-
 function proposedSlot(worker: Worker, date: string, settings: ScheduleSettings): { start: string; end: string; requiredCerts: string[] } {
   const dow = weekdayKeyFromIso(date);
   const rule = worker.recurringShifts?.find((r) => normalizeWeekdayKey(String(r.dayOfWeek)) === dow);
@@ -63,11 +49,6 @@ function proposedSlot(worker: Worker, date: string, settings: ScheduleSettings):
   const end = rule?.end ?? settings.workDayEnd;
   const requiredCerts = (rule?.requiredCertifications ?? []).filter(Boolean);
   return { start, end, requiredCerts };
-}
-
-function withinPreferredWindow(start: string, end: string, prefStart?: string, prefEnd?: string): boolean {
-  if (!prefStart || !prefEnd) return true;
-  return start >= prefStart && end <= prefEnd;
 }
 
 function firstMissingCert(worker: Worker, required: string[]): string | null {
@@ -88,9 +69,10 @@ export function buildWorkerDragHighlightMap(
   shifts: Shift[],
   settings: ScheduleSettings,
   timeOffBlocks: TimeOffBlock[],
+  /** When set (e.g. fixed day/afternoon/night placement), all dates use this window for availability highlights. */
+  placementWindow?: { start: string; end: string } | null,
 ): Record<string, WorkerDayHighlight> {
   const map: Record<string, WorkerDayHighlight> = {};
-  const av = normalizeAvailability(worker.availability);
   const maxH = settings.staffing.maxHoursPerWorkerPerWeek || 48;
   const warnThreshold = maxH * 0.9;
 
@@ -100,41 +82,33 @@ export function buildWorkerDragHighlightMap(
       continue;
     }
 
-    const off = approvedTimeOffKind(worker.id, date, timeOffBlocks);
-    if (off) {
+    const slot = placementWindow ?? proposedSlot(worker, date, settings);
+    const ev = evaluateAvailabilityCell(worker, date, settings, timeOffBlocks, slot);
+    if (ev.kind === "unavailable") {
+      map[date] = { tone: "invalid", tooltip: ev.message };
+      continue;
+    }
+    if (!ev.dropAllowed) {
       map[date] = {
-        tone: "invalid",
-        tooltip: off === "sick" ? "Sick leave (time off)" : "Vacation (time off)",
+        tone: "warning",
+        tooltip: ev.managerOverrideEligible ? `${ev.message} Managers may override with a reason.` : ev.message,
       };
       continue;
     }
 
-    const dow = weekdayKeyFromIso(date);
-    const dayAv = av[dow];
-    if (dayAv && dayAv.available === false) {
-      map[date] = { tone: "invalid", tooltip: "Not available this day" };
-      continue;
-    }
-
-    const { start, end, requiredCerts } = proposedSlot(worker, date, settings);
+    const { requiredCerts } = proposedSlot(worker, date, settings);
     const missing = firstMissingCert(worker, requiredCerts);
     if (missing) {
       map[date] = { tone: "invalid", tooltip: `Missing certification: ${missing}` };
       continue;
     }
 
-    const proposedH = shiftLengthHours(start, end);
+    const proposedH = shiftLengthHours(slot.start, slot.end);
     const weekH = weeklyWorkHoursForWorker(shifts, worker.id, date);
     const nearOt = weekH + proposedH > warnThreshold + 1e-6;
 
-    const prefOk =
-      !dayAv || withinPreferredWindow(start, end, dayAv.start, dayAv.end) || (!dayAv.start && !dayAv.end);
-
-    if (nearOt || !prefOk) {
-      const parts: string[] = [];
-      if (!prefOk) parts.push("Outside preferred hours");
-      if (nearOt) parts.push("Near weekly hour limit");
-      map[date] = { tone: "warning", tooltip: parts.join(" · ") };
+    if (nearOt) {
+      map[date] = { tone: "warning", tooltip: "Near weekly hour limit" };
       continue;
     }
 
@@ -150,9 +124,38 @@ export function evaluateWorkerDrop(
   shifts: Shift[],
   settings: ScheduleSettings,
   timeOffBlocks: TimeOffBlock[],
-): { ok: boolean; tooltip?: string } {
-  const m = buildWorkerDragHighlightMap(worker, [targetDate], shifts, settings, timeOffBlocks);
-  const h = m[targetDate];
-  if (!h || h.tone === "invalid") return { ok: false, tooltip: h?.tooltip };
+  placementWindow?: { start: string; end: string } | null,
+  opts?: { treatRestrictionsAsSatisfied?: boolean },
+): { ok: boolean; tooltip?: string; needsManagerOverride?: boolean } {
+  const slot = placementWindow ?? proposedSlot(worker, targetDate, settings);
+  const ev = evaluateAvailabilityCell(worker, targetDate, settings, timeOffBlocks, slot);
+  if (ev.kind === "unavailable") {
+    return { ok: false, tooltip: ev.message, needsManagerOverride: false };
+  }
+  if (!opts?.treatRestrictionsAsSatisfied && !ev.dropAllowed) {
+    return {
+      ok: false,
+      tooltip: ev.message,
+      needsManagerOverride: ev.managerOverrideEligible === true,
+    };
+  }
+
+  const { requiredCerts } = proposedSlot(worker, targetDate, settings);
+  const missing = firstMissingCert(worker, requiredCerts);
+  if (missing) {
+    return { ok: false, tooltip: `Missing certification: ${missing}`, needsManagerOverride: false };
+  }
+
+  const proposedH = shiftLengthHours(slot.start, slot.end);
+  const weekH = weeklyWorkHoursForWorker(shifts, worker.id, targetDate);
+  const maxH = settings.staffing.maxHoursPerWorkerPerWeek || 48;
+  if (weekH + proposedH > maxH + 1e-6) {
+    return {
+      ok: false,
+      tooltip: `Would exceed ${maxH}h weekly limit`,
+      needsManagerOverride: false,
+    };
+  }
+
   return { ok: true };
 }

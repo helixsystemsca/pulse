@@ -55,6 +55,8 @@ type Props = {
   /** Organization setting: when false, shift chips cannot be dragged. */
   shiftDragEnabled?: boolean;
   workerHighlightByDate?: Record<string, WorkerDayHighlight> | null;
+  workerDropPlacementWindow?: { start: string; end: string } | null;
+  onWorkerDropRejected?: (message: string) => void;
   onShiftDragSessionStart: (payload: ScheduleDragSession) => void;
   onShiftDragSessionEnd: () => void;
 };
@@ -81,6 +83,8 @@ export function ScheduleCalendarGrid({
   calendarDropsDisabled,
   shiftDragEnabled = true,
   workerHighlightByDate = null,
+  workerDropPlacementWindow = null,
+  onWorkerDropRejected,
   onShiftDragSessionStart,
   onShiftDragSessionEnd,
   projectBarItems = null,
@@ -244,9 +248,14 @@ export function ScheduleCalendarGrid({
                 if (wp) {
                   const w = workers.find((x) => x.id === wp.workerId);
                   if (w) {
-                    const ev = evaluateWorkerDrop(w, c.date, shifts, settings, timeOffBlocks);
+                    const ev = evaluateWorkerDrop(w, c.date, shifts, settings, timeOffBlocks, workerDropPlacementWindow);
                     if (!ev.ok) {
+                      if (ev.needsManagerOverride) {
+                        onWorkerDrop(wp.workerId, c.date);
+                        return;
+                      }
                       triggerShake(c.date);
+                      onWorkerDropRejected?.(ev.tooltip ?? "Cannot schedule this placement.");
                       return;
                     }
                   }

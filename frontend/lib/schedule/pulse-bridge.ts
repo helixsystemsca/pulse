@@ -4,7 +4,15 @@
 
 import { formatLocalDate } from "@/lib/schedule/calendar";
 import { sessionPrimaryRole } from "@/lib/pulse-roles";
-import type { EmploymentType, RecurringShiftRule, Shift, ShiftTypeKey, Worker, Zone } from "@/lib/schedule/types";
+import type {
+  EmploymentType,
+  RecurringShiftRule,
+  Shift,
+  ShiftTypeKey,
+  Worker,
+  WorkerSchedulingConstraints,
+  Zone,
+} from "@/lib/schedule/types";
 
 export type PulseShiftApi = {
   id: string;
@@ -53,6 +61,12 @@ export type PulseWorkerApi = {
   availability?: Record<string, unknown>;
   employment_type?: string | null;
   recurring_shifts?: PulseRecurringShiftApi[] | null;
+  /** Optional structured scheduling constraints (snake_case API). */
+  scheduling_constraints?: {
+    no_nights?: boolean;
+    afternoons_only?: boolean;
+    mornings_only?: boolean;
+  } | null;
 };
 
 export type PulseZoneApi = { id: string; name: string; meta?: Record<string, unknown> };
@@ -90,6 +104,15 @@ function mapRecurring(rows: PulseRecurringShiftApi[] | null | undefined): Recurr
   return out.length ? out : undefined;
 }
 
+function mapSchedulingConstraints(raw: PulseWorkerApi["scheduling_constraints"]): WorkerSchedulingConstraints | undefined {
+  if (!raw || typeof raw !== "object") return undefined;
+  const out: WorkerSchedulingConstraints = {};
+  if (raw.no_nights != null) out.noNights = Boolean(raw.no_nights);
+  if (raw.afternoons_only != null) out.afternoonsOnly = Boolean(raw.afternoons_only);
+  if (raw.mornings_only != null) out.morningsOnly = Boolean(raw.mornings_only);
+  return Object.keys(out).length ? out : undefined;
+}
+
 export function pulseWorkersToSchedule(workers: PulseWorkerApi[]): Worker[] {
   return workers.map((w) => ({
     id: w.id,
@@ -100,6 +123,7 @@ export function pulseWorkersToSchedule(workers: PulseWorkerApi[]): Worker[] {
     availability: (w.availability ?? undefined) as Worker["availability"],
     employmentType: mapEmploymentType(w.employment_type),
     recurringShifts: mapRecurring(w.recurring_shifts ?? undefined),
+    schedulingConstraints: mapSchedulingConstraints(w.scheduling_constraints ?? undefined),
   }));
 }
 

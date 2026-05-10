@@ -10,6 +10,19 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 _log = logging.getLogger(__name__)
 
+# Browsers send distinct Origins per host/port; Next.js is typically :3000, Vite :5173.
+STANDARD_LOCAL_DEV_ORIGINS: tuple[str, ...] = (
+    "http://localhost:3000",
+    "http://localhost:3001",
+    "http://localhost:5173",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:3001",
+    "http://127.0.0.1:5173",
+)
+
+# Last-resort production allowlist when env leaves CORS empty (misconfigured Render, etc.).
+_DEFAULT_PRODUCTION_FRONTEND_ORIGIN = "https://panorama.helixsystems.ca"
+
 
 def _browser_origin_from_token(raw: str) -> Optional[str]:
     """Return scheme://host[:port] or None if ``raw`` is not a valid browser Origin (common typo: ``https:host``)."""
@@ -52,7 +65,7 @@ class Settings(BaseSettings):
     # Production: include every site the browser uses (https://www.example.com and https://example.com
     # are different Origins). The origin of `pulse_app_public_url` is always merged in. See also cors_origin_regex.
     cors_origins: str = Field(
-        default="http://localhost:3000",
+        default="http://localhost:3000,http://localhost:3001,http://127.0.0.1:3000",
         validation_alias=AliasChoices("CORS_ORIGINS", "CORS_ORIGIN", "cors_origins"),
     )
     #: Optional regex (full match on Origin header), e.g. ^https://(www\\.)?helixsystems\\.ca$
@@ -272,9 +285,36 @@ class Settings(BaseSettings):
         # Pulse app origin: same host as email deep-links (`PULSE_APP_PUBLIC_URL`). Keeps CORS aligned when
         # production only listed marketing apex/www origins.
         pulse_o = self.pulse_app_public_origin
-        if pulse_o and pulse_o not in seen:
-            seen.add(pulse_o)
-            out.append(pulse_o)
+        if pulse_o:
+            host = (urlparse(pulse_o).netloc or "").lower()
+            if host.endswith(".onrender.com") or host.endswith(".railway.app") or host.endswith(".fly.dev"):
+                _log.warning(
+                    "PULSE_APP_PUBLIC_URL resolves to %r — this often points at a PaaS **API** host. "
+                    "CORS must allow the **browser SPA** origin (e.g. https://panorama.helixsystems.ca), "
+                    "not the API URL. If users load Pulse from Panorama, set PULSE_APP_PUBLIC_URL and/or "
+                    "CORS_ORIGINS to that SPA origin.",
+                    pulse_o,
+                )
+            if pulse_o not in seen:
+                seen.add(pulse_o)
+                out.append(pulse_o)
+
+        if not self.is_production:
+            for o in STANDARD_LOCAL_DEV_ORIGINS:
+                if o not in seen:
+                    seen.add(o)
+                    out.append(o)
+
+        if self.is_production and not out and not self.cors_origin_regex_pattern:
+            _log.warning(
+                "CORS allow_origins is empty after parsing env — applying fallback %r. "
+                "Set CORS_ORIGINS (comma-separated) and PULSE_APP_PUBLIC_URL to your real SPA origin.",
+                _DEFAULT_PRODUCTION_FRONTEND_ORIGIN,
+            )
+            if _DEFAULT_PRODUCTION_FRONTEND_ORIGIN not in seen:
+                seen.add(_DEFAULT_PRODUCTION_FRONTEND_ORIGIN)
+                out.append(_DEFAULT_PRODUCTION_FRONTEND_ORIGIN)
+
         return out
 
     @property

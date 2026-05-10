@@ -64,6 +64,8 @@ type Props = {
   calendarDropsDisabled?: boolean;
   shiftDragEnabled?: boolean;
   workerDayHighlight?: WorkerDayHighlight | null;
+  workerDropPlacementWindow?: { start: string; end: string } | null;
+  onWorkerDropRejected?: (message: string) => void;
   onWorkerDrop?: (workerId: string) => void;
   onShiftDragSessionStart: (payload: ScheduleDragSession) => void;
   onShiftDragSessionEnd: () => void;
@@ -93,6 +95,8 @@ export function ScheduleDayView({
   calendarDropsDisabled = false,
   shiftDragEnabled = true,
   workerDayHighlight = null,
+  workerDropPlacementWindow = null,
+  onWorkerDropRejected,
   onWorkerDrop,
   onShiftDragSessionStart,
   onShiftDragSessionEnd,
@@ -270,9 +274,14 @@ export function ScheduleDayView({
             if (!wp) return;
             const w = workers.find((x) => x.id === wp.workerId);
             if (w) {
-              const ev = evaluateWorkerDrop(w, date, contextShifts, settings, timeOffBlocks);
+              const ev = evaluateWorkerDrop(w, date, contextShifts, settings, timeOffBlocks, workerDropPlacementWindow);
               if (!ev.ok) {
+                if (ev.needsManagerOverride) {
+                  onWorkerDrop(wp.workerId);
+                  return;
+                }
                 triggerShake();
+                onWorkerDropRejected?.(ev.tooltip ?? "Cannot schedule this placement.");
                 return;
               }
             }

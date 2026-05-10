@@ -1,105 +1,16 @@
+import { AlertCircle, CheckCircle2, Clock } from "lucide-react";
 import Link from "next/link";
 
-import { ButtonLink } from "@/components/ui/Button";
 import type { DashboardViewModel } from "@/components/dashboard/OperationalDashboard";
 import { cn } from "@/lib/cn";
 
-function donutSegments({
-  completed,
-  expiring,
-  missing,
-}: {
-  completed: number;
-  expiring: number;
-  missing: number;
-}): Array<{ key: string; value: number; className: string }> {
-  return [
-    { key: "completed", value: completed, className: "stroke-[var(--ds-success)]" },
-    { key: "expiring", value: expiring, className: "stroke-[var(--ds-warning)]" },
-    { key: "missing", value: missing, className: "stroke-[var(--ds-danger)]" },
-  ].filter((s) => s.value > 0);
-}
+import { ComplianceRadial } from "./ComplianceRadial";
+import { ComplianceSummaryFooter } from "./ComplianceSummaryFooter";
+import { StatusMetricCard } from "./StatusMetricCard";
+import { TrainingMatrixButton } from "./TrainingMatrixButton";
 
-function fmtPct(n: number): string {
-  if (!Number.isFinite(n)) return "0%";
-  return `${Math.max(0, Math.min(100, Math.round(n)))}%`;
-}
-
-function ComplianceRadial({
-  training,
-  compact,
-}: {
-  training: DashboardViewModel["training"];
-  compact: boolean;
-}) {
-  const radius = compact ? 28 : 34;
-  const stroke = compact ? 7 : 9;
-  const size = radius * 2 + stroke * 2;
-  const cx = size / 2;
-  const cy = size / 2;
-  const c = 2 * Math.PI * radius;
-
-  const total = Math.max(0, training.totalSlots);
-  const completed = Math.max(0, training.completed);
-  const expiring = Math.max(0, training.expiringSoon);
-  const missing = Math.max(0, training.missing);
-
-  const segments = donutSegments({ completed, expiring, missing });
-  let offset = 0;
-
-  return (
-    <div className="relative mx-auto shrink-0">
-      <svg
-        width={size}
-        height={size}
-        viewBox={`0 0 ${size} ${size}`}
-        className="block"
-        aria-label={`Overall compliance ${fmtPct(training.overallCompliancePercent)}`}
-        role="img"
-      >
-        <g transform={`rotate(-90 ${cx} ${cy})`}>
-          <circle
-            cx={cx}
-            cy={cy}
-            r={radius}
-            fill="none"
-            stroke="color-mix(in srgb, var(--ds-text-primary) 10%, transparent)"
-            strokeWidth={stroke}
-          />
-          {segments.map((s) => {
-            const frac = total > 0 ? s.value / total : 0;
-            const len = Math.max(0, Math.min(c, c * frac));
-            const dash = `${len} ${Math.max(0, c - len)}`;
-            const node = (
-              <circle
-                key={s.key}
-                cx={cx}
-                cy={cy}
-                r={radius}
-                fill="none"
-                className={s.className}
-                strokeWidth={stroke}
-                strokeLinecap="round"
-                strokeDasharray={dash}
-                strokeDashoffset={-offset}
-              />
-            );
-            offset += len;
-            return node;
-          })}
-        </g>
-      </svg>
-      <div className="absolute inset-0 grid place-items-center">
-        <div className="text-center">
-          <p className={cn("font-headline font-extrabold tabular-nums text-ds-foreground", compact ? "text-xl" : "text-2xl")}>
-            {fmtPct(training.overallCompliancePercent)}
-          </p>
-          <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-wider text-ds-muted">Overall</p>
-        </div>
-      </div>
-    </div>
-  );
-}
+const premiumShell =
+  "rounded-[22px] border border-black/[0.06] bg-gradient-to-b from-white via-white to-[rgb(248,250,252)] shadow-[0_20px_50px_-32px_rgba(15,23,42,0.35),0_8px_24px_-16px_rgba(15,23,42,0.12)] ring-1 ring-black/[0.04] dark:border-white/10 dark:from-slate-950 dark:via-slate-950 dark:to-slate-900/90 dark:shadow-[0_24px_56px_-28px_rgba(0,0,0,0.65)] dark:ring-white/[0.06]";
 
 export function TrainingComplianceWidget({
   training,
@@ -115,98 +26,97 @@ export function TrainingComplianceWidget({
   matrixHref?: string;
 }) {
   const compact = mode === "xs" || mode === "sm";
+  const radialSize = compact ? "sm" : mode === "lg" || mode === "xl" ? "lg" : "md";
 
   const completed = Math.max(0, training.completed);
   const expiring = Math.max(0, training.expiringSoon);
   const missing = Math.max(0, training.missing);
   const total = Math.max(0, training.totalSlots);
 
+  const body = (
+    <div
+      className={cn(
+        "flex min-h-0 flex-1 flex-col gap-5",
+        compact ? "sm:flex-col" : "sm:flex-row sm:items-center sm:justify-between",
+      )}
+    >
+      <div className="flex flex-1 justify-center sm:justify-start">
+        <ComplianceRadial
+          overallCompliancePercent={training.overallCompliancePercent}
+          completed={completed}
+          expiringSoon={expiring}
+          missing={missing}
+          totalSlots={total}
+          size={radialSize}
+        />
+      </div>
+
+      <div className="flex w-full min-w-0 flex-1 flex-col gap-2.5 sm:max-w-[min(100%,22rem)]">
+        <StatusMetricCard
+          href={matrixHref}
+          icon={CheckCircle2}
+          label="Completed"
+          subtext="Up to date."
+          count={completed}
+          variant="completed"
+        />
+        <StatusMetricCard
+          href={matrixHref}
+          icon={Clock}
+          label="Expiring soon"
+          subtext="Within 30 days."
+          count={expiring}
+          variant="expiring"
+        />
+        <StatusMetricCard
+          href={matrixHref}
+          icon={AlertCircle}
+          label="Missing"
+          subtext="Requires attention."
+          count={missing}
+          variant="missing"
+          emphasize={missing > 0}
+        />
+      </div>
+    </div>
+  );
+
+  const footerBlock = (
+    <div className="mt-auto flex flex-col gap-4 pt-1">
+      <ComplianceSummaryFooter totalSlots={total} />
+      <div className="flex flex-wrap items-center justify-end gap-3">
+        {variant === "peek" ? (
+          <p className="mr-auto max-w-[18rem] text-[11px] font-medium leading-snug text-ds-muted">
+            <Link href={matrixHref} className="font-semibold text-[var(--ds-accent)] underline-offset-2 hover:underline">
+              Review assignments
+            </Link>{" "}
+            to resolve gaps and renew expiring training.
+          </p>
+        ) : null}
+        <TrainingMatrixButton href={matrixHref} className={compact ? "w-full sm:w-auto" : ""} compact={compact} />
+      </div>
+    </div>
+  );
+
   if (variant === "dashboard") {
     return (
-      <div className="flex min-h-0 flex-1 flex-col gap-4">
-        <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-5 sm:flex-row sm:items-center sm:justify-between">
-          <ComplianceRadial training={training} compact={compact} />
-          <dl className="w-full min-w-0 max-w-sm space-y-2 sm:max-w-xs">
-            <div className="flex items-center justify-between gap-3 rounded-lg border border-ds-border bg-ds-secondary/35 px-3 py-2">
-              <dt className="flex items-center gap-2 text-xs font-semibold text-ds-muted">
-                <span className="h-2.5 w-2.5 rounded-full bg-ds-success" aria-hidden />
-                Completed
-              </dt>
-              <dd className="text-sm font-bold tabular-nums text-ds-foreground">{completed.toLocaleString()}</dd>
-            </div>
-            <div className="flex items-center justify-between gap-3 rounded-lg border border-ds-border bg-ds-secondary/35 px-3 py-2">
-              <dt className="flex items-center gap-2 text-xs font-semibold text-ds-muted">
-                <span className="h-2.5 w-2.5 rounded-full bg-ds-warning" aria-hidden />
-                Expiring
-              </dt>
-              <dd className="text-sm font-bold tabular-nums text-ds-foreground">{expiring.toLocaleString()}</dd>
-            </div>
-            <div className="flex items-center justify-between gap-3 rounded-lg border border-ds-border bg-ds-secondary/35 px-3 py-2">
-              <dt className="flex items-center gap-2 text-xs font-semibold text-ds-muted">
-                <span className="h-2.5 w-2.5 rounded-full bg-ds-danger" aria-hidden />
-                Missing
-              </dt>
-              <dd className="text-sm font-bold tabular-nums text-ds-foreground">{missing.toLocaleString()}</dd>
-            </div>
-          </dl>
-        </div>
-
-        <div className="mt-auto flex flex-col gap-2 border-t border-[color-mix(in_srgb,var(--ds-text-primary)_10%,transparent)] pt-3">
-          <p className="text-[11px] leading-snug text-[color-mix(in_srgb,var(--ds-text-primary)_48%,transparent)]">
-            Mandatory programs · {total.toLocaleString()} assignment slots (completed + expiring + gaps).
-          </p>
-          <ButtonLink href={matrixHref} variant="secondary" className="w-full justify-center px-3 py-2.5 text-sm font-semibold sm:w-auto sm:self-start">
-            Open training matrix
-          </ButtonLink>
-        </div>
+      <div className={cn("flex min-h-0 flex-1 flex-col gap-5 p-4 sm:p-5", premiumShell)}>
+        {body}
+        {footerBlock}
       </div>
     );
   }
 
   return (
-    <div className={cn("flex min-h-0 flex-1 flex-col", compact ? "gap-3" : "gap-4")}>
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="text-sm font-semibold text-ds-foreground">Training compliance</p>
-          <p className="mt-1 text-xs text-ds-muted">Mandatory programs · {total.toLocaleString()} slots</p>
-        </div>
-        <ButtonLink href={matrixHref} variant="secondary" className={cn(compact ? "px-3 py-2 text-xs" : "px-3.5 py-2 text-xs")}>
-          Open training →
-        </ButtonLink>
+    <div className={cn("flex min-h-0 flex-1 flex-col gap-4", compact ? "gap-3" : "gap-4")}>
+      <div className="min-w-0">
+        <p className="text-base font-bold tracking-tight text-ds-foreground">Training compliance</p>
+        <p className="mt-1 text-xs font-medium text-ds-muted">Mandatory programs · {total.toLocaleString()} slots</p>
       </div>
 
-      <div className={cn("flex min-h-0 items-center justify-between gap-4", compact ? "flex-col" : "flex-row")}>
-        <ComplianceRadial training={training} compact={compact} />
-
-        <dl className={cn("w-full min-w-0 space-y-2", compact ? "max-w-sm" : "max-w-xs")}>
-          <div className="flex items-center justify-between gap-3 rounded-lg border border-ds-border bg-ds-secondary/35 px-3 py-2">
-            <dt className="flex items-center gap-2 text-xs font-semibold text-ds-muted">
-              <span className="h-2.5 w-2.5 rounded-full bg-ds-success" aria-hidden />
-              Completed
-            </dt>
-            <dd className="text-sm font-bold tabular-nums text-ds-foreground">{completed.toLocaleString()}</dd>
-          </div>
-          <div className="flex items-center justify-between gap-3 rounded-lg border border-ds-border bg-ds-secondary/35 px-3 py-2">
-            <dt className="flex items-center gap-2 text-xs font-semibold text-ds-muted">
-              <span className="h-2.5 w-2.5 rounded-full bg-ds-warning" aria-hidden />
-              Expiring
-            </dt>
-            <dd className="text-sm font-bold tabular-nums text-ds-foreground">{expiring.toLocaleString()}</dd>
-          </div>
-          <div className="flex items-center justify-between gap-3 rounded-lg border border-ds-border bg-ds-secondary/35 px-3 py-2">
-            <dt className="flex items-center gap-2 text-xs font-semibold text-ds-muted">
-              <span className="h-2.5 w-2.5 rounded-full bg-ds-danger" aria-hidden />
-              Missing
-            </dt>
-            <dd className="text-sm font-bold tabular-nums text-ds-foreground">{missing.toLocaleString()}</dd>
-          </div>
-          <p className="text-[11px] text-ds-muted">
-            <Link href={matrixHref} className="ds-link">
-              Review assignments
-            </Link>{" "}
-            to resolve missing and expiring items.
-          </p>
-        </dl>
+      <div className={cn("flex min-h-0 flex-1 flex-col gap-4 p-4 sm:p-5", premiumShell)}>
+        {body}
+        {footerBlock}
       </div>
     </div>
   );

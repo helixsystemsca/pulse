@@ -38,6 +38,13 @@ export type RecurringShiftRule = {
   requiredCertifications?: string[];
 };
 
+/** Structured scheduling constraints (availability layer). Optional; merges with `availability` windows. */
+export type WorkerSchedulingConstraints = {
+  noNights?: boolean;
+  afternoonsOnly?: boolean;
+  morningsOnly?: boolean;
+};
+
 export interface Worker {
   id: string;
   name: string;
@@ -45,6 +52,8 @@ export interface Worker {
   role: ScheduleDutyRole;
   active: boolean;
   employmentType?: EmploymentType;
+  /** Hard / band constraints for operational scheduling (see `availability-layer`). */
+  schedulingConstraints?: WorkerSchedulingConstraints;
   /**
    * Per-weekday availability windows. Keys are weekday names (any case); normalized client-side.
    */
@@ -99,6 +108,13 @@ export interface Shift {
   shiftDefinitionId?: string | null;
   /** Denormalized shift code from definition (e.g. D1, PM2). */
   shiftCode?: string | null;
+  /**
+   * Operational metadata badges (TRN, PTO, GG, …) — separate from shift identity.
+   * Rendered as compact pills; source can be API metadata later.
+   */
+  operationalBadges?: string[];
+  /** When a manager placed shift despite availability, audit trail hook. */
+  availabilityOverrideReason?: string | null;
   /** Server-side publish workflow flags (not fully used in UI yet). */
   isDraft?: boolean;
   publishedAt?: string | null;

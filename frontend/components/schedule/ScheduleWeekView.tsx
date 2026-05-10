@@ -53,6 +53,10 @@ type Props = {
   calendarDropsDisabled: boolean;
   shiftDragEnabled?: boolean;
   workerHighlightByDate?: Record<string, WorkerDayHighlight> | null;
+  /** When set (day/afternoon/night band), worker drops validate against this window instead of the template slot. */
+  workerDropPlacementWindow?: { start: string; end: string } | null;
+  /** Hard-block feedback when a worker drop is rejected (unavailable, certs, weekly cap, …). */
+  onWorkerDropRejected?: (message: string) => void;
   onShiftDragSessionStart: (payload: ScheduleDragSession) => void;
   onShiftDragSessionEnd: () => void;
 };
@@ -80,6 +84,8 @@ export function ScheduleWeekView({
   calendarDropsDisabled,
   shiftDragEnabled = true,
   workerHighlightByDate = null,
+  workerDropPlacementWindow = null,
+  onWorkerDropRejected,
   onShiftDragSessionStart,
   onShiftDragSessionEnd,
 }: Props) {
@@ -240,9 +246,14 @@ export function ScheduleWeekView({
                 if (wp) {
                   const w = workers.find((x) => x.id === wp.workerId);
                   if (w) {
-                    const ev = evaluateWorkerDrop(w, date, shifts, settings, timeOffBlocks);
+                    const ev = evaluateWorkerDrop(w, date, shifts, settings, timeOffBlocks, workerDropPlacementWindow);
                     if (!ev.ok) {
+                      if (ev.needsManagerOverride) {
+                        onWorkerDrop(wp.workerId, date);
+                        return;
+                      }
                       triggerShake(date);
+                      onWorkerDropRejected?.(ev.tooltip ?? "Cannot schedule this placement.");
                       return;
                     }
                   }

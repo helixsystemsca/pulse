@@ -8,6 +8,7 @@ import {
   ChevronLeft,
   ChevronRight,
   LayoutGrid,
+  LayoutList,
   Save,
   Settings,
   User,
@@ -29,6 +30,7 @@ import {
   monthGrid,
   parseLocalDate,
   weekDatesFromSunday,
+  weekRangeLabel,
 } from "@/lib/schedule/calendar";
 import { evaluateCoverageRules } from "@/lib/schedule/coverage-rules";
 import {
@@ -39,6 +41,8 @@ import {
   normalizeWeekdayKey,
   weekdayKeyFromIso,
 } from "@/lib/schedule/recurring";
+import { logScheduleAuditEvent } from "@/lib/schedule/schedule-audit-log";
+import { inferStandardShiftCode } from "@/lib/schedule/shift-definition-catalog";
 import { suggestReplacementLabel } from "@/lib/schedule/suggest-replacement";
 import { buildWorkerDragHighlightMap, evaluateWorkerDrop } from "@/lib/schedule/worker-drag-highlights";
 import {
@@ -65,6 +69,8 @@ import { ScheduleMyShiftsView } from "./ScheduleMyShiftsView";
 import { SchedulePersonnel } from "./SchedulePersonnel";
 import { ScheduleReports } from "./ScheduleReports";
 import { ScheduleSettingsModal } from "./ScheduleSettingsModal";
+import { AvailabilityOverrideModal } from "./operational/AvailabilityOverrideModal";
+import { ScheduleEmployeeWeekGrid } from "./operational/ScheduleEmployeeWeekGrid";
 import { ScheduleTrashDropZone } from "./ScheduleTrashDropZone";
 import { Card } from "@/components/pulse/Card";
 import { ScheduleWeekView } from "./ScheduleWeekView";
@@ -77,7 +83,7 @@ import { ShiftEditModal } from "./ShiftEditModal";
 import { TimeOffRequestModal } from "./TimeOffRequestModal";
 
 type View = "calendar" | "personnel" | "reports" | "my-shifts";
-type CalendarScale = "month" | "week" | "day";
+type CalendarScale = "month" | "week" | "day" | "operational";
 type ScheduleContentFilter = "workers" | "projects" | "combined";
 
 function shiftLengthHours(sh: Pick<Shift, "startTime" | "endTime">): number {
@@ -149,6 +155,10 @@ export function ScheduleApp() {
     shift: Shift | null;
     defaultDate: string;
   } | null>(null);
+  const [availabilityOverride, setAvailabilityOverride] = useState<{ workerId: string; date: string; detail: string } | null>(
+    null,
+  );
+  const [scheduleToast, setScheduleToast] = useState<string | null>(null);
 
   const shifts = useScheduleStore((s) => s.shifts);
   const workers = useScheduleStore((s) => s.workers);
@@ -211,7 +221,7 @@ export function ScheduleApp() {
       from.setHours(0, 0, 0, 0);
       to = new Date(last);
       to.setHours(23, 59, 59, 999);
-    } else if (calendarScale === "week") {
+    } else if (calendarScale === "week" || calendarScale === "operational") {
       const dates = weekDatesFromSunday(focusDate);
       from = parseLocalDate(dates[0]);
       from.setHours(0, 0, 0, 0);
@@ -379,9 +389,14 @@ export function ScheduleApp() {
 
   const visibleDatesForScheduleMerge = useMemo(() => {
     if (calendarScale === "month") return monthGrid(cursor.y, cursor.m).map((c) => c.date);
-    if (calendarScale === "week") return weekDatesFromSunday(focusDate);
+    if (calendarScale === "week" || calendarScale === "operational") return weekDatesFromSunday(focusDate);
     return [focusDate];
   }, [calendarScale, cursor.y, cursor.m, focusDate]);
+
+  const placementDropWindow = useMemo(
+    () => (placementBand === "template" ? null : defaultWindowForShiftBand(placementBand)),
+    [placementBand],
+  );
 
   const shiftsForView = useMemo(() => {
     const zid = zones[0]?.id ?? shifts[0]?.zoneId ?? "";
@@ -423,10 +438,10 @@ export function ScheduleApp() {
     const dates =
       calendarScale === "month"
         ? monthGrid(cursor.y, cursor.m).map((c) => c.date)
-        : calendarScale === "week"
+        : calendarScale === "week" || calendarScale === "operational"
           ? weekDatesFromSunday(focusDate)
           : [focusDate];
-    return buildWorkerDragHighlightMap(w, dates, shiftsForView, settings, timeOffBlocks);
+    return buildWorkerDragHighlightMap(w, dates, shiftsForView, settings, timeOffBlocks, placementDropWindow);
   }, [
     dragSession,
     workers,
@@ -437,6 +452,7 @@ export function ScheduleApp() {
     cursor.y,
     cursor.m,
     focusDate,
+    placementDropWindow,
   ]);
 
   const weekDates = useMemo(() => weekDatesFromSunday(focusDate), [focusDate]);
@@ -675,11 +691,34 @@ export function ScheduleApp() {
   );
 
   const handleWorkerDrop = useCallback(
-    (workerId: string, targetDate: string) => {
+    (workerId: string, targetDate: string, availabilityOverrideReason?: string | null) => {
       const w = workers.find((x) => x.id === workerId);
       if (!w) return;
-      const ev = evaluateWorkerDrop(w, targetDate, shiftsForView, settings, timeOffBlocks);
-      if (!ev.ok) return;
+      const trimmedOverride =
+        typeof availabilityOverrideReason === "string" && availabilityOverrideReason.trim().length > 0
+          ? availabilityOverrideReason.trim()
+          : null;
+
+      const ev = evaluateWorkerDrop(w, targetDate, shiftsForView, settings, timeOffBlocks, placementDropWindow, {
+        treatRestrictionsAsSatisfied: Boolean(trimmedOverride),
+      });
+      if (!ev.ok) {
+        if (!trimmedOverride && ev.needsManagerOverride && canPublishSchedule) {
+          setAvailabilityOverride({
+            workerId,
+            date: targetDate,
+            detail: ev.tooltip ?? "Constraint conflict for this placement.",
+          });
+          return;
+        }
+        if (!trimmedOverride) {
+          setScheduleToast(ev.tooltip ?? "Employee marked unavailable for this day.");
+          return;
+        }
+        setScheduleToast(ev.tooltip ?? "Cannot complete this placement.");
+        return;
+      }
+
       const dow = weekdayKeyFromIso(targetDate);
       const rule = w.recurringShifts?.find((r) => normalizeWeekdayKey(String(r.dayOfWeek)) === dow);
       let start: string;
@@ -698,8 +737,21 @@ export function ScheduleApp() {
         shiftType = placementBand;
         requiredCerts = undefined;
       }
-      const zoneId = zones[0]?.id ?? shifts[0]?.zoneId ?? "";
+      const zoneId = zones[0]?.id ?? shiftsForView[0]?.zoneId ?? "";
       if (!zoneId) return;
+
+      if (trimmedOverride) {
+        const actor = (session?.full_name ?? session?.email ?? "user").trim() || "user";
+        logScheduleAuditEvent({
+          type: "availability_override",
+          actorLabel: actor,
+          workerId: w.id,
+          date: targetDate,
+          reason: trimmedOverride,
+        });
+      }
+
+      const code = inferStandardShiftCode(start, end);
       addShift({
         workerId: w.id,
         date: targetDate,
@@ -711,14 +763,19 @@ export function ScheduleApp() {
         zoneId,
         shiftKind: "workforce",
         required_certifications: requiredCerts,
+        shiftCode: code,
+        availabilityOverrideReason: trimmedOverride,
         uiFlags: { isNew: true },
       });
     },
     [
       addShift,
+      canPublishSchedule,
       placementBand,
       placementDutyRole,
-      shifts,
+      placementDropWindow,
+      session?.email,
+      session?.full_name,
       shiftsForView,
       settings,
       timeOffBlocks,
@@ -806,6 +863,12 @@ export function ScheduleApp() {
     const t = window.setTimeout(() => setDeleteToast(null), 2600);
     return () => window.clearTimeout(t);
   }, [deleteToast]);
+
+  useEffect(() => {
+    if (!scheduleToast) return;
+    const t = window.setTimeout(() => setScheduleToast(null), 4200);
+    return () => window.clearTimeout(t);
+  }, [scheduleToast]);
 
   if (!hydrated) {
     return (
@@ -927,6 +990,7 @@ export function ScheduleApp() {
                   [
                     ["month", "Month", LayoutGrid],
                     ["week", "Week", CalendarRange],
+                    ["operational", "Ops grid", LayoutList],
                     ["day", "Day", CalendarDays],
                   ] as const
                 ).map(([key, label, Icon]) => (
@@ -1159,6 +1223,8 @@ export function ScheduleApp() {
                       calendarDropsDisabled={calendarDropsDisabled}
                       shiftDragEnabled={shiftDragEnabled}
                       workerDayHighlight={workerHighlightMap?.[focusDate] ?? null}
+                      workerDropPlacementWindow={placementDropWindow}
+                      onWorkerDropRejected={(msg) => setScheduleToast(msg)}
                       onWorkerDrop={(workerId) => handleWorkerDrop(workerId, focusDate)}
                       onShiftDragSessionStart={setDragSession}
                       onShiftDragSessionEnd={() => {
@@ -1196,12 +1262,67 @@ export function ScheduleApp() {
                     calendarDropsDisabled={calendarDropsDisabled}
                     shiftDragEnabled={shiftDragEnabled}
                     workerHighlightByDate={workerHighlightMap}
+                    workerDropPlacementWindow={placementDropWindow}
+                    onWorkerDropRejected={(msg) => setScheduleToast(msg)}
                     onShiftDragSessionStart={setDragSession}
                     onShiftDragSessionEnd={() => {
                       setDragSession(null);
                       setTrashHovering(false);
                     }}
                   />
+                ) : null}
+                {calendarScale === "operational" ? (
+                  <div className="space-y-3">
+                    <div
+                      className={`flex flex-wrap items-center justify-between gap-2 rounded-md border border-pulseShell-border bg-pulseShell-surface px-3 py-2 shadow-[var(--pulse-shell-shadow)] ${scheduleDragLock ? "pointer-events-none" : ""}`}
+                    >
+                      <h2 className="text-base font-semibold text-ds-foreground">{weekRangeLabel(weekDates)}</h2>
+                      <div className="flex flex-wrap items-center gap-1">
+                        <button
+                          type="button"
+                          className="rounded-lg border border-pulseShell-border bg-pulseShell-elevated px-3 py-2 text-xs font-semibold text-ds-foreground shadow-sm hover:bg-ds-interactive-hover dark:text-gray-100"
+                          onClick={goToday}
+                        >
+                          Today
+                        </button>
+                        <button
+                          type="button"
+                          className="rounded-lg border border-pulseShell-border bg-pulseShell-elevated p-2 text-ds-foreground shadow-sm hover:bg-ds-interactive-hover dark:text-gray-100"
+                          onClick={() => setFocusDate((p) => addDaysToIso(p, -7))}
+                          aria-label="Previous week"
+                        >
+                          <ChevronLeft className="h-4 w-4" />
+                        </button>
+                        <button
+                          type="button"
+                          className="rounded-lg border border-pulseShell-border bg-pulseShell-elevated p-2 text-ds-foreground shadow-sm hover:bg-ds-interactive-hover dark:text-gray-100"
+                          onClick={() => setFocusDate((p) => addDaysToIso(p, 7))}
+                          aria-label="Next week"
+                        >
+                          <ChevronRight className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+                    <ScheduleEmployeeWeekGrid
+                      weekDates={weekDates}
+                      workers={workers}
+                      shifts={displayShifts}
+                      zones={zones}
+                      settings={settings}
+                      timeOffBlocks={timeOffBlocks}
+                      dragSession={dragSession}
+                      workerHighlightByDate={workerHighlightMap}
+                      rosterDragEnabled={workerDragEnabled}
+                      scheduleDragLock={scheduleDragLock}
+                      onWorkerDrop={handleWorkerDrop}
+                      onSelectShift={openEdit}
+                      onDragSessionStart={setDragSession}
+                      onDragSessionEnd={() => {
+                        setDragSession(null);
+                        setTrashHovering(false);
+                      }}
+                    />
+                  </div>
                 ) : null}
                 {calendarScale === "month" ? (
                   <ScheduleCalendarGrid
@@ -1230,6 +1351,8 @@ export function ScheduleApp() {
                     calendarDropsDisabled={calendarDropsDisabled}
                     shiftDragEnabled={shiftDragEnabled}
                     workerHighlightByDate={workerHighlightMap}
+                    workerDropPlacementWindow={placementDropWindow}
+                    onWorkerDropRejected={(msg) => setScheduleToast(msg)}
                     onShiftDragSessionStart={setDragSession}
                     onShiftDragSessionEnd={() => {
                       setDragSession(null);
@@ -1358,6 +1481,27 @@ export function ScheduleApp() {
         onClose={() => setTimeOffOpen(false)}
         onSubmit={(p) => addTimeOffBlock(p)}
       />
+
+      <AvailabilityOverrideModal
+        open={availabilityOverride !== null}
+        workerName={workers.find((x) => x.id === availabilityOverride?.workerId)?.name ?? ""}
+        detail={availabilityOverride?.detail ?? ""}
+        onCancel={() => setAvailabilityOverride(null)}
+        onConfirm={(reason) => {
+          if (!availabilityOverride) return;
+          handleWorkerDrop(availabilityOverride.workerId, availabilityOverride.date, reason);
+          setAvailabilityOverride(null);
+        }}
+      />
+
+      {scheduleToast ? (
+        <div
+          className="pointer-events-none fixed bottom-36 left-1/2 z-[150] max-w-md -translate-x-1/2 rounded-md border border-amber-400/50 bg-amber-50 px-4 py-2.5 text-center text-sm font-medium text-amber-950 shadow-lg dark:border-amber-500/40 dark:bg-amber-950/90 dark:text-amber-50 sm:bottom-40"
+          role="status"
+        >
+          {scheduleToast}
+        </div>
+      ) : null}
     </div>
   );
 }
