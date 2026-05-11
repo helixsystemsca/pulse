@@ -318,6 +318,11 @@ export type DashboardViewModel = {
     /** On the month grid for today but not in on-site / on-shift / upcoming / off-site buckets (e.g. finished shift, PTO chip). */
     onScheduleToday: WorkforceBubble[];
     offSite: WorkforceBubble[];
+    /**
+     * Anyone with a shift on the calendar today (same source as schedule), ordered for dashboard display:
+     * on site, on shift now, upcoming, other scheduled, then off site.
+     */
+    scheduledTodayRoster: WorkforceBubble[];
     counts: { onSite: number; onShiftNow: number; upcomingToday: number; onScheduleToday: number; offSite: number };
   };
   workRequests: {
@@ -381,6 +386,7 @@ function mergeAttendanceIntoDashboardModel(
       upcomingToday: mergeAttendanceMarksIntoBubbles(model.workforce.upcomingToday, marks, dateKey),
       onScheduleToday: mergeAttendanceMarksIntoBubbles(model.workforce.onScheduleToday, marks, dateKey),
       offSite: mergeAttendanceMarksIntoBubbles(model.workforce.offSite, marks, dateKey),
+      scheduledTodayRoster: mergeAttendanceMarksIntoBubbles(model.workforce.scheduledTodayRoster, marks, dateKey),
     },
   };
 }
@@ -404,6 +410,22 @@ function sortWorkforceByRoleThenName(a: WorkforceBubble, b: WorkforceBubble): nu
   const d = a.roleSortRank - b.roleSortRank;
   if (d !== 0) return d;
   return a.displayName.localeCompare(b.displayName, undefined, { sensitivity: "base" });
+}
+
+/** Order for the operations workforce widget: physical presence first, then shift window, then the rest. */
+function rosterDisplayOrder(b: WorkforceBubble): number {
+  if (b.presence.status === "on_site") return 0;
+  if (b.scheduleBucket === "on_shift_now") return 1;
+  if (b.scheduleBucket === "upcoming_today") return 2;
+  if (b.scheduleBucket === null) return 3;
+  if (b.scheduleBucket === "off_site") return 4;
+  return 5;
+}
+
+function sortScheduledTodayRoster(a: WorkforceBubble, b: WorkforceBubble): number {
+  const d = rosterDisplayOrder(a) - rosterDisplayOrder(b);
+  if (d !== 0) return d;
+  return sortWorkforceByRoleThenName(a, b);
 }
 
 function onsiteAvatarClass() {
@@ -488,20 +510,31 @@ function WorkforceBubbleFaceContent({
   return <>{initials}</>;
 }
 
+function workforceStatusLineFromTitle(title: string): string | null {
+  const i = title.indexOf(" · ");
+  if (i === -1) return null;
+  return title.slice(i + 3).trim() || null;
+}
+
 function WorkforceBubbleStack({
   bubble,
   faceClassName,
   badges,
+  statusLine = false,
 }: {
   bubble: WorkforceBubble;
   faceClassName: string;
   badges?: ReactNode;
+  /** When true, show the schedule status from `title` (after ·) under the name */
+  statusLine?: boolean;
 }) {
   const resolvedSrc = useResolvedAvatarSrc(bubble.avatar_url ?? null);
-  const showName = Boolean(resolvedSrc && bubble.displayName.trim());
+  const showNameWithPhoto = Boolean(resolvedSrc && bubble.displayName.trim());
+  const showNameLabel = statusLine ? Boolean(bubble.displayName.trim()) : showNameWithPhoto;
+  const status = statusLine ? workforceStatusLineFromTitle(bubble.title) : null;
 
   return (
-    <span className="inline-flex flex-col items-center gap-1">
+    <span className="inline-flex flex-col items-center gap-0.5">
       <span title={bubble.title} className={faceClassName}>
         <WorkforceBubbleFaceContent
           initials={bubble.initials}
@@ -510,9 +543,14 @@ function WorkforceBubbleStack({
         />
         {badges}
       </span>
-      {showName ? (
+      {showNameLabel ? (
         <span className="max-w-[6.5rem] truncate text-center text-[10px] font-semibold leading-tight text-black dark:text-white">
           {bubble.displayName}
+        </span>
+      ) : null}
+      {status ? (
+        <span className="max-w-[7rem] text-center text-[9px] leading-tight text-[color-mix(in_srgb,var(--ds-text-primary)_55%,transparent)]">
+          {status}
         </span>
       ) : null}
     </span>
@@ -544,6 +582,64 @@ function welcomeFromSession(email: string | null | undefined, fullName: string |
 }
 
 function demoModel(): DashboardViewModel {
+  const demoWorkforceOnSite: WorkforceBubble[] = [
+    {
+      id: "0",
+      initials: "TC",
+      displayName: "Taylor Cruz",
+      title: "Taylor Cruz · On site",
+      presence: { status: "on_site", lastSeen: Date.now() - 1000 * 60 * 2, lastZone: "Zone 1" },
+      lastEvent: { type: "enter", timestamp: Date.now() - 1000 * 60 * 12 },
+      scheduleBucket: "on_site",
+      badge: "M",
+      roleSortRank: 0,
+    },
+  ];
+  const demoWorkforceOnShift: WorkforceBubble[] = [
+    {
+      id: "2",
+      initials: "AR",
+      displayName: "Avery Rowe",
+      title: "Avery Rowe · On shift now",
+      presence: { status: "unknown", lastSeen: null, lastZone: null },
+      lastEvent: null,
+      scheduleBucket: "on_shift_now",
+      badge: "S",
+      roleSortRank: 1,
+    },
+  ];
+  const demoWorkforceUpcoming: WorkforceBubble[] = [
+    {
+      id: "1",
+      initials: "MR",
+      displayName: "Morgan Reid",
+      title: "Morgan Reid · Upcoming today",
+      presence: { status: "unknown", lastSeen: null, lastZone: null },
+      lastEvent: null,
+      scheduleBucket: "upcoming_today",
+      badge: "L",
+      roleSortRank: 2,
+    },
+  ];
+  const demoWorkforceOffSite: WorkforceBubble[] = [
+    {
+      id: "7",
+      initials: "RW",
+      displayName: "River Walsh",
+      title: "River Walsh · Off site",
+      presence: { status: "unknown", lastSeen: null, lastZone: null },
+      lastEvent: { type: "exit", timestamp: Date.now() - 1000 * 60 * 35 },
+      scheduleBucket: "off_site",
+      roleSortRank: 3,
+    },
+  ];
+  const demoScheduledTodayRoster = [
+    ...demoWorkforceOnSite,
+    ...demoWorkforceOnShift,
+    ...demoWorkforceUpcoming,
+    ...demoWorkforceOffSite,
+  ].sort(sortScheduledTodayRoster);
+
   return {
     title: "Operations Dashboard",
     welcomeName: "",
@@ -576,58 +672,12 @@ function demoModel(): DashboardViewModel {
         year: "numeric",
       }),
       summaryLine: "9 scheduled today",
-      onSite: [
-        {
-          id: "0",
-          initials: "TC",
-          displayName: "Taylor Cruz",
-          title: "Site manager · On site",
-          presence: { status: "on_site", lastSeen: Date.now() - 1000 * 60 * 2, lastZone: "Zone 1" },
-          lastEvent: { type: "enter", timestamp: Date.now() - 1000 * 60 * 12 },
-          scheduleBucket: "on_site",
-          badge: "M",
-          roleSortRank: 0,
-        },
-      ],
-      onShiftNow: [
-        {
-          id: "2",
-          initials: "AR",
-          displayName: "Avery Rowe",
-          title: "Supervisor · On shift now",
-          presence: { status: "unknown", lastSeen: null, lastZone: null },
-          lastEvent: null,
-          scheduleBucket: "on_shift_now",
-          badge: "S",
-          roleSortRank: 1,
-        },
-      ],
-      upcomingToday: [
-        {
-          id: "1",
-          initials: "MR",
-          displayName: "Morgan Reid",
-          title: "Site lead · Upcoming today",
-          presence: { status: "unknown", lastSeen: null, lastZone: null },
-          lastEvent: null,
-          scheduleBucket: "upcoming_today",
-          badge: "L",
-          roleSortRank: 2,
-        },
-      ],
+      onSite: demoWorkforceOnSite,
+      onShiftNow: demoWorkforceOnShift,
+      upcomingToday: demoWorkforceUpcoming,
       onScheduleToday: [],
-      offSite: [
-        {
-          id: "7",
-          initials: "RW",
-          displayName: "River Walsh",
-          title: "Technician · Off site",
-          presence: { status: "unknown", lastSeen: null, lastZone: null },
-          lastEvent: { type: "exit", timestamp: Date.now() - 1000 * 60 * 35 },
-          scheduleBucket: "off_site",
-          roleSortRank: 3,
-        },
-      ],
+      offSite: demoWorkforceOffSite,
+      scheduledTodayRoster: demoScheduledTodayRoster,
       counts: { onSite: 1, onShiftNow: 1, upcomingToday: 1, onScheduleToday: 0, offSite: 1 },
     },
     workRequests: {
@@ -823,14 +873,11 @@ function buildLiveModel(
   const scheduledIdsOnCalendar = new Set(
     dayMerged.map((s) => s.workerId).filter((id): id is string => Boolean(id)),
   );
-  /** Same people as month cells: anyone assigned that day who exists in the Pulse workers list. */
-  const scheduledWorkers = [...scheduledIdsOnCalendar]
-    .map((id) => workerById.get(id))
-    .filter((w): w is WorkerOut => w != null);
 
-  const bubbles: WorkforceBubble[] = scheduledWorkers.map((w) => {
-    const initials = initialsFromUser(w.email, w.full_name);
-    const mineRows = dayMerged.filter((s) => s.workerId === w.id);
+  const bubbles: WorkforceBubble[] = [...scheduledIdsOnCalendar].map((wid) => {
+    const w = workerById.get(wid);
+    const initials = w ? initialsFromUser(w.email, w.full_name) : "?";
+    const mineRows = dayMerged.filter((s) => s.workerId === wid);
     const intervals = mineRows
       .map((s) => shiftIntervalBoundsMs(s, apiBoundsById))
       .filter((iv): iv is { startMs: number; endMs: number } => iv != null);
@@ -845,14 +892,16 @@ function buildLiveModel(
       return Number.isFinite(t) ? t : null;
     };
 
-    const presence: WorkforceBubble["presence"] = {
-      status: w.presence?.status ?? "unknown",
-      lastSeen: parseTs(w.presence?.lastSeen),
-      lastZone: w.presence?.lastZone ?? null,
-    };
+    const presence: WorkforceBubble["presence"] = w
+      ? {
+          status: w.presence?.status ?? "unknown",
+          lastSeen: parseTs(w.presence?.lastSeen),
+          lastZone: w.presence?.lastZone ?? null,
+        }
+      : { status: "unknown", lastSeen: null, lastZone: null };
 
     const lastEvent: WorkforceBubble["lastEvent"] =
-      w.lastEvent?.type && (w.lastEvent.type === "enter" || w.lastEvent.type === "exit")
+      w && w.lastEvent?.type && (w.lastEvent.type === "enter" || w.lastEvent.type === "exit")
         ? {
             type: w.lastEvent.type,
             timestamp: parseTs(w.lastEvent.timestamp) ?? now,
@@ -877,7 +926,7 @@ function buildLiveModel(
     // NOTE: Workers who are scheduled today but have finished their shift and have unknown presence
     // should not be defaulted into "Off Site". We also avoid introducing a "fallback" bucket, so
     // those workers will be omitted from all groups (see grouping below) until presence/event data exists.
-    const titleBase = `${w.full_name ?? w.email}`;
+    const titleBase = w ? `${w.full_name ?? w.email}` : "Assignee not in roster";
     const title =
       scheduleBucket === "on_site"
         ? `${titleBase} · On site`
@@ -889,10 +938,10 @@ function buildLiveModel(
               ? `${titleBase} · Off site`
               : `${titleBase} · Scheduled today`;
 
-    const { badge, rank: roleSortRank } = workforceRoleBadgeAndRank(w.role);
-    const displayName = w.full_name?.trim() || w.email.split("@")[0] || w.email;
+    const { badge, rank: roleSortRank } = workforceRoleBadgeAndRank(w?.role ?? "worker");
+    const displayName = w ? w.full_name?.trim() || w.email.split("@")[0] || w.email : "Unknown assignee";
     return {
-      id: w.id,
+      id: wid,
       initials,
       displayName,
       title,
@@ -901,7 +950,7 @@ function buildLiveModel(
       scheduleBucket,
       badge,
       roleSortRank,
-      avatar_url: w.avatar_url,
+      avatar_url: w?.avatar_url,
     };
   });
 
@@ -932,6 +981,8 @@ function buildLiveModel(
   const scheduledCount = scheduledIdsOnCalendar.size;
 
   const summaryLine = `${scheduledCount} scheduled today`;
+
+  const scheduledTodayRoster = [...bubbles].sort(sortScheduledTodayRoster);
 
   const openItems = wr.items.filter(
     (i) => i.status === "open" || i.status === "in_progress",
@@ -1072,6 +1123,7 @@ function buildLiveModel(
       upcomingToday,
       onScheduleToday,
       offSite,
+      scheduledTodayRoster,
       counts: {
         onSite: onSite.length,
         onShiftNow: onShiftNow.length,
@@ -1544,21 +1596,32 @@ function DashboardBody({
             </div>
             <div className="space-y-2.5">
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-[var(--ds-accent)]">On shift</p>
-                <div className="mt-1 flex flex-wrap gap-2">
-                  {model.workforce.onShiftNow.length === 0 ? (
-                    <p className="text-xs text-[color-mix(in_srgb,var(--ds-text-primary)_52%,transparent)]">—</p>
+                <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-[var(--ds-accent)]">Scheduled today</p>
+                <div className="mt-1 flex flex-wrap gap-x-3 gap-y-2">
+                  {model.workforce.scheduledTodayRoster.length === 0 ? (
+                    <p className="text-xs text-[color-mix(in_srgb,var(--ds-text-primary)_52%,transparent)]">
+                      No shifts on the roster for today.
+                    </p>
                   ) : (
-                    model.workforce.onShiftNow.map((b) => (
+                    model.workforce.scheduledTodayRoster.map((b) => (
                       <WorkforceBubbleStack
                         key={b.id}
                         bubble={b}
+                        statusLine
                         faceClassName={scheduledAvatarClass()}
                         badges={
                           <>
                             {b.badge ? <WorkforceRoleLetterBadge letter={b.badge} /> : null}
                             {b.attendanceMark ? <WorkforceAttendanceBadge mark={b.attendanceMark} /> : null}
-                            <WorkforceStatusDot color="green" />
+                            <WorkforceStatusDot
+                              color={
+                                b.scheduleBucket === "on_shift_now" || b.presence.status === "on_site"
+                                  ? "green"
+                                  : b.scheduleBucket === "upcoming_today"
+                                    ? "yellow"
+                                    : "gray"
+                              }
+                            />
                           </>
                         }
                       />
@@ -1599,7 +1662,7 @@ function DashboardBody({
       { i: "training_compliance", x: 11, y: 0, w: 5, h: 12, minW: 3, minH: 8 },
       { i: "workforce", x: 0, y: 12, w: 6, h: 10, minW: 4, minH: 6 },
       { i: "low_inventory", x: 6, y: 12, w: 5, h: 10, minW: 3, minH: 6 },
-      { i: "co2_monitoring", x: 11, y: 12, w: 5, h: 10, minW: 3, minH: 8 },
+      { i: "co2_monitoring", x: 11, y: 12, w: 5, h: 7, minW: 3, minH: 5 },
       { i: "pool_readings", x: 0, y: 22, w: 16, h: 10, minW: 6, minH: 6 },
     ],
     [],
@@ -2098,9 +2161,18 @@ function DashboardBody({
                             ? "dashboard-inventory"
                             : undefined
                     }
-                    className={cn("transition-transform", editMode && "cursor-grab active:cursor-grabbing")}
+                    className={cn(
+                      "transition-transform",
+                      editMode && "cursor-grab active:cursor-grabbing",
+                      item.i === "co2_monitoring" && "flex h-full min-h-0 flex-col items-stretch justify-start",
+                    )}
                   >
-                    <OpsWidgetShell title={w.title} headerRight={headerRight} className="h-full">
+                    <OpsWidgetShell
+                      title={w.title}
+                      headerRight={headerRight}
+                      className={item.i === "co2_monitoring" ? "w-full" : "h-full"}
+                      contentMode={item.i === "co2_monitoring" ? "hug" : "fill"}
+                    >
                       {w.render(buildWidgetContext(item))}
                     </OpsWidgetShell>
                   </div>

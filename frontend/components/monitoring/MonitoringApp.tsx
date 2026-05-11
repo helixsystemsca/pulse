@@ -1,12 +1,10 @@
 "use client";
 
-import { Activity, Droplets, ExternalLink, Gauge, Server, Thermometer, Wind } from "lucide-react";
+import { Activity, Droplets, Gauge, Server, Thermometer, Wind } from "lucide-react";
 import { useState } from "react";
-import Link from "next/link";
 import { Card } from "@/components/pulse/Card";
 import { TankIndicator } from "@/components/monitoring/TankIndicator";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { pulseAppHref } from "@/lib/pulse-app";
 import { co2Tanks, poolControllers } from "@/lib/monitoringMockData";
 import { cn } from "@/lib/cn";
 
@@ -142,28 +140,6 @@ export function MonitoringApp() {
       </nav>
 
       {tab === "systems" ? <SystemsMockMonitoringPanel /> : null}
-
-      <section aria-labelledby="team-insights-callout">
-        <Card padding="md">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <h2 id="team-insights-callout" className="font-headline text-base font-bold text-ds-foreground">
-                Team Insights
-              </h2>
-              <p className="mt-1 text-sm text-ds-muted">
-                People + XP + streaks live in <span className="font-medium text-ds-foreground">Team Insights</span>.
-              </p>
-            </div>
-            <Link
-              href={pulseAppHref("/dashboard/team-insights")}
-              className="inline-flex items-center gap-2 rounded-[10px] bg-[#4C6085] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#405574]"
-            >
-              <ExternalLink className="h-4 w-4" aria-hidden />
-              Open Team Insights
-            </Link>
-          </div>
-        </Card>
-      </section>
     </div>
   );
 }
