@@ -13,20 +13,20 @@ export function Co2MonitoringOpsWidget() {
   const monitoringHref = pulseAppHref("/monitoring");
 
   return (
-    <div className="flex h-full min-h-0 flex-col rounded-xl border border-[color-mix(in_srgb,var(--ops-dash-widget-bg,#fff)_65%,var(--ops-dash-border,#cbd5e1))] bg-[var(--ops-dash-widget-bg,#ffffff)] p-3 shadow-sm dark:border-white/[0.07] dark:bg-[color-mix(in_srgb,#0f172a_96%,#1e293b)]">
-      <div className="mb-2 flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2 text-[11px] font-semibold text-[color-mix(in_srgb,var(--ds-text-primary)_55%,transparent)]">
-          <Gauge className="h-3.5 w-3.5 opacity-80" aria-hidden />
-          <span>0–{CO2_LEVEL_MAX} sensor scale · demo feed</span>
+    <div className="flex h-full min-h-0 flex-col rounded-xl border border-[color-mix(in_srgb,var(--ops-dash-widget-bg,#fff)_65%,var(--ops-dash-border,#cbd5e1))] bg-[var(--ops-dash-widget-bg,#ffffff)] p-2 shadow-sm dark:border-white/[0.07] dark:bg-[color-mix(in_srgb,#0f172a_96%,#1e293b)]">
+      <div className="mb-1 flex items-center justify-between gap-2">
+        <div className="flex min-w-0 items-center gap-1.5 text-[10px] font-semibold leading-tight text-[color-mix(in_srgb,var(--ds-text-primary)_55%,transparent)]">
+          <Gauge className="h-3 w-3 shrink-0 opacity-80" aria-hidden />
+          <span className="truncate">0–{CO2_LEVEL_MAX} · demo feed</span>
         </div>
-        <Link href={monitoringHref} className="shrink-0 text-[11px] font-semibold text-[var(--ds-accent)] underline-offset-2 hover:underline">
+        <Link href={monitoringHref} className="shrink-0 text-[10px] font-semibold text-[var(--ds-accent)] underline-offset-2 hover:underline">
           Systems
         </Link>
       </div>
-      <div className="min-h-0 flex-1 overflow-x-auto overflow-y-hidden py-2">
-        <div className="flex min-w-min items-start justify-center gap-5 px-1 sm:gap-8">
+      <div className="min-h-0 flex-1 overflow-x-auto overflow-y-hidden pt-0.5">
+        <div className="flex min-w-min items-start justify-center gap-2 px-0.5 sm:gap-3">
           {co2Tanks.map((t) => (
-            <TankIndicator key={t.id} label={t.name} value={t.level} max={CO2_LEVEL_MAX} />
+            <TankIndicator key={t.id} label={t.name} value={t.level} max={CO2_LEVEL_MAX} compact />
           ))}
         </div>
       </div>

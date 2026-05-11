@@ -150,7 +150,7 @@ function renderSlice(
           {showPerTank && !ui.compact ? (
             <div className="mt-3 flex flex-wrap items-end justify-center gap-x-6 gap-y-6 sm:gap-x-8">
               {co2Tanks.map((t) => (
-                <TankIndicator key={t.id} label={t.name} value={t.level} max={CO2_LEVEL_MAX} />
+                <TankIndicator key={t.id} label={t.name} value={t.level} max={CO2_LEVEL_MAX} compact />
               ))}
             </div>
           ) : null}

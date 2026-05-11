@@ -1,9 +1,13 @@
 import { useMemo } from "react";
 
+import { cn } from "@/lib/cn";
+
 type TankIndicatorProps = {
   label: string;
   value: number;
   max: number;
+  /** Shorter capsule and typography for dense dashboard tiles */
+  compact?: boolean;
 };
 
 type TankStatus = "ok" | "change_soon" | "change_now";
@@ -28,7 +32,7 @@ const statusLabels: Record<TankStatus, string> = {
   change_now: "Change now",
 };
 
-export function TankIndicator({ label, value, max }: TankIndicatorProps) {
+export function TankIndicator({ label, value, max, compact = false }: TankIndicatorProps) {
   const status = useMemo(() => getStatus(value), [value]);
   const percent = useMemo(() => {
     const m = Math.max(1, max);
@@ -37,10 +41,18 @@ export function TankIndicator({ label, value, max }: TankIndicatorProps) {
   const percentLabel = useMemo(() => `${Math.round(percent)}%`, [percent]);
 
   return (
-    <div className="flex flex-col items-center">
-      <div className="mb-1 h-2 w-6 rounded bg-ds-muted/30" aria-hidden />
+    <div className={cn("flex flex-col items-center", compact && "w-full min-w-0 max-w-[5.5rem]")}>
       <div
-        className="relative h-40 w-16 overflow-hidden rounded-full border border-ds-border bg-ds-secondary/60 shadow-[0_10px_24px_rgba(15,23,42,0.10)]"
+        className={cn("shrink-0 rounded bg-ds-muted/30", compact ? "mb-0.5 h-1 w-4" : "mb-1 h-2 w-6")}
+        aria-hidden
+      />
+      <div
+        className={cn(
+          "relative shrink-0 overflow-hidden rounded-full border border-ds-border bg-ds-secondary/60",
+          compact
+            ? "h-[5.5rem] w-9 shadow-[0_4px_12px_rgba(15,23,42,0.07)] sm:h-24 sm:w-10"
+            : "h-40 w-16 shadow-[0_10px_24px_rgba(15,23,42,0.10)]",
+        )}
         role="img"
         aria-label={`${label} indicator`}
       >
@@ -69,14 +81,27 @@ export function TankIndicator({ label, value, max }: TankIndicatorProps) {
           }}
           aria-hidden
         />
-        <div className="absolute inset-0 flex items-center justify-center">
-          <span className="rounded-md bg-black/30 px-2 py-1 text-xs font-bold tabular-nums text-white backdrop-blur-[2px]">
+        <div className="absolute inset-0 flex items-center justify-center px-0.5">
+          <span
+            className={cn(
+              "rounded bg-black/30 font-bold tabular-nums text-white backdrop-blur-[2px]",
+              compact ? "px-1 py-px text-[9px] sm:text-[10px]" : "rounded-md px-2 py-1 text-xs",
+            )}
+          >
             {percentLabel}
           </span>
         </div>
       </div>
-      <p className="mt-2 text-sm font-semibold text-ds-foreground">{label}</p>
-      <p className="mt-0.5 text-xs text-ds-muted">
+      <p
+        className={cn(
+          "w-full text-center font-semibold leading-tight text-ds-foreground",
+          compact ? "mt-1 line-clamp-2 min-h-[2rem] text-[10px]" : "mt-2 text-sm",
+        )}
+        title={label}
+      >
+        {label}
+      </p>
+      <p className={cn("w-full text-center text-ds-muted", compact ? "mt-0.5 text-[9px] leading-tight sm:text-[10px]" : "mt-0.5 text-xs")}>
         <span className="tabular-nums">{value}</span> / {max} • {statusLabels[status]}
       </p>
     </div>
