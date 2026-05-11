@@ -103,6 +103,8 @@ export function ScheduleCompactCellRows({
   const workerMap = new Map(workers.map((w) => [w.id, w]));
 
   const summary = chipDetailLevel === "summary";
+  /** `scheduleDragLock` is true for any active drag; palette row targets must stay interactive while dragging from the palette. */
+  const paletteInteractionsBlocked = scheduleDragLock && dragSession?.kind !== "palette";
 
   return (
     <div className={`relative z-[2] flex ${scrollClassName}`}>
@@ -182,14 +184,14 @@ export function ScheduleCompactCellRows({
               paletteWorkerId && onPaletteDrop && dragSession?.kind === "palette" ? "ring-1 ring-inset ring-sky-400/50" : ""
             }`}
             onDragOver={(e) => {
-              if (!paletteWorkerId || !onPaletteDrop || scheduleDragLock) return;
+              if (!paletteWorkerId || !onPaletteDrop || paletteInteractionsBlocked) return;
               if (dragSession?.kind !== "palette") return;
               e.preventDefault();
               e.stopPropagation();
               e.dataTransfer.dropEffect = "copy";
             }}
             onDrop={(e) => {
-              if (!paletteWorkerId || !onPaletteDrop || scheduleDragLock) return;
+              if (!paletteWorkerId || !onPaletteDrop || paletteInteractionsBlocked) return;
               const pl = readPaletteDragPayload(e.dataTransfer);
               if (pl) {
                 e.preventDefault();

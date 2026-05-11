@@ -42,10 +42,8 @@ export default function KioskOverviewPage() {
   }
 
   return (
-    <OperationalDashboard
-      variant={variant}
-      readOnly
-      tokenOverride={token}
-    />
+    <div className="flex min-h-0 flex-1 flex-col">
+      <OperationalDashboard variant={variant} readOnly tokenOverride={token} />
+    </div>
   );
 }

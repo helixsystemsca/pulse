@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertCircle, AlertTriangle, Check, Cloud, Info, Monitor, Pencil, Plus, Radio, Settings } from "lucide-react";
+import { AlertTriangle, Check, Monitor, Pencil, Plus, Settings } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { GridLayout, useContainerWidth, verticalCompactor, type Layout, type LayoutItem } from "react-grid-layout";
@@ -9,7 +9,6 @@ import { DashboardCustomPeekWidget } from "@/components/dashboard/DashboardCusto
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { apiFetch, isApiMode } from "@/lib/api";
-import { useAuthenticatedAssetSrc } from "@/hooks/useAuthenticatedAssetSrc";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
 import { pulseTenantNav } from "@/lib/pulse-app";
 import { canAccessPulseTenantApis, readSession, type PulseAuthSession } from "@/lib/pulse-session";
@@ -27,7 +26,6 @@ import {
   shiftIntervalBoundsMs,
 } from "@/lib/schedule/dashboardScheduleDay";
 import type { PulseShiftApi, PulseWorkerApi } from "@/lib/schedule/pulse-bridge";
-import { KioskRotateFooter } from "@/components/dashboard/DashboardChrome";
 import { OpsWidgetShell } from "@/components/dashboard/widgets/ops/OpsWidgetShell";
 import { cn } from "@/lib/cn";
 import { DASH } from "@/styles/dashboardTheme";
@@ -143,46 +141,6 @@ type AlertItem = {
 };
 
 const BC_TZ = "America/Vancouver";
-const NORTH_SAANICH = { lat: 48.6548, lon: -123.4207 };
-
-type Weather = { tempC: number | null; code: number | null; windKph: number | null };
-
-function weatherLabelFromCode(code: number | null): string {
-  if (code === null) return "—";
-  if (code === 0) return "Clear";
-  if (code === 1 || code === 2) return "Partly cloudy";
-  if (code === 3) return "Overcast";
-  if (code === 45 || code === 48) return "Fog";
-  if (code === 51 || code === 53 || code === 55) return "Drizzle";
-  if (code === 56 || code === 57) return "Freezing drizzle";
-  if (code === 61 || code === 63 || code === 65) return "Rain";
-  if (code === 66 || code === 67) return "Freezing rain";
-  if (code === 71 || code === 73 || code === 75) return "Snow";
-  if (code === 77) return "Snow grains";
-  if (code === 80 || code === 81 || code === 82) return "Showers";
-  if (code === 85 || code === 86) return "Snow showers";
-  if (code === 95) return "Thunderstorm";
-  if (code === 96 || code === 99) return "Thunderstorm (hail)";
-  return `Code ${code}`;
-}
-
-async function fetchNorthSaanichWeather(): Promise<Weather> {
-  const url =
-    `https://api.open-meteo.com/v1/forecast?latitude=${NORTH_SAANICH.lat}` +
-    `&longitude=${NORTH_SAANICH.lon}` +
-    `&current=temperature_2m,weather_code,wind_speed_10m` +
-    `&temperature_unit=celsius&wind_speed_unit=kmh&timezone=${encodeURIComponent(BC_TZ)}`;
-  const res = await fetch(url, { cache: "no-store" });
-  if (!res.ok) throw new Error("Weather fetch failed");
-  const data = (await res.json()) as {
-    current?: { temperature_2m?: number; weather_code?: number; wind_speed_10m?: number };
-  };
-  return {
-    tempC: typeof data.current?.temperature_2m === "number" ? data.current.temperature_2m : null,
-    code: typeof data.current?.weather_code === "number" ? data.current.weather_code : null,
-    windKph: typeof data.current?.wind_speed_10m === "number" ? data.current.wind_speed_10m : null,
-  };
-}
 
 function timeInBc(d: Date): string {
   return d.toLocaleTimeString(undefined, { timeZone: BC_TZ, hour: "2-digit", minute: "2-digit" });

@@ -71,7 +71,6 @@ import { SchedulePersonnel } from "./SchedulePersonnel";
 import { ScheduleReports } from "./ScheduleReports";
 import { ScheduleSettingsModal } from "./ScheduleSettingsModal";
 import { AvailabilityOverrideModal } from "./operational/AvailabilityOverrideModal";
-import { ScheduleEmployeeWeekGrid } from "./operational/ScheduleEmployeeWeekGrid";
 import { ScheduleTrashDropZone } from "./ScheduleTrashDropZone";
 import { Card } from "@/components/pulse/Card";
 import { ScheduleWeekView } from "./ScheduleWeekView";
@@ -80,7 +79,6 @@ import { SchedulePeriodModal, type SchedulePeriodLite } from "./SchedulePeriodMo
 import {
   ScheduleToolbar,
   type ScheduleContentFilter,
-  type ScheduleLayoutMode,
   type ScheduleTimeScale,
 } from "./ScheduleToolbar";
 import { ScheduleWorkerPanel } from "./ScheduleWorkerPanel";
@@ -140,7 +138,6 @@ export function ScheduleApp() {
   });
   const [workspaceView, setWorkspaceView] = useState<ScheduleWorkspaceView>("calendar");
   const [timeScale, setTimeScale] = useState<ScheduleTimeScale>("month");
-  const [scheduleLayout, setScheduleLayout] = useState<ScheduleLayoutMode>("calendar");
   const [focusDate, setFocusDate] = useState(() => formatLocalDate(getServerDate()));
   const [contentFilter, setContentFilter] = useState<ScheduleContentFilter>("combined");
   const [sidebarSearch, setSidebarSearch] = useState("");
@@ -250,14 +247,14 @@ export function ScheduleApp() {
     if (!isApiMode()) return;
     let from: Date;
     let to: Date;
-    if (timeScale === "month" && scheduleLayout === "calendar") {
+    if (timeScale === "month") {
       const first = new Date(cursor.y, cursor.m, 1);
       const last = new Date(cursor.y, cursor.m + 1, 0);
       from = new Date(first);
       from.setHours(0, 0, 0, 0);
       to = new Date(last);
       to.setHours(23, 59, 59, 999);
-    } else if (timeScale === "week" || scheduleLayout === "ops-grid") {
+    } else if (timeScale === "week") {
       const dates = weekDatesFromSunday(focusDate);
       from = parseLocalDate(dates[0]);
       from.setHours(0, 0, 0, 0);
@@ -298,7 +295,7 @@ export function ScheduleApp() {
     const shiftsMapped = pulseShiftsToSchedule(sh, fallbackZ);
     applyPulseScheduleSnapshot(workersMapped, zonesMapped, shiftsMapped);
     setShiftDefinitions(defs);
-  }, [applyPulseScheduleSnapshot, scheduleLayout, timeScale, cursor.m, cursor.y, focusDate]);
+  }, [applyPulseScheduleSnapshot, timeScale, cursor.m, cursor.y, focusDate]);
 
   const reloadActivePeriod = useCallback(async () => {
     if (!hydrated || !canEdit || !isApiMode()) return;
@@ -424,11 +421,10 @@ export function ScheduleApp() {
   }, [reloadPulseSchedule]);
 
   const visibleDatesForScheduleMerge = useMemo(() => {
-    if (scheduleLayout === "ops-grid") return weekDatesFromSunday(focusDate);
     if (timeScale === "month") return monthGrid(cursor.y, cursor.m).map((c) => c.date);
     if (timeScale === "week") return weekDatesFromSunday(focusDate);
     return [focusDate];
-  }, [scheduleLayout, timeScale, cursor.y, cursor.m, focusDate]);
+  }, [timeScale, cursor.y, cursor.m, focusDate]);
 
   const placementDropWindow = useMemo(
     () => (placementBand === "template" ? null : defaultWindowForShiftBand(placementBand)),
@@ -490,7 +486,7 @@ export function ScheduleApp() {
     const w = workers.find((x) => x.id === dragSession.workerId);
     if (!w) return null;
     const dates =
-      scheduleLayout === "ops-grid" || timeScale === "week"
+      timeScale === "week"
         ? weekDatesFromSunday(focusDate)
         : timeScale === "month"
           ? monthGrid(cursor.y, cursor.m).map((c) => c.date)
@@ -502,7 +498,6 @@ export function ScheduleApp() {
     shiftsForView,
     settings,
     timeOffBlocks,
-    scheduleLayout,
     timeScale,
     cursor.y,
     cursor.m,
@@ -513,21 +508,21 @@ export function ScheduleApp() {
   const weekDates = useMemo(() => weekDatesFromSunday(focusDate), [focusDate]);
 
   const metricsMonth = useMemo(() => {
-    if (timeScale === "month" && scheduleLayout === "calendar") {
+    if (timeScale === "month") {
       return { y: cursor.y, m: cursor.m };
     }
     const d = parseLocalDate(focusDate);
     return { y: d.getFullYear(), m: d.getMonth() };
-  }, [timeScale, scheduleLayout, cursor.y, cursor.m, focusDate]);
+  }, [timeScale, cursor.y, cursor.m, focusDate]);
 
   const defaultDate = useMemo(() => {
-    if (timeScale === "day" && scheduleLayout === "calendar") return focusDate;
+    if (timeScale === "day") return focusDate;
     const today = getServerDate();
     if (today.getFullYear() === cursor.y && today.getMonth() === cursor.m) {
       return formatLocalDate(today);
     }
     return formatLocalDate(new Date(cursor.y, cursor.m, 1));
-  }, [timeScale, scheduleLayout, focusDate, cursor.y, cursor.m]);
+  }, [timeScale, focusDate, cursor.y, cursor.m]);
 
   const alerts = useMemo(
     () => {
@@ -562,9 +557,6 @@ export function ScheduleApp() {
     : { kind: "empty", allowCreate: canEdit };
 
   const viewPeriodMeta = useMemo(() => {
-    if (scheduleLayout === "ops-grid") {
-      return { label: weekRangeLabel(weekDates), sub: "Week · Ops placement grid" };
-    }
     if (timeScale === "month") {
       const daysInMonth = new Date(cursor.y, cursor.m + 1, 0).getDate();
       const d = new Date(cursor.y, cursor.m, 1);
@@ -587,7 +579,7 @@ export function ScheduleApp() {
     } catch {
       return { label: focusDate, sub: "Single day view" };
     }
-  }, [scheduleLayout, timeScale, cursor.y, cursor.m, weekDates, focusDate]);
+  }, [timeScale, cursor.y, cursor.m, weekDates, focusDate]);
 
   function openAdd(dateIso: string) {
     setShiftModal({ shift: null, defaultDate: dateIso });
@@ -1107,11 +1099,11 @@ export function ScheduleApp() {
   }, [scheduleProjects]);
 
   const dayProjectBar = useMemo(() => {
-    if (scheduleLayout !== "calendar" || timeScale !== "day" || !projectBarItems) return null;
+    if (timeScale !== "day" || !projectBarItems) return null;
     return projectBarItems
       .filter((p) => focusDate >= p.start_date && focusDate <= p.end_date)
       .map((p) => ({ id: p.id, name: p.name, tintClass: p.tintClass }));
-  }, [scheduleLayout, timeScale, focusDate, projectBarItems]);
+  }, [timeScale, focusDate, projectBarItems]);
 
   const dayDisplayShifts = useMemo(
     () => displayShiftsForGrid.filter((s) => s.date === focusDate),
@@ -1226,7 +1218,6 @@ export function ScheduleApp() {
                   setWorkspaceView(v);
                   if (v !== "calendar") {
                     setTimeScale("month");
-                    setScheduleLayout("calendar");
                   }
                 }}
                 zones={zones}
@@ -1262,11 +1253,6 @@ export function ScheduleApp() {
                 compact
                 timeScale={timeScale}
                 onTimeScaleChange={setTimeScale}
-                scheduleLayout={scheduleLayout}
-                onScheduleLayoutChange={(layout) => {
-                  setScheduleLayout(layout);
-                  if (layout === "ops-grid") setTimeScale("week");
-                }}
                 contentFilter={contentFilter}
                 onContentFilterChange={setContentFilter}
                 showProjectOverlay={showProjectOverlay}
@@ -1365,7 +1351,7 @@ export function ScheduleApp() {
 
                     <section className="flex min-h-0 min-w-0 flex-col overflow-hidden">
                       <div className="min-h-0 flex-1 space-y-2 overflow-x-auto overflow-y-auto">
-                {scheduleLayout === "calendar" && timeScale === "day" ? (
+                {timeScale === "day" ? (
                   <div className="space-y-3">
                     <div
                       className={`flex flex-wrap items-center justify-between gap-2 rounded-md border border-pulseShell-border bg-pulseShell-surface px-3 py-2 shadow-[var(--pulse-shell-shadow)] ${scheduleDragLock ? "pointer-events-none" : ""}`}
@@ -1427,7 +1413,7 @@ export function ScheduleApp() {
                     />
                   </div>
                 ) : null}
-                {scheduleLayout === "calendar" && timeScale === "week" ? (
+                {timeScale === "week" ? (
                   <ScheduleWeekView
                     weekDates={weekDates}
                     onPrevWeek={() => setFocusDate((p) => addDaysToIso(p, -7))}
@@ -1446,7 +1432,6 @@ export function ScheduleApp() {
                     onWorkerDrop={handleWorkerDrop}
                     onOpenDay={(iso) => {
                       setFocusDate(iso);
-                      setScheduleLayout("calendar");
                       setTimeScale("day");
                     }}
                     projectBarItems={showProjectOverlay ? projectBarItems : null}
@@ -1468,60 +1453,7 @@ export function ScheduleApp() {
                     onPaletteDrop={handlePaletteDrop}
                   />
                 ) : null}
-                {scheduleLayout === "ops-grid" ? (
-                  <div className="space-y-3">
-                    <div
-                      className={`flex flex-wrap items-center justify-between gap-2 rounded-md border border-pulseShell-border bg-pulseShell-surface px-3 py-2 shadow-[var(--pulse-shell-shadow)] ${scheduleDragLock ? "pointer-events-none" : ""}`}
-                    >
-                      <h2 className="text-base font-semibold text-ds-foreground">{weekRangeLabel(weekDates)}</h2>
-                      <div className="flex flex-wrap items-center gap-1">
-                        <button
-                          type="button"
-                          className="rounded-lg border border-pulseShell-border bg-pulseShell-elevated px-3 py-2 text-xs font-semibold text-ds-foreground shadow-sm hover:bg-ds-interactive-hover dark:text-gray-100"
-                          onClick={goToday}
-                        >
-                          Today
-                        </button>
-                        <button
-                          type="button"
-                          className="rounded-lg border border-pulseShell-border bg-pulseShell-elevated p-2 text-ds-foreground shadow-sm hover:bg-ds-interactive-hover dark:text-gray-100"
-                          onClick={() => setFocusDate((p) => addDaysToIso(p, -7))}
-                          aria-label="Previous week"
-                        >
-                          <ChevronLeft className="h-4 w-4" />
-                        </button>
-                        <button
-                          type="button"
-                          className="rounded-lg border border-pulseShell-border bg-pulseShell-elevated p-2 text-ds-foreground shadow-sm hover:bg-ds-interactive-hover dark:text-gray-100"
-                          onClick={() => setFocusDate((p) => addDaysToIso(p, 7))}
-                          aria-label="Next week"
-                        >
-                          <ChevronRight className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </div>
-                    <ScheduleEmployeeWeekGrid
-                      weekDates={weekDates}
-                      workers={workers}
-                      shifts={displayShiftsForGrid}
-                      zones={zones}
-                      settings={settings}
-                      timeOffBlocks={timeOffBlocks}
-                      dragSession={dragSession}
-                      workerHighlightByDate={workerHighlightMap}
-                      rosterDragEnabled={workerDragEnabled}
-                      scheduleDragLock={scheduleDragLock}
-                      onWorkerDrop={handleWorkerDrop}
-                      onSelectShift={openEdit}
-                      onDragSessionStart={setDragSession}
-                      onDragSessionEnd={() => {
-                        setDragSession(null);
-                        setTrashHovering(false);
-                      }}
-                    />
-                  </div>
-                ) : null}
-                {scheduleLayout === "calendar" && timeScale === "month" ? (
+                {timeScale === "month" ? (
                   <ScheduleCalendarGrid
                     year={cursor.y}
                     monthIndex={cursor.m}
@@ -1540,7 +1472,6 @@ export function ScheduleApp() {
                     onWorkerDrop={handleWorkerDrop}
                     onOpenDay={(iso) => {
                       setFocusDate(iso);
-                      setScheduleLayout("calendar");
                       setTimeScale("day");
                     }}
                     projectBarItems={showProjectOverlay ? projectBarItems : null}

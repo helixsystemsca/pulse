@@ -9,7 +9,14 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-/** Minimal shell — no app chrome; kiosk pages render full-bleed. */
+/**
+ * Minimal shell — no app chrome. Fills the viewport so the body does not scroll; each kiosk page
+ * owns internal scrolling (e.g. dashboard grid) when content exceeds one screen.
+ */
 export default function KioskLayout({ children }: { children: React.ReactNode }) {
-  return children;
+  return (
+    <div className="flex h-dvh min-h-0 flex-col overflow-hidden bg-ds-bg text-ds-foreground">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">{children}</div>
+    </div>
+  );
 }

@@ -1,10 +1,9 @@
 "use client";
 
-import { Calendar as CalendarIcon, CalendarDays, CalendarRange, LayoutGrid, LayoutList } from "lucide-react";
+import { CalendarDays, CalendarRange, LayoutGrid } from "lucide-react";
 import { cn } from "@/lib/cn";
 
 export type ScheduleTimeScale = "month" | "week" | "day";
-export type ScheduleLayoutMode = "calendar" | "ops-grid";
 export type ScheduleContentFilter = "workers" | "projects" | "combined";
 
 type Props = {
@@ -14,8 +13,6 @@ type Props = {
   compact?: boolean;
   timeScale: ScheduleTimeScale;
   onTimeScaleChange: (v: ScheduleTimeScale) => void;
-  scheduleLayout: ScheduleLayoutMode;
-  onScheduleLayoutChange: (v: ScheduleLayoutMode) => void;
   contentFilter: ScheduleContentFilter;
   onContentFilterChange: (v: ScheduleContentFilter) => void;
   showProjectOverlay: boolean;
@@ -62,16 +59,12 @@ export function ScheduleToolbar({
   compact = false,
   timeScale,
   onTimeScaleChange,
-  scheduleLayout,
-  onScheduleLayoutChange,
   contentFilter,
   onContentFilterChange,
   showProjectOverlay,
   onToggleProjectOverlay,
   disabled,
 }: Props) {
-  const opsGrid = scheduleLayout === "ops-grid";
-
   const navShell =
     "flex flex-wrap rounded-xl border border-pulseShell-border bg-gradient-to-b from-white to-slate-50/90 p-1 shadow-sm dark:from-slate-900 dark:to-slate-950/90";
 
@@ -102,65 +95,17 @@ export function ScheduleToolbar({
             className={cn(navShell, compact && "inline-flex")}
             aria-label="Calendar time scale"
           >
-            <Seg
-              compact={compact}
-              active={timeScale === "month" && !opsGrid}
-              disabled={opsGrid}
-              title={opsGrid ? "Switch to Calendar layout to use month view" : undefined}
-              onClick={() => {
-                onScheduleLayoutChange("calendar");
-                onTimeScaleChange("month");
-              }}
-            >
+            <Seg compact={compact} active={timeScale === "month"} onClick={() => onTimeScaleChange("month")}>
               <LayoutGrid className={cn("opacity-90", compact ? "h-3.5 w-3.5" : "h-4 w-4")} />
               Month
             </Seg>
-            <Seg
-              compact={compact}
-              active={(timeScale === "week" && !opsGrid) || opsGrid}
-              onClick={() => {
-                onScheduleLayoutChange("calendar");
-                onTimeScaleChange("week");
-              }}
-            >
+            <Seg compact={compact} active={timeScale === "week"} onClick={() => onTimeScaleChange("week")}>
               <CalendarRange className={cn("opacity-90", compact ? "h-3.5 w-3.5" : "h-4 w-4")} />
               Week
             </Seg>
-            <Seg
-              compact={compact}
-              active={timeScale === "day" && !opsGrid}
-              disabled={opsGrid}
-              title={opsGrid ? "Switch to Calendar layout to use day view" : undefined}
-              onClick={() => {
-                onScheduleLayoutChange("calendar");
-                onTimeScaleChange("day");
-              }}
-            >
+            <Seg compact={compact} active={timeScale === "day"} onClick={() => onTimeScaleChange("day")}>
               <CalendarDays className={cn("opacity-90", compact ? "h-3.5 w-3.5" : "h-4 w-4")} />
               Day
-            </Seg>
-          </nav>
-        </div>
-
-        <div className={cn(!compact && "space-y-2")}>
-          {!compact ? (
-            <p className="text-[11px] font-bold uppercase tracking-wider text-ds-muted">Layout</p>
-          ) : null}
-          <nav className={cn(navShell, compact && "inline-flex")} aria-label="Schedule layout mode">
-            <Seg compact={compact} active={scheduleLayout === "calendar"} onClick={() => onScheduleLayoutChange("calendar")}>
-              <CalendarIcon className={cn("opacity-90", compact ? "h-3.5 w-3.5" : "h-4 w-4")} />
-              Calendar
-            </Seg>
-            <Seg
-              compact={compact}
-              active={scheduleLayout === "ops-grid"}
-              onClick={() => {
-                onScheduleLayoutChange("ops-grid");
-                onTimeScaleChange("week");
-              }}
-            >
-              <LayoutList className={cn("opacity-90", compact ? "h-3.5 w-3.5" : "h-4 w-4")} />
-              Ops grid
             </Seg>
           </nav>
         </div>

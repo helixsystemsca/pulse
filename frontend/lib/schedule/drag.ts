@@ -103,10 +103,19 @@ export function setPaletteDragData(dt: DataTransfer, payload: PaletteDragPayload
 export function readPaletteDragPayload(dt: DataTransfer): PaletteDragPayload | null {
   try {
     const raw = dt.getData(PALETTE_DRAG_MIME);
-    if (!raw) return null;
-    const o = JSON.parse(raw) as PaletteDragPayload;
-    if ((o.paletteKind === "shift" || o.paletteKind === "badge") && typeof o.code === "string" && o.code.trim()) {
-      return { paletteKind: o.paletteKind, code: o.code.trim() };
+    if (raw) {
+      const o = JSON.parse(raw) as PaletteDragPayload;
+      if ((o.paletteKind === "shift" || o.paletteKind === "badge") && typeof o.code === "string" && o.code.trim()) {
+        return { paletteKind: o.paletteKind, code: o.code.trim() };
+      }
+    }
+    const plain = dt.getData("text/plain");
+    if (plain && /^(shift|badge):/i.test(plain)) {
+      const idx = plain.indexOf(":");
+      const kindRaw = plain.slice(0, idx).toLowerCase();
+      const code = plain.slice(idx + 1).trim();
+      const paletteKind = kindRaw === "badge" ? "badge" : "shift";
+      if (code) return { paletteKind, code };
     }
     return null;
   } catch {
