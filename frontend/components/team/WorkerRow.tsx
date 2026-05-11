@@ -9,7 +9,17 @@ function rolePill(role: string): string {
   const r = (role || "worker").toLowerCase();
   if (r === "supervisor") return "bg-[#2B4C7E]/10 text-[#2B4C7E]";
   if (r === "lead") return "bg-[#36F1CD]/15 text-[#0E7C66]";
+  if (r === "demo_viewer" || r === "demo_profile") return "bg-ds-secondary/80 text-ds-muted";
   return "bg-ds-secondary text-ds-muted";
+}
+
+/** Shown on cards; API still uses `worker` for the operations roster role. */
+function roleLabelForDisplay(role: string): string {
+  const r = (role || "").toLowerCase().trim();
+  if (r === "worker") return "Operations";
+  if (r === "demo_viewer") return "Demo viewer";
+  if (r === "demo_profile") return "Demo profile";
+  return role || "—";
 }
 
 function borderRing(border: string | null | undefined): string {
@@ -58,7 +68,7 @@ export function WorkerRow({
           <div className="flex min-w-0 items-center gap-2">
             <p className="truncate text-sm font-extrabold text-ds-foreground">{worker.fullName}</p>
             <span className={`inline-flex shrink-0 rounded-full px-2 py-0.5 text-[11px] font-bold uppercase ${rolePill(worker.role)}`}>
-              {worker.role}
+              {roleLabelForDisplay(worker.role)}
             </span>
           </div>
           <p className="mt-0.5 truncate text-xs text-ds-muted">

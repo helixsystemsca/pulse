@@ -14,6 +14,13 @@ import { buttonVariants } from "@/styles/button-variants";
 type SortKey = "xp" | "level" | "streak";
 type RoleFilter = "all" | "worker" | "lead" | "supervisor";
 
+/** Demo / sandbox personas — pinned to end of the roster so real operators stay on top. */
+function isDemoProfileRow(w: TeamInsightsWorker): boolean {
+  const primary = (w.role || "").toLowerCase().trim();
+  const roles = (w.roles ?? []).map((r) => r.toLowerCase().trim());
+  return roles.includes("demo_viewer") || primary === "demo_viewer" || roles.includes("demo_profile") || primary === "demo_profile";
+}
+
 function ActivityRow({ row }: { row: TeamInsightsActivity }) {
   return (
     <button
@@ -82,7 +89,9 @@ export function TeamInsightsApp() {
       if (sort === "streak") return (b.streak ?? 0) - (a.streak ?? 0);
       return (b.totalXp ?? 0) - (a.totalXp ?? 0);
     });
-    return sorted;
+    const demoRows = sorted.filter(isDemoProfileRow);
+    const mainRows = sorted.filter((w) => !isDemoProfileRow(w));
+    return [...mainRows, ...demoRows];
   }, [workers, sort, roleFilter]);
 
   const badgeCount = useMemo(() => {
@@ -225,7 +234,7 @@ export function TeamInsightsApp() {
                       roleFilter === k ? "bg-white text-ds-foreground shadow-sm" : "text-ds-muted hover:text-ds-foreground"
                     }`}
                   >
-                    {k === "all" ? "All" : k === "worker" ? "Workers" : k === "lead" ? "Leads" : "Supervisors"}
+                    {k === "all" ? "All" : k === "worker" ? "Operations" : k === "lead" ? "Leads" : "Supervisors"}
                   </button>
                 ))}
               </div>
