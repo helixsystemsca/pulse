@@ -1,7 +1,7 @@
 "use client";
 
 import { Search } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useMemo, useState, type CSSProperties } from "react";
 import type {
   TrainingAcknowledgement,
   TrainingAssignment,
@@ -16,7 +16,10 @@ import { TrainingMatrixCell } from "@/components/training/TrainingMatrixCell";
 import { dataTableHeadRowClass } from "@/components/ui/DataTable";
 import { dsInputClass } from "@/components/ui/ds-form-classes";
 import { cn } from "@/lib/cn";
-import { TrainingCategoryGroupToolbar } from "@/components/training/dashboard/TrainingCategoryGroup";
+
+/** Procedure columns: fixed ~3/4" width so many columns fit without one stretching across the grid. */
+const PROGRAM_COL_STYLE: CSSProperties = { width: "0.75in" };
+const EMPLOYEE_COL_STYLE: CSSProperties = { width: "11rem" };
 
 function verificationDetailTitle(
   a: TrainingAssignment | undefined,
@@ -61,7 +64,6 @@ export function TrainingMatrixCategorizedTable({
   statusColumnFilter?: TrainingAssignmentStatus | "all";
 }) {
   const [kw, setKw] = useState("");
-  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
 
   const groups = useMemo(() => {
     const g = groupProgramsForMatrix(programs);
@@ -75,43 +77,47 @@ export function TrainingMatrixCategorizedTable({
       .filter((gr) => gr.programs.length > 0);
   }, [programs, kw]);
 
-  const visiblePrograms = useMemo(
-    () => groups.flatMap((g) => (collapsed[g.id] ? [] : sortPrograms(g.programs))),
-    [groups, collapsed],
+  const visiblePrograms = useMemo(() => groups.flatMap((g) => sortPrograms(g.programs)), [groups]);
+
+  const tableWidthStyle = useMemo(
+    () =>
+      ({
+        width: `max(100%, calc(11rem + ${visiblePrograms.length} * 0.75in))`,
+      }) as CSSProperties,
+    [visiblePrograms.length],
   );
 
   const stickyEmployeeTh =
-    "sticky left-0 z-20 w-44 min-w-[11rem] max-w-[12rem] shrink-0 bg-white px-2.5 py-2 text-left text-[11px] font-bold uppercase tracking-wide text-slate-500 shadow-[1px_0_0_var(--ds-border)] dark:bg-slate-950 dark:text-slate-400";
+    "sticky left-0 z-20 w-[11rem] min-w-[11rem] max-w-[11rem] shrink-0 overflow-hidden bg-white px-2 py-2 text-left text-[11px] font-bold uppercase tracking-wide text-slate-500 shadow-[1px_0_0_var(--ds-border)] dark:bg-slate-950 dark:text-slate-400";
   const stickyEmployeeCell =
-    "sticky left-0 z-10 w-44 min-w-[11rem] max-w-[12rem] shrink-0 bg-white px-2.5 py-2 text-left font-semibold text-slate-900 shadow-[1px_0_0_var(--ds-border)] dark:bg-slate-950 dark:text-slate-50";
+    "sticky left-0 z-10 w-[11rem] min-w-[11rem] max-w-[11rem] shrink-0 overflow-hidden bg-white px-2 py-2 text-left font-semibold text-slate-900 shadow-[1px_0_0_var(--ds-border)] dark:bg-slate-950 dark:text-slate-50";
   const programHeadClass =
-    "min-w-[5rem] max-w-[9rem] border-l border-slate-100 px-2 py-2 text-left align-bottom dark:border-slate-800";
+    "w-[0.75in] min-w-[0.75in] max-w-[0.75in] overflow-hidden border-l border-slate-100 px-1.5 py-2 text-left align-bottom dark:border-slate-800";
   const programCellClass =
-    "min-w-[5rem] max-w-[9rem] border-l border-slate-50 px-2 py-1.5 align-middle dark:border-slate-800/80";
+    "w-[0.75in] min-w-[0.75in] max-w-[0.75in] overflow-hidden border-l border-slate-50 px-1.5 py-1.5 align-middle dark:border-slate-800/80";
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-        <div className="relative max-w-md flex-1">
-          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" aria-hidden />
-          <input
-            type="search"
-            className={cn(dsInputClass, "pl-9")}
-            placeholder="Search procedures…"
-            value={kw}
-            onChange={(e) => setKw(e.target.value)}
-            aria-label="Search training columns"
-          />
-        </div>
-        <TrainingCategoryGroupToolbar
-          groups={groups}
-          collapsed={collapsed}
-          onToggle={(id) => setCollapsed((c) => ({ ...c, [id]: !c[id] }))}
+      <div className="relative max-w-md">
+        <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" aria-hidden />
+        <input
+          type="search"
+          className={cn(dsInputClass, "pl-9")}
+          placeholder="Search procedures…"
+          value={kw}
+          onChange={(e) => setKw(e.target.value)}
+          aria-label="Search training columns"
         />
       </div>
 
       <div className="ds-premium-panel min-w-0 overflow-x-auto rounded-xl border border-slate-200/90 shadow-sm dark:border-slate-700/80 [-webkit-overflow-scrolling:touch]">
-        <table className="w-max min-w-full border-collapse text-sm">
+        <table className="table-fixed border-collapse text-sm" style={tableWidthStyle}>
+          <colgroup>
+            <col style={EMPLOYEE_COL_STYLE} />
+            {visiblePrograms.map((p) => (
+              <col key={p.id} style={PROGRAM_COL_STYLE} />
+            ))}
+          </colgroup>
           <thead>
             <tr className={dataTableHeadRowClass}>
               <th scope="col" className={stickyEmployeeTh}>
@@ -119,11 +125,11 @@ export function TrainingMatrixCategorizedTable({
               </th>
               {visiblePrograms.map((p) => (
                 <th key={p.id} scope="col" className={programHeadClass}>
-                  <div className="flex min-w-0 flex-col items-start gap-1">
-                    <span className="text-[9px] font-bold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+                  <div className="flex min-w-0 flex-col items-start gap-0.5">
+                    <span className="text-[8px] font-bold uppercase leading-tight tracking-wide text-slate-400 dark:text-slate-500">
                       {GROUP_LABEL[matrixCategoryForProgram(p)]}
                     </span>
-                    <span className="line-clamp-3 text-[11px] font-semibold leading-tight text-slate-900 dark:text-slate-100">
+                    <span className="line-clamp-4 text-[10px] font-semibold leading-tight text-slate-900 dark:text-slate-100">
                       {p.title}
                     </span>
                   </div>
@@ -142,9 +148,16 @@ export function TrainingMatrixCategorizedTable({
               employees.map((e) => (
                 <tr key={e.id} className="border-t border-slate-100 bg-white dark:border-slate-800 dark:bg-slate-950/40">
                   <th scope="row" className={stickyEmployeeCell}>
-                    <div className="flex flex-col gap-0.5">
-                      <span>{e.display_name}</span>
-                      <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400">{e.department}</span>
+                    <div className="flex min-w-0 flex-col gap-0.5">
+                      <span className="truncate" title={e.display_name}>
+                        {e.display_name}
+                      </span>
+                      <span
+                        className="truncate text-[10px] font-medium text-slate-500 dark:text-slate-400"
+                        title={e.department}
+                      >
+                        {e.department}
+                      </span>
                     </div>
                   </th>
                   {visiblePrograms.map((p) => {
