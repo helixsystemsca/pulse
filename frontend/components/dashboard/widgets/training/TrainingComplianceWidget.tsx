@@ -23,6 +23,8 @@ export function TrainingComplianceWidget({
   variant = "peek",
   matrixHref = "/standards/training#training-matrix",
   layoutContext: _layoutContext,
+  /** When true with `variant="dashboard"`, omit outer premium chrome so {@link OpsWidgetShell} provides the frame. */
+  opsEmbedded = false,
 }: {
   training: DashboardViewModel["training"];
   mode?: "xs" | "sm" | "md" | "lg" | "xl";
@@ -30,6 +32,7 @@ export function TrainingComplianceWidget({
   matrixHref?: string;
   /** Reserved for future mode hints; scaling uses grid cell size via ResizeObserver. */
   layoutContext?: WidgetRenderContext | null;
+  opsEmbedded?: boolean;
 }) {
   void _layoutContext;
   const compact = mode === "xs" || mode === "sm";
@@ -134,7 +137,12 @@ export function TrainingComplianceWidget({
 
   if (variant === "dashboard") {
     return (
-      <div className={cn("flex h-full min-h-0 flex-1 flex-col overflow-hidden p-1 sm:p-1.5", premiumShell)}>
+      <div
+        className={cn(
+          "flex h-full min-h-0 flex-1 flex-col overflow-hidden",
+          opsEmbedded ? "p-0" : cn("p-1 sm:p-1.5", premiumShell),
+        )}
+      >
         <ScaledFit designWidthPx={DASHBOARD_DESIGN_COL_W} className="min-h-0 flex-1">
           {dashboardColumn}
         </ScaledFit>

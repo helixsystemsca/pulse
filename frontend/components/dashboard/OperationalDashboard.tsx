@@ -1,47 +1,22 @@
 "use client";
 
-import {
-  AlertCircle,
-  AlertTriangle,
-  Battery,
-  Check,
-  Cloud,
-  Info,
-  MapPin,
-  Monitor,
-  Minus,
-  Package,
-  Palette,
-  Pencil,
-  Plus,
-  Radio,
-  Settings,
-} from "lucide-react";
-import Link from "next/link";
+import { AlertCircle, AlertTriangle, Check, Cloud, Info, Monitor, Pencil, Plus, Radio, Settings } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { GridLayout, useContainerWidth, verticalCompactor, type Layout, type LayoutItem } from "react-grid-layout";
 import { DashboardAddWidgetWizard } from "@/components/dashboard/DashboardAddWidgetWizard";
 import { DashboardCustomPeekWidget } from "@/components/dashboard/DashboardCustomPeekWidget";
-import { Button, ButtonLink } from "@/components/ui/Button";
+import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
-import { XpTasksWidget } from "@/components/gamification/XpTasksWidget";
 import { apiFetch, isApiMode } from "@/lib/api";
 import { useAuthenticatedAssetSrc } from "@/hooks/useAuthenticatedAssetSrc";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
-import { pulseRoutes, pulseTenantNav } from "@/lib/pulse-app";
+import { pulseTenantNav } from "@/lib/pulse-app";
 import { canAccessPulseTenantApis, readSession, type PulseAuthSession } from "@/lib/pulse-session";
 import { canAccessCompanyConfiguration, sessionHasAnyRole } from "@/lib/pulse-roles";
 import { getServerDate, getServerNow } from "@/lib/serverTime";
 import { useResolvedAvatarSrc } from "@/lib/useResolvedAvatarSrc";
-import {
-  DASHBOARD_CUSTOM_WIDGETS_STORAGE,
-  DASHBOARD_WIDGET_STYLE_STORAGE,
-  dashboardWidgetChromeStyle,
-  type CustomDashboardWidgetConfig,
-  type DashboardWidgetStyleOverride,
-} from "@/lib/dashboardPageWidgetCatalog";
-import { accentPresetWidgetTint } from "@/lib/dashboardAccentPresets";
+import { DASHBOARD_CUSTOM_WIDGETS_STORAGE, type CustomDashboardWidgetConfig } from "@/lib/dashboardPageWidgetCatalog";
 import { fetchTrainingMatrix, mapApiAssignments, mapApiEmployees, mapApiPrograms } from "@/lib/trainingApi";
 import { computeComplianceRadialSummary } from "@/lib/training/selectors";
 import type { WorkerDayAttendanceMark } from "@/lib/dashboard/worker-day-attendance-store";
@@ -53,13 +28,17 @@ import {
 } from "@/lib/schedule/dashboardScheduleDay";
 import type { PulseShiftApi, PulseWorkerApi } from "@/lib/schedule/pulse-bridge";
 import { DashboardAccentCard, DashboardColumnPanel, KioskRotateFooter } from "@/components/dashboard/DashboardChrome";
-import { DashboardWidgetStyleFields } from "@/components/dashboard/DashboardWidgetStyleFields";
 import { cn } from "@/lib/cn";
-import { DASH, dashboardWidgetShell, type DashboardSurfaceTheme } from "@/styles/dashboardTheme";
+import { DASH } from "@/styles/dashboardTheme";
 import { UI } from "@/styles/ui";
 import { getWidgetMode, type WidgetMode, type WidgetRenderContext } from "@/components/dashboard/widgets/widgetSizing";
-import { AlertsWidget, type AlertsWidgetAlert } from "@/components/dashboard/widgets/alerts/AlertsWidget";
 import { TrainingComplianceWidget } from "@/components/dashboard/widgets/training/TrainingComplianceWidget";
+import { OpsWidgetShell } from "@/components/dashboard/widgets/ops/OpsWidgetShell";
+import { ImportantDatesOpsWidget } from "@/components/dashboard/widgets/ops/ImportantDatesOpsWidget";
+import { NotificationsWorkOrdersOpsWidget } from "@/components/dashboard/widgets/ops/NotificationsWorkOrdersOpsWidget";
+import { LowInventoryOpsWidget } from "@/components/dashboard/widgets/ops/LowInventoryOpsWidget";
+import { Co2MonitoringOpsWidget } from "@/components/dashboard/widgets/ops/Co2MonitoringOpsWidget";
+import { PoolReadingsOpsWidget } from "@/components/dashboard/widgets/ops/PoolReadingsOpsWidget";
 
 import "react-grid-layout/css/styles.css";
 import "react-resizable/css/styles.css";
@@ -152,56 +131,6 @@ const OPS_DASH_HEADER_TOOL =
   "h-10 w-10 min-h-0 rounded-lg !border-2 !border-ds-border bg-transparent !px-0 !py-0 text-ds-foreground shadow-none ring-0 transition-colors hover:!border-[var(--ds-accent)] hover:!bg-[color-mix(in_srgb,var(--ds-accent)_14%,var(--ds-bg))] hover:!text-[var(--ds-accent)] focus-visible:!outline focus-visible:!outline-2 focus-visible:!outline-offset-2 focus-visible:!outline-[var(--ds-accent)] dark:hover:!bg-[color-mix(in_srgb,var(--ds-accent)_20%,transparent)]";
 const OPS_DASH_HEADER_TOOL_ACTIVE =
   "h-10 w-10 min-h-0 rounded-lg !border-0 !bg-[var(--ds-accent)] !px-0 !py-0 !text-white shadow-none ring-0 transition-colors hover:!border-0 hover:!bg-[color-mix(in_srgb,var(--ds-accent)_88%,#0f172a)] hover:!text-white focus-visible:!outline focus-visible:!outline-2 focus-visible:!outline-offset-2 focus-visible:!outline-white/80";
-
-function WorkerDashCard({
-  title,
-  headerRight,
-  children,
-  className = "",
-  styleOverride,
-}: {
-  title: string;
-  headerRight?: ReactNode;
-  children: ReactNode;
-  className?: string;
-  styleOverride?: DashboardWidgetStyleOverride;
-}) {
-  const theme = (styleOverride?.theme ?? "tint") as DashboardSurfaceTheme;
-  const customBg = styleOverride?.backgroundColor?.trim();
-  const presetTint = !customBg ? accentPresetWidgetTint(styleOverride?.accentPreset) : undefined;
-  const widgetTint = customBg || presetTint;
-  const styleVars: React.CSSProperties = {
-    ...(widgetTint ? ({ ["--widget-tint" as string]: widgetTint } as React.CSSProperties) : null),
-    ...(styleOverride?.textColor ? ({ ["--widget-fg" as string]: styleOverride.textColor } as React.CSSProperties) : null),
-    ...(styleOverride?.fontFamily ? ({ fontFamily: styleOverride.fontFamily } as React.CSSProperties) : null),
-  };
-  const chrome = dashboardWidgetChromeStyle(styleOverride);
-  const shell = dashboardWidgetShell(theme);
-  return (
-    <div
-      style={{ ...styleVars, ...chrome }}
-      className={cn(shell, "flex h-full min-h-0 flex-col text-[var(--widget-fg,var(--ds-text-primary))]", className)}
-    >
-      <div className="flex shrink-0 items-center justify-between gap-2 border-b border-[color-mix(in_srgb,var(--widget-fg,var(--ds-text-primary))_12%,transparent)] bg-[color-mix(in_srgb,white_42%,transparent)] px-2.5 py-1.5 backdrop-blur-md dark:bg-[color-mix(in_srgb,var(--ds-surface-primary)_55%,transparent)]">
-        <p
-          className={cn(
-            DASH.sectionLabel,
-            "min-w-0 flex-1 truncate tracking-[0.1em] text-[color-mix(in_srgb,var(--widget-fg,var(--ds-text-primary))_78%,transparent)]",
-          )}
-          title={title}
-        >
-          {title}
-        </p>
-        {headerRight ? (
-          <div className="shrink-0 text-[10px] font-semibold text-[color-mix(in_srgb,var(--widget-fg,var(--ds-text-primary))_58%,transparent)]">
-            {headerRight}
-          </div>
-        ) : null}
-      </div>
-      <div className="min-h-0 flex-1 p-2 sm:p-2.5">{children}</div>
-    </div>
-  );
-}
 
 type AlertItem = {
   severity: "critical" | "warning";
@@ -1181,29 +1110,6 @@ function buildLiveModel(
   };
 }
 
-function TagPill({ tag }: { tag: WorkTag }) {
-  if (tag.kind === "progress") {
-    return (
-      <span className="app-badge-blue shrink-0 border border-blue-200 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide">
-        {tag.label}
-      </span>
-    );
-  }
-  if (tag.kind === "overdue") {
-    return (
-      <span className="app-badge-amber shrink-0 inline-flex items-center gap-1 border border-amber-300 px-2 py-0.5 text-[11px] font-bold">
-        <span className="h-1.5 w-1.5 bg-current opacity-90" />
-        {tag.label}
-      </span>
-    );
-  }
-  return (
-    <span className="app-badge-red shrink-0 self-start border border-red-200 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide">
-      {tag.label}
-    </span>
-  );
-}
-
 function headerInitials(welcomeName: string): string {
   const t = welcomeName.trim();
   if (!t) return "?";
@@ -1314,8 +1220,8 @@ function DashboardBody({
 
   const layoutStorageKey = useMemo(() => {
     const mode = isKiosk ? "kiosk" : "standard";
-    /** v6: 16-column grid + smaller base tile unit (v5 was 8-col). */
-    return `pulse_dashboard_layout_v6_${dashboardContext}_${mode}`;
+    /** v7: facility-style ops widgets + neutral canvas tokens. */
+    return `pulse_dashboard_layout_v7_${dashboardContext}_${mode}`;
   }, [dashboardContext, isKiosk]);
 
   const customWidgetStorageKey = useMemo(() => {
@@ -1335,9 +1241,6 @@ function DashboardBody({
   const [peekWizardMode, setPeekWizardMode] = useState<"create" | "edit">("create");
   const [peekWizardInitial, setPeekWizardInitial] = useState<CustomDashboardWidgetConfig | null>(null);
   const [customConfigs, setCustomConfigs] = useState<Record<string, CustomDashboardWidgetConfig>>({});
-  const [widgetStyles, setWidgetStyles] = useState<Record<string, DashboardWidgetStyleOverride>>({});
-  const [styleEditorOpen, setStyleEditorOpen] = useState(false);
-  const [styleEditorTarget, setStyleEditorTarget] = useState<{ id: string; title: string } | null>(null);
   const [layoutHydrated, setLayoutHydrated] = useState(false);
   const { width, containerRef, mounted } = useContainerWidth({ initialWidth: 1200 });
 
@@ -1459,17 +1362,17 @@ function DashboardBody({
         <div className={`${rowClass} grid grid-cols-1 gap-4 md:grid-cols-3`}>
           <div className="col-span-1">
             <KioskPanel title="Workforce">
-              <div className="max-w-md">{(widgetRegistry as any).workforce.render()}</div>
+              <div className="max-w-md">{(widgetRegistry as Record<string, { render: () => ReactNode }>).workforce.render()}</div>
             </KioskPanel>
           </div>
           <div className="col-span-1">
-            <KioskPanel title="Inventory">
-              <div className="max-w-md">{(widgetRegistry as any).inventory.render()}</div>
+            <KioskPanel title="Low inventory">
+              <div className="max-w-md">{(widgetRegistry as Record<string, { render: () => ReactNode }>).low_inventory.render()}</div>
             </KioskPanel>
           </div>
           <div className="col-span-1">
-            <KioskPanel title="Equipment">
-              <div className="max-w-md">{(widgetRegistry as any).equipment.render()}</div>
+            <KioskPanel title="Pool readings">
+              <div className="max-w-md">{(widgetRegistry as Record<string, { render: () => ReactNode }>).pool_readings.render()}</div>
             </KioskPanel>
           </div>
         </div>
@@ -1565,21 +1468,19 @@ function DashboardBody({
 
         <div className={`${rowClass} grid grid-cols-1 gap-4 md:grid-cols-3`}>
           <div className="min-w-0">
-            <KioskPanel title="Inventory">
-              <div className="max-w-md">{(widgetRegistry as any).inventory.render()}</div>
+            <KioskPanel title="Low inventory">
+              <div className="max-w-md">{(widgetRegistry as Record<string, { render: () => ReactNode }>).low_inventory.render()}</div>
             </KioskPanel>
           </div>
           <div className="min-w-0">
-            <KioskPanel title="Equipment">
-              <div className="max-w-md">{(widgetRegistry as any).equipment.render()}</div>
+            <KioskPanel title="CO₂ monitoring">
+              <div className="max-w-md overflow-x-auto">{(widgetRegistry as Record<string, { render: () => ReactNode }>).co2_monitoring.render()}</div>
             </KioskPanel>
           </div>
           <div className="min-w-0">
-            <KioskPanel title="Top alerts">
-              <div className="max-w-md space-y-3">
-                {kioskAlerts.slice(0, 3).map((a, idx) => (
-                  <KioskAlertCard key={`${a.title}-${idx}`} alert={a} />
-                ))}
+            <KioskPanel title="Notifications & work orders">
+              <div className="max-w-md">
+                {(widgetRegistry as Record<string, { render: () => ReactNode }>).notifications_work_orders.render()}
               </div>
             </KioskPanel>
           </div>
@@ -1589,147 +1490,51 @@ function DashboardBody({
   }
 
   const widgetRegistry = useMemo(() => {
-    const queueRows = kioskWorkQueueRows(model);
-    const snapshotKpis = kioskKpis.slice(0, 4);
-    const onSiteLimited = model.workforce.onSite.slice(0, 5);
+    const workforceCardShell =
+      "flex min-h-0 flex-1 flex-col gap-3 rounded-xl border border-[color-mix(in_srgb,var(--ops-dash-widget-bg,#fff)_65%,var(--ops-dash-border,#cbd5e1))] bg-[var(--ops-dash-widget-bg,#ffffff)] p-3 shadow-sm dark:border-white/[0.07] dark:bg-[color-mix(in_srgb,#0f172a_96%,#1e293b)]";
 
     return {
-      /** Leadership band widgets — live in the main grid so the whole dashboard is one editable canvas. */
-      todays_focus: {
-        title: "Today's focus",
-        accent: "green" as const,
-        render: () => (
-          <div className="min-h-0 flex-1 overflow-auto">
-            <ul className="divide-y divide-ds-border/50">
-              {queueRows.length === 0 ? (
-                <li className="py-2 text-xs text-ds-muted">No queued work items.</li>
-              ) : (
-                queueRows.map((q) => (
-                  <li key={q.key} className="flex items-start justify-between gap-2 py-2">
-                    <span className="min-w-0 truncate text-xs font-semibold leading-snug text-ds-foreground sm:text-sm">
-                      {q.title}
-                    </span>
-                    <span
-                      className={cn(
-                        "shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide",
-                        q.tone === "critical" && "bg-[color-mix(in_srgb,var(--ds-danger)_14%,transparent)] text-ds-danger",
-                        q.tone === "warn" &&
-                          "bg-[color-mix(in_srgb,var(--ds-warning)_16%,transparent)] text-amber-900 dark:text-amber-100",
-                        q.tone === "ok" && "bg-ds-secondary/80 text-ds-muted",
-                      )}
-                    >
-                      {q.status}
-                    </span>
-                  </li>
-                ))
-              )}
-            </ul>
-          </div>
-        ),
-      },
-      leadership_overview: {
-        title: "Operational overview",
+      important_dates: {
+        title: "Important dates",
         accent: "none" as const,
-        render: () => (
-          <div className="min-h-0 flex-1 space-y-3 overflow-auto pr-0.5">
-            <div className="flex flex-wrap gap-1.5">
-              {kioskKpis.map((k) => (
-                <div
-                  key={k.label}
-                  className="flex min-w-[5.5rem] items-baseline gap-1.5 rounded-md bg-ds-secondary/55 px-2 py-1 dark:bg-ds-secondary/40"
-                >
-                  <span className="text-[10px] font-semibold uppercase leading-none text-ds-muted">{k.label}</span>
-                  <span className="text-sm font-bold tabular-nums text-ds-foreground">{k.value}</span>
-                </div>
-              ))}
-            </div>
-            <div className="space-y-1.5">
-              {kioskAlerts.slice(0, 3).map((a, idx) => {
-                const p = alertPriority(a);
-                const strip =
-                  p === "critical"
-                    ? "border-l-[var(--ds-danger)]"
-                    : p === "high"
-                      ? "border-l-ds-warning"
-                      : p === "medium"
-                        ? "border-l-[var(--ds-info)]"
-                        : "border-l-ds-border";
-                return (
-                  <div
-                    key={`${a.title}-${idx}`}
-                    className={cn(
-                      "flex min-w-0 gap-2 rounded-md border border-ds-border/35 py-1.5 pl-2 pr-1.5 text-xs",
-                      strip,
-                      "border-l-[3px]",
-                    )}
-                  >
-                    <span className="min-w-0 truncate font-semibold text-ds-foreground">{a.title}</span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        ),
+        render: () => <ImportantDatesOpsWidget />,
       },
-      team_snapshot: {
-        title: "Team snapshot",
+      notifications_work_orders: {
+        title: "Notifications & work orders",
         accent: "none" as const,
-        render: () => (
-          <div className="min-h-0 flex-1 overflow-auto">
-            <div className="grid grid-cols-2 gap-x-2 gap-y-1.5">
-              {snapshotKpis.map((k) => (
-                <div key={k.label} className="min-w-0">
-                  <p className="text-[10px] font-semibold uppercase leading-tight text-ds-muted">{k.label}</p>
-                  <p className="text-base font-bold tabular-nums leading-none text-ds-foreground">{k.value}</p>
-                </div>
-              ))}
-            </div>
-            <p className={cn(DASH.sectionLabel, "mt-3")}>On site</p>
-            <div className="mt-1.5 flex flex-wrap gap-1.5">
-              {onSiteLimited.length === 0 ? (
-                <p className="text-xs text-ds-muted">No workers on site.</p>
-              ) : (
-                onSiteLimited.map((b) => (
-                  <WorkforceBubbleStack
-                    key={b.id}
-                    bubble={b}
-                    faceClassName={onsiteAvatarClass()}
-                    badges={
-                      <>
-                        {b.badge ? <WorkforceRoleLetterBadge letter={b.badge} /> : null}
-                        {b.attendanceMark ? <WorkforceAttendanceBadge mark={b.attendanceMark} /> : null}
-                        <WorkforceStatusDot color="green" />
-                      </>
-                    }
-                  />
-                ))
-              )}
-            </div>
-          </div>
-        ),
+        render: () => <NotificationsWorkOrdersOpsWidget model={model} workOrdersHref={workOrdersHref} />,
       },
-      alerts: {
-        title: "Active Alerts",
-        accent: "yellow" as const,
-        render: (ctx?: WidgetRenderContext) => <AlertsWidget alerts={model.alerts as AlertsWidgetAlert[]} ctx={ctx} />,
+      training_compliance: {
+        title: "Training compliance",
+        accent: "none" as const,
+        render: (ctx?: WidgetRenderContext) => (
+          <TrainingComplianceWidget
+            training={model.training}
+            variant="dashboard"
+            layoutContext={ctx ?? null}
+            opsEmbedded
+          />
+        ),
       },
       workforce: {
         title: "Workforce",
-        accent: "blue" as const,
+        accent: "none" as const,
         render: () => (
-          <div className="flex min-h-0 flex-1 flex-col gap-3">
+          <div className={cn(workforceCardShell, "min-h-0 overflow-auto")}>
             <div>
-              <p className="text-xs font-semibold text-ds-foreground">Today – {model.workforce.dateLabel}</p>
-              <p className="mt-0.5 text-[11px] leading-snug text-ds-muted">{model.workforce.summaryLine}</p>
+              <p className="text-xs font-semibold text-[color-mix(in_srgb,var(--ds-text-primary)_92%,transparent)]">
+                Today – {model.workforce.dateLabel}
+              </p>
+              <p className="mt-0.5 text-[11px] leading-snug text-[color-mix(in_srgb,var(--ds-text-primary)_58%,transparent)]">
+                {model.workforce.summaryLine}
+              </p>
             </div>
-
-            {/* Disable on-site telemetry preview; show schedule-only buckets. */}
             <div className="space-y-2.5">
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--ds-info)]">On shift</p>
+                <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-[var(--ds-accent)]">On shift</p>
                 <div className="mt-1 flex flex-wrap gap-2">
                   {model.workforce.onShiftNow.length === 0 ? (
-                    <p className="text-xs text-ds-muted">—</p>
+                    <p className="text-xs text-[color-mix(in_srgb,var(--ds-text-primary)_52%,transparent)]">—</p>
                   ) : (
                     model.workforce.onShiftNow.map((b) => (
                       <WorkforceBubbleStack
@@ -1752,251 +1557,40 @@ function DashboardBody({
           </div>
         ),
       },
-      workRequests: {
-        title: "Work Requests",
-        accent: "red" as const,
-        render: () => (
-          <div className="min-h-0 flex-1 space-y-3 overflow-auto pr-0.5">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div className="flex flex-wrap gap-1.5">
-                <div className="flex min-w-[5.5rem] items-baseline gap-1.5 rounded-md bg-ds-secondary/55 px-2 py-1 dark:bg-ds-secondary/40">
-                  <span className="text-[10px] font-semibold uppercase leading-none text-ds-muted">Awaiting</span>
-                  <span className="text-sm font-bold tabular-nums text-ds-foreground">{model.workRequests.awaitingCount}</span>
-                </div>
-                <div className="flex min-w-[5.5rem] items-baseline gap-1.5 rounded-md bg-[color-mix(in_srgb,var(--ds-danger)_10%,transparent)] px-2 py-1">
-                  <span className="text-[10px] font-semibold uppercase leading-none text-ds-danger">Critical</span>
-                  <span className="text-sm font-bold tabular-nums text-ds-foreground">{model.workRequests.critical.length}</span>
-                </div>
-              </div>
-              <Link href={workOrdersHref} className="ds-link text-[11px] font-semibold">
-                Work orders →
-              </Link>
-            </div>
-
-            <div className="space-y-1.5">
-              {model.workRequests.newest ? (
-                <div className="flex min-w-0 items-start justify-between gap-2 rounded-md border border-ds-border/35 py-1.5 pl-2 pr-1 text-xs">
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate font-semibold text-ds-foreground">Newest: {model.workRequests.newest.title}</p>
-                    <p className="mt-0.5 truncate text-[11px] text-ds-muted">{model.workRequests.newest.subtitle}</p>
-                  </div>
-                  <TagPill tag={model.workRequests.newest.tag} />
-                </div>
-              ) : (
-                <p className="text-xs text-ds-muted">No open requests.</p>
-              )}
-
-              {model.workRequests.oldest ? (
-                <div className="flex min-w-0 items-start justify-between gap-2 rounded-md border border-ds-border/35 py-1.5 pl-2 pr-1 text-xs">
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate font-semibold text-ds-foreground">Oldest: {model.workRequests.oldest.title}</p>
-                    <p className="mt-0.5 truncate text-[11px] text-ds-muted">{model.workRequests.oldest.subtitle}</p>
-                  </div>
-                  <TagPill tag={model.workRequests.oldest.tag} />
-                </div>
-              ) : null}
-
-              {model.workRequests.critical.slice(0, 4).map((row) => (
-                <div
-                  key={row.title}
-                  className="flex min-w-0 gap-2 rounded-md border border-ds-border/35 py-1.5 pl-2 pr-1 text-xs border-l-[3px] border-l-ds-danger bg-[color-mix(in_srgb,var(--ds-danger)_6%,transparent)]"
-                >
-                  <AlertTriangle className="h-4 w-4 shrink-0 text-ds-danger" aria-hidden />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate font-semibold text-ds-foreground">{row.title}</p>
-                    <p className="mt-0.5 truncate text-[11px] text-ds-muted">{row.subtitle}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        ),
-      },
-      equipment: {
-        title: "Equipment Update",
+      low_inventory: {
+        title: "Low inventory",
         accent: "none" as const,
-        render: () => (
-          <div className="min-h-0 flex-1 space-y-3 overflow-auto pr-0.5">
-            <div className="flex flex-wrap gap-1.5">
-              {[
-                { label: "Active", value: model.equipment.activeCount, tone: "neutral" as const },
-                { label: "Missing", value: model.equipment.missingCount, tone: "muted" as const },
-                { label: "OOS", value: model.equipment.outOfServiceCount, tone: "danger" as const },
-              ].map((k) => (
-                <div
-                  key={k.label}
-                  className={cn(
-                    "flex min-w-[5.5rem] items-baseline gap-1.5 rounded-md px-2 py-1",
-                    k.tone === "danger"
-                      ? "bg-[color-mix(in_srgb,var(--ds-danger)_10%,transparent)]"
-                      : "bg-ds-secondary/55 dark:bg-ds-secondary/40",
-                  )}
-                >
-                  <span className={cn("text-[10px] font-semibold uppercase leading-none", k.tone === "danger" ? "text-ds-danger" : "text-ds-muted")}>
-                    {k.label}
-                  </span>
-                  <span className="text-sm font-bold tabular-nums text-ds-foreground">{k.value}</span>
-                </div>
-              ))}
-            </div>
-
-            <div className="space-y-1.5">
-              {model.equipment.showZonePrompt && !zonePromptDismissed ? (
-                <div className="flex gap-2 rounded-md border border-ds-border/35 py-1.5 pl-2 pr-1 text-xs border-l-[3px] border-l-ds-warning bg-[color-mix(in_srgb,var(--ds-warning)_8%,transparent)]">
-                  <MapPin className="h-4 w-4 shrink-0 text-ds-warning" aria-hidden />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-xs font-semibold leading-snug text-ds-foreground">
-                      Tools may need zone checks — schedule a cleanup?
-                    </p>
-                    <div className="mt-2 flex flex-wrap gap-1.5">
-                      <ButtonLink
-                        href={pulseTenantNav.find((n) => n.href === "/dashboard/inventory")?.href ?? "/dashboard/inventory"}
-                        className="!min-h-0 !px-2 !py-1 text-[11px]"
-                      >
-                        Review inventory
-                      </ButtonLink>
-                      <Button type="button" variant="secondary" className="!min-h-0 !px-2 !py-1 text-[11px]" onClick={onDismissZonePrompt}>
-                        Dismiss
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              ) : null}
-              {model.equipment.showBatteryNote ? (
-                <div className="flex min-w-0 gap-2 rounded-md border border-ds-border/35 py-1.5 pl-2 pr-1 text-xs">
-                  <Battery className="h-4 w-4 shrink-0 text-ds-muted" aria-hidden />
-                  <p className="min-w-0 text-ds-muted">Confirm beacon batteries and swaps before the next shift.</p>
-                </div>
-              ) : null}
-            </div>
-          </div>
-        ),
+        render: () => <LowInventoryOpsWidget model={model} />,
       },
-      inventory: {
-        title: "Inventory Status",
-        accent: "green" as const,
-        render: () => (
-          <div className="min-h-0 flex-1 space-y-3 overflow-auto pr-0.5">
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0">
-                <p className="text-xs font-semibold text-ds-foreground">Consumables</p>
-                <p className="mt-0.5 text-[11px] text-ds-muted">
-                  {model.inventory.consumablesOk ? "Within target range" : "Needs attention"}
-                </p>
-              </div>
-              <span
-                className={`shrink-0 rounded-md px-2 py-0.5 text-[10px] font-bold uppercase ${
-                  model.inventory.consumablesOk
-                    ? "bg-ds-secondary/80 text-ds-foreground"
-                    : "bg-[color-mix(in_srgb,var(--ds-info)_16%,transparent)] text-[var(--ds-info)]"
-                }`}
-              >
-                {model.inventory.consumablesOk ? "OK" : "Review"}
-              </span>
-            </div>
-
-            {model.inventory.alert ? (
-              <div className="rounded-md border border-ds-border/35 py-1.5 pl-2 pr-1 text-xs border-l-[3px] border-l-ds-warning bg-[color-mix(in_srgb,var(--ds-warning)_8%,transparent)]">
-                <div className="flex items-start gap-2">
-                  <Package className="h-4 w-4 shrink-0 text-ds-warning" aria-hidden />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[11px] font-bold text-ds-foreground">{model.inventory.alert.category}</p>
-                    <p className="mt-0.5 text-[11px] text-ds-muted">{model.inventory.alert.message}</p>
-                    <div className="mt-2 flex flex-wrap gap-1.5">
-                      <ButtonLink
-                        href={pulseTenantNav.find((n) => n.href === "/dashboard/inventory")?.href ?? "/dashboard/inventory"}
-                        variant="secondary"
-                        className="!min-h-0 !px-2 !py-1 text-[11px]"
-                      >
-                        View stock
-                      </ButtonLink>
-                      <ButtonLink
-                        href={pulseTenantNav.find((n) => n.href === "/dashboard/inventory")?.href ?? "/dashboard/inventory"}
-                        className="!min-h-0 !px-2 !py-1 text-[11px]"
-                      >
-                        Order
-                      </ButtonLink>
-                    </div>
-                  </div>
-                  <span className="shrink-0 rounded bg-ds-secondary/80 px-1.5 py-0.5 text-[10px] font-semibold text-ds-muted">
-                    Soon
-                  </span>
-                </div>
-              </div>
-            ) : (
-              <p className="text-xs text-ds-muted">No low-stock alerts.</p>
-            )}
-
-            <div className="space-y-1.5">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-ds-muted">Shopping list</p>
-              {model.inventory.shoppingList.length === 0 ? (
-                <p className="mt-1 text-xs text-ds-muted">Empty.</p>
-              ) : (
-                <ul className="mt-1.5 space-y-1">
-                  {model.inventory.shoppingList.map((item) => (
-                    <li key={item} className="flex items-center gap-2 text-xs text-ds-foreground">
-                      <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-ds-muted" aria-hidden />
-                      <span className="min-w-0 truncate">{item}</span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          </div>
-        ),
-      },
-      xp: {
-        title: "Tasks",
+      co2_monitoring: {
+        title: "CO₂ monitoring",
         accent: "none" as const,
-        // XP is shown in Profile (subtle WoW-style bar); keep tasks here for quick action.
-        render: () => <XpTasksWidget />,
+        render: () => <Co2MonitoringOpsWidget />,
       },
-      training_compliance: {
-        title: "Training compliance",
-        accent: "green" as const,
-        render: (ctx?: WidgetRenderContext) => (
-          <TrainingComplianceWidget training={model.training} variant="dashboard" layoutContext={ctx ?? null} />
-        ),
+      pool_readings: {
+        title: "Pool readings",
+        accent: "none" as const,
+        render: () => <PoolReadingsOpsWidget />,
       },
-      setup: facilitySetupChecklist
-        ? {
-            title: "Setup checklist",
-            accent: "none" as const,
-            render: () => facilitySetupChecklist,
-          }
-        : null,
     } as const;
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- kiosk paths + model cover upstream data.
-  }, [facilitySetupChecklist, kioskAlerts, kioskKpis, model, onDismissZonePrompt, workOrdersHref, zonePromptDismissed]);
+  }, [model, workOrdersHref]);
 
   const allWidgetKeys = useMemo(() => {
     return Object.keys(widgetRegistry).filter((k) => (widgetRegistry as Record<string, unknown>)[k] != null);
   }, [widgetRegistry]);
 
-  const defaultLayout = useMemo((): Layout => {
-    /** 16-column grid (v6): keep the same visual layout by scaling v5 coords by 2. */
-    const leadershipBand: Layout = [
-      { i: "todays_focus", x: 0, y: 0, w: 4, h: 10, minW: 2, minH: 4 },
-      { i: "leadership_overview", x: 4, y: 0, w: 8, h: 10, minW: 4, minH: 4 },
-      { i: "team_snapshot", x: 12, y: 0, w: 4, h: 10, minW: 2, minH: 4 },
-    ];
-    const core: Layout = [
-      { i: "alerts", x: 0, y: 10, w: 16, h: 4, minW: 6, minH: 3 },
-      { i: "workforce", x: 0, y: 14, w: 4, h: 4, minW: 2, minH: 2 },
-      { i: "inventory", x: 4, y: 14, w: 6, h: 4, minW: 2, minH: 2 },
-      { i: "equipment", x: 10, y: 14, w: 6, h: 4, minW: 2, minH: 2 },
-      { i: "workRequests", x: 0, y: 18, w: 16, h: 4, minW: 6, minH: 3 },
-      { i: "xp", x: 0, y: 22, w: 12, h: 4, minW: 6, minH: 3 },
-      { i: "training_compliance", x: 12, y: 22, w: 4, h: 4, minW: 2, minH: 4 },
-    ];
-    if (!widgetRegistry.setup) return [...leadershipBand, ...core];
-    const setupOffset = 4;
-    return [
-      { i: "setup", x: 0, y: 0, w: 16, h: setupOffset, minW: 6, minH: 3 },
-      ...leadershipBand.map((it) => ({ ...it, y: it.y + setupOffset })),
-      ...core.map((it) => ({ ...it, y: it.y + setupOffset })),
-    ];
-  }, [widgetRegistry.setup]);
+  const defaultLayout = useMemo(
+    (): Layout => [
+      { i: "important_dates", x: 0, y: 0, w: 5, h: 12, minW: 3, minH: 6 },
+      { i: "notifications_work_orders", x: 5, y: 0, w: 6, h: 12, minW: 4, minH: 6 },
+      { i: "training_compliance", x: 11, y: 0, w: 5, h: 12, minW: 3, minH: 8 },
+      { i: "workforce", x: 0, y: 12, w: 6, h: 10, minW: 4, minH: 6 },
+      { i: "low_inventory", x: 6, y: 12, w: 5, h: 10, minW: 3, minH: 6 },
+      { i: "co2_monitoring", x: 11, y: 12, w: 5, h: 10, minW: 3, minH: 8 },
+      { i: "pool_readings", x: 0, y: 22, w: 16, h: 10, minW: 6, minH: 6 },
+    ],
+    [],
+  );
 
   const [layout, setLayout] = useState<Layout>(defaultLayout);
   const [isInteracting, setIsInteracting] = useState(false);
@@ -2072,32 +1666,6 @@ function DashboardBody({
       /* ignore */
     }
   }, [customConfigs, customWidgetStorageKey, layoutHydrated]);
-
-  const widgetStyleStorageKey = useMemo(() => {
-    const mode = isKiosk ? "kiosk" : "standard";
-    return `${DASHBOARD_WIDGET_STYLE_STORAGE}_${dashboardContext}_${mode}`;
-  }, [dashboardContext, isKiosk]);
-
-  useEffect(() => {
-    if (!mounted) return;
-    try {
-      const raw = window.localStorage.getItem(widgetStyleStorageKey);
-      if (!raw) return;
-      const parsed = JSON.parse(raw) as Record<string, DashboardWidgetStyleOverride>;
-      if (parsed && typeof parsed === "object") setWidgetStyles(parsed);
-    } catch {
-      /* ignore */
-    }
-  }, [mounted, widgetStyleStorageKey]);
-
-  useEffect(() => {
-    if (!layoutHydrated) return;
-    try {
-      window.localStorage.setItem(widgetStyleStorageKey, JSON.stringify(widgetStyles));
-    } catch {
-      /* ignore */
-    }
-  }, [layoutHydrated, widgetStyles, widgetStyleStorageKey]);
 
   const layoutKeys = useMemo(() => new Set(layout.map((l) => l.i)), [layout]);
   const availableToAdd = useMemo(() => allWidgetKeys.filter((k) => !layoutKeys.has(k)), [allWidgetKeys, layoutKeys]);
@@ -2293,113 +1861,86 @@ function DashboardBody({
     );
   }
 
-  const headerShowWelcome = !hideHeaderWelcome && Boolean(model.welcomeName.trim());
   const headerShowLayoutTools = canEditLayout && !readOnly;
   const headerShowFullscreen = !isKiosk;
 
   return (
-    <div className={cn(DASH.page, "space-y-6")}>
-      <DashboardAccentCard tier="hero">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="min-w-0">
-            <p className={cn(DASH.sectionLabel)}>Operations dashboard</p>
-            <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm font-semibold text-ds-foreground">
-              <span>{dateInBc(now)}</span>
-              <span className="text-ds-muted">•</span>
-              <span className="tabular-nums">{timeInBc(now)}</span>
-              <span className="text-ds-muted">•</span>
-              <span className="inline-flex items-center gap-1.5 text-ds-muted">
-                <Cloud className="h-4 w-4" aria-hidden />
-                {weatherTemp} · {weatherLabel}
-              </span>
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center justify-end gap-2">
-            {headerShowFullscreen || headerShowLayoutTools || headerShowWelcome ? (
-              <div
-                className="inline-flex max-w-full flex-wrap items-center gap-1"
-                role="group"
-                aria-label="Dashboard header actions"
+    <div className={cn(DASH.page, "space-y-3")}>
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[color-mix(in_srgb,var(--ops-dash-border,#cbd5e1)_88%,transparent)] bg-[var(--ops-dash-widget-bg,#ffffff)] px-3 py-2.5 shadow-[0_12px_40px_-28px_rgba(15,23,42,0.2)] dark:border-white/[0.09] dark:bg-[var(--ops-dash-widget-bg,#0f172a)]">
+        <div className="min-w-0">
+          <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[color-mix(in_srgb,var(--ds-text-primary)_48%,transparent)]">
+            Operations
+          </p>
+          <p className="mt-0.5 text-sm font-semibold tabular-nums text-[color-mix(in_srgb,var(--ds-text-primary)_88%,transparent)]">
+            {dateInBc(now)} · {timeInBc(now)}
+          </p>
+        </div>
+        {headerShowFullscreen || headerShowLayoutTools ? (
+          <div className="inline-flex flex-wrap items-center gap-1" role="group" aria-label="Dashboard actions">
+            {headerShowFullscreen ? (
+              <Button
+                type="button"
+                variant="secondary"
+                className={OPS_DASH_HEADER_TOOL}
+                onClick={openKiosk}
+                title="Fullscreen"
+                aria-label="Fullscreen"
               >
-                {headerShowFullscreen ? (
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    className={OPS_DASH_HEADER_TOOL}
-                    onClick={openKiosk}
-                    title="Fullscreen"
-                    aria-label="Fullscreen"
-                  >
-                    <Monitor className="h-4 w-4" aria-hidden />
-                  </Button>
-                ) : null}
-                {headerShowFullscreen && (headerShowLayoutTools || headerShowWelcome) ? (
-                  <span className="mx-0.5 h-6 w-px shrink-0 bg-ds-border" aria-hidden />
-                ) : null}
-                {headerShowLayoutTools ? (
-                  <>
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      onClick={() => {
-                        if (editMode) {
-                          setIsInteracting(false);
-                          setLayout((current) => {
-                            const compacted = stableCompactor.compact(current as Layout, DASHBOARD_GRID_COLS) as Layout;
-                            persistLayout(compacted);
-                            return compacted;
-                          });
-                        }
-                        setEditMode((v) => !v);
-                      }}
-                      title={editMode ? "Done editing layout" : "Edit dashboard layout"}
-                      aria-label={editMode ? "Done editing layout" : "Edit dashboard layout"}
-                      aria-pressed={editMode}
-                      className={cn(OPS_DASH_HEADER_TOOL, editMode && OPS_DASH_HEADER_TOOL_ACTIVE)}
-                    >
-                      {editMode ? (
-                        <Check className="h-[1.125rem] w-[1.125rem] shrink-0" strokeWidth={2.5} aria-hidden />
-                      ) : (
-                        <Pencil className="h-[1.125rem] w-[1.125rem] shrink-0" strokeWidth={2.5} aria-hidden />
-                      )}
-                    </Button>
-                    <span className="mx-0.5 h-6 w-px shrink-0 bg-ds-border" aria-hidden />
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      onClick={() => setShowAddWidget(true)}
-                      title="Add a widget"
-                      aria-label="Add widget"
-                      className={cn(OPS_DASH_HEADER_TOOL, "disabled:pointer-events-none disabled:opacity-40")}
-                    >
-                      <Plus className="h-[1.125rem] w-[1.125rem] shrink-0" strokeWidth={2.5} aria-hidden />
-                    </Button>
-                  </>
-                ) : null}
-                {headerShowLayoutTools && headerShowWelcome ? (
-                  <span className="mx-0.5 h-6 w-px shrink-0 bg-ds-border" aria-hidden />
-                ) : null}
-                {headerShowWelcome ? (
-                  <span className="inline-flex max-w-[min(100%,16rem)] items-center gap-1.5 truncate rounded-full bg-[var(--ds-accent)] px-3.5 py-2 text-sm font-semibold text-white shadow-sm sm:max-w-[20rem]">
-                    <span className="hidden sm:inline">Welcome,</span>
-                    <span className="truncate">{model.welcomeName}</span>
-                  </span>
-                ) : null}
-              </div>
+                <Monitor className="h-4 w-4" aria-hidden />
+              </Button>
+            ) : null}
+            {headerShowFullscreen && headerShowLayoutTools ? <span className="mx-0.5 h-6 w-px shrink-0 bg-ds-border" aria-hidden /> : null}
+            {headerShowLayoutTools ? (
+              <>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => {
+                    if (editMode) {
+                      setIsInteracting(false);
+                      setLayout((current) => {
+                        const compacted = stableCompactor.compact(current as Layout, DASHBOARD_GRID_COLS) as Layout;
+                        persistLayout(compacted);
+                        return compacted;
+                      });
+                    }
+                    setEditMode((v) => !v);
+                  }}
+                  title={editMode ? "Done editing layout" : "Edit dashboard layout"}
+                  aria-label={editMode ? "Done editing layout" : "Edit dashboard layout"}
+                  aria-pressed={editMode}
+                  className={cn(OPS_DASH_HEADER_TOOL, editMode && OPS_DASH_HEADER_TOOL_ACTIVE)}
+                >
+                  {editMode ? (
+                    <Check className="h-[1.125rem] w-[1.125rem] shrink-0" strokeWidth={2.5} aria-hidden />
+                  ) : (
+                    <Pencil className="h-[1.125rem] w-[1.125rem] shrink-0" strokeWidth={2.5} aria-hidden />
+                  )}
+                </Button>
+                <span className="mx-0.5 h-6 w-px shrink-0 bg-ds-border" aria-hidden />
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => setShowAddWidget(true)}
+                  title="Add a widget"
+                  aria-label="Add widget"
+                  className={cn(OPS_DASH_HEADER_TOOL, "disabled:pointer-events-none disabled:opacity-40")}
+                >
+                  <Plus className="h-[1.125rem] w-[1.125rem] shrink-0" strokeWidth={2.5} aria-hidden />
+                </Button>
+              </>
             ) : null}
           </div>
-        </div>
-
-        {model.bannerNote ? (
-          <div className="mt-4 border-t border-ds-border pt-4 text-sm font-semibold text-ds-foreground">{model.bannerNote}</div>
         ) : null}
-      </DashboardAccentCard>
+      </div>
 
-      <DashboardAccentCard tier="board" mutedAccent innerClassName="space-y-0">
-        <div
-          ref={containerRef as any}
-          className={["pulse-dashboard-grid min-w-0", editMode ? "pulse-dashboard-edit" : ""].filter(Boolean).join(" ")}
-        >
+      {model.bannerNote ? (
+        <div className="rounded-xl border border-ds-border bg-[color-mix(in_srgb,var(--ds-text-primary)_4%,transparent)] px-3 py-2 text-sm font-medium text-ds-foreground">
+          {model.bannerNote}
+        </div>
+      ) : null}
+
+      <div ref={containerRef as any} className={cn("pulse-dashboard-grid min-w-0", editMode && "pulse-dashboard-edit")}>
           {mounted ? (
             <GridLayout
               layout={layout}
@@ -2455,12 +1996,11 @@ function DashboardBody({
               }}
             >
               {layout.map((item) => {
-                const styleOverride = widgetStyles[item.i];
                 if (item.i.startsWith("cw_")) {
                   const cfg = customConfigs[item.i];
                   if (!cfg) return <div key={item.i} />;
                   const headerRight = !readOnly ? (
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1">
                       {!editMode ? (
                         <Button
                           type="button"
@@ -2471,31 +2011,13 @@ function DashboardBody({
                             setShowPeekWizard(true);
                           }}
                           className="inline-flex items-center px-2 py-1"
-                          aria-label="Customize peek widget"
-                          title="Customize"
+                          aria-label="Edit peek widget"
+                          title="Edit widget"
                         >
                           <Settings className="h-3.5 w-3.5" aria-hidden />
                         </Button>
                       ) : null}
-                      {!readOnly && editMode ? (
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          onClick={() => {
-                            setStyleEditorTarget({ id: item.i, title: cfg.title });
-                            setStyleEditorOpen(true);
-                          }}
-                          className="inline-flex items-center px-2 py-1"
-                          aria-label="Widget style"
-                          title="Widget style"
-                        >
-                          <Palette className="h-3.5 w-3.5" aria-hidden />
-                        </Button>
-                      ) : null}
-                      {!readOnly && editMode ? (
-                        null
-                      ) : null}
-                      {!readOnly && editMode ? (
+                      {editMode ? (
                         <Button
                           type="button"
                           variant="secondary"
@@ -2506,18 +2028,7 @@ function DashboardBody({
                         >
                           ×
                         </Button>
-                      ) : (
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          onClick={() => removeWidget(item.i)}
-                          className="min-w-8 px-2 py-1 text-xs"
-                          aria-label={`Remove ${cfg.title}`}
-                          title="Remove widget"
-                        >
-                          ×
-                        </Button>
-                      )}
+                      ) : null}
                     </div>
                   ) : null;
                   return (
@@ -2525,132 +2036,62 @@ function DashboardBody({
                       key={item.i}
                       className={["transition-transform", editMode ? "cursor-grab active:cursor-grabbing" : ""].join(" ")}
                     >
-                      <WorkerDashCard title={cfg.title} headerRight={headerRight} className="h-full" styleOverride={styleOverride}>
+                      <OpsWidgetShell title={cfg.title} headerRight={headerRight} className="h-full">
                         <DashboardCustomPeekWidget config={cfg} model={model} mode={buildWidgetContext(item).mode} />
-                      </WorkerDashCard>
+                      </OpsWidgetShell>
                     </div>
                   );
                 }
 
-                const w = (widgetRegistry as Record<string, any>)[item.i] as
+                const w = (widgetRegistry as Record<string, unknown>)[item.i] as
                   | {
                       title: string;
-                      accent: "yellow" | "red" | "blue" | "green" | "none";
+                      accent?: string;
                       render: (ctx?: WidgetRenderContext) => ReactNode;
                     }
                   | null
                   | undefined;
                 if (!w) return <div key={item.i} />;
 
-                const alertsPeek =
-                  item.i === "alerts" ? (
-                    <Link href={pulseRoutes.monitoring} className="ds-link text-xs font-semibold">
-                      View all
-                    </Link>
+                const headerRight =
+                  !readOnly && editMode ? (
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={() => removeWidget(item.i)}
+                      className="min-w-8 px-2 py-1 text-xs"
+                      aria-label={`Remove ${w.title}`}
+                      title="Remove widget"
+                    >
+                      ×
+                    </Button>
                   ) : null;
-
-                const headerRight = (
-                  <div className="flex items-center gap-2">
-                    {alertsPeek}
-                    {!readOnly && editMode ? (
-                      <>
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          onClick={() => {
-                            setStyleEditorTarget({ id: item.i, title: w.title });
-                            setStyleEditorOpen(true);
-                          }}
-                          className="inline-flex items-center px-2 py-1"
-                          aria-label="Widget style"
-                          title="Widget style"
-                        >
-                          <Palette className="h-3.5 w-3.5" aria-hidden />
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          onClick={() => removeWidget(item.i)}
-                          className="min-w-8 px-2 py-1 text-xs"
-                          aria-label={`Remove ${w.title}`}
-                          title="Remove widget"
-                        >
-                          ×
-                        </Button>
-                      </>
-                    ) : null}
-                  </div>
-                );
 
                 return (
                   <div
                     key={item.i}
                     data-guided-tour-anchor={
-                      item.i === "alerts"
+                      item.i === "notifications_work_orders"
                         ? "dashboard-alerts"
                         : item.i === "workforce"
                           ? "dashboard-workforce"
-                          : item.i === "inventory"
+                          : item.i === "low_inventory"
                             ? "dashboard-inventory"
                             : undefined
                     }
-                    className={[
-                      "transition-transform",
-                      editMode ? "cursor-grab active:cursor-grabbing" : "",
-                    ].join(" ")}
+                    className={cn("transition-transform", editMode && "cursor-grab active:cursor-grabbing")}
                   >
-                    <WorkerDashCard
-                      title={w.title}
-                      headerRight={headerRight}
-                      className={["h-full", item.i === "setup" ? "ds-scroll overflow-auto" : ""].join(" ")}
-                      styleOverride={styleOverride}
-                    >
+                    <OpsWidgetShell title={w.title} headerRight={headerRight} className="h-full">
                       {w.render(buildWidgetContext(item))}
-                    </WorkerDashCard>
+                    </OpsWidgetShell>
                   </div>
                 );
               })}
             </GridLayout>
           ) : null}
-        </div>
+      </div>
 
-        {styleEditorOpen && styleEditorTarget ? (
-          <div className="fixed inset-0 z-[160] flex items-center justify-center p-4">
-            <div className="ds-modal-backdrop absolute inset-0" onClick={() => setStyleEditorOpen(false)} aria-hidden />
-            <Card className="relative z-10 max-h-[min(88vh,720px)] w-full max-w-lg overflow-y-auto border border-ds-border shadow-[var(--ds-shadow-diffuse)]">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-base font-semibold text-ds-foreground">Widget style</p>
-                  <p className="mt-1 text-sm font-medium text-ds-muted">{styleEditorTarget.title}</p>
-                </div>
-                <Button type="button" variant="secondary" onClick={() => setStyleEditorOpen(false)} className="h-9 px-3">
-                  Close
-                </Button>
-              </div>
-              <div className="mt-4">
-                <DashboardWidgetStyleFields
-                  value={widgetStyles[styleEditorTarget.id]}
-                  onPatch={(patch) =>
-                    setWidgetStyles((prev) => ({
-                      ...prev,
-                      [styleEditorTarget.id]: { ...(prev[styleEditorTarget.id] ?? {}), ...patch },
-                    }))
-                  }
-                  onReset={() => {
-                    setWidgetStyles((prev) => {
-                      const next = { ...prev };
-                      delete next[styleEditorTarget.id];
-                      return next;
-                    });
-                  }}
-                  onDone={() => setStyleEditorOpen(false)}
-                />
-              </div>
-            </Card>
-          </div>
-        ) : null}
-
-        {showAddWidget ? (
+      {showAddWidget ? (
           <div className="fixed inset-0 z-[140] flex items-center justify-center p-4">
             <div className="ds-modal-backdrop absolute inset-0" onClick={() => setShowAddWidget(false)} aria-hidden />
             <Card className="relative z-10 w-full max-w-md border border-gray-200 shadow-lg">
@@ -2718,19 +2159,18 @@ function DashboardBody({
           </div>
         ) : null}
 
-        {!readOnly ? (
-          <DashboardAddWidgetWizard
-            open={showPeekWizard}
-            mode={peekWizardMode}
-            initialConfig={peekWizardInitial}
-            onClose={() => {
-              setShowPeekWizard(false);
-              setPeekWizardInitial(null);
-            }}
-            onSave={saveCustomPeek}
-          />
-        ) : null}
-      </DashboardAccentCard>
+      {!readOnly ? (
+        <DashboardAddWidgetWizard
+          open={showPeekWizard}
+          mode={peekWizardMode}
+          initialConfig={peekWizardInitial}
+          onClose={() => {
+            setShowPeekWizard(false);
+            setPeekWizardInitial(null);
+          }}
+          onSave={saveCustomPeek}
+        />
+      ) : null}
     </div>
   );
 }

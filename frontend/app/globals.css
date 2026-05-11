@@ -1210,6 +1210,33 @@ html.pulse-welcome-blur [data-pulse-app-shell] {
     backdrop-filter: blur(18px);
   }
 
+  /** Facility-style operations overview only (paired with `.pulse-dashboard-canvas` on `/overview`). */
+  .pulse-dashboard-canvas.pulse-operations-dashboard {
+    --ops-dash-inner-bg: #eef2f6;
+    --ops-dash-widget-bg: #ffffff;
+    --ops-dash-border: #cbd5e1;
+    --ops-dash-border-muted: #94a3b8;
+    background: linear-gradient(180deg, #e8ecf2 0%, #eef2f6 48%, #e9edf3 100%);
+    backdrop-filter: none;
+  }
+  .dark .pulse-dashboard-canvas.pulse-operations-dashboard {
+    --ops-dash-inner-bg: #0a0f18;
+    --ops-dash-widget-bg: #0f172a;
+    --ops-dash-border: #334155;
+    --ops-dash-border-muted: #64748b;
+    background: linear-gradient(180deg, color-mix(in srgb, var(--ds-bg) 94%, #020617) 0%, #020617 100%);
+    backdrop-filter: none;
+  }
+
+  .ops-widget-shell-title {
+    font-size: 0.625rem;
+    font-weight: 700;
+    line-height: 1.15;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: color-mix(in srgb, var(--ds-text-primary) 52%, transparent);
+  }
+
   /**
    * Premium scrollbars (dashboard panels, widget bodies).
    * Use `ds-scroll` on scroll containers.
