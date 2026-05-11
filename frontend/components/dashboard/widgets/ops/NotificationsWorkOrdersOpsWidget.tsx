@@ -1,21 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { AlertTriangle, Bell, ClipboardList } from "lucide-react";
+import { AlertTriangle, ClipboardList } from "lucide-react";
 
 import type { DashboardViewModel } from "@/components/dashboard/OperationalDashboard";
-import { pulseRoutes } from "@/lib/pulse-app";
-import { cn } from "@/lib/cn";
-
-const NO_ALERTS = "No active alerts";
-
-type AlertRow = DashboardViewModel["alerts"][number];
-
-function alertTone(a: AlertRow): "critical" | "warn" | "info" {
-  if (a.severity === "critical") return "critical";
-  if (a.priority === "high") return "warn";
-  return "info";
-}
+import { pulseApp } from "@/lib/pulse-app";
 
 export function NotificationsWorkOrdersOpsWidget({
   model,
@@ -24,64 +13,8 @@ export function NotificationsWorkOrdersOpsWidget({
   model: DashboardViewModel;
   workOrdersHref: string;
 }) {
-  const alerts = model.alerts
-    .filter((a) => a.countsTowardTotals !== false && a.title !== NO_ALERTS)
-    .slice(0, 5);
-
   return (
-    <div className="flex h-full min-h-0 flex-col gap-3">
-      <div className="rounded-xl border border-[color-mix(in_srgb,var(--ops-dash-widget-bg,#fff)_65%,var(--ops-dash-border,#cbd5e1))] bg-[var(--ops-dash-widget-bg,#ffffff)] p-3 shadow-sm dark:border-white/[0.07] dark:bg-[color-mix(in_srgb,#0f172a_96%,#1e293b)]">
-        <div className="mb-2 flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <Bell className="h-3.5 w-3.5 text-[color-mix(in_srgb,var(--ds-text-primary)_48%,transparent)]" aria-hidden />
-            <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-[color-mix(in_srgb,var(--ds-text-primary)_52%,transparent)]">
-              Notifications
-            </p>
-          </div>
-          <Link href={pulseRoutes.monitoring} className="text-[11px] font-semibold text-[var(--ds-accent)] underline-offset-2 hover:underline">
-            Monitoring
-          </Link>
-        </div>
-        {alerts.length === 0 ? (
-          <p className="py-2 text-xs text-[color-mix(in_srgb,var(--ds-text-primary)_52%,transparent)]">You&apos;re all caught up.</p>
-        ) : (
-          <ul className="space-y-2">
-            {alerts.map((a, idx) => {
-              const t = alertTone(a);
-              return (
-                <li
-                  key={`${a.title}-${idx}`}
-                  className={cn(
-                    "rounded-lg border px-2.5 py-2 text-xs",
-                    t === "critical" &&
-                      "border-[color-mix(in_srgb,var(--ds-danger)_35%,transparent)] bg-[color-mix(in_srgb,var(--ds-danger)_10%,transparent)]",
-                    t === "warn" &&
-                      "border-[color-mix(in_srgb,var(--ds-warning)_38%,transparent)] bg-[color-mix(in_srgb,var(--ds-warning)_10%,transparent)]",
-                    t === "info" && "border-[color-mix(in_srgb,var(--ds-text-primary)_12%,transparent)] bg-[color-mix(in_srgb,var(--ds-text-primary)_4%,transparent)]",
-                  )}
-                >
-                  <div className="flex items-start gap-2">
-                    {t === "critical" ? (
-                      <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--ds-danger)]" aria-hidden />
-                    ) : (
-                      <Bell className="mt-0.5 h-3.5 w-3.5 shrink-0 opacity-70" aria-hidden />
-                    )}
-                    <div className="min-w-0">
-                      <p className="font-semibold leading-snug text-[color-mix(in_srgb,var(--ds-text-primary)_94%,transparent)]">{a.title}</p>
-                      {a.subtitle ? (
-                        <p className="mt-0.5 whitespace-pre-line text-[11px] leading-relaxed text-[color-mix(in_srgb,var(--ds-text-primary)_58%,transparent)]">
-                          {a.subtitle}
-                        </p>
-                      ) : null}
-                    </div>
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </div>
-
+    <div className="flex h-full min-h-0 flex-col">
       <div className="min-h-0 flex-1 rounded-xl border border-[color-mix(in_srgb,var(--ops-dash-widget-bg,#fff)_65%,var(--ops-dash-border,#cbd5e1))] bg-[var(--ops-dash-widget-bg,#ffffff)] p-3 shadow-sm dark:border-white/[0.07] dark:bg-[color-mix(in_srgb,#0f172a_96%,#1e293b)]">
         <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
@@ -90,7 +23,10 @@ export function NotificationsWorkOrdersOpsWidget({
               Work orders
             </p>
           </div>
-          <Link href={workOrdersHref} className="text-[11px] font-semibold text-[var(--ds-accent)] underline-offset-2 hover:underline">
+          <Link
+            href={pulseApp.to(workOrdersHref)}
+            className="text-[11px] font-semibold text-[var(--ds-accent)] underline-offset-2 hover:underline"
+          >
             Open queue →
           </Link>
         </div>

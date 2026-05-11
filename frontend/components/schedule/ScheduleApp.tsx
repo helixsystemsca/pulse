@@ -4,6 +4,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { SettingsGear } from "@/components/settings/SettingsGear";
+import { cn } from "@/lib/cn";
 import { apiFetch, isApiMode } from "@/lib/api";
 import { getServerDate } from "@/lib/serverTime";
 import { listProjects, type ProjectRow } from "@/lib/projectsService";
@@ -1310,7 +1311,14 @@ export function ScheduleApp() {
                     />
                   ) : null}
 
-                  <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 md:grid-cols-[minmax(200px,280px)_1fr] md:grid-rows-1 md:items-stretch lg:grid-cols-[minmax(220px,300px)_1fr] lg:gap-3">
+                  <div
+                    className={cn(
+                      "grid min-h-0 flex-1 grid-cols-1 gap-3 md:grid-cols-[minmax(200px,280px)_1fr] md:grid-rows-1 md:items-stretch lg:grid-cols-[minmax(220px,300px)_1fr] lg:gap-3",
+                      // Parent applies `pointer-events-none` during drag to dim accidental clicks; calendar cells must
+                      // still receive dragover/drop (pointer-events inherits, so re-enable on this subtree).
+                      scheduleDragLock && "pointer-events-auto",
+                    )}
+                  >
                     <aside className="flex min-h-0 flex-col gap-1.5 overflow-y-auto lg:min-h-0 lg:max-h-full lg:pr-0.5">
                       <div className="shrink-0">
                         <ScheduleWorkerPanel

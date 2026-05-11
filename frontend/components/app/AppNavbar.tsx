@@ -8,6 +8,9 @@ import Link from "next/link";
 import Image from "next/image";
 import { Bell, ChevronDown, Image as ImageIcon, KeyRound, LogOut, MessageSquare, Settings } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { OperationalNotificationsModal } from "@/components/app/OperationalNotificationsModal";
+import { notificationBadgeCount } from "@/lib/dashboard/operational-notifications";
+import { useOperationalNotificationsStore } from "@/lib/dashboard/operational-notifications-store";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
 import { navigateToPulseLogin, pulseApp, pulsePostLoginPath, pulseRoutes } from "@/lib/pulse-app";
 import { dispatchPulseLogoutSuccessUi, pulseLogoutNavigationDelayMs } from "@/lib/pulse-logout-ui";
@@ -43,11 +46,14 @@ export type AppNavbarProps = {
   messagesCount?: number;
 };
 
-export function AppNavbar({ notificationCount = 0, messagesCount = 0 }: AppNavbarProps) {
+export function AppNavbar({ notificationCount: notificationCountProp = 0, messagesCount = 0 }: AppNavbarProps) {
   const pathname = usePathname();
   const { authed, session } = usePulseAuth();
   const [userOpen, setUserOpen] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
+  const storeNotificationCount = useOperationalNotificationsStore((s) => notificationBadgeCount(s.items));
+  const notificationCount = Math.max(notificationCountProp, storeNotificationCount);
 
   const logoHref =
     authed && session ? pulseApp.to(pulsePostLoginPath(session)) : pulseRoutes.pulseLanding;
@@ -155,15 +161,16 @@ export function AppNavbar({ notificationCount = 0, messagesCount = 0 }: AppNavba
                 </Link>
               ) : null}
 
-              <Link
-                href={pulseApp.to("/monitoring")}
+              <button
+                type="button"
                 className={chromeIconBtn}
-                aria-label={`Notifications${notificationCount > 0 ? `, ${notificationCount} unread` : ""}`}
+                aria-label={`Notifications${notificationCount > 0 ? `, ${notificationCount} active` : ""}`}
                 title="Notifications"
+                onClick={() => setNotificationsOpen(true)}
               >
                 <Bell className="h-[1.125rem] w-[1.125rem]" strokeWidth={1.75} aria-hidden />
                 <IconBadgeCount count={notificationCount} />
-              </Link>
+              </button>
 
               <Link
                 href={pulseApp.to("/dashboard/profile-settings")}
@@ -270,6 +277,7 @@ export function AppNavbar({ notificationCount = 0, messagesCount = 0 }: AppNavba
         </div>
       </div>
       <div className="h-px w-full shrink-0 bg-gradient-to-r from-transparent via-white/12 to-transparent" aria-hidden />
+      <OperationalNotificationsModal open={notificationsOpen} onClose={() => setNotificationsOpen(false)} />
     </nav>
   );
 }

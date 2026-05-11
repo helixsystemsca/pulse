@@ -25,6 +25,8 @@ import {
   mergedScheduleShiftsForCalendarDate,
   shiftIntervalBoundsMs,
 } from "@/lib/schedule/dashboardScheduleDay";
+import { shiftBandForWindow } from "@/lib/schedule/shift-codes";
+import type { Shift } from "@/lib/schedule/types";
 import type { PulseShiftApi, PulseWorkerApi } from "@/lib/schedule/pulse-bridge";
 import { OpsWidgetShell } from "@/components/dashboard/widgets/ops/OpsWidgetShell";
 import { cn } from "@/lib/cn";
@@ -37,11 +39,15 @@ import { NotificationsWorkOrdersOpsWidget } from "@/components/dashboard/widgets
 import { LowInventoryOpsWidget } from "@/components/dashboard/widgets/ops/LowInventoryOpsWidget";
 import { Co2MonitoringOpsWidget } from "@/components/dashboard/widgets/ops/Co2MonitoringOpsWidget";
 import { PoolReadingsOpsWidget } from "@/components/dashboard/widgets/ops/PoolReadingsOpsWidget";
+import {
+  buildOperationalNotificationItems,
+  notificationCountsFromAlerts,
+  type OperationalNotificationItem,
+} from "@/lib/dashboard/operational-notifications";
+import { useOperationalNotificationsStore } from "@/lib/dashboard/operational-notifications-store";
 
 import "react-grid-layout/css/styles.css";
 import "react-resizable/css/styles.css";
-
-type AlertPriority = "critical" | "high" | "medium" | "low";
 
 /** Fixed logical columns — 16-wide grid for 1x1/2x2 sizing and smaller base tiles. */
 const DASHBOARD_GRID_COLS = 16;
@@ -130,16 +136,6 @@ const OPS_DASH_HEADER_TOOL =
 const OPS_DASH_HEADER_TOOL_ACTIVE =
   "h-10 w-10 min-h-0 rounded-lg !border-0 !bg-[var(--ds-accent)] !px-0 !py-0 !text-white shadow-none ring-0 transition-colors hover:!border-0 hover:!bg-[color-mix(in_srgb,var(--ds-accent)_88%,#0f172a)] hover:!text-white focus-visible:!outline focus-visible:!outline-2 focus-visible:!outline-offset-2 focus-visible:!outline-white/80";
 
-type AlertItem = {
-  severity: "critical" | "warning";
-  /** Finer ordering for the Active Alerts card; falls back from `severity` when omitted. */
-  priority?: AlertPriority;
-  title: string;
-  subtitle?: string;
-  /** When false, excluded from welcome / severity totals (padding rows, “all clear”, etc.). */
-  countsTowardTotals?: boolean;
-};
-
 const BC_TZ = "America/Vancouver";
 
 function timeInBc(d: Date): string {
@@ -155,24 +151,6 @@ export type OperationalDashboardReadyPayload = {
   criticalCount: number;
   warningCount: number;
 };
-
-function alertCountsFromAlerts(alerts: AlertItem[]): OperationalDashboardReadyPayload {
-  const real = alerts.filter((a) => a.countsTowardTotals !== false);
-  return {
-    criticalCount: real.filter((a) => alertPriority(a) === "critical").length,
-    warningCount: real.filter((a) => {
-      const p = alertPriority(a);
-      return p === "high" || p === "medium" || p === "low";
-    }).length,
-  };
-}
-
-function alertPriority(a: AlertItem): AlertPriority {
-  if (a.priority) return a.priority;
-  return a.severity === "critical" ? "critical" : "medium";
-}
-
-const NO_ACTIVE_ALERTS_TITLE = "No active alerts";
 
 type WorkforceBubble = {
   id: string;
@@ -206,6 +184,11 @@ type WorkforceBubble = {
   avatar_url?: string | null;
   /** Sick / DNS mark from schedule UI (local) until attendance telemetry. */
   attendanceMark?: WorkerDayAttendanceMark;
+  /**
+   * Sort key for roster ordering: Day (0) → Afternoon (1) → Night (2) → unknown (3),
+   * derived from today’s shift window(s).
+   */
+  displayBandRank: number;
 };
 
 type WorkTag = { kind: "progress" | "overdue" | "urgent"; label: string };
@@ -215,7 +198,7 @@ export type DashboardViewModel = {
   welcomeName: string;
   /** Short banner when demo or guided telemetry is active for this tenant. */
   bannerNote: string | null;
-  alerts: AlertItem[];
+  alerts: OperationalNotificationItem[];
   workforce: {
     dateLabel: string;
     summaryLine: string;
@@ -329,9 +312,47 @@ function rosterDisplayOrder(b: WorkforceBubble): number {
   return 5;
 }
 
+function shiftCodeBandSortRank(code: ReturnType<typeof shiftBandForWindow>): number {
+  if (code === "D") return 0;
+  if (code === "A") return 1;
+  return 2;
+}
+
+/** Day → Afternoon → Night for dashboard roster, using the same window rules as schedule shift codes. */
+function displayBandRankForWorkerShifts(
+  mineRows: Shift[],
+  apiBoundsById: Map<string, Pick<PulseShiftApi, "starts_at" | "ends_at">>,
+  now: number,
+  active: boolean,
+  nextStart: number | null,
+): number {
+  const paired = mineRows
+    .map((s) => ({ s, iv: shiftIntervalBoundsMs(s, apiBoundsById) }))
+    .filter((x): x is { s: Shift; iv: { startMs: number; endMs: number } } => x.iv != null);
+  if (paired.length === 0) return 3;
+
+  if (active) {
+    const hit = paired.find(({ iv }) => iv.startMs <= now && now < iv.endMs);
+    if (hit) return shiftCodeBandSortRank(shiftBandForWindow(hit.s.startTime, hit.s.endTime));
+  }
+
+  if (nextStart != null && now < nextStart) {
+    const atNext = paired.filter(({ iv }) => iv.startMs === nextStart);
+    const pick = atNext[0] ?? paired.find(({ iv }) => iv.startMs >= now);
+    if (pick) return shiftCodeBandSortRank(shiftBandForWindow(pick.s.startTime, pick.s.endTime));
+  }
+
+  const sorted = [...paired].sort((a, b) => a.iv.startMs - b.iv.startMs || a.iv.endMs - b.iv.endMs);
+  const first = sorted[0]?.s;
+  if (first) return shiftCodeBandSortRank(shiftBandForWindow(first.startTime, first.endTime));
+  return 3;
+}
+
 function sortScheduledTodayRoster(a: WorkforceBubble, b: WorkforceBubble): number {
   const d = rosterDisplayOrder(a) - rosterDisplayOrder(b);
   if (d !== 0) return d;
+  const band = a.displayBandRank - b.displayBandRank;
+  if (band !== 0) return band;
   return sortWorkforceByRoleThenName(a, b);
 }
 
@@ -423,6 +444,14 @@ function workforceStatusLineFromTitle(title: string): string | null {
   return title.slice(i + 3).trim() || null;
 }
 
+function isWorkforceRosterNowGroup(b: WorkforceBubble): boolean {
+  return b.presence.status === "on_site" || b.scheduleBucket === "on_shift_now";
+}
+
+function isWorkforceRosterUpcomingGroup(b: WorkforceBubble): boolean {
+  return b.scheduleBucket === "upcoming_today";
+}
+
 function WorkforceBubbleStack({
   bubble,
   faceClassName,
@@ -500,6 +529,7 @@ function demoModel(): DashboardViewModel {
       scheduleBucket: "on_site",
       badge: "M",
       roleSortRank: 0,
+      displayBandRank: 0,
     },
   ];
   const demoWorkforceOnShift: WorkforceBubble[] = [
@@ -513,6 +543,7 @@ function demoModel(): DashboardViewModel {
       scheduleBucket: "on_shift_now",
       badge: "S",
       roleSortRank: 1,
+      displayBandRank: 1,
     },
   ];
   const demoWorkforceUpcoming: WorkforceBubble[] = [
@@ -526,6 +557,7 @@ function demoModel(): DashboardViewModel {
       scheduleBucket: "upcoming_today",
       badge: "L",
       roleSortRank: 2,
+      displayBandRank: 2,
     },
   ];
   const demoWorkforceOffSite: WorkforceBubble[] = [
@@ -538,6 +570,7 @@ function demoModel(): DashboardViewModel {
       lastEvent: { type: "exit", timestamp: Date.now() - 1000 * 60 * 35 },
       scheduleBucket: "off_site",
       roleSortRank: 3,
+      displayBandRank: 3,
     },
   ];
   const demoScheduledTodayRoster = [
@@ -551,26 +584,40 @@ function demoModel(): DashboardViewModel {
     title: "Operations Dashboard",
     welcomeName: "",
     bannerNote: null,
-    alerts: [
-      {
-        severity: "critical",
-        priority: "critical",
-        title: "Missing Hammer Drill",
-        subtitle: "Last seen: Boiler Room\nZone 3 (Garage)",
-      },
-      {
-        severity: "warning",
-        priority: "high",
-        title: "Zone 3 (Garage) Offline",
-        subtitle: "Status: Planned",
-      },
-      {
-        severity: "warning",
-        priority: "medium",
-        title: "Low Beacon Battery",
-        subtitle: "Zone 2 anchor · swap pack before next shift",
-      },
-    ],
+    alerts: (() => {
+      const t0 = getServerNow();
+      let s = 0;
+      const bump = () => {
+        s += 1;
+        return t0 + s;
+      };
+      return [
+        {
+          id: "demo-missing-hammer",
+          severity: "critical" as const,
+          priority: "critical" as const,
+          title: "Missing Hammer Drill",
+          subtitle: "Last seen: Boiler Room\nZone 3 (Garage)",
+          eventAtMs: bump(),
+        },
+        {
+          id: "demo-zone-offline",
+          severity: "warning" as const,
+          priority: "high" as const,
+          title: "Zone 3 (Garage) Offline",
+          subtitle: "Status: Planned",
+          eventAtMs: bump(),
+        },
+        {
+          id: "demo-beacon-battery",
+          severity: "warning" as const,
+          priority: "medium" as const,
+          title: "Low Beacon Battery",
+          subtitle: "Zone 2 anchor · swap pack before next shift",
+          eventAtMs: bump(),
+        },
+      ];
+    })(),
     workforce: {
       dateLabel: getServerDate().toLocaleDateString("en-US", {
         weekday: "long",
@@ -855,6 +902,7 @@ function buildLiveModel(
 
     const { badge, rank: roleSortRank } = workforceRoleBadgeAndRank(w?.role ?? "worker");
     const displayName = w ? w.full_name?.trim() || w.email.split("@")[0] || w.email : "Unknown assignee";
+    const displayBandRank = displayBandRankForWorkerShifts(mineRows, apiBoundsById, now, active, nextStart);
     return {
       id: wid,
       initials,
@@ -866,6 +914,7 @@ function buildLiveModel(
       badge,
       roleSortRank,
       avatar_url: w?.avatar_url,
+      displayBandRank,
     };
   });
 
@@ -956,44 +1005,13 @@ function buildLiveModel(
   const oos = assets.filter((a) => a.status === "maintenance");
   const activeTools = assets.filter((a) => a.status === "available" || a.status === "assigned");
 
-  const alerts: AlertItem[] = [];
-  for (const t of missingTools.slice(0, 3)) {
-    alerts.push({
-      severity: "critical",
-      priority: "critical",
-      title: `Missing · ${t.name}`,
-      subtitle: `Last known zone: ${zoneName(t.zone_id)}`,
-    });
-  }
-  for (const t of oos.slice(0, 2)) {
-    alerts.push({
-      severity: "warning",
-      priority: "high",
-      title: `Out of service · ${t.name}`,
-      subtitle: `Zone: ${zoneName(t.zone_id)}`,
-    });
-  }
-  for (const row of lowStock.slice(0, 3)) {
-    alerts.push({
-      severity: "warning",
-      priority: "low",
-      title: `Low stock · ${row.name}`,
-      subtitle: `Qty ${row.quantity} at or below threshold (${row.low_stock_threshold} ${"units"})`,
-    });
-  }
-  for (const msg of dashboard.alerts) {
-    if (alerts.length >= 8) break;
-    alerts.push({ severity: "warning", priority: "medium", title: msg });
-  }
-  if (alerts.length === 0) {
-    alerts.push({
-      severity: "warning",
-      priority: "low",
-      title: NO_ACTIVE_ALERTS_TITLE,
-      subtitle: "Operations look clear. New exceptions will surface here.",
-      countsTowardTotals: false,
-    });
-  }
+  const alerts = buildOperationalNotificationItems({
+    dashboard,
+    assets,
+    lowStock,
+    zones,
+    nowMs: now,
+  });
 
   const invAlert =
     lowStock[0] != null
@@ -1142,7 +1160,7 @@ function DashboardBody({
         render: () => <ImportantDatesOpsWidget />,
       },
       notifications_work_orders: {
-        title: "Notifications & work orders",
+        title: "Work orders",
         accent: "none" as const,
         render: () => <NotificationsWorkOrdersOpsWidget model={model} workOrdersHref={workOrdersHref} />,
       },
@@ -1174,13 +1192,17 @@ function DashboardBody({
             <div className="space-y-2.5">
               <div>
                 <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-[var(--ds-accent)]">Scheduled today</p>
-                <div className="mt-1 flex flex-wrap gap-x-3 gap-y-2">
-                  {model.workforce.scheduledTodayRoster.length === 0 ? (
-                    <p className="text-xs text-[color-mix(in_srgb,var(--ds-text-primary)_52%,transparent)]">
-                      No shifts on the roster for today.
-                    </p>
-                  ) : (
-                    model.workforce.scheduledTodayRoster.map((b) => (
+                {model.workforce.scheduledTodayRoster.length === 0 ? (
+                  <p className="mt-1 text-xs text-[color-mix(in_srgb,var(--ds-text-primary)_52%,transparent)]">
+                    No shifts on the roster for today.
+                  </p>
+                ) : (
+                  (() => {
+                    const roster = model.workforce.scheduledTodayRoster;
+                    const nowR = roster.filter(isWorkforceRosterNowGroup);
+                    const upR = roster.filter(isWorkforceRosterUpcomingGroup);
+                    const otherR = roster.filter((b) => !isWorkforceRosterNowGroup(b) && !isWorkforceRosterUpcomingGroup(b));
+                    const bubble = (b: (typeof roster)[number]) => (
                       <WorkforceBubbleStack
                         key={b.id}
                         bubble={b}
@@ -1202,9 +1224,46 @@ function DashboardBody({
                           </>
                         }
                       />
-                    ))
-                  )}
-                </div>
+                    );
+                    return (
+                      <div className="mt-1 flex flex-row flex-wrap items-stretch gap-x-1 gap-y-3">
+                        {nowR.length > 0 ? (
+                          <div className="flex min-w-0 flex-wrap gap-x-3 gap-y-2">{nowR.map(bubble)}</div>
+                        ) : null}
+                        {nowR.length > 0 && (upR.length > 0 || otherR.length > 0) ? (
+                          <>
+                            <div
+                              className="mx-2 hidden min-h-[3.25rem] w-px shrink-0 self-stretch bg-[color-mix(in_srgb,var(--ds-text-primary)_14%,transparent)] dark:bg-white/12 sm:block"
+                              aria-hidden
+                            />
+                            <div
+                              className="basis-full border-t border-[color-mix(in_srgb,var(--ds-text-primary)_12%,transparent)] dark:border-white/10 sm:hidden"
+                              aria-hidden
+                            />
+                          </>
+                        ) : null}
+                        {upR.length > 0 ? (
+                          <div className="flex min-w-0 flex-wrap gap-x-3 gap-y-2">{upR.map(bubble)}</div>
+                        ) : null}
+                        {upR.length > 0 && otherR.length > 0 ? (
+                          <>
+                            <div
+                              className="mx-2 hidden min-h-[3.25rem] w-px shrink-0 self-stretch bg-[color-mix(in_srgb,var(--ds-text-primary)_14%,transparent)] dark:bg-white/12 sm:block"
+                              aria-hidden
+                            />
+                            <div
+                              className="basis-full border-t border-[color-mix(in_srgb,var(--ds-text-primary)_12%,transparent)] dark:border-white/10 sm:hidden"
+                              aria-hidden
+                            />
+                          </>
+                        ) : null}
+                        {otherR.length > 0 ? (
+                          <div className="flex min-w-0 flex-wrap gap-x-3 gap-y-2">{otherR.map(bubble)}</div>
+                        ) : null}
+                      </div>
+                    );
+                  })()
+                )}
               </div>
             </div>
           </div>
@@ -1798,6 +1857,7 @@ export function OperationalDashboard({
         setLoading(false);
         setError(null);
         setLiveModel(null);
+        useOperationalNotificationsStore.getState().clear();
         notifyReady();
         return;
       }
@@ -1809,6 +1869,7 @@ export function OperationalDashboard({
             : "Your account is not linked to an organization. Contact your administrator.",
         );
         setLiveModel(null);
+        useOperationalNotificationsStore.getState().clear();
         notifyReady();
         return;
       }
@@ -1861,8 +1922,9 @@ export function OperationalDashboard({
       );
       const welcome = welcomeFromSession(auth?.email ?? session?.email, auth?.full_name ?? session?.full_name);
       const withWelcome: DashboardViewModel = { ...model, welcomeName: welcome, bannerNote: null };
-      readyPayload = alertCountsFromAlerts(withWelcome.alerts);
+      readyPayload = notificationCountsFromAlerts(withWelcome.alerts);
       setLiveModel(withWelcome);
+      useOperationalNotificationsStore.getState().setItems(withWelcome.alerts);
     } catch (err) {
       const e = err as Error & { status?: number; body?: unknown };
       if (e.status === 403) {
@@ -1873,6 +1935,7 @@ export function OperationalDashboard({
         setError("Could not load dashboard. Check that the API is running and you are signed in.");
       }
       setLiveModel(null);
+      useOperationalNotificationsStore.getState().clear();
     } finally {
       setLoading(false);
       notifyReady(readyPayload);
@@ -1887,7 +1950,7 @@ export function OperationalDashboard({
 
   useEffect(() => {
     if (variant === "demo") {
-      notifyReady(alertCountsFromAlerts(demoModel().alerts));
+      notifyReady(notificationCountsFromAlerts(demoModel().alerts));
     }
   }, [variant, notifyReady]);
 
@@ -1896,6 +1959,11 @@ export function OperationalDashboard({
     const welcome = welcomeFromSession(session?.email, session?.full_name);
     return mergeAttendanceIntoDashboardModel({ ...demoModel(), welcomeName: welcome }, attendanceMarks);
   }, [session?.email, session?.full_name, attendanceMarks]);
+
+  useEffect(() => {
+    if (variant !== "demo") return;
+    useOperationalNotificationsStore.getState().setItems(mergedDemoModel.alerts);
+  }, [variant, mergedDemoModel]);
 
   const mergedLiveModel = useMemo(() => {
     if (!liveModel) return null;
