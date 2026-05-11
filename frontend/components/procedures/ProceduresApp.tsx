@@ -1070,7 +1070,11 @@ export function ProceduresApp() {
                 onChange={(e) => setCreateKeywordsCsv(e.target.value)}
               />
               <p className="mt-1 text-[10px] text-ds-muted">
-                Comma-separated. Used only for lookup and filtering here — not shown on worker procedure steps.
+                Comma-separated. Used only for lookup and filtering here — not shown on worker procedure steps. Add{" "}
+                <span className="font-mono text-ds-foreground">matrix_shift:day</span>,{" "}
+                <span className="font-mono text-ds-foreground">matrix_shift:afternoon</span>, or{" "}
+                <span className="font-mono text-ds-foreground">matrix_shift:night</span> so full-time and regular part-time
+                workers (by roster shift) only see that band on &quot;My training&quot;; omit for all shifts.
               </p>
               <label className="mt-3 block text-xs font-semibold uppercase text-ds-muted" htmlFor={`${formId}-new-priority`}>
                 Training priority (training matrix)
@@ -1230,6 +1234,10 @@ export function ProceduresApp() {
                   value={editKeywordsCsv}
                   onChange={(e) => setEditKeywordsCsv(e.target.value)}
                 />
+                <p className="mt-1 text-[10px] text-ds-muted">
+                  Optional <span className="font-mono text-ds-foreground">matrix_shift:day|afternoon|night</span> limits
+                  this procedure to that roster band for full-time / regular part-time workers on &quot;My training&quot;.
+                </p>
                 <label className="mt-3 flex items-center gap-2 text-sm text-ds-foreground">
                   <input
                     type="checkbox"

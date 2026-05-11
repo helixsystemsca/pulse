@@ -70,6 +70,9 @@ export type WorkerTrainingApiResponse = {
     revision_number: number;
     acknowledged_at: string;
   }>;
+  /** Present when API scopes the bundle (full-time / regular part-time + roster shift). */
+  employment_type?: string | null;
+  matrix_shift_band?: "day" | "afternoon" | "night" | null;
 };
 
 export type ProcedureComplianceApiResponse = {

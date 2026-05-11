@@ -7,6 +7,8 @@ from typing import Literal, Optional
 
 from pydantic import BaseModel, Field
 
+MatrixShiftBandApi = Literal["day", "afternoon", "night"]
+
 TrainingTierApi = Literal["mandatory", "high_risk", "general"]
 
 TrainingAssignmentStatusApi = Literal[
@@ -29,6 +31,14 @@ class TrainingEmployeeOut(BaseModel):
     display_name: str
     department: str = ""
     supervisor_name: Optional[str] = None
+    employment_type: Optional[str] = Field(
+        None,
+        description="From worker profile scheduling (full_time | regular_part_time | part_time).",
+    )
+    matrix_shift_band: Optional[MatrixShiftBandApi] = Field(
+        None,
+        description="Day / afternoon / night inferred from HR.shift for matrix shift-scoped procedures.",
+    )
 
 
 class TrainingProgramOut(BaseModel):
@@ -223,4 +233,12 @@ class WorkerTrainingOut(BaseModel):
     acknowledgement_summary: list[dict] = Field(
         default_factory=list,
         description="Raw acknowledgement rows keyed by revision (optional diagnostics).",
+    )
+    employment_type: Optional[str] = Field(
+        None,
+        description="Scheduling employment type for the worker whose bundle this is.",
+    )
+    matrix_shift_band: Optional[MatrixShiftBandApi] = Field(
+        None,
+        description="Inferred shift band for shift-scoped matrix columns (full-time filter on the client).",
     )

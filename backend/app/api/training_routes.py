@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import date, datetime, timedelta, timezone
-from typing import Annotated, Literal, Optional, cast
+from typing import Annotated, Any, Literal, Optional, cast
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -20,6 +20,7 @@ from app.models.pulse_models import (
     PulseProcedureTrainingAssignment,
     PulseProcedureWorkerCompletion,
     PulseWorkerHR,
+    PulseWorkerProfile,
 )
 from app.modules.pulse import service as pulse_svc
 from app.schemas.maintenance_hub import normalize_procedure_steps
@@ -47,6 +48,11 @@ from app.services.procedure_verification.service import (
     load_attempt_stats_for_pairs,
     load_engagement_map,
     load_signoff_keys,
+)
+from app.services.training_matrix_shift_scope import (
+    employment_type_from_scheduling,
+    matrix_shift_band_from_roster_shift,
+    worker_should_see_procedure_for_shift_scoping,
 )
 
 router = APIRouter(prefix="/training", tags=["training"])
@@ -405,8 +411,32 @@ async def build_worker_training_bundle(db: AsyncSession, cid: str, user_id: str)
     if not u:
         raise HTTPException(status_code=404, detail="User not found")
 
+    hr = await db.get(PulseWorkerHR, user_id)
+    prof_row = await db.execute(
+        select(PulseWorkerProfile).where(
+            PulseWorkerProfile.company_id == cid,
+            PulseWorkerProfile.user_id == user_id,
+        ).limit(1)
+    )
+    prof = prof_row.scalars().first()
+    sched: dict[str, Any] = dict(prof.scheduling or {}) if prof else {}
+    emp = employment_type_from_scheduling(sched)
+    roster_shift: Optional[str] = None
+    if hr and hr.shift and str(hr.shift).strip():
+        roster_shift = str(hr.shift).strip()
+    else:
+        rs = sched.get("shift")
+        if isinstance(rs, str) and rs.strip():
+            roster_shift = rs.strip()
+    worker_band = matrix_shift_band_from_roster_shift(roster_shift)
+
     pq = await db.execute(select(PulseProcedure).where(PulseProcedure.company_id == cid).order_by(PulseProcedure.title))
     procedures = list(pq.scalars().all())
+    procedures = [
+        p
+        for p in procedures
+        if worker_should_see_procedure_for_shift_scoping(emp, worker_band, getattr(p, "search_keywords", None))
+    ]
     proc_ids = [str(p.id) for p in procedures]
 
     cq = await db.execute(
@@ -494,4 +524,10 @@ async def build_worker_training_bundle(db: AsyncSession, cid: str, user_id: str)
             )
 
     await db.commit()
-    return WorkerTrainingOut(programs=programs, assignments=assignments_out, acknowledgement_summary=ack_rows_raw)
+    return WorkerTrainingOut(
+        programs=programs,
+        assignments=assignments_out,
+        acknowledgement_summary=ack_rows_raw,
+        employment_type=emp,
+        matrix_shift_band=worker_band,
+    )
