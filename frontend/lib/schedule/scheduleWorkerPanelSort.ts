@@ -73,19 +73,16 @@ export function compareWorkersInSchedulePanel(a: Worker, b: Worker): number {
   return a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
 }
 
+/**
+ * Pill tones for shift codes (D1, A2, N1, …) — same presets as team management roster
+ * (`WorkersApp` / `globals.css`: `app-badge-sky`, `app-badge-amber-soft`, `app-badge-night`).
+ * Do not pair with an extra `border` class; badges use `ring-1` from those utilities.
+ */
 export function shiftCodeBadgeToneClasses(code: string): string {
   const c = code.trim().toUpperCase();
-  if (c.startsWith("G")) {
-    return "border-violet-200 bg-violet-100 text-violet-950 dark:border-violet-500/35 dark:bg-violet-950/45 dark:text-violet-50";
-  }
-  if (c.startsWith("D")) {
-    return "border-emerald-200 bg-emerald-100 text-emerald-950 dark:border-emerald-500/35 dark:bg-emerald-950/40 dark:text-emerald-50";
-  }
-  if (c.startsWith("A")) {
-    return "border-amber-200/90 bg-amber-50 text-amber-950 dark:border-amber-500/35 dark:bg-amber-950/40 dark:text-amber-50";
-  }
-  if (c.startsWith("N")) {
-    return "border-violet-800/90 bg-violet-900 text-violet-50 dark:border-violet-400/40 dark:bg-violet-950 dark:text-violet-50";
-  }
-  return "border-pulseShell-border bg-pulseShell-elevated text-ds-foreground";
+  if (c.startsWith("G")) return "app-badge-violet";
+  if (c.startsWith("D")) return "app-badge-sky";
+  if (c.startsWith("A")) return "app-badge-amber-soft";
+  if (c.startsWith("N")) return "app-badge-night";
+  return "app-badge-slate";
 }

@@ -13,6 +13,8 @@ import {
 } from "@/lib/schedule/drag";
 import { buildingIndicatorForZone } from "@/lib/schedule/building-indicators";
 import { displayStandardShiftCode } from "@/lib/schedule/shift-definition-catalog";
+import { shiftCodeBadgeToneClasses } from "@/lib/schedule/scheduleWorkerPanelSort";
+import { cn } from "@/lib/cn";
 import { OperationalBadgeStack } from "@/components/schedule/operational/OperationalBadgeStack";
 import { ScheduleShiftCertChips } from "./ScheduleShiftCertChips";
 import type {
@@ -170,6 +172,11 @@ export function ScheduleCompactCellRows({
           ),
         ];
 
+        const displayedShiftCode =
+          s.shiftKind === "workforce" && s.eventType === "work"
+            ? displayStandardShiftCode(s, { fallbackCode: row.code })
+            : (s.shiftCode ?? "");
+
         return (
           <div
             key={row.key}
@@ -238,10 +245,13 @@ export function ScheduleCompactCellRows({
                 <>
                   <div className="flex min-w-0 items-center gap-0.5">
                     {s.shiftCode && s.shiftKind !== "project_task" ? (
-                      <span className="mr-1 inline-flex shrink-0 items-center rounded px-1 py-0 text-[9px] font-bold uppercase tracking-wide bg-ds-accent/15 text-ds-accent">
-                        {s.shiftKind === "workforce" && s.eventType === "work"
-                          ? displayStandardShiftCode(s, { fallbackCode: row.code })
-                          : s.shiftCode}
+                      <span
+                        className={cn(
+                          "mr-1 inline-flex shrink-0 items-center rounded px-1 py-0 text-[9px] font-bold uppercase tracking-wide",
+                          shiftCodeBadgeToneClasses(displayedShiftCode),
+                        )}
+                      >
+                        {displayedShiftCode}
                       </span>
                     ) : null}
                     {canTapAttendance ? (
@@ -300,10 +310,13 @@ export function ScheduleCompactCellRows({
                 <>
                   <div className="flex min-w-0 items-center gap-1">
                     {s.shiftCode && s.shiftKind !== "project_task" ? (
-                      <span className="inline-flex shrink-0 items-center rounded px-1 py-0 text-[9px] font-bold uppercase tracking-wide bg-ds-accent/15 text-ds-accent">
-                        {s.shiftKind === "workforce" && s.eventType === "work"
-                          ? displayStandardShiftCode(s, { fallbackCode: row.code })
-                          : s.shiftCode}
+                      <span
+                        className={cn(
+                          "inline-flex shrink-0 items-center rounded px-1 py-0 text-[9px] font-bold uppercase tracking-wide",
+                          shiftCodeBadgeToneClasses(displayedShiftCode),
+                        )}
+                      >
+                        {displayedShiftCode}
                       </span>
                     ) : null}
                     {canTapAttendance ? (

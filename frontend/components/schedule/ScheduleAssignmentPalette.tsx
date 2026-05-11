@@ -57,7 +57,7 @@ export function ScheduleAssignmentPalette({ disabled, onDragSessionStart, onDrag
               onDragStart={(e) => startDrag(e, "shift", def.code)}
               onDragEnd={onDragSessionEnd}
               className={cn(
-                "cursor-grab select-none rounded border px-1.5 py-0.5 text-[10px] font-extrabold tabular-nums tracking-tight active:cursor-grabbing",
+                "cursor-grab select-none rounded px-1.5 py-0.5 text-[10px] font-extrabold tabular-nums tracking-tight active:cursor-grabbing",
                 shiftCodeBadgeToneClasses(def.code),
               )}
             >

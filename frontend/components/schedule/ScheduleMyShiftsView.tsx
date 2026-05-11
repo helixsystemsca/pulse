@@ -13,6 +13,7 @@ import { apiFetch, isApiMode } from "@/lib/api";
 import { firstOpenSchedulePeriodId } from "@/lib/schedule/period-utils";
 import type { Shift, Worker, ScheduleSettings } from "@/lib/schedule/types";
 import { formatTimeRange } from "@/lib/schedule/time-format";
+import { shiftCodeBadgeToneClasses } from "@/lib/schedule/scheduleWorkerPanelSort";
 
 type PeriodRow = { id: string; start_date: string; end_date: string; status: string };
 
@@ -222,7 +223,9 @@ export function ScheduleMyShiftsView({ shifts, settings, currentUserId }: Props)
           <p className="text-sm font-semibold text-ds-foreground">
             {formatDayLabel(shift.date)}
             {shift.shiftCode ? (
-              <span className="ml-2 rounded bg-ds-accent/10 px-1.5 py-0.5 text-[10px] font-bold text-ds-accent">
+              <span
+                className={`ml-2 rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${shiftCodeBadgeToneClasses(shift.shiftCode)}`}
+              >
                 {shift.shiftCode}
               </span>
             ) : null}

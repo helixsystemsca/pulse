@@ -215,7 +215,7 @@ export function ScheduleWorkerPanel({
                           ) : null}
                           {code ? (
                             <span
-                              className={`shrink-0 rounded border px-1 py-0.5 text-[9px] font-bold tabular-nums tracking-tight ${shiftCodeBadgeToneClasses(code)}`}
+                              className={`shrink-0 rounded px-1 py-0.5 text-[9px] font-bold tabular-nums tracking-tight ${shiftCodeBadgeToneClasses(code)}`}
                             >
                               {code}
                             </span>
