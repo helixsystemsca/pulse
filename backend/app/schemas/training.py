@@ -21,6 +21,8 @@ TrainingAssignmentStatusApi = Literal[
     "quiz_failed",
 ]
 
+MatrixAdminOverrideApi = Literal["force_complete", "force_incomplete"]
+
 
 class TrainingEmployeeOut(BaseModel):
     id: str
@@ -72,6 +74,17 @@ class TrainingAssignmentOut(BaseModel):
     )
     quiz_passed_at: Optional[datetime] = Field(
         None, description="When a perfect-score verification quiz was submitted for current revision."
+    )
+    matrix_admin_override: Optional[MatrixAdminOverrideApi] = Field(
+        None,
+        description="Company-admin matrix display override; null = use computed compliance status.",
+    )
+
+
+class TrainingAssignmentMatrixOverrideIn(BaseModel):
+    matrix_admin_override: Optional[MatrixAdminOverrideApi] = Field(
+        None,
+        description="Set to force_complete / force_incomplete, or null to clear and show computed status.",
     )
 
 

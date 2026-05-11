@@ -7,40 +7,43 @@ import { APP_MODAL_PORTAL_Z_BASE } from "@/components/ui/app-modal-layer";
 import { cn } from "@/lib/cn";
 import { fetchOperationalNotificationsForHeader } from "@/lib/dashboard/fetch-operational-notifications";
 import {
+  operationalNotificationHref,
   partitionNotificationsForModal,
   type OperationalNotificationItem,
   notificationTone,
 } from "@/lib/dashboard/operational-notifications";
 import { useOperationalNotificationsStore } from "@/lib/dashboard/operational-notifications-store";
 import { getServerNow } from "@/lib/serverTime";
-import { pulseApp } from "@/lib/pulse-app";
 
-function NotificationRow({ a }: { a: OperationalNotificationItem }) {
+function NotificationRow({ a, onNavigate }: { a: OperationalNotificationItem; onNavigate: () => void }) {
   const t = notificationTone(a);
+  const href = operationalNotificationHref(a);
+  const shell = cn(
+    "block rounded-lg border px-2.5 py-2 text-xs no-underline transition-colors outline-none ring-offset-2 ring-offset-ds-elevated focus-visible:ring-2 focus-visible:ring-[var(--ds-accent)]",
+    t === "critical" &&
+      "border-[color-mix(in_srgb,var(--ds-danger)_35%,transparent)] bg-[color-mix(in_srgb,var(--ds-danger)_10%,transparent)] hover:bg-[color-mix(in_srgb,var(--ds-danger)_14%,transparent)]",
+    t === "warn" &&
+      "border-[color-mix(in_srgb,var(--ds-warning)_38%,transparent)] bg-[color-mix(in_srgb,var(--ds-warning)_10%,transparent)] hover:bg-[color-mix(in_srgb,var(--ds-warning)_14%,transparent)]",
+    t === "info" &&
+      "border-ds-border/60 bg-ds-secondary/40 hover:bg-ds-secondary/70 dark:hover:bg-ds-secondary/55",
+  );
   return (
-    <li
-      className={cn(
-        "rounded-lg border px-2.5 py-2 text-xs",
-        t === "critical" &&
-          "border-[color-mix(in_srgb,var(--ds-danger)_35%,transparent)] bg-[color-mix(in_srgb,var(--ds-danger)_10%,transparent)]",
-        t === "warn" &&
-          "border-[color-mix(in_srgb,var(--ds-warning)_38%,transparent)] bg-[color-mix(in_srgb,var(--ds-warning)_10%,transparent)]",
-        t === "info" && "border-ds-border/60 bg-ds-secondary/40",
-      )}
-    >
-      <div className="flex items-start gap-2">
-        {t === "critical" ? (
-          <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--ds-danger)]" aria-hidden />
-        ) : (
-          <Bell className="mt-0.5 h-3.5 w-3.5 shrink-0 text-ds-muted" aria-hidden />
-        )}
-        <div className="min-w-0">
-          <p className="font-semibold leading-snug text-ds-foreground">{a.title}</p>
-          {a.subtitle ? (
-            <p className="mt-0.5 whitespace-pre-line text-[11px] leading-relaxed text-ds-muted">{a.subtitle}</p>
-          ) : null}
+    <li>
+      <Link href={href} className={shell} onClick={onNavigate}>
+        <div className="flex items-start gap-2">
+          {t === "critical" ? (
+            <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--ds-danger)]" aria-hidden />
+          ) : (
+            <Bell className="mt-0.5 h-3.5 w-3.5 shrink-0 text-ds-muted" aria-hidden />
+          )}
+          <div className="min-w-0">
+            <p className="font-semibold leading-snug text-ds-foreground">{a.title}</p>
+            {a.subtitle ? (
+              <p className="mt-0.5 whitespace-pre-line text-[11px] leading-relaxed text-ds-muted">{a.subtitle}</p>
+            ) : null}
+          </div>
         </div>
-      </div>
+      </Link>
     </li>
   );
 }
@@ -147,7 +150,7 @@ export function OperationalNotificationsModal({ open, onClose }: Props) {
                   <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-ds-muted">Today</p>
                   <ul className="mt-2 space-y-2">
                     {today.map((a) => (
-                      <NotificationRow key={a.id} a={a} />
+                      <NotificationRow key={a.id} a={a} onNavigate={onClose} />
                     ))}
                   </ul>
                 </section>
@@ -162,7 +165,7 @@ export function OperationalNotificationsModal({ open, onClose }: Props) {
                   </p>
                   <ul className="mt-2 space-y-2">
                     {other.map((a) => (
-                      <NotificationRow key={a.id} a={a} />
+                      <NotificationRow key={a.id} a={a} onNavigate={onClose} />
                     ))}
                   </ul>
                 </section>
@@ -171,14 +174,7 @@ export function OperationalNotificationsModal({ open, onClose }: Props) {
           )}
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-ds-border px-4 py-2.5">
-          <Link
-            href={pulseApp.to("/monitoring")}
-            className="text-[11px] font-semibold text-[var(--ds-accent)] underline-offset-2 hover:underline"
-            onClick={onClose}
-          >
-            Open monitoring
-          </Link>
+        <div className="flex flex-wrap items-center justify-end gap-2 border-t border-ds-border px-4 py-2.5">
           <button
             type="button"
             className="text-[11px] font-semibold text-ds-muted underline-offset-2 hover:text-ds-foreground hover:underline disabled:opacity-50"

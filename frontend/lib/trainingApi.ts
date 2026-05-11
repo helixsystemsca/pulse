@@ -8,6 +8,7 @@
  */
 import { apiFetch } from "@/lib/api";
 import type {
+  MatrixAdminOverride,
   TrainingAcknowledgement,
   TrainingAssignment,
   TrainingAssignmentStatus,
@@ -57,6 +58,7 @@ export type TrainingMatrixApiResponse = {
     verification_last_viewed_at?: string | null;
     verification_total_view_seconds?: number;
     quiz_passed_at?: string | null;
+    matrix_admin_override?: MatrixAdminOverride | null;
   }>;
 };
 
@@ -137,6 +139,10 @@ export function mapApiAssignments(rows: TrainingMatrixApiResponse["assignments"]
     verification_total_view_seconds:
       typeof a.verification_total_view_seconds === "number" ? a.verification_total_view_seconds : 0,
     quiz_passed_at: normalizeApiDateTime(a.quiz_passed_at),
+    matrix_admin_override:
+      a.matrix_admin_override === "force_complete" || a.matrix_admin_override === "force_incomplete"
+        ? a.matrix_admin_override
+        : null,
   }));
 }
 
@@ -187,6 +193,17 @@ export async function postTrainingAssignments(body: TrainingAssignmentCreatePayl
     },
   });
   return mapApiAssignments(raw);
+}
+
+export async function patchTrainingAssignmentMatrixOverride(
+  assignmentId: string,
+  body: { matrix_admin_override: MatrixAdminOverride | null },
+): Promise<TrainingAssignment> {
+  const raw = await apiFetch<TrainingMatrixApiResponse["assignments"][number]>(
+    `/api/v1/training/assignments/${encodeURIComponent(assignmentId)}`,
+    { method: "PATCH", json: body },
+  );
+  return mapApiAssignments([raw])[0]!;
 }
 
 export async function fetchWorkerTraining(workerUserId: string): Promise<WorkerTrainingApiResponse> {

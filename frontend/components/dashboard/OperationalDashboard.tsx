@@ -364,9 +364,17 @@ function offsiteAvatarClass() {
   return `relative flex h-11 w-11 shrink-0 items-center justify-center ${workforceAvatarGoldBase} text-xs md:h-12 md:w-12 md:text-sm`;
 }
 
-function scheduledAvatarClass() {
-  return `relative flex h-11 w-11 shrink-0 items-center justify-center ${workforceAvatarGoldBase} text-xs md:h-12 md:w-12 md:text-sm`;
+/** Fluid face for “Scheduled today”: grows with widget width, caps at ~7rem, shrinks when many columns share the row. */
+function scheduledAvatarFaceClass() {
+  return cn(
+    "relative mx-auto flex aspect-square w-full max-w-[min(100%,8rem)] min-w-0 items-center justify-center",
+    workforceAvatarGoldBase,
+    "text-sm font-semibold leading-none sm:text-base",
+  );
 }
+
+/** Same as {@link scheduledAvatarFaceClass}; some call sites still reference this name. */
+const scheduledAvatarClass = scheduledAvatarFaceClass;
 
 function WorkforceRoleLetterBadge({ letter }: { letter: "M" | "S" | "L" }) {
   return (
@@ -470,7 +478,7 @@ function WorkforceBubbleStack({
   const status = statusLine ? workforceStatusLineFromTitle(bubble.title) : null;
 
   return (
-    <span className="inline-flex flex-col items-center gap-0.5">
+    <span className="flex w-full min-w-0 flex-col items-center gap-0.5">
       <span title={bubble.title} className={faceClassName}>
         <WorkforceBubbleFaceContent
           initials={bubble.initials}
@@ -480,12 +488,12 @@ function WorkforceBubbleStack({
         {badges}
       </span>
       {showNameLabel ? (
-        <span className="max-w-[6.5rem] truncate text-center text-[10px] font-semibold leading-tight text-black dark:text-white">
+        <span className="w-full max-w-full truncate px-0.5 text-center text-[10px] font-semibold leading-tight text-black sm:text-[11px] dark:text-white">
           {bubble.displayName}
         </span>
       ) : null}
       {status ? (
-        <span className="max-w-[7rem] text-center text-[9px] leading-tight text-[color-mix(in_srgb,var(--ds-text-primary)_55%,transparent)]">
+        <span className="w-full max-w-full px-0.5 text-center text-[9px] leading-tight text-[color-mix(in_srgb,var(--ds-text-primary)_55%,transparent)] sm:text-[10px]">
           {status}
         </span>
       ) : null}
@@ -1180,8 +1188,8 @@ function DashboardBody({
         title: "Workforce",
         accent: "none" as const,
         render: () => (
-          <div className={cn(workforceCardShell, "min-h-0 overflow-auto")}>
-            <div>
+          <div className={cn(workforceCardShell, "flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden")}>
+            <div className="shrink-0">
               <p className="text-xs font-semibold text-[color-mix(in_srgb,var(--ds-text-primary)_92%,transparent)]">
                 Today – {model.workforce.dateLabel}
               </p>
@@ -1189,8 +1197,8 @@ function DashboardBody({
                 {model.workforce.summaryLine}
               </p>
             </div>
-            <div className="space-y-2.5">
-              <div>
+            <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-2">
+              <div className="min-h-0 min-w-0 flex-1">
                 <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-[var(--ds-accent)]">Scheduled today</p>
                 {model.workforce.scheduledTodayRoster.length === 0 ? (
                   <p className="mt-1 text-xs text-[color-mix(in_srgb,var(--ds-text-primary)_52%,transparent)]">
@@ -1225,40 +1233,49 @@ function DashboardBody({
                         }
                       />
                     );
+                    const bandGrid = (items: typeof roster) =>
+                      items.length === 0 ? null : (
+                        <div
+                          className="grid min-h-0 min-w-0 w-full flex-1 content-start gap-x-2 gap-y-2"
+                          style={{ gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))` }}
+                        >
+                          {items.map(bubble)}
+                        </div>
+                      );
                     return (
-                      <div className="mt-1 flex flex-row flex-wrap items-stretch gap-x-1 gap-y-3">
+                      <div className="mt-2 flex min-h-0 w-full min-w-0 flex-1 flex-col gap-y-4 overflow-x-auto overflow-y-hidden sm:flex-row sm:flex-nowrap sm:items-stretch sm:gap-x-1 sm:gap-y-0">
                         {nowR.length > 0 ? (
-                          <div className="flex min-w-0 flex-wrap gap-x-3 gap-y-2">{nowR.map(bubble)}</div>
+                          <div className="flex min-h-0 min-w-0 flex-1 flex-col">{bandGrid(nowR)}</div>
                         ) : null}
                         {nowR.length > 0 && (upR.length > 0 || otherR.length > 0) ? (
                           <>
                             <div
-                              className="mx-2 hidden min-h-[3.25rem] w-px shrink-0 self-stretch bg-[color-mix(in_srgb,var(--ds-text-primary)_14%,transparent)] dark:bg-white/12 sm:block"
+                              className="mx-1 hidden min-h-[4rem] w-px shrink-0 self-stretch bg-[color-mix(in_srgb,var(--ds-text-primary)_14%,transparent)] dark:bg-white/12 sm:block"
                               aria-hidden
                             />
                             <div
-                              className="basis-full border-t border-[color-mix(in_srgb,var(--ds-text-primary)_12%,transparent)] dark:border-white/10 sm:hidden"
+                              className="shrink-0 border-t border-[color-mix(in_srgb,var(--ds-text-primary)_12%,transparent)] dark:border-white/10 sm:hidden"
                               aria-hidden
                             />
                           </>
                         ) : null}
                         {upR.length > 0 ? (
-                          <div className="flex min-w-0 flex-wrap gap-x-3 gap-y-2">{upR.map(bubble)}</div>
+                          <div className="flex min-h-0 min-w-0 flex-1 flex-col">{bandGrid(upR)}</div>
                         ) : null}
                         {upR.length > 0 && otherR.length > 0 ? (
                           <>
                             <div
-                              className="mx-2 hidden min-h-[3.25rem] w-px shrink-0 self-stretch bg-[color-mix(in_srgb,var(--ds-text-primary)_14%,transparent)] dark:bg-white/12 sm:block"
+                              className="mx-1 hidden min-h-[4rem] w-px shrink-0 self-stretch bg-[color-mix(in_srgb,var(--ds-text-primary)_14%,transparent)] dark:bg-white/12 sm:block"
                               aria-hidden
                             />
                             <div
-                              className="basis-full border-t border-[color-mix(in_srgb,var(--ds-text-primary)_12%,transparent)] dark:border-white/10 sm:hidden"
+                              className="shrink-0 border-t border-[color-mix(in_srgb,var(--ds-text-primary)_12%,transparent)] dark:border-white/10 sm:hidden"
                               aria-hidden
                             />
                           </>
                         ) : null}
                         {otherR.length > 0 ? (
-                          <div className="flex min-w-0 flex-wrap gap-x-3 gap-y-2">{otherR.map(bubble)}</div>
+                          <div className="flex min-h-0 min-w-0 flex-1 flex-col">{bandGrid(otherR)}</div>
                         ) : null}
                       </div>
                     );
@@ -1707,7 +1724,9 @@ function DashboardBody({
                       title={w.title}
                       headerRight={headerRight}
                       className="h-full"
-                      bodyClassName={item.i === "pool_readings" ? "p-0" : undefined}
+                      bodyClassName={
+                        item.i === "pool_readings" ? "p-0" : item.i === "co2_monitoring" ? "px-2 py-0" : undefined
+                      }
                     >
                       {w.render(buildWidgetContext(item))}
                     </OpsWidgetShell>

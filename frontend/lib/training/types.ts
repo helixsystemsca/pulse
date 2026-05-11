@@ -5,6 +5,9 @@
 
 export type TrainingTier = "mandatory" | "high_risk" | "general";
 
+/** Company-admin matrix display override (stored on assignment row). */
+export type MatrixAdminOverride = "force_complete" | "force_incomplete";
+
 /** Assignment lifecycle + compliance states shown in matrix cells */
 export type TrainingAssignmentStatus =
   | "completed"
@@ -57,6 +60,8 @@ export type TrainingAssignment = {
   verification_total_view_seconds?: number;
   /** When perfect-score knowledge verification was recorded for current revision */
   quiz_passed_at?: string | null;
+  /** When set, matrix shows completed or not-complete regardless of verification pipeline until cleared. */
+  matrix_admin_override?: MatrixAdminOverride | null;
 };
 
 export type TrainingAcknowledgement = {

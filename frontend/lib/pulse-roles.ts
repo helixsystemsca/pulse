@@ -84,6 +84,20 @@ export function trainingTeamMatrixAccess(
   return sessionHasAnyRole(session, ...TRAINING_TEAM_MATRIX_ROLES);
 }
 
+/**
+ * May PATCH training assignment matrix overrides — matches backend `require_company_admin`
+ * (`company_admin` role, facility tenant delegate, or system admin).
+ */
+export function trainingMatrixAdminOverrideAllowed(
+  session: Pick<PulseAuthSession, "role" | "roles" | "is_system_admin" | "facility_tenant_admin"> | null | undefined,
+): boolean {
+  if (!session) return false;
+  if (session.is_system_admin || sessionHasAnyRole(session, "system_admin")) return true;
+  if (sessionHasAnyRole(session, "company_admin")) return true;
+  if (session.facility_tenant_admin) return true;
+  return false;
+}
+
 /** @deprecated Use {@link trainingTeamMatrixAccess} — kept for existing imports. */
 export const trainingStandardsLeadershipAccess = trainingTeamMatrixAccess;
 

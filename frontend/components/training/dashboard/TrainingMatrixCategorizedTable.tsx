@@ -55,6 +55,9 @@ export function TrainingMatrixCategorizedTable({
   acknowledgements,
   trustAssignmentStatus = false,
   statusColumnFilter = "all",
+  matrixAdminCellEditable = false,
+  onMatrixAdminCellCycle,
+  matrixCycleBusyKey,
 }: {
   employees: TrainingEmployee[];
   programs: TrainingProgram[];
@@ -62,6 +65,10 @@ export function TrainingMatrixCategorizedTable({
   acknowledgements: TrainingAcknowledgement[];
   trustAssignmentStatus?: boolean;
   statusColumnFilter?: TrainingAssignmentStatus | "all";
+  /** Company / tenant admin: click a cell to cycle matrix display override (server or local demo). */
+  matrixAdminCellEditable?: boolean;
+  onMatrixAdminCellCycle?: (employeeId: string, programId: string) => void | Promise<void>;
+  matrixCycleBusyKey?: string | null;
 }) {
   const [kw, setKw] = useState("");
 
@@ -168,14 +175,42 @@ export function TrainingMatrixCategorizedTable({
                       trustAssignmentStatus && a
                         ? verificationDetailTitle(a, p.requires_knowledge_verification !== false)
                         : undefined;
+                    const busyKey = `${e.id}:${p.id}`;
+                    const cycleBusy = matrixCycleBusyKey === busyKey;
+                    const override = a?.matrix_admin_override;
+                    const adminTitle =
+                      matrixAdminCellEditable && onMatrixAdminCellCycle
+                        ? [
+                            "Click to cycle display override (company admin).",
+                            override === "force_complete"
+                              ? "Currently: shown as complete."
+                              : override === "force_incomplete"
+                                ? "Currently: shown as not complete."
+                                : "Currently: default (computed) status.",
+                            mgrKvTitle,
+                          ]
+                            .filter(Boolean)
+                            .join(" ")
+                        : mgrKvTitle;
                     return (
                       <td key={p.id} className={programCellClass}>
-                        <div className="flex flex-col gap-1" title={mgrKvTitle}>
+                        <div className="flex flex-col gap-1" title={matrixAdminCellEditable ? undefined : mgrKvTitle}>
                           {statusHidden ? (
                             <span className="text-[11px] font-medium tabular-nums text-slate-300 dark:text-slate-600">—</span>
                           ) : (
                             <>
-                              <TrainingMatrixCell status={eff} tier={p.tier} />
+                              <TrainingMatrixCell
+                                status={eff}
+                                tier={p.tier}
+                                interactive={Boolean(matrixAdminCellEditable && onMatrixAdminCellCycle)}
+                                disabled={cycleBusy}
+                                title={adminTitle}
+                                onClick={
+                                  matrixAdminCellEditable && onMatrixAdminCellCycle
+                                    ? () => void onMatrixAdminCellCycle(e.id, p.id)
+                                    : undefined
+                                }
+                              />
                               {trustAssignmentStatus && a && (a.quiz_attempt_count ?? 0) > 0 ? (
                                 <span className="text-[9px] font-medium tabular-nums text-slate-500">
                                   Checks: {a.quiz_attempt_count}

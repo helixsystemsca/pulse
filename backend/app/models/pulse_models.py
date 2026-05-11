@@ -238,6 +238,7 @@ class PulseProcedureTrainingAssignment(Base):
     expiry_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
     acknowledgement_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     supervisor_signoff: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    matrix_admin_override: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=False
     )

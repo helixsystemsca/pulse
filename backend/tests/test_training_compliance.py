@@ -143,6 +143,89 @@ async def test_training_matrix_forbidden_for_worker(client, seeded_tenant) -> No
 
 
 @pytest.mark.asyncio
+async def test_training_matrix_admin_override_patch(client, seeded_tenant, db_session: AsyncSession) -> None:
+    from app.core.auth.security import create_access_token, hash_password
+    from app.models.domain import User, UserRole
+
+    admin_id = str(uuid.uuid4())
+    suffix = uuid.uuid4().hex[:8]
+    admin = User(
+        id=admin_id,
+        company_id=seeded_tenant.company_id,
+        email=f"cadmin_{suffix}@pytest.test",
+        hashed_password=hash_password(seeded_tenant.password),
+        full_name="Pytest Company Admin",
+        roles=[UserRole.company_admin.value],
+        operational_role="manager",
+        is_active=True,
+        is_system_admin=False,
+    )
+    db_session.add(admin)
+    await db_session.commit()
+
+    admin_headers = auth_headers(
+        create_access_token(
+            subject=admin_id,
+            extra_claims={"company_id": seeded_tenant.company_id, "role": UserRole.company_admin.value},
+        )
+    )
+    mgr_headers = auth_headers(seeded_tenant.manager_token)
+    wid = seeded_tenant.worker_id
+
+    proc = await client.post(
+        "/api/v1/cmms/procedures",
+        headers=mgr_headers,
+        json={"title": "Matrix override drill", "steps": [{"id": "s1", "type": "instruction", "content": "Ok."}]},
+    )
+    assert proc.status_code == 201, proc.text
+    pid = proc.json()["id"]
+
+    await client.patch(
+        f"/api/v1/cmms/procedures/{pid}/compliance",
+        headers=mgr_headers,
+        json={
+            "tier": "mandatory",
+            "due_within_days": 7,
+            "requires_acknowledgement": True,
+            "requires_knowledge_verification": True,
+        },
+    )
+
+    assign = await client.post(
+        "/api/v1/training/assignments",
+        headers=mgr_headers,
+        json={"procedure_id": pid, "employee_user_ids": [wid]},
+    )
+    assert assign.status_code == 200, assign.text
+    aid = assign.json()[0]["id"]
+
+    forbidden = await client.patch(
+        f"/api/v1/training/assignments/{aid}",
+        headers=mgr_headers,
+        json={"matrix_admin_override": "force_complete"},
+    )
+    assert forbidden.status_code == 403, forbidden.text
+
+    ok = await client.patch(
+        f"/api/v1/training/assignments/{aid}",
+        headers=admin_headers,
+        json={"matrix_admin_override": "force_complete"},
+    )
+    assert ok.status_code == 200, ok.text
+    body = ok.json()
+    assert body["status"] == "completed"
+    assert body["matrix_admin_override"] == "force_complete"
+
+    cleared = await client.patch(
+        f"/api/v1/training/assignments/{aid}",
+        headers=admin_headers,
+        json={"matrix_admin_override": None},
+    )
+    assert cleared.status_code == 200, cleared.text
+    assert cleared.json()["matrix_admin_override"] is None
+
+
+@pytest.mark.asyncio
 async def test_acknowledgement_requires_prior_view_when_verification_enabled(client, seeded_tenant) -> None:
     mgr_headers = auth_headers(seeded_tenant.manager_token)
     worker_headers = auth_headers(seeded_tenant.worker_token)

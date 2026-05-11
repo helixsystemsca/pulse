@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
   BarChart3,
@@ -20,13 +20,14 @@ import {
   MOCK_RESOLVED_ASSIGNMENTS,
 } from "@/lib/training/mockData";
 import type {
+  MatrixAdminOverride,
   TrainingAcknowledgement,
   TrainingAssignment,
   TrainingEmployee,
   TrainingProgram,
   TrainingTier,
 } from "@/lib/training/types";
-import { passesMatrixFilters, uniqueDepartments, type TrainingMatrixFilters } from "@/lib/training/selectors";
+import { assignmentFor, passesMatrixFilters, uniqueDepartments, type TrainingMatrixFilters } from "@/lib/training/selectors";
 import {
   buildEmployeeComplianceRows,
   buildEmployeeDrawerLines,
@@ -57,11 +58,12 @@ import {
   type ProcedureComplianceConfigMap,
 } from "@/lib/training/procedureComplianceConfig";
 import { generateDemoAssignmentsForMatrix } from "@/lib/training/generatedAssignments";
+import { nextMatrixAdminOverride } from "@/lib/training/matrixAdminOverride";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { notifyLeadershipMandatoryOverdue } from "@/lib/training/notifications";
 import { listProcedureSignoffs } from "@/lib/procedureSignoffs";
-import { trainingTeamMatrixAccess } from "@/lib/pulse-roles";
+import { trainingMatrixAdminOverrideAllowed, trainingTeamMatrixAccess } from "@/lib/pulse-roles";
 import { formatLabelTitleCase, rolesForTrainingDropdown } from "@/lib/training/trainingRoleDisplay";
 import {
   fetchTrainingMatrix,
@@ -69,6 +71,8 @@ import {
   mapApiEmployees,
   mapApiPrograms,
   patchProcedureCompliance,
+  patchTrainingAssignmentMatrixOverride,
+  postTrainingAssignments,
   trainingProgramsToComplianceMap,
 } from "@/lib/trainingApi";
 import { cn } from "@/lib/cn";
@@ -139,6 +143,14 @@ export function TrainingLeadershipDashboard() {
   const [configSaveErr, setConfigSaveErr] = useState<string | null>(null);
   const [workerMeta, setWorkerMeta] = useState<Record<string, WorkerTrainingMeta>>({});
   const [drawerRow, setDrawerRow] = useState<EmployeeComplianceRowModel | null>(null);
+  const [matrixLocalOverrides, setMatrixLocalOverrides] = useState<Record<string, MatrixAdminOverride>>({});
+  const [matrixCellBusyKey, setMatrixCellBusyKey] = useState<string | null>(null);
+  const [matrixCellErr, setMatrixCellErr] = useState<string | null>(null);
+  const matrixCycleLockRef = useRef(false);
+
+  useEffect(() => {
+    if (matrixBundle) setMatrixLocalOverrides({});
+  }, [matrixBundle]);
 
   useEffect(() => {
     setMatrixFilters((m) => ({
@@ -309,6 +321,94 @@ export function TrainingLeadershipDashboard() {
     }
     return { assignments: MOCK_RESOLVED_ASSIGNMENTS, acknowledgements: MOCK_TRAINING_ACKNOWLEDGEMENTS };
   }, [matrixBundle, employees, employeesLive, procedures, programs]);
+
+  const assignmentsForMatrix = useMemo(() => {
+    if (trustServerStatus) return generated.assignments;
+    if (Object.keys(matrixLocalOverrides).length === 0) return generated.assignments;
+    return generated.assignments.map((a) => {
+      const k = `${a.employee_id}:${a.training_program_id}`;
+      if (!(k in matrixLocalOverrides)) return a;
+      return { ...a, matrix_admin_override: matrixLocalOverrides[k] };
+    });
+  }, [trustServerStatus, generated.assignments, matrixLocalOverrides]);
+
+  const canMatrixAdminEditCells =
+    trainingMatrixAdminOverrideAllowed(readSession()) && (!trustServerStatus || api);
+
+  const handleMatrixAdminCellCycle = useCallback(
+    async (employeeId: string, programId: string) => {
+      if (!canMatrixAdminEditCells) return;
+      if (matrixCycleLockRef.current) return;
+      const key = `${employeeId}:${programId}`;
+      matrixCycleLockRef.current = true;
+      setMatrixCellBusyKey(key);
+      setMatrixCellErr(null);
+      try {
+        if (trustServerStatus) {
+          if (!api) return;
+          const snapshotBefore = matrixBundle?.assignments ?? [];
+          const a = assignmentFor(employeeId, programId, snapshotBefore);
+          let curOv = a?.matrix_admin_override ?? null;
+          let assignId = a?.id;
+
+          if (!a) {
+            const created = await postTrainingAssignments({
+              procedure_id: programId,
+              employee_user_ids: [employeeId],
+              use_compliance_due_window: true,
+            });
+            const newA =
+              created.find((x) => x.employee_id === employeeId && x.training_program_id === programId) ??
+              created[0];
+            if (!newA?.id) return;
+            assignId = newA.id;
+            curOv = null;
+            setMatrixBundle((prev) => {
+              if (!prev) return prev;
+              const rest = prev.assignments.filter(
+                (x) => !(x.employee_id === employeeId && x.training_program_id === programId),
+              );
+              return { ...prev, assignments: [...rest, newA] };
+            });
+          }
+
+          if (!assignId) return;
+          const nextOv = nextMatrixAdminOverride(curOv);
+          const updated = await patchTrainingAssignmentMatrixOverride(assignId, {
+            matrix_admin_override: nextOv,
+          });
+          setMatrixBundle((prev) => {
+            if (!prev) return prev;
+            return {
+              ...prev,
+              assignments: prev.assignments.map((x) => (x.id === updated.id ? updated : x)),
+            };
+          });
+        } else {
+          setMatrixLocalOverrides((prev) => {
+            const k2 = `${employeeId}:${programId}`;
+            const cur =
+              prev[k2] ??
+              assignmentFor(employeeId, programId, generated.assignments)?.matrix_admin_override ??
+              null;
+            const next = nextMatrixAdminOverride(cur);
+            if (next == null) {
+              const n = { ...prev };
+              delete n[k2];
+              return n;
+            }
+            return { ...prev, [k2]: next };
+          });
+        }
+      } catch (me: unknown) {
+        setMatrixCellErr(parseClientApiError(me).message);
+      } finally {
+        matrixCycleLockRef.current = false;
+        setMatrixCellBusyKey(null);
+      }
+    },
+    [api, trustServerStatus, matrixBundle, generated.assignments, canMatrixAdminEditCells],
+  );
 
   const filteredEmployees = useMemo(() => {
     return employees.filter((e) => passesMatrixFilters(e, matrixFilters));
@@ -608,13 +708,24 @@ export function TrainingLeadershipDashboard() {
               </div>
             </div>
           </div>
+          {canMatrixAdminEditCells ? (
+            <p className="text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+              As company admin, click any matrix cell to cycle: default (computed) → shown complete → shown not
+              complete → default. This updates the live roster when the training API is in use; otherwise it adjusts
+              this browser session only.
+            </p>
+          ) : null}
+          {matrixCellErr ? <p className="text-xs font-medium text-rose-600 dark:text-rose-400">{matrixCellErr}</p> : null}
           <TrainingMatrixCategorizedTable
             employees={filteredEmployees}
             programs={matrixPrograms}
-            assignments={generated.assignments}
+            assignments={assignmentsForMatrix}
             acknowledgements={generated.acknowledgements}
             trustAssignmentStatus={trustServerStatus}
             statusColumnFilter={matrixFilters.status}
+            matrixAdminCellEditable={canMatrixAdminEditCells}
+            onMatrixAdminCellCycle={handleMatrixAdminCellCycle}
+            matrixCycleBusyKey={matrixCellBusyKey}
           />
         </section>
       ) : null}

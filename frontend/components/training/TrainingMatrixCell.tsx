@@ -71,23 +71,47 @@ export function TrainingMatrixCell({
   status,
   tier: _tier,
   className,
+  interactive,
+  onClick,
+  disabled,
+  title: titleProp,
 }: {
   status: TrainingAssignmentStatus;
   tier: TrainingTier;
   className?: string;
+  /** When set with `onClick`, renders a focusable control for matrix admin overrides. */
+  interactive?: boolean;
+  onClick?: () => void;
+  disabled?: boolean;
+  title?: string;
 }) {
   const label = STATUS_LABEL[status];
+  const title = titleProp ?? label;
+  const cellClass = cn(
+    "inline-flex h-8 w-full min-w-[2.25rem] items-center justify-center rounded-lg border px-1.5",
+    matrixClasses(status),
+    interactive && !disabled && "cursor-pointer hover:opacity-95 active:scale-[0.98]",
+    disabled && "cursor-wait opacity-70",
+    className,
+  );
+
+  if (interactive && onClick) {
+    return (
+      <button
+        type="button"
+        aria-label={label}
+        title={title}
+        disabled={disabled}
+        onClick={onClick}
+        className={cn(cellClass, "m-0 bg-transparent p-0 text-inherit")}
+      >
+        <MatrixIcon status={status} />
+      </button>
+    );
+  }
 
   return (
-    <span
-      aria-label={label}
-      title={label}
-      className={cn(
-        "inline-flex h-8 w-full min-w-[2.25rem] items-center justify-center rounded-lg border px-1.5",
-        matrixClasses(status),
-        className,
-      )}
-    >
+    <span aria-label={label} title={title} className={cellClass}>
       <MatrixIcon status={status} />
     </span>
   );

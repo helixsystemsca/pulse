@@ -189,3 +189,21 @@ export function notificationTone(
   if (notificationAlertPriority(a) === "high") return "warn";
   return "info";
 }
+
+/**
+ * In-app route for a notification row (header modal → deep link to the area that needs attention).
+ * IDs are assigned in {@link buildOperationalNotificationItems}.
+ */
+export function operationalNotificationHref(a: OperationalNotificationItem): string {
+  const id = a.id;
+  if (id.startsWith("missing-") || id.startsWith("oos-")) {
+    const rest = id.startsWith("missing-") ? id.slice("missing-".length) : id.slice("oos-".length);
+    if (rest) return `/equipment/${encodeURIComponent(rest)}`;
+  }
+  if (id.startsWith("low-stock-")) {
+    return "/dashboard/inventory";
+  }
+  if (id.startsWith("dash-")) return "/overview";
+  if (id === "no-active-alerts") return "/overview";
+  return "/overview";
+}

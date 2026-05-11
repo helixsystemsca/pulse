@@ -95,7 +95,7 @@ export function TankIndicator({ label, value, max, compact = false }: TankIndica
       <p
         className={cn(
           "w-full text-center font-semibold leading-tight text-ds-foreground",
-          compact ? "mt-1 line-clamp-2 min-h-[2rem] text-[10px]" : "mt-2 text-sm",
+          compact ? "mt-0.5 line-clamp-2 text-[10px] leading-snug" : "mt-2 text-sm",
         )}
         title={label}
       >

@@ -526,6 +526,11 @@ export function cellAssignmentStatus(
   acks: TrainingAcknowledgement[],
   opts?: { trustAssignmentStatus?: boolean },
 ): TrainingAssignmentStatus {
+  const ov = assignment?.matrix_admin_override;
+  if (!opts?.trustAssignmentStatus) {
+    if (ov === "force_complete") return "completed";
+    if (ov === "force_incomplete") return "pending";
+  }
   if (opts?.trustAssignmentStatus && assignment && assignment.status !== "not_assigned") {
     return assignment.status;
   }

@@ -11,7 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import array as pg_array
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_db, require_training_matrix_access, require_tenant_user
+from app.api.deps import get_db, require_company_admin, require_training_matrix_access, require_tenant_user
 from app.models.domain import User, UserRole
 from app.models.pulse_models import (
     PulseProcedure,
@@ -24,6 +24,7 @@ from app.modules.pulse import service as pulse_svc
 from app.schemas.maintenance_hub import normalize_procedure_steps
 from app.schemas.training import (
     TrainingAssignmentCreateIn,
+    TrainingAssignmentMatrixOverrideIn,
     TrainingAssignmentOut,
     TrainingEmployeeOut,
     TrainingMatrixOut,
@@ -121,6 +122,14 @@ def _assignment_to_out(
         quiz_attempt_count=att.attempt_count,
         quiz_latest_passed=att.latest_passed,
     )
+    ov = row.matrix_admin_override
+    ov_t: Optional[Literal["force_complete", "force_incomplete"]] = None
+    if ov == "force_complete":
+        ov_t = "force_complete"
+        st = "completed"
+    elif ov == "force_incomplete":
+        ov_t = "force_incomplete"
+        st = "pending"
     return TrainingAssignmentOut(
         id=str(row.id),
         employee_id=str(row.employee_user_id),
@@ -140,6 +149,7 @@ def _assignment_to_out(
         verification_last_viewed_at=eng.last_viewed_at if eng else None,
         verification_total_view_seconds=int(eng.total_view_seconds or 0) if eng else 0,
         quiz_passed_at=eng.quiz_passed_at if eng else None,
+        matrix_admin_override=ov_t,
     )
 
 
@@ -332,6 +342,41 @@ async def create_training_assignments(
         ack = ack_map.get((str(eid), str(proc.id)))
         out.append(_assignment_to_out(row, proc, cs, ack, str(eid), signoff_set, engagement_map, attempt_map))
 
+    await db.commit()
+    return out
+
+
+@router.patch("/assignments/{assignment_id}", response_model=TrainingAssignmentOut)
+async def patch_training_assignment_matrix_override(
+    db: Db,
+    cid: CompanyId,
+    assignment_id: str,
+    body: TrainingAssignmentMatrixOverrideIn,
+    _: Annotated[User, Depends(require_company_admin)],
+) -> TrainingAssignmentOut:
+    row = await db.get(PulseProcedureTrainingAssignment, assignment_id)
+    if row is None or str(row.company_id) != cid:
+        raise HTTPException(status_code=404, detail="Assignment not found")
+
+    proc = await db.get(PulseProcedure, str(row.procedure_id))
+    if proc is None or str(proc.company_id) != cid:
+        raise HTTPException(status_code=404, detail="Procedure not found")
+
+    cs = await db.get(PulseProcedureComplianceSettings, str(proc.id))
+    eid = str(row.employee_user_id)
+    proc_id = str(proc.id)
+
+    row.matrix_admin_override = body.matrix_admin_override
+    row.updated_at = datetime.now(timezone.utc)
+    await db.flush()
+
+    ack_map = await latest_ack_revision_map(db, cid, [eid], [proc_id])
+    revision_by_procedure = {proc_id: int(proc.content_revision or 1)}
+    signoff_set = await load_signoff_keys(db, cid, [eid], [proc_id])
+    engagement_map = await load_engagement_map(db, cid, [eid], [proc_id], revision_by_procedure)
+    attempt_map = await load_attempt_stats_for_pairs(db, cid, [eid], [proc_id], revision_by_procedure)
+    ack = ack_map.get((eid, proc_id))
+    out = _assignment_to_out(row, proc, cs, ack, eid, signoff_set, engagement_map, attempt_map)
     await db.commit()
     return out
 
