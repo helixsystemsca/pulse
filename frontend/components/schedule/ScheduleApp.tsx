@@ -1313,13 +1313,13 @@ export function ScheduleApp() {
 
                   <div
                     className={cn(
-                      "grid min-h-0 flex-1 grid-cols-1 gap-3 md:grid-cols-[minmax(200px,280px)_1fr] md:grid-rows-1 md:items-stretch lg:grid-cols-[minmax(220px,300px)_1fr] lg:gap-3",
+                      "grid min-h-0 flex-1 grid-cols-1 gap-3 overflow-hidden md:grid-cols-[minmax(200px,280px)_1fr] md:grid-rows-1 md:items-stretch lg:grid-cols-[minmax(220px,300px)_1fr] lg:gap-3",
                       // Parent applies `pointer-events-none` during drag to dim accidental clicks; calendar cells must
                       // still receive dragover/drop (pointer-events inherits, so re-enable on this subtree).
                       scheduleDragLock && "pointer-events-auto",
                     )}
                   >
-                    <aside className="flex min-h-0 flex-col gap-1.5 overflow-y-auto lg:min-h-0 lg:max-h-full lg:pr-0.5">
+                    <aside className="flex min-h-0 flex-col gap-1.5 overflow-y-auto overflow-x-hidden overscroll-contain lg:min-h-0 lg:max-h-full lg:pr-0.5">
                       <div className="shrink-0">
                         <ScheduleWorkerPanel
                           workers={workersForPanel}
@@ -1358,7 +1358,7 @@ export function ScheduleApp() {
                     </aside>
 
                     <section className="flex min-h-0 min-w-0 flex-col overflow-hidden">
-                      <div className="min-h-0 flex-1 space-y-2 overflow-x-auto overflow-y-auto">
+                      <div className="min-h-0 flex-1 space-y-2 overflow-x-auto overflow-y-auto overscroll-contain">
                 {timeScale === "day" ? (
                   <div className="space-y-3">
                     <div

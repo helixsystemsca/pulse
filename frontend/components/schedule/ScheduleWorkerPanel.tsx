@@ -140,7 +140,7 @@ export function ScheduleWorkerPanel({
           </div>
         </div>
       </div>
-      <div className="max-h-[min(52vh,28rem)] space-y-1 overflow-y-auto px-1.5 py-1.5">
+      <div className="space-y-1 px-1.5 py-1.5">
         {BAND_SECTION_ORDER.map((band) => {
           const list = workersByBand[band] ?? [];
           if (list.length === 0) return null;

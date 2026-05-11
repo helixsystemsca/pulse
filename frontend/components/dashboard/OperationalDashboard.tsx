@@ -364,12 +364,12 @@ function offsiteAvatarClass() {
   return `relative flex h-11 w-11 shrink-0 items-center justify-center ${workforceAvatarGoldBase} text-xs md:h-12 md:w-12 md:text-sm`;
 }
 
-/** Fluid face for “Scheduled today”: grows with widget width, caps at ~7rem, shrinks when many columns share the row. */
+/** “Scheduled today” roster faces — fixed size so grid columns don’t inflate avatars to the full column width. */
 function scheduledAvatarFaceClass() {
   return cn(
-    "relative mx-auto flex aspect-square w-full max-w-[min(100%,8rem)] min-w-0 items-center justify-center",
+    "relative mx-auto flex h-10 w-10 shrink-0 items-center justify-center sm:h-11 sm:w-11",
     workforceAvatarGoldBase,
-    "text-sm font-semibold leading-none sm:text-base",
+    "text-[11px] font-semibold leading-none sm:text-xs",
   );
 }
 
