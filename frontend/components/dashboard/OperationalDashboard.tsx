@@ -2116,7 +2116,7 @@ function DashboardBody({
                   return (
                     <div
                       key={item.i}
-                      className={["transition-transform", editMode ? "cursor-grab active:cursor-grabbing" : ""].join(" ")}
+                      className={["h-full min-h-0 transition-transform", editMode ? "cursor-grab active:cursor-grabbing" : ""].join(" ")}
                     >
                       <OpsWidgetShell title={cfg.title} headerRight={headerRight} className="h-full">
                         <DashboardCustomPeekWidget config={cfg} model={model} mode={buildWidgetContext(item).mode} />
@@ -2161,18 +2161,9 @@ function DashboardBody({
                             ? "dashboard-inventory"
                             : undefined
                     }
-                    className={cn(
-                      "transition-transform",
-                      editMode && "cursor-grab active:cursor-grabbing",
-                      item.i === "co2_monitoring" && "flex h-full min-h-0 flex-col items-stretch justify-start",
-                    )}
+                    className={cn("h-full min-h-0 transition-transform", editMode && "cursor-grab active:cursor-grabbing")}
                   >
-                    <OpsWidgetShell
-                      title={w.title}
-                      headerRight={headerRight}
-                      className={item.i === "co2_monitoring" ? "w-full" : "h-full"}
-                      contentMode={item.i === "co2_monitoring" ? "hug" : "fill"}
-                    >
+                    <OpsWidgetShell title={w.title} headerRight={headerRight} className="h-full">
                       {w.render(buildWidgetContext(item))}
                     </OpsWidgetShell>
                   </div>
