@@ -64,8 +64,13 @@ export function ComplianceRadial({
   let offset = 0;
 
   const pctLabel = fmtPct(overallCompliancePercent);
-  const titleSize = size === "sm" ? "text-[9px]" : size === "lg" ? "text-[11px]" : "text-[10px]";
-  const pctSize = size === "sm" ? "text-2xl" : size === "lg" ? "text-4xl" : "text-3xl";
+  /** Inner radius of the donut hole (stroke centered on `radius`). Keeps labels inside the ring. */
+  const innerRadiusPx = radius - stroke / 2;
+  const labelMaxPx = Math.max(48, Math.floor(innerRadiusPx * 2 * 0.92));
+
+  const titleSize = size === "sm" ? "text-[7px] tracking-[0.12em]" : size === "lg" ? "text-[11px]" : "text-[10px]";
+  const pctSize =
+    size === "sm" ? "text-xl leading-none" : size === "lg" ? "text-4xl leading-none" : "text-3xl leading-none";
   const completionGlow = overallCompliancePercent >= 80 && segCompleted > 0 && total > 0;
 
   return (
@@ -141,12 +146,15 @@ export function ComplianceRadial({
         <ShieldCheck
           className={cn(
             "absolute text-[color-mix(in_srgb,var(--ds-text-primary)_8%,transparent)] dark:text-white/[0.07]",
-            size === "lg" ? "h-14 w-14" : size === "sm" ? "h-10 w-10" : "h-12 w-12",
+            size === "lg" ? "h-14 w-14" : size === "sm" ? "h-7 w-7" : "h-12 w-12",
           )}
           aria-hidden
           strokeWidth={1}
         />
-        <div className="relative text-center">
+        <div
+          className="relative px-0.5 text-center leading-none"
+          style={{ maxWidth: labelMaxPx }}
+        >
           <motion.p
             key={pctLabel}
             initial={{ opacity: 0.6, y: 4 }}
@@ -156,14 +164,21 @@ export function ComplianceRadial({
           >
             {pctLabel}
           </motion.p>
-          <p
-            className={cn(
-              "mt-1 font-semibold uppercase tracking-[0.16em] text-ds-muted",
-              titleSize,
-            )}
-          >
-            Overall compliance
-          </p>
+          {size === "sm" ? (
+            <div
+              className={cn(
+                "mx-auto mt-0.5 flex flex-col gap-0 font-semibold uppercase text-ds-muted",
+                titleSize,
+              )}
+            >
+              <span className="leading-[1.05]">Overall</span>
+              <span className="leading-[1.05]">Compliance</span>
+            </div>
+          ) : (
+            <p className={cn("mt-1 font-semibold uppercase tracking-[0.16em] text-ds-muted", titleSize)}>
+              Overall compliance
+            </p>
+          )}
         </div>
       </div>
     </motion.div>

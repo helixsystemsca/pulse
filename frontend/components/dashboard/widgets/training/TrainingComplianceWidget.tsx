@@ -6,7 +6,6 @@ import type { WidgetRenderContext } from "@/components/dashboard/widgets/widgetS
 import { cn } from "@/lib/cn";
 
 import { ComplianceRadial } from "./ComplianceRadial";
-import { ComplianceSummaryFooter } from "./ComplianceSummaryFooter";
 import { ScaledFit } from "./ScaledFit";
 import { StatusMetricCard } from "./StatusMetricCard";
 import { TrainingMatrixButton } from "./TrainingMatrixButton";
@@ -113,14 +112,12 @@ export function TrainingComplianceWidget({
         />
       </div>
       <div className={cn("flex flex-col", compact ? "gap-1.5" : "gap-2")}>{metricCards}</div>
-      <ComplianceSummaryFooter totalSlots={total} dense />
       <TrainingMatrixButton href={matrixHref} compact fullWidth />
     </div>
   );
 
   const footerBlockPeek = (
     <div className="mt-auto flex flex-col gap-4 pt-1">
-      <ComplianceSummaryFooter totalSlots={total} />
       <div className="flex flex-wrap items-center justify-end gap-3">
         {variant === "peek" ? (
           <p className="mr-auto max-w-[18rem] text-[11px] font-medium leading-snug text-ds-muted">
@@ -154,7 +151,6 @@ export function TrainingComplianceWidget({
     <div className={cn("flex min-h-0 flex-1 flex-col", compact ? "gap-3" : "gap-4")}>
       <div className="min-w-0">
         <p className="text-base font-bold tracking-tight text-ds-foreground">Training compliance</p>
-        <p className="mt-1 text-xs font-medium text-ds-muted">Mandatory programs · {total.toLocaleString()} slots</p>
       </div>
 
       <div className={cn("flex min-h-0 flex-1 flex-col gap-4 p-4 sm:p-5", premiumShell)}>

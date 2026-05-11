@@ -115,7 +115,7 @@ export function ScheduleCoverageStrip({
         value={
           alerts.coverageWarnings > 0
             ? `${alerts.coverageWarnings} scheduling note${alerts.coverageWarnings === 1 ? "" : "s"}`
-            : "Review in workforce bar"
+            : "No scheduling notes"
         }
         tone="slate"
       />

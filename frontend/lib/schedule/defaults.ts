@@ -39,9 +39,9 @@ export const defaultShiftTypes: ShiftTypeConfig[] = [
   {
     key: "night",
     label: "Night",
-    bg: "bg-[color-mix(in_srgb,#a78bfa_11%,var(--ds-surface-primary))]",
-    border: "border-ds-border",
-    text: "text-ds-foreground",
+    bg: "bg-violet-700 dark:bg-violet-950",
+    border: "border-violet-800 dark:border-violet-700",
+    text: "text-white dark:text-violet-100",
   },
 ];
 

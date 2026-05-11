@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  AlertTriangle,
   BarChart2,
   CalendarClock,
   ChevronLeft,
@@ -17,7 +16,6 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import type { Zone } from "@/lib/schedule/types";
-import type { ScheduleAlerts } from "@/lib/schedule/types";
 
 export type ScheduleWorkspaceView = "calendar" | "my-shifts" | "personnel" | "reports";
 
@@ -32,7 +30,6 @@ type Props = {
   facilityFilterIds: string[];
   onFacilityFilterToggle: (zoneId: string) => void;
   onClearFacilityFilter: () => void;
-  alerts: ScheduleAlerts;
   onOpenSettings: () => void;
   onOpenTimeOff: () => void;
   onOpenAvailabilitySupervisor: () => void;
@@ -58,7 +55,6 @@ export function ScheduleOperationalSidebar({
   facilityFilterIds,
   onFacilityFilterToggle,
   onClearFacilityFilter,
-  alerts,
   onOpenSettings,
   onOpenTimeOff,
   onOpenAvailabilitySupervisor,
@@ -66,12 +62,6 @@ export function ScheduleOperationalSidebar({
   canConfigureOrg,
   disabled,
 }: Props) {
-  const alertCount =
-    alerts.roP4BandGapCount +
-    alerts.unassignedShiftCount +
-    alerts.coverageCritical +
-    alerts.coverageWarnings;
-
   const nav = (
     [
       ["calendar", "Schedule", PanelLeft],
@@ -168,23 +158,6 @@ export function ScheduleOperationalSidebar({
                     </button>
                   );
                 })}
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <SectionTitle>Staffing signals</SectionTitle>
-              <div className="rounded-xl border border-pulseShell-border/80 bg-white/70 p-3 text-xs dark:bg-slate-900/50">
-                <div className="flex items-start gap-2">
-                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
-                  <div className="space-y-1">
-                    <p className="font-semibold text-ds-foreground">
-                      {alertCount > 0 ? `${alertCount} open signal${alertCount === 1 ? "" : "s"}` : "No banner alerts"}
-                    </p>
-                    <p className="text-ds-muted">
-                      RO/P4 band coverage and open shifts surface in the strip above the grid.
-                    </p>
-                  </div>
-                </div>
               </div>
             </div>
 

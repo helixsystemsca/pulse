@@ -47,7 +47,7 @@ import {
   countPendingSubmissions,
   loadSubmissionMap,
 } from "@/lib/schedule/availability-supervisor-local";
-import { computeAlerts, computeWorkforceSummary } from "@/lib/schedule/selectors";
+import { computeAlerts } from "@/lib/schedule/selectors";
 import { useScheduleStore } from "@/lib/schedule/schedule-store";
 import type { ScheduleDragSession, SchedulePlacementBand, Shift } from "@/lib/schedule/types";
 import { canAccessCompanyConfiguration, sessionHasAnyRole } from "@/lib/pulse-roles";
@@ -57,6 +57,7 @@ import { EmployeeAvailabilityDrawer } from "./availability/EmployeeAvailabilityD
 import { ScheduleAlertsBanner } from "./ScheduleAlertsBanner";
 import { ScheduleBuilderHeader } from "./ScheduleBuilderHeader";
 import { ScheduleCoverageStrip } from "./ScheduleCoverageStrip";
+import { ScheduleStaffingSignalsRow } from "./ScheduleStaffingSignalsRow";
 import { ScheduleOperationalSidebar, type ScheduleWorkspaceView } from "./ScheduleOperationalSidebar";
 import { useModuleSettings } from "@/providers/ModuleSettingsProvider";
 import { ScheduleCalendarGrid } from "./ScheduleCalendarGrid";
@@ -80,7 +81,6 @@ import {
   type ScheduleTimeScale,
 } from "./ScheduleToolbar";
 import { ScheduleWorkerPanel } from "./ScheduleWorkerPanel";
-import { ScheduleWorkforceBar } from "./ScheduleWorkforceBar";
 import type { ShiftDraft } from "./ShiftEditModal";
 import { ShiftEditModal } from "./ShiftEditModal";
 import { TimeOffRequestModal } from "./TimeOffRequestModal";
@@ -179,7 +179,6 @@ export function ScheduleApp() {
   const roles = useScheduleStore((s) => s.roles);
   const shiftTypes = useScheduleStore((s) => s.shiftTypes);
   const settings = useScheduleStore((s) => s.settings);
-  const pendingRequests = useScheduleStore((s) => s.pendingRequests);
   const timeOffBlocks = useScheduleStore((s) => s.timeOffBlocks);
   const addShift = useScheduleStore((s) => s.addShift);
   const updateShift = useScheduleStore((s) => s.updateShift);
@@ -543,12 +542,6 @@ export function ScheduleApp() {
       };
     },
     [shiftsForView, metricsMonth.y, metricsMonth.m, settings, scheduleMod.settings, workers],
-  );
-
-  const summary = useMemo(
-    () =>
-      computeWorkforceSummary(workers, shiftsForView, metricsMonth.y, metricsMonth.m, settings, pendingRequests),
-    [workers, shiftsForView, metricsMonth.y, metricsMonth.m, settings, pendingRequests],
   );
 
   function openAdd(dateIso: string) {
@@ -1026,7 +1019,6 @@ export function ScheduleApp() {
               setFacilityFilterIds((prev) => (prev.includes(id) ? prev.filter((z) => z !== id) : [...prev, id]))
             }
             onClearFacilityFilter={() => setFacilityFilterIds([])}
-            alerts={alerts}
             onOpenSettings={() => setSettingsOpen(true)}
             onOpenTimeOff={() => setTimeOffOpen(true)}
             onOpenAvailabilitySupervisor={() => setAvailabilitySupervisorOpen(true)}
@@ -1052,6 +1044,7 @@ export function ScheduleApp() {
                   onToggleProjectOverlay={() => setShowProjectOverlay((v) => !v)}
                   disabled={scheduleDragLock}
                 />
+                <ScheduleStaffingSignalsRow alerts={alerts} />
                 <ScheduleCoverageStrip
                   alerts={alerts}
                   pendingAvailability={pendingAvailabilityCount}
@@ -1333,10 +1326,6 @@ export function ScheduleApp() {
             </div>
           </div>
         </div>
-      </div>
-
-      <div className={scheduleDragLock ? "pointer-events-none" : ""}>
-        <ScheduleWorkforceBar summary={summary} />
       </div>
 
       {workerAttendanceModal ? (
