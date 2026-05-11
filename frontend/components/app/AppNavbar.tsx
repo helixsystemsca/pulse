@@ -106,7 +106,7 @@ export function AppNavbar({ notificationCount = 0, messagesCount = 0 }: AppNavba
             )}
           >
             <span
-              className="relative flex shrink-0 overflow-hidden rounded-md bg-white/[0.06] ring-1 ring-white/10"
+              className="relative flex shrink-0 items-center justify-center"
               style={{
                 width: "calc(var(--pulse-header-bar-height) - 10px)",
                 height: "calc(var(--pulse-header-bar-height) - 10px)",
@@ -117,7 +117,7 @@ export function AppNavbar({ notificationCount = 0, messagesCount = 0 }: AppNavba
                 alt=""
                 width={48}
                 height={48}
-                className="h-full w-full object-contain p-1"
+                className="h-full w-full object-contain object-center"
                 priority
               />
             </span>
