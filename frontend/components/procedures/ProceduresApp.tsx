@@ -96,6 +96,72 @@ function trainingTierLabel(tier: TrainingTier): string {
   return PROCEDURE_TRAINING_PRIORITY_OPTIONS.find((o) => o.value === tier)?.label ?? tier;
 }
 
+const OTHER_LOCATION_BUCKET = "Other";
+
+/** Lower rank = earlier in library (mandatory before low). */
+function trainingTierSortRank(tier: TrainingTier): number {
+  switch (tier) {
+    case "mandatory":
+      return 0;
+    case "high_risk":
+      return 1;
+    case "general":
+      return 2;
+    default:
+      return 9;
+  }
+}
+
+/**
+ * Location for grouping: first internal keyword that prefixes the title, else "Title – rest" prefix,
+ * else first keyword, else {@link OTHER_LOCATION_BUCKET}.
+ */
+function inferProcedureLocation(row: ProcedureRow): string {
+  const title = row.title.trim();
+  const kws = (row.search_keywords ?? []).map((k) => k.trim()).filter(Boolean);
+  const lower = title.toLowerCase();
+
+  for (const kw of kws) {
+    const k = kw.toLowerCase();
+    if (k.length < 2) continue;
+    if (!lower.startsWith(k)) continue;
+    const next = title.slice(kw.length);
+    if (next.length === 0 || /^[\s\-–—]/.test(next)) return kw;
+  }
+
+  const splitLoc = title.match(/^(.+?)\s*[-–—]\s+\S/);
+  if (splitLoc) return splitLoc[1].trim();
+
+  if (kws.length > 0) return kws[0];
+
+  return OTHER_LOCATION_BUCKET;
+}
+
+function procedureLibraryTier(row: ProcedureRow, ctx: ProcedureLibraryComplianceCtx | null): TrainingTier {
+  return ctx?.programs.find((p) => p.id === row.id)?.tier ?? configForProcedure(row.id, readProcedureComplianceConfig()).tier;
+}
+
+function compareLibraryProcedureRows(
+  a: ProcedureRow,
+  b: ProcedureRow,
+  ctx: ProcedureLibraryComplianceCtx | null,
+): number {
+  const locA = inferProcedureLocation(a);
+  const locB = inferProcedureLocation(b);
+  const aOther = locA === OTHER_LOCATION_BUCKET;
+  const bOther = locB === OTHER_LOCATION_BUCKET;
+  if (aOther !== bOther) return aOther ? 1 : -1;
+  const cLoc = locA.localeCompare(locB, undefined, { sensitivity: "base" });
+  if (cLoc !== 0) return cLoc;
+
+  const tierA = procedureLibraryTier(a, ctx);
+  const tierB = procedureLibraryTier(b, ctx);
+  const cTier = trainingTierSortRank(tierA) - trainingTierSortRank(tierB);
+  if (cTier !== 0) return cTier;
+
+  return a.title.localeCompare(b.title, undefined, { sensitivity: "base" });
+}
+
 type ProcedureLibraryComplianceCtx = {
   employees: TrainingEmployee[];
   programs: TrainingProgram[];
@@ -348,6 +414,11 @@ export function ProceduresApp() {
     const createdByNameMatch = Boolean(createdByName && (createdByName === meName || createdByName === meEmail));
     return Boolean(allowedByRole || createdById || createdByNameMatch);
   }, [selected, isCompanyAdmin, proceduresEditRoles, sessionRoleSet, userId, session?.full_name, session?.email]);
+
+  const librarySortedRows = useMemo(
+    () => [...rows].sort((a, b) => compareLibraryProcedureRows(a, b, libraryComplianceCtx)),
+    [rows, libraryComplianceCtx],
+  );
 
   const addDraftRow = (setter: Dispatch<SetStateAction<DraftStep[]>>) => {
     setter((prev) => [
@@ -1361,11 +1432,9 @@ export function ProceduresApp() {
                 ) : rows.length === 0 ? (
                   <p className="text-sm text-ds-muted">No procedures yet.</p>
                 ) : (
-                  <ul className="divide-y divide-ds-border">
-                    {rows.map((r) => {
-                      const tier =
-                        libraryComplianceCtx?.programs.find((p) => p.id === r.id)?.tier ??
-                        configForProcedure(r.id, readProcedureComplianceConfig()).tier;
+                  <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                    {librarySortedRows.map((r) => {
+                      const tier = procedureLibraryTier(r, libraryComplianceCtx);
                       const compliancePct = libraryComplianceCtx
                         ? computeProgramColumnCompliancePercent(
                             r.id,

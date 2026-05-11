@@ -61,12 +61,7 @@ export function OrganizationBrandingPanel({ initialCompany, onCompanyUpdated }: 
     setCompany(initialCompany);
     setLogoUrlDraft(initialCompany.logo_url ?? "");
     setBgUrlDraft(initialCompany.background_image_url ?? "");
-  }, [
-    initialCompany.id,
-    initialCompany.name,
-    initialCompany.logo_url,
-    initialCompany.background_image_url,
-  ]);
+  }, [initialCompany]);
 
   const syncParent = useCallback(
     (c: CompanySummary) => {

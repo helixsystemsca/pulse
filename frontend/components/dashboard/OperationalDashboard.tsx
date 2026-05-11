@@ -172,57 +172,6 @@ function alertPriority(a: AlertItem): AlertPriority {
   return a.severity === "critical" ? "critical" : "medium";
 }
 
-function alertPriorityRank(p: AlertPriority): number {
-  switch (p) {
-    case "critical":
-      return 0;
-    case "high":
-      return 1;
-    case "medium":
-      return 2;
-    case "low":
-      return 3;
-    default:
-      return 9;
-  }
-}
-
-function compareAlerts(a: AlertItem, b: AlertItem): number {
-  const dr = alertPriorityRank(alertPriority(a)) - alertPriorityRank(alertPriority(b));
-  if (dr !== 0) return dr;
-  return a.title.localeCompare(b.title);
-}
-
-function kioskWorkQueueRows(model: DashboardViewModel): {
-  key: string;
-  title: string;
-  status: string;
-  tone: "critical" | "warn" | "ok";
-}[] {
-  const out: { key: string; title: string; status: string; tone: "critical" | "warn" | "ok" }[] = [];
-  for (const c of model.workRequests.critical.slice(0, 5)) {
-    out.push({ key: `cr-${out.length}`, title: c.title, status: "Critical", tone: "critical" });
-  }
-  if (model.workRequests.newest) {
-    const k = model.workRequests.newest.tag.kind;
-    out.push({
-      key: "new",
-      title: model.workRequests.newest.title,
-      status: model.workRequests.newest.tag.label.slice(0, 16),
-      tone: k === "overdue" || k === "urgent" ? "critical" : k === "progress" ? "warn" : "ok",
-    });
-  }
-  if (model.workRequests.oldest) {
-    out.push({
-      key: "old",
-      title: model.workRequests.oldest.title,
-      status: "In queue",
-      tone: "ok",
-    });
-  }
-  return out.slice(0, 8);
-}
-
 const NO_ACTIVE_ALERTS_TITLE = "No active alerts";
 
 type WorkforceBubble = {
@@ -1128,76 +1077,17 @@ function buildLiveModel(
   };
 }
 
-function headerInitials(welcomeName: string): string {
-  const t = welcomeName.trim();
-  if (!t) return "?";
-  const parts = t.split(/\s+/);
-  if (parts.length >= 2) {
-    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-  }
-  return t.slice(0, 2).toUpperCase();
-}
-
-function OperationsHeaderLogoMark({
-  logoUrl,
-  companyName,
-}: {
-  logoUrl?: string | null;
-  companyName?: string | null;
-}) {
-  const raw = logoUrl?.trim() || null;
-  const isExternal = Boolean(raw && (raw.startsWith("http://") || raw.startsWith("https://")));
-  // Public Next.js assets (e.g. `/images/panoramalogo.png`) should NOT be fetched with bearer auth.
-  const isPublicLocal = Boolean(raw && raw.startsWith("/") && !raw.startsWith("/api"));
-  const internal = raw && !isExternal && !isPublicLocal ? raw : null;
-  const resolved = useAuthenticatedAssetSrc(internal);
-  const src = !raw ? null : isExternal || isPublicLocal ? raw : resolved;
-  const waiting = Boolean(internal && !src);
-  const initials = headerInitials(companyName ?? "");
-
-  return (
-    <div
-      className="flex h-[4.5rem] w-[4.5rem] shrink-0 items-center justify-center overflow-hidden border-2 border-gray-200 bg-gray-50"
-      title={(companyName?.trim() || "Company").slice(0, 48)}
-    >
-      {src ? (
-        // eslint-disable-next-line @next/next/no-img-element -- blob or tenant https URL
-        <img src={src} alt="" className="h-full w-full object-contain p-1.5" />
-      ) : waiting ? (
-        <span className="h-8 w-8 animate-pulse bg-gray-200" aria-hidden />
-      ) : (
-        <span className="px-1 text-center text-xs font-bold leading-tight text-ds-foreground">
-          {initials}
-        </span>
-      )}
-    </div>
-  );
-}
-
 function DashboardBody({
   model,
   session,
   dashboardContext,
   workOrdersHref,
-  hideHeaderWelcome,
-  zonePromptDismissed,
-  onDismissZonePrompt,
-  headerLogoUrl,
-  headerCompanyName,
-  facilitySetupChecklist,
   readOnly = false,
 }: {
   model: DashboardViewModel;
   session: PulseAuthSession | null | undefined;
   dashboardContext: "operations" | "admin";
   workOrdersHref: string;
-  hideHeaderWelcome?: boolean;
-  zonePromptDismissed?: boolean;
-  onDismissZonePrompt?: () => void;
-  /** Tenant logo for Operations header center (API path or https). */
-  headerLogoUrl?: string | null;
-  headerCompanyName?: string | null;
-  facilitySetupChecklist?: ReactNode;
   readOnly?: boolean;
 }) {
   const pathname = usePathname();
@@ -1207,45 +1097,24 @@ function DashboardBody({
     window.open(`${window.location.origin}/kiosk/overview`, "_blank", "noopener,noreferrer");
   }, []);
   const [now, setNow] = useState(() => new Date());
-  const [weather, setWeather] = useState<Weather>({ tempC: null, code: null, windKph: null });
 
   useEffect(() => {
     const t = window.setInterval(() => setNow(new Date()), 1000);
     return () => window.clearInterval(t);
-  }, []);
-
-  useEffect(() => {
-    let cancel = false;
-    const load = async () => {
-      try {
-        const w = await fetchNorthSaanichWeather();
-        if (!cancel) setWeather(w);
-      } catch {
-        if (!cancel) setWeather({ tempC: null, code: null, windKph: null });
-      }
-    };
-    void load();
-    const t = window.setInterval(load, 10 * 60 * 1000);
-    return () => {
-      cancel = true;
-      window.clearInterval(t);
-    };
   }, []);
   const canEditLayout = useMemo(() => {
     if (readOnly || isKiosk) return false;
     return canAccessCompanyConfiguration(session);
   }, [isKiosk, readOnly, session]);
 
+  /** Kiosk fullscreen uses the same persisted layout as the in-app dashboard (not a separate TV layout). */
   const layoutStorageKey = useMemo(() => {
-    const mode = isKiosk ? "kiosk" : "standard";
-    /** v7: facility-style ops widgets + neutral canvas tokens. */
-    return `pulse_dashboard_layout_v7_${dashboardContext}_${mode}`;
-  }, [dashboardContext, isKiosk]);
+    return `pulse_dashboard_layout_v7_${dashboardContext}_standard`;
+  }, [dashboardContext]);
 
   const customWidgetStorageKey = useMemo(() => {
-    const mode = isKiosk ? "kiosk" : "standard";
-    return `pulse_dashboard_widgets_v3_${dashboardContext}_${mode}`;
-  }, [dashboardContext, isKiosk]);
+    return `pulse_dashboard_widgets_v3_${dashboardContext}_standard`;
+  }, [dashboardContext]);
 
   const [editMode, setEditMode] = useState(false);
   useEffect(() => {
@@ -1261,273 +1130,6 @@ function DashboardBody({
   const [customConfigs, setCustomConfigs] = useState<Record<string, CustomDashboardWidgetConfig>>({});
   const [layoutHydrated, setLayoutHydrated] = useState(false);
   const { width, containerRef, mounted } = useContainerWidth({ initialWidth: 1200 });
-
-  const kioskAlerts = useMemo(() => {
-    const real = model.alerts
-      .filter((a) => a.countsTowardTotals !== false)
-      .filter((a) => a.title !== NO_ACTIVE_ALERTS_TITLE)
-      .slice()
-      .sort(compareAlerts)
-      .slice(0, 3);
-    if (real.length === 0) return model.alerts.slice(0, 3);
-    return real;
-  }, [model.alerts]);
-
-  const kioskKpis = useMemo(() => {
-    const k = model.stripCounts;
-    return [
-      { label: "Active requests", value: k.activeRequests },
-      { label: "Overdue", value: k.overdue },
-      { label: "Low stock", value: k.lowStock },
-      { label: "Out of service", value: k.outOfService },
-      { label: "On site", value: k.onSite },
-      { label: "Completed today", value: k.completedToday },
-    ] as const;
-  }, [model.stripCounts]);
-
-  const views = useMemo(() => ["overview", "workforce", "systems"] as const, []);
-  const [viewIndex, setViewIndex] = useState(0);
-  useEffect(() => {
-    if (!isKiosk) return;
-    const interval = window.setInterval(() => {
-      setViewIndex((prev) => (prev + 1) % views.length);
-    }, 15000);
-    return () => window.clearInterval(interval);
-  }, [isKiosk, views.length]);
-  const currentView = views[viewIndex] ?? "overview";
-
-  function KioskTile({ label, value }: { label: string; value: number }) {
-    return (
-      <div
-        className={cn(
-          DASH.kpiTile,
-          "p-2 py-2 shadow-sm motion-safe:hover:translate-y-0 motion-safe:hover:shadow-[var(--dash-shadow-card-soft)] sm:p-2.5",
-        )}
-      >
-        <p className={cn(DASH.kpiLabel, "text-[10px]")}>{label}</p>
-        <p className={cn(DASH.kpiValue, "mt-1 text-lg sm:text-xl")}>{value}</p>
-      </div>
-    );
-  }
-
-  function KioskPanel({
-    title,
-    children,
-    flushBody = false,
-  }: {
-    title: string;
-    children: ReactNode;
-    /** Remove inner well padding (e.g. pool readings full-bleed body). */
-    flushBody?: boolean;
-  }) {
-    return (
-      <OpsWidgetShell title={title} className="h-full min-h-0" bodyClassName={flushBody ? "p-0" : undefined}>
-        <div className="flex min-h-0 h-full min-w-0 flex-col">{children}</div>
-      </OpsWidgetShell>
-    );
-  }
-
-  function KioskAlertCard({ alert }: { alert: AlertItem }) {
-    const p = alertPriority(alert);
-    const icon =
-      p === "critical" ? (
-        <AlertTriangle className="h-4 w-4 shrink-0 text-ds-danger sm:h-5 sm:w-5" aria-hidden />
-      ) : p === "high" ? (
-        <AlertCircle className="h-4 w-4 shrink-0 text-ds-warning sm:h-5 sm:w-5" aria-hidden />
-      ) : p === "medium" ? (
-        <Info className="h-4 w-4 shrink-0 text-[var(--ds-info)] sm:h-5 sm:w-5" aria-hidden />
-      ) : (
-        <Radio className="h-4 w-4 shrink-0 text-ds-muted sm:h-5 sm:w-5" aria-hidden />
-      );
-    const strip =
-      p === "critical"
-        ? "bg-ds-danger"
-        : p === "high"
-          ? "bg-ds-warning"
-          : p === "medium"
-            ? "bg-[var(--ds-info)]"
-            : "bg-ds-border";
-    const shell =
-      p === "critical"
-        ? "border-ds-danger/30 bg-[color-mix(in_srgb,var(--ds-danger)_10%,var(--ds-primary))]"
-        : p === "high"
-          ? "border-ds-warning/35 bg-[color-mix(in_srgb,var(--ds-warning)_12%,var(--ds-primary))]"
-          : p === "medium"
-            ? "border-[color-mix(in_srgb,var(--ds-info)_35%,transparent)] bg-[color-mix(in_srgb,var(--ds-info)_10%,var(--ds-primary))]"
-            : "border-ds-border bg-ds-secondary/40";
-
-    return (
-      <div className={cn("overflow-hidden rounded-xl border shadow-[var(--ds-shadow-card)]", shell)}>
-        <div className={cn("h-[3px] w-full shrink-0", strip)} aria-hidden />
-        <div className="flex gap-2 p-2">
-          {icon}
-          <div className="min-w-0">
-            <p className="text-xs font-bold text-ds-foreground max-w-md truncate sm:text-sm">{alert.title}</p>
-            {alert.subtitle ? (
-              <p className="mt-0.5 text-[11px] leading-snug text-ds-muted max-w-md line-clamp-2 whitespace-pre-line sm:text-xs">
-                {alert.subtitle}
-              </p>
-            ) : null}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  function OverviewView({ rowClass }: { rowClass: string }) {
-    return (
-      <>
-        <div className={rowClass}>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
-            {kioskKpis.map((k) => (
-              <KioskTile key={k.label} label={k.label} value={k.value} />
-            ))}
-          </div>
-        </div>
-
-        <div className={`${rowClass} grid grid-cols-1 gap-2 md:grid-cols-3`}>
-          {kioskAlerts.slice(0, 3).map((a, idx) => (
-            <KioskAlertCard key={`${a.title}-${idx}`} alert={a} />
-          ))}
-        </div>
-
-        <div className={`${rowClass} grid grid-cols-1 gap-2 md:grid-cols-3`}>
-          <div className="col-span-1 min-h-0 min-w-0">
-            <KioskPanel title="Workforce">
-              <div className="min-h-0 min-w-0 w-full">
-                {(widgetRegistry as Record<string, { render: () => ReactNode }>).workforce.render()}
-              </div>
-            </KioskPanel>
-          </div>
-          <div className="col-span-1 min-h-0 min-w-0">
-            <KioskPanel title="Low inventory">
-              <div className="min-h-0 min-w-0 w-full">
-                {(widgetRegistry as Record<string, { render: () => ReactNode }>).low_inventory.render()}
-              </div>
-            </KioskPanel>
-          </div>
-          <div className="col-span-1 min-h-0 min-w-0">
-            <KioskPanel title="Pool readings" flushBody>
-              <div className="min-h-0 min-w-0 w-full">
-                {(widgetRegistry as Record<string, { render: () => ReactNode }>).pool_readings.render()}
-              </div>
-            </KioskPanel>
-          </div>
-        </div>
-      </>
-    );
-  }
-
-  function WorkforceView({ rowClass }: { rowClass: string }) {
-    const onSite = model.workforce.onSite.slice(0, 12);
-    return (
-      <>
-        <div className={rowClass}>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
-            <KioskTile label="On site" value={model.stripCounts.onSite} />
-            <KioskTile label="Active requests" value={model.stripCounts.activeRequests} />
-            <KioskTile label="Awaiting assignment" value={model.workRequests.awaitingCount} />
-            <KioskTile label="Overdue" value={model.stripCounts.overdue} />
-            <KioskTile label="Completed today" value={model.stripCounts.completedToday} />
-            <KioskTile label="Shifts today" value={Math.max(0, Number(model.workforce.summaryLine.match(/\d+/)?.[0] ?? 0))} />
-          </div>
-        </div>
-
-        <div className={`${rowClass} grid grid-cols-1 gap-2 lg:grid-cols-3`}>
-          <div className="min-h-0 min-w-0 lg:col-span-2">
-            <KioskPanel title="On-site workers">
-              <div className="min-h-0 min-w-0 w-full">
-                <div className="flex flex-wrap gap-2">
-                  {onSite.length === 0 ? (
-                    <p className="text-sm text-ds-muted">No workers currently on site.</p>
-                  ) : (
-                    onSite.map((b) => (
-                      <WorkforceBubbleStack
-                        key={b.id}
-                        bubble={b}
-                        faceClassName={onsiteAvatarClass()}
-                        badges={
-                          <>
-                            {b.badge ? <WorkforceRoleLetterBadge letter={b.badge} /> : null}
-                            {b.attendanceMark ? <WorkforceAttendanceBadge mark={b.attendanceMark} /> : null}
-                            <WorkforceStatusDot color="green" />
-                          </>
-                        }
-                      />
-                    ))
-                  )}
-                </div>
-              </div>
-            </KioskPanel>
-          </div>
-
-          <div className="min-h-0 min-w-0 lg:col-span-1">
-            <KioskPanel title="Work focus">
-              <div className="min-h-0 min-w-0 w-full space-y-2">
-                <div className="rounded-lg border border-ds-border bg-ds-secondary/40 p-2">
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-ds-muted">Assigned vs unassigned</p>
-                  <p className="mt-1.5 text-xs font-semibold text-ds-foreground sm:text-sm">
-                    Unassigned: <span className="tabular-nums">{model.workRequests.awaitingCount}</span>
-                  </p>
-                  <p className="mt-0.5 text-xs font-semibold text-ds-foreground sm:text-sm">
-                    Active: <span className="tabular-nums">{model.stripCounts.activeRequests}</span>
-                  </p>
-                </div>
-                <div className="rounded-lg border border-ds-border bg-ds-secondary/40 p-2">
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-ds-muted">Today</p>
-                  <p className="mt-1.5 text-xs font-semibold text-ds-foreground sm:text-sm">
-                    Completed: <span className="tabular-nums">{model.stripCounts.completedToday}</span>
-                  </p>
-                  <p className="mt-0.5 text-xs font-semibold text-ds-foreground sm:text-sm">
-                    Overdue: <span className="tabular-nums">{model.stripCounts.overdue}</span>
-                  </p>
-                </div>
-              </div>
-            </KioskPanel>
-          </div>
-        </div>
-      </>
-    );
-  }
-
-  function SystemsView({ rowClass }: { rowClass: string }) {
-    return (
-      <>
-        <div className={rowClass}>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
-            <KioskTile label="Low stock" value={model.stripCounts.lowStock} />
-            <KioskTile label="Out of service" value={model.stripCounts.outOfService} />
-            <KioskTile label="Missing tools" value={model.equipment.missingCount} />
-            <KioskTile label="Active tools" value={model.equipment.activeCount} />
-            <KioskTile label="Inventory items" value={model.inventory.shoppingList.length} />
-            <KioskTile label="Overdue" value={model.stripCounts.overdue} />
-          </div>
-        </div>
-
-        <div className={`${rowClass} grid grid-cols-1 gap-2 md:grid-cols-3`}>
-          <div className="min-h-0 min-w-0">
-            <KioskPanel title="Low inventory">
-              <div className="min-h-0 min-w-0 w-full">{(widgetRegistry as Record<string, { render: () => ReactNode }>).low_inventory.render()}</div>
-            </KioskPanel>
-          </div>
-          <div className="min-h-0 min-w-0">
-            <KioskPanel title="CO₂ monitoring">
-              <div className="min-h-0 min-w-0 w-full overflow-x-auto">
-                {(widgetRegistry as Record<string, { render: () => ReactNode }>).co2_monitoring.render()}
-              </div>
-            </KioskPanel>
-          </div>
-          <div className="min-h-0 min-w-0">
-            <KioskPanel title="Notifications & work orders">
-              <div className="min-h-0 min-w-0 w-full">
-                {(widgetRegistry as Record<string, { render: () => ReactNode }>).notifications_work_orders.render()}
-              </div>
-            </KioskPanel>
-          </div>
-        </div>
-      </>
-    );
-  }
 
   const widgetRegistry = useMemo(() => {
     const workforceCardShell =
@@ -1695,7 +1297,7 @@ function DashboardBody({
     setLayout(merged);
     setCustomConfigs(parsedConfigs);
     setLayoutHydrated(true);
-  }, [allWidgetKeys, customWidgetStorageKey, dashboardContext, defaultLayout, isKiosk, layoutStorageKey]);
+  }, [allWidgetKeys, customWidgetStorageKey, dashboardContext, defaultLayout, layoutStorageKey]);
 
   const persistLayout = useCallback(
     (next: Layout) => {
@@ -1793,140 +1395,32 @@ function DashboardBody({
     [width],
   );
 
-  const weatherLabel = useMemo(() => weatherLabelFromCode(weather.code), [weather.code]);
-  const weatherTemp = useMemo(() => (weather.tempC == null ? "—" : `${Math.round(weather.tempC)}°C`), [weather.tempC]);
-
-  if (isKiosk) {
-    const row = "w-full";
-    const queue = kioskWorkQueueRows(model);
-    const rightKpis = kioskKpis.slice(0, 4);
-    const onSiteShow = model.workforce.onSite.slice(0, 5);
-    return (
-      <div
-        className={cn(
-          DASH.page,
-          "pulse-dashboard-canvas pulse-operations-dashboard min-h-screen px-2 py-2 sm:px-3 sm:py-3",
-        )}
-      >
-        <div className="grid grid-cols-12 gap-2">
-          <div className="col-span-12">
-            <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-[color-mix(in_srgb,var(--ops-dash-border,#cbd5e1)_88%,transparent)] bg-[var(--ops-dash-widget-bg,#ffffff)] px-3 py-2 shadow-[0_1px_2px_rgba(15,23,42,0.05),0_6px_18px_-4px_rgba(15,23,42,0.1)] dark:border-white/[0.09] dark:bg-[var(--ops-dash-widget-bg,#0f172a)] dark:shadow-[0_1px_2px_rgba(0,0,0,0.28),0_6px_18px_-4px_rgba(0,0,0,0.38)]">
-              <div className="flex min-w-0 items-center gap-2 sm:gap-3">
-                <OperationsHeaderLogoMark logoUrl={headerLogoUrl} companyName={headerCompanyName} />
-                <div className="min-w-0">
-                  <p className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs font-semibold text-[color-mix(in_srgb,var(--ds-text-primary)_88%,transparent)] sm:text-sm">
-                    <span className="max-w-[min(100%,18rem)] truncate">{dateInBc(now)}</span>
-                    <span className="text-ds-muted">•</span>
-                    <span className="tabular-nums">{timeInBc(now)}</span>
-                    <span className="text-ds-muted">•</span>
-                    <span className="inline-flex items-center gap-1 text-ds-muted">
-                      <Cloud className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" aria-hidden />
-                      <span className="truncate">
-                        {weatherTemp} · {weatherLabel}
-                      </span>
-                    </span>
-                  </p>
-                  {model.bannerNote ? (
-                    <p className="mt-1 max-w-2xl text-[11px] font-semibold leading-snug text-ds-foreground sm:text-xs">{model.bannerNote}</p>
-                  ) : null}
-                </div>
-              </div>
-              <div className="flex items-center gap-2 sm:gap-3">
-                <div className="text-[10px] font-bold uppercase tracking-[0.12em] text-[color-mix(in_srgb,var(--ds-text-primary)_48%,transparent)]">
-                  {currentView}
-                </div>
-                {!hideHeaderWelcome && model.welcomeName.trim() ? (
-                  <span className="inline-flex max-w-[11rem] items-center gap-1 truncate rounded-lg border border-ds-border bg-ds-secondary/60 px-2 py-1 text-xs font-semibold text-ds-foreground sm:max-w-none sm:px-2.5 sm:text-sm">
-                    <span className="hidden sm:inline">Welcome,</span> {model.welcomeName}
-                  </span>
-                ) : null}
-              </div>
-            </div>
-          </div>
-
-          <div className="col-span-12 min-h-0 lg:col-span-2">
-            <OpsWidgetShell title="Today's focus" className="h-full min-h-0">
-              <ul className="space-y-1.5">
-                {queue.length === 0 ? (
-                  <li className="text-xs text-ds-muted sm:text-sm">No queued work items.</li>
-                ) : (
-                  queue.map((q) => (
-                    <li key={q.key} className={cn(DASH.listRow, "flex items-start justify-between gap-2 px-2 py-2")}>
-                      <span className="min-w-0 truncate text-xs font-semibold text-ds-foreground sm:text-sm">{q.title}</span>
-                      <span
-                        className={cn(
-                          DASH.pill,
-                          "py-px text-[9px]",
-                          q.tone === "critical" &&
-                            "border-red-200/80 bg-red-50 text-red-800 dark:border-red-500/35 dark:bg-red-950/40 dark:text-red-100",
-                          q.tone === "warn" &&
-                            "border-amber-200/80 bg-amber-50 text-amber-900 dark:border-amber-500/35 dark:bg-amber-950/35 dark:text-amber-100",
-                          q.tone === "ok" && "border-ds-border bg-ds-secondary text-ds-muted",
-                        )}
-                      >
-                        {q.status}
-                      </span>
-                    </li>
-                  ))
-                )}
-              </ul>
-            </OpsWidgetShell>
-          </div>
-
-          <div className="col-span-12 min-h-0 lg:col-span-8">
-            <div className="space-y-2 transition-opacity duration-500 ease-in-out">
-              {currentView === "overview" && <OverviewView rowClass={row} />}
-              {currentView === "workforce" && <WorkforceView rowClass={row} />}
-              {currentView === "systems" && <SystemsView rowClass={row} />}
-            </div>
-          </div>
-
-          <div className="col-span-12 min-h-0 lg:col-span-2">
-            <OpsWidgetShell title="Team snapshot" className="h-full min-h-0">
-              <div className="grid grid-cols-2 gap-1.5">
-                {rightKpis.map((k) => (
-                  <KioskTile key={k.label} label={k.label} value={k.value} />
-                ))}
-              </div>
-              <p className={cn(DASH.sectionLabel, "mt-3 text-[10px]")}>On site</p>
-              <div className="mt-1.5 flex flex-wrap gap-1.5">
-                {onSiteShow.length === 0 ? (
-                  <p className="text-xs text-ds-muted">No workers on site.</p>
-                ) : (
-                  onSiteShow.map((b) => (
-                    <WorkforceBubbleStack
-                      key={b.id}
-                      bubble={b}
-                      faceClassName={onsiteAvatarClass()}
-                      badges={
-                        <>
-                          {b.badge ? <WorkforceRoleLetterBadge letter={b.badge} /> : null}
-                          {b.attendanceMark ? <WorkforceAttendanceBadge mark={b.attendanceMark} /> : null}
-                          <WorkforceStatusDot color="green" />
-                        </>
-                      }
-                    />
-                  ))
-                )}
-              </div>
-            </OpsWidgetShell>
-          </div>
-
-          <KioskRotateFooter activeIndex={viewIndex} total={views.length} compact />
-        </div>
-      </div>
-    );
-  }
-
   const headerShowLayoutTools = canEditLayout && !readOnly;
   const headerShowFullscreen = !isKiosk;
+  const dashboardTitle =
+    pathname.startsWith("/kiosk/leadership") || dashboardContext === "admin"
+      ? "Leadership"
+      : "Operations";
 
   return (
-    <div className={cn(DASH.page, "space-y-3")}>
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[color-mix(in_srgb,var(--ops-dash-border,#cbd5e1)_88%,transparent)] bg-[var(--ops-dash-widget-bg,#ffffff)] px-3 py-2.5 shadow-[0_1px_2px_rgba(15,23,42,0.05),0_6px_18px_-4px_rgba(15,23,42,0.1)] dark:border-white/[0.09] dark:bg-[var(--ops-dash-widget-bg,#0f172a)] dark:shadow-[0_1px_2px_rgba(0,0,0,0.28),0_6px_18px_-4px_rgba(0,0,0,0.38)]">
+    <div
+      className={cn(
+        DASH.page,
+        "pulse-dashboard-canvas pulse-operations-dashboard min-w-0",
+        isKiosk
+          ? "flex h-full min-h-0 flex-col gap-2 overflow-hidden px-2 py-2 sm:gap-2.5 sm:px-3 sm:py-3"
+          : "space-y-3",
+      )}
+    >
+      <div
+        className={cn(
+          "flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[color-mix(in_srgb,var(--ops-dash-border,#cbd5e1)_88%,transparent)] bg-[var(--ops-dash-widget-bg,#ffffff)] px-3 py-2.5 shadow-[0_1px_2px_rgba(15,23,42,0.05),0_6px_18px_-4px_rgba(15,23,42,0.1)] dark:border-white/[0.09] dark:bg-[var(--ops-dash-widget-bg,#0f172a)] dark:shadow-[0_1px_2px_rgba(0,0,0,0.28),0_6px_18px_-4px_rgba(0,0,0,0.38)]",
+          isKiosk && "shrink-0",
+        )}
+      >
         <div className="min-w-0">
           <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[color-mix(in_srgb,var(--ds-text-primary)_48%,transparent)]">
-            Operations
+            {dashboardTitle}
           </p>
           <p className="mt-0.5 text-sm font-semibold tabular-nums text-[color-mix(in_srgb,var(--ds-text-primary)_88%,transparent)]">
             {dateInBc(now)} · {timeInBc(now)}
@@ -1992,12 +1486,24 @@ function DashboardBody({
       </div>
 
       {model.bannerNote ? (
-        <div className="rounded-xl border border-ds-border bg-[color-mix(in_srgb,var(--ds-text-primary)_4%,transparent)] px-3 py-2 text-sm font-medium text-ds-foreground">
+        <div
+          className={cn(
+            "rounded-xl border border-ds-border bg-[color-mix(in_srgb,var(--ds-text-primary)_4%,transparent)] px-3 py-2 text-sm font-medium text-ds-foreground",
+            isKiosk && "shrink-0",
+          )}
+        >
           {model.bannerNote}
         </div>
       ) : null}
 
-      <div ref={containerRef as any} className={cn("pulse-dashboard-grid min-w-0", editMode && "pulse-dashboard-edit")}>
+      <div
+        ref={containerRef as any}
+        className={cn(
+          "pulse-dashboard-grid min-w-0",
+          isKiosk && "min-h-0 flex-1 overflow-y-auto overscroll-contain",
+          editMode && "pulse-dashboard-edit",
+        )}
+      >
           {mounted ? (
             <GridLayout
               layout={layout}
@@ -2259,7 +1765,6 @@ export function OperationalDashboard({
   const [liveModel, setLiveModel] = useState<DashboardViewModel | null>(null);
   const [loading, setLoading] = useState(variant === "live");
   const [error, setError] = useState<string | null>(null);
-  const [zoneDismissed, setZoneDismissed] = useState(false);
   const readyNotifiedRef = useRef(false);
 
   const workOrdersHref =
@@ -2404,9 +1909,6 @@ export function OperationalDashboard({
         session={session}
         dashboardContext={dashboardContext}
         workOrdersHref={workOrdersHref}
-        headerLogoUrl="/images/panoramalogo2.png"
-        headerCompanyName={session?.company?.name ?? null}
-        facilitySetupChecklist={null}
         readOnly={readOnly}
       />
     );
@@ -2446,11 +1948,6 @@ export function OperationalDashboard({
       session={session}
       dashboardContext={dashboardContext}
       workOrdersHref={workOrdersHref}
-      zonePromptDismissed={zoneDismissed}
-      onDismissZonePrompt={() => setZoneDismissed(true)}
-      headerLogoUrl="/images/panoramalogo2.png"
-      headerCompanyName={session?.company?.name ?? null}
-      facilitySetupChecklist={null}
       readOnly={readOnly}
     />
   );
