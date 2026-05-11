@@ -13,7 +13,7 @@ import {
 } from "@/lib/schedule/drag";
 import { buildingIndicatorForZone } from "@/lib/schedule/building-indicators";
 import { displayStandardShiftCode } from "@/lib/schedule/shift-definition-catalog";
-import { shiftCodeBadgeToneClasses } from "@/lib/schedule/scheduleWorkerPanelSort";
+import { shiftCodeBadgeToneClasses, shiftCodeToneClassForRowBadge } from "@/lib/schedule/scheduleWorkerPanelSort";
 import { cn } from "@/lib/cn";
 import { OperationalBadgeStack } from "@/components/schedule/operational/OperationalBadgeStack";
 import { ScheduleShiftCertChips } from "./ScheduleShiftCertChips";
@@ -176,6 +176,7 @@ export function ScheduleCompactCellRows({
           s.shiftKind === "workforce" && s.eventType === "work"
             ? displayStandardShiftCode(s, { fallbackCode: row.code })
             : (s.shiftCode ?? "");
+        const rowCodeBadgeTone = shiftCodeToneClassForRowBadge(row.code);
 
         return (
           <div
@@ -289,9 +290,13 @@ export function ScheduleCompactCellRows({
                         </span>
                       ) : null}
                       <span
-                        className={`ml-auto inline-flex shrink-0 items-center rounded border px-1 py-px text-[9px] font-bold leading-none ${
-                          st ? `${st.bg} ${st.border} ${st.text}` : "border-pulseShell-border bg-pulseShell-elevated text-ds-foreground"
-                        }`}
+                        className={cn(
+                          "ml-auto inline-flex shrink-0 items-center rounded px-1 py-px text-[9px] font-bold leading-none tabular-nums tracking-tight",
+                          rowCodeBadgeTone ??
+                            (st
+                              ? `${st.bg} ${st.border} ${st.text} border`
+                              : "border border-pulseShell-border bg-pulseShell-elevated text-ds-foreground"),
+                        )}
                       >
                         {row.code}
                       </span>
@@ -354,9 +359,13 @@ export function ScheduleCompactCellRows({
                       </span>
                     ) : null}
                     <span
-                      className={`ml-auto inline-flex shrink-0 items-center rounded-md border px-1.5 py-0.5 text-[10px] font-bold leading-none ${
-                        st ? `${st.bg} ${st.border} ${st.text}` : "border-pulseShell-border bg-pulseShell-elevated text-ds-foreground"
-                      }`}
+                      className={cn(
+                        "ml-auto inline-flex shrink-0 items-center rounded-md px-1.5 py-0.5 text-[10px] font-bold leading-none tabular-nums tracking-tight",
+                        rowCodeBadgeTone ??
+                          (st
+                            ? `${st.bg} ${st.border} ${st.text} border`
+                            : "border border-pulseShell-border bg-pulseShell-elevated text-ds-foreground"),
+                      )}
                     >
                       {row.code}
                     </span>

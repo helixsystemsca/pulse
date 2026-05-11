@@ -1432,7 +1432,7 @@ export function ProceduresApp() {
                 ) : rows.length === 0 ? (
                   <p className="text-sm text-ds-muted">No procedures yet.</p>
                 ) : (
-                  <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                  <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                     {librarySortedRows.map((r) => {
                       const tier = procedureLibraryTier(r, libraryComplianceCtx);
                       const compliancePct = libraryComplianceCtx
@@ -1446,15 +1446,17 @@ export function ProceduresApp() {
                           )
                         : null;
                       return (
-                      <li key={r.id}>
+                      <li key={r.id} className="min-w-0">
                         <button
                           type="button"
                           onClick={() => setSelectedId(r.id)}
-                          className={`flex w-full items-start justify-between gap-2 rounded-lg px-2 py-2.5 text-left text-sm transition-all ${
+                          className={cn(
+                            "flex w-full items-start justify-between gap-2 rounded-xl border px-3 py-3 text-left text-sm text-ds-foreground shadow-sm transition-all",
+                            "border-ds-border/90 bg-white hover:border-ds-border hover:shadow-md dark:border-ds-border dark:bg-ds-secondary dark:hover:bg-ds-secondary/90",
                             selectedId === r.id
-                              ? "bg-ds-secondary text-ds-foreground"
-                              : "hover:bg-ds-secondary/60 hover:shadow-sm"
-                          }`}
+                              ? "border-ds-accent/45 bg-ds-secondary/70 shadow-md ring-2 ring-ds-accent/25 dark:bg-ds-secondary dark:ring-ds-accent/35"
+                              : "",
+                          )}
                         >
                           <div className="min-w-0">
                             <span className={`font-medium ${selected ? "line-clamp-2" : ""}`}>{r.title}</span>

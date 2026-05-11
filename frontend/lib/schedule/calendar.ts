@@ -16,6 +16,12 @@ export function isLocalDateToday(iso: string): boolean {
   return formatLocalDate(new Date()) === iso;
 }
 
+/** True when `iso` is a Saturday or Sunday in the local calendar (Sun-first week columns 0 and 6). */
+export function isWeekendLocalDate(iso: string): boolean {
+  const dow = parseLocalDate(iso).getDay();
+  return dow === 0 || dow === 6;
+}
+
 export function startOfMonth(year: number, monthIndex: number): Date {
   return new Date(year, monthIndex, 1);
 }

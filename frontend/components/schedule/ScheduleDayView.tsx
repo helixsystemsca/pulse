@@ -42,6 +42,7 @@ import {
 } from "@/lib/schedule/assignments";
 import { shiftDisplayCode } from "@/lib/schedule/compact-day-shifts";
 import { buildShiftCodeMapForDay } from "@/lib/schedule/shift-codes";
+import { shiftCodeToneClassForRowBadge } from "@/lib/schedule/scheduleWorkerPanelSort";
 import { ScheduleShiftCertChips } from "./ScheduleShiftCertChips";
 
 type Props = {
@@ -312,6 +313,7 @@ export function ScheduleDayView({
                 const sev = worstConflictSeverity(conflicts);
                 const hoverTip = scheduleShiftHoverSummary(s, w, conflicts);
                 const shiftCode = shiftDisplayCode(s, codeMap);
+                const shiftCodeBadgeTone = shiftCodeToneClassForRowBadge(shiftCode);
                 const certRows = conflicts.filter((c) => c.type === "certification");
                 const otherRows = conflicts.filter((c) => c.type !== "certification");
                 const req = s.required_certifications?.filter(Boolean) ?? [];
@@ -461,21 +463,19 @@ export function ScheduleDayView({
                         ) : null}
                         <div className="flex min-w-0 max-w-full flex-wrap items-center justify-end gap-1">
                           {req.length ? <ScheduleShiftCertChips shift={s} size="day" /> : null}
-                          {st ? (
-                            <span
-                              className={`inline-flex items-center rounded-md border px-1.5 py-0.5 text-[10px] font-extrabold leading-none ${
-                                !ptoCls
-                                  ? `${st.bg} ${st.border} ${st.text} border`
-                                  : "border border-ds-border bg-pulseShell-elevated/60 text-ds-foreground"
-                              }`}
-                            >
-                              {shiftCode}
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center rounded-md border border-pulseShell-border bg-pulseShell-elevated px-1.5 py-0.5 text-[10px] font-extrabold text-ds-foreground">
-                              {shiftCode}
-                            </span>
-                          )}
+                          <span
+                            className={cn(
+                              "inline-flex items-center rounded-md px-1.5 py-0.5 text-[10px] font-extrabold leading-none uppercase tracking-wide",
+                              ptoCls
+                                ? "border border-ds-border bg-pulseShell-elevated/60 text-ds-foreground"
+                                : shiftCodeBadgeTone ??
+                                    (st
+                                      ? `${st.bg} ${st.border} ${st.text} border`
+                                      : "border border-pulseShell-border bg-pulseShell-elevated text-ds-foreground"),
+                            )}
+                          >
+                            {shiftCode}
+                          </span>
                         </div>
                       </div>
                     </div>

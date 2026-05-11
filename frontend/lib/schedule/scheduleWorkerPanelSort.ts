@@ -86,3 +86,16 @@ export function shiftCodeBadgeToneClasses(code: string): string {
   if (c.startsWith("N")) return "app-badge-night";
   return "app-badge-slate";
 }
+
+/**
+ * Compact schedule row trailing badge: shift *type* colors are the default; when `code` is a
+ * standard token (N3, D1, `D1+A1` uses first segment), use the same pill tones as the palette /
+ * team roster (including dark purple night).
+ */
+export function shiftCodeToneClassForRowBadge(code: string): string | null {
+  const raw = code.trim();
+  if (!raw) return null;
+  const first = raw.split("+")[0]?.trim() ?? "";
+  if (!/^[DAGN]\d*$/i.test(first)) return null;
+  return shiftCodeBadgeToneClasses(first);
+}

@@ -2,7 +2,8 @@
 
 import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
-import { isLocalDateToday, monthGrid, monthLabel } from "@/lib/schedule/calendar";
+import { isLocalDateToday, isWeekendLocalDate, monthGrid, monthLabel } from "@/lib/schedule/calendar";
+import { cn } from "@/lib/cn";
 import { workerHighlightOverlayClass } from "@/lib/schedule/drag-highlight-classes";
 import {
   readShiftDragPayload,
@@ -181,10 +182,15 @@ export function ScheduleCalendarGrid({
       <div
         className={`grid grid-cols-7 gap-px border-b border-pulseShell-border bg-pulseShell-grid ${scheduleDragLock ? "pointer-events-none" : ""}`}
       >
-        {WEEK.map((d) => (
+        {WEEK.map((d, colIdx) => (
           <div
             key={d}
-            className="bg-pulseShell-header-row px-1 py-2 text-center text-[11px] font-semibold uppercase tracking-wide text-ds-muted"
+            className={cn(
+              "px-1 py-2 text-center text-[11px] font-semibold uppercase tracking-wide text-ds-muted",
+              colIdx === 0 || colIdx === 6
+                ? "bg-sky-100/85 dark:bg-sky-950/40"
+                : "bg-pulseShell-header-row",
+            )}
           >
             {d}
           </div>
@@ -202,22 +208,33 @@ export function ScheduleCalendarGrid({
           const fullDay = dayShiftsFullDay.get(c.date) ?? [];
           const isOver = dragOverDate === c.date;
           const isToday = isLocalDateToday(c.date);
+          const isWeekend = isWeekendLocalDate(c.date);
           const hl = dragSession?.kind === "worker" ? workerHighlightByDate?.[c.date] : undefined;
           const hlLayer = hl ? workerHighlightOverlayClass(hl.tone) : "";
+          const cellSurface = c.inMonth
+            ? isWeekend
+              ? "bg-sky-50/95 dark:bg-sky-950/25"
+              : "bg-pulseShell-cell"
+            : isWeekend
+              ? "bg-sky-100/75 opacity-90 dark:bg-sky-950/30"
+              : "bg-pulseShell-cell-muted opacity-80";
           return (
             <div
               key={c.date}
               title={dragSession?.kind === "worker" && hl?.tooltip ? hl.tooltip : undefined}
               aria-current={isToday ? "date" : undefined}
-              className={`relative flex h-full min-h-0 flex-col bg-pulseShell-cell ${cellPointer} ${
-                c.inMonth ? "" : "bg-pulseShell-cell-muted opacity-80"
-              } ${c.inMonth && onOpenDay && !scheduleDragLock ? "cursor-pointer" : ""} ${
+              className={cn(
+                "relative flex h-full min-h-0 flex-col",
+                cellSurface,
+                cellPointer,
+                c.inMonth && onOpenDay && !scheduleDragLock && "cursor-pointer",
                 isOver && !calendarDropsDisabled
                   ? "z-[1] ring-2 ring-inset ring-ds-success/50"
                   : isToday
                     ? "ring-2 ring-inset ring-ds-success/90"
-                    : ""
-              } ${shakeDate === c.date ? "schedule-cell-shake" : ""}`}
+                    : "",
+                shakeDate === c.date && "schedule-cell-shake",
+              )}
               onClick={(e) => {
                 if (!c.inMonth || !onOpenDay || scheduleDragLock) return;
                 if ((e.target as HTMLElement).closest("[data-schedule-interactive]")) return;

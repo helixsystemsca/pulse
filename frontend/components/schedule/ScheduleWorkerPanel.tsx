@@ -4,14 +4,10 @@ import { ChevronDown, GripVertical } from "lucide-react";
 import { useMemo, useState } from "react";
 import { flushSync } from "react-dom";
 import { attachWorkerDragPreview, setWorkerDragData } from "@/lib/schedule/drag";
-import { recurringShiftCodeMapFromWorkers } from "@/lib/schedule/shift-codes";
 import {
-  bandSortOrder,
   compareWorkersInSchedulePanel,
   primaryBandForWorker,
   roleIndicatorForSchedule,
-  shiftCodeBadgeToneClasses,
-  shiftCodeForWorkerPanel,
   type WorkerPrimaryBand,
 } from "@/lib/schedule/scheduleWorkerPanelSort";
 import {
@@ -85,8 +81,6 @@ export function ScheduleWorkerPanel({
     }
     return m;
   }, [sortedWorkers]);
-
-  const recurringCodeMap = useMemo(() => recurringShiftCodeMapFromWorkers(workers), [workers]);
 
   const activeCertRequirements: string[] = useMemo(() => {
     if (!dragSession || dragSession.kind !== "shift") return [];
@@ -171,7 +165,6 @@ export function ScheduleWorkerPanel({
                     const eligible = workerMeetsCerts(w, activeCertRequirements);
                     const wc = new Set(w.certifications ?? []);
                     const missingCerts = activeCertRequirements.filter((c) => !wc.has(c));
-                    const code = shiftCodeForWorkerPanel(w, recurringCodeMap);
                     const roleInd = roleIndicatorForSchedule(w.role);
                     return (
                       <li key={w.id}>
@@ -213,15 +206,6 @@ export function ScheduleWorkerPanel({
                               {roleInd}
                             </span>
                           ) : null}
-                          {code ? (
-                            <span
-                              className={`shrink-0 rounded px-1 py-0.5 text-[9px] font-bold tabular-nums tracking-tight ${shiftCodeBadgeToneClasses(code)}`}
-                            >
-                              {code}
-                            </span>
-                          ) : (
-                            <span className="shrink-0 text-[10px] text-ds-muted">—</span>
-                          )}
                         </div>
                       </li>
                     );

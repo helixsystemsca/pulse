@@ -906,7 +906,7 @@ html.pulse-welcome-blur [data-pulse-app-shell] {
   }
   /** Night / overnight roster pills — deep violet (clearly distinct from afternoon `app-badge-amber-soft`). */
   .app-badge-night {
-    @apply bg-violet-900 text-violet-50 ring-1 ring-violet-950/50 dark:bg-violet-950 dark:text-violet-100 dark:ring-violet-400/35;
+    @apply bg-violet-950 text-violet-50 ring-1 ring-violet-950/80 dark:bg-violet-950 dark:text-violet-50 dark:ring-violet-400/35;
   }
 
   /** Charts — use on SVG / Recharts cartesian grid */
