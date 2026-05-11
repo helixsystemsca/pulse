@@ -54,10 +54,8 @@ import { canAccessCompanyConfiguration, sessionHasAnyRole } from "@/lib/pulse-ro
 import { readSession } from "@/lib/pulse-session";
 import { AvailabilitySupervisorDrawer } from "./availability/AvailabilitySupervisorDrawer";
 import { EmployeeAvailabilityDrawer } from "./availability/EmployeeAvailabilityDrawer";
-import { ScheduleAlertsBanner } from "./ScheduleAlertsBanner";
 import { ScheduleBuilderHeader } from "./ScheduleBuilderHeader";
-import { ScheduleCoverageStrip } from "./ScheduleCoverageStrip";
-import { ScheduleStaffingSignalsRow } from "./ScheduleStaffingSignalsRow";
+import { ScheduleOperationalSignalsBar } from "./ScheduleOperationalSignalsBar";
 import { ScheduleOperationalSidebar, type ScheduleWorkspaceView } from "./ScheduleOperationalSidebar";
 import { useModuleSettings } from "@/providers/ModuleSettingsProvider";
 import { ScheduleCalendarGrid } from "./ScheduleCalendarGrid";
@@ -1044,60 +1042,55 @@ export function ScheduleApp() {
                   onToggleProjectOverlay={() => setShowProjectOverlay((v) => !v)}
                   disabled={scheduleDragLock}
                 />
-                <ScheduleStaffingSignalsRow alerts={alerts} />
-                <ScheduleCoverageStrip
+
+                {draftResult ? (
+                  <ScheduleDraftPanel
+                    draft={draftResult}
+                    companyId={null}
+                    onCommit={() => {
+                      setDraftResult(null);
+                      void reloadPulseSchedule();
+                    }}
+                    onDiscard={() => setDraftResult(null)}
+                  />
+                ) : null}
+
+                <ScheduleOperationalSignalsBar
                   alerts={alerts}
                   pendingAvailability={pendingAvailabilityCount}
                   unpublishedChanges={hasPendingServerSave}
                   trainingConflicts={0}
                   onAvailabilityClick={() => setAvailabilitySupervisorOpen(true)}
                 />
-              </>
-            ) : null}
 
-            {draftResult ? (
-              <ScheduleDraftPanel
-                draft={draftResult}
-                companyId={null}
-                onCommit={() => {
-                  setDraftResult(null);
-                  void reloadPulseSchedule();
-                }}
-                onDiscard={() => setDraftResult(null)}
-              />
-            ) : null}
+                <div className="relative flex min-h-0 flex-1 flex-col">
+                  {scheduleDragLock ? (
+                    <div
+                      className="pointer-events-none fixed inset-0 z-[115] bg-[color-mix(in_srgb,var(--ds-text-primary)_6%,transparent)] dark:bg-ds-bg/35"
+                      aria-hidden
+                    />
+                  ) : null}
 
-            <ScheduleAlertsBanner alerts={alerts} />
-
-            <div className="relative min-h-0 flex-1">
-              {scheduleDragLock ? (
-                <div
-                  className="pointer-events-none fixed inset-0 z-[115] bg-[color-mix(in_srgb,var(--ds-text-primary)_6%,transparent)] dark:bg-ds-bg/35"
-                  aria-hidden
-                />
-              ) : null}
-              {workspaceView === "calendar" ? (
-                <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-4">
-                  <div className="flex w-full shrink-0 flex-col gap-4 lg:flex-row lg:items-start lg:gap-4">
-                    <div className="min-w-0 w-full lg:min-w-[16rem] lg:max-w-md lg:flex-1">
-                      <ScheduleWorkerPanel
-                        workers={workersForPanel}
-                        rosterDragEnabled={workerDragEnabled}
-                        dragSession={dragSession}
-                        shifts={shifts}
-                        roles={roles}
-                        placementDutyRole={placementDutyRole}
-                        onPlacementDutyRoleChange={setPlacementDutyRole}
-                        placementBand={placementBand}
-                        onPlacementBandChange={setPlacementBand}
-                        onDragSessionStart={setDragSession}
-                        onDragSessionEnd={() => {
-                          setDragSession(null);
-                          setTrashHovering(false);
-                        }}
-                      />
-                    </div>
-                    <div className="min-w-0 w-full lg:max-w-sm lg:flex-1">
+                  <div className="grid min-h-0 flex-1 grid-cols-1 gap-6 md:grid-cols-[minmax(260px,360px)_1fr] md:grid-rows-1 md:items-stretch lg:grid-cols-[minmax(280px,420px)_1fr] lg:gap-6">
+                    <aside className="flex min-h-0 flex-col gap-4 overflow-y-auto lg:min-h-0 lg:max-h-full lg:pr-0.5">
+                      <div className="shrink-0">
+                        <ScheduleWorkerPanel
+                          workers={workersForPanel}
+                          rosterDragEnabled={workerDragEnabled}
+                          dragSession={dragSession}
+                          shifts={shifts}
+                          roles={roles}
+                          placementDutyRole={placementDutyRole}
+                          onPlacementDutyRoleChange={setPlacementDutyRole}
+                          placementBand={placementBand}
+                          onPlacementBandChange={setPlacementBand}
+                          onDragSessionStart={setDragSession}
+                          onDragSessionEnd={() => {
+                            setDragSession(null);
+                            setTrashHovering(false);
+                          }}
+                        />
+                      </div>
                       <ScheduleLegendPanel
                         shiftTypes={shiftTypes}
                         shifts={displayShifts}
@@ -1105,10 +1098,12 @@ export function ScheduleApp() {
                         shiftDefinitions={shiftDefinitions}
                         contentFilter={contentFilter}
                         projectLegendItems={projectLegendItems}
+                        className="shrink-0 lg:static lg:top-auto lg:max-h-none lg:overflow-visible"
                       />
-                    </div>
-                  </div>
-                  <div className="min-h-0 min-w-0 flex-1 space-y-4">
+                    </aside>
+
+                    <section className="flex min-h-0 min-w-0 flex-col overflow-hidden">
+                      <div className="min-h-0 flex-1 space-y-4 overflow-x-auto overflow-y-auto">
                 {scheduleLayout === "calendar" && timeScale === "day" ? (
                   <div className="space-y-3">
                     <div
@@ -1304,9 +1299,12 @@ export function ScheduleApp() {
                     }
                   />
                 ) : null}
-              </div>
-            </div>
-          ) : null}
+                      </div>
+                    </section>
+                  </div>
+                </div>
+              </>
+            ) : null}
           {workspaceView === "my-shifts" ? (
             <ScheduleMyShiftsView
               shifts={myShifts}
@@ -1327,7 +1325,6 @@ export function ScheduleApp() {
             />
           ) : null}
           {workspaceView === "reports" ? <ScheduleReports /> : null}
-            </div>
           </div>
         </div>
       </div>

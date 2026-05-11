@@ -2,6 +2,7 @@
 
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { useMemo, useState } from "react";
+import { cn } from "@/lib/cn";
 import {
   recurringWindowLegendFromWorkers,
   shiftCodesLegendBlurb,
@@ -35,9 +36,19 @@ type Props = {
   contentFilter: "workers" | "projects" | "combined";
   /** When set, lists projects (e.g. from the Projects page) with schedule overlay colors. */
   projectLegendItems: ScheduleProjectLegendItem[] | null;
+  /** Merged onto the root aside (e.g. disable sticky when legend sits in a scrolling left rail). */
+  className?: string;
 };
 
-export function ScheduleLegendPanel({ shiftTypes, shifts, workers, shiftDefinitions, contentFilter, projectLegendItems }: Props) {
+export function ScheduleLegendPanel({
+  shiftTypes,
+  shifts,
+  workers,
+  shiftDefinitions,
+  contentFilter,
+  projectLegendItems,
+  className,
+}: Props) {
   const [open, setOpen] = useState(true);
 
   const recurringWindows = useMemo(() => recurringWindowLegendFromWorkers(workers), [workers]);
@@ -52,7 +63,10 @@ export function ScheduleLegendPanel({ shiftTypes, shifts, workers, shiftDefiniti
 
   return (
     <aside
-      className="rounded-md border border-pulseShell-border bg-pulseShell-surface shadow-[var(--pulse-shell-shadow)] lg:sticky lg:top-24 lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto"
+      className={cn(
+        "rounded-md border border-pulseShell-border bg-pulseShell-surface shadow-[var(--pulse-shell-shadow)] lg:sticky lg:top-24 lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto",
+        className,
+      )}
       aria-label="Schedule legend"
     >
       <button
