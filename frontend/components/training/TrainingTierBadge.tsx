@@ -18,7 +18,16 @@ const tierLabel: Record<TrainingTier, string> = {
   general: "General",
 };
 
-export function TrainingTierBadge({ tier, className }: { tier: TrainingTier; className?: string }) {
+export function TrainingTierBadge({
+  tier,
+  className,
+  label,
+}: {
+  tier: TrainingTier;
+  className?: string;
+  /** When set, overrides the default matrix copy (e.g. Mandatory / High / Low). */
+  label?: string;
+}) {
   return (
     <span
       className={cn(
@@ -27,7 +36,7 @@ export function TrainingTierBadge({ tier, className }: { tier: TrainingTier; cla
         className,
       )}
     >
-      {tierLabel[tier]}
+      {label ?? tierLabel[tier]}
     </span>
   );
 }

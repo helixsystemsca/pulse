@@ -30,16 +30,21 @@ import {
   showProcedureAcknowledgeCTA,
   type WorkerTrainingApiResponse,
 } from "@/lib/trainingApi";
-import type { TrainingTier } from "@/lib/training/types";
+import type { TrainingAcknowledgement, TrainingAssignment, TrainingEmployee, TrainingProgram, TrainingTier } from "@/lib/training/types";
 import {
   configForProcedure,
   readProcedureComplianceConfig,
   writeProcedureComplianceConfig,
 } from "@/lib/training/procedureComplianceConfig";
+import { computeProgramColumnCompliancePercent } from "@/lib/training/selectors";
+import { generateDemoAssignmentsForMatrix } from "@/lib/training/generatedAssignments";
+import { proceduresToTrainingPrograms, workersToTrainingEmployees } from "@/lib/training/liveCatalog";
 import { fetchWorkerList, fetchWorkerSettings } from "@/lib/workersService";
 import { cn } from "@/lib/cn";
 import { buttonVariants } from "@/styles/button-variants";
 import { ProcedureKnowledgeVerification } from "@/components/procedures/ProcedureKnowledgeVerification";
+import { TrainingTierBadge } from "@/components/training/TrainingTierBadge";
+import { fetchTrainingMatrix, mapApiAssignments, mapApiEmployees, mapApiPrograms } from "@/lib/trainingApi";
 
 const PROCEDURES_HEADER_BTN = cn(
   buttonVariants({ surface: "light", intent: "accent" }),
@@ -90,6 +95,14 @@ const PROCEDURE_TRAINING_PRIORITY_OPTIONS: { value: TrainingTier; label: string 
 function trainingTierLabel(tier: TrainingTier): string {
   return PROCEDURE_TRAINING_PRIORITY_OPTIONS.find((o) => o.value === tier)?.label ?? tier;
 }
+
+type ProcedureLibraryComplianceCtx = {
+  employees: TrainingEmployee[];
+  programs: TrainingProgram[];
+  assignments: TrainingAssignment[];
+  acknowledgements: TrainingAcknowledgement[];
+  trustAssignmentStatus: boolean;
+};
 
 function toDraftFromProcedure(row: ProcedureRow): DraftStep[] {
   return row.steps.map((s) => ({
@@ -164,6 +177,7 @@ export function ProceduresApp() {
   );
   const userId = session?.sub ?? null;
   const [myTraining, setMyTraining] = useState<WorkerTrainingApiResponse | null>(null);
+  const [libraryComplianceCtx, setLibraryComplianceCtx] = useState<ProcedureLibraryComplianceCtx | null>(null);
   const [proceduresEditRoles, setProceduresEditRoles] = useState<string[]>(["manager", "supervisor", "lead"]);
 
   const sessionRoleSet = useMemo(() => {
@@ -209,6 +223,47 @@ export function ProceduresApp() {
       setMyTraining(null);
     }
   }, [userId]);
+
+  const api = isApiMode();
+
+  const refreshProcedureLibraryCompliance = useCallback(async () => {
+    if (api) {
+      try {
+        const m = await fetchTrainingMatrix();
+        setLibraryComplianceCtx({
+          employees: mapApiEmployees(m.employees),
+          programs: mapApiPrograms(m.programs),
+          assignments: mapApiAssignments(m.assignments),
+          acknowledgements: [],
+          trustAssignmentStatus: true,
+        });
+      } catch {
+        setLibraryComplianceCtx(null);
+      }
+      return;
+    }
+    try {
+      const companyId = session?.company_id ?? null;
+      const w = await fetchWorkerList(companyId, { include_inactive: false });
+      const cfg = readProcedureComplianceConfig();
+      const emps = workersToTrainingEmployees(w.items ?? []);
+      const progs = proceduresToTrainingPrograms(rows, cfg);
+      const { assignments, acknowledgements } = generateDemoAssignmentsForMatrix(emps, progs);
+      setLibraryComplianceCtx({
+        employees: emps,
+        programs: progs,
+        assignments,
+        acknowledgements,
+        trustAssignmentStatus: false,
+      });
+    } catch {
+      setLibraryComplianceCtx(null);
+    }
+  }, [api, session?.company_id, rows]);
+
+  useEffect(() => {
+    void refreshProcedureLibraryCompliance();
+  }, [refreshProcedureLibraryCompliance]);
 
   useEffect(() => {
     void reloadMyTraining();
@@ -503,18 +558,19 @@ export function ProceduresApp() {
         return;
       }
       await patchProcedureCompliance(procedureId, payload);
-      return;
+    } else {
+      const prev = readProcedureComplianceConfig();
+      writeProcedureComplianceConfig({
+        ...prev,
+        [procedureId]: {
+          tier,
+          due_within_days: null,
+          requires_acknowledgement: true,
+          requires_knowledge_verification: true,
+        },
+      });
     }
-    const prev = readProcedureComplianceConfig();
-    writeProcedureComplianceConfig({
-      ...prev,
-      [procedureId]: {
-        tier,
-        due_within_days: null,
-        requires_acknowledgement: true,
-        requires_knowledge_verification: true,
-      },
-    });
+    void refreshProcedureLibraryCompliance();
   }
 
   const signAcknowledgment = async () => {
@@ -524,6 +580,7 @@ export function ProceduresApp() {
       try {
         await postProcedureTrainingAcknowledgement(selected.id);
         await reloadMyTraining();
+        void refreshProcedureLibraryCompliance();
       } catch (e) {
         setErr(parseClientApiError(e).message);
       } finally {
@@ -533,6 +590,7 @@ export function ProceduresApp() {
     }
     try {
       acknowledgeProcedure(userId, selected.id, selected.title);
+      void refreshProcedureLibraryCompliance();
     } finally {
       setAckOpen(false);
     }
@@ -553,6 +611,7 @@ export function ProceduresApp() {
             : "Completion sign-off recorded for compliance.",
         );
         await reloadMyTraining();
+        void refreshProcedureLibraryCompliance();
       } catch (e) {
         setErr(parseClientApiError(e).message);
       }
@@ -570,6 +629,7 @@ export function ProceduresApp() {
       completed_by_name: name,
       revision_marker: rev,
     });
+    void refreshProcedureLibraryCompliance();
   };
 
   const programMetaForSelected = useMemo(() => {
@@ -1302,7 +1362,21 @@ export function ProceduresApp() {
                   <p className="text-sm text-ds-muted">No procedures yet.</p>
                 ) : (
                   <ul className="divide-y divide-ds-border">
-                    {rows.map((r) => (
+                    {rows.map((r) => {
+                      const tier =
+                        libraryComplianceCtx?.programs.find((p) => p.id === r.id)?.tier ??
+                        configForProcedure(r.id, readProcedureComplianceConfig()).tier;
+                      const compliancePct = libraryComplianceCtx
+                        ? computeProgramColumnCompliancePercent(
+                            r.id,
+                            libraryComplianceCtx.employees,
+                            libraryComplianceCtx.programs,
+                            libraryComplianceCtx.assignments,
+                            libraryComplianceCtx.acknowledgements,
+                            { trustAssignmentStatus: libraryComplianceCtx.trustAssignmentStatus },
+                          )
+                        : null;
+                      return (
                       <li key={r.id}>
                         <button
                           type="button"
@@ -1328,10 +1402,22 @@ export function ProceduresApp() {
                               ) : null}
                             </div>
                           </div>
-                          <span className="shrink-0 text-[11px] text-ds-muted">{r.steps.length}</span>
+                          <div className="flex shrink-0 flex-col items-end gap-1">
+                            <div className="flex flex-wrap justify-end gap-1">
+                              <TrainingTierBadge tier={tier} label={trainingTierLabel(tier)} />
+                              <span
+                                className="inline-flex shrink-0 items-center rounded-md border border-ds-border bg-ds-secondary/50 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide leading-none text-ds-muted tabular-nums dark:bg-ds-secondary/40"
+                                title="Share of employees in compliance for this procedure on the team training matrix (complete or expiring soon)."
+                              >
+                                {compliancePct == null ? "—" : `${compliancePct}%`}
+                              </span>
+                            </div>
+                            <span className="text-[11px] tabular-nums text-ds-muted">{r.steps.length}</span>
+                          </div>
                         </button>
                       </li>
-                    ))}
+                      );
+                    })}
                   </ul>
                 )}
               </div>

@@ -1,4 +1,5 @@
 import type {
+  TrainingAcknowledgement,
   TrainingAssignment,
   TrainingAssignmentStatus,
   TrainingEmployee,
@@ -222,6 +223,35 @@ export function computeComplianceRadialSummary(
     totalSlots <= 0 ? 0 : Math.round(((completed + expiringSoon) / totalSlots) * 100);
 
   return { totalSlots, completed, expiringSoon, missing, overallCompliancePercent };
+}
+
+/**
+ * Company-wide completion rate for a single training program column: share of employees whose
+ * effective matrix cell is `completed` or `expiring_soon` (aligned with radial “in compliance” treatment).
+ */
+export function computeProgramColumnCompliancePercent(
+  programId: string,
+  employees: TrainingEmployee[],
+  programs: TrainingProgram[],
+  assignments: TrainingAssignment[],
+  acknowledgements: TrainingAcknowledgement[],
+  opts?: { trustAssignmentStatus?: boolean },
+): number | null {
+  const program = programs.find((p) => p.id === programId && p.active);
+  if (!program || employees.length === 0) return null;
+
+  const resolved = opts?.trustAssignmentStatus
+    ? assignments
+    : resolvedAssignments(programs, assignments, acknowledgements);
+
+  let inCompliance = 0;
+  for (const e of employees) {
+    const a = assignmentFor(e.id, programId, resolved);
+    const eff = cellAssignmentStatus(program, a, acknowledgements, opts);
+    if (eff === "completed" || eff === "expiring_soon") inCompliance++;
+  }
+
+  return Math.round((inCompliance / employees.length) * 100);
 }
 
 export function uniqueDepartments(employees: TrainingEmployee[]): string[] {
