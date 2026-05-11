@@ -13,7 +13,7 @@ html {
  * so it stays crisp.
  */
 html.pulse-welcome-blur [data-pulse-app-shell] {
-  filter: blur(10px) saturate(1.04) drop-shadow(0 0 20px color-mix(in srgb, var(--ds-accent) 22%, transparent));
+  filter: blur(10px) saturate(1.04) drop-shadow(0 0 12px rgba(15, 23, 42, 0.12));
   pointer-events: none;
   user-select: none;
 }
@@ -100,21 +100,19 @@ html.pulse-welcome-blur [data-pulse-app-shell] {
   /** Top bar (iron grey): translucent ice overlays */
   --ds-chrome-interactive-hover: color-mix(in srgb, var(--ds-palette-ice-mid) 28%, transparent);
   --ds-chrome-interactive-active: color-mix(in srgb, var(--ds-palette-ice-deep) 34%, transparent);
-  /** Soft shadow + subtle accent fringe — premium panels (light); keep fringe faint vs. UI noise. */
+  /** Neutral elevation only — avoids indigo/sky “outer glow” on cards & panels. */
   --ds-shadow-card:
-    0 1px 0 rgba(255, 255, 255, 0.78) inset,
-    0 2px 6px rgba(15, 23, 42, 0.05),
-    0 12px 40px -18px rgba(99, 102, 241, 0.1),
-    0 22px 52px -24px rgba(56, 189, 248, 0.09);
+    0 1px 0 rgba(255, 255, 255, 0.75) inset,
+    0 1px 2px rgba(15, 23, 42, 0.04),
+    0 4px 12px -2px rgba(15, 23, 42, 0.06);
   --ds-shadow-card-hover:
-    0 1px 0 rgba(255, 255, 255, 0.88) inset,
-    0 8px 22px -8px rgba(15, 23, 42, 0.08),
-    0 18px 48px -20px rgba(129, 140, 248, 0.12),
-    0 30px 64px -26px rgba(56, 189, 248, 0.13);
+    0 1px 0 rgba(255, 255, 255, 0.85) inset,
+    0 2px 4px rgba(15, 23, 42, 0.05),
+    0 8px 20px -4px rgba(15, 23, 42, 0.08);
   --ds-shadow-diffuse:
     0 1px 0 rgba(255, 255, 255, 0.65) inset,
-    0 4px 16px rgba(15, 23, 42, 0.05),
-    0 16px 42px -22px rgba(99, 102, 241, 0.07);
+    0 2px 8px rgba(15, 23, 42, 0.05),
+    0 12px 28px -8px rgba(15, 23, 42, 0.07);
   --ds-chart-grid: rgba(15, 23, 42, 0.06);
   --ds-focus-ring: color-mix(in srgb, var(--ds-palette-ice-deep) 42%, transparent);
   --ds-radius-card: 1rem;
@@ -143,13 +141,11 @@ html.pulse-welcome-blur [data-pulse-app-shell] {
   --dash-card-radius: 1.25rem;
   --dash-card-radius-hero: 1.5rem;
   --dash-shadow-card-soft:
-    0 1px 0 rgb(255 255 255 / 0.72) inset, 0 2px 4px rgb(15 23 42 / 0.04), 0 14px 36px -12px rgb(15 23 42 / 0.14);
+    0 1px 0 rgb(255 255 255 / 0.72) inset, 0 1px 2px rgb(15 23 42 / 0.04), 0 4px 14px -4px rgb(15 23 42 / 0.08);
   --dash-shadow-card-mid:
-    0 1px 0 rgb(255 255 255 / 0.65) inset, 0 4px 14px -4px rgb(15 23 42 / 0.07),
-    0 20px 44px -18px rgb(59 130 246 / 0.1);
+    0 1px 0 rgb(255 255 255 / 0.65) inset, 0 2px 6px rgb(15 23 42 / 0.05), 0 8px 20px -6px rgb(15 23 42 / 0.1);
   --dash-shadow-card-hover:
-    0 1px 0 rgb(255 255 255 / 0.88) inset, 0 10px 28px -6px rgb(15 23 42 / 0.1),
-    0 28px 58px -20px rgb(56 189 248 / 0.14);
+    0 1px 0 rgb(255 255 255 / 0.88) inset, 0 4px 12px -2px rgb(15 23 42 / 0.08), 0 12px 28px -6px rgb(15 23 42 / 0.12);
 
   /** PM planning shell — alias tokens (use with `style` or arbitrary props). */
   --pm-color-primary: var(--ds-accent);
@@ -224,13 +220,16 @@ html.pulse-welcome-blur [data-pulse-app-shell] {
   --ds-chrome-interactive-active: color-mix(in srgb, var(--ds-palette-ice-deep) 36%, transparent);
   --ds-shadow-card:
     0 1px 0 rgba(255, 255, 255, 0.06) inset,
-    0 2px 12px rgba(0, 0, 0, 0.22),
-    0 16px 40px -20px rgba(56, 189, 248, 0.09);
+    0 1px 2px rgba(0, 0, 0, 0.28),
+    0 4px 14px -2px rgba(0, 0, 0, 0.38);
   --ds-shadow-card-hover:
     0 1px 0 rgba(255, 255, 255, 0.08) inset,
-    0 6px 22px rgba(0, 0, 0, 0.28),
-    0 22px 48px -22px rgba(129, 140, 248, 0.11);
-  --ds-shadow-diffuse: 0 2px 20px rgba(0, 0, 0, 0.22), 0 14px 36px -20px rgba(56, 189, 248, 0.06);
+    0 2px 6px rgba(0, 0, 0, 0.32),
+    0 10px 24px -4px rgba(0, 0, 0, 0.42);
+  --ds-shadow-diffuse:
+    0 1px 0 rgba(255, 255, 255, 0.05) inset,
+    0 2px 10px rgba(0, 0, 0, 0.28),
+    0 12px 28px -6px rgba(0, 0, 0, 0.38);
   --ds-premium-card-bg:
     radial-gradient(900px 480px at 90% -6%, color-mix(in srgb, var(--ds-accent) 18%, transparent), transparent 52%),
     radial-gradient(720px 400px at -4% 102%, color-mix(in srgb, #818cf8 14%, transparent), transparent 48%),
@@ -427,20 +426,20 @@ html.pulse-welcome-blur [data-pulse-app-shell] {
       background-color 200ms ease;
   }
 
-  /** Light mode — premium gradient cards + indigo/sky outer glow (see `:root` shadows). */
+  /** Light mode — premium gradient cards; elevation from neutral `--ds-shadow-*` only. */
   html:not(.dark) :is(.ds-card-primary, .app-glass-card, .app-card) {
-    border-color: color-mix(in srgb, #818cf8 14%, rgba(15, 23, 42, 0.06));
+    border-color: color-mix(in srgb, var(--ds-text-primary) 10%, rgba(15, 23, 42, 0.06));
     background-color: transparent;
     background-image: var(--ds-premium-card-bg);
   }
   html:not(.dark) .ds-card-secondary {
-    border-color: color-mix(in srgb, #6366f1 11%, var(--ds-border));
+    border-color: color-mix(in srgb, var(--ds-text-primary) 9%, var(--ds-border));
     background-color: transparent;
     background-image: var(--ds-premium-card-secondary-bg);
   }
   html:not(.dark) .ds-card-elevated,
   html:not(.dark) .app-glass-elevated {
-    border-color: color-mix(in srgb, #38bdf8 12%, var(--ds-border));
+    border-color: color-mix(in srgb, var(--ds-text-primary) 10%, var(--ds-border));
     background-color: transparent;
     background-image: var(--ds-premium-card-elevated-bg);
     box-shadow: var(--ds-shadow-card);
@@ -467,7 +466,7 @@ html.pulse-welcome-blur [data-pulse-app-shell] {
     position: relative;
     overflow: hidden;
     border-radius: var(--ds-radius-card);
-    border: 1px solid color-mix(in srgb, #818cf8 13%, rgba(15, 23, 42, 0.06));
+    border: 1px solid color-mix(in srgb, var(--ds-text-primary) 10%, transparent);
     background-color: transparent;
     background-image: var(--ds-premium-card-bg);
     box-shadow: var(--ds-shadow-card);
@@ -490,12 +489,13 @@ html.pulse-welcome-blur [data-pulse-app-shell] {
     background-image: var(--ds-premium-inset-bg);
     box-shadow:
       0 1px 0 rgba(255, 255, 255, 0.75) inset,
-      0 4px 18px -10px rgba(99, 102, 241, 0.06);
+      0 1px 2px rgba(15, 23, 42, 0.04),
+      0 4px 12px -4px rgba(15, 23, 42, 0.06);
   }
   .dark .ds-premium-inset {
     border-color: var(--ds-border);
     background-image: var(--ds-premium-inset-bg);
-    box-shadow: 0 2px 14px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.22), 0 4px 12px -4px rgba(0, 0, 0, 0.28);
   }
 
   .ds-card-primary:hover,
@@ -1078,13 +1078,13 @@ html.pulse-welcome-blur [data-pulse-app-shell] {
   }
   .dark .dash-card {
     border-color: rgb(255 255 255 / 0.12);
-    box-shadow: 0 2px 14px rgb(0 0 0 / 0.35), 0 14px 44px -12px rgb(0 0 0 / 0.45);
+    box-shadow: 0 1px 2px rgb(0 0 0 / 0.32), 0 6px 18px -4px rgb(0 0 0 / 0.42);
   }
   .dark .dash-card:hover {
-    box-shadow: 0 4px 22px rgb(0 0 0 / 0.42), 0 24px 48px -16px rgb(56 189 248 / 0.09);
+    box-shadow: 0 2px 6px rgb(0 0 0 / 0.38), 0 10px 26px -6px rgb(0 0 0 / 0.48);
   }
   .dark .dash-card--static:hover {
-    box-shadow: 0 2px 14px rgb(0 0 0 / 0.35), 0 14px 44px -12px rgb(0 0 0 / 0.45);
+    box-shadow: 0 1px 2px rgb(0 0 0 / 0.32), 0 6px 18px -4px rgb(0 0 0 / 0.42);
   }
   .dark .dash-card--hero {
     background:
@@ -1174,7 +1174,7 @@ html.pulse-welcome-blur [data-pulse-app-shell] {
       radial-gradient(900px 520px at 85% 10%, rgb(44 143 130 / 0.12), transparent 52%),
       radial-gradient(900px 520px at 70% 95%, rgb(92 107 184 / 0.12), transparent 55%),
       color-mix(in srgb, var(--ds-bg) 65%, #ffffff 35%);
-    box-shadow: 0 10px 38px rgba(15, 23, 42, 0.08), 0 1px 2px rgba(15, 23, 42, 0.04);
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05), 0 6px 18px -4px rgba(15, 23, 42, 0.08);
     backdrop-filter: blur(16px);
   }
   .dark .pulse-dashboard-surface {
@@ -1184,7 +1184,7 @@ html.pulse-welcome-blur [data-pulse-app-shell] {
       radial-gradient(900px 520px at 85% 10%, color-mix(in srgb, var(--ds-accent) 18%, transparent), transparent 52%),
       radial-gradient(900px 520px at 70% 95%, color-mix(in srgb, var(--ds-accent-dusk) 18%, transparent), transparent 55%),
       color-mix(in srgb, var(--ds-bg) 82%, #000000 18%);
-    box-shadow: 0 14px 46px rgba(0, 0, 0, 0.28), 0 1px 3px rgba(0, 0, 0, 0.22);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.28), 0 8px 22px -4px rgba(0, 0, 0, 0.38);
     backdrop-filter: blur(18px);
   }
 

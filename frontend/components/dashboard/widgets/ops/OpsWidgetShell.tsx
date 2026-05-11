@@ -24,7 +24,7 @@ export function OpsWidgetShell({
   return (
     <div
       className={cn(
-        "flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-[color-mix(in_srgb,var(--ops-dash-border,#cbd5e1)_90%,transparent)] bg-[var(--ops-dash-widget-bg,#ffffff)] shadow-[0_18px_50px_-30px_rgba(15,23,42,0.35)] ring-1 ring-black/[0.03] dark:border-white/[0.09] dark:bg-[var(--ops-dash-widget-bg,#0f172a)] dark:ring-white/[0.06]",
+        "flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-[color-mix(in_srgb,var(--ops-dash-border,#cbd5e1)_90%,transparent)] bg-[var(--ops-dash-widget-bg,#ffffff)] shadow-[0_1px_2px_rgba(15,23,42,0.05),0_6px_18px_-4px_rgba(15,23,42,0.1)] ring-1 ring-black/[0.03] dark:border-white/[0.09] dark:bg-[var(--ops-dash-widget-bg,#0f172a)] dark:shadow-[0_1px_2px_rgba(0,0,0,0.28),0_6px_18px_-4px_rgba(0,0,0,0.38)] dark:ring-white/[0.06]",
         className,
       )}
     >

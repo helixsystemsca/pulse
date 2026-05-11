@@ -148,7 +148,7 @@ export function KioskRotateFooter({
         "col-span-12 flex w-full flex-wrap items-center justify-between text-ds-muted",
         compact ? "gap-2" : "gap-4",
         compact
-          ? "rounded-2xl border border-[color-mix(in_srgb,var(--ops-dash-border,#cbd5e1)_88%,transparent)] bg-[var(--ops-dash-widget-bg,#ffffff)] px-3 py-2 text-[11px] shadow-[0_8px_28px_-22px_rgba(15,23,42,0.22)] dark:border-white/[0.09] dark:bg-[var(--ops-dash-widget-bg,#0f172a)]"
+          ? "rounded-2xl border border-[color-mix(in_srgb,var(--ops-dash-border,#cbd5e1)_88%,transparent)] bg-[var(--ops-dash-widget-bg,#ffffff)] px-3 py-2 text-[11px] shadow-[0_1px_2px_rgba(15,23,42,0.05),0_4px_14px_-6px_rgba(15,23,42,0.1)] dark:border-white/[0.09] dark:bg-[var(--ops-dash-widget-bg,#0f172a)] dark:shadow-[0_1px_2px_rgba(0,0,0,0.28),0_4px_14px_-6px_rgba(0,0,0,0.35)]"
           : "rounded-[var(--dash-card-radius)] border border-[color-mix(in_srgb,var(--ds-text-primary)_9%,transparent)] bg-[linear-gradient(180deg,rgb(255_255_255_/0.82),rgb(248_250_252_/0.92))] px-4 py-3 text-xs shadow-[var(--dash-shadow-card-soft)] backdrop-blur-md dark:border-[rgb(255_255_255_/0.1)] dark:bg-[color-mix(in_srgb,var(--ds-surface-primary)_92%,transparent)]",
       )}
     >
@@ -160,7 +160,7 @@ export function KioskRotateFooter({
               key={i}
               className={cn(
                 "h-2.5 w-2.5 rounded-full transition-colors",
-                i === activeIndex ? "bg-ds-accent shadow-[0_0_10px_color-mix(in_srgb,var(--ds-accent)_55%,transparent)]" : "bg-ds-border",
+                i === activeIndex ? "bg-ds-accent" : "bg-ds-border",
               )}
               aria-current={i === activeIndex ? "step" : undefined}
             />

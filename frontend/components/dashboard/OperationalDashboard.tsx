@@ -1852,7 +1852,7 @@ function DashboardBody({
       >
         <div className="grid grid-cols-12 gap-2">
           <div className="col-span-12">
-            <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-[color-mix(in_srgb,var(--ops-dash-border,#cbd5e1)_88%,transparent)] bg-[var(--ops-dash-widget-bg,#ffffff)] px-3 py-2 shadow-[0_12px_40px_-28px_rgba(15,23,42,0.2)] dark:border-white/[0.09] dark:bg-[var(--ops-dash-widget-bg,#0f172a)]">
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-[color-mix(in_srgb,var(--ops-dash-border,#cbd5e1)_88%,transparent)] bg-[var(--ops-dash-widget-bg,#ffffff)] px-3 py-2 shadow-[0_1px_2px_rgba(15,23,42,0.05),0_6px_18px_-4px_rgba(15,23,42,0.1)] dark:border-white/[0.09] dark:bg-[var(--ops-dash-widget-bg,#0f172a)] dark:shadow-[0_1px_2px_rgba(0,0,0,0.28),0_6px_18px_-4px_rgba(0,0,0,0.38)]">
               <div className="flex min-w-0 items-center gap-2 sm:gap-3">
                 <OperationsHeaderLogoMark logoUrl={headerLogoUrl} companyName={headerCompanyName} />
                 <div className="min-w-0">
@@ -1965,7 +1965,7 @@ function DashboardBody({
 
   return (
     <div className={cn(DASH.page, "space-y-3")}>
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[color-mix(in_srgb,var(--ops-dash-border,#cbd5e1)_88%,transparent)] bg-[var(--ops-dash-widget-bg,#ffffff)] px-3 py-2.5 shadow-[0_12px_40px_-28px_rgba(15,23,42,0.2)] dark:border-white/[0.09] dark:bg-[var(--ops-dash-widget-bg,#0f172a)]">
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[color-mix(in_srgb,var(--ops-dash-border,#cbd5e1)_88%,transparent)] bg-[var(--ops-dash-widget-bg,#ffffff)] px-3 py-2.5 shadow-[0_1px_2px_rgba(15,23,42,0.05),0_6px_18px_-4px_rgba(15,23,42,0.1)] dark:border-white/[0.09] dark:bg-[var(--ops-dash-widget-bg,#0f172a)] dark:shadow-[0_1px_2px_rgba(0,0,0,0.28),0_6px_18px_-4px_rgba(0,0,0,0.38)]">
         <div className="min-w-0">
           <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[color-mix(in_srgb,var(--ds-text-primary)_48%,transparent)]">
             Operations
