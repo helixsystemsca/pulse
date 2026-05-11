@@ -91,6 +91,9 @@ class PulseProcedure(Base):
     content_revision: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     # Multiple-choice knowledge verification questions for assigned training (JSON array).
     verification_quiz: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, server_default=text("'[]'::jsonb"))
+    is_critical: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    published_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    revision_notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
@@ -308,6 +311,41 @@ class PulseProcedureTrainingAcknowledgement(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
+
+
+class PulseProcedureWorkerCompletion(Base):
+    """Lightweight read/understand completion + checkbox audit (distinct from quiz sign-off rows).
+
+    Extension hooks: attach quiz_score_percent, expires_at for recert; supervisor workflows stay separate.
+    """
+
+    __tablename__ = "pulse_procedure_worker_completions"
+    __table_args__ = (
+        UniqueConstraint(
+            "company_id",
+            "employee_user_id",
+            "procedure_id",
+            "revision_number",
+            name="uq_pulse_proc_worker_completion_emp_proc_rev",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    company_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    employee_user_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    procedure_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("pulse_procedures.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    revision_number: Mapped[int] = mapped_column(Integer, nullable=False)
+    completed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    expires_at: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    primary_acknowledged_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    secondary_acknowledged_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    quiz_score_percent: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
 
 
 class PulseTrainingNotificationEvent(Base):

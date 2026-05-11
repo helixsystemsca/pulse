@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AlertTriangle, Check, Cloud, Monitor, Palette, Pencil, ShieldAlert, Sparkles } from "lucide-react";
 
 import { DashboardAccentCard, DashboardColumnPanel } from "@/components/dashboard/DashboardChrome";
+import { DashboardViewTabs } from "@/components/dashboard/DashboardViewTabs";
 import { DashboardWidgetStyleFields } from "@/components/dashboard/DashboardWidgetStyleFields";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -463,7 +464,9 @@ export function WorkerBreakRoomDashboard({ kiosk = false }: Props) {
               </span>
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            {!kiosk ? <DashboardViewTabs variant="toolbar" className="shrink-0" /> : null}
+            {!kiosk ? <span className="hidden h-6 w-px shrink-0 bg-ds-border sm:block" aria-hidden /> : null}
             {!kiosk ? (
               <Button
                 type="button"

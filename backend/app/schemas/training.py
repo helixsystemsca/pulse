@@ -172,6 +172,35 @@ class ProcedureAcknowledgementPostIn(BaseModel):
     )
 
 
+ProcedureLightCompletionStatusApi = Literal[
+    "not_started",
+    "completed",
+    "expired",
+    "requires_retraining",
+]
+
+
+class ProcedureLightCompletionStateOut(BaseModel):
+    """Worker-facing training / compliance status for lightweight procedure completion."""
+
+    status: ProcedureLightCompletionStatusApi
+    current_revision_number: int
+    completed_at: Optional[datetime] = None
+    completed_revision_number: Optional[int] = None
+    expires_at: Optional[date] = None
+    primary_acknowledged_at: Optional[datetime] = None
+    secondary_acknowledged_at: Optional[datetime] = None
+    quiz_score_percent: Optional[int] = None
+
+
+class ProcedureLightCompletionPostIn(BaseModel):
+    primary_acknowledged: bool = Field(False, description="Required to complete when verification is off.")
+    secondary_acknowledged: bool = Field(
+        False,
+        description="Required for critical procedures — confirm escalation if unsure.",
+    )
+
+
 class TrainingAssignmentCreateIn(BaseModel):
     procedure_id: str
     employee_user_ids: list[str] = Field(..., min_length=1)

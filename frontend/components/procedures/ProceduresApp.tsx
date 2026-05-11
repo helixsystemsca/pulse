@@ -43,6 +43,7 @@ import { fetchWorkerList, fetchWorkerSettings } from "@/lib/workersService";
 import { cn } from "@/lib/cn";
 import { buttonVariants } from "@/styles/button-variants";
 import { ProcedureKnowledgeVerification } from "@/components/procedures/ProcedureKnowledgeVerification";
+import { ProcedureComplianceAcknowledgmentCard } from "@/components/procedures/ProcedureComplianceAcknowledgmentCard";
 import { TrainingTierBadge } from "@/components/training/TrainingTierBadge";
 import { fetchTrainingMatrix, mapApiAssignments, mapApiEmployees, mapApiPrograms } from "@/lib/trainingApi";
 
@@ -137,6 +138,17 @@ function inferProcedureLocation(row: ProcedureRow): string {
   return OTHER_LOCATION_BUCKET;
 }
 
+function procedureVersionLabel(row: ProcedureRow): string {
+  const rev =
+    typeof row.content_revision === "number" && Number.isFinite(row.content_revision) ? row.content_revision : 1;
+  const d = row.updated_at ? new Date(row.updated_at) : null;
+  const updated =
+    d && !Number.isNaN(d.getTime())
+      ? `Updated ${d.toLocaleDateString(undefined, { month: "short", year: "numeric" })}`
+      : "";
+  return [`Version ${rev}`, updated].filter(Boolean).join(" • ");
+}
+
 function procedureLibraryTier(row: ProcedureRow, ctx: ProcedureLibraryComplianceCtx | null): TrainingTier {
   return ctx?.programs.find((p) => p.id === row.id)?.tier ?? configForProcedure(row.id, readProcedureComplianceConfig()).tier;
 }
@@ -219,6 +231,9 @@ export function ProceduresApp() {
   const [editCreatorName, setEditCreatorName] = useState("");
   const [ackOpen, setAckOpen] = useState(false);
   const [ackForId, setAckForId] = useState<string | null>(null);
+  const [editIsCritical, setEditIsCritical] = useState(false);
+  const [editRevisionNotes, setEditRevisionNotes] = useState("");
+  const [editPublishedAtLocal, setEditPublishedAtLocal] = useState("");
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [assignOpen, setAssignOpen] = useState(false);
@@ -394,6 +409,10 @@ export function ProceduresApp() {
     setEditKeywordsCsv((selected.search_keywords ?? []).join(", "));
     setEditSteps(toDraftFromProcedure(selected));
     setEditCreatorName(selected.created_by_name?.trim() || "");
+    setEditIsCritical(Boolean(selected.is_critical));
+    setEditRevisionNotes((selected.revision_notes ?? "").trim());
+    const pub = selected.published_at;
+    setEditPublishedAtLocal(pub ? new Date(pub).toISOString().slice(0, 16) : "");
     setAckForId(selected.id);
     setAckOpen(false);
   }, [selected, editing]);
@@ -597,6 +616,9 @@ export function ProceduresApp() {
         search_keywords: parseKeywordCsv(editKeywordsCsv),
         revised_by_user_id: reviserId,
         revised_by_name: reviserName,
+        is_critical: editIsCritical,
+        revision_notes: editRevisionNotes.trim() || null,
+        published_at: editPublishedAtLocal ? new Date(editPublishedAtLocal).toISOString() : null,
         ...(canReview
           ? {
               created_by_name: editCreatorName.trim() || null,
@@ -1072,8 +1094,8 @@ export function ProceduresApp() {
                 ))}
               </select>
               <p className="mt-1 text-[10px] text-ds-muted">
-                Drives Mandatory / High risk / General columns on the team training matrix. Completion still requires{" "}
-                <span className="font-semibold text-ds-foreground">Sign off complete</span> (timestamped for compliance).
+                Drives Mandatory / High risk / General columns on the team training matrix. Workers record completion with{" "}
+                <span className="font-semibold text-ds-foreground">Complete procedure</span> (unless knowledge verification is on).
               </p>
               {renderStepEditor(draftSteps, setDraftSteps, `${formId}-new`)}
               <button
@@ -1208,6 +1230,36 @@ export function ProceduresApp() {
                   value={editKeywordsCsv}
                   onChange={(e) => setEditKeywordsCsv(e.target.value)}
                 />
+                <label className="mt-3 flex items-center gap-2 text-sm text-ds-foreground">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 rounded border-ds-border"
+                    checked={editIsCritical}
+                    onChange={(e) => setEditIsCritical(e.target.checked)}
+                  />
+                  Critical procedure (extra acknowledgment + banner for workers)
+                </label>
+                <label className="mt-3 block text-xs font-semibold uppercase text-ds-muted" htmlFor={`${formId}-edit-published`}>
+                  Published (optional)
+                </label>
+                <input
+                  id={`${formId}-edit-published`}
+                  type="datetime-local"
+                  className="mt-1 w-full max-w-md rounded-md border border-ds-border/90 bg-white px-3 py-2 text-sm dark:bg-ds-secondary"
+                  value={editPublishedAtLocal}
+                  onChange={(e) => setEditPublishedAtLocal(e.target.value)}
+                />
+                <label className="mt-3 block text-xs font-semibold uppercase text-ds-muted" htmlFor={`${formId}-edit-rev-notes`}>
+                  Revision notes (internal, optional)
+                </label>
+                <textarea
+                  id={`${formId}-edit-rev-notes`}
+                  rows={3}
+                  className="mt-1 w-full rounded-md border border-ds-border/90 bg-white px-3 py-2 text-sm dark:bg-ds-secondary"
+                  placeholder="What changed in this revision…"
+                  value={editRevisionNotes}
+                  onChange={(e) => setEditRevisionNotes(e.target.value)}
+                />
                 <label className="mt-3 block text-xs font-semibold uppercase text-ds-muted" htmlFor={`${formId}-edit-priority`}>
                   Training priority (training matrix)
                 </label>
@@ -1275,9 +1327,20 @@ export function ProceduresApp() {
               </>
             ) : (
               <div className="mt-4 min-w-0 space-y-5">
+                {selected.is_critical ? (
+                  <div className="rounded-lg border border-amber-200/90 bg-amber-50/90 px-3 py-2.5 text-sm text-amber-950 shadow-sm dark:border-amber-900/45 dark:bg-amber-950/30 dark:text-amber-50">
+                    <span className="font-semibold">Critical procedure</span>
+                    <span className="text-amber-950/90 dark:text-amber-100/85">
+                      {" "}
+                      — follow documented steps. If anything differs from this procedure or is unclear, stop and involve a
+                      supervisor before continuing.
+                    </span>
+                  </div>
+                ) : null}
                 <div className="ds-premium-inset p-3">
                   <p className="text-sm font-semibold text-ds-foreground">Title</p>
                   <p className="mt-1 text-sm text-ds-muted">{selected.title}</p>
+                  <p className="mt-1 text-[11px] text-ds-muted/90">{procedureVersionLabel(selected)}</p>
                 </div>
                 <p className="text-xs font-semibold uppercase tracking-wide text-ds-muted">
                   {selected.steps.length} {selected.steps.length === 1 ? "step" : "steps"}
@@ -1336,6 +1399,21 @@ export function ProceduresApp() {
                   </div>
                 ) : null}
 
+                {api && userId && !knowledgeVerificationEnabled && selected ? (
+                  <div className="border-t border-ds-border pt-5">
+                    <ProcedureComplianceAcknowledgmentCard
+                      procedureId={selected.id}
+                      isCritical={Boolean(selected.is_critical)}
+                      contentRevision={selected.content_revision ?? 1}
+                      onRecorded={() => {
+                        void reloadMyTraining();
+                        void refreshProcedureLibraryCompliance();
+                      }}
+                      onError={(m) => setErr(m)}
+                    />
+                  </div>
+                ) : null}
+
                 <div className="flex flex-wrap items-center justify-between gap-3 border-t border-ds-border pt-5">
                   <div className="min-w-0 space-y-1">
                     <button
@@ -1353,10 +1431,18 @@ export function ProceduresApp() {
                         </>
                       ) : (
                         <>
-                          Use <span className="font-semibold text-ds-foreground">Sign off complete</span> after finishing steps —
-                          {isApiMode()
-                            ? " the server stores a timestamp on your compliance record and updates the training matrix when this procedure is assigned to you."
-                            : " completion is tracked locally for demo mode."}
+                          {isApiMode() ? (
+                            <>
+                              Use <span className="font-semibold text-ds-foreground">Complete procedure</span> above after finishing
+                              steps — the server records acknowledgment and updates the training matrix when this procedure is assigned
+                              to you.
+                            </>
+                          ) : (
+                            <>
+                              Use <span className="font-semibold text-ds-foreground">Sign off complete</span> after finishing steps —
+                              completion is tracked locally for demo mode.
+                            </>
+                          )}
                         </>
                       )}
                     </p>
@@ -1371,7 +1457,7 @@ export function ProceduresApp() {
                         Continue to acknowledge
                       </button>
                     ) : null}
-                    {!knowledgeVerificationEnabled && userId ? (
+                    {!knowledgeVerificationEnabled && userId && !api ? (
                       <button
                         type="button"
                         onClick={() => void signCompletion()}

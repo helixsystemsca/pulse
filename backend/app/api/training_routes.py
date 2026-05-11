@@ -18,6 +18,7 @@ from app.models.pulse_models import (
     PulseProcedureComplianceSettings,
     PulseProcedureTrainingAcknowledgement,
     PulseProcedureTrainingAssignment,
+    PulseProcedureWorkerCompletion,
     PulseWorkerHR,
 )
 from app.modules.pulse import service as pulse_svc
@@ -35,6 +36,7 @@ from app.services.procedure_training.service import (
     compute_training_assignment_status,
     enqueue_mandatory_overdue_if_needed,
     latest_ack_revision_map,
+    load_latest_worker_completions_map,
     resolve_compliance_defaults,
     revision_marker_from_procedure,
     verification_requires_quiz,
@@ -105,12 +107,14 @@ def _assignment_to_out(
     signoff_set: set[tuple[str, str, str]],
     engagement_map: dict[tuple[str, str], EngagementSnapshot],
     attempt_map: dict[tuple[str, str], QuizAttemptStats],
+    worker_completion_map: dict[tuple[str, str], PulseProcedureWorkerCompletion] | None = None,
 ) -> TrainingAssignmentOut:
     proc_id = str(proc.id)
     marker = revision_marker_from_procedure(proc)
     sig_ok = (employee_user_id, proc_id, marker) in signoff_set
     eng = engagement_map.get((employee_user_id, proc_id))
     att = attempt_map.get((employee_user_id, proc_id), QuizAttemptStats(0, None, None))
+    lw = (worker_completion_map or {}).get((employee_user_id, proc_id))
     st = compute_training_assignment_status(
         assignment=row,
         procedure=proc,
@@ -121,6 +125,7 @@ def _assignment_to_out(
         engagement_quiz_passed_at=eng.quiz_passed_at if eng else None,
         quiz_attempt_count=att.attempt_count,
         quiz_latest_passed=att.latest_passed,
+        latest_worker_completion=lw,
     )
     ov = row.matrix_admin_override
     ov_t: Optional[Literal["force_complete", "force_incomplete"]] = None
@@ -212,6 +217,11 @@ async def training_matrix(
         if user_ids and proc_ids
         else {}
     )
+    worker_completion_map = (
+        await load_latest_worker_completions_map(db, cid, user_ids, proc_ids)
+        if user_ids and proc_ids
+        else {}
+    )
 
     as_of = datetime.now(timezone.utc).date()
     assignments_out: list[TrainingAssignmentOut] = []
@@ -245,6 +255,7 @@ async def training_matrix(
                 signoff_set,
                 engagement_map,
                 attempt_map,
+                worker_completion_map,
             )
         )
 
@@ -303,6 +314,9 @@ async def create_training_assignments(
     attempt_map = await load_attempt_stats_for_pairs(
         db, cid, body.employee_user_ids, [str(proc.id)], revision_by_procedure
     )
+    worker_completion_map = await load_latest_worker_completions_map(
+        db, cid, body.employee_user_ids, [str(proc.id)]
+    )
 
     for eid in body.employee_user_ids:
         if not await pulse_svc._user_in_company(db, cid, eid):
@@ -340,7 +354,11 @@ async def create_training_assignments(
 
         await db.flush()
         ack = ack_map.get((str(eid), str(proc.id)))
-        out.append(_assignment_to_out(row, proc, cs, ack, str(eid), signoff_set, engagement_map, attempt_map))
+        out.append(
+            _assignment_to_out(
+                row, proc, cs, ack, str(eid), signoff_set, engagement_map, attempt_map, worker_completion_map
+            )
+        )
 
     await db.commit()
     return out
@@ -375,8 +393,9 @@ async def patch_training_assignment_matrix_override(
     signoff_set = await load_signoff_keys(db, cid, [eid], [proc_id])
     engagement_map = await load_engagement_map(db, cid, [eid], [proc_id], revision_by_procedure)
     attempt_map = await load_attempt_stats_for_pairs(db, cid, [eid], [proc_id], revision_by_procedure)
+    worker_completion_map = await load_latest_worker_completions_map(db, cid, [eid], [proc_id])
     ack = ack_map.get((eid, proc_id))
-    out = _assignment_to_out(row, proc, cs, ack, eid, signoff_set, engagement_map, attempt_map)
+    out = _assignment_to_out(row, proc, cs, ack, eid, signoff_set, engagement_map, attempt_map, worker_completion_map)
     await db.commit()
     return out
 
@@ -421,6 +440,9 @@ async def build_worker_training_bundle(db: AsyncSession, cid: str, user_id: str)
         if proc_ids
         else {}
     )
+    worker_completion_map = (
+        await load_latest_worker_completions_map(db, cid, [user_id], proc_ids) if proc_ids else {}
+    )
 
     assignments_out: list[TrainingAssignmentOut] = []
     as_of = datetime.now(timezone.utc).date()
@@ -445,7 +467,9 @@ async def build_worker_training_bundle(db: AsyncSession, cid: str, user_id: str)
             signoff_for_current_revision=sig_ok,
         )
         assignments_out.append(
-            _assignment_to_out(a, proc, cs, ack, str(user_id), signoff_set, engagement_map, attempt_map)
+            _assignment_to_out(
+                a, proc, cs, ack, str(user_id), signoff_set, engagement_map, attempt_map, worker_completion_map
+            )
         )
 
     ack_rows_raw: list[dict] = []

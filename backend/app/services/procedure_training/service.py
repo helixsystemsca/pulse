@@ -16,6 +16,7 @@ from app.models.pulse_models import (
     PulseProcedureCompletionSignoff,
     PulseProcedureTrainingAcknowledgement,
     PulseProcedureTrainingAssignment,
+    PulseProcedureWorkerCompletion,
     PulseTrainingNotificationEvent,
 )
 
@@ -72,6 +73,7 @@ def compute_training_assignment_status(
     engagement_quiz_passed_at: Optional[datetime] = None,
     quiz_attempt_count: int = 0,
     quiz_latest_passed: Optional[bool] = None,
+    latest_worker_completion: Optional[PulseProcedureWorkerCompletion] = None,
 ) -> TrainingAssignmentStatusApi:
     if assignment is None:
         return "not_assigned"
@@ -81,6 +83,12 @@ def compute_training_assignment_status(
     today = datetime.now(timezone.utc).date()
 
     v_on = verification_requires_quiz(compliance)
+    lw = latest_worker_completion
+    if not v_on and lw is not None:
+        if lw.expires_at is not None and today > lw.expires_at:
+            return "expired"
+        if int(lw.revision_number) < proc_rev:
+            return "revision_pending"
     if v_on:
         ack_ok = latest_ack_revision is not None and latest_ack_revision >= proc_rev
     else:
@@ -301,6 +309,32 @@ async def record_procedure_signoff(
 
     await db.flush()
     return row, True
+
+
+async def load_latest_worker_completions_map(
+    db: AsyncSession,
+    company_id: str,
+    employee_ids: list[str],
+    procedure_ids: list[str],
+) -> dict[tuple[str, str], PulseProcedureWorkerCompletion]:
+    """Latest lightweight completion row per (employee, procedure) by highest revision_number."""
+    if not employee_ids or not procedure_ids:
+        return {}
+    q = await db.execute(
+        select(PulseProcedureWorkerCompletion).where(
+            PulseProcedureWorkerCompletion.company_id == company_id,
+            PulseProcedureWorkerCompletion.employee_user_id.in_(employee_ids),
+            PulseProcedureWorkerCompletion.procedure_id.in_(procedure_ids),
+        )
+    )
+    rows = list(q.scalars().all())
+    best: dict[tuple[str, str], PulseProcedureWorkerCompletion] = {}
+    for r in rows:
+        k = (str(r.employee_user_id), str(r.procedure_id))
+        cur = best.get(k)
+        if cur is None or int(r.revision_number) > int(cur.revision_number):
+            best[k] = r
+    return best
 
 
 async def latest_ack_revision_map(

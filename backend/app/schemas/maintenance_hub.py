@@ -153,6 +153,9 @@ class ProcedureOut(BaseModel):
     revised_by_name: Optional[str] = None
     revised_at: Optional[datetime] = None
     content_revision: int = 1
+    is_critical: bool = False
+    published_at: Optional[datetime] = None
+    revision_notes: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 
@@ -253,6 +256,9 @@ class ProcedureCreate(BaseModel):
     created_by_user_id: Optional[str] = None
     created_by_name: Optional[str] = Field(None, max_length=255)
     review_required: bool = False
+    is_critical: bool = False
+    published_at: Optional[datetime] = None
+    revision_notes: Optional[str] = Field(None, max_length=8000)
 
     @field_validator("search_keywords", mode="before")
     @classmethod
@@ -273,6 +279,9 @@ class ProcedureUpdate(BaseModel):
     revised_by_user_id: Optional[str] = None
     revised_by_name: Optional[str] = Field(None, max_length=255)
     revised_at: Optional[datetime] = None
+    is_critical: Optional[bool] = None
+    published_at: Optional[datetime] = None
+    revision_notes: Optional[str] = Field(None, max_length=8000)
 
     @field_validator("search_keywords", mode="before")
     @classmethod

@@ -111,7 +111,9 @@ export default function OverviewProjectTabPage() {
   return (
     <div className="relative">
       <div className="pulse-dashboard-canvas space-y-4 px-2 py-4 sm:px-2 sm:py-5">
-        <DashboardViewTabs />
+        <div className="flex flex-wrap items-center gap-2">
+          <DashboardViewTabs variant="toolbar" />
+        </div>
         <div className="ds-premium-panel p-5">
           <h1 className="text-xl font-bold text-ds-foreground">Project kiosk</h1>
           <p className="mt-1 text-sm text-ds-muted">

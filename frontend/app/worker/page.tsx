@@ -1,6 +1,5 @@
 "use client";
 
-import { DashboardViewTabs } from "@/components/dashboard/DashboardViewTabs";
 import { WorkerDashboard } from "@/components/dashboard/WorkerBreakRoomDashboard";
 import { WelcomeLoaderModal } from "@/components/ui/WelcomeLoaderModal";
 import { UI } from "@/styles/ui";
@@ -62,7 +61,6 @@ export default function WorkerDashboardPage() {
   return (
     <div className="relative">
       <div className="pulse-dashboard-canvas space-y-4 px-2 py-4 sm:px-2 sm:py-5">
-        <DashboardViewTabs />
         <WorkerDashboard kiosk={false} />
         <WelcomeLoaderModal userName={userName} isReady={workerShellReady} />
       </div>

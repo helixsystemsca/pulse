@@ -37,6 +37,7 @@ from app.models.pulse_models import (
     PulseWorkRequestStatus,
     PulseProcedureComplianceSettings,
     PulseProcedureTrainingAcknowledgement,
+    PulseProcedureWorkerCompletion,
 )
 from app.modules.pulse import service as pulse_svc
 from app.services.pm_task_service import sync_pm_task_after_work_order_completed
@@ -61,6 +62,9 @@ from app.schemas.training import (
     ProcedureAcknowledgementOut,
     ProcedureComplianceOut,
     ProcedureCompliancePatchIn,
+    ProcedureLightCompletionPostIn,
+    ProcedureLightCompletionStateOut,
+    ProcedureLightCompletionStatusApi,
     ProcedureQuizStartOut,
     ProcedureQuizSubmitIn,
     ProcedureQuizSubmitOut,
@@ -69,6 +73,7 @@ from app.schemas.training import (
     ProcedureVerificationStateOut,
     ProcedureVerificationViewPostIn,
 )
+from app.services.procedure_light_completion import get_light_completion_state, submit_light_procedure_completion
 from app.schemas.maintenance_hub import (
     PreventativeRuleCreate,
     PreventativeRuleOut,
@@ -401,6 +406,9 @@ async def create_procedure(
         created_by_user_id=body.created_by_user_id or str(user.id),
         created_by_name=(body.created_by_name or "").strip() or (str(user.full_name or "").strip() or str(user.email)),
         review_required=bool(body.review_required),
+        is_critical=bool(body.is_critical),
+        published_at=body.published_at,
+        revision_notes=(str(body.revision_notes).strip() if body.revision_notes else None),
     )
     db.add(row)
     await db.commit()
@@ -779,6 +787,99 @@ async def post_procedure_training_acknowledgement(
     )
 
 
+def _light_completion_state_out(
+    proc: PulseProcedure,
+    st: ProcedureLightCompletionStatusApi,
+    row: Optional[PulseProcedureWorkerCompletion],
+) -> ProcedureLightCompletionStateOut:
+    rev = int(proc.content_revision or 1)
+    if row is None:
+        return ProcedureLightCompletionStateOut(status=st, current_revision_number=rev)
+    return ProcedureLightCompletionStateOut(
+        status=st,
+        current_revision_number=rev,
+        completed_at=row.completed_at,
+        completed_revision_number=int(row.revision_number),
+        expires_at=row.expires_at,
+        primary_acknowledged_at=row.primary_acknowledged_at,
+        secondary_acknowledged_at=row.secondary_acknowledged_at,
+        quiz_score_percent=row.quiz_score_percent,
+    )
+
+
+@router.get("/procedures/{procedure_id}/light-completion", response_model=ProcedureLightCompletionStateOut)
+async def get_procedure_light_completion(
+    procedure_id: str,
+    db: Db,
+    cid: CompanyId,
+    actor: Annotated[User, Depends(require_tenant_user)],
+) -> ProcedureLightCompletionStateOut:
+    proc = await db.get(PulseProcedure, procedure_id)
+    if not proc or proc.company_id != cid:
+        raise HTTPException(status_code=404, detail="Not found")
+    if not await pulse_svc._user_in_company(db, cid, str(actor.id)):
+        raise HTTPException(status_code=400, detail="Unknown user")
+    st, row = await get_light_completion_state(db, cid, employee_user_id=str(actor.id), procedure=proc)
+    return _light_completion_state_out(proc, st, row)
+
+
+@router.post("/procedures/{procedure_id}/light-completion", response_model=ProcedureLightCompletionStateOut)
+async def post_procedure_light_completion(
+    procedure_id: str,
+    db: Db,
+    cid: CompanyId,
+    actor: Annotated[User, Depends(require_tenant_user)],
+    body: ProcedureLightCompletionPostIn,
+) -> ProcedureLightCompletionStateOut:
+    proc = await db.get(PulseProcedure, procedure_id)
+    if not proc or proc.company_id != cid:
+        raise HTTPException(status_code=404, detail="Not found")
+    if not await pulse_svc._user_in_company(db, cid, str(actor.id)):
+        raise HTTPException(status_code=400, detail="Unknown user")
+    cs = await db.get(PulseProcedureComplianceSettings, procedure_id)
+    supervisor_signoff = bool(
+        user_has_tenant_full_admin(actor)
+        or user_has_any_role(actor, UserRole.company_admin, UserRole.manager, UserRole.supervisor)
+    )
+    try:
+        await submit_light_procedure_completion(
+            db,
+            cid,
+            employee_user_id=str(actor.id),
+            procedure=proc,
+            cs=cs,
+            completed_by_user_id=str(actor.id),
+            primary_acknowledged=bool(body.primary_acknowledged),
+            secondary_acknowledged=bool(body.secondary_acknowledged),
+            supervisor_signoff=supervisor_signoff,
+        )
+        await db.commit()
+    except ValueError as e:
+        await db.rollback()
+        msg = str(e)
+        if "Already completed" in msg:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=msg) from e
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=msg) from e
+    else:
+        await event_engine.publish(
+            DomainEvent(
+                event_type="ops.procedure_completed",
+                company_id=str(cid),
+                entity_id=str(proc.id),
+                source_module="cmms",
+                metadata={
+                    "procedure_id": str(proc.id),
+                    "completed_by": str(actor.id),
+                    "verification_quiz": False,
+                    "light_completion": True,
+                    "all_steps_completed": False,
+                },
+            )
+        )
+    st, row = await get_light_completion_state(db, cid, employee_user_id=str(actor.id), procedure=proc)
+    return _light_completion_state_out(proc, st, row)
+
+
 @router.patch("/procedures/{procedure_id}", response_model=ProcedureOut)
 async def update_procedure(
     db: Db,
@@ -817,6 +918,13 @@ async def update_procedure(
         row.reviewed_by_name = None if rn is None else (str(rn).strip() or None)
     if "reviewed_at" in patch:
         row.reviewed_at = patch["reviewed_at"]
+    if "is_critical" in patch and patch["is_critical"] is not None:
+        row.is_critical = bool(patch["is_critical"])
+    if "published_at" in patch:
+        row.published_at = patch.get("published_at")
+    if "revision_notes" in patch:
+        rn_meta = patch.get("revision_notes")
+        row.revision_notes = None if rn_meta is None else (str(rn_meta).strip() or None)
     if mutated:
         row.revised_by_user_id = patch.get("revised_by_user_id") or str(user.id)
         rn = patch.get("revised_by_name") or (str(user.full_name or "").strip() or str(user.email))

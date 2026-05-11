@@ -22,7 +22,7 @@ function procedureRevisionNumber(p: ProcedureRow): number {
 }
 
 function procedureRevisionDate(p: ProcedureRow): string {
-  const iso = (p.revised_at ?? p.updated_at ?? p.created_at ?? "").slice(0, 10);
+  const iso = (p.published_at ?? p.revised_at ?? p.updated_at ?? p.created_at ?? "").slice(0, 10);
   return iso || new Date().toISOString().slice(0, 10);
 }
 

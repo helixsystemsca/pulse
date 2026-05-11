@@ -64,6 +64,9 @@ export type ProcedureRow = {
   revised_at?: string | null;
   /** Content revision counter (training sign-off / acknowledgement idempotency). */
   content_revision?: number;
+  is_critical?: boolean;
+  published_at?: string | null;
+  revision_notes?: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -157,7 +160,15 @@ export async function fetchProcedures(params?: { keyword?: string }): Promise<Pr
 
 export async function createProcedure(
   body: { title: string; steps: ProcedureStep[]; search_keywords?: string[] } & Partial<
-    Pick<ProcedureRow, "created_by_user_id" | "created_by_name" | "review_required">
+    Pick<
+      ProcedureRow,
+      | "created_by_user_id"
+      | "created_by_name"
+      | "review_required"
+      | "is_critical"
+      | "published_at"
+      | "revision_notes"
+    >
   >,
 ): Promise<ProcedureRow> {
   return apiFetch<ProcedureRow>("/api/v1/cmms/procedures", { method: "POST", json: body });
@@ -178,6 +189,9 @@ export async function patchProcedure(
         | "revised_at"
         | "created_by_user_id"
         | "created_by_name"
+        | "is_critical"
+        | "published_at"
+        | "revision_notes"
       >
   >,
 ): Promise<ProcedureRow> {

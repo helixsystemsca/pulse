@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { GridLayout, useContainerWidth, verticalCompactor, type Layout, type LayoutItem } from "react-grid-layout";
 import { DashboardAddWidgetWizard } from "@/components/dashboard/DashboardAddWidgetWizard";
+import { DashboardViewTabs } from "@/components/dashboard/DashboardViewTabs";
 import { DashboardCustomPeekWidget } from "@/components/dashboard/DashboardCustomPeekWidget";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -367,9 +368,9 @@ function offsiteAvatarClass() {
 /** “Scheduled today” roster faces — fixed size so grid columns don’t inflate avatars to the full column width. */
 function scheduledAvatarFaceClass() {
   return cn(
-    "relative mx-auto flex h-10 w-10 shrink-0 items-center justify-center sm:h-11 sm:w-11",
+    "relative mx-auto flex h-11 w-11 shrink-0 items-center justify-center sm:h-12 sm:w-12",
     workforceAvatarGoldBase,
-    "text-[11px] font-semibold leading-none sm:text-xs",
+    "text-xs font-semibold leading-none sm:text-sm",
   );
 }
 
@@ -1159,7 +1160,7 @@ function DashboardBody({
 
   const widgetRegistry = useMemo(() => {
     const workforceCardShell =
-      "flex min-h-0 flex-1 flex-col gap-3 rounded-xl border border-[color-mix(in_srgb,var(--ops-dash-widget-bg,#fff)_65%,var(--ops-dash-border,#cbd5e1))] bg-[var(--ops-dash-widget-bg,#ffffff)] p-3 shadow-sm dark:border-white/[0.07] dark:bg-[color-mix(in_srgb,#0f172a_96%,#1e293b)]";
+      "flex min-h-0 flex-1 flex-col gap-2 rounded-xl border border-[color-mix(in_srgb,var(--ops-dash-widget-bg,#fff)_65%,var(--ops-dash-border,#cbd5e1))] bg-[var(--ops-dash-widget-bg,#ffffff)] p-2 shadow-sm dark:border-white/[0.07] dark:bg-[color-mix(in_srgb,#0f172a_96%,#1e293b)]";
 
     return {
       important_dates: {
@@ -1188,7 +1189,7 @@ function DashboardBody({
         title: "Workforce",
         accent: "none" as const,
         render: () => (
-          <div className={cn(workforceCardShell, "flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden")}>
+          <div className={cn(workforceCardShell, "flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden")}>
             <div className="shrink-0">
               <p className="text-xs font-semibold text-[color-mix(in_srgb,var(--ds-text-primary)_92%,transparent)]">
                 Today – {model.workforce.dateLabel}
@@ -1197,7 +1198,7 @@ function DashboardBody({
                 {model.workforce.summaryLine}
               </p>
             </div>
-            <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-2">
+            <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-1.5">
               <div className="min-h-0 min-w-0 flex-1">
                 <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-[var(--ds-accent)]">Scheduled today</p>
                 {model.workforce.scheduledTodayRoster.length === 0 ? (
@@ -1236,21 +1237,21 @@ function DashboardBody({
                     const bandGrid = (items: typeof roster) =>
                       items.length === 0 ? null : (
                         <div
-                          className="grid min-h-0 min-w-0 w-full flex-1 content-start gap-x-2 gap-y-2"
+                          className="grid min-h-0 min-w-0 w-full flex-1 content-start gap-x-1 gap-y-2"
                           style={{ gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))` }}
                         >
                           {items.map(bubble)}
                         </div>
                       );
                     return (
-                      <div className="mt-2 flex min-h-0 w-full min-w-0 flex-1 flex-col gap-y-4 overflow-x-auto overflow-y-hidden sm:flex-row sm:flex-nowrap sm:items-stretch sm:gap-x-1 sm:gap-y-0">
+                      <div className="mt-1.5 flex min-h-0 w-full min-w-0 flex-1 flex-col gap-y-3 overflow-x-auto overflow-y-hidden sm:flex-row sm:flex-nowrap sm:items-stretch sm:gap-x-0.5 sm:gap-y-0">
                         {nowR.length > 0 ? (
                           <div className="flex min-h-0 min-w-0 flex-1 flex-col">{bandGrid(nowR)}</div>
                         ) : null}
                         {nowR.length > 0 && (upR.length > 0 || otherR.length > 0) ? (
                           <>
                             <div
-                              className="mx-1 hidden min-h-[4rem] w-px shrink-0 self-stretch bg-[color-mix(in_srgb,var(--ds-text-primary)_14%,transparent)] dark:bg-white/12 sm:block"
+                              className="mx-0.5 hidden min-h-[4rem] w-px shrink-0 self-stretch bg-[color-mix(in_srgb,var(--ds-text-primary)_14%,transparent)] dark:bg-white/12 sm:block"
                               aria-hidden
                             />
                             <div
@@ -1265,7 +1266,7 @@ function DashboardBody({
                         {upR.length > 0 && otherR.length > 0 ? (
                           <>
                             <div
-                              className="mx-1 hidden min-h-[4rem] w-px shrink-0 self-stretch bg-[color-mix(in_srgb,var(--ds-text-primary)_14%,transparent)] dark:bg-white/12 sm:block"
+                              className="mx-0.5 hidden min-h-[4rem] w-px shrink-0 self-stretch bg-[color-mix(in_srgb,var(--ds-text-primary)_14%,transparent)] dark:bg-white/12 sm:block"
                               aria-hidden
                             />
                             <div
@@ -1502,60 +1503,70 @@ function DashboardBody({
             {dateInBc(now)} · {timeInBc(now)}
           </p>
         </div>
-        {headerShowFullscreen || headerShowLayoutTools ? (
-          <div className="inline-flex flex-wrap items-center gap-1" role="group" aria-label="Dashboard actions">
-            {headerShowFullscreen ? (
-              <Button
-                type="button"
-                variant="secondary"
-                className={OPS_DASH_HEADER_TOOL}
-                onClick={openKiosk}
-                title="Fullscreen"
-                aria-label="Fullscreen"
-              >
-                <Monitor className="h-4 w-4" aria-hidden />
-              </Button>
+        {!isKiosk || headerShowFullscreen || headerShowLayoutTools ? (
+          <div className="inline-flex max-w-full flex-wrap items-center justify-end gap-2">
+            {!isKiosk ? <DashboardViewTabs variant="toolbar" className="shrink-0" /> : null}
+            {!isKiosk && (headerShowFullscreen || headerShowLayoutTools) ? (
+              <span className="hidden h-6 w-px shrink-0 bg-ds-border sm:block" aria-hidden />
             ) : null}
-            {headerShowFullscreen && headerShowLayoutTools ? <span className="mx-0.5 h-6 w-px shrink-0 bg-ds-border" aria-hidden /> : null}
-            {headerShowLayoutTools ? (
-              <>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={() => {
-                    if (editMode) {
-                      setIsInteracting(false);
-                      setLayout((current) => {
-                        const compacted = stableCompactor.compact(current as Layout, DASHBOARD_GRID_COLS) as Layout;
-                        persistLayout(compacted);
-                        return compacted;
-                      });
-                    }
-                    setEditMode((v) => !v);
-                  }}
-                  title={editMode ? "Done editing layout" : "Edit dashboard layout"}
-                  aria-label={editMode ? "Done editing layout" : "Edit dashboard layout"}
-                  aria-pressed={editMode}
-                  className={cn(OPS_DASH_HEADER_TOOL, editMode && OPS_DASH_HEADER_TOOL_ACTIVE)}
-                >
-                  {editMode ? (
-                    <Check className="h-[1.125rem] w-[1.125rem] shrink-0" strokeWidth={2.5} aria-hidden />
-                  ) : (
-                    <Pencil className="h-[1.125rem] w-[1.125rem] shrink-0" strokeWidth={2.5} aria-hidden />
-                  )}
-                </Button>
-                <span className="mx-0.5 h-6 w-px shrink-0 bg-ds-border" aria-hidden />
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={() => setShowAddWidget(true)}
-                  title="Add a widget"
-                  aria-label="Add widget"
-                  className={cn(OPS_DASH_HEADER_TOOL, "disabled:pointer-events-none disabled:opacity-40")}
-                >
-                  <Plus className="h-[1.125rem] w-[1.125rem] shrink-0" strokeWidth={2.5} aria-hidden />
-                </Button>
-              </>
+            {headerShowFullscreen || headerShowLayoutTools ? (
+              <div className="inline-flex flex-wrap items-center gap-1" role="group" aria-label="Dashboard actions">
+                {headerShowFullscreen ? (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className={OPS_DASH_HEADER_TOOL}
+                    onClick={openKiosk}
+                    title="Fullscreen"
+                    aria-label="Fullscreen"
+                  >
+                    <Monitor className="h-4 w-4" aria-hidden />
+                  </Button>
+                ) : null}
+                {headerShowFullscreen && headerShowLayoutTools ? (
+                  <span className="mx-0.5 h-6 w-px shrink-0 bg-ds-border" aria-hidden />
+                ) : null}
+                {headerShowLayoutTools ? (
+                  <>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={() => {
+                        if (editMode) {
+                          setIsInteracting(false);
+                          setLayout((current) => {
+                            const compacted = stableCompactor.compact(current as Layout, DASHBOARD_GRID_COLS) as Layout;
+                            persistLayout(compacted);
+                            return compacted;
+                          });
+                        }
+                        setEditMode((v) => !v);
+                      }}
+                      title={editMode ? "Done editing layout" : "Edit dashboard layout"}
+                      aria-label={editMode ? "Done editing layout" : "Edit dashboard layout"}
+                      aria-pressed={editMode}
+                      className={cn(OPS_DASH_HEADER_TOOL, editMode && OPS_DASH_HEADER_TOOL_ACTIVE)}
+                    >
+                      {editMode ? (
+                        <Check className="h-[1.125rem] w-[1.125rem] shrink-0" strokeWidth={2.5} aria-hidden />
+                      ) : (
+                        <Pencil className="h-[1.125rem] w-[1.125rem] shrink-0" strokeWidth={2.5} aria-hidden />
+                      )}
+                    </Button>
+                    <span className="mx-0.5 h-6 w-px shrink-0 bg-ds-border" aria-hidden />
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={() => setShowAddWidget(true)}
+                      title="Add a widget"
+                      aria-label="Add widget"
+                      className={cn(OPS_DASH_HEADER_TOOL, "disabled:pointer-events-none disabled:opacity-40")}
+                    >
+                      <Plus className="h-[1.125rem] w-[1.125rem] shrink-0" strokeWidth={2.5} aria-hidden />
+                    </Button>
+                  </>
+                ) : null}
+              </div>
             ) : null}
           </div>
         ) : null}
@@ -1725,7 +1736,13 @@ function DashboardBody({
                       headerRight={headerRight}
                       className="h-full"
                       bodyClassName={
-                        item.i === "pool_readings" ? "p-0" : item.i === "co2_monitoring" ? "px-2 py-0" : undefined
+                        item.i === "pool_readings"
+                          ? "p-0"
+                          : item.i === "co2_monitoring"
+                            ? "px-2 py-0"
+                            : item.i === "workforce"
+                              ? "px-1 py-0.5"
+                              : undefined
                       }
                     >
                       {w.render(buildWidgetContext(item))}
