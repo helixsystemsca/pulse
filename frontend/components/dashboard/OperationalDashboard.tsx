@@ -912,6 +912,12 @@ function buildLiveModel(
 
     const isOffSite = presence.status === "off_site" || lastEvent?.type === "exit";
 
+    const lastEndMs =
+      intervals.length === 0 ? null : Math.max(...intervals.map((iv) => iv.endMs));
+    /** Every assigned interval for this calendar day has ended (not between two shifts today). */
+    const allShiftsEndedForDay =
+      lastEndMs != null && Number.isFinite(lastEndMs) && lastEndMs <= now && !active;
+
     const scheduleBucket: WorkforceBubble["scheduleBucket"] | null =
       presence.status === "on_site"
         ? "on_site"
@@ -936,7 +942,9 @@ function buildLiveModel(
             ? `${titleBase} · Upcoming today`
             : scheduleBucket === "off_site"
               ? `${titleBase} · Off site`
-              : `${titleBase} · Scheduled today`;
+              : allShiftsEndedForDay
+                ? `${titleBase} · Shift over`
+                : `${titleBase} · Scheduled today`;
 
     const { badge, rank: roleSortRank } = workforceRoleBadgeAndRank(w?.role ?? "worker");
     const displayName = w ? w.full_name?.trim() || w.email.split("@")[0] || w.email : "Unknown assignee";
