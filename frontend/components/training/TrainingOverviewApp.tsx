@@ -1,8 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import Link from "next/link";
-import { GraduationCap, Settings } from "lucide-react";
+import { Settings } from "lucide-react";
 import { dsInputClass, dsLabelClass, dsSelectClass } from "@/components/ui/ds-form-classes";
 import {
   MOCK_TRAINING_ACKNOWLEDGEMENTS,
@@ -306,59 +305,34 @@ function TrainingLeadershipOverviewInner() {
 
   return (
     <div className="space-y-8">
-      <div className="ds-premium-panel p-4 sm:p-5">
-        <div className="flex flex-wrap items-start gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[color-mix(in_srgb,var(--ds-accent)_14%,transparent)] text-[var(--ds-accent)]">
-            <GraduationCap className="h-5 w-5" aria-hidden />
-          </div>
-          <div className="min-w-0 flex-1">
-            <h2 className="text-base font-semibold text-ds-foreground">Maintenance training compliance board</h2>
-            <p className="mt-1 max-w-3xl text-sm leading-relaxed text-ds-muted">
-              See which staff are missing training, have expired certifications, overdue onboarding, or unread procedures.
-              Everything stays tracked and recorded for audits.
-            </p>
-            <p className="mt-2 text-xs font-medium text-ds-muted">
-              View employee details in:{" "}
-              <Link href="/dashboard/workers" className="ds-link font-semibold">
-                Team Management
-              </Link>{" "}
-              → Profile → <span className="font-semibold text-ds-foreground">Training</span>.
-            </p>
-            <div className="mt-3 flex flex-wrap items-center gap-2">
-              <Button type="button" variant="secondary" className="h-9 px-3 text-xs" onClick={() => setConfigOpen(true)}>
-                <Settings className="h-4 w-4" aria-hidden />
-                Configure procedure tiers
-              </Button>
-              {loading ? <span className="text-xs text-ds-muted">Loading live data…</span> : null}
-              {!loading && err ? (
-                <span className="text-xs font-semibold text-ds-danger">Live data unavailable: {err}</span>
-              ) : null}
-              {!loading && matrixErr ? (
-                <span className="text-xs font-semibold text-ds-danger">Training matrix: {matrixErr}</span>
-              ) : null}
-              {!loading && api && !err && matrixBundle ? (
-                <span className="text-xs text-ds-muted">Training matrix and tiers are loaded from the server.</span>
-              ) : null}
-              {!loading && api && !err && !matrixBundle ? (
-                <span className="text-xs text-ds-muted">
-                  Using roster + procedures; matrix uses demo statuses until the training API is available.
-                </span>
-              ) : null}
-            </div>
-          </div>
-        </div>
-      </div>
-
       <TrainingSummaryCards summary={summary} />
 
       <section id="training-matrix" className="scroll-mt-24 space-y-4">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-          <div>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
             <h3 className="text-sm font-bold uppercase tracking-wide text-ds-muted">Team compliance matrix</h3>
             <p className="mt-1 text-sm text-ds-muted">
               Rows = people · Columns = procedures (use training tier to show a subset) · Cells = assignment status
             </p>
+            <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-ds-muted">
+              {loading ? <span>Loading live data…</span> : null}
+              {!loading && err ? <span className="font-semibold text-ds-danger">Live data unavailable: {err}</span> : null}
+              {!loading && matrixErr ? <span className="font-semibold text-ds-danger">Training matrix: {matrixErr}</span> : null}
+              {!loading && api && !err && matrixBundle ? <span>Training matrix and tiers are loaded from the server.</span> : null}
+              {!loading && api && !err && !matrixBundle ? (
+                <span>Using roster + procedures; matrix uses demo statuses until the training API is available.</span>
+              ) : null}
+            </div>
           </div>
+          <Button
+            type="button"
+            variant="secondary"
+            className="h-9 shrink-0 self-start px-3 text-xs sm:self-auto"
+            onClick={() => setConfigOpen(true)}
+          >
+            <Settings className="h-4 w-4" aria-hidden />
+            Configure procedure tiers
+          </Button>
         </div>
 
         <div className="grid gap-3 rounded-xl border border-ds-border bg-ds-secondary/40 p-4 lg:grid-cols-5">
