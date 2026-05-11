@@ -27,13 +27,13 @@ import {
   shiftIntervalBoundsMs,
 } from "@/lib/schedule/dashboardScheduleDay";
 import type { PulseShiftApi, PulseWorkerApi } from "@/lib/schedule/pulse-bridge";
-import { DashboardAccentCard, DashboardColumnPanel, KioskRotateFooter } from "@/components/dashboard/DashboardChrome";
+import { KioskRotateFooter } from "@/components/dashboard/DashboardChrome";
+import { OpsWidgetShell } from "@/components/dashboard/widgets/ops/OpsWidgetShell";
 import { cn } from "@/lib/cn";
 import { DASH } from "@/styles/dashboardTheme";
 import { UI } from "@/styles/ui";
 import { getWidgetMode, type WidgetMode, type WidgetRenderContext } from "@/components/dashboard/widgets/widgetSizing";
 import { TrainingComplianceWidget } from "@/components/dashboard/widgets/training/TrainingComplianceWidget";
-import { OpsWidgetShell } from "@/components/dashboard/widgets/ops/OpsWidgetShell";
 import { ImportantDatesOpsWidget } from "@/components/dashboard/widgets/ops/ImportantDatesOpsWidget";
 import { NotificationsWorkOrdersOpsWidget } from "@/components/dashboard/widgets/ops/NotificationsWorkOrdersOpsWidget";
 import { LowInventoryOpsWidget } from "@/components/dashboard/widgets/ops/LowInventoryOpsWidget";
@@ -1280,18 +1280,23 @@ function DashboardBody({
 
   function KioskTile({ label, value }: { label: string; value: number }) {
     return (
-      <div className={DASH.kpiTile}>
-        <p className={DASH.kpiLabel}>{label}</p>
-        <p className={DASH.kpiValue}>{value}</p>
+      <div
+        className={cn(
+          DASH.kpiTile,
+          "p-2 py-2 shadow-sm motion-safe:hover:translate-y-0 motion-safe:hover:shadow-[var(--dash-shadow-card-soft)] sm:p-2.5",
+        )}
+      >
+        <p className={cn(DASH.kpiLabel, "text-[10px]")}>{label}</p>
+        <p className={cn(DASH.kpiValue, "mt-1 text-lg sm:text-xl")}>{value}</p>
       </div>
     );
   }
 
   function KioskPanel({ title, children }: { title: string; children: ReactNode }) {
     return (
-      <DashboardColumnPanel title={title} accent="muted">
-        {children}
-      </DashboardColumnPanel>
+      <OpsWidgetShell title={title} className="h-full min-h-0">
+        <div className="flex min-h-0 h-full min-w-0 flex-col">{children}</div>
+      </OpsWidgetShell>
     );
   }
 
@@ -1299,13 +1304,13 @@ function DashboardBody({
     const p = alertPriority(alert);
     const icon =
       p === "critical" ? (
-        <AlertTriangle className="h-5 w-5 shrink-0 text-ds-danger" aria-hidden />
+        <AlertTriangle className="h-4 w-4 shrink-0 text-ds-danger sm:h-5 sm:w-5" aria-hidden />
       ) : p === "high" ? (
-        <AlertCircle className="h-5 w-5 shrink-0 text-ds-warning" aria-hidden />
+        <AlertCircle className="h-4 w-4 shrink-0 text-ds-warning sm:h-5 sm:w-5" aria-hidden />
       ) : p === "medium" ? (
-        <Info className="h-5 w-5 shrink-0 text-[var(--ds-info)]" aria-hidden />
+        <Info className="h-4 w-4 shrink-0 text-[var(--ds-info)] sm:h-5 sm:w-5" aria-hidden />
       ) : (
-        <Radio className="h-5 w-5 shrink-0 text-ds-muted" aria-hidden />
+        <Radio className="h-4 w-4 shrink-0 text-ds-muted sm:h-5 sm:w-5" aria-hidden />
       );
     const strip =
       p === "critical"
@@ -1327,12 +1332,12 @@ function DashboardBody({
     return (
       <div className={cn("overflow-hidden rounded-xl border shadow-[var(--ds-shadow-card)]", shell)}>
         <div className={cn("h-[3px] w-full shrink-0", strip)} aria-hidden />
-        <div className="flex gap-3 p-3">
+        <div className="flex gap-2 p-2">
           {icon}
           <div className="min-w-0">
-            <p className="text-sm font-bold text-ds-foreground max-w-md truncate">{alert.title}</p>
+            <p className="text-xs font-bold text-ds-foreground max-w-md truncate sm:text-sm">{alert.title}</p>
             {alert.subtitle ? (
-              <p className="mt-1 text-xs leading-relaxed text-ds-muted max-w-md line-clamp-2 whitespace-pre-line">
+              <p className="mt-0.5 text-[11px] leading-snug text-ds-muted max-w-md line-clamp-2 whitespace-pre-line sm:text-xs">
                 {alert.subtitle}
               </p>
             ) : null}
@@ -1346,33 +1351,39 @@ function DashboardBody({
     return (
       <>
         <div className={rowClass}>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
             {kioskKpis.map((k) => (
               <KioskTile key={k.label} label={k.label} value={k.value} />
             ))}
           </div>
         </div>
 
-        <div className={`${rowClass} grid grid-cols-1 gap-3 md:grid-cols-3`}>
+        <div className={`${rowClass} grid grid-cols-1 gap-2 md:grid-cols-3`}>
           {kioskAlerts.slice(0, 3).map((a, idx) => (
             <KioskAlertCard key={`${a.title}-${idx}`} alert={a} />
           ))}
         </div>
 
-        <div className={`${rowClass} grid grid-cols-1 gap-4 md:grid-cols-3`}>
-          <div className="col-span-1">
+        <div className={`${rowClass} grid grid-cols-1 gap-2 md:grid-cols-3`}>
+          <div className="col-span-1 min-h-0 min-w-0">
             <KioskPanel title="Workforce">
-              <div className="max-w-md">{(widgetRegistry as Record<string, { render: () => ReactNode }>).workforce.render()}</div>
+              <div className="min-h-0 min-w-0 w-full">
+                {(widgetRegistry as Record<string, { render: () => ReactNode }>).workforce.render()}
+              </div>
             </KioskPanel>
           </div>
-          <div className="col-span-1">
+          <div className="col-span-1 min-h-0 min-w-0">
             <KioskPanel title="Low inventory">
-              <div className="max-w-md">{(widgetRegistry as Record<string, { render: () => ReactNode }>).low_inventory.render()}</div>
+              <div className="min-h-0 min-w-0 w-full">
+                {(widgetRegistry as Record<string, { render: () => ReactNode }>).low_inventory.render()}
+              </div>
             </KioskPanel>
           </div>
-          <div className="col-span-1">
+          <div className="col-span-1 min-h-0 min-w-0">
             <KioskPanel title="Pool readings">
-              <div className="max-w-md">{(widgetRegistry as Record<string, { render: () => ReactNode }>).pool_readings.render()}</div>
+              <div className="min-h-0 min-w-0 w-full">
+                {(widgetRegistry as Record<string, { render: () => ReactNode }>).pool_readings.render()}
+              </div>
             </KioskPanel>
           </div>
         </div>
@@ -1385,7 +1396,7 @@ function DashboardBody({
     return (
       <>
         <div className={rowClass}>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
             <KioskTile label="On site" value={model.stripCounts.onSite} />
             <KioskTile label="Active requests" value={model.stripCounts.activeRequests} />
             <KioskTile label="Awaiting assignment" value={model.workRequests.awaitingCount} />
@@ -1395,11 +1406,11 @@ function DashboardBody({
           </div>
         </div>
 
-        <div className={`${rowClass} grid grid-cols-1 gap-4 lg:grid-cols-3`}>
-          <div className="lg:col-span-2">
+        <div className={`${rowClass} grid grid-cols-1 gap-2 lg:grid-cols-3`}>
+          <div className="min-h-0 min-w-0 lg:col-span-2">
             <KioskPanel title="On-site workers">
-              <div className="max-w-md">
-                <div className="flex flex-wrap gap-3">
+              <div className="min-h-0 min-w-0 w-full">
+                <div className="flex flex-wrap gap-2">
                   {onSite.length === 0 ? (
                     <p className="text-sm text-ds-muted">No workers currently on site.</p>
                   ) : (
@@ -1423,24 +1434,24 @@ function DashboardBody({
             </KioskPanel>
           </div>
 
-          <div className="lg:col-span-1">
+          <div className="min-h-0 min-w-0 lg:col-span-1">
             <KioskPanel title="Work focus">
-              <div className="max-w-md space-y-3">
-                <div className="rounded-lg border border-ds-border bg-ds-secondary/40 p-3">
-                  <p className="text-[11px] font-semibold uppercase tracking-wider text-ds-muted">Assigned vs unassigned</p>
-                  <p className="mt-2 text-sm font-semibold text-ds-foreground">
+              <div className="min-h-0 min-w-0 w-full space-y-2">
+                <div className="rounded-lg border border-ds-border bg-ds-secondary/40 p-2">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-ds-muted">Assigned vs unassigned</p>
+                  <p className="mt-1.5 text-xs font-semibold text-ds-foreground sm:text-sm">
                     Unassigned: <span className="tabular-nums">{model.workRequests.awaitingCount}</span>
                   </p>
-                  <p className="mt-1 text-sm font-semibold text-ds-foreground">
+                  <p className="mt-0.5 text-xs font-semibold text-ds-foreground sm:text-sm">
                     Active: <span className="tabular-nums">{model.stripCounts.activeRequests}</span>
                   </p>
                 </div>
-                <div className="rounded-lg border border-ds-border bg-ds-secondary/40 p-3">
-                  <p className="text-[11px] font-semibold uppercase tracking-wider text-ds-muted">Today</p>
-                  <p className="mt-2 text-sm font-semibold text-ds-foreground">
+                <div className="rounded-lg border border-ds-border bg-ds-secondary/40 p-2">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-ds-muted">Today</p>
+                  <p className="mt-1.5 text-xs font-semibold text-ds-foreground sm:text-sm">
                     Completed: <span className="tabular-nums">{model.stripCounts.completedToday}</span>
                   </p>
-                  <p className="mt-1 text-sm font-semibold text-ds-foreground">
+                  <p className="mt-0.5 text-xs font-semibold text-ds-foreground sm:text-sm">
                     Overdue: <span className="tabular-nums">{model.stripCounts.overdue}</span>
                   </p>
                 </div>
@@ -1456,7 +1467,7 @@ function DashboardBody({
     return (
       <>
         <div className={rowClass}>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
             <KioskTile label="Low stock" value={model.stripCounts.lowStock} />
             <KioskTile label="Out of service" value={model.stripCounts.outOfService} />
             <KioskTile label="Missing tools" value={model.equipment.missingCount} />
@@ -1466,20 +1477,22 @@ function DashboardBody({
           </div>
         </div>
 
-        <div className={`${rowClass} grid grid-cols-1 gap-4 md:grid-cols-3`}>
-          <div className="min-w-0">
+        <div className={`${rowClass} grid grid-cols-1 gap-2 md:grid-cols-3`}>
+          <div className="min-h-0 min-w-0">
             <KioskPanel title="Low inventory">
-              <div className="max-w-md">{(widgetRegistry as Record<string, { render: () => ReactNode }>).low_inventory.render()}</div>
+              <div className="min-h-0 min-w-0 w-full">{(widgetRegistry as Record<string, { render: () => ReactNode }>).low_inventory.render()}</div>
             </KioskPanel>
           </div>
-          <div className="min-w-0">
+          <div className="min-h-0 min-w-0">
             <KioskPanel title="CO₂ monitoring">
-              <div className="max-w-md overflow-x-auto">{(widgetRegistry as Record<string, { render: () => ReactNode }>).co2_monitoring.render()}</div>
+              <div className="min-h-0 min-w-0 w-full overflow-x-auto">
+                {(widgetRegistry as Record<string, { render: () => ReactNode }>).co2_monitoring.render()}
+              </div>
             </KioskPanel>
           </div>
-          <div className="min-w-0">
+          <div className="min-h-0 min-w-0">
             <KioskPanel title="Notifications & work orders">
-              <div className="max-w-md">
+              <div className="min-h-0 min-w-0 w-full">
                 {(widgetRegistry as Record<string, { render: () => ReactNode }>).notifications_work_orders.render()}
               </div>
             </KioskPanel>
@@ -1751,55 +1764,61 @@ function DashboardBody({
     const rightKpis = kioskKpis.slice(0, 4);
     const onSiteShow = model.workforce.onSite.slice(0, 5);
     return (
-      <div className={cn(DASH.page, DASH.kioskFrame)}>
-        <div className={DASH.grid12}>
+      <div
+        className={cn(
+          DASH.page,
+          "pulse-dashboard-canvas pulse-operations-dashboard min-h-screen px-2 py-2 sm:px-3 sm:py-3",
+        )}
+      >
+        <div className="grid grid-cols-12 gap-2">
           <div className="col-span-12">
-            <DashboardAccentCard tier="hero">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="flex min-w-0 items-center gap-3">
-                  <OperationsHeaderLogoMark logoUrl={headerLogoUrl} companyName={headerCompanyName} />
-                  <div className="min-w-0">
-                    <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm font-semibold text-ds-foreground">
-                      <span className="max-w-md truncate">{dateInBc(now)}</span>
-                      <span className="text-ds-muted">•</span>
-                      <span className="tabular-nums">{timeInBc(now)}</span>
-                      <span className="text-ds-muted">•</span>
-                      <span className="inline-flex items-center gap-1.5 text-ds-muted">
-                        <Cloud className="h-4 w-4" aria-hidden />
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-[color-mix(in_srgb,var(--ops-dash-border,#cbd5e1)_88%,transparent)] bg-[var(--ops-dash-widget-bg,#ffffff)] px-3 py-2 shadow-[0_12px_40px_-28px_rgba(15,23,42,0.2)] dark:border-white/[0.09] dark:bg-[var(--ops-dash-widget-bg,#0f172a)]">
+              <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+                <OperationsHeaderLogoMark logoUrl={headerLogoUrl} companyName={headerCompanyName} />
+                <div className="min-w-0">
+                  <p className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs font-semibold text-[color-mix(in_srgb,var(--ds-text-primary)_88%,transparent)] sm:text-sm">
+                    <span className="max-w-[min(100%,18rem)] truncate">{dateInBc(now)}</span>
+                    <span className="text-ds-muted">•</span>
+                    <span className="tabular-nums">{timeInBc(now)}</span>
+                    <span className="text-ds-muted">•</span>
+                    <span className="inline-flex items-center gap-1 text-ds-muted">
+                      <Cloud className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" aria-hidden />
+                      <span className="truncate">
                         {weatherTemp} · {weatherLabel}
                       </span>
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="text-xs font-semibold text-ds-muted">{currentView.toUpperCase()}</div>
-                  {!hideHeaderWelcome && model.welcomeName.trim() ? (
-                    <span className="inline-flex items-center gap-2 rounded-lg border border-ds-border bg-ds-secondary/60 px-3 py-2 text-sm font-semibold text-ds-foreground">
-                      <span className="hidden sm:inline">Welcome,</span> {model.welcomeName}
                     </span>
+                  </p>
+                  {model.bannerNote ? (
+                    <p className="mt-1 max-w-2xl text-[11px] font-semibold leading-snug text-ds-foreground sm:text-xs">{model.bannerNote}</p>
                   ) : null}
                 </div>
               </div>
-              {model.bannerNote ? (
-                <div className="mt-3 max-w-md border-t border-ds-border pt-3 text-sm font-semibold text-ds-foreground">
-                  {model.bannerNote}
+              <div className="flex items-center gap-2 sm:gap-3">
+                <div className="text-[10px] font-bold uppercase tracking-[0.12em] text-[color-mix(in_srgb,var(--ds-text-primary)_48%,transparent)]">
+                  {currentView}
                 </div>
-              ) : null}
-            </DashboardAccentCard>
+                {!hideHeaderWelcome && model.welcomeName.trim() ? (
+                  <span className="inline-flex max-w-[11rem] items-center gap-1 truncate rounded-lg border border-ds-border bg-ds-secondary/60 px-2 py-1 text-xs font-semibold text-ds-foreground sm:max-w-none sm:px-2.5 sm:text-sm">
+                    <span className="hidden sm:inline">Welcome,</span> {model.welcomeName}
+                  </span>
+                ) : null}
+              </div>
+            </div>
           </div>
 
-          <div className="col-span-12 min-h-0 lg:col-span-3">
-            <DashboardColumnPanel title="Today's focus" accent="teal">
-              <ul className="space-y-2">
+          <div className="col-span-12 min-h-0 lg:col-span-2">
+            <OpsWidgetShell title="Today's focus" className="h-full min-h-0">
+              <ul className="space-y-1.5">
                 {queue.length === 0 ? (
-                  <li className="text-sm text-ds-muted">No queued work items.</li>
+                  <li className="text-xs text-ds-muted sm:text-sm">No queued work items.</li>
                 ) : (
                   queue.map((q) => (
-                    <li key={q.key} className={cn(DASH.listRow, "flex items-start justify-between gap-2")}>
-                      <span className="min-w-0 truncate text-sm font-semibold text-ds-foreground">{q.title}</span>
+                    <li key={q.key} className={cn(DASH.listRow, "flex items-start justify-between gap-2 px-2 py-2")}>
+                      <span className="min-w-0 truncate text-xs font-semibold text-ds-foreground sm:text-sm">{q.title}</span>
                       <span
                         className={cn(
                           DASH.pill,
+                          "py-px text-[9px]",
                           q.tone === "critical" &&
                             "border-red-200/80 bg-red-50 text-red-800 dark:border-red-500/35 dark:bg-red-950/40 dark:text-red-100",
                           q.tone === "warn" &&
@@ -1813,28 +1832,28 @@ function DashboardBody({
                   ))
                 )}
               </ul>
-            </DashboardColumnPanel>
+            </OpsWidgetShell>
           </div>
 
-          <div className="col-span-12 min-h-0 lg:col-span-6">
-            <div className="transition-opacity duration-500 ease-in-out">
+          <div className="col-span-12 min-h-0 lg:col-span-8">
+            <div className="space-y-2 transition-opacity duration-500 ease-in-out">
               {currentView === "overview" && <OverviewView rowClass={row} />}
               {currentView === "workforce" && <WorkforceView rowClass={row} />}
               {currentView === "systems" && <SystemsView rowClass={row} />}
             </div>
           </div>
 
-          <div className="col-span-12 min-h-0 space-y-3 lg:col-span-3">
-            <DashboardColumnPanel title="Team snapshot" accent="dusk">
-              <div className="grid grid-cols-2 gap-2">
+          <div className="col-span-12 min-h-0 lg:col-span-2">
+            <OpsWidgetShell title="Team snapshot" className="h-full min-h-0">
+              <div className="grid grid-cols-2 gap-1.5">
                 {rightKpis.map((k) => (
                   <KioskTile key={k.label} label={k.label} value={k.value} />
                 ))}
               </div>
-              <p className={cn(DASH.sectionLabel, "mt-4")}>On site</p>
-              <div className="mt-2 flex flex-wrap gap-2">
+              <p className={cn(DASH.sectionLabel, "mt-3 text-[10px]")}>On site</p>
+              <div className="mt-1.5 flex flex-wrap gap-1.5">
                 {onSiteShow.length === 0 ? (
-                  <p className="text-sm text-ds-muted">No workers on site.</p>
+                  <p className="text-xs text-ds-muted">No workers on site.</p>
                 ) : (
                   onSiteShow.map((b) => (
                     <WorkforceBubbleStack
@@ -1852,10 +1871,10 @@ function DashboardBody({
                   ))
                 )}
               </div>
-            </DashboardColumnPanel>
+            </OpsWidgetShell>
           </div>
 
-          <KioskRotateFooter activeIndex={viewIndex} total={views.length} />
+          <KioskRotateFooter activeIndex={viewIndex} total={views.length} compact />
         </div>
       </div>
     );
@@ -2010,11 +2029,11 @@ function DashboardBody({
                             setPeekWizardMode("edit");
                             setShowPeekWizard(true);
                           }}
-                          className="inline-flex items-center px-2 py-1"
+                          className="inline-flex h-5 items-center px-1.5 py-0"
                           aria-label="Edit peek widget"
                           title="Edit widget"
                         >
-                          <Settings className="h-3.5 w-3.5" aria-hidden />
+                          <Settings className="h-3 w-3" aria-hidden />
                         </Button>
                       ) : null}
                       {editMode ? (
@@ -2022,7 +2041,7 @@ function DashboardBody({
                           type="button"
                           variant="secondary"
                           onClick={() => removeWidget(item.i)}
-                          className="min-w-8 px-2 py-1 text-xs"
+                          className="h-5 min-w-5 px-0 text-[11px] leading-none"
                           aria-label={`Remove ${cfg.title}`}
                           title="Remove widget"
                         >
@@ -2059,7 +2078,7 @@ function DashboardBody({
                       type="button"
                       variant="secondary"
                       onClick={() => removeWidget(item.i)}
-                      className="min-w-8 px-2 py-1 text-xs"
+                      className="h-5 min-w-5 px-0 text-[11px] leading-none"
                       aria-label={`Remove ${w.title}`}
                       title="Remove widget"
                     >

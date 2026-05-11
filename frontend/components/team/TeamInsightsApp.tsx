@@ -271,29 +271,6 @@ export function TeamInsightsApp() {
         </Card>
       </div>
 
-      <Card
-        padding="lg"
-        className="overflow-hidden border-0 bg-[linear-gradient(120deg,#36F1CD_0%,#4C6085_80%)] text-white shadow-[var(--ds-shadow-card-hover)]"
-      >
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/15">
-              <Trophy className="h-6 w-6" aria-hidden />
-            </span>
-            <div>
-              <p className="text-base font-extrabold">Great work, team!</p>
-              <p className="mt-1 text-sm text-white/90">Keep up the momentum. Every task, every day, makes a difference.</p>
-            </div>
-          </div>
-          <button
-            type="button"
-            className="inline-flex items-center justify-center rounded-lg border border-sky-200/45 bg-sky-200/14 px-4 py-2.5 text-sm font-semibold text-white shadow-[inset_0_1px_0_rgba(186,230,253,0.35),0_6px_22px_rgba(15,23,42,0.38),0_0_0_1px_rgba(0,0,0,0.06)_inset] backdrop-blur-sm transition-[background-color,box-shadow,border-color,transform] hover:border-sky-200/70 hover:bg-sky-300/28 hover:shadow-[inset_0_1px_0_rgba(186,230,253,0.5),0_8px_28px_rgba(15,23,42,0.48),0_0_0_1px_rgba(0,0,0,0.08)_inset] active:scale-[0.98] active:bg-sky-400/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-200/80 focus-visible:ring-offset-2 focus-visible:ring-offset-[color-mix(in_srgb,var(--ds-palette-ice-deep)_45%,transparent)]"
-          >
-            View Leaderboard
-          </button>
-        </div>
-      </Card>
-
         <WorkerProfileModal userId={openProfileUserId} open={Boolean(openProfileUserId)} onClose={() => setOpenProfileUserId(null)} />
       </PageBody>
     </div>

@@ -1077,34 +1077,38 @@ export function ScheduleApp() {
                 />
               ) : null}
               {workspaceView === "calendar" ? (
-                <div className="flex flex-col gap-6 xl:flex-row xl:items-start">
-                  <div className="flex w-full shrink-0 flex-col gap-4 xl:order-first xl:w-72">
-                    <ScheduleWorkerPanel
-                      workers={workersForPanel}
-                      rosterDragEnabled={workerDragEnabled}
-                      dragSession={dragSession}
-                      shifts={shifts}
-                      roles={roles}
-                      placementDutyRole={placementDutyRole}
-                      onPlacementDutyRoleChange={setPlacementDutyRole}
-                      placementBand={placementBand}
-                      onPlacementBandChange={setPlacementBand}
-                      onDragSessionStart={setDragSession}
-                      onDragSessionEnd={() => {
-                        setDragSession(null);
-                        setTrashHovering(false);
-                      }}
-                    />
-                <ScheduleLegendPanel
-                  shiftTypes={shiftTypes}
-                  shifts={displayShifts}
-                  workers={workers}
-                  shiftDefinitions={shiftDefinitions}
-                  contentFilter={contentFilter}
-                  projectLegendItems={projectLegendItems}
-                />
-              </div>
-              <div className="min-w-0 flex-1 space-y-4">
+                <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-4">
+                  <div className="flex w-full shrink-0 flex-col gap-4 lg:flex-row lg:items-start lg:gap-4">
+                    <div className="min-w-0 w-full lg:min-w-[16rem] lg:max-w-md lg:flex-1">
+                      <ScheduleWorkerPanel
+                        workers={workersForPanel}
+                        rosterDragEnabled={workerDragEnabled}
+                        dragSession={dragSession}
+                        shifts={shifts}
+                        roles={roles}
+                        placementDutyRole={placementDutyRole}
+                        onPlacementDutyRoleChange={setPlacementDutyRole}
+                        placementBand={placementBand}
+                        onPlacementBandChange={setPlacementBand}
+                        onDragSessionStart={setDragSession}
+                        onDragSessionEnd={() => {
+                          setDragSession(null);
+                          setTrashHovering(false);
+                        }}
+                      />
+                    </div>
+                    <div className="min-w-0 w-full lg:max-w-sm lg:flex-1">
+                      <ScheduleLegendPanel
+                        shiftTypes={shiftTypes}
+                        shifts={displayShifts}
+                        workers={workers}
+                        shiftDefinitions={shiftDefinitions}
+                        contentFilter={contentFilter}
+                        projectLegendItems={projectLegendItems}
+                      />
+                    </div>
+                  </div>
+                  <div className="min-h-0 min-w-0 flex-1 space-y-4">
                 {scheduleLayout === "calendar" && timeScale === "day" ? (
                   <div className="space-y-3">
                     <div

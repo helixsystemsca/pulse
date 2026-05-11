@@ -25,11 +25,11 @@ export function OpsWidgetShell({
         className,
       )}
     >
-      <div className="flex shrink-0 items-center justify-between gap-2 border-b border-[color-mix(in_srgb,var(--ops-dash-border-muted,#94a3b8)_40%,transparent)] bg-[color-mix(in_srgb,var(--ops-dash-widget-bg,#ffffff)_88%,var(--ops-dash-inner-bg,#f1f5f9))] px-3 py-2 dark:bg-[color-mix(in_srgb,#0f172a_85%,#1e293b)]">
+      <div className="flex shrink-0 items-center justify-between gap-1.5 border-b border-[color-mix(in_srgb,var(--ops-dash-border-muted,#94a3b8)_40%,transparent)] bg-[color-mix(in_srgb,var(--ops-dash-widget-bg,#ffffff)_88%,var(--ops-dash-inner-bg,#f1f5f9))] px-2 py-1 dark:bg-[color-mix(in_srgb,#0f172a_85%,#1e293b)]">
         <p className="ops-widget-shell-title min-w-0 flex-1 truncate">{title}</p>
         {headerRight ? <div className="shrink-0">{headerRight}</div> : null}
       </div>
-      <div className="min-h-0 flex-1 overflow-auto ds-scroll bg-[var(--ops-dash-inner-bg,#f1f5f9)] p-2 dark:bg-[#0a0f18]">
+      <div className="min-h-0 flex-1 overflow-auto ds-scroll bg-[var(--ops-dash-inner-bg,#f1f5f9)] px-2 py-1.5 dark:bg-[#0a0f18]">
         {children}
       </div>
     </div>

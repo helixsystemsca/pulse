@@ -1231,8 +1231,8 @@ html.pulse-welcome-blur [data-pulse-app-shell] {
   .ops-widget-shell-title {
     font-size: 0.625rem;
     font-weight: 700;
-    line-height: 1.15;
-    letter-spacing: 0.12em;
+    line-height: 1;
+    letter-spacing: 0.1em;
     text-transform: uppercase;
     color: color-mix(in srgb, var(--ds-text-primary) 52%, transparent);
   }

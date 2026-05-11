@@ -91,7 +91,7 @@ function SystemsMockMonitoringPanel() {
         </div>
         <div className="mt-8 flex flex-wrap items-end justify-center gap-x-10 gap-y-10 sm:gap-x-14 md:gap-x-16">
           {co2Tanks.map((t) => (
-            <TankIndicator key={t.id} label={t.name} value={t.level} max={CO2_LEVEL_MAX} sublabel={t.location} />
+            <TankIndicator key={t.id} label={t.name} value={t.level} max={CO2_LEVEL_MAX} />
           ))}
         </div>
       </Card>

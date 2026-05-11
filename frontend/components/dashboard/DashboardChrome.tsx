@@ -131,6 +131,8 @@ export function KioskRotateFooter({
   intervalMs = 15_000,
   rotationKey = 0,
   showCountdownRing = false,
+  /** Match operations dashboard widget shell — tighter and neutral. */
+  compact = false,
 }: {
   activeIndex: number;
   total: number;
@@ -138,12 +140,21 @@ export function KioskRotateFooter({
   intervalMs?: number;
   rotationKey?: number;
   showCountdownRing?: boolean;
+  compact?: boolean;
 }) {
   return (
-    <div className="col-span-12 flex w-full flex-wrap items-center justify-between gap-4 rounded-[var(--dash-card-radius)] border border-[color-mix(in_srgb,var(--ds-text-primary)_9%,transparent)] bg-[linear-gradient(180deg,rgb(255_255_255_/0.82),rgb(248_250_252_/0.92))] px-4 py-3 text-xs text-ds-muted shadow-[var(--dash-shadow-card-soft)] backdrop-blur-md dark:border-[rgb(255_255_255_/0.1)] dark:bg-[color-mix(in_srgb,var(--ds-surface-primary)_92%,transparent)]">
-      <div className="flex min-w-0 flex-1 flex-wrap items-center justify-center gap-4">
+    <div
+      className={cn(
+        "col-span-12 flex w-full flex-wrap items-center justify-between text-ds-muted",
+        compact ? "gap-2" : "gap-4",
+        compact
+          ? "rounded-2xl border border-[color-mix(in_srgb,var(--ops-dash-border,#cbd5e1)_88%,transparent)] bg-[var(--ops-dash-widget-bg,#ffffff)] px-3 py-2 text-[11px] shadow-[0_8px_28px_-22px_rgba(15,23,42,0.22)] dark:border-white/[0.09] dark:bg-[var(--ops-dash-widget-bg,#0f172a)]"
+          : "rounded-[var(--dash-card-radius)] border border-[color-mix(in_srgb,var(--ds-text-primary)_9%,transparent)] bg-[linear-gradient(180deg,rgb(255_255_255_/0.82),rgb(248_250_252_/0.92))] px-4 py-3 text-xs shadow-[var(--dash-shadow-card-soft)] backdrop-blur-md dark:border-[rgb(255_255_255_/0.1)] dark:bg-[color-mix(in_srgb,var(--ds-surface-primary)_92%,transparent)]",
+      )}
+    >
+      <div className={cn("flex min-w-0 flex-1 flex-wrap items-center justify-center", compact ? "gap-3" : "gap-4")}>
         <span>{intervalLabel}</span>
-        <div className="flex items-center gap-2" role="tablist" aria-label="Dashboard view rotation">
+        <div className={cn("flex items-center", compact ? "gap-1.5" : "gap-2")} role="tablist" aria-label="Dashboard view rotation">
           {Array.from({ length: total }, (_, i) => (
             <span
               key={i}

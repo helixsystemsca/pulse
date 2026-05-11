@@ -24,9 +24,9 @@ export function Co2MonitoringOpsWidget() {
         </Link>
       </div>
       <div className="min-h-0 flex-1 overflow-x-auto overflow-y-hidden py-2">
-        <div className="flex min-w-min items-end justify-center gap-5 px-1 sm:gap-8">
+        <div className="flex min-w-min items-start justify-center gap-5 px-1 sm:gap-8">
           {co2Tanks.map((t) => (
-            <TankIndicator key={t.id} label={t.name} value={t.level} max={CO2_LEVEL_MAX} sublabel={t.location} />
+            <TankIndicator key={t.id} label={t.name} value={t.level} max={CO2_LEVEL_MAX} />
           ))}
         </div>
       </div>

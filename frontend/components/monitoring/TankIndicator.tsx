@@ -4,7 +4,6 @@ type TankIndicatorProps = {
   label: string;
   value: number;
   max: number;
-  sublabel?: string;
 };
 
 type TankStatus = "ok" | "change_soon" | "change_now";
@@ -29,7 +28,7 @@ const statusLabels: Record<TankStatus, string> = {
   change_now: "Change now",
 };
 
-export function TankIndicator({ label, value, max, sublabel }: TankIndicatorProps) {
+export function TankIndicator({ label, value, max }: TankIndicatorProps) {
   const status = useMemo(() => getStatus(value), [value]);
   const percent = useMemo(() => {
     const m = Math.max(1, max);
@@ -79,7 +78,6 @@ export function TankIndicator({ label, value, max, sublabel }: TankIndicatorProp
       <p className="mt-2 text-sm font-semibold text-ds-foreground">{label}</p>
       <p className="mt-0.5 text-xs text-ds-muted">
         <span className="tabular-nums">{value}</span> / {max} • {statusLabels[status]}
-        {sublabel ? <span className="text-ds-muted/80"> · {sublabel}</span> : null}
       </p>
     </div>
   );
