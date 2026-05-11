@@ -18,6 +18,8 @@ from app.models.domain import User
 from app.models.gamification_models import UserStats, XpLedger
 from app.services.avatar_borders import merge_unlocked_borders
 from app.services.badge_engine import evaluate_new_badges
+from app.services.operational_xp_levels import professional_xp_progress
+from app.services.operational_xp_reason_map import category_for_reason
 from app.services.streak_service import touch_streak_and_award_milestones
 from app.services.xp_level_curve import level_from_total_xp, xp_progress, xp_to_next_level
 from app.services.xp_reasons import display_reason
@@ -26,6 +28,25 @@ from app.services.xp_role_policy import is_xp_excluded_admin, user_may_earn_trac
 _logger = logging.getLogger(__name__)
 
 XpTrack = Literal["worker", "lead", "supervisor"]
+
+
+def _sync_operational_user_stats_fields(stats: UserStats, *, delta: int, company_thresholds: list[object] | None = None) -> None:
+    """Mirror professional tier + shift streak into cached columns for dashboards."""
+    try:
+        pl, title, _, _ = professional_xp_progress(int(stats.total_xp or 0), company_thresholds)
+        stats.professional_level = int(pl)
+        stats.current_title = str(title)[:128]
+    except Exception:
+        pass
+    try:
+        raw = dict(stats.streaks or {})
+        sa = raw.get("shift_attendance")
+        if isinstance(sa, dict):
+            stats.attendance_shift_streak = int(sa.get("current") or 0)
+    except Exception:
+        pass
+    if delta > 0:
+        stats.last_activity_at = datetime.now(timezone.utc)
 
 
 @dataclass
@@ -88,6 +109,10 @@ async def try_grant_xp(
     apply_badges: bool = True,
     apply_streak: bool = True,
     emit_events: bool = True,
+    category: str | None = None,
+    source_type: str | None = None,
+    source_id: str | None = None,
+    company_professional_thresholds: list[Any] | None = None,
 ) -> XpGrantResult:
     if amount == 0:
         return await _snapshot(db, company_id=company_id, user_id=user_id)
@@ -106,8 +131,12 @@ async def try_grant_xp(
 
     md = dict(meta or {})
     label = (reason or "").strip() or display_reason(reason_code, md)
+    cat = category_for_reason(reason_code, category or md.get("category"))
 
     delta = int(amount)
+    st_src = (source_type or md.get("source_type") or "")[:64] or None
+    sid_raw = source_id or md.get("source_id")
+    sid = str(sid_raw).strip()[:64] if sid_raw else None
     row = {
         "id": str(uuid4()),
         "company_id": str(company_id),
@@ -119,6 +148,9 @@ async def try_grant_xp(
         "xp_delta": delta,
         "meta": md,
         "created_at": datetime.now(timezone.utc),
+        "category": (cat[:32] if cat else None),
+        "source_type": st_src,
+        "source_id": sid,
     }
     ins = pg_insert(XpLedger).values(**row).on_conflict_do_nothing(constraint="uq_xp_ledger_user_dedupe")
     res = await db.execute(ins)
@@ -154,6 +186,7 @@ async def try_grant_xp(
 
     await db.refresh(stats)
     _sync_level_and_borders(stats)
+    _sync_operational_user_stats_fields(stats, delta=delta, company_thresholds=company_professional_thresholds)
 
     new_badges: list[dict[str, Any]] = []
     if delta > 0 and apply_badges:

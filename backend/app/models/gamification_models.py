@@ -73,6 +73,17 @@ class UserStats(Base):
     avatar_border: Mapped[str | None] = mapped_column(String(32), nullable=True)
     unlocked_avatar_borders: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, server_default=text("'[]'::jsonb"))
 
+    current_title: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    professional_level: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("1"))
+    attendance_shift_streak: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
+    perfect_weeks: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
+    procedures_completed: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
+    recognitions_received: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
+    pm_completed: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
+    work_orders_completed: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
+    routines_completed: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
+    last_activity_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
 
 class TaskEvent(Base):
     __tablename__ = "task_events"
@@ -106,6 +117,10 @@ class XpLedger(Base):
     meta: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=text("now()"), index=True)
 
+    category: Mapped[str | None] = mapped_column(String(32), nullable=True, index=True)
+    source_type: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    source_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+
 
 class BadgeDefinition(Base):
     __tablename__ = "badge_definitions"
@@ -115,6 +130,10 @@ class BadgeDefinition(Base):
     description: Mapped[str] = mapped_column(Text, nullable=False)
     icon_key: Mapped[str] = mapped_column(String(64), nullable=False, server_default=text("'badge'"))
     category: Mapped[str] = mapped_column(String(64), nullable=False)
+    stable_key: Mapped[str | None] = mapped_column(String(64), nullable=True, unique=True)
+    rarity: Mapped[str] = mapped_column(String(32), nullable=False, server_default=text("'common'"))
+    xp_reward: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
 
 
 class UserBadge(Base):
@@ -123,6 +142,41 @@ class UserBadge(Base):
     user_id: Mapped[str] = mapped_column(UUID(as_uuid=False), ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
     badge_id: Mapped[str] = mapped_column(String(64), ForeignKey("badge_definitions.id", ondelete="CASCADE"), primary_key=True)
     unlocked_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+
+
+class PulseWorkerRecognition(Base):
+    """Peer / supervisor recognition with optional approval (tenant-scoped)."""
+
+    __tablename__ = "pulse_worker_recognitions"
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    company_id: Mapped[str] = mapped_column(UUID(as_uuid=False), ForeignKey("companies.id", ondelete="CASCADE"), index=True)
+    from_worker_id: Mapped[str] = mapped_column(UUID(as_uuid=False), ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    to_worker_id: Mapped[str] = mapped_column(UUID(as_uuid=False), ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    from_department: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    to_department: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    recognition_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    comment: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[str] = mapped_column(String(16), nullable=False, server_default=text("'approved'"))
+    approved_by_user_id: Mapped[str | None] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
+
+
+class PulseXpOperatorConfig(Base):
+    """Per-tenant caps and recognition policy for operational XP."""
+
+    __tablename__ = "pulse_xp_operator_config"
+
+    company_id: Mapped[str] = mapped_column(UUID(as_uuid=False), ForeignKey("companies.id", ondelete="CASCADE"), primary_key=True)
+    recognition_requires_approval: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
+    recognition_monthly_limit_per_user: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("12"))
+    recognition_max_per_target_per_month: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("4"))
+    category_daily_xp_caps: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
+    professional_level_thresholds: Mapped[list[Any] | None] = mapped_column(JSONB, nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
 
 
 class Review(Base):

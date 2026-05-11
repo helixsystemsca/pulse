@@ -16,11 +16,17 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { AchievementGrid } from "@/components/operations/xp/AchievementGrid";
+import { ProfileCustomizationModal } from "@/components/operations/xp/ProfileCustomizationModal";
+import { RadialXpRing } from "@/components/operations/xp/RadialXpRing";
+import { WorkerXpCard } from "@/components/operations/xp/WorkerXpCard";
+import { XpTimeline } from "@/components/operations/xp/XpTimeline";
 import { WowXpBar } from "@/components/gamification/WowXpBar";
 import { PageBody } from "@/components/ui/PageBody";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Card } from "@/components/pulse/Card";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
+import { useReducedEffects } from "@/hooks/useReducedEffects";
 import { apiFetch, refreshPulseUserFromServer } from "@/lib/api";
 import { getGamificationMe, patchAvatarBorder, type GamificationMe } from "@/lib/gamificationService";
 import { parseClientApiError } from "@/lib/parse-client-api-error";
@@ -31,10 +37,15 @@ import type { PulseAuthSession } from "@/lib/pulse-session";
 import { fetchWorkerTraining, mapApiAssignments, mapApiPrograms } from "@/lib/trainingApi";
 import type { TrainingAssignment, TrainingProgram } from "@/lib/training/types";
 import { fetchWorkerDetail, type WorkerDetail } from "@/lib/workersService";
+import {
+  pickFeaturedBadges,
+  portraitFrameForBorderId,
+  readEquippedTitleSlug,
+  readFeaturedBadgeIds,
+  resolveEquippedTitleLabel,
+} from "@/lib/profileCosmetics";
 import { cn } from "@/lib/cn";
 import { buttonVariants } from "@/styles/button-variants";
-import { ActivityFeedCard } from "./ActivityFeedCard";
-import { AchievementCard } from "./AchievementCard";
 import { EditProfileDrawer } from "./EditProfileDrawer";
 import { InsightMetricGrid, PersonalInsightCard } from "./PersonalInsightCard";
 import type { ProfileIdentityBadge } from "./ProfileHeaderCard";
@@ -45,13 +56,6 @@ import type { UpcomingShiftRow } from "./UpcomingShiftCard";
 import { UpcomingShiftCard } from "./UpcomingShiftCard";
 
 const OP_ROLES = ["worker", "manager", "supervisor"] as const;
-
-const BORDERS: { id: string; label: string }[] = [
-  { id: "bronze", label: "Bronze" },
-  { id: "silver", label: "Silver" },
-  { id: "gold", label: "Gold" },
-  { id: "elite", label: "Elite" },
-];
 
 function deriveIdentityBadges(session: PulseAuthSession, worker: WorkerDetail | null): ProfileIdentityBadge[] {
   const roles = session.roles?.length ? session.roles : session.role ? [session.role] : [];
@@ -127,6 +131,9 @@ export function ProfilePage() {
   const [zones, setZones] = useState<PulseZoneApi[]>([]);
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [borderBusy, setBorderBusy] = useState(false);
+  const [cosmeticTick, setCosmeticTick] = useState(0);
+  const [customOpen, setCustomOpen] = useState(false);
+  const { reduced } = useReducedEffects();
 
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
@@ -336,6 +343,21 @@ export function ProfilePage() {
     [gamification?.analytics.unlockedAvatarBorders],
   );
 
+  const portraitStyles = useMemo(
+    () => portraitFrameForBorderId(analytics?.avatarBorder, { allowAnimation: !reduced }),
+    [analytics?.avatarBorder, reduced],
+  );
+
+  const equippedTitleDisplay = useMemo(
+    () => resolveEquippedTitleLabel(readEquippedTitleSlug(), analytics?.professionalTitle ?? undefined),
+    [cosmeticTick, analytics?.professionalTitle],
+  );
+
+  const featuredBadgesForHeader = useMemo(() => {
+    const ids = readFeaturedBadgeIds();
+    return pickFeaturedBadges(gamification?.badgeCatalog ?? [], ids).map((b) => ({ id: b.id, name: b.name }));
+  }, [cosmeticTick, gamification?.badgeCatalog]);
+
   if (!session) {
     return <p className="text-sm text-pulse-muted">Sign in to view your profile.</p>;
   }
@@ -380,6 +402,11 @@ export function ProfilePage() {
           avatarUrl={avatarUrl}
           userId={session.sub}
           microsoftAuth={session.auth_provider === "microsoft"}
+          portraitRingClassName={portraitStyles.frameClass}
+          portraitAnimatedClassName={portraitStyles.animatedClass}
+          equippedTitle={equippedTitleDisplay}
+          featuredBadges={featuredBadgesForHeader}
+          onAppearanceClick={() => setCustomOpen(true)}
           onAvatarUploaded={(next) => {
             setAvatarUrl(next);
             void reloadSnapshot();
@@ -472,50 +499,58 @@ export function ProfilePage() {
                   Level {analytics?.level ?? 1}
                 </span>
               </div>
-              <div className="mt-5">
-                {analytics ? (
-                  <WowXpBar
-                    totalXp={analytics.totalXp}
-                    level={analytics.level}
-                    xpIntoLevel={analytics.xpIntoLevel}
-                    xpToNextLevel={analytics.xpToNextLevel}
-                    size="md"
-                    showTotals
-                  />
-                ) : (
-                  <p className="text-sm text-ds-muted">{loadingProfile ? "Loading XP…" : "XP data unavailable."}</p>
-                )}
-              </div>
-              <div className="mt-6 border-t border-ds-border pt-5">
-                <p className="text-xs font-bold uppercase tracking-wider text-ds-muted">Avatar border</p>
-                <p className="mt-1 text-xs text-ds-muted">Unlock tiers at levels 10 / 20 / 30 / 50.</p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    disabled={borderBusy || !gamification}
-                    className={`rounded-full px-3 py-1.5 text-xs font-semibold ${!analytics?.avatarBorder ? "bg-ds-success/20 text-ds-foreground" : "border border-ds-border bg-ds-secondary text-ds-muted"}`}
-                    onClick={() => void onBorder(null)}
-                  >
-                    Default
-                  </button>
-                  {BORDERS.map((b) => (
-                    <button
-                      key={b.id}
-                      type="button"
-                      disabled={borderBusy || !gamification || !unlockedBorderSet.has(b.id)}
-                      className={`rounded-full px-3 py-1.5 text-xs font-semibold ${
-                        analytics?.avatarBorder === b.id ? "bg-ds-success/20 text-ds-foreground" : "border border-ds-border bg-ds-secondary text-ds-muted"
-                      } ${!unlockedBorderSet.has(b.id) ? "opacity-40" : ""}`}
-                      onClick={() => void onBorder(b.id)}
-                    >
-                      {b.label}
-                    </button>
-                  ))}
+              <div className="mt-5 grid gap-6 lg:grid-cols-[minmax(0,1fr)_140px] lg:items-center">
+                <div>
+                  {analytics ? (
+                    <WowXpBar
+                      totalXp={analytics.totalXp}
+                      level={analytics.level}
+                      xpIntoLevel={analytics.xpIntoLevel}
+                      xpToNextLevel={analytics.xpToNextLevel}
+                      size="md"
+                      showTotals
+                      enablePremiumMotion
+                    />
+                  ) : (
+                    <p className="text-sm text-ds-muted">{loadingProfile ? "Loading XP…" : "XP data unavailable."}</p>
+                  )}
                 </div>
+                {analytics ? (
+                  <div className="flex justify-center lg:justify-end">
+                    <RadialXpRing
+                      xpInto={analytics.xpIntoLevel ?? 0}
+                      xpToNext={analytics.xpToNextLevel ?? 100}
+                      level={analytics.level}
+                      size={128}
+                    />
+                  </div>
+                ) : null}
+              </div>
+              {analytics ? (
+                <div className="mt-5">
+                  <WorkerXpCard analytics={analytics} />
+                </div>
+              ) : null}
+              <div className="mt-6 border-t border-ds-border pt-5">
+                <p className="text-xs font-bold uppercase tracking-wider text-ds-muted">Profile appearance</p>
+                <p className="mt-1 text-xs text-ds-muted">
+                  Portrait borders unlock at levels 10 / 20 / 30 / 50. Open appearance to equip borders, titles, and
+                  featured badges.
+                </p>
+                <button
+                  type="button"
+                  className={cn(
+                    buttonVariants({ surface: "light", intent: "secondary" }),
+                    "mt-3 rounded-xl px-4 py-2 text-xs font-bold",
+                  )}
+                  onClick={() => setCustomOpen(true)}
+                >
+                  Customize appearance
+                </button>
               </div>
             </Card>
 
-            <AchievementCard badges={gamification?.unlockedBadges ?? []} loading={loadingProfile && !gamification} />
+            <AchievementGrid catalog={gamification?.badgeCatalog ?? []} loading={loadingProfile && !gamification} />
           </div>
         </section>
 
@@ -621,7 +656,7 @@ export function ProfilePage() {
         {/* Recommendations & activity */}
         <section className="space-y-4">
           <ProfileRecommendationsSection items={recommendations} />
-          <ActivityFeedCard rows={gamification?.recentXp ?? []} loading={loadingProfile && !gamification} />
+          <XpTimeline rows={gamification?.recentXp ?? []} loading={loadingProfile && !gamification} />
         </section>
 
         <ProfileAccountSection
@@ -650,6 +685,20 @@ export function ProfilePage() {
           </Card>
         ) : null}
       </PageBody>
+
+      <ProfileCustomizationModal
+        open={customOpen}
+        onClose={() => {
+          setCustomOpen(false);
+          setCosmeticTick((n) => n + 1);
+        }}
+        avatarBorder={analytics?.avatarBorder ?? null}
+        unlockedBorderIds={unlockedBorderSet}
+        professionalLevel={analytics?.professionalLevel ?? 1}
+        badgeCatalog={gamification?.badgeCatalog ?? []}
+        onSelectBorder={(id) => void onBorder(id)}
+        borderBusy={borderBusy}
+      />
 
       <EditProfileDrawer
         open={editOpen}

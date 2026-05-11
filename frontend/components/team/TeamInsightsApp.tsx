@@ -5,7 +5,12 @@ import { ChevronDown, Download, Flame, Sparkles, Trophy } from "lucide-react";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PageBody } from "@/components/ui/PageBody";
 import { Card } from "@/components/pulse/Card";
-import { fetchTeamInsights, type TeamInsightsActivity, type TeamInsightsWorker } from "@/lib/teamInsightsService";
+import {
+  fetchTeamInsights,
+  type TeamInsightsActivity,
+  type TeamInsightsWorker,
+  type TeamInsightsXpHighlights,
+} from "@/lib/teamInsightsService";
 import { WorkerRow } from "@/components/team/WorkerRow";
 import { WorkerProfileModal } from "@/components/team/WorkerProfileModal";
 import { cn } from "@/lib/cn";
@@ -49,6 +54,7 @@ export function TeamInsightsApp() {
     mostImprovedName?: string | null;
     mostImprovedDelta: number;
   } | null>(null);
+  const [xpHighlights, setXpHighlights] = useState<TeamInsightsXpHighlights | null>(null);
 
   const [sort, setSort] = useState<SortKey>("xp");
   const [roleFilter, setRoleFilter] = useState<RoleFilter>("all");
@@ -66,6 +72,7 @@ export function TeamInsightsApp() {
         setWorkers(res.workers ?? []);
         setActivity(res.recentActivity ?? []);
         setSummary(res.summary ?? null);
+        setXpHighlights(res.xpHighlights ?? null);
       } catch (e) {
         if (!cancelled) setErr(e instanceof Error ? e.message : "Failed to load Team Insights");
       } finally {
@@ -214,6 +221,35 @@ export function TeamInsightsApp() {
           </div>
         </Card>
       </div>
+
+      {xpHighlights ? (
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          {(
+            [
+              ["Top contributors (7d)", xpHighlights.topContributorsWeek],
+              ["Reliability leaders", xpHighlights.reliabilityLeaders],
+              ["Cross-training depth", xpHighlights.crossTrainingLeaders],
+              ["Compliance breadth", xpHighlights.complianceLeaders],
+            ] as const
+          ).map(([label, rows]) => (
+            <Card key={label} padding="md" className="border border-ds-border/80 bg-ds-primary/60">
+              <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-ds-muted">{label}</p>
+              <ul className="mt-3 space-y-2">
+                {rows.length === 0 ? (
+                  <li className="text-xs text-ds-muted">No data yet this period.</li>
+                ) : (
+                  rows.map((r) => (
+                    <li key={r.userId} className="flex items-center justify-between gap-2 text-sm">
+                      <span className="min-w-0 truncate font-semibold text-ds-foreground">{r.fullName}</span>
+                      <span className="shrink-0 text-xs font-extrabold tabular-nums text-ds-muted">{r.score}</span>
+                    </li>
+                  ))
+                )}
+              </ul>
+            </Card>
+          ))}
+        </div>
+      ) : null}
 
       <div className="grid gap-6 lg:grid-cols-3">
         <Card padding="lg" className="lg:col-span-2">

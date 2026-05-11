@@ -96,6 +96,18 @@ async def _count_pm_on_time(db: AsyncSession, *, company_id: str, user_id: str) 
     return int(q.scalar_one() or 0)
 
 
+def _shift_attendance_current(stats: UserStats | None) -> int:
+    if not stats:
+        return 0
+    raw = stats.streaks or {}
+    if not isinstance(raw, dict):
+        return 0
+    ent = raw.get("shift_attendance")
+    if isinstance(ent, dict):
+        return int(ent.get("current") or 0)
+    return 0
+
+
 async def _count_any_tasks_done(db: AsyncSession, *, company_id: str, user_id: str) -> int:
     q = await db.execute(
         select(func.count())
@@ -121,6 +133,7 @@ async def evaluate_new_badges(db: AsyncSession, *, company_id: str, user_id: str
     infer = await _count_inference_confirmed(db, company_id=company_id, user_id=user_id)
     pm_ot = await _count_pm_on_time(db, company_id=company_id, user_id=user_id)
     any_done = await _count_any_tasks_done(db, company_id=company_id, user_id=user_id)
+    shift_streak = _shift_attendance_current(stats)
 
     candidates: list[tuple[str, bool]] = [
         ("streak_3", streak >= 3),
@@ -139,6 +152,9 @@ async def evaluate_new_badges(db: AsyncSession, *, company_id: str, user_id: str
         ("inference_20", infer >= 20),
         ("pm_guardian_5", pm_ot >= 5),
         ("first_task", any_done >= 1),
+        ("reliability_shifts_10", shift_streak >= 10),
+        ("reliability_shifts_20", shift_streak >= 20),
+        ("reliability_shifts_30", shift_streak >= 30),
     ]
 
     now = datetime.now(timezone.utc)

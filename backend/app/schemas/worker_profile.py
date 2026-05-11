@@ -36,3 +36,16 @@ class WorkerProfileOut(BaseModel):
     recent_xp: list[XpLedgerRowOut] = Field(default_factory=list, alias="recentXp")
     generated_at: datetime = Field(alias="generatedAt")
 
+    professional_level: int = Field(1, alias="professionalLevel")
+    professional_title: str = Field("Operator I", alias="professionalTitle")
+    professional_xp_into: int = Field(0, alias="professionalXpInto")
+    professional_xp_to_next: int = Field(0, alias="professionalXpToNext")
+    attendance_shift_streak: int = Field(0, alias="attendanceShiftStreak")
+    perfect_weeks: int = Field(0, alias="perfectWeeks")
+    procedures_completed: int = Field(0, alias="proceduresCompleted")
+    recognitions_received: int = Field(0, alias="recognitionsReceived")
+    pm_completed: int = Field(0, alias="pmCompleted")
+    work_orders_completed: int = Field(0, alias="workOrdersCompleted")
+    routines_completed: int = Field(0, alias="routinesCompleted")
+    last_activity_at: datetime | None = Field(None, alias="lastActivityAt")
+

@@ -46,10 +46,24 @@ export type TeamInsightsSummary = {
   mostImprovedDelta: number;
 };
 
+export type TeamInsightsHighlightPerson = {
+  userId: string;
+  fullName: string;
+  score: number;
+};
+
+export type TeamInsightsXpHighlights = {
+  topContributorsWeek: TeamInsightsHighlightPerson[];
+  reliabilityLeaders: TeamInsightsHighlightPerson[];
+  crossTrainingLeaders: TeamInsightsHighlightPerson[];
+  complianceLeaders: TeamInsightsHighlightPerson[];
+};
+
 export type TeamInsightsPayload = {
   summary: TeamInsightsSummary;
   workers: TeamInsightsWorker[];
   recentActivity: TeamInsightsActivity[];
+  xpHighlights?: TeamInsightsXpHighlights;
 };
 
 export async function fetchTeamInsights(): Promise<TeamInsightsPayload> {

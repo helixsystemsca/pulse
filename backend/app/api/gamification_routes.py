@@ -15,7 +15,7 @@ from app.core.events.engine import event_engine
 from app.core.events.types import DomainEvent
 from app.core.database import get_db
 from app.core.user_roles import user_has_any_role
-from app.models.gamification_models import BadgeDefinition, Task, TaskEvent, UserBadge, UserStats, XpLedger
+from app.models.gamification_models import BadgeDefinition, PulseXpOperatorConfig, Task, TaskEvent, UserBadge, UserStats, XpLedger
 from app.models.domain import DomainEventRow, User, UserRole
 from app.models.pulse_models import PulseWorkerProfile, PulseWorkRequest
 from app.schemas.gamification import (
@@ -39,6 +39,7 @@ from app.config.xp_rules import MANAGER_BONUS_XP_MAX, MANAGER_BONUS_XP_MIN
 from app.services.badge_engine import evaluate_new_badges
 from app.services.streak_service import touch_streak_and_award_milestones
 from app.services.xp_grant import try_grant_xp
+from app.services.operational_xp_levels import professional_xp_progress
 from app.services.xp_level_curve import xp_progress, xp_to_next_level
 from app.services.xp_role_policy import assigner_operational_track, is_xp_excluded_admin, task_completion_role_multiplier
 from app.services.xp_worker_task import compute_worker_task_completion_xp
@@ -480,6 +481,7 @@ async def flag_task(
 async def _user_analytics_payload(db: AsyncSession, company_id: str, subject_user_id: str) -> UserAnalyticsOut:
     stats = await db.get(UserStats, subject_user_id)
     if not stats or str(stats.company_id) != company_id:
+        pl, pti, pin, ptn = professional_xp_progress(0, None)
         return UserAnalyticsOut(
             totalXp=0,
             level=1,
@@ -497,6 +499,18 @@ async def _user_analytics_payload(db: AsyncSession, company_id: str, subject_use
             xpLead=0,
             xpSupervisor=0,
             named_streaks={},
+            professionalLevel=pl,
+            professionalTitle=pti,
+            professionalXpInto=pin,
+            professionalXpToNext=max(0, ptn - pin),
+            attendanceShiftStreak=0,
+            perfectWeeks=0,
+            proceduresCompleted=0,
+            recognitionsReceived=0,
+            pmCompleted=0,
+            workOrdersCompleted=0,
+            routinesCompleted=0,
+            lastActivityAt=None,
         )
 
     from app.models.gamification_models import Review
@@ -527,6 +541,9 @@ async def _user_analytics_payload(db: AsyncSession, company_id: str, subject_use
     tot = int(stats.total_xp)
     lv, into, _ = xp_progress(tot)
     borders = [str(x) for x in (stats.unlocked_avatar_borders or []) if isinstance(x, str)]
+    cfg = await db.get(PulseXpOperatorConfig, str(company_id))
+    th = cfg.professional_level_thresholds if cfg and isinstance(cfg.professional_level_thresholds, list) else None
+    pl, pti, pin, pseg = professional_xp_progress(tot, th)
     return UserAnalyticsOut(
         totalXp=tot,
         level=lv,
@@ -544,6 +561,18 @@ async def _user_analytics_payload(db: AsyncSession, company_id: str, subject_use
         xpLead=int(getattr(stats, "xp_lead", 0) or 0),
         xpSupervisor=int(getattr(stats, "xp_supervisor", 0) or 0),
         named_streaks=dict(getattr(stats, "streaks", None) or {}),
+        professionalLevel=int(getattr(stats, "professional_level", pl) or pl),
+        professionalTitle=str(getattr(stats, "current_title", None) or pti)[:128],
+        professionalXpInto=int(pin),
+        professionalXpToNext=max(0, int(pseg) - int(pin)),
+        attendanceShiftStreak=int(getattr(stats, "attendance_shift_streak", 0) or 0),
+        perfectWeeks=int(getattr(stats, "perfect_weeks", 0) or 0),
+        proceduresCompleted=int(getattr(stats, "procedures_completed", 0) or 0),
+        recognitionsReceived=int(getattr(stats, "recognitions_received", 0) or 0),
+        pmCompleted=int(getattr(stats, "pm_completed", 0) or 0),
+        workOrdersCompleted=int(getattr(stats, "work_orders_completed", 0) or 0),
+        routinesCompleted=int(getattr(stats, "routines_completed", 0) or 0),
+        lastActivityAt=getattr(stats, "last_activity_at", None),
     )
 
 
@@ -562,10 +591,21 @@ async def _gamification_me_payload(db: AsyncSession, company_id: str, subject_us
     )
     unlock_map = {str(d.id): ub.unlocked_at for ub, d in unlock_rows}
 
-    defs = list((await db.execute(select(BadgeDefinition).order_by(BadgeDefinition.category, BadgeDefinition.id))).scalars().all())
+    defs = list(
+        (
+            await db.execute(
+                select(BadgeDefinition)
+                .where(BadgeDefinition.is_active.is_(True))
+                .order_by(BadgeDefinition.category, BadgeDefinition.id)
+            )
+        )
+        .scalars()
+        .all()
+    )
     catalog: list[BadgeOut] = []
     for d in defs:
         uat = unlock_map.get(str(d.id))
+        locked = uat is None and bool(getattr(d, "is_active", True))
         catalog.append(
             BadgeOut(
                 id=str(d.id),
@@ -574,6 +614,9 @@ async def _gamification_me_payload(db: AsyncSession, company_id: str, subject_us
                 icon_key=d.icon_key,
                 category=d.category,
                 unlocked_at=uat,
+                rarity=str(getattr(d, "rarity", None) or "common"),
+                xp_reward=int(getattr(d, "xp_reward", 0) or 0),
+                is_locked=locked,
             )
         )
     unlocked_badges = [b for b in catalog if b.unlocked_at is not None]
@@ -598,6 +641,9 @@ async def _gamification_me_payload(db: AsyncSession, company_id: str, subject_us
             reason=r.reason,
             track=str(r.track),
             created_at=r.created_at,
+            category=str(r.category) if getattr(r, "category", None) else None,
+            sourceType=str(r.source_type) if getattr(r, "source_type", None) else None,
+            sourceId=str(r.source_id) if getattr(r, "source_id", None) else None,
         )
         for r in rows
     ]

@@ -13,9 +13,10 @@ from app.api.deps import require_tenant_user
 from app.core.database import get_db
 from app.core.user_roles import user_has_any_role, user_participates_in_workforce_operations
 from app.models.domain import User, UserRole
-from app.models.gamification_models import BadgeDefinition, UserBadge, UserStats, XpLedger
+from app.models.gamification_models import BadgeDefinition, PulseXpOperatorConfig, UserBadge, UserStats, XpLedger
 from app.schemas.gamification import BadgeOut, XpLedgerRowOut
 from app.schemas.worker_profile import WorkerProfileOut
+from app.services.operational_xp_levels import professional_xp_progress
 from app.services.xp_level_curve import xp_progress, xp_to_next_level
 
 router = APIRouter(prefix="/users", tags=["worker-profile"])
@@ -81,6 +82,9 @@ async def get_worker_profile(
                 iconKey=str(bd.icon_key),
                 category=str(bd.category),
                 unlockedAt=ub.unlocked_at,
+                rarity=str(getattr(bd, "rarity", None) or "common"),
+                xpReward=int(getattr(bd, "xp_reward", 0) or 0),
+                isLocked=False,
             )
         )
 
@@ -99,9 +103,16 @@ async def get_worker_profile(
             reason=str(r.reason) if r.reason else None,
             track=str(r.track),
             createdAt=r.created_at,
+            category=str(r.category) if getattr(r, "category", None) else None,
+            sourceType=str(r.source_type) if getattr(r, "source_type", None) else None,
+            sourceId=str(r.source_id) if getattr(r, "source_id", None) else None,
         )
         for r in xq.scalars().all()
     ]
+
+    cfg = await db.get(PulseXpOperatorConfig, cid)
+    th = cfg.professional_level_thresholds if cfg and isinstance(cfg.professional_level_thresholds, list) else None
+    pl, pti, pin, pseg = professional_xp_progress(total, th)
 
     return WorkerProfileOut(
         userId=str(target.id),
@@ -122,5 +133,17 @@ async def get_worker_profile(
         badges=badges,
         recentXp=recent_xp,
         generatedAt=datetime.now(timezone.utc),
+        professionalLevel=int(getattr(stats, "professional_level", pl) or pl) if stats else pl,
+        professionalTitle=str(getattr(stats, "current_title", None) or pti)[:128] if stats else pti,
+        professionalXpInto=int(pin),
+        professionalXpToNext=max(0, int(pseg) - int(pin)),
+        attendanceShiftStreak=int(getattr(stats, "attendance_shift_streak", 0) or 0) if stats else 0,
+        perfectWeeks=int(getattr(stats, "perfect_weeks", 0) or 0) if stats else 0,
+        proceduresCompleted=int(getattr(stats, "procedures_completed", 0) or 0) if stats else 0,
+        recognitionsReceived=int(getattr(stats, "recognitions_received", 0) or 0) if stats else 0,
+        pmCompleted=int(getattr(stats, "pm_completed", 0) or 0) if stats else 0,
+        workOrdersCompleted=int(getattr(stats, "work_orders_completed", 0) or 0) if stats else 0,
+        routinesCompleted=int(getattr(stats, "routines_completed", 0) or 0) if stats else 0,
+        lastActivityAt=getattr(stats, "last_activity_at", None) if stats else None,
     )
 

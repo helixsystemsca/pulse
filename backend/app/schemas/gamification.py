@@ -39,6 +39,9 @@ class BadgeOut(BaseModel):
     icon_key: str = Field(alias="iconKey")
     category: str
     unlocked_at: datetime | None = Field(None, alias="unlockedAt")
+    rarity: str | None = Field("common", description="common | uncommon | rare | epic")
+    xp_reward: int = Field(0, alias="xpReward")
+    is_locked: bool = Field(False, alias="isLocked", description="True when shown in catalog but not earned")
 
 
 class CompleteTaskResult(BaseModel):
@@ -79,6 +82,19 @@ class UserAnalyticsOut(BaseModel):
     xpSupervisor: int = Field(0, description="Cumulative supervisor-track XP")
     named_streaks: dict[str, Any] = Field(default_factory=dict, alias="namedStreaks")
 
+    professional_level: int = Field(1, alias="professionalLevel")
+    professional_title: str = Field("Operator I", alias="professionalTitle")
+    professional_xp_into: int = Field(0, alias="professionalXpInto")
+    professional_xp_to_next: int = Field(0, alias="professionalXpToNext")
+    attendance_shift_streak: int = Field(0, alias="attendanceShiftStreak")
+    perfect_weeks: int = Field(0, alias="perfectWeeks")
+    procedures_completed: int = Field(0, alias="proceduresCompleted")
+    recognitions_received: int = Field(0, alias="recognitionsReceived")
+    pm_completed: int = Field(0, alias="pmCompleted")
+    work_orders_completed: int = Field(0, alias="workOrdersCompleted")
+    routines_completed: int = Field(0, alias="routinesCompleted")
+    last_activity_at: datetime | None = Field(None, alias="lastActivityAt")
+
 
 class XpLedgerRowOut(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
@@ -89,6 +105,9 @@ class XpLedgerRowOut(BaseModel):
     reason: str | None = None
     track: str
     created_at: datetime = Field(alias="createdAt")
+    category: str | None = None
+    source_type: str | None = Field(None, alias="sourceType")
+    source_id: str | None = Field(None, alias="sourceId")
 
 
 class GamificationMeOut(BaseModel):

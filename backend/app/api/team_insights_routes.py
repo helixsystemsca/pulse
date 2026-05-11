@@ -17,9 +17,11 @@ from app.models.gamification_models import BadgeDefinition, UserBadge, UserStats
 from app.schemas.gamification import BadgeOut, XpLedgerRowOut
 from app.schemas.team_insights import (
     TeamInsightsActivityOut,
+    TeamInsightsHighlightPersonOut,
     TeamInsightsOut,
     TeamInsightsSummaryOut,
     TeamInsightsWorkerOut,
+    TeamInsightsXpHighlightsOut,
 )
 from app.services.xp_level_curve import xp_progress, xp_to_next_level
 from app.services.xp_role_policy import is_xp_excluded_admin
@@ -81,6 +83,7 @@ async def _build_team_insights(
     top_week_xp = 0
     improved_uid = None
     improved_delta = 0
+    cur_map: dict[str, int] = {}
     if ids:
         tq = await db.execute(
             select(XpLedger.user_id, func.coalesce(func.sum(XpLedger.xp_delta), 0).label("sx"))
@@ -132,13 +135,15 @@ async def _build_team_insights(
     )
 
     # Recent activity feed: last 50 XP events for the company.
-    aq = await db.execute(
-        select(XpLedger)
-        .where(XpLedger.company_id == cid, XpLedger.user_id.in_(ids))
-        .order_by(XpLedger.created_at.desc())
-        .limit(60)
-    )
-    ledger_rows = aq.scalars().all()
+    ledger_rows = []
+    if ids:
+        aq = await db.execute(
+            select(XpLedger)
+            .where(XpLedger.company_id == cid, XpLedger.user_id.in_(ids))
+            .order_by(XpLedger.created_at.desc())
+            .limit(60)
+        )
+        ledger_rows = list(aq.scalars().all())
 
     activity: list[TeamInsightsActivityOut] = []
     for row in ledger_rows[:50]:
@@ -177,6 +182,9 @@ async def _build_team_insights(
                     iconKey=str(bd.icon_key),
                     category=str(bd.category),
                     unlockedAt=ub.unlocked_at,
+                    rarity=str(getattr(bd, "rarity", None) or "common"),
+                    xpReward=int(getattr(bd, "xp_reward", 0) or 0),
+                    isLocked=False,
                 )
             )
         out_workers.append(
@@ -208,7 +216,99 @@ async def _build_team_insights(
         mostImprovedName=str(imp_name).strip() if imp_name else None,
         mostImprovedDelta=int(improved_delta),
     )
-    return TeamInsightsOut(summary=summary, workers=out_workers, recentActivity=activity)
+
+    top_contrib: list[TeamInsightsHighlightPersonOut] = []
+    for uid, sx in sorted(cur_map.items(), key=lambda kv: int(kv[1] or 0), reverse=True)[:5]:
+        if int(sx or 0) <= 0:
+            continue
+        u = user_by_id.get(str(uid))
+        if not u:
+            continue
+        top_contrib.append(
+            TeamInsightsHighlightPersonOut(
+                userId=str(uid),
+                fullName=str(u.full_name or u.email or uid).strip(),
+                score=int(sx or 0),
+            )
+        )
+
+    rel_scores: list[tuple[str, int]] = []
+    for uid in ids:
+        st = stats_by_uid.get(uid)
+        rel_scores.append((uid, int(getattr(st, "attendance_shift_streak", 0) or 0) if st else 0))
+    rel_scores.sort(key=lambda t: t[1], reverse=True)
+    reliability: list[TeamInsightsHighlightPersonOut] = []
+    for uid, sc in rel_scores[:5]:
+        if sc <= 0:
+            continue
+        u = user_by_id.get(uid)
+        if not u:
+            continue
+        reliability.append(
+            TeamInsightsHighlightPersonOut(
+                userId=str(uid),
+                fullName=str(u.full_name or u.email or uid).strip(),
+                score=int(sc),
+            )
+        )
+
+    cross_scores: list[tuple[str, int]] = []
+    for uid in ids:
+        st = stats_by_uid.get(uid)
+        n = int(getattr(st, "procedures_completed", 0) or 0) if st else 0
+        for ub in ub_by_uid.get(uid, []):
+            bd = badge_def.get(str(ub.badge_id))
+            if bd and str(getattr(bd, "stable_key", "") or "") == "cross_trained":
+                n += 50
+        cross_scores.append((uid, n))
+    cross_scores.sort(key=lambda t: t[1], reverse=True)
+    cross_training: list[TeamInsightsHighlightPersonOut] = []
+    for uid, sc in cross_scores[:5]:
+        if sc <= 0:
+            continue
+        u = user_by_id.get(uid)
+        if not u:
+            continue
+        cross_training.append(
+            TeamInsightsHighlightPersonOut(
+                userId=str(uid),
+                fullName=str(u.full_name or u.email or uid).strip(),
+                score=int(sc),
+            )
+        )
+
+    comp_scores: list[tuple[str, int]] = []
+    for uid in ids:
+        n = 0
+        for ub in ub_by_uid.get(uid, []):
+            bd = badge_def.get(str(ub.badge_id))
+            if bd and str(bd.category) in ("compliance", "inspections", "procedures"):
+                n += 1
+        comp_scores.append((uid, n))
+    comp_scores.sort(key=lambda t: t[1], reverse=True)
+    compliance_h: list[TeamInsightsHighlightPersonOut] = []
+    for uid, sc in comp_scores[:5]:
+        if sc <= 0:
+            continue
+        u = user_by_id.get(uid)
+        if not u:
+            continue
+        compliance_h.append(
+            TeamInsightsHighlightPersonOut(
+                userId=str(uid),
+                fullName=str(u.full_name or u.email or uid).strip(),
+                score=int(sc),
+            )
+        )
+
+    highlights = TeamInsightsXpHighlightsOut(
+        topContributorsWeek=top_contrib,
+        reliabilityLeaders=reliability,
+        crossTrainingLeaders=cross_training,
+        complianceLeaders=compliance_h,
+    )
+
+    return TeamInsightsOut(summary=summary, workers=out_workers, recentActivity=activity, xpHighlights=highlights)
 
 
 @router.get("/insights", response_model=TeamInsightsOut)

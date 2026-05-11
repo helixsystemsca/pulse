@@ -1,5 +1,6 @@
 "use client";
 
+import { useXpFeedback } from "@/components/operations/xp/XpFeedbackContext";
 import { usePulseWs } from "@/hooks/usePulseWs";
 import { completeTask, getUserAnalytics, listMyTasks, previewXp, type GamifiedTask } from "@/lib/gamificationService";
 import { readSession } from "@/lib/pulse-session";
@@ -18,8 +19,8 @@ function formatDue(dueIso: string | null | undefined): string {
 export function XpTasksWidget() {
   const [tasks, setTasks] = useState<GamifiedTask[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
-  const [flash, setFlash] = useState<{ xp: number; at: number } | null>(null);
   const [analytics, setAnalytics] = useState<{ totalXp: number; level: number } | null>(null);
+  const xpFx = useXpFeedback();
 
   const me = useMemo(() => readSession()?.sub ?? null, []);
 
@@ -48,15 +49,23 @@ export function XpTasksWidget() {
       setBusy(taskId);
       try {
         const res = await completeTask(taskId);
-        setFlash({ xp: res.xp, at: Date.now() });
         setTasks((prev) => prev.filter((t) => t.id !== taskId));
         setAnalytics({ totalXp: res.totalXp, level: res.level });
-        window.setTimeout(() => setFlash((v) => (v && Date.now() - v.at > 1200 ? null : v)), 1400);
+        if (res.xp > 0) xpFx.pushXpToast(res.xp, "Task completed");
+        if (res.leveledUp && me) {
+          const a = await getUserAnalytics(me).catch(() => null);
+          xpFx.showLevelUp(res.level, `Level ${res.level} achieved`, {
+            subtitle: a?.professionalTitle ?? "Operational tier unlocked",
+            badges: res.newBadges ?? [],
+          });
+        } else if (res.newBadges?.length) {
+          xpFx.queueAchievementUnlocks(res.newBadges);
+        }
       } finally {
         setBusy((v) => (v === taskId ? null : v));
       }
     },
-    [setTasks],
+    [me, setTasks, xpFx],
   );
 
   return (

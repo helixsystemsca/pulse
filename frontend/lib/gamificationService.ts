@@ -21,6 +21,9 @@ export type BadgeDto = {
   iconKey?: string;
   category?: string;
   unlockedAt?: string | null;
+  rarity?: string | null;
+  xpReward?: number | null;
+  isLocked?: boolean | null;
 };
 
 export type XpLedgerRowDto = {
@@ -30,6 +33,9 @@ export type XpLedgerRowDto = {
   reason?: string | null;
   track: string;
   createdAt: string;
+  category?: string | null;
+  sourceType?: string | null;
+  sourceId?: string | null;
 };
 
 export type UserAnalytics = {
@@ -48,6 +54,19 @@ export type UserAnalytics = {
   xpWorker?: number;
   xpLead?: number;
   xpSupervisor?: number;
+  namedStreaks?: Record<string, unknown>;
+  professionalLevel?: number;
+  professionalTitle?: string;
+  professionalXpInto?: number;
+  professionalXpToNext?: number;
+  attendanceShiftStreak?: number;
+  perfectWeeks?: number;
+  proceduresCompleted?: number;
+  recognitionsReceived?: number;
+  pmCompleted?: number;
+  workOrdersCompleted?: number;
+  routinesCompleted?: number;
+  lastActivityAt?: string | null;
 };
 
 export type GamificationMe = {

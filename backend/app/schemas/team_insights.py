@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.schemas.gamification import BadgeOut
 
@@ -38,6 +38,35 @@ class TeamInsightsActivityOut(BaseModel):
     xp_delta: int = Field(0, alias="xpDelta")
 
 
+class TeamInsightsHighlightPersonOut(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    user_id: str = Field(alias="userId")
+    full_name: str = Field(alias="fullName")
+    score: int = Field(0, description="Positive-only metric for the highlight category")
+
+
+class TeamInsightsXpHighlightsOut(BaseModel):
+    """Positive-only workforce recognition — no low-performer callouts."""
+
+    top_contributors_week: list[TeamInsightsHighlightPersonOut] = Field(
+        default_factory=list,
+        alias="topContributorsWeek",
+    )
+    reliability_leaders: list[TeamInsightsHighlightPersonOut] = Field(
+        default_factory=list,
+        alias="reliabilityLeaders",
+    )
+    cross_training_leaders: list[TeamInsightsHighlightPersonOut] = Field(
+        default_factory=list,
+        alias="crossTrainingLeaders",
+    )
+    compliance_leaders: list[TeamInsightsHighlightPersonOut] = Field(
+        default_factory=list,
+        alias="complianceLeaders",
+    )
+
+
 class TeamInsightsSummaryOut(BaseModel):
     total_team_xp: int = Field(0, alias="totalTeamXp")
     active_streaks: int = Field(0, alias="activeStreaks")
@@ -53,4 +82,8 @@ class TeamInsightsOut(BaseModel):
     summary: TeamInsightsSummaryOut
     workers: list[TeamInsightsWorkerOut]
     recent_activity: list[TeamInsightsActivityOut] = Field(default_factory=list, alias="recentActivity")
+    xp_highlights: TeamInsightsXpHighlightsOut = Field(
+        default_factory=lambda: TeamInsightsXpHighlightsOut(),
+        alias="xpHighlights",
+    )
 

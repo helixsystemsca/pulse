@@ -1,10 +1,11 @@
 "use client";
 
 import { ChevronDown, Loader2, Moon, Sun } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useTheme } from "@/components/theme/ThemeProvider";
 import { Card } from "@/components/pulse/Card";
+import { REDUCED_EFFECTS_CHANGED_EVENT, REDUCED_EFFECTS_STORAGE_KEY, useReducedEffects } from "@/hooks/useReducedEffects";
 import { apiFetch } from "@/lib/api";
 import { parseClientApiError } from "@/lib/parse-client-api-error";
 import { cn } from "@/lib/cn";
@@ -24,6 +25,17 @@ export function ProfileAccountSection({
   onError: (msg: string | null) => void;
 }) {
   const { theme, setTheme } = useTheme();
+  const { reduced, setUserReducedEffects } = useReducedEffects();
+  const [extraReduced, setExtraReduced] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const read = () => setExtraReduced(window.localStorage.getItem(REDUCED_EFFECTS_STORAGE_KEY) === "1");
+    read();
+    window.addEventListener(REDUCED_EFFECTS_CHANGED_EVENT, read);
+    return () => window.removeEventListener(REDUCED_EFFECTS_CHANGED_EVENT, read);
+  }, []);
+
   const [pwOpen, setPwOpen] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -104,6 +116,27 @@ export function ProfileAccountSection({
             >
               Dark
             </button>
+          </div>
+          <div className="mt-6 border-t border-ds-border pt-4">
+            <p className="text-sm font-extrabold text-ds-foreground">Progression effects</p>
+            <p className="mt-1 text-xs text-ds-muted">
+              Tones down XP celebrations, particles, and motion. Your device&apos;s reduced-motion preference is always
+              respected
+              {reduced && !extraReduced ? " (active from the system right now)." : "."}
+            </p>
+            <label className="mt-3 flex cursor-pointer items-center gap-3 rounded-xl border border-ds-border/60 bg-ds-primary/40 px-3 py-2.5">
+              <input
+                type="checkbox"
+                className="h-4 w-4 rounded border-ds-border text-ds-accent focus:ring-ds-accent"
+                checked={extraReduced}
+                onChange={(e) => {
+                  const v = e.target.checked;
+                  setExtraReduced(v);
+                  setUserReducedEffects(v);
+                }}
+              />
+              <span className="text-sm font-semibold text-ds-foreground">Use reduced progression visuals</span>
+            </label>
           </div>
         </Card>
 

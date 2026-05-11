@@ -34,6 +34,11 @@ export function ProfileHeaderCard({
   microsoftAuth,
   onAvatarUploaded,
   onEditClick,
+  portraitRingClassName,
+  portraitAnimatedClassName,
+  equippedTitle,
+  featuredBadges,
+  onAppearanceClick,
 }: {
   displayName: string;
   email: string;
@@ -48,6 +53,11 @@ export function ProfileHeaderCard({
   microsoftAuth?: boolean;
   onAvatarUploaded: (next: string) => void;
   onEditClick: () => void;
+  portraitRingClassName?: string;
+  portraitAnimatedClassName?: string;
+  equippedTitle?: string | null;
+  featuredBadges?: { id: string; name: string }[];
+  onAppearanceClick?: () => void;
 }) {
   return (
     <section
@@ -73,6 +83,8 @@ export function ProfileHeaderCard({
               className={cn(
                 "rounded-full bg-white/30 p-1.5 shadow-[0_12px_40px_rgba(15,23,42,0.25)] backdrop-blur-md",
                 "dark:bg-white/10 dark:shadow-[0_12px_40px_rgba(0,0,0,0.45)]",
+                portraitRingClassName,
+                portraitAnimatedClassName,
               )}
             >
               <AvatarUpload
@@ -97,9 +109,26 @@ export function ProfileHeaderCard({
               <h1 className="mt-2 font-headline text-3xl font-extrabold tracking-tight text-ds-foreground sm:text-4xl">
                 {displayName || email || "Member"}
               </h1>
+              {equippedTitle ? (
+                <p className="mt-1 text-xs font-bold uppercase tracking-[0.18em] text-[#2B4C7E]/85 dark:text-[#7dd3fc]/90">
+                  {equippedTitle}
+                </p>
+              ) : null}
               <p className="mt-2 text-base font-semibold text-[color-mix(in_srgb,var(--ds-foreground)_88%,#36F1CD)] dark:text-ds-foreground/90">
                 {roleLabel}
               </p>
+              {featuredBadges && featuredBadges.length > 0 ? (
+                <ul className="mt-3 flex flex-wrap justify-center gap-1.5 sm:justify-start">
+                  {featuredBadges.map((b) => (
+                    <li
+                      key={b.id}
+                      className="rounded-full border border-white/35 bg-white/20 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-[#1e3a5f] backdrop-blur-md dark:border-white/10 dark:bg-white/5 dark:text-[#bae6fd]"
+                    >
+                      {b.name}
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
             </div>
 
             {badges.length > 0 ? (
@@ -166,7 +195,21 @@ export function ProfileHeaderCard({
           </div>
         </div>
 
-        <div className="flex shrink-0 justify-center lg:justify-end">
+        <div className="flex shrink-0 flex-wrap items-center justify-center gap-2 lg:justify-end">
+          {onAppearanceClick ? (
+            <button
+              type="button"
+              onClick={onAppearanceClick}
+              className={cn(
+                buttonVariants({ surface: "light", intent: "secondary" }),
+                "inline-flex items-center gap-2 rounded-xl border border-white/35 bg-white/80 px-4 py-2.5 text-sm font-bold shadow-md backdrop-blur-md",
+                "hover:bg-white dark:border-white/15 dark:bg-[#1e2a3a]/85 dark:hover:bg-[#243447]",
+              )}
+            >
+              <Sparkles className="h-4 w-4" aria-hidden />
+              Appearance
+            </button>
+          ) : null}
           <button
             type="button"
             onClick={onEditClick}

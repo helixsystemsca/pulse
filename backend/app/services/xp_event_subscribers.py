@@ -30,6 +30,7 @@ from app.core.database import AsyncSessionLocal
 from app.core.events.engine import event_engine
 from app.core.events.types import DomainEvent
 from app.models.domain import User
+from app.models.gamification_models import UserStats
 from app.services.xp_grant import quality_bonus_xp_for_task, try_grant_xp
 from app.services.xp_role_policy import assigner_operational_track
 
@@ -237,7 +238,7 @@ async def _on_procedure_completed(ev: DomainEvent) -> None:
         u = await db.get(User, str(worker_id))
         if not u or str(u.company_id) != cid:
             return
-        await try_grant_xp(
+        g1 = await try_grant_xp(
             db,
             company_id=cid,
             user_id=str(worker_id),
@@ -247,6 +248,9 @@ async def _on_procedure_completed(ev: DomainEvent) -> None:
             dedupe_key=f"proc_complete:{proc_id}:{worker_id}",
             meta={"procedure_id": str(proc_id), "all_steps": all_steps},
             reason="Procedure completed",
+            category="procedure",
+            source_type="procedure",
+            source_id=str(proc_id),
         )
         if all_steps:
             await try_grant_xp(
@@ -261,7 +265,14 @@ async def _on_procedure_completed(ev: DomainEvent) -> None:
                 reason="All procedure steps completed",
                 apply_badges=False,
                 apply_streak=False,
+                category="procedure",
+                source_type="procedure",
+                source_id=str(proc_id),
             )
+        if int(g1.applied or 0) > 0:
+            st = await db.get(UserStats, str(worker_id))
+            if st and str(st.company_id) == cid:
+                st.procedures_completed = int(getattr(st, "procedures_completed", 0) or 0) + 1
         await db.commit()
 
 
