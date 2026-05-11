@@ -5,6 +5,7 @@ import type { ScheduleDragSession } from "./types";
 
 export const SHIFT_DRAG_MIME = "application/x-pulse-shift";
 export const WORKER_DRAG_MIME = "application/x-pulse-schedule-worker";
+export const PALETTE_DRAG_MIME = "application/x-pulse-schedule-palette";
 
 function listDataTransferTypes(dt: DataTransfer): string[] {
   try {
@@ -20,8 +21,10 @@ function listDataTransferTypes(dt: DataTransfer): string[] {
  * `dragSession` from `dragstart` (prefer `flushSync` when setting it) must be trusted.
  */
 export function scheduleCalendarDragOverAccepts(e: DragEvent, dragSession: ScheduleDragSession | null): boolean {
-  if (dragSession?.kind === "worker" || dragSession?.kind === "shift") return true;
-  return listDataTransferTypes(e.dataTransfer).some((t) => t === SHIFT_DRAG_MIME || t === WORKER_DRAG_MIME);
+  if (dragSession?.kind === "worker" || dragSession?.kind === "shift" || dragSession?.kind === "palette") return true;
+  return listDataTransferTypes(e.dataTransfer).some(
+    (t) => t === SHIFT_DRAG_MIME || t === WORKER_DRAG_MIME || t === PALETTE_DRAG_MIME,
+  );
 }
 
 /** Day panel accepts worker drops only (not shift moves). */
@@ -83,6 +86,28 @@ export function readWorkerDragPayload(dt: DataTransfer): WorkerDragPayload | nul
     if (!raw) return null;
     const o = JSON.parse(raw) as WorkerDragPayload;
     if (typeof o.workerId === "string") return o;
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+export type PaletteDragPayload = { paletteKind: "shift" | "badge"; code: string };
+
+export function setPaletteDragData(dt: DataTransfer, payload: PaletteDragPayload) {
+  dt.setData(PALETTE_DRAG_MIME, JSON.stringify(payload));
+  dt.setData("text/plain", `${payload.paletteKind}:${payload.code}`);
+  dt.effectAllowed = "copy";
+}
+
+export function readPaletteDragPayload(dt: DataTransfer): PaletteDragPayload | null {
+  try {
+    const raw = dt.getData(PALETTE_DRAG_MIME);
+    if (!raw) return null;
+    const o = JSON.parse(raw) as PaletteDragPayload;
+    if ((o.paletteKind === "shift" || o.paletteKind === "badge") && typeof o.code === "string" && o.code.trim()) {
+      return { paletteKind: o.paletteKind, code: o.code.trim() };
+    }
     return null;
   } catch {
     return null;

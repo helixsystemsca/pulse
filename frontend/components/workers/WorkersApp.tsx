@@ -266,14 +266,14 @@ function shiftRosterLabel(
   return k.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-/** Roster shift column: soft sky / amber / lavender pills (aligned weights). Legacy `gg_*` keys → neutral until migrated. */
+/** Roster shift column: soft sky / amber for day bands; deep violet for night (incl. `N*` keys). Legacy `gg_*` → neutral. */
 function shiftRosterBadgeClass(shiftKey: string | null | undefined): string {
   const k = (shiftKey ?? "").trim().toLowerCase();
   if (!k) return "app-badge-slate";
   if (k.startsWith("gg_")) return "app-badge-slate";
   if (k === "day") return "app-badge-sky";
   if (k === "afternoon") return "app-badge-amber-soft";
-  if (k === "night") return "app-badge-lavender";
+  if (k === "night" || /^n\d+$/.test(k)) return "app-badge-night";
   return "app-badge-slate";
 }
 

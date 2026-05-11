@@ -19,6 +19,8 @@ import {
   weekRangeLabel,
 } from "@/lib/schedule/calendar";
 import { evaluateCoverageRules } from "@/lib/schedule/coverage-rules";
+import { mergeDeploymentBadgeOverlays } from "@/lib/schedule/deployment-overlay";
+import type { PaletteDragPayload } from "@/lib/schedule/drag";
 import {
   defaultWindowForShiftBand,
   inferShiftTypeFromStart,
@@ -28,7 +30,7 @@ import {
   weekdayKeyFromIso,
 } from "@/lib/schedule/recurring";
 import { logScheduleAuditEvent } from "@/lib/schedule/schedule-audit-log";
-import { inferStandardShiftCode } from "@/lib/schedule/shift-definition-catalog";
+import { inferStandardShiftCode, standardShiftByCode } from "@/lib/schedule/shift-definition-catalog";
 import { placementBandDropdownOptions, resolvePlacementRoles } from "@/lib/schedule/placement-panel-options";
 import { suggestReplacementLabel } from "@/lib/schedule/suggest-replacement";
 import { buildWorkerDragHighlightMap, evaluateWorkerDrop } from "@/lib/schedule/worker-drag-highlights";
@@ -54,14 +56,13 @@ import { canAccessCompanyConfiguration, sessionHasAnyRole } from "@/lib/pulse-ro
 import { readSession } from "@/lib/pulse-session";
 import { AvailabilitySupervisorDrawer } from "./availability/AvailabilitySupervisorDrawer";
 import { EmployeeAvailabilityDrawer } from "./availability/EmployeeAvailabilityDrawer";
-import {
-  ScheduleBuilderActions,
-  ScheduleBuilderIdentity,
-} from "./ScheduleBuilderHeader";
-import { ScheduleUnifiedHeader } from "./ScheduleUnifiedHeader";
-import { ScheduleOperationalSignalsBar } from "./ScheduleOperationalSignalsBar";
+import { ScheduleBuilderActions, type SchedulePeriodHeaderState } from "./ScheduleBuilderHeader";
+import { SchedulePageHeader } from "./SchedulePageHeader";
+import { ScheduleUnifiedControlCard } from "./ScheduleUnifiedControlCard";
+import { ScheduleOperationalStatusStrip } from "./ScheduleOperationalStatusStrip";
 import { ScheduleOperationalSidebar, type ScheduleWorkspaceView } from "./ScheduleOperationalSidebar";
 import { useModuleSettings } from "@/providers/ModuleSettingsProvider";
+import { ScheduleAssignmentPalette } from "./ScheduleAssignmentPalette";
 import { ScheduleCalendarGrid } from "./ScheduleCalendarGrid";
 import { ScheduleDayView } from "./ScheduleDayView";
 import { ScheduleLegendPanel, type ScheduleProjectLegendItem } from "./ScheduleLegendPanel";
@@ -96,6 +97,10 @@ function shiftLengthHours(sh: Pick<Shift, "startTime" | "endTime">): number {
   if (mins < 0) mins += 24 * 60;
   return mins / 60;
 }
+
+type AvailabilityOverrideState =
+  | { kind: "worker"; workerId: string; date: string; detail: string }
+  | { kind: "paletteShift"; workerId: string; date: string; code: string; detail: string };
 
 function weeklyAssignedHours(
   shifts: Shift[],
@@ -164,9 +169,7 @@ export function ScheduleApp() {
     shift: Shift | null;
     defaultDate: string;
   } | null>(null);
-  const [availabilityOverride, setAvailabilityOverride] = useState<{ workerId: string; date: string; detail: string } | null>(
-    null,
-  );
+  const [availabilityOverride, setAvailabilityOverride] = useState<AvailabilityOverrideState | null>(null);
   const [scheduleToast, setScheduleToast] = useState<string | null>(null);
   const [workerAttendanceModal, setWorkerAttendanceModal] = useState<{
     workerId: string;
@@ -187,6 +190,8 @@ export function ScheduleApp() {
   const addTimeOffBlock = useScheduleStore((s) => s.addTimeOffBlock);
   const applyPulseScheduleSnapshot = useScheduleStore((s) => s.applyPulseScheduleSnapshot);
   const setWorkers = useScheduleStore((s) => s.setWorkers);
+  const deploymentBadgeOverlays = useScheduleStore((s) => s.deploymentBadgeOverlays);
+  const addDeploymentBadge = useScheduleStore((s) => s.addDeploymentBadge);
 
   const placementRoleChoices = useMemo(
     () => resolvePlacementRoles(roles, settings.placementPanelRoleIds),
@@ -432,9 +437,9 @@ export function ScheduleApp() {
 
   const shiftsForView = useMemo(() => {
     const zid = zones[0]?.id ?? shifts[0]?.zoneId ?? "";
-    if (!zid) return shifts;
-    return mergeEphemeralSchedule(shifts, workers, visibleDatesForScheduleMerge, timeOffBlocks, zid);
-  }, [shifts, workers, visibleDatesForScheduleMerge, timeOffBlocks, zones]);
+    const base = !zid ? shifts : mergeEphemeralSchedule(shifts, workers, visibleDatesForScheduleMerge, timeOffBlocks, zid);
+    return mergeDeploymentBadgeOverlays(base, deploymentBadgeOverlays);
+  }, [shifts, workers, visibleDatesForScheduleMerge, timeOffBlocks, zones, deploymentBadgeOverlays]);
 
   const myShifts = useMemo(() => {
     if (!currentUserId) return [];
@@ -544,6 +549,45 @@ export function ScheduleApp() {
     },
     [shiftsForView, metricsMonth.y, metricsMonth.m, settings, scheduleMod.settings, workers],
   );
+
+  const schedulePeriodState: SchedulePeriodHeaderState = activePeriod
+    ? {
+        kind: "active",
+        status: activePeriod.status === "open" ? "open" : "draft",
+        rangeLabel: `${activePeriod.start_date} – ${activePeriod.end_date}`,
+        deadlineLabel: activePeriod.availability_deadline
+          ? ` · Due ${new Date(activePeriod.availability_deadline).toLocaleDateString()}`
+          : null,
+      }
+    : { kind: "empty", allowCreate: canEdit };
+
+  const viewPeriodMeta = useMemo(() => {
+    if (scheduleLayout === "ops-grid") {
+      return { label: weekRangeLabel(weekDates), sub: "Week · Ops placement grid" };
+    }
+    if (timeScale === "month") {
+      const daysInMonth = new Date(cursor.y, cursor.m + 1, 0).getDate();
+      const d = new Date(cursor.y, cursor.m, 1);
+      return {
+        label: d.toLocaleDateString(undefined, { month: "long", year: "numeric" }),
+        sub: `${daysInMonth} days · Calendar month`,
+      };
+    }
+    if (timeScale === "week") {
+      return { label: weekRangeLabel(weekDates), sub: "7 days · Week range" };
+    }
+    try {
+      const label = new Date(`${focusDate}T12:00:00`).toLocaleDateString(undefined, {
+        weekday: "long",
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      });
+      return { label, sub: "Single day view" };
+    } catch {
+      return { label: focusDate, sub: "Single day view" };
+    }
+  }, [scheduleLayout, timeScale, cursor.y, cursor.m, weekDates, focusDate]);
 
   function openAdd(dateIso: string) {
     setShiftModal({ shift: null, defaultDate: dateIso });
@@ -753,6 +797,7 @@ export function ScheduleApp() {
       if (!ev.ok) {
         if (!trimmedOverride && ev.needsManagerOverride && canPublishSchedule) {
           setAvailabilityOverride({
+            kind: "worker",
             workerId,
             date: targetDate,
             detail: ev.tooltip ?? "Constraint conflict for this placement.",
@@ -829,6 +874,187 @@ export function ScheduleApp() {
       timeOffBlocks,
       workers,
       zones,
+    ],
+  );
+
+  const commitPaletteShiftAssignment = useCallback(
+    (workerId: string, targetDate: string, shiftCode: string, availabilityOverrideReason?: string | null) => {
+      const w = workers.find((x) => x.id === workerId);
+      if (!w) return;
+      const trimmedOverride =
+        typeof availabilityOverrideReason === "string" && availabilityOverrideReason.trim().length > 0
+          ? availabilityOverrideReason.trim()
+          : null;
+
+      const def = standardShiftByCode(shiftCode);
+      if (!def) {
+        setScheduleToast(`Unknown shift code: ${shiftCode}`);
+        return;
+      }
+
+      const ev = evaluateWorkerDrop(w, targetDate, shiftsForView, settings, timeOffBlocks, placementDropWindow, {
+        treatRestrictionsAsSatisfied: Boolean(trimmedOverride),
+      });
+      if (!ev.ok) {
+        setScheduleToast(ev.tooltip ?? "Cannot assign this shift.");
+        return;
+      }
+
+      if (trimmedOverride) {
+        const actor = (session?.full_name ?? session?.email ?? "user").trim() || "user";
+        logScheduleAuditEvent({
+          type: "availability_override",
+          actorLabel: actor,
+          workerId: w.id,
+          date: targetDate,
+          reason: trimmedOverride,
+        });
+      }
+
+      const zoneId = zones[0]?.id ?? shiftsForView[0]?.zoneId ?? "";
+      if (!zoneId) return;
+
+      const dayAssignments = shifts.filter(
+        (s) =>
+          s.workerId === workerId &&
+          s.date === targetDate &&
+          s.shiftKind !== "project_task" &&
+          s.eventType !== "vacation" &&
+          s.eventType !== "sick",
+      );
+      const targetShift = dayAssignments.find((s) => s.eventType === "work" || s.eventType === "training") ?? null;
+
+      const weeklyCap = Number(scheduleMod.settings.enforceMaxHours) || 0;
+      if (weeklyCap > 0 && w) {
+        const draftLen = shiftLengthHours({ startTime: def.start, endTime: def.end });
+        const withShift =
+          weeklyAssignedHours(shiftsForView, workerId, targetDate, targetShift?.id) + draftLen;
+        if (withShift > weeklyCap + 1e-6) {
+          window.alert(
+            `This assignment would exceed the ${weeklyCap}h weekly limit (${withShift.toFixed(1)}h). Change schedule settings or adjust shifts.`,
+          );
+          return;
+        }
+      }
+
+      if (targetShift && !isEphemeralScheduleShiftId(targetShift.id)) {
+        if (isApiMode() && isPulseApiShiftId(targetShift.id)) {
+          void (async () => {
+            try {
+              await apiFetch(`/api/v1/pulse/schedule/shifts/${targetShift.id}`, {
+                method: "PATCH",
+                json: {
+                  starts_at: localDateTimeToIso(targetDate, def.start),
+                  ends_at: localDateTimeToIso(targetDate, def.end),
+                  shift_type: def.band,
+                },
+              });
+              await reloadPulseSchedule();
+            } catch {
+              updateShift(targetShift.id, {
+                startTime: def.start,
+                endTime: def.end,
+                shiftType: def.band,
+                shiftCode: def.code,
+                ...(trimmedOverride ? { availabilityOverrideReason: trimmedOverride } : {}),
+                uiFlags: { ...targetShift.uiFlags, isUpdated: true },
+              });
+            }
+          })();
+          return;
+        }
+        updateShift(targetShift.id, {
+          startTime: def.start,
+          endTime: def.end,
+          shiftType: def.band,
+          shiftCode: def.code,
+          ...(trimmedOverride ? { availabilityOverrideReason: trimmedOverride } : {}),
+          uiFlags: { ...targetShift.uiFlags, isUpdated: true },
+        });
+        return;
+      }
+
+      addShift({
+        workerId: w.id,
+        date: targetDate,
+        startTime: def.start,
+        endTime: def.end,
+        shiftType: def.band,
+        eventType: "work",
+        role: placementDutyRole as Shift["role"],
+        zoneId,
+        shiftKind: "workforce",
+        shiftCode: def.code,
+        ...(trimmedOverride ? { availabilityOverrideReason: trimmedOverride } : {}),
+        uiFlags: { isNew: true },
+      });
+    },
+    [
+      addShift,
+      placementDutyRole,
+      placementDropWindow,
+      reloadPulseSchedule,
+      scheduleMod.settings.enforceMaxHours,
+      session?.email,
+      session?.full_name,
+      settings,
+      shifts,
+      shiftsForView,
+      timeOffBlocks,
+      updateShift,
+      workers,
+      zones,
+    ],
+  );
+
+  const handlePaletteDrop = useCallback(
+    (workerId: string, targetDate: string, payload: PaletteDragPayload) => {
+      setDragSession(null);
+      setTrashHovering(false);
+
+      const w = workers.find((x) => x.id === workerId);
+      if (!w) return;
+
+      if (payload.paletteKind === "badge") {
+        addDeploymentBadge(workerId, targetDate, payload.code);
+        return;
+      }
+
+      const def = standardShiftByCode(payload.code);
+      if (!def) {
+        setScheduleToast(`Unknown shift code: ${payload.code}`);
+        return;
+      }
+
+      const ev = evaluateWorkerDrop(w, targetDate, shiftsForView, settings, timeOffBlocks, placementDropWindow, {
+        treatRestrictionsAsSatisfied: false,
+      });
+      if (!ev.ok) {
+        if (ev.needsManagerOverride && canPublishSchedule) {
+          setAvailabilityOverride({
+            kind: "paletteShift",
+            workerId,
+            date: targetDate,
+            code: def.code,
+            detail: ev.tooltip ?? "Constraint conflict for this placement.",
+          });
+          return;
+        }
+        setScheduleToast(ev.tooltip ?? "Cannot assign this shift.");
+        return;
+      }
+
+      commitPaletteShiftAssignment(workerId, targetDate, def.code, null);
+    },
+    [
+      addDeploymentBadge,
+      canPublishSchedule,
+      commitPaletteShiftAssignment,
+      placementDropWindow,
+      settings,
+      shiftsForView,
+      timeOffBlocks,
+      workers,
     ],
   );
 
@@ -943,102 +1169,97 @@ export function ScheduleApp() {
     );
   }
 
+  const builderActions = (
+    <ScheduleBuilderActions
+      showSaveDraft={isApiMode() && canEdit}
+      saveDraftDisabled={saveBusy || !hasPendingServerSave}
+      saveBusy={saveBusy}
+      onSaveDraft={() => void saveScheduleToServer()}
+      showPublish={canPublishSchedule && isApiMode()}
+      publishBusy={publishBusy}
+      onPublish={() => void handlePublish()}
+      showBuildDraft={Boolean(canPublishSchedule && isApiMode() && !draftResult)}
+      buildingDraft={buildingDraft}
+      onBuildDraft={() => void handleBuildDraft()}
+      moreMenu={
+        <div className="flex flex-col gap-1">
+          <button
+            type="button"
+            className="rounded-lg px-3 py-2 text-left text-sm font-medium text-ds-foreground hover:bg-ds-interactive-hover"
+            onClick={() => setTimeOffOpen(true)}
+          >
+            Time off
+          </button>
+          {canConfigureOrg ? (
+            <button
+              type="button"
+              className="rounded-lg px-3 py-2 text-left text-sm font-medium text-ds-foreground hover:bg-ds-interactive-hover"
+              onClick={() => setSettingsOpen(true)}
+            >
+              Schedule settings
+            </button>
+          ) : null}
+          <div className="border-t border-pulseShell-border pt-2 dark:border-slate-700">
+            <SettingsGear module="schedule" label="Module preferences" className="w-full justify-center border-pulseShell-border" />
+          </div>
+        </div>
+      }
+    />
+  );
+
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-3 pb-2">
-      <div className={`min-h-0 flex-1 space-y-4 ${scheduleDragLock ? "pointer-events-none" : ""}`}>
-        <ScheduleUnifiedHeader
-          sidebar={
-            <ScheduleOperationalSidebar
-              variant="header"
-              collapsed={false}
-              onToggleCollapsed={() => {}}
-              searchQuery={sidebarSearch}
-              onSearchChange={setSidebarSearch}
-              workspaceView={workspaceView}
-              onWorkspaceViewChange={(v) => {
-                setWorkspaceView(v);
-                if (v !== "calendar") {
-                  setTimeScale("month");
-                  setScheduleLayout("calendar");
+    <div className="flex min-h-0 flex-1 flex-col gap-2 pb-2">
+      <div className={`min-h-0 flex-1 space-y-2 ${scheduleDragLock ? "pointer-events-none" : ""}`}>
+        <SchedulePageHeader actions={builderActions} />
+
+        {workspaceView === "calendar" ? (
+          <ScheduleUnifiedControlCard
+            operationsRow={
+              <ScheduleOperationalSidebar
+                variant="inline"
+                collapsed={false}
+                onToggleCollapsed={() => {}}
+                searchQuery={sidebarSearch}
+                onSearchChange={setSidebarSearch}
+                workspaceView={workspaceView}
+                onWorkspaceViewChange={(v) => {
+                  setWorkspaceView(v);
+                  if (v !== "calendar") {
+                    setTimeScale("month");
+                    setScheduleLayout("calendar");
+                  }
+                }}
+                zones={zones}
+                facilityFilterIds={facilityFilterIds}
+                onFacilityFilterToggle={(id) =>
+                  setFacilityFilterIds((prev) => (prev.includes(id) ? prev.filter((z) => z !== id) : [...prev, id]))
                 }
-              }}
-              zones={zones}
-              facilityFilterIds={facilityFilterIds}
-              onFacilityFilterToggle={(id) =>
-                setFacilityFilterIds((prev) => (prev.includes(id) ? prev.filter((z) => z !== id) : [...prev, id]))
-              }
-              onClearFacilityFilter={() => setFacilityFilterIds([])}
-              onOpenSettings={() => setSettingsOpen(true)}
-              onOpenTimeOff={() => setTimeOffOpen(true)}
-              onOpenAvailabilitySupervisor={() => setAvailabilitySupervisorOpen(true)}
-              onOpenEmployeeAvailability={() => setEmployeeAvailabilityOpen(true)}
-              canConfigureOrg={canConfigureOrg}
-              disabled={scheduleDragLock}
-            />
-          }
-          identity={
-            <ScheduleBuilderIdentity
-              period={
-                activePeriod
-                  ? {
-                      kind: "active",
-                      status: activePeriod.status === "open" ? "open" : "draft",
-                      rangeLabel: `${activePeriod.start_date} – ${activePeriod.end_date}`,
-                      deadlineLabel: activePeriod.availability_deadline
-                        ? ` · Due ${new Date(activePeriod.availability_deadline).toLocaleDateString()}`
-                        : null,
-                    }
-                  : { kind: "empty", allowCreate: canEdit }
-              }
-              onManagePeriod={() => setShowPeriodModal(true)}
-              onCreatePeriod={() => setShowPeriodModal(true)}
-            />
-          }
-          actions={
-            <ScheduleBuilderActions
-              showSaveDraft={isApiMode() && canEdit}
-              saveDraftDisabled={saveBusy || !hasPendingServerSave}
-              saveBusy={saveBusy}
-              onSaveDraft={() => void saveScheduleToServer()}
-              showPublish={canPublishSchedule && isApiMode()}
-              publishBusy={publishBusy}
-              onPublish={() => void handlePublish()}
-              showBuildDraft={Boolean(canPublishSchedule && isApiMode() && !draftResult)}
-              buildingDraft={buildingDraft}
-              onBuildDraft={() => void handleBuildDraft()}
-              moreMenu={
-                <div className="flex flex-col gap-1">
-                  <button
-                    type="button"
-                    className="rounded-lg px-3 py-2 text-left text-sm font-medium text-ds-foreground hover:bg-ds-interactive-hover"
-                    onClick={() => setTimeOffOpen(true)}
-                  >
-                    Time off
-                  </button>
-                  {canConfigureOrg ? (
-                    <button
-                      type="button"
-                      className="rounded-lg px-3 py-2 text-left text-sm font-medium text-ds-foreground hover:bg-ds-interactive-hover"
-                      onClick={() => setSettingsOpen(true)}
-                    >
-                      Schedule settings
-                    </button>
-                  ) : null}
-                  <div className="border-t border-pulseShell-border pt-2 dark:border-slate-700">
-                    <SettingsGear
-                      module="schedule"
-                      label="Module preferences"
-                      className="w-full justify-center border-pulseShell-border"
-                    />
-                  </div>
-                </div>
-              }
-            />
-          }
-          toolbar={
-            workspaceView === "calendar" ? (
+                onClearFacilityFilter={() => setFacilityFilterIds([])}
+                onOpenSettings={() => setSettingsOpen(true)}
+                onOpenTimeOff={() => setTimeOffOpen(true)}
+                onOpenAvailabilitySupervisor={() => setAvailabilitySupervisorOpen(true)}
+                onOpenEmployeeAvailability={() => setEmployeeAvailabilityOpen(true)}
+                canConfigureOrg={canConfigureOrg}
+                disabled={scheduleDragLock}
+              />
+            }
+            status={
+              <ScheduleOperationalStatusStrip
+                period={schedulePeriodState}
+                viewPeriodLabel={viewPeriodMeta.label}
+                viewPeriodSub={viewPeriodMeta.sub}
+                alerts={alerts}
+                pendingAvailability={pendingAvailabilityCount}
+                unpublishedChanges={hasPendingServerSave}
+                trainingConflicts={0}
+                onManagePeriod={() => setShowPeriodModal(true)}
+                onAvailabilityClick={() => setAvailabilitySupervisorOpen(true)}
+              />
+            }
+            controls={
               <ScheduleToolbar
                 embedded
+                compact
                 timeScale={timeScale}
                 onTimeScaleChange={setTimeScale}
                 scheduleLayout={scheduleLayout}
@@ -1052,11 +1273,35 @@ export function ScheduleApp() {
                 onToggleProjectOverlay={() => setShowProjectOverlay((v) => !v)}
                 disabled={scheduleDragLock}
               />
-            ) : null
-          }
-        />
+            }
+          />
+        ) : (
+          <div className="flex flex-wrap items-center gap-2 rounded-xl border border-pulseShell-border/80 bg-pulseShell-surface/60 px-3 py-2 dark:border-slate-700/80 dark:bg-slate-900/50">
+            <ScheduleOperationalSidebar
+              variant="inline"
+              collapsed={false}
+              onToggleCollapsed={() => {}}
+              searchQuery={sidebarSearch}
+              onSearchChange={setSidebarSearch}
+              workspaceView={workspaceView}
+              onWorkspaceViewChange={setWorkspaceView}
+              zones={zones}
+              facilityFilterIds={facilityFilterIds}
+              onFacilityFilterToggle={(id) =>
+                setFacilityFilterIds((prev) => (prev.includes(id) ? prev.filter((z) => z !== id) : [...prev, id]))
+              }
+              onClearFacilityFilter={() => setFacilityFilterIds([])}
+              onOpenSettings={() => setSettingsOpen(true)}
+              onOpenTimeOff={() => setTimeOffOpen(true)}
+              onOpenAvailabilitySupervisor={() => setAvailabilitySupervisorOpen(true)}
+              onOpenEmployeeAvailability={() => setEmployeeAvailabilityOpen(true)}
+              canConfigureOrg={canConfigureOrg}
+              disabled={scheduleDragLock}
+            />
+          </div>
+        )}
 
-          <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-4">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-2">
             {workspaceView === "calendar" ? (
               <>
                 {draftResult ? (
@@ -1071,14 +1316,6 @@ export function ScheduleApp() {
                   />
                 ) : null}
 
-                <ScheduleOperationalSignalsBar
-                  alerts={alerts}
-                  pendingAvailability={pendingAvailabilityCount}
-                  unpublishedChanges={hasPendingServerSave}
-                  trainingConflicts={0}
-                  onAvailabilityClick={() => setAvailabilitySupervisorOpen(true)}
-                />
-
                 <div className="relative flex min-h-0 flex-1 flex-col">
                   {scheduleDragLock ? (
                     <div
@@ -1087,8 +1324,8 @@ export function ScheduleApp() {
                     />
                   ) : null}
 
-                  <div className="grid min-h-0 flex-1 grid-cols-1 gap-6 md:grid-cols-[minmax(260px,360px)_1fr] md:grid-rows-1 md:items-stretch lg:grid-cols-[minmax(280px,420px)_1fr] lg:gap-6">
-                    <aside className="flex min-h-0 flex-col gap-4 overflow-y-auto lg:min-h-0 lg:max-h-full lg:pr-0.5">
+                  <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 md:grid-cols-[minmax(200px,280px)_1fr] md:grid-rows-1 md:items-stretch lg:grid-cols-[minmax(220px,300px)_1fr] lg:gap-3">
+                    <aside className="flex min-h-0 flex-col gap-1.5 overflow-y-auto lg:min-h-0 lg:max-h-full lg:pr-0.5">
                       <div className="shrink-0">
                         <ScheduleWorkerPanel
                           workers={workersForPanel}
@@ -1107,6 +1344,14 @@ export function ScheduleApp() {
                           }}
                         />
                       </div>
+                      <ScheduleAssignmentPalette
+                        disabled={scheduleDragLock && dragSession?.kind !== "palette"}
+                        onDragSessionStart={(p) => setDragSession({ kind: "palette", ...p })}
+                        onDragSessionEnd={() => {
+                          setDragSession(null);
+                          setTrashHovering(false);
+                        }}
+                      />
                       <ScheduleLegendPanel
                         shiftTypes={shiftTypes}
                         shifts={displayShifts}
@@ -1119,7 +1364,7 @@ export function ScheduleApp() {
                     </aside>
 
                     <section className="flex min-h-0 min-w-0 flex-col overflow-hidden">
-                      <div className="min-h-0 flex-1 space-y-4 overflow-x-auto overflow-y-auto">
+                      <div className="min-h-0 flex-1 space-y-2 overflow-x-auto overflow-y-auto">
                 {scheduleLayout === "calendar" && timeScale === "day" ? (
                   <div className="space-y-3">
                     <div
@@ -1220,6 +1465,7 @@ export function ScheduleApp() {
                     onOpenWorkerAttendance={
                       canPublishSchedule ? (p) => setWorkerAttendanceModal(p) : undefined
                     }
+                    onPaletteDrop={handlePaletteDrop}
                   />
                 ) : null}
                 {scheduleLayout === "ops-grid" ? (
@@ -1313,6 +1559,7 @@ export function ScheduleApp() {
                     onOpenWorkerAttendance={
                       canPublishSchedule ? (p) => setWorkerAttendanceModal(p) : undefined
                     }
+                    onPaletteDrop={handlePaletteDrop}
                   />
                 ) : null}
                       </div>
@@ -1469,7 +1716,16 @@ export function ScheduleApp() {
         onCancel={() => setAvailabilityOverride(null)}
         onConfirm={(reason) => {
           if (!availabilityOverride) return;
-          handleWorkerDrop(availabilityOverride.workerId, availabilityOverride.date, reason);
+          if (availabilityOverride.kind === "worker") {
+            handleWorkerDrop(availabilityOverride.workerId, availabilityOverride.date, reason);
+          } else {
+            commitPaletteShiftAssignment(
+              availabilityOverride.workerId,
+              availabilityOverride.date,
+              availabilityOverride.code,
+              reason,
+            );
+          }
           setAvailabilityOverride(null);
         }}
       />

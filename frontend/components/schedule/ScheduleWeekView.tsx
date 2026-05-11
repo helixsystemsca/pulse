@@ -9,6 +9,7 @@ import {
   readShiftDragPayload,
   readWorkerDragPayload,
   scheduleCalendarDragOverAccepts,
+  type PaletteDragPayload,
 } from "@/lib/schedule/drag";
 import { evaluateWorkerDrop } from "@/lib/schedule/worker-drag-highlights";
 import type { WorkerDayHighlight } from "@/lib/schedule/worker-drag-highlights";
@@ -60,6 +61,7 @@ type Props = {
   onShiftDragSessionStart: (payload: ScheduleDragSession) => void;
   onShiftDragSessionEnd: () => void;
   onOpenWorkerAttendance?: (payload: { workerId: string; date: string; label: string }) => void;
+  onPaletteDrop?: (workerId: string, date: string, payload: PaletteDragPayload) => void;
 };
 
 export function ScheduleWeekView({
@@ -90,6 +92,7 @@ export function ScheduleWeekView({
   onShiftDragSessionStart,
   onShiftDragSessionEnd,
   onOpenWorkerAttendance,
+  onPaletteDrop,
 }: Props) {
   const [dragOverDate, setDragOverDate] = useState<string | null>(null);
   const [shakeDate, setShakeDate] = useState<string | null>(null);
@@ -225,6 +228,7 @@ export function ScheduleWeekView({
                 if (dragSession?.kind === "shift" && !shiftDragEnabled) return;
                 e.preventDefault();
                 if (dragSession?.kind === "worker") e.dataTransfer.dropEffect = "copy";
+                else if (dragSession?.kind === "palette") e.dataTransfer.dropEffect = "copy";
                 else if (dragSession?.kind === "shift")
                   e.dataTransfer.dropEffect = dragSession.duplicate ? "copy" : "move";
                 else {
@@ -314,6 +318,7 @@ export function ScheduleWeekView({
                 onShiftDragSessionStart={onShiftDragSessionStart}
                 onShiftDragSessionEnd={onShiftDragSessionEnd}
                 cellDate={date}
+                onPaletteDrop={onPaletteDrop}
                 onOpenWorkerAttendance={onOpenWorkerAttendance}
                 chipDetailLevel="summary"
                 scrollClassName="flex min-h-0 flex-1 flex-col gap-0.5 px-1 pb-1.5 pt-0.5"

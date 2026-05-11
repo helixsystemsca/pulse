@@ -13,7 +13,6 @@ import { cellAssignmentStatus } from "@/lib/training/mockData";
 import { assignmentFor } from "@/lib/training/selectors";
 import { groupProgramsForMatrix, matrixCategoryForProgram } from "@/lib/training/dashboardMetrics";
 import { TrainingMatrixCell } from "@/components/training/TrainingMatrixCell";
-import { TrainingTierBadge } from "@/components/training/TrainingTierBadge";
 import { dataTableHeadRowClass } from "@/components/ui/DataTable";
 import { dsInputClass } from "@/components/ui/ds-form-classes";
 import { cn } from "@/lib/cn";
@@ -81,14 +80,14 @@ export function TrainingMatrixCategorizedTable({
     [groups, collapsed],
   );
 
-  const manyPrograms = visiblePrograms.length >= 12;
-  const programColShare = manyPrograms ? `calc((100% - 11rem) / ${visiblePrograms.length})` : "calc(100% / 12)";
-  const employeeColShare =
-    visiblePrograms.length === 0
-      ? "100%"
-      : manyPrograms
-        ? "11rem"
-        : `calc(100% - ${visiblePrograms.length} * (100% / 12))`;
+  const stickyEmployeeTh =
+    "sticky left-0 z-20 w-44 min-w-[11rem] max-w-[12rem] shrink-0 bg-white px-2.5 py-2 text-left text-[11px] font-bold uppercase tracking-wide text-slate-500 shadow-[1px_0_0_var(--ds-border)] dark:bg-slate-950 dark:text-slate-400";
+  const stickyEmployeeCell =
+    "sticky left-0 z-10 w-44 min-w-[11rem] max-w-[12rem] shrink-0 bg-white px-2.5 py-2 text-left font-semibold text-slate-900 shadow-[1px_0_0_var(--ds-border)] dark:bg-slate-950 dark:text-slate-50";
+  const programHeadClass =
+    "min-w-[5rem] max-w-[9rem] border-l border-slate-100 px-2 py-2 text-left align-bottom dark:border-slate-800";
+  const programCellClass =
+    "min-w-[5rem] max-w-[9rem] border-l border-slate-50 px-2 py-1.5 align-middle dark:border-slate-800/80";
 
   return (
     <div className="space-y-3">
@@ -111,24 +110,15 @@ export function TrainingMatrixCategorizedTable({
         />
       </div>
 
-      <div className="ds-premium-panel overflow-x-auto rounded-xl border border-slate-200/90 shadow-sm dark:border-slate-700/80">
-        <table className="min-w-[720px] w-full table-fixed border-collapse text-sm">
-          <colgroup>
-            <col style={{ width: employeeColShare }} />
-            {visiblePrograms.map((p) => (
-              <col key={p.id} style={{ width: programColShare }} />
-            ))}
-          </colgroup>
+      <div className="ds-premium-panel min-w-0 overflow-x-auto rounded-xl border border-slate-200/90 shadow-sm dark:border-slate-700/80 [-webkit-overflow-scrolling:touch]">
+        <table className="w-max min-w-full border-collapse text-sm">
           <thead>
             <tr className={dataTableHeadRowClass}>
-              <th
-                scope="col"
-                className="sticky left-0 z-20 min-w-[150px] bg-white px-2.5 py-2 text-left text-[11px] font-bold uppercase tracking-wide text-slate-500 shadow-[1px_0_0_var(--ds-border)] dark:bg-slate-950 dark:text-slate-400"
-              >
+              <th scope="col" className={stickyEmployeeTh}>
                 Employee
               </th>
               {visiblePrograms.map((p) => (
-                <th key={p.id} scope="col" className="min-w-0 border-l border-slate-100 px-2 py-2 text-left align-bottom dark:border-slate-800">
+                <th key={p.id} scope="col" className={programHeadClass}>
                   <div className="flex min-w-0 flex-col items-start gap-1">
                     <span className="text-[9px] font-bold uppercase tracking-wide text-slate-400 dark:text-slate-500">
                       {GROUP_LABEL[matrixCategoryForProgram(p)]}
@@ -136,7 +126,6 @@ export function TrainingMatrixCategorizedTable({
                     <span className="line-clamp-3 text-[11px] font-semibold leading-tight text-slate-900 dark:text-slate-100">
                       {p.title}
                     </span>
-                    <TrainingTierBadge tier={p.tier} />
                   </div>
                 </th>
               ))}
@@ -152,10 +141,7 @@ export function TrainingMatrixCategorizedTable({
             ) : (
               employees.map((e) => (
                 <tr key={e.id} className="border-t border-slate-100 bg-white dark:border-slate-800 dark:bg-slate-950/40">
-                  <th
-                    scope="row"
-                    className="sticky left-0 z-10 bg-white px-2.5 py-2 text-left font-semibold text-slate-900 shadow-[1px_0_0_var(--ds-border)] dark:bg-slate-950 dark:text-slate-50"
-                  >
+                  <th scope="row" className={stickyEmployeeCell}>
                     <div className="flex flex-col gap-0.5">
                       <span>{e.display_name}</span>
                       <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400">{e.department}</span>
@@ -170,7 +156,7 @@ export function TrainingMatrixCategorizedTable({
                         ? verificationDetailTitle(a, p.requires_knowledge_verification !== false)
                         : undefined;
                     return (
-                      <td key={p.id} className="border-l border-slate-50 px-2 py-1.5 align-middle dark:border-slate-800/80">
+                      <td key={p.id} className={programCellClass}>
                         <div className="flex flex-col gap-1" title={mgrKvTitle}>
                           {statusHidden ? (
                             <span className="text-[11px] font-medium tabular-nums text-slate-300 dark:text-slate-600">—</span>

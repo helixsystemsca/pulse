@@ -29,6 +29,8 @@ export const STANDARD_SHIFT_CATALOG: StandardShiftDefinition[] = [
   { code: "A1", label: "Afternoon", band: "afternoon", start: "14:00", end: "22:00", description: "Afternoon swing" },
   { code: "A2", label: "Afternoon", band: "afternoon", start: "15:00", end: "23:00", description: "Late swing" },
   { code: "N1", label: "Night", band: "night", start: "22:00", end: "06:00", description: "Overnight" },
+  { code: "N2", label: "Night", band: "night", start: "23:00", end: "07:00", description: "Late overnight" },
+  { code: "GG", label: "Greenglade", band: "day", start: "09:00", end: "17:00", description: "GG-style day assignment" },
   { code: "OC", label: "On-call", band: "night", start: "00:00", end: "23:59", description: "On-call availability" },
 ];
 
@@ -49,13 +51,21 @@ export type OperationalBadgeDefinition = {
 
 export const OPERATIONAL_BADGE_REGISTRY: Record<string, OperationalBadgeDefinition> = {
   TRN: { code: "TRN", label: "Training", group: "training", detail: "Training activity" },
+  TRAINING: { code: "TRAINING", label: "Training", group: "training", detail: "Training overlay" },
   PTO: { code: "PTO", label: "Vacation", group: "leave", detail: "Paid time off / vacation" },
   SICK: { code: "SICK", label: "Sick", group: "leave", detail: "Sick leave" },
   LDT: { code: "LDT", label: "Light duty", group: "workflow", detail: "Light duty restriction" },
   SHDW: { code: "SHDW", label: "Shadowing", group: "training", detail: "Shadow / observation" },
+  SHADOW: { code: "SHADOW", label: "Shadow", group: "training", detail: "Shadow / observation" },
   EVT: { code: "EVT", label: "Special event", group: "special", detail: "Special event coverage" },
+  EVENT: { code: "EVENT", label: "Event", group: "special", detail: "Planned event or surge" },
   GG: { code: "GG", label: "Greenglade", group: "assignment", detail: "Greenglade facility assignment" },
   PMR: { code: "PMR", label: "Peer review", group: "workflow", detail: "Peer review pending" },
+  OT: { code: "OT", label: "Overtime", group: "workflow", detail: "Overtime extension" },
+  LEAD: { code: "LEAD", label: "Lead", group: "workflow", detail: "Lead responsibility" },
+  RELIEF: { code: "RELIEF", label: "Relief", group: "workflow", detail: "Relief coverage" },
+  COVERAGE: { code: "COVERAGE", label: "Coverage", group: "workflow", detail: "Extra coverage" },
+  PROJECT: { code: "PROJECT", label: "Project", group: "assignment", detail: "Project focus" },
 };
 
 export type AvailabilityCellKind = "available" | "unavailable" | "restricted";

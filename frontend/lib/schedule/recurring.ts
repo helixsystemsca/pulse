@@ -1,5 +1,6 @@
 import { expandInclusiveDateRange, parseLocalDate } from "@/lib/schedule/calendar";
 import type { RecurringShiftRule, Shift, ShiftTypeKey, TimeOffBlock, Worker } from "@/lib/schedule/types";
+import { usesStructuredRecurringSchedule } from "@/lib/schedule/worker-scheduling-model";
 
 const AUTO_REC_PREFIX = "auto-rec-";
 const PTO_BLOCK_PREFIX = "pto-block-";
@@ -106,9 +107,9 @@ function buildRecurringShifts(
 ): Shift[] {
   const out: Shift[] = [];
   for (const w of workers) {
-    if (!w.active || !w.recurringShifts?.length) continue;
+    if (!usesStructuredRecurringSchedule(w)) continue;
     const byDow = new Map<string, RecurringShiftRule>();
-    for (const r of w.recurringShifts) {
+    for (const r of w.recurringShifts ?? []) {
       const k = normalizeWeekdayKey(String(r.dayOfWeek));
       if (!byDow.has(k)) byDow.set(k, r);
     }

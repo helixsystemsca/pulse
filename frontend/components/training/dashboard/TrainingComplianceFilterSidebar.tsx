@@ -5,14 +5,15 @@ import { useState } from "react";
 import { dsInputClass, dsLabelClass, dsSelectClass } from "@/components/ui/ds-form-classes";
 import { Button } from "@/components/ui/Button";
 import type { DashboardComplianceFilter, TrainingDashboardFilters } from "@/lib/training/dashboardMetrics";
+import { formatLabelTitleCase } from "@/lib/training/trainingRoleDisplay";
 import { cn } from "@/lib/cn";
 
 const COMPLIANCE_OPTIONS: { value: DashboardComplianceFilter; label: string }[] = [
-  { value: "all", label: "All statuses" },
+  { value: "all", label: "All Statuses" },
   { value: "compliant", label: "Compliant" },
-  { value: "missing_mandatory", label: "Missing mandatory" },
+  { value: "missing_mandatory", label: "Missing Mandatory" },
   { value: "expired", label: "Expired" },
-  { value: "in_progress", label: "In progress" },
+  { value: "in_progress", label: "In Progress" },
 ];
 
 function FilterFields({
@@ -39,7 +40,7 @@ function FilterFields({
         <input
           id="dash-filter-search"
           className={dsInputClass}
-          placeholder="Name, department, role"
+          placeholder="Name, Department, Role"
           value={filters.search}
           onChange={(e) => onChange({ ...filters, search: e.target.value })}
         />
@@ -56,7 +57,7 @@ function FilterFields({
         >
           {departments.map((d) => (
             <option key={d} value={d}>
-              {d === "all" ? "All departments" : d}
+              {d === "all" ? "All Departments" : formatLabelTitleCase(d)}
             </option>
           ))}
         </select>
@@ -73,7 +74,7 @@ function FilterFields({
         >
           {roles.map((r) => (
             <option key={r} value={r}>
-              {r === "all" ? "All roles" : r}
+              {r === "all" ? "All Roles" : r}
             </option>
           ))}
         </select>
@@ -90,7 +91,7 @@ function FilterFields({
         >
           {shifts.map((s) => (
             <option key={s} value={s}>
-              {s === "all" ? "All shifts" : s}
+              {s === "all" ? "All Shifts" : s}
             </option>
           ))}
         </select>
@@ -114,7 +115,7 @@ function FilterFields({
       </div>
       <div>
         <label className={dsLabelClass} htmlFor="dash-filter-cat">
-          Training category
+          Training Category
         </label>
         <select
           id="dash-filter-cat"
@@ -124,7 +125,7 @@ function FilterFields({
         >
           {categories.map((c) => (
             <option key={c} value={c}>
-              {c === "all" ? "All categories" : c}
+              {c === "all" ? "All Categories" : formatLabelTitleCase(c)}
             </option>
           ))}
         </select>
@@ -136,7 +137,7 @@ function FilterFields({
           checked={filters.highRiskOnly}
           onChange={(e) => onChange({ ...filters, highRiskOnly: e.target.checked })}
         />
-        High risk gaps only
+        High Risk Gaps Only
       </label>
     </div>
   );

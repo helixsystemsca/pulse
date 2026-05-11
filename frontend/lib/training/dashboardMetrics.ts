@@ -7,6 +7,7 @@ import type {
 } from "./types";
 import { cellAssignmentStatus, resolvedAssignments } from "./mockData";
 import { assignmentFor, computeComplianceSummary } from "./selectors";
+import { formatLabelTitleCase, formatTrainingRoleDisplay } from "./trainingRoleDisplay";
 
 export type TrainingDashboardTab = "overview" | "employees" | "matrix" | "expiring" | "reports";
 
@@ -228,8 +229,8 @@ export function buildEmployeeComplianceRows(
 
     const lastIso = lastActivityIso(eid, activePrograms, resolved);
     const meta = workerMeta[eid];
-    const roleLabel = meta?.role?.trim() || "—";
-    const shiftLabel = meta?.shift?.trim() || "—";
+    const roleLabel = formatTrainingRoleDisplay(meta?.role);
+    const shiftLabel = meta?.shift?.trim() ? formatLabelTitleCase(meta.shift.trim()) : "—";
 
     let rowAccent: RowAccent = "compliant";
     if (mandatoryGap) rowAccent = "risk";

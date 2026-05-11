@@ -85,7 +85,7 @@ export function shiftCodeBadgeToneClasses(code: string): string {
     return "border-amber-200/90 bg-amber-50 text-amber-950 dark:border-amber-500/35 dark:bg-amber-950/40 dark:text-amber-50";
   }
   if (c.startsWith("N")) {
-    return "border-violet-200/90 bg-violet-50 text-violet-950 dark:border-violet-500/35 dark:bg-violet-950/45 dark:text-violet-50";
+    return "border-violet-800/90 bg-violet-900 text-violet-50 dark:border-violet-400/40 dark:bg-violet-950 dark:text-violet-50";
   }
   return "border-pulseShell-border bg-pulseShell-elevated text-ds-foreground";
 }

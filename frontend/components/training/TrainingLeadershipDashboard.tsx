@@ -62,6 +62,7 @@ import { Card } from "@/components/ui/Card";
 import { notifyLeadershipMandatoryOverdue } from "@/lib/training/notifications";
 import { listProcedureSignoffs } from "@/lib/procedureSignoffs";
 import { trainingTeamMatrixAccess } from "@/lib/pulse-roles";
+import { formatLabelTitleCase, rolesForTrainingDropdown } from "@/lib/training/trainingRoleDisplay";
 import {
   fetchTrainingMatrix,
   mapApiAssignments,
@@ -73,22 +74,22 @@ import {
 import { cn } from "@/lib/cn";
 
 const STATUS_OPTIONS: Array<{ value: TrainingAssignment["status"] | "all"; label: string }> = [
-  { value: "all", label: "Any status" },
-  { value: "completed", label: "Verified complete" },
-  { value: "expiring_soon", label: "Expiring soon" },
+  { value: "all", label: "Any Status" },
+  { value: "completed", label: "Verified Complete" },
+  { value: "expiring_soon", label: "Expiring Soon" },
   { value: "expired", label: "Expired" },
-  { value: "pending", label: "Not started" },
+  { value: "pending", label: "Not Started" },
   { value: "in_progress", label: "Reviewing" },
-  { value: "acknowledged", label: "Acknowledged (quiz pending)" },
-  { value: "quiz_failed", label: "Knowledge check — retry" },
-  { value: "revision_pending", label: "Revision pending" },
-  { value: "not_assigned", label: "Not assigned" },
+  { value: "acknowledged", label: "Acknowledged (Quiz Pending)" },
+  { value: "quiz_failed", label: "Knowledge Check — Retry" },
+  { value: "revision_pending", label: "Revision Pending" },
+  { value: "not_assigned", label: "Not Assigned" },
 ];
 
-const TIER_OPTIONS: Array<{ value: TrainingTier | "all"; label: string }> = [
-  { value: "all", label: "All tiers" },
+/** Matrix tab: one tier at a time (default Mandatory) — no "all" columns. */
+const MATRIX_TIER_OPTIONS: Array<{ value: TrainingTier; label: string }> = [
   { value: "mandatory", label: "Mandatory" },
-  { value: "high_risk", label: "High risk" },
+  { value: "high_risk", label: "High Risk" },
   { value: "general", label: "General" },
 ];
 
@@ -122,7 +123,7 @@ export function TrainingLeadershipDashboard() {
   const [dashboardFilters, setDashboardFilters] = useState<TrainingDashboardFilters>(defaultDashboardFilters);
   const [matrixFilters, setMatrixFilters] = useState<TrainingMatrixFilters>({
     department: "all",
-    tier: "all",
+    tier: "mandatory",
     status: "all",
     search: "",
   });
@@ -314,8 +315,8 @@ export function TrainingLeadershipDashboard() {
   }, [employees, matrixFilters]);
 
   const matrixPrograms = useMemo(() => {
-    if (matrixFilters.tier === "all") return programs;
-    return programs.filter((p) => p.tier === matrixFilters.tier);
+    const tier = matrixFilters.tier === "all" ? "mandatory" : matrixFilters.tier;
+    return programs.filter((p) => p.tier === tier);
   }, [programs, matrixFilters.tier]);
 
   const rowModels = useMemo(
@@ -361,20 +362,14 @@ export function TrainingLeadershipDashboard() {
 
   const departments = useMemo(() => ["all", ...uniqueDepartments(employees)], [employees]);
 
-  const roles = useMemo(() => {
-    const s = new Set<string>();
-    for (const m of Object.values(workerMeta)) {
-      if (m.role?.trim()) s.add(m.role.trim());
-    }
-    return ["all", ...[...s].sort((a, b) => a.localeCompare(b))];
-  }, [workerMeta]);
+  const roles = useMemo(() => rolesForTrainingDropdown(workerMeta), [workerMeta]);
 
   const shifts = useMemo(() => {
     const s = new Set<string>();
     for (const m of Object.values(workerMeta)) {
-      if (m.shift?.trim()) s.add(m.shift.trim());
+      if (m.shift?.trim()) s.add(formatLabelTitleCase(m.shift.trim()));
     }
-    return ["all", ...[...s].sort((a, b) => a.localeCompare(b))];
+    return ["all", ...[...s].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }))];
   }, [workerMeta]);
 
   const categories = useMemo(() => ["all", ...uniqueProgramCategories(programs)], [programs]);
@@ -555,22 +550,25 @@ export function TrainingLeadershipDashboard() {
       ) : null}
 
       {tab === "matrix" ? (
-        <section className="space-y-4">
+        <section className="min-w-0 space-y-4">
           <div className="flex flex-col gap-3 rounded-xl border border-slate-200/90 bg-white p-4 shadow-sm dark:border-slate-700/80 dark:bg-slate-900/40 sm:flex-row sm:flex-wrap sm:items-end">
             <div className="grid flex-1 gap-3 sm:grid-cols-3">
               <div>
                 <label className={dsLabelClass} htmlFor="mx-tier">
-                  Column tier
+                  Column Tier
                 </label>
                 <select
                   id="mx-tier"
                   className={dsSelectClass}
-                  value={matrixFilters.tier}
+                  value={matrixFilters.tier === "all" ? "mandatory" : matrixFilters.tier}
                   onChange={(e) =>
-                    setMatrixFilters((f) => ({ ...f, tier: e.target.value as TrainingMatrixFilters["tier"] }))
+                    setMatrixFilters((f) => ({
+                      ...f,
+                      tier: e.target.value as Exclude<TrainingMatrixFilters["tier"], "all">,
+                    }))
                   }
                 >
-                  {TIER_OPTIONS.map((o) => (
+                  {MATRIX_TIER_OPTIONS.map((o) => (
                     <option key={o.value} value={o.value}>
                       {o.label}
                     </option>
@@ -579,7 +577,7 @@ export function TrainingLeadershipDashboard() {
               </div>
               <div>
                 <label className={dsLabelClass} htmlFor="mx-status">
-                  Highlight status
+                  Highlight Status
                 </label>
                 <select
                   id="mx-status"
@@ -598,12 +596,12 @@ export function TrainingLeadershipDashboard() {
               </div>
               <div>
                 <label className={dsLabelClass} htmlFor="mx-search">
-                  Employee search
+                  Employee Search
                 </label>
                 <input
                   id="mx-search"
                   className={dsInputClass}
-                  placeholder="Name or department"
+                  placeholder="Name Or Department"
                   value={matrixFilters.search}
                   onChange={(e) => setMatrixFilters((f) => ({ ...f, search: e.target.value }))}
                 />

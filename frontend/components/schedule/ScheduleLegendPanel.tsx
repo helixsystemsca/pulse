@@ -72,15 +72,15 @@ export function ScheduleLegendPanel({
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="flex w-full items-center justify-between gap-2 border-b border-pulseShell-border px-4 py-3 text-left lg:cursor-default lg:border-0"
+        className="flex w-full items-center justify-between gap-2 border-b border-pulseShell-border px-2 py-2 text-left lg:cursor-default lg:border-0"
         aria-expanded={open}
       >
-        <span className="text-sm font-semibold text-gray-900 dark:text-white">Legend</span>
+        <span className="text-xs font-semibold text-gray-900 dark:text-white">Legend</span>
         <span className="text-gray-500 dark:text-gray-400 lg:hidden">
           {open ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
         </span>
       </button>
-      <div className={`space-y-5 px-4 pb-4 pt-2 ${open ? "" : "hidden lg:block"}`}>
+      <div className={`space-y-3 px-2 pb-3 pt-1.5 ${open ? "" : "hidden lg:block"}`}>
         {shiftDefinitions && shiftDefinitions.length > 0 ? (
           <section>
             <h3 className="text-[11px] font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400">

@@ -4,6 +4,7 @@
 
 import { formatLocalDate } from "@/lib/schedule/calendar";
 import { sessionPrimaryRole } from "@/lib/pulse-roles";
+import { isFlexDeploymentWorker } from "@/lib/schedule/worker-scheduling-model";
 import type {
   EmploymentType,
   RecurringShiftRule,
@@ -114,17 +115,23 @@ function mapSchedulingConstraints(raw: PulseWorkerApi["scheduling_constraints"])
 }
 
 export function pulseWorkersToSchedule(workers: PulseWorkerApi[]): Worker[] {
-  return workers.map((w) => ({
-    id: w.id,
-    name: (w.full_name || w.email || "User").trim(),
-    role: sessionPrimaryRole({ roles: w.roles, role: w.role }) || "worker",
-    active: true,
-    certifications: w.certifications?.filter(Boolean),
-    availability: (w.availability ?? undefined) as Worker["availability"],
-    employmentType: mapEmploymentType(w.employment_type),
-    recurringShifts: mapRecurring(w.recurring_shifts ?? undefined),
-    schedulingConstraints: mapSchedulingConstraints(w.scheduling_constraints ?? undefined),
-  }));
+  return workers.map((w) => {
+    const employmentType = mapEmploymentType(w.employment_type);
+    const draft: Worker = {
+      id: w.id,
+      name: (w.full_name || w.email || "User").trim(),
+      role: sessionPrimaryRole({ roles: w.roles, role: w.role }) || "worker",
+      active: true,
+      certifications: w.certifications?.filter(Boolean),
+      availability: (w.availability ?? undefined) as Worker["availability"],
+      employmentType,
+      recurringShifts: isFlexDeploymentWorker({ employmentType })
+        ? undefined
+        : mapRecurring(w.recurring_shifts ?? undefined),
+      schedulingConstraints: mapSchedulingConstraints(w.scheduling_constraints ?? undefined),
+    };
+    return draft;
+  });
 }
 
 export function pulseZonesToSchedule(zones: PulseZoneApi[]): Zone[] {

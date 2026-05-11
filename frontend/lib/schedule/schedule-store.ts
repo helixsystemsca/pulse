@@ -11,6 +11,7 @@ import {
   defaultWorkers,
   defaultZones,
 } from "./defaults";
+import { deploymentOverlayKey } from "@/lib/schedule/deployment-overlay";
 import type {
   ScheduleRoleDefinition,
   ScheduleSettings,
@@ -39,6 +40,11 @@ type ScheduleState = {
   pendingRequests: number;
   /** Mock / future hook: approved time-off blocks scheduling availability hints only. */
   timeOffBlocks: TimeOffBlock[];
+  /**
+   * Client-side operational badge overlays keyed `workerId|YYYY-MM-DD`.
+   * Merged into displayed shifts (FT/RPT recurring + manual) without replacing base shift times.
+   */
+  deploymentBadgeOverlays: Record<string, string[]>;
 
   /** `eventType` defaults to `"work"` when omitted (backward-compatible). */
   addShift: (partial: Omit<Shift, "id" | "eventType"> & { eventType?: ShiftEventType }) => void;
@@ -59,6 +65,9 @@ type ScheduleState = {
 
   /** Replace roster + grid from Pulse API (live schedule). */
   applyPulseScheduleSnapshot: (workers: Worker[], zones: Zone[], shifts: Shift[]) => void;
+
+  addDeploymentBadge: (workerId: string, date: string, code: string) => void;
+  removeDeploymentBadge: (workerId: string, date: string, code: string) => void;
 };
 
 function initialState(): Omit<
@@ -76,6 +85,8 @@ function initialState(): Omit<
   | "removeTimeOffBlock"
   | "resetDemo"
   | "applyPulseScheduleSnapshot"
+  | "addDeploymentBadge"
+  | "removeDeploymentBadge"
 > {
   return {
     workers: defaultWorkers,
@@ -86,6 +97,7 @@ function initialState(): Omit<
     settings: { ...defaultSettings },
     pendingRequests: 3,
     timeOffBlocks: [],
+    deploymentBadgeOverlays: {},
   };
 }
 
@@ -141,11 +153,36 @@ export const useScheduleStore = create<ScheduleState>()(
       resetDemo: () => set(initialState()),
 
       applyPulseScheduleSnapshot: (workers, zones, newShifts) =>
-        set({
+        set((s) => ({
           workers,
           zones,
           shifts: newShifts,
-        }),
+          deploymentBadgeOverlays: s.deploymentBadgeOverlays,
+        })),
+
+      addDeploymentBadge: (workerId, date, code) => {
+        const k = deploymentOverlayKey(workerId, date);
+        const u = code.trim().toUpperCase();
+        if (!u) return;
+        set((s) => {
+          const cur = s.deploymentBadgeOverlays[k] ?? [];
+          if (cur.includes(u)) return s;
+          return { deploymentBadgeOverlays: { ...s.deploymentBadgeOverlays, [k]: [...cur, u] } };
+        });
+      },
+
+      removeDeploymentBadge: (workerId, date, code) => {
+        const k = deploymentOverlayKey(workerId, date);
+        const u = code.trim().toUpperCase();
+        set((s) => {
+          const cur = s.deploymentBadgeOverlays[k] ?? [];
+          const next = cur.filter((c) => c !== u);
+          const copy = { ...s.deploymentBadgeOverlays };
+          if (next.length === 0) delete copy[k];
+          else copy[k] = next;
+          return { deploymentBadgeOverlays: copy };
+        });
+      },
     }),
     {
       name: "pulse_schedule_v1",
@@ -159,6 +196,7 @@ export const useScheduleStore = create<ScheduleState>()(
         settings: s.settings,
         pendingRequests: s.pendingRequests,
         timeOffBlocks: s.timeOffBlocks,
+        deploymentBadgeOverlays: s.deploymentBadgeOverlays,
       }),
       merge: (persisted, current) => {
         const p = persisted as Partial<ScheduleState> | undefined;
@@ -173,6 +211,7 @@ export const useScheduleStore = create<ScheduleState>()(
           shifts: mergedShifts,
           timeOffBlocks: p.timeOffBlocks ?? current.timeOffBlocks,
           workers: p.workers ?? current.workers,
+          deploymentBadgeOverlays: p.deploymentBadgeOverlays ?? current.deploymentBadgeOverlays,
         };
       },
     },

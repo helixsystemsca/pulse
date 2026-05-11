@@ -8,6 +8,7 @@ import {
   readShiftDragPayload,
   readWorkerDragPayload,
   scheduleCalendarDragOverAccepts,
+  type PaletteDragPayload,
 } from "@/lib/schedule/drag";
 import { evaluateWorkerDrop, type WorkerDayHighlight } from "@/lib/schedule/worker-drag-highlights";
 import type {
@@ -60,6 +61,7 @@ type Props = {
   onShiftDragSessionStart: (payload: ScheduleDragSession) => void;
   onShiftDragSessionEnd: () => void;
   onOpenWorkerAttendance?: (payload: { workerId: string; date: string; label: string }) => void;
+  onPaletteDrop?: (workerId: string, date: string, payload: PaletteDragPayload) => void;
 };
 
 export function ScheduleCalendarGrid({
@@ -89,6 +91,7 @@ export function ScheduleCalendarGrid({
   onShiftDragSessionStart,
   onShiftDragSessionEnd,
   onOpenWorkerAttendance,
+  onPaletteDrop,
   projectBarItems = null,
 }: Props) {
   const cells = useMemo(() => monthGrid(year, monthIndex), [year, monthIndex]);
@@ -227,6 +230,7 @@ export function ScheduleCalendarGrid({
                 if (dragSession?.kind === "shift" && !shiftDragEnabled) return;
                 e.preventDefault();
                 if (dragSession?.kind === "worker") e.dataTransfer.dropEffect = "copy";
+                else if (dragSession?.kind === "palette") e.dataTransfer.dropEffect = "copy";
                 else if (dragSession?.kind === "shift")
                   e.dataTransfer.dropEffect = dragSession.duplicate ? "copy" : "move";
                 else {
@@ -326,6 +330,7 @@ export function ScheduleCalendarGrid({
                 onShiftDragSessionStart={onShiftDragSessionStart}
                 onShiftDragSessionEnd={onShiftDragSessionEnd}
                 cellDate={c.date}
+                onPaletteDrop={onPaletteDrop}
                 onOpenWorkerAttendance={onOpenWorkerAttendance}
                 chipDetailLevel="summary"
                 scrollClassName="flex min-h-0 flex-1 flex-col gap-0.5 px-1 pb-1.5 pt-0.5"

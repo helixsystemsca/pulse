@@ -82,10 +82,11 @@ export interface TimeOffBlock {
   kind?: "vacation" | "sick";
 }
 
-/** Active HTML5 drag session for the schedule surface (shift chip vs worker roster). */
+/** Active HTML5 drag session for the schedule surface (shift chip vs worker roster vs assignment palette). */
 export type ScheduleDragSession =
   | { kind: "shift"; shiftId: string; duplicate: boolean }
-  | { kind: "worker"; workerId: string };
+  | { kind: "worker"; workerId: string }
+  | { kind: "palette"; paletteKind: "shift" | "badge"; code: string };
 
 /** Optional UI hints for future notifications (no backend yet). */
 export type ShiftUiFlags = {

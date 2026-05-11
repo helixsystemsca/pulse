@@ -121,7 +121,6 @@ export const defaultWorkers: Worker[] = [
     active: true,
     employmentType: "part_time",
     certifications: ["P1", "FA"],
-    recurringShifts: [{ dayOfWeek: "monday", start: "10:00", end: "14:00", requiredCertifications: ["P1"] }],
   },
   {
     id: "w6",
