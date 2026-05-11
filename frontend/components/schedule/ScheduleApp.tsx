@@ -1201,8 +1201,8 @@ export function ScheduleApp() {
   );
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-2 pb-2">
-      <div className={`min-h-0 flex-1 space-y-2 ${scheduleDragLock ? "pointer-events-none" : ""}`}>
+    <div className="flex w-full min-w-0 flex-col gap-2 pb-2">
+      <div className={`space-y-2 ${scheduleDragLock ? "pointer-events-none" : ""}`}>
         <SchedulePageHeader actions={builderActions} />
 
         {workspaceView === "calendar" ? (
@@ -1288,7 +1288,7 @@ export function ScheduleApp() {
           </div>
         )}
 
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-2">
+        <div className="flex min-w-0 flex-col gap-2">
             {workspaceView === "calendar" ? (
               <>
                 {draftResult ? (
@@ -1303,7 +1303,7 @@ export function ScheduleApp() {
                   />
                 ) : null}
 
-                <div className="relative flex min-h-0 flex-1 flex-col">
+                <div className="relative flex w-full min-w-0 flex-col">
                   {scheduleDragLock ? (
                     <div
                       className="pointer-events-none fixed inset-0 z-[115] bg-[color-mix(in_srgb,var(--ds-text-primary)_6%,transparent)] dark:bg-ds-bg/35"
@@ -1313,13 +1313,13 @@ export function ScheduleApp() {
 
                   <div
                     className={cn(
-                      "grid min-h-0 flex-1 grid-cols-1 gap-3 overflow-hidden md:grid-cols-[minmax(200px,280px)_1fr] md:grid-rows-1 md:items-stretch lg:grid-cols-[minmax(220px,300px)_1fr] lg:gap-3",
+                      "grid min-h-0 grid-cols-1 gap-3 overflow-x-auto md:grid-cols-[minmax(200px,280px)_1fr] md:grid-rows-1 md:items-start lg:grid-cols-[minmax(220px,300px)_1fr] lg:gap-3",
                       // Parent applies `pointer-events-none` during drag to dim accidental clicks; calendar cells must
                       // still receive dragover/drop (pointer-events inherits, so re-enable on this subtree).
                       scheduleDragLock && "pointer-events-auto",
                     )}
                   >
-                    <aside className="flex min-h-0 flex-col gap-1.5 overflow-y-auto overflow-x-hidden overscroll-contain lg:min-h-0 lg:max-h-full lg:pr-0.5">
+                    <aside className="flex max-h-[min(70vh,560px)] min-h-0 flex-col gap-1.5 overflow-y-auto overflow-x-hidden overscroll-contain md:max-h-none md:self-stretch lg:pr-0.5">
                       <div className="shrink-0">
                         <ScheduleWorkerPanel
                           workers={workersForPanel}
@@ -1357,8 +1357,8 @@ export function ScheduleApp() {
                       />
                     </aside>
 
-                    <section className="flex min-h-0 min-w-0 flex-col overflow-hidden">
-                      <div className="min-h-0 flex-1 space-y-2 overflow-x-auto overflow-y-auto overscroll-contain">
+                    <section className="flex min-h-0 min-w-0 flex-col overflow-x-auto overflow-y-visible">
+                      <div className="min-w-0 space-y-2 overflow-x-auto pb-1">
                 {timeScale === "day" ? (
                   <div className="space-y-3">
                     <div

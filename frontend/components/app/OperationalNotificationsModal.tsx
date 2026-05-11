@@ -15,22 +15,42 @@ import {
 import { useOperationalNotificationsStore } from "@/lib/dashboard/operational-notifications-store";
 import { getServerNow } from "@/lib/serverTime";
 
-function NotificationRow({ a, onNavigate }: { a: OperationalNotificationItem; onNavigate: () => void }) {
+function NotificationRow({
+  a,
+  onNavigate,
+  onDismiss,
+}: {
+  a: OperationalNotificationItem;
+  onNavigate: () => void;
+  onDismiss: (id: string) => void;
+}) {
   const t = notificationTone(a);
   const href = operationalNotificationHref(a);
   const shell = cn(
-    "block rounded-lg border px-2.5 py-2 text-xs no-underline transition-colors outline-none ring-offset-2 ring-offset-ds-elevated focus-visible:ring-2 focus-visible:ring-[var(--ds-accent)]",
+    "flex items-start gap-1 rounded-lg border px-2.5 py-2 text-xs transition-colors",
     t === "critical" &&
-      "border-[color-mix(in_srgb,var(--ds-danger)_35%,transparent)] bg-[color-mix(in_srgb,var(--ds-danger)_10%,transparent)] hover:bg-[color-mix(in_srgb,var(--ds-danger)_14%,transparent)]",
+      "border-[color-mix(in_srgb,var(--ds-danger)_35%,transparent)] bg-[color-mix(in_srgb,var(--ds-danger)_10%,transparent)]",
     t === "warn" &&
-      "border-[color-mix(in_srgb,var(--ds-warning)_38%,transparent)] bg-[color-mix(in_srgb,var(--ds-warning)_10%,transparent)] hover:bg-[color-mix(in_srgb,var(--ds-warning)_14%,transparent)]",
-    t === "info" &&
-      "border-ds-border/60 bg-ds-secondary/40 hover:bg-ds-secondary/70 dark:hover:bg-ds-secondary/55",
+      "border-[color-mix(in_srgb,var(--ds-warning)_38%,transparent)] bg-[color-mix(in_srgb,var(--ds-warning)_10%,transparent)]",
+    t === "info" && "border-ds-border/60 bg-ds-secondary/40 dark:bg-ds-secondary/55",
   );
+  const linkTone =
+    t === "critical"
+      ? "hover:bg-[color-mix(in_srgb,var(--ds-danger)_14%,transparent)]"
+      : t === "warn"
+        ? "hover:bg-[color-mix(in_srgb,var(--ds-warning)_14%,transparent)]"
+        : "hover:bg-ds-secondary/70 dark:hover:bg-ds-secondary/55";
   return (
     <li>
-      <Link href={href} className={shell} onClick={onNavigate}>
-        <div className="flex items-start gap-2">
+      <div className={shell}>
+        <Link
+          href={href}
+          className={cn(
+            "flex min-w-0 flex-1 items-start gap-2 rounded-md no-underline outline-none ring-offset-2 ring-offset-ds-elevated transition-colors focus-visible:ring-2 focus-visible:ring-[var(--ds-accent)]",
+            linkTone,
+          )}
+          onClick={onNavigate}
+        >
           {t === "critical" ? (
             <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--ds-danger)]" aria-hidden />
           ) : (
@@ -42,8 +62,16 @@ function NotificationRow({ a, onNavigate }: { a: OperationalNotificationItem; on
               <p className="mt-0.5 whitespace-pre-line text-[11px] leading-relaxed text-ds-muted">{a.subtitle}</p>
             ) : null}
           </div>
-        </div>
-      </Link>
+        </Link>
+        <button
+          type="button"
+          className="mt-0.5 shrink-0 rounded-md p-0.5 text-ds-muted transition-colors hover:bg-[color-mix(in_srgb,var(--ds-text-primary)_8%,transparent)] hover:text-ds-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--ds-accent)]"
+          aria-label={`Dismiss “${a.title}”`}
+          onClick={() => onDismiss(a.id)}
+        >
+          <X className="h-3 w-3" strokeWidth={2.5} aria-hidden />
+        </button>
+      </div>
     </li>
   );
 }
@@ -56,6 +84,7 @@ type Props = {
 export function OperationalNotificationsModal({ open, onClose }: Props) {
   const storeItems = useOperationalNotificationsStore((s) => s.items);
   const setItems = useOperationalNotificationsStore((s) => s.setItems);
+  const dismissItem = useOperationalNotificationsStore((s) => s.dismissItem);
   const [loading, setLoading] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
 
@@ -150,7 +179,7 @@ export function OperationalNotificationsModal({ open, onClose }: Props) {
                   <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-ds-muted">Today</p>
                   <ul className="mt-2 space-y-2">
                     {today.map((a) => (
-                      <NotificationRow key={a.id} a={a} onNavigate={onClose} />
+                      <NotificationRow key={a.id} a={a} onNavigate={onClose} onDismiss={dismissItem} />
                     ))}
                   </ul>
                 </section>
@@ -165,7 +194,7 @@ export function OperationalNotificationsModal({ open, onClose }: Props) {
                   </p>
                   <ul className="mt-2 space-y-2">
                     {other.map((a) => (
-                      <NotificationRow key={a.id} a={a} onNavigate={onClose} />
+                      <NotificationRow key={a.id} a={a} onNavigate={onClose} onDismiss={dismissItem} />
                     ))}
                   </ul>
                 </section>

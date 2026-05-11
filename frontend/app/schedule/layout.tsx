@@ -9,8 +9,8 @@ export const metadata: Metadata = {
 export default function ScheduleLayout({ children }: { children: React.ReactNode }) {
   return (
     <AppLayout
-      mainClassName="bg-pulse-bg !min-h-0 !overflow-hidden"
-      mainContentClassName="flex h-full min-h-0 w-full max-w-none flex-1 flex-col overflow-hidden bg-ds-bg px-3 py-4 lg:px-4"
+      mainClassName="bg-pulse-bg min-h-0"
+      mainContentClassName="!min-h-0 flex w-full max-w-none flex-col overflow-y-auto overscroll-contain bg-ds-bg px-3 py-4 lg:px-4"
     >
       {children}
     </AppLayout>
