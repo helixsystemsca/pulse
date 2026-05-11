@@ -304,16 +304,16 @@ export default function LoginPage() {
                     disabled={submitting || microsoftSubmitting}
                     className={cn(
                       buttonVariants({ surface: "light", intent: "accent" }),
-                      "w-full gap-2 py-2.5 text-xs font-extrabold uppercase tracking-[0.18em] disabled:opacity-60",
+                      "w-full gap-2 py-2.5 text-sm font-semibold tracking-normal disabled:opacity-60",
                     )}
                   >
                     {submitting ? (
                       <>
                         <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-                        Authenticating…
+                        Signing in…
                       </>
                     ) : (
-                      "Authenticate"
+                      "Log in"
                     )}
                   </button>
                 </form>

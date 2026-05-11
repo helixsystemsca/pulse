@@ -12,11 +12,14 @@ export function OpsWidgetShell({
   headerRight,
   children,
   className,
+  /** Override inner well padding (e.g. `p-0` for full-bleed widget bodies). */
+  bodyClassName,
 }: {
   title: string;
   headerRight?: ReactNode;
   children: ReactNode;
   className?: string;
+  bodyClassName?: string;
 }) {
   return (
     <div
@@ -29,7 +32,12 @@ export function OpsWidgetShell({
         <p className="ops-widget-shell-title min-w-0 flex-1 truncate">{title}</p>
         {headerRight ? <div className="shrink-0">{headerRight}</div> : null}
       </div>
-      <div className="min-h-0 flex-1 overflow-auto ds-scroll bg-[var(--ops-dash-inner-bg,#f1f5f9)] px-2 py-1 dark:bg-[#0a0f18]">
+      <div
+        className={cn(
+          "min-h-0 flex-1 overflow-auto ds-scroll bg-[var(--ops-dash-inner-bg,#f1f5f9)] px-2 py-1 dark:bg-[#0a0f18]",
+          bodyClassName,
+        )}
+      >
         {children}
       </div>
     </div>

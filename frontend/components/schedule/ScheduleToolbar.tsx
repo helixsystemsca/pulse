@@ -8,6 +8,8 @@ export type ScheduleLayoutMode = "calendar" | "ops-grid";
 export type ScheduleContentFilter = "workers" | "projects" | "combined";
 
 type Props = {
+  /** Omit outer card chrome when nested inside the unified schedule header. */
+  embedded?: boolean;
   timeScale: ScheduleTimeScale;
   onTimeScaleChange: (v: ScheduleTimeScale) => void;
   scheduleLayout: ScheduleLayoutMode;
@@ -51,6 +53,7 @@ function Seg({
 }
 
 export function ScheduleToolbar({
+  embedded = false,
   timeScale,
   onTimeScaleChange,
   scheduleLayout,
@@ -66,7 +69,10 @@ export function ScheduleToolbar({
   return (
     <div
       className={cn(
-        "flex flex-col gap-4 rounded-2xl border border-pulseShell-border/90 bg-pulseShell-surface/90 px-4 py-4 shadow-[0_8px_30px_-14px_rgba(15,23,42,0.18)] backdrop-blur-sm dark:border-slate-700/80 dark:bg-slate-950/60",
+        "flex flex-col gap-4",
+        embedded
+          ? "px-0 py-0"
+          : "rounded-2xl border border-pulseShell-border/90 bg-pulseShell-surface/90 px-4 py-4 shadow-[0_8px_30px_-14px_rgba(15,23,42,0.18)] backdrop-blur-sm dark:border-slate-700/80 dark:bg-slate-950/60",
         disabled && "pointer-events-none opacity-60",
       )}
     >

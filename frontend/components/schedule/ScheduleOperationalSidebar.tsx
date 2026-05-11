@@ -3,7 +3,6 @@
 import {
   BarChart2,
   CalendarClock,
-  ChevronLeft,
   ChevronRight,
   ClipboardList,
   GraduationCap,
@@ -20,6 +19,8 @@ import type { Zone } from "@/lib/schedule/types";
 export type ScheduleWorkspaceView = "calendar" | "my-shifts" | "personnel" | "reports";
 
 type Props = {
+  /** When `header`, renders inside the unified schedule header (no separate card chrome). */
+  variant?: "sidebar" | "header";
   collapsed: boolean;
   onToggleCollapsed: () => void;
   searchQuery: string;
@@ -45,6 +46,7 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 }
 
 export function ScheduleOperationalSidebar({
+  variant = "sidebar",
   collapsed,
   onToggleCollapsed,
   searchQuery,
@@ -62,6 +64,9 @@ export function ScheduleOperationalSidebar({
   canConfigureOrg,
   disabled,
 }: Props) {
+  const isHeader = variant === "header";
+  const showExpanded = !collapsed || isHeader;
+
   const nav = (
     [
       ["calendar", "Schedule", PanelLeft],
@@ -77,56 +82,52 @@ export function ScheduleOperationalSidebar({
       onClick={() => onWorkspaceViewChange(key)}
       title={label}
       className={cn(
-        "flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm font-semibold transition-colors",
+        "flex items-center gap-2 rounded-lg px-2 py-2 text-left text-sm font-semibold transition-colors",
+        !isHeader && "w-full",
+        isHeader && "shrink-0",
         workspaceView === key
           ? "bg-[color-mix(in_srgb,var(--ds-accent)_14%,transparent)] text-[var(--ds-accent)]"
           : "text-ds-foreground hover:bg-ds-interactive-hover",
       )}
     >
       <Icon className="h-4 w-4 shrink-0 opacity-90" />
-      {!collapsed ? <span className="truncate">{label}</span> : null}
+      {showExpanded ? <span className="truncate">{label}</span> : null}
     </button>
   ));
 
-  return (
-    <aside
+  const searchField = showExpanded ? (
+    <div className="relative">
+      <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ds-muted" />
+      <input
+        type="search"
+        value={searchQuery}
+        onChange={(e) => onSearchChange(e.target.value)}
+        placeholder="Search workers, projects…"
+        className="w-full rounded-lg border border-pulseShell-border bg-white/90 py-2 pl-8 pr-3 text-xs text-ds-foreground shadow-sm placeholder:text-ds-muted dark:bg-slate-900/80"
+      />
+    </div>
+  ) : null;
+
+  const body = (
+    <div
       className={cn(
-        "flex shrink-0 flex-col overflow-hidden rounded-2xl border border-pulseShell-border/90 bg-gradient-to-b from-white to-slate-50/95 shadow-[0_10px_36px_-16px_rgba(15,23,42,0.2)] transition-[width] duration-200 dark:from-slate-950 dark:to-slate-900/90 dark:border-slate-700/80",
-        collapsed ? "w-[52px]" : "w-full min-w-[260px] max-w-[320px]",
-        disabled && "pointer-events-none opacity-60",
+        "flex min-h-0 flex-col gap-4 overflow-y-auto",
+        isHeader ? "max-h-[min(42vh,380px)] p-0" : "min-h-0 flex-1 p-2",
       )}
     >
-      <div className="flex items-center justify-between gap-1 border-b border-pulseShell-border/80 px-2 py-2 dark:border-slate-800">
-        <button
-          type="button"
-          onClick={onToggleCollapsed}
-          className="rounded-lg p-2 text-ds-muted hover:bg-ds-interactive-hover hover:text-ds-foreground"
-          aria-label={collapsed ? "Expand schedule sidebar" : "Collapse schedule sidebar"}
-        >
-          {collapsed ? <PanelLeft className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
-        </button>
-        {!collapsed ? (
-          <span className="truncate pr-1 text-xs font-bold uppercase tracking-wide text-ds-muted">Operations</span>
-        ) : null}
-      </div>
+      {isHeader ? (
+        <>
+          <div className="flex flex-wrap gap-1">{nav}</div>
+          {searchField}
+        </>
+      ) : (
+        <>
+          {searchField}
+          <div className="space-y-1">{nav}</div>
+        </>
+      )}
 
-      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-2">
-        {!collapsed ? (
-          <div className="relative">
-            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ds-muted" />
-            <input
-              type="search"
-              value={searchQuery}
-              onChange={(e) => onSearchChange(e.target.value)}
-              placeholder="Search workers, projects…"
-              className="w-full rounded-lg border border-pulseShell-border bg-white/90 py-2 pl-8 pr-3 text-xs text-ds-foreground shadow-sm placeholder:text-ds-muted dark:bg-slate-900/80"
-            />
-          </div>
-        ) : null}
-
-        <div className="space-y-1">{nav}</div>
-
-        {!collapsed ? (
+        {showExpanded ? (
           <>
             <div className="space-y-2">
               <SectionTitle>Facilities</SectionTitle>
@@ -209,7 +210,7 @@ export function ScheduleOperationalSidebar({
               ) : null}
             </div>
           </>
-        ) : (
+        ) : !isHeader ? (
           <div className="flex flex-col gap-1 border-t border-pulseShell-border pt-2 dark:border-slate-800">
             <button
               type="button"
@@ -228,8 +229,46 @@ export function ScheduleOperationalSidebar({
               <Settings className="mx-auto h-4 w-4" />
             </button>
           </div>
+        ) : null}
+    </div>
+  );
+
+  if (isHeader) {
+    return (
+      <div
+        className={cn(
+          "min-w-0 shrink-0 xl:max-w-[min(100%,400px)]",
+          disabled && "pointer-events-none opacity-60",
         )}
+      >
+        <SectionTitle>Operations</SectionTitle>
+        <div className="mt-2 space-y-3">{body}</div>
       </div>
+    );
+  }
+
+  return (
+    <aside
+      className={cn(
+        "flex shrink-0 flex-col overflow-hidden rounded-2xl border border-pulseShell-border/90 bg-gradient-to-b from-white to-slate-50/95 shadow-[0_10px_36px_-16px_rgba(15,23,42,0.2)] transition-[width] duration-200 dark:from-slate-950 dark:to-slate-900/90 dark:border-slate-700/80",
+        collapsed ? "w-[52px]" : "w-full min-w-[260px] max-w-[320px]",
+        disabled && "pointer-events-none opacity-60",
+      )}
+    >
+      <div className="flex items-center justify-between gap-1 border-b border-pulseShell-border/80 px-2 py-2 dark:border-slate-800">
+        <button
+          type="button"
+          onClick={onToggleCollapsed}
+          className="rounded-lg p-2 text-ds-muted hover:bg-ds-interactive-hover hover:text-ds-foreground"
+          aria-label={collapsed ? "Expand schedule sidebar" : "Collapse schedule sidebar"}
+        >
+          {collapsed ? <PanelLeft className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
+        </button>
+        {!collapsed ? (
+          <span className="truncate pr-1 text-xs font-bold uppercase tracking-wide text-ds-muted">Operations</span>
+        ) : null}
+      </div>
+      {body}
     </aside>
   );
 }

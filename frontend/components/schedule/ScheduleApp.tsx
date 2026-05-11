@@ -54,7 +54,11 @@ import { canAccessCompanyConfiguration, sessionHasAnyRole } from "@/lib/pulse-ro
 import { readSession } from "@/lib/pulse-session";
 import { AvailabilitySupervisorDrawer } from "./availability/AvailabilitySupervisorDrawer";
 import { EmployeeAvailabilityDrawer } from "./availability/EmployeeAvailabilityDrawer";
-import { ScheduleBuilderHeader } from "./ScheduleBuilderHeader";
+import {
+  ScheduleBuilderActions,
+  ScheduleBuilderIdentity,
+} from "./ScheduleBuilderHeader";
+import { ScheduleUnifiedHeader } from "./ScheduleUnifiedHeader";
 import { ScheduleOperationalSignalsBar } from "./ScheduleOperationalSignalsBar";
 import { ScheduleOperationalSidebar, type ScheduleWorkspaceView } from "./ScheduleOperationalSidebar";
 import { useModuleSettings } from "@/providers/ModuleSettingsProvider";
@@ -134,7 +138,6 @@ export function ScheduleApp() {
   const [scheduleLayout, setScheduleLayout] = useState<ScheduleLayoutMode>("calendar");
   const [focusDate, setFocusDate] = useState(() => formatLocalDate(getServerDate()));
   const [contentFilter, setContentFilter] = useState<ScheduleContentFilter>("combined");
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [sidebarSearch, setSidebarSearch] = useState("");
   const [facilityFilterIds, setFacilityFilterIds] = useState<string[]>([]);
   const [availabilitySupervisorOpen, setAvailabilitySupervisorOpen] = useState(false);
@@ -943,106 +946,119 @@ export function ScheduleApp() {
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-3 pb-2">
       <div className={`min-h-0 flex-1 space-y-4 ${scheduleDragLock ? "pointer-events-none" : ""}`}>
-        <ScheduleBuilderHeader
-          period={
-            activePeriod
-              ? {
-                  kind: "active",
-                  status: activePeriod.status === "open" ? "open" : "draft",
-                  rangeLabel: `${activePeriod.start_date} – ${activePeriod.end_date}`,
-                  deadlineLabel: activePeriod.availability_deadline
-                    ? ` · Due ${new Date(activePeriod.availability_deadline).toLocaleDateString()}`
-                    : null,
+        <ScheduleUnifiedHeader
+          sidebar={
+            <ScheduleOperationalSidebar
+              variant="header"
+              collapsed={false}
+              onToggleCollapsed={() => {}}
+              searchQuery={sidebarSearch}
+              onSearchChange={setSidebarSearch}
+              workspaceView={workspaceView}
+              onWorkspaceViewChange={(v) => {
+                setWorkspaceView(v);
+                if (v !== "calendar") {
+                  setTimeScale("month");
+                  setScheduleLayout("calendar");
                 }
-              : { kind: "empty", allowCreate: canEdit }
+              }}
+              zones={zones}
+              facilityFilterIds={facilityFilterIds}
+              onFacilityFilterToggle={(id) =>
+                setFacilityFilterIds((prev) => (prev.includes(id) ? prev.filter((z) => z !== id) : [...prev, id]))
+              }
+              onClearFacilityFilter={() => setFacilityFilterIds([])}
+              onOpenSettings={() => setSettingsOpen(true)}
+              onOpenTimeOff={() => setTimeOffOpen(true)}
+              onOpenAvailabilitySupervisor={() => setAvailabilitySupervisorOpen(true)}
+              onOpenEmployeeAvailability={() => setEmployeeAvailabilityOpen(true)}
+              canConfigureOrg={canConfigureOrg}
+              disabled={scheduleDragLock}
+            />
           }
-          onManagePeriod={() => setShowPeriodModal(true)}
-          onCreatePeriod={() => setShowPeriodModal(true)}
-          showSaveDraft={isApiMode() && canEdit}
-          saveDraftDisabled={saveBusy || !hasPendingServerSave}
-          saveBusy={saveBusy}
-          onSaveDraft={() => void saveScheduleToServer()}
-          showPublish={canPublishSchedule && isApiMode()}
-          publishBusy={publishBusy}
-          onPublish={() => void handlePublish()}
-          showBuildDraft={Boolean(canPublishSchedule && isApiMode() && !draftResult)}
-          buildingDraft={buildingDraft}
-          onBuildDraft={() => void handleBuildDraft()}
-          moreMenu={
-            <div className="flex flex-col gap-1">
-              <button
-                type="button"
-                className="rounded-lg px-3 py-2 text-left text-sm font-medium text-ds-foreground hover:bg-ds-interactive-hover"
-                onClick={() => setTimeOffOpen(true)}
-              >
-                Time off
-              </button>
-              {canConfigureOrg ? (
-                <button
-                  type="button"
-                  className="rounded-lg px-3 py-2 text-left text-sm font-medium text-ds-foreground hover:bg-ds-interactive-hover"
-                  onClick={() => setSettingsOpen(true)}
-                >
-                  Schedule settings
-                </button>
-              ) : null}
-              <div className="border-t border-pulseShell-border pt-2 dark:border-slate-700">
-                <SettingsGear
-                  module="schedule"
-                  label="Module preferences"
-                  className="w-full justify-center border-pulseShell-border"
-                />
-              </div>
-            </div>
+          identity={
+            <ScheduleBuilderIdentity
+              period={
+                activePeriod
+                  ? {
+                      kind: "active",
+                      status: activePeriod.status === "open" ? "open" : "draft",
+                      rangeLabel: `${activePeriod.start_date} – ${activePeriod.end_date}`,
+                      deadlineLabel: activePeriod.availability_deadline
+                        ? ` · Due ${new Date(activePeriod.availability_deadline).toLocaleDateString()}`
+                        : null,
+                    }
+                  : { kind: "empty", allowCreate: canEdit }
+              }
+              onManagePeriod={() => setShowPeriodModal(true)}
+              onCreatePeriod={() => setShowPeriodModal(true)}
+            />
+          }
+          actions={
+            <ScheduleBuilderActions
+              showSaveDraft={isApiMode() && canEdit}
+              saveDraftDisabled={saveBusy || !hasPendingServerSave}
+              saveBusy={saveBusy}
+              onSaveDraft={() => void saveScheduleToServer()}
+              showPublish={canPublishSchedule && isApiMode()}
+              publishBusy={publishBusy}
+              onPublish={() => void handlePublish()}
+              showBuildDraft={Boolean(canPublishSchedule && isApiMode() && !draftResult)}
+              buildingDraft={buildingDraft}
+              onBuildDraft={() => void handleBuildDraft()}
+              moreMenu={
+                <div className="flex flex-col gap-1">
+                  <button
+                    type="button"
+                    className="rounded-lg px-3 py-2 text-left text-sm font-medium text-ds-foreground hover:bg-ds-interactive-hover"
+                    onClick={() => setTimeOffOpen(true)}
+                  >
+                    Time off
+                  </button>
+                  {canConfigureOrg ? (
+                    <button
+                      type="button"
+                      className="rounded-lg px-3 py-2 text-left text-sm font-medium text-ds-foreground hover:bg-ds-interactive-hover"
+                      onClick={() => setSettingsOpen(true)}
+                    >
+                      Schedule settings
+                    </button>
+                  ) : null}
+                  <div className="border-t border-pulseShell-border pt-2 dark:border-slate-700">
+                    <SettingsGear
+                      module="schedule"
+                      label="Module preferences"
+                      className="w-full justify-center border-pulseShell-border"
+                    />
+                  </div>
+                </div>
+              }
+            />
+          }
+          toolbar={
+            workspaceView === "calendar" ? (
+              <ScheduleToolbar
+                embedded
+                timeScale={timeScale}
+                onTimeScaleChange={setTimeScale}
+                scheduleLayout={scheduleLayout}
+                onScheduleLayoutChange={(layout) => {
+                  setScheduleLayout(layout);
+                  if (layout === "ops-grid") setTimeScale("week");
+                }}
+                contentFilter={contentFilter}
+                onContentFilterChange={setContentFilter}
+                showProjectOverlay={showProjectOverlay}
+                onToggleProjectOverlay={() => setShowProjectOverlay((v) => !v)}
+                disabled={scheduleDragLock}
+              />
+            ) : null
           }
         />
-
-        <div className="flex min-h-0 flex-1 flex-col gap-4 lg:flex-row">
-          <ScheduleOperationalSidebar
-            collapsed={sidebarCollapsed}
-            onToggleCollapsed={() => setSidebarCollapsed((c) => !c)}
-            searchQuery={sidebarSearch}
-            onSearchChange={setSidebarSearch}
-            workspaceView={workspaceView}
-            onWorkspaceViewChange={(v) => {
-              setWorkspaceView(v);
-              if (v !== "calendar") {
-                setTimeScale("month");
-                setScheduleLayout("calendar");
-              }
-            }}
-            zones={zones}
-            facilityFilterIds={facilityFilterIds}
-            onFacilityFilterToggle={(id) =>
-              setFacilityFilterIds((prev) => (prev.includes(id) ? prev.filter((z) => z !== id) : [...prev, id]))
-            }
-            onClearFacilityFilter={() => setFacilityFilterIds([])}
-            onOpenSettings={() => setSettingsOpen(true)}
-            onOpenTimeOff={() => setTimeOffOpen(true)}
-            onOpenAvailabilitySupervisor={() => setAvailabilitySupervisorOpen(true)}
-            onOpenEmployeeAvailability={() => setEmployeeAvailabilityOpen(true)}
-            canConfigureOrg={canConfigureOrg}
-            disabled={scheduleDragLock}
-          />
 
           <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-4">
             {workspaceView === "calendar" ? (
               <>
-                <ScheduleToolbar
-                  timeScale={timeScale}
-                  onTimeScaleChange={setTimeScale}
-                  scheduleLayout={scheduleLayout}
-                  onScheduleLayoutChange={(layout) => {
-                    setScheduleLayout(layout);
-                    if (layout === "ops-grid") setTimeScale("week");
-                  }}
-                  contentFilter={contentFilter}
-                  onContentFilterChange={setContentFilter}
-                  showProjectOverlay={showProjectOverlay}
-                  onToggleProjectOverlay={() => setShowProjectOverlay((v) => !v)}
-                  disabled={scheduleDragLock}
-                />
-
                 {draftResult ? (
                   <ScheduleDraftPanel
                     draft={draftResult}
@@ -1326,7 +1342,6 @@ export function ScheduleApp() {
           ) : null}
           {workspaceView === "reports" ? <ScheduleReports /> : null}
           </div>
-        </div>
       </div>
 
       {workerAttendanceModal ? (

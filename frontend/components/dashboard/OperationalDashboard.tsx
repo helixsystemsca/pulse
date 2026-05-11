@@ -1352,9 +1352,18 @@ function DashboardBody({
     );
   }
 
-  function KioskPanel({ title, children }: { title: string; children: ReactNode }) {
+  function KioskPanel({
+    title,
+    children,
+    flushBody = false,
+  }: {
+    title: string;
+    children: ReactNode;
+    /** Remove inner well padding (e.g. pool readings full-bleed body). */
+    flushBody?: boolean;
+  }) {
     return (
-      <OpsWidgetShell title={title} className="h-full min-h-0">
+      <OpsWidgetShell title={title} className="h-full min-h-0" bodyClassName={flushBody ? "p-0" : undefined}>
         <div className="flex min-h-0 h-full min-w-0 flex-col">{children}</div>
       </OpsWidgetShell>
     );
@@ -1440,7 +1449,7 @@ function DashboardBody({
             </KioskPanel>
           </div>
           <div className="col-span-1 min-h-0 min-w-0">
-            <KioskPanel title="Pool readings">
+            <KioskPanel title="Pool readings" flushBody>
               <div className="min-h-0 min-w-0 w-full">
                 {(widgetRegistry as Record<string, { render: () => ReactNode }>).pool_readings.render()}
               </div>
@@ -2171,7 +2180,12 @@ function DashboardBody({
                     }
                     className={cn("h-full min-h-0 transition-transform", editMode && "cursor-grab active:cursor-grabbing")}
                   >
-                    <OpsWidgetShell title={w.title} headerRight={headerRight} className="h-full">
+                    <OpsWidgetShell
+                      title={w.title}
+                      headerRight={headerRight}
+                      className="h-full"
+                      bodyClassName={item.i === "pool_readings" ? "p-0" : undefined}
+                    >
                       {w.render(buildWidgetContext(item))}
                     </OpsWidgetShell>
                   </div>

@@ -68,14 +68,16 @@ export function PoolReadingsOpsWidget() {
   const monitoringHref = pulseAppHref("/monitoring");
 
   return (
-    <div className="flex h-full min-h-0 flex-col rounded-xl border border-[color-mix(in_srgb,var(--ops-dash-widget-bg,#fff)_65%,var(--ops-dash-border,#cbd5e1))] bg-[var(--ops-dash-widget-bg,#ffffff)] p-2 shadow-sm dark:border-white/[0.07] dark:bg-[color-mix(in_srgb,#0f172a_96%,#1e293b)]">
-      <div className="mb-1 flex shrink-0 items-center justify-between gap-2">
-        <p className="text-[10px] font-semibold leading-tight text-[color-mix(in_srgb,var(--ds-text-primary)_55%,transparent)]">Live chemistry · demo controllers</p>
+    <div className="flex h-full min-h-0 flex-col bg-[var(--ops-dash-widget-bg,#ffffff)] dark:bg-[var(--ops-dash-widget-bg,#0f172a)]">
+      <div className="flex shrink-0 items-center justify-between gap-2 border-b border-[color-mix(in_srgb,var(--ops-dash-border-muted,#94a3b8)_35%,transparent)] px-2 py-1.5">
+        <p className="text-[10px] font-semibold leading-tight text-[color-mix(in_srgb,var(--ds-text-primary)_55%,transparent)]">
+          Live chemistry · demo controllers
+        </p>
         <Link href={monitoringHref} className="shrink-0 text-[10px] font-semibold text-[var(--ds-accent)] underline-offset-2 hover:underline">
           Details
         </Link>
       </div>
-      <div className="min-h-0 flex-1 overflow-x-auto overflow-y-hidden">
+      <div className="min-h-0 flex-1 overflow-x-auto overflow-y-hidden px-2 pb-2 pt-1.5">
         <div className="flex h-full min-h-0 min-w-min gap-2">
           {poolControllers.map((c) => (
             <div key={c.id} className="min-w-[8.75rem] flex-1 basis-0">
