@@ -1,7 +1,7 @@
 /**
  * Short labels for shift windows (month/week calendar density).
  * Within a single calendar day, unique (start,end) work windows are grouped into
- * D1… (day), A1… (afternoon), N1… (overnight / crosses midnight) by band, then numbered
+ * D1… (day), A1… (afternoon), N1… (evening from 5pm, overnight / crosses midnight, or 10pm+ starts) by band, then numbered
  * in sorted order so identical hours always share the same code.
  */
 import { parseTimeToMinutes } from "./calendar";
@@ -29,8 +29,10 @@ export function shiftBandForWindow(startTime: string, endTime: string): ShiftCod
   if (b <= a || startHour >= 22) return "N";
   // Afternoon starts: 2pm–4pm (inclusive of 4pm start).
   if (startHour >= 14 && startHour <= 16) return "A";
-  // Day starts: 5am–8am. (Everything else defaults to Day for compact labeling.)
+  // Day starts: 5am–8am.
   if (startHour >= 5 && startHour <= 8) return "D";
+  // Evening / night same-day starts (after afternoon window, before 10pm).
+  if (startHour >= 17) return "N";
   return "D";
 }
 
@@ -93,7 +95,7 @@ function compactTimeSpan(start: string, end: string, fmt: TimeFormat): string {
 /** Short help lines for the schedule legend (no per-window time spam). */
 export function shiftCodesLegendBlurb(): string[] {
   return [
-    "D = day, A = afternoon, N = night/overnight. Numbers mark distinct work windows (D1, D2, …).",
+    "D = day, A = afternoon, N = evening (5pm+), overnight, or 10pm+ starts. Numbers mark distinct work windows (D1, D2, …).",
     "On the grid, the same code always means the same start/end hours that day.",
   ];
 }

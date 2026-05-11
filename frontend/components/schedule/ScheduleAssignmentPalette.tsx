@@ -45,51 +45,53 @@ export function ScheduleAssignmentPalette({ disabled, onDragSessionStart, onDrag
         recurring.
       </p>
 
-      <div className="mt-3 space-y-1">
-        <p className="text-[10px] font-semibold uppercase tracking-wide text-sky-700 dark:text-sky-300">Shifts</p>
-        <div className="flex flex-wrap gap-1">
-          {STANDARD_SHIFT_CATALOG.map((def) => (
-            <button
-              key={def.code}
-              type="button"
-              draggable={!disabled}
-              title={`${def.label} · ${def.start}–${def.end}`}
-              onDragStart={(e) => startDrag(e, "shift", def.code)}
-              onDragEnd={onDragSessionEnd}
-              className={cn(
-                "cursor-grab select-none rounded px-1.5 py-0.5 text-[10px] font-extrabold tabular-nums tracking-tight active:cursor-grabbing",
-                shiftCodeBadgeToneClasses(def.code),
-              )}
-            >
-              {def.code}
-            </button>
-          ))}
+      <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:gap-4">
+        <div className="min-w-0 flex-1 space-y-1">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-violet-700 dark:text-violet-300">Badges</p>
+          <div className="flex flex-wrap gap-1">
+            {badgeCodes.map((code) => {
+              const def = OPERATIONAL_BADGE_REGISTRY[code];
+              const group = def?.group ?? "special";
+              return (
+                <button
+                  key={code}
+                  type="button"
+                  draggable={!disabled}
+                  title={def ? `${def.label}. ${def.detail ?? ""}` : code}
+                  onDragStart={(e) => startDrag(e, "badge", code)}
+                  onDragEnd={onDragSessionEnd}
+                  className={cn(
+                    "cursor-grab select-none rounded px-1.5 py-0.5 text-[9px] font-extrabold uppercase tracking-wide active:cursor-grabbing",
+                    operationalBadgeClasses(group),
+                  )}
+                >
+                  {code}
+                </button>
+              );
+            })}
+          </div>
         </div>
-      </div>
 
-      <div className="mt-3 space-y-1 border-t border-pulseShell-border/70 pt-3 dark:border-slate-800">
-        <p className="text-[10px] font-semibold uppercase tracking-wide text-violet-700 dark:text-violet-300">Badges</p>
-        <div className="flex flex-wrap gap-1">
-          {badgeCodes.map((code) => {
-            const def = OPERATIONAL_BADGE_REGISTRY[code];
-            const group = def?.group ?? "special";
-            return (
+        <div className="min-w-0 flex-1 space-y-1 border-t border-pulseShell-border/70 pt-3 sm:border-l sm:border-t-0 sm:pl-4 sm:pt-0 dark:border-slate-800">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-sky-700 dark:text-sky-300">Shifts</p>
+          <div className="flex flex-wrap gap-1">
+            {STANDARD_SHIFT_CATALOG.map((def) => (
               <button
-                key={code}
+                key={def.code}
                 type="button"
                 draggable={!disabled}
-                title={def ? `${def.label}. ${def.detail ?? ""}` : code}
-                onDragStart={(e) => startDrag(e, "badge", code)}
+                title={`${def.label} · ${def.start}–${def.end}`}
+                onDragStart={(e) => startDrag(e, "shift", def.code)}
                 onDragEnd={onDragSessionEnd}
                 className={cn(
-                  "cursor-grab select-none rounded px-1.5 py-0.5 text-[9px] font-extrabold uppercase tracking-wide active:cursor-grabbing",
-                  operationalBadgeClasses(group),
+                  "cursor-grab select-none rounded px-1.5 py-0.5 text-[10px] font-extrabold tabular-nums tracking-tight active:cursor-grabbing",
+                  shiftCodeBadgeToneClasses(def.code),
                 )}
               >
-                {code}
+                {def.code}
               </button>
-            );
-          })}
+            ))}
+          </div>
         </div>
       </div>
     </div>

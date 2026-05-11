@@ -190,6 +190,8 @@ type WorkforceBubble = {
    * derived from today’s shift window(s).
    */
   displayBandRank: number;
+  /** Earliest today shift interval start (ms); used to order upcoming roster before role tier. */
+  rosterNextStartMs: number | null;
 };
 
 type WorkTag = { kind: "progress" | "overdue" | "urgent"; label: string };
@@ -354,6 +356,9 @@ function sortScheduledTodayRoster(a: WorkforceBubble, b: WorkforceBubble): numbe
   if (d !== 0) return d;
   const band = a.displayBandRank - b.displayBandRank;
   if (band !== 0) return band;
+  const ta = a.rosterNextStartMs ?? Number.POSITIVE_INFINITY;
+  const tb = b.rosterNextStartMs ?? Number.POSITIVE_INFINITY;
+  if (ta !== tb) return ta - tb;
   return sortWorkforceByRoleThenName(a, b);
 }
 
@@ -539,6 +544,7 @@ function demoModel(): DashboardViewModel {
       badge: "M",
       roleSortRank: 0,
       displayBandRank: 0,
+      rosterNextStartMs: null,
     },
   ];
   const demoWorkforceOnShift: WorkforceBubble[] = [
@@ -553,6 +559,7 @@ function demoModel(): DashboardViewModel {
       badge: "S",
       roleSortRank: 1,
       displayBandRank: 1,
+      rosterNextStartMs: null,
     },
   ];
   const demoWorkforceUpcoming: WorkforceBubble[] = [
@@ -567,6 +574,7 @@ function demoModel(): DashboardViewModel {
       badge: "L",
       roleSortRank: 2,
       displayBandRank: 2,
+      rosterNextStartMs: null,
     },
   ];
   const demoWorkforceOffSite: WorkforceBubble[] = [
@@ -580,6 +588,7 @@ function demoModel(): DashboardViewModel {
       scheduleBucket: "off_site",
       roleSortRank: 3,
       displayBandRank: 3,
+      rosterNextStartMs: null,
     },
   ];
   const demoScheduledTodayRoster = [
@@ -924,6 +933,7 @@ function buildLiveModel(
       roleSortRank,
       avatar_url: w?.avatar_url,
       displayBandRank,
+      rosterNextStartMs: nextStart,
     };
   });
 
@@ -937,7 +947,7 @@ function buildLiveModel(
   const upcomingToday = bubbles
     .filter((b) => b.scheduleBucket === "upcoming_today")
     .filter((b) => b.presence.status !== "on_site")
-    .sort(sortWorkforceByRoleThenName);
+    .sort(sortScheduledTodayRoster);
   const offSite = bubbles
     .filter((b) => b.presence.status === "off_site" || b.lastEvent?.type === "exit")
     .sort(sortWorkforceByRoleThenName);
