@@ -528,7 +528,11 @@ export function ScheduleApp() {
 
   const alerts = useMemo(
     () => {
-      const base = computeAlerts(shiftsForView, workers, metricsMonth.y, metricsMonth.m, settings);
+      const roCoverageDates =
+        timeScale === "week" ? weekDatesFromSunday(focusDate) : timeScale === "day" ? [focusDate] : undefined;
+      const base = computeAlerts(shiftsForView, workers, metricsMonth.y, metricsMonth.m, settings, {
+        roCoverageDates,
+      });
       const dates = monthGrid(metricsMonth.y, metricsMonth.m)
         .filter((c) => c.inMonth)
         .map((c) => c.date);
@@ -544,7 +548,7 @@ export function ScheduleApp() {
         coverageWarnings: v.filter((x) => x.severity === "warning").length,
       };
     },
-    [shiftsForView, metricsMonth.y, metricsMonth.m, settings, scheduleMod.settings, workers],
+    [shiftsForView, metricsMonth.y, metricsMonth.m, settings, scheduleMod.settings, workers, timeScale, focusDate],
   );
 
   const schedulePeriodState: SchedulePeriodHeaderState = activePeriod

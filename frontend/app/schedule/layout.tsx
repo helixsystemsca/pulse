@@ -11,7 +11,7 @@ export default function ScheduleLayout({ children }: { children: React.ReactNode
   return (
     <AppLayout
       mainClassName="bg-pulse-bg min-h-0"
-      mainContentClassName="!min-h-0 flex w-full max-w-none flex-col overflow-y-auto overscroll-contain bg-ds-bg px-3 py-4 lg:px-4"
+      mainContentClassName="!min-h-0 flex w-full max-w-none flex-col bg-ds-bg px-3 py-4 lg:px-4"
     >
       <AmbientPageFrame>{children}</AmbientPageFrame>
     </AppLayout>

@@ -333,7 +333,7 @@ function WorkersTab({ config, patch, canEdit }: {
             const defs = lines.map(line => { const [code, ...rest] = line.split(":"); return { code: code.trim().toUpperCase(), label: rest.join(":").trim() }; }).filter(d => d.code);
             s.set("certifications", { definitions: defs, priority_order: defs.map(d => d.code) });
           }}
-          placeholder={"RO: Refrigeration Operator\nP1: Pool Operator Level 1\nP2: Pool Operator Level 2\nFA: First Aid"}
+          placeholder={"RO: Refrigeration Operator\nP4: 4th Class Power Engineer\nP1: Pool Operator Level 1\nP2: Pool Operator Level 2\nFA: First Aid"}
           disabled={!canEdit}
         />
       </Section>
