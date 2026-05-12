@@ -47,7 +47,7 @@ function scheduleHealthDetail(alerts: ScheduleAlerts): string | null {
   const parts: string[] = [];
   if (alerts.roP4BandGapCount > 0) {
     parts.push(
-      `${alerts.roP4BandGapCount} band gap${alerts.roP4BandGapCount === 1 ? "" : "s"} (day · afternoon · night)`,
+      `${alerts.roP4BandGapCount} RO coverage gap${alerts.roP4BandGapCount === 1 ? "" : "s"} (day · afternoon · night bands)`,
     );
   }
   if (alerts.unassignedShiftCount > 0) {
@@ -103,7 +103,7 @@ export function ScheduleOperationalStatusStrip({
 
   const gapParts: string[] = [];
   if (alerts.roP4BandGapCount > 0) {
-    gapParts.push(`${alerts.roP4BandGapCount} RO/P4 gap${alerts.roP4BandGapCount === 1 ? "" : "s"}`);
+    gapParts.push(`${alerts.roP4BandGapCount} RO gap${alerts.roP4BandGapCount === 1 ? "" : "s"}`);
   }
   if (alerts.unassignedShiftCount > 0) {
     gapParts.push(`${alerts.unassignedShiftCount} open`);
@@ -112,7 +112,7 @@ export function ScheduleOperationalStatusStrip({
     gapParts.push(`${alerts.coverageCritical} critical`);
   }
   const coveragePrimary =
-    gapParts.length > 0 ? gapParts.join(" · ") : hasRoP4Gaps ? "Review band coverage" : "RO/P4 band coverage OK";
+    gapParts.length > 0 ? gapParts.join(" · ") : hasRoP4Gaps ? "Review RO coverage" : "RO band coverage OK";
 
   const healthExtra = scheduleHealthDetail(alerts);
   const coverageSub = (
@@ -125,7 +125,10 @@ export function ScheduleOperationalStatusStrip({
       ) : healthExtra ? (
         <span className="text-amber-800/90 dark:text-amber-200/90">{healthExtra}</span>
       ) : (
-        "All staffed bands covered"
+        <>
+          All staffed bands have RO coverage
+          <span className="text-ds-muted"> (P4 counts)</span>
+        </>
       )}
     </span>
   );

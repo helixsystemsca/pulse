@@ -3,6 +3,8 @@
  * Designed for future HR / SSO / SAP integrations (not wired yet).
  */
 
+import type { ProcedureTrackingTagId } from "./procedureTrackingTags";
+
 /** API / data tier key; UI labels the `mandatory` tier as "Routines". */
 export type TrainingTier = "mandatory" | "high_risk" | "general";
 
@@ -39,6 +41,10 @@ export type TrainingProgram = {
   /** Optional compliance window: routines-tier items should be complete within this many days of assignment. */
   due_within_days?: number | null;
   active: boolean;
+  /** Data / reporting tags (General, High, Emergency, …). */
+  tracking_tags?: ProcedureTrackingTagId[];
+  /** When true, leadership treats completion as part of onboarding / fully-trained requirements. */
+  onboarding_required?: boolean;
 };
 
 export type TrainingAssignment = {

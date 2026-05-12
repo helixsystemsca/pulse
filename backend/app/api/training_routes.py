@@ -32,6 +32,7 @@ from app.schemas.training import (
     TrainingMatrixOut,
     TrainingProgramOut,
     WorkerTrainingOut,
+    normalize_procedure_tracking_tags,
 )
 from app.services.procedure_training.service import (
     compute_training_assignment_status,
@@ -100,6 +101,8 @@ def _procedure_to_program(p: PulseProcedure, cs: PulseProcedureComplianceSetting
         expiry_months=None,
         due_within_days=due_w,
         active=True,
+        tracking_tags=normalize_procedure_tracking_tags(getattr(cs, "tracking_tags", []) if cs else []),
+        onboarding_required=bool(getattr(cs, "onboarding_required", False)) if cs else False,
     )
 
 

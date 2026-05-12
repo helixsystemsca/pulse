@@ -5,11 +5,27 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import Any, Literal, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 MatrixShiftBandApi = Literal["day", "afternoon", "night"]
 
 TrainingTierApi = Literal["mandatory", "high_risk", "general"]
+
+ALLOWED_PROCEDURE_TRACKING_TAGS: frozenset[str] = frozenset(
+    {"general", "high", "emergency", "routine", "safety"},
+)
+
+
+def normalize_procedure_tracking_tags(raw: object) -> list[str]:
+    """Dedupe and restrict to allowed tag ids (stable order)."""
+    if not raw or not isinstance(raw, list):
+        return []
+    out: list[str] = []
+    for item in raw:
+        s = str(item).strip().lower()
+        if s in ALLOWED_PROCEDURE_TRACKING_TAGS and s not in out:
+            out.append(s)
+    return out
 
 TrainingAssignmentStatusApi = Literal[
     "completed",
@@ -57,6 +73,11 @@ class TrainingProgramOut(BaseModel):
     expiry_months: Optional[int] = None
     due_within_days: Optional[int] = None
     active: bool = True
+    tracking_tags: list[str] = Field(default_factory=list, description="Procedure data tags: general, high, …")
+    onboarding_required: bool = Field(
+        False,
+        description="When true, counts toward leadership onboarding / fully-trained checklist for this tag set.",
+    )
 
 
 class TrainingAssignmentOut(BaseModel):
@@ -108,6 +129,8 @@ class ProcedureComplianceOut(BaseModel):
     requires_knowledge_verification: bool = True
     updated_at: datetime
     updated_by_user_id: Optional[str] = None
+    tracking_tags: list[str] = Field(default_factory=list)
+    onboarding_required: bool = False
 
 
 class ProcedureCompliancePatchIn(BaseModel):
@@ -115,6 +138,15 @@ class ProcedureCompliancePatchIn(BaseModel):
     due_within_days: Optional[int] = Field(None, ge=1, le=3650)
     requires_acknowledgement: bool
     requires_knowledge_verification: Optional[bool] = None
+    tracking_tags: Optional[list[str]] = None
+    onboarding_required: Optional[bool] = None
+
+    @field_validator("tracking_tags", mode="before")
+    @classmethod
+    def _norm_tracking_tags(cls, v: object) -> Optional[list[str]]:
+        if v is None:
+            return None
+        return normalize_procedure_tracking_tags(v)
 
 
 class ProcedureVerificationViewPostIn(BaseModel):

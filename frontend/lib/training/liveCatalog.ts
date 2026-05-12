@@ -49,6 +49,8 @@ export function proceduresToTrainingPrograms(
         expiry_months: null,
         due_within_days: cfg.due_within_days,
         active: true,
+        tracking_tags: cfg.tracking_tags ?? [],
+        onboarding_required: cfg.onboarding_required ?? false,
       } satisfies TrainingProgram;
     })
     .sort((a, b) => a.title.localeCompare(b.title, undefined, { sensitivity: "base" }));

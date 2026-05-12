@@ -1,4 +1,5 @@
 import type { TrainingTier } from "./types";
+import { normalizeProcedureTrackingTags, type ProcedureTrackingTagId } from "./procedureTrackingTags";
 
 export type ProcedureComplianceConfig = {
   tier: TrainingTier;
@@ -8,6 +9,8 @@ export type ProcedureComplianceConfig = {
   requires_acknowledgement: boolean;
   /** When true (default in live API), completion requires review + acknowledgment + knowledge check. */
   requires_knowledge_verification?: boolean;
+  tracking_tags?: ProcedureTrackingTagId[];
+  onboarding_required?: boolean;
 };
 
 export type ProcedureComplianceConfigMap = Record<string, ProcedureComplianceConfig>;
@@ -19,6 +22,8 @@ const DEFAULT_CONFIG: ProcedureComplianceConfig = {
   due_within_days: null,
   requires_acknowledgement: true,
   requires_knowledge_verification: true,
+  tracking_tags: [],
+  onboarding_required: false,
 };
 
 export function readProcedureComplianceConfig(): ProcedureComplianceConfigMap {
@@ -44,6 +49,8 @@ export function readProcedureComplianceConfig(): ProcedureComplianceConfigMap {
         requires_acknowledgement: typeof reqAck === "boolean" ? reqAck : DEFAULT_CONFIG.requires_acknowledgement,
         requires_knowledge_verification:
           typeof reqKv === "boolean" ? reqKv : DEFAULT_CONFIG.requires_knowledge_verification,
+        tracking_tags: normalizeProcedureTrackingTags(o.tracking_tags),
+        onboarding_required: typeof o.onboarding_required === "boolean" ? o.onboarding_required : false,
       };
     }
     return out;
@@ -69,6 +76,8 @@ export function configForProcedure(id: string, map: ProcedureComplianceConfigMap
     ...row,
     requires_knowledge_verification:
       row.requires_knowledge_verification ?? DEFAULT_CONFIG.requires_knowledge_verification,
+    tracking_tags: normalizeProcedureTrackingTags(row.tracking_tags ?? []),
+    onboarding_required: row.onboarding_required ?? false,
   };
 }
 

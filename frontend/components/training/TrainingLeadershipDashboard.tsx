@@ -512,6 +512,9 @@ export function TrainingLeadershipDashboard() {
           tier: next.tier,
           due_within_days: next.due_within_days,
           requires_acknowledgement: next.requires_acknowledgement,
+          requires_knowledge_verification: next.requires_knowledge_verification ?? true,
+          tracking_tags: next.tracking_tags ?? [],
+          onboarding_required: next.onboarding_required ?? false,
         });
         setProcConfig((prev) => ({ ...prev, [procedureId]: next }));
         setMatrixBundle((b) => {
@@ -523,6 +526,9 @@ export function TrainingLeadershipDashboard() {
                   tier: next.tier,
                   due_within_days: next.due_within_days ?? null,
                   requires_acknowledgement: next.requires_acknowledgement,
+                  requires_knowledge_verification: next.requires_knowledge_verification ?? true,
+                  tracking_tags: next.tracking_tags ?? [],
+                  onboarding_required: next.onboarding_required ?? false,
                 }
               : p,
           );
@@ -867,6 +873,9 @@ function TierConfigModal({
                     tier: "general" as const,
                     due_within_days: null,
                     requires_acknowledgement: true,
+                    requires_knowledge_verification: true,
+                    tracking_tags: [],
+                    onboarding_required: false,
                   };
                   return (
                     <tr key={p.id} className="border-t border-ds-border">

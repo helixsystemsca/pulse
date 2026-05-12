@@ -12,6 +12,7 @@ const orderedCodes = (req: string[]): string[] => {
   push("RO");
   push("P1");
   push("P2");
+  push("P4");
   push("FA");
   for (const c of u) {
     if (!out.includes(c)) out.push(c);
@@ -71,6 +72,17 @@ export function ScheduleShiftCertChips({ shift, size = "compact", requiredOverri
               aria-label={c === "P1" ? "Pool operator level 1" : "Pool operator level 2"}
             >
               {c === "P1" ? "PO 1" : "PO 2"}
+            </span>
+          );
+        }
+        if (c === "P4") {
+          return (
+            <span
+              key="P4"
+              className={`inline-flex shrink-0 items-center justify-center rounded border border-pulseShell-border bg-pulseShell-elevated/50 font-extrabold text-ds-muted ${poolCls}`}
+              aria-label="4th class power engineer"
+            >
+              P4
             </span>
           );
         }

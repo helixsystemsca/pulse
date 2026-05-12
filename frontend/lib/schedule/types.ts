@@ -199,7 +199,6 @@ export interface ScheduleSettings {
 export interface ScheduleAlerts {
   /**
    * Legacy field — supervisor coverage is no longer surfaced as an alert (always 0).
-   * Prefer {@link roP4BandGapCount} for staffing intelligence.
    */
   daysMissingSupervisor: number;
   /** Shifts with no worker assigned. */
@@ -207,7 +206,9 @@ export interface ScheduleAlerts {
   /** Legacy — always 0; supervisor slot alerts removed. */
   openSupervisorSlots: number;
   /**
-   * Staffed day / afternoon / night bands in the focused month missing any worker with RO or P4.
+   * Staffed day / afternoon / night bands in the visible calendar window missing **RO** on site.
+   * Workers with **P4** (4th class Power Engineer) certification count toward this check.
+   * Used for month/week schedule preview before publish.
    */
   roP4BandGapCount: number;
   /** Coverage rule violations (critical). */

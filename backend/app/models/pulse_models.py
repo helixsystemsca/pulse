@@ -125,6 +125,8 @@ class PulseProcedureComplianceSettings(Base):
     due_within_days: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     requires_acknowledgement: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     requires_knowledge_verification: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    tracking_tags: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, server_default=text("'[]'::jsonb"))
+    onboarding_required: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=text("false"))
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),

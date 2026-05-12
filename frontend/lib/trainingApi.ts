@@ -17,6 +17,7 @@ import type {
   TrainingTier,
 } from "@/lib/training/types";
 import type { ProcedureComplianceConfig, ProcedureComplianceConfigMap } from "@/lib/training/procedureComplianceConfig";
+import { normalizeProcedureTrackingTags, type ProcedureTrackingTagId } from "@/lib/training/procedureTrackingTags";
 
 export type TrainingMatrixApiResponse = {
   employees: Array<{
@@ -38,6 +39,8 @@ export type TrainingMatrixApiResponse = {
     expiry_months: number | null;
     due_within_days?: number | null;
     active: boolean;
+    tracking_tags?: ProcedureTrackingTagId[];
+    onboarding_required?: boolean;
   }>;
   assignments: Array<{
     id: string;
@@ -63,8 +66,8 @@ export type TrainingMatrixApiResponse = {
 };
 
 export type WorkerTrainingApiResponse = {
-  programs: TrainingMatrixApiResponse["programs"];
-  assignments: TrainingMatrixApiResponse["assignments"];
+  programs: TrainingProgram[];
+  assignments: TrainingAssignment[];
   acknowledgement_summary: Array<{
     procedure_id: string;
     revision_number: number;
@@ -84,6 +87,8 @@ export type ProcedureComplianceApiResponse = {
   requires_knowledge_verification?: boolean;
   updated_at: string;
   updated_by_user_id: string | null;
+  tracking_tags?: ProcedureTrackingTagId[];
+  onboarding_required?: boolean;
 };
 
 /** Calendar fields from FastAPI (`date` or ISO datetime serialized as string). */
@@ -116,6 +121,8 @@ export function mapApiPrograms(rows: TrainingMatrixApiResponse["programs"]): Tra
         expiry_months: p.expiry_months ?? null,
         due_within_days: p.due_within_days ?? null,
         active: p.active !== false,
+        tracking_tags: normalizeProcedureTrackingTags(p.tracking_tags),
+        onboarding_required: Boolean(p.onboarding_required),
       }) satisfies TrainingProgram,
   );
 }
@@ -169,6 +176,8 @@ export function trainingProgramsToComplianceMap(programs: TrainingProgram[]): Pr
       due_within_days: p.due_within_days ?? null,
       requires_acknowledgement: p.requires_acknowledgement,
       requires_knowledge_verification: p.requires_knowledge_verification !== false,
+      tracking_tags: normalizeProcedureTrackingTags(p.tracking_tags),
+      onboarding_required: Boolean(p.onboarding_required),
     } satisfies ProcedureComplianceConfig;
   }
   return m;
@@ -212,7 +221,20 @@ export async function patchTrainingAssignmentMatrixOverride(
 }
 
 export async function fetchWorkerTraining(workerUserId: string): Promise<WorkerTrainingApiResponse> {
-  return apiFetch<WorkerTrainingApiResponse>(`/api/workers/${encodeURIComponent(workerUserId)}/training`);
+  const raw = await apiFetch<{
+    programs: TrainingMatrixApiResponse["programs"];
+    assignments: TrainingMatrixApiResponse["assignments"];
+    acknowledgement_summary: WorkerTrainingApiResponse["acknowledgement_summary"];
+    employment_type?: string | null;
+    matrix_shift_band?: "day" | "afternoon" | "night" | null;
+  }>(`/api/workers/${encodeURIComponent(workerUserId)}/training`);
+  return {
+    programs: mapApiPrograms(raw.programs),
+    assignments: mapApiAssignments(raw.assignments),
+    acknowledgement_summary: raw.acknowledgement_summary,
+    employment_type: raw.employment_type,
+    matrix_shift_band: raw.matrix_shift_band,
+  };
 }
 
 export async function patchProcedureCompliance(
@@ -222,6 +244,8 @@ export async function patchProcedureCompliance(
     due_within_days: number | null;
     requires_acknowledgement: boolean;
     requires_knowledge_verification?: boolean | null;
+    tracking_tags?: ProcedureTrackingTagId[];
+    onboarding_required?: boolean;
   },
 ): Promise<ProcedureComplianceApiResponse> {
   return apiFetch<ProcedureComplianceApiResponse>(`/api/v1/cmms/procedures/${encodeURIComponent(procedureId)}/compliance`, {

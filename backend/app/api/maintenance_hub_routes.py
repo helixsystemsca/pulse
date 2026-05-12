@@ -82,6 +82,7 @@ from app.schemas.training import (
     ProcedureSignoffPostIn,
     ProcedureVerificationStateOut,
     ProcedureVerificationViewPostIn,
+    normalize_procedure_tracking_tags,
 )
 from app.services.procedure_light_completion import get_light_completion_state, submit_light_procedure_completion
 from app.schemas.maintenance_hub import (
@@ -463,6 +464,8 @@ async def get_procedure_compliance(
             requires_knowledge_verification=True,
             updated_at=baseline,
             updated_by_user_id=None,
+            tracking_tags=[],
+            onboarding_required=False,
         )
     return ProcedureComplianceOut(
         procedure_id=str(cs.procedure_id),
@@ -473,6 +476,8 @@ async def get_procedure_compliance(
         requires_knowledge_verification=bool(getattr(cs, "requires_knowledge_verification", True)),
         updated_at=cs.updated_at,
         updated_by_user_id=str(cs.updated_by_user_id) if cs.updated_by_user_id else None,
+        tracking_tags=normalize_procedure_tracking_tags(getattr(cs, "tracking_tags", [])),
+        onboarding_required=bool(getattr(cs, "onboarding_required", False)),
     )
 
 
@@ -490,6 +495,8 @@ async def patch_procedure_compliance(
     now = datetime.now(timezone.utc)
     cs = await db.get(PulseProcedureComplianceSettings, procedure_id)
     if cs is None:
+        tags = normalize_procedure_tracking_tags(body.tracking_tags) if body.tracking_tags is not None else []
+        onboard = bool(body.onboarding_required) if body.onboarding_required is not None else False
         cs = PulseProcedureComplianceSettings(
             procedure_id=str(row.id),
             company_id=str(row.company_id),
@@ -499,6 +506,8 @@ async def patch_procedure_compliance(
             requires_knowledge_verification=bool(body.requires_knowledge_verification)
             if body.requires_knowledge_verification is not None
             else True,
+            tracking_tags=list(tags),
+            onboarding_required=onboard,
             updated_at=now,
             updated_by_user_id=str(user.id),
         )
@@ -509,6 +518,10 @@ async def patch_procedure_compliance(
         cs.requires_acknowledgement = bool(body.requires_acknowledgement)
         if body.requires_knowledge_verification is not None:
             cs.requires_knowledge_verification = bool(body.requires_knowledge_verification)
+        if body.tracking_tags is not None:
+            cs.tracking_tags = list(body.tracking_tags)
+        if body.onboarding_required is not None:
+            cs.onboarding_required = bool(body.onboarding_required)
         cs.updated_at = now
         cs.updated_by_user_id = str(user.id)
     await db.commit()
@@ -522,6 +535,8 @@ async def patch_procedure_compliance(
         requires_knowledge_verification=bool(getattr(cs, "requires_knowledge_verification", True)),
         updated_at=cs.updated_at,
         updated_by_user_id=str(cs.updated_by_user_id) if cs.updated_by_user_id else None,
+        tracking_tags=normalize_procedure_tracking_tags(getattr(cs, "tracking_tags", [])),
+        onboarding_required=bool(getattr(cs, "onboarding_required", False)),
     )
 
 

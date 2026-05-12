@@ -36,6 +36,12 @@ import {
   readProcedureComplianceConfig,
   writeProcedureComplianceConfig,
 } from "@/lib/training/procedureComplianceConfig";
+import {
+  PROCEDURE_TRACKING_TAG_IDS,
+  PROCEDURE_TRACKING_TAG_LABELS,
+  normalizeProcedureTrackingTags,
+  type ProcedureTrackingTagId,
+} from "@/lib/training/procedureTrackingTags";
 import { computeProgramColumnCompliancePercent } from "@/lib/training/selectors";
 import { generateDemoAssignmentsForMatrix } from "@/lib/training/generatedAssignments";
 import { proceduresToTrainingPrograms, workersToTrainingEmployees } from "@/lib/training/liveCatalog";
@@ -91,7 +97,7 @@ function parseKeywordCsv(csv: string): string[] {
 const PROCEDURE_TRAINING_PRIORITY_OPTIONS: { value: TrainingTier; label: string }[] = [
   { value: "mandatory", label: "Routines" },
   { value: "high_risk", label: "High" },
-  { value: "general", label: "Low" },
+  { value: "general", label: "General" },
 ];
 
 function trainingTierLabel(tier: TrainingTier): string {
@@ -246,7 +252,11 @@ export function ProceduresApp() {
   const [workerOptions, setWorkerOptions] = useState<{ id: string; label: string }[]>([]);
   const [assigning, setAssigning] = useState(false);
   const [createTrainingTier, setCreateTrainingTier] = useState<TrainingTier>("general");
+  const [createTrackingTags, setCreateTrackingTags] = useState<ProcedureTrackingTagId[]>([]);
+  const [createOnboardingRequired, setCreateOnboardingRequired] = useState(false);
   const [editTrainingTier, setEditTrainingTier] = useState<TrainingTier>("general");
+  const [editTrackingTags, setEditTrackingTags] = useState<ProcedureTrackingTagId[]>([]);
+  const [editOnboardingRequired, setEditOnboardingRequired] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const session = readSession();
   const canReview = sessionHasAnyRole(session, "lead", "supervisor", "manager", "company_admin");
@@ -362,6 +372,8 @@ export function ProceduresApp() {
   useEffect(() => {
     if (!selectedId) {
       setEditTrainingTier("general");
+      setEditTrackingTags([]);
+      setEditOnboardingRequired(false);
       return;
     }
     let cancelled = false;
@@ -369,13 +381,25 @@ export function ProceduresApp() {
       if (isApiMode()) {
         try {
           const c = await fetchProcedureCompliance(selectedId);
-          if (!cancelled) setEditTrainingTier(c.tier as TrainingTier);
+          if (!cancelled) {
+            setEditTrainingTier(c.tier as TrainingTier);
+            setEditTrackingTags(normalizeProcedureTrackingTags(c.tracking_tags));
+            setEditOnboardingRequired(Boolean(c.onboarding_required));
+          }
         } catch {
-          if (!cancelled) setEditTrainingTier("general");
+          if (!cancelled) {
+            setEditTrainingTier("general");
+            setEditTrackingTags([]);
+            setEditOnboardingRequired(false);
+          }
         }
       } else {
         const cfg = configForProcedure(selectedId, readProcedureComplianceConfig());
-        if (!cancelled) setEditTrainingTier(cfg.tier);
+        if (!cancelled) {
+          setEditTrainingTier(cfg.tier);
+          setEditTrackingTags(cfg.tracking_tags ?? []);
+          setEditOnboardingRequired(cfg.onboarding_required ?? false);
+        }
       }
     })();
     return () => {
@@ -499,13 +523,19 @@ export function ProceduresApp() {
       });
       await uploadPendingFiles(proc.id, draftSteps);
       try {
-        await persistProcedureTrainingTier(proc.id, createTrainingTier);
+        await persistProcedureComplianceSettings(proc.id, {
+          tier: createTrainingTier,
+          tracking_tags: createTrackingTags,
+          onboarding_required: createOnboardingRequired,
+        });
       } catch (e) {
         setNotice(parseClientApiError(e).message || "Could not save training priority — update it under Standards → Training.");
       }
       setTitle("");
       setCreateKeywordsCsv("");
       setCreateTrainingTier("general");
+      setCreateTrackingTags([]);
+      setCreateOnboardingRequired(false);
       setDraftSteps([{ key: newKey(), text: "", file: null, image_url: null, recommended_workers: null, tools_csv: "" }]);
       await load();
       setIsCreating(false);
@@ -632,7 +662,11 @@ export function ProceduresApp() {
       });
       await uploadPendingFiles(selectedId, editSteps);
       try {
-        await persistProcedureTrainingTier(selectedId, editTrainingTier);
+        await persistProcedureComplianceSettings(selectedId, {
+          tier: editTrainingTier,
+          tracking_tags: editTrackingTags,
+          onboarding_required: editOnboardingRequired,
+        });
       } catch (e) {
         setNotice(parseClientApiError(e).message || "Procedure saved; training priority could not be updated.");
       }
@@ -644,12 +678,21 @@ export function ProceduresApp() {
     }
   };
 
-  async function persistProcedureTrainingTier(procedureId: string, tier: TrainingTier) {
+  async function persistProcedureComplianceSettings(
+    procedureId: string,
+    settings: {
+      tier: TrainingTier;
+      tracking_tags: ProcedureTrackingTagId[];
+      onboarding_required: boolean;
+    },
+  ) {
     const payload = {
-      tier,
+      tier: settings.tier,
       due_within_days: null as number | null,
       requires_acknowledgement: true,
       requires_knowledge_verification: true,
+      tracking_tags: settings.tracking_tags,
+      onboarding_required: settings.onboarding_required,
     };
     if (isApiMode()) {
       if (!sessionHasAnyRole(readSession(), "lead", "supervisor", "manager", "company_admin", "system_admin")) {
@@ -661,10 +704,12 @@ export function ProceduresApp() {
       writeProcedureComplianceConfig({
         ...prev,
         [procedureId]: {
-          tier,
+          tier: settings.tier,
           due_within_days: null,
           requires_acknowledgement: true,
           requires_knowledge_verification: true,
+          tracking_tags: settings.tracking_tags,
+          onboarding_required: settings.onboarding_required,
         },
       });
     }
@@ -1120,6 +1165,47 @@ export function ProceduresApp() {
                 Drives Routines / High risk / General columns on the team training matrix. Workers record completion with{" "}
                 <span className="font-semibold text-ds-foreground">Complete procedure</span> (unless knowledge verification is on).
               </p>
+              <fieldset className="mt-3 rounded-md border border-ds-border/80 p-3">
+                <legend className="px-1 text-xs font-semibold uppercase text-ds-muted">Procedure tags</legend>
+                <p className="mb-2 text-[10px] text-ds-muted">
+                  General, High, Emergency, Routine, and Safety tag this procedure for reporting. Onboarding marks it as
+                  part of leadership&apos;s fully-trained checklist (use with the tags you require).
+                </p>
+                <div className="flex flex-wrap gap-x-3 gap-y-2">
+                  {PROCEDURE_TRACKING_TAG_IDS.map((id) => (
+                    <label key={id} className="inline-flex cursor-pointer items-center gap-1.5 text-sm text-ds-foreground">
+                      <input
+                        type="checkbox"
+                        className="rounded border-ds-border"
+                        checked={createTrackingTags.includes(id)}
+                        onChange={() =>
+                          setCreateTrackingTags((prev) =>
+                            prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+                          )
+                        }
+                        disabled={saving || (isApiMode() && !canSetProcedureTrainingTier)}
+                      />
+                      {PROCEDURE_TRACKING_TAG_LABELS[id]}
+                    </label>
+                  ))}
+                </div>
+                <label className="mt-3 flex cursor-pointer items-start gap-2 text-sm text-ds-foreground">
+                  <input
+                    type="checkbox"
+                    className="mt-1 rounded border-ds-border"
+                    checked={createOnboardingRequired}
+                    onChange={(e) => setCreateOnboardingRequired(e.target.checked)}
+                    disabled={saving || (isApiMode() && !canSetProcedureTrainingTier)}
+                  />
+                  <span>
+                    <span className="font-semibold">Onboarding</span>
+                    <span className="mt-0.5 block text-[10px] text-ds-muted">
+                      Counts toward fully trained when leadership expects this procedure (with the tags above) to be
+                      complete.
+                    </span>
+                  </span>
+                </label>
+              </fieldset>
               {renderStepEditor(draftSteps, setDraftSteps, `${formId}-new`)}
               <button
                 type="button"
@@ -1137,6 +1223,8 @@ export function ProceduresApp() {
                     setIsCreating(false);
                     setCreateKeywordsCsv("");
                     setCreateTrainingTier("general");
+                    setCreateTrackingTags([]);
+                    setCreateOnboardingRequired(false);
                     setErr(null);
                   }}
                   disabled={saving}
@@ -1206,13 +1294,28 @@ export function ProceduresApp() {
             </div>
 
             {!editing ? (
-              <p className="mt-3 text-sm text-ds-muted">
-                <span className="font-semibold text-ds-foreground">Training priority:</span>{" "}
-                {trainingTierLabel(editTrainingTier)}
-                {isApiMode() && !canSetProcedureTrainingTier ? (
-                  <span className="block pt-1 text-xs">Ask a lead or supervisor to change priority — it controls the training matrix tier.</span>
-                ) : null}
-              </p>
+              <div className="mt-3 space-y-2 text-sm text-ds-muted">
+                <p>
+                  <span className="font-semibold text-ds-foreground">Training priority:</span>{" "}
+                  {trainingTierLabel(editTrainingTier)}
+                  {isApiMode() && !canSetProcedureTrainingTier ? (
+                    <span className="block pt-1 text-xs">
+                      Ask a lead or supervisor to change priority — it controls the training matrix tier.
+                    </span>
+                  ) : null}
+                </p>
+                <p>
+                  <span className="font-semibold text-ds-foreground">Procedure tags:</span>{" "}
+                  {editTrackingTags.length
+                    ? editTrackingTags.map((t) => PROCEDURE_TRACKING_TAG_LABELS[t]).join(", ")
+                    : "—"}
+                  {editOnboardingRequired ? (
+                    <span className="ml-2 inline-flex rounded-md bg-violet-100 px-2 py-0.5 text-[11px] font-bold text-violet-900 dark:bg-violet-950/55 dark:text-violet-100">
+                      Onboarding
+                    </span>
+                  ) : null}
+                </p>
+              </div>
             ) : null}
 
             {editing ? (
@@ -1312,6 +1415,46 @@ export function ProceduresApp() {
                   Saved to compliance settings with acknowledgement required. When knowledge verification is on, the matrix
                   stays incomplete until workers finish review, acknowledgment, and the knowledge check.
                 </p>
+                <fieldset className="mt-3 rounded-md border border-ds-border/80 p-3">
+                  <legend className="px-1 text-xs font-semibold uppercase text-ds-muted">Procedure tags</legend>
+                  <p className="mb-2 text-[10px] text-ds-muted">
+                    General, High, Emergency, Routine, and Safety tag this procedure for reporting. Onboarding marks it as
+                    part of leadership&apos;s fully-trained checklist.
+                  </p>
+                  <div className="flex flex-wrap gap-x-3 gap-y-2">
+                    {PROCEDURE_TRACKING_TAG_IDS.map((id) => (
+                      <label key={id} className="inline-flex cursor-pointer items-center gap-1.5 text-sm text-ds-foreground">
+                        <input
+                          type="checkbox"
+                          className="rounded border-ds-border"
+                          checked={editTrackingTags.includes(id)}
+                          onChange={() =>
+                            setEditTrackingTags((prev) =>
+                              prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+                            )
+                          }
+                          disabled={saving || (isApiMode() && !canSetProcedureTrainingTier)}
+                        />
+                        {PROCEDURE_TRACKING_TAG_LABELS[id]}
+                      </label>
+                    ))}
+                  </div>
+                  <label className="mt-3 flex cursor-pointer items-start gap-2 text-sm text-ds-foreground">
+                    <input
+                      type="checkbox"
+                      className="mt-1 rounded border-ds-border"
+                      checked={editOnboardingRequired}
+                      onChange={(e) => setEditOnboardingRequired(e.target.checked)}
+                      disabled={saving || (isApiMode() && !canSetProcedureTrainingTier)}
+                    />
+                    <span>
+                      <span className="font-semibold">Onboarding</span>
+                      <span className="mt-0.5 block text-[10px] text-ds-muted">
+                        Counts toward fully trained when leadership expects this procedure to be complete.
+                      </span>
+                    </span>
+                  </label>
+                </fieldset>
                 {renderStepEditor(editSteps, setEditSteps, `${formId}-edit`)}
                 <button
                   type="button"

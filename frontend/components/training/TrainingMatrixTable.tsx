@@ -48,6 +48,7 @@ import { cellAssignmentStatus } from "@/lib/training/mockData";
 import { assignmentFor } from "@/lib/training/selectors";
 import { TrainingMatrixCell } from "@/components/training/TrainingMatrixCell";
 import { TrainingTierBadge } from "@/components/training/TrainingTierBadge";
+import { PROCEDURE_TRACKING_TAG_LABELS, type ProcedureTrackingTagId } from "@/lib/training/procedureTrackingTags";
 import { dataTableHeadRowClass } from "@/components/ui/DataTable";
 
 function sortPrograms(programs: TrainingProgram[]): TrainingProgram[] {
@@ -109,6 +110,23 @@ export function TrainingMatrixTable({
                 <div className="flex min-w-0 flex-col items-start gap-1.5">
                   <span className="line-clamp-3 text-[11px] font-semibold leading-tight text-ds-foreground">{p.title}</span>
                   <TrainingTierBadge tier={p.tier} />
+                  {p.onboarding_required || (p.tracking_tags?.length ?? 0) > 0 ? (
+                    <div className="flex min-w-0 flex-wrap gap-0.5">
+                      {p.onboarding_required ? (
+                        <span className="rounded bg-violet-100 px-1 py-px text-[8px] font-bold uppercase text-violet-900 dark:bg-violet-950/60 dark:text-violet-100">
+                          Onboarding
+                        </span>
+                      ) : null}
+                      {(p.tracking_tags ?? []).map((t) => (
+                        <span
+                          key={t}
+                          className="rounded border border-ds-border bg-ds-secondary/50 px-1 py-px text-[8px] font-semibold text-ds-muted"
+                        >
+                          {PROCEDURE_TRACKING_TAG_LABELS[t as ProcedureTrackingTagId] ?? t}
+                        </span>
+                      ))}
+                    </div>
+                  ) : null}
                 </div>
               </th>
             ))}

@@ -1,5 +1,5 @@
 import { addDaysToIso, monthGrid, mondayOfCalendarWeek, parseLocalDate, shiftHours } from "./calendar";
-import { computeRoP4BandCoverageGaps } from "./staffing-intelligence";
+import { computeRoBandCoverageGaps } from "./staffing-intelligence";
 import type { ScheduleAlerts, Shift, WorkforceSummary, Worker, ScheduleSettings } from "./types";
 
 function shiftsForMonth(shifts: Shift[], year: number, monthIndex: number): Shift[] {
@@ -15,13 +15,22 @@ export function computeAlerts(
   year: number,
   monthIndex: number,
   _settings: { staffing: { requireSupervisor: boolean } },
+  options?: { roCoverageDates?: string[] },
 ): ScheduleAlerts {
   const inMonth = shiftsForMonth(shifts, year, monthIndex);
   const workersById = new Map(workers.map((w) => [w.id, w]));
-  const dates = monthGrid(year, monthIndex)
-    .filter((c) => c.inMonth)
-    .map((c) => c.date);
-  const { gapCount: roP4BandGapCount } = computeRoP4BandCoverageGaps(inMonth, workersById, dates);
+  const roDates =
+    options?.roCoverageDates && options.roCoverageDates.length > 0
+      ? [...options.roCoverageDates].sort()
+      : monthGrid(year, monthIndex)
+          .filter((c) => c.inMonth)
+          .map((c) => c.date);
+  const roDateSet = new Set(roDates);
+  const shiftsForRo =
+    options?.roCoverageDates && options.roCoverageDates.length > 0
+      ? shifts.filter((s) => roDateSet.has(s.date))
+      : inMonth;
+  const { gapCount: roP4BandGapCount } = computeRoBandCoverageGaps(shiftsForRo, workersById, roDates);
 
   const unassignedShiftCount = inMonth.filter((s) => s.workerId === null).length;
 
