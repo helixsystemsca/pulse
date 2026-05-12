@@ -46,7 +46,7 @@ export function generateDemoAssignmentsForMatrix(
       else if (bucket < 90) status = "revision_pending";
       else status = "expired";
 
-      // Mandatory/high risk more likely assigned.
+      // Routines / high risk more likely assigned.
       // (We no longer generate \"not_assigned\" here; keep this branch in case we reintroduce it.)
 
       const assigned_date = isoDaysAgo(45 + (h % 25));

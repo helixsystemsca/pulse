@@ -13,7 +13,7 @@ const tierClass: Record<TrainingTier, string> = {
 };
 
 const tierLabel: Record<TrainingTier, string> = {
-  mandatory: "Mandatory",
+  mandatory: "Routines",
   high_risk: "High risk",
   general: "General",
 };
@@ -25,7 +25,7 @@ export function TrainingTierBadge({
 }: {
   tier: TrainingTier;
   className?: string;
-  /** When set, overrides the default matrix copy (e.g. Mandatory / High / Low). */
+  /** When set, overrides the default matrix copy (e.g. Routines / High risk / General). */
   label?: string;
 }) {
   return (

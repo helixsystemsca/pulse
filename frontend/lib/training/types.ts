@@ -3,6 +3,7 @@
  * Designed for future HR / SSO / SAP integrations (not wired yet).
  */
 
+/** API / data tier key; UI labels the `mandatory` tier as "Routines". */
 export type TrainingTier = "mandatory" | "high_risk" | "general";
 
 /** Company-admin matrix display override (stored on assignment row). `force_na` = not applicable. */
@@ -35,7 +36,7 @@ export type TrainingProgram = {
   requires_knowledge_verification?: boolean;
   /** Months until certification expires after completion; null = non-expiring */
   expiry_months: number | null;
-  /** Optional compliance window: mandatory items should be complete within this many days of assignment. */
+  /** Optional compliance window: routines-tier items should be complete within this many days of assignment. */
   due_within_days?: number | null;
   active: boolean;
 };

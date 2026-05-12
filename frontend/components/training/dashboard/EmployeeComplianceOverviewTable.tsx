@@ -47,7 +47,7 @@ export function EmployeeComplianceOverviewTable({
                 </>
               ) : null}
               <th className="px-3 py-2.5 text-[11px] font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                Mandatory
+                Routines
               </th>
               <th className="px-3 py-2.5 text-[11px] font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
                 Expiring

@@ -47,6 +47,8 @@ type Props = {
   cellDate: string;
   /** Drop assignment palette entries onto a worker row (workforce / work). */
   onPaletteDrop?: (workerId: string, date: string, payload: PaletteDragPayload) => void;
+  /** Remove an operational badge from this worker-day (overlay + any shifts that carry the code). */
+  onRemoveOperationalBadge?: (workerId: string, date: string, code: string) => void;
   /** Supervisors/managers: tap worker name to mark sick / DNS (stored locally until telemetry). */
   onOpenWorkerAttendance?: (payload: { workerId: string; date: string; label: string }) => void;
   /** Outer scroll area (month vs week cell height). */
@@ -93,6 +95,7 @@ export function ScheduleCompactCellRows({
   onShiftDragSessionEnd,
   cellDate,
   onPaletteDrop,
+  onRemoveOperationalBadge,
   onOpenWorkerAttendance,
   scrollClassName = "max-h-[11rem] flex-1 flex-col gap-1 overflow-y-auto px-1 pb-2 pt-1",
   chipDetailLevel = "full",
@@ -165,6 +168,9 @@ export function ScheduleCompactCellRows({
           s.workerId && s.shiftKind !== "project_task" && (s.eventType === "work" || s.eventType === "training")
             ? s.workerId
             : null;
+
+        const canEditOpBadges =
+          Boolean(paletteWorkerId && onRemoveOperationalBadge && !scheduleDragLock && !anyAuto);
 
         const opBadges = [
           ...new Set(
@@ -289,6 +295,17 @@ export function ScheduleCompactCellRows({
                           {bld.code}
                         </span>
                       ) : null}
+                      {opBadges.length > 0 ? (
+                        <OperationalBadgeStack
+                          codes={opBadges}
+                          maxVisible={6}
+                          onRemove={
+                            canEditOpBadges && paletteWorkerId
+                              ? (code) => onRemoveOperationalBadge?.(paletteWorkerId, cellDate, code)
+                              : undefined
+                          }
+                        />
+                      ) : null}
                       <span
                         className={cn(
                           "ml-auto inline-flex shrink-0 items-center rounded px-1 py-px text-[9px] font-bold leading-none tabular-nums tracking-tight",
@@ -302,18 +319,13 @@ export function ScheduleCompactCellRows({
                       </span>
                     </span>
                   </div>
-                  {opBadges.length > 0 ? (
-                    <div className="mt-0.5">
-                      <OperationalBadgeStack codes={opBadges} maxVisible={6} />
-                    </div>
-                  ) : null}
                   {row.shifts.length > 1 ? (
                     <p className="mt-0.5 truncate text-[9px] opacity-75">{row.shifts.length} blocks</p>
                   ) : null}
                 </>
               ) : (
                 <>
-                  <div className="flex min-w-0 items-center gap-1">
+                  <div className="flex min-w-0 flex-wrap items-center gap-1">
                     {s.shiftCode && s.shiftKind !== "project_task" ? (
                       <span
                         className={cn(
@@ -349,32 +361,39 @@ export function ScheduleCompactCellRows({
                         {attendanceMark === "dns" ? "DNS" : "Sick"}
                       </span>
                     ) : null}
-                  </div>
-
-                  <div className="mt-0.5 flex w-full min-w-0 flex-wrap items-center justify-end gap-1">
-                    {certUnion.length ? <ScheduleShiftCertChips shift={s} size="day" requiredOverride={certUnion} /> : null}
-                    {bld ? (
-                      <span className="inline-flex shrink-0 items-center rounded-md border border-pulseShell-border bg-pulseShell-elevated/40 px-1.5 py-0.5 text-[10px] font-bold leading-none text-ds-muted">
-                        {bld.code}
+                    <span className="ml-auto flex min-w-0 shrink-0 flex-wrap items-center justify-end gap-1">
+                      {certUnion.length ? (
+                        <ScheduleShiftCertChips shift={s} size="day" requiredOverride={certUnion} />
+                      ) : null}
+                      {bld ? (
+                        <span className="inline-flex shrink-0 items-center rounded-md border border-pulseShell-border bg-pulseShell-elevated/40 px-1.5 py-0.5 text-[10px] font-bold leading-none text-ds-muted">
+                          {bld.code}
+                        </span>
+                      ) : null}
+                      {opBadges.length > 0 ? (
+                        <OperationalBadgeStack
+                          codes={opBadges}
+                          maxVisible={8}
+                          onRemove={
+                            canEditOpBadges && paletteWorkerId
+                              ? (code) => onRemoveOperationalBadge?.(paletteWorkerId, cellDate, code)
+                              : undefined
+                          }
+                        />
+                      ) : null}
+                      <span
+                        className={cn(
+                          "inline-flex shrink-0 items-center rounded-md px-1.5 py-0.5 text-[10px] font-bold leading-none tabular-nums tracking-tight",
+                          rowCodeBadgeTone ??
+                            (st
+                              ? `${st.bg} ${st.border} ${st.text} border`
+                              : "border border-pulseShell-border bg-pulseShell-elevated text-ds-foreground"),
+                        )}
+                      >
+                        {row.code}
                       </span>
-                    ) : null}
-                    <span
-                      className={cn(
-                        "ml-auto inline-flex shrink-0 items-center rounded-md px-1.5 py-0.5 text-[10px] font-bold leading-none tabular-nums tracking-tight",
-                        rowCodeBadgeTone ??
-                          (st
-                            ? `${st.bg} ${st.border} ${st.text} border`
-                            : "border border-pulseShell-border bg-pulseShell-elevated text-ds-foreground"),
-                      )}
-                    >
-                      {row.code}
                     </span>
                   </div>
-                  {opBadges.length > 0 ? (
-                    <div className="mt-0.5">
-                      <OperationalBadgeStack codes={opBadges} maxVisible={8} />
-                    </div>
-                  ) : null}
                   {row.shifts.length > 1 ? (
                     <p className="mt-1 truncate text-[10px] opacity-80">{row.shifts.length} blocks — tap to edit first</p>
                   ) : s.shiftKind === "project_task" && s.projectName ? (

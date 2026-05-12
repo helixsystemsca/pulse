@@ -151,7 +151,7 @@ export function TrainingEmployeeSelfView() {
         <div>
           <h3 className="text-[11px] font-bold uppercase tracking-wide text-ds-muted">Your training matrix</h3>
           <p className="mt-1 text-xs text-ds-muted">
-            One row (you) × procedures. Teal = complete · Yellow = expiring soon · Pink = mandatory gap · Peach = optional /
+            One row (you) × procedures. Teal = complete · Yellow = expiring soon · Pink = routines gap · Peach = optional /
             general gap.
           </p>
         </div>

@@ -40,7 +40,7 @@ function rowAlert(
         programId: program.id,
         title: program.title,
         priority: 2,
-        label: "Mandatory training not assigned",
+        label: "Routines training not assigned",
       };
     }
     if (eff === "expired") {
@@ -48,7 +48,7 @@ function rowAlert(
         programId: program.id,
         title: program.title,
         priority: 2,
-        label: "Mandatory certification expired",
+        label: "Routines certification expired",
       };
     }
     if (eff === "pending" && assignment?.due_date) {
@@ -59,7 +59,7 @@ function rowAlert(
           programId: program.id,
           title: program.title,
           priority: 2,
-          label: "Mandatory onboarding overdue",
+          label: "Routines onboarding overdue",
         };
       }
     }

@@ -97,7 +97,7 @@ export type ComplianceSummary = {
 };
 
 export type ComplianceRadialSummary = {
-  /** Total mandatory assignment slots (employees × active mandatory programs). */
+  /** Total routines-tier assignment slots (employees × active routines programs). */
   totalSlots: number;
   /** Slots excluded from compliance % (e.g. admin-marked not applicable). */
   skippedSlots: number;
@@ -116,7 +116,7 @@ function isHighRisk(p: TrainingProgram): boolean {
   return p.tier === "high_risk" && p.active;
 }
 
-/** Fully compliant: all active mandatory programs assigned & completed & not expired/revision pending/expiring treated as warn not fail — spec says "fully compliant" = strict: completed + not expired + no revision pending */
+/** Fully compliant: all active routines-tier programs assigned & completed & not expired/revision pending/expiring treated as warn not fail — spec says "fully compliant" = strict: completed + not expired + no revision pending */
 export function computeComplianceSummary(
   employees: TrainingEmployee[],
   programs: TrainingProgram[],
@@ -184,14 +184,14 @@ export function computeComplianceSummary(
 }
 
 /**
- * Summary for "radial compliance" UI: counts mandatory program slots as completed / expiring soon / missing.
+ * Summary for "radial compliance" UI: counts routines-tier program slots as completed / expiring soon / missing.
  * - completed: `completed`
  * - expiringSoon: `expiring_soon`
  * - missing: other counted states (`expired`, `pending`, `not_assigned`, `revision_pending`, etc.)
  * - `not_applicable` slots are excluded from those three buckets and from the compliance percent denominator (`skippedSlots`).
  *
  * Notes:
- * - This is intentionally scoped to active mandatory programs; other tiers can be added later.
+ * - This is intentionally scoped to active routines-tier programs; other tiers can be added later.
  * - When `trustAssignmentStatus` is true, server status is treated as authoritative and `acks` may be empty.
  */
 export function computeComplianceRadialSummary(

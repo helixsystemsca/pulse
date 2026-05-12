@@ -63,6 +63,7 @@ type Props = {
   onShiftDragSessionEnd: () => void;
   onOpenWorkerAttendance?: (payload: { workerId: string; date: string; label: string }) => void;
   onPaletteDrop?: (workerId: string, date: string, payload: PaletteDragPayload) => void;
+  onRemoveOperationalBadge?: (workerId: string, date: string, code: string) => void;
 };
 
 export function ScheduleWeekView({
@@ -94,6 +95,7 @@ export function ScheduleWeekView({
   onShiftDragSessionEnd,
   onOpenWorkerAttendance,
   onPaletteDrop,
+  onRemoveOperationalBadge,
 }: Props) {
   const [dragOverDate, setDragOverDate] = useState<string | null>(null);
   const [shakeDate, setShakeDate] = useState<string | null>(null);
@@ -327,6 +329,7 @@ export function ScheduleWeekView({
                 onShiftDragSessionEnd={onShiftDragSessionEnd}
                 cellDate={date}
                 onPaletteDrop={onPaletteDrop}
+                onRemoveOperationalBadge={onRemoveOperationalBadge}
                 onOpenWorkerAttendance={onOpenWorkerAttendance}
                 chipDetailLevel="summary"
                 scrollClassName="flex min-h-0 flex-1 flex-col gap-0.5 px-1 pb-1.5 pt-0.5"

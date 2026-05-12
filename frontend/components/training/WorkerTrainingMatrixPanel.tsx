@@ -21,7 +21,7 @@ import {
 const TIER_ORDER: TrainingProgram["tier"][] = ["mandatory", "high_risk", "general"];
 
 const TIER_HEADING: Record<TrainingProgram["tier"], string> = {
-  mandatory: "Mandatory",
+  mandatory: "Routines",
   high_risk: "High risk",
   general: "General",
 };

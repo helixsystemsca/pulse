@@ -148,7 +148,7 @@ def upgrade() -> None:
         (
             "ach_fully_certified",
             "Fully Certified",
-            "Maintain active completion across all assigned mandatory training.",
+            "Maintain active completion across all assigned routines training.",
             "badge-check",
             "compliance",
             "fully_certified",

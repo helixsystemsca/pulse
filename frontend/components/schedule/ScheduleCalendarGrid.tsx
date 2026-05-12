@@ -63,6 +63,7 @@ type Props = {
   onShiftDragSessionEnd: () => void;
   onOpenWorkerAttendance?: (payload: { workerId: string; date: string; label: string }) => void;
   onPaletteDrop?: (workerId: string, date: string, payload: PaletteDragPayload) => void;
+  onRemoveOperationalBadge?: (workerId: string, date: string, code: string) => void;
 };
 
 export function ScheduleCalendarGrid({
@@ -93,6 +94,7 @@ export function ScheduleCalendarGrid({
   onShiftDragSessionEnd,
   onOpenWorkerAttendance,
   onPaletteDrop,
+  onRemoveOperationalBadge,
   projectBarItems = null,
 }: Props) {
   const cells = useMemo(() => monthGrid(year, monthIndex), [year, monthIndex]);
@@ -348,6 +350,7 @@ export function ScheduleCalendarGrid({
                 onShiftDragSessionEnd={onShiftDragSessionEnd}
                 cellDate={c.date}
                 onPaletteDrop={onPaletteDrop}
+                onRemoveOperationalBadge={onRemoveOperationalBadge}
                 onOpenWorkerAttendance={onOpenWorkerAttendance}
                 chipDetailLevel="summary"
                 scrollClassName="flex min-h-0 flex-1 flex-col gap-0.5 px-1 pb-1.5 pt-0.5"

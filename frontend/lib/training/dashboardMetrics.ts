@@ -99,7 +99,7 @@ export function groupProgramsForMatrix(programs: TrainingProgram[]): MatrixCateg
   }
   const order: MatrixCategoryId[] = ["mandatory", "equipment", "seasonal", "general"];
   const labels: Record<MatrixCategoryId, string> = {
-    mandatory: "Mandatory",
+    mandatory: "Routines",
     equipment: "Equipment & high risk",
     seasonal: "Seasonal",
     general: "General",
@@ -439,7 +439,7 @@ function drawerSectionForProgram(p: TrainingProgram): DrawerTrainingLine["sectio
   return "general";
 }
 
-/** One row per active program; UI groups into Mandatory / Equipment / Seasonal / SOP & general / Quiz / Expiring. */
+/** One row per active program; UI groups into Routines / Equipment / Seasonal / SOP & general / Quiz / Expiring. */
 export function buildEmployeeDrawerLines(
   employeeId: string,
   programs: TrainingProgram[],

@@ -42,7 +42,7 @@ function sortPrograms(programs: TrainingProgram[]): TrainingProgram[] {
 }
 
 const GROUP_LABEL: Record<ReturnType<typeof matrixCategoryForProgram>, string> = {
-  mandatory: "Mandatory",
+  mandatory: "Routines",
   equipment: "Equipment",
   seasonal: "Seasonal",
   general: "General",

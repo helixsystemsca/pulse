@@ -2,7 +2,7 @@ import type { TrainingTier } from "./types";
 
 export type ProcedureComplianceConfig = {
   tier: TrainingTier;
-  /** Optional: mandatory completion window in days (used for overdue notifications). */
+  /** Optional: routines completion window in days (used for overdue notifications). */
   due_within_days: number | null;
   /** Whether to treat as needing acknowledgement when revised. */
   requires_acknowledgement: boolean;

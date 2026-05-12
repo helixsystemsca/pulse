@@ -18,7 +18,7 @@ export type ComplianceRadialProps = {
   size?: "sm" | "md" | "lg";
   /**
    * `overall` — three segments (completed / expiring / missing), center = compliance including expiring-soon.
-   * `strict_mandatory` — two segments (fully complete vs not), center = % of mandatory slots marked completed only.
+   * `strict_mandatory` — two segments (fully complete vs not), center = % of routines-tier slots marked completed only.
    */
   mode?: "overall" | "strict_mandatory";
 };
@@ -74,7 +74,7 @@ export function ComplianceRadial({
           { key: "missing", value: segMissing, gradId: gMiss },
         ].filter((s) => s.value > 0);
 
-  /** Arc denominator: full matrix uses total slot grid; strict chart uses counted mandatory slots only. */
+  /** Arc denominator: full matrix uses total slot grid; strict chart uses counted routines-tier slots only. */
   const arcTotal = mode === "strict_mandatory" ? Math.max(0, countedMandatory) : total;
 
   /** Tiny angular gaps between segments for a crisp segmented donut */
@@ -116,7 +116,7 @@ export function ComplianceRadial({
         className="block overflow-visible"
         aria-label={
           mode === "strict_mandatory"
-            ? `Mandatory procedures fully complete ${pctLabel}`
+            ? `Routines fully complete ${pctLabel}`
             : `Overall compliance ${pctLabel}`
         }
         role="img"
@@ -211,7 +211,7 @@ export function ComplianceRadial({
             >
               {mode === "strict_mandatory" ? (
                 <>
-                  <span className="leading-[1.05]">Mandatory</span>
+                  <span className="leading-[1.05]">Routines</span>
                   <span className="leading-[1.05]">Complete</span>
                 </>
               ) : (
@@ -223,7 +223,7 @@ export function ComplianceRadial({
             </div>
           ) : (
             <p className={cn("mt-1 max-w-[9.5rem] text-center font-semibold uppercase leading-snug tracking-[0.14em] text-ds-muted", titleSize)}>
-              {mode === "strict_mandatory" ? "Mandatory complete" : "Overall compliance"}
+              {mode === "strict_mandatory" ? "Routines complete" : "Overall compliance"}
             </p>
           )}
         </div>

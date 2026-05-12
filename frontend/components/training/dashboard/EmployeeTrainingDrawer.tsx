@@ -141,7 +141,7 @@ export function EmployeeTrainingDrawer({
         </div>
 
         <div className="min-h-0 flex-1 space-y-6 overflow-y-auto px-5 py-4">
-          <Section title="Mandatory training" lines={bySection.mandatory} />
+          <Section title="Routines" lines={bySection.mandatory} />
           <Section title="Equipment certifications" lines={bySection.equipment} />
           <Section title="Seasonal training" lines={bySection.seasonal} />
           <Section title="SOP read & sign" lines={bySection.general} />

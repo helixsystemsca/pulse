@@ -11,7 +11,7 @@ import { cn } from "@/lib/cn";
 const COMPLIANCE_OPTIONS: { value: DashboardComplianceFilter; label: string }[] = [
   { value: "all", label: "All Statuses" },
   { value: "compliant", label: "Compliant" },
-  { value: "missing_mandatory", label: "Missing Mandatory" },
+  { value: "missing_mandatory", label: "Missing Routines" },
   { value: "expired", label: "Expired" },
   { value: "in_progress", label: "In Progress" },
 ];

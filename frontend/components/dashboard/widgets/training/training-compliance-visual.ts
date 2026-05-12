@@ -5,7 +5,7 @@ export const TC_COLORS = {
   missing: { from: "#FF4D6D", to: "#FF5A7A", glow: "rgba(255,90,122,0.45)" },
 } as const;
 
-/** Second radial: strict “fully complete” mandatory slots (blue / indigo + slate remainder). */
+/** Second radial: strict “fully complete” routines-tier slots (blue / indigo + slate remainder). */
 export const TC_COLORS_STRICT = {
   complete: { from: "#2563EB", to: "#6366F1", glow: "rgba(99,102,241,0.38)" },
   remainder: { from: "#94A3B8", to: "#64748B", glow: "rgba(100,116,139,0.28)" },

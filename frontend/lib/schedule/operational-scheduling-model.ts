@@ -47,6 +47,8 @@ export type OperationalBadgeDefinition = {
   group: OperationalBadgeGroup;
   /** Short hover detail */
   detail?: string;
+  /** Compact text in calendar chips (full code stays canonical in data). */
+  chipLabel?: string;
 };
 
 export const OPERATIONAL_BADGE_REGISTRY: Record<string, OperationalBadgeDefinition> = {
@@ -64,9 +66,30 @@ export const OPERATIONAL_BADGE_REGISTRY: Record<string, OperationalBadgeDefiniti
   OT: { code: "OT", label: "Overtime", group: "workflow", detail: "Overtime extension" },
   LEAD: { code: "LEAD", label: "Lead", group: "workflow", detail: "Lead responsibility" },
   RELIEF: { code: "RELIEF", label: "Relief", group: "workflow", detail: "Relief coverage" },
-  COVERAGE: { code: "COVERAGE", label: "Coverage", group: "workflow", detail: "Extra coverage" },
-  PROJECT: { code: "PROJECT", label: "Project", group: "assignment", detail: "Project focus" },
+  COVERAGE: {
+    code: "COVERAGE",
+    label: "Coverage",
+    group: "workflow",
+    detail: "Extra coverage",
+    chipLabel: "COV",
+  },
+  PROJECT: {
+    code: "PROJECT",
+    label: "Project",
+    group: "assignment",
+    detail: "Project focus",
+    chipLabel: "PROJ",
+  },
 };
+
+/** Label shown on small schedule chips; falls back to a short slice of the code. */
+export function operationalBadgeChipLabel(code: string): string {
+  const u = code.trim().toUpperCase();
+  if (!u) return code;
+  const def = OPERATIONAL_BADGE_REGISTRY[u];
+  if (def?.chipLabel) return def.chipLabel;
+  return u.length > 5 ? u.slice(0, 4) : u;
+}
 
 export type AvailabilityCellKind = "available" | "unavailable" | "restricted";
 

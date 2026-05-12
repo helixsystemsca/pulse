@@ -89,7 +89,7 @@ function parseKeywordCsv(csv: string): string[] {
 
 /** Maps to training matrix tiers (`PulseProcedureComplianceSettings.tier`). */
 const PROCEDURE_TRAINING_PRIORITY_OPTIONS: { value: TrainingTier; label: string }[] = [
-  { value: "mandatory", label: "Mandatory" },
+  { value: "mandatory", label: "Routines" },
   { value: "high_risk", label: "High" },
   { value: "general", label: "Low" },
 ];
@@ -100,7 +100,7 @@ function trainingTierLabel(tier: TrainingTier): string {
 
 const OTHER_LOCATION_BUCKET = "Other";
 
-/** Lower rank = earlier in library (mandatory before low). */
+/** Lower rank = earlier in library (routines tier before low). */
 function trainingTierSortRank(tier: TrainingTier): number {
   switch (tier) {
     case "mandatory":
@@ -1117,7 +1117,7 @@ export function ProceduresApp() {
                 ))}
               </select>
               <p className="mt-1 text-[10px] text-ds-muted">
-                Drives Mandatory / High risk / General columns on the team training matrix. Workers record completion with{" "}
+                Drives Routines / High risk / General columns on the team training matrix. Workers record completion with{" "}
                 <span className="font-semibold text-ds-foreground">Complete procedure</span> (unless knowledge verification is on).
               </p>
               {renderStepEditor(draftSteps, setDraftSteps, `${formId}-new`)}

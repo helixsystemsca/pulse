@@ -91,9 +91,9 @@ const STATUS_OPTIONS: Array<{ value: TrainingAssignment["status"] | "all"; label
   { value: "not_applicable", label: "Not Applicable" },
 ];
 
-/** Matrix tab: one tier at a time (default Mandatory) — no "all" columns. */
+/** Matrix tab: one tier at a time (default Routines tier) — no "all" columns. */
 const MATRIX_TIER_OPTIONS: Array<{ value: TrainingTier; label: string }> = [
-  { value: "mandatory", label: "Mandatory" },
+  { value: "mandatory", label: "Routines" },
   { value: "high_risk", label: "High Risk" },
   { value: "general", label: "General" },
 ];
@@ -546,7 +546,7 @@ export function TrainingLeadershipDashboard() {
           <div>
             <h2 className="text-lg font-bold tracking-tight text-slate-900 dark:text-slate-50">Training compliance</h2>
             <p className="mt-1 max-w-3xl text-sm text-slate-600 dark:text-slate-300">
-              Operations dashboard for workforce readiness — mandatory onboarding, high-risk coverage, and expiries.
+              Operations dashboard for workforce readiness — routines onboarding, high-risk coverage, and expiries.
             </p>
           </div>
           <Button
@@ -609,7 +609,7 @@ export function TrainingLeadershipDashboard() {
               <KPIStatCard label="Total employees" value={kpis.totalEmployees} icon={Users} accent="neutral" />
               <KPIStatCard label="Fully compliant" value={kpis.fullyCompliant} icon={ShieldCheck} accent="success" />
               <KPIStatCard
-                label="Missing mandatory"
+                label="Missing Routines"
                 value={kpis.missingMandatoryEmployees}
                 icon={AlertTriangle}
                 accent="danger"
@@ -827,7 +827,7 @@ function TierConfigModal({
           <div>
             <p className="text-base font-semibold text-ds-foreground">Procedure compliance configuration</p>
             <p className="mt-1 text-sm font-medium text-ds-muted">
-              Set how each procedure counts for training (Mandatory / High risk / General).
+              Set how each procedure counts for training (Routines / High risk / General).
               {useServerPersistence ? " Changes save to the server." : " Stored in this browser until the API is used."}
             </p>
           </div>
@@ -854,7 +854,7 @@ function TierConfigModal({
                   <th className="px-3 py-2 text-left text-xs font-bold uppercase tracking-wide text-ds-muted">Procedure</th>
                   <th className="px-3 py-2 text-left text-xs font-bold uppercase tracking-wide text-ds-muted">Tier</th>
                   <th className="px-3 py-2 text-left text-xs font-bold uppercase tracking-wide text-ds-muted">
-                    Mandatory window (days)
+                    Routines window (days)
                   </th>
                   <th className="px-3 py-2 text-left text-xs font-bold uppercase tracking-wide text-ds-muted">
                     Requires acknowledgement
@@ -898,7 +898,7 @@ function TierConfigModal({
                           }}
                         >
                           <option value="general">General</option>
-                          <option value="mandatory">Mandatory</option>
+                          <option value="mandatory">Routines</option>
                           <option value="high_risk">High risk</option>
                         </select>
                       </td>

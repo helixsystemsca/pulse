@@ -190,6 +190,7 @@ export function ScheduleApp() {
   const setWorkers = useScheduleStore((s) => s.setWorkers);
   const deploymentBadgeOverlays = useScheduleStore((s) => s.deploymentBadgeOverlays);
   const addDeploymentBadge = useScheduleStore((s) => s.addDeploymentBadge);
+  const removeDeploymentBadge = useScheduleStore((s) => s.removeDeploymentBadge);
 
   const placementRoleChoices = useMemo(
     () => resolvePlacementRoles(roles, settings.placementPanelRoleIds),
@@ -1000,6 +1001,22 @@ export function ScheduleApp() {
     ],
   );
 
+  const handleRemoveOperationalBadge = useCallback(
+    (workerId: string, targetDate: string, code: string) => {
+      const u = code.trim().toUpperCase();
+      if (!u) return;
+      removeDeploymentBadge(workerId, targetDate, u);
+      for (const s of shifts) {
+        if (s.workerId !== workerId || s.date !== targetDate) continue;
+        if (s.shiftKind === "project_task" || (s.eventType !== "work" && s.eventType !== "training")) continue;
+        const badges = (s.operationalBadges ?? []).map((x) => x.trim().toUpperCase()).filter(Boolean);
+        if (!badges.includes(u)) continue;
+        updateShift(s.id, { operationalBadges: badges.filter((b) => b !== u) });
+      }
+    },
+    [removeDeploymentBadge, shifts, updateShift],
+  );
+
   const handlePaletteDrop = useCallback(
     (workerId: string, targetDate: string, payload: PaletteDragPayload) => {
       setDragSession(null);
@@ -1459,6 +1476,7 @@ export function ScheduleApp() {
                       canPublishSchedule ? (p) => setWorkerAttendanceModal(p) : undefined
                     }
                     onPaletteDrop={handlePaletteDrop}
+                    onRemoveOperationalBadge={handleRemoveOperationalBadge}
                   />
                 ) : null}
                 {timeScale === "month" ? (
@@ -1499,6 +1517,7 @@ export function ScheduleApp() {
                       canPublishSchedule ? (p) => setWorkerAttendanceModal(p) : undefined
                     }
                     onPaletteDrop={handlePaletteDrop}
+                    onRemoveOperationalBadge={handleRemoveOperationalBadge}
                   />
                 ) : null}
                       </div>
