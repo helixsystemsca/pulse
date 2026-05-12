@@ -1,10 +1,18 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { CheckCircle2, ClipboardList, Eye, Pencil, Trash2 } from "lucide-react";
-import type { ReactNode } from "react";
+import {
+  CheckCircle2,
+  ClipboardList,
+  Eye,
+  Inbox,
+  Pencil,
+  Search,
+  Shield,
+  Trash2,
+  Truck,
+} from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { PageHeader } from "@/components/ui/PageHeader";
 import { useInspectionsLogsStore } from "@/hooks/useInspectionsLogsStore";
 import type {
   EntryRecord,
@@ -15,35 +23,32 @@ import type {
   LogTemplate,
 } from "@/lib/inspectionsLogsTypes";
 import { readSession } from "@/lib/pulse-session";
-import { CreateDropdown } from "./CreateDropdown";
 import { ScrollReveal } from "@/components/motion/ScrollReveal";
 import { InspectionBuilder } from "./InspectionBuilder";
 import { LogBuilder } from "./LogBuilder";
 import { cn } from "@/lib/cn";
 import { buttonVariants } from "@/styles/button-variants";
+import { DataTableCard, dataTableBodyRow, dataTableHeadRowClass } from "@/components/ui/DataTable";
+import { dsInputClass } from "@/components/ui/ds-form-classes";
+import { StatusBadge } from "@/components/ui/StatusBadge";
+import { Card } from "@/components/pulse/Card";
+import { MetricCard } from "@/components/ui/MetricCard";
+import {
+  InspectionQuickInspectionCard,
+  InspectionsLogsHero,
+  InspectionsLogsMetricsInspections,
+  InspectionsLogsMetricsLogs,
+  INSPECTIONS_OP_HERO_SHELL,
+} from "./InspectionsLogsChrome";
 import {
   VehicleInspectionSheet,
   type VehicleInspectionArchivePayload,
 } from "@/components/inspections/VehicleInspectionSheet";
 import { HarnessInspectionForm } from "@/components/compliance/HarnessInspectionForm";
 
-const TABLE_WRAP =
-  "mt-6 overflow-hidden rounded-md border border-ds-border bg-white shadow-sm dark:bg-ds-secondary";
-const TH =
-  "bg-ds-primary px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-ds-muted";
-const TD = "bg-white px-4 py-3 text-sm text-ds-foreground dark:bg-ds-secondary";
-const ROW =
-  "ds-table-row-hover border-t border-ds-border bg-white transition-colors dark:bg-ds-secondary";
-const LINKISH =
-  "ds-link text-xs font-semibold disabled:opacity-40";
-
-/** Match schedule “Show” segmented control (`ScheduleApp` workers/projects/combined). */
-const SEGMENT_TRACK =
-  "flex flex-wrap rounded-md border border-pulseShell-border bg-pulseShell-surface p-1 shadow-[var(--pulse-shell-shadow)]";
-const SEGMENT_ACTIVE =
-  "bg-[var(--pulse-segment-active-bg)] text-[var(--pulse-segment-active-fg)] shadow-sm ring-1 ring-[color-mix(in_srgb,var(--ds-accent)_28%,transparent)] dark:ring-sky-400/30";
-const SEGMENT_IDLE =
-  "text-gray-500 hover:bg-ds-interactive-hover-strong hover:text-gray-900 dark:text-slate-400 dark:hover:bg-ds-interactive-hover dark:hover:text-slate-100";
+const TH = "px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-ds-muted";
+const TD = "px-4 py-3 text-sm text-ds-foreground";
+const LINKISH = "ds-link text-xs font-semibold disabled:opacity-40";
 
 const ARCHIVE_ROLE_TAGS = [
   { id: "lead", label: "Lead" },
@@ -72,8 +77,33 @@ function formatWhen(iso: string | null): string {
   });
 }
 
-function BtnRow({ children }: { children: ReactNode }) {
-  return <div className="flex flex-wrap items-center gap-2">{children}</div>;
+function isSameLocalDay(iso: string): boolean {
+  const d = new Date(iso);
+  const now = new Date();
+  return (
+    d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate()
+  );
+}
+
+function formatRelativeWhen(iso: string | null): string {
+  if (!iso) return "—";
+  const then = new Date(iso).getTime();
+  const now = Date.now();
+  const diffSec = Math.round((now - then) / 1000);
+  if (diffSec < 45) return "Just now";
+  if (diffSec < 3600) return `${Math.floor(diffSec / 60)}m ago`;
+  if (diffSec < 86400) return `${Math.floor(diffSec / 3600)}h ago`;
+  if (diffSec < 86400 * 7) return `${Math.floor(diffSec / 86400)}d ago`;
+  return formatWhen(iso);
+}
+
+function userInitials(userId: string | null | undefined): string {
+  if (!userId) return "—";
+  const local = userId.includes("@") ? userId.split("@")[0]! : userId;
+  const parts = local.replace(/[._-]+/g, " ").trim().split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) return (parts[0]![0]! + parts[1]![0]!).toUpperCase();
+  if (local.length >= 2) return local.slice(0, 2).toUpperCase();
+  return local.slice(0, 1).toUpperCase() || "?";
 }
 
 export function InspectionsLogsApp() {
@@ -100,6 +130,47 @@ export function InspectionsLogsApp() {
     [store.entries],
   );
   const logEntries = useMemo(() => store.entries.filter((e) => e.template_type === "log"), [store.entries]);
+
+  const [inspectTemplateQuery, setInspectTemplateQuery] = useState("");
+  const [logTemplateQuery, setLogTemplateQuery] = useState("");
+
+  const filteredInspectionTemplates = useMemo(() => {
+    const q = inspectTemplateQuery.trim().toLowerCase();
+    if (!q) return store.inspectionTemplates;
+    return store.inspectionTemplates.filter(
+      (t) =>
+        t.name.toLowerCase().includes(q) ||
+        (t.description ?? "").toLowerCase().includes(q) ||
+        (t.frequency ?? "").toLowerCase().includes(q),
+    );
+  }, [store.inspectionTemplates, inspectTemplateQuery]);
+
+  const filteredLogTemplates = useMemo(() => {
+    const q = logTemplateQuery.trim().toLowerCase();
+    if (!q) return store.logTemplates;
+    return store.logTemplates.filter(
+      (t) => t.name.toLowerCase().includes(q) || (t.description ?? "").toLowerCase().includes(q),
+    );
+  }, [store.logTemplates, logTemplateQuery]);
+
+  const completedInspectionTodayCount = useMemo(
+    () => inspectionEntries.filter((e) => isSameLocalDay(e.created_at)).length,
+    [inspectionEntries],
+  );
+
+  const logEntriesTodayCount = useMemo(
+    () => logEntries.filter((e) => isSameLocalDay(e.created_at)).length,
+    [logEntries],
+  );
+
+  const needsAttentionCount = useMemo(() => {
+    return store.inspectionTemplates.filter((t) => !store.lastAt(t.id)).length;
+  }, [store]);
+
+  const goTab = useCallback((t: "inspections" | "logs" | "archive") => {
+    setTab(t);
+    setBuilder(null);
+  }, []);
 
   const openNewInspection = useCallback(() => {
     setTab("inspections");
@@ -146,12 +217,57 @@ export function InspectionsLogsApp() {
   }, [inspectionCompleteFlash]);
 
   return (
-    <div className="space-y-8">
-      <PageHeader
+    <div className="space-y-6">
+      <InspectionsLogsHero
         title="Inspections & Logs"
-        description="Create checklists and log forms, then record completions in one place."
+        subtitle="Build reusable checklists and log forms, run field inspections, and keep a defensible record — all in one operational workspace."
         icon={ClipboardList}
-        actions={<CreateDropdown onNewInspection={openNewInspection} onNewLog={openNewLog} />}
+        tab={tab}
+        onTabChange={goTab}
+        onNewInspectionTemplate={openNewInspection}
+        onNewLogTemplate={openNewLog}
+        onGoArchive={() => goTab("archive")}
+        metadata={
+          tab === "logs" ? (
+            <>
+              <span className="inline-flex items-center rounded-full border border-ds-border/80 bg-ds-primary px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-ds-muted">
+                Logs
+              </span>
+              <span className="hidden text-ds-border sm:inline" aria-hidden>
+                ·
+              </span>
+              <span>{store.logTemplates.length} templates</span>
+              <span className="hidden text-ds-border sm:inline" aria-hidden>
+                ·
+              </span>
+              <span>{logEntries.length} entries</span>
+            </>
+          ) : tab === "archive" ? (
+            <>
+              <span className="inline-flex items-center rounded-full border border-ds-border/80 bg-ds-primary px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-ds-muted">
+                Archive
+              </span>
+              <span className="hidden text-ds-border sm:inline" aria-hidden>
+                ·
+              </span>
+              <span>{vehicleArchive.length} vehicle record{vehicleArchive.length === 1 ? "" : "s"}</span>
+            </>
+          ) : (
+            <>
+              <span className="inline-flex items-center rounded-full border border-ds-border/80 bg-ds-primary px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-ds-muted">
+                Inspections
+              </span>
+              <span className="hidden text-ds-border sm:inline" aria-hidden>
+                ·
+              </span>
+              <span>{store.inspectionTemplates.length} templates</span>
+              <span className="hidden text-ds-border sm:inline" aria-hidden>
+                ·
+              </span>
+              <span>{inspectionEntries.length} completed runs</span>
+            </>
+          )
+        }
       />
 
       <AnimatePresence initial={false}>
@@ -172,46 +288,45 @@ export function InspectionsLogsApp() {
         ) : null}
       </AnimatePresence>
 
-      <ScrollReveal className="space-y-4" y={8}>
-      <nav className={SEGMENT_TRACK} aria-label="Module tabs">
-        <button
-          type="button"
-          className={`rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${
-            tab === "inspections" ? SEGMENT_ACTIVE : SEGMENT_IDLE
-          }`}
-          onClick={() => {
-            setTab("inspections");
-            setBuilder(null);
-          }}
-        >
-          Inspections
-        </button>
-        <button
-          type="button"
-          className={`rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${
-            tab === "logs" ? SEGMENT_ACTIVE : SEGMENT_IDLE
-          }`}
-          onClick={() => {
-            setTab("logs");
-            setBuilder(null);
-          }}
-        >
-          Logs
-        </button>
-        <button
-          type="button"
-          className={`inline-flex max-w-full flex-wrap items-center gap-x-2 gap-y-1 rounded-lg px-3 py-2 text-left text-sm font-semibold transition-colors ${
-            tab === "archive" ? SEGMENT_ACTIVE : SEGMENT_IDLE
-          }`}
-          onClick={() => {
-            setTab("archive");
-            setBuilder(null);
-          }}
-        >
-          <span>Archive</span>
-        </button>
-      </nav>
-      </ScrollReveal>
+      {!builder && tab === "inspections" ? (
+        <ScrollReveal className="space-y-3" y={6}>
+          <InspectionsLogsMetricsInspections
+            templateCount={store.inspectionTemplates.length}
+            completedTotal={inspectionEntries.length}
+            completedToday={completedInspectionTodayCount}
+            needsAttentionCount={needsAttentionCount}
+          />
+        </ScrollReveal>
+      ) : null}
+
+      {!builder && tab === "logs" ? (
+        <ScrollReveal className="space-y-3" y={6}>
+          <InspectionsLogsMetricsLogs
+            templateCount={store.logTemplates.length}
+            entriesTotal={logEntries.length}
+            entriesToday={logEntriesTodayCount}
+          />
+        </ScrollReveal>
+      ) : null}
+
+      {!builder && tab === "archive" ? (
+        <ScrollReveal className="space-y-3" y={6}>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <MetricCard
+              label="Archived vehicle inspections"
+              value={vehicleArchive.length}
+              borderAccent="neutral"
+              hint="Submitted from this device session"
+            />
+            <MetricCard
+              label="Retention"
+              value="Local"
+              borderAccent="info"
+              hint="Sync to company records when backend wiring is enabled"
+            />
+          </div>
+        </ScrollReveal>
+      ) : null}
 
       {builder?.kind === "inspection" ? (
         <InspectionBuilder
@@ -232,70 +347,80 @@ export function InspectionsLogsApp() {
       ) : null}
 
       {!builder && tab === "inspections" ? (
-        <>
-          <section className="rounded-md border border-ds-border bg-white p-4 shadow-sm dark:bg-ds-secondary">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div className="min-w-0">
-                <h2 className="text-sm font-semibold text-ds-foreground">Digital Vehicle Inspection</h2>
-                <p className="mt-0.5 text-xs font-medium text-ds-muted">
-                  Premium tablet-first inspection sheet (mock local state).
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  className={cn(buttonVariants({ surface: "light", intent: "secondary" }), "px-3 py-2 text-sm")}
-                  onClick={() => setShowVehicleInspection((v) => !v)}
-                >
-                  {showVehicleInspection ? "Hide sheet" : "New vehicle inspection"}
-                </button>
-              </div>
-            </div>
-            {showVehicleInspection ? (
-              <div className="mt-4">
-                <VehicleInspectionSheet key={vehicleSheetKey} onArchived={onVehicleInspectionArchived} />
-              </div>
-            ) : null}
-          </section>
+        <div className="space-y-6">
+          <ScrollReveal className="grid gap-4 md:grid-cols-1 lg:grid-cols-2" y={8}>
+            <InspectionQuickInspectionCard
+              icon={Truck}
+              title="Digital vehicle inspection"
+              description="Tablet-first DVIR-style sheet with distance, time-out, and sign-off — mock local state until fleet sync lands."
+              meta={
+                <>
+                  <StatusBadge variant="neutral">Field</StatusBadge>
+                  <span>{vehicleArchive.length} archived this session</span>
+                </>
+              }
+              expanded={showVehicleInspection}
+              onToggle={() => setShowVehicleInspection((v) => !v)}
+              actionLabel={showVehicleInspection ? "Hide inspection sheet" : "Open inspection sheet"}
+            >
+              <VehicleInspectionSheet key={vehicleSheetKey} onArchived={onVehicleInspectionArchived} />
+            </InspectionQuickInspectionCard>
 
-          <section className="rounded-md border border-ds-border bg-white p-4 shadow-sm dark:bg-ds-secondary">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div className="min-w-0">
-                <h2 className="text-sm font-semibold text-ds-foreground">Harness Inspection</h2>
-                <p className="mt-0.5 text-xs font-medium text-ds-muted">
-                  Mobile-friendly fall-protection harness inspection form (client-side submit for now).
-                </p>
+            <InspectionQuickInspectionCard
+              icon={Shield}
+              title="Harness inspection"
+              description="Fall-protection harness walkthrough tuned for gloved hands and bright sunlight — capture now, route to Work Items later."
+              meta={
+                <>
+                  <StatusBadge variant="neutral">Safety</StatusBadge>
+                  <span>Client-side submit (demo)</span>
+                </>
+              }
+              expanded={showHarnessInspection}
+              onToggle={() => setShowHarnessInspection((v) => !v)}
+              actionLabel={showHarnessInspection ? "Hide harness form" : "Open harness form"}
+            >
+              <HarnessInspectionForm
+                onSubmit={(payload) => {
+                  // eslint-disable-next-line no-console
+                  console.log("Harness inspection submit", payload);
+                  window.alert("Harness inspection captured (client-side). Ready to wire into Work Items.");
+                }}
+              />
+            </InspectionQuickInspectionCard>
+          </ScrollReveal>
+
+          <motion.section
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+            className="space-y-3"
+          >
+            <div className="flex flex-col gap-3 border-b border-ds-border/80 pb-3 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <h2 className="text-base font-semibold text-ds-foreground">Inspection templates</h2>
+                <p className="mt-0.5 text-sm text-ds-muted">Reusable checklists your crew can run on shift.</p>
               </div>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  className={cn(buttonVariants({ surface: "light", intent: "secondary" }), "px-3 py-2 text-sm")}
-                  onClick={() => setShowHarnessInspection((v) => !v)}
-                >
-                  {showHarnessInspection ? "Hide form" : "New harness inspection"}
-                </button>
-              </div>
-            </div>
-            {showHarnessInspection ? (
-              <div className="mt-4">
-                <HarnessInspectionForm
-                  onSubmit={(payload) => {
-                    // Temporary client-side integration point. Backend saving will plug in here.
-                    // eslint-disable-next-line no-console
-                    console.log("Harness inspection submit", payload);
-                    window.alert("Harness inspection captured (client-side). Ready to wire into Work Items.");
-                  }}
+              <div className="relative w-full sm:max-w-xs">
+                <Search
+                  className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ds-muted"
+                  aria-hidden
+                />
+                <input
+                  type="search"
+                  value={inspectTemplateQuery}
+                  onChange={(e) => setInspectTemplateQuery(e.target.value)}
+                  placeholder="Search templates…"
+                  className={cn(dsInputClass, "pl-9")}
+                  aria-label="Search inspection templates"
                 />
               </div>
-            ) : null}
-          </section>
+            </div>
 
-          <section>
-            <h2 className="text-sm font-semibold text-ds-muted">Inspection templates</h2>
-            <div className={TABLE_WRAP}>
+            <DataTableCard>
               <table className="w-full border-collapse text-left">
                 <thead>
-                  <tr className="bg-ds-primary">
+                  <tr className={dataTableHeadRowClass}>
                     <th className={TH}>Name</th>
                     <th className={TH}>Last completed</th>
                     <th className={TH}>Frequency</th>
@@ -305,23 +430,56 @@ export function InspectionsLogsApp() {
                 <tbody>
                   {store.inspectionTemplates.length === 0 ? (
                     <tr>
-                      <td className={`${TD} text-ds-muted`} colSpan={4}>
-                        No inspection templates yet. Create one to get started.
+                      <td className={cn(TD, "bg-ds-secondary/40")} colSpan={4}>
+                        <Card variant="secondary" padding="lg" className="border-dashed border-ds-border/80 text-center">
+                          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full border border-ds-border bg-ds-primary text-ds-muted">
+                            <Inbox className="h-6 w-6" aria-hidden />
+                          </div>
+                          <p className="mt-3 text-sm font-semibold text-ds-foreground">No inspection templates yet</p>
+                          <p className="mt-1 text-sm text-ds-muted">
+                            Start from a proven checklist, then tune line items for your facility.
+                          </p>
+                          <button
+                            type="button"
+                            className={cn(
+                              buttonVariants({ surface: "light", intent: "accent" }),
+                              "mt-5 inline-flex min-h-[44px] items-center justify-center px-5 py-2.5 text-sm font-semibold shadow-sm",
+                            )}
+                            onClick={openNewInspection}
+                          >
+                            Create first template
+                          </button>
+                        </Card>
+                      </td>
+                    </tr>
+                  ) : filteredInspectionTemplates.length === 0 ? (
+                    <tr>
+                      <td className={cn(TD, "text-ds-muted")} colSpan={4}>
+                        {`No templates match "${inspectTemplateQuery.trim()}".`}
                       </td>
                     </tr>
                   ) : (
-                    store.inspectionTemplates.map((tpl) => (
-                      <tr key={tpl.id} className={ROW}>
-                        <td className={TD}>
-                          <span className="font-medium">{tpl.name}</span>
+                    filteredInspectionTemplates.map((tpl) => (
+                      <tr key={tpl.id} className={dataTableBodyRow()}>
+                        <td className={cn(TD, "align-top")}>
+                          <span className="font-semibold text-ds-foreground">{tpl.name}</span>
                           {tpl.description ? (
-                            <p className="mt-0.5 text-xs text-ds-muted">{tpl.description}</p>
+                            <p className="mt-1 text-xs leading-snug text-ds-muted">{tpl.description}</p>
                           ) : null}
+                          <p className="mt-2 text-[11px] font-semibold uppercase tracking-wide text-ds-muted">
+                            {tpl.checklist_items.length} line item{tpl.checklist_items.length === 1 ? "" : "s"}
+                          </p>
                         </td>
-                        <td className={`${TD} text-ds-muted`}>{formatWhen(store.lastAt(tpl.id))}</td>
-                        <td className={`${TD} text-ds-muted`}>{tpl.frequency?.trim() || "—"}</td>
-                        <td className={`${TD} text-right`}>
-                          <BtnRow>
+                        <td className={cn(TD, "align-top text-ds-muted")}>{formatWhen(store.lastAt(tpl.id))}</td>
+                        <td className={cn(TD, "align-top")}>
+                          {tpl.frequency?.trim() ? (
+                            <StatusBadge variant="neutral">{tpl.frequency.trim()}</StatusBadge>
+                          ) : (
+                            <span className="text-ds-muted">—</span>
+                          )}
+                        </td>
+                        <td className={cn(TD, "align-top text-right")}>
+                          <div className="flex flex-wrap items-center justify-end gap-2">
                             <button
                               type="button"
                               className={LINKISH}
@@ -340,7 +498,7 @@ export function InspectionsLogsApp() {
                             </button>
                             <button
                               type="button"
-                              className="text-xs font-semibold text-red-700 dark:text-red-400 hover:underline"
+                              className="text-xs font-semibold text-red-700 hover:underline dark:text-red-400"
                               onClick={() => {
                                 if (confirm(`Delete template “${tpl.name}”?`)) store.removeTemplate(tpl.id);
                               }}
@@ -348,23 +506,33 @@ export function InspectionsLogsApp() {
                               <Trash2 className="mr-0.5 inline h-3.5 w-3.5" aria-hidden />
                               Delete
                             </button>
-                          </BtnRow>
+                          </div>
                         </td>
                       </tr>
                     ))
                   )}
                 </tbody>
               </table>
-            </div>
-          </section>
+            </DataTableCard>
+          </motion.section>
 
-          <section>
-            <h2 className="text-sm font-semibold text-ds-muted">Completed inspections</h2>
-            <div className={TABLE_WRAP}>
+          <motion.section
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1], delay: 0.03 }}
+            className="space-y-3"
+          >
+            <div className="border-b border-ds-border/80 pb-3">
+              <h2 className="text-base font-semibold text-ds-foreground">Completed inspections</h2>
+              <p className="mt-0.5 text-sm text-ds-muted">Latest runs first — tap a row to review captured answers.</p>
+            </div>
+
+            <DataTableCard>
               <table className="w-full border-collapse text-left">
                 <thead>
-                  <tr className="bg-ds-primary">
+                  <tr className={dataTableHeadRowClass}>
                     <th className={TH}>Template</th>
+                    <th className={TH}>Status</th>
                     <th className={TH}>Completed</th>
                     <th className={TH}>By</th>
                     <th className={`${TH} text-right`}>Actions</th>
@@ -373,8 +541,8 @@ export function InspectionsLogsApp() {
                 <tbody>
                   {inspectionEntries.length === 0 ? (
                     <tr>
-                      <td className={`${TD} text-ds-muted`} colSpan={4}>
-                        No completed inspections yet.
+                      <td className={cn(TD, "text-ds-muted")} colSpan={5}>
+                        No completed inspections yet. Submit a template run to build your audit trail.
                       </td>
                     </tr>
                   ) : (
@@ -385,11 +553,31 @@ export function InspectionsLogsApp() {
                       .map((entry) => {
                         const tpl = store.inspectionTemplates.find((t) => t.id === entry.template_id);
                         return (
-                          <tr key={entry.id} className={ROW}>
-                            <td className={TD}>{tpl?.name ?? entry.template_id}</td>
-                            <td className={`${TD} text-ds-muted`}>{formatWhen(entry.created_at)}</td>
-                            <td className={`${TD} text-ds-muted`}>{entry.user_id ?? "—"}</td>
-                            <td className={`${TD} text-right`}>
+                          <tr key={entry.id} className={dataTableBodyRow()}>
+                            <td className={cn(TD, "align-top font-medium text-ds-foreground")}>
+                              {tpl?.name ?? entry.template_id}
+                            </td>
+                            <td className={cn(TD, "align-top")}>
+                              <StatusBadge variant="success">Recorded</StatusBadge>
+                            </td>
+                            <td className={cn(TD, "align-top")}>
+                              <span className="font-medium text-ds-foreground">
+                                {formatRelativeWhen(entry.created_at)}
+                              </span>
+                              <p className="mt-0.5 text-xs text-ds-muted">{formatWhen(entry.created_at)}</p>
+                            </td>
+                            <td className={cn(TD, "align-top")}>
+                              <div className="flex items-center gap-2">
+                                <span
+                                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-ds-border bg-ds-primary text-[11px] font-bold text-ds-foreground"
+                                  aria-hidden
+                                >
+                                  {userInitials(entry.user_id)}
+                                </span>
+                                <span className="min-w-0 truncate text-sm text-ds-muted">{entry.user_id ?? "—"}</span>
+                              </div>
+                            </td>
+                            <td className={cn(TD, "align-top text-right")}>
                               <button type="button" className={LINKISH} onClick={() => setViewEntry(entry)}>
                                 <Eye className="mr-0.5 inline h-3.5 w-3.5" aria-hidden />
                                 View
@@ -401,34 +589,36 @@ export function InspectionsLogsApp() {
                   )}
                 </tbody>
               </table>
-            </div>
-          </section>
-        </>
+            </DataTableCard>
+          </motion.section>
+        </div>
       ) : null}
 
       {!builder && tab === "archive" ? (
-        <section className="space-y-4">
-          <div>
-            <h2 className="text-sm font-semibold text-ds-foreground">Inspection archive</h2>
-            <p className="mt-1 max-w-2xl text-xs font-medium text-ds-muted">
-              Vehicle inspections you submit are listed here. Access is intended for{" "}
-              {ARCHIVE_ROLE_TAGS.map((r) => r.label).join(", ")}.
-            </p>
-            <div className="mt-3 flex flex-wrap gap-1.5">
-              {ARCHIVE_ROLE_TAGS.map((r) => (
-                <span
-                  key={r.id}
-                  className="rounded-lg border border-ds-border/60 bg-ds-secondary/70 px-2 py-1 text-[11px] font-semibold text-ds-foreground"
-                >
-                  {r.label}
-                </span>
-              ))}
+        <div className="space-y-5">
+          <section className={INSPECTIONS_OP_HERO_SHELL}>
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+              <div className="min-w-0 space-y-2">
+                <h2 className="text-lg font-semibold text-ds-foreground">Inspection archive</h2>
+                <p className="max-w-2xl text-sm leading-relaxed text-ds-muted">
+                  Vehicle inspections you submit are listed here. Access is intended for{" "}
+                  {ARCHIVE_ROLE_TAGS.map((r) => r.label).join(", ")}.
+                </p>
+                <div className="flex flex-wrap gap-1.5 pt-1">
+                  {ARCHIVE_ROLE_TAGS.map((r) => (
+                    <StatusBadge key={r.id} variant="neutral">
+                      {r.label}
+                    </StatusBadge>
+                  ))}
+                </div>
+              </div>
             </div>
-          </div>
-          <div className={TABLE_WRAP}>
+          </section>
+
+          <DataTableCard>
             <table className="w-full border-collapse text-left">
               <thead>
-                <tr className="bg-ds-primary">
+                <tr className={dataTableHeadRowClass}>
                   <th className={TH}>Vehicle</th>
                   <th className={TH}>Operator</th>
                   <th className={TH}>Department</th>
@@ -441,41 +631,98 @@ export function InspectionsLogsApp() {
               <tbody>
                 {vehicleArchive.length === 0 ? (
                   <tr>
-                    <td className={`${TD} text-ds-muted`} colSpan={7}>
-                      No archived vehicle inspections yet. Submit a digital vehicle inspection to see it here.
+                    <td className={cn(TD, "align-top text-ds-muted")} colSpan={7}>
+                      <div className="py-6 text-center">
+                        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full border border-ds-border bg-ds-primary text-ds-muted">
+                          <Inbox className="h-6 w-6" aria-hidden />
+                        </div>
+                        <p className="mt-3 text-sm font-semibold text-ds-foreground">No archived inspections yet</p>
+                        <p className="mt-1 text-sm text-ds-muted">
+                          Complete a digital vehicle inspection to populate this ledger.
+                        </p>
+                        <button
+                          type="button"
+                          className={cn(
+                            buttonVariants({ surface: "light", intent: "accent" }),
+                            "mt-4 inline-flex min-h-[44px] items-center justify-center px-4 py-2.5 text-sm font-semibold",
+                          )}
+                          onClick={() => {
+                            goTab("inspections");
+                            setShowVehicleInspection(true);
+                          }}
+                        >
+                          Open vehicle inspection
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ) : (
                   vehicleArchive.map((row) => (
-                    <tr key={row.id} className={ROW}>
-                      <td className={TD}>
-                        <span className="font-medium">{row.vehicle}</span>
+                    <tr key={row.id} className={dataTableBodyRow()}>
+                      <td className={cn(TD, "align-top font-semibold text-ds-foreground")}>{row.vehicle}</td>
+                      <td className={cn(TD, "align-top")}>{row.operatorName}</td>
+                      <td className={cn(TD, "align-top text-ds-muted")}>{row.department}</td>
+                      <td className={cn(TD, "align-top")}>
+                        <span className="font-medium text-ds-foreground">{formatRelativeWhen(row.submittedAtIso)}</span>
+                        <p className="mt-0.5 text-xs text-ds-muted">{formatWhen(row.submittedAtIso)}</p>
                       </td>
-                      <td className={TD}>{row.operatorName}</td>
-                      <td className={`${TD} text-ds-muted`}>{row.department}</td>
-                      <td className={`${TD} text-ds-muted`}>{formatWhen(row.submittedAtIso)}</td>
-                      <td className={`${TD} tabular-nums text-ds-muted`}>
+                      <td className={cn(TD, "align-top tabular-nums text-ds-muted")}>
                         {row.distanceKm === null ? "—" : `${row.distanceKm} km`}
                       </td>
-                      <td className={`${TD} text-ds-muted`}>{row.timeOutDuration ?? "—"}</td>
-                      <td className={`${TD} text-ds-muted`}>{row.submittedBy ?? "—"}</td>
+                      <td className={cn(TD, "align-top text-ds-muted")}>{row.timeOutDuration ?? "—"}</td>
+                      <td className={cn(TD, "align-top")}>
+                        <div className="flex items-center gap-2">
+                          <span
+                            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-ds-border bg-ds-primary text-[11px] font-bold text-ds-foreground"
+                            aria-hidden
+                          >
+                            {userInitials(row.submittedBy)}
+                          </span>
+                          <span className="min-w-0 truncate text-sm text-ds-muted">{row.submittedBy ?? "—"}</span>
+                        </div>
+                      </td>
                     </tr>
                   ))
                 )}
               </tbody>
             </table>
-          </div>
-        </section>
+          </DataTableCard>
+        </div>
       ) : null}
 
       {!builder && tab === "logs" ? (
-        <>
-          <section>
-            <h2 className="text-sm font-semibold text-ds-muted">Log templates</h2>
-            <div className={TABLE_WRAP}>
+        <div className="space-y-6">
+          <motion.section
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+            className="space-y-3"
+          >
+            <div className="flex flex-col gap-3 border-b border-ds-border/80 pb-3 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <h2 className="text-base font-semibold text-ds-foreground">Log templates</h2>
+                <p className="mt-0.5 text-sm text-ds-muted">Operational forms for readings, rounds, and shift notes.</p>
+              </div>
+              <div className="relative w-full sm:max-w-xs">
+                <Search
+                  className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ds-muted"
+                  aria-hidden
+                />
+                <input
+                  type="search"
+                  value={logTemplateQuery}
+                  onChange={(e) => setLogTemplateQuery(e.target.value)}
+                  placeholder="Search log templates…"
+                  className={cn(dsInputClass, "pl-9")}
+                  aria-label="Search log templates"
+                />
+              </div>
+            </div>
+
+            <DataTableCard>
               <table className="w-full border-collapse text-left">
                 <thead>
-                  <tr className="bg-ds-primary">
+                  <tr className={dataTableHeadRowClass}>
                     <th className={TH}>Name</th>
                     <th className={TH}>Last entry</th>
                     <th className={TH}>Entries</th>
@@ -485,23 +732,52 @@ export function InspectionsLogsApp() {
                 <tbody>
                   {store.logTemplates.length === 0 ? (
                     <tr>
-                      <td className={`${TD} text-ds-muted`} colSpan={4}>
-                        No log templates yet.
+                      <td className={cn(TD, "bg-ds-secondary/40")} colSpan={4}>
+                        <Card variant="secondary" padding="lg" className="border-dashed border-ds-border/80 text-center">
+                          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full border border-ds-border bg-ds-primary text-ds-muted">
+                            <Inbox className="h-6 w-6" aria-hidden />
+                          </div>
+                          <p className="mt-3 text-sm font-semibold text-ds-foreground">No log templates yet</p>
+                          <p className="mt-1 text-sm text-ds-muted">
+                            Standardize what gets captured on every shift so supervisors can compare apples to apples.
+                          </p>
+                          <button
+                            type="button"
+                            className={cn(
+                              buttonVariants({ surface: "light", intent: "accent" }),
+                              "mt-5 inline-flex min-h-[44px] items-center justify-center px-5 py-2.5 text-sm font-semibold shadow-sm",
+                            )}
+                            onClick={openNewLog}
+                          >
+                            Create first log template
+                          </button>
+                        </Card>
+                      </td>
+                    </tr>
+                  ) : filteredLogTemplates.length === 0 ? (
+                    <tr>
+                      <td className={cn(TD, "text-ds-muted")} colSpan={4}>
+                        {`No templates match "${logTemplateQuery.trim()}".`}
                       </td>
                     </tr>
                   ) : (
-                    store.logTemplates.map((tpl) => (
-                      <tr key={tpl.id} className={ROW}>
-                        <td className={TD}>
-                          <span className="font-medium">{tpl.name}</span>
+                    filteredLogTemplates.map((tpl) => (
+                      <tr key={tpl.id} className={dataTableBodyRow()}>
+                        <td className={cn(TD, "align-top")}>
+                          <span className="font-semibold text-ds-foreground">{tpl.name}</span>
                           {tpl.description ? (
-                            <p className="mt-0.5 text-xs text-ds-muted">{tpl.description}</p>
+                            <p className="mt-1 text-xs leading-snug text-ds-muted">{tpl.description}</p>
                           ) : null}
+                          <p className="mt-2 text-[11px] font-semibold uppercase tracking-wide text-ds-muted">
+                            {tpl.fields.length} field{tpl.fields.length === 1 ? "" : "s"}
+                          </p>
                         </td>
-                        <td className={`${TD} text-ds-muted`}>{formatWhen(store.lastAt(tpl.id))}</td>
-                        <td className={TD}>{store.entryCount(tpl.id)}</td>
-                        <td className={`${TD} text-right`}>
-                          <BtnRow>
+                        <td className={cn(TD, "align-top text-ds-muted")}>{formatWhen(store.lastAt(tpl.id))}</td>
+                        <td className={cn(TD, "align-top font-medium tabular-nums text-ds-foreground")}>
+                          {store.entryCount(tpl.id)}
+                        </td>
+                        <td className={cn(TD, "align-top text-right")}>
+                          <div className="flex flex-wrap items-center justify-end gap-2">
                             <button
                               type="button"
                               className={LINKISH}
@@ -520,7 +796,7 @@ export function InspectionsLogsApp() {
                             </button>
                             <button
                               type="button"
-                              className="text-xs font-semibold text-red-700 dark:text-red-400 hover:underline"
+                              className="text-xs font-semibold text-red-700 hover:underline dark:text-red-400"
                               onClick={() => {
                                 if (confirm(`Delete template “${tpl.name}”?`)) store.removeTemplate(tpl.id);
                               }}
@@ -528,23 +804,33 @@ export function InspectionsLogsApp() {
                               <Trash2 className="mr-0.5 inline h-3.5 w-3.5" aria-hidden />
                               Delete
                             </button>
-                          </BtnRow>
+                          </div>
                         </td>
                       </tr>
                     ))
                   )}
                 </tbody>
               </table>
-            </div>
-          </section>
+            </DataTableCard>
+          </motion.section>
 
-          <section>
-            <h2 className="text-sm font-semibold text-ds-muted">Submitted log entries</h2>
-            <div className={TABLE_WRAP}>
+          <motion.section
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1], delay: 0.03 }}
+            className="space-y-3"
+          >
+            <div className="border-b border-ds-border/80 pb-3">
+              <h2 className="text-base font-semibold text-ds-foreground">Submitted log entries</h2>
+              <p className="mt-0.5 text-sm text-ds-muted">Immutable submissions with automatic timestamps.</p>
+            </div>
+
+            <DataTableCard>
               <table className="w-full border-collapse text-left">
                 <thead>
-                  <tr className="bg-ds-primary">
+                  <tr className={dataTableHeadRowClass}>
                     <th className={TH}>Template</th>
+                    <th className={TH}>Status</th>
                     <th className={TH}>Submitted</th>
                     <th className={TH}>By</th>
                     <th className={`${TH} text-right`}>Actions</th>
@@ -553,8 +839,8 @@ export function InspectionsLogsApp() {
                 <tbody>
                   {logEntries.length === 0 ? (
                     <tr>
-                      <td className={`${TD} text-ds-muted`} colSpan={4}>
-                        No log entries yet.
+                      <td className={cn(TD, "text-ds-muted")} colSpan={5}>
+                        No log entries yet. Pick a template and capture your first field reading.
                       </td>
                     </tr>
                   ) : (
@@ -565,11 +851,31 @@ export function InspectionsLogsApp() {
                       .map((entry) => {
                         const tpl = store.logTemplates.find((t) => t.id === entry.template_id);
                         return (
-                          <tr key={entry.id} className={ROW}>
-                            <td className={TD}>{tpl?.name ?? entry.template_id}</td>
-                            <td className={`${TD} text-ds-muted`}>{formatWhen(entry.created_at)}</td>
-                            <td className={`${TD} text-ds-muted`}>{entry.user_id ?? "—"}</td>
-                            <td className={`${TD} text-right`}>
+                          <tr key={entry.id} className={dataTableBodyRow()}>
+                            <td className={cn(TD, "align-top font-medium text-ds-foreground")}>
+                              {tpl?.name ?? entry.template_id}
+                            </td>
+                            <td className={cn(TD, "align-top")}>
+                              <StatusBadge variant="success">Submitted</StatusBadge>
+                            </td>
+                            <td className={cn(TD, "align-top")}>
+                              <span className="font-medium text-ds-foreground">
+                                {formatRelativeWhen(entry.created_at)}
+                              </span>
+                              <p className="mt-0.5 text-xs text-ds-muted">{formatWhen(entry.created_at)}</p>
+                            </td>
+                            <td className={cn(TD, "align-top")}>
+                              <div className="flex items-center gap-2">
+                                <span
+                                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-ds-border bg-ds-primary text-[11px] font-bold text-ds-foreground"
+                                  aria-hidden
+                                >
+                                  {userInitials(entry.user_id)}
+                                </span>
+                                <span className="min-w-0 truncate text-sm text-ds-muted">{entry.user_id ?? "—"}</span>
+                              </div>
+                            </td>
+                            <td className={cn(TD, "align-top text-right")}>
                               <button type="button" className={LINKISH} onClick={() => setViewEntry(entry)}>
                                 <Eye className="mr-0.5 inline h-3.5 w-3.5" aria-hidden />
                                 View
@@ -581,9 +887,9 @@ export function InspectionsLogsApp() {
                   )}
                 </tbody>
               </table>
-            </div>
-          </section>
-        </>
+            </DataTableCard>
+          </motion.section>
+        </div>
       ) : null}
 
       {inspectFill ? (
