@@ -1345,6 +1345,9 @@ function DashboardBody({
     return Object.keys(widgetRegistry).filter((k) => (widgetRegistry as Record<string, unknown>)[k] != null);
   }, [widgetRegistry]);
 
+  /** Stable while the set of built-in widget ids is unchanged — avoids re-hydrating layout on every `model` tick. */
+  const builtinWidgetIdsSignature = [...allWidgetKeys].sort().join("|");
+
   const defaultLayout = useMemo(
     (): Layout => [
       { i: "important_dates", x: 0, y: 0, w: 5, h: 12, minW: 3, minH: 6 },
@@ -1391,7 +1394,9 @@ function DashboardBody({
     // Do not load pre-v5 12-column layouts into the 8-col grid (they overlap after bounds correction).
     if (!loadedFromStorage || !nextLayout) nextLayout = defaultLayout;
 
-    const validBuiltins = new Set(allWidgetKeys);
+    const validBuiltins = new Set(
+      builtinWidgetIdsSignature.length ? builtinWidgetIdsSignature.split("|") : [],
+    );
     const filtered: LayoutItem[] = [];
     for (const l of nextLayout) {
       if (!l || typeof l.i !== "string") continue;
@@ -1412,7 +1417,7 @@ function DashboardBody({
     setLayout(merged);
     setCustomConfigs(parsedConfigs);
     setLayoutHydrated(true);
-  }, [allWidgetKeys, customWidgetStorageKey, dashboardContext, defaultLayout, layoutStorageKey]);
+  }, [builtinWidgetIdsSignature, customWidgetStorageKey, dashboardContext, defaultLayout, layoutStorageKey]);
 
   const persistLayout = useCallback(
     (next: Layout) => {

@@ -65,7 +65,6 @@ _TRAINING_MATRIX_ROW_ROLES = (
     UserRole.company_admin,
     UserRole.lead,
     UserRole.worker,
-    UserRole.demo_viewer,
 )
 
 TrainingTierApi = Literal["mandatory", "high_risk", "general"]

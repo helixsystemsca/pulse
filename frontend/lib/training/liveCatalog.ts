@@ -2,10 +2,11 @@ import type { ProcedureRow } from "@/lib/cmmsApi";
 import type { WorkerRow } from "@/lib/workersService";
 import type { TrainingEmployee, TrainingProgram } from "./types";
 import { configForProcedure, type ProcedureComplianceConfigMap } from "./procedureComplianceConfig";
+import { isDemoTrainingMatrixAccount } from "./trainingRoleDisplay";
 
 export function workersToTrainingEmployees(workers: WorkerRow[]): TrainingEmployee[] {
   return workers
-    .filter((w) => w.is_active)
+    .filter((w) => w.is_active && !isDemoTrainingMatrixAccount(w))
     .map((w) => ({
       id: w.id,
       display_name: (w.full_name?.trim() || w.email || "Employee").slice(0, 120),

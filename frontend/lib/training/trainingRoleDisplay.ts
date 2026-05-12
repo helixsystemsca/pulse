@@ -2,8 +2,18 @@ function norm(s: string): string {
   return s.trim().toLowerCase();
 }
 
+/** Demo / presentation accounts — excluded from the team training matrix roster (API + worker-list fallback). */
+export function isDemoTrainingMatrixAccount(w: { role?: string | null; roles?: string[] | null }): boolean {
+  if (norm(w.role ?? "") === "demo_viewer" || norm(w.role ?? "") === "demo_profile") return true;
+  for (const r of w.roles ?? []) {
+    const n = norm(r);
+    if (n === "demo_viewer" || n === "demo_profile") return true;
+  }
+  return false;
+}
+
 /** Roles omitted from the training overview role filter dropdown. */
-const EXCLUDED_ROLE_FILTERS = new Set(["demo_viewer", "company_admin"]);
+const EXCLUDED_ROLE_FILTERS = new Set(["demo_viewer", "demo_profile", "company_admin"]);
 
 /** Title case words (handles `_` as word breaks). */
 export function formatLabelTitleCase(raw: string): string {
@@ -26,7 +36,7 @@ export function formatTrainingRoleDisplay(raw: string | null | undefined): strin
 
 /**
  * Role values for the training overview `<select>`: `all` plus sorted display labels.
- * Excludes `demo_viewer` and `company_admin` from the list (those users still appear when "All Roles" is selected).
+ * Excludes demo-style roles and `company_admin` from the list (those users still appear when "All Roles" is selected).
  */
 type WorkerMetaLike = { role: string; shift?: string | null };
 
