@@ -41,6 +41,8 @@ import { NotificationsWorkOrdersOpsWidget } from "@/components/dashboard/widgets
 import { LowInventoryOpsWidget } from "@/components/dashboard/widgets/ops/LowInventoryOpsWidget";
 import { Co2MonitoringOpsWidget } from "@/components/dashboard/widgets/ops/Co2MonitoringOpsWidget";
 import { PoolReadingsOpsWidget } from "@/components/dashboard/widgets/ops/PoolReadingsOpsWidget";
+import { FacilityScheduleOpsWidget } from "@/components/dashboard/widgets/ops/FacilityScheduleOpsWidget";
+import { RoutineAssignmentsOpsWidget } from "@/components/dashboard/widgets/ops/RoutineAssignmentsOpsWidget";
 import {
   buildOperationalNotificationItems,
   notificationCountsFromAlerts,
@@ -1326,6 +1328,16 @@ function DashboardBody({
         accent: "none" as const,
         render: () => <PoolReadingsOpsWidget />,
       },
+      facility_schedule: {
+        title: "Facility schedule",
+        accent: "none" as const,
+        render: () => <FacilityScheduleOpsWidget />,
+      },
+      routine_assignments: {
+        title: "Routine assignments",
+        accent: "none" as const,
+        render: () => <RoutineAssignmentsOpsWidget />,
+      },
     } as const;
   }, [model, workOrdersHref]);
 
@@ -1341,7 +1353,9 @@ function DashboardBody({
       { i: "workforce", x: 0, y: 12, w: 6, h: 10, minW: 4, minH: 6 },
       { i: "low_inventory", x: 6, y: 12, w: 5, h: 10, minW: 3, minH: 6 },
       { i: "co2_monitoring", x: 11, y: 12, w: 5, h: 7, minW: 3, minH: 5 },
-      { i: "pool_readings", x: 0, y: 22, w: 16, h: 10, minW: 6, minH: 6 },
+      { i: "facility_schedule", x: 0, y: 22, w: 8, h: 9, minW: 4, minH: 5 },
+      { i: "routine_assignments", x: 8, y: 22, w: 8, h: 9, minW: 4, minH: 5 },
+      { i: "pool_readings", x: 0, y: 31, w: 16, h: 10, minW: 6, minH: 6 },
     ],
     [],
   );

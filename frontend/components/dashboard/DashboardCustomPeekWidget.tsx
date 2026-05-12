@@ -10,6 +10,8 @@ import { cn } from "@/lib/cn";
 import type { WidgetMode } from "@/components/dashboard/widgets/widgetSizing";
 import { DashboardPeekStatCard } from "@/components/dashboard/DashboardPeekStatCard";
 import { TrainingComplianceWidget } from "@/components/dashboard/widgets/training/TrainingComplianceWidget";
+import { FacilitySchedulePeekSlice } from "@/components/dashboard/widgets/ops/FacilityScheduleOpsWidget";
+import { RoutineAssignmentsPeekSlice } from "@/components/dashboard/widgets/ops/RoutineAssignmentsOpsWidget";
 
 const CO2_LEVEL_MAX = 1000;
 
@@ -282,6 +284,32 @@ function renderSlice(
         </div>
       </DashboardPeekStatCard>
     );
+  }
+
+  if (config.pageId === "facility_schedule" && sliceId === "today_program_blocks") {
+    return (
+      <>
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-ds-muted">{label}</p>
+        <FacilitySchedulePeekSlice compact={ui.compact} dense={ui.dense} />
+      </>
+    );
+  }
+
+  if (config.pageId === "routines") {
+    if (sliceId === "my_assignments" || sliceId === "routine_library") {
+      const maxNames = Math.min(20, Math.max(1, Math.floor(optNum(opts, "maxNames", 5))));
+      return (
+        <>
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-ds-muted">{label}</p>
+          <RoutineAssignmentsPeekSlice
+            sliceId={sliceId}
+            compact={ui.compact}
+            dense={ui.dense}
+            maxRoutines={maxNames}
+          />
+        </>
+      );
+    }
   }
 
   return (

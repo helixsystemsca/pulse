@@ -59,10 +59,10 @@ router = APIRouter(prefix="/training", tags=["training"])
 
 Db = Annotated[AsyncSession, Depends(get_db)]
 
-_ROSTER_ROLES = (
+# Users who appear as rows on the team training matrix. Managers and supervisors are excluded so the
+# matrix tracks frontline / operational staff; those roles can still open the matrix via ACL.
+_TRAINING_MATRIX_ROW_ROLES = (
     UserRole.company_admin,
-    UserRole.manager,
-    UserRole.supervisor,
     UserRole.lead,
     UserRole.worker,
     UserRole.demo_viewer,
@@ -173,7 +173,7 @@ async def training_matrix(
     cid: CompanyId,
     _: Annotated[User, Depends(require_training_matrix_access)],
 ) -> TrainingMatrixOut:
-    roster_vals = [r.value for r in _ROSTER_ROLES]
+    roster_vals = [r.value for r in _TRAINING_MATRIX_ROW_ROLES]
     uq = await db.execute(
         select(User)
         .where(
@@ -277,14 +277,30 @@ async def training_matrix(
             hr_map[str(h.user_id)] = h
 
     users_map = {str(u.id): u for u in users}
+    sup_ids_missing = {
+        str(hr.supervisor_user_id)
+        for hr in hr_map.values()
+        if hr.supervisor_user_id and str(hr.supervisor_user_id) not in users_map
+    }
+    sup_name_by_id: dict[str, str] = {}
+    if sup_ids_missing:
+        sq = await db.execute(select(User).where(User.company_id == cid, User.id.in_(sup_ids_missing)))
+        for su in sq.scalars().all():
+            label = str(su.full_name or su.email or "").strip()
+            if label:
+                sup_name_by_id[str(su.id)] = label
+
     employees: list[TrainingEmployeeOut] = []
     for u in users:
         hr = hr_map.get(str(u.id))
         sup_name: Optional[str] = None
         if hr and hr.supervisor_user_id:
-            su = users_map.get(str(hr.supervisor_user_id))
+            sid = str(hr.supervisor_user_id)
+            su = users_map.get(sid)
             if su:
                 sup_name = str(su.full_name or su.email or "").strip() or None
+            else:
+                sup_name = sup_name_by_id.get(sid)
         employees.append(
             TrainingEmployeeOut(
                 id=str(u.id),

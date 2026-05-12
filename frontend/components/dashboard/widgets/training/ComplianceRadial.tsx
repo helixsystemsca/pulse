@@ -6,7 +6,7 @@ import { useId } from "react";
 
 import { cn } from "@/lib/cn";
 
-import { TC_COLORS } from "./training-compliance-visual";
+import { TC_COLORS, TC_COLORS_STRICT } from "./training-compliance-visual";
 
 export type ComplianceRadialProps = {
   overallCompliancePercent: number;
@@ -16,6 +16,11 @@ export type ComplianceRadialProps = {
   totalSlots: number;
   /** Larger chart in peek / wide tiles */
   size?: "sm" | "md" | "lg";
+  /**
+   * `overall` — three segments (completed / expiring / missing), center = compliance including expiring-soon.
+   * `strict_mandatory` — two segments (fully complete vs not), center = % of mandatory slots marked completed only.
+   */
+  mode?: "overall" | "strict_mandatory";
 };
 
 function fmtPct(n: number): string {
@@ -32,11 +37,14 @@ export function ComplianceRadial({
   missing,
   totalSlots,
   size = "md",
+  mode = "overall",
 }: ComplianceRadialProps) {
   const uid = useId().replace(/:/g, "");
   const gComplete = `tc-c-${uid}`;
   const gExp = `tc-e-${uid}`;
   const gMiss = `tc-m-${uid}`;
+  const gStrictDone = `tc-sd-${uid}`;
+  const gStrictRest = `tc-sr-${uid}`;
 
   const radius = size === "sm" ? 38 : size === "lg" ? 54 : 46;
   const stroke = size === "sm" ? 6 : size === "lg" ? 7.5 : 6.5;
@@ -49,12 +57,25 @@ export function ComplianceRadial({
   const segCompleted = Math.max(0, completed);
   const segExpiring = Math.max(0, expiringSoon);
   const segMissing = Math.max(0, missing);
+  const countedMandatory = segCompleted + segExpiring + segMissing;
 
-  const segments: Segment[] = [
-    { key: "completed", value: segCompleted, gradId: gComplete },
-    { key: "expiring", value: segExpiring, gradId: gExp },
-    { key: "missing", value: segMissing, gradId: gMiss },
-  ].filter((s) => s.value > 0);
+  const strictPercent =
+    countedMandatory <= 0 ? 0 : Math.round((segCompleted / countedMandatory) * 100);
+
+  const segments: Segment[] =
+    mode === "strict_mandatory"
+      ? [
+          { key: "strict_done", value: segCompleted, gradId: gStrictDone },
+          { key: "strict_rest", value: segExpiring + segMissing, gradId: gStrictRest },
+        ].filter((s) => s.value > 0)
+      : [
+          { key: "completed", value: segCompleted, gradId: gComplete },
+          { key: "expiring", value: segExpiring, gradId: gExp },
+          { key: "missing", value: segMissing, gradId: gMiss },
+        ].filter((s) => s.value > 0);
+
+  /** Arc denominator: full matrix uses total slot grid; strict chart uses counted mandatory slots only. */
+  const arcTotal = mode === "strict_mandatory" ? Math.max(0, countedMandatory) : total;
 
   /** Tiny angular gaps between segments for a crisp segmented donut */
   const gapCount = Math.max(0, segments.length - 1);
@@ -63,7 +84,7 @@ export function ComplianceRadial({
 
   let offset = 0;
 
-  const pctLabel = fmtPct(overallCompliancePercent);
+  const pctLabel = fmtPct(mode === "strict_mandatory" ? strictPercent : overallCompliancePercent);
   /** Inner radius of the donut hole (stroke centered on `radius`). Keeps labels inside the ring. */
   const innerRadiusPx = radius - stroke / 2;
   const labelMaxPx = Math.max(48, Math.floor(innerRadiusPx * 2 * 0.92));
@@ -71,13 +92,18 @@ export function ComplianceRadial({
   const titleSize = size === "sm" ? "text-[7px] tracking-[0.12em]" : size === "lg" ? "text-[11px]" : "text-[10px]";
   const pctSize =
     size === "sm" ? "text-xl leading-none" : size === "lg" ? "text-4xl leading-none" : "text-3xl leading-none";
-  const completionGlow = overallCompliancePercent >= 80 && segCompleted > 0 && total > 0;
+  const completionGlow =
+    mode === "overall"
+      ? overallCompliancePercent >= 80 && segCompleted > 0 && total > 0
+      : strictPercent >= 80 && segCompleted > 0 && countedMandatory > 0;
 
   return (
     <motion.div
       className={cn(
         "relative mx-auto shrink-0 rounded-full",
-        completionGlow && "drop-shadow-[0_0_22px_rgba(34,199,169,0.42)]",
+        mode === "overall"
+          ? completionGlow && "drop-shadow-[0_0_22px_rgba(34,199,169,0.42)]"
+          : completionGlow && "drop-shadow-[0_0_22px_rgba(99,102,241,0.45)]",
       )}
       initial={{ opacity: 0, scale: 0.94 }}
       animate={{ opacity: 1, scale: 1 }}
@@ -88,7 +114,11 @@ export function ComplianceRadial({
         height={dimension}
         viewBox={`0 0 ${dimension} ${dimension}`}
         className="block overflow-visible"
-        aria-label={`Overall compliance ${pctLabel}`}
+        aria-label={
+          mode === "strict_mandatory"
+            ? `Mandatory procedures fully complete ${pctLabel}`
+            : `Overall compliance ${pctLabel}`
+        }
         role="img"
       >
         <defs>
@@ -104,6 +134,14 @@ export function ComplianceRadial({
             <stop offset="0%" stopColor={TC_COLORS.missing.from} />
             <stop offset="100%" stopColor={TC_COLORS.missing.to} />
           </linearGradient>
+          <linearGradient id={gStrictDone} x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor={TC_COLORS_STRICT.complete.from} />
+            <stop offset="100%" stopColor={TC_COLORS_STRICT.complete.to} />
+          </linearGradient>
+          <linearGradient id={gStrictRest} x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor={TC_COLORS_STRICT.remainder.from} />
+            <stop offset="100%" stopColor={TC_COLORS_STRICT.remainder.to} />
+          </linearGradient>
         </defs>
 
         <g transform={`rotate(-90 ${cx} ${cy})`}>
@@ -117,7 +155,7 @@ export function ComplianceRadial({
             strokeWidth={stroke}
           />
           {segments.map((s, i) => {
-            const frac = total > 0 ? s.value / total : 0;
+            const frac = arcTotal > 0 ? s.value / arcTotal : 0;
             const rawLen = usable * frac;
             const len = Math.max(0, Math.min(usable, rawLen));
             const dash = `${len} ${Math.max(0, c - len)}`;
@@ -171,12 +209,21 @@ export function ComplianceRadial({
                 titleSize,
               )}
             >
-              <span className="leading-[1.05]">Overall</span>
-              <span className="leading-[1.05]">Compliance</span>
+              {mode === "strict_mandatory" ? (
+                <>
+                  <span className="leading-[1.05]">Mandatory</span>
+                  <span className="leading-[1.05]">Complete</span>
+                </>
+              ) : (
+                <>
+                  <span className="leading-[1.05]">Overall</span>
+                  <span className="leading-[1.05]">Compliance</span>
+                </>
+              )}
             </div>
           ) : (
-            <p className={cn("mt-1 font-semibold uppercase tracking-[0.16em] text-ds-muted", titleSize)}>
-              Overall compliance
+            <p className={cn("mt-1 max-w-[9.5rem] text-center font-semibold uppercase leading-snug tracking-[0.14em] text-ds-muted", titleSize)}>
+              {mode === "strict_mandatory" ? "Mandatory complete" : "Overall compliance"}
             </p>
           )}
         </div>

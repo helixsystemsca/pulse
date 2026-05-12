@@ -1,6 +1,9 @@
 "use client";
 
-import { WorkerDashboard } from "@/components/dashboard/WorkerBreakRoomDashboard";
+import {
+  OperationalDashboard,
+  type OperationalDashboardReadyPayload,
+} from "@/components/dashboard/OperationalDashboard";
 import { WelcomeLoaderModal } from "@/components/ui/WelcomeLoaderModal";
 import { UI } from "@/styles/ui";
 import { isApiMode } from "@/lib/api";
@@ -8,7 +11,7 @@ import { navigateToPulseLogin, pulsePostLoginPath } from "@/lib/pulse-app";
 import { readSession } from "@/lib/pulse-session";
 import { sessionHasAnyRole } from "@/lib/pulse-roles";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 function welcomeFromSession(email: string | null | undefined, fullName: string | null | undefined): string {
   if (fullName?.trim()) return fullName.trim();
@@ -16,10 +19,23 @@ function welcomeFromSession(email: string | null | undefined, fullName: string |
   return "there";
 }
 
+/**
+ * Operations home: same `OperationalDashboard` experience as Leadership (`/overview`), with
+ * `dashboardContext="operations"` so the header strip reads Operations and layout prefs stay separate.
+ */
 export default function WorkerDashboardPage() {
   const router = useRouter();
   const [ready, setReady] = useState(false);
-  const [workerShellReady, setWorkerShellReady] = useState(false);
+  const [dashboardDataReady, setDashboardDataReady] = useState(false);
+  const [welcomeAlertContext, setWelcomeAlertContext] = useState<OperationalDashboardReadyPayload>({
+    criticalCount: 0,
+    warningCount: 0,
+  });
+
+  const onDashboardReady = useCallback((payload?: OperationalDashboardReadyPayload) => {
+    setWelcomeAlertContext(payload ?? { criticalCount: 0, warningCount: 0 });
+    setDashboardDataReady(true);
+  }, []);
 
   useEffect(() => {
     const s = readSession();
@@ -44,12 +60,6 @@ export default function WorkerDashboardPage() {
     return welcomeFromSession(s?.email, s?.full_name);
   }, []);
 
-  useEffect(() => {
-    if (!ready) return;
-    const t = window.setTimeout(() => setWorkerShellReady(true), 500);
-    return () => window.clearTimeout(t);
-  }, [ready]);
-
   if (!ready) {
     return (
       <div className="flex min-h-[40vh] items-center justify-center">
@@ -60,9 +70,18 @@ export default function WorkerDashboardPage() {
 
   return (
     <div className="relative">
-      <div className="pulse-dashboard-canvas space-y-4 px-2 py-4 sm:px-2 sm:py-5">
-        <WorkerDashboard kiosk={false} />
-        <WelcomeLoaderModal userName={userName} isReady={workerShellReady} />
+      <div className="pulse-dashboard-canvas pulse-operations-dashboard space-y-4 px-2 py-4 sm:px-2 sm:py-5">
+        <OperationalDashboard
+          variant={isApiMode() ? "live" : "demo"}
+          dashboardContext="operations"
+          onReady={onDashboardReady}
+        />
+        <WelcomeLoaderModal
+          userName={userName}
+          isReady={dashboardDataReady}
+          criticalCount={welcomeAlertContext.criticalCount}
+          warningCount={welcomeAlertContext.warningCount}
+        />
       </div>
     </div>
   );

@@ -16,6 +16,7 @@ import type {
 } from "@/lib/inspectionsLogsTypes";
 import { readSession } from "@/lib/pulse-session";
 import { CreateDropdown } from "./CreateDropdown";
+import { ScrollReveal } from "@/components/motion/ScrollReveal";
 import { InspectionBuilder } from "./InspectionBuilder";
 import { LogBuilder } from "./LogBuilder";
 import { cn } from "@/lib/cn";
@@ -171,6 +172,7 @@ export function InspectionsLogsApp() {
         ) : null}
       </AnimatePresence>
 
+      <ScrollReveal className="space-y-4" y={8}>
       <nav className={SEGMENT_TRACK} aria-label="Module tabs">
         <button
           type="button"
@@ -209,6 +211,7 @@ export function InspectionsLogsApp() {
           <span>Archive</span>
         </button>
       </nav>
+      </ScrollReveal>
 
       {builder?.kind === "inspection" ? (
         <InspectionBuilder

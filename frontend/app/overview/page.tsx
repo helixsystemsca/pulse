@@ -73,7 +73,11 @@ export default function OverviewPage() {
   return (
     <div className="relative">
       <div className="pulse-dashboard-canvas pulse-operations-dashboard space-y-4 px-2 py-4 sm:px-2 sm:py-5">
-        <OperationalDashboard variant={isApiMode() ? "live" : "demo"} onReady={onDashboardReady} />
+        <OperationalDashboard
+          variant={isApiMode() ? "live" : "demo"}
+          dashboardContext="admin"
+          onReady={onDashboardReady}
+        />
         <WelcomeLoaderModal
           userName={userName}
           isReady={dashboardDataReady}

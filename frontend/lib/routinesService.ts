@@ -144,10 +144,11 @@ export async function createRoutineRun(body: {
   });
 }
 
-export async function listMyRoutineAssignments(params: { shift_id: string }): Promise<RoutineAssignmentDetail[]> {
+export async function listMyRoutineAssignments(params?: { shift_id?: string }): Promise<RoutineAssignmentDetail[]> {
   const sp = new URLSearchParams();
-  sp.set("shift_id", params.shift_id);
-  return apiFetch<RoutineAssignmentDetail[]>(`/api/v1/routines/assignments/my?${sp.toString()}`);
+  if (params?.shift_id) sp.set("shift_id", params.shift_id);
+  const q = sp.toString();
+  return apiFetch<RoutineAssignmentDetail[]>(`/api/v1/routines/assignments/my${q ? `?${q}` : ""}`);
 }
 
 export async function getRoutineRun(runId: string): Promise<RoutineRunDetail> {

@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion";
 import type { ReactNode } from "react";
-import { bpTransition } from "@/lib/motion-presets";
+import { motionTransition } from "@/lib/motion";
 
 /**
  * Primary surface for authenticated feature pages: one card over {@link PulseThemedBackground}.
@@ -15,7 +15,7 @@ export function PageShell({ children, className = "" }: { children: ReactNode; c
       // are not re-anchored to this element (which can cause header overlap/clipping).
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      transition={bpTransition.med}
+      transition={motionTransition.medium}
     >
       <div className="relative z-[1] flex min-h-0 flex-1 flex-col">{children}</div>
     </motion.div>

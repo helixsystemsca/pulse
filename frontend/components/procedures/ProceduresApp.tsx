@@ -41,6 +41,7 @@ import { generateDemoAssignmentsForMatrix } from "@/lib/training/generatedAssign
 import { proceduresToTrainingPrograms, workersToTrainingEmployees } from "@/lib/training/liveCatalog";
 import { fetchWorkerList, fetchWorkerSettings } from "@/lib/workersService";
 import { cn } from "@/lib/cn";
+import { useMainScrollCompaction } from "@/hooks/useMainScrollCompaction";
 import { buttonVariants } from "@/styles/button-variants";
 import { ProcedureKnowledgeVerification } from "@/components/procedures/ProcedureKnowledgeVerification";
 import { ProcedureComplianceAcknowledgmentCard } from "@/components/procedures/ProcedureComplianceAcknowledgmentCard";
@@ -213,6 +214,7 @@ function StepImagePreview({ imageUrl, imageClassName }: { imageUrl: string | nul
 
 export function ProceduresApp() {
   const formId = useId();
+  const headerCompact = useMainScrollCompaction(36);
   const [isCreating, setIsCreating] = useState(false);
   const [rows, setRows] = useState<ProcedureRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -901,7 +903,15 @@ export function ProceduresApp() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-hidden">
-      <PageHeader
+      <div
+        className={cn(
+          "sticky top-0 z-20 -mx-1 rounded-b-xl border-b px-1 pb-2 backdrop-blur-md transition-[box-shadow,background-color,border-color] duration-200",
+          headerCompact
+            ? "border-ds-border/55 bg-ds-bg/92 shadow-[0_10px_36px_rgba(15,23,42,0.06)] dark:bg-ds-bg/88"
+            : "border-transparent bg-transparent",
+        )}
+      >
+        <PageHeader
         className="shrink-0"
         title="Procedures"
         description="Operational procedures with optional photos. Set priority for the compliance matrix; assigned workers complete acknowledgment and knowledge verification (or legacy sign-off when verification is off) — timestamps are retained for audit."
@@ -957,6 +967,7 @@ export function ProceduresApp() {
           )
         }
       />
+      </div>
 
       <PageBody className="flex min-h-0 flex-1 flex-col overflow-hidden">
 

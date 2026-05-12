@@ -13,6 +13,8 @@ import {
 } from "@/lib/teamInsightsService";
 import { WorkerRow } from "@/components/team/WorkerRow";
 import { WorkerProfileModal } from "@/components/team/WorkerProfileModal";
+import { ScrollReveal } from "@/components/motion/ScrollReveal";
+import { useMainScrollCompaction } from "@/hooks/useMainScrollCompaction";
 import { cn } from "@/lib/cn";
 import { buttonVariants } from "@/styles/button-variants";
 
@@ -42,6 +44,7 @@ function ActivityRow({ row }: { row: TeamInsightsActivity }) {
 }
 
 export function TeamInsightsApp() {
+  const headerCompact = useMainScrollCompaction(28);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
   const [workers, setWorkers] = useState<TeamInsightsWorker[]>([]);
@@ -111,7 +114,15 @@ export function TeamInsightsApp() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
+      <div
+        className={cn(
+          "sticky top-0 z-20 -mx-1 rounded-b-xl border-b px-1 pb-2 backdrop-blur-md transition-[box-shadow,background-color,border-color] duration-200",
+          headerCompact
+            ? "border-ds-border/55 bg-ds-bg/92 shadow-[0_10px_36px_rgba(15,23,42,0.06)] dark:bg-ds-bg/88"
+            : "border-transparent bg-transparent",
+        )}
+      >
+        <PageHeader
         title="Team Insights"
         description="Celebrate progress. Build a stronger team."
         icon={Sparkles}
@@ -141,6 +152,7 @@ export function TeamInsightsApp() {
           </>
         }
       />
+      </div>
 
       <PageBody>
         {err ? (
@@ -149,7 +161,7 @@ export function TeamInsightsApp() {
           </div>
         ) : null}
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+      <ScrollReveal className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5" y={8}>
         <Card padding="md">
           <div className="flex items-start justify-between gap-3">
             <div>
@@ -220,7 +232,7 @@ export function TeamInsightsApp() {
             </span>
           </div>
         </Card>
-      </div>
+      </ScrollReveal>
 
       {xpHighlights ? (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -251,7 +263,7 @@ export function TeamInsightsApp() {
         </div>
       ) : null}
 
-      <div className="grid gap-6 lg:grid-cols-3">
+      <ScrollReveal className="grid gap-6 lg:grid-cols-3" y={8}>
         <Card padding="lg" className="lg:col-span-2">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
@@ -314,9 +326,9 @@ export function TeamInsightsApp() {
             {!loading ? activity.slice(0, 8).map((a) => <ActivityRow key={`${a.userId}-${a.createdAt}`} row={a} />) : null}
           </div>
         </Card>
-      </div>
+      </ScrollReveal>
 
-        <WorkerProfileModal userId={openProfileUserId} open={Boolean(openProfileUserId)} onClose={() => setOpenProfileUserId(null)} />
+      <WorkerProfileModal userId={openProfileUserId} open={Boolean(openProfileUserId)} onClose={() => setOpenProfileUserId(null)} />
       </PageBody>
     </div>
   );

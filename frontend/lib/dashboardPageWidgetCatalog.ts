@@ -122,6 +122,35 @@ export const DASHBOARD_PAGE_WIDGET_CATALOG: DashboardPageDefinition[] = [
     description: "Compliance roll-up for mandatory training programs.",
     slices: [{ id: "training_compliance", label: "Training compliance" }],
   },
+  {
+    id: "facility_schedule",
+    label: "Facility schedule",
+    href: "/schedule",
+    description: "Public program blocks from the same feed as the break-room board (`/api/schedule`).",
+    slices: [
+      {
+        id: "today_program_blocks",
+        label: "Today's program blocks",
+        description: "Grouped by location for the current local day.",
+      },
+    ],
+  },
+  {
+    id: "routines",
+    label: "Routines",
+    href: "/standards/routines",
+    description: "Shift routine handoffs and the published routine library for this tenant.",
+    slices: [
+      { id: "my_assignments", label: "Your routine assignments" },
+      {
+        id: "routine_library",
+        label: "Routine library",
+        customizableFields: [
+          { key: "maxNames", label: "Max routines to list", type: "number", default: 5, min: 1, max: 20, step: 1 },
+        ],
+      },
+    ],
+  },
 ];
 
 export type CustomWidgetSliceOptions = Record<string, Record<string, boolean | number>>;
