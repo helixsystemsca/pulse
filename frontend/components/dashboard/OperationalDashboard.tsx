@@ -29,6 +29,7 @@ import {
 import { shiftBandForWindow } from "@/lib/schedule/shift-codes";
 import type { Shift } from "@/lib/schedule/types";
 import type { PulseShiftApi, PulseWorkerApi } from "@/lib/schedule/pulse-bridge";
+import { OpsHeaderWeather } from "@/components/dashboard/OpsHeaderWeather";
 import { OpsWidgetShell } from "@/components/dashboard/widgets/ops/OpsWidgetShell";
 import { cn } from "@/lib/cn";
 import { DASH } from "@/styles/dashboardTheme";
@@ -1518,13 +1519,16 @@ function DashboardBody({
           isKiosk && "shrink-0",
         )}
       >
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[color-mix(in_srgb,var(--ds-text-primary)_48%,transparent)]">
             {dashboardTitle}
           </p>
-          <p className="mt-0.5 text-sm font-semibold tabular-nums text-[color-mix(in_srgb,var(--ds-text-primary)_88%,transparent)]">
-            {dateInBc(now)} · {timeInBc(now)}
-          </p>
+          <div className="mt-0.5 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 pr-1">
+            <p className="text-sm font-semibold tabular-nums text-[color-mix(in_srgb,var(--ds-text-primary)_88%,transparent)]">
+              {dateInBc(now)} · {timeInBc(now)}
+            </p>
+            <OpsHeaderWeather className="shrink-0" />
+          </div>
         </div>
         {!isKiosk || headerShowFullscreen || headerShowLayoutTools ? (
           <div className="inline-flex max-w-full flex-wrap items-center justify-end gap-2">

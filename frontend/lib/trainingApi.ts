@@ -309,7 +309,13 @@ export async function postProcedureTrainingAcknowledgement(
     statement_confirmed?: boolean;
     acknowledgment_note?: string | null;
   },
-): Promise<{ id: string; revision_number: number; acknowledged_at: string; acknowledgment_statement?: string | null }> {
+): Promise<{
+  id: string;
+  revision_number: number;
+  acknowledged_at: string;
+  acknowledgment_statement?: string | null;
+  snapshot_id?: string | null;
+}> {
   return apiFetch(`/api/v1/cmms/procedures/${encodeURIComponent(procedureId)}/acknowledgement`, {
     method: "POST",
     json: {

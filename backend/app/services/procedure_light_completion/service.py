@@ -68,7 +68,7 @@ async def submit_light_procedure_completion(
     primary_acknowledged: bool,
     secondary_acknowledged: bool,
     supervisor_signoff: bool,
-) -> PulseProcedureWorkerCompletion:
+) -> tuple[PulseProcedureWorkerCompletion, Optional[str]]:
     if not primary_acknowledged:
         raise ValueError("primary_acknowledged is required")
 
@@ -118,8 +118,13 @@ async def submit_light_procedure_completion(
     await db.flush()
 
     _, req_ack, _ = resolve_compliance_defaults(cs)
+    pdf_snapshot_id: Optional[str] = None
     if bool(req_ack):
-        await record_procedure_acknowledgement(db, company_id, employee_user_id=employee_user_id, procedure=procedure)
+        _ak, created, snap_id = await record_procedure_acknowledgement(
+            db, company_id, employee_user_id=employee_user_id, procedure=procedure
+        )
+        if created and snap_id:
+            pdf_snapshot_id = snap_id
 
     marker = revision_marker_from_procedure(procedure)
     await record_procedure_signoff(
@@ -133,4 +138,4 @@ async def submit_light_procedure_completion(
     )
 
     await db.flush()
-    return row
+    return row, pdf_snapshot_id

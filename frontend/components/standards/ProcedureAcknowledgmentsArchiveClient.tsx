@@ -1,14 +1,81 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Loader2 } from "lucide-react";
+import Link from "next/link";
+import { FileDown, FileText, Loader2, Printer } from "lucide-react";
 import {
   fetchProcedureAcknowledgmentArchive,
+  fetchProcedureAcknowledgmentPdfBlob,
   type ProcedureAcknowledgmentArchiveItem,
 } from "@/lib/procedureAcknowledgmentsArchiveApi";
 import { parseClientApiError } from "@/lib/parse-client-api-error";
 import { dsInputClass, dsLabelClass } from "@/components/ui/ds-form-classes";
 import { Button } from "@/components/ui/Button";
+
+function PdfActions({ row }: { row: ProcedureAcknowledgmentArchiveItem }) {
+  const [busy, setBusy] = useState(false);
+  const open = useCallback(
+    async (download: boolean) => {
+      setBusy(true);
+      try {
+        const blob = await fetchProcedureAcknowledgmentPdfBlob(row.id, download);
+        const url = URL.createObjectURL(blob);
+        if (download) {
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = `procedure-acknowledgment-${row.id}.pdf`;
+          a.rel = "noopener";
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          URL.revokeObjectURL(url);
+        } else {
+          window.open(url, "_blank", "noopener,noreferrer");
+          window.setTimeout(() => URL.revokeObjectURL(url), 120_000);
+        }
+      } catch {
+        /* surfaced via parent refresh if needed */
+      } finally {
+        setBusy(false);
+      }
+    },
+    [row.id],
+  );
+
+  if (!row.snapshot_id) {
+    return <span className="text-[11px] text-ds-muted">No snapshot</span>;
+  }
+  if (!row.pdf_ready) {
+    return (
+      <span className="text-[11px] text-ds-muted" title={row.pdf_generation_error ?? undefined}>
+        PDF pending…
+      </span>
+    );
+  }
+  return (
+    <div className="flex flex-wrap gap-1">
+      <Button type="button" variant="secondary" className="h-8 px-2 text-[11px]" disabled={busy} onClick={() => void open(false)}>
+        <FileText className="h-3.5 w-3.5" aria-hidden />
+        View
+      </Button>
+      <Button type="button" variant="secondary" className="h-8 px-2 text-[11px]" disabled={busy} onClick={() => void open(true)}>
+        <FileDown className="h-3.5 w-3.5" aria-hidden />
+        Download
+      </Button>
+      <Button
+        type="button"
+        variant="secondary"
+        className="h-8 px-2 text-[11px]"
+        disabled={busy}
+        title="Opens the PDF — use the viewer Print command"
+        onClick={() => void open(false)}
+      >
+        <Printer className="h-3.5 w-3.5" aria-hidden />
+        Print
+      </Button>
+    </div>
+  );
+}
 
 function statusChip(status: ProcedureAcknowledgmentArchiveItem["compliance_status"]) {
   if (status === "current") {
@@ -153,7 +220,7 @@ export function ProcedureAcknowledgmentsArchiveClient() {
           </p>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[880px] border-collapse text-left text-sm">
+          <table className="w-full min-w-[1020px] border-collapse text-left text-sm">
             <thead>
               <tr className="border-b border-ds-border/80 bg-ds-secondary/40 text-[11px] font-bold uppercase tracking-wide text-ds-muted dark:border-ds-border">
                 <th className="px-3 py-2">Worker</th>
@@ -162,19 +229,20 @@ export function ProcedureAcknowledgmentsArchiveClient() {
                 <th className="px-3 py-2">Current rev</th>
                 <th className="px-3 py-2">Acknowledged at</th>
                 <th className="px-3 py-2">Status</th>
+                <th className="px-3 py-2">Record &amp; PDF</th>
               </tr>
             </thead>
             <tbody>
               {loading && items.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-10 text-center text-ds-muted">
+                  <td colSpan={7} className="px-4 py-10 text-center text-ds-muted">
                     <Loader2 className="mx-auto h-6 w-6 animate-spin" aria-hidden />
                   </td>
                 </tr>
               ) : null}
               {!loading && items.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-10 text-center text-ds-muted">
+                  <td colSpan={7} className="px-4 py-10 text-center text-ds-muted">
                     No rows match the current filters.
                   </td>
                 </tr>
@@ -193,6 +261,24 @@ export function ProcedureAcknowledgmentsArchiveClient() {
                   <td className="px-3 py-2 align-top tabular-nums">{r.procedure_current_revision}</td>
                   <td className="px-3 py-2 align-top text-xs text-ds-muted">{new Date(r.acknowledged_at).toLocaleString()}</td>
                   <td className="px-3 py-2 align-top">{statusChip(r.compliance_status)}</td>
+                  <td className="px-3 py-2 align-top">
+                    <div className="flex flex-col gap-2">
+                      {r.snapshot_id ? (
+                        <Link
+                          href={`/standards/acknowledgments/record/${encodeURIComponent(r.id)}`}
+                          className="inline-flex items-center gap-1 text-xs font-semibold text-teal-700 hover:underline dark:text-teal-300"
+                        >
+                          View record
+                        </Link>
+                      ) : (
+                        <span className="text-[11px] text-ds-muted">No immutable record</span>
+                      )}
+                      <PdfActions row={r} />
+                      <Button type="button" variant="secondary" className="h-7 max-w-[9rem] px-2 text-[10px]" disabled title="Planned: outbound email with PDF attachment.">
+                        Email PDF
+                      </Button>
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>

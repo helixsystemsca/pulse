@@ -321,6 +321,44 @@ class PulseProcedureTrainingAcknowledgement(Base):
     )
 
 
+class PulseProcedureAcknowledgmentSnapshot(Base):
+    """Immutable snapshot of procedure content + acknowledgment facts at acknowledgement time.
+
+    PDFs are generated from this row only — never from the live ``pulse_procedures`` row.
+    """
+
+    __tablename__ = "pulse_procedure_acknowledgment_snapshots"
+    __table_args__ = (UniqueConstraint("acknowledgment_id", name="uq_pulse_proc_ack_snap_ack"),)
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    acknowledgment_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("pulse_procedure_acknowledgements.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    procedure_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("pulse_procedures.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    procedure_version: Mapped[int] = mapped_column(Integer, nullable=False)
+    procedure_title: Mapped[str] = mapped_column(String(512), nullable=False)
+    procedure_category: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    procedure_semantic_version: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
+    procedure_revision_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    procedure_revision_summary: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    procedure_content_snapshot: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, server_default=text("'[]'::jsonb"))
+    acknowledgment_statement_text: Mapped[str] = mapped_column(Text, nullable=False)
+    acknowledged_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    worker_full_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    worker_job_title: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    worker_operational_role: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
+    generated_pdf_url: Mapped[Optional[str]] = mapped_column(String(2048), nullable=True)
+    pdf_generated_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    pdf_generation_error: Mapped[Optional[str]] = mapped_column(String(2000), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+
+
 class PulseProcedureWorkerCompletion(Base):
     """Lightweight read/understand completion + checkbox audit (distinct from quiz sign-off rows).
 

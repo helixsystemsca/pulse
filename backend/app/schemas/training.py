@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import date, datetime
-from typing import Literal, Optional
+from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, Field
 
@@ -175,6 +175,7 @@ class ProcedureAcknowledgementOut(BaseModel):
     revision_number: int
     acknowledged_at: datetime
     acknowledgment_statement: Optional[str] = None
+    snapshot_id: Optional[str] = Field(None, description="Immutable snapshot row used for audit PDF (null if duplicate ack).")
 
 
 class ProcedureAcknowledgementPostIn(BaseModel):
@@ -201,6 +202,37 @@ class ProcedureAcknowledgmentArchiveItemOut(BaseModel):
     acknowledged_at: datetime
     acknowledgment_statement: Optional[str] = None
     acknowledgment_note: Optional[str] = None
+    compliance_status: Literal["current", "outdated"]
+    snapshot_id: Optional[str] = None
+    pdf_ready: bool = False
+    pdf_generation_error: Optional[str] = None
+
+
+class ProcedureAcknowledgmentComplianceRecordOut(BaseModel):
+    """Immutable acknowledgment audit record (snapshot + status vs current procedure revision)."""
+
+    acknowledgment_id: str
+    snapshot_id: str
+    immutable: Literal[True] = True
+    employee_user_id: str
+    procedure_id: str
+    procedure_title_snapshot: str
+    procedure_category_snapshot: Optional[str] = None
+    procedure_semantic_version_snapshot: Optional[str] = None
+    procedure_version_snapshot: int
+    procedure_revision_date_snapshot: Optional[date] = None
+    procedure_revision_summary_snapshot: Optional[str] = None
+    procedure_content_snapshot: list[Any] = Field(default_factory=list)
+    acknowledgment_statement_text: str
+    acknowledgment_note: Optional[str] = None
+    acknowledged_at: datetime
+    worker_full_name: Optional[str] = None
+    worker_job_title: Optional[str] = None
+    worker_operational_role: Optional[str] = None
+    snapshot_created_at: datetime
+    generated_pdf_ready: bool = False
+    pdf_generation_error: Optional[str] = None
+    procedure_current_revision: int
     compliance_status: Literal["current", "outdated"]
 
 

@@ -7,7 +7,7 @@ from typing import Annotated, Optional
 
 from uuid import uuid4
 
-from fastapi import APIRouter, Body, Depends, File, HTTPException, Query, UploadFile, status
+from fastapi import APIRouter, BackgroundTasks, Body, Depends, File, HTTPException, Query, UploadFile, status
 from sqlalchemy import and_, delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.responses import Response
@@ -17,6 +17,7 @@ from app.core.database import get_db
 from app.core.events.engine import event_engine
 from app.core.events.types import DomainEvent
 from app.core.pulse_storage import (
+    read_procedure_acknowledgment_pdf_bytes,
     read_procedure_assignment_photo_bytes,
     read_procedure_step_image_bytes,
     write_procedure_assignment_photo_bytes,
@@ -43,8 +44,10 @@ from app.modules.pulse import service as pulse_svc
 from app.services.pm_task_service import sync_pm_task_after_work_order_completed
 from app.services.procedure_acknowledgment_archive import (
     count_procedure_acknowledgment_archive,
+    get_procedure_acknowledgment_compliance_record,
     list_procedure_acknowledgment_archive,
 )
+from app.services.procedure_acknowledgment_pdf import generate_and_store_procedure_acknowledgment_pdf
 from app.services.procedure_training.service import (
     latest_ack_revision_map,
     record_procedure_acknowledgement,
@@ -66,6 +69,7 @@ from app.schemas.training import (
     ProcedureAcknowledgementOut,
     ProcedureAcknowledgmentArchiveItemOut,
     ProcedureAcknowledgmentArchivePageOut,
+    ProcedureAcknowledgmentComplianceRecordOut,
     ProcedureComplianceOut,
     ProcedureCompliancePatchIn,
     ProcedureLightCompletionPostIn,
@@ -752,6 +756,7 @@ async def post_procedure_training_acknowledgement(
     db: Db,
     cid: CompanyId,
     actor: Annotated[User, Depends(require_tenant_user)],
+    background_tasks: BackgroundTasks,
     body: ProcedureAcknowledgementPostIn = Body(default_factory=ProcedureAcknowledgementPostIn),
 ) -> ProcedureAcknowledgementOut:
     proc = await db.get(PulseProcedure, procedure_id)
@@ -798,7 +803,7 @@ async def post_procedure_training_acknowledgement(
                 detail="Review the procedure content before acknowledging.",
             )
 
-    ak, created = await record_procedure_acknowledgement(
+    ak, created, snapshot_id = await record_procedure_acknowledgement(
         db,
         cid,
         employee_user_id=str(target_employee_id),
@@ -806,6 +811,8 @@ async def post_procedure_training_acknowledgement(
         acknowledgment_note=body.acknowledgment_note,
     )
     await db.commit()
+    if created and snapshot_id:
+        background_tasks.add_task(generate_and_store_procedure_acknowledgment_pdf, snapshot_id, str(cid))
     if created:
         await event_engine.publish(
             DomainEvent(
@@ -818,6 +825,7 @@ async def post_procedure_training_acknowledgement(
                     "procedure_id": str(proc.id),
                     "revision_number": int(ak.revision_number),
                     "acknowledgment_id": str(ak.id),
+                    "snapshot_id": snapshot_id,
                 },
             )
         )
@@ -826,6 +834,7 @@ async def post_procedure_training_acknowledgement(
         revision_number=int(ak.revision_number),
         acknowledged_at=ak.acknowledged_at,
         acknowledgment_statement=ak.acknowledgment_statement,
+        snapshot_id=snapshot_id,
     )
 
 
@@ -836,7 +845,7 @@ async def list_procedure_acknowledgment_archive_endpoint(
     actor: Annotated[User, Depends(require_tenant_user)],
     worker_id: Optional[str] = Query(None, description="Filter to one worker (defaults to self for non-elevated users)."),
     procedure_id: Optional[str] = Query(None),
-    revision: Optional[int] = Query(None, ge=1),
+    revision: Optional[int] = Query(None, ge=1, le=99999),
     status_filter: str = Query("all", description="all | current | outdated"),
     date_from: Optional[date] = Query(None),
     date_to: Optional[date] = Query(None),
@@ -881,6 +890,80 @@ async def list_procedure_acknowledgment_archive_endpoint(
     return ProcedureAcknowledgmentArchivePageOut(items=items, total=total, limit=limit, offset=offset)
 
 
+async def _assert_acknowledgment_record_access(
+    db: AsyncSession,
+    company_id: str,
+    actor: User,
+    ack: PulseProcedureTrainingAcknowledgement,
+) -> None:
+    if str(ack.employee_user_id) == str(actor.id):
+        return
+    view_all = user_has_tenant_full_admin(actor) or user_has_any_role(
+        actor, UserRole.company_admin, UserRole.manager, UserRole.supervisor
+    )
+    if not view_all:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not allowed to view this acknowledgment record",
+        )
+    if not await pulse_svc._user_in_company(db, company_id, str(ack.employee_user_id)):
+        raise HTTPException(status_code=400, detail="Unknown worker")
+
+
+@router.get(
+    "/procedure-acknowledgments/{acknowledgment_id}/compliance-record",
+    response_model=ProcedureAcknowledgmentComplianceRecordOut,
+)
+async def get_procedure_acknowledgment_compliance_record_endpoint(
+    acknowledgment_id: str,
+    db: Db,
+    cid: CompanyId,
+    actor: Annotated[User, Depends(require_tenant_user)],
+) -> ProcedureAcknowledgmentComplianceRecordOut:
+    ack = await db.get(PulseProcedureTrainingAcknowledgement, acknowledgment_id)
+    if ack is None or str(ack.company_id) != str(cid):
+        raise HTTPException(status_code=404, detail="Not found")
+    await _assert_acknowledgment_record_access(db, str(cid), actor, ack)
+    row = await get_procedure_acknowledgment_compliance_record(db, str(cid), acknowledgment_id)
+    if row is None:
+        raise HTTPException(
+            status_code=404,
+            detail="No immutable compliance snapshot exists for this acknowledgment.",
+        )
+    return ProcedureAcknowledgmentComplianceRecordOut.model_validate(row)
+
+
+@router.get("/procedure-acknowledgments/{acknowledgment_id}/pdf")
+async def get_procedure_acknowledgment_pdf_endpoint(
+    acknowledgment_id: str,
+    db: Db,
+    cid: CompanyId,
+    actor: Annotated[User, Depends(require_tenant_user)],
+    download: bool = Query(False, description="When true, Content-Disposition is attachment."),
+) -> Response:
+    ack = await db.get(PulseProcedureTrainingAcknowledgement, acknowledgment_id)
+    if ack is None or str(ack.company_id) != str(cid):
+        raise HTTPException(status_code=404, detail="Not found")
+    await _assert_acknowledgment_record_access(db, str(cid), actor, ack)
+    row = await get_procedure_acknowledgment_compliance_record(db, str(cid), acknowledgment_id)
+    if row is None or not row.get("generated_pdf_ready"):
+        raise HTTPException(
+            status_code=404,
+            detail="PDF is not available yet or generation failed. Open the compliance record for details.",
+        )
+    snap_id = str(row["snapshot_id"])
+    pdf_bytes = await read_procedure_acknowledgment_pdf_bytes(str(cid), snap_id)
+    if not pdf_bytes:
+        raise HTTPException(status_code=404, detail="PDF file missing from storage")
+    disp = "attachment" if download else "inline"
+    filename = f"procedure-acknowledgment-{acknowledgment_id}.pdf"
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'{disp}; filename="{filename}"'},
+    )
+
+
 def _light_completion_state_out(
     proc: PulseProcedure,
     st: ProcedureLightCompletionStatusApi,
@@ -923,6 +1006,7 @@ async def post_procedure_light_completion(
     db: Db,
     cid: CompanyId,
     actor: Annotated[User, Depends(require_tenant_user)],
+    background_tasks: BackgroundTasks,
     body: ProcedureLightCompletionPostIn,
 ) -> ProcedureLightCompletionStateOut:
     proc = await db.get(PulseProcedure, procedure_id)
@@ -936,7 +1020,7 @@ async def post_procedure_light_completion(
         or user_has_any_role(actor, UserRole.company_admin, UserRole.manager, UserRole.supervisor)
     )
     try:
-        await submit_light_procedure_completion(
+        row, snap_id = await submit_light_procedure_completion(
             db,
             cid,
             employee_user_id=str(actor.id),
@@ -955,6 +1039,8 @@ async def post_procedure_light_completion(
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=msg) from e
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=msg) from e
     else:
+        if snap_id:
+            background_tasks.add_task(generate_and_store_procedure_acknowledgment_pdf, snap_id, str(cid))
         await event_engine.publish(
             DomainEvent(
                 event_type="ops.procedure_completed",

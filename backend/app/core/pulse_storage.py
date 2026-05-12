@@ -425,6 +425,44 @@ async def write_procedure_assignment_photo_bytes(
     return f"{sub}/{stem}{ext_with_dot}"
 
 
+# --- Procedure acknowledgment audit PDFs (immutable compliance exports) ---
+
+
+async def write_procedure_acknowledgment_pdf_bytes(company_id: str, snapshot_id: str, raw: bytes) -> str:
+    """Persist PDF bytes; returns stable relative storage key (no bucket prefix)."""
+    sub = f"procedure_acknowledgment_pdfs/{company_id}"
+    stem = snapshot_id
+    ct = "application/pdf"
+
+    def _local() -> None:
+        _local_write_stem(sub, stem, ".pdf", raw)
+
+    if _backend() == "s3":
+        await _run_sync(lambda: _s3_write_stem(sub, stem, ".pdf", ct, raw))
+    else:
+        await _run_sync(_local)
+    return f"{sub}/{stem}.pdf"
+
+
+async def read_procedure_acknowledgment_pdf_bytes(company_id: str, snapshot_id: str) -> Optional[bytes]:
+    sub = f"procedure_acknowledgment_pdfs/{company_id}"
+    stem = snapshot_id
+
+    def _local() -> Optional[bytes]:
+        p = _local_root() / sub / f"{stem}.pdf"
+        return p.read_bytes() if p.is_file() else None
+
+    if _backend() == "s3":
+        client, bucket = _require_s3_config()
+        key = _s3_key(f"{sub}/{stem}.pdf")
+
+        def _read() -> Optional[bytes]:
+            return _s3_read_key(client, bucket, key)
+
+        return await _run_sync(_read)
+    return await _run_sync(_local)
+
+
 __all__ = [
     "delete_user_avatar_pending_files",
     "media_type_for_ext",
@@ -433,11 +471,13 @@ __all__ = [
     "read_company_logo_bytes",
     "read_equipment_image_bytes",
     "read_part_image_bytes",
+    "read_procedure_acknowledgment_pdf_bytes",
     "read_procedure_step_image_bytes",
     "read_procedure_assignment_photo_bytes",
     "read_user_avatar_bytes",
     "read_user_avatar_pending_bytes",
     "write_company_background_bytes",
+    "write_procedure_acknowledgment_pdf_bytes",
     "write_company_logo_bytes",
     "write_equipment_image_bytes",
     "write_part_image_bytes",

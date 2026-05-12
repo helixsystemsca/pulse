@@ -6,26 +6,36 @@ import type { BadgeDto } from "@/lib/gamificationService";
 import { cn } from "@/lib/cn";
 import { useReducedEffects } from "@/hooks/useReducedEffects";
 
-const RARITY: Record<string, { ring: string; glow: string; label: string }> = {
+const RARITY: Record<string, { ring: string; glow: string; label: string; pill: string }> = {
   common: {
-    ring: "border-slate-300/55 dark:border-slate-600/55",
+    ring: "border-emerald-300/60 dark:border-emerald-600/45",
     glow: "shadow-[inset_0_1px_0_rgba(255,255,255,0.35)]",
     label: "Common",
+    pill:
+      "border border-emerald-200/90 bg-emerald-50 text-emerald-900 dark:border-emerald-600/40 dark:bg-emerald-950/55 dark:text-emerald-200",
   },
   rare: {
-    ring: "border-sky-400/45 dark:border-sky-300/35",
-    glow: "shadow-[0_0_20px_rgba(56,189,248,0.18)]",
+    ring: "border-blue-400/55 dark:border-blue-500/45",
+    glow: "shadow-[inset_0_1px_0_rgba(255,255,255,0.35),0_0_20px_rgba(59,130,246,0.18)]",
     label: "Rare",
+    pill:
+      "border border-blue-200/90 bg-blue-50 text-blue-900 dark:border-blue-500/40 dark:bg-blue-950/55 dark:text-blue-200",
   },
   epic: {
-    ring: "border-amber-400/55 dark:border-amber-300/40",
-    glow: "shadow-[0_0_22px_rgba(251,191,36,0.22)]",
+    ring: "border-violet-400/60 dark:border-violet-400/45",
+    glow:
+      "shadow-[inset_0_1px_0_rgba(255,255,255,0.35),0_0_0_1px_rgba(139,92,246,0.2),0_0_24px_rgba(139,92,246,0.2)]",
     label: "Epic",
+    pill:
+      "border border-violet-200/90 bg-violet-50 text-violet-900 dark:border-violet-500/40 dark:bg-violet-950/55 dark:text-violet-200",
   },
   legendary: {
-    ring: "border-violet-400/60 dark:border-violet-300/45",
-    glow: "shadow-[0_0_26px_rgba(167,139,250,0.28)]",
+    ring: "border-orange-700/55 dark:border-orange-500/50",
+    glow:
+      "shadow-[inset_0_1px_0_rgba(255,255,255,0.35),0_0_0_1px_rgba(194,65,12,0.2),0_0_28px_rgba(234,88,12,0.22)]",
     label: "Legendary",
+    pill:
+      "border border-orange-400/85 bg-orange-200/90 text-orange-950 dark:border-orange-600/50 dark:bg-orange-950/65 dark:text-orange-200",
   },
 };
 
@@ -66,7 +76,6 @@ export function BadgeMedal({
         r.ring,
         r.glow,
         locked && "opacity-[0.52]",
-        highRarity && !reduced && !locked && "xp-badge-legend-ring",
         className,
       )}
     >
@@ -94,7 +103,12 @@ export function BadgeMedal({
           <div className="flex flex-wrap items-center gap-2">
             <p className="truncate font-headline text-sm font-extrabold text-ds-foreground">{badge.name}</p>
             {showRarityLabel ? (
-              <span className="rounded-full border border-ds-border/60 bg-ds-primary/60 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-ds-muted">
+              <span
+                className={cn(
+                  "rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider",
+                  r.pill,
+                )}
+              >
                 {r.label}
               </span>
             ) : null}

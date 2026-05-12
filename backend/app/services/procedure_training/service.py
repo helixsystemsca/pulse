@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from copy import deepcopy
 from datetime import date, datetime, timezone
 from typing import Literal, Optional
 from uuid import uuid4
@@ -10,8 +11,10 @@ from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models.domain import User
 from app.models.pulse_models import (
     PulseProcedure,
+    PulseProcedureAcknowledgmentSnapshot,
     PulseProcedureComplianceSettings,
     PulseProcedureCompletionSignoff,
     PulseProcedureTrainingAcknowledgement,
@@ -214,7 +217,7 @@ async def record_procedure_acknowledgement(
     procedure: PulseProcedure,
     acknowledgment_statement: str | None = None,
     acknowledgment_note: str | None = None,
-) -> tuple[PulseProcedureTrainingAcknowledgement, bool]:
+) -> tuple[PulseProcedureTrainingAcknowledgement, bool, str | None]:
     now = datetime.now(timezone.utc)
     rev = int(procedure.content_revision or 1)
     exist = await db.execute(
@@ -227,7 +230,7 @@ async def record_procedure_acknowledgement(
     )
     hit = exist.scalar_one_or_none()
     if hit:
-        return hit, False
+        return hit, False, None
 
     stmt_text = (acknowledgment_statement or "").strip() or STANDARD_PROCEDURE_ACK_STATEMENT
     note_raw = (acknowledgment_note or "").strip()
@@ -258,7 +261,33 @@ async def record_procedure_acknowledgement(
         assign.updated_at = now
 
     await db.flush()
-    return row, True
+
+    worker = await db.get(User, employee_user_id)
+    steps_src = procedure.steps
+    snapshot_steps: list = deepcopy(steps_src) if isinstance(steps_src, list) else []
+
+    snap = PulseProcedureAcknowledgmentSnapshot(
+        id=str(uuid4()),
+        acknowledgment_id=str(row.id),
+        procedure_id=str(procedure.id),
+        procedure_version=rev,
+        procedure_title=str(procedure.title or "").strip() or "—",
+        procedure_category=(str(procedure.procedure_category).strip() if procedure.procedure_category else None),
+        procedure_semantic_version=(str(procedure.semantic_version).strip() if procedure.semantic_version else None),
+        procedure_revision_date=procedure.revision_date,
+        procedure_revision_summary=(str(procedure.revision_notes).strip() if procedure.revision_notes else None),
+        procedure_content_snapshot=snapshot_steps,
+        acknowledgment_statement_text=stmt_text,
+        acknowledged_at=now,
+        worker_full_name=(str(worker.full_name).strip() if worker and worker.full_name else None),
+        worker_job_title=(str(worker.job_title).strip() if worker and worker.job_title else None),
+        worker_operational_role=(
+            str(worker.operational_role).strip() if worker and worker.operational_role else None
+        ),
+    )
+    db.add(snap)
+    await db.flush()
+    return row, True, str(snap.id)
 
 
 async def record_procedure_signoff(

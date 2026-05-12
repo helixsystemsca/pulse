@@ -9,6 +9,7 @@ Canonical event types (extend by publishing from feature code):
 - ``ops.review_submitted`` — optional; metadata: ``review_id``, ``user_id`` (reviewee), ``rating`` (≥4 for XP).
 - ``ops.inference_confirmed`` / ``demo_inference_confirmed`` — proactive maintenance inference confirmation.
 - ``ops.procedure_completed`` — procedure assignment finished (optional ``all_steps_completed``).
+- ``ops.procedure_acknowledged`` — explicit acknowledgment row created (metadata: ``worker_id``, ``procedure_id``, ``revision_number``; XP dedupe per revision).
 - ``ops.pm_completed_on_time`` — PM gamified task completed before due (``pm_task_id`` in metadata).
 - ``schedule.shift_started`` — worker acknowledged shift start (attendance XP; dedupe per day).
 - ``ops.inspection_sheet_completed`` — inspection sheet submitted.

@@ -67,6 +67,12 @@ export type ProcedureRow = {
   is_critical?: boolean;
   published_at?: string | null;
   revision_notes?: string | null;
+  procedure_category?: string | null;
+  semantic_version?: string | null;
+  revision_date?: string | null;
+  publication_state?: string;
+  is_active?: boolean;
+  requires_reacknowledgment?: boolean;
   created_at: string;
   updated_at: string;
 };

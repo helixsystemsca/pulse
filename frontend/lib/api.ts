@@ -134,6 +134,34 @@ export async function apiFetch<T>(
   return data as T;
 }
 
+/** Authenticated binary fetch (e.g. PDF) — does not JSON-parse the body. */
+export async function apiFetchBlob(path: string, init?: RequestInit): Promise<Blob> {
+  const base = getApiBaseUrl();
+  if (!base) {
+    throw new Error("NEXT_PUBLIC_API_URL is not configured");
+  }
+  const url = path.startsWith("http") ? path : `${base}${path.startsWith("/") ? "" : "/"}${path}`;
+  const headers = new Headers(init?.headers);
+  const bearer = bearerTokenForRequest(url);
+  if (bearer && !headers.has("Authorization")) {
+    headers.set("Authorization", `Bearer ${bearer}`);
+  }
+  const res = await fetch(url, {
+    ...init,
+    headers,
+  });
+  if (!res.ok) {
+    handleSessionExpiredFromApiResponse(url, res.status, Boolean(bearer));
+    const msg = isPulseAuthTeardown() ? "" : `API ${res.status}`;
+    const err = new Error(msg) as Error & { status: number; body: unknown; requestUrl: string };
+    err.status = res.status;
+    err.body = await res.text().catch(() => null);
+    err.requestUrl = url;
+    throw err;
+  }
+  return res.blob();
+}
+
 /** POST `multipart/form-data` (e.g. file upload). Do not set `Content-Type` manually — browser sets boundary. */
 export async function apiPostFormData<T>(path: string, formData: FormData): Promise<T> {
   const base = getApiBaseUrl();
