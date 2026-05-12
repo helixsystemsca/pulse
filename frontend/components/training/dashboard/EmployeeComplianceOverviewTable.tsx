@@ -1,23 +1,10 @@
 "use client";
 
 import { ChevronRight } from "lucide-react";
-import type { EmployeeComplianceRowModel, HighRiskRollup } from "@/lib/training/dashboardMetrics";
-import { ComplianceBadge } from "@/components/training/dashboard/ComplianceBadge";
+import type { EmployeeComplianceRowModel } from "@/lib/training/dashboardMetrics";
 import { ProgressCell } from "@/components/training/dashboard/ProgressCell";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
-
-function highRiskVariant(h: HighRiskRollup): "compliant" | "missing" | "expired" {
-  if (h === "expired") return "expired";
-  if (h === "missing") return "missing";
-  return "compliant";
-}
-
-function highRiskLabel(h: HighRiskRollup): string {
-  if (h === "expired") return "Expired";
-  if (h === "missing") return "Missing";
-  return "Compliant";
-}
 
 function rowBorderClass(accent: EmployeeComplianceRowModel["rowAccent"]): string {
   if (accent === "risk") return "border-l-[3px] border-l-rose-500";
@@ -63,9 +50,6 @@ export function EmployeeComplianceOverviewTable({
                 Mandatory
               </th>
               <th className="px-3 py-2.5 text-[11px] font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                High risk
-              </th>
-              <th className="px-3 py-2.5 text-[11px] font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
                 Expiring
               </th>
               <th className="px-3 py-2.5 text-[11px] font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
@@ -80,7 +64,7 @@ export function EmployeeComplianceOverviewTable({
             {rows.length === 0 ? (
               <tr>
                 <td
-                  colSpan={dense ? 6 : 8}
+                  colSpan={dense ? 5 : 7}
                   className="px-4 py-10 text-center text-sm text-slate-500 dark:text-slate-400"
                 >
                   No employees match the current filters.
@@ -119,9 +103,6 @@ export function EmployeeComplianceOverviewTable({
                     ) : (
                       <ProgressCell pct={r.mandatoryPct} label={r.mandatoryLabel} />
                     )}
-                  </td>
-                  <td className="px-3 py-3 align-middle">
-                    <ComplianceBadge variant={highRiskVariant(r.highRisk)}>{highRiskLabel(r.highRisk)}</ComplianceBadge>
                   </td>
                   <td className="px-3 py-3 align-middle text-xs text-slate-700 dark:text-slate-200">
                     {r.expiringSoonCount > 0 ? (

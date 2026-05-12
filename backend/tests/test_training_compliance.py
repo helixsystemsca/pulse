@@ -58,7 +58,7 @@ async def test_training_assign_signoff_matrix_and_profile(client, seeded_tenant)
     ack = await client.post(
         f"/api/v1/cmms/procedures/{pid}/acknowledgement",
         headers=worker_headers,
-        json={},
+        json={"statement_confirmed": True},
     )
     assert ack.status_code == 200, ack.text
 
@@ -107,7 +107,7 @@ async def test_procedure_revision_requires_reacknowledgement(client, seeded_tena
         json={"procedure_id": pid, "employee_user_ids": [wid]},
     )
     await client.post(f"/api/v1/cmms/procedures/{pid}/sign-off", headers=worker_headers, json={})
-    await client.post(f"/api/v1/cmms/procedures/{pid}/acknowledgement", headers=worker_headers, json={})
+    await client.post(f"/api/v1/cmms/procedures/{pid}/acknowledgement", headers=worker_headers, json={"statement_confirmed": True})
 
     upd = await client.patch(
         f"/api/v1/cmms/procedures/{pid}",
@@ -125,7 +125,7 @@ async def test_procedure_revision_requires_reacknowledgement(client, seeded_tena
     ]
     assert "revision_pending" in statuses
 
-    await client.post(f"/api/v1/cmms/procedures/{pid}/acknowledgement", headers=worker_headers, json={})
+    await client.post(f"/api/v1/cmms/procedures/{pid}/acknowledgement", headers=worker_headers, json={"statement_confirmed": True})
 
     matrix2 = await client.get("/api/v1/training/matrix", headers=mgr_headers)
     statuses2 = [
@@ -276,7 +276,7 @@ async def test_acknowledgement_requires_prior_view_when_verification_enabled(cli
     ok_ack = await client.post(
         f"/api/v1/cmms/procedures/{pid}/acknowledgement",
         headers=worker_headers,
-        json={"read_understood_confirmed": True},
+        json={"read_understood_confirmed": True, "statement_confirmed": True},
     )
     assert ok_ack.status_code == 200, ok_ack.text
 

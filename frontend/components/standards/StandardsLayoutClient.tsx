@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { ListChecks } from "lucide-react";
 import { SegmentedControl } from "@/components/schedule/SegmentedControl";
@@ -40,6 +41,20 @@ export function StandardsLayoutClient({ children }: { children: React.ReactNode 
               { value: "training", label: "Training" },
             ]}
           />
+        </div>
+        <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm">
+          <Link
+            href="/standards/my-procedures"
+            className="font-medium text-teal-700 hover:underline dark:text-teal-300"
+          >
+            My procedures
+          </Link>
+          <Link
+            href="/standards/acknowledgments"
+            className="font-medium text-teal-700 hover:underline dark:text-teal-300"
+          >
+            Acknowledgment archive
+          </Link>
         </div>
         <div className="mt-6">{children}</div>
       </PageBody>

@@ -231,6 +231,7 @@ export function ProceduresApp() {
   const [editCreatorName, setEditCreatorName] = useState("");
   const [ackOpen, setAckOpen] = useState(false);
   const [ackForId, setAckForId] = useState<string | null>(null);
+  const [ackStatementAgreed, setAckStatementAgreed] = useState(false);
   const [editIsCritical, setEditIsCritical] = useState(false);
   const [editRevisionNotes, setEditRevisionNotes] = useState("");
   const [editPublishedAtLocal, setEditPublishedAtLocal] = useState("");
@@ -402,6 +403,7 @@ export function ProceduresApp() {
       setEditCreatorName("");
       setAckOpen(false);
       setAckForId(null);
+      setAckStatementAgreed(false);
       setEditing(false);
       return;
     }
@@ -415,6 +417,7 @@ export function ProceduresApp() {
     setEditPublishedAtLocal(pub ? new Date(pub).toISOString().slice(0, 16) : "");
     setAckForId(selected.id);
     setAckOpen(false);
+    setAckStatementAgreed(false);
   }, [selected, editing]);
 
   useEffect(() => {
@@ -669,15 +672,20 @@ export function ProceduresApp() {
   const signAcknowledgment = async () => {
     if (!userId || !selected) return;
     if (isApiMode()) {
+      if (!ackStatementAgreed) {
+        setErr("Confirm the acknowledgment statement to continue.");
+        return;
+      }
       setErr(null);
       try {
-        await postProcedureTrainingAcknowledgement(selected.id);
+        await postProcedureTrainingAcknowledgement(selected.id, { statement_confirmed: true });
         await reloadMyTraining();
         void refreshProcedureLibraryCompliance();
       } catch (e) {
         setErr(parseClientApiError(e).message);
       } finally {
         setAckOpen(false);
+        setAckStatementAgreed(false);
       }
       return;
     }
@@ -1459,7 +1467,10 @@ export function ProceduresApp() {
                     {showAckCta ? (
                       <button
                         type="button"
-                        onClick={() => setAckOpen(true)}
+                        onClick={() => {
+                          setAckStatementAgreed(false);
+                          setAckOpen(true);
+                        }}
                         className="rounded-md bg-ds-accent px-4 py-2 text-sm font-semibold text-ds-accent-foreground shadow-sm hover:bg-ds-accent/90"
                       >
                         Continue to acknowledge
@@ -1597,6 +1608,18 @@ export function ProceduresApp() {
             <p className="mt-2 text-sm text-ds-muted">
               Please confirm you’ve read and understand this procedure. This will be recorded in your profile under Compliance.
             </p>
+            <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-lg border border-ds-border bg-ds-primary p-3 text-sm leading-snug text-ds-foreground">
+              <input
+                type="checkbox"
+                className="mt-1 h-4 w-4 shrink-0 rounded border-ds-border"
+                checked={ackStatementAgreed}
+                onChange={(e) => setAckStatementAgreed(e.target.checked)}
+              />
+              <span>
+                I acknowledge that I have reviewed and understood this procedure and agree to follow it while performing
+                related duties.
+              </span>
+            </label>
             <div className="ds-premium-inset mt-4 p-3 text-sm text-ds-foreground">
               <span className="font-semibold">Procedure:</span> {selected.title}
             </div>
@@ -1610,10 +1633,11 @@ export function ProceduresApp() {
               </button>
               <button
                 type="button"
-                className="rounded-md bg-ds-accent px-4 py-2 text-sm font-semibold text-ds-accent-foreground"
+                className="rounded-md bg-ds-accent px-4 py-2 text-sm font-semibold text-ds-accent-foreground disabled:opacity-50"
+                disabled={!ackStatementAgreed}
                 onClick={() => void signAcknowledgment()}
               >
-                I acknowledge I’ve read this
+                Record acknowledgment
               </button>
             </div>
           </div>

@@ -171,8 +171,10 @@ class ProcedureSignoffOut(BaseModel):
 
 
 class ProcedureAcknowledgementOut(BaseModel):
+    id: str
     revision_number: int
     acknowledged_at: datetime
+    acknowledgment_statement: Optional[str] = None
 
 
 class ProcedureAcknowledgementPostIn(BaseModel):
@@ -181,6 +183,32 @@ class ProcedureAcknowledgementPostIn(BaseModel):
         False,
         description="Must be true when knowledge verification is required (explicit read/understand acknowledgment).",
     )
+    statement_confirmed: bool = Field(
+        False,
+        description="Must be true — worker attests to the standard acknowledgment text before recording.",
+    )
+    acknowledgment_note: Optional[str] = Field(None, max_length=2000)
+
+
+class ProcedureAcknowledgmentArchiveItemOut(BaseModel):
+    id: str
+    employee_user_id: str
+    employee_name: str
+    procedure_id: str
+    procedure_title: str
+    acknowledged_revision: int
+    procedure_current_revision: int
+    acknowledged_at: datetime
+    acknowledgment_statement: Optional[str] = None
+    acknowledgment_note: Optional[str] = None
+    compliance_status: Literal["current", "outdated"]
+
+
+class ProcedureAcknowledgmentArchivePageOut(BaseModel):
+    items: list[ProcedureAcknowledgmentArchiveItemOut]
+    total: int
+    limit: int
+    offset: int
 
 
 ProcedureLightCompletionStatusApi = Literal[

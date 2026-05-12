@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any, Literal, Optional
 
 WorkOrderSourceApi = Literal["manual", "auto_pm", "downtime_detected"]
@@ -156,6 +156,12 @@ class ProcedureOut(BaseModel):
     is_critical: bool = False
     published_at: Optional[datetime] = None
     revision_notes: Optional[str] = None
+    procedure_category: Optional[str] = None
+    semantic_version: Optional[str] = None
+    revision_date: Optional[date] = None
+    publication_state: str = "published"
+    is_active: bool = True
+    requires_reacknowledgment: bool = True
     created_at: datetime
     updated_at: datetime
 
@@ -259,6 +265,12 @@ class ProcedureCreate(BaseModel):
     is_critical: bool = False
     published_at: Optional[datetime] = None
     revision_notes: Optional[str] = Field(None, max_length=8000)
+    procedure_category: Optional[str] = Field(None, max_length=128)
+    semantic_version: Optional[str] = Field(None, max_length=32)
+    revision_date: Optional[date] = None
+    publication_state: str = Field("published", max_length=20)
+    is_active: bool = True
+    requires_reacknowledgment: bool = True
 
     @field_validator("search_keywords", mode="before")
     @classmethod
@@ -282,6 +294,12 @@ class ProcedureUpdate(BaseModel):
     is_critical: Optional[bool] = None
     published_at: Optional[datetime] = None
     revision_notes: Optional[str] = Field(None, max_length=8000)
+    procedure_category: Optional[str] = Field(None, max_length=128)
+    semantic_version: Optional[str] = Field(None, max_length=32)
+    revision_date: Optional[date] = None
+    publication_state: Optional[str] = Field(None, max_length=20)
+    is_active: Optional[bool] = None
+    requires_reacknowledgment: Optional[bool] = None
 
     @field_validator("search_keywords", mode="before")
     @classmethod

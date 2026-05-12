@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from typing import Annotated, Optional
 
 from uuid import uuid4
@@ -41,6 +41,10 @@ from app.models.pulse_models import (
 )
 from app.modules.pulse import service as pulse_svc
 from app.services.pm_task_service import sync_pm_task_after_work_order_completed
+from app.services.procedure_acknowledgment_archive import (
+    count_procedure_acknowledgment_archive,
+    list_procedure_acknowledgment_archive,
+)
 from app.services.procedure_training.service import (
     latest_ack_revision_map,
     record_procedure_acknowledgement,
@@ -60,6 +64,8 @@ from app.services.procedure_verification.service import (
 from app.schemas.training import (
     ProcedureAcknowledgementPostIn,
     ProcedureAcknowledgementOut,
+    ProcedureAcknowledgmentArchiveItemOut,
+    ProcedureAcknowledgmentArchivePageOut,
     ProcedureComplianceOut,
     ProcedureCompliancePatchIn,
     ProcedureLightCompletionPostIn,
@@ -409,6 +415,12 @@ async def create_procedure(
         is_critical=bool(body.is_critical),
         published_at=body.published_at,
         revision_notes=(str(body.revision_notes).strip() if body.revision_notes else None),
+        procedure_category=(body.procedure_category or "").strip() or None,
+        semantic_version=(body.semantic_version or "").strip() or "1.0",
+        revision_date=body.revision_date,
+        publication_state=(body.publication_state or "published").strip().lower()[:20] or "published",
+        is_active=bool(body.is_active),
+        requires_reacknowledgment=bool(body.requires_reacknowledgment),
     )
     db.add(row)
     await db.commit()
@@ -760,6 +772,18 @@ async def post_procedure_training_acknowledgement(
             raise HTTPException(status_code=400, detail="Unknown employee")
 
     cs_ack = await db.get(PulseProcedureComplianceSettings, procedure_id)
+    pub = str(getattr(proc, "publication_state", None) or "published").strip().lower()
+    if pub == "draft":
+        raise HTTPException(status_code=400, detail="Procedure is in draft — publish before acknowledgments are accepted.")
+    if not bool(getattr(proc, "is_active", True)):
+        raise HTTPException(status_code=400, detail="Procedure is inactive — acknowledgments are not accepted.")
+
+    if not body.statement_confirmed:
+        raise HTTPException(
+            status_code=400,
+            detail="Confirm the acknowledgment statement (statement_confirmed) before recording.",
+        )
+
     if verification_requires_quiz(cs_ack):
         if not body.read_understood_confirmed:
             raise HTTPException(
@@ -774,17 +798,87 @@ async def post_procedure_training_acknowledgement(
                 detail="Review the procedure content before acknowledging.",
             )
 
-    ak, _ = await record_procedure_acknowledgement(
+    ak, created = await record_procedure_acknowledgement(
         db,
         cid,
         employee_user_id=str(target_employee_id),
         procedure=proc,
+        acknowledgment_note=body.acknowledgment_note,
     )
     await db.commit()
+    if created:
+        await event_engine.publish(
+            DomainEvent(
+                event_type="ops.procedure_acknowledged",
+                company_id=str(cid),
+                entity_id=str(proc.id),
+                source_module="cmms",
+                metadata={
+                    "worker_id": str(target_employee_id),
+                    "procedure_id": str(proc.id),
+                    "revision_number": int(ak.revision_number),
+                    "acknowledgment_id": str(ak.id),
+                },
+            )
+        )
     return ProcedureAcknowledgementOut(
+        id=str(ak.id),
         revision_number=int(ak.revision_number),
         acknowledged_at=ak.acknowledged_at,
+        acknowledgment_statement=ak.acknowledgment_statement,
     )
+
+
+@router.get("/procedure-acknowledgments/archive", response_model=ProcedureAcknowledgmentArchivePageOut)
+async def list_procedure_acknowledgment_archive_endpoint(
+    db: Db,
+    cid: CompanyId,
+    actor: Annotated[User, Depends(require_tenant_user)],
+    worker_id: Optional[str] = Query(None, description="Filter to one worker (defaults to self for non-elevated users)."),
+    procedure_id: Optional[str] = Query(None),
+    revision: Optional[int] = Query(None, ge=1),
+    status_filter: str = Query("all", description="all | current | outdated"),
+    date_from: Optional[date] = Query(None),
+    date_to: Optional[date] = Query(None),
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0, le=50_000),
+) -> ProcedureAcknowledgmentArchivePageOut:
+    view_all = user_has_tenant_full_admin(actor) or user_has_any_role(
+        actor, UserRole.company_admin, UserRole.manager, UserRole.supervisor
+    )
+    if worker_id and worker_id != str(actor.id) and not view_all:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not allowed to view other workers' records")
+    effective_worker: Optional[str] = worker_id
+    if not view_all:
+        effective_worker = str(actor.id)
+    sf = (status_filter or "all").strip().lower()
+    if sf not in ("all", "current", "outdated"):
+        raise HTTPException(status_code=400, detail="status_filter must be all, current, or outdated")
+
+    total = await count_procedure_acknowledgment_archive(
+        db,
+        cid,
+        worker_id=effective_worker,
+        procedure_id=procedure_id,
+        revision=revision,
+        status_filter=sf,  # type: ignore[arg-type]
+        date_from=date_from,
+        date_to=date_to,
+    )
+    rows = await list_procedure_acknowledgment_archive(
+        db,
+        cid,
+        worker_id=effective_worker,
+        procedure_id=procedure_id,
+        revision=revision,
+        status_filter=sf,  # type: ignore[arg-type]
+        date_from=date_from,
+        date_to=date_to,
+        limit=limit,
+        offset=offset,
+    )
+    items = [ProcedureAcknowledgmentArchiveItemOut.model_validate(r) for r in rows]
+    return ProcedureAcknowledgmentArchivePageOut(items=items, total=total, limit=limit, offset=offset)
 
 
 def _light_completion_state_out(
@@ -925,12 +1019,34 @@ async def update_procedure(
     if "revision_notes" in patch:
         rn_meta = patch.get("revision_notes")
         row.revision_notes = None if rn_meta is None else (str(rn_meta).strip() or None)
+    if "procedure_category" in patch:
+        v = patch.get("procedure_category")
+        row.procedure_category = None if v is None else (str(v).strip() or None)
+    if "semantic_version" in patch:
+        v = patch.get("semantic_version")
+        row.semantic_version = None if v is None else (str(v).strip() or None)
+    if "revision_date" in patch:
+        row.revision_date = patch.get("revision_date")
+    if "publication_state" in patch and patch.get("publication_state") is not None:
+        ps = str(patch["publication_state"]).strip().lower()[:20]
+        if ps not in ("draft", "published", "archived"):
+            raise HTTPException(
+                status_code=400,
+                detail="publication_state must be one of: draft, published, archived",
+            )
+        row.publication_state = ps
+    if "is_active" in patch and patch.get("is_active") is not None:
+        row.is_active = bool(patch["is_active"])
+    if "requires_reacknowledgment" in patch and patch.get("requires_reacknowledgment") is not None:
+        row.requires_reacknowledgment = bool(patch["requires_reacknowledgment"])
     if mutated:
         row.revised_by_user_id = patch.get("revised_by_user_id") or str(user.id)
         rn = patch.get("revised_by_name") or (str(user.full_name or "").strip() or str(user.email))
         row.revised_by_name = (str(rn).strip() or None) if rn is not None else None
         row.revised_at = patch.get("revised_at") or datetime.now(timezone.utc)
         row.content_revision = int(row.content_revision or 1) + 1
+        if "revision_date" not in patch:
+            row.revision_date = datetime.now(timezone.utc).date()
     row.updated_at = datetime.now(timezone.utc)
     await db.commit()
     await db.refresh(row)

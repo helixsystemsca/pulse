@@ -303,11 +303,21 @@ export async function postProcedureQuizSubmit(
 
 export async function postProcedureTrainingAcknowledgement(
   procedureId: string,
-  body?: { employee_id?: string | null; read_understood_confirmed?: boolean },
-): Promise<{ revision_number: number; acknowledged_at: string }> {
+  body?: {
+    employee_id?: string | null;
+    read_understood_confirmed?: boolean;
+    statement_confirmed?: boolean;
+    acknowledgment_note?: string | null;
+  },
+): Promise<{ id: string; revision_number: number; acknowledged_at: string; acknowledgment_statement?: string | null }> {
   return apiFetch(`/api/v1/cmms/procedures/${encodeURIComponent(procedureId)}/acknowledgement`, {
     method: "POST",
-    json: body ?? {},
+    json: {
+      statement_confirmed: body?.statement_confirmed ?? false,
+      read_understood_confirmed: body?.read_understood_confirmed ?? false,
+      employee_id: body?.employee_id ?? undefined,
+      acknowledgment_note: body?.acknowledgment_note ?? undefined,
+    },
   });
 }
 

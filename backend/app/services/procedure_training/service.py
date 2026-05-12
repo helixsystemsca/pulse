@@ -36,6 +36,10 @@ TrainingAssignmentStatusApi = Literal[
 
 _EXPIRING_SOON_DAYS = 14
 
+STANDARD_PROCEDURE_ACK_STATEMENT = (
+    "I acknowledge that I have reviewed and understood this procedure and agree to follow it while performing related duties."
+)
+
 
 def revision_marker_from_procedure(proc: PulseProcedure) -> str:
     return str(int(proc.content_revision or 1))
@@ -208,6 +212,8 @@ async def record_procedure_acknowledgement(
     *,
     employee_user_id: str,
     procedure: PulseProcedure,
+    acknowledgment_statement: str | None = None,
+    acknowledgment_note: str | None = None,
 ) -> tuple[PulseProcedureTrainingAcknowledgement, bool]:
     now = datetime.now(timezone.utc)
     rev = int(procedure.content_revision or 1)
@@ -223,6 +229,10 @@ async def record_procedure_acknowledgement(
     if hit:
         return hit, False
 
+    stmt_text = (acknowledgment_statement or "").strip() or STANDARD_PROCEDURE_ACK_STATEMENT
+    note_raw = (acknowledgment_note or "").strip()
+    note = note_raw[:2000] if note_raw else None
+
     row = PulseProcedureTrainingAcknowledgement(
         id=str(uuid4()),
         company_id=company_id,
@@ -230,6 +240,8 @@ async def record_procedure_acknowledgement(
         procedure_id=str(procedure.id),
         revision_number=rev,
         acknowledged_at=now,
+        acknowledgment_statement=stmt_text,
+        acknowledgment_note=note,
     )
     db.add(row)
 

@@ -94,6 +94,12 @@ class PulseProcedure(Base):
     is_critical: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     published_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     revision_notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    procedure_category: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    semantic_version: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
+    revision_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    publication_state: Mapped[str] = mapped_column(String(20), nullable=False, default="published")
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    requires_reacknowledgment: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
@@ -308,6 +314,8 @@ class PulseProcedureTrainingAcknowledgement(Base):
     )
     revision_number: Mapped[int] = mapped_column(Integer, nullable=False)
     acknowledged_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    acknowledgment_statement: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    acknowledgment_note: Mapped[Optional[str]] = mapped_column(String(2000), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )

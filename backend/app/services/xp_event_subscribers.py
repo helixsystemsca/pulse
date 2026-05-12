@@ -276,6 +276,35 @@ async def _on_procedure_completed(ev: DomainEvent) -> None:
         await db.commit()
 
 
+async def _on_procedure_acknowledged(ev: DomainEvent) -> None:
+    md = ev.metadata or {}
+    worker_id = md.get("worker_id")
+    proc_id = md.get("procedure_id") or str(ev.entity_id or "")
+    rev = md.get("revision_number", 0)
+    if not worker_id or not proc_id:
+        return
+    cid = str(ev.company_id)
+    async with AsyncSessionLocal() as db:
+        u = await db.get(User, str(worker_id))
+        if not u or str(u.company_id) != cid:
+            return
+        await try_grant_xp(
+            db,
+            company_id=cid,
+            user_id=str(worker_id),
+            track="worker",
+            amount=12,
+            reason_code="procedure_acknowledged",
+            dedupe_key=f"proc_ack:{proc_id}:{worker_id}:{rev}",
+            meta={"procedure_id": str(proc_id), "revision_number": int(rev or 0)},
+            reason="Procedure acknowledged",
+            category="training",
+            source_type="procedure_acknowledgment",
+            source_id=str(proc_id),
+        )
+        await db.commit()
+
+
 async def _on_pm_completed_on_time(ev: DomainEvent) -> None:
     md = ev.metadata or {}
     worker_id = md.get("completed_by") or md.get("worker_id")
@@ -431,6 +460,7 @@ def attach_xp_event_subscribers() -> None:
     event_engine.subscribe("ops.review_submitted", _on_review_submitted)
     event_engine.subscribe("ops.inference_confirmed", _on_inference_confirmed)
     event_engine.subscribe("demo_inference_confirmed", _on_inference_confirmed)
+    event_engine.subscribe("ops.procedure_acknowledged", _on_procedure_acknowledged)
     event_engine.subscribe("ops.procedure_completed", _on_procedure_completed)
     event_engine.subscribe("ops.pm_completed_on_time", _on_pm_completed_on_time)
     event_engine.subscribe("schedule.shift_started", _on_shift_started)

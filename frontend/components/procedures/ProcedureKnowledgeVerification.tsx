@@ -95,7 +95,10 @@ export function ProcedureKnowledgeVerification({
     setBusy(true);
     setLoadErr(null);
     try {
-      await postProcedureTrainingAcknowledgement(procedureId, { read_understood_confirmed: true });
+      await postProcedureTrainingAcknowledgement(procedureId, {
+        read_understood_confirmed: true,
+        statement_confirmed: true,
+      });
       setAckConfirm(false);
       await reload();
       await onRefreshTraining();
