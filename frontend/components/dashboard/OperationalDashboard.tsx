@@ -238,6 +238,7 @@ export type DashboardViewModel = {
   };
   training: {
     totalSlots: number;
+    skippedSlots: number;
     completed: number;
     expiringSoon: number;
     missing: number;
@@ -687,6 +688,7 @@ function demoModel(): DashboardViewModel {
     },
     training: {
       totalSlots: 120,
+      skippedSlots: 0,
       completed: 92,
       expiringSoon: 14,
       missing: 14,
@@ -854,8 +856,9 @@ function buildLiveModel(
       .map((s) => shiftIntervalBoundsMs(s, apiBoundsById))
       .filter((iv): iv is { startMs: number; endMs: number } => iv != null);
     const active = intervals.some((iv) => iv.startMs <= now && now < iv.endMs);
-    const nextStart =
-      intervals.length === 0 ? null : Math.min(...intervals.map((iv) => iv.startMs));
+    /** Earliest interval that has not started yet (ignore finished morning blocks when afternoon is still ahead). */
+    const futureStarts = intervals.map((iv) => iv.startMs).filter((t) => t > now);
+    const nextStart = futureStarts.length === 0 ? null : Math.min(...futureStarts);
 
     const parseTs = (value: string | number | null | undefined): number | null => {
       if (value == null) return null;
@@ -880,7 +883,7 @@ function buildLiveModel(
           }
         : null;
 
-    const isUpcomingToday = nextStart != null && now < nextStart && nextStart < dayEndMsExclusive;
+    const isUpcomingToday = nextStart != null && nextStart < dayEndMsExclusive;
 
     const isOffSite = presence.status === "off_site" || lastEvent?.type === "exit";
 
@@ -1042,7 +1045,14 @@ function buildLiveModel(
 
   const training = (() => {
     if (!trainingMatrix) {
-      return { totalSlots: 0, completed: 0, expiringSoon: 0, missing: 0, overallCompliancePercent: 0 };
+      return {
+        totalSlots: 0,
+        skippedSlots: 0,
+        completed: 0,
+        expiringSoon: 0,
+        missing: 0,
+        overallCompliancePercent: 0,
+      };
     }
     const programs = mapApiPrograms(trainingMatrix.programs);
     const employees = mapApiEmployees(trainingMatrix.employees);
@@ -1050,6 +1060,7 @@ function buildLiveModel(
     const sum = computeComplianceRadialSummary(employees, programs, assignments, [], { trustAssignmentStatus: true });
     return {
       totalSlots: sum.totalSlots,
+      skippedSlots: sum.skippedSlots,
       completed: sum.completed,
       expiringSoon: sum.expiringSoon,
       missing: sum.missing,

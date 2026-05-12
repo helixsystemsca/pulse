@@ -38,6 +38,15 @@ export function mergedScheduleShiftsForCalendarDate(params: {
   return merged.filter((s) => s.date === params.dateStr);
 }
 
+/** Wall-clock interval from roster `date` + `startTime`/`endTime` (adds 24h when end is before start — night bands). */
+function intervalMsFromShiftWallClock(s: Shift): { startMs: number; endMs: number } | null {
+  const startMs = Date.parse(localDateTimeToIso(s.date, s.startTime));
+  let endMs = Date.parse(localDateTimeToIso(s.date, s.endTime));
+  if (!Number.isFinite(startMs) || !Number.isFinite(endMs)) return null;
+  if (endMs <= startMs) endMs += 24 * 60 * 60 * 1000;
+  return { startMs, endMs };
+}
+
 /** Start/end instants for overlap with "now" (API rows use stored ISO; ephemerals use local date + time). */
 export function shiftIntervalBoundsMs(
   s: Shift,
@@ -45,13 +54,13 @@ export function shiftIntervalBoundsMs(
 ): { startMs: number; endMs: number } | null {
   if (!s.workerId) return null;
   if (isEphemeralScheduleShiftId(s.id)) {
-    const startMs = Date.parse(localDateTimeToIso(s.date, s.startTime));
-    const endMs = Date.parse(localDateTimeToIso(s.date, s.endTime));
-    if (!Number.isFinite(startMs) || !Number.isFinite(endMs)) return null;
-    return { startMs, endMs };
+    return intervalMsFromShiftWallClock(s);
   }
   const api = apiById.get(s.id);
-  if (!api) return null;
+  if (!api) {
+    /** API map can desync from merged roster ids; fall back to the same wall-clock math as the grid. */
+    return intervalMsFromShiftWallClock(s);
+  }
   const startMs = new Date(api.starts_at).getTime();
   const endMs = new Date(api.ends_at).getTime();
   if (!Number.isFinite(startMs) || !Number.isFinite(endMs)) return null;

@@ -31,6 +31,7 @@ TrainingAssignmentStatusApi = Literal[
     "in_progress",
     "acknowledged",
     "quiz_failed",
+    "not_applicable",
 ]
 
 _EXPIRING_SOON_DAYS = 14

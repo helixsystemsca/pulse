@@ -15,32 +15,43 @@ const STATUS_LABEL: Record<TrainingAssignmentStatus, string> = {
   in_progress: "In progress — reviewing",
   acknowledged: "Acknowledged — knowledge check pending",
   quiz_failed: "Knowledge check not passed — retry",
+  not_applicable: "Not applicable",
 };
 
-/** Lobster pink + soft white sweep — “not complete” (everything except verified complete + expiring-soon warning). */
+/** Solid lobster pink — “not complete” (everything except verified complete + expiring-soon warning). */
 function notCompleteLobsterShell(): string {
   return cn(
-    "border-[color-mix(in_srgb,#c94c54_38%,transparent)]",
-    "bg-[linear-gradient(148deg,rgb(255_255_255_/_0.98)_0%,rgb(255_250_251_/_0.92)_42%,rgb(244_176_184_/_0.88)_100%)]",
-    "text-[#5a1f27] shadow-[inset_0_1px_0_rgb(255_255_255_/_0.65)]",
-    "dark:border-[color-mix(in_srgb,#f4a5aa_32%,transparent)]",
-    "dark:bg-[linear-gradient(152deg,color-mix(in_srgb,#3a1518_92%,#0f0a0a)_0%,color-mix(in_srgb,#6b2830_70%,#141010)_48%,color-mix(in_srgb,#5c2228_85%,#120d0e)_100%)]",
-    "dark:text-[#fecdd3] dark:shadow-[inset_0_1px_0_rgb(255_255_255_/_0.06)]",
+    "border-rose-900/45",
+    "bg-[#e85d6f] text-[#3f0d14]",
+    "shadow-[inset_0_1px_0_rgb(255_255_255_/_0.28)]",
+    "dark:border-rose-300/40",
+    "dark:bg-[#b03645] dark:text-rose-50",
+    "dark:shadow-[inset_0_1px_0_rgb(255_255_255_/_0.12)]",
   );
 }
 
-/** Green = verified complete; amber = expiring soon (still highlighted separately); lobster = not complete */
+/** Aquamarine fill = verified complete; amber = expiring soon; lobster pink = not complete */
 function matrixClasses(status: TrainingAssignmentStatus): string {
   if (status === "completed") {
     return cn(
-      "border-teal-500/35 bg-teal-100 text-teal-900",
-      "dark:border-teal-400/25 dark:bg-teal-950/55 dark:text-teal-100",
+      "border-teal-700/40 bg-[#2ec4b6] text-teal-950",
+      "shadow-[inset_0_1px_0_rgb(255_255_255_/_0.35)]",
+      "dark:border-teal-200/35 dark:bg-[#0f766e] dark:text-teal-50",
+      "dark:shadow-[inset_0_1px_0_rgb(255_255_255_/_0.12)]",
     );
   }
   if (status === "expiring_soon") {
     return cn(
       "border-amber-500/40 bg-amber-100 text-amber-950",
       "dark:border-amber-400/35 dark:bg-amber-950/45 dark:text-amber-50",
+    );
+  }
+  if (status === "not_applicable") {
+    return cn(
+      "border-slate-500/45 bg-slate-400/95 text-slate-950",
+      "shadow-[inset_0_1px_0_rgb(255_255_255_/_0.22)]",
+      "dark:border-slate-400/40 dark:bg-slate-600 dark:text-slate-50",
+      "dark:shadow-[inset_0_1px_0_rgb(255_255_255_/_0.1)]",
     );
   }
 
@@ -63,6 +74,13 @@ function MatrixIcon({ status }: { status: TrainingAssignmentStatus }) {
   }
   if (status === "quiz_failed") {
     return <AlertTriangle className={iconClass} aria-hidden />;
+  }
+  if (status === "not_applicable") {
+    return (
+      <span className="text-[15px] font-bold leading-none tabular-nums" aria-hidden>
+        —
+      </span>
+    );
   }
   return <X className={iconClass} aria-hidden />;
 }
@@ -103,7 +121,7 @@ export function TrainingMatrixCell({
         title={title}
         disabled={disabled}
         onClick={onClick}
-        className={cn(cellClass, "m-0 bg-transparent p-0 text-inherit")}
+        className={cn(cellClass, "m-0 p-0 text-inherit")}
       >
         <MatrixIcon status={status} />
       </button>

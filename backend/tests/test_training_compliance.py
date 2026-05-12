@@ -216,6 +216,16 @@ async def test_training_matrix_admin_override_patch(client, seeded_tenant, db_se
     assert body["status"] == "completed"
     assert body["matrix_admin_override"] == "force_complete"
 
+    na = await client.patch(
+        f"/api/v1/training/assignments/{aid}",
+        headers=admin_headers,
+        json={"matrix_admin_override": "force_na"},
+    )
+    assert na.status_code == 200, na.text
+    na_body = na.json()
+    assert na_body["status"] == "not_applicable"
+    assert na_body["matrix_admin_override"] == "force_na"
+
     cleared = await client.patch(
         f"/api/v1/training/assignments/{aid}",
         headers=admin_headers,

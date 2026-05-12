@@ -65,7 +65,7 @@ export function TrainingMatrixCategorizedTable({
   acknowledgements: TrainingAcknowledgement[];
   trustAssignmentStatus?: boolean;
   statusColumnFilter?: TrainingAssignmentStatus | "all";
-  /** Company / tenant admin: click a cell to cycle matrix display override (server or local demo). */
+  /** Company / tenant admin: click a cell to cycle matrix display override (default → complete → not complete → N/A → default). */
   matrixAdminCellEditable?: boolean;
   onMatrixAdminCellCycle?: (employeeId: string, programId: string) => void | Promise<void>;
   matrixCycleBusyKey?: string | null;
@@ -95,11 +95,11 @@ export function TrainingMatrixCategorizedTable({
   );
 
   const stickyEmployeeTh =
-    "sticky left-0 z-20 w-[11rem] min-w-[11rem] max-w-[11rem] shrink-0 overflow-hidden bg-white px-2 py-2 text-left text-[11px] font-bold uppercase tracking-wide text-slate-500 shadow-[1px_0_0_var(--ds-border)] dark:bg-slate-950 dark:text-slate-400";
+    "sticky left-0 top-0 z-30 w-[11rem] min-w-[11rem] max-w-[11rem] shrink-0 overflow-hidden bg-white px-2 py-2 text-left text-[11px] font-bold uppercase tracking-wide text-slate-500 shadow-[1px_0_0_var(--ds-border),0_1px_0_var(--ds-border)] dark:bg-slate-950 dark:text-slate-400";
   const stickyEmployeeCell =
     "sticky left-0 z-10 w-[11rem] min-w-[11rem] max-w-[11rem] shrink-0 overflow-hidden bg-white px-2 py-2 text-left font-semibold text-slate-900 shadow-[1px_0_0_var(--ds-border)] dark:bg-slate-950 dark:text-slate-50";
   const programHeadClass =
-    "w-[0.75in] min-w-[0.75in] max-w-[0.75in] overflow-hidden border-l border-slate-100 px-1.5 py-2 text-left align-bottom dark:border-slate-800";
+    "sticky top-0 z-20 w-[0.75in] min-w-[0.75in] max-w-[0.75in] overflow-hidden border-l border-slate-100 bg-ds-primary px-1.5 py-2 text-left align-bottom shadow-[0_1px_0_var(--ds-border)] dark:border-slate-800 dark:bg-slate-950";
   const programCellClass =
     "w-[0.75in] min-w-[0.75in] max-w-[0.75in] overflow-hidden border-l border-slate-50 px-1.5 py-1.5 align-middle dark:border-slate-800/80";
 
@@ -117,7 +117,7 @@ export function TrainingMatrixCategorizedTable({
         />
       </div>
 
-      <div className="ds-premium-panel min-w-0 overflow-x-auto rounded-xl border border-slate-200/90 shadow-sm dark:border-slate-700/80 [-webkit-overflow-scrolling:touch]">
+      <div className="ds-premium-panel relative min-h-0 min-w-0 max-h-[min(80vh,960px)] overflow-auto rounded-xl border border-slate-200/90 shadow-sm dark:border-slate-700/80 [-webkit-overflow-scrolling:touch]">
         <table className="table-fixed border-collapse text-sm" style={tableWidthStyle}>
           <colgroup>
             <col style={EMPLOYEE_COL_STYLE} />
@@ -186,7 +186,9 @@ export function TrainingMatrixCategorizedTable({
                               ? "Currently: shown as complete."
                               : override === "force_incomplete"
                                 ? "Currently: shown as not complete."
-                                : "Currently: default (computed) status.",
+                                : override === "force_na"
+                                  ? "Currently: shown as not applicable."
+                                  : "Currently: default (computed) status.",
                             mgrKvTitle,
                           ]
                             .filter(Boolean)

@@ -88,6 +88,7 @@ const STATUS_OPTIONS: Array<{ value: TrainingAssignment["status"] | "all"; label
   { value: "quiz_failed", label: "Knowledge Check — Retry" },
   { value: "revision_pending", label: "Revision Pending" },
   { value: "not_assigned", label: "Not Assigned" },
+  { value: "not_applicable", label: "Not Applicable" },
 ];
 
 /** Matrix tab: one tier at a time (default Mandatory) — no "all" columns. */
@@ -711,8 +712,8 @@ export function TrainingLeadershipDashboard() {
           {canMatrixAdminEditCells ? (
             <p className="text-xs leading-relaxed text-slate-500 dark:text-slate-400">
               As company admin, click any matrix cell to cycle: default (computed) → shown complete → shown not
-              complete → default. This updates the live roster when the training API is in use; otherwise it adjusts
-              this browser session only.
+              complete → not applicable → default. This updates the live roster when the training API is in use;
+              otherwise it adjusts this browser session only.
             </p>
           ) : null}
           {matrixCellErr ? <p className="text-xs font-medium text-rose-600 dark:text-rose-400">{matrixCellErr}</p> : null}

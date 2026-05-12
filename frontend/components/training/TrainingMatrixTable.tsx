@@ -84,7 +84,7 @@ export function TrainingMatrixTable({
     cols.length === 0 ? "100%" : manyPrograms ? "11rem" : `calc(100% - ${cols.length} * (100% / 12))`;
 
   return (
-    <div className="ds-premium-panel overflow-x-auto">
+    <div className="ds-premium-panel relative max-h-[min(80vh,960px)] min-h-0 overflow-auto">
       <table className="min-w-[640px] w-full table-fixed border-collapse text-sm">
         <colgroup>
           <col style={{ width: employeeColShare }} />
@@ -96,12 +96,16 @@ export function TrainingMatrixTable({
           <tr className={dataTableHeadRowClass}>
             <th
               scope="col"
-              className="sticky left-0 z-20 min-w-[150px] bg-ds-primary px-2.5 py-2 text-left text-[11px] font-bold uppercase tracking-wide text-ds-muted shadow-[1px_0_0_var(--ds-border)]"
+              className="sticky left-0 top-0 z-30 min-w-[150px] bg-ds-primary px-2.5 py-2 text-left text-[11px] font-bold uppercase tracking-wide text-ds-muted shadow-[1px_0_0_var(--ds-border),0_1px_0_var(--ds-border)]"
             >
               Employee
             </th>
             {cols.map((p) => (
-              <th key={p.id} scope="col" className="min-w-0 px-2 py-2 text-left align-bottom">
+              <th
+                key={p.id}
+                scope="col"
+                className="sticky top-0 z-20 min-w-0 bg-ds-primary px-2 py-2 text-left align-bottom shadow-[0_1px_0_0_var(--ds-border)]"
+              >
                 <div className="flex min-w-0 flex-col items-start gap-1.5">
                   <span className="line-clamp-3 text-[11px] font-semibold leading-tight text-ds-foreground">{p.title}</span>
                   <TrainingTierBadge tier={p.tier} />

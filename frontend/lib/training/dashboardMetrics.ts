@@ -119,7 +119,7 @@ function effectiveStatus(
 }
 
 function isMandatoryGap(status: TrainingAssignmentStatus): boolean {
-  if (status === "completed" || status === "expiring_soon") return false;
+  if (status === "completed" || status === "expiring_soon" || status === "not_applicable") return false;
   return true;
 }
 
@@ -137,7 +137,7 @@ function highRiskRollupForEmployee(
     const a = assignmentFor(employeeId, p.id, resolved);
     const eff = effectiveStatus(p, a, acks, opts);
     if (eff === "expired") expired = true;
-    else if (eff !== "completed" && eff !== "expiring_soon") missing = true;
+    else if (eff !== "completed" && eff !== "expiring_soon" && eff !== "not_applicable") missing = true;
   }
   if (expired) return "expired";
   if (missing) return "missing";
@@ -200,7 +200,7 @@ export function buildEmployeeComplianceRows(
     for (const p of mandatory) {
       const a = assignmentFor(eid, p.id, resolved);
       const eff = effectiveStatus(p, a, acknowledgements, opts);
-      if (eff === "completed" || eff === "expiring_soon") mandatoryDone++;
+      if (eff === "completed" || eff === "expiring_soon" || eff === "not_applicable") mandatoryDone++;
       if (isMandatoryGap(eff)) mandatoryGap = true;
       if (eff === "expiring_soon") anyExpiring = true;
     }
@@ -428,6 +428,7 @@ const STATUS_LABEL: Record<TrainingAssignmentStatus, string> = {
   in_progress: "In progress",
   acknowledged: "Acknowledged",
   quiz_failed: "Quiz retry",
+  not_applicable: "Not applicable",
 };
 
 function drawerSectionForProgram(p: TrainingProgram): DrawerTrainingLine["section"] {

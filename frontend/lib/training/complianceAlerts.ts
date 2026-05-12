@@ -17,6 +17,7 @@ function rowAlert(
   assignment: TrainingAssignment | undefined,
 ): EmployeeComplianceAlert | null {
   if (!program.active) return null;
+  if (eff === "not_applicable") return null;
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);

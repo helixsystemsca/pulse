@@ -505,6 +505,7 @@ export function effectiveAssignmentStatus(
   acks: TrainingAcknowledgement[],
 ): TrainingAssignmentStatus {
   if (!assignment || assignment.status === "not_assigned") return "not_assigned";
+  if (assignment.status === "not_applicable") return "not_applicable";
   const latest = latestAcknowledgement(assignment.employee_id, program.id, acks);
   if (
     isRevisionPendingForAssignment(program, assignment, latest) &&
@@ -530,6 +531,7 @@ export function cellAssignmentStatus(
   if (!opts?.trustAssignmentStatus) {
     if (ov === "force_complete") return "completed";
     if (ov === "force_incomplete") return "pending";
+    if (ov === "force_na") return "not_applicable";
   }
   if (opts?.trustAssignmentStatus && assignment && assignment.status !== "not_assigned") {
     return assignment.status;

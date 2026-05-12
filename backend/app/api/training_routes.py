@@ -134,13 +134,16 @@ def _assignment_to_out(
         latest_worker_completion=lw,
     )
     ov = row.matrix_admin_override
-    ov_t: Optional[Literal["force_complete", "force_incomplete"]] = None
+    ov_t: Optional[Literal["force_complete", "force_incomplete", "force_na"]] = None
     if ov == "force_complete":
         ov_t = "force_complete"
         st = "completed"
     elif ov == "force_incomplete":
         ov_t = "force_incomplete"
         st = "pending"
+    elif ov == "force_na":
+        ov_t = "force_na"
+        st = "not_applicable"
     return TrainingAssignmentOut(
         id=str(row.id),
         employee_id=str(row.employee_user_id),

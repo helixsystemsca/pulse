@@ -143,7 +143,9 @@ export function mapApiAssignments(rows: TrainingMatrixApiResponse["assignments"]
       typeof a.verification_total_view_seconds === "number" ? a.verification_total_view_seconds : 0,
     quiz_passed_at: normalizeApiDateTime(a.quiz_passed_at),
     matrix_admin_override:
-      a.matrix_admin_override === "force_complete" || a.matrix_admin_override === "force_incomplete"
+      a.matrix_admin_override === "force_complete" ||
+      a.matrix_admin_override === "force_incomplete" ||
+      a.matrix_admin_override === "force_na"
         ? a.matrix_admin_override
         : null,
   }));

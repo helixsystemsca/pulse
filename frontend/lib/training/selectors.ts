@@ -99,10 +99,12 @@ export type ComplianceSummary = {
 export type ComplianceRadialSummary = {
   /** Total mandatory assignment slots (employees × active mandatory programs). */
   totalSlots: number;
+  /** Slots excluded from compliance % (e.g. admin-marked not applicable). */
+  skippedSlots: number;
   completed: number;
   expiringSoon: number;
   missing: number;
-  /** \((completed + expiringSoon) / totalSlots\) rounded to nearest integer percent. */
+  /** \((completed + expiringSoon) / (totalSlots - skippedSlots)\) rounded; 100% when every counted slot is complete or expiring-soon. */
   overallCompliancePercent: number;
 };
 
@@ -142,6 +144,7 @@ export function computeComplianceSummary(
     for (const p of mandatory) {
       const a = assignmentFor(e.id, p.id, resolved);
       const eff = effFor(p, a);
+      if (eff === "not_applicable") continue;
       if (eff !== "completed" && eff !== "expiring_soon") empOk = false;
       if (eff === "expired") empOk = false;
       if (eff === "revision_pending") empOk = false;
@@ -152,6 +155,7 @@ export function computeComplianceSummary(
     for (const p of programs.filter((x) => x.active)) {
       const a = assignmentFor(e.id, p.id, resolved);
       const eff = effFor(p, a);
+      if (eff === "not_applicable") continue;
       if (eff === "expired") expiredCertifications++;
 
       if (eff === "revision_pending") pendingAcknowledgements++;
@@ -183,7 +187,8 @@ export function computeComplianceSummary(
  * Summary for "radial compliance" UI: counts mandatory program slots as completed / expiring soon / missing.
  * - completed: `completed`
  * - expiringSoon: `expiring_soon`
- * - missing: everything else (`expired`, `pending`, `not_assigned`, `revision_pending`, etc.)
+ * - missing: other counted states (`expired`, `pending`, `not_assigned`, `revision_pending`, etc.)
+ * - `not_applicable` slots are excluded from those three buckets and from the compliance percent denominator (`skippedSlots`).
  *
  * Notes:
  * - This is intentionally scoped to active mandatory programs; other tiers can be added later.
@@ -204,6 +209,7 @@ export function computeComplianceRadialSummary(
   let completed = 0;
   let expiringSoon = 0;
   let missing = 0;
+  let skippedSlots = 0;
 
   const effFor = (p: TrainingProgram, a: TrainingAssignment | undefined) =>
     cellAssignmentStatus(p, a, acks, opts);
@@ -212,6 +218,10 @@ export function computeComplianceRadialSummary(
     for (const p of mandatory) {
       const a = assignmentFor(e.id, p.id, resolved);
       const eff = effFor(p, a);
+      if (eff === "not_applicable") {
+        skippedSlots++;
+        continue;
+      }
       if (eff === "completed") completed++;
       else if (eff === "expiring_soon") expiringSoon++;
       else missing++;
@@ -219,10 +229,11 @@ export function computeComplianceRadialSummary(
   }
 
   const totalSlots = employees.length * mandatory.length;
+  const counted = totalSlots - skippedSlots;
   const overallCompliancePercent =
-    totalSlots <= 0 ? 0 : Math.round(((completed + expiringSoon) / totalSlots) * 100);
+    counted <= 0 ? (totalSlots <= 0 ? 0 : 100) : Math.round(((completed + expiringSoon) / counted) * 100);
 
-  return { totalSlots, completed, expiringSoon, missing, overallCompliancePercent };
+  return { totalSlots, skippedSlots, completed, expiringSoon, missing, overallCompliancePercent };
 }
 
 /**
@@ -245,13 +256,17 @@ export function computeProgramColumnCompliancePercent(
     : resolvedAssignments(programs, assignments, acknowledgements);
 
   let inCompliance = 0;
+  let counted = 0;
   for (const e of employees) {
     const a = assignmentFor(e.id, programId, resolved);
     const eff = cellAssignmentStatus(program, a, acknowledgements, opts);
+    if (eff === "not_applicable") continue;
+    counted++;
     if (eff === "completed" || eff === "expiring_soon") inCompliance++;
   }
 
-  return Math.round((inCompliance / employees.length) * 100);
+  if (counted === 0) return employees.length === 0 ? null : 100;
+  return Math.round((inCompliance / counted) * 100);
 }
 
 export function uniqueDepartments(employees: TrainingEmployee[]): string[] {

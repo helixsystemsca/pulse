@@ -13,6 +13,7 @@ const LABEL: Record<TrainingAssignmentStatus, string> = {
   in_progress: "Reviewing",
   acknowledged: "Acknowledged — quiz pending",
   quiz_failed: "Knowledge check — retry",
+  not_applicable: "Not applicable",
 };
 
 const STYLE: Record<TrainingAssignmentStatus, string> = {
@@ -27,6 +28,7 @@ const STYLE: Record<TrainingAssignmentStatus, string> = {
   in_progress: "border-sky-500/35 bg-sky-100 text-sky-950 dark:bg-sky-950/45 dark:text-sky-50",
   acknowledged: "border-yellow-500/35 bg-yellow-100 text-yellow-950 dark:bg-yellow-950/40 dark:text-yellow-50",
   quiz_failed: "border-ds-danger/40 bg-[color-mix(in_srgb,var(--ds-danger)_12%,transparent)] text-ds-danger",
+  not_applicable: "border-slate-500/40 bg-slate-200/80 text-slate-800 dark:border-slate-500 dark:bg-slate-700/80 dark:text-slate-100",
 };
 
 export function TrainingStatusBadge({

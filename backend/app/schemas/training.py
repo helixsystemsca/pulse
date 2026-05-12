@@ -21,9 +21,10 @@ TrainingAssignmentStatusApi = Literal[
     "in_progress",
     "acknowledged",
     "quiz_failed",
+    "not_applicable",
 ]
 
-MatrixAdminOverrideApi = Literal["force_complete", "force_incomplete"]
+MatrixAdminOverrideApi = Literal["force_complete", "force_incomplete", "force_na"]
 
 
 class TrainingEmployeeOut(BaseModel):
@@ -94,7 +95,7 @@ class TrainingAssignmentOut(BaseModel):
 class TrainingAssignmentMatrixOverrideIn(BaseModel):
     matrix_admin_override: Optional[MatrixAdminOverrideApi] = Field(
         None,
-        description="Set to force_complete / force_incomplete, or null to clear and show computed status.",
+        description="Set force_complete / force_incomplete / force_na (not applicable), or null to clear.",
     )
 
 
