@@ -33,6 +33,7 @@ from app.core.login_activity import latest_login_event_per_user
 from app.core.user_avatar_upload import co_worker_avatar_url
 from app.core.features.service import MODULE_KEYS
 from app.core.features.system_catalog import GLOBAL_SYSTEM_FEATURES
+from app.core.permission_feature_matrix import sanitize_department_role_feature_access
 from app.core.tenant_feature_access import (
     contract_and_effective_features_for_me,
     load_merged_workers_settings,
@@ -186,6 +187,8 @@ def _sanitize_workers_policy_keys(base: dict[str, Any]) -> None:
             if str(k) in allowed_roles:
                 out[str(k)] = _sanitize_feature_key_list(v)
         base["role_feature_access"] = out
+    drfa = base.get("department_role_feature_access")
+    base["department_role_feature_access"] = sanitize_department_role_feature_access(drfa)
     wpd = base.get("workers_page_delegation")
     if isinstance(wpd, dict):
         base["workers_page_delegation"] = {

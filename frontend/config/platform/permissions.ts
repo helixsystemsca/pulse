@@ -59,6 +59,7 @@ const WORKSPACE_SLUG_CAPABILITY_BOOST: Record<string, readonly string[]> = {
   reception: ["procedures.view", "analytics.view", "messaging.view"],
   aquatics: ["aquatics.scheduling.view", "procedures.view", "analytics.view", "messaging.view"],
   fitness: ["fitness.classes.view", "procedures.view", "analytics.view", "messaging.view"],
+  racquets: ["fitness.classes.view", "procedures.view", "analytics.view", "messaging.view"],
   admin: ["procedures.view", "analytics.view", "messaging.view"],
 };
 

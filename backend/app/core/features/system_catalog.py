@@ -38,6 +38,7 @@ GLOBAL_SYSTEM_FEATURES: tuple[str, ...] = (
     "workspace_reception",
     "workspace_aquatics",
     "workspace_fitness",
+    "workspace_racquets",
     "workspace_admin",
 )
 

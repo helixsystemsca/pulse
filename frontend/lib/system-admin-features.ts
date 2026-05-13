@@ -26,6 +26,7 @@ export const SYSTEM_ADMIN_FEATURE_ORDER = [
   "workspace_reception",
   "workspace_aquatics",
   "workspace_fitness",
+  "workspace_racquets",
   "workspace_admin",
 ] as const;
 
@@ -53,6 +54,7 @@ export const SYSTEM_ADMIN_FEATURE_LABELS: Record<string, string> = {
   workspace_reception: "Workspace · Reception",
   workspace_aquatics: "Workspace · Aquatics",
   workspace_fitness: "Workspace · Fitness",
+  workspace_racquets: "Workspace · Racquets",
   workspace_admin: "Workspace · Administration",
 };
 

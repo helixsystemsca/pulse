@@ -145,7 +145,16 @@ export function humanizeRole(role: string): string {
 }
 
 /** HR `department` slug for roster grouping (aligns with Team Management invite options). */
-const ROSTER_DEPT_ORDER = ["maintenance", "communications", "reception", "aquatics", "fitness", "admin", "__other__"] as const;
+const ROSTER_DEPT_ORDER = [
+  "maintenance",
+  "communications",
+  "reception",
+  "aquatics",
+  "fitness",
+  "racquets",
+  "admin",
+  "__other__",
+] as const;
 
 const ROSTER_DEPT_TITLE: Record<(typeof ROSTER_DEPT_ORDER)[number], string> = {
   maintenance: "Maintenance",
@@ -153,6 +162,7 @@ const ROSTER_DEPT_TITLE: Record<(typeof ROSTER_DEPT_ORDER)[number], string> = {
   reception: "Reception",
   aquatics: "Aquatics",
   fitness: "Fitness",
+  racquets: "Racquets",
   admin: "Administration",
   __other__: "Other departments",
 };
@@ -177,7 +187,7 @@ export function rosterWorkerTierSectionTitle(departmentSlug: string): string {
   const d = departmentSlug.trim().toLowerCase();
   if (d === "maintenance") return "Operations";
   if (d === "communications" || d === "reception") return "Coordinators";
-  if (d === "aquatics" || d === "fitness") return "Program staff";
+  if (d === "aquatics" || d === "fitness" || d === "racquets") return "Program staff";
   return "Staff";
 }
 
@@ -187,7 +197,7 @@ export function workerRoleDisplayLabel(departmentSlug: string | null | undefined
   const d = (departmentSlug ?? "").trim().toLowerCase() || "maintenance";
   if (d === "maintenance") return "Operations";
   if (d === "communications" || d === "reception") return "Coordinator";
-  if (d === "aquatics" || d === "fitness") return "Program staff";
+  if (d === "aquatics" || d === "fitness" || d === "racquets") return "Program staff";
   return "Staff";
 }
 

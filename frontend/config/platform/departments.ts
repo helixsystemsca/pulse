@@ -62,6 +62,14 @@ export const PLATFORM_DEPARTMENTS: readonly Department[] = [
     enabledModuleIds: ["mod_classes", "mod_procedures", "mod_analytics", "mod_messaging"],
   },
   {
+    id: "dept_racquets",
+    slug: "racquets",
+    name: "Racquets",
+    icon: "scroll-text",
+    accentColor: "var(--ds-accent)",
+    enabledModuleIds: ["mod_classes", "mod_procedures", "mod_analytics", "mod_messaging"],
+  },
+  {
     id: "dept_administration",
     slug: "admin",
     name: "Administration",

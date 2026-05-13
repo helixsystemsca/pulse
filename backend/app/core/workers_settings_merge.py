@@ -37,6 +37,8 @@ DEFAULT_WORKERS_SETTINGS: dict[str, Any] = {
     "delegates_can_assign_worker_module_extras": False,
     #: Optional per-role product modules (keys in GLOBAL_SYSTEM_FEATURES). Missing role key => full contract.
     "role_feature_access": {},
+    #: Department × permission-slot matrix (GLOBAL_SYSTEM_FEATURES keys). Empty => use role_feature_access only.
+    "department_role_feature_access": {},
     #: Roles (JWT `users.roles`) that may PATCH work requests (assignee, zone, due date, etc.). Company admins always can.
     "work_request_edit_roles": ["manager", "supervisor"],
     #: Roles that may add/rename/delete facility zones (work-request locations). Company admins always can.

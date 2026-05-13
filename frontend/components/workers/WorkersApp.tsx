@@ -77,6 +77,17 @@ import {
   PRODUCT_MODULE_PERMISSION_SECTIONS,
   TENANT_PRODUCT_MODULES,
 } from "@/config/platform/tenant-product-modules";
+import {
+  computeLegacyRoleFeatureAccessFromMatrix,
+  normalizeDepartmentRoleMatrixFromApi,
+  type PermissionMatrixDepartment,
+  type PermissionMatrixRoleSlot,
+  PERMISSION_MATRIX_DEPARTMENTS,
+  PERMISSION_MATRIX_DEPARTMENT_LABEL,
+  PERMISSION_MATRIX_ROLE_SLOTS,
+  PERMISSION_MATRIX_ROLE_LABEL,
+  permissionFeatureGroupsForDepartment,
+} from "@/config/platform/permission-matrix";
 
 type CompanyOption = { id: string; name: string };
 
@@ -234,6 +245,7 @@ const INVITE_DEPARTMENT_OPTIONS: { value: string; label: string }[] = [
   { value: "communications", label: "Communications" },
   { value: "aquatics", label: "Aquatics" },
   { value: "fitness", label: "Fitness" },
+  { value: "racquets", label: "Racquets" },
 ];
 
 const WORKSPACE_ASSIGNMENT_SLUGS: { value: string; label: string }[] = [
@@ -467,7 +479,12 @@ export function WorkersApp() {
   const [workRequestEditRolesDraft, setWorkRequestEditRolesDraft] = useState<string[]>(["manager", "supervisor"]);
   const [zoneManageRolesDraft, setZoneManageRolesDraft] = useState<string[]>(["manager", "supervisor"]);
   const [accessPolicySaving, setAccessPolicySaving] = useState(false);
-  const [permissionsRole, setPermissionsRole] = useState<PermissionRole>("manager");
+  const [permissionsDepartment, setPermissionsDepartment] = useState<PermissionMatrixDepartment>("maintenance");
+  const [permissionsSlot, setPermissionsSlot] = useState<PermissionMatrixRoleSlot>("manager");
+  const [delegatedTargetRole, setDelegatedTargetRole] = useState<PermissionRole>("manager");
+  const [departmentRoleFeatureAccessDraft, setDepartmentRoleFeatureAccessDraft] = useState<
+    Record<string, Record<string, string[]>>
+  >({});
   const [extraModulesDraft, setExtraModulesDraft] = useState<string[]>([]);
 
   const [basicDraft, setBasicDraft] = useState({
@@ -573,6 +590,11 @@ export function WorkersApp() {
         nextDraft[role] = rfa[role]?.length ? [...rfa[role]] : [...cat];
       }
       setRoleFeatureAccessDraft(nextDraft);
+      const matrixCatalog =
+        st.contract_feature_names?.length ? st.contract_feature_names : cat.length ? cat : [];
+      setDepartmentRoleFeatureAccessDraft(
+        normalizeDepartmentRoleMatrixFromApi(st.settings.department_role_feature_access, matrixCatalog, nextDraft),
+      );
       setProceduresEditRolesDraft(
         Array.isArray(st.settings.procedures_edit_roles) && st.settings.procedures_edit_roles.length
           ? [...st.settings.procedures_edit_roles]
@@ -905,12 +927,22 @@ export function WorkersApp() {
     });
   }
 
+  function toggleMatrixModule(dept: PermissionMatrixDepartment, slot: PermissionMatrixRoleSlot, mod: string) {
+    setDepartmentRoleFeatureAccessDraft((prev) => {
+      const row = { ...(prev[dept] ?? {}) };
+      const cur = new Set(row[slot] ?? []);
+      if (cur.has(mod)) cur.delete(mod);
+      else cur.add(mod);
+      return { ...prev, [dept]: { ...row, [slot]: [...cur].sort() } };
+    });
+  }
+
   useEffect(() => {
     if (!mayEditDelegatedRoleModules || delegatedRoleTargetsForMe.length === 0) return;
-    if (!delegatedRoleTargetsForMe.includes(permissionsRole)) {
-      setPermissionsRole(delegatedRoleTargetsForMe[0]!);
+    if (!delegatedRoleTargetsForMe.includes(delegatedTargetRole)) {
+      setDelegatedTargetRole(delegatedRoleTargetsForMe[0]!);
     }
-  }, [mayEditDelegatedRoleModules, delegatedRoleTargetsForMe, permissionsRole]);
+  }, [mayEditDelegatedRoleModules, delegatedRoleTargetsForMe, delegatedTargetRole]);
 
   async function deleteInvitedWorkerFromList(row: WorkerRow) {
     if (!canDeleteInvitedFromList) return;
@@ -1007,12 +1039,14 @@ export function WorkersApp() {
     if (!effectiveCompanyId || !isTenantFullAdmin) return;
     setAccessPolicySaving(true);
     try {
+      const rfaSync = computeLegacyRoleFeatureAccessFromMatrix(departmentRoleFeatureAccessDraft, contractCatalog);
       const r = await patchWorkerSettings(apiCompany, {
         ...fullSettings,
         workers_page_delegation: delegationDraft,
         permission_delegation: permissionDelegationDraft,
         delegates_can_assign_worker_module_extras: assignWorkerExtrasDraft,
-        role_feature_access: roleFeatureAccessDraft,
+        department_role_feature_access: departmentRoleFeatureAccessDraft,
+        role_feature_access: rfaSync,
         procedures_edit_roles: proceduresEditRolesDraft,
         work_request_edit_roles: workRequestEditRolesDraft,
         zone_manage_roles: zoneManageRolesDraft,
@@ -1020,6 +1054,18 @@ export function WorkersApp() {
       setContractFeatureNamesFromApi(r.contract_feature_names ?? []);
       setFullSettings(r.settings);
       setSettingsDraft(r.settings);
+      const cat = session?.contract_enabled_features ?? [];
+      const rfaNext = (r.settings.role_feature_access ?? {}) as Record<string, string[]>;
+      const nextDraft: Record<string, string[]> = {};
+      for (const role of ["manager", "supervisor", "lead", "worker"] as const) {
+        nextDraft[role] = rfaNext[role]?.length ? [...rfaNext[role]] : [...cat];
+      }
+      setRoleFeatureAccessDraft(nextDraft);
+      const matrixCatalog =
+        r.contract_feature_names?.length ? r.contract_feature_names : cat.length ? cat : [];
+      setDepartmentRoleFeatureAccessDraft(
+        normalizeDepartmentRoleMatrixFromApi(r.settings.department_role_feature_access, matrixCatalog, nextDraft),
+      );
       await refreshPulseUserFromServer();
       refresh();
     } finally {
@@ -1039,6 +1085,15 @@ export function WorkersApp() {
       setContractFeatureNamesFromApi(r.contract_feature_names ?? []);
       setFullSettings(r.settings);
       setSettingsDraft(r.settings);
+      const rfaNext = (r.settings.role_feature_access ?? {}) as Record<string, string[]>;
+      setRoleFeatureAccessDraft((prev) => {
+        const next = { ...prev };
+        for (const k of delegatedRoleTargetsForMe) {
+          const v = rfaNext[k];
+          next[k] = Array.isArray(v) ? [...v] : [...(next[k] ?? [])];
+        }
+        return next;
+      });
       await refreshPulseUserFromServer();
       refresh();
     } finally {
@@ -1550,23 +1605,36 @@ export function WorkersApp() {
               <Card variant="secondary" padding="md">
                 <h2 className="text-sm font-bold tracking-tight text-ds-foreground">Permissions</h2>
                 <p className="mt-1 text-xs text-ds-muted">
-                  Your organization&apos;s Pulse modules come from the contract (set by the system admin). Pick a role,
-                  then turn contract modules on or off for people in that role.
+                  Your organization&apos;s Pulse modules come from the contract (set by the system admin). Choose a
+                  department and permission role, then turn contract modules on or off for that combination. Each
+                  person&apos;s effective access uses their HR department workspace and their role / job title mapping.
                 </p>
+                <label className={`${LABEL} mt-4 block`}>Department</label>
+                <select
+                  className={FIELD}
+                  value={permissionsDepartment}
+                  onChange={(e) => setPermissionsDepartment(e.target.value as PermissionMatrixDepartment)}
+                >
+                  {PERMISSION_MATRIX_DEPARTMENTS.map((d) => (
+                    <option key={d} value={d}>
+                      {PERMISSION_MATRIX_DEPARTMENT_LABEL[d]}
+                    </option>
+                  ))}
+                </select>
                 <label className={`${LABEL} mt-4 block`}>Role</label>
                 <select
                   className={FIELD}
-                  value={permissionsRole}
-                  onChange={(e) => setPermissionsRole(e.target.value as PermissionRole)}
+                  value={permissionsSlot}
+                  onChange={(e) => setPermissionsSlot(e.target.value as PermissionMatrixRoleSlot)}
                 >
-                  {PERMISSION_ROLE_OPTIONS.map((role) => (
-                    <option key={role} value={role}>
-                      {humanizeRole(role)}
+                  {PERMISSION_MATRIX_ROLE_SLOTS.map((slot) => (
+                    <option key={slot} value={slot}>
+                      {PERMISSION_MATRIX_ROLE_LABEL[slot]}
                     </option>
                   ))}
                 </select>
                 <div className="mt-4 space-y-6">
-                  {PRODUCT_MODULE_PERMISSION_SECTIONS.map((section) => {
+                  {permissionFeatureGroupsForDepartment(permissionsDepartment).map((section) => {
                     const mods = section.keys.filter((m) => contractCatalog.includes(m));
                     if (mods.length === 0) return null;
                     return (
@@ -1577,10 +1645,11 @@ export function WorkersApp() {
                         ) : null}
                         <div className="mt-3 space-y-3">
                           {mods.map((mod) => {
-                            const on = (roleFeatureAccessDraft[permissionsRole] ?? []).includes(mod);
+                            const row = departmentRoleFeatureAccessDraft[permissionsDepartment] ?? {};
+                            const on = (row[permissionsSlot] ?? []).includes(mod);
                             return (
                               <div
-                                key={`${permissionsRole}-${mod}`}
+                                key={`${permissionsDepartment}-${permissionsSlot}-${mod}`}
                                 className="ds-inset-panel flex items-center justify-between gap-3 px-3 py-3"
                               >
                                 <p className="min-w-0 text-sm font-semibold text-ds-foreground">
@@ -1592,7 +1661,9 @@ export function WorkersApp() {
                                   aria-checked={on}
                                   disabled={!isTenantFullAdmin}
                                   onClick={() =>
-                                    isTenantFullAdmin ? toggleRoleModule(permissionsRole, mod) : undefined
+                                    isTenantFullAdmin
+                                      ? toggleMatrixModule(permissionsDepartment, permissionsSlot, mod)
+                                      : undefined
                                   }
                                   className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${
                                     on ? "bg-ds-success" : "bg-ds-border"
@@ -1621,7 +1692,8 @@ export function WorkersApp() {
                   {accessPolicySaving ? "Saving…" : "Save permissions"}
                 </button>
                 <div className="ds-inset-panel mt-4 px-3 py-2 text-xs text-ds-muted">
-                  Changes apply to all users with the {humanizeRole(permissionsRole)} role after you save.
+                  After you save, each person&apos;s modules follow their HR department and role mapping to this matrix.
+                  Legacy role rows stay in sync for delegated editors.
                 </div>
               </Card>
             ) : null}
@@ -1740,8 +1812,8 @@ export function WorkersApp() {
                 <label className={`${LABEL} mt-4 block`}>Role</label>
                 <select
                   className={FIELD}
-                  value={permissionsRole}
-                  onChange={(e) => setPermissionsRole(e.target.value as PermissionRole)}
+                  value={delegatedTargetRole}
+                  onChange={(e) => setDelegatedTargetRole(e.target.value as PermissionRole)}
                 >
                   {delegatedRoleTargetsForMe.map((role) => (
                     <option key={role} value={role}>
@@ -1761,10 +1833,10 @@ export function WorkersApp() {
                         ) : null}
                         <div className="mt-3 space-y-3">
                           {mods.map((mod) => {
-                            const on = (roleFeatureAccessDraft[permissionsRole] ?? []).includes(mod);
+                            const on = (roleFeatureAccessDraft[delegatedTargetRole] ?? []).includes(mod);
                             return (
                               <div
-                                key={`del-${permissionsRole}-${mod}`}
+                                key={`del-${delegatedTargetRole}-${mod}`}
                                 className="ds-inset-panel flex items-center justify-between gap-3 px-3 py-3"
                               >
                                 <p className="min-w-0 text-sm font-semibold text-ds-foreground">
@@ -1774,7 +1846,7 @@ export function WorkersApp() {
                                   type="button"
                                   role="switch"
                                   aria-checked={on}
-                                  onClick={() => toggleRoleModule(permissionsRole, mod)}
+                                  onClick={() => toggleRoleModule(delegatedTargetRole, mod)}
                                   className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${
                                     on ? "bg-ds-success" : "bg-ds-border"
                                   }`}

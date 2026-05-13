@@ -9,7 +9,7 @@ from app.models.domain import User, UserRole
 from app.models.pulse_models import PulseWorkerHR
 
 ALLOWED_WORKSPACE_DEPARTMENT_SLUGS: frozenset[str] = frozenset(
-    {"maintenance", "reception", "communications", "aquatics", "fitness", "admin"}
+    {"maintenance", "reception", "communications", "aquatics", "fitness", "racquets", "admin"}
 )
 
 

@@ -116,6 +116,8 @@ export type WorkersSettings = {
   /** Company admin: delegated editors may assign per-user contract modules to worker-role users. */
   delegates_can_assign_worker_module_extras?: boolean;
   role_feature_access?: Record<string, string[]>;
+  /** Company admin: department × permission-slot → enabled GLOBAL_SYSTEM_FEATURES keys. */
+  department_role_feature_access?: Record<string, Record<string, string[]>>;
   /** Roles allowed to edit procedures (CMMS SOP library). Company admins can always edit. */
   procedures_edit_roles?: string[];
   /** Roles allowed to PATCH work requests (assignee, zone, category, due date, etc.). Creators and company admins always can. */
