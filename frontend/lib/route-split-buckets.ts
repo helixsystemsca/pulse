@@ -20,6 +20,8 @@ export const MARKETING_PATH_PREFIXES = [
  * Authenticated (or auth-entry) product routes — intended for the Pulse app host
  * when marketing and product are split across origins.
  */
+import { PLATFORM_DEPARTMENT_SLUGS } from "@/config/platform/departments";
+
 export const PRODUCT_PATH_PREFIXES = [
   "/login",
   "/auth",
@@ -65,5 +67,8 @@ export function isMarketingPath(pathname: string): boolean {
 /** True if pathname belongs to the Pulse product (auth + tenant + system admin). */
 export function isProductPath(pathname: string): boolean {
   const p = normalizePathname(pathname);
+  if (PLATFORM_DEPARTMENT_SLUGS.some((slug) => p === `/${slug}` || p.startsWith(`/${slug}/`))) {
+    return true;
+  }
   return PRODUCT_PATH_PREFIXES.some((prefix) => p === prefix || p.startsWith(`${prefix}/`));
 }

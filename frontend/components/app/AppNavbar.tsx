@@ -6,8 +6,9 @@
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { Bell, ChevronDown, Image as ImageIcon, KeyRound, LogOut, Megaphone, MessageSquare, Settings } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Bell, ChevronDown, Image as ImageIcon, KeyRound, LogOut, Megaphone, MessageSquare, Settings, X } from "lucide-react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { OperationalNotificationsModal } from "@/components/app/OperationalNotificationsModal";
 import { FeedbackModal } from "@/components/app/FeedbackModal";
 import { notificationBadgeCount } from "@/lib/dashboard/operational-notifications";
@@ -28,7 +29,7 @@ import { cn } from "@/lib/cn";
 import { isApiMode } from "@/lib/api";
 import { fetchFeedbackUnreadCount } from "@/lib/feedbackApi";
 
-
+const FEEDBACK_HEADER_TIP_DISMISSED_KEY = "pulse_feedback_header_tip_dismissed_v1";
 function IconBadgeCount({ count }: { count: number }) {
   if (count <= 0) return null;
   const label = count > 99 ? "99+" : String(count);
@@ -56,6 +57,9 @@ export function AppNavbar({ notificationCount: notificationCountProp = 0, messag
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [feedbackInboxCount, setFeedbackInboxCount] = useState(0);
+  const [feedbackHeaderTipOpen, setFeedbackHeaderTipOpen] = useState(false);
+  const [feedbackTipCoords, setFeedbackTipCoords] = useState<{ top: number; left: number } | null>(null);
+  const feedbackMegaphoneRef = useRef<HTMLButtonElement>(null);
   const userMenuRef = useRef<HTMLDivElement>(null);
   const storeNotificationCount = useOperationalNotificationsStore((s) => notificationBadgeCount(s.items));
   const notificationCount = Math.max(notificationCountProp, storeNotificationCount);
@@ -74,6 +78,53 @@ export function AppNavbar({ notificationCount: notificationCountProp = 0, messag
     pathname.startsWith("/dashboard/profile-settings/");
   const messagesActive = pathname === "/dashboard/messages" || pathname.startsWith("/dashboard/messages/");
   const showWorkerPasswordBadge = session ? shouldShowWorkerMandatoryPasswordBadge(session) : false;
+
+  const dismissFeedbackHeaderTip = useCallback(() => {
+    setFeedbackHeaderTipOpen(false);
+    if (typeof window === "undefined") return;
+    try {
+      window.localStorage.setItem(FEEDBACK_HEADER_TIP_DISMISSED_KEY, "1");
+    } catch {
+      /* ignore quota / private mode */
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!authed) {
+      setFeedbackHeaderTipOpen(false);
+      return;
+    }
+    if (typeof window === "undefined") return;
+    try {
+      if (!window.localStorage.getItem(FEEDBACK_HEADER_TIP_DISMISSED_KEY)) setFeedbackHeaderTipOpen(true);
+    } catch {
+      setFeedbackHeaderTipOpen(true);
+    }
+  }, [authed]);
+
+  useEffect(() => {
+    if (feedbackOpen) dismissFeedbackHeaderTip();
+  }, [feedbackOpen, dismissFeedbackHeaderTip]);
+
+  useLayoutEffect(() => {
+    if (!feedbackHeaderTipOpen) {
+      setFeedbackTipCoords(null);
+      return;
+    }
+    const el = feedbackMegaphoneRef.current;
+    if (!el) return;
+    const place = () => {
+      const r = el.getBoundingClientRect();
+      setFeedbackTipCoords({ top: r.bottom + 8, left: r.left + r.width / 2 });
+    };
+    place();
+    window.addEventListener("scroll", place, true);
+    window.addEventListener("resize", place);
+    return () => {
+      window.removeEventListener("scroll", place, true);
+      window.removeEventListener("resize", place);
+    };
+  }, [feedbackHeaderTipOpen]);
 
   useEffect(() => {
     if (!authed || !adminInbox || !isApiMode()) return;
@@ -124,7 +175,7 @@ export function AppNavbar({ notificationCount: notificationCountProp = 0, messag
 
   return (
     <nav
-      className="flex w-full flex-col"
+      className="flex w-full flex-col overflow-visible"
       style={{
         height: "var(--pulse-header-height)",
         background: "var(--ds-palette-iron-grey)",
@@ -132,7 +183,7 @@ export function AppNavbar({ notificationCount: notificationCountProp = 0, messag
       aria-label="Main"
     >
       <div
-        className="flex min-h-0 w-full flex-1 items-center justify-between gap-4 pr-3 sm:pr-4"
+        className="flex min-h-0 w-full flex-1 items-center justify-between gap-4 overflow-visible pr-3 sm:pr-4"
         style={{ minHeight: "var(--pulse-header-bar-height)" }}
       >
         <div className="flex min-w-0 flex-1 items-center pl-1.5 sm:pl-2">
@@ -203,15 +254,27 @@ export function AppNavbar({ notificationCount: notificationCountProp = 0, messag
                 <IconBadgeCount count={notificationCount} />
               </button>
 
-              <button
-                type="button"
-                className={chromeIconBtn}
-                aria-label="Send product feedback"
-                title="Feedback"
-                onClick={() => setFeedbackOpen(true)}
-              >
-                <Megaphone className="h-[1.125rem] w-[1.125rem]" strokeWidth={1.75} aria-hidden />
-              </button>
+              <div className="relative flex items-center">
+                <button
+                  ref={feedbackMegaphoneRef}
+                  type="button"
+                  className={chromeIconBtn}
+                  aria-label="Send product feedback"
+                  title="Feedback"
+                  onClick={() => {
+                    dismissFeedbackHeaderTip();
+                    setFeedbackOpen(true);
+                  }}
+                >
+                  <Megaphone className="h-[1.125rem] w-[1.125rem]" strokeWidth={1.75} aria-hidden />
+                  {feedbackHeaderTipOpen ? (
+                    <span
+                      className="pointer-events-none absolute -right-0.5 -top-0.5 flex h-2 w-2 rounded-full bg-[var(--ds-accent)] ring-2 ring-[var(--ds-palette-iron-grey)] motion-safe:animate-pulse"
+                      aria-hidden
+                    />
+                  ) : null}
+                </button>
+              </div>
 
               <Link
                 href={pulseApp.to("/dashboard/messages")}
@@ -320,6 +383,47 @@ export function AppNavbar({ notificationCount: notificationCountProp = 0, messag
       <div className="h-px w-full shrink-0 bg-gradient-to-r from-transparent via-white/12 to-transparent" aria-hidden />
       <OperationalNotificationsModal open={notificationsOpen} onClose={() => setNotificationsOpen(false)} />
       <FeedbackModal open={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
+      {typeof document !== "undefined" && feedbackHeaderTipOpen && feedbackTipCoords
+        ? createPortal(
+            <div
+              className="pointer-events-auto fixed z-[100] w-[min(17.5rem,calc(100vw-1.5rem))] -translate-x-1/2 rounded-lg border border-[var(--ds-accent)]/45 bg-ds-primary px-3 py-2.5 text-left shadow-[0_10px_36px_rgba(0,0,0,0.38)] ring-1 ring-white/10"
+              style={{ top: feedbackTipCoords.top, left: feedbackTipCoords.left }}
+              role="dialog"
+              aria-live="polite"
+              aria-label="Feedback tip"
+            >
+              <div
+                className="absolute left-1/2 top-0 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rotate-45 border-l border-t border-[var(--ds-accent)]/45 bg-ds-primary"
+                aria-hidden
+              />
+              <div className="relative flex gap-2">
+                <p className="min-w-0 flex-1 text-[11px] leading-snug text-ds-foreground sm:text-xs">
+                  <span className="font-semibold text-[var(--ds-accent)]">New:</span> tap the megaphone to send product
+                  feedback—admins see it in Messages.
+                </p>
+                <button
+                  type="button"
+                  className="shrink-0 rounded-md p-0.5 text-ds-muted transition-colors hover:bg-ds-secondary hover:text-ds-foreground"
+                  aria-label="Dismiss feedback tip"
+                  onClick={() => dismissFeedbackHeaderTip()}
+                >
+                  <X className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
+                </button>
+              </div>
+              <button
+                type="button"
+                className="relative mt-2 w-full rounded-md border border-ds-border bg-ds-secondary/80 px-2 py-1.5 text-[11px] font-semibold text-ds-foreground transition-colors hover:bg-ds-secondary"
+                onClick={() => {
+                  dismissFeedbackHeaderTip();
+                  setFeedbackOpen(true);
+                }}
+              >
+                Open feedback
+              </button>
+            </div>,
+            document.body,
+          )
+        : null}
     </nav>
   );
 }

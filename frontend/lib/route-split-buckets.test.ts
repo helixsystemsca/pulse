@@ -17,7 +17,13 @@ function collectPageFiles(dir: string): string[] {
   return out;
 }
 
-/** Map each App Router page file to a concrete pathname for classification checks. */
+/** Map App Router dynamic segments to concrete paths for bucket tests (Next URL rules). */
+const PAGE_PATH_SEGMENT_EXAMPLES: Record<string, string> = {
+  "[department]": "maintenance",
+  "[module]": "work-orders",
+};
+
+/** Next.js route groups `(name)` do not appear in the browser URL — omit when synthesizing paths. */
 function pageFileToExamplePath(appRoot: string, file: string): string {
   const rel = relative(appRoot, file).replace(/\\/g, "/");
   if (rel === "page.tsx") return "/";
@@ -25,7 +31,14 @@ function pageFileToExamplePath(appRoot: string, file: string): string {
     throw new Error(`Expected page.tsx file, got: ${rel}`);
   }
   const dirPart = rel.slice(0, -"/page.tsx".length);
-  const segments = dirPart.split("/").map((seg) => (/^\[.+\]$/.test(seg) ? "_param" : seg));
+  const segments = dirPart
+    .split("/")
+    .filter((seg) => !/^\(.+\)$/.test(seg))
+    .map((seg) => {
+      if (PAGE_PATH_SEGMENT_EXAMPLES[seg]) return PAGE_PATH_SEGMENT_EXAMPLES[seg];
+      if (/^\[.+\]$/.test(seg)) return "_param";
+      return seg;
+    });
   return `/${segments.join("/")}`;
 }
 
@@ -69,6 +82,8 @@ describe("route-split-buckets", () => {
     expect(isMarketingPath("/login")).toBe(false);
 
     expect(isProductPath("/equipment/_param")).toBe(true);
+    expect(isProductPath("/maintenance")).toBe(true);
+    expect(isProductPath("/maintenance/work-orders")).toBe(true);
     expect(isProductPath("/system/companies/_param")).toBe(true);
   });
 });

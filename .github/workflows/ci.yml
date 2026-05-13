@@ -1,5 +1,8 @@
 name: CI
 
+# Monorepo: backend (Python + Postgres service) and frontend (Next.js) are independent jobs.
+# Vercel/Render supply production env vars; CI uses only non-secret placeholders below.
+
 on:
   push:
     branches: [main, master, develop]
@@ -47,6 +50,9 @@ jobs:
     defaults:
       run:
         working-directory: frontend
+    env:
+      CI: "true"
+      NEXT_TELEMETRY_DISABLED: "1"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
