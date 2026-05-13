@@ -11,6 +11,8 @@ export type WorkerRow = {
   account_status?: string;
   phone: string | null;
   department: string | null;
+  /** Workspace URL slugs (`/{slug}/…`) this worker may access; from HR. */
+  department_slugs?: string[] | null;
   job_title: string | null;
   /** HR shift key; label comes from workers settings `shifts`. */
   shift?: string | null;
@@ -72,6 +74,8 @@ export type WorkerDetail = {
   account_status?: string;
   phone: string | null;
   department: string | null;
+  /** Workspace URL slugs (`/{slug}/…`) this worker may access; from HR. */
+  department_slugs?: string[] | null;
   job_title: string | null;
   shift: string | null;
   supervisor_id: string | null;

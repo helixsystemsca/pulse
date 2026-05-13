@@ -2,7 +2,10 @@ import { notFound, redirect } from "next/navigation";
 import { getDepartmentBySlug, isPlatformDepartmentSlug } from "@/config/platform/departments";
 import { getPlatformModuleByDepartmentRoute } from "@/config/platform/modules";
 import { ComingSoonCard } from "@/components/platform/ComingSoonCard";
-import { PublicationBuilderPlaceholder } from "@/components/platform/PublicationBuilderPlaceholder";
+import { CommunicationsIndesignPipelineTool } from "@/components/platform/communications/CommunicationsIndesignPipelineTool";
+import { AdvertisingMapperPage } from "@/modules/communications/advertising-mapper/AdvertisingMapperPage";
+import { CampaignPlannerPage } from "@/modules/communications/campaign-planner/CampaignPlannerPage";
+import { PublicationBuilderPage } from "@/modules/communications/publication-builder/PublicationBuilderPage";
 import type { Metadata } from "next";
 
 type PageProps = { params: { department: string; module: string } };
@@ -26,8 +29,17 @@ export default function PlatformModulePage({ params }: PageProps) {
   const suppress = mod.suppressCanonicalForDepartments?.includes(dSlug) ?? false;
   if (canon && !suppress) redirect(canon);
 
+  if (mod.id === "mod_advertising_mapper") {
+    return <AdvertisingMapperPage />;
+  }
   if (mod.id === "mod_publication_builder") {
-    return <PublicationBuilderPlaceholder />;
+    return <PublicationBuilderPage />;
+  }
+  if (mod.id === "mod_campaign_planner") {
+    return <CampaignPlannerPage />;
+  }
+  if (mod.id === "mod_indesign_pipeline") {
+    return <CommunicationsIndesignPipelineTool />;
   }
 
   return (

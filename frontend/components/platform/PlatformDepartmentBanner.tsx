@@ -3,11 +3,13 @@
 import { ChevronDown } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { listDepartmentsForSwitcher } from "@/config/platform/navigation";
+import { listDepartmentsAllowedForSession } from "@/config/platform/navigation";
 import { useDepartmentPlatform } from "@/contexts/DepartmentPlatformContext";
+import { usePulseAuth } from "@/hooks/usePulseAuth";
 import { cn } from "@/lib/cn";
 
 export function PlatformDepartmentBanner() {
+  const { session } = usePulseAuth();
   const { department, setDepartment } = useDepartmentPlatform();
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -23,7 +25,7 @@ export function PlatformDepartmentBanner() {
 
   if (!department) return null;
 
-  const departments = listDepartmentsForSwitcher();
+  const departments = listDepartmentsAllowedForSession(session);
 
   return (
     <div

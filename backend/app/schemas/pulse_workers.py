@@ -70,6 +70,8 @@ class WorkerRowOut(BaseModel):
     account_status: str = "active"
     phone: Optional[str] = None
     department: Optional[str] = None
+    #: Workspace URL segments (`communications`, …); drives `/{slug}/…` access for frontline roles.
+    department_slugs: list[str] = Field(default_factory=list)
     job_title: Optional[str] = None
     shift: Optional[str] = None
     #: General Gauger (or similar) — assignable flag on profile, not a roster shift preset.
@@ -101,6 +103,8 @@ class WorkerDetailOut(BaseModel):
     account_status: str = "active"
     phone: Optional[str] = None
     department: Optional[str] = None
+    #: Workspace URL segments (`communications`, …); drives `/{slug}/…` access for frontline roles.
+    department_slugs: list[str] = Field(default_factory=list)
     job_title: Optional[str] = None
     shift: Optional[str] = None
     supervisor_id: Optional[str] = None
@@ -130,6 +134,8 @@ class WorkerCreateIn(BaseModel):
     role: str = Field(..., description="worker | lead | supervisor | manager")
     phone: Optional[str] = Field(None, max_length=64)
     department: Optional[str] = Field(None, max_length=128)
+    #: Allowed workspace URL segments (`communications`, …); when omitted, a known `department` slug is used.
+    department_slugs: Optional[list[str]] = None
     job_title: Optional[str] = Field(None, max_length=255)
     shift: Optional[str] = Field(None, max_length=64)
     supervisor_id: Optional[str] = None
@@ -174,6 +180,7 @@ class WorkerPatchIn(BaseModel):
     roles: Optional[list[str]] = None
     phone: Optional[str] = Field(None, max_length=64)
     department: Optional[str] = Field(None, max_length=128)
+    department_slugs: Optional[list[str]] = None
     job_title: Optional[str] = Field(None, max_length=255)
     shift: Optional[str] = Field(None, max_length=64)
     supervisor_id: Optional[str] = None

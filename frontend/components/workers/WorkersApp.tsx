@@ -36,8 +36,13 @@ import {
   managerOrAbove,
   principalHasAnyRole,
   primaryWorkerGroupKey,
+  rosterDepartmentIterateOrder,
+  rosterDepartmentSlug,
+  rosterDepartmentTitle,
+  rosterRoleSectionTitle,
   sessionHasAnyRole,
   sortRolesForDisplay,
+  workerRoleDisplayLabel,
 } from "@/lib/pulse-roles";
 import { parseTimeToMinutes } from "@/lib/schedule/calendar";
 import {
@@ -161,6 +166,14 @@ function employmentBucketForRow(row: WorkerRow): EmploymentBucketKey {
   return "unset";
 }
 
+/** Explicit roster `shift`, or synthetic `auxiliary` when employment is auxiliary (part-time) and no shift is set. */
+function rosterShiftKeyForDisplay(row: Pick<WorkerRow, "shift" | "employment_type">): string {
+  const s = (row.shift ?? "").trim();
+  if (s) return s;
+  if (normalizeEmploymentDraft(row.employment_type) === "part_time") return "auxiliary";
+  return "";
+}
+
 function workerEmploymentBucketLabel(key: EmploymentBucketKey): string {
   if (key === "full_time") return "Full time";
   if (key === "regular_part_time") return "Regular part time";
@@ -195,6 +208,8 @@ type CreateFormState = {
   role: string;
   employment_type: "full_time" | "regular_part_time" | "part_time";
   department: string;
+  /** URL workspace slugs this employee may access (`/{slug}/…`). */
+  workspace_slugs: string[];
   shift: string;
   start_date: string;
   skills: string;
@@ -208,6 +223,7 @@ const CREATE_FORM_EMPTY: CreateFormState = {
   role: "worker",
   employment_type: "full_time",
   department: "maintenance",
+  workspace_slugs: ["maintenance"],
   shift: "",
   start_date: "",
   skills: "",
@@ -222,6 +238,11 @@ const INVITE_DEPARTMENT_OPTIONS: { value: string; label: string }[] = [
   { value: "communications", label: "Communications" },
   { value: "aquatics", label: "Aquatics" },
   { value: "fitness", label: "Fitness" },
+];
+
+const WORKSPACE_ASSIGNMENT_SLUGS: { value: string; label: string }[] = [
+  ...INVITE_DEPARTMENT_OPTIONS,
+  { value: "admin", label: "Administration" },
 ];
 
 function isMaintenanceInviteDepartment(department: string): boolean {
@@ -296,15 +317,8 @@ function shiftRosterBadgeClass(shiftKey: string | null | undefined): string {
   if (k === "day") return "app-badge-sky";
   if (k === "afternoon") return "app-badge-amber-soft";
   if (k === "night" || /^n\d+$/.test(k)) return "app-badge-night";
+  if (k === "auxiliary") return "app-badge-lavender";
   return "app-badge-slate";
-}
-
-function roleGroupTitle(role: string): string {
-  if (role === "company_admin") return "Company Admin";
-  if (role === "manager") return "Managers";
-  if (role === "supervisor") return "Supervisors";
-  if (role === "lead") return "Leads";
-  return "Operations";
 }
 
 function certBadge(status: string): string {
@@ -470,6 +484,7 @@ export function WorkersApp() {
   const [positionDraft, setPositionDraft] = useState({
     job_title: "",
     department: "",
+    workspace_slugs: [] as string[],
     shift: "",
     supervisor_id: "",
   });
@@ -653,9 +668,15 @@ export function WorkersApp() {
       start_date: profile.start_date ? profile.start_date.slice(0, 10) : "",
       employment_type: normalizeEmploymentDraft(profile.employment_type),
     });
+    const wsFromProfile = profile.department_slugs?.length
+      ? [...new Set(profile.department_slugs.map((s) => s.trim().toLowerCase()).filter(Boolean))]
+      : profile.department
+        ? [profile.department.trim().toLowerCase()].filter(Boolean)
+        : [];
     setPositionDraft({
       job_title: profile.job_title ?? "",
       department: profile.department ?? "",
+      workspace_slugs: wsFromProfile,
       shift:
         normalizeEmploymentDraft(profile.employment_type) === "part_time" ? "" : (profile.shift ?? ""),
       supervisor_id: profile.supervisor_id ?? "",
@@ -824,16 +845,39 @@ export function WorkersApp() {
     ],
   );
 
-  const grouped = useMemo(() => {
-    const order = ["company_admin", "manager", "supervisor", "lead", "worker"] as const;
-    const m = new Map<string, WorkerRow[]>();
-    for (const r of order) m.set(r, []);
+  /** Department (category) → role ladder (sub-category) → rows. Maintenance workers keep employment sub-buckets. */
+  const groupedByDepartment = useMemo(() => {
+    const roleOrder = ["company_admin", "manager", "supervisor", "lead", "worker"] as const;
+    const byDept = new Map<string, Map<string, WorkerRow[]>>();
+
+    const ensureDept = (slug: string) => {
+      if (!byDept.has(slug)) {
+        const m = new Map<string, WorkerRow[]>();
+        for (const r of roleOrder) m.set(r, []);
+        byDept.set(slug, m);
+      }
+      return byDept.get(slug)!;
+    };
+
     for (const w of filteredList) {
+      const d = rosterDepartmentSlug(w);
+      const roleMap = ensureDept(d);
       const k = primaryWorkerGroupKey(w);
-      if (m.has(k)) m.get(k)!.push(w);
-      else m.get("worker")!.push(w);
+      const bucket = roleMap.has(k) ? k : "worker";
+      roleMap.get(bucket)!.push(w);
     }
-    return order.map((role) => ({ role, items: m.get(role) ?? [] }));
+
+    return rosterDepartmentIterateOrder()
+      .map((deptSlug) => {
+        const roleMap = byDept.get(deptSlug);
+        if (!roleMap) return null;
+        const roleGroups = roleOrder
+          .map((role) => ({ role, items: roleMap.get(role) ?? [] }))
+          .filter((g) => g.items.length > 0);
+        if (!roleGroups.length) return null;
+        return { deptSlug, deptLabel: rosterDepartmentTitle(deptSlug), roleGroups };
+      })
+      .filter((x): x is NonNullable<typeof x> => Boolean(x));
   }, [filteredList]);
 
   const canDeleteInvitedFromList = isTenantFullAdmin || isSystemAdmin;
@@ -1073,6 +1117,14 @@ export function WorkersApp() {
     if (trim(positionDraft.department) !== (profile.department ?? "").trim()) {
       payload.department = trim(positionDraft.department) || null;
     }
+    const wsNorm = [
+      ...new Set((positionDraft.workspace_slugs ?? []).map((x) => trim(x).toLowerCase()).filter(Boolean)),
+    ].sort();
+    const prevWs = [...(profile.department_slugs ?? [])].map((x) => trim(x).toLowerCase()).sort();
+    const sameWs = wsNorm.length === prevWs.length && wsNorm.every((s, i) => s === prevWs[i]);
+    if (!sameWs) {
+      payload.department_slugs = wsNorm.length ? wsNorm : null;
+    }
     const auxiliaryEmployment = basicDraft.employment_type === "part_time";
     if (auxiliaryEmployment) {
       if ((profile.shift ?? "").trim()) {
@@ -1178,12 +1230,20 @@ export function WorkersApp() {
     });
     const departmentSlug = createForm.department.trim() || "maintenance";
     const role = effectiveInviteRole(departmentSlug, createForm.role, createRoleLimited);
+    const workspaceSlugs = [
+      ...new Set(
+        [...(createForm.workspace_slugs ?? []), departmentSlug]
+          .map((s) => s.trim().toLowerCase())
+          .filter(Boolean),
+      ),
+    ];
     return {
       email: createForm.email.trim(),
       full_name: createForm.full_name.trim() || null,
       role,
       employment_type: createForm.employment_type || null,
       department: departmentSlug || null,
+      department_slugs: workspaceSlugs.length ? workspaceSlugs : [departmentSlug],
       shift: createForm.employment_type === "part_time" ? null : createForm.shift || null,
       start_date: createForm.start_date || null,
       supervisor_id: createForm.supervisor_id.trim() || null,
@@ -1758,6 +1818,13 @@ export function WorkersApp() {
                 </button>
               ) : null}
             </div>
+            <p className="mb-3 text-xs leading-relaxed text-ds-muted">
+              Roster is grouped by HR <span className="font-medium text-ds-foreground">department</span>, then{" "}
+              <span className="font-medium text-ds-foreground">role</span> (e.g. Maintenance → Managers → Operations with
+              employment splits; Communications → Coordinators). The API role for coordinators is still{" "}
+              <span className="font-mono text-ds-foreground">worker</span>; department on their profile drives the label
+              and grouping.
+            </p>
 
             {listLoading ? (
               <div className="flex items-center gap-2 py-16 text-pulse-muted">
@@ -1819,7 +1886,9 @@ export function WorkersApp() {
                                   <option value="">Any</option>
                                   {(["company_admin", "manager", "supervisor", "lead", "worker"] as const).map((rk) => (
                                     <option key={rk} value={rk}>
-                                      {humanizeRole(rk)}
+                                      {rk === "worker"
+                                        ? "Workers (Operations, coordinators, …)"
+                                        : humanizeRole(rk)}
                                     </option>
                                   ))}
                                 </select>
@@ -1911,10 +1980,29 @@ export function WorkersApp() {
                       </tr>
                     </thead>
                     <tbody>
-                      {grouped.flatMap(({ role, items }) => {
-                        if (items.length === 0) return [];
+                      {groupedByDepartment.flatMap((dept) => {
+                        const deptTotal = dept.roleGroups.reduce((acc, g) => acc + g.items.length, 0);
+                        const deptHeader = (
+                          <tr
+                            key={`dept-${dept.deptSlug}`}
+                            className="border-b-2 border-[color-mix(in_srgb,var(--ds-accent)_30%,var(--ds-border))] bg-[color-mix(in_srgb,var(--ds-surface-secondary)_90%,transparent)]"
+                          >
+                            <td
+                              colSpan={7}
+                              className="px-4 py-3 text-[11px] font-bold uppercase tracking-[0.14em] text-ds-foreground"
+                            >
+                              {dept.deptLabel}
+                              <span className="ms-2 font-semibold normal-case tracking-normal text-ds-muted">
+                                ({deptTotal} {deptTotal === 1 ? "person" : "people"})
+                              </span>
+                            </td>
+                          </tr>
+                        );
 
-                        const rowTr = (row: WorkerRow) => (
+                        const roleBlocks = dept.roleGroups.flatMap(({ role, items }) => {
+                          if (items.length === 0) return [];
+
+                          const rowTr = (row: WorkerRow) => (
                           <tr
                             key={row.id}
                             className={`${dataTableBodyRow()} cursor-pointer`}
@@ -1980,38 +2068,33 @@ export function WorkersApp() {
                                     key={r}
                                     className={`inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-bold uppercase ${roleBadge(r)}`}
                                   >
-                                    {humanizeRole(r)}
+                                    {workerRoleDisplayLabel(row.department, r)}
                                   </span>
                                 ))}
                               </div>
                             </td>
                             <td className="px-4 py-3 text-sm text-ds-foreground">
-                              {employmentBucketForRow(row) === "part_time" ? (
-                                row.gg_assignable ? (
-                                  <span className="inline-flex whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide app-badge-violet">
-                                    GG
-                                  </span>
-                                ) : (
-                                  "—"
-                                )
-                              ) : (row.shift ?? "").trim() || row.gg_assignable ? (
-                                <div className="flex flex-wrap items-center gap-1">
-                                  {(row.shift ?? "").trim() ? (
-                                    <span
-                                      className={`inline-flex shrink-0 whitespace-nowrap rounded-full px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide ${shiftRosterBadgeClass(row.shift)}`}
-                                    >
-                                      {shiftRosterLabel(row.shift, fullSettings.shifts)}
-                                    </span>
-                                  ) : null}
-                                  {row.gg_assignable ? (
-                                    <span className="inline-flex shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide app-badge-violet">
-                                      GG
-                                    </span>
-                                  ) : null}
-                                </div>
-                              ) : (
-                                "—"
-                              )}
+                              {(() => {
+                                const shiftKey = rosterShiftKeyForDisplay(row);
+                                const hasGG = Boolean(row.gg_assignable);
+                                if (!shiftKey && !hasGG) return "—";
+                                return (
+                                  <div className="flex flex-wrap items-center gap-1">
+                                    {shiftKey ? (
+                                      <span
+                                        className={`inline-flex shrink-0 whitespace-nowrap rounded-full px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide ${shiftRosterBadgeClass(shiftKey)}`}
+                                      >
+                                        {shiftRosterLabel(shiftKey, fullSettings.shifts)}
+                                      </span>
+                                    ) : null}
+                                    {hasGG ? (
+                                      <span className="inline-flex shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide app-badge-violet">
+                                        GG
+                                      </span>
+                                    ) : null}
+                                  </div>
+                                );
+                              })()}
                             </td>
                             <td className="px-4 py-3">
                               <span className="inline-flex items-center gap-1.5 text-sm text-ds-foreground">
@@ -2045,44 +2128,47 @@ export function WorkersApp() {
                           </tr>
                         );
 
-                        const sectionHeader = (
-                          <tr
-                            key={`grp-${role}`}
-                            className="border-b border-ds-border bg-ds-surface-secondary/80"
-                          >
-                            <td
-                              colSpan={7}
-                              className="px-4 py-2.5 text-xs font-bold uppercase tracking-wide text-ds-muted"
-                            >
-                              {roleGroupTitle(role)} ({items.length})
-                            </td>
-                          </tr>
-                        );
-
-                        if (role !== "worker") {
-                          return [sectionHeader, ...items.map(rowTr)];
-                        }
-
-                        return [
-                          sectionHeader,
-                          ...splitOperationsRowsByEmployment(items).flatMap(({ key, items: bucket }) => [
+                          const sectionHeader = (
                             <tr
-                              key={`grp-${role}-${key}`}
-                              className="border-b border-ds-border bg-[color-mix(in_srgb,var(--ds-surface-secondary)_65%,transparent)]"
+                              key={`grp-${dept.deptSlug}-${role}`}
+                              className="border-b border-ds-border bg-ds-surface-secondary/80"
                             >
                               <td
                                 colSpan={7}
-                                className="px-4 py-2 pl-9 text-xs font-semibold tracking-wide text-ds-foreground"
+                                className="px-4 py-2.5 pl-7 text-xs font-bold uppercase tracking-wide text-ds-muted"
                               >
-                                {workerEmploymentBucketLabel(key)}{" "}
-                                <span className="font-normal text-ds-muted">({bucket.length})</span>
+                                {rosterRoleSectionTitle(role, dept.deptSlug)} ({items.length})
                               </td>
-                            </tr>,
-                            ...bucket.map(rowTr),
-                          ]),
-                        ];
+                            </tr>
+                          );
+
+                          if (role === "worker" && dept.deptSlug === "maintenance") {
+                            return [
+                              sectionHeader,
+                              ...splitOperationsRowsByEmployment(items).flatMap(({ key, items: bucket }) => [
+                                <tr
+                                  key={`grp-${dept.deptSlug}-${role}-${key}`}
+                                  className="border-b border-ds-border bg-[color-mix(in_srgb,var(--ds-surface-secondary)_65%,transparent)]"
+                                >
+                                  <td
+                                    colSpan={7}
+                                    className="px-4 py-2 pl-11 text-xs font-semibold tracking-wide text-ds-foreground"
+                                  >
+                                    {workerEmploymentBucketLabel(key)}{" "}
+                                    <span className="font-normal text-ds-muted">({bucket.length})</span>
+                                  </td>
+                                </tr>,
+                                ...bucket.map(rowTr),
+                              ]),
+                            ];
+                          }
+
+                          return [sectionHeader, ...items.map(rowTr)];
+                        });
+
+                        return [deptHeader, ...roleBlocks];
                       })}
-                          </tbody>
+                    </tbody>
                         </table>
                 </div>
               </Card>
@@ -2314,6 +2400,10 @@ export function WorkersApp() {
                 const department = e.target.value;
                 setCreateForm((f) => {
                   const next: CreateFormState = { ...f, department };
+                  const ws = f.workspace_slugs.includes(department)
+                    ? f.workspace_slugs
+                    : [...f.workspace_slugs, department];
+                  next.workspace_slugs = ws;
                   if (!isMaintenanceInviteDepartment(department)) {
                     next.role = "worker";
                   } else if (createRoleLimited) {
@@ -2354,6 +2444,36 @@ export function WorkersApp() {
                 <option value="worker">Coordinator</option>
               )}
             </select>
+          </div>
+          <div className="sm:col-span-2">
+            <label className={LABEL}>Department workspaces</label>
+            <p className="mb-2 text-xs text-ds-muted-foreground">
+              Choose which departmental hubs this employee can open (Workspaces menu and URL paths).
+            </p>
+            <div className="flex flex-wrap gap-3">
+              {WORKSPACE_ASSIGNMENT_SLUGS.map((o) => (
+                <label key={o.value} className="inline-flex cursor-pointer items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={createForm.workspace_slugs.includes(o.value)}
+                    onChange={(e) => {
+                      setCreateForm((f) => {
+                        const on = e.target.checked;
+                        let next = on
+                          ? [...f.workspace_slugs, o.value]
+                          : f.workspace_slugs.filter((s) => s !== o.value);
+                        const primary = f.department.trim() || "maintenance";
+                        if (!next.includes(primary)) next = [...next, primary];
+                        if (next.length < 1) next = [primary];
+                        return { ...f, workspace_slugs: [...new Set(next)] };
+                      });
+                    }}
+                    className="h-4 w-4 rounded border-ds-border"
+                  />
+                  <span>{o.label}</span>
+                </label>
+              ))}
+            </div>
           </div>
           <div>
             <label className={LABEL}>Employment type</label>
@@ -2403,7 +2523,7 @@ export function WorkersApp() {
                 <option key={s.id} value={s.id}>
                   {(s.full_name ?? s.email) +
                     ` (${sortRolesForDisplay(s.roles?.length ? s.roles : [s.role])
-                      .map((x) => humanizeRole(x))
+                      .map((x) => workerRoleDisplayLabel(s.department, x))
                       .join(", ")})`}
                 </option>
               ))}
@@ -2575,7 +2695,7 @@ export function WorkersApp() {
                         key={r}
                         className={`inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-bold uppercase ${roleBadge(r)}`}
                       >
-                        {humanizeRole(r)}
+                        {workerRoleDisplayLabel(profile.department, r)}
                       </span>
                     ))}
                   </span>
@@ -2799,8 +2919,50 @@ export function WorkersApp() {
                       id="worker-profile-department"
                       className={FIELD}
                       value={positionDraft.department}
-                      onChange={(e) => setPositionDraft((d) => ({ ...d, department: e.target.value }))}
+                      onChange={(e) => {
+                        const department = e.target.value;
+                        setPositionDraft((d) => {
+                          const slug = department.trim().toLowerCase();
+                          let ws = [...d.workspace_slugs];
+                          if (WORKSPACE_ASSIGNMENT_SLUGS.some((o) => o.value === slug) && !ws.map((x) => x.toLowerCase()).includes(slug)) {
+                            ws = [...ws, slug];
+                          }
+                          return { ...d, department, workspace_slugs: ws };
+                        });
+                      }}
                     />
+                  </div>
+                  <div className="sm:col-span-2">
+                    <span className={LABEL}>Department workspaces</span>
+                    <p className="mt-1 text-xs text-pulse-muted">
+                      Which departmental hubs this person can open (Workspaces menu and <span className="font-mono">/{`{slug}`}/…</span> URLs).
+                    </p>
+                    <div className="mt-2 flex flex-wrap gap-3">
+                      {WORKSPACE_ASSIGNMENT_SLUGS.map((o) => (
+                        <label key={o.value} className="inline-flex cursor-pointer items-center gap-2 text-sm text-ds-foreground">
+                          <input
+                            type="checkbox"
+                            className={dsCheckboxClass}
+                            checked={positionDraft.workspace_slugs.includes(o.value)}
+                            onChange={(e) => {
+                              setPositionDraft((d) => {
+                                const on = e.target.checked;
+                                let next = on
+                                  ? [...d.workspace_slugs, o.value]
+                                  : d.workspace_slugs.filter((s) => s !== o.value);
+                                const primary = d.department.trim().toLowerCase() || "maintenance";
+                                if (!next.map((x) => x.toLowerCase()).includes(primary)) {
+                                  next = [...next, primary];
+                                }
+                                if (next.length < 1) next = [primary];
+                                return { ...d, workspace_slugs: [...new Set(next)] };
+                              });
+                            }}
+                          />
+                          {o.label}
+                        </label>
+                      ))}
+                    </div>
                   </div>
                   {basicDraft.employment_type === "part_time" ? null : (
                     <div>
@@ -2851,7 +3013,7 @@ export function WorkersApp() {
                         <option key={s.id} value={s.id}>
                           {(s.full_name ?? s.email) +
                             ` (${sortRolesForDisplay(s.roles?.length ? s.roles : [s.role])
-                              .map((x) => humanizeRole(x))
+                              .map((x) => workerRoleDisplayLabel(s.department, x))
                               .join(", ")})`}
                         </option>
                       ))}
@@ -2963,37 +3125,48 @@ export function WorkersApp() {
                     <span className="text-pulse-muted">Department: </span>
                     {profile.department ?? "—"}
                   </p>
+                  <p className="sm:col-span-2">
+                    <span className="text-pulse-muted">Workspaces: </span>
+                    {(profile.department_slugs?.length ? profile.department_slugs : profile.department ? [profile.department] : [])
+                      .join(", ") || "—"}
+                  </p>
                   <p className="flex flex-wrap items-center gap-2">
                     <span className="text-pulse-muted">Shift: </span>
-                    {normalizeEmploymentDraft(profile.employment_type) === "part_time" ? (
-                      "Any shift (based on availability)"
-                    ) : (profile.shift ?? "").trim() || profile.gg_assignable ? (
-                      <span className="inline-flex flex-wrap items-center gap-1.5">
-                        {(profile.shift ?? "").trim() ? (
-                          <span
-                            className={`inline-flex shrink-0 whitespace-nowrap rounded-full px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide ${shiftRosterBadgeClass(profile.shift)}`}
-                          >
-                            {shiftRosterLabel(profile.shift, fullSettings.shifts)}
-                          </span>
-                        ) : null}
-                        {profile.gg_assignable ? (
-                          <span className="inline-flex shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide app-badge-violet">
-                            GG eligible
-                          </span>
-                        ) : null}
-                      </span>
-                    ) : (
-                      "—"
-                    )}
+                    {(() => {
+                      const sk = rosterShiftKeyForDisplay(profile);
+                      const hasGG = Boolean(profile.gg_assignable);
+                      if (!sk && !hasGG) return "—";
+                      return (
+                        <span className="inline-flex flex-wrap items-center gap-1.5">
+                          {sk ? (
+                            <span
+                              className={`inline-flex shrink-0 whitespace-nowrap rounded-full px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide ${shiftRosterBadgeClass(sk)}`}
+                            >
+                              {shiftRosterLabel(sk, fullSettings.shifts)}
+                            </span>
+                          ) : null}
+                          {normalizeEmploymentDraft(profile.employment_type) === "part_time" && sk === "auxiliary" ? (
+                            <span className="text-xs text-ds-muted">Variable scheduling</span>
+                          ) : null}
+                          {hasGG ? (
+                            <span className="inline-flex shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide app-badge-violet">
+                              GG eligible
+                            </span>
+                          ) : null}
+                        </span>
+                      );
+                    })()}
                   </p>
                   <p className="sm:col-span-2">
                     <span className="text-pulse-muted">Shift hours: </span>
                     {(() => {
+                      const sk = rosterShiftKeyForDisplay(profile);
+                      if (!sk) return "—";
                       const rows = recurringRowsFromApi(profile.recurring_shifts ?? []);
                       if (rows.length && rows.every((r) => r.start === rows[0]!.start && r.end === rows[0]!.end)) {
                         return `${padHm(rows[0]!.start)}–${padHm(rows[0]!.end)}`;
                       }
-                      const w = shiftWindowFromRosterKey(profile.shift ?? "", fullSettings.shifts ?? []);
+                      const w = shiftWindowFromRosterKey(sk, fullSettings.shifts ?? []);
                       return `${padHm(w.start)}–${padHm(w.end)} (preset from roster shift)`;
                     })()}
                   </p>

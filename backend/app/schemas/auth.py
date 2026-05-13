@@ -66,6 +66,8 @@ class UserOut(BaseModel):
     role_display_label: Optional[str] = None
     #: Effective permission strings for tenant UI (`["*"]` = full access). Omitted for system operators without a tenant session.
     permissions: Optional[list[str]] = None
+    #: Department workspace path segments (`communications`, …) this user may open under `/{slug}/…`.
+    department_workspace_slugs: list[str] = Field(default_factory=list)
     #: Current server time (UTC ISO-8601) for client clock sync; not persisted on the user row.
     server_time: str
     #: True when the account is using the default temporary password and must set a new one.

@@ -42,6 +42,10 @@ from app.core.workers_permission_delegation import (
     actor_is_delegated_permission_editor,
     actor_may_set_worker_feature_allow_extra,
 )
+from app.core.workspace_departments import (
+    normalize_workspace_department_slug,
+    normalize_workspace_department_slug_list,
+)
 from app.core.workers_settings_merge import DEFAULT_WORKERS_SETTINGS, merge_workers_settings
 from app.core.email_smtp import send_employee_invite
 from app.core.auth.security import bump_access_token_version, hash_password
@@ -85,6 +89,24 @@ from app.schemas.pulse_workers import (
 )
 
 router = APIRouter(prefix="/workers", tags=["workers"])
+
+
+def _hr_department_slugs_list(hr: PulseWorkerHR | None) -> list[str]:
+    if not hr:
+        return []
+    raw = getattr(hr, "department_slugs", None)
+    if isinstance(raw, list):
+        return normalize_workspace_department_slug_list([str(x) for x in raw])
+    return []
+
+
+def _merge_hr_department_slugs(body_department_slugs: list[str] | None, body_department: str | None) -> list[str]:
+    slugs = normalize_workspace_department_slug_list(body_department_slugs)
+    if slugs:
+        return slugs
+    one = normalize_workspace_department_slug((body_department or "").strip() or None)
+    return [one] if one else []
+
 
 async def resolve_workers_company_id(
     user: Annotated[User, Depends(get_current_user)],
@@ -540,6 +562,7 @@ async def _build_detail(db: AsyncSession, cid: str, u: User, users_map: dict[str
         account_status=u.account_status.value,
         phone=hr.phone if hr else None,
         department=hr.department if hr else None,
+        department_slugs=_hr_department_slugs_list(hr),
         job_title=hr.job_title if hr else None,
         shift=hr.shift if hr else None,
         supervisor_id=hr.supervisor_user_id if hr else None,
@@ -714,6 +737,7 @@ async def list_workers(
                 account_status=u.account_status.value,
                 phone=h.phone if h else None,
                 department=h.department if h else None,
+                department_slugs=_hr_department_slugs_list(h),
                 job_title=h.job_title if h else None,
                 shift=h.shift if h else None,
                 gg_assignable=gg_assignable,
@@ -786,9 +810,22 @@ async def _apply_worker_hr_and_extras(
     *,
     hr_row: PulseWorkerHR | None,
 ) -> None:
+    merged_slugs = _merge_hr_department_slugs(
+        list(body.department_slugs) if body.department_slugs else None,
+        body.department,
+    )
+    primary_department: str | None
+    if merged_slugs:
+        primary_department = merged_slugs[0]
+    elif body.department and str(body.department).strip():
+        primary_department = str(body.department).strip()
+    else:
+        primary_department = None
+
     if hr_row:
         hr_row.phone = body.phone
-        hr_row.department = body.department
+        hr_row.department = primary_department
+        hr_row.department_slugs = merged_slugs if merged_slugs else None
         hr_row.job_title = body.job_title
         hr_row.shift = body.shift
         hr_row.supervisor_user_id = body.supervisor_id
@@ -799,7 +836,8 @@ async def _apply_worker_hr_and_extras(
                 user_id=user.id,
                 company_id=cid,
                 phone=body.phone,
-                department=body.department,
+                department=primary_department,
+                department_slugs=merged_slugs if merged_slugs else None,
                 job_title=body.job_title,
                 shift=body.shift,
                 supervisor_user_id=body.supervisor_id,
@@ -1136,6 +1174,7 @@ async def patch_worker(
         for k in (
             "phone",
             "department",
+            "department_slugs",
             "job_title",
             "shift",
             "supervisor_id",
@@ -1150,8 +1189,27 @@ async def patch_worker(
     if hr:
         if "phone" in data:
             hr.phone = data["phone"]
-        if "department" in data:
+        if "department_slugs" in data:
+            raw_ds = data["department_slugs"]
+            if raw_ds is None:
+                hr.department_slugs = None
+            else:
+                hr.department_slugs = normalize_workspace_department_slug_list(list(raw_ds))
+            merged = _hr_department_slugs_list(hr)
+            if merged:
+                hr.department = merged[0]
+            else:
+                hr.department = None
+                hr.department_slugs = None
+        elif "department" in data:
             hr.department = data["department"]
+            one = normalize_workspace_department_slug(
+                str(data["department"]).strip() if data["department"] is not None else None
+            )
+            if one:
+                hr.department_slugs = [one]
+            elif data["department"] is None or (isinstance(data["department"], str) and not str(data["department"]).strip()):
+                hr.department_slugs = None
         if "job_title" in data:
             hr.job_title = data["job_title"]
         if "shift" in data:

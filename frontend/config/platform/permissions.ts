@@ -14,6 +14,9 @@ export const PLATFORM_CAPABILITIES = [
   "publications.create",
   "publications.export",
   "communications.assets.view",
+  "communications.indesign_pipeline.view",
+  "communications.advertising_mapper.view",
+  "communications.campaign_planner.view",
   "procedures.view",
   "analytics.view",
   "messaging.view",
@@ -34,11 +37,27 @@ const PERMISSION_TO_CAPABILITIES: Record<string, readonly string[]> = {
     "equipment.view",
     "procedures.view",
   ],
-  "module.analytics.read": ["analytics.view"],
-  "module.jobs.read": ["messaging.view", "analytics.view"],
+  "module.analytics.read": [
+    "analytics.view",
+    "communications.indesign_pipeline.view",
+    "communications.advertising_mapper.view",
+    "communications.campaign_planner.view",
+  ],
+  "module.jobs.read": [
+    "messaging.view",
+    "analytics.view",
+    "communications.indesign_pipeline.view",
+    "communications.advertising_mapper.view",
+    "communications.campaign_planner.view",
+  ],
   "module.inventory.read": ["equipment.view"],
   "module.tool_tracking.read": ["equipment.view"],
-  "module.notifications.read": ["messaging.view"],
+  "module.notifications.read": [
+    "messaging.view",
+    "communications.indesign_pipeline.view",
+    "communications.advertising_mapper.view",
+    "communications.campaign_planner.view",
+  ],
 };
 
 function addWildcardCapabilities(out: Set<string>): void {

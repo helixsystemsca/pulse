@@ -27,12 +27,23 @@ export const PLATFORM_DEPARTMENTS: readonly Department[] = [
     icon: "megaphone",
     accentColor: "var(--ds-accent)",
     enabledModuleIds: [
+      "mod_advertising_mapper",
       "mod_publication_builder",
+      "mod_indesign_pipeline",
+      "mod_campaign_planner",
       "mod_assets",
       "mod_procedures",
       "mod_analytics",
       "mod_messaging",
     ],
+  },
+  {
+    id: "dept_reception",
+    slug: "reception",
+    name: "Reception",
+    icon: "layout",
+    accentColor: "var(--ds-accent)",
+    enabledModuleIds: ["mod_procedures", "mod_analytics", "mod_messaging"],
   },
   {
     id: "dept_aquatics",

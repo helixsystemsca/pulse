@@ -21,7 +21,9 @@ export type PlatformIconKey =
   | "newspaper"
   | "image"
   | "calendar"
-  | "layout";
+  | "layout"
+  | "file-text"
+  | "layout-grid";
 
 export type Department = {
   id: DepartmentId;

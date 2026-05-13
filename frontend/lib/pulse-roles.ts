@@ -144,6 +144,68 @@ export function humanizeRole(role: string): string {
   return role.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
+/** HR `department` slug for roster grouping (aligns with Team Management invite options). */
+const ROSTER_DEPT_ORDER = ["maintenance", "communications", "reception", "aquatics", "fitness", "admin", "__other__"] as const;
+
+const ROSTER_DEPT_TITLE: Record<(typeof ROSTER_DEPT_ORDER)[number], string> = {
+  maintenance: "Maintenance",
+  communications: "Communications",
+  reception: "Reception",
+  aquatics: "Aquatics",
+  fitness: "Fitness",
+  admin: "Administration",
+  __other__: "Other departments",
+};
+
+export function rosterDepartmentSlug(worker: Pick<{ department?: string | null }, "department">): string {
+  const raw = (worker.department ?? "").trim().toLowerCase();
+  if (!raw) return "maintenance";
+  for (const k of ROSTER_DEPT_ORDER) {
+    if (k === "__other__") continue;
+    if (raw === k) return k;
+  }
+  return "__other__";
+}
+
+export function rosterDepartmentTitle(slug: string): string {
+  const k = slug.trim().toLowerCase() as (typeof ROSTER_DEPT_ORDER)[number];
+  return ROSTER_DEPT_TITLE[k] ?? slug;
+}
+
+/** Plural section title for the `worker` API tier under a department (Maintenance → Operations, Communications → Coordinators). */
+export function rosterWorkerTierSectionTitle(departmentSlug: string): string {
+  const d = departmentSlug.trim().toLowerCase();
+  if (d === "maintenance") return "Operations";
+  if (d === "communications" || d === "reception") return "Coordinators";
+  if (d === "aquatics" || d === "fitness") return "Program staff";
+  return "Staff";
+}
+
+/** Badge / cell label: `worker` role shown by HR department (API role stays `worker`). */
+export function workerRoleDisplayLabel(departmentSlug: string | null | undefined, role: string): string {
+  if (role !== "worker") return humanizeRole(role);
+  const d = (departmentSlug ?? "").trim().toLowerCase() || "maintenance";
+  if (d === "maintenance") return "Operations";
+  if (d === "communications" || d === "reception") return "Coordinator";
+  if (d === "aquatics" || d === "fitness") return "Program staff";
+  return "Staff";
+}
+
+/** Sub-header under a department (Managers, Operations, Coordinators, …). */
+export function rosterRoleSectionTitle(role: string, departmentSlug: string): string {
+  const r = role.trim().toLowerCase();
+  if (r === "company_admin") return "Company Admin";
+  if (r === "manager") return "Managers";
+  if (r === "supervisor") return "Supervisors";
+  if (r === "lead") return "Leads";
+  if (r === "worker") return rosterWorkerTierSectionTitle(departmentSlug);
+  return humanizeRole(role);
+}
+
+export function rosterDepartmentIterateOrder(): readonly string[] {
+  return ROSTER_DEPT_ORDER;
+}
+
 /** Sidebar / profile: uses server-provided label for facility tenant admins when present. */
 export function sessionRoleDisplayLabel(
   session: Pick<PulseAuthSession, "role_display_label" | "role" | "roles"> | null | undefined,

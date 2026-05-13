@@ -64,6 +64,25 @@ export function getFirstNavHrefForDepartment(departmentSlug: string, session: Pu
   return items[0]?.href ?? null;
 }
 
+export function listDepartmentsAllowedForSession(session: PulseAuthSession | null): readonly Department[] {
+  const allowed = session?.department_workspace_slugs;
+  if (!allowed || allowed.length === 0) {
+    return PLATFORM_DEPARTMENTS;
+  }
+  const set = new Set(allowed);
+  return PLATFORM_DEPARTMENTS.filter((d) => set.has(d.slug));
+}
+
+/** First workspace home URL for the tenant rail “Workspaces” entry. */
+export function defaultWorkspaceHubHref(session: PulseAuthSession | null): string {
+  const depts = listDepartmentsAllowedForSession(session);
+  const first = depts[0];
+  if (!first) return "/overview";
+  const mod = getDefaultModuleRouteForDepartment(first.slug, session);
+  if (mod) return `/${first.slug}/${mod}`;
+  return `/${first.slug}`;
+}
+
 export function listDepartmentsForSwitcher(): readonly Department[] {
   return PLATFORM_DEPARTMENTS;
 }

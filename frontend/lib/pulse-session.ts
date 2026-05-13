@@ -59,6 +59,8 @@ export type PulseAuthSession = {
   enabled_features?: string[];
   /** From `/auth/me`; RBAC allow list for sidebar (omit on legacy session → no permission gating). */
   permissions?: string[] | null;
+  /** From `/auth/me`; department workspace segments this user may open (`/{slug}/…`). */
+  department_workspace_slugs?: string[];
   /** From `/auth/me`; full tenant contract modules (company admin only). */
   contract_enabled_features?: string[] | null;
   /** From `/auth/me`; may open `/dashboard/workers`. */
@@ -94,6 +96,7 @@ export type UserOut = {
   operational_role?: string | null;
   enabled_features?: string[];
   permissions?: string[] | null;
+  department_workspace_slugs?: string[];
   contract_enabled_features?: string[] | null;
   workers_roster_access?: boolean;
   is_impersonating?: boolean;
@@ -253,6 +256,7 @@ export function writeApiSession(
     is_system_admin: user.is_system_admin,
     enabled_features: user.enabled_features,
     permissions: user.permissions ?? undefined,
+    department_workspace_slugs: user.department_workspace_slugs ?? undefined,
     contract_enabled_features: user.contract_enabled_features ?? undefined,
     workers_roster_access: user.workers_roster_access,
     is_impersonating:

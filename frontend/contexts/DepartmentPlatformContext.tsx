@@ -3,11 +3,16 @@
 import type { ReactNode } from "react";
 import { createContext, useCallback, useContext, useEffect, useMemo } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { getDepartmentBySlug, isPlatformDepartmentSlug, PLATFORM_DEPARTMENTS } from "@/config/platform/departments";
+import { getDepartmentBySlug, isPlatformDepartmentSlug } from "@/config/platform/departments";
 import { getPlatformModuleByDepartmentRoute } from "@/config/platform/modules";
-import { getFirstNavHrefForDepartment, writeStoredDepartmentSlug } from "@/config/platform/navigation";
+import {
+  getFirstNavHrefForDepartment,
+  listDepartmentsAllowedForSession,
+  writeStoredDepartmentSlug,
+} from "@/config/platform/navigation";
 import type { Department, PlatformModule } from "@/config/platform/types";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
+import { userMayAccessDepartmentWorkspace } from "@/lib/workspace-access";
 
 export type DepartmentPlatformContextValue = {
   department: Department | null;
@@ -41,6 +46,7 @@ export function DepartmentPlatformProvider({ children }: { children: ReactNode }
 
   const setDepartment = useCallback(
     (slug: string) => {
+      if (!userMayAccessDepartmentWorkspace(session, slug)) return;
       writeStoredDepartmentSlug(slug);
       const href = getFirstNavHrefForDepartment(slug, session);
       if (href) router.push(href);
@@ -49,14 +55,16 @@ export function DepartmentPlatformProvider({ children }: { children: ReactNode }
     [router, session],
   );
 
+  const departments = useMemo(() => listDepartmentsAllowedForSession(session), [session]);
+
   const value = useMemo<DepartmentPlatformContextValue>(
     () => ({
       department,
       activeModule,
-      departments: PLATFORM_DEPARTMENTS,
+      departments,
       setDepartment,
     }),
-    [department, activeModule, setDepartment],
+    [department, activeModule, departments, setDepartment],
   );
 
   return <DepartmentPlatformContext.Provider value={value}>{children}</DepartmentPlatformContext.Provider>;

@@ -43,6 +43,8 @@ export function shiftWindowFromRosterKey(
   const hay = `${shiftKey} ${(row?.label || "").toLowerCase()}`;
   if (hay.includes("night") || hay.includes("overnight")) return { start: "22:00", end: "06:00" };
   if (hay.includes("afternoon") || hay.includes("evening")) return { start: "14:00", end: "22:00" };
+  /** Auxiliary / variable-hours staff — nominal placeholder for rotation UI (not a fixed band). */
+  if (hay.includes("auxiliary")) return { start: "09:00", end: "17:00" };
   return { start: "07:00", end: "15:00" };
 }
 
@@ -111,7 +113,7 @@ export function recurringRowsFromApi(raw: unknown[] | null | undefined): WorkerR
 
 /** Prefer saved recurring hours when uniform; otherwise roster shift preset. */
 export function editableShiftWindowFromProfile(
-  profile: { shift?: string | null; recurring_shifts?: unknown[] | null },
+  profile: { shift?: string | null; recurring_shifts?: unknown[] | null; employment_type?: string | null },
   rosterShifts: { key: string; label: string }[],
 ): { start: string; end: string } {
   const rows = recurringRowsFromApi(profile.recurring_shifts ?? []);
@@ -120,6 +122,9 @@ export function editableShiftWindowFromProfile(
     const same = rows.every((r) => r.start === r0.start && r.end === r0.end);
     if (same) return { start: padHm(r0.start), end: padHm(r0.end) };
   }
-  const w = shiftWindowFromRosterKey(profile.shift ?? "", rosterShifts);
+  const rawShift = String(profile.shift ?? "").trim();
+  const emp = String(profile.employment_type ?? "").trim();
+  const synthetic = !rawShift && emp === "part_time" ? "auxiliary" : "";
+  const w = shiftWindowFromRosterKey(rawShift || synthetic, rosterShifts);
   return { start: padHm(w.start), end: padHm(w.end) };
 }

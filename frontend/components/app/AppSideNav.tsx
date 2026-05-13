@@ -35,7 +35,7 @@ import {
 } from "@/lib/pulse-app";
 
 type SidebarNavItem = { href: string; label: string; icon: PulseSidebarIcon };
-import { LEGACY_SIDEBAR_DEPARTMENT_HUB } from "@/config/platform/navigation";
+import { defaultWorkspaceHubHref, LEGACY_SIDEBAR_DEPARTMENT_HUB } from "@/config/platform/navigation";
 import { isPulseNavActive } from "@/lib/pulse-nav-active";
 import { isTenantNavFeatureEnabled } from "@/lib/pulse-nav-features";
 import { isTenantNavPermissionGranted } from "@/lib/pulse-nav-permissions";
@@ -108,7 +108,7 @@ export function AppSideNav() {
     items = [
       ...items,
       {
-        href: LEGACY_SIDEBAR_DEPARTMENT_HUB.href,
+        href: defaultWorkspaceHubHref(session),
         label: LEGACY_SIDEBAR_DEPARTMENT_HUB.label,
         icon: LEGACY_SIDEBAR_DEPARTMENT_HUB.icon as PulseSidebarIcon,
       },

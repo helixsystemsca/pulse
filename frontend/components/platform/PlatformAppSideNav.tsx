@@ -13,8 +13,10 @@ import {
   CalendarDays,
   ClipboardList,
   Dumbbell,
+  FileText,
   Image as ImageIcon,
   LayoutDashboard,
+  LayoutGrid,
   Megaphone,
   MessageSquare,
   Newspaper,
@@ -46,6 +48,8 @@ const ICONS: Record<PlatformIconKey, LucideIcon> = {
   newspaper: Newspaper,
   image: ImageIcon,
   calendar: CalendarDays,
+  "layout-grid": LayoutGrid,
+  "file-text": FileText,
 };
 
 const COLLAPSED_RAIL_W = "w-[var(--pulse-sidebar-collapsed-width)]";

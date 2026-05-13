@@ -26,6 +26,7 @@ from app.core.login_activity import log_login_event
 from app.core.microsoft_oauth import MicrosoftOAuthError, MicrosoftIdentity, verify_supabase_microsoft_access_token
 from app.core.permissions.service import PermissionService
 from app.core.tenant_feature_access import contract_and_effective_features_for_me
+from app.core.workspace_departments import effective_workspace_slugs_for_user
 from app.core.system_audit import record_system_log
 from app.core.system_tokens import hash_system_token
 from app.limiter import limiter
@@ -43,6 +44,7 @@ from app.models.domain import (
     UserAccountStatus,
     UserRole,
 )
+from app.models.pulse_models import PulseWorkerHR
 from app.schemas.auth import (
     CompanySummaryOut,
     EffectivePermissionsOut,
@@ -340,6 +342,12 @@ async def me(
 
     must_change_password = bool(user.hashed_password) and verify_password("Panorama", user.hashed_password)
 
+    hr_me: PulseWorkerHR | None = None
+    if user.company_id:
+        hr_row = await db.execute(select(PulseWorkerHR).where(PulseWorkerHR.user_id == user.id))
+        hr_me = hr_row.scalar_one_or_none()
+    dept_workspace = effective_workspace_slugs_for_user(user=user, hr=hr_me, permissions=perm_out)
+
     return UserOut(
         id=user.id,
         email=user.email,
@@ -362,6 +370,7 @@ async def me(
         facility_tenant_admin=bool(getattr(user, "facility_tenant_admin", False)),
         role_display_label=tenant_role_display_label(user),
         permissions=perm_out,
+        department_workspace_slugs=dept_workspace,
         server_time=datetime.now(timezone.utc).isoformat(),
         must_change_password=must_change_password,
     )
