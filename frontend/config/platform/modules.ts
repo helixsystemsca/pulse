@@ -1,8 +1,8 @@
 import type { PlatformModule } from "@/config/platform/types";
 
 /**
- * Central module registry. Departments *consume* modules via `allowedDepartmentSlugs`
- * and per-department `enabledModuleIds` in `departments.ts`.
+ * Central module registry. Departments consume modules via `allowedDepartmentSlugs`
+ * (see {@link moduleIdsForDepartmentSlug} and `departments.ts`).
  */
 export const PLATFORM_MODULES: readonly PlatformModule[] = [
   {
@@ -118,8 +118,8 @@ export const PLATFORM_MODULES: readonly PlatformModule[] = [
     icon: "message-square",
     route: "messaging",
     allowedDepartmentSlugs: ["maintenance", "reception", "communications", "aquatics", "fitness", "racquets", "admin"],
-    requiredCapabilities: ["messaging.view"],
     canonicalPulseHref: "/dashboard/messages",
+    tenantNavFeatureKey: "messaging",
   },
   {
     id: "mod_scheduling",
@@ -139,8 +139,14 @@ export const PLATFORM_MODULES: readonly PlatformModule[] = [
     route: "classes",
     allowedDepartmentSlugs: ["fitness", "racquets"],
     requiredCapabilities: ["fitness.classes.view"],
+    tenantNavFeatureKey: "schedule",
   },
 ] as const;
+
+/** Module ids allowed for a department hub — mirrors {@link PLATFORM_MODULES} `allowedDepartmentSlugs` (single registry). */
+export function moduleIdsForDepartmentSlug(slug: string): readonly string[] {
+  return PLATFORM_MODULES.filter((m) => m.allowedDepartmentSlugs.includes(slug)).map((m) => m.id);
+}
 
 const byId = new Map(PLATFORM_MODULES.map((m) => [m.id, m]));
 

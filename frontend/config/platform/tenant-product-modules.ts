@@ -46,7 +46,7 @@ export const PRODUCT_MODULE_PERMISSION_SECTIONS: readonly {
   {
     id: "programs_people",
     label: "Scheduling, people & standards",
-    keys: ["schedule", "team_management", "team_insights", "procedures"],
+    keys: ["schedule", "team_management", "team_insights", "procedures", "messaging"],
   },
   {
     id: "maps",
@@ -67,6 +67,7 @@ export const MODULE_LABEL: Record<string, string> = {
   procedures: "Procedures",
   team_insights: "Team Insights",
   team_management: "Team Management",
+  messaging: "Messaging",
   inventory: "Inventory",
   equipment: "Equipment",
   drawings: "Drawings",

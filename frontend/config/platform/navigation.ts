@@ -41,18 +41,19 @@ export function buildDepartmentNavItems(departmentSlug: string, session: PulseAu
   const dept = getDepartmentBySlug(departmentSlug);
   if (!dept) return [];
   const caps = resolveCapabilitiesFromSession(session);
-  const enabledIds = new Set(dept.enabledModuleIds);
   const items: PlatformNavItem[] = [];
   const feats = session?.enabled_features;
   const featsDefined = feats !== undefined && feats !== null;
 
   for (const mod of PLATFORM_MODULES) {
-    if (!enabledIds.has(mod.id)) continue;
     if (!mod.allowedDepartmentSlugs.includes(dept.slug)) continue;
-    const reqs = mod.requiredCapabilities ?? [];
-    if (reqs.some((r) => !hasCapability(caps, r))) continue;
     const fk = mod.tenantNavFeatureKey;
-    if (fk && featsDefined && !feats.includes(fk)) continue;
+    if (fk) {
+      if (featsDefined && !feats!.includes(fk)) continue;
+    } else {
+      const reqs = mod.requiredCapabilities ?? [];
+      if (reqs.some((r) => !hasCapability(caps, r))) continue;
+    }
     items.push({
       href: `/${dept.slug}/${mod.route}`,
       label: mod.name,

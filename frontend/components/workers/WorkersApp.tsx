@@ -75,7 +75,6 @@ import { buttonVariants } from "@/styles/button-variants";
 import {
   MODULE_LABEL,
   PRODUCT_MODULE_PERMISSION_SECTIONS,
-  TENANT_PRODUCT_MODULES,
 } from "@/config/platform/tenant-product-modules";
 import {
   computeLegacyRoleFeatureAccessFromMatrix,
@@ -359,11 +358,6 @@ function shortenUa(ua: string | null | undefined, max = 72): string {
   return s.length > max ? `${s.slice(0, max)}…` : s;
 }
 
-function profileIsWorkerOnly(profile: WorkerDetail): boolean {
-  const r = profile.roles?.length ? [...profile.roles] : profile.role ? [profile.role] : [];
-  return r.length > 0 && r.every((x) => x === "worker");
-}
-
 const PERMISSION_ROLE_OPTIONS = ["manager", "supervisor", "lead", "worker"] as const;
 type PermissionRole = (typeof PERMISSION_ROLE_OPTIONS)[number];
 
@@ -431,17 +425,6 @@ export function WorkersApp() {
 
   const mayEditDelegatedRoleModules = Boolean(!isTenantFullAdmin && delegatedRoleTargetsForMe.length > 0);
 
-  const canDelegateWorkerExtras = useMemo(() => {
-    if (!session) return false;
-    const pd = fullSettings.permission_delegation ?? {};
-    if (!fullSettings.delegates_can_assign_worker_module_extras) return false;
-    return Boolean(
-      (sessionHasAnyRole(session, "manager") && pd.manager) ||
-        (sessionHasAnyRole(session, "supervisor") && pd.supervisor) ||
-        (sessionHasAnyRole(session, "lead") && pd.lead),
-    );
-  }, [session, fullSettings]);
-
   const [profileId, setProfileId] = useState<string | null>(null);
   const [profileDrawerTab, setProfileDrawerTab] = useState<"profile" | "training">("profile");
 
@@ -473,7 +456,6 @@ export function WorkersApp() {
     supervisor: false,
     lead: false,
   });
-  const [assignWorkerExtrasDraft, setAssignWorkerExtrasDraft] = useState(false);
   const [roleFeatureAccessDraft, setRoleFeatureAccessDraft] = useState<Record<string, string[]>>({});
   const [proceduresEditRolesDraft, setProceduresEditRolesDraft] = useState<string[]>(["manager", "supervisor", "lead"]);
   const [workRequestEditRolesDraft, setWorkRequestEditRolesDraft] = useState<string[]>(["manager", "supervisor"]);
@@ -485,7 +467,6 @@ export function WorkersApp() {
   const [departmentRoleFeatureAccessDraft, setDepartmentRoleFeatureAccessDraft] = useState<
     Record<string, Record<string, string[]>>
   >({});
-  const [extraModulesDraft, setExtraModulesDraft] = useState<string[]>([]);
 
   const [basicDraft, setBasicDraft] = useState({
     full_name: "",
@@ -583,7 +564,6 @@ export function WorkersApp() {
           lead: Boolean(pdd.lead),
         });
       }
-      setAssignWorkerExtrasDraft(Boolean(st.settings.delegates_can_assign_worker_module_extras));
       const rfa = (st.settings.role_feature_access ?? {}) as Record<string, string[]>;
       const nextDraft: Record<string, string[]> = {};
       for (const role of ["manager", "supervisor", "lead", "worker"] as const) {
@@ -668,14 +648,6 @@ export function WorkersApp() {
     const base = profile.roles?.length ? [...profile.roles] : profile.role ? [profile.role] : ["worker"];
     setProfileRolesDraft(sortRolesForDisplay([...new Set(base)]));
   }, [profile]);
-
-  useEffect(() => {
-    if (!profile) {
-      setExtraModulesDraft([]);
-      return;
-    }
-    setExtraModulesDraft([...(profile.feature_allow_extra ?? [])]);
-  }, [profile?.id, profile]);
 
   useEffect(() => {
     if (!profile) return;
@@ -1044,7 +1016,7 @@ export function WorkersApp() {
         ...fullSettings,
         workers_page_delegation: delegationDraft,
         permission_delegation: permissionDelegationDraft,
-        delegates_can_assign_worker_module_extras: assignWorkerExtrasDraft,
+        delegates_can_assign_worker_module_extras: false,
         department_role_feature_access: departmentRoleFeatureAccessDraft,
         role_feature_access: rfaSync,
         procedures_edit_roles: proceduresEditRolesDraft,
@@ -1098,27 +1070,6 @@ export function WorkersApp() {
       refresh();
     } finally {
       setAccessPolicySaving(false);
-    }
-  }
-
-  async function saveExtraModules() {
-    if (
-      !profileId ||
-      !profile ||
-      (!isTenantFullAdmin && (!canDelegateWorkerExtras || !profileIsWorkerOnly(profile))) ||
-      principalHasAnyRole(profile, "company_admin")
-    ) {
-      return;
-    }
-    setProfileBusy(true);
-    try {
-      await patchWorker(apiCompany, profileId, { feature_allow_extra: extraModulesDraft });
-      await loadProfile();
-      await loadList();
-      await refreshPulseUserFromServer();
-      refresh();
-    } finally {
-      setProfileBusy(false);
     }
   }
 
@@ -1560,9 +1511,9 @@ export function WorkersApp() {
                 <p className="mt-1 text-xs text-ds-muted">
                   Choose which operational roles may adjust <strong className="font-semibold text-ds-foreground">module access</strong> for
                   people in roles below them (for example, a manager sets modules for supervisors, leads, and workers).
-                  This is separate from opening this page (see above). Turning on &quot;Individual worker modules&quot; lets
-                  those delegates assign extra contract modules to <strong className="font-semibold text-ds-foreground">worker-role</strong>{" "}
-                  accounts only.
+                  This is separate from opening this page (see above). All product module visibility is configured in the{" "}
+                  <strong className="font-semibold text-ds-foreground">Permissions</strong> card below (contract catalog from system admin,
+                  then department × role toggles).
                 </p>
                 <div className="mt-4 space-y-2">
                   {(
@@ -1584,15 +1535,6 @@ export function WorkersApp() {
                       {label} may edit downstream role access
                     </label>
                   ))}
-                  <label className="mt-3 flex cursor-pointer items-center gap-2 text-sm text-ds-foreground">
-                    <input
-                      type="checkbox"
-                      className={dsCheckboxClass}
-                      checked={assignWorkerExtrasDraft}
-                      onChange={(e) => setAssignWorkerExtrasDraft(e.target.checked)}
-                    />
-                    Delegates may assign extra modules to individual worker-role users
-                  </label>
                 </div>
                 <p className="mt-3 text-xs text-ds-muted">
                   Save with <strong className="font-semibold text-ds-foreground">Save permissions</strong> in the card below (or save any
@@ -1608,6 +1550,8 @@ export function WorkersApp() {
                   Your organization&apos;s Pulse modules come from the contract (set by the system admin). Choose a
                   department and permission role, then turn contract modules on or off for that combination. Each
                   person&apos;s effective access uses their HR department workspace and their role / job title mapping.
+                  Department workspace side rails use the same keys as <code className="font-mono text-[11px]">/auth/me</code>{" "}
+                  <span className="font-mono text-[11px]">enabled_features</span> (contract ∩ this matrix).
                 </p>
                 <label className={`${LABEL} mt-4 block`}>Department</label>
                 <select
@@ -1876,14 +1820,9 @@ export function WorkersApp() {
               </Card>
             ) : null}
 
-            {!isTenantFullAdmin && !mayEditDelegatedRoleModules && !canDelegateWorkerExtras ? (
+            {!isTenantFullAdmin && !mayEditDelegatedRoleModules ? (
               <p className="ds-inset-panel px-3 py-2 text-xs text-ds-muted">
                 Workers settings and contract-scoped module access are managed by a company administrator.
-              </p>
-            ) : !isTenantFullAdmin && !mayEditDelegatedRoleModules && canDelegateWorkerExtras ? (
-              <p className="ds-inset-panel px-3 py-2 text-xs text-ds-muted">
-                You can assign extra contract modules to individual <strong className="font-semibold text-ds-foreground">worker-role</strong>{" "}
-                profiles from their detail drawer (Extra module access).
               </p>
             ) : null}
           </div>
@@ -3020,44 +2959,6 @@ export function WorkersApp() {
                   onClick={() => void saveProfileRoles()}
                 >
                   {profileBusy ? "Saving…" : "Save roles"}
-                </button>
-              </section>
-            ) : null}
-
-            {(isTenantFullAdmin || (canDelegateWorkerExtras && profileIsWorkerOnly(profile))) &&
-            !principalHasAnyRole(profile, "company_admin") &&
-            contractCatalog.length > 0 ? (
-              <section>
-                <h3 className={SECTION_KICKER}>Extra module access</h3>
-                <p className="mt-1 text-xs text-pulse-muted">
-                  {isTenantFullAdmin
-                    ? "Grant additional Panorama modules from your organization's contract (on top of this person's role defaults)."
-                    : "Assign additional contract modules for this worker (within the organization contract). Company administrators control who may do this."}
-                </p>
-                <div className="ds-inset-panel mt-3 flex flex-col gap-1.5 p-3">
-                  {TENANT_PRODUCT_MODULES.filter((m) => contractCatalog.includes(m)).map((mod) => (
-                    <label key={mod} className="flex cursor-pointer items-center gap-2 text-sm text-ds-foreground">
-                      <input
-                        type="checkbox"
-                        className={dsCheckboxClass}
-                        checked={extraModulesDraft.includes(mod)}
-                        onChange={(e) => {
-                          setExtraModulesDraft((prev) =>
-                            e.target.checked ? [...new Set([...prev, mod])].sort() : prev.filter((x) => x !== mod),
-                          );
-                        }}
-                      />
-                      {MODULE_LABEL[mod] ?? mod}
-                    </label>
-                  ))}
-                </div>
-                <button
-                  type="button"
-                  className={cn(buttonVariants({ surface: "light", intent: "secondary" }), "mt-3 px-4 py-2 text-sm font-semibold")}
-                  disabled={profileBusy}
-                  onClick={() => void saveExtraModules()}
-                >
-                  {profileBusy ? "Saving…" : "Save module access"}
                 </button>
               </section>
             ) : null}

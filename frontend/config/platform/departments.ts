@@ -1,8 +1,10 @@
 import type { Department } from "@/config/platform/types";
+import { moduleIdsForDepartmentSlug } from "@/config/platform/modules";
 
 /**
  * Seed departments for a single-tenant, multi-department municipal deployment.
- * Add rows here to introduce new departments — UI reads from this registry.
+ * `enabledModuleIds` are derived from {@link PLATFORM_MODULES} so hub pages and the
+ * workspace side rail stay aligned with the same registry as Team Management toggles.
  */
 export const PLATFORM_DEPARTMENTS: readonly Department[] = [
   {
@@ -11,14 +13,7 @@ export const PLATFORM_DEPARTMENTS: readonly Department[] = [
     name: "Maintenance",
     icon: "wrench",
     accentColor: "var(--ds-accent)",
-    enabledModuleIds: [
-      "mod_work_orders",
-      "mod_inspections",
-      "mod_equipment",
-      "mod_procedures",
-      "mod_analytics",
-      "mod_messaging",
-    ],
+    enabledModuleIds: moduleIdsForDepartmentSlug("maintenance"),
   },
   {
     id: "dept_communications",
@@ -26,16 +21,7 @@ export const PLATFORM_DEPARTMENTS: readonly Department[] = [
     name: "Communications",
     icon: "megaphone",
     accentColor: "var(--ds-accent)",
-    enabledModuleIds: [
-      "mod_advertising_mapper",
-      "mod_publication_builder",
-      "mod_indesign_pipeline",
-      "mod_campaign_planner",
-      "mod_assets",
-      "mod_procedures",
-      "mod_analytics",
-      "mod_messaging",
-    ],
+    enabledModuleIds: moduleIdsForDepartmentSlug("communications"),
   },
   {
     id: "dept_reception",
@@ -43,7 +29,7 @@ export const PLATFORM_DEPARTMENTS: readonly Department[] = [
     name: "Reception",
     icon: "layout",
     accentColor: "var(--ds-accent)",
-    enabledModuleIds: ["mod_procedures", "mod_analytics", "mod_messaging"],
+    enabledModuleIds: moduleIdsForDepartmentSlug("reception"),
   },
   {
     id: "dept_aquatics",
@@ -51,7 +37,7 @@ export const PLATFORM_DEPARTMENTS: readonly Department[] = [
     name: "Aquatics",
     icon: "waves",
     accentColor: "var(--ds-accent)",
-    enabledModuleIds: ["mod_scheduling", "mod_procedures", "mod_analytics", "mod_messaging"],
+    enabledModuleIds: moduleIdsForDepartmentSlug("aquatics"),
   },
   {
     id: "dept_fitness",
@@ -59,7 +45,7 @@ export const PLATFORM_DEPARTMENTS: readonly Department[] = [
     name: "Fitness",
     icon: "dumbbell",
     accentColor: "var(--ds-accent)",
-    enabledModuleIds: ["mod_classes", "mod_procedures", "mod_analytics", "mod_messaging"],
+    enabledModuleIds: moduleIdsForDepartmentSlug("fitness"),
   },
   {
     id: "dept_racquets",
@@ -67,7 +53,7 @@ export const PLATFORM_DEPARTMENTS: readonly Department[] = [
     name: "Racquets",
     icon: "scroll-text",
     accentColor: "var(--ds-accent)",
-    enabledModuleIds: ["mod_classes", "mod_procedures", "mod_analytics", "mod_messaging"],
+    enabledModuleIds: moduleIdsForDepartmentSlug("racquets"),
   },
   {
     id: "dept_administration",
@@ -75,7 +61,7 @@ export const PLATFORM_DEPARTMENTS: readonly Department[] = [
     name: "Administration",
     icon: "building",
     accentColor: "var(--ds-accent)",
-    enabledModuleIds: ["mod_analytics", "mod_procedures", "mod_messaging"],
+    enabledModuleIds: moduleIdsForDepartmentSlug("admin"),
   },
 ] as const;
 

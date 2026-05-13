@@ -23,7 +23,6 @@ export default function PlatformModulePage({ params }: PageProps) {
   const dept = getDepartmentBySlug(dSlug);
   const mod = getPlatformModuleByDepartmentRoute(dSlug, mRoute);
   if (!dept || !mod) notFound();
-  if (!dept.enabledModuleIds.includes(mod.id)) notFound();
 
   const canon = mod.canonicalPulseHref;
   const suppress = mod.suppressCanonicalForDepartments?.includes(dSlug) ?? false;

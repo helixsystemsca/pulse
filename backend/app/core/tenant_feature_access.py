@@ -113,10 +113,6 @@ def effective_tenant_feature_names_for_user(
             user=user, contract_names=contract_names, merged_settings=merged_settings
         )
 
-    extras = getattr(user, "feature_allow_extra", None) or []
-    if isinstance(extras, list):
-        base_set |= {str(x) for x in extras if str(x) in cset}
-
     return sorted(base_set)
 
 

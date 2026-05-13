@@ -76,7 +76,7 @@ export function permissionFeatureGroupsForDepartment(dept: PermissionMatrixDepar
     "comms_indesign_pipeline",
     "comms_campaign_planner",
   ] as const;
-  const sharedProgram = ["schedule", "team_management", "team_insights", "procedures"] as const;
+  const sharedProgram = ["schedule", "team_management", "team_insights", "procedures", "messaging"] as const;
   const maps = ["drawings", "zones_devices", "live_map"] as const;
 
   if (dept === "maintenance") {
@@ -99,7 +99,7 @@ export function permissionFeatureGroupsForDepartment(dept: PermissionMatrixDepar
     return [
       { id: "hub", label: "Workspace access", keys: [ws] },
       { id: "pool", label: "Aquatics programs", description: "Scheduling and pool-facing tools.", keys: ["schedule"] },
-      { id: "shared", label: "People & standards", keys: ["team_management", "team_insights", "procedures"] },
+      { id: "shared", label: "People & standards", keys: ["team_management", "team_insights", "procedures", "messaging"] },
       { id: "maps", label: "Maps, drawings & devices", keys: [...maps] },
     ];
   }
@@ -114,7 +114,7 @@ export function permissionFeatureGroupsForDepartment(dept: PermissionMatrixDepar
     return [
       { id: "hub", label: "Workspace access", keys: [ws] },
       { id: "programs", label: "Programs & classes", keys: ["schedule"] },
-      { id: "shared", label: "People & standards", keys: ["team_management", "team_insights", "procedures"] },
+      { id: "shared", label: "People & standards", keys: ["team_management", "team_insights", "procedures", "messaging"] },
       { id: "maps", label: "Maps, drawings & devices", keys: [...maps] },
     ];
   }

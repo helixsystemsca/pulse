@@ -32,7 +32,7 @@ export type Department = {
   icon?: PlatformIconKey;
   /** Optional CSS color token or hex for future chrome theming. */
   accentColor?: string;
-  /** Module ids enabled for this department in the org (config-driven, not UI-hardcoded). */
+  /** Module ids this department may host (mirrors {@link PLATFORM_MODULES} for the slug). */
   enabledModuleIds: readonly string[];
 };
 
@@ -43,7 +43,7 @@ export type PlatformModule = {
   icon?: PlatformIconKey;
   /** URL segment after `/${department.slug}/`. */
   route: string;
-  /** Departments that may surface this module in nav (intersected with `Department.enabledModuleIds`). */
+  /** Departments that may surface this module in nav (visibility is then gated by `tenantNavFeatureKey` + `/auth/me` `enabled_features`). */
   allowedDepartmentSlugs: readonly string[];
   requiredCapabilities?: readonly string[];
   /**
