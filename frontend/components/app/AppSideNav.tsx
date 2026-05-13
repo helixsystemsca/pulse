@@ -44,7 +44,7 @@ import {
   type PulseSidebarIcon,
 } from "@/lib/pulse-app";
 
-import { buildLegacyDepartmentWorkspaceRailItems } from "@/config/platform/navigation";
+import { defaultWorkspaceHubHref, listDepartmentsAllowedForSession } from "@/config/platform/navigation";
 import type { PlatformIconKey } from "@/config/platform/types";
 
 type SidebarNavItem = { href: string; label: string; icon: PulseSidebarIcon | PlatformIconKey };
@@ -143,13 +143,15 @@ export function AppSideNav() {
       ? rawNav.filter((i) => i.href !== "/monitoring")
       : [...rawNav]
   ).map((i) => ({ href: i.href, label: i.label, icon: i.icon }));
-  if (!isSystemAdmin) {
-    const deptRows = buildLegacyDepartmentWorkspaceRailItems(session).map((d) => ({
-      href: d.href,
-      label: d.label,
-      icon: d.icon,
-    }));
-    items = [...items, ...deptRows];
+  if (!isSystemAdmin && session) {
+    const workspaceDepts = listDepartmentsAllowedForSession(session);
+    if (workspaceDepts.length > 0) {
+      items.push({
+        href: defaultWorkspaceHubHref(session),
+        label: "Workspaces",
+        icon: "layout",
+      });
+    }
   }
   if (!isSystemAdmin && session) {
     if (session.role !== "demo_viewer") {

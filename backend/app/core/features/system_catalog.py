@@ -8,9 +8,10 @@ from typing import Iterable
 # mistaken for a pre–feature-gates company (which has no rows and still gets legacy defaults).
 TENANT_EMPTY_FEATURES_MARKER = "_tenant_empty_feature_canvas"
 
-# Product-facing catalog (system admin UI). Order mirrors tenant sidebar in `pulse-app.ts`
+# Product-facing catalog (system admin UI). Order is mirrored in `frontend/lib/system-admin-features.ts`
+# and grouped for Team Management in `frontend/config/platform/tenant-product-modules.ts`.
 # (toggleable items only — not Dashboard or Settings).
-# Keys must stay in sync with `frontend/lib/pulse-nav-features.ts` and `system-admin-features.ts`.
+# Keys must stay in sync with `frontend/lib/pulse-nav-features.ts` (classic nav) where applicable.
 GLOBAL_SYSTEM_FEATURES: tuple[str, ...] = (
     "compliance",
     "schedule",
@@ -25,6 +26,19 @@ GLOBAL_SYSTEM_FEATURES: tuple[str, ...] = (
     "drawings",
     "zones_devices",
     "live_map",
+    # Communications workspace (Team Management + system-admin contract; platform nav also checks these).
+    "comms_assets",
+    "comms_advertising_mapper",
+    "comms_publication_builder",
+    "comms_indesign_pipeline",
+    "comms_campaign_planner",
+    # Department workspace hubs (sidebar Workspaces + platform /{slug}/… routing visibility per role).
+    "workspace_maintenance",
+    "workspace_communications",
+    "workspace_reception",
+    "workspace_aquatics",
+    "workspace_fitness",
+    "workspace_admin",
 )
 
 _LEGACY_FEATURE_ALIASES: dict[str, tuple[str, ...]] = {

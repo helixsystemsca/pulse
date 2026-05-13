@@ -14,6 +14,7 @@ export const PLATFORM_MODULES: readonly PlatformModule[] = [
     allowedDepartmentSlugs: ["maintenance"],
     requiredCapabilities: ["workorders.view"],
     canonicalPulseHref: "/dashboard/maintenance",
+    tenantNavFeatureKey: "work_requests",
   },
   {
     id: "mod_inspections",
@@ -24,6 +25,7 @@ export const PLATFORM_MODULES: readonly PlatformModule[] = [
     allowedDepartmentSlugs: ["maintenance"],
     requiredCapabilities: ["inspections.view"],
     canonicalPulseHref: "/dashboard/compliance",
+    tenantNavFeatureKey: "compliance",
   },
   {
     id: "mod_equipment",
@@ -34,6 +36,7 @@ export const PLATFORM_MODULES: readonly PlatformModule[] = [
     allowedDepartmentSlugs: ["maintenance"],
     requiredCapabilities: ["equipment.view"],
     canonicalPulseHref: "/equipment",
+    tenantNavFeatureKey: "equipment",
   },
   {
     id: "mod_advertising_mapper",
@@ -43,6 +46,7 @@ export const PLATFORM_MODULES: readonly PlatformModule[] = [
     route: "advertising-mapper",
     allowedDepartmentSlugs: ["communications"],
     requiredCapabilities: ["communications.advertising_mapper.view"],
+    tenantNavFeatureKey: "comms_advertising_mapper",
   },
   {
     id: "mod_publication_builder",
@@ -52,6 +56,7 @@ export const PLATFORM_MODULES: readonly PlatformModule[] = [
     route: "publication-builder",
     allowedDepartmentSlugs: ["communications"],
     requiredCapabilities: ["publications.create"],
+    tenantNavFeatureKey: "comms_publication_builder",
   },
   {
     id: "mod_indesign_pipeline",
@@ -61,6 +66,7 @@ export const PLATFORM_MODULES: readonly PlatformModule[] = [
     route: "indesign-pipeline",
     allowedDepartmentSlugs: ["communications"],
     requiredCapabilities: ["communications.indesign_pipeline.view"],
+    tenantNavFeatureKey: "comms_indesign_pipeline",
   },
   {
     id: "mod_campaign_planner",
@@ -70,6 +76,7 @@ export const PLATFORM_MODULES: readonly PlatformModule[] = [
     route: "campaign-planner",
     allowedDepartmentSlugs: ["communications"],
     requiredCapabilities: ["communications.campaign_planner.view"],
+    tenantNavFeatureKey: "comms_campaign_planner",
   },
   {
     id: "mod_assets",
@@ -79,6 +86,7 @@ export const PLATFORM_MODULES: readonly PlatformModule[] = [
     route: "assets",
     allowedDepartmentSlugs: ["communications"],
     requiredCapabilities: ["communications.assets.view"],
+    tenantNavFeatureKey: "comms_assets",
   },
   {
     id: "mod_procedures",
@@ -89,6 +97,7 @@ export const PLATFORM_MODULES: readonly PlatformModule[] = [
     allowedDepartmentSlugs: ["maintenance", "reception", "communications", "aquatics", "fitness", "admin"],
     requiredCapabilities: ["procedures.view"],
     canonicalPulseHref: "/standards",
+    tenantNavFeatureKey: "procedures",
   },
   {
     id: "mod_analytics",
@@ -100,6 +109,7 @@ export const PLATFORM_MODULES: readonly PlatformModule[] = [
     requiredCapabilities: ["analytics.view"],
     canonicalPulseHref: "/dashboard/team-insights",
     suppressCanonicalForDepartments: ["admin"],
+    tenantNavFeatureKey: "team_insights",
   },
   {
     id: "mod_messaging",
@@ -119,6 +129,7 @@ export const PLATFORM_MODULES: readonly PlatformModule[] = [
     route: "scheduling",
     allowedDepartmentSlugs: ["aquatics"],
     requiredCapabilities: ["aquatics.scheduling.view"],
+    tenantNavFeatureKey: "schedule",
   },
   {
     id: "mod_classes",

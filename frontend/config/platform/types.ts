@@ -47,6 +47,11 @@ export type PlatformModule = {
   allowedDepartmentSlugs: readonly string[];
   requiredCapabilities?: readonly string[];
   /**
+   * When set, the department rail hides this module unless `session.enabled_features` includes this key
+   * (same catalog as Team Management / system-admin contract). Omitted = not gated by contract features.
+   */
+  tenantNavFeatureKey?: string;
+  /**
    * When set, this workspace entry forwards to existing Pulse product routes (non-breaking Phase 1).
    */
   canonicalPulseHref?: string;

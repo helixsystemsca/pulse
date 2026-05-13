@@ -139,8 +139,8 @@ export function FeedbackModal({ open, onClose, onSubmitted }: Props) {
         <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
           {done ? (
             <p className="text-sm text-ds-foreground">
-              Thanks — your feedback was sent. Administrators can review it under{" "}
-              <span className="font-semibold">Messages</span> in the header.
+              Thanks — your feedback was sent. Company administrators can review it under{" "}
+              <span className="font-semibold">Messages</span> → <span className="font-semibold">Product feedback</span>.
             </p>
           ) : loadErr ? (
             <p className="text-sm text-ds-danger" role="alert">

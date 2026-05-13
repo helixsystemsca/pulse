@@ -3,7 +3,7 @@ import { MessagesInboxApp } from "@/components/app/MessagesInboxApp";
 
 export const metadata: Metadata = {
   title: "Messages",
-  description: "Product feedback inbox for company administrators.",
+  description: "Personal operational inbox; administrators also have a Product feedback tab.",
 };
 
 export default function MessagesPage() {

@@ -13,10 +13,11 @@ import { OperationalNotificationsModal } from "@/components/app/OperationalNotif
 import { FeedbackModal } from "@/components/app/FeedbackModal";
 import { notificationBadgeCount } from "@/lib/dashboard/operational-notifications";
 import { useOperationalNotificationsStore } from "@/lib/dashboard/operational-notifications-store";
+import { fetchOperationalNotificationsForHeader } from "@/lib/dashboard/fetch-operational-notifications";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
 import { navigateToPulseLogin, pulseApp, pulsePostLoginPath, pulseRoutes } from "@/lib/pulse-app";
 import { dispatchPulseLogoutSuccessUi, pulseLogoutNavigationDelayMs } from "@/lib/pulse-logout-ui";
-import { clearSession } from "@/lib/pulse-session";
+import { clearSession, canAccessPulseTenantApis } from "@/lib/pulse-session";
 import { signOutSupabaseIdentity } from "@/lib/microsoft-auth";
 import { UserProfileAvatarPreview } from "@/components/profile/UserProfileAvatarPreview";
 import {
@@ -64,7 +65,7 @@ export function AppNavbar({ notificationCount: notificationCountProp = 0, messag
   const storeNotificationCount = useOperationalNotificationsStore((s) => notificationBadgeCount(s.items));
   const notificationCount = Math.max(notificationCountProp, storeNotificationCount);
   const adminInbox = Boolean(session && canAccessCompanyConfiguration(session));
-  const messagesCountDisplay = Math.max(messagesCount, feedbackInboxCount);
+  const messagesCountDisplay = Math.max(messagesCount, feedbackInboxCount + storeNotificationCount);
 
   const logoHref =
     authed && session ? pulseApp.to(pulsePostLoginPath(session)) : pulseRoutes.pulseLanding;
@@ -148,6 +149,23 @@ export function AppNavbar({ notificationCount: notificationCountProp = 0, messag
       window.removeEventListener("pulse-feedback-updated", bump);
     };
   }, [authed, adminInbox]);
+
+  useEffect(() => {
+    if (!authed || !session || !isApiMode()) return;
+    if (!canAccessPulseTenantApis(session)) return;
+    let cancelled = false;
+    const pull = () => {
+      void fetchOperationalNotificationsForHeader().then((next) => {
+        if (!cancelled && next) useOperationalNotificationsStore.getState().setItems(next);
+      });
+    };
+    pull();
+    const t = window.setInterval(pull, 90_000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(t);
+    };
+  }, [authed, session]);
 
   useEffect(() => {
     if (!userOpen) return;
@@ -399,7 +417,7 @@ export function AppNavbar({ notificationCount: notificationCountProp = 0, messag
               <div className="relative flex gap-2">
                 <p className="min-w-0 flex-1 text-[11px] leading-snug text-ds-foreground sm:text-xs">
                   <span className="font-semibold text-[var(--ds-accent)]">New:</span> tap the megaphone to send product
-                  feedback—admins see it in Messages.
+                  feedback—admins can read it under Messages → Product feedback.
                 </p>
                 <button
                   type="button"

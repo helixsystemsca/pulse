@@ -72,6 +72,11 @@ import { UserProfileAvatarPreview } from "@/components/profile/UserProfileAvatar
 import { useResolvedAvatarSrc } from "@/lib/useResolvedAvatarSrc";
 import { cn } from "@/lib/cn";
 import { buttonVariants } from "@/styles/button-variants";
+import {
+  MODULE_LABEL,
+  PRODUCT_MODULE_PERMISSION_SECTIONS,
+  TENANT_PRODUCT_MODULES,
+} from "@/config/platform/tenant-product-modules";
 
 type CompanyOption = { id: string; name: string };
 
@@ -88,39 +93,6 @@ const ROTATION_PRESET_BUTTONS: { label: string; days: boolean[] }[] = [
   { label: "Mon–Fri", days: [false, true, true, true, true, true, false] },
   { label: "All week", days: [true, true, true, true, true, true, true] },
 ];
-
-/** Keys must match `GLOBAL_SYSTEM_FEATURES` / tenant contract (system admin catalog). */
-const TENANT_PRODUCT_MODULES = [
-  "compliance",
-  "schedule",
-  "monitoring",
-  "projects",
-  "work_requests",
-  "procedures",
-  "team_insights",
-  "team_management",
-  "inventory",
-  "equipment",
-  "drawings",
-  "zones_devices",
-  "live_map",
-] as const;
-
-const MODULE_LABEL: Record<string, string> = {
-  compliance: "Inspections & Logs",
-  schedule: "Schedule",
-  monitoring: "Monitoring",
-  projects: "Projects",
-  work_requests: "Work Requests",
-  procedures: "Procedures",
-  team_insights: "Team Insights",
-  team_management: "Team Management",
-  inventory: "Inventory",
-  equipment: "Equipment",
-  drawings: "Drawings",
-  zones_devices: "Zones & Devices",
-  live_map: "Live Map",
-};
 
 const SETTINGS_TABS = ["Roles", "Shifts", "Skill categories", "Certification rules"] as const;
 type SettingsTab = (typeof SETTINGS_TABS)[number];
@@ -1593,33 +1565,49 @@ export function WorkersApp() {
                     </option>
                   ))}
                 </select>
-                <div className="mt-4 space-y-3">
-                  {TENANT_PRODUCT_MODULES.filter((m) => contractCatalog.includes(m)).map((mod) => {
-                    const on = (roleFeatureAccessDraft[permissionsRole] ?? []).includes(mod);
+                <div className="mt-4 space-y-6">
+                  {PRODUCT_MODULE_PERMISSION_SECTIONS.map((section) => {
+                    const mods = section.keys.filter((m) => contractCatalog.includes(m));
+                    if (mods.length === 0) return null;
                     return (
-                      <div
-                        key={`${permissionsRole}-${mod}`}
-                        className="ds-inset-panel flex items-center justify-between gap-3 px-3 py-3"
-                      >
-                        <p className="min-w-0 text-sm font-semibold text-ds-foreground">{MODULE_LABEL[mod] ?? mod}</p>
-                        <button
-                          type="button"
-                          role="switch"
-                          aria-checked={on}
-                          disabled={!isTenantFullAdmin}
-                          onClick={() =>
-                            isTenantFullAdmin ? toggleRoleModule(permissionsRole, mod) : undefined
-                          }
-                          className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${
-                            on ? "bg-ds-success" : "bg-ds-border"
-                          } disabled:opacity-45`}
-                        >
-                          <span
-                            className={`absolute top-0.5 left-0.5 h-6 w-6 rounded-full bg-ds-primary shadow transition-transform ${
-                              on ? "translate-x-5" : "translate-x-0"
-                            }`}
-                          />
-                        </button>
+                      <div key={section.id}>
+                        <h3 className={`${SECTION_KICKER} text-ds-foreground`}>{section.label}</h3>
+                        {section.description ? (
+                          <p className="mt-1 text-[11px] leading-snug text-ds-muted">{section.description}</p>
+                        ) : null}
+                        <div className="mt-3 space-y-3">
+                          {mods.map((mod) => {
+                            const on = (roleFeatureAccessDraft[permissionsRole] ?? []).includes(mod);
+                            return (
+                              <div
+                                key={`${permissionsRole}-${mod}`}
+                                className="ds-inset-panel flex items-center justify-between gap-3 px-3 py-3"
+                              >
+                                <p className="min-w-0 text-sm font-semibold text-ds-foreground">
+                                  {MODULE_LABEL[mod] ?? mod}
+                                </p>
+                                <button
+                                  type="button"
+                                  role="switch"
+                                  aria-checked={on}
+                                  disabled={!isTenantFullAdmin}
+                                  onClick={() =>
+                                    isTenantFullAdmin ? toggleRoleModule(permissionsRole, mod) : undefined
+                                  }
+                                  className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${
+                                    on ? "bg-ds-success" : "bg-ds-border"
+                                  } disabled:opacity-45`}
+                                >
+                                  <span
+                                    className={`absolute top-0.5 left-0.5 h-6 w-6 rounded-full bg-ds-primary shadow transition-transform ${
+                                      on ? "translate-x-5" : "translate-x-0"
+                                    }`}
+                                  />
+                                </button>
+                              </div>
+                            );
+                          })}
+                        </div>
                       </div>
                     );
                   })}
@@ -1761,30 +1749,46 @@ export function WorkersApp() {
                     </option>
                   ))}
                 </select>
-                <div className="mt-4 space-y-3">
-                  {TENANT_PRODUCT_MODULES.filter((m) => contractCatalog.includes(m)).map((mod) => {
-                    const on = (roleFeatureAccessDraft[permissionsRole] ?? []).includes(mod);
+                <div className="mt-4 space-y-6">
+                  {PRODUCT_MODULE_PERMISSION_SECTIONS.map((section) => {
+                    const mods = section.keys.filter((m) => contractCatalog.includes(m));
+                    if (mods.length === 0) return null;
                     return (
-                      <div
-                        key={`del-${permissionsRole}-${mod}`}
-                        className="ds-inset-panel flex items-center justify-between gap-3 px-3 py-3"
-                      >
-                        <p className="min-w-0 text-sm font-semibold text-ds-foreground">{MODULE_LABEL[mod] ?? mod}</p>
-                        <button
-                          type="button"
-                          role="switch"
-                          aria-checked={on}
-                          onClick={() => toggleRoleModule(permissionsRole, mod)}
-                          className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${
-                            on ? "bg-ds-success" : "bg-ds-border"
-                          }`}
-                        >
-                          <span
-                            className={`absolute top-0.5 left-0.5 h-6 w-6 rounded-full bg-ds-primary shadow transition-transform ${
-                              on ? "translate-x-5" : "translate-x-0"
-                            }`}
-                          />
-                        </button>
+                      <div key={`del-${section.id}`}>
+                        <h3 className={`${SECTION_KICKER} text-ds-foreground`}>{section.label}</h3>
+                        {section.description ? (
+                          <p className="mt-1 text-[11px] leading-snug text-ds-muted">{section.description}</p>
+                        ) : null}
+                        <div className="mt-3 space-y-3">
+                          {mods.map((mod) => {
+                            const on = (roleFeatureAccessDraft[permissionsRole] ?? []).includes(mod);
+                            return (
+                              <div
+                                key={`del-${permissionsRole}-${mod}`}
+                                className="ds-inset-panel flex items-center justify-between gap-3 px-3 py-3"
+                              >
+                                <p className="min-w-0 text-sm font-semibold text-ds-foreground">
+                                  {MODULE_LABEL[mod] ?? mod}
+                                </p>
+                                <button
+                                  type="button"
+                                  role="switch"
+                                  aria-checked={on}
+                                  onClick={() => toggleRoleModule(permissionsRole, mod)}
+                                  className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${
+                                    on ? "bg-ds-success" : "bg-ds-border"
+                                  }`}
+                                >
+                                  <span
+                                    className={`absolute top-0.5 left-0.5 h-6 w-6 rounded-full bg-ds-primary shadow transition-transform ${
+                                      on ? "translate-x-5" : "translate-x-0"
+                                    }`}
+                                  />
+                                </button>
+                              </div>
+                            );
+                          })}
+                        </div>
                       </div>
                     );
                   })}

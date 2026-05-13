@@ -43,12 +43,16 @@ export function buildDepartmentNavItems(departmentSlug: string, session: PulseAu
   const caps = resolveCapabilitiesFromSession(session);
   const enabledIds = new Set(dept.enabledModuleIds);
   const items: PlatformNavItem[] = [];
+  const feats = session?.enabled_features;
+  const featsDefined = feats !== undefined && feats !== null;
 
   for (const mod of PLATFORM_MODULES) {
     if (!enabledIds.has(mod.id)) continue;
     if (!mod.allowedDepartmentSlugs.includes(dept.slug)) continue;
     const reqs = mod.requiredCapabilities ?? [];
     if (reqs.some((r) => !hasCapability(caps, r))) continue;
+    const fk = mod.tenantNavFeatureKey;
+    if (fk && featsDefined && !feats.includes(fk)) continue;
     items.push({
       href: `/${dept.slug}/${mod.route}`,
       label: mod.name,
@@ -64,13 +68,34 @@ export function getFirstNavHrefForDepartment(departmentSlug: string, session: Pu
   return items[0]?.href ?? null;
 }
 
+/** Contract / role feature key for opening a department hub (`/{slug}/…`). */
+export function workspaceFeatureKeyForDepartmentSlug(slug: string): string {
+  return `workspace_${slug}`;
+}
+
+function sessionUsesDepartmentWorkspaceFeatureGate(session: PulseAuthSession | null): boolean {
+  const feats = session?.enabled_features;
+  if (!feats?.length) return false;
+  return feats.some((f) => f.startsWith("workspace_"));
+}
+
+/**
+ * Departments the user may enter in the platform workspace (HR allow-list ∩ optional `workspace_*` contract keys).
+ * When `enabled_features` contains any `workspace_*` key, each hub also requires its matching key; if none are
+ * present, all hubs allowed by HR remain visible (backward compatible until the contract includes workspace keys).
+ */
 export function listDepartmentsAllowedForSession(session: PulseAuthSession | null): readonly Department[] {
+  let depts: readonly Department[];
   const allowed = session?.department_workspace_slugs;
   if (!allowed || allowed.length === 0) {
-    return PLATFORM_DEPARTMENTS;
+    depts = PLATFORM_DEPARTMENTS;
+  } else {
+    const set = new Set(allowed);
+    depts = PLATFORM_DEPARTMENTS.filter((d) => set.has(d.slug));
   }
-  const set = new Set(allowed);
-  return PLATFORM_DEPARTMENTS.filter((d) => set.has(d.slug));
+  const feats = session?.enabled_features;
+  if (!feats?.length || !sessionUsesDepartmentWorkspaceFeatureGate(session)) return depts;
+  return depts.filter((d) => feats.includes(workspaceFeatureKeyForDepartmentSlug(d.slug)));
 }
 
 /** When a user has several workspaces, prefer a non-maintenance home so comms/reception staff land on their hub. */
