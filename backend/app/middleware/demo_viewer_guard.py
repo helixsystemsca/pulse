@@ -37,9 +37,16 @@ class DemoViewerGuardMiddleware(BaseHTTPMiddleware):
     - Does not attempt to classify endpoints; it blocks by HTTP method with an allowlist.
     """
 
-    def __init__(self, app, *, allow_mutating_prefixes: list[str] | None = None):
+    def __init__(
+        self,
+        app,
+        *,
+        allow_mutating_prefixes: list[str] | None = None,
+        allow_mutating_exact_paths: list[str] | None = None,
+    ):
         super().__init__(app)
         self._allow_mutating_prefixes = allow_mutating_prefixes or []
+        self._allow_exact = frozenset(allow_mutating_exact_paths or [])
 
     async def dispatch(self, request: Request, call_next) -> Response:
         if request.method.upper() not in _MUTATING_METHODS:
@@ -60,6 +67,8 @@ class DemoViewerGuardMiddleware(BaseHTTPMiddleware):
             return await call_next(request)
 
         path = request.url.path or ""
+        if path in self._allow_exact:
+            return await call_next(request)
         if _path_allowed(path, self._allow_mutating_prefixes):
             return await call_next(request)
 

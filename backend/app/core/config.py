@@ -5,7 +5,7 @@ from functools import lru_cache
 from typing import List, Optional, Set
 from urllib.parse import urlparse
 
-from pydantic import AliasChoices, Field
+from pydantic import AliasChoices, Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 _log = logging.getLogger(__name__)
@@ -75,6 +75,39 @@ class Settings(BaseSettings):
     #: sessions keep working; raise for longer work blocks (or add refresh tokens). Env: ACCESS_TOKEN_EXPIRE_MINUTES.
     access_token_expire_minutes: int = 62
     algorithm: str = "HS256"
+    #: Optional Sentry DSN (`https://...@o....ingest.sentry.io/...`). Empty disables Sentry.
+    sentry_dsn: str = Field(default="", validation_alias=AliasChoices("SENTRY_DSN", "sentry_dsn"))
+    sentry_traces_sample_rate: float = Field(
+        default=0.0,
+        ge=0.0,
+        le=1.0,
+        validation_alias=AliasChoices("SENTRY_TRACES_SAMPLE_RATE", "sentry_traces_sample_rate"),
+    )
+    #: Minimum length for **new** passwords (invites, reset, profile change). Login still accepts legacy shorter passwords.
+    password_min_length: int = Field(
+        default=12,
+        ge=8,
+        le=128,
+        validation_alias=AliasChoices("PASSWORD_MIN_LENGTH", "password_min_length"),
+    )
+    #: When true, new passwords must satisfy three of four character classes (upper, lower, digit, symbol).
+    password_require_character_classes: bool = Field(
+        default=True,
+        validation_alias=AliasChoices("PASSWORD_REQUIRE_CHARACTER_CLASSES", "password_require_character_classes"),
+    )
+    #: After this many consecutive bad **password** attempts, the account is temporarily locked.
+    login_lockout_max_attempts: int = Field(
+        default=8,
+        ge=3,
+        le=50,
+        validation_alias=AliasChoices("LOGIN_LOCKOUT_MAX_ATTEMPTS", "login_lockout_max_attempts"),
+    )
+    login_lockout_minutes: int = Field(
+        default=15,
+        ge=5,
+        le=24 * 60,
+        validation_alias=AliasChoices("LOGIN_LOCKOUT_MINUTES", "login_lockout_minutes"),
+    )
     # Comma-separated origins, no paths. Env: CORS_ORIGINS (preferred) or CORS_ORIGIN.
     # Production: include every site the browser uses (https://www.example.com and https://example.com
     # are different Origins). The origin of `pulse_app_public_url` is always merged in. See also cors_origin_regex.
@@ -261,6 +294,23 @@ class Settings(BaseSettings):
         ),
     )
 
+    @model_validator(mode="after")
+    def validate_production_secret_key(self) -> "Settings":
+        """Block the dev placeholder and short keys when ENVIRONMENT=production (JWT forgery risk)."""
+        if not self.is_production:
+            return self
+        sk = (self.secret_key or "").strip()
+        weak = {
+            "dev-only-change-in-production",
+            "change-me-to-a-long-random-string-in-production",
+        }
+        if sk in weak or len(sk) < 32:
+            raise ValueError(
+                "SECRET_KEY must be set to a strong random value in production (>= 32 characters, not a "
+                "placeholder). Example: python -c \"import secrets; print(secrets.token_urlsafe(48))\""
+            )
+        return self
+
     @property
     def cors_origin_list(self) -> List[str]:
         """Browser Origin values: comma- or semicolon-separated, no paths or trailing slashes."""
@@ -322,12 +372,12 @@ class Settings(BaseSettings):
                 seen.add(o)
                 out.append(o)
 
-        # Primary hosted Pulse / Panorama SPA — always merged in production so Render misconfiguration
-        # (API URL in PULSE_APP_PUBLIC_URL or empty CORS_ORIGINS) cannot block avatar/API traffic from the real site.
-        if self.is_production:
-            if _DEFAULT_PRODUCTION_FRONTEND_ORIGIN not in seen:
-                seen.add(_DEFAULT_PRODUCTION_FRONTEND_ORIGIN)
-                out.append(_DEFAULT_PRODUCTION_FRONTEND_ORIGIN)
+        # Primary hosted Pulse / Panorama SPA — merged in every environment so a deployed API without
+        # ENVIRONMENT=production (common on Render) still accepts browser traffic from the real SPA.
+        # Production-only merge was insufficient when CORS_ORIGINS was empty and ENVIRONMENT defaulted to development.
+        if _DEFAULT_PRODUCTION_FRONTEND_ORIGIN not in seen:
+            seen.add(_DEFAULT_PRODUCTION_FRONTEND_ORIGIN)
+            out.append(_DEFAULT_PRODUCTION_FRONTEND_ORIGIN)
 
         return out
 

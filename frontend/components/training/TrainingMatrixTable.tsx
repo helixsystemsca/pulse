@@ -144,7 +144,7 @@ export function TrainingMatrixTable({
               <tr key={e.id} className="border-t border-ds-border bg-ds-primary">
                 <th
                   scope="row"
-                  className="sticky left-0 z-10 bg-ds-primary px-2.5 py-2 text-left font-semibold text-ds-foreground shadow-[1px_0_0_var(--ds-border)]"
+                  className="sticky left-0 z-10 align-top bg-ds-primary px-2.5 py-2 text-left font-semibold text-ds-foreground shadow-[1px_0_0_var(--ds-border)]"
                 >
                   <div className="flex flex-col gap-0.5">
                     <span>{e.display_name}</span>
@@ -161,7 +161,7 @@ export function TrainingMatrixTable({
                       ? verificationDetailTitle(a, p.requires_knowledge_verification !== false)
                       : undefined;
                   return (
-                    <td key={p.id} className="px-2 py-1.5 align-middle">
+                    <td key={p.id} className="px-2 py-1.5 align-top">
                       <div className="flex flex-col gap-1" title={mgrKvTitle}>
                         {statusHidden ? (
                           <>

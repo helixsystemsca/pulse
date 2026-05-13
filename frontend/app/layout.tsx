@@ -4,6 +4,7 @@ import Script from "next/script";
 import { ThemeRoot } from "@/components/theme/ThemeRoot";
 import { THEME_STORAGE_KEY } from "@/lib/theme-constants";
 import { PulseThemedBackground } from "@/components/app/PulseThemedBackground";
+import { SentryInit } from "@/components/app/SentryInit";
 import "./globals.css";
 
 const themeInitScript = `(function(){try{var k=${JSON.stringify(THEME_STORAGE_KEY)};var t=localStorage.getItem(k)||localStorage.getItem("theme");if(t==="dark")document.documentElement.classList.add("dark");else document.documentElement.classList.remove("dark");}catch(e){}})();`;
@@ -54,6 +55,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           {themeInitScript}
         </Script>
         <PulseThemedBackground />
+        <SentryInit />
         <ThemeRoot>{children}</ThemeRoot>
       </body>
     </html>

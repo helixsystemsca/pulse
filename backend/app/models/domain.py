@@ -217,6 +217,12 @@ class User(Base):
     last_login: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     #: Updated on successful password login (and optional future activity hooks).
     last_active_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    #: Incremented when passwords change to invalidate outstanding JWTs (`tv` claim must match).
+    token_version: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"), default=0)
+    #: Count toward account lockout after repeated bad password attempts (email login only).
+    failed_login_attempts: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"), default=0)
+    #: When set and in the future, password login is rejected until the window passes.
+    locked_until: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )

@@ -58,6 +58,7 @@ async def _require_org_settings_reader(user: Annotated[User, Depends(get_current
         UserRole.supervisor,
         UserRole.manager,
         UserRole.company_admin,
+        UserRole.demo_viewer,
     ):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient role")
     return user

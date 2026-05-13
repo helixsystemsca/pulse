@@ -267,11 +267,11 @@ async def seeded_tenant(db_session: AsyncSession) -> TenantSeed:
 
     worker_token = create_access_token(
         subject=worker_id,
-        extra_claims={"company_id": company_id, "role": UserRole.worker.value},
+        extra_claims={"company_id": company_id, "role": UserRole.worker.value, "tv": 0},
     )
     manager_token = create_access_token(
         subject=manager_id,
-        extra_claims={"company_id": company_id, "role": UserRole.manager.value},
+        extra_claims={"company_id": company_id, "role": UserRole.manager.value, "tv": 0},
     )
 
     return TenantSeed(

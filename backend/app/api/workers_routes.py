@@ -44,7 +44,7 @@ from app.core.workers_permission_delegation import (
 )
 from app.core.workers_settings_merge import DEFAULT_WORKERS_SETTINGS, merge_workers_settings
 from app.core.email_smtp import send_employee_invite
-from app.core.auth.security import hash_password
+from app.core.auth.security import bump_access_token_version, hash_password
 from app.core.system_tokens import generate_raw_token, hash_system_token
 from app.models.domain import (
     Company,
@@ -882,6 +882,7 @@ async def create_worker(
             user.invite_token_hash = None
             user.invite_expires_at = None
             user.hashed_password = hash_password(temp_pw)
+            bump_access_token_version(user)
             user.is_active = True
             user.created_by = actor.id
         else:

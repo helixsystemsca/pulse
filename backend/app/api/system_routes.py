@@ -887,6 +887,7 @@ async def system_impersonate_user(
             "roles": list(target.roles),
             "is_impersonating": True,
             "impersonator_sub": admin.id,
+            "tv": int(getattr(target, "token_version", 0) or 0),
         },
     )
     return Token(access_token=token)

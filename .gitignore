@@ -1,5 +1,9 @@
 .env
 .env.local
+# Never commit working copies of secrets (use host env / secret manager).
+backend/.env
+frontend/.env.local
+.env.production
 __pycache__/
 *.py[cod]
 .venv/

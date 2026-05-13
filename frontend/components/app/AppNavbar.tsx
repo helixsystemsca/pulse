@@ -6,9 +6,10 @@
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { Bell, ChevronDown, Image as ImageIcon, KeyRound, LogOut, MessageSquare, Settings } from "lucide-react";
+import { Bell, ChevronDown, Image as ImageIcon, KeyRound, LogOut, Megaphone, MessageSquare, Settings } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { OperationalNotificationsModal } from "@/components/app/OperationalNotificationsModal";
+import { FeedbackModal } from "@/components/app/FeedbackModal";
 import { notificationBadgeCount } from "@/lib/dashboard/operational-notifications";
 import { useOperationalNotificationsStore } from "@/lib/dashboard/operational-notifications-store";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
@@ -24,6 +25,8 @@ import {
   shouldShowWorkerMandatoryPasswordBadge,
 } from "@/lib/pulse-roles";
 import { cn } from "@/lib/cn";
+import { isApiMode } from "@/lib/api";
+import { fetchFeedbackUnreadCount } from "@/lib/feedbackApi";
 
 
 function IconBadgeCount({ count }: { count: number }) {
@@ -51,9 +54,13 @@ export function AppNavbar({ notificationCount: notificationCountProp = 0, messag
   const { authed, session } = usePulseAuth();
   const [userOpen, setUserOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const [feedbackInboxCount, setFeedbackInboxCount] = useState(0);
   const userMenuRef = useRef<HTMLDivElement>(null);
   const storeNotificationCount = useOperationalNotificationsStore((s) => notificationBadgeCount(s.items));
   const notificationCount = Math.max(notificationCountProp, storeNotificationCount);
+  const adminInbox = Boolean(session && canAccessCompanyConfiguration(session));
+  const messagesCountDisplay = Math.max(messagesCount, feedbackInboxCount);
 
   const logoHref =
     authed && session ? pulseApp.to(pulsePostLoginPath(session)) : pulseRoutes.pulseLanding;
@@ -65,7 +72,31 @@ export function AppNavbar({ notificationCount: notificationCountProp = 0, messag
     pathname.startsWith("/settings/") ||
     pathname === "/dashboard/profile-settings" ||
     pathname.startsWith("/dashboard/profile-settings/");
+  const messagesActive = pathname === "/dashboard/messages" || pathname.startsWith("/dashboard/messages/");
   const showWorkerPasswordBadge = session ? shouldShowWorkerMandatoryPasswordBadge(session) : false;
+
+  useEffect(() => {
+    if (!authed || !adminInbox || !isApiMode()) return;
+    let cancelled = false;
+    const pull = () => {
+      void fetchFeedbackUnreadCount()
+        .then((r) => {
+          if (!cancelled) setFeedbackInboxCount(r.count);
+        })
+        .catch(() => {});
+    };
+    pull();
+    const t = window.setInterval(pull, 90_000);
+    const bump = () => pull();
+    window.addEventListener("pulse-feedback-submitted", bump);
+    window.addEventListener("pulse-feedback-updated", bump);
+    return () => {
+      cancelled = true;
+      window.clearInterval(t);
+      window.removeEventListener("pulse-feedback-submitted", bump);
+      window.removeEventListener("pulse-feedback-updated", bump);
+    };
+  }, [authed, adminInbox]);
 
   useEffect(() => {
     if (!userOpen) return;
@@ -172,14 +203,24 @@ export function AppNavbar({ notificationCount: notificationCountProp = 0, messag
                 <IconBadgeCount count={notificationCount} />
               </button>
 
-              <Link
-                href={pulseApp.to("/dashboard/profile-settings")}
+              <button
+                type="button"
                 className={chromeIconBtn}
-                aria-label={`Messages${messagesCount > 0 ? `, ${messagesCount} unread` : ""}`}
+                aria-label="Send product feedback"
+                title="Feedback"
+                onClick={() => setFeedbackOpen(true)}
+              >
+                <Megaphone className="h-[1.125rem] w-[1.125rem]" strokeWidth={1.75} aria-hidden />
+              </button>
+
+              <Link
+                href={pulseApp.to("/dashboard/messages")}
+                className={cn(chromeIconBtn, messagesActive && "bg-ds-chrome-active text-white")}
+                aria-label={`Messages${messagesCountDisplay > 0 ? `, ${messagesCountDisplay} unread` : ""}`}
                 title="Messages"
               >
                 <MessageSquare className="h-[1.125rem] w-[1.125rem]" strokeWidth={1.75} aria-hidden />
-                <IconBadgeCount count={messagesCount} />
+                <IconBadgeCount count={messagesCountDisplay} />
               </Link>
 
               <Link
@@ -278,6 +319,7 @@ export function AppNavbar({ notificationCount: notificationCountProp = 0, messag
       </div>
       <div className="h-px w-full shrink-0 bg-gradient-to-r from-transparent via-white/12 to-transparent" aria-hidden />
       <OperationalNotificationsModal open={notificationsOpen} onClose={() => setNotificationsOpen(false)} />
+      <FeedbackModal open={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
     </nav>
   );
 }

@@ -1,6 +1,6 @@
 """Authentication: login, session info, impersonation (system_admin), effective permissions."""
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -12,7 +12,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user, require_system_admin
 from app.core.audit.service import record_audit
-from app.core.auth.security import create_access_token, decode_token, hash_password, verify_password
+from app.core.auth.password_policy import validate_new_password
+from app.core.auth.security import (
+    bump_access_token_version,
+    create_access_token,
+    decode_token,
+    hash_password,
+    verify_password,
+)
 from app.core.config import Settings, get_settings
 from app.core.database import get_db
 from app.core.login_activity import log_login_event
@@ -76,6 +83,7 @@ def _token_for_user(
             "roles": list(user.roles),
             "is_impersonating": is_impersonating,
             "impersonator_sub": impersonator_sub,
+            "tv": int(getattr(user, "token_version", 0) or 0),
         },
     )
     return Token(access_token=token)
@@ -152,13 +160,15 @@ async def _upsert_microsoft_user(
 
 
 @router.post("/login", response_model=Token)
-@limiter.limit("30/minute")
+@limiter.limit("8/minute")
 async def login(
     request: Request,
     body: LoginRequest,
     db: Annotated[AsyncSession, Depends(get_db)],
+    settings: Annotated[Settings, Depends(get_settings)],
 ) -> Token:
     email_norm = str(body.email).strip().lower()
+    now = datetime.now(timezone.utc)
     q = await db.execute(select(User).where(func.lower(User.email) == email_norm))
     user = q.scalar_one_or_none()
     if not user or not user.is_active:
@@ -179,7 +189,15 @@ async def login(
         )
         await db.commit()
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
+    if user.locked_until and user.locked_until > now:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Account temporarily locked after repeated failed sign-ins. Try again later or reset your password.",
+        )
     if not verify_password(body.password, user.hashed_password):
+        user.failed_login_attempts = int(getattr(user, "failed_login_attempts", 0) or 0) + 1
+        if user.failed_login_attempts >= settings.login_lockout_max_attempts:
+            user.locked_until = now + timedelta(minutes=settings.login_lockout_minutes)
         await record_audit(
             db,
             action="auth.login_failed",
@@ -190,8 +208,9 @@ async def login(
         await db.commit()
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
 
-    now = datetime.now(timezone.utc)
     user.auth_provider = "email"
+    user.failed_login_attempts = 0
+    user.locked_until = None
     user.last_login = now
     user.last_active_at = now
     await record_audit(
@@ -207,7 +226,7 @@ async def login(
 
 
 @router.post("/oauth/microsoft", response_model=Token)
-@limiter.limit("30/minute")
+@limiter.limit("12/minute")
 async def microsoft_oauth_login(
     request: Request,
     body: MicrosoftOAuthRequest,
@@ -221,6 +240,8 @@ async def microsoft_oauth_login(
 
     user, created = await _upsert_microsoft_user(db, identity)
     now = datetime.now(timezone.utc)
+    user.failed_login_attempts = 0
+    user.locked_until = None
     user.last_login = now
     user.last_active_at = now
     await record_audit(
@@ -393,6 +414,7 @@ async def accept_invite(
     request: Request,
     body: InviteAcceptBody,
     db: Annotated[AsyncSession, Depends(get_db)],
+    settings: Annotated[Settings, Depends(get_settings)],
 ) -> Token:
     th = hash_system_token(body.token)
     now = datetime.now(timezone.utc)
@@ -414,6 +436,11 @@ async def accept_invite(
     exists = await db.execute(select(User).where(User.email == row.email))
     if exists.scalar_one_or_none():
         raise HTTPException(status_code=409, detail="Email already registered")
+
+    try:
+        validate_new_password(body.password, settings)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
     invited = _invite_role(row.role)
     new_user = User(
@@ -447,6 +474,7 @@ async def accept_employee_invite(
     request: Request,
     body: EmployeeInviteAcceptBody,
     db: Annotated[AsyncSession, Depends(get_db)],
+    settings: Annotated[Settings, Depends(get_settings)],
 ) -> Token:
     th = hash_system_token(body.token)
     now = datetime.now(timezone.utc)
@@ -465,6 +493,11 @@ async def accept_employee_invite(
     co = await db.get(Company, user.company_id)
     if not co or not co.is_active:
         raise HTTPException(status_code=400, detail="Organization not available")
+
+    try:
+        validate_new_password(body.password, settings)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
     user.hashed_password = hash_password(body.password)
     if body.full_name and body.full_name.strip():
@@ -491,6 +524,7 @@ async def confirm_password_reset(
     request: Request,
     body: PasswordResetConfirmBody,
     db: Annotated[AsyncSession, Depends(get_db)],
+    settings: Annotated[Settings, Depends(get_settings)],
 ) -> Token:
     th = hash_system_token(body.token)
     now = datetime.now(timezone.utc)
@@ -509,7 +543,12 @@ async def confirm_password_reset(
     u = await db.get(User, row.user_id)
     if not u:
         raise HTTPException(status_code=400, detail="User missing")
+    try:
+        validate_new_password(body.new_password, settings)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     u.hashed_password = hash_password(body.new_password)
+    bump_access_token_version(u)
     row.used_at = now
     await record_system_log(
         db,

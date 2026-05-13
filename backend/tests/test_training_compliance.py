@@ -166,7 +166,7 @@ async def test_training_matrix_admin_override_patch(client, seeded_tenant, db_se
     admin_headers = auth_headers(
         create_access_token(
             subject=admin_id,
-            extra_claims={"company_id": seeded_tenant.company_id, "role": UserRole.company_admin.value},
+            extra_claims={"company_id": seeded_tenant.company_id, "role": UserRole.company_admin.value, "tv": 0},
         )
     )
     mgr_headers = auth_headers(seeded_tenant.manager_token)
@@ -338,7 +338,7 @@ async def test_training_matrix_allowed_for_lead(client, seeded_tenant, db_sessio
 
     token = create_access_token(
         subject=lead_id,
-        extra_claims={"company_id": seeded_tenant.company_id, "role": UserRole.lead.value},
+        extra_claims={"company_id": seeded_tenant.company_id, "role": UserRole.lead.value, "tv": 0},
     )
     r = await client.get("/api/v1/training/matrix", headers=auth_headers(token))
     assert r.status_code == 200, r.text

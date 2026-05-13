@@ -18,7 +18,6 @@ REASON_CODE_TO_CATEGORY: dict[str, str] = {
     "manager_bonus_xp": "recognition",
     "peer_recognition": "recognition",
     "cross_department_recognition": "recognition",
-    "cross_department_recognition": "recognition",
     "supervisor_commendation": "recognition",
     "shift_coverage_short_notice": "attendance",
     "stat_holiday_worked": "attendance",
@@ -43,6 +42,7 @@ REASON_CODE_TO_CATEGORY: dict[str, str] = {
     "recurring_issue_trend": "initiative",
     "procedure_draft_created": "procedure",
     "documentation_help": "initiative",
+    "product_feedback_helpful": "initiative",
 }
 
 

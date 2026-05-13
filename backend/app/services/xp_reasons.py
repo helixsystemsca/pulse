@@ -23,6 +23,7 @@ def display_reason(reason_code: str, meta: dict | None = None) -> str:
         "attendance_clock_in": "Daily clock-in",
         "task_reopen_penalty": "Task reopened — quality bonus removed",
         "flag_bonus_reversal": "Task flagged — quality bonus removed",
+        "product_feedback_helpful": "Helpful product feedback",
     }
     base = mapping.get(code) or reason_code.replace("_", " ").title()
     title = md.get("task_title")

@@ -45,6 +45,7 @@ async def get_current_user(
                 "roles": payload_raw.get("roles"),
                 "is_impersonating": payload_raw.get("is_impersonating", False),
                 "impersonator_sub": payload_raw.get("impersonator_sub"),
+                "tv": payload_raw.get("tv", 0),
             }
         )
     except (JWTError, KeyError, ValueError):
@@ -72,6 +73,10 @@ async def get_current_user(
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
         if str(user.company_id) != str(payload.company_id):
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+
+    token_tv = int(payload_raw.get("tv", 0))
+    if token_tv != int(getattr(user, "token_version", 0) or 0):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Session expired — sign in again")
 
     return user
 

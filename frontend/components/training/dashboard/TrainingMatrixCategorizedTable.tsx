@@ -97,11 +97,11 @@ export function TrainingMatrixCategorizedTable({
   const stickyEmployeeTh =
     "sticky left-0 top-0 z-30 w-[11rem] min-w-[11rem] max-w-[11rem] shrink-0 overflow-hidden bg-white px-2 py-2 text-left text-[11px] font-bold uppercase tracking-wide text-slate-500 shadow-[1px_0_0_var(--ds-border),0_1px_0_var(--ds-border)] dark:bg-slate-950 dark:text-slate-400";
   const stickyEmployeeCell =
-    "sticky left-0 z-10 w-[11rem] min-w-[11rem] max-w-[11rem] shrink-0 overflow-hidden bg-white px-2 py-2 text-left font-semibold text-slate-900 shadow-[1px_0_0_var(--ds-border)] dark:bg-slate-950 dark:text-slate-50";
+    "sticky left-0 z-10 w-[11rem] min-w-[11rem] max-w-[11rem] shrink-0 overflow-hidden bg-white px-2 py-2 text-left align-top font-semibold text-slate-900 shadow-[1px_0_0_var(--ds-border)] dark:bg-slate-950 dark:text-slate-50";
   const programHeadClass =
     "sticky top-0 z-20 w-[0.75in] min-w-[0.75in] max-w-[0.75in] overflow-hidden border-l border-slate-100 bg-ds-primary px-1.5 py-2 text-left align-bottom shadow-[0_1px_0_var(--ds-border)] dark:border-slate-800 dark:bg-slate-950";
   const programCellClass =
-    "w-[0.75in] min-w-[0.75in] max-w-[0.75in] overflow-hidden border-l border-slate-50 px-1.5 py-1.5 align-middle dark:border-slate-800/80";
+    "w-[0.75in] min-w-[0.75in] max-w-[0.75in] overflow-hidden border-l border-slate-50 px-1.5 py-1.5 align-top dark:border-slate-800/80";
 
   return (
     <div className="space-y-3">

@@ -42,6 +42,8 @@ def feature_access_role_bucket(user: User) -> str:
 def user_has_workers_roster_page_access(user: User, merged_settings: dict[str, Any]) -> bool:
     if user.is_system_admin or user_has_any_role(user, UserRole.system_admin):
         return True
+    if user_has_any_role(user, UserRole.demo_viewer) and user.company_id is not None:
+        return True
     if user_has_any_role(user, UserRole.company_admin) or user_has_facility_tenant_admin_flag(user):
         return True
     deleg = merged_settings.get("workers_page_delegation") or {}

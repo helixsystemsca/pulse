@@ -31,6 +31,12 @@ def hash_password(plain: str) -> str:
     return bcrypt.hashpw(p, bcrypt.gensalt(rounds=12)).decode("utf-8")
 
 
+def bump_access_token_version(user: object) -> None:
+    """Invalidate outstanding JWTs after a password change (must match ``tv`` claim)."""
+    cur = int(getattr(user, "token_version", 0) or 0)
+    setattr(user, "token_version", cur + 1)
+
+
 def create_access_token(subject: str, extra_claims: Optional[dict[str, Any]] = None) -> str:
     expire = datetime.now(timezone.utc) + timedelta(minutes=settings.access_token_expire_minutes)
     to_encode: dict[str, Any] = {"sub": subject, "exp": expire}

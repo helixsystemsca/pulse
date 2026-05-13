@@ -15,6 +15,8 @@ class TokenPayload(BaseModel):
     roles: Optional[list[str]] = None
     is_impersonating: bool = False
     impersonator_sub: Optional[str] = None
+    #: Matches ``users.token_version`` for server-side JWT invalidation.
+    tv: Optional[int] = None
 
 
 class LoginRequest(BaseModel):
@@ -74,7 +76,7 @@ class UserOut(BaseModel):
 
 class InviteAcceptBody(BaseModel):
     token: str = Field(..., min_length=16, max_length=512)
-    password: str = Field(..., min_length=8, max_length=128)
+    password: str = Field(..., min_length=12, max_length=128)
     full_name: Optional[str] = Field(None, max_length=255)
 
 
@@ -82,13 +84,13 @@ class EmployeeInviteAcceptBody(BaseModel):
     """Accept an employee invite (user row already exists; set password and activate)."""
 
     token: str = Field(..., min_length=16, max_length=512)
-    password: str = Field(..., min_length=8, max_length=128)
+    password: str = Field(..., min_length=12, max_length=128)
     full_name: Optional[str] = Field(None, max_length=255)
 
 
 class PasswordResetConfirmBody(BaseModel):
     token: str = Field(..., min_length=16, max_length=512)
-    new_password: str = Field(..., min_length=8, max_length=128)
+    new_password: str = Field(..., min_length=12, max_length=128)
 
 
 class ImpersonateRequest(BaseModel):

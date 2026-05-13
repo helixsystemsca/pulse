@@ -23,6 +23,7 @@ from app.api.automation_events_routes import router as automation_events_router
 from app.api.automation_config_routes import router as automation_config_router
 from app.api.device_ingest_routes import router as device_ingest_router
 from app.api.devices_routes import router as devices_router
+from app.api.health_routes import router as health_router
 from app.api.gateway_register_routes import router as gateway_register_router
 from app.api.equipment_routes import router as equipment_router
 from app.api.notifications_routes import router as notifications_router
@@ -34,6 +35,7 @@ from app.api.map_routes import router as map_router
 from app.api.company_routes import router as company_router
 from app.api.config_routes import router as config_router
 from app.api.demo_routes import router as demo_router
+from app.api.feedback_routes import router as feedback_router
 from app.api.infrastructure_map_routes import router as infrastructure_map_router
 from app.api.organization_routes import router as organization_router
 from app.api.profile_routes import router as profile_router
@@ -83,6 +85,22 @@ from app.modules.registry import register_modules
 
 settings = get_settings()
 
+if settings.sentry_dsn.strip():
+    import sentry_sdk
+    from sentry_sdk.integrations.fastapi import FastApiIntegration
+    from sentry_sdk.integrations.starlette import StarletteIntegration
+
+    sentry_sdk.init(
+        dsn=settings.sentry_dsn.strip(),
+        environment=settings.environment,
+        integrations=[
+            StarletteIntegration(transaction_style="endpoint"),
+            FastApiIntegration(transaction_style="endpoint"),
+        ],
+        traces_sample_rate=float(settings.sentry_traces_sample_rate or 0.0),
+        send_default_pii=False,
+    )
+
 _cors_origins = settings.cors_origin_list
 _cors_log = logging.getLogger(__name__)
 _cors_log.info(
@@ -119,6 +137,9 @@ app = FastAPI(
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
+# Health checks (no /api prefix — easy for load balancers and platform probes).
+app.include_router(health_router)
+
 # First registered sits innermost (just above routes); last registered is outermost.
 app.add_middleware(SlowAPIMiddleware)
 app.add_middleware(
@@ -127,7 +148,11 @@ app.add_middleware(
 )
 app.add_middleware(FeatureGateMiddleware)
 # Demo Viewer safety: block **all** writes (POST/PUT/PATCH/DELETE).
-app.add_middleware(DemoViewerGuardMiddleware, allow_mutating_prefixes=[])
+app.add_middleware(
+    DemoViewerGuardMiddleware,
+    allow_mutating_prefixes=[],
+    allow_mutating_exact_paths=["/api/v1/feedback"],
+)
 if settings.trusted_host_list:
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=settings.trusted_host_list)
 # HTTPS enforcement must sit *inside* CORS: if RequireHttpsMiddleware is outermost and returns 403 without
@@ -168,6 +193,7 @@ app.include_router(profile_router, prefix="/api/v1")
 app.include_router(automation_events_router, prefix="/api/v1")
 app.include_router(automation_debug_router, prefix="/api/v1")
 app.include_router(notifications_router, prefix="/api/v1")
+app.include_router(feedback_router, prefix="/api/v1")
 # Facility equipment registry (`/api/v1/equipment`) before device hub: hub tools live at `/api/v1/tools`.
 app.include_router(equipment_router, prefix="/api/v1")
 app.include_router(devices_router, prefix="/api/v1")
