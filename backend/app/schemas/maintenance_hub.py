@@ -48,6 +48,21 @@ def normalize_procedure_search_keywords(v: Any) -> list[str]:
     return out
 
 
+ALLOWED_PROCEDURE_DEPARTMENT_CATEGORY_SLUGS: frozenset[str] = frozenset(
+    {"maintenance", "reception", "communications", "aquatics", "fitness"}
+)
+
+
+def normalize_procedure_department_category(raw: object | None) -> str | None:
+    """Return a known department slug or None (organization-wide / invalid)."""
+    if raw is None:
+        return None
+    s = str(raw).strip().lower()
+    if not s:
+        return None
+    return s if s in ALLOWED_PROCEDURE_DEPARTMENT_CATEGORY_SLUGS else None
+
+
 def parse_procedure_keyword_filter(raw: Optional[str]) -> list[str]:
     """Split comma/semicolon/newline separated filter; lowercase tokens."""
     if not raw or not str(raw).strip():
@@ -157,6 +172,7 @@ class ProcedureOut(BaseModel):
     published_at: Optional[datetime] = None
     revision_notes: Optional[str] = None
     procedure_category: Optional[str] = None
+    department_category: Optional[str] = None
     semantic_version: Optional[str] = None
     revision_date: Optional[date] = None
     publication_state: str = "published"
@@ -266,6 +282,7 @@ class ProcedureCreate(BaseModel):
     published_at: Optional[datetime] = None
     revision_notes: Optional[str] = Field(None, max_length=8000)
     procedure_category: Optional[str] = Field(None, max_length=128)
+    department_category: Optional[str] = Field(None, max_length=32)
     semantic_version: Optional[str] = Field(None, max_length=32)
     revision_date: Optional[date] = None
     publication_state: str = Field("published", max_length=20)
@@ -295,6 +312,7 @@ class ProcedureUpdate(BaseModel):
     published_at: Optional[datetime] = None
     revision_notes: Optional[str] = Field(None, max_length=8000)
     procedure_category: Optional[str] = Field(None, max_length=128)
+    department_category: Optional[str] = Field(None, max_length=32)
     semantic_version: Optional[str] = Field(None, max_length=32)
     revision_date: Optional[date] = None
     publication_state: Optional[str] = Field(None, max_length=20)

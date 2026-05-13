@@ -95,6 +95,7 @@ class PulseProcedure(Base):
     published_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     revision_notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     procedure_category: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    department_category: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
     semantic_version: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
     revision_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
     publication_state: Mapped[str] = mapped_column(String(20), nullable=False, default="published")

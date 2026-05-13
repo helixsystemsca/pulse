@@ -6,6 +6,10 @@ import { dsInputClass, dsLabelClass, dsSelectClass } from "@/components/ui/ds-fo
 import { Button } from "@/components/ui/Button";
 import type { DashboardComplianceFilter, TrainingDashboardFilters } from "@/lib/training/dashboardMetrics";
 import { formatLabelTitleCase } from "@/lib/training/trainingRoleDisplay";
+import {
+  PROGRAM_DEPARTMENT_SCOPE_FILTER_VALUES,
+  programDepartmentScopeFilterLabel,
+} from "@/lib/training/departmentCategories";
 import { cn } from "@/lib/cn";
 
 const COMPLIANCE_OPTIONS: { value: DashboardComplianceFilter; label: string }[] = [
@@ -115,7 +119,7 @@ function FilterFields({
       </div>
       <div>
         <label className={dsLabelClass} htmlFor="dash-filter-cat">
-          Training Category
+          Curriculum category
         </label>
         <select
           id="dash-filter-cat"
@@ -125,7 +129,24 @@ function FilterFields({
         >
           {categories.map((c) => (
             <option key={c} value={c}>
-              {c === "all" ? "All Categories" : formatLabelTitleCase(c)}
+              {c === "all" ? "All categories" : formatLabelTitleCase(c)}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div>
+        <label className={dsLabelClass} htmlFor="dash-filter-prog-dept">
+          Department category
+        </label>
+        <select
+          id="dash-filter-prog-dept"
+          className={dsSelectClass}
+          value={filters.programDepartmentCategory}
+          onChange={(e) => onChange({ ...filters, programDepartmentCategory: e.target.value })}
+        >
+          {PROGRAM_DEPARTMENT_SCOPE_FILTER_VALUES.map((v) => (
+            <option key={v} value={v}>
+              {programDepartmentScopeFilterLabel(v)}
             </option>
           ))}
         </select>

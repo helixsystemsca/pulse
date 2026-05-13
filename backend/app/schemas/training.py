@@ -65,7 +65,15 @@ class TrainingProgramOut(BaseModel):
     title: str
     description: str = ""
     tier: TrainingTierApi
-    category: str = "procedure"
+    program_type: str = Field("procedure", description="Asset kind (procedure-backed SOP, …).")
+    category: str = Field(
+        "General",
+        description="Curriculum / topical grouping (from procedure `procedure_category` when set).",
+    )
+    department_category: str = Field(
+        "",
+        description="Owning department slug (maintenance, aquatics, …); empty = organization-wide.",
+    )
     revision_number: int
     revision_date: date
     requires_acknowledgement: bool

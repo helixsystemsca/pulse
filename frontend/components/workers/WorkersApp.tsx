@@ -207,13 +207,35 @@ const CREATE_FORM_EMPTY: CreateFormState = {
   email: "",
   role: "worker",
   employment_type: "full_time",
-  department: "",
+  department: "maintenance",
   shift: "",
   start_date: "",
   skills: "",
   certifications: "",
   supervisor_id: "",
 };
+
+/** Invite / roster create — HR `department` field (slug). Role options depend on this. */
+const INVITE_DEPARTMENT_OPTIONS: { value: string; label: string }[] = [
+  { value: "maintenance", label: "Maintenance" },
+  { value: "reception", label: "Reception" },
+  { value: "communications", label: "Communications" },
+  { value: "aquatics", label: "Aquatics" },
+  { value: "fitness", label: "Fitness" },
+];
+
+function isMaintenanceInviteDepartment(department: string): boolean {
+  return (department || "maintenance").trim() === "maintenance";
+}
+
+/** API has no `coordinator` role — non-maintenance coordinators use `worker` permissions. */
+function effectiveInviteRole(department: string, role: string, createRoleLimited: boolean): string {
+  if (!isMaintenanceInviteDepartment(department)) return "worker";
+  const allowed = createRoleLimited
+    ? (["worker", "lead"] as const)
+    : (["worker", "lead", "supervisor", "manager", "demo_viewer"] as const);
+  return (allowed as readonly string[]).includes(role) ? role : "worker";
+}
 
 function initials(name: string | null | undefined, email: string): string {
   if (name?.trim()) {
@@ -477,6 +499,14 @@ export function WorkersApp() {
   const [activityError, setActivityError] = useState<string | null>(null);
 
   const [createForm, setCreateForm] = useState<CreateFormState>({ ...CREATE_FORM_EMPTY });
+
+  useEffect(() => {
+    if (!createOpen) return;
+    setCreateForm((f) => {
+      const nextRole = effectiveInviteRole(f.department, f.role, createRoleLimited);
+      return nextRole === f.role ? f : { ...f, role: nextRole };
+    });
+  }, [createOpen, createForm.department, createRoleLimited]);
 
   useEffect(() => {
     if (!createToast) return;
@@ -1146,12 +1176,14 @@ export function WorkersApp() {
       const [name, exp] = line.split("|").map((x) => x.trim());
       return exp ? { name, expiry_date: `${exp}T12:00:00.000Z` } : { name };
     });
+    const departmentSlug = createForm.department.trim() || "maintenance";
+    const role = effectiveInviteRole(departmentSlug, createForm.role, createRoleLimited);
     return {
       email: createForm.email.trim(),
       full_name: createForm.full_name.trim() || null,
-      role: createForm.role,
+      role,
       employment_type: createForm.employment_type || null,
-      department: createForm.department.trim() || null,
+      department: departmentSlug || null,
       shift: createForm.employment_type === "part_time" ? null : createForm.shift || null,
       start_date: createForm.start_date || null,
       supervisor_id: createForm.supervisor_id.trim() || null,
@@ -1248,7 +1280,7 @@ export function WorkersApp() {
               type="button"
               className={PRIMARY_BTN}
               onClick={() => {
-                setCreateForm((f) => ({ ...f, role: createRoleLimited ? "worker" : f.role }));
+                setCreateForm({ ...CREATE_FORM_EMPTY });
                 setCreateModalBanner(null);
                 setCreateOpen(true);
               }}
@@ -2274,20 +2306,52 @@ export function WorkersApp() {
             />
           </div>
           <div>
+            <label className={LABEL}>Department</label>
+            <select
+              className={FIELD}
+              value={createForm.department}
+              onChange={(e) => {
+                const department = e.target.value;
+                setCreateForm((f) => {
+                  const next: CreateFormState = { ...f, department };
+                  if (!isMaintenanceInviteDepartment(department)) {
+                    next.role = "worker";
+                  } else if (createRoleLimited) {
+                    next.role = "worker";
+                  }
+                  return next;
+                });
+              }}
+            >
+              {INVITE_DEPARTMENT_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
             <label className={LABEL}>Role</label>
             <select
               className={FIELD}
-              value={createForm.role}
+              value={effectiveInviteRole(createForm.department, createForm.role, createRoleLimited)}
               onChange={(e) => setCreateForm((f) => ({ ...f, role: e.target.value }))}
+              disabled={!isMaintenanceInviteDepartment(createForm.department)}
             >
-              <option value="worker">Operations</option>
-              <option value="lead">Lead</option>
-              {createRoleLimited ? null : (
+              {isMaintenanceInviteDepartment(createForm.department) ? (
                 <>
-                  <option value="supervisor">Supervisor</option>
-                  <option value="manager">Manager</option>
-                  <option value="demo_viewer">Demo viewer</option>
+                  <option value="worker">Operations</option>
+                  <option value="lead">Lead</option>
+                  {createRoleLimited ? null : (
+                    <>
+                      <option value="supervisor">Supervisor</option>
+                      <option value="manager">Manager</option>
+                      <option value="demo_viewer">Demo viewer</option>
+                    </>
+                  )}
                 </>
+              ) : (
+                <option value="worker">Coordinator</option>
               )}
             </select>
           </div>
@@ -2309,14 +2373,6 @@ export function WorkersApp() {
               <option value="regular_part_time">Regular part time</option>
               <option value="part_time">Auxiliary</option>
             </select>
-          </div>
-          <div>
-            <label className={LABEL}>Department</label>
-            <input
-              className={FIELD}
-              value={createForm.department}
-              onChange={(e) => setCreateForm((f) => ({ ...f, department: e.target.value }))}
-            />
           </div>
           {createForm.employment_type === "part_time" ? null : (
             <div>

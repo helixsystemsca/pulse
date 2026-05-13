@@ -30,7 +30,12 @@ export type TrainingProgram = {
   title: string;
   description: string;
   tier: TrainingTier;
+  /** Asset kind (e.g. procedure-backed SOP, future: external course). */
+  program_type: string;
+  /** Curriculum / topical grouping (onboarding, compliance, …). */
   category: string;
+  /** Owning department slug (`maintenance`, `aquatics`, …); empty = organization-wide. */
+  department_category: string;
   revision_number: number;
   revision_date: string; // ISO date
   requires_acknowledgement: boolean;

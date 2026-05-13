@@ -68,6 +68,8 @@ export type ProcedureRow = {
   published_at?: string | null;
   revision_notes?: string | null;
   procedure_category?: string | null;
+  /** Owning department slug (maintenance, aquatics, …); empty / omitted = organization-wide. */
+  department_category?: string | null;
   semantic_version?: string | null;
   revision_date?: string | null;
   publication_state?: string;

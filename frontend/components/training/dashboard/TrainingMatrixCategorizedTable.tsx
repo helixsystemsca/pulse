@@ -12,6 +12,7 @@ import type {
 import { cellAssignmentStatus } from "@/lib/training/mockData";
 import { assignmentFor } from "@/lib/training/selectors";
 import { groupProgramsForMatrix, matrixCategoryForProgram } from "@/lib/training/dashboardMetrics";
+import { trainingDepartmentCategoryLabel } from "@/lib/training/departmentCategories";
 import { TrainingMatrixCell } from "@/components/training/TrainingMatrixCell";
 import { dataTableHeadRowClass } from "@/components/ui/DataTable";
 import { dsInputClass } from "@/components/ui/ds-form-classes";
@@ -79,7 +80,18 @@ export function TrainingMatrixCategorizedTable({
     return g
       .map((gr) => ({
         ...gr,
-        programs: gr.programs.filter((p) => p.title.toLowerCase().includes(q) || p.category.toLowerCase().includes(q)),
+        programs: gr.programs.filter((p) => {
+          const hay = [
+            p.title,
+            p.category,
+            p.program_type,
+            p.department_category,
+            trainingDepartmentCategoryLabel(p.department_category || ""),
+          ]
+            .join(" ")
+            .toLowerCase();
+          return hay.includes(q);
+        }),
       }))
       .filter((gr) => gr.programs.length > 0);
   }, [programs, kw]);

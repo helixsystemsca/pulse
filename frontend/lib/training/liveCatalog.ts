@@ -34,6 +34,8 @@ export function proceduresToTrainingPrograms(
   return (procedures ?? [])
     .map((p) => {
       const cfg = configForProcedure(p.id, configMap);
+      const thematic = (p.procedure_category ?? "").trim() || "General";
+      const dept = (p.department_category ?? "").trim().toLowerCase();
       return {
         id: p.id,
         title: p.title,
@@ -42,7 +44,9 @@ export function proceduresToTrainingPrograms(
           160,
         ),
         tier: cfg.tier,
-        category: "Procedure",
+        program_type: "procedure",
+        category: thematic,
+        department_category: dept,
         revision_number: procedureRevisionNumber(p),
         revision_date: procedureRevisionDate(p),
         requires_acknowledgement: cfg.requires_acknowledgement,

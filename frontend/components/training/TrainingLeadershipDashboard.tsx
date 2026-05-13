@@ -119,6 +119,7 @@ const defaultDashboardFilters = (): TrainingDashboardFilters => ({
   shift: "all",
   complianceFilter: "all",
   trainingCategory: "all",
+  programDepartmentCategory: "all",
   highRiskOnly: false,
 });
 

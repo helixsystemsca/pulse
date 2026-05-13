@@ -106,6 +106,7 @@ from app.schemas.maintenance_hub import (
     WorkOrderStatusApi,
     WorkOrderType,
     normalize_procedure_search_keywords,
+    normalize_procedure_department_category,
     normalize_procedure_steps,
     parse_procedure_keyword_filter,
     procedure_row_matches_keyword_tokens,
@@ -421,6 +422,7 @@ async def create_procedure(
         published_at=body.published_at,
         revision_notes=(str(body.revision_notes).strip() if body.revision_notes else None),
         procedure_category=(body.procedure_category or "").strip() or None,
+        department_category=normalize_procedure_department_category(body.department_category),
         semantic_version=(body.semantic_version or "").strip() or "1.0",
         revision_date=body.revision_date,
         publication_state=(body.publication_state or "published").strip().lower()[:20] or "published",
@@ -1123,6 +1125,9 @@ async def update_procedure(
     if "procedure_category" in patch:
         v = patch.get("procedure_category")
         row.procedure_category = None if v is None else (str(v).strip() or None)
+    if "department_category" in patch:
+        v = patch.get("department_category")
+        row.department_category = normalize_procedure_department_category(v)
     if "semantic_version" in patch:
         v = patch.get("semantic_version")
         row.semantic_version = None if v is None else (str(v).strip() or None)

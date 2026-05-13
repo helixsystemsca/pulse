@@ -31,7 +31,9 @@ export type TrainingMatrixApiResponse = {
     title: string;
     description: string;
     tier: TrainingTier;
+    program_type: string;
     category: string;
+    department_category: string;
     revision_number: number;
     revision_date: string;
     requires_acknowledgement: boolean;
@@ -113,7 +115,9 @@ export function mapApiPrograms(rows: TrainingMatrixApiResponse["programs"]): Tra
         title: p.title,
         description: p.description ?? "",
         tier: p.tier,
-        category: p.category ?? "procedure",
+        program_type: p.program_type ?? "procedure",
+        category: p.category ?? "General",
+        department_category: (p.department_category ?? "").trim().toLowerCase(),
         revision_number: p.revision_number,
         revision_date: normalizeApiDateOnly(p.revision_date) ?? "",
         requires_acknowledgement: Boolean(p.requires_acknowledgement),

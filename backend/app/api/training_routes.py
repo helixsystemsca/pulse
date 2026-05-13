@@ -88,12 +88,16 @@ def _procedure_to_program(p: PulseProcedure, cs: PulseProcedureComplianceSetting
     steps = normalize_procedure_steps(p.steps)
     desc = (steps[0].content[:500] if steps else "") or ""
     rev_date = p.updated_at.date() if p.updated_at else datetime.now(timezone.utc).date()
+    cat = (p.procedure_category or "").strip() or "General"
+    dept = (getattr(p, "department_category", None) or "").strip().lower() or ""
     return TrainingProgramOut(
         id=str(p.id),
         title=p.title,
         description=desc,
         tier=tier_t,
-        category="procedure",
+        program_type="procedure",
+        category=cat,
+        department_category=dept,
         revision_number=int(p.content_revision or 1),
         revision_date=rev_date,
         requires_acknowledgement=req_ack,

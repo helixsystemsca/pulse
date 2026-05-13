@@ -29,7 +29,10 @@ export type TrainingDashboardFilters = {
   role: string;
   shift: string;
   complianceFilter: DashboardComplianceFilter;
+  /** Curriculum / topical grouping (`TrainingProgram.category`). */
   trainingCategory: string;
+  /** Program owning department slug or `__org__` for organization-wide only (`TrainingProgram.department_category`). */
+  programDepartmentCategory: string;
   highRiskOnly: boolean;
 };
 
@@ -285,6 +288,25 @@ export function computeDashboardKpis(
   };
 }
 
+function employeeMatchesDepartmentScope(
+  employeeId: string,
+  scope: string,
+  programs: TrainingProgram[],
+  resolved: TrainingAssignment[],
+): boolean {
+  const progs = programs.filter((p) => {
+    if (!p.active) return false;
+    const d = norm(p.department_category || "");
+    if (scope === "__org__") return d === "";
+    return d === norm(scope);
+  });
+  if (progs.length === 0) return false;
+  return progs.some((p) => {
+    const a = assignmentFor(employeeId, p.id, resolved);
+    return Boolean(a && a.status !== "not_assigned");
+  });
+}
+
 function employeeMatchesCategory(
   employeeId: string,
   category: string,
@@ -337,6 +359,12 @@ export function filterDashboardEmployees(
   if (filters.trainingCategory !== "all") {
     out = out.filter((r) =>
       employeeMatchesCategory(r.employee.id, filters.trainingCategory, programs, resolved),
+    );
+  }
+
+  if (filters.programDepartmentCategory !== "all") {
+    out = out.filter((r) =>
+      employeeMatchesDepartmentScope(r.employee.id, filters.programDepartmentCategory, programs, resolved),
     );
   }
 
