@@ -238,6 +238,13 @@ class User(Base):
         nullable=False,
         server_default=text("'[]'::jsonb"),
     )
+    #: Optional tenant RBAC role template (`tenant_roles.id`). When set, `tenant_role_grants` drive permissions.
+    tenant_role_id: Mapped[Optional[str]] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("tenant_roles.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
 
     company: Mapped[Optional[Company]] = relationship(
         back_populates="users",

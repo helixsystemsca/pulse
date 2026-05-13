@@ -25,6 +25,7 @@ from app.core.database import get_db
 from app.core.login_activity import log_login_event
 from app.core.microsoft_oauth import MicrosoftOAuthError, MicrosoftIdentity, verify_supabase_microsoft_access_token
 from app.core.permissions.service import PermissionService
+from app.core.rbac.resolve import effective_rbac_permission_keys
 from app.core.tenant_feature_access import contract_and_effective_features_for_me
 from app.core.workspace_departments import effective_workspace_slugs_for_user
 from app.core.system_audit import record_system_log
@@ -315,7 +316,13 @@ async def me(
     except Exception:
         pass
 
-    _, eff_feats, roster_access, contract_admin_catalog = await contract_and_effective_features_for_me(db, user)
+    contract_feats, eff_feats, roster_access, contract_admin_catalog = await contract_and_effective_features_for_me(db, user)
+    rbac_keys = await effective_rbac_permission_keys(
+        db,
+        user,
+        contract_feature_names=contract_feats,
+        effective_feature_names=eff_feats,
+    )
 
     company_summary: CompanySummaryOut | None = None
     if user.company_id:
@@ -361,6 +368,8 @@ async def me(
         job_title=user.job_title,
         operational_role=(str(user.operational_role).strip() or None) if user.operational_role else None,
         enabled_features=eff_feats,
+        contract_features=contract_feats,
+        rbac_permissions=rbac_keys,
         contract_enabled_features=contract_admin_catalog if contract_admin_catalog else None,
         workers_roster_access=roster_access,
         is_impersonating=is_imp,

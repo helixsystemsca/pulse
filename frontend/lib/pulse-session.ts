@@ -55,9 +55,13 @@ export type PulseAuthSession = {
   /** Workforce / monitoring capacity (`worker` | `manager` | `supervisor`), separate from permission roles. */
   operational_role?: string | null;
   is_system_admin?: boolean;
-  /** From `/auth/me`; when missing (legacy session), tenant nav shows all modules. */
+  /** From `/auth/me`; legacy effective product feature keys (superseded by `rbac_permissions` for new paths). */
   enabled_features?: string[];
-  /** From `/auth/me`; RBAC allow list for sidebar (omit on legacy session → no permission gating). */
+  /** From `/auth/me`; tenant contract module keys for all tenant users. */
+  contract_features?: string[];
+  /** From `/auth/me`; flat RBAC permission keys. */
+  rbac_permissions?: string[];
+  /** From `/auth/me`; coarse legacy permission strings (`module.*`). */
   permissions?: string[] | null;
   /** From `/auth/me`; department workspace segments this user may open (`/{slug}/…`). */
   department_workspace_slugs?: string[];
@@ -95,6 +99,8 @@ export type UserOut = {
   job_title?: string | null;
   operational_role?: string | null;
   enabled_features?: string[];
+  contract_features?: string[];
+  rbac_permissions?: string[];
   permissions?: string[] | null;
   department_workspace_slugs?: string[];
   contract_enabled_features?: string[] | null;
@@ -255,6 +261,8 @@ export function writeApiSession(
     operational_role: user.operational_role ?? null,
     is_system_admin: user.is_system_admin,
     enabled_features: user.enabled_features,
+    contract_features: user.contract_features ?? undefined,
+    rbac_permissions: user.rbac_permissions ?? undefined,
     permissions: user.permissions ?? undefined,
     department_workspace_slugs: user.department_workspace_slugs ?? undefined,
     contract_enabled_features: user.contract_enabled_features ?? undefined,

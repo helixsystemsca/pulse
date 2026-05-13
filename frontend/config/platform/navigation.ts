@@ -1,8 +1,7 @@
 import { getDepartmentBySlug, PLATFORM_DEPARTMENTS } from "@/config/platform/departments";
-import { PLATFORM_MODULES } from "@/config/platform/modules";
-import { hasCapability, resolveCapabilitiesFromSession } from "@/config/platform/permissions";
 import type { Department, PlatformNavItem } from "@/config/platform/types";
 import type { PulseAuthSession } from "@/lib/pulse-session";
+import { PLATFORM_WORKSPACE_MODULES } from "@/lib/rbac/platform-workspace-modules";
 
 const STORAGE_LAST_DEPT = "pulse_platform_department_slug_v1";
 
@@ -33,27 +32,34 @@ export function getDefaultModuleRouteForDepartment(departmentSlug: string, sessi
   return parts[1] ?? null;
 }
 
+function contractSet(session: PulseAuthSession | null): Set<string> {
+  const raw = session?.contract_features?.length
+    ? session.contract_features
+    : session?.contract_enabled_features ?? [];
+  return new Set(raw);
+}
+
+/** When `rbac_permissions` is absent (stale client), fall back to legacy `enabled_features` product keys. */
+function hasRbacOrLegacyFeature(session: PulseAuthSession | null, permission: string, legacyFeatureKey: string): boolean {
+  const rbac = session?.rbac_permissions;
+  if (rbac?.length) return rbac.includes("*") || rbac.includes(permission);
+  return Boolean(session?.enabled_features?.includes(legacyFeatureKey));
+}
+
 /**
- * Sidebar items for the department workspace rail: enabled modules ∩ allowed slugs ∩ capabilities.
- * Order follows `PLATFORM_MODULES` declaration order for predictable UX.
+ * Sidebar items for the department workspace rail.
+ * Visibility = company contract (`contract_features`) ∩ flat RBAC (`rbac_permissions`) only.
  */
 export function buildDepartmentNavItems(departmentSlug: string, session: PulseAuthSession | null): PlatformNavItem[] {
   const dept = getDepartmentBySlug(departmentSlug);
   if (!dept) return [];
-  const caps = resolveCapabilitiesFromSession(session);
+  const contract = contractSet(session);
   const items: PlatformNavItem[] = [];
-  const feats = session?.enabled_features;
-  const featsDefined = feats !== undefined && feats !== null;
 
-  for (const mod of PLATFORM_MODULES) {
-    if (!mod.allowedDepartmentSlugs.includes(dept.slug)) continue;
-    const fk = mod.tenantNavFeatureKey;
-    if (fk) {
-      if (featsDefined && !feats!.includes(fk)) continue;
-    } else {
-      const reqs = mod.requiredCapabilities ?? [];
-      if (reqs.some((r) => !hasCapability(caps, r))) continue;
-    }
+  for (const mod of PLATFORM_WORKSPACE_MODULES) {
+    if (!mod.departmentSlugs.includes(dept.slug)) continue;
+    if (!contract.has(mod.requiredCompanyModule)) continue;
+    if (!hasRbacOrLegacyFeature(session, mod.requiredRbacPermission, mod.requiredCompanyModule)) continue;
     items.push({
       href: `/${dept.slug}/${mod.route}`,
       label: mod.name,
@@ -75,15 +81,13 @@ export function workspaceFeatureKeyForDepartmentSlug(slug: string): string {
 }
 
 function sessionUsesDepartmentWorkspaceFeatureGate(session: PulseAuthSession | null): boolean {
-  const feats = session?.enabled_features;
-  if (!feats?.length) return false;
-  return feats.some((f) => f.startsWith("workspace_"));
+  const c = session?.contract_features?.length ? session.contract_features : session?.contract_enabled_features;
+  if (!c?.length) return false;
+  return c.some((f) => f.startsWith("workspace_"));
 }
 
 /**
- * Departments the user may enter in the platform workspace (HR allow-list ∩ optional `workspace_*` contract keys).
- * When `enabled_features` contains any `workspace_*` key, each hub also requires its matching key; if none are
- * present, all hubs allowed by HR remain visible (backward compatible until the contract includes workspace keys).
+ * Departments the user may enter under `/{slug}/…` (HR allow-list ∩ contract workspace keys ∩ RBAC).
  */
 export function listDepartmentsAllowedForSession(session: PulseAuthSession | null): readonly Department[] {
   let depts: readonly Department[];
@@ -94,9 +98,16 @@ export function listDepartmentsAllowedForSession(session: PulseAuthSession | nul
     const set = new Set(allowed);
     depts = PLATFORM_DEPARTMENTS.filter((d) => set.has(d.slug));
   }
-  const feats = session?.enabled_features;
-  if (!feats?.length || !sessionUsesDepartmentWorkspaceFeatureGate(session)) return depts;
-  return depts.filter((d) => feats.includes(workspaceFeatureKeyForDepartmentSlug(d.slug)));
+  const contract = contractSet(session);
+  const companyHasWorkspacePack = [...contract].some((f) => f.startsWith("workspace_"));
+  if (!companyHasWorkspacePack || !sessionUsesDepartmentWorkspaceFeatureGate(session)) {
+    return depts;
+  }
+  return depts.filter((d) => {
+    const wsKey = workspaceFeatureKeyForDepartmentSlug(d.slug);
+    if (!contract.has(wsKey)) return false;
+    return hasRbacOrLegacyFeature(session, "workspace.view", wsKey);
+  });
 }
 
 /** When a user has several workspaces, prefer a non-maintenance home so comms/reception staff land on their hub. */

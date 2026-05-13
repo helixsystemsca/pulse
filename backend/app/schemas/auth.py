@@ -52,6 +52,10 @@ class UserOut(BaseModel):
     #: Workforce / scheduling / monitoring capacity (separate from permission roles).
     operational_role: Optional[str] = None
     enabled_features: list[str] = []
+    #: Tenant contract module keys (system admin). Same list for all tenant users for module licensing checks.
+    contract_features: list[str] = Field(default_factory=list)
+    #: Flat RBAC permission keys for sidebar + guards (`["*"]` = unrestricted within tenant).
+    rbac_permissions: list[str] = Field(default_factory=list)
     #: Full tenant contract modules (system-admin grants). Populated for company_admin for the Workers UI matrix.
     contract_enabled_features: Optional[list[str]] = None
     #: True when this user may open the Workers & Roles page (admin or delegated).
