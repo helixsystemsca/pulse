@@ -35,11 +35,14 @@ import {
 } from "@/lib/pulse-app";
 
 type SidebarNavItem = { href: string; label: string; icon: PulseSidebarIcon };
+import { LEGACY_SIDEBAR_DEPARTMENT_HUB } from "@/config/platform/navigation";
 import { isPulseNavActive } from "@/lib/pulse-nav-active";
 import { isTenantNavFeatureEnabled } from "@/lib/pulse-nav-features";
 import { isTenantNavPermissionGranted } from "@/lib/pulse-nav-permissions";
 import { sessionHasAnyRole, sessionPrimaryRole } from "@/lib/pulse-roles";
 import { cn } from "@/lib/cn";
+import { isPlatformDepartmentPath } from "@/lib/platform/path-detection";
+import { PlatformAppSideNav } from "@/components/platform/PlatformAppSideNav";
 
 const ICONS: Record<PulseSidebarIcon, LucideIcon> = {
   layout: LayoutDashboard,
@@ -101,6 +104,16 @@ export function AppSideNav() {
       ? rawNav.filter((i) => i.href !== "/monitoring")
       : [...rawNav]
   ).map((i) => ({ href: i.href, label: i.label, icon: i.icon }));
+  if (!isSystemAdmin) {
+    items = [
+      ...items,
+      {
+        href: LEGACY_SIDEBAR_DEPARTMENT_HUB.href,
+        label: LEGACY_SIDEBAR_DEPARTMENT_HUB.label,
+        icon: LEGACY_SIDEBAR_DEPARTMENT_HUB.icon as PulseSidebarIcon,
+      },
+    ];
+  }
   if (!isSystemAdmin && session) {
     if (session.role !== "demo_viewer") {
       items = items.filter((i) => isTenantNavFeatureEnabled(i.href, session.enabled_features));
@@ -118,6 +131,10 @@ export function AppSideNav() {
   const systemRail = isSystemAdmin;
 
   if (!authed || !session) return null;
+
+  if (isPlatformDepartmentPath(pathname)) {
+    return <PlatformAppSideNav />;
+  }
 
   const labelVisibility = cn(
     "min-w-0 truncate text-left text-[13px] font-semibold transition-[opacity,max-width,margin] duration-300 ease-in-out motion-reduce:transition-none",

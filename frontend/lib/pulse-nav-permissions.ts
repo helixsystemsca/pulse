@@ -3,7 +3,12 @@
  * Aligns with `backend/app/core/permissions/keys.py`. `null` = no permission gate (feature flags still apply).
  */
 
+import { PLATFORM_DEPARTMENT_SLUGS } from "@/config/platform/departments";
+
 export function permissionRequiredForTenantNavHref(href: string): string | null {
+  for (const slug of PLATFORM_DEPARTMENT_SLUGS) {
+    if (href === `/${slug}` || href.startsWith(`/${slug}/`)) return null;
+  }
   if (href === "/overview") return null;
   if (href === "/dashboard/compliance" || href.startsWith("/dashboard/compliance")) {
     return "module.maintenance.read";

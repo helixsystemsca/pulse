@@ -2,10 +2,18 @@
  * Returns whether a sidebar `href` should render as active for the current `pathname`.
  * Handles `/pulse#section` hash links, `/schedule` subtree, `/system` subtree, and `/dashboard/*`.
  */
+
+import { PLATFORM_DEPARTMENT_SLUGS } from "@/config/platform/departments";
+
 export function isPulseNavActive(href: string, pathname: string): boolean {
   if (href.includes("#")) {
     const [path] = href.split("#");
     return pathname === path;
+  }
+  for (const slug of PLATFORM_DEPARTMENT_SLUGS) {
+    if (href === `/${slug}`) {
+      return pathname === `/${slug}` || pathname.startsWith(`/${slug}/`);
+    }
   }
   if (href === "/overview")
     return (

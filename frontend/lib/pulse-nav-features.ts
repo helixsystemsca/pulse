@@ -3,8 +3,13 @@
  * Omitted hrefs are always shown. When `enabled_features` is absent on the session (legacy), all items show.
  */
 
+import { PLATFORM_DEPARTMENT_SLUGS } from "@/config/platform/departments";
+
 /** Nav href → feature key required to show the item. */
 export function featureKeyForTenantNavHref(href: string): string | undefined {
+  for (const slug of PLATFORM_DEPARTMENT_SLUGS) {
+    if (href === `/${slug}` || href.startsWith(`/${slug}/`)) return undefined;
+  }
   if (href === "/dashboard/compliance") return "compliance";
   if (href === "/schedule") return "schedule";
   if (href === "/monitoring") return "monitoring";

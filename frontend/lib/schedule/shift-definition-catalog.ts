@@ -49,18 +49,33 @@ export function displayStandardShiftCode(
   shift: Pick<Shift, "shiftType" | "startTime" | "endTime" | "shiftCode">,
   opts?: DisplayStandardShiftCodeOpts,
 ): string {
-  const inferred = inferStandardShiftCode(shift.startTime, shift.endTime);
-  if (inferred) return inferred;
+  const storedRaw = shift.shiftCode?.trim() ?? "";
+  const stored = storedRaw.toUpperCase();
+  const actualKey = windowKey(shift.startTime, shift.endTime);
 
-  const stored = shift.shiftCode?.trim().toUpperCase() ?? "";
+  /**
+   * Prefer explicit assignment `shift_code` over inferring from clock times alone.
+   * Otherwise two workers on 08:00–16:00 always collapse to the same catalog row (e.g. D2) even when
+   * the roster assigns a distinct definition (e.g. D3a) for one of them.
+   */
   if (stored) {
     const def = standardShiftByCode(stored);
-    // Wrong N* overnight label on afternoon-typed shifts (stale shift_code); leave OC/other night bands alone.
-    if (shift.shiftType === "afternoon" && def?.band === "night" && stored.startsWith("N")) {
-      return afternoonBandFallbackCode();
+    if (def) {
+      const defKey = windowKey(def.start, def.end);
+      if (defKey === actualKey) return def.code;
+      // Wrong N* overnight label on afternoon-typed shifts (stale shift_code); leave OC/other night bands alone.
+      if (shift.shiftType === "afternoon" && def.band === "night" && stored.startsWith("N")) {
+        return afternoonBandFallbackCode();
+      }
+      const inferredAfterMismatch = inferStandardShiftCode(shift.startTime, shift.endTime);
+      if (inferredAfterMismatch) return inferredAfterMismatch;
+      return opts?.fallbackCode ?? shift.shiftType.toUpperCase().slice(0, 1);
     }
-    return stored;
+    return storedRaw;
   }
+
+  const inferred = inferStandardShiftCode(shift.startTime, shift.endTime);
+  if (inferred) return inferred;
 
   if (shift.shiftType === "afternoon") {
     return afternoonBandFallbackCode();
