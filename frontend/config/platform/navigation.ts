@@ -73,9 +73,17 @@ export function listDepartmentsAllowedForSession(session: PulseAuthSession | nul
   return PLATFORM_DEPARTMENTS.filter((d) => set.has(d.slug));
 }
 
+/** When a user has several workspaces, prefer a non-maintenance home so comms/reception staff land on their hub. */
+function departmentsOrderedForDefaultHub(depts: readonly Department[]): Department[] {
+  if (depts.length <= 1) return [...depts];
+  const nonMaint = depts.filter((d) => d.slug !== "maintenance");
+  const maint = depts.filter((d) => d.slug === "maintenance");
+  return [...nonMaint, ...maint];
+}
+
 /** First workspace home URL for the tenant rail “Workspaces” entry. */
 export function defaultWorkspaceHubHref(session: PulseAuthSession | null): string {
-  const depts = listDepartmentsAllowedForSession(session);
+  const depts = departmentsOrderedForDefaultHub(listDepartmentsAllowedForSession(session));
   const first = depts[0];
   if (!first) return "/overview";
   const mod = getDefaultModuleRouteForDepartment(first.slug, session);
@@ -87,7 +95,28 @@ export function listDepartmentsForSwitcher(): readonly Department[] {
   return PLATFORM_DEPARTMENTS;
 }
 
-/** Single legacy-rail entry so users can discover department workspaces without breaking existing nav. */
+/**
+ * Legacy tenant left rail: one row per department the user may open, each linking to that
+ * department’s first visible module (same rules as the in-workspace rail).
+ */
+export function buildLegacyDepartmentWorkspaceRailItems(session: PulseAuthSession | null): PlatformNavItem[] {
+  const depts = departmentsOrderedForDefaultHub(listDepartmentsAllowedForSession(session));
+  const out: PlatformNavItem[] = [];
+  for (const d of depts) {
+    const modules = buildDepartmentNavItems(d.slug, session);
+    if (modules.length === 0) continue;
+    const href = getFirstNavHrefForDepartment(d.slug, session) ?? `/${d.slug}`;
+    out.push({
+      href,
+      label: d.name,
+      icon: d.icon ?? "layout",
+      group: "platform",
+    });
+  }
+  return out;
+}
+
+/** @deprecated Prefer {@link buildLegacyDepartmentWorkspaceRailItems}; kept for stable imports. */
 export const LEGACY_SIDEBAR_DEPARTMENT_HUB: PlatformNavItem = {
   href: "/maintenance",
   label: "Workspaces",

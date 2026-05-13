@@ -51,6 +51,7 @@ import { InventoryContractorsPanel } from "@/components/inventory/InventoryContr
 import { InventoryVendorsPanel } from "@/components/inventory/InventoryVendorsPanel";
 import { cn } from "@/lib/cn";
 import { buttonVariants } from "@/styles/button-variants";
+import { getDepartmentBySlug, PLATFORM_DEPARTMENTS } from "@/config/platform/departments";
 
 type CompanyOption = { id: string; name: string };
 type ZoneOpt = { id: string; name: string };
@@ -147,6 +148,14 @@ function conditionBadge(c: string): string {
   return "bg-emerald-50 text-emerald-900 ring-1 ring-emerald-200/70 dark:bg-emerald-600 dark:text-white dark:ring-emerald-500/40";
 }
 
+function inventoryDepartmentLabel(slug: string | null | undefined): string {
+  if (!slug) return "—";
+  return getDepartmentBySlug(slug)?.name ?? slug;
+}
+
+const DEPARTMENT_PILL =
+  "bg-violet-50/90 text-violet-950 ring-1 ring-violet-200/75 dark:bg-violet-900/40 dark:text-violet-100 dark:ring-violet-500/35";
+
 function typeIcon(t: string) {
   if (t === "tool") return Wrench;
   if (t === "consumable") return Box;
@@ -234,6 +243,7 @@ export function InventoryApp() {
   const [typeFilter, setTypeFilter] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
   const [zoneFilter, setZoneFilter] = useState("");
+  const [departmentFilter, setDepartmentFilter] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [page, setPage] = useState(0);
@@ -290,6 +300,7 @@ export function InventoryApp() {
     zone_id: "",
     assigned_user_id: "",
     linked_tool_id: "",
+    department_slug: "maintenance",
     condition: "good",
     unit_cost: "",
     vendor: "",
@@ -379,6 +390,7 @@ export function InventoryApp() {
         item_type: typeFilter || undefined,
         category: categoryFilter || undefined,
         zone_id: zoneFilter || undefined,
+        department_slug: departmentFilter || undefined,
         date_from,
         date_to,
         limit: pageSize,
@@ -404,6 +416,7 @@ export function InventoryApp() {
     typeFilter,
     categoryFilter,
     zoneFilter,
+    departmentFilter,
     dateFrom,
     dateTo,
     page,
@@ -504,6 +517,7 @@ export function InventoryApp() {
     setTypeFilter("");
     setCategoryFilter("");
     setZoneFilter("");
+    setDepartmentFilter("");
     setDateFrom("");
     setDateTo("");
     setPage(0);
@@ -523,6 +537,7 @@ export function InventoryApp() {
       zone_id: "",
       assigned_user_id: "",
       linked_tool_id: "",
+      department_slug: "maintenance",
       condition: "good",
       unit_cost: "",
       vendor: "",
@@ -545,6 +560,7 @@ export function InventoryApp() {
       zone_id: row.zone_id ?? "",
       assigned_user_id: row.assigned_user_id ?? "",
       linked_tool_id: row.linked_tool_id ?? "",
+      department_slug: row.department_slug ?? "maintenance",
       condition: row.condition,
       unit_cost: row.unit_cost != null ? String(row.unit_cost) : "",
       vendor: row.vendor ?? "",
@@ -567,6 +583,7 @@ export function InventoryApp() {
       zone_id: d.zone_id ?? "",
       assigned_user_id: d.assigned_user_id ?? "",
       linked_tool_id: d.linked_tool_id ?? "",
+      department_slug: d.department_slug ?? "maintenance",
       condition: d.condition,
       unit_cost: d.unit_cost != null ? String(d.unit_cost) : "",
       vendor: d.vendor ?? "",
@@ -592,6 +609,7 @@ export function InventoryApp() {
           zone_id: d.zone_id ?? "",
           assigned_user_id: d.assigned_user_id ?? "",
           linked_tool_id: d.linked_tool_id ?? "",
+          department_slug: d.department_slug ?? "maintenance",
           condition: d.condition,
           unit_cost: d.unit_cost != null ? String(d.unit_cost) : "",
           vendor: d.vendor ?? "",
@@ -623,6 +641,7 @@ export function InventoryApp() {
         assigned_user_id: form.assigned_user_id || null,
         linked_tool_id: form.linked_tool_id || null,
         condition: form.condition,
+        department_slug: form.department_slug,
         unit_cost: unit_cost != null && !Number.isNaN(unit_cost) ? unit_cost : null,
         vendor: form.vendor.trim() || null,
         reorder_flag: form.reorder_flag,
@@ -754,6 +773,8 @@ export function InventoryApp() {
                   inv_status: updated.inv_status,
                   reorder_flag: updated.reorder_flag,
                   last_movement_at: updated.last_movement_at,
+                  department_slug: updated.department_slug,
+                  condition: updated.condition,
                 }
               : r,
           ),
@@ -790,7 +811,7 @@ export function InventoryApp() {
       "Unit cost",
       "Assignee",
       "Location",
-      "Condition",
+      "Department",
     ];
     const lines = rows.map((r) =>
       [
@@ -805,7 +826,7 @@ export function InventoryApp() {
         r.unit_cost != null ? String(r.unit_cost) : "",
         r.assignee_name ?? "",
         r.location_name ?? "",
-        r.condition,
+        inventoryDepartmentLabel(r.department_slug),
       ]
         .map((c) => `"${c}"`)
         .join(","),
@@ -1119,6 +1140,21 @@ export function InventoryApp() {
                   </option>
                 ))}
               </select>
+              <select
+                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-pulse-navy outline-none focus:border-pulse-accent focus:ring-2 focus:ring-pulse-accent/25 dark:border-ds-border dark:bg-ds-secondary dark:text-gray-100"
+                value={departmentFilter}
+                onChange={(e) => {
+                  setDepartmentFilter(e.target.value);
+                  setPage(0);
+                }}
+              >
+                <option value="">Department</option>
+                {PLATFORM_DEPARTMENTS.map((d) => (
+                  <option key={d.slug} value={d.slug}>
+                    {d.name}
+                  </option>
+                ))}
+              </select>
               <input
                 type="date"
                 value={dateFrom}
@@ -1164,7 +1200,7 @@ export function InventoryApp() {
                       <th className="px-4 py-3">Cost</th>
                       <th className="px-4 py-3">Location</th>
                       <th className="px-4 py-3">Last movement</th>
-                      <th className="px-4 py-3">Condition</th>
+                      <th className="px-4 py-3">Department</th>
                       <th className="px-4 py-3 text-right">Actions</th>
                     </tr>
                   </thead>
@@ -1254,11 +1290,10 @@ export function InventoryApp() {
                           </td>
                           <td className="px-4 py-3 align-top">
                             <span
-                              className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-bold ${conditionBadge(
-                                row.condition,
-                              )}`}
+                              className={`inline-flex max-w-[11rem] truncate rounded-full px-2.5 py-0.5 text-xs font-semibold ${DEPARTMENT_PILL}`}
+                              title={inventoryDepartmentLabel(row.department_slug)}
                             >
-                              {conditionLabel(row.condition)}
+                              {inventoryDepartmentLabel(row.department_slug)}
                             </span>
                           </td>
                           <td className="relative px-4 py-3 text-right align-top" onClick={(e) => e.stopPropagation()}>
@@ -1487,6 +1522,10 @@ export function InventoryApp() {
                 {detail.unit_cost != null ? (
                   <p className="text-sm text-pulse-muted">Unit cost: {formatUnitCost(detail.unit_cost)}</p>
                 ) : null}
+                <p className="text-sm text-pulse-muted">
+                  Department: {inventoryDepartmentLabel(detail.department_slug)}
+                </p>
+                <p className="text-sm text-pulse-muted">Asset condition: {conditionLabel(detail.condition)}</p>
               </div>
               <div className="rounded-md border border-slate-200 bg-white p-4 shadow-sm dark:border-ds-border dark:bg-ds-primary dark:shadow-[0_2px_8px_rgba(0,0,0,0.35)]">
                 <p className="text-xs font-bold uppercase text-pulse-muted">Assignment &amp; location</p>
@@ -1665,7 +1704,21 @@ export function InventoryApp() {
             />
           </div>
           <div>
-            <label className={LABEL}>Condition</label>
+            <label className={LABEL}>Department</label>
+            <select
+              className={FIELD}
+              value={form.department_slug}
+              onChange={(e) => setForm((f) => ({ ...f, department_slug: e.target.value }))}
+            >
+              {PLATFORM_DEPARTMENTS.map((d) => (
+                <option key={d.slug} value={d.slug}>
+                  {d.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className={LABEL}>Asset condition</label>
             <select
               className={FIELD}
               value={form.condition}

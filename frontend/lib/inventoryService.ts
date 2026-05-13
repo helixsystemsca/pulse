@@ -61,6 +61,8 @@ export type InventoryRow = {
   linked_tool_id: string | null;
   linked_asset_name: string | null;
   condition: string;
+  /** Workspace department slug (maintenance, communications, …). */
+  department_slug: string;
   reorder_flag: boolean;
   last_movement_at: string | null;
   last_used_at: string | null;
@@ -109,6 +111,7 @@ export function buildInventoryListQuery(params: {
   category?: string;
   zone_id?: string;
   assigned_user_id?: string;
+  department_slug?: string;
   date_from?: string;
   date_to?: string;
   limit?: number;
@@ -122,6 +125,7 @@ export function buildInventoryListQuery(params: {
   if (params.category) sp.set("category", params.category);
   if (params.zone_id) sp.set("zone_id", params.zone_id);
   if (params.assigned_user_id) sp.set("assigned_user_id", params.assigned_user_id);
+  if (params.department_slug) sp.set("department_slug", params.department_slug);
   if (params.date_from) sp.set("date_from", params.date_from);
   if (params.date_to) sp.set("date_to", params.date_to);
   if (params.limit != null) sp.set("limit", String(params.limit));
@@ -153,6 +157,7 @@ export async function createInventoryItem(
     assigned_user_id?: string | null;
     linked_tool_id?: string | null;
     condition: string;
+    department_slug?: string;
     unit_cost?: number | null;
     vendor?: string | null;
     reorder_flag?: boolean;

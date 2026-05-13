@@ -28,6 +28,40 @@ export type PlatformCapability = (typeof PLATFORM_CAPABILITIES)[number];
 
 const ALL_CAPS = new Set<string>(PLATFORM_CAPABILITIES);
 
+/**
+ * When `/auth/me` returns a non-empty `department_workspace_slugs`, grant platform capabilities for
+ * those workspaces so department rails work for coordinators who only have coarse keys like
+ * `module.maintenance.read` (which does not include communications publication caps).
+ */
+const WORKSPACE_SLUG_CAPABILITY_BOOST: Record<string, readonly string[]> = {
+  communications: [
+    "publications.create",
+    "publications.export",
+    "communications.assets.view",
+    "communications.indesign_pipeline.view",
+    "communications.advertising_mapper.view",
+    "communications.campaign_planner.view",
+    "procedures.view",
+    "analytics.view",
+    "messaging.view",
+  ],
+  maintenance: [
+    "workorders.view",
+    "workorders.edit",
+    "inspections.view",
+    "inspections.edit",
+    "equipment.view",
+    "equipment.edit",
+    "procedures.view",
+    "analytics.view",
+    "messaging.view",
+  ],
+  reception: ["procedures.view", "analytics.view", "messaging.view"],
+  aquatics: ["aquatics.scheduling.view", "procedures.view", "analytics.view", "messaging.view"],
+  fitness: ["fitness.classes.view", "procedures.view", "analytics.view", "messaging.view"],
+  admin: ["procedures.view", "analytics.view", "messaging.view"],
+};
+
 /** Maps existing `/auth/me` permission keys to platform capabilities (expand over time). */
 const PERMISSION_TO_CAPABILITIES: Record<string, readonly string[]> = {
   "module.maintenance.read": [
@@ -85,6 +119,13 @@ export function resolveCapabilitiesFromSession(session: PulseAuthSession | null)
   /** Company / facility tenant admins: broad operational access for Phase 1 until capability API ships. */
   if (session.role === "company_admin" || session.roles?.includes("company_admin") || session.facility_tenant_admin) {
     addWildcardCapabilities(out);
+  }
+  const dw = session.department_workspace_slugs;
+  if (dw && dw.length > 0) {
+    for (const slug of dw) {
+      const boost = WORKSPACE_SLUG_CAPABILITY_BOOST[slug];
+      if (boost) boost.forEach((c) => out.add(c));
+    }
   }
   if (out.size === 0) {
     return PLATFORM_CAPABILITIES.slice();

@@ -9,20 +9,30 @@ import { usePathname } from "next/navigation";
 import type { LucideIcon } from "lucide-react";
 import {
   Activity,
+  BarChart2,
+  BookOpen,
   Building2,
   CalendarDays,
   ClipboardList,
+  Dumbbell,
+  FileText,
   FolderKanban,
+  Image as ImageIcon,
   Layers,
   LayoutDashboard,
+  LayoutGrid,
   ListChecks,
   MapPin,
+  Megaphone,
+  MessageSquare,
+  Newspaper,
   Package,
   Radio,
   ScrollText,
   Settings,
   Sparkles,
   UserCog,
+  Waves,
   Wrench,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -34,8 +44,10 @@ import {
   type PulseSidebarIcon,
 } from "@/lib/pulse-app";
 
-type SidebarNavItem = { href: string; label: string; icon: PulseSidebarIcon };
-import { defaultWorkspaceHubHref, LEGACY_SIDEBAR_DEPARTMENT_HUB } from "@/config/platform/navigation";
+import { buildLegacyDepartmentWorkspaceRailItems } from "@/config/platform/navigation";
+import type { PlatformIconKey } from "@/config/platform/types";
+
+type SidebarNavItem = { href: string; label: string; icon: PulseSidebarIcon | PlatformIconKey };
 import { isPulseNavActive } from "@/lib/pulse-nav-active";
 import { isTenantNavFeatureEnabled } from "@/lib/pulse-nav-features";
 import { isTenantNavPermissionGranted } from "@/lib/pulse-nav-permissions";
@@ -62,6 +74,33 @@ const ICONS: Record<PulseSidebarIcon, LucideIcon> = {
   "scroll-text": ScrollText,
   settings: Settings,
 };
+
+/** Department workspace icons (match {@link PlatformAppSideNav}); merged under tenant rail icons. */
+const PLATFORM_DEPT_ICONS: Record<PlatformIconKey, LucideIcon> = {
+  layout: LayoutDashboard,
+  wrench: Wrench,
+  megaphone: Megaphone,
+  waves: Waves,
+  dumbbell: Dumbbell,
+  building: Building2,
+  clipboard: ClipboardList,
+  "scroll-text": ScrollText,
+  package: Package,
+  "book-open": BookOpen,
+  "bar-chart-2": BarChart2,
+  "message-square": MessageSquare,
+  newspaper: Newspaper,
+  image: ImageIcon,
+  calendar: CalendarDays,
+  "layout-grid": LayoutGrid,
+  "file-text": FileText,
+};
+
+const RAIL_ICONS: Record<string, LucideIcon> = { ...PLATFORM_DEPT_ICONS, ...ICONS };
+
+function railIcon(icon: PulseSidebarIcon | PlatformIconKey): LucideIcon {
+  return RAIL_ICONS[icon] ?? LayoutDashboard;
+}
 
 /** Icon column: keep in sync with the navbar logo square width. */
 const COLLAPSED_RAIL_W = "w-[var(--pulse-sidebar-collapsed-width)]";
@@ -105,14 +144,12 @@ export function AppSideNav() {
       : [...rawNav]
   ).map((i) => ({ href: i.href, label: i.label, icon: i.icon }));
   if (!isSystemAdmin) {
-    items = [
-      ...items,
-      {
-        href: defaultWorkspaceHubHref(session),
-        label: LEGACY_SIDEBAR_DEPARTMENT_HUB.label,
-        icon: LEGACY_SIDEBAR_DEPARTMENT_HUB.icon as PulseSidebarIcon,
-      },
-    ];
+    const deptRows = buildLegacyDepartmentWorkspaceRailItems(session).map((d) => ({
+      href: d.href,
+      label: d.label,
+      icon: d.icon,
+    }));
+    items = [...items, ...deptRows];
   }
   if (!isSystemAdmin && session) {
     if (session.role !== "demo_viewer") {
@@ -161,7 +198,7 @@ export function AppSideNav() {
       >
         {items.map((item) => {
           const active = isPulseNavActive(item.href, pathname);
-          const Icon = ICONS[item.icon];
+          const Icon = railIcon(item.icon);
           return (
             <Link
               key={`${item.href}-${item.label}`}

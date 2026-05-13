@@ -141,6 +141,30 @@ type CreateModalBanner =
 
 const PROFILE_ROLE_OPTIONS = ["worker", "lead", "supervisor", "manager", "demo_viewer"] as const;
 
+/** Edit-roles drawer: department-flavored copy; API roles unchanged (`worker` = coordinator OR operations by HR dept). */
+const PROFILE_ROLE_EDIT_GROUPS: {
+  title: string;
+  description: string;
+  roles: readonly (typeof PROFILE_ROLE_OPTIONS)[number][];
+}[] = [
+  {
+    title: "Leadership & supervision",
+    description: "Managers, supervisors, and leads — scheduling, approvals, and oversight for the facility.",
+    roles: ["manager", "supervisor", "lead"],
+  },
+  {
+    title: "Team member",
+    description:
+      "Frontline tier (same API role everywhere). In Team Management, this shows as Operations for Maintenance or Coordinator for Communications / Reception when their HR department matches — set department under Position & shift.",
+    roles: ["worker"],
+  },
+  {
+    title: "Special access",
+    description: "Read-mostly product tour and demos.",
+    roles: ["demo_viewer"],
+  },
+];
+
 const EMPLOYMENT_TYPE_KEYS = ["full_time", "regular_part_time", "part_time"] as const;
 type EmploymentTypeKey = (typeof EMPLOYMENT_TYPE_KEYS)[number] | "";
 
@@ -2831,20 +2855,86 @@ export function WorkersApp() {
               <section>
                 <h3 className={SECTION_KICKER}>Edit roles</h3>
                 <p className="mt-1 text-xs text-pulse-muted">
-                  Select every role this person should have for scheduling, supervision, and permissions. At least one
-                  role is required.
+                  Facility roles are grouped for clarity. <span className="font-medium text-ds-foreground">Team member</span> is
+                  always the <span className="font-mono text-ds-foreground">worker</span> permission tier; Communications
+                  coordinators get the same tier — set their <span className="font-medium text-ds-foreground">department</span>{" "}
+                  under Position &amp; shift so the roster shows Coordinator instead of Operations. At least one role is
+                  required.
                 </p>
-                <div className="ds-inset-panel mt-3 space-y-2 p-3">
-                  {PROFILE_ROLE_OPTIONS.map((key) => (
-                    <label key={key} className="flex cursor-pointer items-center gap-2 text-sm text-ds-foreground">
-                      <input
-                        type="checkbox"
-                        className={dsCheckboxClass}
-                        checked={profileRolesDraft.includes(key)}
-                        onChange={(e) => toggleProfileRole(key, e.target.checked)}
-                      />
-                      {humanizeRole(key)}
-                    </label>
+                <div className="ds-inset-panel mt-3 divide-y divide-ds-border/80 p-0">
+                  {PROFILE_ROLE_EDIT_GROUPS.map((group) => (
+                    <div key={group.title} className="space-y-2 px-3 py-3 sm:px-4">
+                      <div>
+                        <p className="text-[11px] font-bold uppercase tracking-wide text-ds-foreground">{group.title}</p>
+                        <p className="mt-1 text-xs leading-relaxed text-ds-muted">{group.description}</p>
+                      </div>
+                      <div className="space-y-2">
+                        {group.roles.map((key) => (
+                          <label
+                            key={key}
+                            className="flex cursor-pointer items-center gap-2 rounded-lg border border-transparent px-1 py-0.5 text-sm text-ds-foreground hover:border-ds-border/60 hover:bg-ds-secondary/30"
+                          >
+                            <input
+                              type="checkbox"
+                              className={dsCheckboxClass}
+                              checked={profileRolesDraft.includes(key)}
+                              onChange={(e) => toggleProfileRole(key, e.target.checked)}
+                            />
+                            <span>
+                              {key === "worker"
+                                ? workerRoleDisplayLabel(positionDraft.department || profile.department, key)
+                                : humanizeRole(key)}
+                            </span>
+                          </label>
+                        ))}
+                      </div>
+                      {group.roles.includes("worker") ? (
+                        <div className="mt-2 rounded-lg border border-ds-border/80 bg-ds-secondary/20 px-2 py-2.5">
+                          <p className="text-[10px] font-bold uppercase tracking-wide text-ds-muted">
+                            Primary department (roster label)
+                          </p>
+                          <p className="mt-1 text-[11px] leading-snug text-ds-muted">
+                            {canEditWorkerBasics
+                              ? "Choose where this team member sits org-wide. Matches the Department field under Position & shift — save there to persist."
+                              : "Department is edited by someone with roster HR access (Position & shift)."}
+                          </p>
+                          {canEditWorkerBasics ? (
+                            <div className="mt-2 flex flex-wrap gap-1.5">
+                              {INVITE_DEPARTMENT_OPTIONS.map((o) => {
+                                const active =
+                                  (positionDraft.department || "").trim().toLowerCase() === o.value;
+                                return (
+                                  <button
+                                    key={o.value}
+                                    type="button"
+                                    onClick={() =>
+                                      setPositionDraft((d) => {
+                                        const slug = o.value;
+                                        let ws = [...d.workspace_slugs];
+                                        if (!ws.map((x) => x.toLowerCase()).includes(slug)) ws = [...ws, slug];
+                                        return { ...d, department: slug, workspace_slugs: [...new Set(ws)] };
+                                      })
+                                    }
+                                    className={cn(
+                                      "rounded-full border px-2.5 py-1 text-[11px] font-semibold transition-colors",
+                                      active
+                                        ? "border-[var(--ds-accent)] bg-[var(--ds-accent)]/12 text-ds-foreground"
+                                        : "border-ds-border text-ds-muted hover:border-ds-border hover:bg-ds-secondary/50",
+                                    )}
+                                  >
+                                    {o.label}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          ) : (
+                            <p className="mt-2 text-xs font-medium text-ds-foreground">
+                              {(profile.department ?? "").trim() || "—"}
+                            </p>
+                          )}
+                        </div>
+                      ) : null}
+                    </div>
                   ))}
                 </div>
                 <button

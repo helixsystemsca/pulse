@@ -66,6 +66,7 @@ class InventoryRowOut(BaseModel):
     linked_tool_id: Optional[str] = None
     linked_asset_name: Optional[str] = None
     condition: str
+    department_slug: str = "maintenance"
     reorder_flag: bool
     last_movement_at: Optional[datetime] = None
     last_used_at: Optional[datetime] = None
@@ -99,6 +100,11 @@ class InventoryCreateIn(BaseModel):
     assigned_user_id: Optional[str] = None
     linked_tool_id: Optional[str] = None
     condition: str = Field("good", pattern="^(good|needs_maintenance|critical)$")
+    department_slug: str = Field(
+        "maintenance",
+        max_length=32,
+        description="Workspace department (maintenance, communications, reception, aquatics, fitness, admin).",
+    )
     unit_cost: Optional[float] = Field(None, ge=0)
     vendor: Optional[str] = Field(None, max_length=255)
     reorder_flag: bool = False
@@ -116,6 +122,7 @@ class InventoryPatchIn(BaseModel):
     assigned_user_id: Optional[str] = None
     linked_tool_id: Optional[str] = None
     condition: Optional[str] = Field(None, pattern="^(good|needs_maintenance|critical)$")
+    department_slug: Optional[str] = Field(None, max_length=32)
     unit_cost: Optional[float] = Field(None, ge=0)
     vendor: Optional[str] = Field(None, max_length=255)
     reorder_flag: Optional[bool] = None

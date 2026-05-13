@@ -56,6 +56,21 @@ from app.schemas.inventory_portal import (
 
 router = APIRouter(prefix="/inventory", tags=["inventory"])
 
+INV_DEPARTMENT_SLUGS: frozenset[str] = frozenset(
+    {"maintenance", "communications", "reception", "aquatics", "fitness", "admin"}
+)
+
+
+def _normalize_department_slug(raw: str) -> str:
+    s = (raw or "").strip().lower()
+    if s not in INV_DEPARTMENT_SLUGS:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid department_slug: use one of {', '.join(sorted(INV_DEPARTMENT_SLUGS))}",
+        )
+    return s
+
+
 DEFAULT_INVENTORY_SETTINGS: dict[str, Any] = {
     "categories": ["Tool", "Part", "Consumable", "Fasteners", "Electrical"],
     "status_rules": {},
@@ -194,6 +209,7 @@ def _row(
         linked_tool_id=item.linked_tool_id,
         linked_asset_name=t.name if t else None,
         condition=item.item_condition,
+        department_slug=item.department_slug,
         reorder_flag=item.reorder_flag,
         last_movement_at=item.last_movement_at,
         last_used_at=last_used,
@@ -643,6 +659,7 @@ async def list_inventory(
     assigned_user_id: Optional[str] = None,
     date_from: Optional[datetime] = Query(None),
     date_to: Optional[datetime] = Query(None),
+    department_slug: Optional[str] = Query(None, description="Filter by workspace department slug"),
     limit: int = Query(50, ge=1, le=500),
     offset: int = Query(0, ge=0),
 ) -> InventoryListOut:
@@ -660,6 +677,8 @@ async def list_inventory(
         conds.append(InventoryItem.zone_id == zone_id)
     if assigned_user_id:
         conds.append(InventoryItem.assigned_user_id == assigned_user_id)
+    if department_slug and department_slug.strip():
+        conds.append(InventoryItem.department_slug == _normalize_department_slug(department_slug))
     if date_from:
         conds.append(InventoryItem.last_movement_at.isnot(None))
         conds.append(InventoryItem.last_movement_at >= date_from)
@@ -780,6 +799,7 @@ async def create_inventory_item(
         raise HTTPException(status_code=400, detail="Unknown assignee")
     if body.linked_tool_id and not await pulse_svc.tool_in_company(db, cid, body.linked_tool_id):
         raise HTTPException(status_code=400, detail="Unknown linked asset")
+    dept_slug = _normalize_department_slug(body.department_slug)
     exists = await db.execute(
         select(InventoryItem.id).where(InventoryItem.company_id == cid, InventoryItem.sku == sku)
     )
@@ -802,6 +822,7 @@ async def create_inventory_item(
         assigned_user_id=body.assigned_user_id,
         linked_tool_id=body.linked_tool_id,
         item_condition=body.condition,
+        department_slug=dept_slug,
         reorder_flag=body.reorder_flag,
         unit_cost=body.unit_cost,
         vendor=(body.vendor or "").strip() or None,
@@ -852,6 +873,9 @@ async def patch_inventory_item(
     cond = data.pop("condition", None)
     if cond is not None:
         item.item_condition = cond
+    ds = data.pop("department_slug", None)
+    if ds is not None:
+        item.department_slug = _normalize_department_slug(str(ds))
     for k in (
         "name",
         "item_type",

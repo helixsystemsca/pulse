@@ -10,9 +10,11 @@ export function isPulseNavActive(href: string, pathname: string): boolean {
     const [path] = href.split("#");
     return pathname === path;
   }
-  for (const slug of PLATFORM_DEPARTMENT_SLUGS) {
-    if (href === `/${slug}`) {
-      return pathname === `/${slug}` || pathname.startsWith(`/${slug}/`);
+  const hrefSegs = href.split("/").filter(Boolean);
+  if (hrefSegs.length >= 1) {
+    const root = hrefSegs[0];
+    if (PLATFORM_DEPARTMENT_SLUGS.includes(root)) {
+      return pathname === `/${root}` || pathname.startsWith(`/${root}/`);
     }
   }
   if (href === "/overview")
