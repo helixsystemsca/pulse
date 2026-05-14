@@ -1,74 +1,74 @@
 /**
- * Tenant contract / Team Management module keys (must match `GLOBAL_SYSTEM_FEATURES` in backend
- * `system_catalog.py`). Used for role_feature_access and system-admin company feature toggles.
- *
- * {@link PRODUCT_MODULE_PERMISSION_SECTIONS} groups keys for the Team Management permissions card.
+ * Team Management / role feature toggles — canonical keys aligned with backend `canonical_catalog.py`.
  */
+import { CANONICAL_PRODUCT_FEATURES, type CanonicalFeatureKey } from "@/lib/features/canonical-features";
+
 export const PRODUCT_MODULE_PERMISSION_SECTIONS: readonly {
   id: string;
   label: string;
   description?: string;
-  keys: readonly string[];
+  keys: readonly CanonicalFeatureKey[];
 }[] = [
   {
-    id: "tenant_dashboard",
-    label: "Leadership dashboard",
-    description:
-      "Main operations / leadership overview (/overview). Turn off for tenants that do not need the leadership view.",
-    keys: ["dashboard"],
+    id: "overview",
+    label: "Leadership & monitoring",
+    keys: ["dashboard", "monitoring", "team_insights"],
   },
   {
-    id: "maintenance",
+    id: "operations",
     label: "Maintenance & operations",
-    description: "Work requests, inspections, inventory, equipment, monitoring, and projects.",
-    keys: ["work_requests", "compliance", "inventory", "equipment", "monitoring", "projects"],
+    description: "Work requests, inspections, inventory, equipment, and projects.",
+    keys: ["work_requests", "logs_inspections", "inventory", "equipment", "projects"],
   },
   {
-    id: "communications",
-    label: "Communications",
-    description: "Arena advertising, publications, campaigns, and asset tools (scoped routes under /communications/…).",
-    keys: [
-      "comms_assets",
-      "comms_advertising_mapper",
-      "comms_publication_builder",
-      "comms_indesign_pipeline",
-      "comms_campaign_planner",
-    ],
-  },
-  {
-    id: "programs_people",
-    label: "Scheduling, people & standards",
-    keys: ["schedule", "team_management", "team_insights", "procedures", "messaging"],
+    id: "people",
+    label: "People & scheduling",
+    keys: ["schedule", "team_management", "standards", "procedures", "messaging"],
   },
   {
     id: "maps",
     label: "Maps, drawings & devices",
     keys: ["drawings", "zones_devices", "live_map"],
   },
+  {
+    id: "communications",
+    label: "Communications",
+    keys: [
+      "advertising_mapper",
+      "xplor_indesign",
+      "comms_assets",
+      "comms_publication_builder",
+      "comms_campaign_planner",
+    ],
+  },
 ];
 
-/** Flat list in a stable order (section order, then key order within section). */
-export const TENANT_PRODUCT_MODULES: readonly string[] = PRODUCT_MODULE_PERMISSION_SECTIONS.flatMap((s) => [...s.keys]);
+export const TENANT_PRODUCT_MODULES: readonly CanonicalFeatureKey[] =
+  PRODUCT_MODULE_PERMISSION_SECTIONS.flatMap((s) => [...s.keys]);
 
-export const MODULE_LABEL: Record<string, string> = {
-  dashboard: "Leadership dashboard",
-  compliance: "Inspections & Logs",
-  schedule: "Schedule",
+export const MODULE_LABEL: Record<CanonicalFeatureKey, string> = {
+  dashboard: "Dashboard",
   monitoring: "Monitoring",
+  logs_inspections: "Inspections & Logs",
+  inventory: "Inventory",
+  standards: "Standards",
+  team_management: "Team Management",
+  team_insights: "Team Insights",
+  equipment: "Equipment",
+  live_map: "Live Map",
+  zones_devices: "Zones & Devices",
+  advertising_mapper: "Arena Advertising",
+  xplor_indesign: "Xplor → InDesign",
+  drawings: "Drawings",
+  schedule: "Schedule",
   projects: "Projects",
   work_requests: "Work Requests",
   procedures: "Procedures",
-  team_insights: "Team Insights",
-  team_management: "Team Management",
   messaging: "Messaging",
-  inventory: "Inventory",
-  equipment: "Equipment",
-  drawings: "Drawings",
-  zones_devices: "Zones & Devices",
-  live_map: "Live Map",
   comms_assets: "Communications · Assets",
-  comms_advertising_mapper: "Communications · Advertising mapper",
   comms_publication_builder: "Communications · Publication pipeline",
-  comms_indesign_pipeline: "Communications · RTF / TXT → InDesign",
   comms_campaign_planner: "Communications · Campaign planner",
 };
+
+/** All canonical keys (for validation). */
+export const ALL_CANONICAL_FEATURES = CANONICAL_PRODUCT_FEATURES;

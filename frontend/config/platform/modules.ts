@@ -35,7 +35,7 @@ function masterToPlatformModule(f: (typeof MASTER_FEATURES)[number]): PlatformMo
     name: f.label,
     icon: toPlatformIcon(f.icon),
     route: f.platformRoute,
-    allowedDepartmentSlugs: f.departmentSlugs ?? [f.platformDepartmentSlug],
+    allowedDepartmentSlugs: [f.platformDepartmentSlug],
     canonicalPulseHref: f.route,
     tenantNavFeatureKey: f.feature,
   };

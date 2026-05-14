@@ -55,11 +55,13 @@ class TenantRole(Base):
     company_id: Mapped[str] = mapped_column(
         UUID(as_uuid=False), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True
     )
-    department_id: Mapped[str] = mapped_column(
-        UUID(as_uuid=False), ForeignKey("tenant_departments.id", ondelete="CASCADE"), nullable=False, index=True
+    department_id: Mapped[Optional[str]] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("tenant_departments.id", ondelete="CASCADE"), nullable=True, index=True
     )
     slug: Mapped[str] = mapped_column(String(96), nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
+    #: Canonical product module keys (`canonical_catalog.CANONICAL_PRODUCT_FEATURES`).
+    feature_keys: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False
     )

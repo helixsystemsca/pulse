@@ -10,11 +10,8 @@ import {
   LEGACY_PLATFORM_ROUTE_ALIASES,
 } from "@/config/platform/legacy-platform-routes";
 import { getMasterFeatureForPath, MASTER_FEATURES } from "@/config/platform/master-feature-registry";
-import { isTenantFeatureEnabled } from "@/lib/features/tenant-features";
-import {
-  featureMatchesUserDepartment,
-  tenantSidebarNavItemsForSession,
-} from "@/lib/rbac/tenant-nav";
+import { isTenantFeatureOnContract, isUserFeatureEnabled } from "@/lib/features/tenant-features";
+import { tenantSidebarNavItemsForSession } from "@/lib/rbac/tenant-nav";
 import { sessionHasAnyRole } from "@/lib/pulse-roles";
 
 type NavGate =
@@ -81,17 +78,14 @@ export function isTenantFullAdminSession(session: PulseAuthSession | null): bool
 
 function platformDeptIndexAllowed(session: PulseAuthSession | null, departmentSlug: string): boolean {
   for (const f of MASTER_FEATURES) {
-    if (f.platformDepartmentSlug !== departmentSlug && !(f.departmentSlugs?.includes(departmentSlug) ?? false)) {
-      continue;
-    }
-    if (!isTenantFeatureEnabled(session, f.feature)) continue;
+    if (f.platformDepartmentSlug !== departmentSlug) continue;
+    if (!isUserFeatureEnabled(session, f.feature)) continue;
     if (f.rbacAnyOf.length && !f.rbacAnyOf.some((k) => hasRbacPermission(session, k))) continue;
-    if (!featureMatchesUserDepartment(f, session)) continue;
     return true;
   }
   for (const legacy of LEGACY_PLATFORM_ROUTE_ALIASES) {
     if (legacy.departmentSlug !== departmentSlug) continue;
-    if (!isTenantFeatureEnabled(session, legacy.feature)) continue;
+    if (!isUserFeatureEnabled(session, legacy.feature)) continue;
     if (!legacy.rbacAnyOf.some((k) => hasRbacPermission(session, k))) continue;
     return true;
   }
@@ -190,7 +184,7 @@ export function canAccessClassicNavHref(session: PulseAuthSession | null, href: 
   if (gate.kind === "platform_dept_index") return platformDeptIndexAllowed(session, gate.departmentSlug);
 
   const master = getMasterFeatureForPath(h);
-  if (master && !featureMatchesUserDepartment(master, session)) return false;
+  if (master && !isUserFeatureEnabled(session, master.feature)) return false;
 
   const modsOk = gate.requireAllContractModules
     ? tenantHasEveryCompanyModule(session, gate.companyModules)

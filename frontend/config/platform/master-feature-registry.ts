@@ -2,9 +2,7 @@
  * Master feature registry — single source of truth for tenant product modules.
  *
  * Sidebar, route guards, and platform metadata derive from this file.
- * Visibility: `navVisible` × `tenant.enabled_features` (contract) × RBAC × optional `departmentSlugs`.
- *
- * Departments affect data scoping only — not duplicate applications (no maintenance-prefixed nav).
+ * Visibility: registry → tenant contract → role `enabled_features` (canonical keys) → RBAC.
  */
 import type { PlatformIconKey } from "@/config/platform/types";
 
@@ -27,22 +25,15 @@ export type MasterFeatureDef = {
   icon: MasterFeatureIcon;
   /** Canonical application route (one module, one route). */
   route: string;
-  /** Company contract key (`/auth/me` `contract_features`). */
+  /** Canonical feature key (`/auth/me` `enabled_features`). */
   feature: string;
   rbacAnyOf: readonly string[];
   navVisible: boolean;
-  /**
-   * Optional HR department filter (`/auth/me` `hr_department`).
-   * Omit for tenant-wide modules. Tenant full admins bypass.
-   */
-  departmentSlugs?: readonly string[];
   /** Legacy platform shell: `/{platformDepartmentSlug}/{platformRoute}` → `route`. */
   platformDepartmentSlug?: string;
   platformRoute?: string;
   sortOrder: number;
 };
-
-const MAINTENANCE_OPS: readonly string[] = ["maintenance", "reception", "admin"];
 
 /**
  * Globally unique operational features — one row per product module.
@@ -59,14 +50,13 @@ export const MASTER_FEATURES: readonly MasterFeatureDef[] = [
     sortOrder: 10,
   },
   {
-    key: "compliance",
+    key: "logs_inspections",
     label: "Inspections & Logs",
     icon: "scroll-text",
     route: "/dashboard/compliance",
-    feature: "compliance",
+    feature: "logs_inspections",
     rbacAnyOf: ["compliance.view"],
     navVisible: true,
-    departmentSlugs: MAINTENANCE_OPS,
     sortOrder: 20,
   },
   {
@@ -87,7 +77,6 @@ export const MASTER_FEATURES: readonly MasterFeatureDef[] = [
     feature: "monitoring",
     rbacAnyOf: ["monitoring.view"],
     navVisible: true,
-    departmentSlugs: MAINTENANCE_OPS,
     sortOrder: 40,
   },
   {
@@ -108,7 +97,6 @@ export const MASTER_FEATURES: readonly MasterFeatureDef[] = [
     feature: "work_requests",
     rbacAnyOf: ["work_requests.view", "work_requests.edit"],
     navVisible: true,
-    departmentSlugs: MAINTENANCE_OPS,
     sortOrder: 60,
   },
   {
@@ -149,7 +137,6 @@ export const MASTER_FEATURES: readonly MasterFeatureDef[] = [
     feature: "inventory",
     rbacAnyOf: ["inventory.view", "inventory.manage"],
     navVisible: true,
-    departmentSlugs: MAINTENANCE_OPS,
     sortOrder: 100,
   },
   {
@@ -160,7 +147,6 @@ export const MASTER_FEATURES: readonly MasterFeatureDef[] = [
     feature: "equipment",
     rbacAnyOf: ["equipment.view"],
     navVisible: true,
-    departmentSlugs: MAINTENANCE_OPS,
     sortOrder: 110,
   },
   {
@@ -214,14 +200,13 @@ export const MASTER_FEATURES: readonly MasterFeatureDef[] = [
     sortOrder: 1000,
   },
   {
-    key: "comms_advertising_mapper",
+    key: "advertising_mapper",
     label: "Arena Advertising",
     icon: "layout-grid",
     route: "/communications/advertising-mapper",
-    feature: "comms_advertising_mapper",
+    feature: "advertising_mapper",
     rbacAnyOf: ["arena_advertising.view"],
     navVisible: true,
-    departmentSlugs: ["communications"],
     platformDepartmentSlug: "communications",
     platformRoute: "advertising-mapper",
     sortOrder: 200,
@@ -234,20 +219,18 @@ export const MASTER_FEATURES: readonly MasterFeatureDef[] = [
     feature: "comms_publication_builder",
     rbacAnyOf: ["publication_pipeline.view"],
     navVisible: true,
-    departmentSlugs: ["communications"],
     platformDepartmentSlug: "communications",
     platformRoute: "publication-builder",
     sortOrder: 210,
   },
   {
-    key: "comms_indesign_pipeline",
+    key: "xplor_indesign",
     label: "Xplor → InDesign",
     icon: "file-text",
     route: "/communications/indesign-pipeline",
-    feature: "comms_indesign_pipeline",
+    feature: "xplor_indesign",
     rbacAnyOf: ["xplor_indesign.view"],
     navVisible: true,
-    departmentSlugs: ["communications"],
     platformDepartmentSlug: "communications",
     platformRoute: "indesign-pipeline",
     sortOrder: 220,
@@ -260,7 +243,6 @@ export const MASTER_FEATURES: readonly MasterFeatureDef[] = [
     feature: "comms_campaign_planner",
     rbacAnyOf: ["social_planner.view"],
     navVisible: true,
-    departmentSlugs: ["communications"],
     platformDepartmentSlug: "communications",
     platformRoute: "campaign-planner",
     sortOrder: 230,
@@ -273,7 +255,6 @@ export const MASTER_FEATURES: readonly MasterFeatureDef[] = [
     feature: "comms_assets",
     rbacAnyOf: ["communications_assets.view"],
     navVisible: true,
-    departmentSlugs: ["communications"],
     platformDepartmentSlug: "communications",
     platformRoute: "assets",
     sortOrder: 240,

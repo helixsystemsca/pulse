@@ -66,6 +66,7 @@ class WorkerRowOut(BaseModel):
     full_name: Optional[str] = None
     role: str
     roles: list[str] = []
+    tenant_role_id: Optional[str] = None
     is_active: bool
     account_status: str = "active"
     phone: Optional[str] = None
@@ -96,6 +97,7 @@ class WorkerDetailOut(BaseModel):
     full_name: Optional[str] = None
     role: str
     roles: list[str] = []
+    tenant_role_id: Optional[str] = None
     avatar_url: Optional[str] = None
     #: Add-on product modules (tenant contract subset) from company admin.
     feature_allow_extra: list[str] = []
@@ -132,6 +134,7 @@ class WorkerCreateIn(BaseModel):
     email: str = Field(..., min_length=3, max_length=320)
     full_name: Optional[str] = Field(None, max_length=255)
     role: str = Field(..., description="worker | lead | supervisor | manager")
+    tenant_role_id: Optional[str] = None
     phone: Optional[str] = Field(None, max_length=64)
     department: Optional[str] = Field(None, max_length=128)
     #: Allowed workspace URL segments (`communications`, …); when omitted, a known `department` slug is used.
@@ -194,6 +197,7 @@ class WorkerPatchIn(BaseModel):
     skills: Optional[list[WorkerSkillIn]] = None
     training: Optional[list[WorkerTrainingIn]] = None
     feature_allow_extra: Optional[list[str]] = None
+    tenant_role_id: Optional[str] = None
 
     @field_validator("email", mode="before")
     @classmethod

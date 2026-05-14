@@ -45,7 +45,7 @@ export const PLATFORM_WORKSPACE_MODULES: readonly PlatformWorkspaceModuleDef[] =
     route: f.platformRoute!,
     name: f.label,
     icon: toPlatformIcon(f.icon),
-    departmentSlugs: f.departmentSlugs ?? [f.platformDepartmentSlug!],
+    departmentSlugs: [f.platformDepartmentSlug!],
     requiredCompanyModule: f.feature,
     requiredRbacPermission: f.rbacAnyOf[0] ?? "",
   })),

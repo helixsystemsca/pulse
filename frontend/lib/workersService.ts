@@ -7,6 +7,7 @@ export type WorkerRow = {
   full_name: string | null;
   role: string;
   roles?: string[];
+  tenant_role_id?: string | null;
   is_active: boolean;
   account_status?: string;
   phone: string | null;
@@ -67,6 +68,7 @@ export type WorkerDetail = {
   full_name: string | null;
   role: string;
   roles?: string[];
+  tenant_role_id?: string | null;
   avatar_url?: string | null;
   /** Add-on modules from company admin (subset of tenant contract). */
   feature_allow_extra?: string[];

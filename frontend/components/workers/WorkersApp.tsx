@@ -47,6 +47,8 @@ import {
   workerRoleDisplayLabel,
 } from "@/lib/pulse-roles";
 import { canShowTeamManagementNavItem, isTenantFullAdminSession } from "@/lib/rbac/session-access";
+import { TenantRolesPanel } from "@/components/workers/TenantRolesPanel";
+import { fetchTenantRoles, type TenantRoleRow } from "@/lib/tenantRolesService";
 import { parseTimeToMinutes } from "@/lib/schedule/calendar";
 import {
   buildRecurringRowsForDays,
@@ -429,6 +431,8 @@ export function WorkersApp() {
   const [supervisorNoteDraft, setSupervisorNoteDraft] = useState("");
   const [profileBusy, setProfileBusy] = useState(false);
   const [profileRolesDraft, setProfileRolesDraft] = useState<string[]>([]);
+  const [tenantRolesList, setTenantRolesList] = useState<TenantRoleRow[]>([]);
+  const [profileTenantRoleDraft, setProfileTenantRoleDraft] = useState<string>("");
 
   const [createOpen, setCreateOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -637,7 +641,15 @@ export function WorkersApp() {
     }
     const base = profile.roles?.length ? [...profile.roles] : profile.role ? [profile.role] : ["worker"];
     setProfileRolesDraft(sortRolesForDisplay([...new Set(base)]));
+    setProfileTenantRoleDraft(profile.tenant_role_id ?? "");
   }, [profile]);
+
+  useEffect(() => {
+    if (!isTenantFullAdmin) return;
+    void fetchTenantRoles(apiCompany ?? undefined)
+      .then((r) => setTenantRolesList(r.items))
+      .catch(() => setTenantRolesList([]));
+  }, [isTenantFullAdmin, apiCompany]);
 
   useEffect(() => {
     if (!profile) return;
@@ -1169,9 +1181,14 @@ export function WorkersApp() {
     if (uniq.length < 1) return;
     setProfileBusy(true);
     try {
-      await patchWorker(apiCompany, profileId, { roles: uniq });
+      await patchWorker(apiCompany, profileId, {
+        roles: uniq,
+        tenant_role_id: profileTenantRoleDraft.trim() || null,
+      });
       await loadProfile();
       await loadList();
+      await refreshPulseUserFromServer();
+      refresh();
     } finally {
       setProfileBusy(false);
     }
@@ -1521,105 +1538,9 @@ export function WorkersApp() {
             ) : null}
 
             {isTenantFullAdmin && contractCatalog.length > 0 ? (
-              <Card variant="secondary" padding="md">
-                <h2 className="text-sm font-bold tracking-tight text-ds-foreground">Permissions</h2>
-                <p className="mt-1 text-xs text-ds-muted">
-                  Your organization&apos;s Pulse modules come from the contract (set by the system admin). Choose a
-                  department and permission role, then turn contract modules on or off for that combination. Each
-                  person&apos;s product access comes from their tenant role grants in Team Management (
-                  <span className="font-mono text-[11px]">rbac_permissions</span> on{" "}
-                  <span className="font-mono text-[11px]">/auth/me</span>) intersected with{" "}
-                  <span className="font-mono text-[11px]">contract_features</span>. Department hubs in the shell are not
-                  driven by per-user workspace checklists.
-                </p>
-                <label className={`${LABEL} mt-4 block`}>Department</label>
-                <select
-                  className={FIELD}
-                  value={permissionsDepartment}
-                  onChange={(e) => setPermissionsDepartment(e.target.value as PermissionMatrixDepartment)}
-                >
-                  {PERMISSION_MATRIX_DEPARTMENTS.map((d) => (
-                    <option key={d} value={d}>
-                      {PERMISSION_MATRIX_DEPARTMENT_LABEL[d]}
-                    </option>
-                  ))}
-                </select>
-                <label className={`${LABEL} mt-4 block`}>Role</label>
-                <select
-                  className={FIELD}
-                  value={permissionsSlot}
-                  onChange={(e) => setPermissionsSlot(e.target.value as PermissionMatrixRoleSlot)}
-                >
-                  {PERMISSION_MATRIX_ROLE_SLOTS.map((slot) => (
-                    <option key={slot} value={slot}>
-                      {PERMISSION_MATRIX_ROLE_LABEL[slot]}
-                    </option>
-                  ))}
-                </select>
-                <div className="mt-4 space-y-6">
-                  {permissionFeatureGroupsForDepartment(permissionsDepartment).map((section) => {
-                    const mods = section.keys.filter((m) => contractCatalog.includes(m));
-                    if (mods.length === 0) return null;
-                    return (
-                      <div key={section.id}>
-                        <h3 className={`${SECTION_KICKER} text-ds-foreground`}>{section.label}</h3>
-                        {section.description ? (
-                          <p className="mt-1 text-[11px] leading-snug text-ds-muted">{section.description}</p>
-                        ) : null}
-                        <div className="mt-3 space-y-3">
-                          {mods.map((mod) => {
-                            const row = departmentRoleFeatureAccessDraft[permissionsDepartment] ?? {};
-                            const on = (row[permissionsSlot] ?? []).includes(mod);
-                            return (
-                              <div
-                                key={`${permissionsDepartment}-${permissionsSlot}-${mod}`}
-                                className="ds-inset-panel flex items-center justify-between gap-3 px-3 py-3"
-                              >
-                                <p className="min-w-0 text-sm font-semibold text-ds-foreground">
-                                  {MODULE_LABEL[mod] ?? mod}
-                                </p>
-                                <button
-                                  type="button"
-                                  role="switch"
-                                  aria-checked={on}
-                                  disabled={!isTenantFullAdmin}
-                                  onClick={() =>
-                                    isTenantFullAdmin
-                                      ? toggleMatrixModule(permissionsDepartment, permissionsSlot, mod)
-                                      : undefined
-                                  }
-                                  className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${
-                                    on ? "bg-ds-success" : "bg-ds-border"
-                                  } disabled:opacity-45`}
-                                >
-                                  <span
-                                    className={`absolute top-0.5 left-0.5 h-6 w-6 rounded-full bg-ds-primary shadow transition-transform ${
-                                      on ? "translate-x-5" : "translate-x-0"
-                                    }`}
-                                  />
-                                </button>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-                <button
-                  type="button"
-                  className={`${PRIMARY_BTN} mt-4 w-full`}
-                  disabled={accessPolicySaving}
-                  onClick={() => void saveAccessPolicy()}
-                >
-                  {accessPolicySaving ? "Saving…" : "Save permissions"}
-                </button>
-                <div className="ds-inset-panel mt-4 px-3 py-2 text-xs text-ds-muted">
-                  After you save, each person&apos;s modules follow their HR department and role mapping to this matrix.
-                  Legacy role rows stay in sync for delegated editors.
-                </div>
-              </Card>
+              <TenantRolesPanel apiCompanyId={apiCompany ?? undefined} canEdit={isTenantFullAdmin} />
             ) : null}
+
 
             {isTenantFullAdmin ? (
               <Card variant="secondary" padding="md">
@@ -2895,6 +2816,29 @@ export function WorkersApp() {
                     </div>
                   ))}
                 </div>
+                {isTenantFullAdmin && tenantRolesList.length > 0 ? (
+                  <div className="mt-4">
+                    <label className={LABEL} htmlFor="worker-tenant-role">
+                      Product access role
+                    </label>
+                    <p className="mt-0.5 text-[11px] text-ds-muted">
+                      Controls sidebar modules (configured under Settings → Roles &amp; features).
+                    </p>
+                    <select
+                      id="worker-tenant-role"
+                      className={FIELD}
+                      value={profileTenantRoleDraft}
+                      onChange={(e) => setProfileTenantRoleDraft(e.target.value)}
+                    >
+                      <option value="">No role (no modules)</option>
+                      {tenantRolesList.map((r) => (
+                        <option key={r.id} value={r.id}>
+                          {r.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ) : null}
                 <button
                   type="button"
                   className={cn(buttonVariants({ surface: "light", intent: "secondary" }), "mt-3 px-4 py-2 text-sm font-semibold")}

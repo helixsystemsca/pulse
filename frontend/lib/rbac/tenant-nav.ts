@@ -1,14 +1,13 @@
 /**
- * Tenant sidebar — composed only from {@link MASTER_FEATURES}, tenant enablement, RBAC, department filter.
+ * Tenant sidebar — master registry → contract → role `enabled_features` (default deny).
  */
-import { isPlatformDepartmentSlug } from "@/config/platform/departments";
 import {
   MASTER_FEATURES,
   NAV_VISIBLE_MASTER_FEATURES,
   type MasterFeatureDef,
   type MasterFeatureIcon,
 } from "@/config/platform/master-feature-registry";
-import { isTenantFeatureEnabled } from "@/lib/features/tenant-features";
+import { isTenantFeatureOnContract, isUserFeatureEnabled } from "@/lib/features/tenant-features";
 import type { PulseAuthSession } from "@/lib/pulse-session";
 
 function hasRbacPermission(session: PulseAuthSession | null, permissionKey: string): boolean {
@@ -17,7 +16,7 @@ function hasRbacPermission(session: PulseAuthSession | null, permissionKey: stri
   return rbac.includes("*") || rbac.includes(permissionKey);
 }
 
-function isTenantFullAdminSession(session: PulseAuthSession | null): boolean {
+export function isTenantFullAdminSession(session: PulseAuthSession | null): boolean {
   if (!session) return false;
   return (
     session.facility_tenant_admin === true ||
@@ -31,7 +30,7 @@ function canShowTeamManagement(session: PulseAuthSession | null, isSystemAdmin: 
   if (isSystemAdmin) return true;
   if (session.workers_roster_access === true) return true;
   if (isTenantFullAdminSession(session)) return true;
-  return isTenantFeatureEnabled(session, "team_management") && hasRbacPermission(session, "team_management.view");
+  return isUserFeatureEnabled(session, "team_management") && hasRbacPermission(session, "team_management.view");
 }
 
 export type TenantSidebarNavItem = {
@@ -47,22 +46,6 @@ function normalizeHref(href: string): string {
   return path;
 }
 
-export function userHrDepartmentSlug(session: PulseAuthSession | null): string | null {
-  const slug = (session?.hr_department ?? "").trim().toLowerCase();
-  if (!slug || !isPlatformDepartmentSlug(slug)) return null;
-  return slug;
-}
-
-export function featureMatchesUserDepartment(feature: MasterFeatureDef, session: PulseAuthSession | null): boolean {
-  if (!feature.departmentSlugs?.length) return true;
-  if (!session) return false;
-  if (session.is_system_admin || session.role === "system_admin") return true;
-  if (isTenantFullAdminSession(session)) return true;
-  const userDept = userHrDepartmentSlug(session);
-  if (!userDept) return false;
-  return feature.departmentSlugs.includes(userDept);
-}
-
 export function isMasterFeatureVisibleForSession(
   session: PulseAuthSession | null,
   feature: MasterFeatureDef,
@@ -70,14 +53,14 @@ export function isMasterFeatureVisibleForSession(
 ): boolean {
   if (!feature.navVisible) return false;
   if (feature.key === "settings") return Boolean(session);
-  if (!featureMatchesUserDepartment(feature, session)) return false;
   if (feature.key === "team_management") {
     return canShowTeamManagement(session, isSystemAdmin);
   }
   if (!session) return false;
   if (session.is_system_admin || session.role === "system_admin") return true;
-  if (!isTenantFeatureEnabled(session, feature.feature)) return false;
+  if (!isTenantFeatureOnContract(session, feature.feature)) return false;
   if (isTenantFullAdminSession(session)) return true;
+  if (!isUserFeatureEnabled(session, feature.feature)) return false;
   if (!feature.rbacAnyOf.length) return true;
   return feature.rbacAnyOf.some((k) => hasRbacPermission(session, k));
 }
@@ -110,7 +93,7 @@ export function tenantSidebarNavItemsForSession(
   return out;
 }
 
-/** @deprecated Department hubs use the same unified sidebar; no separate department app list. */
+/** @deprecated Department hubs use the same unified sidebar. */
 export function departmentHubNavItemsForSession(
   _departmentSlug: string,
   session: PulseAuthSession | null,

@@ -39,6 +39,7 @@ from app.core.tenant_feature_access import (
     load_merged_workers_settings,
     user_has_workers_roster_page_access,
 )
+from app.core.tenant_roles import get_tenant_role_in_company
 from app.core.workers_permission_delegation import (
     actor_is_delegated_permission_editor,
     actor_may_set_worker_feature_allow_extra,
@@ -221,6 +222,14 @@ def _employee_join_path(raw_token: str) -> str:
 def _pulse_public_link(path: str) -> str:
     base = get_settings().pulse_app_public_origin.rstrip("/")
     return f"{base}{path if path.startswith('/') else '/' + path}"
+
+
+async def _assert_valid_tenant_role(db: AsyncSession, cid: str, tenant_role_id: Optional[str]) -> None:
+    if not tenant_role_id:
+        return
+    role = await get_tenant_role_in_company(db, cid, tenant_role_id)
+    if not role:
+        raise HTTPException(status_code=400, detail="Invalid tenant role")
 
 
 async def _assert_valid_supervisor(db: AsyncSession, cid: str, supervisor_id: Optional[str]) -> None:
@@ -527,6 +536,7 @@ async def _build_detail(db: AsyncSession, cid: str, u: User, users_map: dict[str
     recurring_shifts = [x for x in raw_rs if isinstance(x, dict)]
     gg_assignable = bool(sched.get("gg_assignable"))
 
+    tr_id = getattr(u, "tenant_role_id", None)
     return WorkerDetailOut(
         id=uid_s,
         company_id=str(u.company_id) if u.company_id else cid,
@@ -534,6 +544,7 @@ async def _build_detail(db: AsyncSession, cid: str, u: User, users_map: dict[str
         full_name=u.full_name,
         role=primary_jwt_role(u).value,
         roles=list(u.roles),
+        tenant_role_id=str(tr_id) if tr_id else None,
         avatar_url=co_worker_avatar_url(uid_s, u.avatar_url),
         feature_allow_extra=[str(x) for x in extras if isinstance(x, str)],
         is_active=u.is_active,
@@ -711,6 +722,7 @@ async def list_workers(
                 full_name=u.full_name,
                 role=primary_jwt_role(u).value,
                 roles=list(u.roles),
+                tenant_role_id=str(u.tenant_role_id) if getattr(u, "tenant_role_id", None) else None,
                 is_active=u.is_active,
                 account_status=u.account_status.value,
                 phone=h.phone if h else None,
@@ -837,6 +849,9 @@ async def _apply_worker_hr_and_extras(
         await _sync_skills(db, cid, user.id, body.skills)
     if body.training:
         await _sync_training(db, cid, user.id, body.training)
+    if body.tenant_role_id is not None:
+        await _assert_valid_tenant_role(db, cid, body.tenant_role_id)
+        user.tenant_role_id = body.tenant_role_id
 
 
 @router.post("", response_model=WorkerCreateResultOut, status_code=status.HTTP_201_CREATED)
@@ -1258,6 +1273,24 @@ async def patch_worker(
         await _sync_skills(db, cid, user_id, body.skills)
     if body.training is not None:
         await _sync_training(db, cid, user_id, body.training)
+
+    if "tenant_role_id" in data:
+        if not user_has_any_role(actor, UserRole.company_admin) and not user_has_facility_tenant_admin_flag(actor):
+            raise HTTPException(status_code=403, detail="Only company administrators can assign tenant roles")
+        tr_val = data["tenant_role_id"]
+        if tr_val is None:
+            target.tenant_role_id = None
+        else:
+            await _assert_valid_tenant_role(db, cid, str(tr_val))
+            target.tenant_role_id = str(tr_val)
+        await record_rbac_audit_event(
+            db,
+            company_id=cid,
+            actor_user_id=str(actor.id),
+            action="user.tenant_role.updated",
+            target_user_id=str(target.id),
+            payload={"tenant_role_id": target.tenant_role_id},
+        )
 
     if body.feature_allow_extra is not None:
         merged = await load_merged_workers_settings(db, cid)
