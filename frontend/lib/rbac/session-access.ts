@@ -8,6 +8,7 @@ import type { PulseAuthSession } from "@/lib/pulse-session";
 import { pulseTenantSidebarNav, type PulseSidebarIcon } from "@/lib/pulse-app";
 import type { PlatformIconKey } from "@/config/platform/types";
 import { PLATFORM_WORKSPACE_MODULES } from "@/lib/rbac/platform-workspace-modules";
+import { resolveUnifiedPlatformSidebarItem } from "@/lib/rbac/platform-sidebar-nav";
 import { sessionHasAnyRole } from "@/lib/pulse-roles";
 
 type NavGate =
@@ -210,6 +211,14 @@ export function canAccessClassicNavHref(session: PulseAuthSession | null, href: 
   if (!session) return false;
   if (session.is_system_admin === true || session.role === "system_admin") return true;
 
+  const h = normalizeHref(href);
+  if ((h === "/overview" || h.startsWith("/overview/")) && isTenantFullAdminSession(session)) {
+    return true;
+  }
+  if (h === "/admin") {
+    return isTenantFullAdminSession(session);
+  }
+
   const gate = classicNavGate(href);
   if (gate.kind === "deny") return false;
   if (gate.kind === "authenticated_shell") return true;
@@ -239,7 +248,10 @@ export function canShowClassicSidebarItem(
   return canAccessClassicNavHref(session, href);
 }
 
-/** `/{department}/{module}` entries merged into the tenant rail (same contract ∩ RBAC as platform pages). */
+/**
+ * Platform-only modules not already in {@link pulseTenantSidebarNav} (no "Department: Module" labels).
+ * Communications / aquatics-native tools use `/{department}/{route}`; canonical modules use shared URLs.
+ */
 export function flatPlatformNavSidebarItemsForSession(
   session: PulseAuthSession | null,
 ): { href: string; label: string; icon: PlatformIconKey | PulseSidebarIcon }[] {
@@ -251,10 +263,12 @@ export function flatPlatformNavSidebarItemsForSession(
       if (!m.departmentSlugs.includes(d.slug)) continue;
       if (!contract.has(m.requiredCompanyModule)) continue;
       if (!hasRbacPermission(session, m.requiredRbacPermission)) continue;
-      const href = `/${d.slug}/${m.route}`;
+      const row = resolveUnifiedPlatformSidebarItem(d.slug, m);
+      if (!row) continue;
+      const href = normalizeHref(row.href);
       if (seen.has(href)) continue;
       seen.add(href);
-      out.push({ href, label: `${d.name}: ${m.name}`, icon: m.icon });
+      out.push(row);
     }
   }
   return out;
@@ -268,6 +282,9 @@ export function firstAccessibleClassicTenantHref(session: PulseAuthSession | nul
   if (!session) return "/login";
   const sys = Boolean(session.is_system_admin || session.role === "system_admin");
   if (sys) return "/system";
+  if (isTenantFullAdminSession(session) && canAccessClassicNavHref(session, "/overview")) {
+    return "/overview";
+  }
   for (const item of pulseTenantSidebarNav) {
     if (item.href === "/settings") continue;
     if (canShowClassicSidebarItem(session, item.href, sys)) return item.href;

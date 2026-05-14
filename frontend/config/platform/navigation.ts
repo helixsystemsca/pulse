@@ -6,6 +6,7 @@ import { getDepartmentBySlug, PLATFORM_DEPARTMENTS } from "@/config/platform/dep
 import type { Department, PlatformNavItem } from "@/config/platform/types";
 import type { PulseAuthSession } from "@/lib/pulse-session";
 import { PLATFORM_WORKSPACE_MODULES } from "@/lib/rbac/platform-workspace-modules";
+import { resolveUnifiedPlatformSidebarItem } from "@/lib/rbac/platform-sidebar-nav";
 import { hasRbacPermission } from "@/lib/rbac/session-access";
 
 const STORAGE_LAST_DEPT = "pulse_platform_department_slug_v1";
@@ -55,10 +56,12 @@ export function buildDepartmentNavItems(departmentSlug: string, session: PulseAu
     if (!mod.departmentSlugs.includes(dept.slug)) continue;
     if (!contract.has(mod.requiredCompanyModule)) continue;
     if (!hasRbacPermission(session, mod.requiredRbacPermission)) continue;
+    const row = resolveUnifiedPlatformSidebarItem(dept.slug, mod);
+    if (!row) continue;
     items.push({
-      href: `/${dept.slug}/${mod.route}`,
-      label: mod.name,
-      icon: mod.icon ?? "layout",
+      href: row.href,
+      label: row.label,
+      icon: row.icon ?? "layout",
       group: "modules",
     });
   }

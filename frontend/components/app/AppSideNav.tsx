@@ -4,8 +4,8 @@
  * Tenant / system left rail: fixed-height rows, hover-expands width for labels.
  * Rows use a modest height (not aspect-square) so expanding the rail does not blow up tile scale.
  *
- * Platform routes `/{department}/{module}` are merged here; each link is gated only by contract + RBAC
- * (same rules as the page shell). There is no separate “Workspaces” hub rail.
+ * Department-native platform modules (e.g. communications tools) are merged when they are not already
+ * represented in the classic rail. Maintenance duplicates (work orders, procedures, …) use shared URLs only.
  */
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -138,6 +138,13 @@ export function AppSideNav() {
       return canAccessClassicNavHref(session, i.href);
     });
   }
+  const seenHref = new Set<string>();
+  items = items.filter((i) => {
+    const key = i.href.split("?")[0] ?? i.href;
+    if (seenHref.has(key)) return false;
+    seenHref.add(key);
+    return true;
+  });
   items = items.filter((i) => i.href !== "/settings");
   const systemRail = isSystemAdmin;
 

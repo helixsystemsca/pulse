@@ -191,8 +191,9 @@ export const pulseApp = {
     return pulseAppHref(path);
   },
 
+  /** Tenant leadership / company admin dashboard (`/overview`). */
   admin(): string {
-    return pulseAppHref("/admin");
+    return pulseAppHref("/overview");
   },
 
   workRequests(): string {
