@@ -75,7 +75,7 @@ from app.models.pulse_models import (
 )
 from app.modules.compliance.service import effective_status, repeat_offender_user_ids
 from app.modules.pulse import service as pulse_svc
-from app.schemas.training import WorkerTrainingOut
+from app.schemas.training import WorkerTrainingOut as WorkerTrainingBundleOut
 from app.schemas.pulse_workers import (
     WorkerCertificationOut,
     WorkerComplianceSummaryOut,
@@ -730,13 +730,13 @@ async def list_workers(
     return WorkerListOut(items=items)
 
 
-@router.get("/{user_id}/training", response_model=WorkerTrainingOut)
+@router.get("/{user_id}/training", response_model=WorkerTrainingBundleOut)
 async def worker_training_matrix(
     db: Db,
     user: Annotated[User, Depends(get_current_user)],
     cid: CompanyId,
     user_id: str,
-) -> WorkerTrainingOut:
+) -> WorkerTrainingBundleOut:
     if str(user.id) != user_id:
         await require_workers_roster_page(user, db, cid)
     else:
