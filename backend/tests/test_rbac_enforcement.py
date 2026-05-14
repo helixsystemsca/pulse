@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import uuid
+
 import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,18 +13,28 @@ from app.models.domain import User, UserRole
 
 
 @pytest.mark.asyncio
-async def test_monitoring_denied_when_contract_empty(
+async def test_monitoring_denied_when_worker_matrix_empty(
     client: AsyncClient,
     seeded_tenant,
     db_session: AsyncSession,
 ) -> None:
+    """Company contract includes monitoring; worker role matrix grants none → RBAC denies."""
     from app.core.company_features import sync_enabled_features
+    from app.core.features.system_catalog import GLOBAL_SYSTEM_FEATURES
+    from app.models.pulse_models import PulseWorkersSettings
 
-    await sync_enabled_features(db_session, seeded_tenant.company_id, [])
-    await db_session.commit()
+    await sync_enabled_features(db_session, seeded_tenant.company_id, list(GLOBAL_SYSTEM_FEATURES))
+    db_session.add(
+        PulseWorkersSettings(
+            id=str(uuid.uuid4()),
+            company_id=seeded_tenant.company_id,
+            settings={"role_feature_access": {"worker": []}},
+        )
+    )
+    await db_session.flush()
 
     r = await client.get(
-        f"/api/v1/monitoring/alerts?limit=5",
+        "/api/v1/monitoring/alerts?limit=5",
         headers={"Authorization": f"Bearer {seeded_tenant.worker_token}"},
     )
     assert r.status_code == 403, r.text

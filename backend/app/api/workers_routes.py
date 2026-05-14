@@ -47,7 +47,11 @@ from app.core.workspace_departments import (
     normalize_workspace_department_slug,
     normalize_workspace_department_slug_list,
 )
-from app.core.workers_settings_merge import DEFAULT_WORKERS_SETTINGS, merge_workers_settings
+from app.core.workers_settings_merge import (
+    DEFAULT_WORKERS_SETTINGS,
+    merge_workers_settings,
+    sanitize_workers_policy_keys,
+)
 from app.core.email_smtp import send_employee_invite
 from app.core.auth.security import bump_access_token_version, hash_password
 from app.core.system_tokens import generate_raw_token, hash_system_token
@@ -176,35 +180,6 @@ def _sanitize_feature_key_list(v: object) -> list[str]:
     if not isinstance(v, list):
         return []
     return sorted({str(x) for x in v if str(x) in cat})
-
-
-def _sanitize_workers_policy_keys(base: dict[str, Any]) -> None:
-    rfa = base.get("role_feature_access")
-    if isinstance(rfa, dict):
-        allowed_roles = frozenset({"manager", "supervisor", "lead", "worker"})
-        out: dict[str, list[str]] = {}
-        for k, v in rfa.items():
-            if str(k) in allowed_roles:
-                out[str(k)] = _sanitize_feature_key_list(v)
-        base["role_feature_access"] = out
-    drfa = base.get("department_role_feature_access")
-    base["department_role_feature_access"] = sanitize_department_role_feature_access(drfa)
-    wpd = base.get("workers_page_delegation")
-    if isinstance(wpd, dict):
-        base["workers_page_delegation"] = {
-            "manager": bool(wpd.get("manager")),
-            "supervisor": bool(wpd.get("supervisor")),
-            "lead": bool(wpd.get("lead")),
-        }
-    pdel = base.get("permission_delegation")
-    if isinstance(pdel, dict):
-        base["permission_delegation"] = {
-            "manager": bool(pdel.get("manager")),
-            "supervisor": bool(pdel.get("supervisor")),
-            "lead": bool(pdel.get("lead")),
-        }
-    if "delegates_can_assign_worker_module_extras" in base:
-        base["delegates_can_assign_worker_module_extras"] = bool(base.get("delegates_can_assign_worker_module_extras"))
 
 
 async def _contract_feature_names_for_company(db: AsyncSession, cid: str) -> list[str]:
@@ -667,7 +642,7 @@ async def patch_workers_settings(
             detail="Only company administrators or delegated operational roles may update these settings.",
         )
 
-    _sanitize_workers_policy_keys(base)
+    sanitize_workers_policy_keys(base)
     if row:
         row.settings = base
     else:

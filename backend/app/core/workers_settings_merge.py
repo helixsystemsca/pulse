@@ -5,6 +5,9 @@ from __future__ import annotations
 import copy
 from typing import Any, Optional
 
+from app.core.features.system_catalog import GLOBAL_SYSTEM_FEATURES
+from app.core.permission_feature_matrix import sanitize_department_role_feature_access
+
 DEFAULT_WORKERS_SETTINGS: dict[str, Any] = {
     "permission_matrix": {
         "view_tools": True,
@@ -89,9 +92,64 @@ def _merge_keyed_list(
     return out
 
 
+def _sanitize_feature_key_list(v: object) -> list[str]:
+    cat = set(GLOBAL_SYSTEM_FEATURES)
+    if not isinstance(v, list):
+        return []
+    return sorted({str(x) for x in v if str(x) in cat})
+
+
+def sanitize_workers_policy_keys(base: dict[str, Any]) -> None:
+    """Coerce policy JSON fields to expected shapes (guards `.get` on dict-only keys)."""
+    rfa = base.get("role_feature_access")
+    if isinstance(rfa, dict):
+        allowed_roles = frozenset({"manager", "supervisor", "lead", "worker"})
+        out: dict[str, list[str]] = {}
+        for k, v in rfa.items():
+            if str(k) in allowed_roles:
+                out[str(k)] = _sanitize_feature_key_list(v)
+        base["role_feature_access"] = out
+    else:
+        base["role_feature_access"] = {}
+
+    pm = base.get("permission_matrix")
+    if not isinstance(pm, dict):
+        base["permission_matrix"] = copy.deepcopy(DEFAULT_WORKERS_SETTINGS["permission_matrix"])
+
+    base["department_role_feature_access"] = sanitize_department_role_feature_access(
+        base.get("department_role_feature_access")
+    )
+
+    wpd = base.get("workers_page_delegation")
+    if isinstance(wpd, dict):
+        base["workers_page_delegation"] = {
+            "manager": bool(wpd.get("manager")),
+            "supervisor": bool(wpd.get("supervisor")),
+            "lead": bool(wpd.get("lead")),
+        }
+    else:
+        base["workers_page_delegation"] = dict(DEFAULT_WORKERS_SETTINGS["workers_page_delegation"])
+
+    pdel = base.get("permission_delegation")
+    if isinstance(pdel, dict):
+        base["permission_delegation"] = {
+            "manager": bool(pdel.get("manager")),
+            "supervisor": bool(pdel.get("supervisor")),
+            "lead": bool(pdel.get("lead")),
+        }
+    else:
+        base["permission_delegation"] = dict(DEFAULT_WORKERS_SETTINGS["permission_delegation"])
+
+    if "delegates_can_assign_worker_module_extras" in base:
+        base["delegates_can_assign_worker_module_extras"] = bool(
+            base.get("delegates_can_assign_worker_module_extras")
+        )
+
+
 def merge_workers_settings(raw: Optional[dict[str, Any]]) -> dict[str, Any]:
     out = copy.deepcopy(DEFAULT_WORKERS_SETTINGS)
     if not raw:
+        sanitize_workers_policy_keys(out)
         return out
     for k, v in raw.items():
         if isinstance(v, dict) and isinstance(out.get(k), dict):
@@ -102,4 +160,5 @@ def merge_workers_settings(raw: Optional[dict[str, Any]]) -> dict[str, Any]:
             out[k] = _merge_keyed_list(out[k], v)  # type: ignore[arg-type]
         else:
             out[k] = v
+    sanitize_workers_policy_keys(out)
     return out

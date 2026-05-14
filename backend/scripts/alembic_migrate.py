@@ -21,6 +21,7 @@ from pathlib import Path
 from alembic import command
 from alembic.config import Config
 from alembic.script import ScriptDirectory
+from alembic.util.exc import CommandError
 from sqlalchemy import create_engine, inspect, text
 
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
@@ -47,11 +48,19 @@ def _read_stored_revision(conn) -> str | None:
     return str(row[0]) if row and row[0] is not None else None
 
 
+def _revision_in_active_tree(script: ScriptDirectory, revision: str) -> bool:
+    try:
+        script.get_revision(revision)
+        return True
+    except CommandError:
+        return False
+
+
 def _realign_orphan_revision(cfg: Config, script: ScriptDirectory, stored: str) -> bool:
     """Stamp baseline when DB points at an archived / unknown revision. Returns True if stamped."""
     if stored == ALPHA_BASELINE:
         return False
-    if stored in script.revision_map:
+    if _revision_in_active_tree(script, stored):
         return False
     _log.warning(
         "alembic_version=%r is not in the active migration tree; stamping %s "

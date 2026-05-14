@@ -30,3 +30,9 @@ def set_cached(company_id: str, features: FrozenSet[str]) -> None:
 def invalidate(company_id: str) -> None:
     with _LOCK:
         _STORE.pop(company_id, None)
+
+
+def clear_all() -> None:
+    """Drop all cached tenant feature sets (tests)."""
+    with _LOCK:
+        _STORE.clear()

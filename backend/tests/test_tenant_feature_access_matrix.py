@@ -12,7 +12,7 @@ def _user(roles: list[str]) -> User:
     return User(
         id=str(uuid4()),
         company_id=str(uuid4()),
-        email=f"u_{uuid4().hex[:8]}@pytest.test",
+        email=f"u_{uuid4().hex[:8]}@example.com",
         hashed_password="x",
         roles=roles,
         operational_role="worker",
