@@ -14,7 +14,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import and_, delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_user, get_db, require_any_rbac, require_manager_or_above
+from app.api.deps import get_current_user, get_db, require_any_rbac
 from app.core.events.engine import event_engine
 from app.core.events.types import DomainEvent
 from app.core.user_roles import is_field_worker_like, user_has_any_role
@@ -98,7 +98,7 @@ async def resolve_wr_company_id(
 
 CompanyId = Annotated[str, Depends(resolve_wr_company_id)]
 Db = Annotated[AsyncSession, Depends(get_db)]
-MgrUser = Annotated[User, Depends(require_manager_or_above)]
+WrEditor = Annotated[User, Depends(require_any_rbac("work_requests.edit"))]
 
 
 WrReader = Annotated[User, Depends(require_any_rbac("work_requests.view", "work_requests.edit"))]
@@ -288,14 +288,14 @@ async def _get_wr(db: AsyncSession, cid: str, wr_id: str) -> PulseWorkRequest:
 
 
 @router.get("/settings", response_model=WorkRequestSettingsOut)
-async def get_settings(db: Db, _: MgrUser, cid: CompanyId) -> WorkRequestSettingsOut:
+async def get_settings(db: Db, _: WrReader, cid: CompanyId) -> WorkRequestSettingsOut:
     return WorkRequestSettingsOut(settings=await _settings_merged(db, cid))
 
 
 @router.patch("/settings", response_model=WorkRequestSettingsOut)
 async def patch_settings(
     db: Db,
-    _: MgrUser,
+    _: WrEditor,
     cid: CompanyId,
     body: WorkRequestSettingsPatchIn,
 ) -> WorkRequestSettingsOut:
@@ -682,7 +682,7 @@ async def patch_wr(
 
 
 @router.delete("/{wr_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_wr(db: Db, _: MgrUser, cid: CompanyId, wr_id: str) -> None:
+async def delete_wr(db: Db, _: WrEditor, cid: CompanyId, wr_id: str) -> None:
     wr = await _get_wr(db, cid, wr_id)
     await db.execute(delete(PulseWorkRequest).where(PulseWorkRequest.id == wr.id))
     await db.commit()

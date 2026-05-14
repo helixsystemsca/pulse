@@ -35,8 +35,7 @@ import {
   fetchEquipmentList,
   patchEquipment,
 } from "@/lib/equipmentService";
-import { usePulseAuth } from "@/hooks/usePulseAuth";
-import { managerOrAbove } from "@/lib/pulse-roles";
+import { usePermissions } from "@/hooks/usePermissions";
 import { useModuleSettings } from "@/providers/ModuleSettingsProvider";
 import { cn } from "@/lib/cn";
 import { buttonVariants } from "@/styles/button-variants";
@@ -78,8 +77,9 @@ function statusBadge(status: string): string {
 
 export function EquipmentApp() {
   const router = useRouter();
-  const { session } = usePulseAuth();
-  const canMutate = managerOrAbove(session);
+  const { can } = usePermissions();
+  const canViewEquipment = can("equipment.view") || can("equipment.manage");
+  const canMutate = can("equipment.manage");
   const assetMod = useModuleSettings("assets");
 
   const [tab, setTab] = useState<Tab>("overview");
@@ -292,7 +292,7 @@ export function EquipmentApp() {
 
   const onSubmitForm = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (formMode === "view") return;
+    if (formMode === "view" || !canMutate) return;
     if (!formName.trim()) {
       setFormError("Equipment name is required.");
       return;
@@ -396,6 +396,25 @@ export function EquipmentApp() {
       .slice(0, 5);
   }, [statsItems]);
 
+  if (!canViewEquipment) {
+    return (
+      <div className="space-y-6">
+        <PageHeader
+          title="Equipment"
+          description="Manage and monitor all facility equipment."
+          icon={Wrench}
+        />
+        <div className="app-page-inset p-5">
+          <p className="text-sm text-ds-muted">
+            You do not have permission to view equipment. Ask a company administrator to grant{" "}
+            <span className="font-mono text-ds-foreground">equipment.view</span> or{" "}
+            <span className="font-mono text-ds-foreground">equipment.manage</span>.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   if (blocked) {
     return (
       <div className="space-y-6">
@@ -421,6 +440,7 @@ export function EquipmentApp() {
       type="button"
       onClick={() => {
         if (id === "form") {
+          if (!canMutate) return;
           openCreate();
           setTab("form");
           return;

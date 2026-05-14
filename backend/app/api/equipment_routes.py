@@ -11,7 +11,7 @@ from starlette.responses import Response
 from sqlalchemy import Select, and_, asc, case, delete, desc, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_company_user, get_db, require_manager_or_above
+from app.api.deps import get_current_company_user, get_db, require_any_rbac
 from app.core.pulse_storage import (
     read_equipment_image_bytes,
     read_part_image_bytes,
@@ -39,7 +39,7 @@ router = APIRouter(prefix="/equipment", tags=["equipment"])
 
 Db = Annotated[AsyncSession, Depends(get_db)]
 TenantUser = Annotated[User, Depends(get_current_company_user)]
-MutatorUser = Annotated[User, Depends(require_manager_or_above)]
+EquipmentMutator = Annotated[User, Depends(require_any_rbac("equipment.manage"))]
 
 _MAX_IMAGE_BYTES = 5 * 1024 * 1024
 _CT_EXT = {
@@ -262,7 +262,7 @@ async def list_equipment(
 async def patch_equipment_part(
     part_id: str,
     body: EquipmentPartPatchIn,
-    user: MutatorUser,
+    user: EquipmentMutator,
     db: Db,
 ) -> EquipmentPartOut:
     cid = str(user.company_id)
@@ -295,7 +295,7 @@ async def patch_equipment_part(
 @router.delete("/parts/{part_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_equipment_part(
     part_id: str,
-    user: MutatorUser,
+    user: EquipmentMutator,
     db: Db,
 ) -> None:
     cid = str(user.company_id)
@@ -325,7 +325,7 @@ async def get_part_image_file(
 @router.post("/parts/{part_id}/image", response_model=EquipmentPartImageUploadOut)
 async def upload_part_image(
     part_id: str,
-    user: MutatorUser,
+    user: EquipmentMutator,
     db: Db,
     file: UploadFile = File(...),
 ) -> EquipmentPartImageUploadOut:
@@ -361,7 +361,7 @@ async def list_equipment_parts(
 async def create_equipment_part(
     equipment_id: str,
     body: EquipmentPartCreateIn,
-    user: MutatorUser,
+    user: EquipmentMutator,
     db: Db,
 ) -> EquipmentPartOut:
     cid = str(user.company_id)
@@ -409,7 +409,7 @@ async def get_equipment_image_file(
 @router.post("/{equipment_id}/image", response_model=EquipmentImageUploadOut)
 async def upload_equipment_image(
     equipment_id: str,
-    user: MutatorUser,
+    user: EquipmentMutator,
     db: Db,
     file: UploadFile = File(...),
 ) -> EquipmentImageUploadOut:
@@ -470,7 +470,7 @@ async def get_equipment(
 @router.post("", response_model=FacilityEquipmentOut, status_code=status.HTTP_201_CREATED)
 async def create_equipment(
     body: FacilityEquipmentCreateIn,
-    user: MutatorUser,
+    user: EquipmentMutator,
     db: Db,
 ) -> FacilityEquipmentOut:
     cid = str(user.company_id)
@@ -510,7 +510,7 @@ async def create_equipment(
 async def patch_equipment(
     equipment_id: str,
     body: FacilityEquipmentPatchIn,
-    user: MutatorUser,
+    user: EquipmentMutator,
     db: Db,
 ) -> FacilityEquipmentOut:
     cid = str(user.company_id)
@@ -543,7 +543,7 @@ async def patch_equipment(
 @router.delete("/{equipment_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_equipment(
     equipment_id: str,
-    user: MutatorUser,
+    user: EquipmentMutator,
     db: Db,
 ) -> None:
     cid = str(user.company_id)

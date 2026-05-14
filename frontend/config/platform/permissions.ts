@@ -1,8 +1,8 @@
 import type { PulseAuthSession } from "@/lib/pulse-session";
 
 /**
- * Fine-grained capability strings (Phase 1 scaffold).
- * Backend should eventually issue these; until then we derive from coarse `permissions` on the session.
+ * Legacy fine-grained capability strings still used by a few platform hub components.
+ * Authorization is **RBAC-first** (`rbac_permissions`); this map only translates flat keys → these labels.
  */
 export const PLATFORM_CAPABILITIES = [
   "workorders.view",
@@ -28,108 +28,61 @@ export type PlatformCapability = (typeof PLATFORM_CAPABILITIES)[number];
 
 const ALL_CAPS = new Set<string>(PLATFORM_CAPABILITIES);
 
-/**
- * When `/auth/me` returns a non-empty `department_workspace_slugs`, grant platform capabilities for
- * those workspaces so department rails work for coordinators who only have coarse keys like
- * `module.maintenance.read` (which does not include communications publication caps).
- */
-const WORKSPACE_SLUG_CAPABILITY_BOOST: Record<string, readonly string[]> = {
-  communications: [
+/** Flat RBAC keys from `/auth/me` → legacy platform capability tokens (best-effort). */
+const RBAC_TO_PLATFORM_CAPS: Record<string, readonly string[]> = {
+  "work_requests.view": ["workorders.view"],
+  "work_requests.edit": ["workorders.view", "workorders.edit"],
+  "compliance.view": ["inspections.view"],
+  "compliance.manage": ["inspections.view", "inspections.edit"],
+  "inventory.view": ["equipment.view"],
+  "inventory.manage": ["equipment.view"],
+  "equipment.view": ["equipment.view"],
+  "equipment.manage": ["equipment.view", "equipment.edit"],
+  "procedures.view": ["procedures.view"],
+  "team_insights.view": ["analytics.view"],
+  "team_management.view": ["analytics.view"],
+  "messaging.view": ["messaging.view"],
+  "schedule.view": ["aquatics.scheduling.view", "fitness.classes.view"],
+  "projects.view": ["analytics.view"],
+  "drawings.view": ["analytics.view"],
+  "zones_devices.view": ["equipment.view"],
+  "arena_advertising.view": ["communications.advertising_mapper.view"],
+  "social_planner.view": ["communications.campaign_planner.view"],
+  "publication_pipeline.view": ["publications.create", "publications.export"],
+  "xplor_indesign.view": ["communications.indesign_pipeline.view"],
+  "communications_assets.view": ["communications.assets.view"],
+  "workspace.view": [
+    "procedures.view",
+    "analytics.view",
+    "messaging.view",
+    "workorders.view",
+    "workorders.edit",
+    "inspections.view",
+    "equipment.view",
     "publications.create",
     "publications.export",
     "communications.assets.view",
     "communications.indesign_pipeline.view",
     "communications.advertising_mapper.view",
     "communications.campaign_planner.view",
-    "procedures.view",
-    "analytics.view",
-    "messaging.view",
-  ],
-  maintenance: [
-    "workorders.view",
-    "workorders.edit",
-    "inspections.view",
-    "inspections.edit",
-    "equipment.view",
-    "equipment.edit",
-    "procedures.view",
-    "analytics.view",
-    "messaging.view",
-  ],
-  reception: ["procedures.view", "analytics.view", "messaging.view"],
-  aquatics: ["aquatics.scheduling.view", "procedures.view", "analytics.view", "messaging.view"],
-  fitness: ["fitness.classes.view", "procedures.view", "analytics.view", "messaging.view"],
-  racquets: ["fitness.classes.view", "procedures.view", "analytics.view", "messaging.view"],
-  admin: ["procedures.view", "analytics.view", "messaging.view"],
-};
-
-/** Maps existing `/auth/me` permission keys to platform capabilities (expand over time). */
-const PERMISSION_TO_CAPABILITIES: Record<string, readonly string[]> = {
-  "module.maintenance.read": [
-    "workorders.view",
-    "workorders.edit",
-    "inspections.view",
-    "equipment.view",
-    "procedures.view",
-  ],
-  "module.analytics.read": [
-    "analytics.view",
-    "communications.indesign_pipeline.view",
-    "communications.advertising_mapper.view",
-    "communications.campaign_planner.view",
-  ],
-  "module.jobs.read": [
-    "messaging.view",
-    "analytics.view",
-    "communications.indesign_pipeline.view",
-    "communications.advertising_mapper.view",
-    "communications.campaign_planner.view",
-  ],
-  "module.inventory.read": ["equipment.view"],
-  "module.tool_tracking.read": ["equipment.view"],
-  "module.notifications.read": [
-    "messaging.view",
-    "communications.indesign_pipeline.view",
-    "communications.advertising_mapper.view",
-    "communications.campaign_planner.view",
   ],
 };
-
-function addWildcardCapabilities(out: Set<string>): void {
-  PLATFORM_CAPABILITIES.forEach((c) => out.add(c));
-}
 
 /**
- * Resolve effective capability allow-list for the signed-in user.
- * When `permissions` is missing (legacy session), all platform capabilities are allowed (matches tenant nav behavior).
+ * Resolve legacy platform capability tokens from `rbac_permissions` only.
+ * Empty RBAC → empty list (strict). `*` → full catalog.
  */
 export function resolveCapabilitiesFromSession(session: PulseAuthSession | null): string[] {
-  if (!session) return PLATFORM_CAPABILITIES.slice();
-  const perms = session.permissions;
-  if (perms === undefined || perms === null) {
-    return PLATFORM_CAPABILITIES.slice();
-  }
-  if (perms.includes("*")) {
+  if (!session) return [];
+  const rbac = session.rbac_permissions;
+  if (!rbac?.length) return [];
+  if (rbac.includes("*")) {
     return PLATFORM_CAPABILITIES.slice();
   }
   const out = new Set<string>();
-  for (const p of perms) {
-    const mapped = PERMISSION_TO_CAPABILITIES[p];
-    if (mapped) mapped.forEach((c) => out.add(c));
-  }
-  /** Company / facility tenant admins: broad operational access for Phase 1 until capability API ships. */
-  if (session.role === "company_admin" || session.roles?.includes("company_admin") || session.facility_tenant_admin) {
-    addWildcardCapabilities(out);
-  }
-  const dw = session.department_workspace_slugs;
-  if (dw && dw.length > 0) {
-    for (const slug of dw) {
-      const boost = WORKSPACE_SLUG_CAPABILITY_BOOST[slug];
-      if (boost) boost.forEach((c) => out.add(c));
-    }
-  }
-  if (out.size === 0) {
-    return PLATFORM_CAPABILITIES.slice();
+  for (const k of rbac) {
+    const caps = RBAC_TO_PLATFORM_CAPS[k];
+    if (caps) caps.forEach((c) => out.add(c));
   }
   return [...out].filter((c) => ALL_CAPS.has(c));
 }

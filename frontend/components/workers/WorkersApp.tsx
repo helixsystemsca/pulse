@@ -36,9 +36,11 @@ import {
   managerOrAbove,
   principalHasAnyRole,
   primaryWorkerGroupKey,
+  ROSTER_GROUP_ROLE_KEYS,
   rosterDepartmentIterateOrder,
   rosterDepartmentSlug,
   rosterDepartmentTitle,
+  rosterRoleGroupOrder,
   rosterRoleSectionTitle,
   sessionHasAnyRole,
   sortRolesForDisplay,
@@ -834,13 +836,12 @@ export function WorkersApp() {
 
   /** Department (category) → role ladder (sub-category) → rows. Maintenance workers keep employment sub-buckets. */
   const groupedByDepartment = useMemo(() => {
-    const roleOrder = ["company_admin", "manager", "supervisor", "lead", "worker"] as const;
     const byDept = new Map<string, Map<string, WorkerRow[]>>();
 
     const ensureDept = (slug: string) => {
       if (!byDept.has(slug)) {
         const m = new Map<string, WorkerRow[]>();
-        for (const r of roleOrder) m.set(r, []);
+        for (const r of ROSTER_GROUP_ROLE_KEYS) m.set(r, []);
         byDept.set(slug, m);
       }
       return byDept.get(slug)!;
@@ -858,6 +859,7 @@ export function WorkersApp() {
       .map((deptSlug) => {
         const roleMap = byDept.get(deptSlug);
         if (!roleMap) return null;
+        const roleOrder = rosterRoleGroupOrder(deptSlug);
         const roleGroups = roleOrder
           .map((role) => ({ role, items: roleMap.get(role) ?? [] }))
           .filter((g) => g.items.length > 0);

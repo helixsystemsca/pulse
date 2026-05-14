@@ -7,8 +7,8 @@ import { EquipmentPartsPanel } from "@/components/equipment/EquipmentPartsPanel"
 import { EquipmentPmTasksSection } from "@/components/equipment/EquipmentPmTasksSection";
 import { Card } from "@/components/pulse/Card";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { usePermissions } from "@/hooks/usePermissions";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
-import { managerOrAbove } from "@/lib/pulse-roles";
 import { useModuleSettings } from "@/providers/ModuleSettingsProvider";
 import {
   fetchEquipment,
@@ -154,7 +154,8 @@ function MaintenanceHistorySection({
 
 export function EquipmentDetailApp({ equipmentId }: Props) {
   const { session } = usePulseAuth();
-  const canMutate = managerOrAbove(session);
+  const { can } = usePermissions();
+  const canMutate = can("equipment.manage");
   const isSystemAdmin = Boolean(session?.is_system_admin || session?.role === "system_admin");
   const assetMod = useModuleSettings("assets");
 

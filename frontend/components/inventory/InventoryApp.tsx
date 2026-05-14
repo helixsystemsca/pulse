@@ -44,8 +44,9 @@ import {
   postInventoryMove,
   postInventoryUse,
 } from "@/lib/inventoryService";
-import { canAccessCompanyConfiguration, managerOrAbove } from "@/lib/pulse-roles";
-import { readSession } from "@/lib/pulse-session";
+import { usePermissions } from "@/hooks/usePermissions";
+import { usePulseAuth } from "@/hooks/usePulseAuth";
+import { canAccessCompanyConfiguration } from "@/lib/pulse-roles";
 import { fetchWorkRequestList } from "@/lib/workRequestsService";
 import { InventoryContractorsPanel } from "@/components/inventory/InventoryContractorsPanel";
 import { InventoryVendorsPanel } from "@/components/inventory/InventoryVendorsPanel";
@@ -168,11 +169,23 @@ const QTY_STEP_BTN =
 function InventoryTableQtyCell(props: {
   row: InventoryRow;
   pending: boolean;
+  canMutate: boolean;
   onUpdateQuantity: (id: string, newQuantity: number) => void;
 }) {
-  const { row, pending, onUpdateQuantity } = props;
+  const { row, pending, canMutate, onUpdateQuantity } = props;
   if (row.item_type === "tool") {
     return <span className="whitespace-nowrap font-medium text-pulse-navy">1 (tracked)</span>;
+  }
+
+  if (!canMutate) {
+    return (
+      <span className="whitespace-nowrap font-medium text-pulse-navy">
+        {row.quantity}
+        <span className="ml-1 max-w-[4.5rem] truncate text-xs text-pulse-muted" title={row.unit}>
+          {row.unit}
+        </span>
+      </span>
+    );
   }
 
   const onQtyKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
@@ -199,7 +212,7 @@ function InventoryTableQtyCell(props: {
       <button
         type="button"
         onClick={() => onUpdateQuantity(row.id, Math.max(0, row.quantity - 1))}
-        disabled={pending || row.quantity <= 0}
+        disabled={pending || row.quantity <= 0 || !canMutate}
         className={QTY_STEP_BTN}
         aria-label="Decrease quantity"
       >
@@ -209,7 +222,7 @@ function InventoryTableQtyCell(props: {
       <button
         type="button"
         onClick={() => onUpdateQuantity(row.id, row.quantity + 1)}
-        disabled={pending}
+        disabled={pending || !canMutate}
         className={QTY_STEP_BTN}
         aria-label="Increase quantity"
       >
@@ -223,16 +236,18 @@ function InventoryTableQtyCell(props: {
 }
 
 export function InventoryApp() {
-  const session = readSession();
+  const { session } = usePulseAuth();
+  const { can } = usePermissions();
   const canConfigureOrg = canAccessCompanyConfiguration(session);
   const isSystemAdmin = Boolean(session?.is_system_admin || session?.role === "system_admin");
   const sessionCompanyId = session?.company_id ?? null;
-  const canManage = managerOrAbove(session);
+  const canViewInventory = can("inventory.view") || can("inventory.manage");
+  const canMutateInventory = can("inventory.manage");
 
   const [companyPick, setCompanyPick] = useState<string | null>(null);
   const [companies, setCompanies] = useState<CompanyOption[]>([]);
   const effectiveCompanyId = isSystemAdmin ? companyPick : sessionCompanyId;
-  const dataEnabled = Boolean(effectiveCompanyId) && canManage;
+  const dataEnabled = Boolean(effectiveCompanyId) && canViewInventory;
   const apiCompany = isSystemAdmin ? effectiveCompanyId : null;
 
   const [inventoryTab, setInventoryTab] = useState<"items" | "vendors" | "contractors">("items");
@@ -624,7 +639,7 @@ export function InventoryApp() {
   }, [editOpen, editMode, editTargetId, effectiveCompanyId, apiCompany]);
 
   async function submitForm() {
-    if (!effectiveCompanyId || !form.name.trim()) return;
+    if (!effectiveCompanyId || !form.name.trim() || !canMutateInventory) return;
     setActionBusy(true);
     try {
       const unit_cost =
@@ -668,7 +683,7 @@ export function InventoryApp() {
   }
 
   async function saveSettings() {
-    if (!effectiveCompanyId) return;
+    if (!effectiveCompanyId || !canMutateInventory) return;
     setActionBusy(true);
     try {
       await patchInventorySettings(apiCompany, {
@@ -685,7 +700,7 @@ export function InventoryApp() {
   }
 
   async function runAssignFromDetail() {
-    if (!detailId) return;
+    if (!detailId || !canMutateInventory) return;
     setActionBusy(true);
     try {
       await postInventoryAssign(apiCompany, detailId, assignUserId || null);
@@ -698,7 +713,7 @@ export function InventoryApp() {
   }
 
   async function runMoveFromDetail() {
-    if (!detailId) return;
+    if (!detailId || !canMutateInventory) return;
     setActionBusy(true);
     try {
       await postInventoryMove(apiCompany, detailId, moveZoneId || null);
@@ -711,7 +726,7 @@ export function InventoryApp() {
   }
 
   async function runUseFromDetail() {
-    if (!detailId || !useWrId) return;
+    if (!detailId || !useWrId || !canMutateInventory) return;
     const qn = Number.parseFloat(useQty);
     if (Number.isNaN(qn) || qn <= 0) return;
     setActionBusy(true);
@@ -728,6 +743,7 @@ export function InventoryApp() {
   }
 
   async function quickPatch(id: string, body: Record<string, unknown>) {
+    if (!canMutateInventory) return;
     setActionBusy(true);
     try {
       await patchInventoryItem(apiCompany, id, body);
@@ -741,7 +757,7 @@ export function InventoryApp() {
 
   const updateQuantity = useCallback(
     async (id: string, newQuantity: number) => {
-      if (!effectiveCompanyId) return;
+      if (!effectiveCompanyId || !canMutateInventory) return;
       const clamped = Math.max(0, newQuantity);
 
       let snapshotRow: InventoryRow | null = null;
@@ -795,7 +811,7 @@ export function InventoryApp() {
         });
       }
     },
-    [apiCompany, effectiveCompanyId],
+    [apiCompany, effectiveCompanyId, canMutateInventory],
   );
 
   function exportCsv() {
@@ -839,9 +855,13 @@ export function InventoryApp() {
     URL.revokeObjectURL(a.href);
   }
 
-  if (!canManage) {
+  if (!canViewInventory) {
     return (
-      <p className="text-sm text-pulse-muted">Inventory is available to managers and administrators.</p>
+      <p className="text-sm text-pulse-muted">
+        You do not have permission to view inventory. Ask a company administrator to grant{" "}
+        <span className="font-mono text-pulse-navy dark:text-gray-200">inventory.view</span> or{" "}
+        <span className="font-mono text-pulse-navy dark:text-gray-200">inventory.manage</span>.
+      </p>
     );
   }
 
@@ -884,7 +904,7 @@ export function InventoryApp() {
                     Settings
                   </button>
                 ) : null}
-                <button type="button" className={PRIMARY_BTN} onClick={() => openCreate()} disabled={!dataEnabled}>
+                <button type="button" className={PRIMARY_BTN} onClick={() => openCreate()} disabled={!dataEnabled || !canMutateInventory}>
                   + Register item
                 </button>
               </>
@@ -1260,6 +1280,7 @@ export function InventoryApp() {
                             <InventoryTableQtyCell
                               row={row}
                               pending={Boolean(qtyPending[row.id])}
+                              canMutate={canMutateInventory}
                               onUpdateQuantity={updateQuantity}
                             />
                           </td>
@@ -1297,67 +1318,73 @@ export function InventoryApp() {
                             </span>
                           </td>
                           <td className="relative px-4 py-3 text-right align-top" onClick={(e) => e.stopPropagation()}>
-                            <button
-                              type="button"
-                              className="rounded-lg p-2 text-pulse-muted hover:bg-ds-interactive-hover-strong hover:text-pulse-navy"
-                              aria-label="Actions"
-                              onClick={() => setMenuFor(menuFor === row.id ? null : row.id)}
-                            >
-                              <MoreVertical className="h-4 w-4" />
-                            </button>
-                            {menuFor === row.id ? (
-                              <div className="absolute right-3 z-10 mt-1 w-52 rounded-md border border-slate-200 bg-white py-1 text-left shadow-lg dark:border-ds-border dark:bg-ds-elevated">
+                            {canMutateInventory ? (
+                              <>
                                 <button
                                   type="button"
-                                  className="block w-full px-3 py-2 text-left text-sm hover:bg-ds-interactive-hover"
-                                  onClick={() => {
-                                    setMenuFor(null);
-                                    openEdit(row);
-                                  }}
+                                  className="rounded-lg p-2 text-pulse-muted hover:bg-ds-interactive-hover-strong hover:text-pulse-navy"
+                                  aria-label="Actions"
+                                  onClick={() => setMenuFor(menuFor === row.id ? null : row.id)}
                                 >
-                                  Edit item
+                                  <MoreVertical className="h-4 w-4" />
                                 </button>
-                                <button
-                                  type="button"
-                                  className="block w-full px-3 py-2 text-left text-sm hover:bg-ds-interactive-hover"
-                                  onClick={() => {
-                                    setMenuFor(null);
-                                    setDetailId(row.id);
-                                    setDetailPanel("assign");
-                                  }}
-                                >
-                                  Assign / return
-                                </button>
-                                <button
-                                  type="button"
-                                  className="block w-full px-3 py-2 text-left text-sm hover:bg-ds-interactive-hover"
-                                  onClick={() => quickPatch(row.id, { reorder_flag: !row.reorder_flag })}
-                                >
-                                  {row.reorder_flag ? "Clear reorder flag" : "Flag for reorder"}
-                                </button>
-                                <button
-                                  type="button"
-                                  className="block w-full px-3 py-2 text-left text-sm hover:bg-ds-interactive-hover"
-                                  onClick={() => quickPatch(row.id, { inv_status: "missing" })}
-                                >
-                                  Mark missing
-                                </button>
-                                <button
-                                  type="button"
-                                  className="block w-full px-3 py-2 text-left text-sm hover:bg-ds-interactive-hover"
-                                  onClick={() => quickPatch(row.id, { inv_status: "maintenance" })}
-                                >
-                                  Send to maintenance
-                                </button>
-                                <button
-                                  type="button"
-                                  className="block w-full px-3 py-2 text-left text-sm hover:bg-ds-interactive-hover"
-                                  onClick={() => quickPatch(row.id, { inv_status: "in_stock" })}
-                                >
-                                  Mark in stock
-                                </button>
-                              </div>
-                            ) : null}
+                                {menuFor === row.id ? (
+                                  <div className="absolute right-3 z-10 mt-1 w-52 rounded-md border border-slate-200 bg-white py-1 text-left shadow-lg dark:border-ds-border dark:bg-ds-elevated">
+                                    <button
+                                      type="button"
+                                      className="block w-full px-3 py-2 text-left text-sm hover:bg-ds-interactive-hover"
+                                      onClick={() => {
+                                        setMenuFor(null);
+                                        openEdit(row);
+                                      }}
+                                    >
+                                      Edit item
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="block w-full px-3 py-2 text-left text-sm hover:bg-ds-interactive-hover"
+                                      onClick={() => {
+                                        setMenuFor(null);
+                                        setDetailId(row.id);
+                                        setDetailPanel("assign");
+                                      }}
+                                    >
+                                      Assign / return
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="block w-full px-3 py-2 text-left text-sm hover:bg-ds-interactive-hover"
+                                      onClick={() => quickPatch(row.id, { reorder_flag: !row.reorder_flag })}
+                                    >
+                                      {row.reorder_flag ? "Clear reorder flag" : "Flag for reorder"}
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="block w-full px-3 py-2 text-left text-sm hover:bg-ds-interactive-hover"
+                                      onClick={() => quickPatch(row.id, { inv_status: "missing" })}
+                                    >
+                                      Mark missing
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="block w-full px-3 py-2 text-left text-sm hover:bg-ds-interactive-hover"
+                                      onClick={() => quickPatch(row.id, { inv_status: "maintenance" })}
+                                    >
+                                      Send to maintenance
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="block w-full px-3 py-2 text-left text-sm hover:bg-ds-interactive-hover"
+                                      onClick={() => quickPatch(row.id, { inv_status: "in_stock" })}
+                                    >
+                                      Mark in stock
+                                    </button>
+                                  </div>
+                                ) : null}
+                              </>
+                            ) : (
+                              <span className="text-xs text-pulse-muted">—</span>
+                            )}
                           </td>
                         </tr>
                       );
@@ -1411,30 +1438,36 @@ export function InventoryApp() {
         footer={
           detail ? (
             <div className="flex flex-wrap gap-2">
-              <button type="button" className={PRIMARY_BTN} onClick={() => detail && openEditFromDetail(detail)}>
-                Edit
-              </button>
-              <button
-                type="button"
-                className="rounded-[10px] border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-pulse-navy hover:bg-ds-interactive-hover dark:border-ds-border dark:bg-ds-elevated dark:text-gray-100 dark:hover:bg-ds-interactive-hover"
-                onClick={() => setDetailPanel(detailPanel === "assign" ? "none" : "assign")}
-              >
-                Assign
-              </button>
-              <button
-                type="button"
-                className="rounded-[10px] border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-pulse-navy hover:bg-ds-interactive-hover dark:border-ds-border dark:bg-ds-elevated dark:text-gray-100 dark:hover:bg-ds-interactive-hover"
-                onClick={() => setDetailPanel(detailPanel === "move" ? "none" : "move")}
-              >
-                Move
-              </button>
-              <button
-                type="button"
-                className="rounded-[10px] border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-pulse-navy hover:bg-ds-interactive-hover dark:border-ds-border dark:bg-ds-elevated dark:text-gray-100 dark:hover:bg-ds-interactive-hover"
-                onClick={() => setDetailPanel(detailPanel === "use" ? "none" : "use")}
-              >
-                Use in WR
-              </button>
+              {canMutateInventory ? (
+                <>
+                  <button type="button" className={PRIMARY_BTN} onClick={() => detail && openEditFromDetail(detail)}>
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded-[10px] border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-pulse-navy hover:bg-ds-interactive-hover dark:border-ds-border dark:bg-ds-elevated dark:text-gray-100 dark:hover:bg-ds-interactive-hover"
+                    onClick={() => setDetailPanel(detailPanel === "assign" ? "none" : "assign")}
+                  >
+                    Assign
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded-[10px] border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-pulse-navy hover:bg-ds-interactive-hover dark:border-ds-border dark:bg-ds-elevated dark:text-gray-100 dark:hover:bg-ds-interactive-hover"
+                    onClick={() => setDetailPanel(detailPanel === "move" ? "none" : "move")}
+                  >
+                    Move
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded-[10px] border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-pulse-navy hover:bg-ds-interactive-hover dark:border-ds-border dark:bg-ds-elevated dark:text-gray-100 dark:hover:bg-ds-interactive-hover"
+                    onClick={() => setDetailPanel(detailPanel === "use" ? "none" : "use")}
+                  >
+                    Use in WR
+                  </button>
+                </>
+              ) : (
+                <p className="text-xs text-pulse-muted">View only — inventory.manage is required to change items.</p>
+              )}
             </div>
           ) : null
         }
@@ -1446,7 +1479,7 @@ export function InventoryApp() {
           </div>
         ) : (
           <div className="space-y-5">
-            {detailPanel === "assign" ? (
+            {detailPanel === "assign" && canMutateInventory ? (
               <div className="rounded-md border border-slate-200 bg-white p-4 shadow-sm dark:border-ds-border dark:bg-ds-primary dark:shadow-[0_2px_8px_rgba(0,0,0,0.35)]">
                 <p className={LABEL}>Assign to worker</p>
                 <select
@@ -1466,7 +1499,7 @@ export function InventoryApp() {
                 </button>
               </div>
             ) : null}
-            {detailPanel === "move" ? (
+            {detailPanel === "move" && canMutateInventory ? (
               <div className="rounded-md border border-slate-200 bg-white p-4 shadow-sm dark:border-ds-border dark:bg-ds-primary dark:shadow-[0_2px_8px_rgba(0,0,0,0.35)]">
                 <p className={LABEL}>Location (zone)</p>
                 <select className={FIELD} value={moveZoneId} onChange={(e) => setMoveZoneId(e.target.value)}>
@@ -1482,7 +1515,7 @@ export function InventoryApp() {
                 </button>
               </div>
             ) : null}
-            {detailPanel === "use" ? (
+            {detailPanel === "use" && canMutateInventory ? (
               <div className="rounded-md border border-slate-200 bg-white p-4 shadow-sm dark:border-ds-border dark:bg-ds-primary dark:shadow-[0_2px_8px_rgba(0,0,0,0.35)]">
                 <p className={LABEL}>Work request</p>
                 <select className={FIELD} value={useWrId} onChange={(e) => setUseWrId(e.target.value)}>

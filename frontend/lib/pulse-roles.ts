@@ -228,21 +228,58 @@ export function sessionRoleDisplayLabel(
 
 const DISPLAY_ORDER = ["company_admin", "manager", "supervisor", "lead", "worker", "demo_viewer"];
 
+/** Roster buckets in Team Management (subset of platform roles; fixed map keys in WorkersApp). */
+export const ROSTER_GROUP_ROLE_KEYS = ["company_admin", "manager", "supervisor", "lead", "worker"] as const;
+export type RosterGroupRoleKey = (typeof ROSTER_GROUP_ROLE_KEYS)[number];
+
 export function sortRolesForDisplay(roles: string[]): string[] {
   return [...roles].sort((a, b) => DISPLAY_ORDER.indexOf(a) - DISPLAY_ORDER.indexOf(b));
 }
 
+/**
+ * Order of roster sections within a department.
+ * - Administration: Company Admin first (IT / back-office admins stay in their own category at the top).
+ * - Communications / reception: Coordinators (`worker` tier) directly under Managers; Company Admin bucket last.
+ * - Other departments: ladder first, Company Admin bucket last so tenant admins on the floor are not visually above the team.
+ */
+export function rosterRoleGroupOrder(departmentSlug: string): RosterGroupRoleKey[] {
+  const d = departmentSlug.trim().toLowerCase();
+  if (d === "admin") {
+    return ["company_admin", "manager", "supervisor", "lead", "worker"];
+  }
+  if (d === "communications" || d === "reception") {
+    return ["manager", "worker", "supervisor", "lead", "company_admin"];
+  }
+  return ["manager", "supervisor", "lead", "worker", "company_admin"];
+}
+
 export function primaryWorkerGroupKey(
-  p: Pick<{ roles?: string[]; role?: string }, "roles" | "role">,
-): (typeof DISPLAY_ORDER)[number] | "worker" {
+  p: Pick<{ roles?: string[]; role?: string; department?: string | null }, "roles" | "role" | "department">,
+): RosterGroupRoleKey {
   const raw = roleListFromPrincipal(p);
   // `company_admin` is permission-tier, not facility org chart. If the person also has a facility
   // role (manager/supervisor/lead/worker), group by that role instead of listing them under Admins.
   const facilityRoles = raw.filter((r) => r !== "company_admin" && r !== "system_admin");
-  const forGroup = facilityRoles.length ? facilityRoles : raw;
-  const prim = sessionPrimaryRole({ roles: forGroup });
-  if (DISPLAY_ORDER.includes(prim as (typeof DISPLAY_ORDER)[number])) {
-    return prim as (typeof DISPLAY_ORDER)[number];
+  if (facilityRoles.length > 0) {
+    const prim = sessionPrimaryRole({ roles: facilityRoles });
+    if (ROSTER_GROUP_ROLE_KEYS.includes(prim as RosterGroupRoleKey)) {
+      return prim as RosterGroupRoleKey;
+    }
+    return "worker";
+  }
+
+  // Only admin / system tier — no explicit manager/supervisor/lead/worker role on the account.
+  // Keep a standalone "Company Admin" section only for Administration roster; otherwise place
+  // them with the team (Operations, Coordinators, …) so tenant admins on the floor are not isolated above everyone.
+  if (sessionHasAnyRole(p, "company_admin")) {
+    const dept = rosterDepartmentSlug(p);
+    if (dept === "admin") return "company_admin";
+    return "worker";
+  }
+
+  const prim = sessionPrimaryRole({ roles: raw });
+  if (ROSTER_GROUP_ROLE_KEYS.includes(prim as RosterGroupRoleKey)) {
+    return prim as RosterGroupRoleKey;
   }
   return "worker";
 }

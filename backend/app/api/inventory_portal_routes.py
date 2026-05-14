@@ -15,7 +15,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import and_, delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_user, get_db, require_manager_or_above
+from app.api.deps import get_current_user, get_db, require_any_rbac
 from app.core.user_roles import user_has_any_role
 from app.models.domain import (
     InventoryContractor,
@@ -113,7 +113,7 @@ async def resolve_inv_company_id(
 
 CompanyId = Annotated[str, Depends(resolve_inv_company_id)]
 Db = Annotated[AsyncSession, Depends(get_db)]
-MgrUser = Annotated[User, Depends(require_manager_or_above)]
+InvUser = Annotated[User, Depends(require_any_rbac("inventory.view", "inventory.manage"))]
 
 
 def _recompute_status(item: InventoryItem) -> None:
@@ -225,7 +225,7 @@ async def _get_settings_row(db: AsyncSession, cid: str) -> Optional[InventoryMod
 
 
 @router.get("/settings", response_model=InventorySettingsOut)
-async def get_inv_settings(db: Db, _: MgrUser, cid: CompanyId) -> InventorySettingsOut:
+async def get_inv_settings(db: Db, _: InvUser, cid: CompanyId) -> InventorySettingsOut:
     row = await _get_settings_row(db, cid)
     return InventorySettingsOut(settings=merge_inventory_settings(row.settings if row else None))
 
@@ -233,7 +233,7 @@ async def get_inv_settings(db: Db, _: MgrUser, cid: CompanyId) -> InventorySetti
 @router.patch("/settings", response_model=InventorySettingsOut)
 async def patch_inv_settings(
     db: Db,
-    _: MgrUser,
+    _: InvUser,
     cid: CompanyId,
     body: InventorySettingsPatchIn,
 ) -> InventorySettingsOut:
@@ -267,7 +267,7 @@ def _vendor_ilike(column: Any, raw: Optional[str]) -> Optional[Any]:
 @router.get("/vendors", response_model=list[InventoryVendorOut])
 async def list_inventory_vendors(
     db: Db,
-    _: MgrUser,
+    _: InvUser,
     cid: CompanyId,
     name_contains: Optional[str] = Query(None),
     contact_name_contains: Optional[str] = Query(None),
@@ -325,7 +325,7 @@ async def list_inventory_vendors(
 @router.post("/vendors", response_model=InventoryVendorOut, status_code=status.HTTP_201_CREATED)
 async def create_inventory_vendor(
     db: Db,
-    _: MgrUser,
+    _: InvUser,
     cid: CompanyId,
     body: InventoryVendorCreateIn,
 ) -> InventoryVendorOut:
@@ -361,7 +361,7 @@ async def create_inventory_vendor(
 @router.patch("/vendors/{vendor_id}", response_model=InventoryVendorOut)
 async def patch_inventory_vendor(
     db: Db,
-    _: MgrUser,
+    _: InvUser,
     cid: CompanyId,
     vendor_id: str,
     body: InventoryVendorPatchIn,
@@ -402,7 +402,7 @@ async def patch_inventory_vendor(
 
 
 @router.delete("/vendors/{vendor_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_inventory_vendor(db: Db, _: MgrUser, cid: CompanyId, vendor_id: str) -> None:
+async def delete_inventory_vendor(db: Db, _: InvUser, cid: CompanyId, vendor_id: str) -> None:
     row = await db.get(InventoryVendor, vendor_id)
     if not row or row.company_id != cid:
         raise HTTPException(status_code=404, detail="Not found")
@@ -413,7 +413,7 @@ async def delete_inventory_vendor(db: Db, _: MgrUser, cid: CompanyId, vendor_id:
 @router.get("/contractors", response_model=list[InventoryContractorOut])
 async def list_inventory_contractors(
     db: Db,
-    _: MgrUser,
+    _: InvUser,
     cid: CompanyId,
     name_contains: Optional[str] = Query(None),
     contact_name_contains: Optional[str] = Query(None),
@@ -471,7 +471,7 @@ async def list_inventory_contractors(
 @router.post("/contractors", response_model=InventoryContractorOut, status_code=status.HTTP_201_CREATED)
 async def create_inventory_contractor(
     db: Db,
-    _: MgrUser,
+    _: InvUser,
     cid: CompanyId,
     body: InventoryContractorCreateIn,
 ) -> InventoryContractorOut:
@@ -507,7 +507,7 @@ async def create_inventory_contractor(
 @router.patch("/contractors/{contractor_id}", response_model=InventoryContractorOut)
 async def patch_inventory_contractor(
     db: Db,
-    _: MgrUser,
+    _: InvUser,
     cid: CompanyId,
     contractor_id: str,
     body: InventoryContractorPatchIn,
@@ -548,7 +548,7 @@ async def patch_inventory_contractor(
 
 
 @router.delete("/contractors/{contractor_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_inventory_contractor(db: Db, _: MgrUser, cid: CompanyId, contractor_id: str) -> None:
+async def delete_inventory_contractor(db: Db, _: InvUser, cid: CompanyId, contractor_id: str) -> None:
     row = await db.get(InventoryContractor, contractor_id)
     if not row or row.company_id != cid:
         raise HTTPException(status_code=404, detail="Not found")
@@ -649,7 +649,7 @@ async def _summary(db: AsyncSession, cid: str, conds: list) -> InventorySummaryO
 @router.get("", response_model=InventoryListOut)
 async def list_inventory(
     db: Db,
-    _: MgrUser,
+    _: InvUser,
     cid: CompanyId,
     q: Optional[str] = Query(None),
     inv_status: Optional[str] = Query(None, alias="status"),
@@ -711,7 +711,7 @@ async def list_inventory(
 
 
 @router.get("/{item_id}", response_model=InventoryDetailOut)
-async def get_inventory_item(db: Db, _: MgrUser, cid: CompanyId, item_id: str) -> InventoryDetailOut:
+async def get_inventory_item(db: Db, _: InvUser, cid: CompanyId, item_id: str) -> InventoryDetailOut:
     item = await db.get(InventoryItem, item_id)
     if not item or item.company_id != cid:
         raise HTTPException(status_code=404, detail="Not found")
@@ -788,7 +788,7 @@ async def get_inventory_item(db: Db, _: MgrUser, cid: CompanyId, item_id: str) -
 @router.post("", response_model=InventoryDetailOut, status_code=status.HTTP_201_CREATED)
 async def create_inventory_item(
     db: Db,
-    user: MgrUser,
+    user: InvUser,
     cid: CompanyId,
     body: InventoryCreateIn,
 ) -> InventoryDetailOut:
@@ -852,7 +852,7 @@ async def create_inventory_item(
 @router.patch("/{item_id}", response_model=InventoryDetailOut)
 async def patch_inventory_item(
     db: Db,
-    user: MgrUser,
+    user: InvUser,
     cid: CompanyId,
     item_id: str,
     body: InventoryPatchIn,
@@ -914,7 +914,7 @@ async def patch_inventory_item(
 @router.post("/{item_id}/assign", response_model=InventoryDetailOut)
 async def assign_inventory(
     db: Db,
-    user: MgrUser,
+    user: InvUser,
     cid: CompanyId,
     item_id: str,
     body: InventoryAssignIn,
@@ -947,7 +947,7 @@ async def assign_inventory(
 @router.post("/{item_id}/move", response_model=InventoryDetailOut)
 async def move_inventory(
     db: Db,
-    user: MgrUser,
+    user: InvUser,
     cid: CompanyId,
     item_id: str,
     body: InventoryMoveIn,
@@ -976,7 +976,7 @@ async def move_inventory(
 @router.post("/{item_id}/use", response_model=InventoryDetailOut)
 async def use_inventory(
     db: Db,
-    user: MgrUser,
+    user: InvUser,
     cid: CompanyId,
     item_id: str,
     body: InventoryUseIn,
