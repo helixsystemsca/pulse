@@ -43,98 +43,38 @@ One row per key means:
   - Audit log is per-key (see who changed facilityCount and when)
   - Frontend can read/write individual keys without fetching the full blob
 """
-
 from __future__ import annotations
-
 import sqlalchemy as sa
 from alembic import op
+
+from pathlib import Path
+import sys
+
+_BACK = Path(__file__).resolve().parents[2]
+if str(_BACK) not in sys.path:
+    sys.path.insert(0, str(_BACK))
+import alembic_helpers as ah  # noqa: E402
+
 from sqlalchemy.dialects.postgresql import JSONB, UUID
-
-revision      = "0070_pulse_config"
-down_revision = "0069_gateway_floor_position"
+revision = '0070_pulse_config'
+down_revision = '0069_gateway_floor_position'
 branch_labels = None
-depends_on    = None
-
+depends_on = None
 
 def upgrade() -> None:
-
-    # ── 1. pulse_config ───────────────────────────────────────────────────────
-    op.create_table(
-        "pulse_config",
-        sa.Column("id",          UUID(as_uuid=False), primary_key=True, nullable=False),
-        sa.Column("company_id",  UUID(as_uuid=False),
-                  sa.ForeignKey("companies.id", ondelete="CASCADE"),
-                  nullable=False, index=True),
-
-        # Which product module owns this value
-        sa.Column("module",      sa.String(64),  nullable=False,
-                  comment="global | workRequests | schedule | workers | zones | "
-                          "automation | compliance | notifications | gamification"),
-
-        # company = applies everywhere; zone = overrides for one zone only
-        sa.Column("scope_type",  sa.String(16),  nullable=False, server_default="company",
-                  comment="company | zone"),
-        sa.Column("scope_id",    UUID(as_uuid=False), nullable=True, index=True,
-                  comment="NULL for company scope, zone UUID for zone scope"),
-
-        # The config key in dot-notation
-        sa.Column("key",         sa.String(128), nullable=False,
-                  comment="e.g. facilityCount, sla.p1_response_minutes, "
-                          "certifications.definitions"),
-
-        # The config value — any JSON type
-        sa.Column("value",       JSONB,          nullable=False,
-                  comment="Any JSON value — string, number, boolean, array, object"),
-
-        # Who last changed it and when
-        sa.Column("updated_by",  UUID(as_uuid=False), nullable=True,
-                  comment="users.id of last editor"),
-        sa.Column("updated_at",  sa.DateTime(timezone=True), nullable=False,
-                  server_default=sa.text("now()")),
-        sa.Column("created_at",  sa.DateTime(timezone=True), nullable=False,
-                  server_default=sa.text("now()")),
-    )
-
-    # Unique: one value per (company, module, scope, key)
-    op.create_unique_constraint(
-        "uq_pulse_config_company_module_scope_key",
-        "pulse_config",
-        ["company_id", "module", "scope_type", "scope_id", "key"],
-    )
-
-    # Fast lookup: "give me all config for company X in module Y"
-    op.create_index(
-        "ix_pulse_config_company_module",
-        "pulse_config",
-        ["company_id", "module"],
-    )
-
-    # Fast lookup: "give me all zone overrides for zone Z"
-    op.create_index(
-        "ix_pulse_config_scope",
-        "pulse_config",
-        ["company_id", "scope_type", "scope_id"],
-    )
-
-    # ── 2. companies.latitude / longitude ────────────────────────────────────
-    # timezone already exists — just adding the coordinate columns
-    op.add_column(
-        "companies",
-        sa.Column("latitude",  sa.Float(), nullable=True,
-                  comment="Facility latitude for weather widget. "
-                          "If null, weather widget is hidden."),
-    )
-    op.add_column(
-        "companies",
-        sa.Column("longitude", sa.Float(), nullable=True,
-                  comment="Facility longitude for weather widget."),
-    )
-
+    conn = op.get_bind()
+    ah.safe_create_table(op, conn, 'pulse_config', sa.Column('id', UUID(as_uuid=False), primary_key=True, nullable=False), sa.Column('company_id', UUID(as_uuid=False), sa.ForeignKey('companies.id', ondelete='CASCADE'), nullable=False, index=True), sa.Column('module', sa.String(64), nullable=False, comment='global | workRequests | schedule | workers | zones | automation | compliance | notifications | gamification'), sa.Column('scope_type', sa.String(16), nullable=False, server_default='company', comment='company | zone'), sa.Column('scope_id', UUID(as_uuid=False), nullable=True, index=True, comment='NULL for company scope, zone UUID for zone scope'), sa.Column('key', sa.String(128), nullable=False, comment='e.g. facilityCount, sla.p1_response_minutes, certifications.definitions'), sa.Column('value', JSONB, nullable=False, comment='Any JSON value — string, number, boolean, array, object'), sa.Column('updated_by', UUID(as_uuid=False), nullable=True, comment='users.id of last editor'), sa.Column('updated_at', sa.DateTime(timezone=True), nullable=False, server_default=sa.text('now()')), sa.Column('created_at', sa.DateTime(timezone=True), nullable=False, server_default=sa.text('now()')))
+    ah.safe_create_unique_constraint(op, conn, 'uq_pulse_config_company_module_scope_key', 'pulse_config', ['company_id', 'module', 'scope_type', 'scope_id', 'key'])
+    ah.safe_create_index(op, conn, 'ix_pulse_config_company_module', 'pulse_config', ['company_id', 'module'])
+    ah.safe_create_index(op, conn, 'ix_pulse_config_scope', 'pulse_config', ['company_id', 'scope_type', 'scope_id'])
+    ah.safe_add_column(op, conn, 'companies', sa.Column('latitude', sa.Float(), nullable=True, comment='Facility latitude for weather widget. If null, weather widget is hidden.'))
+    ah.safe_add_column(op, conn, 'companies', sa.Column('longitude', sa.Float(), nullable=True, comment='Facility longitude for weather widget.'))
 
 def downgrade() -> None:
-    op.drop_column("companies", "longitude")
-    op.drop_column("companies", "latitude")
-    op.drop_index("ix_pulse_config_scope",          table_name="pulse_config")
-    op.drop_index("ix_pulse_config_company_module",  table_name="pulse_config")
-    op.drop_constraint("uq_pulse_config_company_module_scope_key", "pulse_config")
-    op.drop_table("pulse_config")
+    conn = op.get_bind()
+    ah.safe_drop_column(op, conn, 'companies', 'longitude')
+    ah.safe_drop_column(op, conn, 'companies', 'latitude')
+    ah.safe_drop_index(op, conn, 'ix_pulse_config_scope', 'pulse_config')
+    ah.safe_drop_index(op, conn, 'ix_pulse_config_company_module', 'pulse_config')
+    ah.safe_drop_constraint(op, conn, 'uq_pulse_config_company_module_scope_key', 'pulse_config', type_='unique')
+    ah.safe_drop_table(op, conn, 'pulse_config')

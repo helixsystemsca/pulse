@@ -4,41 +4,27 @@ Revision ID: 0094_infra_attr_key_uq
 Revises: 0093_merge_infra_graph_head
 Create Date: 2026-05-01
 """
-
 from __future__ import annotations
-
 from alembic import op
 
-revision = "0094_infra_attr_key_uq"
-down_revision = "0093_merge_infra_graph_head"
+from pathlib import Path
+import sys
+
+_BACK = Path(__file__).resolve().parents[2]
+if str(_BACK) not in sys.path:
+    sys.path.insert(0, str(_BACK))
+import alembic_helpers as ah  # noqa: E402
+
+revision = '0094_infra_attr_key_uq'
+down_revision = '0093_merge_infra_graph_head'
 branch_labels = None
 depends_on = None
 
-
 def upgrade() -> None:
-    # Drop duplicates: keep the newest row per (entity_type, entity_id, key).
-    op.execute(
-        """
-        DELETE FROM infra_attributes
-        WHERE id IN (
-            SELECT id FROM (
-                SELECT id,
-                       ROW_NUMBER() OVER (
-                           PARTITION BY entity_type, entity_id, key
-                           ORDER BY created_at DESC
-                       ) AS rn
-                FROM infra_attributes
-            ) sub
-            WHERE sub.rn > 1
-        )
-        """
-    )
-    op.create_unique_constraint(
-        "uq_infra_attributes_entity_key",
-        "infra_attributes",
-        ["entity_type", "entity_id", "key"],
-    )
-
+    conn = op.get_bind()
+    op.execute('\n        DELETE FROM infra_attributes\n        WHERE id IN (\n            SELECT id FROM (\n                SELECT id,\n                       ROW_NUMBER() OVER (\n                           PARTITION BY entity_type, entity_id, key\n                           ORDER BY created_at DESC\n                       ) AS rn\n                FROM infra_attributes\n            ) sub\n            WHERE sub.rn > 1\n        )\n        ')
+    ah.safe_create_unique_constraint(op, conn, 'uq_infra_attributes_entity_key', 'infra_attributes', ['entity_type', 'entity_id', 'key'])
 
 def downgrade() -> None:
-    op.drop_constraint("uq_infra_attributes_entity_key", "infra_attributes", type_="unique")
+    conn = op.get_bind()
+    ah.safe_drop_constraint(op, conn, 'uq_infra_attributes_entity_key', 'infra_attributes', type_='unique')

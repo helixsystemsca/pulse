@@ -26,41 +26,29 @@ The position engine bootstraps these on startup via GET /api/v1/gateways —
 any gateway with non-null x_norm/y_norm is used for trilateration.
 Gateways without positions are still used for zone-level assignment.
 """
-
 from __future__ import annotations
-
 import sqlalchemy as sa
 from alembic import op
 
-revision      = "0069_gateway_floor_position"
-down_revision = "0068_beacon_positions"
-branch_labels = None
-depends_on    = None
+from pathlib import Path
+import sys
 
+_BACK = Path(__file__).resolve().parents[2]
+if str(_BACK) not in sys.path:
+    sys.path.insert(0, str(_BACK))
+import alembic_helpers as ah  # noqa: E402
+
+revision = '0069_gateway_floor_position'
+down_revision = '0068_beacon_positions'
+branch_labels = None
+depends_on = None
 
 def upgrade() -> None:
-    # x_norm: normalised 0.0–1.0 position on floor plan width axis
-    op.add_column(
-        "automation_gateways",
-        sa.Column(
-            "x_norm",
-            sa.Float(),
-            nullable=True,
-            comment="Normalised 0.0–1.0 floor plan x position. Set via Devices tab.",
-        ),
-    )
-    # y_norm: normalised 0.0–1.0 position on floor plan height axis
-    op.add_column(
-        "automation_gateways",
-        sa.Column(
-            "y_norm",
-            sa.Float(),
-            nullable=True,
-            comment="Normalised 0.0–1.0 floor plan y position. Set via Devices tab.",
-        ),
-    )
-
+    conn = op.get_bind()
+    ah.safe_add_column(op, conn, 'automation_gateways', sa.Column('x_norm', sa.Float(), nullable=True, comment='Normalised 0.0–1.0 floor plan x position. Set via Devices tab.'))
+    ah.safe_add_column(op, conn, 'automation_gateways', sa.Column('y_norm', sa.Float(), nullable=True, comment='Normalised 0.0–1.0 floor plan y position. Set via Devices tab.'))
 
 def downgrade() -> None:
-    op.drop_column("automation_gateways", "y_norm")
-    op.drop_column("automation_gateways", "x_norm")
+    conn = op.get_bind()
+    ah.safe_drop_column(op, conn, 'automation_gateways', 'y_norm')
+    ah.safe_drop_column(op, conn, 'automation_gateways', 'x_norm')

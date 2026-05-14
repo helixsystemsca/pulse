@@ -1,24 +1,27 @@
 """Blueprint layer stack (layers_json + blueprint_elements.layer_id)."""
-
 from __future__ import annotations
-
 import sqlalchemy as sa
 from alembic import op
 
-revision = "0059"
-down_revision = "0058"
+from pathlib import Path
+import sys
+
+_BACK = Path(__file__).resolve().parents[2]
+if str(_BACK) not in sys.path:
+    sys.path.insert(0, str(_BACK))
+import alembic_helpers as ah  # noqa: E402
+
+revision = '0059'
+down_revision = '0058'
 branch_labels = None
 depends_on = None
 
-
 def upgrade() -> None:
-    op.add_column("blueprints", sa.Column("layers_json", sa.Text(), nullable=True))
-    op.add_column(
-        "blueprint_elements",
-        sa.Column("layer_id", sa.String(length=36), nullable=True),
-    )
-
+    conn = op.get_bind()
+    ah.safe_add_column(op, conn, 'blueprints', sa.Column('layers_json', sa.Text(), nullable=True))
+    ah.safe_add_column(op, conn, 'blueprint_elements', sa.Column('layer_id', sa.String(length=36), nullable=True))
 
 def downgrade() -> None:
-    op.drop_column("blueprint_elements", "layer_id")
-    op.drop_column("blueprints", "layers_json")
+    conn = op.get_bind()
+    ah.safe_drop_column(op, conn, 'blueprint_elements', 'layer_id')
+    ah.safe_drop_column(op, conn, 'blueprints', 'layers_json')

@@ -17,6 +17,9 @@ dist/
 .env*.local
 *.zip
 
+# Generated migration audit (run: python scripts/generate_migration_health_report.py)
+backend/alembic/MIGRATION_HEALTH_REPORT.md
+
 # Claude extraction artifacts (kept local, not tracked)
 pulse_extracted/
 pulse_claude_branch.zip
