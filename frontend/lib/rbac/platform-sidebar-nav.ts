@@ -7,7 +7,6 @@
 import { getPlatformModuleById } from "@/config/platform/modules";
 import { pulseTenantSidebarNav } from "@/lib/pulse-app";
 import type { PlatformIconKey } from "@/config/platform/types";
-import type { PulseSidebarIcon } from "@/lib/pulse-app";
 import type { PlatformWorkspaceModuleDef } from "@/lib/rbac/platform-workspace-modules";
 
 function normalizeHref(href: string): string {
@@ -23,7 +22,7 @@ const CLASSIC_TENANT_NAV_HREFS = new Set(
 export type UnifiedPlatformSidebarItem = {
   href: string;
   label: string;
-  icon: PlatformIconKey | PulseSidebarIcon;
+  icon: PlatformIconKey;
 };
 
 /**
