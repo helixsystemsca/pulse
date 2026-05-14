@@ -11,7 +11,7 @@ describe("resolveUnifiedPlatformSidebarItem", () => {
   });
 
   it("keeps communications-native modules on platform routes", () => {
-    const mapper = MASTER_FEATURES.find((m) => m.key === "comms_advertising_mapper")!;
+    const mapper = MASTER_FEATURES.find((m) => m.key === "advertising_mapper")!;
     expect(mapper.route).toBe("/communications/advertising-mapper");
   });
 });

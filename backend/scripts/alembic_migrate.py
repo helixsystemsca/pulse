@@ -79,23 +79,31 @@ def _direct_realign_orphan_revision(conn, stored: str) -> None:
     _log.info("baseline realignment complete")
 
 
+def _require_single_head(script: ScriptDirectory) -> str:
+    """Return the sole active revision id; fail if the tree has zero or multiple heads."""
+    heads = script.get_heads()
+    if len(heads) != 1:
+        _log.error("expected exactly one migration head, got %s", heads)
+        raise SystemExit(1)
+    head = heads[0]
+    _log.info("active migration head: %r", head)
+    return head
+
+
 def main() -> int:
     cfg = Config(str(BACKEND_ROOT / "alembic.ini"))
     script = ScriptDirectory.from_config(cfg)
-    heads = script.get_heads()
-    if heads != [ALPHA_BASELINE]:
-        _log.error("expected single head %s, got %s", ALPHA_BASELINE, heads)
-        return 1
+    migration_head = _require_single_head(script)
 
     url = _sync_database_url()
     engine = create_engine(url)
     with engine.connect() as conn:
         stored = _read_stored_revision(conn)
         if stored is not None:
-            if stored == ALPHA_BASELINE:
-                _log.info("alembic_version already at baseline %r", ALPHA_BASELINE)
-            elif _revision_in_active_tree(script, stored):
-                _log.info("alembic_version=%r is in active tree; proceeding with upgrade head", stored)
+            if stored == migration_head:
+                _log.info("alembic_version already at head %r", migration_head)
+            elif stored == ALPHA_BASELINE or _revision_in_active_tree(script, stored):
+                _log.info("alembic_version=%r; proceeding with upgrade head", stored)
             else:
                 _direct_realign_orphan_revision(conn, stored)
 
