@@ -103,7 +103,7 @@ export function PmWorkspaceApp() {
 
       <div className="flex flex-col gap-4 lg:flex-row">
         <aside className="w-full shrink-0 space-y-3 rounded-lg border border-ds-border bg-ds-primary p-3 lg:max-w-xs">
-          <p className="text-xs font-semibold uppercase text-ds-muted">Workspaces</p>
+          <p className="text-xs font-semibold uppercase text-ds-muted">Project workspace</p>
           <form
             className="flex gap-2"
             onSubmit={async (e) => {

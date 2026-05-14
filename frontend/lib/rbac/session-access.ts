@@ -3,12 +3,16 @@
  * `contract_features` (or `contract_enabled_features` for company admins) + `rbac_permissions`.
  * No `enabled_features` or coarse `permissions` branching for visibility.
  */
-import { PLATFORM_DEPARTMENT_SLUGS } from "@/config/platform/departments";
+import { PLATFORM_DEPARTMENTS, PLATFORM_DEPARTMENT_SLUGS } from "@/config/platform/departments";
 import type { PulseAuthSession } from "@/lib/pulse-session";
-import { pulseTenantSidebarNav } from "@/lib/pulse-app";
+import { pulseTenantSidebarNav, type PulseSidebarIcon } from "@/lib/pulse-app";
+import type { PlatformIconKey } from "@/config/platform/types";
+import { PLATFORM_WORKSPACE_MODULES } from "@/lib/rbac/platform-workspace-modules";
 
 type NavGate =
   | { kind: "always" }
+  | { kind: "deny" }
+  | { kind: "platform_dept_index"; departmentSlug: string }
   | {
       kind: "module";
       companyModules: readonly string[];
@@ -64,10 +68,30 @@ export function isTenantFullAdminSession(session: PulseAuthSession | null): bool
   );
 }
 
+function platformDeptIndexAllowed(session: PulseAuthSession | null, departmentSlug: string): boolean {
+  const contract = tenantContractModuleSet(session);
+  for (const m of PLATFORM_WORKSPACE_MODULES) {
+    if (!m.departmentSlugs.includes(departmentSlug)) continue;
+    if (!contract.has(m.requiredCompanyModule)) continue;
+    if (hasRbacPermission(session, m.requiredRbacPermission)) return true;
+  }
+  return false;
+}
+
 function classicNavGate(href: string): NavGate {
   const h = normalizeHref(href);
   for (const slug of PLATFORM_DEPARTMENT_SLUGS) {
-    if (h === `/${slug}` || h.startsWith(`/${slug}/`)) return { kind: "always" };
+    if (h !== `/${slug}` && !h.startsWith(`/${slug}/`)) continue;
+    if (h === `/${slug}`) return { kind: "platform_dept_index", departmentSlug: slug };
+    const routeSeg = h.slice(slug.length + 2).split("/").filter(Boolean)[0] ?? "";
+    if (!routeSeg) return { kind: "platform_dept_index", departmentSlug: slug };
+    const mod = PLATFORM_WORKSPACE_MODULES.find((m) => m.departmentSlugs.includes(slug) && m.route === routeSeg);
+    if (!mod) return { kind: "deny" };
+    return {
+      kind: "module",
+      companyModules: [mod.requiredCompanyModule],
+      rbacAnyOf: [mod.requiredRbacPermission],
+    };
   }
   if (h === "/overview/project" || h.startsWith("/overview/project/")) {
     return {
@@ -163,6 +187,8 @@ export function canAccessClassicNavHref(session: PulseAuthSession | null, href: 
 
   const gate = classicNavGate(href);
   if (gate.kind === "always") return true;
+  if (gate.kind === "deny") return false;
+  if (gate.kind === "platform_dept_index") return platformDeptIndexAllowed(session, gate.departmentSlug);
 
   const modsOk = gate.requireAllContractModules
     ? tenantHasEveryCompanyModule(session, gate.companyModules)
@@ -187,6 +213,27 @@ export function canShowClassicSidebarItem(
   return canAccessClassicNavHref(session, href);
 }
 
+/** `/{department}/{module}` entries merged into the tenant rail (same contract ∩ RBAC as platform pages). */
+export function flatPlatformNavSidebarItemsForSession(
+  session: PulseAuthSession | null,
+): { href: string; label: string; icon: PlatformIconKey | PulseSidebarIcon }[] {
+  const contract = tenantContractModuleSet(session);
+  const out: { href: string; label: string; icon: PlatformIconKey | PulseSidebarIcon }[] = [];
+  const seen = new Set<string>();
+  for (const d of PLATFORM_DEPARTMENTS) {
+    for (const m of PLATFORM_WORKSPACE_MODULES) {
+      if (!m.departmentSlugs.includes(d.slug)) continue;
+      if (!contract.has(m.requiredCompanyModule)) continue;
+      if (!hasRbacPermission(session, m.requiredRbacPermission)) continue;
+      const href = `/${d.slug}/${m.route}`;
+      if (seen.has(href)) continue;
+      seen.add(href);
+      out.push({ href, label: `${d.name}: ${m.name}`, icon: m.icon });
+    }
+  }
+  return out;
+}
+
 /**
  * First classic-tenant sidebar destination the user may open (excluding Settings).
  * Used when `/overview` is disabled or there is no workspace hub.
@@ -199,6 +246,9 @@ export function firstAccessibleClassicTenantHref(session: PulseAuthSession | nul
   for (const item of pulseTenantSidebarNav) {
     if (item.href === "/settings") continue;
     if (canShowClassicSidebarItem(session, item.href, sys)) return item.href;
+  }
+  for (const row of flatPlatformNavSidebarItemsForSession(session)) {
+    if (canShowClassicSidebarItem(session, row.href, sys)) return row.href;
   }
   return "/settings";
 }

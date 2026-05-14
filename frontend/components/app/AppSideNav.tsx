@@ -3,6 +3,9 @@
 /**
  * Tenant / system left rail: fixed-height rows, hover-expands width for labels.
  * Rows use a modest height (not aspect-square) so expanding the rail does not blow up tile scale.
+ *
+ * Platform routes `/{department}/{module}` are merged here; each link is gated only by contract + RBAC
+ * (same rules as the page shell). There is no separate “Workspaces” hub rail.
  */
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -37,7 +40,6 @@ import {
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
-import { defaultWorkspaceHubHref, listDepartmentsAllowedForSession } from "@/config/platform/navigation";
 import type { PlatformIconKey } from "@/config/platform/types";
 import {
   pulseSystemSidebarNav,
@@ -48,11 +50,10 @@ import { isPulseNavActive } from "@/lib/pulse-nav-active";
 import {
   canAccessClassicNavHref,
   canShowTeamManagementNavItem,
+  flatPlatformNavSidebarItemsForSession,
   isWorkersManagementHref,
 } from "@/lib/rbac/session-access";
 import { cn } from "@/lib/cn";
-import { isPlatformDepartmentPath } from "@/lib/platform/path-detection";
-import { PlatformAppSideNav } from "@/components/platform/PlatformAppSideNav";
 
 const ICONS: Record<PulseSidebarIcon, LucideIcon> = {
   layout: LayoutDashboard,
@@ -73,7 +74,6 @@ const ICONS: Record<PulseSidebarIcon, LucideIcon> = {
   settings: Settings,
 };
 
-/** Department workspace icons (match {@link PlatformAppSideNav}); merged under tenant rail icons. */
 const PLATFORM_DEPT_ICONS: Record<PlatformIconKey, LucideIcon> = {
   layout: LayoutDashboard,
   wrench: Wrench,
@@ -100,11 +100,9 @@ function railIcon(icon: PulseSidebarIcon | PlatformIconKey): LucideIcon {
   return RAIL_ICONS[icon] ?? LayoutDashboard;
 }
 
-/** Icon column: keep in sync with the navbar logo square width. */
 const COLLAPSED_RAIL_W = "w-[var(--pulse-sidebar-collapsed-width)]";
 const ICON_COL = `h-11 ${COLLAPSED_RAIL_W} shrink-0`;
 
-/** Row highlight: identical hover + active — primary accent ({@link --ds-accent}, ice blue). */
 const SIDENAV_ROW_ACTIVE_HOVER = "bg-[var(--ds-accent)]";
 const SIDENAV_ROW_ACTIVE_HOVER_HOVER = "hover:bg-[var(--ds-accent)]";
 
@@ -116,7 +114,6 @@ export function AppSideNav() {
   const [railExpanded, setRailExpanded] = useState(false);
   const asideRef = useRef<HTMLElement | null>(null);
 
-  /** Clicks leave focus on the `<Link>`; `focus-within` used to widen the rail and matched inconsistently across routes. Collapse and blur after navigation. */
   useEffect(() => {
     setRailExpanded(false);
     const root = asideRef.current;
@@ -131,13 +128,8 @@ export function AppSideNav() {
   const rawNav = isSystemAdmin ? pulseSystemSidebarNav : pulseTenantSidebarNav;
   let items: SidebarNavItem[] = [...rawNav].map((i) => ({ href: i.href, label: i.label, icon: i.icon }));
   if (!isSystemAdmin && session) {
-    const workspaceDepts = listDepartmentsAllowedForSession(session);
-    if (workspaceDepts.length > 0) {
-      items.push({
-        href: defaultWorkspaceHubHref(session),
-        label: "Workspaces",
-        icon: "layout",
-      });
+    for (const row of flatPlatformNavSidebarItemsForSession(session)) {
+      items.push({ href: row.href, label: row.label, icon: row.icon });
     }
   }
   if (!isSystemAdmin && session) {
@@ -152,10 +144,6 @@ export function AppSideNav() {
   const systemRail = isSystemAdmin;
 
   if (!authed || !session) return null;
-
-  if (isPlatformDepartmentPath(pathname)) {
-    return <PlatformAppSideNav />;
-  }
 
   const labelVisibility = cn(
     "min-w-0 truncate text-left text-[13px] font-semibold transition-[opacity,max-width,margin] duration-300 ease-in-out motion-reduce:transition-none",

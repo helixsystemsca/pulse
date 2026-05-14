@@ -5,7 +5,7 @@
 
 export type DepartmentId = string;
 
-/** Lucide icon name subset mapped in `PlatformAppSideNav` (extend as needed). */
+/** Lucide icon name subset used by the tenant sidebar for platform routes (extend as needed). */
 export type PlatformIconKey =
   | "wrench"
   | "megaphone"

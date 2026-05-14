@@ -52,15 +52,10 @@ export function legacyRoleBucketForSlot(slot: PermissionMatrixRoleSlot): "manage
   return "worker";
 }
 
-export function workspaceFeatureKeyForDepartment(dept: string): string {
-  return `workspace_${dept}`;
-}
-
 export type PermissionFeatureGroup = { id: string; label: string; description?: string; keys: readonly string[] };
 
 /** Feature toggles shown for the selected department (subset of contract). */
 export function permissionFeatureGroupsForDepartment(dept: PermissionMatrixDepartment): PermissionFeatureGroup[] {
-  const ws = workspaceFeatureKeyForDepartment(dept);
   const maintenanceOps = [
     "work_requests",
     "compliance",
@@ -82,7 +77,6 @@ export function permissionFeatureGroupsForDepartment(dept: PermissionMatrixDepar
 
   if (dept === "maintenance") {
     return [
-      { id: "hub", label: "Workspace access", description: "Allow this role to open the Maintenance workspace from Workspaces.", keys: [ws] },
       {
         id: "dashboard",
         label: "Leadership dashboard",
@@ -96,7 +90,6 @@ export function permissionFeatureGroupsForDepartment(dept: PermissionMatrixDepar
   }
   if (dept === "communications") {
     return [
-      { id: "hub", label: "Workspace access", description: "Allow this role to open the Communications workspace.", keys: [ws] },
       {
         id: "dashboard",
         label: "Leadership dashboard",
@@ -110,7 +103,6 @@ export function permissionFeatureGroupsForDepartment(dept: PermissionMatrixDepar
   }
   if (dept === "aquatics") {
     return [
-      { id: "hub", label: "Workspace access", keys: [ws] },
       {
         id: "dashboard",
         label: "Leadership dashboard",
@@ -124,7 +116,6 @@ export function permissionFeatureGroupsForDepartment(dept: PermissionMatrixDepar
   }
   if (dept === "reception") {
     return [
-      { id: "hub", label: "Workspace access", keys: [ws] },
       {
         id: "dashboard",
         label: "Leadership dashboard",
@@ -137,7 +128,6 @@ export function permissionFeatureGroupsForDepartment(dept: PermissionMatrixDepar
   }
   if (dept === "fitness" || dept === "racquets") {
     return [
-      { id: "hub", label: "Workspace access", keys: [ws] },
       {
         id: "dashboard",
         label: "Leadership dashboard",
@@ -149,7 +139,7 @@ export function permissionFeatureGroupsForDepartment(dept: PermissionMatrixDepar
       { id: "maps", label: "Maps, drawings & devices", keys: [...maps] },
     ];
   }
-  return [{ id: "hub", label: "Workspace access", keys: [ws] }];
+  return [];
 }
 
 /** Build legacy `role_feature_access` rows as unions across departments (delegation + fallback). */

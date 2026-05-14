@@ -51,21 +51,6 @@ const RBAC_TO_PLATFORM_CAPS: Record<string, readonly string[]> = {
   "publication_pipeline.view": ["publications.create", "publications.export"],
   "xplor_indesign.view": ["communications.indesign_pipeline.view"],
   "communications_assets.view": ["communications.assets.view"],
-  "workspace.view": [
-    "procedures.view",
-    "analytics.view",
-    "messaging.view",
-    "workorders.view",
-    "workorders.edit",
-    "inspections.view",
-    "equipment.view",
-    "publications.create",
-    "publications.export",
-    "communications.assets.view",
-    "communications.indesign_pipeline.view",
-    "communications.advertising_mapper.view",
-    "communications.campaign_planner.view",
-  ],
 };
 
 /**

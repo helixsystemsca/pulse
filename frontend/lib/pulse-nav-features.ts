@@ -4,11 +4,20 @@
  */
 
 import { PLATFORM_DEPARTMENT_SLUGS } from "@/config/platform/departments";
+import { PLATFORM_WORKSPACE_MODULES } from "@/lib/rbac/platform-workspace-modules";
 
 /** Nav href → feature key (company contract / system catalog). */
 export function featureKeyForTenantNavHref(href: string): string | undefined {
-  for (const slug of PLATFORM_DEPARTMENT_SLUGS) {
-    if (href === `/${slug}` || href.startsWith(`/${slug}/`)) return undefined;
+  const base = href.split("?")[0] ?? href;
+  const h = base.endsWith("/") && base.length > 1 ? base.slice(0, -1) : base;
+  const parts = h.split("/").filter(Boolean);
+  if (parts.length >= 2) {
+    const dept = parts[0]!;
+    const routeSeg = parts[1]!;
+    if (PLATFORM_DEPARTMENT_SLUGS.includes(dept)) {
+      const mod = PLATFORM_WORKSPACE_MODULES.find((m) => m.departmentSlugs.includes(dept) && m.route === routeSeg);
+      if (mod) return mod.requiredCompanyModule;
+    }
   }
   if (href === "/overview" || href.startsWith("/overview/")) return "dashboard";
   if (href === "/dashboard/messages" || href.startsWith("/dashboard/messages")) return "messaging";

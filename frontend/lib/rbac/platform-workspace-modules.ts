@@ -1,6 +1,6 @@
 /**
- * Single registry for department workspace sidebar entries (`/{dept}/{route}`).
- * Visibility: `contract_features` ∩ `rbac_permissions` only (see `buildDepartmentNavItems`).
+ * Registry for scoped department routes (`/{dept}/{route}`).
+ * Visibility: `contract_features` ∩ `rbac_permissions` only (see `buildDepartmentNavItems` and `AppSideNav`).
  */
 import type { PlatformIconKey } from "@/config/platform/types";
 

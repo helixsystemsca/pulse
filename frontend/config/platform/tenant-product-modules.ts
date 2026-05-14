@@ -14,23 +14,8 @@ export const PRODUCT_MODULE_PERMISSION_SECTIONS: readonly {
     id: "tenant_dashboard",
     label: "Leadership dashboard",
     description:
-      "Main operations / leadership overview (/overview). Turn off for tenants that only need workspaces (for example Communications).",
+      "Main operations / leadership overview (/overview). Turn off for tenants that do not need the leadership view.",
     keys: ["dashboard"],
-  },
-  {
-    id: "department_workspaces",
-    label: "Department workspaces",
-    description:
-      "Which department hubs appear in Workspaces (sidebar). Turning a hub off hides that workspace for this role; classic product pages (Work Requests, Inventory, etc.) still follow the sections below.",
-    keys: [
-      "workspace_maintenance",
-      "workspace_communications",
-      "workspace_reception",
-      "workspace_aquatics",
-      "workspace_fitness",
-      "workspace_racquets",
-      "workspace_admin",
-    ],
   },
   {
     id: "maintenance",
@@ -41,7 +26,7 @@ export const PRODUCT_MODULE_PERMISSION_SECTIONS: readonly {
   {
     id: "communications",
     label: "Communications",
-    description: "Department workspace tools for marketing and publications (also gated by capabilities).",
+    description: "Arena advertising, publications, campaigns, and asset tools (scoped routes under /communications/…).",
     keys: [
       "comms_assets",
       "comms_advertising_mapper",
@@ -86,11 +71,4 @@ export const MODULE_LABEL: Record<string, string> = {
   comms_publication_builder: "Communications · Publication pipeline",
   comms_indesign_pipeline: "Communications · RTF / TXT → InDesign",
   comms_campaign_planner: "Communications · Campaign planner",
-  workspace_maintenance: "Workspace · Maintenance",
-  workspace_communications: "Workspace · Communications",
-  workspace_reception: "Workspace · Reception",
-  workspace_aquatics: "Workspace · Aquatics",
-  workspace_fitness: "Workspace · Fitness",
-  workspace_racquets: "Workspace · Racquets",
-  workspace_admin: "Workspace · Administration",
 };

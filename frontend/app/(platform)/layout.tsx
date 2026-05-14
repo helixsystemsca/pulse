@@ -3,8 +3,8 @@ import { AmbientPageFrame } from "@/components/motion/AmbientPageFrame";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: { template: "%s | Workspaces | Panorama", default: "Workspaces" },
-  description: "Department-scoped operational workspaces.",
+  title: { template: "%s | Panorama", default: "Panorama" },
+  description: "Department-scoped tools and operational modules.",
 };
 
 export default function PlatformRouteGroupLayout({ children }: { children: React.ReactNode }) {

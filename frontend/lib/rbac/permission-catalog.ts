@@ -41,7 +41,6 @@ export const RBAC_PERMISSION_CATALOG: readonly RbacPermissionMeta[] = [
   { key: "publication_pipeline.view", label: "Publication pipeline", description: "Publication builder pipeline.", module: "comms_publication_builder", category: "Communications" },
   { key: "xplor_indesign.view", label: "Xplor → InDesign", description: "Xplor export to InDesign.", module: "comms_indesign_pipeline", category: "Communications" },
   { key: "communications_assets.view", label: "Communications assets", description: "Communications asset library.", module: "comms_assets", category: "Communications" },
-  { key: "workspace.view", label: "Department workspaces", description: "Open department workspace hubs.", module: "workspace", category: "Workspaces" },
 ] as const;
 
 const byKey: ReadonlyMap<string, RbacPermissionMeta> = new Map(RBAC_PERMISSION_CATALOG.map((m) => [m.key, m]));

@@ -1,17 +1,12 @@
 /**
- * Platform department hubs (`/{slug}/…`) — navigation only.
- *
- * MIGRATION (workspace auth removed):
- * - [x] `listDepartmentsAllowedForSession` — no `department_workspace_slugs` or `workspace_*` contract OR-fallback.
- * - [x] `buildDepartmentNavItems` — visibility = contract module ∩ RBAC only.
- * - Remaining risks: other files mentioning “workspace” for UX copy; backend still stores `department_slugs` on workers
- *   for HR/roster only (not used for hub authorization on the client).
+ * Platform department routes (`/{slug}/{module}`) — navigation helpers.
+ * Each module row in the main tenant sidebar uses the same contract + RBAC rules as these helpers.
  */
 import { getDepartmentBySlug, PLATFORM_DEPARTMENTS } from "@/config/platform/departments";
 import type { Department, PlatformNavItem } from "@/config/platform/types";
 import type { PulseAuthSession } from "@/lib/pulse-session";
 import { PLATFORM_WORKSPACE_MODULES } from "@/lib/rbac/platform-workspace-modules";
-import { firstAccessibleClassicTenantHref, hasRbacPermission } from "@/lib/rbac/session-access";
+import { hasRbacPermission } from "@/lib/rbac/session-access";
 
 const STORAGE_LAST_DEPT = "pulse_platform_department_slug_v1";
 
@@ -49,10 +44,7 @@ function contractSet(session: PulseAuthSession | null): Set<string> {
   return new Set(raw);
 }
 
-/**
- * Sidebar items for the department workspace rail.
- * Visibility = company contract (`contract_features`) ∩ flat RBAC (`rbac_permissions`) only.
- */
+/** In-department module list (same gating as merged tenant sidebar links). */
 export function buildDepartmentNavItems(departmentSlug: string, session: PulseAuthSession | null): PlatformNavItem[] {
   const dept = getDepartmentBySlug(departmentSlug);
   if (!dept) return [];
@@ -78,65 +70,11 @@ export function getFirstNavHrefForDepartment(departmentSlug: string, session: Pu
   return items[0]?.href ?? null;
 }
 
-/**
- * Departments the user may enter under `/{slug}/…`.
- *
- * Authorization is ONLY from contract modules + flat RBAC on each workspace module
- * (see {@link PLATFORM_WORKSPACE_MODULES} / {@link buildDepartmentNavItems}).
- * Legacy `department_workspace_slugs` and per-department `workspace_*` contract gates are NOT used — they caused
- * permission drift (e.g. HR workspace list vs Team Management RBAC).
- */
+/** Departments where the user has at least one visible scoped module (for in-app switchers). */
 export function listDepartmentsAllowedForSession(session: PulseAuthSession | null): readonly Department[] {
   return PLATFORM_DEPARTMENTS.filter((d) => buildDepartmentNavItems(d.slug, session).length > 0);
-}
-
-/** When a user has several workspaces, prefer a non-maintenance home so comms/reception staff land on their hub. */
-function departmentsOrderedForDefaultHub(depts: readonly Department[]): Department[] {
-  if (depts.length <= 1) return [...depts];
-  const nonMaint = depts.filter((d) => d.slug !== "maintenance");
-  const maint = depts.filter((d) => d.slug === "maintenance");
-  return [...nonMaint, ...maint];
-}
-
-/** First workspace home URL for the tenant rail “Workspaces” entry. */
-export function defaultWorkspaceHubHref(session: PulseAuthSession | null): string {
-  const depts = departmentsOrderedForDefaultHub(listDepartmentsAllowedForSession(session));
-  const first = depts[0];
-  if (!first) return firstAccessibleClassicTenantHref(session);
-  const mod = getDefaultModuleRouteForDepartment(first.slug, session);
-  if (mod) return `/${first.slug}/${mod}`;
-  return `/${first.slug}`;
 }
 
 export function listDepartmentsForSwitcher(): readonly Department[] {
   return PLATFORM_DEPARTMENTS;
 }
-
-/**
- * Legacy tenant left rail: one row per department the user may open, each linking to that
- * department’s first visible module (same rules as the in-workspace rail).
- */
-export function buildLegacyDepartmentWorkspaceRailItems(session: PulseAuthSession | null): PlatformNavItem[] {
-  const depts = departmentsOrderedForDefaultHub(listDepartmentsAllowedForSession(session));
-  const out: PlatformNavItem[] = [];
-  for (const d of depts) {
-    const modules = buildDepartmentNavItems(d.slug, session);
-    if (modules.length === 0) continue;
-    const href = getFirstNavHrefForDepartment(d.slug, session) ?? `/${d.slug}`;
-    out.push({
-      href,
-      label: d.name,
-      icon: d.icon ?? "layout",
-      group: "platform",
-    });
-  }
-  return out;
-}
-
-/** @deprecated Prefer {@link buildLegacyDepartmentWorkspaceRailItems}; kept for stable imports. */
-export const LEGACY_SIDEBAR_DEPARTMENT_HUB: PlatformNavItem = {
-  href: "/maintenance",
-  label: "Workspaces",
-  icon: "layout",
-  group: "platform",
-};

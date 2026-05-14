@@ -22,8 +22,6 @@ def _filter_keys_by_contract(keys: set[str], contract: set[str]) -> set[str]:
     for k in keys:
         req = RBAC_KEY_REQUIRES_COMPANY_FEATURE.get(k)
         if req is None:
-            if any(w for w in contract if w.startswith("workspace_")):
-                out.add(k)
             continue
         if req in contract:
             out.add(k)
