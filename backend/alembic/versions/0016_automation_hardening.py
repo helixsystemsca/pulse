@@ -27,11 +27,9 @@ depends_on = None
 def upgrade() -> None:
     conn = op.get_bind()
 
-    if ah.table_exists(conn, "automation_events") and not ah.column_exists(
-        conn, "automation_events", "idempotency_key"
-    ):
-        op.add_column("automation_events", sa.Column("idempotency_key", sa.Text(), nullable=True))
-        op.create_index("ix_automation_events_idempotency_key", "automation_events", ["idempotency_key"])
+    if ah.table_exists(conn, "automation_events"):
+        ah.safe_add_column(op, conn, "automation_events", sa.Column("idempotency_key", sa.Text(), nullable=True))
+        ah.safe_create_index(op, conn, "ix_automation_events_idempotency_key", "automation_events", ["idempotency_key"])
         op.execute(
             text(
                 "CREATE UNIQUE INDEX IF NOT EXISTS uq_automation_events_company_idempotency "
@@ -55,9 +53,9 @@ def upgrade() -> None:
             sa.Column("payload", JSONB, server_default=text("'{}'::jsonb"), nullable=False),
             sa.Column("created_at", sa.DateTime(timezone=True), server_default=text("now()"), nullable=False),
         )
-        op.create_index("ix_automation_logs_company_id", "automation_logs", ["company_id"])
-        op.create_index("ix_automation_logs_type", "automation_logs", ["type"])
-        op.create_index("ix_automation_logs_created_at", "automation_logs", ["created_at"])
+        ah.safe_create_index(op, conn, "ix_automation_logs_company_id", "automation_logs", ["company_id"])
+        ah.safe_create_index(op, conn, "ix_automation_logs_type", "automation_logs", ["type"])
+        ah.safe_create_index(op, conn, "ix_automation_logs_created_at", "automation_logs", ["created_at"])
 
 
 def downgrade() -> None:
@@ -68,5 +66,5 @@ def downgrade() -> None:
 
     if ah.table_exists(conn, "automation_events") and ah.column_exists(conn, "automation_events", "idempotency_key"):
         op.execute(text("DROP INDEX IF EXISTS uq_automation_events_company_idempotency"))
-        op.drop_index("ix_automation_events_idempotency_key", table_name="automation_events")
-        op.drop_column("automation_events", "idempotency_key")
+        ah.safe_drop_index(op, conn, "ix_automation_events_idempotency_key", "automation_events")
+        ah.safe_drop_column(op, conn, "automation_events", "idempotency_key")

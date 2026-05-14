@@ -26,26 +26,26 @@ depends_on = None
 def upgrade() -> None:
     conn = op.get_bind()
     if ah.table_exists(conn, "automation_logs"):
-        if not ah.column_exists(conn, "automation_logs", "severity"):
-            op.add_column(
-                "automation_logs",
-                sa.Column("severity", sa.String(16), server_default=text("'info'"), nullable=False),
-            )
-        if not ah.column_exists(conn, "automation_logs", "source_module"):
-            op.add_column(
-                "automation_logs",
-                sa.Column("source_module", sa.String(32), server_default=text("'ingest'"), nullable=False),
-            )
-        op.create_index("ix_automation_logs_severity", "automation_logs", ["severity"])
-        op.create_index("ix_automation_logs_source_module", "automation_logs", ["source_module"])
+        ah.safe_add_column(
+            op,
+            conn,
+            "automation_logs",
+            sa.Column("severity", sa.String(16), server_default=text("'info'"), nullable=False),
+        )
+        ah.safe_add_column(
+            op,
+            conn,
+            "automation_logs",
+            sa.Column("source_module", sa.String(32), server_default=text("'ingest'"), nullable=False),
+        )
+        ah.safe_create_index(op, conn, "ix_automation_logs_severity", "automation_logs", ["severity"])
+        ah.safe_create_index(op, conn, "ix_automation_logs_source_module", "automation_logs", ["source_module"])
 
 
 def downgrade() -> None:
     conn = op.get_bind()
     if ah.table_exists(conn, "automation_logs"):
-        if ah.column_exists(conn, "automation_logs", "source_module"):
-            op.drop_index("ix_automation_logs_source_module", table_name="automation_logs")
-            op.drop_column("automation_logs", "source_module")
-        if ah.column_exists(conn, "automation_logs", "severity"):
-            op.drop_index("ix_automation_logs_severity", table_name="automation_logs")
-            op.drop_column("automation_logs", "severity")
+        ah.safe_drop_index(op, conn, "ix_automation_logs_source_module", "automation_logs")
+        ah.safe_drop_column(op, conn, "automation_logs", "source_module")
+        ah.safe_drop_index(op, conn, "ix_automation_logs_severity", "automation_logs")
+        ah.safe_drop_column(op, conn, "automation_logs", "severity")
