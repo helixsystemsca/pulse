@@ -50,6 +50,7 @@ from app.api.proximity_routes import router as proximity_router
 from app.api.search_routes import router as search_router
 from app.api.core_routes import router as core_router
 from app.api.public_routes import router as public_router
+from app.api.rbac_debug_routes import router as rbac_debug_router
 from app.api.realtime import router as realtime_router
 from app.api.system_routes import router as system_router
 from app.api.users_routes import router as users_router
@@ -202,6 +203,7 @@ app.include_router(automation_config_router, prefix="/api/v1")
 app.include_router(admin_router, prefix="/api/v1")
 app.include_router(system_router, prefix="/api/system")
 app.include_router(users_router, prefix="/api/v1")
+app.include_router(rbac_debug_router, prefix="/api/v1")
 app.include_router(core_router, prefix="/api/v1")
 app.include_router(realtime_router, prefix="/api/v1")
 app.include_router(pulse_router, prefix="/api/v1")

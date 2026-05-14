@@ -33,7 +33,7 @@ from app.core.login_activity import latest_login_event_per_user
 from app.core.user_avatar_upload import co_worker_avatar_url
 from app.core.features.service import MODULE_KEYS
 from app.core.features.system_catalog import GLOBAL_SYSTEM_FEATURES
-from app.core.permission_feature_matrix import sanitize_department_role_feature_access
+from app.core.rbac.audit_service import record_rbac_audit_event
 from app.core.tenant_feature_access import (
     contract_and_effective_features_for_me,
     load_merged_workers_settings,
@@ -1291,7 +1291,17 @@ async def patch_worker(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Only company administrators or delegated leads may set extra module access for worker-role users when enabled in Team Management settings.",
             )
+        raw_ex = getattr(target, "feature_allow_extra", None)
+        before_extras = list(raw_ex) if isinstance(raw_ex, list) else []
         target.feature_allow_extra = _sanitize_feature_key_list(body.feature_allow_extra)
+        await record_rbac_audit_event(
+            db,
+            company_id=cid,
+            actor_user_id=str(actor.id),
+            action="user.feature_allow_extra.updated",
+            target_user_id=str(target.id),
+            payload={"before": before_extras, "after": list(target.feature_allow_extra)},
+        )
 
     await db.commit()
     u2 = await pulse_svc._user_in_company(db, cid, user_id)

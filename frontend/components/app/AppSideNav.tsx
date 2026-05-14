@@ -133,12 +133,10 @@ export function AppSideNav() {
     }
   }
   if (!isSystemAdmin && session) {
-    if (session.role !== "demo_viewer") {
-      items = items.filter((i) => {
-        if (isWorkersManagementHref(i.href)) return canShowTeamManagementNavItem(session, isSystemAdmin);
-        return canAccessClassicNavHref(session, i.href);
-      });
-    }
+    items = items.filter((i) => {
+      if (isWorkersManagementHref(i.href)) return canShowTeamManagementNavItem(session, isSystemAdmin);
+      return canAccessClassicNavHref(session, i.href);
+    });
   }
   items = items.filter((i) => i.href !== "/settings");
   const systemRail = isSystemAdmin;

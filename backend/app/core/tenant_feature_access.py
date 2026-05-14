@@ -100,11 +100,17 @@ def effective_tenant_feature_names_for_user(
     if use_drfa:
         dept = permission_matrix_department_for_user(user, hr)
         slot = permission_matrix_slot_for_user(user, hr)
-        row = drfa.get(dept) if isinstance(drfa.get(dept), dict) else None
-        raw_list = row.get(slot) if row else None
-        if isinstance(raw_list, list):
-            base_set = {str(x) for x in raw_list} & cset
+        dept_entry = drfa.get(dept)
+        if isinstance(dept_entry, dict):
+            raw_list = dept_entry.get(slot)
+            if isinstance(raw_list, list):
+                base_set = {str(x) for x in raw_list} & cset
+            else:
+                # Row exists for this department but this slot was never saved or is not a list:
+                # treat as explicitly empty — do NOT fall back to the full company contract.
+                base_set = set()
         else:
+            # Matrix exists company-wide but this user's department has no row yet → legacy coarse buckets.
             base_set = _role_feature_access_base_set(
                 user=user, contract_names=contract_names, merged_settings=merged_settings
             )

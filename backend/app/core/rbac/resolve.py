@@ -73,6 +73,9 @@ async def effective_rbac_permission_keys(
         return sorted(_filter_keys_by_contract(raw, contract))
 
     eff = list(effective_feature_names)
+    # Company-admin–granted module keys on the user row (subset of tenant contract only).
+    # Precedence: (matrix / role_feature_access → eff) ∪ extras → bridge to flat keys → ∩ contract.
+    # Extras cannot grant keys for modules absent from `contract_feature_names`.
     extras = getattr(user, "feature_allow_extra", None) or []
     if isinstance(extras, list):
         eff = sorted(set(eff) | {str(x) for x in extras if isinstance(x, str)})

@@ -8,10 +8,14 @@ import type { PulseAuthSession } from "@/lib/pulse-session";
 import { pulseTenantSidebarNav, type PulseSidebarIcon } from "@/lib/pulse-app";
 import type { PlatformIconKey } from "@/config/platform/types";
 import { PLATFORM_WORKSPACE_MODULES } from "@/lib/rbac/platform-workspace-modules";
+import { sessionHasAnyRole } from "@/lib/pulse-roles";
 
 type NavGate =
-  | { kind: "always" }
   | { kind: "deny" }
+  /** Signed-in account / legal shell only (no product entitlement). */
+  | { kind: "authenticated_shell" }
+  /** Session JWT roles only — use sparingly; must match server-side page guards. */
+  | { kind: "session_roles_any"; roles: readonly string[] }
   | { kind: "platform_dept_index"; departmentSlug: string }
   | {
       kind: "module";
@@ -106,14 +110,23 @@ function classicNavGate(href: string): NavGate {
     return { kind: "module", companyModules: ["dashboard"], rbacAnyOf: ["dashboard.view"] };
   }
 
+  if (h === "/worker" || h.startsWith("/worker/")) {
+    return { kind: "module", companyModules: ["dashboard"], rbacAnyOf: ["dashboard.view"] };
+  }
+
   if (h === "/dashboard/messages" || h.startsWith("/dashboard/messages")) {
     return { kind: "module", companyModules: ["messaging"], rbacAnyOf: ["messaging.view"] };
   }
   if (h === "/dashboard/compliance" || h.startsWith("/dashboard/compliance")) {
     return { kind: "module", companyModules: ["compliance"], rbacAnyOf: ["compliance.view"] };
   }
-  if (h === "/schedule") return { kind: "module", companyModules: ["schedule"], rbacAnyOf: ["schedule.view"] };
-  if (h === "/monitoring") return { kind: "module", companyModules: ["monitoring"], rbacAnyOf: ["monitoring.view"] };
+  if (h === "/schedule" || h.startsWith("/schedule/")) return { kind: "module", companyModules: ["schedule"], rbacAnyOf: ["schedule.view"] };
+  if (h === "/monitoring" || h.startsWith("/monitoring/")) {
+    return { kind: "module", companyModules: ["monitoring"], rbacAnyOf: ["monitoring.view"] };
+  }
+  if (h === "/operations" || h.startsWith("/operations/")) {
+    return { kind: "module", companyModules: ["monitoring"], rbacAnyOf: ["monitoring.view"] };
+  }
   if (h === "/projects" || h.startsWith("/projects/")) {
     return { kind: "module", companyModules: ["projects"], rbacAnyOf: ["projects.view"] };
   }
@@ -149,8 +162,19 @@ function classicNavGate(href: string): NavGate {
   if (h === "/dashboard/workers" || h.startsWith("/dashboard/workers")) {
     return { kind: "module", companyModules: ["team_management"], rbacAnyOf: ["team_management.view"] };
   }
-  if (h === "/dashboard/inventory") return { kind: "module", companyModules: ["inventory"], rbacAnyOf: ["inventory.view", "inventory.manage"] };
-  if (h === "/equipment" || h.includes("tool-tracking")) {
+  if (h === "/dashboard/inventory" || h.startsWith("/dashboard/inventory/")) {
+    return { kind: "module", companyModules: ["inventory"], rbacAnyOf: ["inventory.view", "inventory.manage"] };
+  }
+  if (h === "/dashboard/setup" || h.startsWith("/dashboard/setup/")) {
+    return { kind: "module", companyModules: ["zones_devices"], rbacAnyOf: ["zones_devices.view"] };
+  }
+  if (h === "/dashboard/organization" || h.startsWith("/dashboard/organization/")) {
+    return { kind: "session_roles_any", roles: ["company_admin"] };
+  }
+  if (h === "/sop" || h.startsWith("/sop/")) {
+    return { kind: "module", companyModules: ["procedures"], rbacAnyOf: ["procedures.view"] };
+  }
+  if (h === "/equipment" || h.startsWith("/equipment/") || h.includes("tool-tracking")) {
     return {
       kind: "module",
       companyModules: ["equipment", "tool_tracking", "rtls_tracking"],
@@ -172,9 +196,10 @@ function classicNavGate(href: string): NavGate {
   if (h === "/live-map" || h.startsWith("/live-map")) {
     return { kind: "module", companyModules: ["live_map"], rbacAnyOf: ["live_map.view"] };
   }
-  if (h === "/settings" || h.startsWith("/settings")) return { kind: "always" };
+  if (h === "/settings" || h.startsWith("/settings/")) return { kind: "authenticated_shell" };
+  if (h === "/dashboard/profile-settings" || h.startsWith("/dashboard/profile-settings/")) return { kind: "authenticated_shell" };
 
-  return { kind: "always" };
+  return { kind: "deny" };
 }
 
 /**
@@ -186,8 +211,9 @@ export function canAccessClassicNavHref(session: PulseAuthSession | null, href: 
   if (session.is_system_admin === true || session.role === "system_admin") return true;
 
   const gate = classicNavGate(href);
-  if (gate.kind === "always") return true;
   if (gate.kind === "deny") return false;
+  if (gate.kind === "authenticated_shell") return true;
+  if (gate.kind === "session_roles_any") return sessionHasAnyRole(session, ...gate.roles);
   if (gate.kind === "platform_dept_index") return platformDeptIndexAllowed(session, gate.departmentSlug);
 
   const modsOk = gate.requireAllContractModules
@@ -242,7 +268,6 @@ export function firstAccessibleClassicTenantHref(session: PulseAuthSession | nul
   if (!session) return "/login";
   const sys = Boolean(session.is_system_admin || session.role === "system_admin");
   if (sys) return "/system";
-  if (session.role === "demo_viewer") return "/overview";
   for (const item of pulseTenantSidebarNav) {
     if (item.href === "/settings") continue;
     if (canShowClassicSidebarItem(session, item.href, sys)) return item.href;
