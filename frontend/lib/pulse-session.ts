@@ -69,6 +69,10 @@ export type PulseAuthSession = {
   hr_department?: string | null;
   /** From `/auth/me`; full tenant contract modules (company admin only). */
   contract_enabled_features?: string[] | null;
+  /** From `/auth/me`; per-user module keys merged into RBAC (subset of contract). */
+  feature_allow_extra?: string[] | null;
+  /** From `/auth/me`; when set, RBAC keys come from tenant role grants. */
+  tenant_role_id?: string | null;
   /** From `/auth/me`; may open `/dashboard/workers`. */
   workers_roster_access?: boolean;
   /** True when a system administrator is viewing the app as this tenant user (JWT + `/auth/me`). */
@@ -109,6 +113,8 @@ export type UserOut = {
   /** Primary HR department slug from `/auth/me` for shell labels (not authorization). */
   hr_department?: string | null;
   contract_enabled_features?: string[] | null;
+  feature_allow_extra?: string[] | null;
+  tenant_role_id?: string | null;
   workers_roster_access?: boolean;
   is_impersonating?: boolean;
   is_system_admin?: boolean;
@@ -277,6 +283,8 @@ export function writeApiSession(
     department_workspace_slugs: user.department_workspace_slugs ?? undefined,
     hr_department: user.hr_department ?? undefined,
     contract_enabled_features: user.contract_enabled_features ?? undefined,
+    feature_allow_extra: user.feature_allow_extra ?? undefined,
+    tenant_role_id: user.tenant_role_id ?? undefined,
     workers_roster_access: user.workers_roster_access,
     is_impersonating:
       user.is_impersonating === false

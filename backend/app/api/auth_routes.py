@@ -1,5 +1,7 @@
 """Authentication: login, session info, impersonation (system_admin), effective permissions."""
 
+import logging
+import os
 from datetime import datetime, timedelta, timezone
 from typing import Annotated
 
@@ -304,6 +306,11 @@ async def me(
     db: Annotated[AsyncSession, Depends(get_db)],
     request: Request,
 ) -> UserOut:
+    """
+    Tenant session envelope. Contract + matrix + grants are resolved from the database on **every** request;
+    JWT carries identity + `tv` only. The SPA persists this payload in ``localStorage`` (``pulse_auth_v2``) and
+    must call ``refreshPulseUserFromServer`` (or reload) to pick up Team Management changes made while the tab is open.
+    """
     # Claims for UI impersonation hint (re-decode would duplicate; use header optional)
     is_imp = False
     try:
@@ -354,6 +361,27 @@ async def me(
         hr_row = await db.execute(select(PulseWorkerHR).where(PulseWorkerHR.user_id == user.id))
         hr_me = hr_row.scalar_one_or_none()
 
+    extras_raw = getattr(user, "feature_allow_extra", None) or []
+    feature_allow_out = [str(x) for x in extras_raw if isinstance(x, str)] if user.company_id else []
+    tr_id = getattr(user, "tenant_role_id", None)
+    tenant_role_out = str(tr_id) if tr_id else None
+
+    if os.getenv("PULSE_AUTH_ME_ENTITLEMENTS_LOG", "").lower() in ("1", "true", "yes"):
+        logging.getLogger("pulse.auth_me").info(
+            "auth_me entitlements user_id=%s company_id=%s roles=%s facility_tenant_admin=%s tenant_role_id=%s "
+            "contract_features=%s enabled_features=%s rbac_permissions=%s feature_allow_extra=%s permissions_legacy=%s",
+            user.id,
+            user.company_id,
+            list(user.roles or []),
+            bool(getattr(user, "facility_tenant_admin", False)),
+            tenant_role_out,
+            contract_feats,
+            eff_feats,
+            rbac_keys,
+            feature_allow_out,
+            perm_out,
+        )
+
     return UserOut(
         id=user.id,
         email=user.email,
@@ -380,6 +408,8 @@ async def me(
         permissions=perm_out,
         department_workspace_slugs=[],
         hr_department=primary_hr_department_slug_for_auth(hr_me),
+        feature_allow_extra=feature_allow_out if user.company_id else None,
+        tenant_role_id=tenant_role_out,
         server_time=datetime.now(timezone.utc).isoformat(),
         must_change_password=must_change_password,
     )

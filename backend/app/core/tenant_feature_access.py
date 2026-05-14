@@ -110,10 +110,9 @@ def effective_tenant_feature_names_for_user(
                 # treat as explicitly empty — do NOT fall back to the full company contract.
                 base_set = set()
         else:
-            # Matrix exists company-wide but this user's department has no row yet → legacy coarse buckets.
-            base_set = _role_feature_access_base_set(
-                user=user, contract_names=contract_names, merged_settings=merged_settings
-            )
+            # DRFA is enabled but this user's department has no matrix row (or unknown shape).
+            # Default-deny: do NOT fall back to legacy role_feature_access (that path can expand to the full contract).
+            base_set = set()
     else:
         base_set = _role_feature_access_base_set(
             user=user, contract_names=contract_names, merged_settings=merged_settings

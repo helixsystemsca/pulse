@@ -74,6 +74,10 @@ class UserOut(BaseModel):
     department_workspace_slugs: list[str] = Field(default_factory=list)
     #: Primary HR department slug (roster) for shell labels — not used for authorization.
     hr_department: Optional[str] = None
+    #: Company-admin–granted module keys merged into RBAC resolution (subset of contract); self row only.
+    feature_allow_extra: Optional[list[str]] = None
+    #: When set, flat RBAC keys come from `tenant_role_grants` instead of the matrix bridge.
+    tenant_role_id: Optional[str] = None
     #: Current server time (UTC ISO-8601) for client clock sync; not persisted on the user row.
     server_time: str
     #: True when the account is using the default temporary password and must set a new one.
