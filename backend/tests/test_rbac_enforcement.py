@@ -23,7 +23,20 @@ async def test_monitoring_denied_when_worker_matrix_empty(
     from app.core.features.system_catalog import GLOBAL_SYSTEM_FEATURES
     from app.models.pulse_models import PulseWorkersSettings
 
+    from app.models.rbac_models import TenantRole
+
     await sync_enabled_features(db_session, seeded_tenant.company_id, list(GLOBAL_SYSTEM_FEATURES))
+    role = TenantRole(
+        id=str(uuid.uuid4()),
+        company_id=seeded_tenant.company_id,
+        slug="no_access",
+        name="No access",
+        feature_keys=[],
+    )
+    db_session.add(role)
+    worker = await db_session.get(User, seeded_tenant.worker_id)
+    assert worker is not None
+    worker.tenant_role_id = role.id
     db_session.add(
         PulseWorkersSettings(
             id=str(uuid.uuid4()),
@@ -83,4 +96,5 @@ async def test_rbac_introspection_requires_company_admin(
     data = r2.json()
     assert data["user_id"] == seeded_tenant.manager_id
     assert "effective_rbac_keys" in data
+    assert "*" in data["effective_rbac_keys"]
     assert "denied_catalog_keys" in data

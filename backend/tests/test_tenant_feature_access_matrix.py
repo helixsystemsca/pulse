@@ -61,3 +61,13 @@ def test_company_admin_gets_full_contract_canonicalized() -> None:
     eff = _eff(user=user, contract_names=contract, merged_settings={})
     assert "dashboard" in eff
     assert "logs_inspections" in eff
+
+
+def test_company_admin_empty_contract_gets_full_catalog() -> None:
+    user = _user([UserRole.company_admin.value])
+    from app.core.tenant_feature_access import tenant_full_admin_canonical_features
+
+    eff = tenant_full_admin_canonical_features([])
+    assert "dashboard" in eff
+    assert "monitoring" in eff
+    assert "work_requests" in eff

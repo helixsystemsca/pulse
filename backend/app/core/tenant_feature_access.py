@@ -8,11 +8,11 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.company_features import tenant_enabled_feature_names_with_legacy
-from app.core.features.canonical_catalog import canonical_keys_from_contract
+from app.core.features.canonical_catalog import CANONICAL_PRODUCT_FEATURES, canonical_keys_from_contract
 from app.core.features.service import MODULE_KEYS
 from app.core.features.system_catalog import GLOBAL_SYSTEM_FEATURES, coerce_legacy_feature_names
 from app.core.tenant_roles import effective_features_from_role
-from app.core.user_roles import user_has_any_role, user_has_facility_tenant_admin_flag
+from app.core.user_roles import user_has_any_role, user_has_facility_tenant_admin_flag, user_has_tenant_full_admin
 from app.core.workers_settings_merge import merge_workers_settings
 from app.models.domain import User, UserRole
 from app.models.pulse_models import PulseWorkersSettings
@@ -29,6 +29,14 @@ async def load_merged_workers_settings(db: AsyncSession, company_id: str) -> dic
     q = await db.execute(select(PulseWorkersSettings).where(PulseWorkersSettings.company_id == company_id))
     row = q.scalar_one_or_none()
     return merge_workers_settings(row.settings if row else None)
+
+
+def tenant_full_admin_canonical_features(contract_names: list[str]) -> list[str]:
+    """All canonical modules for tenant full admins (full contract, or full catalog if contract is empty)."""
+    canonical = canonical_keys_from_contract(contract_names)
+    if canonical:
+        return canonical
+    return list(CANONICAL_PRODUCT_FEATURES)
 
 
 def user_has_workers_roster_page_access(user: User, merged_settings: dict[str, Any]) -> bool:
@@ -69,8 +77,8 @@ def effective_tenant_feature_names_for_user(
     contract_canonical = canonical_keys_from_contract(contract_names)
     if user.company_id is None or user.is_system_admin or user_has_any_role(user, UserRole.system_admin):
         return contract_canonical
-    if user_has_any_role(user, UserRole.company_admin) or user_has_facility_tenant_admin_flag(user):
-        return contract_canonical
+    if user_has_tenant_full_admin(user):
+        return tenant_full_admin_canonical_features(contract_names)
 
     tr_id = getattr(user, "tenant_role_id", None)
     if tenant_role is not None or tr_id:
@@ -107,9 +115,5 @@ async def contract_and_effective_features_for_me(
         tenant_role=tenant_role,
     )
     roster = user_has_workers_roster_page_access(user, merged)
-    admin_catalog = (
-        list(contract)
-        if user_has_any_role(user, UserRole.company_admin) or user_has_facility_tenant_admin_flag(user)
-        else []
-    )
+    admin_catalog = list(contract) if user_has_tenant_full_admin(user) else []
     return contract, eff, roster, admin_catalog

@@ -13,7 +13,7 @@ from app.core.rbac.resolve import (
     rbac_keys_from_legacy_effective_features,
 )
 from app.core.tenant_feature_access import contract_and_effective_features_for_me
-from app.core.user_roles import user_has_any_role, user_has_facility_tenant_admin_flag
+from app.core.user_roles import user_has_any_role, user_has_tenant_full_admin
 from app.models.domain import User, UserRole
 from app.models.rbac_models import TenantRoleGrant
 
@@ -88,10 +88,14 @@ async def build_rbac_introspection(db: AsyncSession, user: User) -> dict:
     resolved_set = set(resolved)
     cset = _contract_set(contract)
 
-    if user_has_any_role(user, UserRole.company_admin) or user_has_facility_tenant_admin_flag(user):
-        denied = sorted(ALL_KNOWN_RBAC_KEYS - resolved_set)
-        summary = "tenant_full_admin_contract"
-        sources_rows = [{"key": k, "sources": ["tenant_full_admin_contract"]} for k in sorted(resolved_set)]
+    if user_has_tenant_full_admin(user):
+        denied = [] if "*" in resolved_set else sorted(ALL_KNOWN_RBAC_KEYS - resolved_set)
+        summary = "tenant_full_admin"
+        sources_rows = (
+            [{"key": "*", "sources": ["tenant_full_admin"]}]
+            if "*" in resolved_set
+            else [{"key": k, "sources": ["tenant_full_admin_contract"]} for k in sorted(resolved_set)]
+        )
     else:
         tr_id = getattr(user, "tenant_role_id", None)
         if tr_id:
