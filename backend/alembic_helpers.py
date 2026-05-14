@@ -32,6 +32,11 @@ def _skip(operation: str, **context: Any) -> None:
         _log.info("alembic_helpers skip operation=%s", operation)
 
 
+def skip(operation: str, **context: Any) -> None:
+    """Public alias for :func:`_skip` — use in revisions for optional data/SQL steps."""
+    _skip(operation, **context)
+
+
 def table_exists(conn: Connection, name: str) -> bool:
     r = conn.execute(
         text(
