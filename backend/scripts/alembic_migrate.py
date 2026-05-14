@@ -3,8 +3,10 @@ Deploy-safe Alembic entrypoint for alpha baseline consolidation.
 
 Production databases may still record a pre-baseline revision (e.g.
 ``0128_rbac_audit_events``) in ``alembic_version``. Those scripts live in
-``alembic/archive/`` and are not loaded. This script stamps ``1000_alpha_baseline``
-when the stored revision is absent from the active tree, then runs ``upgrade head``.
+``alembic/archive/`` and are not loaded. This script updates ``alembic_version``
+directly when the stored revision is absent from the active tree (bypassing
+``command.stamp``, which would fail revision resolution), then runs
+``upgrade head``.
 
 Usage (Render / production):
     python scripts/alembic_migrate.py
@@ -56,20 +58,25 @@ def _revision_in_active_tree(script: ScriptDirectory, revision: str) -> bool:
         return False
 
 
-def _realign_orphan_revision(cfg: Config, script: ScriptDirectory, stored: str) -> bool:
-    """Stamp baseline when DB points at an archived / unknown revision. Returns True if stamped."""
-    if stored == ALPHA_BASELINE:
-        return False
-    if _revision_in_active_tree(script, stored):
-        return False
+def _direct_realign_orphan_revision(conn, stored: str) -> None:
+    """
+    Rewrite alembic_version without Alembic stamp (stamp resolves the old revision first and fails).
+    """
     _log.warning(
-        "alembic_version=%r is not in the active migration tree; stamping %s "
-        "(schema must already match current ORM — alpha consolidation)",
+        "detected orphan revision: %r (not in active migration tree; archived consolidation)",
         stored,
+    )
+    result = conn.execute(
+        text("UPDATE alembic_version SET version_num = :baseline"),
+        {"baseline": ALPHA_BASELINE},
+    )
+    conn.commit()
+    _log.info(
+        "direct repair applied: updated %s row(s) in alembic_version -> %r",
+        result.rowcount,
         ALPHA_BASELINE,
     )
-    command.stamp(cfg, ALPHA_BASELINE)
-    return True
+    _log.info("baseline realignment complete")
 
 
 def main() -> int:
@@ -84,9 +91,13 @@ def main() -> int:
     engine = create_engine(url)
     with engine.connect() as conn:
         stored = _read_stored_revision(conn)
-
-    if stored is not None:
-        _realign_orphan_revision(cfg, script, stored)
+        if stored is not None:
+            if stored == ALPHA_BASELINE:
+                _log.info("alembic_version already at baseline %r", ALPHA_BASELINE)
+            elif _revision_in_active_tree(script, stored):
+                _log.info("alembic_version=%r is in active tree; proceeding with upgrade head", stored)
+            else:
+                _direct_realign_orphan_revision(conn, stored)
 
     _log.info("running alembic upgrade head")
     command.upgrade(cfg, "head")
