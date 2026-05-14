@@ -24,11 +24,12 @@ from sqlalchemy.engine import Connection
 _log = logging.getLogger("alembic.helpers")
 
 
-def _skip(reason: str, **details: Any) -> None:
-    if details:
-        _log.info("alembic_helpers skip %s %s", reason, details)
+def _skip(operation: str, **context: Any) -> None:
+    """Log a skipped DDL helper step (``context`` may include table, column, cause, index, …)."""
+    if context:
+        _log.info("alembic_helpers skip operation=%s %s", operation, context)
     else:
-        _log.info("alembic_helpers skip %s", reason)
+        _log.info("alembic_helpers skip operation=%s", operation)
 
 
 def table_exists(conn: Connection, name: str) -> bool:
@@ -100,14 +101,14 @@ def safe_create_index(
     **kwargs: Any,
 ) -> None:
     if index_exists(conn, index_name):
-        _skip("create_index", index=index_name, table=table_name)
+        _skip("create_index", index=index_name, table=table_name, cause="index_exists")
         return
     op.create_index(index_name, table_name, list(columns), unique=unique, **kwargs)
 
 
 def safe_drop_index(op: Any, conn: Connection, index_name: str, table_name: str) -> None:
     if not index_exists(conn, index_name):
-        _skip("drop_index", index=index_name, table=table_name)
+        _skip("drop_index", index=index_name, table=table_name, cause="index_missing")
         return
     op.drop_index(index_name, table_name=table_name)
 
@@ -115,10 +116,10 @@ def safe_drop_index(op: Any, conn: Connection, index_name: str, table_name: str)
 def safe_alter_column_drop_server_default(op: Any, conn: Connection, table: str, column: str) -> None:
     """Remove ``server_default`` only when one is present — avoids aborted transactions from no-op ALTERs."""
     if not column_exists(conn, table, column):
-        _skip("alter_column drop server_default", table=table, column=column, reason="column_missing")
+        _skip("alter_column_drop_server_default", table=table, column=column, cause="column_missing")
         return
     if not column_has_nonnull_default(conn, table, column):
-        _skip("alter_column drop server_default", table=table, column=column, reason="no_default")
+        _skip("alter_column_drop_server_default", table=table, column=column, cause="no_default")
         return
     op.alter_column(table, column, server_default=None)
 
@@ -136,14 +137,14 @@ def safe_add_column(
     if not name:
         raise ValueError("safe_add_column requires a sqlalchemy.schema.Column with .name")
     if column_exists(conn, table_name, str(name)):
-        _skip("add_column", table=table_name, column=str(name))
+        _skip("add_column", table=table_name, column=str(name), cause="column_exists")
         return
     op.add_column(table_name, column, schema=schema)
 
 
 def safe_drop_column(op: Any, conn: Connection, table_name: str, column_name: str, *, schema: str | None = None) -> None:
     if not column_exists(conn, table_name, column_name):
-        _skip("drop_column", table=table_name, column=column_name)
+        _skip("drop_column", table=table_name, column=column_name, cause="column_missing")
         return
     op.drop_column(table_name, column_name, schema=schema)
 
