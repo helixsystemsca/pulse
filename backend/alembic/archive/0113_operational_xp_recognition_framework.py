@@ -14,7 +14,7 @@ import alembic_helpers as ah  # noqa: E402
 from sqlalchemy import text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 revision = '0113_operational_xp_recognition'
-down_revision = '0112_procedure_worker_completions'
+down_revision = '0112_proc_worker_completions'
 branch_labels = None
 depends_on = None
 

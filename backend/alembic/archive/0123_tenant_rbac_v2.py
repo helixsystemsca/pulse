@@ -13,7 +13,7 @@ import sqlalchemy as sa
 from sqlalchemy import column, String, Text, table
 from sqlalchemy.dialects.postgresql import UUID
 revision = '0123_tenant_rbac_v2'
-down_revision = '0122_inventory_item_department_slug'
+down_revision = '0122_inv_item_dept_slug'
 branch_labels = None
 depends_on = None
 

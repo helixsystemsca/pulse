@@ -1,4 +1,4 @@
-"""Multi-department workspace assignments on worker HR rows."""
+"""Owning department slug on procedures (training matrix department scope)."""
 from __future__ import annotations
 import sqlalchemy as sa
 from alembic import op
@@ -11,16 +11,15 @@ if str(_BACK) not in sys.path:
     sys.path.insert(0, str(_BACK))
 import alembic_helpers as ah  # noqa: E402
 
-from sqlalchemy.dialects.postgresql import JSONB
-revision = '0121_pulse_worker_hr_department_slugs'
-down_revision = '0120_pulse_procedure_department_category'
+revision = '0120_pulse_proc_dept_cat'
+down_revision = '0119_pulse_feedback_deleted'
 branch_labels = None
 depends_on = None
 
 def upgrade() -> None:
     conn = op.get_bind()
-    ah.safe_add_column(op, conn, 'pulse_worker_hr', sa.Column('department_slugs', JSONB(), nullable=True))
+    ah.safe_add_column(op, conn, 'pulse_procedures', sa.Column('department_category', sa.String(length=32), nullable=True))
 
 def downgrade() -> None:
     conn = op.get_bind()
-    ah.safe_drop_column(op, conn, 'pulse_worker_hr', 'department_slugs')
+    ah.safe_drop_column(op, conn, 'pulse_procedures', 'department_category')

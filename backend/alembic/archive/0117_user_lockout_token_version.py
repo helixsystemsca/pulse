@@ -12,7 +12,7 @@ if str(_BACK) not in sys.path:
 import alembic_helpers as ah  # noqa: E402
 
 revision = '0117_user_lockout_token_version'
-down_revision = '0116_procedure_compliance_tracking_tags'
+down_revision = '0116_proc_compliance_tags'
 branch_labels = None
 depends_on = None
 

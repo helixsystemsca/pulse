@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from alembic import op
 
-revision = "0103_merge_routine_and_project_summary_heads"
+revision = "0103_merge_heads"
 down_revision = ("0101_pulse_project_summaries", "0102_routine_assignments_extras")
 branch_labels = None
 depends_on = None
@@ -20,4 +20,3 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     op.execute("-- alembic merge: no-op")
-

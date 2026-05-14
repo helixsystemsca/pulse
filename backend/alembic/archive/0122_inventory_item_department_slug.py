@@ -11,8 +11,8 @@ if str(_BACK) not in sys.path:
     sys.path.insert(0, str(_BACK))
 import alembic_helpers as ah  # noqa: E402
 
-revision = '0122_inventory_item_department_slug'
-down_revision = '0121_pulse_worker_hr_department_slugs'
+revision = '0122_inv_item_dept_slug'
+down_revision = '0121_worker_hr_dept_slugs'
 branch_labels = None
 depends_on = None
 

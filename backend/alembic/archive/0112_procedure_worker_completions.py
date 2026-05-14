@@ -12,8 +12,8 @@ if str(_BACK) not in sys.path:
 import alembic_helpers as ah  # noqa: E402
 
 from sqlalchemy.dialects.postgresql import UUID
-revision = '0112_procedure_worker_completions'
-down_revision = ('0111_inventory_contractors', '0111_training_matrix_admin_override')
+revision = '0112_proc_worker_completions'
+down_revision = ('0111_inventory_contractors', '0111_training_matrix_override')
 branch_labels = None
 depends_on = None
 

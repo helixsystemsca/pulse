@@ -11,7 +11,7 @@ if str(_BACK) not in sys.path:
     sys.path.insert(0, str(_BACK))
 import alembic_helpers as ah  # noqa: E402
 
-revision = '0119_pulse_user_feedback_deleted_at'
+revision = '0119_pulse_feedback_deleted'
 down_revision = '0118_pulse_user_feedback'
 branch_labels = None
 depends_on = None

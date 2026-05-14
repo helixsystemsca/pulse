@@ -1,12 +1,12 @@
-"""Add compliance.manage to RBAC catalog (mutations beyond view)."""
+"""Add dashboard.view to RBAC catalog (leadership /overview tenant feature)."""
 
 from __future__ import annotations
 
 import sqlalchemy as sa
 from alembic import op
 
-revision = "0124_rbac_catalog_compliance_manage"
-down_revision = "0123_tenant_rbac_v2"
+revision = "0126_rbac_catalog_dashboard_view"
+down_revision = "0125_rbac_equipment_manage"
 branch_labels = None
 depends_on = None
 
@@ -17,8 +17,8 @@ def upgrade() -> None:
             """
             INSERT INTO rbac_catalog_permissions (key, description)
             VALUES (
-                'compliance.manage',
-                'Manage compliance records (review, resend, flag, escalate)'
+                'dashboard.view',
+                'View leadership / operations dashboard'
             )
             ON CONFLICT (key) DO NOTHING
             """
@@ -27,4 +27,4 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.execute(sa.text("DELETE FROM rbac_catalog_permissions WHERE key = 'compliance.manage'"))
+    op.execute(sa.text("DELETE FROM rbac_catalog_permissions WHERE key = 'dashboard.view'"))

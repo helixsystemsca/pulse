@@ -12,7 +12,7 @@ if str(_BACK) not in sys.path:
 import alembic_helpers as ah  # noqa: E402
 
 from sqlalchemy.dialects.postgresql import UUID
-revision = '0114_procedure_compliance_ack_audit'
+revision = '0114_proc_compliance_ack'
 down_revision = '0113_operational_xp_recognition'
 branch_labels = None
 depends_on = None

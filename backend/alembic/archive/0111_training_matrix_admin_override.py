@@ -11,7 +11,7 @@ if str(_BACK) not in sys.path:
     sys.path.insert(0, str(_BACK))
 import alembic_helpers as ah  # noqa: E402
 
-revision = '0111_training_matrix_admin_override'
+revision = '0111_training_matrix_override'
 down_revision = '0110_procedure_verification'
 branch_labels = None
 depends_on = None

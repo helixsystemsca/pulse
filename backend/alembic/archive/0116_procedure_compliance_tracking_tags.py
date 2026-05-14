@@ -12,8 +12,8 @@ if str(_BACK) not in sys.path:
 import alembic_helpers as ah  # noqa: E402
 
 from sqlalchemy.dialects.postgresql import JSONB
-revision = '0116_procedure_compliance_tracking_tags'
-down_revision = '0115_procedure_acknowledgment_snapshots_pdf'
+revision = '0116_proc_compliance_tags'
+down_revision = '0115_proc_ack_snapshots'
 branch_labels = None
 depends_on = None
 

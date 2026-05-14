@@ -12,7 +12,7 @@ if str(_BACK) not in sys.path:
 import alembic_helpers as ah  # noqa: E402
 
 revision = '0104_user_auth_provider'
-down_revision = '0103_merge_routine_and_project_summary_heads'
+down_revision = '0103_merge_heads'
 branch_labels = None
 depends_on = None
 

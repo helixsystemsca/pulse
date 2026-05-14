@@ -8,8 +8,13 @@ operations — patterns that break PostgreSQL transactional DDL + idempotent CI.
 from __future__ import annotations
 
 import ast
+import re
 from pathlib import Path
 from typing import Any
+
+# Alembic stores revision ids in alembic_version.version_num VARCHAR(32).
+MAX_REVISION_ID_LEN = 32
+_REVISION_RE = re.compile(r"""^revision\s*=\s*(['"])([^'"]+)\1""", re.MULTILINE)
 
 FORBIDDEN_OP_METHODS = frozenset(
     {
@@ -114,6 +119,23 @@ class _OpCallInStmtVisitor(ast.NodeVisitor):
         self.generic_visit(node)
 
 
+def _revision_id_length_issues(src: str, filename: str) -> list[tuple[str, int, str, str]]:
+    out: list[tuple[str, int, str, str]] = []
+    for m in _REVISION_RE.finditer(src):
+        rev_id = m.group(2)
+        if len(rev_id) > MAX_REVISION_ID_LEN:
+            lineno = src[: m.start()].count("\n") + 1
+            out.append(
+                (
+                    filename,
+                    lineno,
+                    f"revision id {rev_id!r} length {len(rev_id)} > {MAX_REVISION_ID_LEN}",
+                    "revision_id_too_long",
+                )
+            )
+    return out
+
+
 def scan_versions_directory(versions_dir: Path) -> list[tuple[str, int, str, str]]:
     """Return list of (filename, lineno, detail, kind). Empty if clean."""
     out: list[tuple[str, int, str, str]] = []
@@ -121,6 +143,7 @@ def scan_versions_directory(versions_dir: Path) -> list[tuple[str, int, str, str
         if path.name in EXEMPT_FILES:
             continue
         src = path.read_text(encoding="utf-8")
+        out.extend(_revision_id_length_issues(src, path.name))
         tree = ast.parse(src, filename=str(path))
 
         order_issue = _upgrade_bind_order_issue(tree, path.name)
