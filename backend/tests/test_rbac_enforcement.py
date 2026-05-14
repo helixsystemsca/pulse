@@ -2,14 +2,13 @@
 
 from __future__ import annotations
 
-import uuid
-
 import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth.security import create_access_token
 from app.models.domain import User, UserRole
+from tests.tenant_role_helpers import assign_worker_no_access_role
 
 
 @pytest.mark.asyncio
@@ -18,28 +17,22 @@ async def test_monitoring_denied_when_worker_matrix_empty(
     seeded_tenant,
     db_session: AsyncSession,
 ) -> None:
-    """Company contract includes monitoring; worker role matrix grants none → RBAC denies."""
+    """Company contract includes monitoring; worker role grants none → RBAC denies."""
     from app.core.company_features import sync_enabled_features
     from app.core.features.system_catalog import GLOBAL_SYSTEM_FEATURES
     from app.models.pulse_models import PulseWorkersSettings
 
-    from app.models.rbac_models import TenantRole
-
     await sync_enabled_features(db_session, seeded_tenant.company_id, list(GLOBAL_SYSTEM_FEATURES))
-    role = TenantRole(
-        id=str(uuid.uuid4()),
-        company_id=seeded_tenant.company_id,
-        slug="no_access",
-        name="No access",
-        feature_keys=[],
-    )
-    db_session.add(role)
     worker = await db_session.get(User, seeded_tenant.worker_id)
     assert worker is not None
-    worker.tenant_role_id = role.id
+    await assign_worker_no_access_role(
+        db_session,
+        company_id=seeded_tenant.company_id,
+        user=worker,
+        contract_names=list(GLOBAL_SYSTEM_FEATURES),
+    )
     db_session.add(
         PulseWorkersSettings(
-            id=str(uuid.uuid4()),
             company_id=seeded_tenant.company_id,
             settings={"role_feature_access": {"worker": []}},
         )

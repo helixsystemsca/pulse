@@ -39,7 +39,7 @@ from app.core.tenant_feature_access import (
     load_merged_workers_settings,
     user_has_workers_roster_page_access,
 )
-from app.core.tenant_roles import get_tenant_role_in_company
+from app.core.tenant_roles import assign_user_tenant_role, get_tenant_role_in_company
 from app.core.workers_permission_delegation import (
     actor_is_delegated_permission_editor,
     actor_may_set_worker_feature_allow_extra,
@@ -850,8 +850,10 @@ async def _apply_worker_hr_and_extras(
     if body.training:
         await _sync_training(db, cid, user.id, body.training)
     if body.tenant_role_id is not None:
-        await _assert_valid_tenant_role(db, cid, body.tenant_role_id)
-        user.tenant_role_id = body.tenant_role_id
+        role = await get_tenant_role_in_company(db, cid, body.tenant_role_id)
+        if not role:
+            raise HTTPException(status_code=400, detail="Invalid tenant role")
+        await assign_user_tenant_role(db, user, role)
 
 
 @router.post("", response_model=WorkerCreateResultOut, status_code=status.HTTP_201_CREATED)
@@ -1281,8 +1283,10 @@ async def patch_worker(
         if tr_val is None:
             target.tenant_role_id = None
         else:
-            await _assert_valid_tenant_role(db, cid, str(tr_val))
-            target.tenant_role_id = str(tr_val)
+            role = await get_tenant_role_in_company(db, cid, str(tr_val))
+            if not role:
+                raise HTTPException(status_code=400, detail="Invalid tenant role")
+            await assign_user_tenant_role(db, target, role)
         await record_rbac_audit_event(
             db,
             company_id=cid,

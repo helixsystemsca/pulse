@@ -62,6 +62,7 @@ async def test_unassigned_user_bridges_contract() -> None:
 
 @pytest.mark.asyncio
 async def test_empty_tenant_role_denies() -> None:
+    """Uses a random tenant_role_id; mock DB returns no grants (no real FK)."""
     user = _user([UserRole.worker.value], tenant_role_id=str(uuid4()))
     keys = await _keys(
         user=user,

@@ -71,11 +71,139 @@ async def list_tenant_roles(db: AsyncSession, company_id: str) -> list[TenantRol
     return list(q.scalars().all())
 
 
+async def get_tenant_role_by_slug(db: AsyncSession, company_id: str, slug: str) -> TenantRole | None:
+    norm = normalize_role_slug(slug)
+    q = await db.execute(
+        select(TenantRole).where(TenantRole.company_id == company_id, TenantRole.slug == norm)
+    )
+    return q.scalar_one_or_none()
+
+
 async def get_tenant_role_in_company(db: AsyncSession, company_id: str, role_id: str) -> TenantRole | None:
     q = await db.execute(
         select(TenantRole).where(TenantRole.id == role_id, TenantRole.company_id == company_id)
     )
     return q.scalar_one_or_none()
+
+
+async def create_or_fetch_tenant_role(
+    db: AsyncSession,
+    company_id: str,
+    *,
+    slug: str,
+    name: str,
+    feature_keys: list[str] | None = None,
+    contract_names: list[str] | None = None,
+) -> TenantRole:
+    """
+    Persist a tenant role (flush) and sync grants. Reuses an existing row when ``slug`` matches.
+    """
+    from app.core.company_features import tenant_enabled_feature_names_with_legacy
+    from app.core.features.system_catalog import coerce_legacy_feature_names
+
+    norm_slug = normalize_role_slug(slug)
+    existing = await get_tenant_role_by_slug(db, company_id, norm_slug)
+    fkeys = canonicalize_feature_keys(feature_keys or [])
+    if contract_names is None:
+        raw = await tenant_enabled_feature_names_with_legacy(db, company_id)
+        contract_names = coerce_legacy_feature_names(raw)
+    if existing is not None:
+        existing.name = name.strip()
+        existing.feature_keys = fkeys
+        await sync_tenant_role_grants(db, existing, contract_names=contract_names)
+        await db.flush()
+        return existing
+
+    role = TenantRole(
+        company_id=company_id,
+        slug=norm_slug,
+        name=name.strip(),
+        feature_keys=fkeys,
+    )
+    db.add(role)
+    await db.flush()
+    await sync_tenant_role_grants(db, role, contract_names=contract_names)
+    await db.flush()
+    return role
+
+
+async def assign_user_tenant_role(db: AsyncSession, user: User, role: TenantRole) -> None:
+    """Assign ``role`` to ``user`` only after the role row is persisted in this session."""
+    if user.company_id is None or str(user.company_id) != str(role.company_id):
+        raise ValueError("tenant role company_id must match user.company_id")
+    persisted = await get_tenant_role_in_company(db, str(role.company_id), str(role.id))
+    if persisted is None:
+        raise ValueError("tenant role must be flushed before assigning to a user")
+    user.tenant_role_id = str(role.id)
+    await db.flush()
+
+
+# Baseline role slugs created per company (Team Management / tests).
+BASELINE_TENANT_ROLE_SLUGS: tuple[str, ...] = (
+    "company_admin",
+    "manager",
+    "worker",
+    "no_access",
+)
+
+
+async def ensure_baseline_tenant_roles(
+    db: AsyncSession,
+    company_id: str,
+    *,
+    contract_names: list[str] | None = None,
+) -> dict[str, TenantRole]:
+    """
+    Ensure default tenant role templates exist for a company.
+
+    - ``company_admin`` / ``manager``: full contract (canonical keys).
+    - ``worker``: full contract (typical frontline default).
+    - ``no_access``: empty feature set (explicit deny tests).
+    """
+    from app.core.company_features import tenant_enabled_feature_names_with_legacy
+    from app.core.features.system_catalog import coerce_legacy_feature_names
+
+    if contract_names is None:
+        raw = await tenant_enabled_feature_names_with_legacy(db, company_id)
+        contract_names = coerce_legacy_feature_names(raw)
+    contract_canonical = canonicalize_feature_keys(contract_names)
+    full = list(contract_canonical)
+
+    roles = {
+        "company_admin": await create_or_fetch_tenant_role(
+            db,
+            company_id,
+            slug="company_admin",
+            name="Company admin",
+            feature_keys=full,
+            contract_names=contract_names,
+        ),
+        "manager": await create_or_fetch_tenant_role(
+            db,
+            company_id,
+            slug="manager",
+            name="Manager",
+            feature_keys=full,
+            contract_names=contract_names,
+        ),
+        "worker": await create_or_fetch_tenant_role(
+            db,
+            company_id,
+            slug="worker",
+            name="Worker",
+            feature_keys=full,
+            contract_names=contract_names,
+        ),
+        "no_access": await create_or_fetch_tenant_role(
+            db,
+            company_id,
+            slug="no_access",
+            name="No access",
+            feature_keys=[],
+            contract_names=contract_names,
+        ),
+    }
+    return roles
 
 
 async def count_users_with_role(db: AsyncSession, role_id: str) -> int:
