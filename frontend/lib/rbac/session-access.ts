@@ -5,10 +5,16 @@
  */
 import { PLATFORM_DEPARTMENTS, PLATFORM_DEPARTMENT_SLUGS } from "@/config/platform/departments";
 import type { PulseAuthSession } from "@/lib/pulse-session";
-import { pulseTenantSidebarNav, type PulseSidebarIcon } from "@/lib/pulse-app";
-import type { PlatformIconKey } from "@/config/platform/types";
-import { PLATFORM_WORKSPACE_MODULES } from "@/lib/rbac/platform-workspace-modules";
-import { resolveUnifiedPlatformSidebarItem } from "@/lib/rbac/platform-sidebar-nav";
+import {
+  getLegacyPlatformRouteAlias,
+  LEGACY_PLATFORM_ROUTE_ALIASES,
+} from "@/config/platform/legacy-platform-routes";
+import { getMasterFeatureForPath, MASTER_FEATURES } from "@/config/platform/master-feature-registry";
+import { isTenantFeatureEnabled } from "@/lib/features/tenant-features";
+import {
+  featureMatchesUserDepartment,
+  tenantSidebarNavItemsForSession,
+} from "@/lib/rbac/tenant-nav";
 import { sessionHasAnyRole } from "@/lib/pulse-roles";
 
 type NavGate =
@@ -74,11 +80,20 @@ export function isTenantFullAdminSession(session: PulseAuthSession | null): bool
 }
 
 function platformDeptIndexAllowed(session: PulseAuthSession | null, departmentSlug: string): boolean {
-  const contract = tenantContractModuleSet(session);
-  for (const m of PLATFORM_WORKSPACE_MODULES) {
-    if (!m.departmentSlugs.includes(departmentSlug)) continue;
-    if (!contract.has(m.requiredCompanyModule)) continue;
-    if (hasRbacPermission(session, m.requiredRbacPermission)) return true;
+  for (const f of MASTER_FEATURES) {
+    if (f.platformDepartmentSlug !== departmentSlug && !(f.departmentSlugs?.includes(departmentSlug) ?? false)) {
+      continue;
+    }
+    if (!isTenantFeatureEnabled(session, f.feature)) continue;
+    if (f.rbacAnyOf.length && !f.rbacAnyOf.some((k) => hasRbacPermission(session, k))) continue;
+    if (!featureMatchesUserDepartment(f, session)) continue;
+    return true;
+  }
+  for (const legacy of LEGACY_PLATFORM_ROUTE_ALIASES) {
+    if (legacy.departmentSlug !== departmentSlug) continue;
+    if (!isTenantFeatureEnabled(session, legacy.feature)) continue;
+    if (!legacy.rbacAnyOf.some((k) => hasRbacPermission(session, k))) continue;
+    return true;
   }
   return false;
 }
@@ -90,13 +105,14 @@ function classicNavGate(href: string): NavGate {
     if (h === `/${slug}`) return { kind: "platform_dept_index", departmentSlug: slug };
     const routeSeg = h.slice(slug.length + 2).split("/").filter(Boolean)[0] ?? "";
     if (!routeSeg) return { kind: "platform_dept_index", departmentSlug: slug };
-    const mod = PLATFORM_WORKSPACE_MODULES.find((m) => m.departmentSlugs.includes(slug) && m.route === routeSeg);
-    if (!mod) return { kind: "deny" };
-    return {
-      kind: "module",
-      companyModules: [mod.requiredCompanyModule],
-      rbacAnyOf: [mod.requiredRbacPermission],
-    };
+    const legacy = getLegacyPlatformRouteAlias(slug, routeSeg);
+    const master = MASTER_FEATURES.find(
+      (f) => f.platformDepartmentSlug === slug && f.platformRoute === routeSeg,
+    );
+    const feature = legacy?.feature ?? master?.feature;
+    const rbac = legacy?.rbacAnyOf ?? master?.rbacAnyOf;
+    if (!feature || !rbac) return { kind: "deny" };
+    return { kind: "module", companyModules: [feature], rbacAnyOf: [...rbac] };
   }
   if (h === "/overview/project" || h.startsWith("/overview/project/")) {
     return {
@@ -114,91 +130,39 @@ function classicNavGate(href: string): NavGate {
   if (h === "/worker" || h.startsWith("/worker/")) {
     return { kind: "module", companyModules: ["dashboard"], rbacAnyOf: ["dashboard.view"] };
   }
-
-  if (h === "/dashboard/messages" || h.startsWith("/dashboard/messages")) {
-    return { kind: "module", companyModules: ["messaging"], rbacAnyOf: ["messaging.view"] };
+  if (h === "/dashboard/organization" || h.startsWith("/dashboard/organization/")) {
+    return { kind: "session_roles_any", roles: ["company_admin"] };
   }
-  if (h === "/dashboard/compliance" || h.startsWith("/dashboard/compliance")) {
-    return { kind: "module", companyModules: ["compliance"], rbacAnyOf: ["compliance.view"] };
-  }
-  if (h === "/schedule" || h.startsWith("/schedule/")) return { kind: "module", companyModules: ["schedule"], rbacAnyOf: ["schedule.view"] };
-  if (h === "/monitoring" || h.startsWith("/monitoring/")) {
-    return { kind: "module", companyModules: ["monitoring"], rbacAnyOf: ["monitoring.view"] };
+  if (h === "/settings" || h.startsWith("/settings/")) return { kind: "authenticated_shell" };
+  if (h === "/dashboard/profile-settings" || h.startsWith("/dashboard/profile-settings/")) {
+    return { kind: "authenticated_shell" };
   }
   if (h === "/operations" || h.startsWith("/operations/")) {
     return { kind: "module", companyModules: ["monitoring"], rbacAnyOf: ["monitoring.view"] };
   }
-  if (h === "/projects" || h.startsWith("/projects/")) {
-    return { kind: "module", companyModules: ["projects"], rbacAnyOf: ["projects.view"] };
-  }
-  if (h === "/dashboard/pm-workspace" || h.startsWith("/dashboard/pm-workspace")) {
-    return { kind: "module", companyModules: ["projects"], rbacAnyOf: ["projects.view"] };
-  }
-  if (h === "/pm/planning" || h.startsWith("/pm/")) {
-    return { kind: "module", companyModules: ["projects"], rbacAnyOf: ["projects.view"] };
-  }
-  if (h === "/dashboard/work-requests" || h.startsWith("/dashboard/work-requests")) {
-    return {
-      kind: "module",
-      companyModules: ["work_requests"],
-      rbacAnyOf: ["work_requests.view", "work_requests.edit"],
-    };
-  }
-  if (h === "/dashboard/maintenance" || h.startsWith("/dashboard/maintenance")) {
-    return {
-      kind: "module",
-      companyModules: ["work_requests"],
-      rbacAnyOf: ["work_requests.view", "work_requests.edit"],
-    };
-  }
-  if (h === "/standards" || h.startsWith("/standards")) {
-    return { kind: "module", companyModules: ["procedures"], rbacAnyOf: ["procedures.view"] };
-  }
-  if (h === "/dashboard/procedures" || h.startsWith("/dashboard/procedures")) {
-    return { kind: "module", companyModules: ["procedures"], rbacAnyOf: ["procedures.view"] };
-  }
-  if (h === "/dashboard/team-insights" || h.startsWith("/dashboard/team-insights")) {
-    return { kind: "module", companyModules: ["team_insights"], rbacAnyOf: ["team_insights.view"] };
-  }
-  if (h === "/dashboard/workers" || h.startsWith("/dashboard/workers")) {
-    return { kind: "module", companyModules: ["team_management"], rbacAnyOf: ["team_management.view"] };
-  }
-  if (h === "/dashboard/inventory" || h.startsWith("/dashboard/inventory/")) {
-    return { kind: "module", companyModules: ["inventory"], rbacAnyOf: ["inventory.view", "inventory.manage"] };
-  }
-  if (h === "/dashboard/setup" || h.startsWith("/dashboard/setup/")) {
-    return { kind: "module", companyModules: ["zones_devices"], rbacAnyOf: ["zones_devices.view"] };
-  }
-  if (h === "/dashboard/organization" || h.startsWith("/dashboard/organization/")) {
-    return { kind: "session_roles_any", roles: ["company_admin"] };
-  }
-  if (h === "/sop" || h.startsWith("/sop/")) {
-    return { kind: "module", companyModules: ["procedures"], rbacAnyOf: ["procedures.view"] };
-  }
-  if (h === "/equipment" || h.startsWith("/equipment/") || h.includes("tool-tracking")) {
+  if (h.includes("tool-tracking")) {
     return {
       kind: "module",
       companyModules: ["equipment", "tool_tracking", "rtls_tracking"],
       rbacAnyOf: ["equipment.view"],
     };
   }
-  if (h === "/drawings" || h.startsWith("/drawings")) {
-    return { kind: "module", companyModules: ["drawings"], rbacAnyOf: ["drawings.view"] };
+
+  const master = getMasterFeatureForPath(h);
+  if (master) {
+    if (master.key === "equipment") {
+      return {
+        kind: "module",
+        companyModules: ["equipment", "tool_tracking", "rtls_tracking"],
+        rbacAnyOf: [...master.rbacAnyOf],
+      };
+    }
+    return {
+      kind: "module",
+      companyModules: [master.feature],
+      rbacAnyOf: [...master.rbacAnyOf],
+    };
   }
-  if (h === "/zones-devices" || h.startsWith("/zones-devices")) {
-    return { kind: "module", companyModules: ["zones_devices"], rbacAnyOf: ["zones_devices.view"] };
-  }
-  if (h === "/devices" || h.startsWith("/devices")) {
-    return { kind: "module", companyModules: ["zones_devices"], rbacAnyOf: ["zones_devices.view"] };
-  }
-  if (h === "/zones" || h.startsWith("/zones")) {
-    return { kind: "module", companyModules: ["zones_devices"], rbacAnyOf: ["zones_devices.view"] };
-  }
-  if (h === "/live-map" || h.startsWith("/live-map")) {
-    return { kind: "module", companyModules: ["live_map"], rbacAnyOf: ["live_map.view"] };
-  }
-  if (h === "/settings" || h.startsWith("/settings/")) return { kind: "authenticated_shell" };
-  if (h === "/dashboard/profile-settings" || h.startsWith("/dashboard/profile-settings/")) return { kind: "authenticated_shell" };
 
   return { kind: "deny" };
 }
@@ -225,6 +189,9 @@ export function canAccessClassicNavHref(session: PulseAuthSession | null, href: 
   if (gate.kind === "session_roles_any") return sessionHasAnyRole(session, ...gate.roles);
   if (gate.kind === "platform_dept_index") return platformDeptIndexAllowed(session, gate.departmentSlug);
 
+  const master = getMasterFeatureForPath(h);
+  if (master && !featureMatchesUserDepartment(master, session)) return false;
+
   const modsOk = gate.requireAllContractModules
     ? tenantHasEveryCompanyModule(session, gate.companyModules)
     : tenantHasAnyCompanyModule(session, gate.companyModules);
@@ -248,30 +215,13 @@ export function canShowClassicSidebarItem(
   return canAccessClassicNavHref(session, href);
 }
 
-/**
- * Platform-only modules not already in {@link pulseTenantSidebarNav} (no "Department: Module" labels).
- * Communications / aquatics-native tools use `/{department}/{route}`; canonical modules use shared URLs.
- */
+/** @deprecated Use {@link tenantSidebarNavItemsForSession} — single registry-driven sidebar. */
 export function flatPlatformNavSidebarItemsForSession(
   session: PulseAuthSession | null,
-): { href: string; label: string; icon: PlatformIconKey | PulseSidebarIcon }[] {
-  const contract = tenantContractModuleSet(session);
-  const out: { href: string; label: string; icon: PlatformIconKey | PulseSidebarIcon }[] = [];
-  const seen = new Set<string>();
-  for (const d of PLATFORM_DEPARTMENTS) {
-    for (const m of PLATFORM_WORKSPACE_MODULES) {
-      if (!m.departmentSlugs.includes(d.slug)) continue;
-      if (!contract.has(m.requiredCompanyModule)) continue;
-      if (!hasRbacPermission(session, m.requiredRbacPermission)) continue;
-      const row = resolveUnifiedPlatformSidebarItem(d.slug, m);
-      if (!row) continue;
-      const href = normalizeHref(row.href);
-      if (seen.has(href)) continue;
-      seen.add(href);
-      out.push(row);
-    }
-  }
-  return out;
+): ReturnType<typeof tenantSidebarNavItemsForSession> {
+  return tenantSidebarNavItemsForSession(session).filter((row) =>
+    MASTER_FEATURES.some((m) => m.key === row.key && Boolean(m.platformRoute)),
+  );
 }
 
 /**
@@ -285,11 +235,8 @@ export function firstAccessibleClassicTenantHref(session: PulseAuthSession | nul
   if (isTenantFullAdminSession(session) && canAccessClassicNavHref(session, "/overview")) {
     return "/overview";
   }
-  for (const item of pulseTenantSidebarNav) {
-    if (item.href === "/settings") continue;
-    if (canShowClassicSidebarItem(session, item.href, sys)) return item.href;
-  }
-  for (const row of flatPlatformNavSidebarItemsForSession(session)) {
+  for (const row of tenantSidebarNavItemsForSession(session)) {
+    if (row.href === "/settings") continue;
     if (canShowClassicSidebarItem(session, row.href, sys)) return row.href;
   }
   return "/settings";

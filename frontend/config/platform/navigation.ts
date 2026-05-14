@@ -1,15 +1,37 @@
 /**
- * Platform department routes (`/{slug}/{module}`) — navigation helpers.
- * Each module row in the main tenant sidebar uses the same contract + RBAC rules as these helpers.
+ * Platform department routes — navigation helpers (unified sidebar; no separate department app list).
  */
 import { getDepartmentBySlug, PLATFORM_DEPARTMENTS } from "@/config/platform/departments";
 import type { Department, PlatformNavItem } from "@/config/platform/types";
 import type { PulseAuthSession } from "@/lib/pulse-session";
-import { PLATFORM_WORKSPACE_MODULES } from "@/lib/rbac/platform-workspace-modules";
-import { resolveUnifiedPlatformSidebarItem } from "@/lib/rbac/platform-sidebar-nav";
-import { hasRbacPermission } from "@/lib/rbac/session-access";
+import { tenantSidebarNavItemsForSession } from "@/lib/rbac/tenant-nav";
+import type { PlatformIconKey } from "@/config/platform/types";
 
 const STORAGE_LAST_DEPT = "pulse_platform_department_slug_v1";
+
+const PLATFORM_ICON_KEYS: readonly PlatformIconKey[] = [
+  "wrench",
+  "megaphone",
+  "waves",
+  "dumbbell",
+  "building",
+  "clipboard",
+  "scroll-text",
+  "package",
+  "book-open",
+  "bar-chart-2",
+  "message-square",
+  "newspaper",
+  "image",
+  "calendar",
+  "layout",
+  "file-text",
+  "layout-grid",
+];
+
+function isPlatformIcon(icon: string): icon is PlatformIconKey {
+  return PLATFORM_ICON_KEYS.includes(icon as PlatformIconKey);
+}
 
 export function readStoredDepartmentSlug(): string | null {
   if (typeof window === "undefined") return null;
@@ -38,34 +60,18 @@ export function getDefaultModuleRouteForDepartment(departmentSlug: string, sessi
   return parts[1] ?? null;
 }
 
-function contractSet(session: PulseAuthSession | null): Set<string> {
-  const raw = session?.contract_features?.length
-    ? session.contract_features
-    : session?.contract_enabled_features ?? [];
-  return new Set(raw);
-}
-
-/** In-department module list (same gating as merged tenant sidebar links). */
+/** Same entries as the unified tenant sidebar (no duplicate department rail). */
 export function buildDepartmentNavItems(departmentSlug: string, session: PulseAuthSession | null): PlatformNavItem[] {
   const dept = getDepartmentBySlug(departmentSlug);
   if (!dept) return [];
-  const contract = contractSet(session);
-  const items: PlatformNavItem[] = [];
-
-  for (const mod of PLATFORM_WORKSPACE_MODULES) {
-    if (!mod.departmentSlugs.includes(dept.slug)) continue;
-    if (!contract.has(mod.requiredCompanyModule)) continue;
-    if (!hasRbacPermission(session, mod.requiredRbacPermission)) continue;
-    const row = resolveUnifiedPlatformSidebarItem(dept.slug, mod);
-    if (!row) continue;
-    items.push({
+  return tenantSidebarNavItemsForSession(session)
+    .filter((row) => isPlatformIcon(row.icon))
+    .map((row) => ({
       href: row.href,
       label: row.label,
-      icon: row.icon ?? "layout",
+      icon: row.icon as PlatformIconKey,
       group: "modules",
-    });
-  }
-  return items;
+    }));
 }
 
 export function getFirstNavHrefForDepartment(departmentSlug: string, session: PulseAuthSession | null): string | null {
@@ -73,7 +79,6 @@ export function getFirstNavHrefForDepartment(departmentSlug: string, session: Pu
   return items[0]?.href ?? null;
 }
 
-/** Departments where the user has at least one visible scoped module (for in-app switchers). */
 export function listDepartmentsAllowedForSession(session: PulseAuthSession | null): readonly Department[] {
   return PLATFORM_DEPARTMENTS.filter((d) => buildDepartmentNavItems(d.slug, session).length > 0);
 }

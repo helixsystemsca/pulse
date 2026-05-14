@@ -4,8 +4,7 @@
  * Tenant / system left rail: fixed-height rows, hover-expands width for labels.
  * Rows use a modest height (not aspect-square) so expanding the rail does not blow up tile scale.
  *
- * Department-native platform modules (e.g. communications tools) are merged when they are not already
- * represented in the classic rail. Maintenance duplicates (work orders, procedures, …) use shared URLs only.
+ * Tenant rail is composed exclusively from {@link TENANT_NAV_MODULES} via `tenantSidebarNavItemsForSession`.
  */
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -41,21 +40,14 @@ import {
 import { useEffect, useRef, useState } from "react";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
 import type { PlatformIconKey } from "@/config/platform/types";
-import {
-  pulseSystemSidebarNav,
-  pulseTenantSidebarNav,
-  type PulseSidebarIcon,
-} from "@/lib/pulse-app";
+import { pulseSystemSidebarNav, type PulseSidebarIcon } from "@/lib/pulse-app";
 import { isPulseNavActive } from "@/lib/pulse-nav-active";
-import {
-  canAccessClassicNavHref,
-  canShowTeamManagementNavItem,
-  flatPlatformNavSidebarItemsForSession,
-  isWorkersManagementHref,
-} from "@/lib/rbac/session-access";
+import { canAccessClassicNavHref } from "@/lib/rbac/session-access";
+import { tenantSidebarNavItemsForSession } from "@/lib/rbac/tenant-nav";
+import type { TenantNavIcon } from "@/config/platform/tenant-nav-registry";
 import { cn } from "@/lib/cn";
 
-const ICONS: Record<PulseSidebarIcon, LucideIcon> = {
+const ICONS: Record<string, LucideIcon> = {
   layout: LayoutDashboard,
   activity: Activity,
   calendar: CalendarDays,
@@ -96,7 +88,7 @@ const PLATFORM_DEPT_ICONS: Record<PlatformIconKey, LucideIcon> = {
 
 const RAIL_ICONS: Record<string, LucideIcon> = { ...PLATFORM_DEPT_ICONS, ...ICONS };
 
-function railIcon(icon: PulseSidebarIcon | PlatformIconKey): LucideIcon {
+function railIcon(icon: TenantNavIcon | PulseSidebarIcon | PlatformIconKey): LucideIcon {
   return RAIL_ICONS[icon] ?? LayoutDashboard;
 }
 
@@ -106,7 +98,7 @@ const ICON_COL = `h-11 ${COLLAPSED_RAIL_W} shrink-0`;
 const SIDENAV_ROW_ACTIVE_HOVER = "bg-[var(--ds-accent)]";
 const SIDENAV_ROW_ACTIVE_HOVER_HOVER = "hover:bg-[var(--ds-accent)]";
 
-type SidebarNavItem = { href: string; label: string; icon: PulseSidebarIcon | PlatformIconKey };
+type SidebarNavItem = { href: string; label: string; icon: TenantNavIcon | PulseSidebarIcon | PlatformIconKey };
 
 export function AppSideNav() {
   const pathname = usePathname();
@@ -125,26 +117,16 @@ export function AppSideNav() {
   }, [pathname]);
 
   const isSystemAdmin = Boolean(session?.is_system_admin || session?.role === "system_admin");
-  const rawNav = isSystemAdmin ? pulseSystemSidebarNav : pulseTenantSidebarNav;
-  let items: SidebarNavItem[] = [...rawNav].map((i) => ({ href: i.href, label: i.label, icon: i.icon }));
+  let items: SidebarNavItem[] = isSystemAdmin
+    ? [...pulseSystemSidebarNav].map((i) => ({ href: i.href, label: i.label, icon: i.icon }))
+    : tenantSidebarNavItemsForSession(session).map((i) => ({
+        href: i.href,
+        label: i.label,
+        icon: i.icon,
+      }));
   if (!isSystemAdmin && session) {
-    for (const row of flatPlatformNavSidebarItemsForSession(session)) {
-      items.push({ href: row.href, label: row.label, icon: row.icon });
-    }
+    items = items.filter((i) => canAccessClassicNavHref(session, i.href));
   }
-  if (!isSystemAdmin && session) {
-    items = items.filter((i) => {
-      if (isWorkersManagementHref(i.href)) return canShowTeamManagementNavItem(session, isSystemAdmin);
-      return canAccessClassicNavHref(session, i.href);
-    });
-  }
-  const seenHref = new Set<string>();
-  items = items.filter((i) => {
-    const key = i.href.split("?")[0] ?? i.href;
-    if (seenHref.has(key)) return false;
-    seenHref.add(key);
-    return true;
-  });
   items = items.filter((i) => i.href !== "/settings");
   const systemRail = isSystemAdmin;
 

@@ -1,11 +1,8 @@
 /**
- * Unified tenant sidebar entries for platform modules.
- * Modules with a canonical Pulse href already represented in the classic rail are omitted
- * (e.g. maintenance work-orders → Work Requests). Department-native tools (communications, etc.)
- * link to `/{department}/{route}` or their canonical href when not in the classic rail.
+ * @deprecated Use {@link MASTER_FEATURES} and {@link tenantSidebarNavItemsForSession}.
  */
-import { getPlatformModuleById } from "@/config/platform/modules";
-import { pulseTenantSidebarNav } from "@/lib/pulse-app";
+import { LEGACY_PLATFORM_ROUTE_ALIASES } from "@/config/platform/legacy-platform-routes";
+import { MASTER_FEATURES, NAV_VISIBLE_MASTER_FEATURES } from "@/config/platform/master-feature-registry";
 import type { PlatformIconKey } from "@/config/platform/types";
 import type { PlatformWorkspaceModuleDef } from "@/lib/rbac/platform-workspace-modules";
 
@@ -15,8 +12,8 @@ function normalizeHref(href: string): string {
   return path;
 }
 
-const CLASSIC_TENANT_NAV_HREFS = new Set(
-  pulseTenantSidebarNav.map((item) => normalizeHref(item.href)),
+const CLASSIC_TENANT_NAV_ROUTES = new Set(
+  NAV_VISIBLE_MASTER_FEATURES.filter((m) => !m.platformRoute).map((m) => normalizeHref(m.route)),
 );
 
 export type UnifiedPlatformSidebarItem = {
@@ -25,22 +22,17 @@ export type UnifiedPlatformSidebarItem = {
   icon: PlatformIconKey;
 };
 
-/**
- * Resolve a single platform module row for the tenant left rail.
- * Returns null when the module is already covered by classic navigation.
- */
+/** @deprecated */
 export function resolveUnifiedPlatformSidebarItem(
   departmentSlug: string,
   mod: PlatformWorkspaceModuleDef,
 ): UnifiedPlatformSidebarItem | null {
-  const meta = getPlatformModuleById(mod.id);
-  const suppressCanon = meta?.suppressCanonicalForDepartments?.includes(departmentSlug) ?? false;
-  const canonical = meta?.canonicalPulseHref && !suppressCanon ? normalizeHref(meta.canonicalPulseHref) : null;
+  const meta = MASTER_FEATURES.find((m) => m.key === mod.id);
+  const legacy = LEGACY_PLATFORM_ROUTE_ALIASES.find((r) => r.key === mod.id);
+  const canonical = meta?.route ?? legacy?.canonicalRoute ?? null;
 
   if (canonical) {
-    if (CLASSIC_TENANT_NAV_HREFS.has(canonical)) {
-      return null;
-    }
+    if (CLASSIC_TENANT_NAV_ROUTES.has(normalizeHref(canonical))) return null;
     return { href: canonical, label: mod.name, icon: mod.icon };
   }
 
@@ -52,5 +44,5 @@ export function resolveUnifiedPlatformSidebarItem(
 }
 
 export function classicTenantNavHrefs(): ReadonlySet<string> {
-  return CLASSIC_TENANT_NAV_HREFS;
+  return CLASSIC_TENANT_NAV_ROUTES;
 }

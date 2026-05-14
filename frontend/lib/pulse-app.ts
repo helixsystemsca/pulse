@@ -6,6 +6,8 @@
  * Default app origin: `panorama.helixsystems.ca` (legacy `pulse.helixsystems.ca` still supported via host list).
  * Override with `NEXT_PUBLIC_PULSE_APP_URL`.
  */
+import { NAV_VISIBLE_MASTER_FEATURES } from "@/config/platform/master-feature-registry";
+
 function pulseAppOrigin(): string {
   const raw = process.env.NEXT_PUBLIC_PULSE_APP_URL ?? "https://panorama.helixsystems.ca";
   return raw.replace(/\/$/, "");
@@ -55,27 +57,18 @@ export const pulseSystemNav = [
   { href: "/system/logs", label: "System Logs" },
 ] as const;
 
-/**
- * Root left rail — icons by default, expands on hover (tenant / product areas).
- * Links map to routes and `/pulse` section IDs that exist today.
- */
-export const pulseTenantSidebarNav = [
-  { href: "/overview", label: "Dashboard", icon: "layout" as const },
-  { href: "/dashboard/compliance", label: "Inspections & Logs", icon: "scroll-text" as const },
-  { href: "/schedule", label: "Schedule", icon: "calendar" as const },
-  { href: "/monitoring", label: "Monitoring", icon: "activity" as const },
-  { href: "/projects", label: "Projects", icon: "folder-kanban" as const },
-  { href: "/dashboard/maintenance", label: "Work Requests", icon: "clipboard" as const },
-  { href: "/standards", label: "Standards", icon: "list-checks" as const },
-  { href: "/dashboard/team-insights", label: "Team Insights", icon: "sparkles" as const },
-  { href: "/dashboard/workers", label: "Team Management", icon: "user-cog" as const },
-  { href: "/dashboard/inventory", label: "Inventory", icon: "package" as const },
-  { href: "/equipment", label: "Equipment", icon: "wrench" as const },
-  { href: "/drawings", label: "Drawings", icon: "layers" as const },
-  { href: "/devices", label: "Zones & Devices", icon: "map-pin" as const },
-  { href: "/live-map", label: "Live Map", icon: "radio" as const },
-  { href: "/settings", label: "Settings", icon: "settings" as const },
-] as const;
+/** @deprecated Prefer `tenantSidebarNavItemsForSession` — registry-driven shared modules. */
+export const pulseTenantSidebarNav = NAV_VISIBLE_MASTER_FEATURES.filter((m) => !m.platformRoute)
+  .sort((a, b) => a.sortOrder - b.sortOrder)
+  .map((m) => ({
+    href: m.route,
+    label: m.label,
+    icon: m.icon,
+  })) as readonly {
+  href: string;
+  label: string;
+  icon: (typeof NAV_VISIBLE_MASTER_FEATURES)[number]["icon"];
+}[];
 
 /** System admin rail — platform tooling only; product modules live on the tenant rail. */
 export const pulseSystemSidebarNav = [

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { MASTER_FEATURES } from "@/config/platform/master-feature-registry";
 import { PLATFORM_WORKSPACE_MODULES } from "@/lib/rbac/platform-workspace-modules";
 import { resolveUnifiedPlatformSidebarItem } from "@/lib/rbac/platform-sidebar-nav";
 
@@ -10,12 +11,7 @@ describe("resolveUnifiedPlatformSidebarItem", () => {
   });
 
   it("keeps communications-native modules on platform routes", () => {
-    const mapper = PLATFORM_WORKSPACE_MODULES.find((m) => m.id === "mod_advertising_mapper")!;
-    const row = resolveUnifiedPlatformSidebarItem("communications", mapper);
-    expect(row).toEqual({
-      href: "/communications/advertising-mapper",
-      label: "Arena Advertising",
-      icon: mapper.icon,
-    });
+    const mapper = MASTER_FEATURES.find((m) => m.key === "comms_advertising_mapper")!;
+    expect(mapper.route).toBe("/communications/advertising-mapper");
   });
 });
