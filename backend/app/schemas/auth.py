@@ -70,8 +70,10 @@ class UserOut(BaseModel):
     role_display_label: Optional[str] = None
     #: Effective permission strings for tenant UI (`["*"]` = full access). Omitted for system operators without a tenant session.
     permissions: Optional[list[str]] = None
-    #: Department workspace path segments (`communications`, …) this user may open under `/{slug}/…`.
+    #: Deprecated: always `[]`. Department hubs use `rbac_permissions` + contract modules on the client.
     department_workspace_slugs: list[str] = Field(default_factory=list)
+    #: Primary HR department slug (roster) for shell labels — not used for authorization.
+    hr_department: Optional[str] = None
     #: Current server time (UTC ISO-8601) for client clock sync; not persisted on the user row.
     server_time: str
     #: True when the account is using the default temporary password and must set a new one.

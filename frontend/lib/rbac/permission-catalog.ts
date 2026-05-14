@@ -11,6 +11,13 @@ export type RbacPermissionMeta = {
 };
 
 export const RBAC_PERMISSION_CATALOG: readonly RbacPermissionMeta[] = [
+  {
+    key: "dashboard.view",
+    label: "View leadership dashboard",
+    description: "Open the tenant leadership / operations overview (/overview).",
+    module: "dashboard",
+    category: "Reporting",
+  },
   { key: "work_requests.view", label: "View work requests", description: "Open work requests hub and lists.", module: "work_requests", category: "Operations" },
   { key: "work_requests.edit", label: "Edit work requests", description: "Create and update work requests.", module: "work_requests", category: "Operations" },
   { key: "compliance.view", label: "View inspections", description: "Inspections, logs, and compliance tools.", module: "compliance", category: "Operations" },

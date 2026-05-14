@@ -11,6 +11,13 @@ export const PRODUCT_MODULE_PERMISSION_SECTIONS: readonly {
   keys: readonly string[];
 }[] = [
   {
+    id: "tenant_dashboard",
+    label: "Leadership dashboard",
+    description:
+      "Main operations / leadership overview (/overview). Turn off for tenants that only need workspaces (for example Communications).",
+    keys: ["dashboard"],
+  },
+  {
     id: "department_workspaces",
     label: "Department workspaces",
     description:
@@ -59,6 +66,7 @@ export const PRODUCT_MODULE_PERMISSION_SECTIONS: readonly {
 export const TENANT_PRODUCT_MODULES: readonly string[] = PRODUCT_MODULE_PERMISSION_SECTIONS.flatMap((s) => [...s.keys]);
 
 export const MODULE_LABEL: Record<string, string> = {
+  dashboard: "Leadership dashboard",
   compliance: "Inspections & Logs",
   schedule: "Schedule",
   monitoring: "Monitoring",

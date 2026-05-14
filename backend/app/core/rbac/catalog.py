@@ -4,6 +4,7 @@ from __future__ import annotations
 
 # Keys seeded in `rbac_catalog_permissions` (migration). Extend here + migration together.
 RBAC_PERMISSION_SEED: tuple[tuple[str, str], ...] = (
+    ("dashboard.view", "View leadership / operations dashboard"),
     ("work_requests.view", "View work requests"),
     ("work_requests.edit", "Edit work requests"),
     ("compliance.view", "View inspections & compliance"),
@@ -32,6 +33,7 @@ RBAC_PERMISSION_SEED: tuple[tuple[str, str], ...] = (
 
 # Legacy `company_features` / `GLOBAL_SYSTEM_FEATURES` name → flat RBAC keys (bridge until grants-only).
 FEATURE_TO_RBAC_PERMISSIONS: dict[str, tuple[str, ...]] = {
+    "dashboard": ("dashboard.view",),
     "work_requests": ("work_requests.view", "work_requests.edit"),
     "compliance": ("compliance.view", "compliance.manage"),
     "inventory": ("inventory.view", "inventory.manage"),
@@ -62,6 +64,7 @@ FEATURE_TO_RBAC_PERMISSIONS: dict[str, tuple[str, ...]] = {
 
 # RBAC key must only apply if the tenant contract includes this feature key (subset of GLOBAL / company_features).
 RBAC_KEY_REQUIRES_COMPANY_FEATURE: dict[str, str | None] = {
+    "dashboard.view": "dashboard",
     "work_requests.view": "work_requests",
     "work_requests.edit": "work_requests",
     "compliance.view": "compliance",

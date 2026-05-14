@@ -217,8 +217,6 @@ type CreateFormState = {
   role: string;
   employment_type: "full_time" | "regular_part_time" | "part_time";
   department: string;
-  /** URL workspace slugs this employee may access (`/{slug}/…`). */
-  workspace_slugs: string[];
   shift: string;
   start_date: string;
   skills: string;
@@ -232,7 +230,6 @@ const CREATE_FORM_EMPTY: CreateFormState = {
   role: "worker",
   employment_type: "full_time",
   department: "maintenance",
-  workspace_slugs: ["maintenance"],
   shift: "",
   start_date: "",
   skills: "",
@@ -248,11 +245,6 @@ const INVITE_DEPARTMENT_OPTIONS: { value: string; label: string }[] = [
   { value: "aquatics", label: "Aquatics" },
   { value: "fitness", label: "Fitness" },
   { value: "racquets", label: "Racquets" },
-];
-
-const WORKSPACE_ASSIGNMENT_SLUGS: { value: string; label: string }[] = [
-  ...INVITE_DEPARTMENT_OPTIONS,
-  { value: "admin", label: "Administration" },
 ];
 
 function isMaintenanceInviteDepartment(department: string): boolean {
@@ -477,7 +469,6 @@ export function WorkersApp() {
   const [positionDraft, setPositionDraft] = useState({
     job_title: "",
     department: "",
-    workspace_slugs: [] as string[],
     shift: "",
     supervisor_id: "",
   });
@@ -657,15 +648,9 @@ export function WorkersApp() {
       start_date: profile.start_date ? profile.start_date.slice(0, 10) : "",
       employment_type: normalizeEmploymentDraft(profile.employment_type),
     });
-    const wsFromProfile = profile.department_slugs?.length
-      ? [...new Set(profile.department_slugs.map((s) => s.trim().toLowerCase()).filter(Boolean))]
-      : profile.department
-        ? [profile.department.trim().toLowerCase()].filter(Boolean)
-        : [];
     setPositionDraft({
       job_title: profile.job_title ?? "",
       department: profile.department ?? "",
-      workspace_slugs: wsFromProfile,
       shift:
         normalizeEmploymentDraft(profile.employment_type) === "part_time" ? "" : (profile.shift ?? ""),
       supervisor_id: profile.supervisor_id ?? "",
@@ -1118,9 +1103,8 @@ export function WorkersApp() {
     if (trim(positionDraft.department) !== (profile.department ?? "").trim()) {
       payload.department = trim(positionDraft.department) || null;
     }
-    const wsNorm = [
-      ...new Set((positionDraft.workspace_slugs ?? []).map((x) => trim(x).toLowerCase()).filter(Boolean)),
-    ].sort();
+    const primaryDept = trim(positionDraft.department).toLowerCase();
+    const wsNorm = primaryDept ? [primaryDept] : [];
     const prevWs = [...(profile.department_slugs ?? [])].map((x) => trim(x).toLowerCase()).sort();
     const sameWs = wsNorm.length === prevWs.length && wsNorm.every((s, i) => s === prevWs[i]);
     if (!sameWs) {
@@ -1231,20 +1215,14 @@ export function WorkersApp() {
     });
     const departmentSlug = createForm.department.trim() || "maintenance";
     const role = effectiveInviteRole(departmentSlug, createForm.role, createRoleLimited);
-    const workspaceSlugs = [
-      ...new Set(
-        [...(createForm.workspace_slugs ?? []), departmentSlug]
-          .map((s) => s.trim().toLowerCase())
-          .filter(Boolean),
-      ),
-    ];
+    const department_slugs = departmentSlug ? [departmentSlug] : [];
     return {
       email: createForm.email.trim(),
       full_name: createForm.full_name.trim() || null,
       role,
       employment_type: createForm.employment_type || null,
       department: departmentSlug || null,
-      department_slugs: workspaceSlugs.length ? workspaceSlugs : [departmentSlug],
+      department_slugs: department_slugs.length ? department_slugs : [departmentSlug],
       shift: createForm.employment_type === "part_time" ? null : createForm.shift || null,
       start_date: createForm.start_date || null,
       supervisor_id: createForm.supervisor_id.trim() || null,
@@ -1548,9 +1526,11 @@ export function WorkersApp() {
                 <p className="mt-1 text-xs text-ds-muted">
                   Your organization&apos;s Pulse modules come from the contract (set by the system admin). Choose a
                   department and permission role, then turn contract modules on or off for that combination. Each
-                  person&apos;s effective access uses their HR department workspace and their role / job title mapping.
-                  Department workspace side rails use <span className="font-mono text-[11px]">contract_features</span>{" "}
-                  and <span className="font-mono text-[11px]">rbac_permissions</span> from <span className="font-mono text-[11px]">/auth/me</span>.
+                  person&apos;s product access comes from their tenant role grants in Team Management (
+                  <span className="font-mono text-[11px]">rbac_permissions</span> on{" "}
+                  <span className="font-mono text-[11px]">/auth/me</span>) intersected with{" "}
+                  <span className="font-mono text-[11px]">contract_features</span>. Department hubs in the shell are not
+                  driven by per-user workspace checklists.
                 </p>
                 <label className={`${LABEL} mt-4 block`}>Department</label>
                 <select
@@ -1925,7 +1905,7 @@ export function WorkersApp() {
                                   {(["company_admin", "manager", "supervisor", "lead", "worker"] as const).map((rk) => (
                                     <option key={rk} value={rk}>
                                       {rk === "worker"
-                                        ? "Workers (Operations, coordinators, …)"
+                                        ? "Workers (field roles: coordinator, operations, …)"
                                         : humanizeRole(rk)}
                                     </option>
                                   ))}
@@ -2438,10 +2418,6 @@ export function WorkersApp() {
                 const department = e.target.value;
                 setCreateForm((f) => {
                   const next: CreateFormState = { ...f, department };
-                  const ws = f.workspace_slugs.includes(department)
-                    ? f.workspace_slugs
-                    : [...f.workspace_slugs, department];
-                  next.workspace_slugs = ws;
                   if (!isMaintenanceInviteDepartment(department)) {
                     next.role = "worker";
                   } else if (createRoleLimited) {
@@ -2482,36 +2458,6 @@ export function WorkersApp() {
                 <option value="worker">Coordinator</option>
               )}
             </select>
-          </div>
-          <div className="sm:col-span-2">
-            <label className={LABEL}>Department workspaces</label>
-            <p className="mb-2 text-xs text-ds-muted-foreground">
-              Choose which departmental hubs this employee can open (Workspaces menu and URL paths).
-            </p>
-            <div className="flex flex-wrap gap-3">
-              {WORKSPACE_ASSIGNMENT_SLUGS.map((o) => (
-                <label key={o.value} className="inline-flex cursor-pointer items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={createForm.workspace_slugs.includes(o.value)}
-                    onChange={(e) => {
-                      setCreateForm((f) => {
-                        const on = e.target.checked;
-                        let next = on
-                          ? [...f.workspace_slugs, o.value]
-                          : f.workspace_slugs.filter((s) => s !== o.value);
-                        const primary = f.department.trim() || "maintenance";
-                        if (!next.includes(primary)) next = [...next, primary];
-                        if (next.length < 1) next = [primary];
-                        return { ...f, workspace_slugs: [...new Set(next)] };
-                      });
-                    }}
-                    className="h-4 w-4 rounded border-ds-border"
-                  />
-                  <span>{o.label}</span>
-                </label>
-              ))}
-            </div>
           </div>
           <div>
             <label className={LABEL}>Employment type</label>
@@ -2922,12 +2868,10 @@ export function WorkersApp() {
                                     key={o.value}
                                     type="button"
                                     onClick={() =>
-                                      setPositionDraft((d) => {
-                                        const slug = o.value;
-                                        let ws = [...d.workspace_slugs];
-                                        if (!ws.map((x) => x.toLowerCase()).includes(slug)) ws = [...ws, slug];
-                                        return { ...d, department: slug, workspace_slugs: [...new Set(ws)] };
-                                      })
+                                      setPositionDraft((d) => ({
+                                        ...d,
+                                        department: o.value,
+                                      }))
                                     }
                                     className={cn(
                                       "rounded-full border px-2.5 py-1 text-[11px] font-semibold transition-colors",
@@ -2987,48 +2931,9 @@ export function WorkersApp() {
                       value={positionDraft.department}
                       onChange={(e) => {
                         const department = e.target.value;
-                        setPositionDraft((d) => {
-                          const slug = department.trim().toLowerCase();
-                          let ws = [...d.workspace_slugs];
-                          if (WORKSPACE_ASSIGNMENT_SLUGS.some((o) => o.value === slug) && !ws.map((x) => x.toLowerCase()).includes(slug)) {
-                            ws = [...ws, slug];
-                          }
-                          return { ...d, department, workspace_slugs: ws };
-                        });
+                        setPositionDraft((d) => ({ ...d, department }));
                       }}
                     />
-                  </div>
-                  <div className="sm:col-span-2">
-                    <span className={LABEL}>Department workspaces</span>
-                    <p className="mt-1 text-xs text-pulse-muted">
-                      Which departmental hubs this person can open (Workspaces menu and <span className="font-mono">/{`{slug}`}/…</span> URLs).
-                    </p>
-                    <div className="mt-2 flex flex-wrap gap-3">
-                      {WORKSPACE_ASSIGNMENT_SLUGS.map((o) => (
-                        <label key={o.value} className="inline-flex cursor-pointer items-center gap-2 text-sm text-ds-foreground">
-                          <input
-                            type="checkbox"
-                            className={dsCheckboxClass}
-                            checked={positionDraft.workspace_slugs.includes(o.value)}
-                            onChange={(e) => {
-                              setPositionDraft((d) => {
-                                const on = e.target.checked;
-                                let next = on
-                                  ? [...d.workspace_slugs, o.value]
-                                  : d.workspace_slugs.filter((s) => s !== o.value);
-                                const primary = d.department.trim().toLowerCase() || "maintenance";
-                                if (!next.map((x) => x.toLowerCase()).includes(primary)) {
-                                  next = [...next, primary];
-                                }
-                                if (next.length < 1) next = [primary];
-                                return { ...d, workspace_slugs: [...new Set(next)] };
-                              });
-                            }}
-                          />
-                          {o.label}
-                        </label>
-                      ))}
-                    </div>
                   </div>
                   {basicDraft.employment_type === "part_time" ? null : (
                     <div>
@@ -3192,7 +3097,7 @@ export function WorkersApp() {
                     {profile.department ?? "—"}
                   </p>
                   <p className="sm:col-span-2">
-                    <span className="text-pulse-muted">Workspaces: </span>
+                    <span className="text-pulse-muted">HR department tags: </span>
                     {(profile.department_slugs?.length ? profile.department_slugs : profile.department ? [profile.department] : [])
                       .join(", ") || "—"}
                   </p>

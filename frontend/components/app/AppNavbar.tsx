@@ -15,7 +15,7 @@ import { notificationBadgeCount } from "@/lib/dashboard/operational-notification
 import { useOperationalNotificationsStore } from "@/lib/dashboard/operational-notifications-store";
 import { fetchOperationalNotificationsForHeader } from "@/lib/dashboard/fetch-operational-notifications";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
-import { navigateToPulseLogin, pulseApp, pulsePostLoginPath, pulseRoutes } from "@/lib/pulse-app";
+import { navigateToPulseLogin, pulseApp, pulseRoutes } from "@/lib/pulse-app";
 import { dispatchPulseLogoutSuccessUi, pulseLogoutNavigationDelayMs } from "@/lib/pulse-logout-ui";
 import { clearSession, canAccessPulseTenantApis } from "@/lib/pulse-session";
 import { signOutSupabaseIdentity } from "@/lib/microsoft-auth";
@@ -26,6 +26,7 @@ import {
   sessionRoleDisplayLabel,
   shouldShowWorkerMandatoryPasswordBadge,
 } from "@/lib/pulse-roles";
+import { firstAccessibleClassicTenantHref } from "@/lib/rbac/session-access";
 import { cn } from "@/lib/cn";
 import { isApiMode } from "@/lib/api";
 import { fetchFeedbackUnreadCount } from "@/lib/feedbackApi";
@@ -68,7 +69,7 @@ export function AppNavbar({ notificationCount: notificationCountProp = 0, messag
   const messagesCountDisplay = Math.max(messagesCount, feedbackInboxCount + storeNotificationCount);
 
   const logoHref =
-    authed && session ? pulseApp.to(pulsePostLoginPath(session)) : pulseRoutes.pulseLanding;
+    authed && session ? pulseApp.to(firstAccessibleClassicTenantHref(session)) : pulseRoutes.pulseLanding;
   const isDemoViewer = session?.role === "demo_viewer";
   const isSystemAdmin = Boolean(session?.is_system_admin || session?.role === "system_admin");
   const canOpenOrgSettings = session ? isSystemAdmin || canAccessCompanyConfiguration(session) : false;

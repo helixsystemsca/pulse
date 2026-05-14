@@ -4,6 +4,7 @@
  * `platform-workspace-modules` (department workspace rail).
  */
 export const SYSTEM_ADMIN_FEATURE_ORDER = [
+  "dashboard",
   "compliance",
   "schedule",
   "monitoring",
@@ -33,6 +34,7 @@ export const SYSTEM_ADMIN_FEATURE_ORDER = [
 ] as const;
 
 export const SYSTEM_ADMIN_FEATURE_LABELS: Record<string, string> = {
+  dashboard: "Leadership dashboard",
   compliance: "Inspections & Logs",
   schedule: "Schedule",
   monitoring: "Monitoring",

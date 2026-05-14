@@ -4,6 +4,7 @@ import { ChevronDown } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { listDepartmentsAllowedForSession } from "@/config/platform/navigation";
+import { firstAccessibleClassicTenantHref } from "@/lib/rbac/session-access";
 import { useDepartmentPlatform } from "@/contexts/DepartmentPlatformContext";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
 import { cn } from "@/lib/cn";
@@ -73,11 +74,11 @@ export function PlatformDepartmentBanner() {
               ))}
               <li className="border-t border-ds-border">
                 <Link
-                  href="/overview"
+                  href={session ? firstAccessibleClassicTenantHref(session) : "/settings"}
                   className="block px-3 py-2 text-xs text-ds-muted hover:bg-ds-secondary hover:text-ds-foreground"
                   onClick={() => setOpen(false)}
                 >
-                  Back to classic overview
+                  Back to classic home
                 </Link>
               </li>
             </ul>

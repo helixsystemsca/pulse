@@ -5,10 +5,19 @@
  */
 import { PLATFORM_DEPARTMENT_SLUGS } from "@/config/platform/departments";
 import type { PulseAuthSession } from "@/lib/pulse-session";
+import { pulseTenantSidebarNav } from "@/lib/pulse-app";
 
 type NavGate =
   | { kind: "always" }
-  | { kind: "module"; companyModules: readonly string[]; rbacAnyOf: readonly string[] };
+  | {
+      kind: "module";
+      companyModules: readonly string[];
+      rbacAnyOf: readonly string[];
+      /** When true, every module in `companyModules` must be on the contract (default: any). */
+      requireAllContractModules?: boolean;
+      /** When set, user must have every permission listed (takes precedence over `rbacAnyOf`). */
+      rbacAllOf?: readonly string[];
+    };
 
 function normalizeHref(href: string): string {
   const path = href.split("?")[0] ?? href;
@@ -29,11 +38,21 @@ export function tenantHasAnyCompanyModule(session: PulseAuthSession | null, modu
   return modules.some((m) => s.has(m));
 }
 
+export function tenantHasEveryCompanyModule(session: PulseAuthSession | null, modules: readonly string[]): boolean {
+  const s = tenantContractModuleSet(session);
+  return modules.length > 0 && modules.every((m) => s.has(m));
+}
+
 /** Flat RBAC keys from `/auth/me` (`*` = unrestricted within tenant). */
 export function hasRbacPermission(session: PulseAuthSession | null, permissionKey: string): boolean {
   const rbac = session?.rbac_permissions;
   if (!rbac?.length) return false;
   return rbac.includes("*") || rbac.includes(permissionKey);
+}
+
+/** Central permission check for UI — use instead of workspace or department-slug branching. */
+export function can(session: PulseAuthSession | null, permissionKey: string): boolean {
+  return hasRbacPermission(session, permissionKey);
 }
 
 export function isTenantFullAdminSession(session: PulseAuthSession | null): boolean {
@@ -50,7 +69,18 @@ function classicNavGate(href: string): NavGate {
   for (const slug of PLATFORM_DEPARTMENT_SLUGS) {
     if (h === `/${slug}` || h.startsWith(`/${slug}/`)) return { kind: "always" };
   }
-  if (h === "/overview") return { kind: "always" };
+  if (h === "/overview/project" || h.startsWith("/overview/project/")) {
+    return {
+      kind: "module",
+      companyModules: ["dashboard", "projects"],
+      rbacAnyOf: [],
+      requireAllContractModules: true,
+      rbacAllOf: ["dashboard.view", "projects.view"],
+    };
+  }
+  if (h === "/overview" || h.startsWith("/overview/")) {
+    return { kind: "module", companyModules: ["dashboard"], rbacAnyOf: ["dashboard.view"] };
+  }
 
   if (h === "/dashboard/messages" || h.startsWith("/dashboard/messages")) {
     return { kind: "module", companyModules: ["messaging"], rbacAnyOf: ["messaging.view"] };
@@ -134,9 +164,43 @@ export function canAccessClassicNavHref(session: PulseAuthSession | null, href: 
   const gate = classicNavGate(href);
   if (gate.kind === "always") return true;
 
-  if (!tenantHasAnyCompanyModule(session, gate.companyModules)) return false;
+  const modsOk = gate.requireAllContractModules
+    ? tenantHasEveryCompanyModule(session, gate.companyModules)
+    : tenantHasAnyCompanyModule(session, gate.companyModules);
+  if (!modsOk) return false;
+  if (gate.rbacAllOf?.length) {
+    return gate.rbacAllOf.every((k) => hasRbacPermission(session, k));
+  }
   if (!gate.rbacAnyOf.length) return true;
   return gate.rbacAnyOf.some((k) => hasRbacPermission(session, k));
+}
+
+/** Same rules as the tenant left rail row for `href` (includes Team Management delegation). */
+export function canShowClassicSidebarItem(
+  session: PulseAuthSession | null,
+  href: string,
+  isSystemAdmin: boolean,
+): boolean {
+  if (!session) return false;
+  if (session.is_system_admin === true || session.role === "system_admin") return true;
+  if (isWorkersManagementHref(href)) return canShowTeamManagementNavItem(session, isSystemAdmin);
+  return canAccessClassicNavHref(session, href);
+}
+
+/**
+ * First classic-tenant sidebar destination the user may open (excluding Settings).
+ * Used when `/overview` is disabled or there is no workspace hub.
+ */
+export function firstAccessibleClassicTenantHref(session: PulseAuthSession | null): string {
+  if (!session) return "/login";
+  const sys = Boolean(session.is_system_admin || session.role === "system_admin");
+  if (sys) return "/system";
+  if (session.role === "demo_viewer") return "/overview";
+  for (const item of pulseTenantSidebarNav) {
+    if (item.href === "/settings") continue;
+    if (canShowClassicSidebarItem(session, item.href, sys)) return item.href;
+  }
+  return "/settings";
 }
 
 /** Team Management row: roster delegation, tenant full admin, or contract + RBAC. */

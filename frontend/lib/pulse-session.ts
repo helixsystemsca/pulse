@@ -11,7 +11,7 @@ import {
 import { navigateToPulseLogin } from "@/lib/pulse-app";
 import { applyServerTimeFromUserOut } from "@/lib/serverTime";
 
-export const PULSE_AUTH_STORAGE_KEY = "pulse_auth_v1";
+export const PULSE_AUTH_STORAGE_KEY = "pulse_auth_v2";
 
 const PUBLIC_PATH_PREFIXES = ["/login", "/auth/callback", "/invite", "/reset-password"] as const;
 
@@ -63,8 +63,10 @@ export type PulseAuthSession = {
   rbac_permissions?: string[];
   /** From `/auth/me`; coarse legacy permission strings (`module.*`). */
   permissions?: string[] | null;
-  /** From `/auth/me`; department workspace segments this user may open (`/{slug}/…`). */
+  /** Deprecated: always empty from API. Hub access uses `rbac_permissions` + `contract_features` only. */
   department_workspace_slugs?: string[];
+  /** Primary HR department slug from `/auth/me` for shell labels (not authorization). */
+  hr_department?: string | null;
   /** From `/auth/me`; full tenant contract modules (company admin only). */
   contract_enabled_features?: string[] | null;
   /** From `/auth/me`; may open `/dashboard/workers`. */
@@ -102,7 +104,10 @@ export type UserOut = {
   contract_features?: string[];
   rbac_permissions?: string[];
   permissions?: string[] | null;
+  /** Deprecated: always empty from API. Hub access uses `rbac_permissions` + `contract_features` only. */
   department_workspace_slugs?: string[];
+  /** Primary HR department slug from `/auth/me` for shell labels (not authorization). */
+  hr_department?: string | null;
   contract_enabled_features?: string[] | null;
   workers_roster_access?: boolean;
   is_impersonating?: boolean;
@@ -193,6 +198,11 @@ function clearSessionQuiet() {
   if (typeof window === "undefined") return;
   setImpersonationOverlayAccessToken(null);
   localStorage.removeItem(PULSE_AUTH_STORAGE_KEY);
+  try {
+    localStorage.removeItem("pulse_auth_v1");
+  } catch {
+    /* ignore */
+  }
   document.cookie = "pulse_session=; path=/; max-age=0; SameSite=Lax";
   try {
     sessionStorage.removeItem(PULSE_WELCOME_SESSION_KEY);
@@ -265,6 +275,7 @@ export function writeApiSession(
     rbac_permissions: user.rbac_permissions ?? undefined,
     permissions: user.permissions ?? undefined,
     department_workspace_slugs: user.department_workspace_slugs ?? undefined,
+    hr_department: user.hr_department ?? undefined,
     contract_enabled_features: user.contract_enabled_features ?? undefined,
     workers_roster_access: user.workers_roster_access,
     is_impersonating:

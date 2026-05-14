@@ -10,9 +10,10 @@ TENANT_EMPTY_FEATURES_MARKER = "_tenant_empty_feature_canvas"
 
 # Product-facing catalog (system admin UI). Order is mirrored in `frontend/lib/system-admin-features.ts`
 # and grouped for Team Management in `frontend/config/platform/tenant-product-modules.ts`.
-# (toggleable items only — not Dashboard or Settings).
+# Settings stays pinned; leadership `/overview` is toggleable via `dashboard`.
 # Keys must stay in sync with `frontend/lib/pulse-nav-features.ts` (classic nav) where applicable.
 GLOBAL_SYSTEM_FEATURES: tuple[str, ...] = (
+    "dashboard",
     "compliance",
     "schedule",
     "monitoring",

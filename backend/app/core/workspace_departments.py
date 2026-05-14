@@ -1,11 +1,10 @@
-"""Department workspace slugs (URL segments under `/{slug}/…`) — HR + auth."""
+"""Legacy helpers for normalizing HR department slug lists (workspace auth removed)."""
 
 from __future__ import annotations
 
 from typing import Sequence
 
-from app.core.user_roles import user_has_any_role
-from app.models.domain import User, UserRole
+from app.models.domain import User
 from app.models.pulse_models import PulseWorkerHR
 
 ALLOWED_WORKSPACE_DEPARTMENT_SLUGS: frozenset[str] = frozenset(
@@ -37,26 +36,26 @@ def effective_workspace_slugs_for_user(
     hr: PulseWorkerHR | None,
     permissions: Sequence[str] | None,
 ) -> list[str]:
-    """Slugs the user may open under `/{slug}/…` (intersect with platform registry on the client)."""
-    if not user.company_id:
-        return []
-    if user.is_system_admin or user_has_any_role(user, UserRole.system_admin):
-        return sorted(ALLOWED_WORKSPACE_DEPARTMENT_SLUGS)
+    """
+    Deprecated for authorization: `/auth/me` no longer uses this list for UI or route access.
 
-    perms = list(permissions or [])
-    if "*" in perms:
-        return sorted(ALLOWED_WORKSPACE_DEPARTMENT_SLUGS)
-    if user_has_any_role(user, UserRole.company_admin, UserRole.manager, UserRole.supervisor) or bool(
-        getattr(user, "facility_tenant_admin", False)
-    ):
-        return sorted(ALLOWED_WORKSPACE_DEPARTMENT_SLUGS)
+    Department hubs (`/{slug}/…`) are gated only by tenant RBAC + contract modules on the client.
+    Kept returning an empty list so API shape stays stable; do not use for access decisions.
+    """
+    return []
 
-    slugs: list[str] = []
-    raw = getattr(hr, "department_slugs", None) if hr else None
+
+def primary_hr_department_slug_for_auth(hr: PulseWorkerHR | None) -> str | None:
+    """Primary HR department slug for shell / profile display on `/auth/me` (not used for authorization)."""
+    if not hr:
+        return None
+    one = normalize_workspace_department_slug((hr.department or "").strip() or None)
+    if one:
+        return one
+    raw = getattr(hr, "department_slugs", None)
     if isinstance(raw, list):
-        slugs = normalize_workspace_department_slug_list([str(x) for x in raw])
-    if not slugs and hr and hr.department:
-        one = normalize_workspace_department_slug(hr.department)
-        if one:
-            slugs = [one]
-    return sorted(set(slugs))
+        for x in raw:
+            n = normalize_workspace_department_slug(str(x))
+            if n:
+                return n
+    return None

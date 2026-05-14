@@ -110,7 +110,7 @@ def primary_facility_staff_role(user: User) -> UserRole:
 
 
 _FACILITY_ROLE_LABEL: dict[UserRole, str] = {
-    UserRole.worker: "Operations",
+    UserRole.worker: "Staff",
     UserRole.lead: "Lead",
     UserRole.supervisor: "Supervisor",
     UserRole.manager: "Manager",

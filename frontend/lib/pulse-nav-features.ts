@@ -10,6 +10,7 @@ export function featureKeyForTenantNavHref(href: string): string | undefined {
   for (const slug of PLATFORM_DEPARTMENT_SLUGS) {
     if (href === `/${slug}` || href.startsWith(`/${slug}/`)) return undefined;
   }
+  if (href === "/overview" || href.startsWith("/overview/")) return "dashboard";
   if (href === "/dashboard/messages" || href.startsWith("/dashboard/messages")) return "messaging";
   if (href === "/dashboard/compliance") return "compliance";
   if (href === "/schedule") return "schedule";

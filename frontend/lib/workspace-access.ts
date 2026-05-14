@@ -1,8 +1,8 @@
-import type { PulseAuthSession } from "@/lib/pulse-session";
+import { buildDepartmentNavItems } from "@/config/platform/navigation";
 import { isPlatformDepartmentSlug } from "@/config/platform/departments";
-import { listDepartmentsAllowedForSession } from "@/config/platform/navigation";
+import type { PulseAuthSession } from "@/lib/pulse-session";
 
-/** True when the signed-in user may open `/{departmentSlug}/…` workspace routes. */
+/** True when the signed-in user may open `/{departmentSlug}/…` routes (RBAC ∩ contract modules only). */
 export function userMayAccessDepartmentWorkspace(
   session: PulseAuthSession | null,
   departmentSlug: string,
@@ -10,5 +10,5 @@ export function userMayAccessDepartmentWorkspace(
   if (!session || !departmentSlug) return false;
   if (!isPlatformDepartmentSlug(departmentSlug)) return false;
   if (session.is_system_admin || session.role === "system_admin") return true;
-  return listDepartmentsAllowedForSession(session).some((d) => d.slug === departmentSlug);
+  return buildDepartmentNavItems(departmentSlug, session).length > 0;
 }

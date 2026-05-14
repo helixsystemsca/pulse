@@ -27,7 +27,10 @@ from app.core.microsoft_oauth import MicrosoftOAuthError, MicrosoftIdentity, ver
 from app.core.permissions.service import PermissionService
 from app.core.rbac.resolve import effective_rbac_permission_keys
 from app.core.tenant_feature_access import contract_and_effective_features_for_me
-from app.core.workspace_departments import effective_workspace_slugs_for_user
+from app.core.workspace_departments import (
+    effective_workspace_slugs_for_user,
+    primary_hr_department_slug_for_auth,
+)
 from app.core.system_audit import record_system_log
 from app.core.system_tokens import hash_system_token
 from app.limiter import limiter
@@ -380,6 +383,7 @@ async def me(
         role_display_label=tenant_role_display_label(user),
         permissions=perm_out,
         department_workspace_slugs=dept_workspace,
+        hr_department=primary_hr_department_slug_for_auth(hr_me),
         server_time=datetime.now(timezone.utc).isoformat(),
         must_change_password=must_change_password,
     )

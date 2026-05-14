@@ -1,8 +1,17 @@
+/**
+ * Platform department hubs (`/{slug}/…`) — navigation only.
+ *
+ * MIGRATION (workspace auth removed):
+ * - [x] `listDepartmentsAllowedForSession` — no `department_workspace_slugs` or `workspace_*` contract OR-fallback.
+ * - [x] `buildDepartmentNavItems` — visibility = contract module ∩ RBAC only.
+ * - Remaining risks: other files mentioning “workspace” for UX copy; backend still stores `department_slugs` on workers
+ *   for HR/roster only (not used for hub authorization on the client).
+ */
 import { getDepartmentBySlug, PLATFORM_DEPARTMENTS } from "@/config/platform/departments";
 import type { Department, PlatformNavItem } from "@/config/platform/types";
 import type { PulseAuthSession } from "@/lib/pulse-session";
 import { PLATFORM_WORKSPACE_MODULES } from "@/lib/rbac/platform-workspace-modules";
-import { hasRbacPermission } from "@/lib/rbac/session-access";
+import { firstAccessibleClassicTenantHref, hasRbacPermission } from "@/lib/rbac/session-access";
 
 const STORAGE_LAST_DEPT = "pulse_platform_department_slug_v1";
 
@@ -69,39 +78,16 @@ export function getFirstNavHrefForDepartment(departmentSlug: string, session: Pu
   return items[0]?.href ?? null;
 }
 
-/** Contract / role feature key for opening a department hub (`/{slug}/…`). */
-export function workspaceFeatureKeyForDepartmentSlug(slug: string): string {
-  return `workspace_${slug}`;
-}
-
-function sessionUsesDepartmentWorkspaceFeatureGate(session: PulseAuthSession | null): boolean {
-  const c = session?.contract_features?.length ? session.contract_features : session?.contract_enabled_features;
-  if (!c?.length) return false;
-  return c.some((f) => f.startsWith("workspace_"));
-}
-
 /**
- * Departments the user may enter under `/{slug}/…` (HR allow-list ∩ contract workspace keys ∩ RBAC).
+ * Departments the user may enter under `/{slug}/…`.
+ *
+ * Authorization is ONLY from contract modules + flat RBAC on each workspace module
+ * (see {@link PLATFORM_WORKSPACE_MODULES} / {@link buildDepartmentNavItems}).
+ * Legacy `department_workspace_slugs` and per-department `workspace_*` contract gates are NOT used — they caused
+ * permission drift (e.g. HR workspace list vs Team Management RBAC).
  */
 export function listDepartmentsAllowedForSession(session: PulseAuthSession | null): readonly Department[] {
-  let depts: readonly Department[];
-  const allowed = session?.department_workspace_slugs;
-  if (!allowed || allowed.length === 0) {
-    depts = PLATFORM_DEPARTMENTS;
-  } else {
-    const set = new Set(allowed);
-    depts = PLATFORM_DEPARTMENTS.filter((d) => set.has(d.slug));
-  }
-  const contract = contractSet(session);
-  const companyHasWorkspacePack = [...contract].some((f) => f.startsWith("workspace_"));
-  if (!companyHasWorkspacePack || !sessionUsesDepartmentWorkspaceFeatureGate(session)) {
-    return depts;
-  }
-  return depts.filter((d) => {
-    const wsKey = workspaceFeatureKeyForDepartmentSlug(d.slug);
-    if (!contract.has(wsKey)) return false;
-    return hasRbacPermission(session, "workspace.view");
-  });
+  return PLATFORM_DEPARTMENTS.filter((d) => buildDepartmentNavItems(d.slug, session).length > 0);
 }
 
 /** When a user has several workspaces, prefer a non-maintenance home so comms/reception staff land on their hub. */
@@ -116,7 +102,7 @@ function departmentsOrderedForDefaultHub(depts: readonly Department[]): Departme
 export function defaultWorkspaceHubHref(session: PulseAuthSession | null): string {
   const depts = departmentsOrderedForDefaultHub(listDepartmentsAllowedForSession(session));
   const first = depts[0];
-  if (!first) return "/overview";
+  if (!first) return firstAccessibleClassicTenantHref(session);
   const mod = getDefaultModuleRouteForDepartment(first.slug, session);
   if (mod) return `/${first.slug}/${mod}`;
   return `/${first.slug}`;
