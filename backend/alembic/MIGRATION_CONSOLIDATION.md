@@ -34,6 +34,22 @@ Includes former `0001`–`0128` chain, merge revisions, and idempotency-heavy hi
 | Merge heads / long `version_num` failures | Single head, short revision id |
 | Heavy per-revision introspection | Baseline only; new deltas stay small |
 
+## Render / production start command
+
+Replace:
+
+```bash
+alembic -c alembic.ini upgrade head && uvicorn app.main:app ...
+```
+
+With:
+
+```bash
+python scripts/alembic_migrate.py && uvicorn app.main:app --host 0.0.0.0 --port $PORT
+```
+
+(`alembic_migrate.py` stamps `1000_alpha_baseline` when `alembic_version` still references an archived revision such as `0128_rbac_audit_events`, then runs `upgrade head`.)
+
 ## Validation checklist
 
 ```bash
@@ -46,10 +62,10 @@ python -m alembic history
 # Empty database (CI / local Postgres)
 dropdb pulse_ci && createdb pulse_ci   # or your DB name
 export DATABASE_URL=postgresql+psycopg://...
-alembic upgrade head
-alembic upgrade head                   # idempotent
+python scripts/alembic_migrate.py
+python scripts/alembic_migrate.py      # idempotent
 alembic downgrade base
-alembic upgrade head
+python scripts/alembic_migrate.py
 
 pytest tests/test_migration_ddl_lint.py
 pytest tests/test_alembic_migration_idempotency.py  # integration
@@ -64,13 +80,19 @@ No action — `alembic upgrade head` applies `1000_alpha_baseline` only.
 
 ### Existing databases (old chain already applied)
 
-Schema should already match ORM metadata. After deploy:
+Schema should already match ORM metadata. The deploy script realigns automatically:
+
+```bash
+python scripts/alembic_migrate.py   # stamps 1000_alpha_baseline if version_num is archived, then upgrade head
+```
+
+Manual one-off (Render shell) if needed:
 
 ```bash
 alembic stamp 1000_alpha_baseline
 ```
 
-Only if you have confirmed the live schema matches current models. Do **not** run archived migrations.
+Only stamp when the live schema already matches current models. Do **not** run archived migrations.
 
 ### New migrations
 

@@ -1,6 +1,6 @@
 """Pydantic schemas for Pulse REST API."""
 
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any, Optional, Union
 
 from pydantic import AliasChoices, BaseModel, Field, field_validator

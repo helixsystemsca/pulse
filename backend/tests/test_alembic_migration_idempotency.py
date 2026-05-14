@@ -22,7 +22,7 @@ def _run_upgrade() -> subprocess.CompletedProcess[str]:
     env = os.environ.copy()
     env["DATABASE_URL"] = url
     return subprocess.run(
-        [sys.executable, "-m", "alembic", "upgrade", "head"],
+        [sys.executable, "scripts/alembic_migrate.py"],
         cwd=BACKEND_ROOT,
         env=env,
         capture_output=True,

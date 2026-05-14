@@ -182,7 +182,7 @@ def _run_alembic_upgrade(async_url: str) -> None:
     env = os.environ.copy()
     env["DATABASE_URL"] = async_url
     r = subprocess.run(
-        [sys.executable, "-m", "alembic", "upgrade", "head"],
+        [sys.executable, "scripts/alembic_migrate.py"],
         cwd=BACKEND_ROOT,
         env=env,
         capture_output=True,
@@ -191,7 +191,7 @@ def _run_alembic_upgrade(async_url: str) -> None:
     )
     if r.returncode != 0:
         raise TestDbUnavailable(
-            "Test DB not available: alembic upgrade head failed.\n"
+            "Test DB not available: alembic migrate failed.\n"
             f"{r.stderr or r.stdout}"
         )
 
