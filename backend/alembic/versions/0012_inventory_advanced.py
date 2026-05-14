@@ -29,8 +29,7 @@ def upgrade() -> None:
     conn = op.get_bind()
 
     def addcol(table: str, name: str, col) -> None:
-        if not ah.column_exists(conn, table, name):
-            op.add_column(table, col)
+        ah.safe_add_column(op, conn, table, col)
 
     addcol("inventory_items", "item_type", sa.Column("item_type", sa.String(32), nullable=False, server_default="part"))
     addcol("inventory_items", "category", sa.Column("category", sa.String(128), nullable=True))
@@ -94,11 +93,7 @@ def upgrade() -> None:
             ondelete="SET NULL",
         )
 
-    if ah.column_exists(conn, "inventory_items", "inv_status"):
-        try:
-            op.create_index("ix_inventory_items_inv_status", "inventory_items", ["inv_status"])
-        except Exception:
-            pass
+    ah.safe_create_index(op, conn, "ix_inventory_items_inv_status", "inventory_items", ["inv_status"])
 
     if not ah.table_exists(conn, "inventory_movements"):
         op.create_table(
@@ -166,22 +161,10 @@ def upgrade() -> None:
         )
 
     # Drop server defaults added for backfill (keep columns NOT NULL without server default on new writes)
-    try:
-        op.alter_column("inventory_items", "item_type", server_default=None)
-    except Exception:
-        pass
-    try:
-        op.alter_column("inventory_items", "inv_status", server_default=None)
-    except Exception:
-        pass
-    try:
-        op.alter_column("inventory_items", "item_condition", server_default=None)
-    except Exception:
-        pass
-    try:
-        op.alter_column("inventory_items", "reorder_flag", server_default=None)
-    except Exception:
-        pass
+    ah.safe_alter_column_drop_server_default(op, conn, "inventory_items", "item_type")
+    ah.safe_alter_column_drop_server_default(op, conn, "inventory_items", "inv_status")
+    ah.safe_alter_column_drop_server_default(op, conn, "inventory_items", "item_condition")
+    ah.safe_alter_column_drop_server_default(op, conn, "inventory_items", "reorder_flag")
 
 
 def downgrade() -> None:
