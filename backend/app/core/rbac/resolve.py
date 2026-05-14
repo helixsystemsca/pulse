@@ -52,7 +52,8 @@ async def effective_rbac_permission_keys(
     - System administrators: `["*"]`.
     - Tenant full admins: all catalog keys allowed by the company contract.
     - Users with `tenant_role_id`: union of `tenant_role_grants` ∩ contract.
-    - Else: bridge from legacy effective product feature names (matrix / `role_feature_access`).
+    - Else: bridge from legacy effective product feature names (matrix / `role_feature_access`) plus
+      per-user `feature_allow_extra` module keys.
     """
     if user.is_system_admin or user_has_any_role(user, UserRole.system_admin):
         return ["*"]
@@ -73,5 +74,9 @@ async def effective_rbac_permission_keys(
         raw = {str(r[0]) for r in q.all()}
         return sorted(_filter_keys_by_contract(raw, contract))
 
-    bridged = rbac_keys_from_legacy_effective_features(effective_feature_names)
+    eff = list(effective_feature_names)
+    extras = getattr(user, "feature_allow_extra", None) or []
+    if isinstance(extras, list):
+        eff = sorted(set(eff) | {str(x) for x in extras if isinstance(x, str)})
+    bridged = rbac_keys_from_legacy_effective_features(eff)
     return sorted(_filter_keys_by_contract(bridged, contract))

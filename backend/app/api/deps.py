@@ -254,6 +254,19 @@ def require_any_rbac(*permission_keys: str) -> Callable[..., Awaitable[User]]:
             return user
         if any(k in resolved for k in permission_keys):
             return user
+        # If RBAC resolution yields no keys (edge configs, partial migrations) but the tenant contract
+        # still includes the module, allow historical field-staff roles for work-requests only — contract-bound.
+        wr_keys = {"work_requests.view", "work_requests.edit"}
+        if set(permission_keys) <= wr_keys and "work_requests" in set(contract_feats):
+            if user_has_any_role(
+                user,
+                UserRole.worker,
+                UserRole.lead,
+                UserRole.supervisor,
+                UserRole.manager,
+                UserRole.company_admin,
+            ):
+                return user
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="rbac_permission_required")
 
     return _inner
