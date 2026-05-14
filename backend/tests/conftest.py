@@ -139,8 +139,10 @@ async def seeded_tenant(db_session: AsyncSession) -> TenantSeed:
     password = "pytest-pass-12345"
 
     db = db_session
-    company = Company(id=company_id, name=f"Pytest Co {suffix}")
+    company = Company(id=company_id, name=f"Pytest Co {suffix}", theme={})
     db.add(company)
+    await db.flush()
+
     worker = User(
         id=worker_id,
         company_id=company_id,
@@ -262,8 +264,7 @@ async def seeded_tenant(db_session: AsyncSession) -> TenantSeed:
 
     svc = DeviceService(db)
     _, gateway_secret = await svc.rotate_gateway_ingest_secret(company_id=company_id, gateway_id=gateway_id)
-
-    await db.commit()
+    await db.flush()
 
     worker_token = create_access_token(
         subject=worker_id,
