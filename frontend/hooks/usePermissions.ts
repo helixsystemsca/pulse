@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
+import { hasRbacPermission } from "@/lib/rbac/session-access";
 
 /**
  * Central RBAC helper: `/auth/me` → `rbac_permissions` (flat keys) + optional `*`.
@@ -9,16 +10,16 @@ import { usePulseAuth } from "@/hooks/usePulseAuth";
  */
 export function usePermissions() {
   const { session } = usePulseAuth();
+  const can = useMemo(
+    () => (permissionKey: string) => hasRbacPermission(session, permissionKey),
+    [session],
+  );
+
   const keys = useMemo(() => {
     const raw = session?.rbac_permissions;
     if (!raw?.length) return new Set<string>();
     return new Set(raw);
   }, [session?.rbac_permissions]);
-
-  const can = useMemo(
-    () => (permissionKey: string) => keys.has("*") || keys.has(permissionKey),
-    [keys],
-  );
 
   return { can, keys };
 }

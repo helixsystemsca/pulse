@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Department workspace rail: generated from `config/platform` registries + session capabilities.
+ * Department workspace rail: generated from module registry + `/auth/me` RBAC + contract modules.
  */
 import Link from "next/link";
 import { usePathname } from "next/navigation";

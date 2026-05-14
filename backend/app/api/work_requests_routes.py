@@ -14,7 +14,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import and_, delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_user, get_db, require_manager_or_above
+from app.api.deps import get_current_user, get_db, require_any_rbac, require_manager_or_above
 from app.core.events.engine import event_engine
 from app.core.events.types import DomainEvent
 from app.core.user_roles import is_field_worker_like, user_has_any_role
@@ -101,25 +101,7 @@ Db = Annotated[AsyncSession, Depends(get_db)]
 MgrUser = Annotated[User, Depends(require_manager_or_above)]
 
 
-async def _require_wr_reader(user: Annotated[User, Depends(get_current_user)]) -> User:
-    """Workers, managers, company admins, and system admins (with company context) may read/list issues."""
-    if user_has_any_role(user, UserRole.system_admin) or user.is_system_admin:
-        return user
-    if user.company_id is None:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not a tenant user")
-    if not user_has_any_role(
-        user,
-        UserRole.worker,
-        UserRole.lead,
-        UserRole.supervisor,
-        UserRole.manager,
-        UserRole.company_admin,
-    ):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Issue tracking not available for this role")
-    return user
-
-
-WrReader = Annotated[User, Depends(_require_wr_reader)]
+WrReader = Annotated[User, Depends(require_any_rbac("work_requests.view", "work_requests.edit"))]
 
 
 def _assert_worker_may_touch_wr(user: User, wr: PulseWorkRequest) -> None:

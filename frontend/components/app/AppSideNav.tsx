@@ -37,21 +37,19 @@ import {
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
-import type { PulseAuthSession } from "@/lib/pulse-session";
+import { defaultWorkspaceHubHref, listDepartmentsAllowedForSession } from "@/config/platform/navigation";
+import type { PlatformIconKey } from "@/config/platform/types";
 import {
   pulseSystemSidebarNav,
   pulseTenantSidebarNav,
   type PulseSidebarIcon,
 } from "@/lib/pulse-app";
-
-import { defaultWorkspaceHubHref, listDepartmentsAllowedForSession } from "@/config/platform/navigation";
-import type { PlatformIconKey } from "@/config/platform/types";
-
-type SidebarNavItem = { href: string; label: string; icon: PulseSidebarIcon | PlatformIconKey };
 import { isPulseNavActive } from "@/lib/pulse-nav-active";
-import { isTenantNavFeatureEnabled } from "@/lib/pulse-nav-features";
-import { isTenantNavPermissionGranted } from "@/lib/pulse-nav-permissions";
-import { sessionHasAnyRole, sessionPrimaryRole } from "@/lib/pulse-roles";
+import {
+  canAccessClassicNavHref,
+  canShowTeamManagementNavItem,
+  isWorkersManagementHref,
+} from "@/lib/rbac/session-access";
 import { cn } from "@/lib/cn";
 import { isPlatformDepartmentPath } from "@/lib/platform/path-detection";
 import { PlatformAppSideNav } from "@/components/platform/PlatformAppSideNav";
@@ -110,14 +108,7 @@ const ICON_COL = `h-11 ${COLLAPSED_RAIL_W} shrink-0`;
 const SIDENAV_ROW_ACTIVE_HOVER = "bg-[var(--ds-accent)]";
 const SIDENAV_ROW_ACTIVE_HOVER_HOVER = "hover:bg-[var(--ds-accent)]";
 
-/** Team Management: tenant feature `team_management` + route permission; roster delegation still grants access. */
-function showWorkersNavItem(session: PulseAuthSession, isSystemAdmin: boolean): boolean {
-  if (isSystemAdmin) return true;
-  if (session.workers_roster_access === true) return true;
-  if (session.enabled_features?.includes("team_management")) return true;
-  if (session.workers_roster_access === false) return false;
-  return sessionHasAnyRole(session, "company_admin");
-}
+type SidebarNavItem = { href: string; label: string; icon: PulseSidebarIcon | PlatformIconKey };
 
 export function AppSideNav() {
   const pathname = usePathname();
@@ -138,11 +129,7 @@ export function AppSideNav() {
 
   const isSystemAdmin = Boolean(session?.is_system_admin || session?.role === "system_admin");
   const rawNav = isSystemAdmin ? pulseSystemSidebarNav : pulseTenantSidebarNav;
-  let items: SidebarNavItem[] = (
-    !isSystemAdmin && sessionPrimaryRole(session) === "worker"
-      ? rawNav.filter((i) => i.href !== "/monitoring")
-      : [...rawNav]
-  ).map((i) => ({ href: i.href, label: i.label, icon: i.icon }));
+  let items: SidebarNavItem[] = [...rawNav].map((i) => ({ href: i.href, label: i.label, icon: i.icon }));
   if (!isSystemAdmin && session) {
     const workspaceDepts = listDepartmentsAllowedForSession(session);
     if (workspaceDepts.length > 0) {
@@ -155,14 +142,9 @@ export function AppSideNav() {
   }
   if (!isSystemAdmin && session) {
     if (session.role !== "demo_viewer") {
-      items = items.filter((i) => isTenantNavFeatureEnabled(i.href, session.enabled_features));
       items = items.filter((i) => {
-        if (i.href === "/dashboard/workers" || i.href.startsWith("/dashboard/workers")) {
-          if (!showWorkersNavItem(session, isSystemAdmin)) return false;
-          if (!isTenantNavPermissionGranted(i.href, session.permissions)) return false;
-          return true;
-        }
-        return isTenantNavPermissionGranted(i.href, session.permissions);
+        if (isWorkersManagementHref(i.href)) return canShowTeamManagementNavItem(session, isSystemAdmin);
+        return canAccessClassicNavHref(session, i.href);
       });
     }
   }

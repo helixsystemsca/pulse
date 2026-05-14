@@ -2,6 +2,7 @@ import { getDepartmentBySlug, PLATFORM_DEPARTMENTS } from "@/config/platform/dep
 import type { Department, PlatformNavItem } from "@/config/platform/types";
 import type { PulseAuthSession } from "@/lib/pulse-session";
 import { PLATFORM_WORKSPACE_MODULES } from "@/lib/rbac/platform-workspace-modules";
+import { hasRbacPermission } from "@/lib/rbac/session-access";
 
 const STORAGE_LAST_DEPT = "pulse_platform_department_slug_v1";
 
@@ -39,13 +40,6 @@ function contractSet(session: PulseAuthSession | null): Set<string> {
   return new Set(raw);
 }
 
-/** When `rbac_permissions` is absent (stale client), fall back to legacy `enabled_features` product keys. */
-function hasRbacOrLegacyFeature(session: PulseAuthSession | null, permission: string, legacyFeatureKey: string): boolean {
-  const rbac = session?.rbac_permissions;
-  if (rbac?.length) return rbac.includes("*") || rbac.includes(permission);
-  return Boolean(session?.enabled_features?.includes(legacyFeatureKey));
-}
-
 /**
  * Sidebar items for the department workspace rail.
  * Visibility = company contract (`contract_features`) ∩ flat RBAC (`rbac_permissions`) only.
@@ -59,7 +53,7 @@ export function buildDepartmentNavItems(departmentSlug: string, session: PulseAu
   for (const mod of PLATFORM_WORKSPACE_MODULES) {
     if (!mod.departmentSlugs.includes(dept.slug)) continue;
     if (!contract.has(mod.requiredCompanyModule)) continue;
-    if (!hasRbacOrLegacyFeature(session, mod.requiredRbacPermission, mod.requiredCompanyModule)) continue;
+    if (!hasRbacPermission(session, mod.requiredRbacPermission)) continue;
     items.push({
       href: `/${dept.slug}/${mod.route}`,
       label: mod.name,
@@ -106,7 +100,7 @@ export function listDepartmentsAllowedForSession(session: PulseAuthSession | nul
   return depts.filter((d) => {
     const wsKey = workspaceFeatureKeyForDepartmentSlug(d.slug);
     if (!contract.has(wsKey)) return false;
-    return hasRbacOrLegacyFeature(session, "workspace.view", wsKey);
+    return hasRbacPermission(session, "workspace.view");
   });
 }
 

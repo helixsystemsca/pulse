@@ -1,11 +1,11 @@
 /**
- * Maps tenant sidebar `href` entries to system-admin `company_features` keys.
- * Omitted hrefs are always shown. When `enabled_features` is absent on the session (legacy), all items show.
+ * Legacy href → company feature key (SysAdmin catalog). Used for admin UIs only — not tenant authorization.
+ * Tenant visibility uses {@link canAccessClassicNavHref} in `@/lib/rbac/session-access`.
  */
 
 import { PLATFORM_DEPARTMENT_SLUGS } from "@/config/platform/departments";
 
-/** Nav href → feature key required to show the item. */
+/** Nav href → feature key (company contract / system catalog). */
 export function featureKeyForTenantNavHref(href: string): string | undefined {
   for (const slug of PLATFORM_DEPARTMENT_SLUGS) {
     if (href === `/${slug}` || href.startsWith(`/${slug}/`)) return undefined;
@@ -32,22 +32,4 @@ export function featureKeyForTenantNavHref(href: string): string | undefined {
   if (href === "/zones" || href.startsWith("/zones")) return "zones_devices";
   if (href === "/live-map" || href.startsWith("/live-map")) return "live_map";
   return undefined;
-}
-
-/** True if the nav item should render for this tenant session. */
-export function isTenantNavFeatureEnabled(
-  href: string,
-  enabledFeatures: string[] | undefined | null,
-): boolean {
-  const key = featureKeyForTenantNavHref(href);
-  if (!key) return true;
-  if (enabledFeatures === undefined || enabledFeatures === null) return true;
-  if (key === "equipment") {
-    return (
-      enabledFeatures.includes("equipment") ||
-      enabledFeatures.includes("tool_tracking") ||
-      enabledFeatures.includes("rtls_tracking")
-    );
-  }
-  return enabledFeatures.includes(key);
 }

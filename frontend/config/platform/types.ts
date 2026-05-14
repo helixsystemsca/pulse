@@ -43,12 +43,12 @@ export type PlatformModule = {
   icon?: PlatformIconKey;
   /** URL segment after `/${department.slug}/`. */
   route: string;
-  /** Departments that may surface this module in nav (visibility is then gated by `tenantNavFeatureKey` + `/auth/me` `enabled_features`). */
+  /** Departments that may surface this module in nav (organizational routing; visibility uses RBAC + contract). */
   allowedDepartmentSlugs: readonly string[];
   requiredCapabilities?: readonly string[];
   /**
-   * When set, the department rail hides this module unless `session.enabled_features` includes this key
-   * (same catalog as Team Management / system-admin contract). Omitted = not gated by contract features.
+   * When set, workspace rail requires this company contract key plus matching `rbac_permissions`
+   * (see `platform-workspace-modules`). Omitted = not gated by contract modules.
    */
   tenantNavFeatureKey?: string;
   /**

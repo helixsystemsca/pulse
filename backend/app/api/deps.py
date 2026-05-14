@@ -21,7 +21,9 @@ from app.core.events.engine import event_engine
 from app.core.features.service import FeatureFlagService
 from app.core.inference.engine import InferenceEngine
 from app.core.permissions.service import PermissionService
+from app.core.rbac.resolve import effective_rbac_permission_keys
 from app.core.state.manager import StateManager
+from app.core.tenant_feature_access import contract_and_effective_features_for_me
 from app.models.domain import User, UserAccountStatus, UserRole
 from app.schemas.auth import TokenPayload
 from sqlalchemy import select
@@ -224,6 +226,35 @@ def require_permission(permission: str) -> Callable[..., Awaitable[User]]:
         if not await svc.user_has(user, permission):
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Permission denied")
         return user
+
+    return _inner
+
+
+def require_any_rbac(*permission_keys: str) -> Callable[..., Awaitable[User]]:
+    """Tenant API guard: user must hold at least one flat RBAC key (from grants or legacy feature bridge)."""
+
+    async def _inner(
+        user: User = Depends(get_current_user),
+        db: AsyncSession = Depends(get_db),
+    ) -> User:
+        if user.is_system_admin or user_has_any_role(user, UserRole.system_admin):
+            return user
+        if user.company_id is None:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not a tenant user")
+        contract_feats, eff_feats, _, _ = await contract_and_effective_features_for_me(db, user)
+        resolved = set(
+            await effective_rbac_permission_keys(
+                db,
+                user,
+                contract_feature_names=contract_feats,
+                effective_feature_names=eff_feats,
+            )
+        )
+        if "*" in resolved:
+            return user
+        if any(k in resolved for k in permission_keys):
+            return user
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="rbac_permission_required")
 
     return _inner
 

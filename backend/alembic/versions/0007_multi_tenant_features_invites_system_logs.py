@@ -118,12 +118,22 @@ def upgrade() -> None:
         op.drop_column("system_logs", "target_user_id")
         op.execute(text("ALTER TABLE system_logs RENAME COLUMN created_at TO logged_at"))
 
+    # 0001 create_all uses current metadata, which may define both `last_login` and `last_active_at`.
+    # Legacy DBs had only `last_active_at`; 0007 renamed it to `last_login`. If both exist, merge then drop duplicate.
     if ah.column_exists(conn, "users", "last_active_at"):
-        op.execute(text("ALTER TABLE users RENAME COLUMN last_active_at TO last_login"))
+        if ah.column_exists(conn, "users", "last_login"):
+            op.execute(
+                text("UPDATE users SET last_login = COALESCE(last_login, last_active_at)")
+            )
+            op.drop_column("users", "last_active_at")
+        else:
+            op.execute(text("ALTER TABLE users RENAME COLUMN last_active_at TO last_login"))
 
 
 def downgrade() -> None:
-    op.execute(text("ALTER TABLE users RENAME COLUMN last_login TO last_active_at"))
+    conn = op.get_bind()
+    if ah.column_exists(conn, "users", "last_login") and not ah.column_exists(conn, "users", "last_active_at"):
+        op.execute(text("ALTER TABLE users RENAME COLUMN last_login TO last_active_at"))
 
     op.execute(text("ALTER TABLE system_logs RENAME COLUMN logged_at TO created_at"))
     op.add_column(

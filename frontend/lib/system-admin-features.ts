@@ -1,6 +1,7 @@
 /**
  * Labels and ordering for `GLOBAL_SYSTEM_FEATURES` (backend `system_catalog.py`).
- * Keep keys in sync with tenant sidebar gating in `pulse-nav-features.ts`.
+ * Keep keys in sync with tenant sidebar gating in `@/lib/rbac/session-access` (classic rail) and
+ * `platform-workspace-modules` (department workspace rail).
  */
 export const SYSTEM_ADMIN_FEATURE_ORDER = [
   "compliance",

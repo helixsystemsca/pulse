@@ -30,8 +30,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { PageBody } from "@/components/ui/PageBody";
 import { SegmentedControl } from "@/components/schedule/SegmentedControl";
 import { canAccessCompanyConfiguration, managerOrAbove, sessionHasAnyRole } from "@/lib/pulse-roles";
-import { isTenantNavFeatureEnabled } from "@/lib/pulse-nav-features";
-import { isTenantNavPermissionGranted } from "@/lib/pulse-nav-permissions";
+import { canAccessClassicNavHref } from "@/lib/rbac/session-access";
 import type { PulseAuthSession } from "@/lib/pulse-session";
 import { readSession } from "@/lib/pulse-session";
 import { fetchWorkerSettings } from "@/lib/workersService";
@@ -288,13 +287,9 @@ export function WorkRequestsApp() {
   );
   const canAccessWorkRequests = useMemo(() => {
     if (isSystemAdmin) return true;
-    // Role-based module access is enforced server-side and reflected in `/auth/me`:
-    // - `enabled_features` controls which modules the tenant can use
-    // - `permissions` controls who can open which modules (configured via Workers & Roles)
     if (!session) return false;
     if (!sessionCompanyId) return false;
-    if (!isTenantNavFeatureEnabled("/dashboard/work-requests", session.enabled_features)) return false;
-    return isTenantNavPermissionGranted("/dashboard/work-requests", session.permissions);
+    return canAccessClassicNavHref(session, "/dashboard/work-requests");
   }, [isSystemAdmin, session, sessionCompanyId]);
 
   const [companyPick, setCompanyPick] = useState<string | null>(null);

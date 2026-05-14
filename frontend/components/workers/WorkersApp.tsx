@@ -44,6 +44,7 @@ import {
   sortRolesForDisplay,
   workerRoleDisplayLabel,
 } from "@/lib/pulse-roles";
+import { canShowTeamManagementNavItem, isTenantFullAdminSession } from "@/lib/rbac/session-access";
 import { parseTimeToMinutes } from "@/lib/schedule/calendar";
 import {
   buildRecurringRowsForDays,
@@ -370,14 +371,10 @@ export function WorkersApp() {
   const sessionCompanyId = session?.company_id ?? null;
   const createRoleLimited = isCreateRoleLimitedSession(session);
   const isCompanyAdmin = sessionHasAnyRole(session, "company_admin");
-  /** External IT `company_admin` role or in-facility delegate (`facility_tenant_admin` from sysadmin). */
-  const isTenantFullAdmin = isCompanyAdmin || Boolean(session?.facility_tenant_admin);
-  /** Roster delegation / tenant admin, or contract + role matrix grants `team_management`. */
+  const isTenantFullAdmin = isTenantFullAdminSession(session);
+  /** Roster delegation, tenant full admin, or RBAC `team_management.view` with contract module. */
   const canOpenWorkers = Boolean(
-    isSystemAdmin ||
-      session?.workers_roster_access ||
-      (session?.workers_roster_access !== false && isTenantFullAdmin) ||
-      (session?.enabled_features?.includes("team_management") ?? false),
+    isSystemAdmin || canShowTeamManagementNavItem(session, isSystemAdmin),
   );
 
   const [contractFeatureNamesFromApi, setContractFeatureNamesFromApi] = useState<string[]>([]);
@@ -1550,8 +1547,8 @@ export function WorkersApp() {
                   Your organization&apos;s Pulse modules come from the contract (set by the system admin). Choose a
                   department and permission role, then turn contract modules on or off for that combination. Each
                   person&apos;s effective access uses their HR department workspace and their role / job title mapping.
-                  Department workspace side rails use the same keys as <code className="font-mono text-[11px]">/auth/me</code>{" "}
-                  <span className="font-mono text-[11px]">enabled_features</span> (contract ∩ this matrix).
+                  Department workspace side rails use <span className="font-mono text-[11px]">contract_features</span>{" "}
+                  and <span className="font-mono text-[11px]">rbac_permissions</span> from <span className="font-mono text-[11px]">/auth/me</span>.
                 </p>
                 <label className={`${LABEL} mt-4 block`}>Department</label>
                 <select
