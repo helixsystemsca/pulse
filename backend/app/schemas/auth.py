@@ -51,6 +51,7 @@ class UserOut(BaseModel):
     job_title: Optional[str] = None
     #: Workforce / scheduling / monitoring capacity (separate from permission roles).
     operational_role: Optional[str] = None
+    #: Canonical keys from permission matrix ∪ optional access overlay ∪ `feature_allow_extra` (∩ contract).
     enabled_features: list[str] = []
     #: Tenant contract module keys (system admin). Same list for all tenant users for module licensing checks.
     contract_features: list[str] = Field(default_factory=list)
@@ -76,7 +77,7 @@ class UserOut(BaseModel):
     hr_department: Optional[str] = None
     #: Company-admin–granted module keys merged into RBAC resolution (subset of contract); self row only.
     feature_allow_extra: Optional[list[str]] = None
-    #: When set, flat RBAC keys come from `tenant_role_grants` instead of the matrix bridge.
+    #: Optional access overlay (`tenant_roles.id`): additive modules + synced `tenant_role_grants`; merged with matrix bridge for RBAC.
     tenant_role_id: Optional[str] = None
     #: Current server time (UTC ISO-8601) for client clock sync; not persisted on the user row.
     server_time: str

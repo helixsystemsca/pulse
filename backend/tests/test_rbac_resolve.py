@@ -6,6 +6,7 @@ from uuid import uuid4
 
 import pytest
 
+from app.core.rbac.resolve import effective_rbac_permission_keys
 from app.models.domain import User, UserRole
 
 
@@ -24,8 +25,6 @@ def _user(roles: list[str], **kwargs) -> User:
 
 
 async def _keys(**kwargs):
-    from app.core.rbac.resolve import effective_rbac_permission_keys
-
     class _Db:
         async def execute(self, *_a, **_k):
             class _R:
@@ -58,6 +57,29 @@ async def test_unassigned_user_bridges_contract() -> None:
     )
     assert "monitoring.view" in keys
     assert "work_requests.view" in keys
+
+
+@pytest.mark.asyncio
+async def test_tenant_role_grants_union_enabled_features_bridge() -> None:
+    """DB grants and bridged matrix/overlay keys merge when ``tenant_role_id`` is set."""
+
+    class _Db:
+        async def execute(self, *_a, **_k):
+            class _R:
+                def all(self):
+                    return [("inventory.manage",)]
+
+            return _R()
+
+    user = _user([UserRole.worker.value], tenant_role_id=str(uuid4()))
+    keys = await effective_rbac_permission_keys(
+        _Db(),
+        user,
+        contract_feature_names=["inventory", "dashboard"],
+        effective_feature_names=["dashboard"],
+    )
+    assert "inventory.manage" in keys
+    assert any(k.endswith(".view") and k.startswith("dashboard") for k in keys)
 
 
 @pytest.mark.asyncio

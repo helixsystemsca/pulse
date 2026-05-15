@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel, Field
 
 from app.api.deps import require_any_rbac, require_manager_or_above, require_tenant_user
+from app.core.database import get_db
 from app.core.events.engine import event_engine
 from app.core.events.types import DomainEvent
 from app.core.pulse_storage import read_user_avatar_bytes

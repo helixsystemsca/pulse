@@ -97,35 +97,34 @@ async def build_rbac_introspection(db: AsyncSession, user: User) -> dict:
             else [{"key": k, "sources": ["tenant_full_admin_contract"]} for k in sorted(resolved_set)]
         )
     else:
+        denied = sorted(ALL_KNOWN_RBAC_KEYS - resolved_set)
         tr_id = getattr(user, "tenant_role_id", None)
+        grant_keys_filtered: set[str] = set()
         if tr_id:
             q = await db.execute(
                 select(TenantRoleGrant.permission_key).where(TenantRoleGrant.tenant_role_id == str(tr_id))
             )
             raw_grants = {str(r[0]) for r in q.all()}
-            grant_keys = _filter_keys_by_contract(raw_grants, cset)
-            denied = sorted(ALL_KNOWN_RBAC_KEYS - resolved_set)
-            summary = "tenant_custom_role_grants"
-            sources_rows = []
-            for k in sorted(resolved_set):
-                src = ["tenant_role_grant"] if k in grant_keys else ["tenant_role_grant_contract_filtered"]
-                sources_rows.append({"key": k, "sources": src})
-        else:
-            denied = sorted(ALL_KNOWN_RBAC_KEYS - resolved_set)
-            summary = "matrix_feature_bridge_with_optional_extras"
-            m_keys = _filter_keys_by_contract(rbac_keys_from_legacy_effective_features(eff_matrix), cset)
-            extra_mods = [e for e in extras if e in cset]
-            x_keys = _filter_keys_by_contract(rbac_keys_from_legacy_effective_features(extra_mods), cset)
-            sources_rows = []
-            for k in sorted(resolved_set):
-                src: list[str] = []
-                if k in m_keys:
-                    src.append("permission_matrix")
-                if k in x_keys:
-                    src.append("feature_allow_extra")
-                if not src:
-                    src.append("contract_filtered_bridge")
-                sources_rows.append({"key": k, "sources": src})
+            grant_keys_filtered = _filter_keys_by_contract(raw_grants, cset)
+
+        bridged_eff = _filter_keys_by_contract(rbac_keys_from_legacy_effective_features(eff_matrix), cset)
+
+        summary = (
+            "matrix_overlay_union_role_grants"
+            if tr_id
+            else "matrix_feature_bridge_with_optional_extras"
+        )
+
+        sources_rows = []
+        for k in sorted(resolved_set):
+            src: list[str] = []
+            if k in grant_keys_filtered:
+                src.append("tenant_role_grant")
+            if k in bridged_eff:
+                src.append("enabled_features_bridge")
+            if not src:
+                src.append("contract_filtered_bridge")
+            sources_rows.append({"key": k, "sources": src})
 
     catalog_meta, bridge = _catalog_payload()
 

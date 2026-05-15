@@ -43,7 +43,7 @@ export function TenantRolesPanel({ apiCompanyId, canEdit }: Props) {
         return data.items[0]?.id ?? null;
       });
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to load roles");
+      setError(e instanceof Error ? e.message : "Failed to load overlays");
     } finally {
       setLoading(false);
     }
@@ -81,7 +81,7 @@ export function TenantRolesPanel({ apiCompanyId, canEdit }: Props) {
       await load();
       setSelectedId(created.id);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to create role");
+      setError(e instanceof Error ? e.message : "Failed to create overlay");
     } finally {
       setSaving(false);
     }
@@ -99,7 +99,7 @@ export function TenantRolesPanel({ apiCompanyId, canEdit }: Props) {
       );
       await load();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to save role");
+      setError(e instanceof Error ? e.message : "Failed to save overlay");
     } finally {
       setSaving(false);
     }
@@ -107,7 +107,7 @@ export function TenantRolesPanel({ apiCompanyId, canEdit }: Props) {
 
   const handleDelete = async () => {
     if (!selected || !canEdit) return;
-    if (!window.confirm(`Delete role "${selected.name}"?`)) return;
+    if (!window.confirm(`Delete access overlay "${selected.name}"?`)) return;
     setSaving(true);
     setError(null);
     try {
@@ -115,7 +115,7 @@ export function TenantRolesPanel({ apiCompanyId, canEdit }: Props) {
       setSelectedId(null);
       await load();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to delete role");
+      setError(e instanceof Error ? e.message : "Failed to delete overlay");
     } finally {
       setSaving(false);
     }
@@ -124,7 +124,7 @@ export function TenantRolesPanel({ apiCompanyId, canEdit }: Props) {
   if (loading && roles.length === 0) {
     return (
       <Card variant="secondary" padding="md">
-        <p className="text-sm text-ds-muted">Loading roles…</p>
+        <p className="text-sm text-ds-muted">Loading access overlays…</p>
       </Card>
     );
   }
@@ -132,7 +132,7 @@ export function TenantRolesPanel({ apiCompanyId, canEdit }: Props) {
   if (catalog.length === 0) {
     return (
       <Card variant="secondary" padding="md">
-        <h2 className="text-sm font-bold tracking-tight text-ds-foreground">Roles & features</h2>
+        <h2 className="text-sm font-bold tracking-tight text-ds-foreground">Access overlays</h2>
         <p className="mt-2 text-xs text-ds-muted">
           No product modules are on this tenant contract yet. Ask your system administrator to enable features for
           your organization.
@@ -143,17 +143,17 @@ export function TenantRolesPanel({ apiCompanyId, canEdit }: Props) {
 
   return (
     <Card variant="secondary" padding="md">
-      <h2 className="text-sm font-bold tracking-tight text-ds-foreground">Roles & features</h2>
+      <h2 className="text-sm font-bold tracking-tight text-ds-foreground">Access overlays</h2>
       <p className="mt-1 text-xs text-ds-muted">
-        Create roles, toggle modules per role, and assign a role to each person on their profile. The sidebar shows
-        only modules granted by the user&apos;s role (within your contract). New roles start with no modules until you
-        enable them.
+        The permission matrix defines default access by department and role slot (see the Permissions card above).
+        Access overlays add specialized modules on top of that baseline. Create an overlay, pick extra modules, and
+        assign it on a worker profile. Overlays never remove matrix access—only grant more (within your contract).
       </p>
       {error ? <p className="mt-2 text-xs text-ds-danger">{error}</p> : null}
 
       <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,220px)_1fr]">
         <div className="space-y-2">
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-ds-muted">Roles</p>
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-ds-muted">Overlays</p>
           <ul className="space-y-1">
             {roles.map((r) => (
               <li key={r.id}>
@@ -176,7 +176,7 @@ export function TenantRolesPanel({ apiCompanyId, canEdit }: Props) {
             <div className="flex gap-2 pt-2">
               <input
                 className={FIELD}
-                placeholder="New role name"
+                placeholder="New overlay name"
                 value={newRoleName}
                 onChange={(e) => setNewRoleName(e.target.value)}
               />
@@ -196,7 +196,7 @@ export function TenantRolesPanel({ apiCompanyId, canEdit }: Props) {
           {selected ? (
             <>
               <label className="block text-[11px] font-semibold uppercase tracking-wide text-ds-muted">
-                Role name
+                Overlay name
               </label>
               <input
                 className={FIELD}
@@ -248,7 +248,7 @@ export function TenantRolesPanel({ apiCompanyId, canEdit }: Props) {
                     onClick={() => void handleSave()}
                     className="rounded-ds-md bg-ds-primary px-4 py-2 text-sm font-semibold text-ds-primary-foreground disabled:opacity-50"
                   >
-                    Save role
+                    Save overlay
                   </button>
                   <button
                     type="button"
@@ -256,13 +256,15 @@ export function TenantRolesPanel({ apiCompanyId, canEdit }: Props) {
                     onClick={() => void handleDelete()}
                     className="rounded-ds-md border border-ds-border px-4 py-2 text-sm text-ds-muted disabled:opacity-50"
                   >
-                    Delete role
+                    Delete overlay
                   </button>
                 </div>
               ) : null}
             </>
           ) : (
-            <p className="text-sm text-ds-muted">Select a role or create one to configure module access.</p>
+            <p className="text-sm text-ds-muted">
+              Select an overlay or create one to configure optional module additions.
+            </p>
           )}
         </div>
       </div>

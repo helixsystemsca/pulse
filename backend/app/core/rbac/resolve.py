@@ -63,9 +63,10 @@ async def effective_rbac_permission_keys(
 
     - System administrators: ``["*"]``.
     - Tenant full admins (``company_admin`` / ``facility_tenant_admin``): ``["*"]``.
-    - Users with ``tenant_role_id``: ``tenant_role_grants`` ∩ contract.
-    - Users without a role template: contract modules → flat keys (alpha migration path).
-    - Else: role ``effective_feature_names`` (+ ``feature_allow_extra``) bridged to flat keys.
+    - Users with ``tenant_role_id``: ``tenant_role_grants`` ∪ bridged keys from
+      ``effective_feature_names`` (+ ``feature_allow_extra`` duplicate merge — idempotent), ∩ contract.
+    - Users without a role template: contract modules → flat keys (alpha migration path) when
+      ``effective_feature_names`` is empty; else bridge those feature keys.
     """
     if user.is_system_admin or user_has_any_role(user, UserRole.system_admin):
         return ["*"]
@@ -75,25 +76,28 @@ async def effective_rbac_permission_keys(
     if user_has_tenant_full_admin(user):
         return ["*"]
 
-    contract = _contract_set(contract_feature_names)
-
     tr_id = getattr(user, "tenant_role_id", None)
+    grant_keys: set[str] = set()
     if tr_id:
         q = await db.execute(
             select(TenantRoleGrant.permission_key).where(TenantRoleGrant.tenant_role_id == str(tr_id))
         )
-        raw = {str(r[0]) for r in q.all()}
-        return sorted(_filter_keys_by_contract(raw, contract_feature_names))
-
-    # No role assigned yet: derive API permissions from tenant contract (sidebar may still be empty).
-    if not effective_feature_names:
-        contract_canonical = canonical_keys_from_contract(contract_feature_names)
-        bridged = rbac_keys_from_legacy_effective_features(contract_canonical)
-        return sorted(_filter_keys_by_contract(bridged, contract_feature_names))
+        grant_keys = {str(r[0]) for r in q.all()}
 
     eff = list(effective_feature_names)
     extras = getattr(user, "feature_allow_extra", None) or []
     if isinstance(extras, list):
         eff = sorted(set(eff) | {str(x) for x in extras if isinstance(x, str)})
-    bridged = rbac_keys_from_legacy_effective_features(eff)
-    return sorted(_filter_keys_by_contract(bridged, contract_feature_names))
+    bridged_eff = rbac_keys_from_legacy_effective_features(eff)
+
+    if tr_id:
+        merged = grant_keys | bridged_eff
+        return sorted(_filter_keys_by_contract(merged, contract_feature_names))
+
+    # No tenant role overlay row: derive API permissions from tenant contract when sidebar features empty.
+    if not effective_feature_names:
+        contract_canonical = canonical_keys_from_contract(contract_feature_names)
+        bridged = rbac_keys_from_legacy_effective_features(contract_canonical)
+        return sorted(_filter_keys_by_contract(bridged, contract_feature_names))
+
+    return sorted(_filter_keys_by_contract(bridged_eff, contract_feature_names))

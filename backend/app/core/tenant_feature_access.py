@@ -1,8 +1,8 @@
-"""Tenant product-module visibility: contract (system admin) × tenant role `feature_keys`."""
+"""Tenant product-module visibility: contract ∩ department × role-slot matrix (+ optional overlays)."""
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Iterable
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -88,6 +88,23 @@ def _features_from_department_role_matrix(
     return sorted(granted & allowed_contract)
 
 
+def _features_from_user_allow_extra(*, user: User, contract_names: list[str]) -> list[str]:
+    raw = getattr(user, "feature_allow_extra", None) or []
+    if not isinstance(raw, list):
+        return []
+    allowed = set(canonical_keys_from_contract(contract_names))
+    granted = set(canonicalize_feature_keys(str(x) for x in raw if isinstance(x, str)))
+    return sorted(granted & allowed)
+
+
+def _sorted_canonical_union_contract_filtered(parts: Iterable[list[str]], *, contract_canonical: list[str]) -> list[str]:
+    allowed = set(contract_canonical)
+    merged: set[str] = set()
+    for chunk in parts:
+        merged |= set(canonicalize_feature_keys(chunk))
+    return sorted(merged & allowed)
+
+
 def _features_from_legacy_role_feature_access(
     *,
     user: User,
@@ -147,10 +164,14 @@ def effective_tenant_feature_names_for_user(
     """
     Canonical product keys for sidebar / ``enabled_features``.
 
-    - System / company admins: full contract (canonicalized).
-    - Tenant role assignment (except ``no_access``): ``feature_keys`` ∩ contract when non-empty.
-    - Else Team Management matrix (department × slot from HR + JWT roles) ∩ contract when configured.
-    - Else legacy ``role_feature_access`` buckets ∩ contract.
+    Precedence:
+
+    - System / company / tenant full admins: full contract (canonicalized).
+    - ``no_access`` tenant role template: deny all (ignores matrix and overlays).
+    - Else: department × role-slot matrix (or legacy ``role_feature_access`` when the matrix is unset),
+      merged with additive tenant-role ``feature_keys`` and per-user ``feature_allow_extra``, ∩ contract.
+
+    Tenant roles no longer replace matrix-derived access; they only add modules (within contract).
     """
     contract_canonical = canonical_keys_from_contract(contract_names)
     if user.company_id is None or user.is_system_admin or user_has_any_role(user, UserRole.system_admin):
@@ -159,15 +180,9 @@ def effective_tenant_feature_names_for_user(
         return tenant_full_admin_canonical_features(contract_names)
 
     merged = merged_settings or {}
-    tr_id = getattr(user, "tenant_role_id", None)
 
     if tenant_role is not None and tenant_role.slug == "no_access":
         return []
-
-    if tr_id and tenant_role is not None:
-        eff_role = effective_features_from_role(tenant_role, contract_names=contract_names)
-        if eff_role:
-            return eff_role
 
     matrix_feats = _features_from_department_role_matrix(
         user=user,
@@ -176,12 +191,24 @@ def effective_tenant_feature_names_for_user(
         contract_names=contract_names,
     )
     if matrix_feats is not None:
-        return matrix_feats
+        base_features = matrix_feats
+    else:
+        base_features = _features_from_legacy_role_feature_access(
+            user=user,
+            merged_settings=merged,
+            contract_names=contract_names,
+        )
 
-    return _features_from_legacy_role_feature_access(
-        user=user,
-        merged_settings=merged,
-        contract_names=contract_names,
+    overlay_features: list[str] = []
+    tr_id = getattr(user, "tenant_role_id", None)
+    if tr_id and tenant_role is not None and tenant_role.slug != "no_access":
+        overlay_features = effective_features_from_role(tenant_role, contract_names=contract_names)
+
+    extras = _features_from_user_allow_extra(user=user, contract_names=contract_names)
+
+    return _sorted_canonical_union_contract_filtered(
+        [base_features, overlay_features, extras],
+        contract_canonical=contract_canonical,
     )
 
 

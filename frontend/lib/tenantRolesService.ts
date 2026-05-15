@@ -1,4 +1,4 @@
-/** Client for `/api/workers/tenant-roles` — role templates and feature toggles. */
+/** Client for `/api/workers/tenant-roles` — access overlays (additive module templates). */
 import { apiFetch } from "@/lib/api";
 import type { CanonicalFeatureKey } from "@/lib/features/canonical-features";
 

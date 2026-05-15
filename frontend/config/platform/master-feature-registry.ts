@@ -2,7 +2,7 @@
  * Master feature registry — single source of truth for tenant product modules.
  *
  * Sidebar, route guards, and platform metadata derive from this file.
- * Visibility: registry → tenant contract → role `enabled_features` (canonical keys) → RBAC.
+ * Visibility: registry → tenant contract → `enabled_features` (matrix ∪ overlays) → RBAC.
  */
 import type { PlatformIconKey } from "@/config/platform/types";
 

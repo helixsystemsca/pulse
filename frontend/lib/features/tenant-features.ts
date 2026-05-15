@@ -1,7 +1,7 @@
 /**
  * Tenant feature enablement from `/auth/me`.
  * - `contract_features`: modules on the tenant contract (system admin).
- * - `enabled_features`: canonical keys granted via the user's tenant role.
+ * - `enabled_features`: canonical keys from the permission matrix (+ optional access overlay), ∩ contract.
  */
 import {
   canonicalizeFeatureKeys,
@@ -50,7 +50,7 @@ export function userEnabledFeatureSet(session: PulseAuthSession | null): Set<Can
   return new Set(userEnabledCanonicalFeatures(session));
 }
 
-/** Sidebar / route visibility: role grant ∩ contract. */
+/** Sidebar / route visibility: effective features ∩ contract. */
 export function isUserFeatureEnabled(session: PulseAuthSession | null, featureKey: string): boolean {
   if (!session) return false;
   const canonical = toCanonicalFeatureKey(featureKey) ?? (featureKey as CanonicalFeatureKey);

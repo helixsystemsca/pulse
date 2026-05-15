@@ -241,7 +241,7 @@ def require_permission(permission: str) -> Callable[..., Awaitable[User]]:
 
 def require_rbac_any(*permission_keys: str) -> Callable[..., Awaitable[User]]:
     """
-    Tenant API guard: caller must hold at least one flat RBAC key (tenant roles, matrix bridge,
+    Tenant API guard: caller must hold at least one flat RBAC key (matrix/overlay bridged keys, `tenant_role_grants`,
     or `feature_allow_extra`), intersected with the company contract — same resolver as `/auth/me`.
     """
     assert_known_rbac_keys(*permission_keys)

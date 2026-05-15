@@ -11,7 +11,7 @@ from app.models.domain import User, UserRole
 from app.models.pulse_models import PulseWorkerHR
 
 PERMISSION_MATRIX_DEPARTMENTS: frozenset[str] = frozenset(
-    {"maintenance", "communications", "aquatics", "reception", "fitness", "racquets"}
+    {"maintenance", "communications", "aquatics", "reception", "fitness", "racquets", "admin"}
 )
 PERMISSION_MATRIX_SLOTS: frozenset[str] = frozenset(
     {"manager", "coordination", "supervisor", "lead", "operations", "team_member"}

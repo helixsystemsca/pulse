@@ -1,4 +1,4 @@
-"""Tenant role CRUD and grant sync from canonical `feature_keys`."""
+"""Tenant role CRUD and grant sync from canonical `feature_keys` (access overlays; additive on top of matrix)."""
 
 from __future__ import annotations
 

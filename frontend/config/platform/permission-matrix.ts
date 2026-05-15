@@ -10,6 +10,7 @@ export const PERMISSION_MATRIX_DEPARTMENTS = [
   "reception",
   "fitness",
   "racquets",
+  "admin",
 ] as const;
 
 export type PermissionMatrixDepartment = (typeof PERMISSION_MATRIX_DEPARTMENTS)[number];
@@ -21,6 +22,7 @@ export const PERMISSION_MATRIX_DEPARTMENT_LABEL: Record<PermissionMatrixDepartme
   reception: "Reception",
   fitness: "Fitness",
   racquets: "Racquets",
+  admin: "Administration",
 };
 
 /** Stable keys stored under each department in `department_role_feature_access`. */
@@ -110,9 +112,6 @@ export const MASTER_PERMISSION_FEATURE_GROUPS: PermissionFeatureGroup[] = [
   },
 ];
 
-/** Canonical department row duplicated to every key in `department_role_feature_access` on save. */
-export const MASTER_PERMISSION_MATRIX_DEPARTMENT: PermissionMatrixDepartment = "maintenance";
-
 /** Feature toggles shown for the selected department (subset of contract). */
 export function permissionFeatureGroupsForDepartment(dept: PermissionMatrixDepartment): PermissionFeatureGroup[] {
   const maintenanceOps = MAINTENANCE_OPS_KEYS;
@@ -182,6 +181,30 @@ export function permissionFeatureGroupsForDepartment(dept: PermissionMatrixDepar
       },
       { id: "programs", label: "Programs & classes", keys: ["schedule"] },
       { id: "shared", label: "People & standards", keys: ["team_management", "team_insights", "procedures", "messaging"] },
+      { id: "maps", label: "Maps, drawings & devices", keys: [...maps] },
+    ];
+  }
+  if (dept === "admin") {
+    return [
+      {
+        id: "dashboard",
+        label: "Leadership dashboard",
+        description: "Main operations / leadership overview (/overview).",
+        keys: [...leadership],
+      },
+      {
+        id: "ops",
+        label: "Maintenance & operations",
+        description: "Work requests, inspections, inventory, equipment, monitoring, and projects.",
+        keys: [...maintenanceOps],
+      },
+      {
+        id: "comms",
+        label: "Communications tools",
+        description: "Publication pipeline, campaigns, assets, advertising mapper, and InDesign export.",
+        keys: [...commsTools],
+      },
+      { id: "shared", label: "Scheduling, people & standards", keys: [...sharedProgram] },
       { id: "maps", label: "Maps, drawings & devices", keys: [...maps] },
     ];
   }
@@ -282,70 +305,19 @@ export function normalizeDepartmentRoleMatrixFromApi(
   return seed;
 }
 
-/**
- * Pick one authoritative slot map (prefer maintenance), copy to every department row so HR workspace
- * routing always sees the same permission answers Lisa expects from the master matrix UI.
- */
-export function unifyDepartmentRoleMatrixForMasterUi(
-  matrix: Record<string, Record<string, string[]>>,
-): Record<string, Record<string, string[]>> {
-  const masterDept = MASTER_PERMISSION_MATRIX_DEPARTMENT;
-  const emptySlots = (): Record<string, string[]> =>
-    Object.fromEntries(PERMISSION_MATRIX_ROLE_SLOTS.map((s) => [s, [] as string[]])) as Record<
-      PermissionMatrixRoleSlot,
-      string[]
-    >;
-
-  const pickSourceRow = (): Record<string, string[]> => {
-    const m = matrix[masterDept];
-    if (m && typeof m === "object") {
-      return PERMISSION_MATRIX_ROLE_SLOTS.reduce(
-        (acc, s) => {
-          acc[s] = [...(m[s] ?? [])];
-          return acc;
-        },
-        {} as Record<PermissionMatrixRoleSlot, string[]>,
-      );
-    }
-    for (const d of PERMISSION_MATRIX_DEPARTMENTS) {
-      const row = matrix[d];
-      if (!row || typeof row !== "object") continue;
-      return PERMISSION_MATRIX_ROLE_SLOTS.reduce(
-        (acc, s) => {
-          acc[s] = [...(row[s] ?? [])];
-          return acc;
-        },
-        {} as Record<PermissionMatrixRoleSlot, string[]>,
-      );
-    }
-    return emptySlots();
-  };
-
-  const slots = pickSourceRow();
-  const out: Record<string, Record<string, string[]>> = {};
-  for (const d of PERMISSION_MATRIX_DEPARTMENTS) {
-    out[d] = {};
-    for (const s of PERMISSION_MATRIX_ROLE_SLOTS) {
-      out[d][s] = [...(slots[s] ?? [])];
-    }
-  }
-  return out;
-}
-
-/** Toggle one module for a role-slot across every department row (single master matrix). */
-export function toggleModuleAcrossDepartmentMatrix(
+/** Toggle one module for exactly one `(department, role_slot)` cell — saves independently per department. */
+export function toggleModuleForDepartmentMatrixSlot(
   prev: Record<string, Record<string, string[]>>,
+  dept: PermissionMatrixDepartment,
   slot: PermissionMatrixRoleSlot,
   mod: string,
 ): Record<string, Record<string, string[]>> {
   const next: Record<string, Record<string, string[]>> = { ...prev };
-  for (const d of PERMISSION_MATRIX_DEPARTMENTS) {
-    const row = { ...(next[d] ?? {}) };
-    const cur = new Set(row[slot] ?? []);
-    if (cur.has(mod)) cur.delete(mod);
-    else cur.add(mod);
-    row[slot] = [...cur].sort();
-    next[d] = row;
-  }
+  const row = { ...(next[dept] ?? {}) };
+  const cur = new Set(row[slot] ?? []);
+  if (cur.has(mod)) cur.delete(mod);
+  else cur.add(mod);
+  row[slot] = [...cur].sort();
+  next[dept] = row;
   return next;
 }

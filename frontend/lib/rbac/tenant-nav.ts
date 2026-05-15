@@ -1,5 +1,5 @@
 /**
- * Tenant sidebar — master registry → contract → role `enabled_features` (default deny).
+ * Tenant sidebar — master registry → contract → effective `enabled_features` (default deny).
  */
 import {
   MASTER_FEATURES,

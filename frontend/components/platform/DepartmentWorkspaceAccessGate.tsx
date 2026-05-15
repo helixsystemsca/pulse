@@ -18,8 +18,9 @@ export function DepartmentWorkspaceAccessGate({
       <div className="mx-auto max-w-lg rounded-xl border border-ds-border bg-ds-primary p-6 text-center shadow-sm">
         <h1 className="text-lg font-semibold text-ds-foreground">No access to this area</h1>
         <p className="mt-2 text-sm text-ds-muted">
-          Your role does not include permission to open this department hub, or the contract does not include the
-          required modules. Ask a company administrator to adjust your tenant role and grants in Team Management.
+          Your profile does not include permission to open this department hub, or the contract does not include the
+          required modules. Ask a company administrator to adjust the permission matrix or assign an access overlay in
+          Team Management.
         </p>
         <Link
           href={session ? firstAccessibleClassicTenantHref(session) : "/settings"}

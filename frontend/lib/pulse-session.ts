@@ -55,7 +55,7 @@ export type PulseAuthSession = {
   /** Workforce / monitoring capacity (`worker` | `manager` | `supervisor`), separate from permission roles. */
   operational_role?: string | null;
   is_system_admin?: boolean;
-  /** From `/auth/me`; legacy effective product feature keys (superseded by `rbac_permissions` for new paths). */
+  /** From `/auth/me`; effective module keys (permission matrix ∪ optional overlay ∪ extras); sidebar uses contract ∩ RBAC bridge. */
   enabled_features?: string[];
   /** From `/auth/me`; tenant contract module keys for all tenant users. */
   contract_features?: string[];
@@ -71,7 +71,7 @@ export type PulseAuthSession = {
   contract_enabled_features?: string[] | null;
   /** From `/auth/me`; per-user module keys merged into RBAC (subset of contract). */
   feature_allow_extra?: string[] | null;
-  /** From `/auth/me`; when set, RBAC keys come from tenant role grants. */
+  /** From `/auth/me`; optional access overlay (additive modules + synced flat grants). */
   tenant_role_id?: string | null;
   /** From `/auth/me`; may open `/dashboard/workers`. */
   workers_roster_access?: boolean;
@@ -104,6 +104,7 @@ export type UserOut = {
   avatar_url?: string | null;
   job_title?: string | null;
   operational_role?: string | null;
+  /** Effective module keys from `/auth/me` (matrix ∪ optional overlay ∪ extras). */
   enabled_features?: string[];
   contract_features?: string[];
   rbac_permissions?: string[];
@@ -114,6 +115,7 @@ export type UserOut = {
   hr_department?: string | null;
   contract_enabled_features?: string[] | null;
   feature_allow_extra?: string[] | null;
+  /** Optional access overlay (`tenant_roles.id`) — additive modules + synced grants. */
   tenant_role_id?: string | null;
   workers_roster_access?: boolean;
   is_impersonating?: boolean;

@@ -238,7 +238,8 @@ class User(Base):
         nullable=False,
         server_default=text("'[]'::jsonb"),
     )
-    #: Optional tenant RBAC role template (`tenant_roles.id`). When set, `tenant_role_grants` drive permissions.
+    #: Optional access overlay (`tenant_roles.id`): `feature_keys` add modules on top of the
+    #: department × role-slot matrix; `tenant_role_grants` add flat RBAC keys (same overlay row).
     tenant_role_id: Mapped[Optional[str]] = mapped_column(
         UUID(as_uuid=False),
         ForeignKey("tenant_roles.id", ondelete="SET NULL"),

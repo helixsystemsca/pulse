@@ -1,7 +1,7 @@
 /**
  * Centralized tenant authorization from `/auth/me`:
  * `contract_features` (or `contract_enabled_features` for company admins) + `rbac_permissions`.
- * No `enabled_features` or coarse `permissions` branching for visibility.
+ * Sidebar/module visibility uses `enabled_features` (matrix-derived, plus overlays) via `isUserFeatureEnabled`.
  */
 import { PLATFORM_DEPARTMENTS, PLATFORM_DEPARTMENT_SLUGS } from "@/config/platform/departments";
 import type { PulseAuthSession } from "@/lib/pulse-session";

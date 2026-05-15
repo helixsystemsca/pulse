@@ -46,7 +46,7 @@ class TenantDepartment(Base):
 
 
 class TenantRole(Base):
-    """Department-scoped role template (permissions assigned via TenantRoleGrant)."""
+    """Company-scoped access overlay template (`feature_keys` + synced ``tenant_role_grants``)."""
 
     __tablename__ = "tenant_roles"
     __table_args__ = (UniqueConstraint("company_id", "slug", name="uq_tenant_roles_company_slug"),)

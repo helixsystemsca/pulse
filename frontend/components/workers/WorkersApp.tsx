@@ -88,13 +88,14 @@ import {
 import {
   computeLegacyRoleFeatureAccessFromMatrix,
   MASTER_PERMISSION_FEATURE_GROUPS,
-  MASTER_PERMISSION_MATRIX_DEPARTMENT,
   normalizeDepartmentRoleMatrixFromApi,
+  type PermissionMatrixDepartment,
   type PermissionMatrixRoleSlot,
+  PERMISSION_MATRIX_DEPARTMENTS,
+  PERMISSION_MATRIX_DEPARTMENT_LABEL,
   PERMISSION_MATRIX_ROLE_SLOTS,
   PERMISSION_MATRIX_ROLE_LABEL,
-  toggleModuleAcrossDepartmentMatrix,
-  unifyDepartmentRoleMatrixForMasterUi,
+  toggleModuleForDepartmentMatrixSlot,
 } from "@/config/platform/permission-matrix";
 
 type CompanyOption = { id: string; name: string };
@@ -471,6 +472,8 @@ export function WorkersApp() {
   const [workRequestEditRolesDraft, setWorkRequestEditRolesDraft] = useState<string[]>(["manager", "supervisor"]);
   const [zoneManageRolesDraft, setZoneManageRolesDraft] = useState<string[]>(["manager", "supervisor"]);
   const [accessPolicySaving, setAccessPolicySaving] = useState(false);
+  const [permissionsDepartment, setPermissionsDepartment] =
+    useState<PermissionMatrixDepartment>("maintenance");
   const [permissionsSlot, setPermissionsSlot] = useState<PermissionMatrixRoleSlot>("manager");
   const [delegatedTargetRole, setDelegatedTargetRole] = useState<PermissionRole>("manager");
   const [departmentRoleFeatureAccessDraft, setDepartmentRoleFeatureAccessDraft] = useState<
@@ -581,9 +584,7 @@ export function WorkersApp() {
       const matrixCatalog =
         st.contract_feature_names?.length ? st.contract_feature_names : cat.length ? cat : [];
       setDepartmentRoleFeatureAccessDraft(
-        unifyDepartmentRoleMatrixForMasterUi(
-          normalizeDepartmentRoleMatrixFromApi(st.settings.department_role_feature_access, matrixCatalog, nextDraft),
-        ),
+        normalizeDepartmentRoleMatrixFromApi(st.settings.department_role_feature_access, matrixCatalog, nextDraft),
       );
       setProceduresEditRolesDraft(
         Array.isArray(st.settings.procedures_edit_roles) && st.settings.procedures_edit_roles.length
@@ -911,8 +912,8 @@ export function WorkersApp() {
     });
   }
 
-  function toggleMasterMatrixModule(slot: PermissionMatrixRoleSlot, mod: string) {
-    setDepartmentRoleFeatureAccessDraft((prev) => toggleModuleAcrossDepartmentMatrix(prev, slot, mod));
+  function toggleMasterMatrixModule(dept: PermissionMatrixDepartment, slot: PermissionMatrixRoleSlot, mod: string) {
+    setDepartmentRoleFeatureAccessDraft((prev) => toggleModuleForDepartmentMatrixSlot(prev, dept, slot, mod));
   }
 
   useEffect(() => {
@@ -1042,9 +1043,7 @@ export function WorkersApp() {
       const matrixCatalog =
         r.contract_feature_names?.length ? r.contract_feature_names : cat.length ? cat : [];
       setDepartmentRoleFeatureAccessDraft(
-        unifyDepartmentRoleMatrixForMasterUi(
-          normalizeDepartmentRoleMatrixFromApi(r.settings.department_role_feature_access, matrixCatalog, nextDraft),
-        ),
+        normalizeDepartmentRoleMatrixFromApi(r.settings.department_role_feature_access, matrixCatalog, nextDraft),
       );
       await refreshPulseUserFromServer();
       refresh();
@@ -1517,9 +1516,10 @@ export function WorkersApp() {
                 <p className="mt-1 text-xs text-ds-muted">
                   Choose which operational roles may adjust <strong className="font-semibold text-ds-foreground">module access</strong> for
                   people in roles below them (for example, a manager sets modules for supervisors, leads, and workers).
-                  This is separate from opening this page (see above). All product module visibility is configured in the{" "}
-                  <strong className="font-semibold text-ds-foreground">Permissions</strong> card below (contract catalog from system admin,
-                  then workplace role-slot toggles).
+                  This is separate from opening this page (see above). Product modules are configured per{" "}
+                  <strong className="font-semibold text-ds-foreground">department × role slot</strong> in the{" "}
+                  <strong className="font-semibold text-ds-foreground">Permissions</strong> card below (same catalog everywhere;
+                  contract governs visibility).
                 </p>
                 <div className="mt-4 space-y-2">
                   {(
@@ -1554,26 +1554,42 @@ export function WorkersApp() {
               <Card variant="secondary" padding="md">
                 <h2 className="text-sm font-bold tracking-tight text-ds-foreground">Permissions</h2>
                 <p className="mt-1 text-xs text-ds-muted">
-                  One matrix for your whole tenant: pick a workplace{" "}
-                  <span className="font-semibold text-ds-foreground">role slot</span> (manager, coordinator, supervisor,
-                  …), then toggle which product areas people in that slot may open. Someone&apos;s HR department (for
-                  example Communications) plus their Pulse role decides which slot applies — so Communications
-                  coordinators use the Coordination column. Changes apply everywhere but stay scoped by contract.
-                  Modules not on your organization&apos;s agreement stay hidden.
+                  Same module catalog for every workplace department — only the saved toggles differ. This matrix is
+                  the default for sidebar and product access by HR{" "}
+                  <span className="font-semibold text-ds-foreground">department</span> and workplace{" "}
+                  <span className="font-semibold text-ds-foreground">role slot</span> (manager, coordination, supervisor,
+                  …). <span className="font-semibold text-ds-foreground">Access overlays</span> (below) can add extra
+                  modules on top — they do not replace matrix access. Modules outside your contract stay hidden everywhere.
                 </p>
-                <div className="mt-4">
-                  <label className={`block ${dsLabelClass}`}>Role slot</label>
-                  <select
-                    className={`${FIELD} mt-1.5`}
-                    value={permissionsSlot}
-                    onChange={(e) => setPermissionsSlot(e.target.value as PermissionMatrixRoleSlot)}
-                  >
-                    {PERMISSION_MATRIX_ROLE_SLOTS.map((s) => (
-                      <option key={s} value={s}>
-                        {PERMISSION_MATRIX_ROLE_LABEL[s]}
-                      </option>
-                    ))}
-                  </select>
+                <div className="mt-4 space-y-4">
+                  <div>
+                    <label className={`block ${dsLabelClass}`}>Department</label>
+                    <select
+                      className={`${FIELD} mt-1.5`}
+                      value={permissionsDepartment}
+                      onChange={(e) => setPermissionsDepartment(e.target.value as PermissionMatrixDepartment)}
+                    >
+                      {PERMISSION_MATRIX_DEPARTMENTS.map((d) => (
+                        <option key={d} value={d}>
+                          {PERMISSION_MATRIX_DEPARTMENT_LABEL[d]}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className={`block ${dsLabelClass}`}>Role slot</label>
+                    <select
+                      className={`${FIELD} mt-1.5`}
+                      value={permissionsSlot}
+                      onChange={(e) => setPermissionsSlot(e.target.value as PermissionMatrixRoleSlot)}
+                    >
+                      {PERMISSION_MATRIX_ROLE_SLOTS.map((s) => (
+                        <option key={s} value={s}>
+                          {PERMISSION_MATRIX_ROLE_LABEL[s]}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
                 <div className="mt-4 space-y-6">
                   {MASTER_PERMISSION_FEATURE_GROUPS.map((section) => {
@@ -1588,9 +1604,7 @@ export function WorkersApp() {
                         <div className="mt-3 space-y-2">
                           {mods.map((mod) => {
                             const on = (
-                              departmentRoleFeatureAccessDraft[MASTER_PERMISSION_MATRIX_DEPARTMENT]?.[
-                                permissionsSlot
-                              ] ?? []
+                              departmentRoleFeatureAccessDraft[permissionsDepartment]?.[permissionsSlot] ?? []
                             ).includes(mod);
                             return (
                               <div
@@ -1606,7 +1620,7 @@ export function WorkersApp() {
                                   aria-checked={on}
                                   aria-label={`${matrixModuleToggleLabel(mod)}: ${on ? "on" : "off"}`}
                                   disabled={!isTenantFullAdmin}
-                                  onClick={() => toggleMasterMatrixModule(permissionsSlot, mod)}
+                                  onClick={() => toggleMasterMatrixModule(permissionsDepartment, permissionsSlot, mod)}
                                   className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${
                                     on ? "bg-ds-success" : "bg-ds-border"
                                   }`}
@@ -2918,10 +2932,11 @@ export function WorkersApp() {
                 {isTenantFullAdmin && tenantRolesList.length > 0 ? (
                   <div className="mt-4">
                     <label className={LABEL} htmlFor="worker-tenant-role">
-                      Product access role
+                      Access overlay (optional)
                     </label>
                     <p className="mt-0.5 text-[11px] text-ds-muted">
-                      Controls sidebar modules (configured under Settings → Roles &amp; features).
+                      Adds modules on top of the permission matrix for this person. Leave blank to use matrix access
+                      only. Configure overlays under Access overlays below.
                     </p>
                     <select
                       id="worker-tenant-role"
@@ -2929,7 +2944,7 @@ export function WorkersApp() {
                       value={profileTenantRoleDraft}
                       onChange={(e) => setProfileTenantRoleDraft(e.target.value)}
                     >
-                      <option value="">No role (no modules)</option>
+                      <option value="">None — matrix only</option>
                       {tenantRolesList.map((r) => (
                         <option key={r.id} value={r.id}>
                           {r.name}
