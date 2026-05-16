@@ -32,7 +32,7 @@ def upgrade() -> None:
         expanded = expand_department_role_matrix_baselines(matrix)
         settings["department_role_feature_access"] = expanded
         conn.execute(
-            sa.text("UPDATE pulse_workers_settings SET settings = :s::jsonb WHERE id = :id"),
+            sa.text("UPDATE pulse_workers_settings SET settings = CAST(:s AS jsonb) WHERE id = :id"),
             {"s": json.dumps(settings), "id": row_id},
         )
 
