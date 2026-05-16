@@ -20,6 +20,8 @@ export type AccessResolutionDebugPayload = {
 
   resolved_department: string | null;
   resolved_slot: string | null;
+  resolved_slot_source: string;
+  hr_matrix_slot: string | null;
 
   matrix_configured: boolean;
   matrix_row_department: string | null;

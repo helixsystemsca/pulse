@@ -13,8 +13,9 @@ from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.permission_feature_matrix import (
+    matrix_slot_resolution_warnings,
     permission_matrix_department_for_user,
-    permission_matrix_slot_for_user,
+    resolve_permission_matrix_slot,
 )
 from app.core.features.canonical_catalog import (
     CANONICAL_PRODUCT_FEATURES,
@@ -427,6 +428,8 @@ class AccessResolutionDebug:
 
     resolved_department: str | None = None
     resolved_slot: str | None = None
+    resolved_slot_source: str = ""
+    hr_matrix_slot: str | None = None
 
     #: Matrix semantics
     matrix_configured: bool = False
@@ -534,7 +537,16 @@ async def compute_access_resolution_debug(
     contract_canon = canonical_keys_from_contract(contract_normalized)
 
     resolved_dept = permission_matrix_department_for_user(target, hr_row)
-    resolved_slot = permission_matrix_slot_for_user(target, hr_row)
+    resolved_slot, resolved_slot_source = resolve_permission_matrix_slot(target, hr_row)
+    hr_matrix_slot = getattr(hr_row, "matrix_slot", None) if hr_row else None
+    warn.extend(
+        matrix_slot_resolution_warnings(
+            target,
+            hr_row,
+            resolved_slot=resolved_slot,
+            resolved_slot_source=resolved_slot_source,
+        )
+    )
     matrix_ok = _department_role_matrix_is_configured(merged_settings.get("department_role_feature_access"))
 
     raw_cell = _raw_matrix_cell_feats(merged_settings, resolved_dept, resolved_slot)
@@ -561,10 +573,13 @@ async def compute_access_resolution_debug(
             contract_names=contract_normalized,
         )
 
-    steps.append(f"JWT roles (primary matrix slot drivers): {jwt_roles}")
-    steps.append(f"Resolved matrix department_slug={resolved_dept!r}, slot={resolved_slot!r} (HR + JWT).")
-    if hr_title:
-        steps.append(f"HR job_title={hr_title!r} drives coordination/operations heuristic when worker-tier.")
+    steps.append(f"JWT roles: {jwt_roles}")
+    steps.append(
+        f"Resolved matrix department_slug={resolved_dept!r}, slot={resolved_slot!r} "
+        f"(source={resolved_slot_source!r}, hr.matrix_slot={hr_matrix_slot!r}).",
+    )
+    if hr_title and resolved_slot_source == "job_title_inference":
+        steps.append(f"HR job_title={hr_title!r} matched coordination/operations keyword heuristic.")
     if matrix_ok:
         steps.append(f"Matrix configured: YES — row {resolved_dept!r}/{resolved_slot!r} raw_cell={raw_cell}")
         steps.append(f"Matrix cell canon pre-contract={pre_contract}; denied_by_contract(missing_license)={denied_contract}")
@@ -644,17 +659,6 @@ async def compute_access_resolution_debug(
             else:
                 attrib[k] = "unknown_layer (inspect resolver normalization)"
 
-    if (
-        UserRole.worker.value in jwt_roles
-        and resolved_slot == "coordination"
-        and (hr_title or "")
-    ):
-        jtl = str(hr_title).lower()
-        if "coordinator" in jtl or "coordination" in jtl:
-            warn.append(
-                "Coordination matrix slot inferred: job_title contains coordinator/coordination heuristic.",
-            )
-
     rbac = await effective_rbac_permission_keys(
         db,
         target,
@@ -723,6 +727,8 @@ async def compute_access_resolution_debug(
         hr_department_slugs=hr_slugs,
         resolved_department=str(resolved_dept),
         resolved_slot=str(resolved_slot),
+        resolved_slot_source=str(resolved_slot_source),
+        hr_matrix_slot=str(hr_matrix_slot) if hr_matrix_slot else None,
         matrix_configured=bool(matrix_ok),
         matrix_row_department=str(resolved_dept),
         matrix_row_slot=str(resolved_slot),

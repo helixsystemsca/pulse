@@ -1653,6 +1653,8 @@ class PulseWorkerHR(Base):
     #: Workspace URL segments (`communications`, …) this employee may access under `/{slug}/…`.
     department_slugs: Mapped[Optional[list[Any]]] = mapped_column(JSONB, nullable=True)
     job_title: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    #: Explicit Team Management permission-matrix slot (overrides job-title inference when set).
+    matrix_slot: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
     shift: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
     supervisor_user_id: Mapped[Optional[str]] = mapped_column(
         UUID(as_uuid=False), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True

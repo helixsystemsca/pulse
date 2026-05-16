@@ -492,6 +492,7 @@ export function WorkersApp() {
   });
   const [positionDraft, setPositionDraft] = useState({
     job_title: "",
+    matrix_slot: "" as string,
     department: "",
     shift: "",
     supervisor_id: "",
@@ -703,6 +704,7 @@ export function WorkersApp() {
     });
     setPositionDraft({
       job_title: profile.job_title ?? "",
+      matrix_slot: profile.matrix_slot ?? "",
       department: profile.department ?? "",
       shift:
         normalizeEmploymentDraft(profile.employment_type) === "part_time" ? "" : (profile.shift ?? ""),
@@ -1146,6 +1148,10 @@ export function WorkersApp() {
     }
     if (trim(positionDraft.job_title) !== (profile.job_title ?? "").trim()) {
       payload.job_title = trim(positionDraft.job_title) || null;
+    }
+    const curMatrixSlot = profile.matrix_slot ?? "";
+    if (positionDraft.matrix_slot !== curMatrixSlot) {
+      payload.matrix_slot = positionDraft.matrix_slot.trim() || null;
     }
     if (trim(positionDraft.department) !== (profile.department ?? "").trim()) {
       payload.department = trim(positionDraft.department) || null;
@@ -3022,6 +3028,28 @@ export function WorkersApp() {
                     />
                   </div>
                   <div className="sm:col-span-2">
+                    <label className={LABEL} htmlFor="worker-profile-matrix-slot">
+                      Matrix slot
+                    </label>
+                    <select
+                      id="worker-profile-matrix-slot"
+                      className={FIELD}
+                      value={positionDraft.matrix_slot}
+                      onChange={(e) => setPositionDraft((d) => ({ ...d, matrix_slot: e.target.value }))}
+                    >
+                      <option value="">Auto — infer from Pulse roles / job title</option>
+                      {PERMISSION_MATRIX_ROLE_SLOTS.map((s) => (
+                        <option key={s} value={s}>
+                          {PERMISSION_MATRIX_ROLE_LABEL[s]}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="mt-1 text-[11px] text-pulse-muted">
+                      Controls which Team Management permission matrix row determines operational module access. This is
+                      not the same as Pulse role (JWT) — it only selects the department × slot matrix row.
+                    </p>
+                  </div>
+                  <div className="sm:col-span-2">
                     <label className={LABEL} htmlFor="worker-profile-department">
                       Department
                     </label>
@@ -3191,6 +3219,13 @@ export function WorkersApp() {
                   <p>
                     <span className="text-pulse-muted">Job title: </span>
                     {profile.job_title ?? "—"}
+                  </p>
+                  <p>
+                    <span className="text-pulse-muted">Matrix slot: </span>
+                    {profile.matrix_slot
+                      ? PERMISSION_MATRIX_ROLE_LABEL[profile.matrix_slot as keyof typeof PERMISSION_MATRIX_ROLE_LABEL] ??
+                        profile.matrix_slot
+                      : "Auto (infer from roles / job title)"}
                   </p>
                   <p>
                     <span className="text-pulse-muted">Department: </span>

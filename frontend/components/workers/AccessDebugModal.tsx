@@ -14,6 +14,16 @@ import { toCanonicalFeatureKey } from "@/lib/features/canonical-features";
 import { cn } from "@/lib/cn";
 import { buttonVariants } from "@/styles/button-variants";
 
+function formatSlotSource(source: string): string {
+  const labels: Record<string, string> = {
+    explicit_matrix_slot: "Explicit matrix_slot (HR)",
+    jwt_role: "JWT role tier",
+    job_title_inference: "Job title keyword inference",
+    fallback_default: "Fallback default (team_member)",
+  };
+  return labels[source] ?? source;
+}
+
 function labelForFeatureKey(raw: string): string {
   const c = toCanonicalFeatureKey(raw);
   if (c && Object.prototype.hasOwnProperty.call(MODULE_LABEL, c)) {
@@ -198,10 +208,20 @@ export function AccessDebugModal({ open, onClose, loading, error, debug, viewerS
                     <dd>{debug.matrix_configured ? "yes" : "no"}</dd>
                   </div>
                   <div>
-                    <dt className="text-pulse-muted">Resolved department / slot</dt>
-                    <dd className="font-mono">
-                      {debug.resolved_department ?? "—"} / {debug.resolved_slot ?? "—"}
-                    </dd>
+                    <dt className="text-pulse-muted">Resolved slot</dt>
+                    <dd className="font-mono">{debug.resolved_slot ?? "—"}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-pulse-muted">Resolved from</dt>
+                    <dd className="font-mono">{formatSlotSource(debug.resolved_slot_source ?? "")}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-pulse-muted">HR matrix_slot (stored)</dt>
+                    <dd className="font-mono">{debug.hr_matrix_slot ?? "— (auto)"}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-pulse-muted">Resolved department</dt>
+                    <dd className="font-mono">{debug.resolved_department ?? "—"}</dd>
                   </div>
                   <div>
                     <dt className="text-pulse-muted">HR job title / department</dt>

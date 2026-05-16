@@ -109,6 +109,28 @@ def test_matrix_resolves_when_tenant_role_overlay_empty() -> None:
     assert eff == ["dashboard"]
 
 
+def test_explicit_matrix_slot_coordination_without_job_title() -> None:
+    """Worker + communications dept + explicit coordination slot — no job title keywords required."""
+    contract = ["dashboard", "inventory"]
+    user = _user([UserRole.worker.value], tenant_role_id=None)
+    merged = {
+        "department_role_feature_access": {
+            "communications": {
+                "coordination": ["inventory"],
+                "team_member": ["dashboard"],
+            },
+        },
+    }
+    hr = SimpleNamespace(
+        department_slugs=["communications"],
+        department="communications",
+        job_title="",
+        matrix_slot="coordination",
+    )
+    eff = _eff(user=user, contract_names=contract, merged_settings=merged, tenant_role=None, hr=hr)
+    assert eff == ["inventory"]
+
+
 def test_communications_coordination_inventory_only_overlay_ignored() -> None:
     """Matches Team Management UX: Coordination slot toggles Inventory only — overlay modules do not widen."""
     contract = ["dashboard", "inventory", "monitoring", "projects"]

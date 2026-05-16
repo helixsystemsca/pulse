@@ -27,6 +27,8 @@ class AccessResolutionDebugOut(BaseModel):
 
     resolved_department: str | None = None
     resolved_slot: str | None = None
+    resolved_slot_source: str = ""
+    hr_matrix_slot: str | None = None
 
     matrix_configured: bool = False
     matrix_row_department: str | None = None

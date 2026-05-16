@@ -15,6 +15,8 @@ export type WorkerRow = {
   /** Workspace URL slugs (`/{slug}/…`) this worker may access; from HR. */
   department_slugs?: string[] | null;
   job_title: string | null;
+  /** Explicit Team Management permission-matrix slot (overrides job-title inference). */
+  matrix_slot?: string | null;
   /** HR shift key; label comes from workers settings `shifts`. */
   shift?: string | null;
   /** GG (or similar) eligibility — stored on scheduling profile, not as a shift preset. */
@@ -79,6 +81,7 @@ export type WorkerDetail = {
   /** Workspace URL slugs (`/{slug}/…`) this worker may access; from HR. */
   department_slugs?: string[] | null;
   job_title: string | null;
+  matrix_slot?: string | null;
   shift: string | null;
   supervisor_id: string | null;
   supervisor_name: string | null;

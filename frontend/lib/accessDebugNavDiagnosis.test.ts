@@ -24,6 +24,8 @@ function debugPayload(partial: Partial<AccessResolutionDebugPayload>): AccessRes
     hr_department_slugs: [],
     resolved_department: "communications",
     resolved_slot: "coordination",
+    resolved_slot_source: "explicit_matrix_slot",
+    hr_matrix_slot: "coordination",
     matrix_configured: true,
     matrix_row_department: "communications",
     matrix_row_slot: "coordination",

@@ -553,6 +553,7 @@ async def _build_detail(db: AsyncSession, cid: str, u: User, users_map: dict[str
         department=hr.department if hr else None,
         department_slugs=_hr_department_slugs_list(hr),
         job_title=hr.job_title if hr else None,
+        matrix_slot=hr.matrix_slot if hr else None,
         shift=hr.shift if hr else None,
         supervisor_id=hr.supervisor_user_id if hr else None,
         supervisor_name=sup_name,
@@ -729,6 +730,7 @@ async def list_workers(
                 department=h.department if h else None,
                 department_slugs=_hr_department_slugs_list(h),
                 job_title=h.job_title if h else None,
+                matrix_slot=h.matrix_slot if h else None,
                 shift=h.shift if h else None,
                 gg_assignable=gg_assignable,
                 employment_type=employment_type,
@@ -817,6 +819,7 @@ async def _apply_worker_hr_and_extras(
         hr_row.department = primary_department
         hr_row.department_slugs = merged_slugs if merged_slugs else None
         hr_row.job_title = body.job_title
+        hr_row.matrix_slot = body.matrix_slot
         hr_row.shift = body.shift
         hr_row.supervisor_user_id = body.supervisor_id
         hr_row.start_date = body.start_date
@@ -829,6 +832,7 @@ async def _apply_worker_hr_and_extras(
                 department=primary_department,
                 department_slugs=merged_slugs if merged_slugs else None,
                 job_title=body.job_title,
+                matrix_slot=body.matrix_slot,
                 shift=body.shift,
                 supervisor_user_id=body.supervisor_id,
                 start_date=body.start_date,
@@ -1171,6 +1175,7 @@ async def patch_worker(
             "department",
             "department_slugs",
             "job_title",
+            "matrix_slot",
             "shift",
             "supervisor_id",
             "start_date",
@@ -1207,6 +1212,8 @@ async def patch_worker(
                 hr.department_slugs = None
         if "job_title" in data:
             hr.job_title = data["job_title"]
+        if "matrix_slot" in data:
+            hr.matrix_slot = data["matrix_slot"]
         if "shift" in data:
             hr.shift = data["shift"]
         if "supervisor_id" in data:

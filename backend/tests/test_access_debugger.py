@@ -168,7 +168,8 @@ async def test_coordination_job_title_inference_warning() -> None:
         tenant_role=None,
     )
     assert dbg.resolved_slot == "coordination"
-    assert any("coordination matrix slot inferred" in w.lower() for w in dbg.warnings)
+    assert dbg.resolved_slot_source == "job_title_inference"
+    assert any("job title inference matched" in w.lower() for w in dbg.warnings)
 
 
 @pytest.mark.asyncio

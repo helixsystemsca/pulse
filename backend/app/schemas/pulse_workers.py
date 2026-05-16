@@ -7,6 +7,8 @@ from typing import Any, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from app.core.permission_feature_matrix import normalize_matrix_slot
+
 _EMPLOYMENT_TYPES = {"full_time", "regular_part_time", "part_time"}
 
 
@@ -74,6 +76,7 @@ class WorkerRowOut(BaseModel):
     #: Workspace URL segments (`communications`, …); drives `/{slug}/…` access for frontline roles.
     department_slugs: list[str] = Field(default_factory=list)
     job_title: Optional[str] = None
+    matrix_slot: Optional[str] = None
     shift: Optional[str] = None
     #: General Gauger (or similar) — assignable flag on profile, not a roster shift preset.
     gg_assignable: bool = False
@@ -108,6 +111,7 @@ class WorkerDetailOut(BaseModel):
     #: Workspace URL segments (`communications`, …); drives `/{slug}/…` access for frontline roles.
     department_slugs: list[str] = Field(default_factory=list)
     job_title: Optional[str] = None
+    matrix_slot: Optional[str] = None
     shift: Optional[str] = None
     supervisor_id: Optional[str] = None
     supervisor_name: Optional[str] = None
@@ -140,6 +144,10 @@ class WorkerCreateIn(BaseModel):
     #: Allowed workspace URL segments (`communications`, …); when omitted, a known `department` slug is used.
     department_slugs: Optional[list[str]] = None
     job_title: Optional[str] = Field(None, max_length=255)
+    matrix_slot: Optional[str] = Field(
+        None,
+        description="Explicit permission-matrix slot (team_member, coordination, operations, …).",
+    )
     shift: Optional[str] = Field(None, max_length=64)
     supervisor_id: Optional[str] = None
     start_date: Optional[date] = None
@@ -149,6 +157,18 @@ class WorkerCreateIn(BaseModel):
     training: Optional[list[WorkerTrainingIn]] = None
     #: When false, a join token is still issued but no invite email is sent (share link manually).
     send_email: bool = True
+
+    @field_validator("matrix_slot", mode="before")
+    @classmethod
+    def _validate_matrix_slot_create(cls, v: object) -> Optional[str]:
+        if v is None:
+            return None
+        if isinstance(v, str) and not v.strip():
+            return None
+        n = normalize_matrix_slot(v)
+        if not n:
+            raise ValueError("Invalid matrix_slot")
+        return n
     #: Company / tenant admins only: add roster + HR as an **active** account (no invite; use invite/link flows for pending activation).
     roster_profile_only: bool = False
 
@@ -185,6 +205,10 @@ class WorkerPatchIn(BaseModel):
     department: Optional[str] = Field(None, max_length=128)
     department_slugs: Optional[list[str]] = None
     job_title: Optional[str] = Field(None, max_length=255)
+    matrix_slot: Optional[str] = Field(
+        None,
+        description="Explicit permission-matrix slot; null clears to legacy inference.",
+    )
     shift: Optional[str] = Field(None, max_length=64)
     supervisor_id: Optional[str] = None
     start_date: Optional[date] = None
@@ -208,6 +232,18 @@ class WorkerPatchIn(BaseModel):
             s = v.strip().lower()
             return s or None
         return str(v).strip().lower() or None
+
+    @field_validator("matrix_slot", mode="before")
+    @classmethod
+    def _validate_matrix_slot_patch(cls, v: object) -> Optional[str]:
+        if v is None:
+            return None
+        if isinstance(v, str) and not v.strip():
+            return None
+        n = normalize_matrix_slot(v)
+        if not n:
+            raise ValueError("Invalid matrix_slot")
+        return n
 
     @field_validator("supervisor_id", mode="before")
     @classmethod
