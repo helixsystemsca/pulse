@@ -55,7 +55,7 @@ export type PulseAuthSession = {
   /** Workforce / monitoring capacity (`worker` | `manager` | `supervisor`), separate from permission roles. */
   operational_role?: string | null;
   is_system_admin?: boolean;
-  /** From `/auth/me`; effective module keys (permission matrix ∪ optional overlay ∪ extras); sidebar uses contract ∩ RBAC bridge. */
+  /** From `/auth/me`; sidebar modules derive from department permission matrix ∪ per-user extras ∩ contract ∩ RBAC. */
   enabled_features?: string[];
   /** From `/auth/me`; tenant contract module keys for all tenant users. */
   contract_features?: string[];
@@ -71,7 +71,7 @@ export type PulseAuthSession = {
   contract_enabled_features?: string[] | null;
   /** From `/auth/me`; per-user module keys merged into RBAC (subset of contract). */
   feature_allow_extra?: string[] | null;
-  /** From `/auth/me`; optional access overlay (additive modules + synced flat grants). */
+  /** Legacy overlay assignment id (`tenant_roles`); informational—does not override the permission matrix modules. */
   tenant_role_id?: string | null;
   /** From `/auth/me`; may open `/dashboard/workers`. */
   workers_roster_access?: boolean;
@@ -104,7 +104,7 @@ export type UserOut = {
   avatar_url?: string | null;
   job_title?: string | null;
   operational_role?: string | null;
-  /** Effective module keys from `/auth/me` (matrix ∪ optional overlay ∪ extras). */
+  /** Matrix ∪ per-user extras (see Team Management Permissions). Overlay assignment does not widen this list. */
   enabled_features?: string[];
   contract_features?: string[];
   rbac_permissions?: string[];
@@ -115,7 +115,7 @@ export type UserOut = {
   hr_department?: string | null;
   contract_enabled_features?: string[] | null;
   feature_allow_extra?: string[] | null;
-  /** Optional access overlay (`tenant_roles.id`) — additive modules + synced grants. */
+  /** Legacy overlay id — does not change `enabled_features` vs the permission matrix (`no_access` is the only overlay exception). */
   tenant_role_id?: string | null;
   workers_roster_access?: boolean;
   is_impersonating?: boolean;

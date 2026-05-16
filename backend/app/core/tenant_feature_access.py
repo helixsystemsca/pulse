@@ -1,4 +1,4 @@
-"""Tenant product-module visibility: contract ∩ department × role-slot matrix (+ optional overlays)."""
+"""Tenant product-module visibility: contract ∩ department × role-slot matrix (+ per-user extras)."""
 
 from __future__ import annotations
 
@@ -21,7 +21,6 @@ from app.core.permission_feature_matrix import (
     permission_matrix_department_for_user,
     permission_matrix_slot_for_user,
 )
-from app.core.tenant_roles import effective_features_from_role
 from app.core.user_roles import user_has_any_role, user_has_facility_tenant_admin_flag, user_has_tenant_full_admin
 from app.core.workers_settings_merge import merge_workers_settings
 from app.models.domain import User, UserRole
@@ -167,11 +166,12 @@ def effective_tenant_feature_names_for_user(
     Precedence:
 
     - System / company / tenant full admins: full contract (canonicalized).
-    - ``no_access`` tenant role template: deny all (ignores matrix and overlays).
-    - Else: department × role-slot matrix (or legacy ``role_feature_access`` when the matrix is unset),
-      merged with additive tenant-role ``feature_keys`` and per-user ``feature_allow_extra``, ∩ contract.
+    - ``no_access`` access-overlay row (``tenant_roles.slug``): deny all regardless of matrix.
+    - Else: department × role-slot matrix when configured, otherwise legacy ``role_feature_access`` buckets.
+    - Union per-user ``feature_allow_extra`` (company-admin grants), ∩ contract.
 
-    Tenant roles no longer replace matrix-derived access; they only add modules (within contract).
+    Tenant role ``feature_keys`` and synced ``tenant_role_grants`` do **not** widen module visibility —
+    sidebar is matrix-driven (legacy fallback only until the matrix is configured).
     """
     contract_canonical = canonical_keys_from_contract(contract_names)
     if user.company_id is None or user.is_system_admin or user_has_any_role(user, UserRole.system_admin):
@@ -199,15 +199,10 @@ def effective_tenant_feature_names_for_user(
             contract_names=contract_names,
         )
 
-    overlay_features: list[str] = []
-    tr_id = getattr(user, "tenant_role_id", None)
-    if tr_id and tenant_role is not None and tenant_role.slug != "no_access":
-        overlay_features = effective_features_from_role(tenant_role, contract_names=contract_names)
-
     extras = _features_from_user_allow_extra(user=user, contract_names=contract_names)
 
     return _sorted_canonical_union_contract_filtered(
-        [base_features, overlay_features, extras],
+        [base_features, extras],
         contract_canonical=contract_canonical,
     )
 

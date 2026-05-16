@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.rbac.catalog import FEATURE_TO_RBAC_PERMISSIONS
@@ -15,7 +14,6 @@ from app.core.rbac.resolve import (
 from app.core.tenant_feature_access import contract_and_effective_features_for_me
 from app.core.user_roles import user_has_any_role, user_has_tenant_full_admin
 from app.models.domain import User, UserRole
-from app.models.rbac_models import TenantRoleGrant
 
 
 def _catalog_payload() -> tuple[list[dict], dict[str, list[str]]]:
@@ -98,28 +96,14 @@ async def build_rbac_introspection(db: AsyncSession, user: User) -> dict:
         )
     else:
         denied = sorted(ALL_KNOWN_RBAC_KEYS - resolved_set)
-        tr_id = getattr(user, "tenant_role_id", None)
-        grant_keys_filtered: set[str] = set()
-        if tr_id:
-            q = await db.execute(
-                select(TenantRoleGrant.permission_key).where(TenantRoleGrant.tenant_role_id == str(tr_id))
-            )
-            raw_grants = {str(r[0]) for r in q.all()}
-            grant_keys_filtered = _filter_keys_by_contract(raw_grants, cset)
 
         bridged_eff = _filter_keys_by_contract(rbac_keys_from_legacy_effective_features(eff_matrix), cset)
 
-        summary = (
-            "matrix_overlay_union_role_grants"
-            if tr_id
-            else "matrix_feature_bridge_with_optional_extras"
-        )
+        summary = "matrix_primary_feature_bridge"
 
         sources_rows = []
         for k in sorted(resolved_set):
             src: list[str] = []
-            if k in grant_keys_filtered:
-                src.append("tenant_role_grant")
             if k in bridged_eff:
                 src.append("enabled_features_bridge")
             if not src:

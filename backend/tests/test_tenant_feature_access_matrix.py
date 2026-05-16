@@ -109,24 +109,26 @@ def test_matrix_resolves_when_tenant_role_overlay_empty() -> None:
     assert eff == ["dashboard"]
 
 
-def test_communications_coordinator_matrix_plus_overlay_inventory() -> None:
-    contract = ["dashboard", "inventory", "comms_assets"]
+def test_communications_coordination_inventory_only_overlay_ignored() -> None:
+    """Matches Team Management UX: Coordination slot toggles Inventory only — overlay modules do not widen."""
+    contract = ["dashboard", "inventory", "monitoring", "projects"]
     role = TenantRole(
         id=str(uuid4()),
         company_id=str(uuid4()),
-        slug="inventory_specialist",
-        name="Inventory Specialist",
-        feature_keys=["inventory"],
+        slug="legacy_full_access",
+        name="Legacy full access overlay",
+        feature_keys=["dashboard", "monitoring", "projects"],
     )
     user = _user([UserRole.worker.value], tenant_role_id=role.id)
     merged = {
         "department_role_feature_access": {
-            "communications": {"coordination": ["dashboard", "comms_assets"]},
+            "communications": {"coordination": ["inventory"]},
         },
     }
     hr = SimpleNamespace(department_slugs=["communications"], department="communications", job_title="Coordinator")
     eff = _eff(user=user, contract_names=contract, merged_settings=merged, tenant_role=role, hr=hr)
-    assert set(eff) == {"dashboard", "inventory", "comms_assets"}
+    assert eff == ["inventory"]
+
 
 
 def test_feature_allow_extra_unions_with_matrix() -> None:
@@ -167,7 +169,7 @@ def test_no_access_slug_denies_despite_matrix() -> None:
     assert eff == []
 
 
-def test_tenant_role_additive_union_with_matrix() -> None:
+def test_tenant_role_overlay_keys_do_not_widen_matrix() -> None:
     contract = ["dashboard", "monitoring", "compliance"]
     role = TenantRole(
         id=str(uuid4()),
@@ -179,10 +181,11 @@ def test_tenant_role_additive_union_with_matrix() -> None:
     user = _user([UserRole.worker.value], tenant_role_id=role.id)
     merged = {"department_role_feature_access": {"maintenance": {"team_member": ["monitoring"]}}}
     eff = _eff(user=user, contract_names=contract, merged_settings=merged, tenant_role=role, hr=None)
-    assert set(eff) == {"dashboard", "monitoring"}
+    assert eff == ["monitoring"]
 
 
-def test_legacy_role_feature_access_unions_with_overlay_when_matrix_unset() -> None:
+
+def test_legacy_buckets_ignore_overlay_when_matrix_unset() -> None:
     contract = ["dashboard", "inventory"]
     role = TenantRole(
         id=str(uuid4()),
@@ -194,10 +197,12 @@ def test_legacy_role_feature_access_unions_with_overlay_when_matrix_unset() -> N
     user = _user([UserRole.worker.value], tenant_role_id=role.id)
     merged = {"role_feature_access": {"worker": ["dashboard"]}}
     eff = _eff(user=user, contract_names=contract, merged_settings=merged, tenant_role=role, hr=None)
-    assert set(eff) == {"dashboard", "inventory"}
+    assert eff == ["dashboard"]
 
 
-def test_tenant_role_feature_keys_intersect_contract() -> None:
+
+def test_tenant_overlay_feature_keys_do_not_grant_without_matrix_or_legacy_buckets() -> None:
+    """Overlay rows assigned on user rows do not add modules unless the matrix (or legacy RFA) does."""
     contract = ["dashboard", "monitoring", "compliance", "procedures"]
     role = TenantRole(
         id=str(uuid4()),
@@ -208,10 +213,7 @@ def test_tenant_role_feature_keys_intersect_contract() -> None:
     )
     user = _user([UserRole.worker.value], tenant_role_id=role.id)
     eff = _eff(user=user, contract_names=contract, merged_settings={}, tenant_role=role)
-    assert "dashboard" in eff
-    assert "monitoring" in eff
-    assert "logs_inspections" in eff
-    assert "procedures" not in eff
+    assert eff == []
 
 
 def test_company_admin_gets_full_contract_canonicalized() -> None:

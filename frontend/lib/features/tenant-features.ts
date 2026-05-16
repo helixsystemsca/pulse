@@ -1,7 +1,7 @@
 /**
  * Tenant feature enablement from `/auth/me`.
  * - `contract_features`: modules on the tenant contract (system admin).
- * - `enabled_features`: canonical keys from the permission matrix (+ optional access overlay), ∩ contract.
+ * - `enabled_features`: matrix ∪ explicit per-worker extras ∩ contract (`no_access` overlay still denies all).
  */
 import {
   canonicalizeFeatureKeys,

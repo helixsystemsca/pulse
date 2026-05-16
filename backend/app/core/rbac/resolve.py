@@ -4,14 +4,12 @@ from __future__ import annotations
 
 from typing import Iterable
 
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.features.canonical_catalog import canonical_keys_from_contract, contract_keys_for_canonical
 from app.core.rbac.catalog import FEATURE_TO_RBAC_PERMISSIONS, RBAC_KEY_REQUIRES_COMPANY_FEATURE
 from app.core.user_roles import user_has_any_role, user_has_tenant_full_admin
 from app.models.domain import User, UserRole
-from app.models.rbac_models import TenantRoleGrant
 
 
 def _contract_set(names: Iterable[str]) -> set[str]:
@@ -63,11 +61,17 @@ async def effective_rbac_permission_keys(
 
     - System administrators: ``["*"]``.
     - Tenant full admins (``company_admin`` / ``facility_tenant_admin``): ``["*"]``.
-    - Users with ``tenant_role_id``: ``tenant_role_grants`` ∪ bridged keys from
-      ``effective_feature_names`` (+ ``feature_allow_extra`` duplicate merge — idempotent), ∩ contract.
-    - Users without a role template: contract modules → flat keys (alpha migration path) when
-      ``effective_feature_names`` is empty; else bridge those feature keys.
+    - Else: bridge ``effective_feature_names`` ∪ ``feature_allow_extra`` duplicate merge (same as sidebar), ∩ contract.
+
+      ``effective_feature_names`` follows the department × matrix (or legacy buckets). ``tenant_role_grants``
+      synced from overlay rows intentionally do **not** expand this bridge (keeps API gates aligned with
+      ``enabled_features``).
+    - When ``effective_feature_names`` is empty and the user has no ``tenant_role_id``: bridge full contract as a
+      migration fallback.
+    - When ``effective_feature_names`` is empty and ``tenant_role_id`` is set: bridge only extras / empty (never the
+      full contract shortcut).
     """
+    _ = db  # async signature parity with callers
     if user.is_system_admin or user_has_any_role(user, UserRole.system_admin):
         return ["*"]
     if user.company_id is None:
@@ -76,26 +80,15 @@ async def effective_rbac_permission_keys(
     if user_has_tenant_full_admin(user):
         return ["*"]
 
-    tr_id = getattr(user, "tenant_role_id", None)
-    grant_keys: set[str] = set()
-    if tr_id:
-        q = await db.execute(
-            select(TenantRoleGrant.permission_key).where(TenantRoleGrant.tenant_role_id == str(tr_id))
-        )
-        grant_keys = {str(r[0]) for r in q.all()}
-
     eff = list(effective_feature_names)
     extras = getattr(user, "feature_allow_extra", None) or []
     if isinstance(extras, list):
         eff = sorted(set(eff) | {str(x) for x in extras if isinstance(x, str)})
     bridged_eff = rbac_keys_from_legacy_effective_features(eff)
 
-    if tr_id:
-        merged = grant_keys | bridged_eff
-        return sorted(_filter_keys_by_contract(merged, contract_feature_names))
-
-    # No tenant role overlay row: derive API permissions from tenant contract when sidebar features empty.
     if not effective_feature_names:
+        if getattr(user, "tenant_role_id", None):
+            return sorted(_filter_keys_by_contract(bridged_eff, contract_feature_names))
         contract_canonical = canonical_keys_from_contract(contract_feature_names)
         bridged = rbac_keys_from_legacy_effective_features(contract_canonical)
         return sorted(_filter_keys_by_contract(bridged, contract_feature_names))

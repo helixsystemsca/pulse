@@ -1558,8 +1558,10 @@ export function WorkersApp() {
                   the default for sidebar and product access by HR{" "}
                   <span className="font-semibold text-ds-foreground">department</span> and workplace{" "}
                   <span className="font-semibold text-ds-foreground">role slot</span> (manager, coordination, supervisor,
-                  …). <span className="font-semibold text-ds-foreground">Access overlays</span> (below) can add extra
-                  modules on top — they do not replace matrix access. Modules outside your contract stay hidden everywhere.
+                  …).                   <span className="font-semibold text-ds-foreground">Access overlays</span> (below) are legacy labels/toggles
+                  and{" "}
+                  <span className="font-semibold text-ds-foreground">do not change</span> which modules appear in Pulse.
+                  Modules outside your contract stay hidden everywhere.
                 </p>
                 <div className="mt-4 space-y-4">
                   <div>
@@ -2932,11 +2934,11 @@ export function WorkersApp() {
                 {isTenantFullAdmin && tenantRolesList.length > 0 ? (
                   <div className="mt-4">
                     <label className={LABEL} htmlFor="worker-tenant-role">
-                      Access overlay (optional)
+                      Access overlay (legacy label)
                     </label>
                     <p className="mt-0.5 text-[11px] text-ds-muted">
-                      Adds modules on top of the permission matrix for this person. Leave blank to use matrix access
-                      only. Configure overlays under Access overlays below.
+                      Optional template assigned on this profile for records only. Sidebar modules come from the
+                      permission matrix (and explicit per-worker extras)—not from overlay module toggles.
                     </p>
                     <select
                       id="worker-tenant-role"
@@ -2944,7 +2946,7 @@ export function WorkersApp() {
                       value={profileTenantRoleDraft}
                       onChange={(e) => setProfileTenantRoleDraft(e.target.value)}
                     >
-                      <option value="">None — matrix only</option>
+                      <option value="">None</option>
                       {tenantRolesList.map((r) => (
                         <option key={r.id} value={r.id}>
                           {r.name}

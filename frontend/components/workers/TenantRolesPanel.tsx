@@ -145,9 +145,11 @@ export function TenantRolesPanel({ apiCompanyId, canEdit }: Props) {
     <Card variant="secondary" padding="md">
       <h2 className="text-sm font-bold tracking-tight text-ds-foreground">Access overlays</h2>
       <p className="mt-1 text-xs text-ds-muted">
-        The permission matrix defines default access by department and role slot (see the Permissions card above).
-        Access overlays add specialized modules on top of that baseline. Create an overlay, pick extra modules, and
-        assign it on a worker profile. Overlays never remove matrix access—only grant more (within your contract).
+        The permission matrix defines which product modules appear for each HR department × role slot. These overlay
+        rows are optional labels retained for auditing and backwards compatibility—they do{" "}
+        <span className="font-semibold text-ds-foreground">not</span> add sidebar modules anymore. Extra modules beyond
+        the matrix come only from explicit per-worker grants (<span className="font-semibold text-ds-foreground">extras</span>{" "}
+        in Company settings / roster), not from overlay toggles here.
       </p>
       {error ? <p className="mt-2 text-xs text-ds-danger">{error}</p> : null}
 
