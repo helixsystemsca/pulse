@@ -48,10 +48,14 @@ from app.core.workspace_departments import (
     normalize_workspace_department_slug,
     normalize_workspace_department_slug_list,
 )
-from app.core.matrix_slot_policy import (
-    suggest_explicit_matrix_slot_for_department,
-    worker_slot_audit_fields,
+from app.core.matrix_slot_policy import worker_slot_audit_fields
+from app.core.tenant_role_assignments import (
+    assign_user_department_role,
+    get_active_assignment,
+    normalize_department_slug,
+    normalize_role_key,
 )
+from app.core.department_matrix_baselines import department_baseline_slot
 from app.core.permission_feature_matrix import (
     expand_department_role_matrix_baselines,
     permission_matrix_department_for_user,
@@ -72,6 +76,8 @@ from app.models.domain import (
     UserAccountStatus,
     UserRole,
 )
+from app.models.rbac_models import TenantRoleAssignment
+from app.core.department_matrix_baselines import operational_matrix_slot_label
 from app.models.pulse_models import (
     PulseWorkerCertification,
     PulseWorkerHR,
@@ -770,14 +776,26 @@ async def apply_department_baselines(
         if not h:
             skipped_no_hr += 1
             continue
-        if h.matrix_slot and str(h.matrix_slot).strip():
+        existing = await get_active_assignment(db, company_id=cid, user_id=str(u.id))
+        if existing:
             skipped_explicit += 1
             continue
         dept = permission_matrix_department_for_user(u, h)
-        baseline = suggest_explicit_matrix_slot_for_department(dept)
+        baseline = department_baseline_slot(dept)
         if not baseline:
             continue
+        await assign_user_department_role(
+            db,
+            company_id=cid,
+            user_id=str(u.id),
+            department_slug=dept,
+            role_key=baseline,
+            assigned_by=str(actor.id),
+        )
         h.matrix_slot = baseline
+        h.department = dept
+        if not h.department_slugs:
+            h.department_slugs = [dept]
         updated += 1
         by_department[dept] = by_department.get(dept, 0) + 1
 
@@ -835,6 +853,18 @@ async def list_workers(
         )
         for pr in pq.scalars().all():
             prof_map[str(pr.user_id)] = pr
+    assign_map: dict[str, TenantRoleAssignment] = {}
+    if users:
+        aq = await db.execute(
+            select(TenantRoleAssignment).where(
+                TenantRoleAssignment.company_id == cid,
+                TenantRoleAssignment.user_id.in_([u.id for u in users]),
+                TenantRoleAssignment.active.is_(True),
+            )
+        )
+        for a in aq.scalars().all():
+            assign_map[str(a.user_id)] = a
+
     items: list[WorkerRowOut] = []
     for u in users:
         h = hr_map.get(u.id)
@@ -844,8 +874,25 @@ async def list_workers(
         sched_row: dict[str, Any] | None = dict(prof_row.scheduling or {}) if prof_row else None
         employment_type = _employment_type_from_scheduling_payload(sched_row)
         gg_assignable = bool((sched_row or {}).get("gg_assignable"))
-        dept_resolved = permission_matrix_department_for_user(u, h)
-        slot_audit = worker_slot_audit_fields(u, h, department=dept_resolved)
+        asn = assign_map.get(uid_s)
+        if asn:
+            dept_slug = asn.department_slug
+            role_key = asn.role_key
+            assignment_status = "assigned"
+            matrix_display = operational_matrix_slot_label(role_key, department=dept_slug)
+            resolved_slot = role_key
+            matrix_source = "explicit_matrix_slot"
+            matrix_inferred = False
+            is_unresolved = False
+        else:
+            dept_slug = h.department if h else None
+            role_key = None
+            assignment_status = "unassigned"
+            matrix_display = "Unassigned"
+            resolved_slot = "unassigned"
+            matrix_source = "unresolved"
+            matrix_inferred = True
+            is_unresolved = True
         items.append(
             WorkerRowOut(
                 id=uid_s,
@@ -869,14 +916,17 @@ async def list_workers(
                 last_login_city=le.city if le else None,
                 last_login_region=le.region if le else None,
                 last_login_user_agent=le.user_agent if le else None,
-                resolved_matrix_slot=slot_audit["resolved_matrix_slot"],
-                matrix_slot_source=slot_audit["matrix_slot_source"],
-                matrix_slot_source_kind=slot_audit["matrix_slot_source_kind"],
-                matrix_slot_inferred=slot_audit["matrix_slot_inferred"],
-                matrix_slot_display=slot_audit["matrix_slot_display"],
-                matrix_slot_operational_label=slot_audit.get("matrix_slot_operational_label"),
-                matrix_slot_source_label=slot_audit.get("matrix_slot_source_label"),
-                is_unresolved=bool(slot_audit.get("is_unresolved")),
+                resolved_matrix_slot=resolved_slot,
+                matrix_slot_source=matrix_source,
+                matrix_slot_source_kind="explicit" if asn else "unresolved",
+                matrix_slot_inferred=matrix_inferred,
+                matrix_slot_display=matrix_display,
+                matrix_slot_operational_label=matrix_display,
+                matrix_slot_source_label="Explicit" if asn else "Unresolved",
+                is_unresolved=is_unresolved,
+                assignment_status=assignment_status,
+                assigned_department_slug=dept_slug,
+                assigned_role_key=role_key,
             )
         )
     return WorkerListOut(items=items)
@@ -939,25 +989,23 @@ async def _apply_worker_hr_and_extras(
     body: WorkerCreateIn,
     *,
     hr_row: PulseWorkerHR | None,
+    actor_id: str | None = None,
 ) -> None:
     merged_slugs = _merge_hr_department_slugs(
         list(body.department_slugs) if body.department_slugs else None,
         body.department,
     )
-    primary_department: str | None
-    if merged_slugs:
-        primary_department = merged_slugs[0]
-    elif body.department and str(body.department).strip():
-        primary_department = str(body.department).strip()
-    else:
-        primary_department = None
+    primary_department = normalize_department_slug(body.department) or (
+        merged_slugs[0] if merged_slugs else None
+    )
+    matrix_slot = body.matrix_slot or body.role_key
 
     if hr_row:
         hr_row.phone = body.phone
         hr_row.department = primary_department
         hr_row.department_slugs = merged_slugs if merged_slugs else None
         hr_row.job_title = body.job_title
-        hr_row.matrix_slot = body.matrix_slot
+        hr_row.matrix_slot = matrix_slot
         hr_row.shift = body.shift
         hr_row.supervisor_user_id = body.supervisor_id
         hr_row.start_date = body.start_date
@@ -970,12 +1018,20 @@ async def _apply_worker_hr_and_extras(
                 department=primary_department,
                 department_slugs=merged_slugs if merged_slugs else None,
                 job_title=body.job_title,
-                matrix_slot=body.matrix_slot,
+                matrix_slot=matrix_slot,
                 shift=body.shift,
                 supervisor_user_id=body.supervisor_id,
                 start_date=body.start_date,
             )
         )
+    await assign_user_department_role(
+        db,
+        company_id=cid,
+        user_id=str(user.id),
+        department_slug=primary_department or body.department,
+        role_key=body.role_key,
+        assigned_by=actor_id,
+    )
     prof = await _ensure_profile(db, cid, user.id)
     if body.employment_type is not None:
         cur = dict(prof.scheduling or {})
@@ -1078,7 +1134,7 @@ async def create_worker(
         await db.flush()
 
         hr = await _get_hr(db, user.id)
-        await _apply_worker_hr_and_extras(db, cid, user, body, hr_row=hr)
+        await _apply_worker_hr_and_extras(db, cid, user, body, hr_row=hr, actor_id=str(actor.id))
 
         await db.commit()
 
@@ -1134,7 +1190,7 @@ async def create_worker(
     await db.flush()
 
     hr = await _get_hr(db, user.id)
-    await _apply_worker_hr_and_extras(db, cid, user, body, hr_row=hr)
+    await _apply_worker_hr_and_extras(db, cid, user, body, hr_row=hr, actor_id=str(actor.id))
 
     company = await db.get(Company, cid)
     co_name = company.name if company else "your organization"
@@ -1314,6 +1370,7 @@ async def patch_worker(
             "department_slugs",
             "job_title",
             "matrix_slot",
+            "role_key",
             "shift",
             "supervisor_id",
             "start_date",
@@ -1352,6 +1409,8 @@ async def patch_worker(
             hr.job_title = data["job_title"]
         if "matrix_slot" in data:
             hr.matrix_slot = data["matrix_slot"]
+        if "role_key" in data and data["role_key"]:
+            hr.matrix_slot = normalize_role_key(data["role_key"])
         if "shift" in data:
             hr.shift = data["shift"]
         if "supervisor_id" in data:
@@ -1362,6 +1421,23 @@ async def patch_worker(
             hr.start_date = data["start_date"]
         if "supervisor_notes" in data:
             hr.supervisor_notes = data["supervisor_notes"]
+
+    if hr and ("role_key" in data or "department" in data or "department_slugs" in data):
+        dept_slug = normalize_department_slug(hr.department)
+        role = normalize_role_key(data.get("role_key") if "role_key" in data else hr.matrix_slot)
+        if dept_slug and role:
+            await assign_user_department_role(
+                db,
+                company_id=cid,
+                user_id=user_id,
+                department_slug=dept_slug,
+                role_key=role,
+                assigned_by=str(actor.id),
+            )
+            hr.matrix_slot = role
+            hr.department = dept_slug
+            if not hr.department_slugs:
+                hr.department_slugs = [dept_slug]
 
     if "profile_notes" in data:
         prof = await _ensure_profile(db, cid, user_id)

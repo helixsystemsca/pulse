@@ -230,13 +230,16 @@ async def contract_and_effective_features_for_me(
         )
         tenant_role = q.scalar_one_or_none()
 
-    eff = effective_tenant_feature_names_for_user(
-        user=user,
+    from app.core.tenant_capabilities import resolve_tenant_capabilities
+
+    caps = await resolve_tenant_capabilities(
+        db,
+        user,
         contract_names=contract,
         merged_settings=merged,
-        hr=hr_me,
         tenant_role=tenant_role,
     )
+    eff = caps.features
     roster = user_has_workers_roster_page_access(user, merged)
     admin_catalog = list(contract) if user_has_tenant_full_admin(user) else []
     return contract, eff, roster, admin_catalog

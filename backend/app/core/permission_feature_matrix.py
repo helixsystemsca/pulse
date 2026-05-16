@@ -104,9 +104,9 @@ def matrix_cell_features(
     slot: str,
 ) -> list[str]:
     """
-    Features from ``department_role_feature_access[department][slot]``.
+    Features from ``department_role_feature_access[department][slot]`` only.
 
-    Read-time compatibility: baseline slot → legacy ``team_member`` cell when baseline empty.
+    No fallback to other slots — unassigned or empty cells grant nothing.
     """
     if slot == UNRESOLVED_MATRIX_SLOT:
         return []
@@ -116,14 +116,6 @@ def matrix_cell_features(
     raw = row.get(slot)
     if isinstance(raw, list) and raw:
         return [str(x) for x in raw]
-    baseline = department_baseline_slot(department)
-    if baseline and baseline != slot:
-        alt = row.get(baseline)
-        if isinstance(alt, list) and alt:
-            return [str(x) for x in alt]
-    legacy = row.get(LEGACY_TEAM_MEMBER_SLOT)
-    if isinstance(legacy, list) and legacy:
-        return [str(x) for x in legacy]
     return []
 
 

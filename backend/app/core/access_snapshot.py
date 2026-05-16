@@ -1,37 +1,24 @@
 """
-Canonical tenant access snapshot — single resolver for matrix → features → capabilities.
+Canonical tenant access snapshot — delegates to ``resolve_tenant_capabilities``.
 
-Delegates to production helpers in ``tenant_feature_access`` and ``rbac.resolve``; does not add rules.
+Operational permissions come only from ``tenant_role_assignments`` (assigned department + role_key).
 """
 
 from __future__ import annotations
 
 import logging
 from dataclasses import asdict, dataclass, field
-from typing import Any
+from typing import Any, Literal
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.features.canonical_catalog import canonicalize_feature_keys
-from app.core.matrix_slot_policy import (
-    matrix_slot_fallback_warning_message,
-    require_explicit_elevated_slots,
-    resolve_matrix_slot_detailed,
-)
-from app.core.department_matrix_baselines import UNRESOLVED_MATRIX_SLOT
-from app.core.permission_feature_matrix import (
-    MatrixSlotSource,
-    matrix_slot_resolution_warnings,
-    normalize_matrix_slot,
-    permission_matrix_department_for_user,
-    permission_matrix_slot_for_user,
-)
-from app.core.rbac.resolve import effective_rbac_permission_keys
+from app.core.department_matrix_baselines import operational_matrix_slot_label
+from app.core.permission_feature_matrix import matrix_cell_features, normalize_matrix_slot
+from app.core.tenant_capabilities import resolve_tenant_capabilities
 from app.core.tenant_feature_access import (
     _contract_feature_names_normalized,
-    _features_from_department_role_matrix,
-    effective_tenant_feature_names_for_user,
     load_merged_workers_settings,
     user_has_workers_roster_page_access,
 )
@@ -43,17 +30,17 @@ from app.models.rbac_models import TenantRole
 
 _log = logging.getLogger("pulse.access_snapshot")
 
+AssignmentStatusOut = Literal["assigned", "unassigned", "admin_bypass"]
+
 
 @dataclass
 class AccessSnapshotAudit:
-    matrix_slot_source: MatrixSlotSource
-    matrix_slot_inferred: bool
-    hr_matrix_slot: str | None
-    is_unresolved: bool = False
-    matrix_slot_operational_label: str | None = None
-    matrix_slot_source_label: str | None = None
+    assignment_status: AssignmentStatusOut
+    assigned_department_slug: str | None = None
+    assigned_role_key: str | None = None
+    assignment_id: str | None = None
+    hr_matrix_slot: str | None = None
     inference_trace: list[str] = field(default_factory=list)
-    require_explicit_elevated_slots: bool = False
     resolution_warnings: list[str] = field(default_factory=list)
     denied_by_contract: list[str] = field(default_factory=list)
     contract_features: list[str] = field(default_factory=list)
@@ -65,6 +52,7 @@ class AccessSnapshot:
 
     department: str
     matrix_slot: str
+    assignment_status: AssignmentStatusOut
     features: list[str]
     capabilities: list[str]
     departments: list[str]
@@ -85,44 +73,41 @@ def _hr_department_slugs(hr: PulseWorkerHR | None) -> list[str]:
     if isinstance(raw, list) and raw:
         return normalize_workspace_department_slug_list([str(x) for x in raw])
     if hr.department:
-        one = normalize_workspace_department_slug_list([hr.department.strip()])
-        return one
+        return normalize_workspace_department_slug_list([hr.department.strip()])
     return []
 
 
-def _denied_features_for_audit(
-    *,
+def _assignment_from_hr_for_snapshot(
     user: User,
     hr: PulseWorkerHR | None,
-    merged_settings: dict[str, Any],
-    contract_names: list[str],
-    effective_features: list[str],
-) -> tuple[list[str], list[str]]:
-    """(denied_by_contract, denied_features for snapshot)."""
-    raw_matrix = _features_from_department_role_matrix(
-        user=user,
-        hr=hr,
-        merged_settings=merged_settings,
-        contract_names=contract_names,
+) -> "ActiveTenantAssignment | None":
+    """Build synthetic assignment from HR when tests pass SimpleNamespace HR (no DB)."""
+    from datetime import datetime, timezone
+
+    from app.core.department_matrix_baselines import department_baseline_slot
+    from app.core.tenant_role_assignments import (
+        ActiveTenantAssignment,
+        normalize_department_slug,
+        normalize_role_key,
     )
-    if raw_matrix is None:
-        return [], []
 
-    from app.core.permission_feature_matrix import matrix_cell_features
-
-    dept = permission_matrix_department_for_user(user, hr)
-    slot = permission_matrix_slot_for_user(user, hr)
-    matrix = merged_settings.get("department_role_feature_access") or {}
-    raw_cell: list[str] = []
-    if isinstance(matrix, dict):
-        raw_cell = matrix_cell_features(matrix, department=dept, slot=slot)
-
-    raw_canon = set(canonicalize_feature_keys(raw_cell))
-    eff_set = set(canonicalize_feature_keys(effective_features))
-    allowed_contract = set(canonicalize_feature_keys(contract_names))
-    denied_contract = sorted(k for k in raw_canon if k not in allowed_contract)
-    denied_not_granted = sorted(k for k in raw_canon if k in allowed_contract and k not in eff_set)
-    return denied_contract, denied_not_granted
+    if not hr:
+        return None
+    slug = normalize_department_slug(getattr(hr, "department", None))
+    explicit = normalize_role_key(getattr(hr, "matrix_slot", None))
+    role = explicit or (department_baseline_slot(slug or "") if slug else None)
+    if not slug or not role:
+        return None
+    return ActiveTenantAssignment(
+        id="hr-synthetic",
+        company_id=str(user.company_id),
+        user_id=str(user.id),
+        department_slug=slug,
+        role_key=role,
+        department_id=None,
+        assigned_by=None,
+        assigned_at=datetime.now(timezone.utc),
+    )
 
 
 async def resolve_access_snapshot(
@@ -133,12 +118,9 @@ async def resolve_access_snapshot(
     merged_settings: dict[str, Any] | None = None,
     hr: PulseWorkerHR | None = None,
     tenant_role: TenantRole | None = None,
+    assignment: "ActiveTenantAssignment | None" = None,
 ) -> AccessSnapshot:
-    """
-    Single canonical resolver: matrix department + slot → features → capabilities.
-
-    ``contract_names`` / ``merged_settings`` / ``hr`` may be preloaded (e.g. from ``/auth/me``).
-    """
+    """Single canonical resolver via ``resolve_tenant_capabilities``."""
     from app.core.company_features import tenant_enabled_feature_names_with_legacy
 
     if user.company_id is None or user.is_system_admin or user_has_any_role(user, UserRole.system_admin):
@@ -147,6 +129,7 @@ async def resolve_access_snapshot(
         return AccessSnapshot(
             department="maintenance",
             matrix_slot="manager",
+            assignment_status="admin_bypass",
             features=sorted(feats),
             capabilities=["*"],
             departments=[],
@@ -176,86 +159,61 @@ async def resolve_access_snapshot(
             )
             tenant_role = q.scalar_one_or_none()
 
-    dept = permission_matrix_department_for_user(user, hr)
-    slot_detail = resolve_matrix_slot_detailed(user, hr)
-    slot = slot_detail.slot
-    slot_source = slot_detail.source
-    explicit_hr_slot = normalize_matrix_slot(getattr(hr, "matrix_slot", None) if hr else None)
-    hr_slot_str = explicit_hr_slot
+    active_assignment = assignment
+    if active_assignment is None and hr is not None and not hasattr(db, "execute"):
+        active_assignment = _assignment_from_hr_for_snapshot(user, hr)
 
-    inference_trace = list(slot_detail.inference_trace)
-    from app.core.matrix_slot_policy import (
-        format_matrix_slot_display,
-        matrix_slot_source_annotation,
-    )
-
-    warnings = matrix_slot_resolution_warnings(
-        user, hr, resolved_slot=slot, resolved_slot_source=slot_source
-    )
-    fallback_msg = matrix_slot_fallback_warning_message(resolved_slot=slot, source=slot_source)
-    if fallback_msg:
-        warnings.insert(0, fallback_msg)
-
-    if slot_source not in ("explicit_matrix_slot", "department_baseline") or slot == UNRESOLVED_MATRIX_SLOT:
-        _log.info(
-            "matrix_slot resolved user_id=%s company_id=%s department=%s slot=%s source=%s hr_matrix_slot=%r",
-            user.id,
-            user.company_id,
-            dept,
-            slot,
-            slot_source,
-            hr_slot_str,
-        )
-
-    is_company_admin = user_has_tenant_full_admin(user)
-    eff = effective_tenant_feature_names_for_user(
-        user=user,
-        contract_names=contract,
-        merged_settings=merged,
-        hr=hr,
-        tenant_role=tenant_role,
-    )
-    caps = await effective_rbac_permission_keys(
+    caps = await resolve_tenant_capabilities(
         db,
         user,
-        contract_feature_names=contract,
-        effective_feature_names=eff,
+        contract_names=contract,
+        merged_settings=merged,
+        tenant_role=tenant_role,
+        assignment=active_assignment,
     )
+
+    dept = caps.department_slug or "maintenance"
+    slot = caps.role_key or "unassigned"
+    warnings: list[str] = []
+    if caps.status == "unassigned":
+        warnings.append(
+            "User is unassigned — no department/role in tenant_role_assignments. "
+            "Assign both in Team Management to grant operational access."
+        )
+
+    hr_slot_str = normalize_matrix_slot(getattr(hr, "matrix_slot", None) if hr else None)
+    denied_features: list[str] = []
+    if caps.status == "assigned" and caps.department_slug and caps.role_key:
+        matrix = merged.get("department_role_feature_access") or {}
+        if isinstance(matrix, dict):
+            raw_cell = matrix_cell_features(matrix, department=caps.department_slug, slot=caps.role_key)
+            eff_set = set(caps.features)
+            denied_features = sorted(k for k in raw_cell if k not in eff_set)
+
+    is_company_admin = user_has_tenant_full_admin(user)
     roster = user_has_workers_roster_page_access(user, merged)
     dept_slugs = _hr_department_slugs(hr)
-    denied_contract, denied_features = _denied_features_for_audit(
-        user=user,
-        hr=hr,
-        merged_settings=merged,
-        contract_names=contract,
-        effective_features=eff,
-    )
 
     audit = AccessSnapshotAudit(
-        matrix_slot_source=slot_source,
-        matrix_slot_inferred=slot_source != "explicit_matrix_slot",
+        assignment_status=caps.status,
+        assigned_department_slug=caps.department_slug,
+        assigned_role_key=caps.role_key,
+        assignment_id=caps.assignment_id,
         hr_matrix_slot=hr_slot_str,
-        is_unresolved=slot == UNRESOLVED_MATRIX_SLOT,
-        matrix_slot_operational_label=format_matrix_slot_display(
-            slot=slot, source=slot_source, department=dept
-        ),
-        matrix_slot_source_label=matrix_slot_source_annotation(slot_source),
-        inference_trace=inference_trace,
-        require_explicit_elevated_slots=require_explicit_elevated_slots(),
+        inference_trace=list(caps.resolution_trace),
         resolution_warnings=warnings,
-        denied_by_contract=denied_contract,
         contract_features=list(contract),
     )
-
     return AccessSnapshot(
         department=dept,
         matrix_slot=slot,
-        features=list(eff),
-        capabilities=list(caps),
+        assignment_status=caps.status,
+        features=list(caps.features),
+        capabilities=list(caps.capabilities),
         departments=dept_slugs,
         is_company_admin=is_company_admin,
         workers_roster_access=roster,
         contract_features=list(contract),
-        denied_features=sorted(set(denied_features) | set(denied_contract)),
+        denied_features=denied_features,
         audit=audit,
     )

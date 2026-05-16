@@ -40,7 +40,11 @@ import {
   isUnresolvedMatrixSlot,
   matrixSlotSourceKind,
 } from "@/lib/rbac/matrix-slot-policy";
-import { DEPARTMENT_BASELINE_SLOTS } from "@/config/platform/permission-matrix";
+import {
+  DEPARTMENT_BASELINE_SLOTS,
+  PERMISSION_MATRIX_ROLE_LABEL,
+  PERMISSION_MATRIX_ROLE_SLOTS,
+} from "@/config/platform/permission-matrix";
 import { parseClientApiError } from "@/lib/parse-client-api-error";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
 import {
@@ -250,6 +254,7 @@ type CreateFormState = {
   full_name: string;
   email: string;
   role: string;
+  role_key: string;
   employment_type: "full_time" | "regular_part_time" | "part_time";
   department: string;
   shift: string;
@@ -263,6 +268,7 @@ const CREATE_FORM_EMPTY: CreateFormState = {
   full_name: "",
   email: "",
   role: "worker",
+  role_key: DEPARTMENT_BASELINE_SLOTS.maintenance,
   employment_type: "full_time",
   department: "maintenance",
   shift: "",
@@ -1240,8 +1246,17 @@ export function WorkersApp() {
       payload.job_title = trim(positionDraft.job_title) || null;
     }
     const curMatrixSlot = profile.matrix_slot ?? "";
+    const deptSlug = trim(positionDraft.department).toLowerCase();
+    const effectiveRoleKey =
+      positionDraft.matrix_slot.trim() ||
+      DEPARTMENT_BASELINE_SLOTS[deptSlug as keyof typeof DEPARTMENT_BASELINE_SLOTS] ||
+      "team_member";
+    const curRoleKey = profile.assigned_role_key ?? profile.matrix_slot ?? "";
     if (positionDraft.matrix_slot !== curMatrixSlot) {
       payload.matrix_slot = positionDraft.matrix_slot.trim() || null;
+      payload.role_key = effectiveRoleKey;
+    } else if (trim(positionDraft.department) !== (profile.department ?? "").trim() && effectiveRoleKey !== curRoleKey) {
+      payload.role_key = effectiveRoleKey;
     }
     if (trim(positionDraft.department) !== (profile.department ?? "").trim()) {
       payload.department = trim(positionDraft.department) || null;
@@ -1363,13 +1378,18 @@ export function WorkersApp() {
     });
     const departmentSlug = createForm.department.trim() || "maintenance";
     const role = effectiveInviteRole(departmentSlug, createForm.role, createRoleLimited);
+    const roleKey =
+      createForm.role_key.trim() ||
+      DEPARTMENT_BASELINE_SLOTS[departmentSlug as keyof typeof DEPARTMENT_BASELINE_SLOTS] ||
+      "team_member";
     const department_slugs = departmentSlug ? [departmentSlug] : [];
     return {
       email: createForm.email.trim(),
       full_name: createForm.full_name.trim() || null,
       role,
+      role_key: roleKey,
       employment_type: createForm.employment_type || null,
-      department: departmentSlug || null,
+      department: departmentSlug,
       department_slugs: department_slugs.length ? department_slugs : [departmentSlug],
       shift: createForm.employment_type === "part_time" ? null : createForm.shift || null,
       start_date: createForm.start_date || null,
@@ -2619,6 +2639,10 @@ export function WorkersApp() {
                 const department = e.target.value;
                 setCreateForm((f) => {
                   const next: CreateFormState = { ...f, department };
+                  const baseline =
+                    DEPARTMENT_BASELINE_SLOTS[department as keyof typeof DEPARTMENT_BASELINE_SLOTS] ??
+                    "team_member";
+                  next.role_key = baseline;
                   if (!isMaintenanceInviteDepartment(department)) {
                     next.role = "worker";
                   } else if (createRoleLimited) {
@@ -2659,6 +2683,23 @@ export function WorkersApp() {
                 <option value="worker">Coordinator</option>
               )}
             </select>
+          </div>
+          <div>
+            <label className={LABEL}>Operational role (matrix)</label>
+            <select
+              className={FIELD}
+              value={createForm.role_key}
+              onChange={(e) => setCreateForm((f) => ({ ...f, role_key: e.target.value }))}
+            >
+              {PERMISSION_MATRIX_ROLE_SLOTS.filter((s) => s !== "unresolved").map((s) => (
+                <option key={s} value={s}>
+                  {PERMISSION_MATRIX_ROLE_LABEL[s]}
+                </option>
+              ))}
+            </select>
+            <p className="mt-1 text-[11px] text-pulse-muted">
+              Department × role determines module access. Required for new workers.
+            </p>
           </div>
           <div>
             <label className={LABEL}>Employment type</label>

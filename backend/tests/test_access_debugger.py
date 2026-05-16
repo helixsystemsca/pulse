@@ -147,6 +147,8 @@ async def test_missing_hr_defaults_matrix_department_to_maintenance() -> None:
         tenant_role=None,
     )
     assert dbg.resolved_department == "maintenance"
+    assert dbg.resolution_kind == "unassigned"
+    assert any("unassigned" in w.lower() for w in dbg.warnings)
 
 
 @pytest.mark.asyncio
@@ -255,12 +257,13 @@ async def test_nav_ready_user_rbac_derived_from_effective_features() -> None:
     contract = ["inventory", "team_management"]
     merged = {"department_role_feature_access": {"maintenance": {"team_member": ["inventory"]}}}
     user = _tenant_user(feature_allow_extra=["team_management"])
+    hr = SimpleNamespace(department="maintenance", matrix_slot="team_member")
     dbg = await compute_access_resolution_debug(
         db=_dummy_async_session(),
         target=user,
         contract_normalized=contract,
         merged_settings=merged,
-        hr_row=None,
+        hr_row=hr,
         tenant_role=None,
     )
     assert set(dbg.effective_enabled_features) == {"inventory", "team_management"}
@@ -282,10 +285,10 @@ async def test_legacy_fallback_attribution_when_matrix_unset() -> None:
         hr_row=None,
         tenant_role=None,
     )
-    assert dbg.resolution_kind == "legacy_role_feature_access_fallback"
+    assert dbg.resolution_kind == "unassigned"
     assert dbg.legacy_bucket == "worker"
-    assert dbg.effective_enabled_features == ["dashboard"]
-    assert dbg.source_attribution["dashboard"].startswith("legacy:")
+    assert dbg.effective_enabled_features == []
+    assert dbg.legacy_role_feature_access_features == ["dashboard"]
 
 
 def _find_missing(dbg, key: str):
@@ -325,12 +328,13 @@ async def test_missing_schedule_filtered_by_contract() -> None:
     contract = ["dashboard"]
     merged = {"department_role_feature_access": {"maintenance": {"team_member": ["dashboard", "schedule"]}}}
     user = _tenant_user()
+    hr = SimpleNamespace(department="maintenance", matrix_slot="team_member")
     dbg = await compute_access_resolution_debug(
         db=_dummy_async_session(),
         target=user,
         contract_normalized=contract,
         merged_settings=merged,
-        hr_row=None,
+        hr_row=hr,
         tenant_role=None,
     )
     sched = _find_missing(dbg, "schedule")
@@ -348,18 +352,19 @@ async def test_missing_hr_department_defaults_maintenance_in_details() -> None:
         },
     }
     user = _tenant_user()
+    hr = SimpleNamespace(department="maintenance", matrix_slot="team_member")
     dbg = await compute_access_resolution_debug(
         db=_dummy_async_session(),
         target=user,
         contract_normalized=contract,
         merged_settings=merged,
-        hr_row=None,
+        hr_row=hr,
         tenant_role=None,
     )
     mon = _find_missing(dbg, "monitoring")
     assert mon is not None
     assert mon.missing_reason in ("disabled_in_matrix", "slot_mismatch")
-    assert any("PulseWorkerHR" in d for d in mon.resolution_details)
+    assert any("maintenance" in d for d in mon.resolution_details)
 
 
 @pytest.mark.asyncio

@@ -19,8 +19,11 @@ MatrixSlotSourceOut = Literal[
 
 
 class AccessSnapshotAuditOut(BaseModel):
-    matrix_slot_source: MatrixSlotSourceOut
-    matrix_slot_inferred: bool
+    assignment_status: str = "unassigned"
+    assigned_department_slug: str | None = None
+    assigned_role_key: str | None = None
+    matrix_slot_source: MatrixSlotSourceOut | None = None
+    matrix_slot_inferred: bool = False
     hr_matrix_slot: str | None = None
     is_unresolved: bool = False
     matrix_slot_operational_label: str | None = None
@@ -35,6 +38,7 @@ class AccessSnapshotAuditOut(BaseModel):
 class AccessSnapshotOut(BaseModel):
     department: str
     matrix_slot: str
+    assignment_status: str = "unassigned"
     features: list[str] = Field(default_factory=list)
     capabilities: list[str] = Field(default_factory=list)
     departments: list[str] = Field(default_factory=list)

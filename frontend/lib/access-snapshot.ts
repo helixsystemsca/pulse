@@ -6,9 +6,14 @@ import { MASTER_FEATURES, type MasterFeatureDef } from "@/config/platform/master
 import { isPlatformDepartmentSlug } from "@/config/platform/departments";
 import type { PulseAuthSession } from "@/lib/pulse-session";
 
+export type AssignmentStatus = "assigned" | "unassigned" | "admin_bypass";
+
 export type AccessSnapshotAudit = {
-  matrix_slot_source: string;
-  matrix_slot_inferred: boolean;
+  assignment_status?: AssignmentStatus;
+  assigned_department_slug?: string | null;
+  assigned_role_key?: string | null;
+  matrix_slot_source?: string;
+  matrix_slot_inferred?: boolean;
   hr_matrix_slot?: string | null;
   resolution_warnings?: string[];
   denied_by_contract?: string[];
@@ -18,6 +23,7 @@ export type AccessSnapshotAudit = {
 export type AccessSnapshot = {
   department: string;
   matrix_slot: string;
+  assignment_status?: AssignmentStatus;
   features: string[];
   capabilities: string[];
   departments: string[];
@@ -38,7 +44,7 @@ function capabilityGranted(snap: AccessSnapshot, key: string): boolean {
   return snap.capabilities.includes(key);
 }
 
-/** Read canonical snapshot from session, or synthesize from legacy `/auth/me` fields. */
+/** Read canonical snapshot from session, or synthesize a minimal legacy envelope (no matrix inference). */
 export function readAccessSnapshot(session: PulseAuthSession | null): AccessSnapshot | null {
   if (!session) return null;
   if (session.access_snapshot) return session.access_snapshot;
@@ -47,24 +53,34 @@ export function readAccessSnapshot(session: PulseAuthSession | null): AccessSnap
     if (!session.is_system_admin && session.role !== "system_admin") return null;
   }
 
+  const isAdmin =
+    session.facility_tenant_admin === true ||
+    session.role === "company_admin" ||
+    Boolean(session.roles?.includes("company_admin"));
+
   return {
     department: session.hr_department ?? "maintenance",
-    matrix_slot: "team_member",
+    matrix_slot: "unassigned",
+    assignment_status: isAdmin ? "admin_bypass" : "unassigned",
     features: [...(session.enabled_features ?? [])],
     capabilities: [...(session.rbac_permissions ?? [])],
     departments: session.hr_department ? [session.hr_department] : [],
-    is_company_admin:
-      session.facility_tenant_admin === true ||
-      session.role === "company_admin" ||
-      Boolean(session.roles?.includes("company_admin")),
+    is_company_admin: isAdmin,
     workers_roster_access: session.workers_roster_access,
     contract_features: [...(session.contract_features ?? [])],
     audit: {
-      matrix_slot_source: "fallback_default",
-      matrix_slot_inferred: true,
-      resolution_warnings: ["Session missing access_snapshot — using legacy enabled_features."],
+      assignment_status: isAdmin ? "admin_bypass" : "unassigned",
+      resolution_warnings: [
+        "Session missing access_snapshot — treating as unassigned; reload after deploy.",
+      ],
     },
   };
+}
+
+export function snapshotIsUnassigned(snapshot: AccessSnapshot | null): boolean {
+  if (!snapshot) return true;
+  if (snapshot.is_company_admin || snapshot.assignment_status === "admin_bypass") return false;
+  return snapshot.assignment_status === "unassigned" || snapshot.matrix_slot === "unassigned";
 }
 
 export function snapshotHasCapability(snapshot: AccessSnapshot | null, permissionKey: string): boolean {

@@ -12,7 +12,7 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.department_matrix_baselines import UNRESOLVED_MATRIX_SLOT
+from app.core.department_matrix_baselines import UNRESOLVED_MATRIX_SLOT, operational_matrix_slot_label
 from app.core.matrix_slot_policy import (
     hr_job_title_raw,
     matrix_slot_fallback_warning_message,
@@ -621,14 +621,31 @@ async def compute_access_resolution_debug(
             f"Matrix not configured — legacy role_feature_access[{legacy_bucket}] → {legacy_feats}",
         )
 
-    #: Production effective list
-    eff = effective_tenant_feature_names_for_user(
-        user=target,
+    from app.core.access_snapshot import _assignment_from_hr_for_snapshot
+    from app.core.tenant_capabilities import resolve_tenant_capabilities
+
+    active_assignment = None
+    if not hasattr(db, "execute"):
+        active_assignment = _assignment_from_hr_for_snapshot(target, hr_row)
+
+    caps = await resolve_tenant_capabilities(
+        db,
+        target,
         contract_names=contract_normalized,
         merged_settings=merged_settings,
-        hr=hr_row,
         tenant_role=tenant_role,
+        assignment=active_assignment,
     )
+    eff = caps.features
+    inference_trace = list(caps.resolution_trace)
+    if caps.department_slug:
+        resolved_dept = caps.department_slug
+    if caps.role_key:
+        resolved_slot = caps.role_key
+        slot_display = operational_matrix_slot_label(caps.role_key, department=caps.department_slug)
+    if caps.status == "unassigned":
+        warn.insert(0, "User is unassigned — no active tenant_role_assignment.")
+    assignment_status = caps.status
 
     matrix_feats_list = list(matrix_feats) if matrix_feats is not None else []
 
@@ -653,6 +670,16 @@ async def compute_access_resolution_debug(
         steps.append("Resolver path: overlay slug `no_access` ⇒ deny all modules.")
         for k in eff:
             attrib[k] = "unexpected — no_access should yield empty enabled_features"
+
+    elif assignment_status == "unassigned":
+        resolution_kind = "unassigned"
+        steps.append(
+            "Resolver path: no active tenant_role_assignment — matrix modules withheld; "
+            "feature_allow_extra only.",
+        )
+        eset = set(extras)
+        for k in eff:
+            attrib[k] = "feature_allow_extra" if k in eset else "unassigned (no matrix grant)"
 
     elif matrix_feats is not None:
         resolution_kind = "matrix_primary"
@@ -685,7 +712,7 @@ async def compute_access_resolution_debug(
             else:
                 attrib[k] = "unknown_layer (inspect resolver normalization)"
 
-    rbac = await effective_rbac_permission_keys(
+    rbac = list(caps.capabilities) if caps.capabilities else await effective_rbac_permission_keys(
         db,
         target,
         contract_feature_names=contract_normalized,

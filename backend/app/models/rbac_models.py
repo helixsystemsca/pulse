@@ -85,6 +85,36 @@ class TenantRoleGrant(Base):
     role: Mapped["TenantRole"] = relationship(back_populates="grants")
 
 
+class TenantRoleAssignment(Base):
+    """
+    Authoritative operational assignment: one active row per user per company.
+
+    ``department_slug`` + ``role_key`` select the permission matrix cell.
+    """
+
+    __tablename__ = "tenant_role_assignments"
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    company_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    user_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    department_id: Mapped[Optional[str]] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("tenant_departments.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    department_slug: Mapped[str] = mapped_column(String(64), nullable=False)
+    role_key: Mapped[str] = mapped_column(String(32), nullable=False)
+    assigned_by: Mapped[Optional[str]] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    assigned_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False
+    )
+    active: Mapped[bool] = mapped_column(default=True, nullable=False)
+
+
 class RbacAuditEvent(Base):
     """Append-only RBAC / entitlement changes (enterprise audit trail)."""
 

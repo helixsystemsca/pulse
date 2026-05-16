@@ -59,9 +59,11 @@ async def test_explicit_coordination_slot_grants_matrix_features() -> None:
         hr=hr,
     )
     assert snap.matrix_slot == "coordination"
+    assert snap.assignment_status == "assigned"
     assert snap.audit is not None
-    assert snap.audit.matrix_slot_source == "explicit_matrix_slot"
-    assert snap.audit.matrix_slot_inferred is False
+    assert snap.audit.assignment_status == "assigned"
+    assert snap.audit.assigned_department_slug == "communications"
+    assert snap.audit.assigned_role_key == "coordination"
     assert "comms_publication_builder" in snap.features
     assert "inventory" not in snap.features
 
@@ -92,7 +94,7 @@ async def test_department_baseline_when_slot_unset() -> None:
         hr=hr,
     )
     assert snap.matrix_slot == "coordination"
+    assert snap.assignment_status == "assigned"
     assert snap.audit is not None
-    assert snap.audit.matrix_slot_source == "department_baseline"
-    assert snap.audit.matrix_slot_inferred is True
+    assert snap.audit.assigned_role_key == "coordination"
     assert snap.features == ["comms_publication_builder"]
