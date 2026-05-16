@@ -16,8 +16,10 @@ from app.models.domain import User, UserRole
 from app.models.pulse_models import PulseWorkerHR
 from app.models.rbac_models import TenantRole
 from app.core.user_roles import user_has_any_role
+from app.core.access_snapshot import resolve_access_snapshot
 from app.core.rbac_resolution_audit import debug_resolved_access
 from app.schemas.access_debug import AccessResolutionDebugOut
+from app.schemas.access_snapshot import AccessSnapshotOut
 from app.schemas.rbac_resolution_audit import ResolvedAccessAuditOut
 
 router = APIRouter(prefix="/debug", tags=["access-debug"])
@@ -139,3 +141,26 @@ async def get_resolved_access_audit(
         department_slug=department,
     )
     return ResolvedAccessAuditOut.model_validate(payload)
+
+
+@router.get("/access-snapshot/{user_id}", response_model=AccessSnapshotOut)
+async def get_access_snapshot_debug(
+    user_id: str,
+    actor: Annotated[User, Depends(require_company_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> AccessSnapshotOut:
+    """Canonical access snapshot for ``user_id`` (same payload as ``/auth/me`` ``access_snapshot``)."""
+    q = await db.execute(select(User).where(User.id == user_id))
+    target = q.scalar_one_or_none()
+    if not target:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+    is_platform = bool(actor.is_system_admin or user_has_any_role(actor, UserRole.system_admin))
+    if not is_platform:
+        if actor.company_id is None or target.company_id is None:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No company scope")
+        if str(actor.company_id) != str(target.company_id):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User not in your company")
+
+    snap = await resolve_access_snapshot(db, target)
+    return AccessSnapshotOut.model_validate(snap.as_dict())

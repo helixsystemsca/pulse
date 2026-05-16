@@ -28,7 +28,6 @@ from app.core.login_activity import log_login_event
 from app.core.microsoft_oauth import MicrosoftOAuthError, MicrosoftIdentity, verify_supabase_microsoft_access_token
 from app.core.permissions.service import PermissionService
 from app.core.rbac.resolve import effective_rbac_permission_keys
-from app.core.tenant_feature_access import contract_and_effective_features_for_me
 from app.core.workspace_departments import primary_hr_department_slug_for_auth
 from app.core.system_audit import record_system_log
 from app.core.system_tokens import hash_system_token
@@ -323,13 +322,15 @@ async def me(
     except Exception:
         pass
 
-    contract_feats, eff_feats, roster_access, contract_admin_catalog = await contract_and_effective_features_for_me(db, user)
-    rbac_keys = await effective_rbac_permission_keys(
-        db,
-        user,
-        contract_feature_names=contract_feats,
-        effective_feature_names=eff_feats,
-    )
+    from app.core.access_snapshot import resolve_access_snapshot
+    from app.schemas.access_snapshot import AccessSnapshotOut
+
+    access_snap = await resolve_access_snapshot(db, user)
+    contract_feats = access_snap.contract_features
+    eff_feats = access_snap.features
+    rbac_keys = access_snap.capabilities
+    roster_access = access_snap.workers_roster_access
+    contract_admin_catalog = list(contract_feats) if access_snap.is_company_admin else []
 
     company_summary: CompanySummaryOut | None = None
     if user.company_id:
@@ -412,6 +413,7 @@ async def me(
         tenant_role_id=tenant_role_out,
         server_time=datetime.now(timezone.utc).isoformat(),
         must_change_password=must_change_password,
+        access_snapshot=AccessSnapshotOut.model_validate(access_snap.as_dict()),
     )
 
 

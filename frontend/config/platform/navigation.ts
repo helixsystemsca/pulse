@@ -3,35 +3,12 @@
  */
 import { getDepartmentBySlug, PLATFORM_DEPARTMENTS } from "@/config/platform/departments";
 import type { Department, PlatformNavItem } from "@/config/platform/types";
+import { MASTER_FEATURES } from "@/config/platform/master-feature-registry";
 import type { PulseAuthSession } from "@/lib/pulse-session";
-import { tenantSidebarNavItemsForSession } from "@/lib/rbac/tenant-nav";
+import { getDepartmentAccessibleFeatures, readAccessSnapshot } from "@/lib/access-snapshot";
 import type { PlatformIconKey } from "@/config/platform/types";
 
 const STORAGE_LAST_DEPT = "pulse_platform_department_slug_v1";
-
-const PLATFORM_ICON_KEYS: readonly PlatformIconKey[] = [
-  "wrench",
-  "megaphone",
-  "waves",
-  "dumbbell",
-  "building",
-  "clipboard",
-  "scroll-text",
-  "package",
-  "book-open",
-  "bar-chart-2",
-  "message-square",
-  "newspaper",
-  "image",
-  "calendar",
-  "layout",
-  "file-text",
-  "layout-grid",
-];
-
-function isPlatformIcon(icon: string): icon is PlatformIconKey {
-  return PLATFORM_ICON_KEYS.includes(icon as PlatformIconKey);
-}
 
 export function readStoredDepartmentSlug(): string | null {
   if (typeof window === "undefined") return null;
@@ -60,18 +37,21 @@ export function getDefaultModuleRouteForDepartment(departmentSlug: string, sessi
   return parts[1] ?? null;
 }
 
-/** Same entries as the unified tenant sidebar (no duplicate department rail). */
+/** Department workspace modules from canonical snapshot (membership + department features). */
 export function buildDepartmentNavItems(departmentSlug: string, session: PulseAuthSession | null): PlatformNavItem[] {
   const dept = getDepartmentBySlug(departmentSlug);
-  if (!dept) return [];
-  return tenantSidebarNavItemsForSession(session)
-    .filter((row) => isPlatformIcon(row.icon))
-    .map((row) => ({
-      href: row.href,
-      label: row.label,
-      icon: row.icon as PlatformIconKey,
-      group: "modules",
-    }));
+  if (!dept || !session) return [];
+  const snap = readAccessSnapshot(session);
+  const allowed = new Set(getDepartmentAccessibleFeatures(departmentSlug, snap));
+  const sorted = [...MASTER_FEATURES]
+    .filter((f) => f.navVisible && f.platformDepartmentSlug === departmentSlug && allowed.has(f.feature))
+    .sort((a, b) => a.sortOrder - b.sortOrder);
+  return sorted.map((f) => ({
+    href: f.route,
+    label: f.label,
+    icon: f.icon as PlatformIconKey,
+    group: "modules" as const,
+  }));
 }
 
 export function getFirstNavHrefForDepartment(departmentSlug: string, session: PulseAuthSession | null): string | null {

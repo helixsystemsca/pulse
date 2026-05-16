@@ -10,6 +10,7 @@ import {
 } from "@/lib/impersonation-overlay-token";
 import { navigateToPulseLogin } from "@/lib/pulse-app";
 import { applyServerTimeFromUserOut } from "@/lib/serverTime";
+import type { AccessSnapshot } from "@/lib/access-snapshot";
 
 export const PULSE_AUTH_STORAGE_KEY = "pulse_auth_v2";
 
@@ -61,6 +62,8 @@ export type PulseAuthSession = {
   contract_features?: string[];
   /** From `/auth/me`; flat RBAC permission keys. */
   rbac_permissions?: string[];
+  /** Canonical access envelope from `/auth/me` (matrix → features → capabilities). */
+  access_snapshot?: AccessSnapshot | null;
   /** From `/auth/me`; coarse legacy permission strings (`module.*`). */
   permissions?: string[] | null;
   /** Deprecated: always empty from API. Hub access uses `rbac_permissions` + `contract_features` only. */
@@ -108,6 +111,7 @@ export type UserOut = {
   enabled_features?: string[];
   contract_features?: string[];
   rbac_permissions?: string[];
+  access_snapshot?: AccessSnapshot | null;
   permissions?: string[] | null;
   /** Deprecated: always empty from API. Hub access uses `rbac_permissions` + `contract_features` only. */
   department_workspace_slugs?: string[];
@@ -281,6 +285,7 @@ export function writeApiSession(
     enabled_features: user.enabled_features,
     contract_features: user.contract_features ?? undefined,
     rbac_permissions: user.rbac_permissions ?? undefined,
+    access_snapshot: user.access_snapshot ?? undefined,
     permissions: user.permissions ?? undefined,
     department_workspace_slugs: user.department_workspace_slugs ?? undefined,
     hr_department: user.hr_department ?? undefined,

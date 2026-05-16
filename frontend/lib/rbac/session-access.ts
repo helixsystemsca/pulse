@@ -11,6 +11,12 @@ import {
 } from "@/config/platform/legacy-platform-routes";
 import { getMasterFeatureForPath, MASTER_FEATURES } from "@/config/platform/master-feature-registry";
 import { isTenantFeatureOnContract, isUserFeatureEnabled } from "@/lib/features/tenant-features";
+import {
+  departmentWorkspaceAllowed,
+  getDepartmentAccessibleFeatures,
+  readAccessSnapshot,
+  snapshotHasCapability,
+} from "@/lib/access-snapshot";
 import { tenantSidebarNavItemsForSession } from "@/lib/rbac/tenant-nav";
 import { sessionHasAnyRole } from "@/lib/pulse-roles";
 
@@ -55,8 +61,10 @@ export function tenantHasEveryCompanyModule(session: PulseAuthSession | null, mo
   return modules.length > 0 && modules.every((m) => s.has(m));
 }
 
-/** Flat RBAC keys from `/auth/me` (`*` = unrestricted within tenant). */
+/** Flat RBAC keys from canonical snapshot (`*` = unrestricted within tenant). */
 export function hasRbacPermission(session: PulseAuthSession | null, permissionKey: string): boolean {
+  const snap = readAccessSnapshot(session);
+  if (snap) return snapshotHasCapability(snap, permissionKey);
   const rbac = session?.rbac_permissions;
   if (!rbac?.length) return false;
   return rbac.includes("*") || rbac.includes(permissionKey);
@@ -77,19 +85,7 @@ export function isTenantFullAdminSession(session: PulseAuthSession | null): bool
 }
 
 function platformDeptIndexAllowed(session: PulseAuthSession | null, departmentSlug: string): boolean {
-  for (const f of MASTER_FEATURES) {
-    if (f.platformDepartmentSlug !== departmentSlug) continue;
-    if (!isUserFeatureEnabled(session, f.feature)) continue;
-    if (f.rbacAnyOf.length && !f.rbacAnyOf.some((k) => hasRbacPermission(session, k))) continue;
-    return true;
-  }
-  for (const legacy of LEGACY_PLATFORM_ROUTE_ALIASES) {
-    if (legacy.departmentSlug !== departmentSlug) continue;
-    if (!isUserFeatureEnabled(session, legacy.feature)) continue;
-    if (!legacy.rbacAnyOf.some((k) => hasRbacPermission(session, k))) continue;
-    return true;
-  }
-  return false;
+  return departmentWorkspaceAllowed(session, departmentSlug);
 }
 
 function classicNavGate(href: string): NavGate {

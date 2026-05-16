@@ -9,6 +9,7 @@ import {
   toCanonicalFeatureKey,
   type CanonicalFeatureKey,
 } from "@/lib/features/canonical-features";
+import { readAccessSnapshot, snapshotHasFeature } from "@/lib/access-snapshot";
 import type { PulseAuthSession } from "@/lib/pulse-session";
 
 /** Tenant contract module keys (legacy catalog names). */
@@ -50,9 +51,11 @@ export function userEnabledFeatureSet(session: PulseAuthSession | null): Set<Can
   return new Set(userEnabledCanonicalFeatures(session));
 }
 
-/** Sidebar / route visibility: effective features ∩ contract. */
+/** Sidebar / route visibility: canonical snapshot features (already ∩ contract). */
 export function isUserFeatureEnabled(session: PulseAuthSession | null, featureKey: string): boolean {
   if (!session) return false;
+  const snap = readAccessSnapshot(session);
+  if (snap) return snapshotHasFeature(snap, featureKey);
   const canonical = toCanonicalFeatureKey(featureKey) ?? (featureKey as CanonicalFeatureKey);
   if (!isTenantFeatureOnContract(session, featureKey)) return false;
   const enabled = userEnabledFeatureSet(session);

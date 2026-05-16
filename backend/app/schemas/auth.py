@@ -2,6 +2,8 @@ from typing import Optional
 
 from pydantic import BaseModel, EmailStr, Field
 
+from app.schemas.access_snapshot import AccessSnapshotOut
+
 
 class Token(BaseModel):
     access_token: str
@@ -83,6 +85,8 @@ class UserOut(BaseModel):
     server_time: str
     #: True when the account is using the default temporary password and must set a new one.
     must_change_password: bool = False
+    #: Canonical access envelope (matrix → features → capabilities). Prefer this over re-deriving on the client.
+    access_snapshot: Optional[AccessSnapshotOut] = None
 
     model_config = {"from_attributes": True}
 

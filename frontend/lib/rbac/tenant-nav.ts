@@ -7,10 +7,13 @@ import {
   type MasterFeatureDef,
   type MasterFeatureIcon,
 } from "@/config/platform/master-feature-registry";
+import { readAccessSnapshot, snapshotHasCapability, snapshotHasFeature } from "@/lib/access-snapshot";
 import { isTenantFeatureOnContract, isUserFeatureEnabled } from "@/lib/features/tenant-features";
 import type { PulseAuthSession } from "@/lib/pulse-session";
 
 function hasRbacPermission(session: PulseAuthSession | null, permissionKey: string): boolean {
+  const snap = readAccessSnapshot(session);
+  if (snap) return snapshotHasCapability(snap, permissionKey);
   const rbac = session?.rbac_permissions;
   if (!rbac?.length) return false;
   return rbac.includes("*") || rbac.includes(permissionKey);
@@ -101,10 +104,14 @@ export function explainMasterFeatureVisibility(
   if (isTenantFullAdminSession(session)) {
     return { visible: true };
   }
-  if (!isUserFeatureEnabled(session, feature.feature)) {
+  const snap = readAccessSnapshot(session);
+  const featureOk = snap ? snapshotHasFeature(snap, feature.feature) : isUserFeatureEnabled(session, feature.feature);
+  if (!featureOk) {
     return {
       visible: false,
-      reason: `effective enabled_features does not include ${feature.feature} (canonical/legacy normalization may apply).`,
+      reason: snap
+        ? `access_snapshot.features does not include ${feature.feature}.`
+        : `effective enabled_features does not include ${feature.feature} (canonical/legacy normalization may apply).`,
     };
   }
   if (!feature.rbacAnyOf.length) return { visible: true };
@@ -131,7 +138,9 @@ export function isMasterFeatureVisibleForSession(
   if (session.is_system_admin || session.role === "system_admin") return true;
   if (!isTenantFeatureOnContract(session, feature.feature)) return false;
   if (isTenantFullAdminSession(session)) return true;
-  if (!isUserFeatureEnabled(session, feature.feature)) return false;
+  const snap = readAccessSnapshot(session);
+  const featureOk = snap ? snapshotHasFeature(snap, feature.feature) : isUserFeatureEnabled(session, feature.feature);
+  if (!featureOk) return false;
   if (!feature.rbacAnyOf.length) return true;
   return feature.rbacAnyOf.some((k) => hasRbacPermission(session, k));
 }

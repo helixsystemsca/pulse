@@ -374,6 +374,13 @@ export function AccessDebugModal({ open, onClose, loading, error, debug, resolve
                 </section>
               ) : null}
 
+              {debug.resolved_slot_source && debug.resolved_slot_source !== "explicit_matrix_slot" ? (
+                <section className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-50">
+                  Matrix slot is inferred ({formatSlotSource(debug.resolved_slot_source)}). Set an explicit{" "}
+                  <span className="font-mono">matrix_slot</span> on the worker HR profile for stable access.
+                </section>
+              ) : null}
+
               {resolvedAudit ? (
                 <section>
                   <h3 className="text-[11px] font-bold uppercase tracking-wider text-ds-accent">

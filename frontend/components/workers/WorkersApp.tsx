@@ -3063,6 +3063,13 @@ export function WorkersApp() {
                       Controls which Team Management permission matrix row determines operational module access. This is
                       not the same as Pulse role (JWT) — it only selects the department × slot matrix row.
                     </p>
+                    {!positionDraft.matrix_slot.trim() ? (
+                      <p className="mt-1 text-xs text-amber-200/90">
+                        Auto slot infers from roles or job title and often falls back to{" "}
+                        <span className="font-mono">team_member</span>. Set an explicit slot (e.g.{" "}
+                        <span className="font-mono">coordination</span>) for communications coordinators.
+                      </p>
+                    ) : null}
                   </div>
                   <div className="sm:col-span-2">
                     <label className={LABEL} htmlFor="worker-profile-department">
