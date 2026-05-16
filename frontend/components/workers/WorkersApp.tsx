@@ -655,8 +655,8 @@ export function WorkersApp() {
     setAccessResolvedAudit(null);
     try {
       const dept =
-        profile?.hr?.department_slugs?.[0] ??
-        profile?.hr?.department ??
+        profile?.department_slugs?.[0] ??
+        profile?.department ??
         "communications";
       const [d, resolved] = await Promise.all([
         fetchAccessResolutionDebug(profileId),
@@ -669,7 +669,7 @@ export function WorkersApp() {
     } finally {
       setAccessDebugLoading(false);
     }
-  }, [profileId, profile?.hr?.department, profile?.hr?.department_slugs]);
+  }, [profileId, profile?.department, profile?.department_slugs]);
 
   const loadProfile = useCallback(async () => {
     if (!profileId || !effectiveCompanyId) return;
