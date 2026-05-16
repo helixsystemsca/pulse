@@ -62,3 +62,6 @@ export type AccessResolutionDebugPayload = {
 export async function fetchAccessResolutionDebug(userId: string): Promise<AccessResolutionDebugPayload> {
   return apiFetch<AccessResolutionDebugPayload>(`/api/v1/debug/access/${encodeURIComponent(userId)}`);
 }
+
+export type { ResolvedAccessAudit, FeatureResolutionLogEntry } from "@/lib/rbac/debugResolvedAccess";
+export { debugResolvedAccess, auditSessionAccessLocally, logSidebarResolution } from "@/lib/rbac/debugResolvedAccess";

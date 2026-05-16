@@ -43,6 +43,7 @@ import type { PlatformIconKey } from "@/config/platform/types";
 import { pulseSystemSidebarNav, type PulseSidebarIcon } from "@/lib/pulse-app";
 import { isPulseNavActive } from "@/lib/pulse-nav-active";
 import { canAccessClassicNavHref } from "@/lib/rbac/session-access";
+import { logSidebarResolution } from "@/lib/rbac/debugResolvedAccess";
 import { tenantSidebarNavItemsForSession } from "@/lib/rbac/tenant-nav";
 import type { TenantNavIcon } from "@/config/platform/tenant-nav-registry";
 import { cn } from "@/lib/cn";
@@ -115,6 +116,10 @@ export function AppSideNav() {
       ae.blur();
     }
   }, [pathname]);
+
+  useEffect(() => {
+    logSidebarResolution(session);
+  }, [session]);
 
   const isSystemAdmin = Boolean(session?.is_system_admin || session?.role === "system_admin");
   let items: SidebarNavItem[] = isSystemAdmin

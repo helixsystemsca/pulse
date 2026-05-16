@@ -7,7 +7,11 @@ import {
   NAV_VISIBLE_MASTER_FEATURES,
 } from "@/config/platform/master-feature-registry";
 import { MODULE_LABEL } from "@/config/platform/tenant-product-modules";
-import type { AccessResolutionDebugPayload, MissingFeatureExplanation } from "@/lib/accessDebugService";
+import type {
+  AccessResolutionDebugPayload,
+  MissingFeatureExplanation,
+  ResolvedAccessAudit,
+} from "@/lib/accessDebugService";
 import { diagnoseAccessNav, formatMissingReason } from "@/lib/accessDebugNavDiagnosis";
 import type { PulseAuthSession } from "@/lib/pulse-session";
 import { toCanonicalFeatureKey } from "@/lib/features/canonical-features";
@@ -106,11 +110,12 @@ type Props = {
   loading: boolean;
   error: string | null;
   debug: AccessResolutionDebugPayload | null;
+  resolvedAudit?: ResolvedAccessAudit | null;
   /** Signed-in admin (or system) session — not the target user's JWT. */
   viewerSession: PulseAuthSession | null;
 };
 
-export function AccessDebugModal({ open, onClose, loading, error, debug, viewerSession }: Props) {
+export function AccessDebugModal({ open, onClose, loading, error, debug, resolvedAudit, viewerSession }: Props) {
   const targetNavSession = debug ? buildTargetPulseSession(debug, viewerSession) : null;
 
   const navDiag = useMemo(() => {
@@ -366,6 +371,52 @@ export function AccessDebugModal({ open, onClose, loading, error, debug, viewerS
                   <pre className="mt-2 rounded-lg bg-ds-secondary p-3 text-[11px]">
                     {JSON.stringify(debug.missing_rbac_permission_keys)}
                   </pre>
+                </section>
+              ) : null}
+
+              {resolvedAudit ? (
+                <section>
+                  <h3 className="text-[11px] font-bold uppercase tracking-wider text-ds-accent">
+                    Cross-layer resolution audit
+                  </h3>
+                  <p className="mt-1 text-xs text-pulse-muted">
+                    Server simulation of sidebar, route, API, and render gates per feature. Department hub:{" "}
+                    <span className="font-mono">
+                      {String(resolvedAudit.workspace_context?.department_hub_allowed ?? "—")}
+                    </span>
+                    .
+                  </p>
+                  <div className="mt-2 max-h-64 overflow-auto rounded-lg border border-ds-border">
+                    <table className="w-full text-left text-[10px]">
+                      <thead className="sticky top-0 bg-ds-secondary text-pulse-muted">
+                        <tr>
+                          <th className="px-2 py-1">Feature</th>
+                          <th className="px-2 py-1">Nav</th>
+                          <th className="px-2 py-1">Route</th>
+                          <th className="px-2 py-1">Render</th>
+                          <th className="px-2 py-1">Failure</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {resolvedAudit.feature_resolution_log
+                          .filter((e) => e.registry_key?.startsWith("comms_") || e.registry_key === "xplor_indesign")
+                          .map((e) => (
+                            <tr key={e.feature_key} className="border-t border-ds-border/50">
+                              <td className="px-2 py-1 font-mono">{e.registry_key ?? e.feature_key}</td>
+                              <td className="px-2 py-1">{e.sidebar_visible ? "✓" : "—"}</td>
+                              <td className="px-2 py-1">{e.route_allowed ? "✓" : "—"}</td>
+                              <td className="px-2 py-1">{e.render_allowed ? "✓" : "—"}</td>
+                              <td className="px-2 py-1 text-pulse-muted">{e.failure_reason ?? "—"}</td>
+                            </tr>
+                          ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  {resolvedAudit.workspace_context?.publication_builder ? (
+                    <pre className="mt-2 max-h-28 overflow-auto rounded-lg bg-ds-secondary p-2 text-[10px]">
+                      {JSON.stringify(resolvedAudit.workspace_context.publication_builder, null, 2)}
+                    </pre>
+                  ) : null}
                 </section>
               ) : null}
 

@@ -28,7 +28,12 @@ import {
 } from "@/components/ui/ds-form-classes";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { apiFetch, refreshPulseUserFromServer } from "@/lib/api";
-import { fetchAccessResolutionDebug, type AccessResolutionDebugPayload } from "@/lib/accessDebugService";
+import {
+  debugResolvedAccess,
+  fetchAccessResolutionDebug,
+  type AccessResolutionDebugPayload,
+  type ResolvedAccessAudit,
+} from "@/lib/accessDebugService";
 import { parseClientApiError } from "@/lib/parse-client-api-error";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
 import {
@@ -526,6 +531,7 @@ export function WorkersApp() {
   const [accessDebugLoading, setAccessDebugLoading] = useState(false);
   const [accessDebugError, setAccessDebugError] = useState<string | null>(null);
   const [accessDebugPayload, setAccessDebugPayload] = useState<AccessResolutionDebugPayload | null>(null);
+  const [accessResolvedAudit, setAccessResolvedAudit] = useState<ResolvedAccessAudit | null>(null);
 
   const [createForm, setCreateForm] = useState<CreateFormState>({ ...CREATE_FORM_EMPTY });
 
@@ -646,15 +652,24 @@ export function WorkersApp() {
     setAccessDebugLoading(true);
     setAccessDebugError(null);
     setAccessDebugPayload(null);
+    setAccessResolvedAudit(null);
     try {
-      const d = await fetchAccessResolutionDebug(profileId);
+      const dept =
+        profile?.hr?.department_slugs?.[0] ??
+        profile?.hr?.department ??
+        "communications";
+      const [d, resolved] = await Promise.all([
+        fetchAccessResolutionDebug(profileId),
+        debugResolvedAccess(profileId, typeof dept === "string" ? dept : "communications"),
+      ]);
       setAccessDebugPayload(d);
+      setAccessResolvedAudit(resolved);
     } catch (e: unknown) {
       setAccessDebugError(parseClientApiError(e).message);
     } finally {
       setAccessDebugLoading(false);
     }
-  }, [profileId]);
+  }, [profileId, profile?.hr?.department, profile?.hr?.department_slugs]);
 
   const loadProfile = useCallback(async () => {
     if (!profileId || !effectiveCompanyId) return;
@@ -3649,10 +3664,12 @@ export function WorkersApp() {
         loading={accessDebugLoading}
         error={accessDebugError}
         debug={accessDebugPayload}
+        resolvedAudit={accessResolvedAudit}
         viewerSession={session}
         onClose={() => {
           setAccessDebugOpen(false);
           setAccessDebugPayload(null);
+          setAccessResolvedAudit(null);
           setAccessDebugError(null);
         }}
       />

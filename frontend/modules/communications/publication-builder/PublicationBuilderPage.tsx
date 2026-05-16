@@ -12,7 +12,9 @@
  * - GET  /api/communications/publications/:id/versions — immutable artifacts + semver
  */
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { usePulseAuth } from "@/hooks/usePulseAuth";
+import { logPublicationBuilderAccess } from "@/lib/rbac/debugResolvedAccess";
 import { FileDown, UploadCloud } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Card } from "@/components/ui/Card";
@@ -93,6 +95,11 @@ const MOCK_PREVIEW = (
 const ACCEPT = ".rtf,.txt,.docx,.csv,text/plain,application/rtf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/csv";
 
 export function PublicationBuilderPage() {
+  const { session } = usePulseAuth();
+  useEffect(() => {
+    logPublicationBuilderAccess(session);
+  }, [session]);
+
   const [stage, setStage] = useState<PublicationWorkflowStageId>("upload");
   const [files, setFiles] = useState<PublicationUploadFile[]>([]);
   const [rules, setRules] = useState<PublicationTransformRule[]>(INITIAL_RULES);
