@@ -9,7 +9,6 @@ import type { PulseAuthSession } from "@/lib/pulse-session";
 import { canAccessClassicNavHref, hasRbacPermission } from "@/lib/rbac/session-access";
 import { explainMasterFeatureVisibility, tenantSidebarNavItemsForSession } from "@/lib/rbac/tenant-nav";
 import { resolveCapabilitiesFromSession, sessionHasCapability } from "@/config/platform/permissions";
-import { userMayAccessDepartmentWorkspace } from "@/lib/workspace-access";
 
 export type FeatureResolutionLogEntry = {
   feature_key: string;
@@ -101,7 +100,7 @@ export function auditSessionAccessLocally(
   const legacy = resolveCapabilitiesFromSession(session);
 
   return {
-    department_hub_allowed: userMayAccessDepartmentWorkspace(session, departmentSlug),
+    department_hub_allowed: false,
     sidebar_rows,
     publication_builder: {
       route: pubRoute,
@@ -140,7 +139,7 @@ export function logPublicationBuilderAccess(session: PulseAuthSession | null): v
   const gate = {
     component_mounted: true,
     route_guard_passed: canAccessClassicNavHref(session, route),
-    workspace_hub_allowed: userMayAccessDepartmentWorkspace(session, "communications"),
+    workspace_hub_allowed: false,
     enabled_features: session?.enabled_features ?? [],
     rbac_permissions: session?.rbac_permissions ?? [],
     contract_features: session?.contract_features ?? [],

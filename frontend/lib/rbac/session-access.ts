@@ -11,12 +11,7 @@ import {
 } from "@/config/platform/legacy-platform-routes";
 import { getMasterFeatureForPath, MASTER_FEATURES } from "@/config/platform/master-feature-registry";
 import { isTenantFeatureOnContract, isUserFeatureEnabled } from "@/lib/features/tenant-features";
-import {
-  departmentWorkspaceAllowed,
-  getDepartmentAccessibleFeatures,
-  readAccessSnapshot,
-  snapshotHasCapability,
-} from "@/lib/access-snapshot";
+import { readAccessSnapshot, snapshotHasCapability } from "@/lib/access-snapshot";
 import { tenantSidebarNavItemsForSession } from "@/lib/rbac/tenant-nav";
 import { sessionHasAnyRole } from "@/lib/pulse-roles";
 
@@ -26,7 +21,6 @@ type NavGate =
   | { kind: "authenticated_shell" }
   /** Session JWT roles only — use sparingly; must match server-side page guards. */
   | { kind: "session_roles_any"; roles: readonly string[] }
-  | { kind: "platform_dept_index"; departmentSlug: string }
   | {
       kind: "module";
       companyModules: readonly string[];
@@ -84,17 +78,13 @@ export function isTenantFullAdminSession(session: PulseAuthSession | null): bool
   );
 }
 
-function platformDeptIndexAllowed(session: PulseAuthSession | null, departmentSlug: string): boolean {
-  return departmentWorkspaceAllowed(session, departmentSlug);
-}
-
 function classicNavGate(href: string): NavGate {
   const h = normalizeHref(href);
   for (const slug of PLATFORM_DEPARTMENT_SLUGS) {
     if (h !== `/${slug}` && !h.startsWith(`/${slug}/`)) continue;
-    if (h === `/${slug}`) return { kind: "platform_dept_index", departmentSlug: slug };
+    if (h === `/${slug}`) return { kind: "deny" };
     const routeSeg = h.slice(slug.length + 2).split("/").filter(Boolean)[0] ?? "";
-    if (!routeSeg) return { kind: "platform_dept_index", departmentSlug: slug };
+    if (!routeSeg) return { kind: "deny" };
     const legacy = getLegacyPlatformRouteAlias(slug, routeSeg);
     const master = MASTER_FEATURES.find(
       (f) => f.platformDepartmentSlug === slug && f.platformRoute === routeSeg,
@@ -177,8 +167,6 @@ export function canAccessClassicNavHref(session: PulseAuthSession | null, href: 
   if (gate.kind === "deny") return false;
   if (gate.kind === "authenticated_shell") return true;
   if (gate.kind === "session_roles_any") return sessionHasAnyRole(session, ...gate.roles);
-  if (gate.kind === "platform_dept_index") return platformDeptIndexAllowed(session, gate.departmentSlug);
-
   const master = getMasterFeatureForPath(h);
   if (master && !isUserFeatureEnabled(session, master.feature)) return false;
 

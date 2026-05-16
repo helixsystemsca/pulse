@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import {
-  departmentWorkspaceAllowed,
   getDepartmentAccessibleFeatures,
   readAccessSnapshot,
   snapshotIsUnassigned,
@@ -8,7 +7,7 @@ import {
 import type { PulseAuthSession } from "@/lib/pulse-session";
 
 describe("access-snapshot", () => {
-  it("department workspace requires membership and comms features", () => {
+  it("comms module route allowed when snapshot grants feature", () => {
     const snap = {
       department: "communications",
       matrix_slot: "coordination",
@@ -17,12 +16,10 @@ describe("access-snapshot", () => {
       departments: ["communications"],
       is_company_admin: false,
     };
-    const feats = getDepartmentAccessibleFeatures("communications", snap);
-    expect(feats).toContain("comms_publication_builder");
-    expect(departmentWorkspaceAllowed({ access_snapshot: snap } as PulseAuthSession, "communications")).toBe(true);
+    expect(getDepartmentAccessibleFeatures("communications", snap)).toContain("comms_publication_builder");
   });
 
-  it("denies communications hub without HR department membership", () => {
+  it("denies communications modules without HR department membership", () => {
     const snap = {
       department: "maintenance",
       matrix_slot: "team_member",

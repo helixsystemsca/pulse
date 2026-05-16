@@ -1,5 +1,5 @@
 /**
- * Platform department routes — navigation helpers (unified sidebar; no separate department app list).
+ * Department-scoped module helpers (legacy). Tenant navigation uses {@link tenantSidebarNavItemsForSession} only.
  */
 import { getDepartmentBySlug, PLATFORM_DEPARTMENTS } from "@/config/platform/departments";
 import type { Department, PlatformNavItem } from "@/config/platform/types";
@@ -37,7 +37,7 @@ export function getDefaultModuleRouteForDepartment(departmentSlug: string, sessi
   return parts[1] ?? null;
 }
 
-/** Department workspace modules from canonical snapshot (membership + department features). */
+/** @deprecated Department workspaces removed — use tenant sidebar registry routes. */
 export function buildDepartmentNavItems(departmentSlug: string, session: PulseAuthSession | null): PlatformNavItem[] {
   const dept = getDepartmentBySlug(departmentSlug);
   if (!dept || !session) return [];

@@ -69,7 +69,7 @@ export function AppNavbar({ notificationCount: notificationCountProp = 0, messag
   const messagesCountDisplay = Math.max(messagesCount, feedbackInboxCount + storeNotificationCount);
 
   const logoHref =
-    authed && session ? pulseApp.to(firstAccessibleClassicTenantHref(session)) : pulseRoutes.pulseLanding;
+    authed && session ? pulseApp.to(firstAccessibleClassicTenantHref(session)) : pulseRoutes.login;
   const isDemoViewer = session?.role === "demo_viewer";
   const isSystemAdmin = Boolean(session?.is_system_admin || session?.role === "system_admin");
   const canOpenOrgSettings = session ? isSystemAdmin || canAccessCompanyConfiguration(session) : false;
@@ -239,7 +239,7 @@ export function AppNavbar({ notificationCount: notificationCountProp = 0, messag
           {!authed ? (
             pathname !== "/login" ? (
               <Link
-                href={pulseApp.login()}
+                href={pulseRoutes.login}
                 className="rounded-lg px-3 py-2 text-sm font-semibold text-white/95 hover:bg-ds-chrome-hover active:bg-ds-chrome-active"
               >
                 Login

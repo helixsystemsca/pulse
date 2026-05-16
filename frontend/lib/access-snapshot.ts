@@ -116,9 +116,7 @@ function masterModuleAllowedForDepartment(
   return f.rbacAnyOf.some((k) => capabilityGranted(snapshot, k));
 }
 
-/**
- * Department workspace modules: HR membership + snapshot features/capabilities for that department.
- */
+/** Features for a department prefix (debug / legacy helpers). */
 export function getDepartmentAccessibleFeatures(
   departmentSlug: string,
   snapshot: AccessSnapshot | null,
@@ -147,16 +145,6 @@ export function getDepartmentAccessibleFeatures(
     out.add(leg.feature);
   }
   return [...out];
-}
-
-export function departmentWorkspaceAllowed(
-  session: PulseAuthSession | null,
-  departmentSlug: string,
-): boolean {
-  if (!session || !isPlatformDepartmentSlug(departmentSlug)) return false;
-  if (session.is_system_admin || session.role === "system_admin") return true;
-  const snap = readAccessSnapshot(session);
-  return getDepartmentAccessibleFeatures(departmentSlug, snap).length > 0;
 }
 
 export function matrixSlotInferred(snapshot: AccessSnapshot | null): boolean {
