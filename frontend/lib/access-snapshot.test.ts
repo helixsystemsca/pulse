@@ -3,6 +3,7 @@ import {
   departmentWorkspaceAllowed,
   getDepartmentAccessibleFeatures,
   readAccessSnapshot,
+  snapshotIsUnassigned,
 } from "@/lib/access-snapshot";
 import type { PulseAuthSession } from "@/lib/pulse-session";
 
@@ -41,6 +42,10 @@ describe("access-snapshot", () => {
     } as PulseAuthSession;
     const snap = readAccessSnapshot(session);
     expect(snap?.features).toContain("inventory");
-    expect(snap?.audit?.matrix_slot_inferred).toBe(true);
+    expect(snap?.assignment_status).toBe("unassigned");
+    expect(snap?.matrix_slot).toBe("unassigned");
+    expect(snap?.audit?.assignment_status).toBe("unassigned");
+    expect(snapshotIsUnassigned(snap)).toBe(true);
+    expect(snap?.audit?.resolution_warnings?.some((w) => w.includes("access_snapshot"))).toBe(true);
   });
 });

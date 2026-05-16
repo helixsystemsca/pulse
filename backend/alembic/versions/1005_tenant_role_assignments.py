@@ -2,8 +2,14 @@
 
 from __future__ import annotations
 
+import sys
+from pathlib import Path
+
+import alembic_helpers as ah
 import sqlalchemy as sa
 from alembic import op
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 revision = "1005_tenant_role_assignments"
 down_revision = "1004_matrix_department_baselines"
@@ -12,7 +18,11 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.create_table(
+    conn = op.get_bind()
+
+    ah.safe_create_table(
+        op,
+        conn,
         "tenant_role_assignments",
         sa.Column("id", sa.UUID(as_uuid=False), primary_key=True),
         sa.Column("company_id", sa.UUID(as_uuid=False), sa.ForeignKey("companies.id", ondelete="CASCADE"), nullable=False),
@@ -29,14 +39,15 @@ def upgrade() -> None:
         sa.Column("assigned_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.text("now()")),
         sa.Column("active", sa.Boolean(), nullable=False, server_default=sa.text("true")),
     )
-    op.create_index("ix_tra_company_user", "tenant_role_assignments", ["company_id", "user_id"])
-    op.create_index(
+    ah.safe_create_index(op, conn, "ix_tra_company_user", "tenant_role_assignments", ["company_id", "user_id"])
+    ah.safe_create_index(
+        op,
+        conn,
         "ix_tra_active_user",
         "tenant_role_assignments",
         ["company_id", "user_id", "active"],
     )
 
-    conn = op.get_bind()
     rows = conn.execute(
         sa.text(
             """
@@ -82,6 +93,24 @@ def upgrade() -> None:
         role = str(matrix_slot).strip().lower() if matrix_slot else ""
         if not role:
             role = baselines.get(dept, "team_member")
+        exists = conn.execute(
+            sa.text(
+                """
+                SELECT 1 FROM tenant_role_assignments
+                WHERE company_id = :cid AND user_id = :uid AND active = true
+                LIMIT 1
+                """
+            ),
+            {"cid": company_id, "uid": user_id},
+        ).first()
+        if exists:
+            ah.skip(
+                "backfill_assignment",
+                company_id=str(company_id),
+                user_id=str(user_id),
+                cause="active_assignment_exists",
+            )
+            continue
         conn.execute(
             sa.text(
                 """
@@ -96,6 +125,7 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.drop_index("ix_tra_active_user", table_name="tenant_role_assignments")
-    op.drop_index("ix_tra_company_user", table_name="tenant_role_assignments")
-    op.drop_table("tenant_role_assignments")
+    conn = op.get_bind()
+    ah.safe_drop_index(op, conn, "ix_tra_active_user", "tenant_role_assignments")
+    ah.safe_drop_index(op, conn, "ix_tra_company_user", "tenant_role_assignments")
+    ah.safe_drop_table(op, conn, "tenant_role_assignments")
