@@ -15,12 +15,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.features.canonical_catalog import canonicalize_feature_keys
 from app.core.matrix_slot_policy import (
-    build_inference_attempt_trace,
     detect_likely_elevated_worker,
     log_inferred_elevated_worker,
     matrix_slot_fallback_warning_message,
     recommend_explicit_matrix_slot,
-    resolve_matrix_slot_for_access,
+    require_explicit_elevated_slots,
+    resolve_matrix_slot_detailed,
 )
 from app.core.permission_feature_matrix import (
     MatrixSlotSource,
@@ -181,13 +181,15 @@ async def resolve_access_snapshot(
             tenant_role = q.scalar_one_or_none()
 
     dept = permission_matrix_department_for_user(user, hr)
-    slot, slot_source = resolve_matrix_slot_for_access(user, hr)
+    slot_detail = resolve_matrix_slot_detailed(user, hr)
+    slot = slot_detail.slot
+    slot_source = slot_detail.source
     explicit_hr_slot = normalize_matrix_slot(getattr(hr, "matrix_slot", None) if hr else None)
     hr_slot_str = explicit_hr_slot
 
     elevated, elev_reasons = detect_likely_elevated_worker(user, hr)
     recommended = recommend_explicit_matrix_slot(user, hr, elevated_reasons=elev_reasons)
-    inference_trace = build_inference_attempt_trace(user, hr)
+    inference_trace = list(slot_detail.inference_trace)
 
     warnings = matrix_slot_resolution_warnings(
         user, hr, resolved_slot=slot, resolved_slot_source=slot_source
@@ -210,7 +212,7 @@ async def resolve_access_snapshot(
             slot,
             slot_source,
             hr_slot_str,
-            hr.job_title if hr else None,
+            slot_detail.effective_job_title,
         )
     log_inferred_elevated_worker(
         user=user,
@@ -244,8 +246,6 @@ async def resolve_access_snapshot(
         contract_names=contract,
         effective_features=eff,
     )
-
-    from app.core.matrix_slot_policy import require_explicit_elevated_slots
 
     audit = AccessSnapshotAudit(
         matrix_slot_source=slot_source,

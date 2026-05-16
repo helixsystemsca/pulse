@@ -1,4 +1,4 @@
-"""Matrix slot policy: elevated detection and explicit-slot enforcement flag."""
+"""Matrix slot policy: unified job title source, resolver/trace consistency, enforcement."""
 
 from __future__ import annotations
 
@@ -9,9 +9,8 @@ import pytest
 
 from app.core.matrix_slot_policy import (
     build_inference_attempt_trace,
-    detect_likely_elevated_worker,
-    recommend_explicit_matrix_slot,
-    require_explicit_elevated_slots,
+    resolve_effective_job_title,
+    resolve_matrix_slot_detailed,
     resolve_matrix_slot_for_access,
 )
 from app.models.domain import User, UserRole
@@ -32,36 +31,75 @@ def _user(**kwargs) -> User:
     )
 
 
-def test_detect_coordinator_by_job_title() -> None:
+def _hr(**kwargs) -> SimpleNamespace:
+    return SimpleNamespace(
+        department=kwargs.get("department", "communications"),
+        department_slugs=kwargs.get("department_slugs", ["communications"]),
+        job_title=kwargs.get("job_title"),
+        matrix_slot=kwargs.get("matrix_slot"),
+    )
+
+
+def test_resolve_effective_job_title_prefers_hr() -> None:
+    user = _user(job_title="User Title")
+    hr = _hr(job_title="HR Title")
+    assert resolve_effective_job_title(user, hr) == "HR Title"
+
+
+def test_resolve_effective_job_title_falls_back_to_user() -> None:
     user = _user(job_title="Communications Coordinator")
-    hr = SimpleNamespace(department="communications", department_slugs=["communications"], job_title="Communications Coordinator", matrix_slot=None)
-    elevated, reasons = detect_likely_elevated_worker(user, hr)
-    assert elevated is True
-    assert "job_title_elevated_keyword" in reasons
+    hr = _hr(job_title=None)
+    assert resolve_effective_job_title(user, hr) == "Communications Coordinator"
 
 
-def test_recommend_coordination_for_coordinator_title() -> None:
-    user = _user(job_title="Coordinator")
-    hr = SimpleNamespace(department="communications", department_slugs=["communications"], job_title="Coordinator", matrix_slot=None)
-    assert recommend_explicit_matrix_slot(user, hr) == "coordination"
+def test_user_title_only_resolves_coordination() -> None:
+    user = _user(job_title="Communications Coordinator")
+    hr = _hr(job_title=None, matrix_slot=None)
+    slot, source = resolve_matrix_slot_for_access(user, hr)
+    assert slot == "coordination"
+    assert source == "job_title_inference"
 
 
-def test_inference_trace_fallback() -> None:
-    user = _user(job_title="")
-    hr = SimpleNamespace(department="communications", job_title="", matrix_slot=None)
+def test_resolver_and_trace_agree_user_title_only() -> None:
+    user = _user(job_title="Communications Coordinator")
+    hr = _hr(job_title=None, matrix_slot=None)
+    detail = resolve_matrix_slot_detailed(user, hr)
     trace = build_inference_attempt_trace(user, hr)
-    assert any("fallback team_member" in line for line in trace)
+    assert detail.slot == "coordination"
+    assert detail.source == "job_title_inference"
+    assert trace == detail.inference_trace
+    assert any("✓ Job title keyword matched → 'coordination'" in line for line in trace)
+    assert detail.effective_job_title == "Communications Coordinator"
+    assert detail.hr_job_title is None
+    assert detail.user_job_title == "Communications Coordinator"
 
 
-def test_require_explicit_flag_off_by_default(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.delenv("REQUIRE_EXPLICIT_ELEVATED_SLOTS", raising=False)
-    assert require_explicit_elevated_slots() is False
-
-
-def test_require_explicit_blocks_inference_for_elevated(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("REQUIRE_EXPLICIT_ELEVATED_SLOTS", "true")
-    user = _user(job_title="Communications Coordinator")
-    hr = SimpleNamespace(department="communications", job_title="Communications Coordinator", matrix_slot=None)
+def test_empty_titles_fallback() -> None:
+    user = _user(job_title=None)
+    hr = _hr(job_title=None, matrix_slot=None)
     slot, source = resolve_matrix_slot_for_access(user, hr)
     assert slot == "team_member"
     assert source == "fallback_default"
+
+
+def test_enforcement_suppresses_coordination_with_truthful_source(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("REQUIRE_EXPLICIT_ELEVATED_SLOTS", "true")
+    user = _user(job_title="Communications Coordinator")
+    hr = _hr(job_title=None, matrix_slot=None)
+    detail = resolve_matrix_slot_detailed(user, hr)
+    assert detail.slot == "team_member"
+    assert detail.source == "explicit_required_policy"
+    assert detail.policy_suppressed is True
+    assert detail.suppressed_inferred_slot == "coordination"
+    assert any("✓ Job title keyword matched → 'coordination'" in line for line in detail.inference_trace)
+    assert any("REQUIRE_EXPLICIT_ELEVATED_SLOTS" in line for line in detail.inference_trace)
+    assert build_inference_attempt_trace(user, hr) == detail.inference_trace
+
+
+def test_enforcement_off_user_title_coordination(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("REQUIRE_EXPLICIT_ELEVATED_SLOTS", raising=False)
+    user = _user(job_title="Communications Coordinator")
+    hr = _hr(job_title=None, matrix_slot=None)
+    slot, source = resolve_matrix_slot_for_access(user, hr)
+    assert slot == "coordination"
+    assert source == "job_title_inference"

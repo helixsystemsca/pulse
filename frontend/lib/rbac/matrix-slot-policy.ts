@@ -9,7 +9,8 @@ export type MatrixSlotSource =
   | "explicit_matrix_slot"
   | "jwt_role"
   | "job_title_inference"
-  | "fallback_default";
+  | "fallback_default"
+  | "explicit_required_policy";
 
 export type MatrixSlotSourceKind = "explicit" | "inferred" | "fallback";
 
@@ -30,6 +31,7 @@ const SOURCE_KIND: Record<MatrixSlotSource, MatrixSlotSourceKind> = {
   jwt_role: "inferred",
   job_title_inference: "inferred",
   fallback_default: "fallback",
+  explicit_required_policy: "policy",
 };
 
 export function matrixSlotSourceKind(source: string | null | undefined): MatrixSlotSourceKind {
@@ -43,6 +45,7 @@ export function formatSlotSourceLabel(source: string | null | undefined): string
     jwt_role: "Inferred (JWT role)",
     job_title_inference: "Inferred (job title)",
     fallback_default: "Fallback",
+    explicit_required_policy: "Policy enforced",
   };
   return labels[source ?? ""] ?? "Inferred";
 }
@@ -108,6 +111,10 @@ export function shouldShowInferredAccessWarning(
 export function inferredAccessBannerMessage(recommended?: string | null): string {
   const rec = recommended ? ` Recommended slot: ${recommended}.` : "";
   return `This worker is using inferred access rules. Explicit matrix_slot assignment is strongly recommended.${rec}`;
+}
+
+export function isPolicySuppressedSlot(source: string | null | undefined): boolean {
+  return source === "explicit_required_policy";
 }
 
 export function isFallbackTeamMember(

@@ -22,6 +22,7 @@ MatrixSlotSource = Literal[
     "jwt_role",
     "job_title_inference",
     "fallback_default",
+    "explicit_required_policy",
 ]
 
 _FEATURE_CAT = frozenset(GLOBAL_SYSTEM_FEATURES)
@@ -148,6 +149,11 @@ def matrix_slot_resolution_warnings(
     elif resolved_slot_source == "job_title_inference":
         jt = (hr.job_title if hr else None) or ""
         warn.append(f"Job title inference matched {resolved_slot!r} (job_title={jt!r}).")
+    elif resolved_slot_source == "explicit_required_policy":
+        warn.append(
+            "REQUIRE_EXPLICIT_ELEVATED_SLOTS: team_member enforced until explicit HR matrix_slot "
+            "(inference may have succeeded — see matrix_slot_inference_trace)."
+        )
     elif resolved_slot_source == "fallback_default":
         warn.append("Fallback team_member used — no explicit slot, JWT tier, or job title keyword match.")
     return warn

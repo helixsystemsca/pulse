@@ -22,6 +22,8 @@ class AccessResolutionDebugOut(BaseModel):
     jwt_roles: list[str] = Field(default_factory=list)
 
     hr_job_title: str | None = None
+    user_job_title: str | None = None
+    effective_job_title: str | None = None
     hr_department: str | None = None
     hr_department_slugs: list[str] = Field(default_factory=list)
 
@@ -35,6 +37,8 @@ class AccessResolutionDebugOut(BaseModel):
     recommended_matrix_slot: str | None = None
     matrix_slot_inference_trace: list[str] = Field(default_factory=list)
     require_explicit_elevated_slots: bool = False
+    policy_suppressed: bool = False
+    suppressed_inferred_slot: str | None = None
 
     matrix_configured: bool = False
     matrix_row_department: str | None = None

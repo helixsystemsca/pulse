@@ -3,6 +3,7 @@ import {
   detectLikelyElevatedWorker,
   formatMatrixSlotDisplay,
   isFallbackTeamMember,
+  isPolicySuppressedSlot,
   shouldShowInferredAccessWarning,
 } from "@/lib/rbac/matrix-slot-policy";
 
@@ -23,6 +24,11 @@ describe("matrix-slot-policy", () => {
 
   it("flags fallback team_member", () => {
     expect(isFallbackTeamMember("fallback_default", "team_member")).toBe(true);
+  });
+
+  it("flags policy suppression separately from fallback", () => {
+    expect(isPolicySuppressedSlot("explicit_required_policy")).toBe(true);
+    expect(isFallbackTeamMember("explicit_required_policy", "team_member")).toBe(false);
   });
 
   it("warns when dept set, inferred, elevated", () => {

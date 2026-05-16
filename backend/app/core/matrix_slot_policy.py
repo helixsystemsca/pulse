@@ -4,24 +4,25 @@ Matrix slot resolution policy: inference visibility, elevated-worker detection, 
 Resolution order (legacy compatibility — explicit HR assignment is always preferred):
 
 1. ``PulseWorkerHR.matrix_slot`` when set (explicit; never overridden)
-2. JWT manager / supervisor / lead tiers
-3. Job title keywords (coordination, operations, …)
+2. JWT manager / supervisor / lead tiers (on ``user.roles``)
+3. Job title keywords on **effective job title** (HR, then User fallback)
 4. ``team_member`` fallback (baseline frontline default)
 
-Inference is legacy compatibility only. Fallback is baseline worker behavior, not coordinator access.
+Optional: ``REQUIRE_EXPLICIT_ELEVATED_SLOTS`` forces ``team_member`` for likely-elevated workers
+without explicit HR slot (source ``explicit_required_policy``, not inference failure).
 """
 
 from __future__ import annotations
 
 import logging
 import os
+from dataclasses import dataclass, field
 from typing import Any
 
 from app.core.permission_feature_matrix import (
     MatrixSlotSource,
     _infer_slot_from_job_title,
     _infer_slot_from_jwt_roles,
-    infer_matrix_slot_legacy,
     normalize_matrix_slot,
 )
 from app.core.user_roles import user_has_any_role, user_has_facility_tenant_admin_flag, user_has_tenant_full_admin
@@ -44,21 +45,194 @@ _ELEVATED_TITLE_KEYWORDS: frozenset[str] = frozenset(
     }
 )
 
-_SLOT_SOURCE_KIND: dict[MatrixSlotSource, str] = {
+_SLOT_SOURCE_KIND: dict[str, str] = {
     "explicit_matrix_slot": "explicit",
     "jwt_role": "inferred",
     "job_title_inference": "inferred",
     "fallback_default": "fallback",
+    "explicit_required_policy": "policy",
 }
 
 
 def require_explicit_elevated_slots() -> bool:
-    """When true, likely-elevated workers cannot receive inferred/fallback slots (team_member only until explicit)."""
+    """When true, likely-elevated workers cannot receive inferred slots without explicit HR matrix_slot."""
     return os.getenv("REQUIRE_EXPLICIT_ELEVATED_SLOTS", "").lower() in ("1", "true", "yes")
 
 
+def _normalize_job_title(raw: object | None) -> str | None:
+    if raw is None:
+        return None
+    s = " ".join(str(raw).split())
+    return s if s else None
+
+
+def hr_job_title_raw(hr: PulseWorkerHR | None) -> str | None:
+    return _normalize_job_title(getattr(hr, "job_title", None) if hr else None)
+
+
+def user_job_title_raw(user: User) -> str | None:
+    return _normalize_job_title(getattr(user, "job_title", None))
+
+
+def resolve_effective_job_title(user: User, hr: PulseWorkerHR | None) -> str | None:
+    """
+    Canonical job title for matrix slot inference, elevated detection, and debug.
+
+    1. ``PulseWorkerHR.job_title`` when present
+    2. ``User.job_title`` fallback
+    """
+    return hr_job_title_raw(hr) or user_job_title_raw(user)
+
+
+@dataclass
+class MatrixSlotResolution:
+    """Authoritative matrix slot resolution + trace from a single code path."""
+
+    slot: str
+    source: MatrixSlotSource
+    hr_job_title: str | None = None
+    user_job_title: str | None = None
+    effective_job_title: str | None = None
+    inference_trace: list[str] = field(default_factory=list)
+    policy_suppressed: bool = False
+    suppressed_inferred_slot: str | None = None
+    suppressed_inferred_source: MatrixSlotSource | None = None
+
+
+def resolve_matrix_slot_detailed(user: User, hr: PulseWorkerHR | None) -> MatrixSlotResolution:
+    """
+    Single resolver used for authorization and debug traces.
+
+    ``build_inference_attempt_trace`` and ``resolve_matrix_slot_for_access`` both delegate here.
+    """
+    hr_jt = hr_job_title_raw(hr)
+    user_jt = user_job_title_raw(user)
+    effective_jt = resolve_effective_job_title(user, hr)
+    trace: list[str] = [
+        f"HR job title: {hr_jt!r}",
+        f"User job title: {user_jt!r}",
+        f"Effective job title used for authorization: {effective_jt!r}",
+    ]
+
+    explicit = normalize_matrix_slot(getattr(hr, "matrix_slot", None) if hr else None)
+    if explicit:
+        trace.append(f"HR matrix_slot is explicitly set to {explicit!r} — inference chain skipped.")
+        return MatrixSlotResolution(
+            slot=explicit,
+            source="explicit_matrix_slot",
+            hr_job_title=hr_jt,
+            user_job_title=user_jt,
+            effective_job_title=effective_jt,
+            inference_trace=trace,
+        )
+
+    trace.append("HR matrix_slot is empty or auto — running legacy inference chain.")
+    trace.append(f"JWT roles checked: {list(user.roles or [])}")
+
+    policy_on = require_explicit_elevated_slots()
+    elevated, elev_reasons = detect_likely_elevated_worker(user, hr)
+
+    def _maybe_suppress(
+        inferred_slot: str,
+        inferred_source: MatrixSlotSource,
+    ) -> MatrixSlotResolution | None:
+        if not policy_on or not elevated:
+            return None
+        trace.append(
+            f"✗ REQUIRE_EXPLICIT_ELEVATED_SLOTS: would have used {inferred_slot!r} ({inferred_source}) "
+            f"but policy requires explicit HR matrix_slot (elevated_reasons={elev_reasons})."
+        )
+        _log.warning(
+            "REQUIRE_EXPLICIT_ELEVATED_SLOTS: suppressing inferred slot user_id=%s "
+            "inferred=%s source=%s reasons=%s → team_member",
+            user.id,
+            inferred_slot,
+            inferred_source,
+            elev_reasons,
+        )
+        return MatrixSlotResolution(
+            slot="team_member",
+            source="explicit_required_policy",
+            hr_job_title=hr_jt,
+            user_job_title=user_jt,
+            effective_job_title=effective_jt,
+            inference_trace=trace,
+            policy_suppressed=True,
+            suppressed_inferred_slot=inferred_slot,
+            suppressed_inferred_source=inferred_source,
+        )
+
+    jwt_slot = _infer_slot_from_jwt_roles(list(user.roles or []))
+    if jwt_slot:
+        trace.append(f"✓ JWT role tier matched → {jwt_slot!r}")
+        suppressed = _maybe_suppress(jwt_slot, "jwt_role")
+        if suppressed:
+            return suppressed
+        return MatrixSlotResolution(
+            slot=jwt_slot,
+            source="jwt_role",
+            hr_job_title=hr_jt,
+            user_job_title=user_jt,
+            effective_job_title=effective_jt,
+            inference_trace=trace,
+        )
+    trace.append("✗ No JWT manager / supervisor / lead tier match.")
+
+    title_slot = _infer_slot_from_job_title(effective_jt)
+    if title_slot:
+        trace.append(f"✓ Job title keyword matched → {title_slot!r}")
+        suppressed = _maybe_suppress(title_slot, "job_title_inference")
+        if suppressed:
+            return suppressed
+        return MatrixSlotResolution(
+            slot=title_slot,
+            source="job_title_inference",
+            hr_job_title=hr_jt,
+            user_job_title=user_jt,
+            effective_job_title=effective_jt,
+            inference_trace=trace,
+        )
+    trace.append("✗ No coordination / operations keyword in effective job title.")
+
+    if policy_on and elevated:
+        trace.append(
+            f"✗ REQUIRE_EXPLICIT_ELEVATED_SLOTS: no inference match; elevated worker held at "
+            f"team_member until explicit matrix_slot is set (elevated_reasons={elev_reasons})."
+        )
+        return MatrixSlotResolution(
+            slot="team_member",
+            source="explicit_required_policy",
+            hr_job_title=hr_jt,
+            user_job_title=user_jt,
+            effective_job_title=effective_jt,
+            inference_trace=trace,
+            policy_suppressed=True,
+        )
+
+    trace.append("✗ All inference checks failed → fallback team_member (baseline worker row).")
+    return MatrixSlotResolution(
+        slot="team_member",
+        source="fallback_default",
+        hr_job_title=hr_jt,
+        user_job_title=user_jt,
+        effective_job_title=effective_jt,
+        inference_trace=trace,
+    )
+
+
+def resolve_matrix_slot_for_access(user: User, hr: PulseWorkerHR | None) -> tuple[str, MatrixSlotSource]:
+    """Production matrix slot resolution (authorization)."""
+    r = resolve_matrix_slot_detailed(user, hr)
+    return r.slot, r.source
+
+
+def build_inference_attempt_trace(user: User, hr: PulseWorkerHR | None) -> list[str]:
+    """Debug trace from the same resolver path as authorization."""
+    return list(resolve_matrix_slot_detailed(user, hr).inference_trace)
+
+
 def matrix_slot_source_kind(source: MatrixSlotSource | str) -> str:
-    return _SLOT_SOURCE_KIND.get(source, "inferred")  # type: ignore[arg-type]
+    return _SLOT_SOURCE_KIND.get(str(source), "inferred")
 
 
 def format_matrix_slot_display(*, slot: str, source: MatrixSlotSource | str) -> str:
@@ -73,7 +247,12 @@ def format_matrix_slot_display(*, slot: str, source: MatrixSlotSource | str) -> 
     }
     slot_label = labels.get(slot, slot.replace("_", " ").title())
     kind = matrix_slot_source_kind(source)
-    suffix = {"explicit": "Explicit", "inferred": "Inferred", "fallback": "Fallback"}.get(kind, "Inferred")
+    suffix = {
+        "explicit": "Explicit",
+        "inferred": "Inferred",
+        "fallback": "Fallback",
+        "policy": "Policy enforced",
+    }.get(kind, "Inferred")
     return f"{slot_label} ({suffix})"
 
 
@@ -83,11 +262,7 @@ def detect_likely_elevated_worker(
     *,
     tenant_role_slug: str | None = None,
 ) -> tuple[bool, list[str]]:
-    """
-    Heuristic: worker probably should not rely on ``team_member`` fallback.
-
-    For admin warnings only — does not grant access.
-    """
+    """Heuristic for admin warnings only — does not grant access."""
     reasons: list[str] = []
     if user.is_system_admin or user_has_any_role(user, UserRole.system_admin):
         reasons.append("system_admin")
@@ -102,7 +277,7 @@ def detect_likely_elevated_worker(
     if user_has_any_role(user, UserRole.lead):
         reasons.append("jwt_lead")
 
-    jt = ((hr.job_title if hr else None) or user.job_title or "").lower()
+    jt = (resolve_effective_job_title(user, hr) or "").lower()
     if jt and any(k in jt for k in _ELEVATED_TITLE_KEYWORDS):
         reasons.append("job_title_elevated_keyword")
 
@@ -127,7 +302,7 @@ def recommend_explicit_matrix_slot(
     elevated_reasons: list[str] | None = None,
 ) -> str | None:
     """Suggested HR ``matrix_slot`` for admins cleaning up inferred access."""
-    jt = ((hr.job_title if hr else None) or user.job_title or "").lower()
+    jt = (resolve_effective_job_title(user, hr) or "").lower()
     if "coordinator" in jt or "coordination" in jt:
         return "coordination"
     if "operations" in jt:
@@ -146,41 +321,18 @@ def recommend_explicit_matrix_slot(
     return None
 
 
-def build_inference_attempt_trace(user: User, hr: PulseWorkerHR | None) -> list[str]:
-    """Ordered explanation of matrix slot resolution attempts (for debug UI)."""
-    explicit = normalize_matrix_slot(getattr(hr, "matrix_slot", None) if hr else None)
-    if explicit:
-        return [f"HR matrix_slot is explicitly set to {explicit!r} — inference chain skipped."]
-
-    trace: list[str] = [
-        "HR matrix_slot is empty or auto — running legacy inference chain.",
-        f"JWT roles checked: {list(user.roles or [])}",
-    ]
-    jwt_slot = _infer_slot_from_jwt_roles(list(user.roles or []))
-    if jwt_slot:
-        trace.append(f"✓ JWT role tier matched → {jwt_slot!r}")
-        return trace
-    trace.append("✗ No JWT manager / supervisor / lead tier match.")
-
-    jt = (hr.job_title if hr else None) or user.job_title or ""
-    trace.append(f"Job title checked: {jt!r}")
-    title_slot = _infer_slot_from_job_title(jt)
-    if title_slot:
-        trace.append(f"✓ Job title keyword matched → {title_slot!r}")
-        return trace
-    trace.append("✗ No coordination / operations keyword in job title.")
-
-    trace.append("✗ All inference checks failed → fallback team_member (baseline worker row).")
-    return trace
-
-
 def matrix_slot_fallback_warning_message(*, resolved_slot: str, source: MatrixSlotSource) -> str | None:
     if source == "explicit_matrix_slot":
         return None
+    if source == "explicit_required_policy":
+        return (
+            "REQUIRE_EXPLICIT_ELEVATED_SLOTS is enabled: authorization uses team_member until an explicit "
+            "matrix_slot is set on HR. See inference trace for the slot that would have applied."
+        )
     if source == "fallback_default" and resolved_slot == "team_member":
         return (
-            "WARNING: Authorization is using fallback team_member because no explicit matrix_slot exists. "
-            "Coordinators and other elevated workers must have an explicit slot assigned in HR."
+            "WARNING: Authorization is using fallback team_member because no explicit matrix_slot exists "
+            "and job title / JWT inference did not match a higher slot."
         )
     if source != "explicit_matrix_slot":
         return (
@@ -188,30 +340,6 @@ def matrix_slot_fallback_warning_message(*, resolved_slot: str, source: MatrixSl
             "Assign matrix_slot on the worker profile for deterministic access."
         )
     return None
-
-
-def resolve_matrix_slot_for_access(user: User, hr: PulseWorkerHR | None) -> tuple[str, MatrixSlotSource]:
-    """
-    Production matrix slot resolution with optional elevated-worker policy.
-
-    When ``REQUIRE_EXPLICIT_ELEVATED_SLOTS`` is enabled, likely-elevated workers without an
-    explicit HR slot always resolve to ``team_member`` (no JWT/title inference).
-    """
-    explicit = normalize_matrix_slot(getattr(hr, "matrix_slot", None) if hr else None)
-    if explicit:
-        return explicit, "explicit_matrix_slot"
-
-    if require_explicit_elevated_slots():
-        elevated, reasons = detect_likely_elevated_worker(user, hr)
-        if elevated:
-            _log.warning(
-                "REQUIRE_EXPLICIT_ELEVATED_SLOTS: denying inference user_id=%s reasons=%s → team_member",
-                user.id,
-                reasons,
-            )
-            return "team_member", "fallback_default"
-
-    return infer_matrix_slot_legacy(roles=list(user.roles or []), job_title=hr.job_title if hr else None)
 
 
 def log_inferred_elevated_worker(
@@ -229,14 +357,14 @@ def log_inferred_elevated_worker(
     elevated, reasons = detect_likely_elevated_worker(user, hr)
     if not elevated:
         return
-    if source == "fallback_default" or (elevated_reasons or reasons):
+    if source in ("fallback_default", "explicit_required_policy") or (elevated_reasons or reasons):
         _log.warning(
-            "inferred_access_elevated_worker user_id=%s company_id=%s department=%s job_title=%r "
+            "inferred_access_elevated_worker user_id=%s company_id=%s department=%s effective_job_title=%r "
             "resolved_slot=%s source=%s elevated_reasons=%s recommended=%s",
             user.id,
             user.company_id,
             department,
-            (hr.job_title if hr else None) or user.job_title,
+            resolve_effective_job_title(user, hr),
             resolved_slot,
             source,
             reasons or elevated_reasons,
@@ -252,19 +380,24 @@ def worker_slot_audit_fields(
     tenant_role_slug: str | None = None,
 ) -> dict[str, Any]:
     """Roster / admin UI fields derived from policy helpers."""
-    slot, source = resolve_matrix_slot_for_access(user, hr)
+    detail = resolve_matrix_slot_detailed(user, hr)
     elevated, elev_reasons = detect_likely_elevated_worker(user, hr, tenant_role_slug=tenant_role_slug)
     recommended = recommend_explicit_matrix_slot(user, hr, elevated_reasons=elev_reasons)
     explicit_hr = normalize_matrix_slot(getattr(hr, "matrix_slot", None) if hr else None)
     return {
-        "resolved_matrix_slot": slot,
-        "matrix_slot_source": source,
-        "matrix_slot_source_kind": matrix_slot_source_kind(source),
-        "matrix_slot_inferred": source != "explicit_matrix_slot",
-        "matrix_slot_display": format_matrix_slot_display(slot=slot, source=source),
+        "resolved_matrix_slot": detail.slot,
+        "matrix_slot_source": detail.source,
+        "matrix_slot_source_kind": matrix_slot_source_kind(detail.source),
+        "matrix_slot_inferred": detail.source != "explicit_matrix_slot",
+        "matrix_slot_display": format_matrix_slot_display(slot=detail.slot, source=detail.source),
         "likely_elevated": elevated,
         "likely_elevated_reasons": elev_reasons,
         "recommended_matrix_slot": recommended,
         "hr_matrix_slot": explicit_hr,
-        "inference_trace": build_inference_attempt_trace(user, hr),
+        "hr_job_title": detail.hr_job_title,
+        "user_job_title": detail.user_job_title,
+        "effective_job_title": detail.effective_job_title,
+        "inference_trace": list(detail.inference_trace),
+        "policy_suppressed": detail.policy_suppressed,
+        "suppressed_inferred_slot": detail.suppressed_inferred_slot,
     }

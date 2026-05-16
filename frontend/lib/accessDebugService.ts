@@ -21,6 +21,10 @@ export type AccessResolutionDebugPayload = {
   resolved_department: string | null;
   resolved_slot: string | null;
   resolved_slot_source: string;
+  user_job_title?: string | null;
+  effective_job_title?: string | null;
+  policy_suppressed?: boolean;
+  suppressed_inferred_slot?: string | null;
   matrix_slot_display?: string;
   likely_elevated?: boolean;
   likely_elevated_reasons?: string[];

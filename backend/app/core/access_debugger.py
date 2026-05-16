@@ -13,16 +13,17 @@ from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.matrix_slot_policy import (
-    build_inference_attempt_trace,
     detect_likely_elevated_worker,
+    hr_job_title_raw,
     matrix_slot_fallback_warning_message,
     recommend_explicit_matrix_slot,
     require_explicit_elevated_slots,
+    resolve_matrix_slot_detailed,
+    user_job_title_raw,
 )
 from app.core.permission_feature_matrix import (
     matrix_slot_resolution_warnings,
     permission_matrix_department_for_user,
-    resolve_permission_matrix_slot,
 )
 from app.core.features.canonical_catalog import (
     CANONICAL_PRODUCT_FEATURES,
@@ -430,6 +431,8 @@ class AccessResolutionDebug:
 
     #: HR fields (pulse_worker_hr snapshot)
     hr_job_title: str | None = None
+    user_job_title: str | None = None
+    effective_job_title: str | None = None
     hr_department: str | None = None
     hr_department_slugs: list[str] = field(default_factory=list)
 
@@ -443,6 +446,8 @@ class AccessResolutionDebug:
     recommended_matrix_slot: str | None = None
     matrix_slot_inference_trace: list[str] = field(default_factory=list)
     require_explicit_elevated_slots: bool = False
+    policy_suppressed: bool = False
+    suppressed_inferred_slot: str | None = None
 
     #: Matrix semantics
     matrix_configured: bool = False
@@ -539,7 +544,8 @@ async def compute_access_resolution_debug(
                 "(matrix-primary policy); see `overlay_features` below."
             )
 
-    hr_title = getattr(hr_row, "job_title", None) if hr_row else None
+    hr_title = hr_job_title_raw(hr_row)
+    user_title = user_job_title_raw(target)
     hr_dept = (getattr(hr_row, "department", None) or "").strip() or None if hr_row else None
     hr_slugs: list[str] = []
     if hr_row:
@@ -550,7 +556,9 @@ async def compute_access_resolution_debug(
     contract_canon = canonical_keys_from_contract(contract_normalized)
 
     resolved_dept = permission_matrix_department_for_user(target, hr_row)
-    resolved_slot, resolved_slot_source = resolve_permission_matrix_slot(target, hr_row)
+    slot_detail = resolve_matrix_slot_detailed(target, hr_row)
+    resolved_slot = slot_detail.slot
+    resolved_slot_source = slot_detail.source
     hr_matrix_slot = getattr(hr_row, "matrix_slot", None) if hr_row else None
     warn.extend(
         matrix_slot_resolution_warnings(
@@ -564,7 +572,7 @@ async def compute_access_resolution_debug(
         target, hr_row, tenant_role_slug=slug
     )
     recommended_slot = recommend_explicit_matrix_slot(target, hr_row, elevated_reasons=elev_reasons)
-    inference_trace = build_inference_attempt_trace(target, hr_row)
+    inference_trace = list(slot_detail.inference_trace)
     from app.core.matrix_slot_policy import format_matrix_slot_display
 
     slot_display = format_matrix_slot_display(slot=resolved_slot, source=resolved_slot_source)
@@ -753,6 +761,8 @@ async def compute_access_resolution_debug(
         company_id=cid,
         jwt_roles=jwt_roles,
         hr_job_title=hr_title,
+        user_job_title=user_title,
+        effective_job_title=slot_detail.effective_job_title,
         hr_department=hr_dept,
         hr_department_slugs=hr_slugs,
         resolved_department=str(resolved_dept),
@@ -765,6 +775,8 @@ async def compute_access_resolution_debug(
         recommended_matrix_slot=recommended_slot,
         matrix_slot_inference_trace=list(inference_trace),
         require_explicit_elevated_slots=require_explicit_elevated_slots(),
+        policy_suppressed=slot_detail.policy_suppressed,
+        suppressed_inferred_slot=slot_detail.suppressed_inferred_slot,
         matrix_configured=bool(matrix_ok),
         matrix_row_department=str(resolved_dept),
         matrix_row_slot=str(resolved_slot),

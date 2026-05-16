@@ -15,7 +15,7 @@ import type {
 import { diagnoseAccessNav, formatMissingReason } from "@/lib/accessDebugNavDiagnosis";
 import type { PulseAuthSession } from "@/lib/pulse-session";
 import { toCanonicalFeatureKey } from "@/lib/features/canonical-features";
-import { isFallbackTeamMember } from "@/lib/rbac/matrix-slot-policy";
+import { isFallbackTeamMember, isPolicySuppressedSlot } from "@/lib/rbac/matrix-slot-policy";
 import { cn } from "@/lib/cn";
 import { buttonVariants } from "@/styles/button-variants";
 
@@ -25,6 +25,7 @@ function formatSlotSource(source: string): string {
     jwt_role: "JWT role tier",
     job_title_inference: "Job title keyword inference",
     fallback_default: "Fallback default (team_member)",
+    explicit_required_policy: "Policy: explicit HR matrix_slot required",
   };
   return labels[source] ?? source;
 }
@@ -230,10 +231,20 @@ export function AccessDebugModal({ open, onClose, loading, error, debug, resolve
                     <dd className="font-mono">{debug.resolved_department ?? "—"}</dd>
                   </div>
                   <div>
-                    <dt className="text-pulse-muted">HR job title / department</dt>
-                    <dd>
-                      {debug.hr_job_title ?? "—"} / {debug.hr_department ?? "—"}
-                    </dd>
+                    <dt className="text-pulse-muted">HR job title</dt>
+                    <dd className="font-mono">{debug.hr_job_title ?? "—"}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-pulse-muted">User job title</dt>
+                    <dd className="font-mono">{debug.user_job_title ?? "—"}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-pulse-muted">Effective job title (authorization)</dt>
+                    <dd className="font-mono">{debug.effective_job_title ?? "—"}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-pulse-muted">HR department</dt>
+                    <dd className="font-mono">{debug.hr_department ?? "—"}</dd>
                   </div>
                   <div>
                     <dt className="text-pulse-muted">JWT roles</dt>
@@ -375,7 +386,29 @@ export function AccessDebugModal({ open, onClose, loading, error, debug, resolve
                 </section>
               ) : null}
 
-              {isFallbackTeamMember(debug.resolved_slot_source, debug.resolved_slot) ? (
+              {isPolicySuppressedSlot(debug.resolved_slot_source) ? (
+                <section className="rounded-lg border-2 border-violet-500/50 bg-violet-500/15 px-4 py-3 text-sm text-violet-50">
+                  <p className="font-bold uppercase tracking-wide">Policy suppressed inferred matrix slot</p>
+                  <p className="mt-2">
+                    <span className="font-mono">REQUIRE_EXPLICIT_ELEVATED_SLOTS</span> is enabled. Inference succeeded
+                    {debug.suppressed_inferred_slot ? (
+                      <>
+                        {" "}
+                        (would use <span className="font-mono">{debug.suppressed_inferred_slot}</span>)
+                      </>
+                    ) : null}
+                    , but authorization uses <span className="font-mono">team_member</span> until explicit HR{" "}
+                    <span className="font-mono">matrix_slot</span> is set.
+                  </p>
+                  {debug.matrix_slot_inference_trace?.length ? (
+                    <ul className="mt-3 list-inside list-disc space-y-1 text-xs text-violet-100/90">
+                      {debug.matrix_slot_inference_trace.map((line) => (
+                        <li key={line}>{line}</li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </section>
+              ) : isFallbackTeamMember(debug.resolved_slot_source, debug.resolved_slot) ? (
                 <section className="rounded-lg border-2 border-red-500/60 bg-red-500/15 px-4 py-3 text-sm text-red-50">
                   <p className="font-bold uppercase tracking-wide">Authorization uses fallback team_member</p>
                   <p className="mt-2">
