@@ -15,13 +15,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.features.canonical_catalog import canonicalize_feature_keys
 from app.core.matrix_slot_policy import (
-    detect_likely_elevated_worker,
-    log_inferred_elevated_worker,
     matrix_slot_fallback_warning_message,
-    recommend_explicit_matrix_slot,
     require_explicit_elevated_slots,
     resolve_matrix_slot_detailed,
 )
+from app.core.department_matrix_baselines import UNRESOLVED_MATRIX_SLOT
 from app.core.permission_feature_matrix import (
     MatrixSlotSource,
     matrix_slot_resolution_warnings,
@@ -51,9 +49,9 @@ class AccessSnapshotAudit:
     matrix_slot_source: MatrixSlotSource
     matrix_slot_inferred: bool
     hr_matrix_slot: str | None
-    likely_elevated: bool = False
-    likely_elevated_reasons: list[str] = field(default_factory=list)
-    recommended_matrix_slot: str | None = None
+    is_unresolved: bool = False
+    matrix_slot_operational_label: str | None = None
+    matrix_slot_source_label: str | None = None
     inference_trace: list[str] = field(default_factory=list)
     require_explicit_elevated_slots: bool = False
     resolution_warnings: list[str] = field(default_factory=list)
@@ -110,16 +108,14 @@ def _denied_features_for_audit(
     if raw_matrix is None:
         return [], []
 
+    from app.core.permission_feature_matrix import matrix_cell_features
+
     dept = permission_matrix_department_for_user(user, hr)
     slot = permission_matrix_slot_for_user(user, hr)
     matrix = merged_settings.get("department_role_feature_access") or {}
     raw_cell: list[str] = []
     if isinstance(matrix, dict):
-        row = matrix.get(dept)
-        if isinstance(row, dict):
-            cell = row.get(slot)
-            if isinstance(cell, list):
-                raw_cell = [str(x) for x in cell]
+        raw_cell = matrix_cell_features(matrix, department=dept, slot=slot)
 
     raw_canon = set(canonicalize_feature_keys(raw_cell))
     eff_set = set(canonicalize_feature_keys(effective_features))
@@ -187,9 +183,11 @@ async def resolve_access_snapshot(
     explicit_hr_slot = normalize_matrix_slot(getattr(hr, "matrix_slot", None) if hr else None)
     hr_slot_str = explicit_hr_slot
 
-    elevated, elev_reasons = detect_likely_elevated_worker(user, hr)
-    recommended = recommend_explicit_matrix_slot(user, hr, elevated_reasons=elev_reasons)
     inference_trace = list(slot_detail.inference_trace)
+    from app.core.matrix_slot_policy import (
+        format_matrix_slot_display,
+        matrix_slot_source_annotation,
+    )
 
     warnings = matrix_slot_resolution_warnings(
         user, hr, resolved_slot=slot, resolved_slot_source=slot_source
@@ -197,31 +195,17 @@ async def resolve_access_snapshot(
     fallback_msg = matrix_slot_fallback_warning_message(resolved_slot=slot, source=slot_source)
     if fallback_msg:
         warnings.insert(0, fallback_msg)
-    if elevated and slot_source != "explicit_matrix_slot":
-        warnings.insert(
-            0,
-            "LIKELY ELEVATED WORKER using inferred access rules — assign explicit matrix_slot on HR profile.",
-        )
 
-    if slot_source != "explicit_matrix_slot":
-        _log.warning(
-            "matrix_slot inferred user_id=%s company_id=%s department=%s slot=%s source=%s hr_matrix_slot=%r job_title=%r",
+    if slot_source not in ("explicit_matrix_slot", "department_baseline") or slot == UNRESOLVED_MATRIX_SLOT:
+        _log.info(
+            "matrix_slot resolved user_id=%s company_id=%s department=%s slot=%s source=%s hr_matrix_slot=%r",
             user.id,
             user.company_id,
             dept,
             slot,
             slot_source,
             hr_slot_str,
-            slot_detail.effective_job_title,
         )
-    log_inferred_elevated_worker(
-        user=user,
-        hr=hr,
-        department=dept,
-        resolved_slot=slot,
-        source=slot_source,
-        elevated_reasons=elev_reasons,
-    )
 
     is_company_admin = user_has_tenant_full_admin(user)
     eff = effective_tenant_feature_names_for_user(
@@ -251,9 +235,11 @@ async def resolve_access_snapshot(
         matrix_slot_source=slot_source,
         matrix_slot_inferred=slot_source != "explicit_matrix_slot",
         hr_matrix_slot=hr_slot_str,
-        likely_elevated=elevated,
-        likely_elevated_reasons=elev_reasons,
-        recommended_matrix_slot=recommended,
+        is_unresolved=slot == UNRESOLVED_MATRIX_SLOT,
+        matrix_slot_operational_label=format_matrix_slot_display(
+            slot=slot, source=slot_source, department=dept
+        ),
+        matrix_slot_source_label=matrix_slot_source_annotation(slot_source),
         inference_trace=inference_trace,
         require_explicit_elevated_slots=require_explicit_elevated_slots(),
         resolution_warnings=warnings,

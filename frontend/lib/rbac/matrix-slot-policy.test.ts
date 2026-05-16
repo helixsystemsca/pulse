@@ -22,6 +22,12 @@ describe("matrix-slot-policy", () => {
     expect(formatMatrixSlotDisplay("coordination", "explicit_matrix_slot")).toBe("Coordination (Explicit)");
   });
 
+  it("formats department default label", () => {
+    expect(formatMatrixSlotDisplay("coordination", "department_default")).toBe(
+      "Coordination (Department default)",
+    );
+  });
+
   it("flags fallback team_member", () => {
     expect(isFallbackTeamMember("fallback_default", "team_member")).toBe(true);
   });

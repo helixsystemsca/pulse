@@ -9,6 +9,7 @@ export type MatrixSlotSource =
   | "explicit_matrix_slot"
   | "jwt_role"
   | "job_title_inference"
+  | "department_default"
   | "fallback_default"
   | "explicit_required_policy";
 
@@ -30,6 +31,7 @@ const SOURCE_KIND: Record<MatrixSlotSource, MatrixSlotSourceKind> = {
   explicit_matrix_slot: "explicit",
   jwt_role: "inferred",
   job_title_inference: "inferred",
+  department_default: "inferred",
   fallback_default: "fallback",
   explicit_required_policy: "policy",
 };
@@ -44,6 +46,7 @@ export function formatSlotSourceLabel(source: string | null | undefined): string
     explicit_matrix_slot: "Explicit",
     jwt_role: "Inferred (JWT role)",
     job_title_inference: "Inferred (job title)",
+    department_default: "Department default",
     fallback_default: "Fallback",
     explicit_required_policy: "Policy enforced",
   };

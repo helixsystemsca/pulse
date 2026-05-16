@@ -376,15 +376,15 @@ function formatLoginWhen(iso: string | null | undefined): string {
 
 function matrixSlotBadgeClass(kind: string): string {
   if (kind === "explicit") {
-    return "border-emerald-500/40 bg-emerald-500/10 text-emerald-100";
+    return "border-emerald-700/35 bg-emerald-100 text-emerald-950 dark:border-emerald-500/40 dark:bg-emerald-950/50 dark:text-emerald-100";
   }
   if (kind === "policy") {
-    return "border-violet-500/45 bg-violet-500/15 text-violet-100";
+    return "border-violet-700/35 bg-violet-100 text-violet-950 dark:border-violet-500/40 dark:bg-violet-950/50 dark:text-violet-100";
   }
   if (kind === "fallback") {
-    return "border-red-500/50 bg-red-500/15 text-red-100";
+    return "border-red-700/40 bg-red-100 text-red-950 dark:border-red-500/45 dark:bg-red-950/50 dark:text-red-100";
   }
-  return "border-amber-500/40 bg-amber-500/10 text-amber-100";
+  return "border-amber-800/35 bg-amber-100 text-amber-950 dark:border-amber-500/40 dark:bg-amber-950/50 dark:text-amber-100";
 }
 
 function WorkerMatrixSlotCell({ row }: { row: WorkerRow }) {
@@ -402,7 +402,7 @@ function WorkerMatrixSlotCell({ row }: { row: WorkerRow }) {
     >
       <span className="truncate">{display}</span>
       {row.likely_elevated && isMatrixSlotInferred(row) ? (
-        <span className="text-[9px] font-normal opacity-90">Likely elevated — set explicit slot</span>
+        <span className="text-[9px] font-medium text-inherit/80">Likely elevated — set explicit slot</span>
       ) : null}
     </span>
   );

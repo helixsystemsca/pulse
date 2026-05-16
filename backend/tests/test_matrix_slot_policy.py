@@ -74,9 +74,25 @@ def test_resolver_and_trace_agree_user_title_only() -> None:
     assert detail.user_job_title == "Communications Coordinator"
 
 
-def test_empty_titles_fallback() -> None:
+def test_communications_worker_department_default_without_titles() -> None:
     user = _user(job_title=None)
-    hr = _hr(job_title=None, matrix_slot=None)
+    hr = _hr(department="communications", job_title=None, matrix_slot=None)
+    slot, source = resolve_matrix_slot_for_access(user, hr)
+    assert slot == "coordination"
+    assert source == "department_default"
+
+
+def test_maintenance_worker_department_default_operations() -> None:
+    user = _user(job_title=None)
+    hr = _hr(department="maintenance", department_slugs=["maintenance"], job_title=None, matrix_slot=None)
+    slot, source = resolve_matrix_slot_for_access(user, hr)
+    assert slot == "operations"
+    assert source == "department_default"
+
+
+def test_aquatics_department_no_default_falls_back_to_team_member() -> None:
+    user = _user(job_title=None)
+    hr = _hr(department="aquatics", department_slugs=["aquatics"], job_title=None, matrix_slot=None)
     slot, source = resolve_matrix_slot_for_access(user, hr)
     assert slot == "team_member"
     assert source == "fallback_default"

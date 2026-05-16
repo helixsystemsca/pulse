@@ -25,6 +25,7 @@ function formatSlotSource(source: string): string {
     jwt_role: "JWT role tier",
     job_title_inference: "Job title keyword inference",
     fallback_default: "Fallback default (team_member)",
+    department_default: "HR department default",
     explicit_required_policy: "Policy: explicit HR matrix_slot required",
   };
   return labels[source] ?? source;

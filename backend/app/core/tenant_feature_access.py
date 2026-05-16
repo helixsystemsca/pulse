@@ -74,14 +74,11 @@ def _features_from_department_role_matrix(
     if not _department_role_matrix_is_configured(matrix):
         return None
     assert isinstance(matrix, dict)
+    from app.core.permission_feature_matrix import matrix_cell_features
+
     dept = permission_matrix_department_for_user(user, hr)
     slot = permission_matrix_slot_for_user(user, hr)
-    row = matrix.get(dept)
-    feats: list[str] = []
-    if isinstance(row, dict):
-        raw = row.get(slot)
-        if isinstance(raw, list):
-            feats = [str(x) for x in raw]
+    feats = matrix_cell_features(matrix, department=dept, slot=slot)
     allowed_contract = set(canonical_keys_from_contract(contract_names))
     granted = set(canonicalize_feature_keys(feats))
     return sorted(granted & allowed_contract)

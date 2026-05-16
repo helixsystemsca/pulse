@@ -10,6 +10,7 @@ MatrixSlotSourceOut = Literal[
     "explicit_matrix_slot",
     "jwt_role",
     "job_title_inference",
+    "department_default",
     "fallback_default",
     "explicit_required_policy",
 ]
