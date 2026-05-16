@@ -37,14 +37,10 @@ import {
 import {
   formatMatrixSlotOperationalLabel,
   formatSlotSourceLabel,
+  isMatrixSlotInferred,
   isUnresolvedMatrixSlot,
   matrixSlotSourceKind,
 } from "@/lib/rbac/matrix-slot-policy";
-import {
-  DEPARTMENT_BASELINE_SLOTS,
-  PERMISSION_MATRIX_ROLE_LABEL,
-  PERMISSION_MATRIX_ROLE_SLOTS,
-} from "@/config/platform/permission-matrix";
 import { parseClientApiError } from "@/lib/parse-client-api-error";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
 import {
@@ -113,14 +109,15 @@ import {
 } from "@/config/platform/tenant-product-modules";
 import {
   computeLegacyRoleFeatureAccessFromMatrix,
+  DEPARTMENT_BASELINE_SLOTS,
   MASTER_PERMISSION_FEATURE_GROUPS,
   normalizeDepartmentRoleMatrixFromApi,
   type PermissionMatrixDepartment,
   type PermissionMatrixRoleSlot,
   PERMISSION_MATRIX_DEPARTMENTS,
   PERMISSION_MATRIX_DEPARTMENT_LABEL,
-  PERMISSION_MATRIX_ROLE_SLOTS,
   PERMISSION_MATRIX_ROLE_LABEL,
+  PERMISSION_MATRIX_ROLE_SLOTS,
   toggleModuleForDepartmentMatrixSlot,
 } from "@/config/platform/permission-matrix";
 
@@ -2691,7 +2688,7 @@ export function WorkersApp() {
               value={createForm.role_key}
               onChange={(e) => setCreateForm((f) => ({ ...f, role_key: e.target.value }))}
             >
-              {PERMISSION_MATRIX_ROLE_SLOTS.filter((s) => s !== "unresolved").map((s) => (
+              {PERMISSION_MATRIX_ROLE_SLOTS.map((s) => (
                 <option key={s} value={s}>
                   {PERMISSION_MATRIX_ROLE_LABEL[s]}
                 </option>

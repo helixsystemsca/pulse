@@ -90,6 +90,7 @@ export type WorkerDetail = {
   department_slugs?: string[] | null;
   job_title: string | null;
   matrix_slot?: string | null;
+  assigned_role_key?: string | null;
   shift: string | null;
   supervisor_id: string | null;
   supervisor_name: string | null;
