@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/ds-form-classes";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { apiFetch, refreshPulseUserFromServer } from "@/lib/api";
+import { fetchAccessResolutionDebug, type AccessResolutionDebugPayload } from "@/lib/accessDebugService";
 import { parseClientApiError } from "@/lib/parse-client-api-error";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
 import {
@@ -73,6 +74,7 @@ import {
   resendWorkerInvite,
 } from "@/lib/workersService";
 import { WorkerTrainingMatrixPanel } from "@/components/training/WorkerTrainingMatrixPanel";
+import { AccessDebugModal } from "@/components/workers/AccessDebugModal";
 import { UserProfileAvatarPreview } from "@/components/profile/UserProfileAvatarPreview";
 import { useResolvedAvatarSrc } from "@/lib/useResolvedAvatarSrc";
 import { cn } from "@/lib/cn";
@@ -379,6 +381,7 @@ export function WorkersApp() {
   const createRoleLimited = isCreateRoleLimitedSession(session);
   const isCompanyAdmin = sessionHasAnyRole(session, "company_admin");
   const isTenantFullAdmin = isTenantFullAdminSession(session);
+  const canDebugWorkerAccess = isSystemAdmin || isTenantFullAdmin;
   /** Roster delegation, tenant full admin, or RBAC `team_management.view` with contract module. */
   const canOpenWorkers = Boolean(
     isSystemAdmin || canShowTeamManagementNavItem(session, isSystemAdmin),
@@ -518,6 +521,11 @@ export function WorkersApp() {
   const [activityLoading, setActivityLoading] = useState(false);
   const [activityError, setActivityError] = useState<string | null>(null);
 
+  const [accessDebugOpen, setAccessDebugOpen] = useState(false);
+  const [accessDebugLoading, setAccessDebugLoading] = useState(false);
+  const [accessDebugError, setAccessDebugError] = useState<string | null>(null);
+  const [accessDebugPayload, setAccessDebugPayload] = useState<AccessResolutionDebugPayload | null>(null);
+
   const [createForm, setCreateForm] = useState<CreateFormState>({ ...CREATE_FORM_EMPTY });
 
   useEffect(() => {
@@ -630,6 +638,22 @@ export function WorkersApp() {
       setActivityLoading(false);
     }
   }, []);
+
+  const openAccessDebugger = useCallback(async () => {
+    if (!profileId) return;
+    setAccessDebugOpen(true);
+    setAccessDebugLoading(true);
+    setAccessDebugError(null);
+    setAccessDebugPayload(null);
+    try {
+      const d = await fetchAccessResolutionDebug(profileId);
+      setAccessDebugPayload(d);
+    } catch (e: unknown) {
+      setAccessDebugError(parseClientApiError(e).message);
+    } finally {
+      setAccessDebugLoading(false);
+    }
+  }, [profileId]);
 
   const loadProfile = useCallback(async () => {
     if (!profileId || !effectiveCompanyId) return;
@@ -2652,35 +2676,51 @@ export function WorkersApp() {
           </div>
         ) : (
           <div className="space-y-8" id="worker-profile-title">
-            <div className="flex flex-wrap gap-2 border-b border-ds-border pb-3" role="tablist" aria-label="Profile sections">
-              <button
-                type="button"
-                role="tab"
-                aria-selected={profileDrawerTab === "profile"}
-                className={cn(
-                  "rounded-lg px-3 py-2 text-sm font-semibold transition-colors",
-                  profileDrawerTab === "profile"
-                    ? "bg-[var(--pulse-segment-active-bg)] text-[var(--pulse-segment-active-fg)] shadow-sm"
-                    : "text-ds-muted hover:bg-ds-interactive-hover hover:text-ds-foreground",
-                )}
-                onClick={() => setProfileDrawerTab("profile")}
-              >
-                Profile
-              </button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={profileDrawerTab === "training"}
-                className={cn(
-                  "rounded-lg px-3 py-2 text-sm font-semibold transition-colors",
-                  profileDrawerTab === "training"
-                    ? "bg-[var(--pulse-segment-active-bg)] text-[var(--pulse-segment-active-fg)] shadow-sm"
-                    : "text-ds-muted hover:bg-ds-interactive-hover hover:text-ds-foreground",
-                )}
-                onClick={() => setProfileDrawerTab("training")}
-              >
-                Training matrix
-              </button>
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-ds-border pb-3">
+              <div className="flex flex-wrap gap-2" role="tablist" aria-label="Profile sections">
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={profileDrawerTab === "profile"}
+                  className={cn(
+                    "rounded-lg px-3 py-2 text-sm font-semibold transition-colors",
+                    profileDrawerTab === "profile"
+                      ? "bg-[var(--pulse-segment-active-bg)] text-[var(--pulse-segment-active-fg)] shadow-sm"
+                      : "text-ds-muted hover:bg-ds-interactive-hover hover:text-ds-foreground",
+                  )}
+                  onClick={() => setProfileDrawerTab("profile")}
+                >
+                  Profile
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={profileDrawerTab === "training"}
+                  className={cn(
+                    "rounded-lg px-3 py-2 text-sm font-semibold transition-colors",
+                    profileDrawerTab === "training"
+                      ? "bg-[var(--pulse-segment-active-bg)] text-[var(--pulse-segment-active-fg)] shadow-sm"
+                      : "text-ds-muted hover:bg-ds-interactive-hover hover:text-ds-foreground",
+                  )}
+                  onClick={() => setProfileDrawerTab("training")}
+                >
+                  Training matrix
+                </button>
+              </div>
+              {canDebugWorkerAccess ? (
+                <button
+                  type="button"
+                  className={cn(
+                    buttonVariants({ surface: "light", intent: "secondary" }),
+                    "shrink-0 px-3 py-1.5 text-xs font-semibold",
+                  )}
+                  disabled={profileBusy}
+                  title="Inspect production access resolution layers for this user"
+                  onClick={() => void openAccessDebugger()}
+                >
+                  Debug access
+                </button>
+              ) : null}
             </div>
 
             {profileDrawerTab === "training" ? (
@@ -3568,6 +3608,19 @@ export function WorkersApp() {
           ) : null}
         </div>
       </PulseDrawer>
+
+      <AccessDebugModal
+        open={accessDebugOpen}
+        loading={accessDebugLoading}
+        error={accessDebugError}
+        debug={accessDebugPayload}
+        viewerSession={session}
+        onClose={() => {
+          setAccessDebugOpen(false);
+          setAccessDebugPayload(null);
+          setAccessDebugError(null);
+        }}
+      />
     </div>
   );
 }

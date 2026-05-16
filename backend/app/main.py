@@ -17,6 +17,7 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 
+from app.api.access_debug_routes import router as access_debug_router
 from app.api.admin_routes import router as admin_router
 from app.api.automation_debug_routes import router as automation_debug_router
 from app.api.automation_events_routes import router as automation_events_router
@@ -210,6 +211,7 @@ app.include_router(admin_router, prefix="/api/v1")
 app.include_router(system_router, prefix="/api/system")
 app.include_router(users_router, prefix="/api/v1")
 app.include_router(rbac_debug_router, prefix="/api/v1")
+app.include_router(access_debug_router, prefix="/api/v1")
 app.include_router(core_router, prefix="/api/v1")
 app.include_router(realtime_router, prefix="/api/v1")
 app.include_router(pulse_router, prefix="/api/v1")

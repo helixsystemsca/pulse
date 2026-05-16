@@ -46,6 +46,77 @@ function normalizeHref(href: string): string {
   return path;
 }
 
+export type MasterFeatureVisibilityExplain = {
+  visible: boolean;
+  reason?: string;
+};
+
+/**
+ * Why a sidebar module is shown or hidden (mirrors {@link isMasterFeatureVisibleForSession} checks in order).
+ * For observability tooling — update when sidebar rules change.
+ */
+export function explainMasterFeatureVisibility(
+  session: PulseAuthSession | null,
+  feature: MasterFeatureDef,
+  isSystemAdmin: boolean,
+): MasterFeatureVisibilityExplain {
+  if (!feature.navVisible) {
+    return { visible: false, reason: "Registry: navVisible is false for this route." };
+  }
+  if (feature.key === "settings") {
+    return session ? { visible: true } : { visible: false, reason: "No session — Settings is gated on an authenticated tenant session." };
+  }
+  if (feature.key === "team_management") {
+    if (isSystemAdmin) return { visible: true };
+    if (!session) return { visible: false, reason: "No session." };
+    if (session.workers_roster_access === true) return { visible: true };
+    if (isTenantFullAdminSession(session)) return { visible: true };
+    const fe = isUserFeatureEnabled(session, "team_management");
+    const rbacOk = hasRbacPermission(session, "team_management.view");
+    if (fe && rbacOk) return { visible: true };
+    if (!fe && !rbacOk) {
+      return {
+        visible: false,
+        reason:
+          "Team Management needs roster delegate / tenant admin, or both `team_management` in enabled_features and `team_management.view` in rbac_permissions.",
+      };
+    }
+    if (!fe) {
+      return { visible: false, reason: "`team_management` is not enabled for this session (feature gate)." };
+    }
+    return { visible: false, reason: "Missing RBAC key `team_management.view`." };
+  }
+  if (!session) {
+    return { visible: false, reason: "No session." };
+  }
+  if (session.is_system_admin || session.role === "system_admin") {
+    return { visible: true };
+  }
+  if (!isTenantFeatureOnContract(session, feature.feature)) {
+    return {
+      visible: false,
+      reason: `Module "${feature.feature}" is not licensed on the tenant contract for this session (contract_features).`,
+    };
+  }
+  if (isTenantFullAdminSession(session)) {
+    return { visible: true };
+  }
+  if (!isUserFeatureEnabled(session, feature.feature)) {
+    return {
+      visible: false,
+      reason: `effective enabled_features does not include ${feature.feature} (canonical/legacy normalization may apply).`,
+    };
+  }
+  if (!feature.rbacAnyOf.length) return { visible: true };
+  const ok = feature.rbacAnyOf.some((k) => hasRbacPermission(session, k));
+  return ok
+    ? { visible: true }
+    : {
+        visible: false,
+        reason: `Missing RBAC: need any of ${feature.rbacAnyOf.join(", ")}.`,
+      };
+}
+
 export function isMasterFeatureVisibleForSession(
   session: PulseAuthSession | null,
   feature: MasterFeatureDef,
