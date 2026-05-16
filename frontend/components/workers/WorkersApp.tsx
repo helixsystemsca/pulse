@@ -378,6 +378,9 @@ function matrixSlotBadgeClass(kind: string): string {
   if (kind === "explicit") {
     return "border-emerald-500/40 bg-emerald-500/10 text-emerald-100";
   }
+  if (kind === "policy") {
+    return "border-violet-500/45 bg-violet-500/15 text-violet-100";
+  }
   if (kind === "fallback") {
     return "border-red-500/50 bg-red-500/15 text-red-100";
   }

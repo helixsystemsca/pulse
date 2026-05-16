@@ -12,7 +12,7 @@ export type MatrixSlotSource =
   | "fallback_default"
   | "explicit_required_policy";
 
-export type MatrixSlotSourceKind = "explicit" | "inferred" | "fallback";
+export type MatrixSlotSourceKind = "explicit" | "inferred" | "fallback" | "policy";
 
 const ELEVATED_TITLE_KEYWORDS = [
   "coordinator",
