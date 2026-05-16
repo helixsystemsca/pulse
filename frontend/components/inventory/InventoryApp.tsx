@@ -37,6 +37,7 @@ import {
   createInventoryItem,
   fetchInventoryDetail,
   fetchInventoryList,
+  fetchInventoryScopes,
   fetchInventorySettings,
   patchInventoryItem,
   patchInventorySettings,
@@ -259,6 +260,8 @@ export function InventoryApp() {
   const [categoryFilter, setCategoryFilter] = useState("");
   const [zoneFilter, setZoneFilter] = useState("");
   const [departmentFilter, setDepartmentFilter] = useState("");
+  const [scopeAdminFilter, setScopeAdminFilter] = useState("");
+  const [scopeOptions, setScopeOptions] = useState<{ id: string; name: string; slug: string }[]>([]);
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [page, setPage] = useState(0);
@@ -341,6 +344,22 @@ export function InventoryApp() {
   }, [q]);
 
   useEffect(() => {
+    if (!canConfigureOrg || !dataEnabled || !effectiveCompanyId) {
+      setScopeOptions([]);
+      setScopeAdminFilter("");
+      return;
+    }
+    void (async () => {
+      try {
+        const rows = await fetchInventoryScopes(apiCompany);
+        setScopeOptions(rows.map((r) => ({ id: r.id, name: r.name, slug: r.slug })));
+      } catch {
+        setScopeOptions([]);
+      }
+    })();
+  }, [canConfigureOrg, dataEnabled, effectiveCompanyId, apiCompany]);
+
+  useEffect(() => {
     if (!isSystemAdmin || !session?.access_token) return;
     void (async () => {
       try {
@@ -406,6 +425,7 @@ export function InventoryApp() {
         category: categoryFilter || undefined,
         zone_id: zoneFilter || undefined,
         department_slug: departmentFilter || undefined,
+        scope_id: canConfigureOrg && scopeAdminFilter ? scopeAdminFilter : undefined,
         date_from,
         date_to,
         limit: pageSize,
@@ -432,6 +452,8 @@ export function InventoryApp() {
     categoryFilter,
     zoneFilter,
     departmentFilter,
+    scopeAdminFilter,
+    canConfigureOrg,
     dateFrom,
     dateTo,
     page,
@@ -533,6 +555,7 @@ export function InventoryApp() {
     setCategoryFilter("");
     setZoneFilter("");
     setDepartmentFilter("");
+    setScopeAdminFilter("");
     setDateFrom("");
     setDateTo("");
     setPage(0);
@@ -1175,6 +1198,23 @@ export function InventoryApp() {
                   </option>
                 ))}
               </select>
+              {canConfigureOrg ? (
+                <select
+                  className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-pulse-navy outline-none focus:border-pulse-accent focus:ring-2 focus:ring-pulse-accent/25 dark:border-ds-border dark:bg-ds-secondary dark:text-gray-100"
+                  value={scopeAdminFilter}
+                  onChange={(e) => {
+                    setScopeAdminFilter(e.target.value);
+                    setPage(0);
+                  }}
+                >
+                  <option value="">All scopes</option>
+                  {scopeOptions.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name}
+                    </option>
+                  ))}
+                </select>
+              ) : null}
               <input
                 type="date"
                 value={dateFrom}

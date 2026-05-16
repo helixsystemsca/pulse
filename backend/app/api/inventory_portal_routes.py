@@ -16,12 +16,14 @@ from sqlalchemy import and_, delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user, get_db, require_any_rbac
+from app.core.inventory.policy import EffectiveInventoryPolicy, resolve_effective_inventory_policy
 from app.core.user_roles import user_has_any_role
 from app.models.domain import (
     InventoryContractor,
     InventoryItem,
     InventoryModuleSettings,
     InventoryMovement,
+    InventoryScope,
     InventoryUsage,
     InventoryVendor,
     Tool,
@@ -29,6 +31,7 @@ from app.models.domain import (
     UserRole,
     Zone,
 )
+from app.repositories import inventory_scope_repository as inv_scope_repo
 from app.models.pulse_models import PulseWorkRequest
 from app.modules.pulse import service as pulse_svc
 from app.schemas.inventory_portal import (
@@ -40,6 +43,7 @@ from app.schemas.inventory_portal import (
     InventoryMovementOut,
     InventoryPatchIn,
     InventoryRowOut,
+    InventoryScopeRowOut,
     InventorySettingsOut,
     InventorySettingsPatchIn,
     InventorySummaryOut,
@@ -114,6 +118,37 @@ async def resolve_inv_company_id(
 CompanyId = Annotated[str, Depends(resolve_inv_company_id)]
 Db = Annotated[AsyncSession, Depends(get_db)]
 InvUser = Annotated[User, Depends(require_any_rbac("inventory.view", "inventory.manage"))]
+InvManageUser = Annotated[User, Depends(require_any_rbac("inventory.manage"))]
+
+
+async def resolve_inventory_policy(
+    db: Db,
+    user: Annotated[User, Depends(get_current_user)],
+    cid: CompanyId,
+) -> EffectiveInventoryPolicy:
+    return await resolve_effective_inventory_policy(db, user, cid)
+
+
+InventoryPolicyDep = Annotated[EffectiveInventoryPolicy, Depends(resolve_inventory_policy)]
+
+
+async def _validated_explicit_scope_id(
+    db: AsyncSession,
+    cid: str,
+    policy: EffectiveInventoryPolicy,
+    raw: Optional[str],
+) -> Optional[str]:
+    if raw is None or not str(raw).strip():
+        return None
+    sid = str(raw).strip()
+    sc = await inv_scope_repo.get_inventory_scope(db, sid, cid)
+    if sc is None:
+        raise HTTPException(status_code=400, detail="Unknown inventory scope")
+    if policy.is_company_admin:
+        return sid
+    if sid not in policy.readable_scope_ids:
+        raise HTTPException(status_code=403, detail="Inventory scope access denied")
+    return sid
 
 
 def _recompute_status(item: InventoryItem) -> None:
@@ -210,12 +245,84 @@ def _row(
         linked_asset_name=t.name if t else None,
         condition=item.item_condition,
         department_slug=item.department_slug,
+        scope_id=item.scope_id,
         reorder_flag=item.reorder_flag,
         last_movement_at=item.last_movement_at,
         last_used_at=last_used,
         usage_count=item.usage_count,
         unit_cost=item.unit_cost,
         vendor=item.vendor,
+    )
+
+
+async def _inventory_detail_payload(db: AsyncSession, cid: str, item: InventoryItem) -> InventoryDetailOut:
+    users, zones, tools = await _ctx_maps(db, cid)
+    lu = await _last_used_at(db, item.id)
+    base = _row(item, users=users, zones=zones, tools=tools, last_used=lu)
+
+    mq = await db.execute(
+        select(InventoryMovement)
+        .where(InventoryMovement.item_id == item.id)
+        .order_by(InventoryMovement.created_at.desc())
+        .limit(80)
+    )
+    movements: list[InventoryMovementOut] = []
+    wr_ids: set[str] = set()
+    for m in mq.scalars().all():
+        pu = users.get(m.performed_by) if m.performed_by else None
+        zn = zones.get(m.zone_id).name if m.zone_id and m.zone_id in zones else None
+        wlabel = None
+        if m.work_request_id:
+            wr_ids.add(m.work_request_id)
+            wq = await db.get(PulseWorkRequest, m.work_request_id)
+            wlabel = wq.title[:80] if wq else None
+        movements.append(
+            InventoryMovementOut(
+                id=m.id,
+                action=m.action,
+                performed_by=m.performed_by,
+                performer_name=pu.full_name if pu else None,
+                zone_id=m.zone_id,
+                zone_name=zn,
+                quantity=m.quantity,
+                work_request_id=m.work_request_id,
+                work_request_label=wlabel,
+                meta=dict(m.meta or {}),
+                created_at=m.created_at,
+            )
+        )
+
+    uq = await db.execute(
+        select(InventoryUsage)
+        .where(InventoryUsage.item_id == item.id)
+        .order_by(InventoryUsage.created_at.desc())
+        .limit(50)
+    )
+    usage_out: list[InventoryUsageOut] = []
+    for u in uq.scalars().all():
+        wr_ids.add(u.work_request_id)
+        wq = await db.get(PulseWorkRequest, u.work_request_id)
+        usage_out.append(
+            InventoryUsageOut(
+                id=u.id,
+                work_request_id=u.work_request_id,
+                work_request_title=wq.title if wq else None,
+                quantity=u.quantity,
+                created_at=u.created_at,
+            )
+        )
+
+    linked_wr: list[dict[str, str]] = []
+    for wid in wr_ids:
+        w = await db.get(PulseWorkRequest, wid)
+        if w and w.company_id == cid:
+            linked_wr.append({"id": w.id, "title": w.title})
+
+    return InventoryDetailOut(
+        **base.model_dump(),
+        movements=movements,
+        usage=usage_out,
+        linked_work_requests=linked_wr,
     )
 
 
@@ -556,8 +663,23 @@ async def delete_inventory_contractor(db: Db, _: InvUser, cid: CompanyId, contra
     await db.commit()
 
 
-async def _summary(db: AsyncSession, cid: str, conds: list) -> InventorySummaryOut:
-    where_base = and_(InventoryItem.company_id == cid, *conds) if conds else InventoryItem.company_id == cid
+async def _summary(
+    db: AsyncSession,
+    cid: str,
+    policy: EffectiveInventoryPolicy,
+    explicit_scope_id: Optional[str],
+    conds: list,
+) -> InventorySummaryOut:
+    scope_pred = inv_scope_repo.scope_access_predicate(
+        InventoryItem.scope_id,
+        policy,
+        explicit_scope_id=explicit_scope_id,
+    )
+    where_base = (
+        and_(InventoryItem.company_id == cid, scope_pred, *conds)
+        if conds
+        else and_(InventoryItem.company_id == cid, scope_pred)
+    )
     total = int(
         (await db.execute(select(func.count()).select_from(InventoryItem).where(where_base))).scalar_one() or 0
     )
@@ -646,11 +768,37 @@ async def _summary(db: AsyncSession, cid: str, conds: list) -> InventorySummaryO
     )
 
 
+@router.get("/scopes", response_model=list[InventoryScopeRowOut])
+async def list_inventory_scopes(
+    db: Db,
+    _: InvUser,
+    cid: CompanyId,
+    policy: InventoryPolicyDep,
+) -> list[InventoryScopeRowOut]:
+    stmt = select(InventoryScope).where(InventoryScope.company_id == cid).order_by(InventoryScope.name.asc())
+    if not policy.is_company_admin:
+        if not policy.readable_scope_ids:
+            return []
+        stmt = stmt.where(InventoryScope.id.in_(list(policy.readable_scope_ids)))
+    rows = list((await db.execute(stmt)).scalars().all())
+    return [
+        InventoryScopeRowOut(
+            id=r.id,
+            name=r.name,
+            slug=r.slug,
+            is_shared=bool(r.is_shared),
+            description=r.description,
+        )
+        for r in rows
+    ]
+
+
 @router.get("", response_model=InventoryListOut)
 async def list_inventory(
     db: Db,
     _: InvUser,
     cid: CompanyId,
+    policy: InventoryPolicyDep,
     q: Optional[str] = Query(None),
     inv_status: Optional[str] = Query(None, alias="status"),
     item_type: Optional[str] = Query(None),
@@ -660,9 +808,12 @@ async def list_inventory(
     date_from: Optional[datetime] = Query(None),
     date_to: Optional[datetime] = Query(None),
     department_slug: Optional[str] = Query(None, description="Filter by workspace department slug"),
+    scope_id: Optional[str] = Query(None, description="Optional narrow filter by inventory scope id"),
     limit: int = Query(50, ge=1, le=500),
     offset: int = Query(0, ge=0),
 ) -> InventoryListOut:
+    explicit_scope_id = await _validated_explicit_scope_id(db, cid, policy, scope_id)
+
     conds: list = []
     if q and q.strip():
         like = f"%{q.strip()}%"
@@ -678,7 +829,15 @@ async def list_inventory(
     if assigned_user_id:
         conds.append(InventoryItem.assigned_user_id == assigned_user_id)
     if department_slug and department_slug.strip():
-        conds.append(InventoryItem.department_slug == _normalize_department_slug(department_slug))
+        ds = _normalize_department_slug(department_slug)
+        sq = await db.execute(
+            select(InventoryScope.id).where(InventoryScope.company_id == cid, InventoryScope.slug == ds)
+        )
+        dept_scope_ids = [str(r[0]) for r in sq.all()]
+        if dept_scope_ids:
+            conds.append(InventoryItem.scope_id.in_(dept_scope_ids))
+        else:
+            conds.append(InventoryItem.department_slug == ds)
     if date_from:
         conds.append(InventoryItem.last_movement_at.isnot(None))
         conds.append(InventoryItem.last_movement_at >= date_from)
@@ -686,12 +845,21 @@ async def list_inventory(
         conds.append(InventoryItem.last_movement_at.isnot(None))
         conds.append(InventoryItem.last_movement_at <= date_to)
 
-    where_clause = and_(InventoryItem.company_id == cid, *conds) if conds else InventoryItem.company_id == cid
+    scope_pred = inv_scope_repo.scope_access_predicate(
+        InventoryItem.scope_id,
+        policy,
+        explicit_scope_id=explicit_scope_id,
+    )
+    where_clause = (
+        and_(InventoryItem.company_id == cid, scope_pred, *conds)
+        if conds
+        else and_(InventoryItem.company_id == cid, scope_pred)
+    )
 
     total = int(
         (await db.execute(select(func.count()).select_from(InventoryItem).where(where_clause))).scalar_one() or 0
     )
-    summ = await _summary(db, cid, conds)
+    summ = await _summary(db, cid, policy, explicit_scope_id, conds)
 
     stmt = (
         select(InventoryItem)
@@ -711,85 +879,27 @@ async def list_inventory(
 
 
 @router.get("/{item_id}", response_model=InventoryDetailOut)
-async def get_inventory_item(db: Db, _: InvUser, cid: CompanyId, item_id: str) -> InventoryDetailOut:
+async def get_inventory_item(
+    db: Db,
+    _: InvUser,
+    cid: CompanyId,
+    policy: InventoryPolicyDep,
+    item_id: str,
+) -> InventoryDetailOut:
     item = await db.get(InventoryItem, item_id)
     if not item or item.company_id != cid:
         raise HTTPException(status_code=404, detail="Not found")
-    users, zones, tools = await _ctx_maps(db, cid)
-    lu = await _last_used_at(db, item.id)
-    base = _row(item, users=users, zones=zones, tools=tools, last_used=lu)
-
-    mq = await db.execute(
-        select(InventoryMovement)
-        .where(InventoryMovement.item_id == item_id)
-        .order_by(InventoryMovement.created_at.desc())
-        .limit(80)
-    )
-    movements: list[InventoryMovementOut] = []
-    wr_ids: set[str] = set()
-    for m in mq.scalars().all():
-        pu = users.get(m.performed_by) if m.performed_by else None
-        zn = zones.get(m.zone_id).name if m.zone_id and m.zone_id in zones else None
-        wlabel = None
-        if m.work_request_id:
-            wr_ids.add(m.work_request_id)
-            wq = await db.get(PulseWorkRequest, m.work_request_id)
-            wlabel = wq.title[:80] if wq else None
-        movements.append(
-            InventoryMovementOut(
-                id=m.id,
-                action=m.action,
-                performed_by=m.performed_by,
-                performer_name=pu.full_name if pu else None,
-                zone_id=m.zone_id,
-                zone_name=zn,
-                quantity=m.quantity,
-                work_request_id=m.work_request_id,
-                work_request_label=wlabel,
-                meta=dict(m.meta or {}),
-                created_at=m.created_at,
-            )
-        )
-
-    uq = await db.execute(
-        select(InventoryUsage)
-        .where(InventoryUsage.item_id == item_id)
-        .order_by(InventoryUsage.created_at.desc())
-        .limit(50)
-    )
-    usage_out: list[InventoryUsageOut] = []
-    for u in uq.scalars().all():
-        wr_ids.add(u.work_request_id)
-        wq = await db.get(PulseWorkRequest, u.work_request_id)
-        usage_out.append(
-            InventoryUsageOut(
-                id=u.id,
-                work_request_id=u.work_request_id,
-                work_request_title=wq.title if wq else None,
-                quantity=u.quantity,
-                created_at=u.created_at,
-            )
-        )
-
-    linked_wr: list[dict[str, str]] = []
-    for wid in wr_ids:
-        w = await db.get(PulseWorkRequest, wid)
-        if w and w.company_id == cid:
-            linked_wr.append({"id": w.id, "title": w.title})
-
-    return InventoryDetailOut(
-        **base.model_dump(),
-        movements=movements,
-        usage=usage_out,
-        linked_work_requests=linked_wr,
-    )
+    if not inv_scope_repo.can_read_inventory_item(policy, item):
+        raise HTTPException(status_code=404, detail="Not found")
+    return await _inventory_detail_payload(db, cid, item)
 
 
 @router.post("", response_model=InventoryDetailOut, status_code=status.HTTP_201_CREATED)
 async def create_inventory_item(
     db: Db,
-    user: InvUser,
+    user: InvManageUser,
     cid: CompanyId,
+    policy: InventoryPolicyDep,
     body: InventoryCreateIn,
 ) -> InventoryDetailOut:
     sku = (body.sku or "").strip() or f"INV-{uuid4().hex[:8].upper()}"
@@ -799,7 +909,18 @@ async def create_inventory_item(
         raise HTTPException(status_code=400, detail="Unknown assignee")
     if body.linked_tool_id and not await pulse_svc.tool_in_company(db, cid, body.linked_tool_id):
         raise HTTPException(status_code=400, detail="Unknown linked asset")
-    dept_slug = _normalize_department_slug(body.department_slug)
+
+    if body.scope_id and str(body.scope_id).strip():
+        scope_row = await inv_scope_repo.get_inventory_scope(db, str(body.scope_id).strip(), cid)
+        if scope_row is None:
+            raise HTTPException(status_code=400, detail="Unknown inventory scope")
+    else:
+        dept_slug = _normalize_department_slug(body.department_slug)
+        scope_row = await inv_scope_repo.ensure_scope_for_company_slug(db, cid, dept_slug)
+
+    if not policy.is_company_admin and scope_row.id not in policy.writable_scope_ids:
+        raise HTTPException(status_code=403, detail="Inventory write denied")
+
     exists = await db.execute(
         select(InventoryItem.id).where(InventoryItem.company_id == cid, InventoryItem.sku == sku)
     )
@@ -807,9 +928,11 @@ async def create_inventory_item(
         raise HTTPException(status_code=400, detail="SKU already exists")
 
     inv_st = body.inv_status
+    slug_disp = scope_row.slug[:64]
     item = InventoryItem(
         id=str(uuid4()),
         company_id=cid,
+        scope_id=scope_row.id,
         sku=sku,
         name=body.name.strip(),
         quantity=float(body.quantity),
@@ -822,7 +945,7 @@ async def create_inventory_item(
         assigned_user_id=body.assigned_user_id,
         linked_tool_id=body.linked_tool_id,
         item_condition=body.condition,
-        department_slug=dept_slug,
+        department_slug=slug_disp,
         reorder_flag=body.reorder_flag,
         unit_cost=body.unit_cost,
         vendor=(body.vendor or "").strip() or None,
@@ -846,20 +969,26 @@ async def create_inventory_item(
     )
     await db.commit()
     await db.refresh(item)
-    return await get_inventory_item(db, user, cid, item.id)
+    return await _inventory_detail_payload(db, cid, item)
 
 
 @router.patch("/{item_id}", response_model=InventoryDetailOut)
 async def patch_inventory_item(
     db: Db,
-    user: InvUser,
+    user: InvManageUser,
     cid: CompanyId,
+    policy: InventoryPolicyDep,
     item_id: str,
     body: InventoryPatchIn,
 ) -> InventoryDetailOut:
     item = await db.get(InventoryItem, item_id)
     if not item or item.company_id != cid:
         raise HTTPException(status_code=404, detail="Not found")
+    if not inv_scope_repo.can_read_inventory_item(policy, item):
+        raise HTTPException(status_code=404, detail="Not found")
+    if not inv_scope_repo.can_write_inventory_item(policy, item):
+        raise HTTPException(status_code=403, detail="Inventory write denied")
+
     data = body.model_dump(exclude_unset=True)
     if "zone_id" in data and data["zone_id"] and not await pulse_svc.zone_in_company(db, cid, data["zone_id"]):
         raise HTTPException(status_code=400, detail="Unknown zone")
@@ -870,12 +999,33 @@ async def patch_inventory_item(
         if not await pulse_svc.tool_in_company(db, cid, data["linked_tool_id"]):
             raise HTTPException(status_code=400, detail="Unknown linked asset")
 
+    new_scope_raw = data.pop("scope_id", None)
+
     cond = data.pop("condition", None)
     if cond is not None:
         item.item_condition = cond
     ds = data.pop("department_slug", None)
     if ds is not None:
-        item.department_slug = _normalize_department_slug(str(ds))
+        slug_norm = _normalize_department_slug(str(ds))
+        dest = await inv_scope_repo.ensure_scope_for_company_slug(db, cid, slug_norm)
+        if not inv_scope_repo.can_transfer_inventory_item_to_scope(
+            policy, source_item=item, destination_scope_id=dest.id
+        ):
+            raise HTTPException(status_code=403, detail="Inventory write denied")
+        item.scope_id = dest.id
+        item.department_slug = dest.slug[:64]
+
+    if new_scope_raw is not None:
+        dest = await inv_scope_repo.get_inventory_scope(db, str(new_scope_raw).strip(), cid)
+        if dest is None:
+            raise HTTPException(status_code=400, detail="Unknown inventory scope")
+        if not inv_scope_repo.can_transfer_inventory_item_to_scope(
+            policy, source_item=item, destination_scope_id=dest.id
+        ):
+            raise HTTPException(status_code=403, detail="Inventory write denied")
+        item.scope_id = dest.id
+        item.department_slug = dest.slug[:64]
+
     for k in (
         "name",
         "item_type",
@@ -908,20 +1058,25 @@ async def patch_inventory_item(
     )
     await db.commit()
     await db.refresh(item)
-    return await get_inventory_item(db, user, cid, item_id)
+    return await _inventory_detail_payload(db, cid, item)
 
 
 @router.post("/{item_id}/assign", response_model=InventoryDetailOut)
 async def assign_inventory(
     db: Db,
-    user: InvUser,
+    user: InvManageUser,
     cid: CompanyId,
+    policy: InventoryPolicyDep,
     item_id: str,
     body: InventoryAssignIn,
 ) -> InventoryDetailOut:
     item = await db.get(InventoryItem, item_id)
     if not item or item.company_id != cid:
         raise HTTPException(status_code=404, detail="Not found")
+    if not inv_scope_repo.can_read_inventory_item(policy, item):
+        raise HTTPException(status_code=404, detail="Not found")
+    if not inv_scope_repo.can_write_inventory_item(policy, item):
+        raise HTTPException(status_code=403, detail="Inventory write denied")
     uid = body.user_id
     if uid and not await pulse_svc._user_in_company(db, cid, uid):
         raise HTTPException(status_code=400, detail="Unknown assignee")
@@ -941,20 +1096,26 @@ async def assign_inventory(
         meta={"user_id": uid},
     )
     await db.commit()
-    return await get_inventory_item(db, user, cid, item_id)
+    await db.refresh(item)
+    return await _inventory_detail_payload(db, cid, item)
 
 
 @router.post("/{item_id}/move", response_model=InventoryDetailOut)
 async def move_inventory(
     db: Db,
-    user: InvUser,
+    user: InvManageUser,
     cid: CompanyId,
+    policy: InventoryPolicyDep,
     item_id: str,
     body: InventoryMoveIn,
 ) -> InventoryDetailOut:
     item = await db.get(InventoryItem, item_id)
     if not item or item.company_id != cid:
         raise HTTPException(status_code=404, detail="Not found")
+    if not inv_scope_repo.can_read_inventory_item(policy, item):
+        raise HTTPException(status_code=404, detail="Not found")
+    if not inv_scope_repo.can_write_inventory_item(policy, item):
+        raise HTTPException(status_code=403, detail="Inventory write denied")
     zid = body.zone_id
     if zid and not await pulse_svc.zone_in_company(db, cid, zid):
         raise HTTPException(status_code=400, detail="Unknown zone")
@@ -970,20 +1131,26 @@ async def move_inventory(
         meta={},
     )
     await db.commit()
-    return await get_inventory_item(db, user, cid, item_id)
+    await db.refresh(item)
+    return await _inventory_detail_payload(db, cid, item)
 
 
 @router.post("/{item_id}/use", response_model=InventoryDetailOut)
 async def use_inventory(
     db: Db,
-    user: InvUser,
+    user: InvManageUser,
     cid: CompanyId,
+    policy: InventoryPolicyDep,
     item_id: str,
     body: InventoryUseIn,
 ) -> InventoryDetailOut:
     item = await db.get(InventoryItem, item_id)
     if not item or item.company_id != cid:
         raise HTTPException(status_code=404, detail="Not found")
+    if not inv_scope_repo.can_read_inventory_item(policy, item):
+        raise HTTPException(status_code=404, detail="Not found")
+    if not inv_scope_repo.can_write_inventory_item(policy, item):
+        raise HTTPException(status_code=403, detail="Inventory write denied")
     wr = await db.get(PulseWorkRequest, body.work_request_id)
     if not wr or wr.company_id != cid:
         raise HTTPException(status_code=400, detail="Unknown work request")
@@ -1018,4 +1185,5 @@ async def use_inventory(
         meta={"work_request_title": wr.title},
     )
     await db.commit()
-    return await get_inventory_item(db, user, cid, item_id)
+    await db.refresh(item)
+    return await _inventory_detail_payload(db, cid, item)

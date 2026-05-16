@@ -286,6 +286,7 @@ class InventoryItemOut(BaseModel):
     assigned_user_id: Optional[str] = None
     linked_tool_id: Optional[str] = None
     item_condition: str = "good"
+    scope_id: str
     reorder_flag: bool = False
     unit_cost: Optional[float] = None
     last_movement_at: Optional[datetime] = None

@@ -13,14 +13,15 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel, Field
 
-from app.api.deps import require_manager_or_above, require_tenant_user
+from app.api.deps import require_any_rbac, require_manager_or_above, require_tenant_user
 from app.core.events.engine import event_engine
 from app.core.events.types import DomainEvent
 from app.core.pulse_storage import read_user_avatar_bytes
 from app.core.user_avatar_upload import INTERNAL_AVATAR_PATH, co_worker_avatar_url
 from app.core.user_roles import is_field_worker_like, primary_jwt_role
 from app.core.user_roles import user_has_any_role
-from app.core.database import get_db
+from app.core.inventory.policy import resolve_effective_inventory_policy
+from app.repositories import inventory_scope_repository as inv_scope_repo
 from app.core.tenant_feature_access import load_merged_workers_settings
 from app.core.work_request_access import user_may_manage_facility_zones
 from app.models.domain import (
@@ -264,6 +265,8 @@ async def _company_id(user: User = Depends(require_tenant_user)) -> str:
 
 CompanyId = Annotated[str, Depends(_company_id)]
 Db = Annotated[AsyncSession, Depends(get_db)]
+PulseInvReader = Annotated[User, Depends(require_any_rbac("inventory.view", "inventory.manage"))]
+PulseInvManage = Annotated[User, Depends(require_any_rbac("inventory.manage"))]
 
 
 async def _tool_in_company(db: AsyncSession, company_id: str, tool_id: str) -> bool:
@@ -277,8 +280,12 @@ async def _zone_in_company(db: AsyncSession, company_id: str, zone_id: str) -> b
 
 
 @router.get("/dashboard", response_model=DashboardOut)
-async def pulse_dashboard(db: Db, cid: CompanyId) -> DashboardOut:
-    data = await pulse_svc.dashboard_aggregate(db, cid)
+async def pulse_dashboard(db: Db, cid: CompanyId, user: User = Depends(require_tenant_user)) -> DashboardOut:
+    inv_filter: set[str] | None = None
+    policy = await resolve_effective_inventory_policy(db, user, cid)
+    if not policy.is_company_admin:
+        inv_filter = set(policy.readable_scope_ids)
+    data = await pulse_svc.dashboard_aggregate(db, cid, inventory_readable_scope_ids=inv_filter)
     return DashboardOut.model_validate(data)
 
 
@@ -1588,39 +1595,46 @@ async def patch_asset(db: Db, cid: CompanyId, tool_id: str, body: AssetPatch) ->
 async def list_inventory(
     db: Db,
     cid: CompanyId,
+    user: PulseInvReader,
     limit: int = Query(100, ge=1, le=500),
     offset: int = Query(0, ge=0),
 ) -> list[InventoryItemOut]:
-    iq = await db.execute(
-        select(InventoryItem)
-        .where(InventoryItem.company_id == cid)
-        .order_by(InventoryItem.name)
-        .offset(offset)
-        .limit(limit)
-    )
+    policy = await resolve_effective_inventory_policy(db, user, cid)
+    stmt = select(InventoryItem).where(InventoryItem.company_id == cid)
+    stmt = inv_scope_repo.apply_inventory_scope_filter(stmt, InventoryItem.scope_id, policy)
+    iq = await db.execute(stmt.order_by(InventoryItem.name).offset(offset).limit(limit))
     rows = iq.scalars().all()
     return [InventoryItemOut.model_validate(r) for r in rows]
 
 
 @router.get("/inventory/low-stock", response_model=list[InventoryItemOut])
-async def low_stock(db: Db, cid: CompanyId) -> list[InventoryItemOut]:
-    iq = await db.execute(
+async def low_stock(db: Db, cid: CompanyId, user: PulseInvReader) -> list[InventoryItemOut]:
+    policy = await resolve_effective_inventory_policy(db, user, cid)
+    stmt = (
         select(InventoryItem)
         .where(
             InventoryItem.company_id == cid,
             InventoryItem.quantity <= InventoryItem.low_stock_threshold,
         )
-        .order_by(InventoryItem.name)
     )
+    stmt = inv_scope_repo.apply_inventory_scope_filter(stmt, InventoryItem.scope_id, policy)
+    iq = await db.execute(stmt.order_by(InventoryItem.name))
     rows = iq.scalars().all()
     return [InventoryItemOut.model_validate(r) for r in rows]
 
 
 @router.patch("/inventory/{item_id}", response_model=InventoryItemOut)
-async def patch_inventory(db: Db, cid: CompanyId, item_id: str, body: InventoryPatch) -> InventoryItemOut:
+async def patch_inventory(
+    db: Db, cid: CompanyId, user: PulseInvManage, item_id: str, body: InventoryPatch
+) -> InventoryItemOut:
+    policy = await resolve_effective_inventory_policy(db, user, cid)
     item = await db.get(InventoryItem, item_id)
     if not item or item.company_id != cid:
         raise HTTPException(status_code=404, detail="Not found")
+    if not inv_scope_repo.can_read_inventory_item(policy, item):
+        raise HTTPException(status_code=404, detail="Not found")
+    if not inv_scope_repo.can_write_inventory_item(policy, item):
+        raise HTTPException(status_code=403, detail="Inventory write denied")
     data = body.model_dump(exclude_unset=True)
     if "quantity" in data:
         item.quantity = float(data["quantity"])

@@ -454,12 +454,63 @@ class DomainEventRow(Base):
     )
 
 
+class InventoryScope(Base):
+    """Tenant-owned inventory partition (department pool, shared pool, warehouse, …)."""
+
+    __tablename__ = "inventory_scopes"
+    __table_args__ = (UniqueConstraint("company_id", "slug", name="uq_inventory_scope_company_slug"),)
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    company_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    slug: Mapped[str] = mapped_column(String(64), nullable=False)
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    is_shared: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False
+    )
+
+
+class DepartmentInventoryScope(Base):
+    """Maps HR/workspace department slugs to inventory scopes (many-to-many via rows)."""
+
+    __tablename__ = "department_inventory_scopes"
+    __table_args__ = (
+        UniqueConstraint(
+            "company_id",
+            "department_slug",
+            "scope_id",
+            name="uq_department_inventory_scope_row",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
+    company_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    department_slug: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    scope_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("inventory_scopes.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+
+
 class InventoryItem(Base):
     __tablename__ = "inventory_items"
 
     id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=_uuid)
     company_id: Mapped[str] = mapped_column(
         UUID(as_uuid=False), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    scope_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
+        ForeignKey("inventory_scopes.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
     )
     sku: Mapped[str] = mapped_column(String(128), nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -481,7 +532,7 @@ class InventoryItem(Base):
     )
     item_condition: Mapped[str] = mapped_column(String(32), nullable=False, default="good")
     #: Workspace department (maintenance, communications, …) for filtering and reporting.
-    department_slug: Mapped[str] = mapped_column(String(32), nullable=False, default="maintenance")
+    department_slug: Mapped[str] = mapped_column(String(64), nullable=False, default="maintenance")
     reorder_flag: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     unit_cost: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     vendor: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)

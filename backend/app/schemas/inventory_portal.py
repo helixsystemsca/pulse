@@ -49,6 +49,16 @@ class InventoryUsageOut(BaseModel):
     created_at: datetime
 
 
+class InventoryScopeRowOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    name: str
+    slug: str
+    is_shared: bool = False
+    description: Optional[str] = None
+
+
 class InventoryRowOut(BaseModel):
     id: str
     sku: str
@@ -67,6 +77,7 @@ class InventoryRowOut(BaseModel):
     linked_asset_name: Optional[str] = None
     condition: str
     department_slug: str = "maintenance"
+    scope_id: str
     reorder_flag: bool
     last_movement_at: Optional[datetime] = None
     last_used_at: Optional[datetime] = None
@@ -100,10 +111,11 @@ class InventoryCreateIn(BaseModel):
     assigned_user_id: Optional[str] = None
     linked_tool_id: Optional[str] = None
     condition: str = Field("good", pattern="^(good|needs_maintenance|critical)$")
+    scope_id: Optional[str] = Field(default=None, description="Target inventory scope (admin / multi-pool)")
     department_slug: str = Field(
         "maintenance",
-        max_length=32,
-        description="Workspace department (maintenance, communications, reception, aquatics, fitness, admin).",
+        max_length=64,
+        description="Default scope is derived from this slug when scope_id is omitted.",
     )
     unit_cost: Optional[float] = Field(None, ge=0)
     vendor: Optional[str] = Field(None, max_length=255)
@@ -122,7 +134,8 @@ class InventoryPatchIn(BaseModel):
     assigned_user_id: Optional[str] = None
     linked_tool_id: Optional[str] = None
     condition: Optional[str] = Field(None, pattern="^(good|needs_maintenance|critical)$")
-    department_slug: Optional[str] = Field(None, max_length=32)
+    department_slug: Optional[str] = Field(None, max_length=64)
+    scope_id: Optional[str] = Field(default=None, description="Move item to another inventory scope")
     unit_cost: Optional[float] = Field(None, ge=0)
     vendor: Optional[str] = Field(None, max_length=255)
     reorder_flag: Optional[bool] = None

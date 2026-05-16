@@ -214,7 +214,12 @@ async def validate_shift_assignment(
     return errors, warnings
 
 
-async def dashboard_aggregate(db: AsyncSession, company_id: str) -> dict[str, Any]:
+async def dashboard_aggregate(
+    db: AsyncSession,
+    company_id: str,
+    *,
+    inventory_readable_scope_ids: set[str] | None = None,
+) -> dict[str, Any]:
     today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
     tomorrow = today_start + timedelta(days=1)
 
@@ -251,15 +256,30 @@ async def dashboard_aggregate(db: AsyncSession, company_id: str) -> dict[str, An
     )
     open_wr = int(open_wr_q.scalar_one() or 0)
 
-    low_stock_q = await db.execute(
-        select(func.count())
-        .select_from(InventoryItem)
-        .where(
-            InventoryItem.company_id == company_id,
-            InventoryItem.quantity <= InventoryItem.low_stock_threshold,
+    low_stock_conditions = [
+        InventoryItem.company_id == company_id,
+        InventoryItem.quantity <= InventoryItem.low_stock_threshold,
+    ]
+    if inventory_readable_scope_ids is not None:
+        if not inventory_readable_scope_ids:
+            low_stock = 0
+        else:
+            low_stock_conditions.append(
+                InventoryItem.scope_id.in_(list(inventory_readable_scope_ids)),
+            )
+            low_stock_q = await db.execute(
+                select(func.count())
+                .select_from(InventoryItem)
+                .where(and_(*low_stock_conditions))
+            )
+            low_stock = int(low_stock_q.scalar_one() or 0)
+    else:
+        low_stock_q = await db.execute(
+            select(func.count())
+            .select_from(InventoryItem)
+            .where(and_(*low_stock_conditions))
         )
-    )
-    low_stock = int(low_stock_q.scalar_one() or 0)
+        low_stock = int(low_stock_q.scalar_one() or 0)
 
     shifts_today_q = await db.execute(
         select(func.count())

@@ -70,6 +70,7 @@ export type InventoryRow = {
   /** Unit cost (same field used for inventory value KPI). */
   unit_cost?: number | null;
   vendor?: string | null;
+  scope_id?: string;
 };
 
 export type InventoryDetail = InventoryRow & {
@@ -82,6 +83,14 @@ export type InventoryListResponse = {
   items: InventoryRow[];
   total: number;
   summary: InventorySummary;
+};
+
+export type InventoryScopeRow = {
+  id: string;
+  name: string;
+  slug: string;
+  is_shared: boolean;
+  description?: string | null;
 };
 
 export type InventoryModuleSettings = {
@@ -112,6 +121,8 @@ export function buildInventoryListQuery(params: {
   zone_id?: string;
   assigned_user_id?: string;
   department_slug?: string;
+  /** Tenant admins only — narrows visible scopes beyond HR defaults */
+  scope_id?: string;
   date_from?: string;
   date_to?: string;
   limit?: number;
@@ -126,6 +137,7 @@ export function buildInventoryListQuery(params: {
   if (params.zone_id) sp.set("zone_id", params.zone_id);
   if (params.assigned_user_id) sp.set("assigned_user_id", params.assigned_user_id);
   if (params.department_slug) sp.set("department_slug", params.department_slug);
+  if (params.scope_id) sp.set("scope_id", params.scope_id);
   if (params.date_from) sp.set("date_from", params.date_from);
   if (params.date_to) sp.set("date_to", params.date_to);
   if (params.limit != null) sp.set("limit", String(params.limit));
@@ -136,6 +148,10 @@ export function buildInventoryListQuery(params: {
 
 export async function fetchInventoryList(params: Parameters<typeof buildInventoryListQuery>[0]): Promise<InventoryListResponse> {
   return apiFetch<InventoryListResponse>(`/api/inventory${buildInventoryListQuery(params)}`);
+}
+
+export async function fetchInventoryScopes(companyId: string | null): Promise<InventoryScopeRow[]> {
+  return apiFetch<InventoryScopeRow[]>(withCompany(`/api/inventory/scopes`, companyId));
 }
 
 export async function fetchInventoryDetail(companyId: string | null, id: string): Promise<InventoryDetail> {
