@@ -156,20 +156,19 @@ def effective_tenant_feature_names_for_user(
     merged_settings: dict[str, Any] | None = None,
     hr: Any | None = None,
     tenant_role: TenantRole | None = None,
+    assignment: "ActiveTenantAssignment | None" = None,
 ) -> list[str]:
     """
     Canonical product keys for sidebar / ``enabled_features``.
 
-    Precedence:
+    Delegates to ``resolve_tenant_feature_list`` when the department matrix is configured
+    (requires an explicit ``tenant_role_assignment`` via ``assignment`` or DB lookup is async-only).
 
-    - System / company / tenant full admins: full contract (canonicalized).
-    - ``no_access`` access-overlay row (``tenant_roles.slug``): deny all regardless of matrix.
-    - Else: department × role-slot matrix when configured, otherwise legacy ``role_feature_access`` buckets.
-    - Union per-user ``feature_allow_extra`` (company-admin grants), ∩ contract.
+    Legacy ``role_feature_access`` buckets apply only when the matrix has never been configured.
+  """
+    from app.core.tenant_role_assignments import ActiveTenantAssignment
+    from app.core.tenant_capabilities import resolve_tenant_feature_list
 
-    Tenant role ``feature_keys`` and synced ``tenant_role_grants`` do **not** widen module visibility —
-    sidebar is matrix-driven (legacy fallback only until the matrix is configured).
-    """
     contract_canonical = canonical_keys_from_contract(contract_names)
     if user.company_id is None or user.is_system_admin or user_has_any_role(user, UserRole.system_admin):
         return contract_canonical
@@ -181,23 +180,23 @@ def effective_tenant_feature_names_for_user(
     if tenant_role is not None and tenant_role.slug == "no_access":
         return []
 
-    matrix_feats = _features_from_department_role_matrix(
+    matrix = merged.get("department_role_feature_access")
+    if _department_role_matrix_is_configured(matrix):
+        feats, _, _, _ = resolve_tenant_feature_list(
+            user=user,
+            contract_names=contract_names,
+            merged_settings=merged,
+            tenant_role=tenant_role,
+            assignment=assignment,
+        )
+        return feats
+
+    base_features = _features_from_legacy_role_feature_access(
         user=user,
-        hr=hr,
         merged_settings=merged,
         contract_names=contract_names,
     )
-    if matrix_feats is not None:
-        base_features = matrix_feats
-    else:
-        base_features = _features_from_legacy_role_feature_access(
-            user=user,
-            merged_settings=merged,
-            contract_names=contract_names,
-        )
-
     extras = _features_from_user_allow_extra(user=user, contract_names=contract_names)
-
     return _sorted_canonical_union_contract_filtered(
         [base_features, extras],
         contract_canonical=contract_canonical,

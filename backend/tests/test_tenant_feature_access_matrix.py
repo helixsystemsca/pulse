@@ -2,11 +2,26 @@
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from types import SimpleNamespace
 from uuid import uuid4
 
+from app.core.tenant_role_assignments import ActiveTenantAssignment
 from app.models.domain import User, UserRole
 from app.models.rbac_models import TenantRole
+
+
+def _active_assignment(user: User, department: str, role_key: str) -> ActiveTenantAssignment:
+    return ActiveTenantAssignment(
+        id="test-assignment",
+        company_id=str(user.company_id),
+        user_id=str(user.id),
+        department_slug=department,
+        role_key=role_key,
+        department_id=None,
+        assigned_by=None,
+        assigned_at=datetime.now(timezone.utc),
+    )
 
 
 def _user(
@@ -54,7 +69,14 @@ def test_admin_department_manager_resolves_admin_matrix_row() -> None:
             "maintenance": {"manager": ["dashboard"]},
         },
     }
-    eff = _eff(user=user, contract_names=contract, merged_settings=merged, tenant_role=None, hr=hr)
+    eff = _eff(
+        user=user,
+        contract_names=contract,
+        merged_settings=merged,
+        tenant_role=None,
+        hr=hr,
+        assignment=_active_assignment(user, "admin", "manager"),
+    )
     assert eff == ["inventory"]
 
 
@@ -71,13 +93,23 @@ def test_maintenance_manager_and_admin_manager_can_have_different_modules() -> N
 
     user_maint = _user([UserRole.manager.value], tenant_role_id=None)
     eff_maint = _eff(
-        user=user_maint, contract_names=contract, merged_settings=matrix, tenant_role=None, hr=hr_maint
+        user=user_maint,
+        contract_names=contract,
+        merged_settings=matrix,
+        tenant_role=None,
+        hr=hr_maint,
+        assignment=_active_assignment(user_maint, "maintenance", "manager"),
     )
     assert set(eff_maint) == {"dashboard", "work_requests"}
 
     user_admin = _user([UserRole.manager.value], tenant_role_id=None)
     eff_admin = _eff(
-        user=user_admin, contract_names=contract, merged_settings=matrix, tenant_role=None, hr=hr_admin
+        user=user_admin,
+        contract_names=contract,
+        merged_settings=matrix,
+        tenant_role=None,
+        hr=hr_admin,
+        assignment=_active_assignment(user_admin, "admin", "manager"),
     )
     assert eff_admin == ["inventory"]
 
@@ -105,7 +137,14 @@ def test_matrix_resolves_when_tenant_role_overlay_empty() -> None:
     user = _user([UserRole.worker.value], tenant_role_id=role.id)
     merged = {"department_role_feature_access": {"communications": {"coordination": ["dashboard"]}}}
     hr = SimpleNamespace(department_slugs=["communications"], department="communications", job_title="Coordinator")
-    eff = _eff(user=user, contract_names=contract, merged_settings=merged, tenant_role=role, hr=hr)
+    eff = _eff(
+        user=user,
+        contract_names=contract,
+        merged_settings=merged,
+        tenant_role=role,
+        hr=hr,
+        assignment=_active_assignment(user, "communications", "coordination"),
+    )
     assert eff == ["dashboard"]
 
 
@@ -127,7 +166,14 @@ def test_explicit_matrix_slot_coordination_without_job_title() -> None:
         job_title="",
         matrix_slot="coordination",
     )
-    eff = _eff(user=user, contract_names=contract, merged_settings=merged, tenant_role=None, hr=hr)
+    eff = _eff(
+        user=user,
+        contract_names=contract,
+        merged_settings=merged,
+        tenant_role=None,
+        hr=hr,
+        assignment=_active_assignment(user, "communications", "coordination"),
+    )
     assert eff == ["inventory"]
 
 
@@ -148,7 +194,14 @@ def test_communications_coordination_inventory_only_overlay_ignored() -> None:
         },
     }
     hr = SimpleNamespace(department_slugs=["communications"], department="communications", job_title="Coordinator")
-    eff = _eff(user=user, contract_names=contract, merged_settings=merged, tenant_role=role, hr=hr)
+    eff = _eff(
+        user=user,
+        contract_names=contract,
+        merged_settings=merged,
+        tenant_role=role,
+        hr=hr,
+        assignment=_active_assignment(user, "communications", "coordination"),
+    )
     assert eff == ["inventory"]
 
 
@@ -157,7 +210,14 @@ def test_feature_allow_extra_unions_with_matrix() -> None:
     contract = ["dashboard", "monitoring"]
     user = _user([UserRole.worker.value], feature_allow_extra=["monitoring"])
     merged = {"department_role_feature_access": {"maintenance": {"team_member": ["dashboard"]}}}
-    eff = _eff(user=user, contract_names=contract, merged_settings=merged, tenant_role=None, hr=None)
+    eff = _eff(
+        user=user,
+        contract_names=contract,
+        merged_settings=merged,
+        tenant_role=None,
+        hr=None,
+        assignment=_active_assignment(user, "maintenance", "team_member"),
+    )
     assert set(eff) == {"dashboard", "monitoring"}
 
 
@@ -172,7 +232,14 @@ def test_department_matrix_without_tenant_role_respects_coordination_slot() -> N
             },
         },
     }
-    eff = _eff(user=user, contract_names=contract, merged_settings=merged, tenant_role=None, hr=hr)
+    eff = _eff(
+        user=user,
+        contract_names=contract,
+        merged_settings=merged,
+        tenant_role=None,
+        hr=hr,
+        assignment=_active_assignment(user, "communications", "coordination"),
+    )
     assert set(eff) == {"dashboard", "comms_assets"}
 
 
@@ -202,7 +269,14 @@ def test_tenant_role_overlay_keys_do_not_widen_matrix() -> None:
     )
     user = _user([UserRole.worker.value], tenant_role_id=role.id)
     merged = {"department_role_feature_access": {"maintenance": {"team_member": ["monitoring"]}}}
-    eff = _eff(user=user, contract_names=contract, merged_settings=merged, tenant_role=role, hr=None)
+    eff = _eff(
+        user=user,
+        contract_names=contract,
+        merged_settings=merged,
+        tenant_role=role,
+        hr=None,
+        assignment=_active_assignment(user, "maintenance", "team_member"),
+    )
     assert eff == ["monitoring"]
 
 
