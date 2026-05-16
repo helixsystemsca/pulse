@@ -1,6 +1,6 @@
 /**
  * Canonical permission metadata for UI (Team Management, tooltips, audits).
- * Keep keys aligned with `backend/app/core/rbac/catalog.py` and Alembic seed `rbac_catalog_permissions`.
+ * Keep keys aligned with `backend/app/core/rbac/catalog.py` and `catalog_sync` (DB seed at runtime).
  */
 export type RbacPermissionMeta = {
   key: string;

@@ -75,6 +75,7 @@ from app.api.telemetry_positions_routes import router as telemetry_positions_rou
 from app.api.routines_routes import router as routines_router
 from app.api.training_routes import router as training_router
 from app.core.bootstrap import ensure_bootstrap_system_admin
+from app.core.rbac.catalog_sync import sync_rbac_catalog_permissions
 from app.core.config import get_settings
 from app.core.database import AsyncSessionLocal
 from app.limiter import limiter
@@ -121,6 +122,9 @@ if not _cors_origins and not settings.cors_origin_regex_pattern:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    async with AsyncSessionLocal() as db:
+        await sync_rbac_catalog_permissions(db)
+        await db.commit()
     async with AsyncSessionLocal() as db:
         await ensure_bootstrap_system_admin(db)
     yield

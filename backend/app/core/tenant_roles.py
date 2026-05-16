@@ -14,6 +14,7 @@ from app.core.features.canonical_catalog import (
     contract_keys_for_canonical,
 )
 from app.core.rbac.catalog import FEATURE_TO_RBAC_PERMISSIONS, RBAC_KEY_REQUIRES_COMPANY_FEATURE
+from app.core.rbac.catalog_sync import sync_rbac_catalog_permissions
 from app.models.domain import User
 from app.models.rbac_models import TenantRole, TenantRoleGrant
 
@@ -56,6 +57,7 @@ async def sync_tenant_role_grants(
     *,
     contract_names: list[str],
 ) -> None:
+    await sync_rbac_catalog_permissions(db)
     contract_set = {str(x) for x in contract_names}
     fkeys = role.feature_keys if isinstance(role.feature_keys, list) else []
     perm_keys = rbac_keys_for_canonical_features([str(x) for x in fkeys], contract_names=contract_set)

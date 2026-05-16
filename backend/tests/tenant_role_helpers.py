@@ -1,4 +1,4 @@
-"""Test helpers for persisted tenant role assignment (avoids FK violations)."""
+"""Test helpers for persisted tenant role assignment."""
 
 from __future__ import annotations
 

@@ -21,6 +21,8 @@ import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.rbac.catalog_sync import sync_rbac_catalog_permissions
+
 # Env before any app import (pydantic loads .env; process env wins over .env file).
 os.environ.setdefault("SECRET_KEY", "pytest-secret-key-at-least-32-characters-long!!")
 os.environ.setdefault("REQUIRE_HTTPS", "false")
@@ -125,6 +127,7 @@ async def db_session(test_database, app):
 
         app.dependency_overrides[get_db] = override_get_db
         async with _bind_feature_gate_session(session):
+            await sync_rbac_catalog_permissions(session)
             try:
                 yield session
             finally:

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-# Keys seeded in `rbac_catalog_permissions` (migration). Extend here + migration together.
+# Keys mirrored in `rbac_catalog_permissions` via `app.core.rbac.catalog_sync` at runtime (and legacy Alembic seeds).
 RBAC_PERMISSION_SEED: tuple[tuple[str, str], ...] = (
     ("dashboard.view", "View leadership / operations dashboard"),
     ("work_requests.view", "View work requests"),
