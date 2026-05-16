@@ -18,6 +18,11 @@ class AccessSnapshotAuditOut(BaseModel):
     matrix_slot_source: MatrixSlotSourceOut
     matrix_slot_inferred: bool
     hr_matrix_slot: str | None = None
+    likely_elevated: bool = False
+    likely_elevated_reasons: list[str] = Field(default_factory=list)
+    recommended_matrix_slot: str | None = None
+    inference_trace: list[str] = Field(default_factory=list)
+    require_explicit_elevated_slots: bool = False
     resolution_warnings: list[str] = Field(default_factory=list)
     denied_by_contract: list[str] = Field(default_factory=list)
     contract_features: list[str] = Field(default_factory=list)

@@ -87,6 +87,35 @@ class WorkerRowOut(BaseModel):
     last_login_city: Optional[str] = None
     last_login_region: Optional[str] = None
     last_login_user_agent: Optional[str] = None
+    #: Resolved permission-matrix slot (may differ from stored HR value when auto).
+    resolved_matrix_slot: Optional[str] = None
+    matrix_slot_source: Optional[str] = None
+    matrix_slot_source_kind: Optional[str] = None
+    matrix_slot_inferred: bool = False
+    matrix_slot_display: Optional[str] = None
+    likely_elevated: bool = False
+    recommended_matrix_slot: Optional[str] = None
+
+
+class WorkerSlotAccessAuditRowOut(BaseModel):
+    id: str
+    email: str
+    full_name: Optional[str] = None
+    department: Optional[str] = None
+    job_title: Optional[str] = None
+    hr_matrix_slot: Optional[str] = None
+    resolved_matrix_slot: str
+    matrix_slot_source: str
+    matrix_slot_display: str
+    likely_elevated: bool = False
+    likely_elevated_reasons: list[str] = Field(default_factory=list)
+    recommended_matrix_slot: Optional[str] = None
+
+
+class WorkerSlotAccessAuditOut(BaseModel):
+    items: list[WorkerSlotAccessAuditRowOut] = Field(default_factory=list)
+    inferred_count: int = 0
+    elevated_inferred_count: int = 0
 
 
 class WorkerListOut(BaseModel):

@@ -17,6 +17,13 @@ export type WorkerRow = {
   job_title: string | null;
   /** Explicit Team Management permission-matrix slot (overrides job-title inference). */
   matrix_slot?: string | null;
+  resolved_matrix_slot?: string | null;
+  matrix_slot_source?: string | null;
+  matrix_slot_source_kind?: string | null;
+  matrix_slot_inferred?: boolean;
+  matrix_slot_display?: string | null;
+  likely_elevated?: boolean;
+  recommended_matrix_slot?: string | null;
   /** HR shift key; label comes from workers settings `shifts`. */
   shift?: string | null;
   /** GG (or similar) eligibility — stored on scheduling profile, not as a shift preset. */
@@ -148,6 +155,31 @@ export async function fetchUserLoginEvents(userId: string): Promise<LoginEventRo
 /** system_admin: cross-tenant login history */
 export async function fetchSystemUserLoginEvents(userId: string): Promise<LoginEventRow[]> {
   return apiFetch<LoginEventRow[]>(`/api/system/users/${encodeURIComponent(userId)}/login-events`);
+}
+
+export type WorkerSlotAccessAudit = {
+  items: {
+    id: string;
+    email: string;
+    full_name: string | null;
+    department: string | null;
+    job_title: string | null;
+    hr_matrix_slot: string | null;
+    resolved_matrix_slot: string;
+    matrix_slot_source: string;
+    matrix_slot_display: string;
+    likely_elevated: boolean;
+    likely_elevated_reasons: string[];
+    recommended_matrix_slot: string | null;
+  }[];
+  inferred_count: number;
+  elevated_inferred_count: number;
+};
+
+export async function fetchWorkerSlotAccessAudit(
+  companyId: string | null,
+): Promise<WorkerSlotAccessAudit> {
+  return apiFetch<WorkerSlotAccessAudit>(withCompany("/api/workers/slot-access-audit", companyId));
 }
 
 export async function fetchWorkerList(

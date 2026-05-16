@@ -15,6 +15,7 @@ import type {
 import { diagnoseAccessNav, formatMissingReason } from "@/lib/accessDebugNavDiagnosis";
 import type { PulseAuthSession } from "@/lib/pulse-session";
 import { toCanonicalFeatureKey } from "@/lib/features/canonical-features";
+import { isFallbackTeamMember } from "@/lib/rbac/matrix-slot-policy";
 import { cn } from "@/lib/cn";
 import { buttonVariants } from "@/styles/button-variants";
 
@@ -374,10 +375,37 @@ export function AccessDebugModal({ open, onClose, loading, error, debug, resolve
                 </section>
               ) : null}
 
-              {debug.resolved_slot_source && debug.resolved_slot_source !== "explicit_matrix_slot" ? (
+              {isFallbackTeamMember(debug.resolved_slot_source, debug.resolved_slot) ? (
+                <section className="rounded-lg border-2 border-red-500/60 bg-red-500/15 px-4 py-3 text-sm text-red-50">
+                  <p className="font-bold uppercase tracking-wide">Authorization uses fallback team_member</p>
+                  <p className="mt-2">
+                    No explicit <span className="font-mono">matrix_slot</span> exists on this worker&apos;s HR record.
+                    The permission matrix row defaults to <span className="font-mono">team_member</span> — coordinator and
+                    elevated modules will not resolve unless you assign an explicit slot.
+                  </p>
+                  {debug.recommended_matrix_slot ? (
+                    <p className="mt-2">
+                      Recommended fix: set matrix_slot to{" "}
+                      <span className="font-mono font-semibold">{debug.recommended_matrix_slot}</span> and re-login.
+                    </p>
+                  ) : null}
+                  {debug.matrix_slot_inference_trace?.length ? (
+                    <ul className="mt-3 list-inside list-disc space-y-1 text-xs text-red-100/90">
+                      {debug.matrix_slot_inference_trace.map((line) => (
+                        <li key={line}>{line}</li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </section>
+              ) : debug.resolved_slot_source && debug.resolved_slot_source !== "explicit_matrix_slot" ? (
                 <section className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-50">
                   Matrix slot is inferred ({formatSlotSource(debug.resolved_slot_source)}). Set an explicit{" "}
                   <span className="font-mono">matrix_slot</span> on the worker HR profile for stable access.
+                  {debug.recommended_matrix_slot ? (
+                    <span className="mt-1 block">
+                      Suggested: <span className="font-mono">{debug.recommended_matrix_slot}</span>
+                    </span>
+                  ) : null}
                 </section>
               ) : null}
 

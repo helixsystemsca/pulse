@@ -14,12 +14,20 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.features.canonical_catalog import canonicalize_feature_keys
+from app.core.matrix_slot_policy import (
+    build_inference_attempt_trace,
+    detect_likely_elevated_worker,
+    log_inferred_elevated_worker,
+    matrix_slot_fallback_warning_message,
+    recommend_explicit_matrix_slot,
+    resolve_matrix_slot_for_access,
+)
 from app.core.permission_feature_matrix import (
     MatrixSlotSource,
     matrix_slot_resolution_warnings,
+    normalize_matrix_slot,
     permission_matrix_department_for_user,
     permission_matrix_slot_for_user,
-    resolve_permission_matrix_slot,
 )
 from app.core.rbac.resolve import effective_rbac_permission_keys
 from app.core.tenant_feature_access import (
@@ -43,6 +51,11 @@ class AccessSnapshotAudit:
     matrix_slot_source: MatrixSlotSource
     matrix_slot_inferred: bool
     hr_matrix_slot: str | None
+    likely_elevated: bool = False
+    likely_elevated_reasons: list[str] = field(default_factory=list)
+    recommended_matrix_slot: str | None = None
+    inference_trace: list[str] = field(default_factory=list)
+    require_explicit_elevated_slots: bool = False
     resolution_warnings: list[str] = field(default_factory=list)
     denied_by_contract: list[str] = field(default_factory=list)
     contract_features: list[str] = field(default_factory=list)
@@ -168,13 +181,26 @@ async def resolve_access_snapshot(
             tenant_role = q.scalar_one_or_none()
 
     dept = permission_matrix_department_for_user(user, hr)
-    slot, slot_source = resolve_permission_matrix_slot(user, hr)
-    explicit_hr_slot = getattr(hr, "matrix_slot", None) if hr else None
-    hr_slot_str = str(explicit_hr_slot).strip() if explicit_hr_slot else None
+    slot, slot_source = resolve_matrix_slot_for_access(user, hr)
+    explicit_hr_slot = normalize_matrix_slot(getattr(hr, "matrix_slot", None) if hr else None)
+    hr_slot_str = explicit_hr_slot
+
+    elevated, elev_reasons = detect_likely_elevated_worker(user, hr)
+    recommended = recommend_explicit_matrix_slot(user, hr, elevated_reasons=elev_reasons)
+    inference_trace = build_inference_attempt_trace(user, hr)
 
     warnings = matrix_slot_resolution_warnings(
         user, hr, resolved_slot=slot, resolved_slot_source=slot_source
     )
+    fallback_msg = matrix_slot_fallback_warning_message(resolved_slot=slot, source=slot_source)
+    if fallback_msg:
+        warnings.insert(0, fallback_msg)
+    if elevated and slot_source != "explicit_matrix_slot":
+        warnings.insert(
+            0,
+            "LIKELY ELEVATED WORKER using inferred access rules — assign explicit matrix_slot on HR profile.",
+        )
+
     if slot_source != "explicit_matrix_slot":
         _log.warning(
             "matrix_slot inferred user_id=%s company_id=%s department=%s slot=%s source=%s hr_matrix_slot=%r job_title=%r",
@@ -186,6 +212,14 @@ async def resolve_access_snapshot(
             hr_slot_str,
             hr.job_title if hr else None,
         )
+    log_inferred_elevated_worker(
+        user=user,
+        hr=hr,
+        department=dept,
+        resolved_slot=slot,
+        source=slot_source,
+        elevated_reasons=elev_reasons,
+    )
 
     is_company_admin = user_has_tenant_full_admin(user)
     eff = effective_tenant_feature_names_for_user(
@@ -211,10 +245,17 @@ async def resolve_access_snapshot(
         effective_features=eff,
     )
 
+    from app.core.matrix_slot_policy import require_explicit_elevated_slots
+
     audit = AccessSnapshotAudit(
         matrix_slot_source=slot_source,
         matrix_slot_inferred=slot_source != "explicit_matrix_slot",
         hr_matrix_slot=hr_slot_str,
+        likely_elevated=elevated,
+        likely_elevated_reasons=elev_reasons,
+        recommended_matrix_slot=recommended,
+        inference_trace=inference_trace,
+        require_explicit_elevated_slots=require_explicit_elevated_slots(),
         resolution_warnings=warnings,
         denied_by_contract=denied_contract,
         contract_features=list(contract),

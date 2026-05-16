@@ -117,15 +117,11 @@ def resolve_permission_matrix_slot(user: User, hr: PulseWorkerHR | None) -> tupl
     """
     Authoritative matrix slot for ``department_role_feature_access`` row selection.
 
-    1. Explicit ``PulseWorkerHR.matrix_slot`` when set (never overridden by job title).
-    2. JWT manager / supervisor / lead tiers.
-    3. Job title coordination / operations heuristics (worker-tier).
-    4. ``team_member`` default.
+    Delegates to ``matrix_slot_policy.resolve_matrix_slot_for_access`` (see module docstring for order).
     """
-    explicit = normalize_matrix_slot(getattr(hr, "matrix_slot", None) if hr else None)
-    if explicit:
-        return explicit, "explicit_matrix_slot"
-    return infer_matrix_slot_legacy(roles=list(user.roles or []), job_title=hr.job_title if hr else None)
+    from app.core.matrix_slot_policy import resolve_matrix_slot_for_access
+
+    return resolve_matrix_slot_for_access(user, hr)
 
 
 def permission_matrix_slot_for_user(user: User, hr: PulseWorkerHR | None) -> str:

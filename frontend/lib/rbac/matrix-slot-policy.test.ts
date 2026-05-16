@@ -1,0 +1,39 @@
+import { describe, expect, it } from "vitest";
+import {
+  detectLikelyElevatedWorker,
+  formatMatrixSlotDisplay,
+  isFallbackTeamMember,
+  shouldShowInferredAccessWarning,
+} from "@/lib/rbac/matrix-slot-policy";
+
+describe("matrix-slot-policy", () => {
+  it("detects coordinator job title as elevated", () => {
+    const { likely, reasons } = detectLikelyElevatedWorker({
+      role: "worker",
+      job_title: "Communications Coordinator",
+      department: "communications",
+    });
+    expect(likely).toBe(true);
+    expect(reasons).toContain("job_title_elevated_keyword");
+  });
+
+  it("formats explicit coordination label", () => {
+    expect(formatMatrixSlotDisplay("coordination", "explicit_matrix_slot")).toBe("Coordination (Explicit)");
+  });
+
+  it("flags fallback team_member", () => {
+    expect(isFallbackTeamMember("fallback_default", "team_member")).toBe(true);
+  });
+
+  it("warns when dept set, inferred, elevated", () => {
+    expect(
+      shouldShowInferredAccessWarning({
+        role: "worker",
+        job_title: "Coordinator",
+        department: "communications",
+        matrix_slot: null,
+        matrix_slot_inferred: true,
+      }),
+    ).toBe(true);
+  });
+});

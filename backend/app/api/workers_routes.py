@@ -48,6 +48,8 @@ from app.core.workspace_departments import (
     normalize_workspace_department_slug,
     normalize_workspace_department_slug_list,
 )
+from app.core.matrix_slot_policy import worker_slot_audit_fields
+from app.core.permission_feature_matrix import permission_matrix_department_for_user
 from app.core.workers_settings_merge import (
     DEFAULT_WORKERS_SETTINGS,
     merge_workers_settings,
@@ -87,6 +89,8 @@ from app.schemas.pulse_workers import (
     WorkerListOut,
     WorkerPatchIn,
     WorkerRowOut,
+    WorkerSlotAccessAuditOut,
+    WorkerSlotAccessAuditRowOut,
     WorkersSettingsOut,
     WorkersSettingsPatchIn,
     WorkerSkillOut,
@@ -664,6 +668,66 @@ async def patch_workers_settings(
     return WorkersSettingsOut(settings=base, contract_feature_names=cfn)
 
 
+@router.get("/slot-access-audit", response_model=WorkerSlotAccessAuditOut)
+async def worker_slot_access_audit(
+    db: Db,
+    _: RosterPageUser,
+    cid: CompanyId,
+) -> WorkerSlotAccessAuditOut:
+    """Workers using inferred/fallback matrix slots — for Team Management cleanup."""
+    roster_vals = [r.value for r in _ROSTER_ROLES]
+    users = list(
+        (
+            await db.execute(
+                select(User).where(
+                    User.company_id == cid,
+                    User.roles.overlap(pg_array(roster_vals)),
+                    User.is_active.is_(True),
+                )
+            )
+        ).scalars().all()
+    )
+    hr_map: dict[str, PulseWorkerHR] = {}
+    if users:
+        hq = await db.execute(select(PulseWorkerHR).where(PulseWorkerHR.user_id.in_([u.id for u in users])))
+        for h in hq.scalars().all():
+            hr_map[h.user_id] = h
+    rows: list[WorkerSlotAccessAuditRowOut] = []
+    inferred_count = 0
+    elevated_inferred_count = 0
+    for u in users:
+        h = hr_map.get(u.id)
+        dept = permission_matrix_department_for_user(u, h)
+        audit = worker_slot_audit_fields(u, h, department=dept)
+        if not audit["matrix_slot_inferred"]:
+            continue
+        inferred_count += 1
+        if audit["likely_elevated"]:
+            elevated_inferred_count += 1
+        rows.append(
+            WorkerSlotAccessAuditRowOut(
+                id=str(u.id),
+                email=u.email,
+                full_name=u.full_name,
+                department=h.department if h else None,
+                job_title=h.job_title if h else None,
+                hr_matrix_slot=audit["hr_matrix_slot"],
+                resolved_matrix_slot=audit["resolved_matrix_slot"],
+                matrix_slot_source=audit["matrix_slot_source"],
+                matrix_slot_display=audit["matrix_slot_display"],
+                likely_elevated=audit["likely_elevated"],
+                likely_elevated_reasons=audit["likely_elevated_reasons"],
+                recommended_matrix_slot=audit["recommended_matrix_slot"],
+            )
+        )
+    rows.sort(key=lambda r: (not r.likely_elevated, (r.full_name or r.email or "").lower()))
+    return WorkerSlotAccessAuditOut(
+        items=rows,
+        inferred_count=inferred_count,
+        elevated_inferred_count=elevated_inferred_count,
+    )
+
+
 @router.get("", response_model=WorkerListOut)
 async def list_workers(
     db: Db,
@@ -716,6 +780,8 @@ async def list_workers(
         sched_row: dict[str, Any] | None = dict(prof_row.scheduling or {}) if prof_row else None
         employment_type = _employment_type_from_scheduling_payload(sched_row)
         gg_assignable = bool((sched_row or {}).get("gg_assignable"))
+        dept_resolved = permission_matrix_department_for_user(u, h)
+        slot_audit = worker_slot_audit_fields(u, h, department=dept_resolved)
         items.append(
             WorkerRowOut(
                 id=uid_s,
@@ -739,6 +805,13 @@ async def list_workers(
                 last_login_city=le.city if le else None,
                 last_login_region=le.region if le else None,
                 last_login_user_agent=le.user_agent if le else None,
+                resolved_matrix_slot=slot_audit["resolved_matrix_slot"],
+                matrix_slot_source=slot_audit["matrix_slot_source"],
+                matrix_slot_source_kind=slot_audit["matrix_slot_source_kind"],
+                matrix_slot_inferred=slot_audit["matrix_slot_inferred"],
+                matrix_slot_display=slot_audit["matrix_slot_display"],
+                likely_elevated=slot_audit["likely_elevated"],
+                recommended_matrix_slot=slot_audit["recommended_matrix_slot"],
             )
         )
     return WorkerListOut(items=items)

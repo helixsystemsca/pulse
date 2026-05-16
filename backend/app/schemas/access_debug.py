@@ -29,6 +29,12 @@ class AccessResolutionDebugOut(BaseModel):
     resolved_slot: str | None = None
     resolved_slot_source: str = ""
     hr_matrix_slot: str | None = None
+    matrix_slot_display: str = ""
+    likely_elevated: bool = False
+    likely_elevated_reasons: list[str] = Field(default_factory=list)
+    recommended_matrix_slot: str | None = None
+    matrix_slot_inference_trace: list[str] = Field(default_factory=list)
+    require_explicit_elevated_slots: bool = False
 
     matrix_configured: bool = False
     matrix_row_department: str | None = None

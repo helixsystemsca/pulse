@@ -21,6 +21,12 @@ export type AccessResolutionDebugPayload = {
   resolved_department: string | null;
   resolved_slot: string | null;
   resolved_slot_source: string;
+  matrix_slot_display?: string;
+  likely_elevated?: boolean;
+  likely_elevated_reasons?: string[];
+  recommended_matrix_slot?: string | null;
+  matrix_slot_inference_trace?: string[];
+  require_explicit_elevated_slots?: boolean;
   hr_matrix_slot: string | null;
 
   matrix_configured: boolean;

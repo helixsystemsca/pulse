@@ -34,6 +34,15 @@ import {
   type AccessResolutionDebugPayload,
   type ResolvedAccessAudit,
 } from "@/lib/accessDebugService";
+import {
+  formatMatrixSlotDisplay,
+  formatSlotSourceLabel,
+  inferredAccessBannerMessage,
+  isFallbackTeamMember,
+  isMatrixSlotInferred,
+  matrixSlotSourceKind,
+  shouldShowInferredAccessWarning,
+} from "@/lib/rbac/matrix-slot-policy";
 import { parseClientApiError } from "@/lib/parse-client-api-error";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
 import {
@@ -66,13 +75,20 @@ import {
   ROTATION_WEEKDAY_SHORT,
   shiftWindowFromRosterKey,
 } from "@/lib/workerRotation";
-import type { LoginEventRow, WorkerDetail, WorkerRow, WorkersSettings } from "@/lib/workersService";
+import type {
+  LoginEventRow,
+  WorkerDetail,
+  WorkerRow,
+  WorkersSettings,
+  WorkerSlotAccessAudit,
+} from "@/lib/workersService";
 import {
   createWorker,
   deleteWorker,
   fetchUserLoginEvents,
   fetchWorkerDetail,
   fetchWorkerList,
+  fetchWorkerSlotAccessAudit,
   fetchWorkerSettings,
   patchWorker,
   patchWorkerSettings,
@@ -358,6 +374,37 @@ function formatLoginWhen(iso: string | null | undefined): string {
   }
 }
 
+function matrixSlotBadgeClass(kind: string): string {
+  if (kind === "explicit") {
+    return "border-emerald-500/40 bg-emerald-500/10 text-emerald-100";
+  }
+  if (kind === "fallback") {
+    return "border-red-500/50 bg-red-500/15 text-red-100";
+  }
+  return "border-amber-500/40 bg-amber-500/10 text-amber-100";
+}
+
+function WorkerMatrixSlotCell({ row }: { row: WorkerRow }) {
+  const display =
+    row.matrix_slot_display ??
+    formatMatrixSlotDisplay(row.resolved_matrix_slot ?? row.matrix_slot, row.matrix_slot_source);
+  const kind = row.matrix_slot_source_kind ?? matrixSlotSourceKind(row.matrix_slot_source);
+  return (
+    <span
+      className={cn(
+        "inline-flex max-w-[12rem] flex-col gap-0.5 rounded-md border px-2 py-1 text-[10px] font-semibold leading-tight",
+        matrixSlotBadgeClass(kind),
+      )}
+      title={row.matrix_slot_source ? `Source: ${formatSlotSourceLabel(row.matrix_slot_source)}` : undefined}
+    >
+      <span className="truncate">{display}</span>
+      {row.likely_elevated && isMatrixSlotInferred(row) ? (
+        <span className="text-[9px] font-normal opacity-90">Likely elevated — set explicit slot</span>
+      ) : null}
+    </span>
+  );
+}
+
 function formatLoginPlace(row: WorkerRow): string {
   const c = row.last_login_city?.trim();
   const r = row.last_login_region?.trim();
@@ -422,6 +469,8 @@ export function WorkersApp() {
   const [filterColLastActive, setFilterColLastActive] = useState<"" | "never" | "7d" | "30d" | "90d">("");
   const [filterColGeo, setFilterColGeo] = useState("");
   const [filterColUa, setFilterColUa] = useState("");
+  const [filterInferredAccess, setFilterInferredAccess] = useState(false);
+  const [slotAccessAudit, setSlotAccessAudit] = useState<WorkerSlotAccessAudit | null>(null);
 
   const [fullSettings, setFullSettings] = useState<WorkersSettings>({});
 
@@ -629,6 +678,16 @@ export function WorkersApp() {
     const t = window.setTimeout(() => void loadList(), 280);
     return () => window.clearTimeout(t);
   }, [loadList]);
+
+  useEffect(() => {
+    if (!dataEnabled || !effectiveCompanyId || !isTenantFullAdmin) {
+      setSlotAccessAudit(null);
+      return;
+    }
+    void fetchWorkerSlotAccessAudit(apiCompany)
+      .then(setSlotAccessAudit)
+      .catch(() => setSlotAccessAudit(null));
+  }, [dataEnabled, effectiveCompanyId, apiCompany, isTenantFullAdmin]);
 
   const openLoginActivity = useCallback(async (target: Pick<WorkerRow, "id" | "full_name" | "email">) => {
     setActivityUserId(target.id);
@@ -854,10 +913,12 @@ export function WorkersApp() {
         const ua = (row.last_login_user_agent ?? "").toLowerCase();
         if (!ua.includes(needle)) return false;
       }
+      if (filterInferredAccess && !isMatrixSlotInferred(row)) return false;
       return true;
     });
   }, [
     list,
+    filterInferredAccess,
     filterColName,
     filterColRole,
     filterColShift,
@@ -1899,6 +1960,15 @@ export function WorkersApp() {
                   className={`${dsInputClass} py-2 pl-9 pr-3`}
                 />
               </div>
+              <label className="flex shrink-0 cursor-pointer items-center gap-2 text-xs text-ds-muted">
+                <input
+                  type="checkbox"
+                  className={dsCheckboxClass}
+                  checked={filterInferredAccess}
+                  onChange={(e) => setFilterInferredAccess(e.target.checked)}
+                />
+                Inferred access only
+              </label>
               {rosterColumnFiltersActive ? (
                 <button
                   type="button"
@@ -1911,12 +1981,21 @@ export function WorkersApp() {
                     setFilterColLastActive("");
                     setFilterColGeo("");
                     setFilterColUa("");
+                    setFilterInferredAccess(false);
                   }}
                 >
                   Clear column filters
                 </button>
               ) : null}
             </div>
+            {slotAccessAudit && slotAccessAudit.elevated_inferred_count > 0 ? (
+              <div className="mb-3 rounded-lg border border-amber-500/45 bg-amber-500/10 px-3 py-2 text-xs text-amber-50">
+                <strong>{slotAccessAudit.elevated_inferred_count}</strong> active worker
+                {slotAccessAudit.elevated_inferred_count === 1 ? "" : "s"} appear elevated but use inferred matrix slots
+                ({slotAccessAudit.inferred_count} total with inferred access). Assign explicit{" "}
+                <span className="font-mono">matrix_slot</span> on each HR profile.
+              </div>
+            ) : null}
             <p className="mb-3 text-xs leading-relaxed text-ds-muted">
               Roster is grouped by HR <span className="font-medium text-ds-foreground">department</span>, then{" "}
               <span className="font-medium text-ds-foreground">role</span> (e.g. Maintenance → Managers → Operations with
@@ -1971,6 +2050,12 @@ export function WorkersApp() {
                                   aria-label="Filter by name or email"
                                   autoComplete="off"
                                 />
+                              </th>
+                              <th className="min-w-[9rem] px-2 py-2 align-bottom">
+                                <label className="mb-1 block text-[10px] font-bold uppercase tracking-wide text-ds-muted">
+                                  Matrix slot
+                                </label>
+                                <p className="text-[9px] font-normal normal-case text-ds-muted">Resolved access row</p>
                               </th>
                               <th className="min-w-[7rem] px-2 py-2 align-bottom">
                                 <label className="mb-1 block text-[10px] font-bold uppercase tracking-wide text-ds-muted">
@@ -2087,7 +2172,7 @@ export function WorkersApp() {
                             className="border-b-2 border-[color-mix(in_srgb,var(--ds-accent)_30%,var(--ds-border))] bg-[color-mix(in_srgb,var(--ds-surface-secondary)_90%,transparent)]"
                           >
                             <td
-                              colSpan={7}
+                              colSpan={8}
                               className="px-4 py-3 text-[11px] font-bold uppercase tracking-[0.14em] text-ds-foreground"
                             >
                               {dept.deptLabel}
@@ -2159,6 +2244,9 @@ export function WorkersApp() {
                                   ) : null}
                                 </div>
                               </div>
+                            </td>
+                            <td className="px-4 py-3">
+                              <WorkerMatrixSlotCell row={row} />
                             </td>
                             <td className="px-4 py-3">
                               <div className="flex flex-wrap gap-1">
@@ -3027,6 +3115,21 @@ export function WorkersApp() {
               </section>
             ) : null}
 
+            {profile &&
+            shouldShowInferredAccessWarning({
+              ...profile,
+              role: profile.role,
+              roles: profile.roles,
+              matrix_slot_inferred:
+                list.find((r) => r.id === profile.id)?.matrix_slot_inferred ?? !profile.matrix_slot?.trim(),
+            }) ? (
+              <div className="mb-4 rounded-lg border border-amber-500/50 bg-amber-500/15 px-3 py-2.5 text-sm text-amber-50">
+                {inferredAccessBannerMessage(
+                  list.find((r) => r.id === profile.id)?.recommended_matrix_slot ?? "coordination",
+                )}
+              </div>
+            ) : null}
+
             <section>
               <h3 className={SECTION_KICKER}>Position &amp; shift</h3>
               {canEditWorkerBasics ? (
@@ -3242,12 +3345,17 @@ export function WorkersApp() {
                     <span className="text-pulse-muted">Job title: </span>
                     {profile.job_title ?? "—"}
                   </p>
-                  <p>
+                  <p className="flex flex-wrap items-center gap-2">
                     <span className="text-pulse-muted">Matrix slot: </span>
-                    {profile.matrix_slot
-                      ? PERMISSION_MATRIX_ROLE_LABEL[profile.matrix_slot as keyof typeof PERMISSION_MATRIX_ROLE_LABEL] ??
-                        profile.matrix_slot
-                      : "Auto (infer from roles / job title)"}
+                    {(() => {
+                      const row = list.find((r) => r.id === profile.id);
+                      if (row?.matrix_slot_display) {
+                        return <WorkerMatrixSlotCell row={row} />;
+                      }
+                      return profile.matrix_slot
+                        ? formatMatrixSlotDisplay(profile.matrix_slot, "explicit_matrix_slot")
+                        : "Team Member (Fallback — not set on HR)";
+                    })()}
                   </p>
                   <p>
                     <span className="text-pulse-muted">Department: </span>
