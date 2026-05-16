@@ -32,7 +32,7 @@ import { getGamificationMe, patchAvatarBorder, type GamificationMe } from "@/lib
 import { parseClientApiError } from "@/lib/parse-client-api-error";
 import { listProcedureAcknowledgments } from "@/lib/procedureAcknowledgments";
 import type { PulseShiftApi, PulseZoneApi } from "@/lib/schedule/pulse-bridge";
-import { sessionHasAnyRole } from "@/lib/pulse-roles";
+import { sessionHasAnyRole, workerRoleDisplayLabel } from "@/lib/pulse-roles";
 import type { PulseAuthSession } from "@/lib/pulse-session";
 import { fetchWorkerTraining, mapApiAssignments, mapApiPrograms } from "@/lib/trainingApi";
 import type { TrainingAssignment, TrainingProgram } from "@/lib/training/types";
@@ -79,8 +79,13 @@ function accountStatusLabel(w: WorkerDetail | null): string {
   return w.is_active ? "Active" : "Inactive";
 }
 
-function roleDisplay(session: PulseAuthSession): string {
-  return (session.role_display_label || session.role || "Team member").trim();
+/** Facility / permission tier label — matches Team Management roster wording (Coordinator vs Operations vs Staff). */
+function profileFacilityRoleLine(worker: WorkerDetail | null, session: PulseAuthSession): string {
+  const override = session.role_display_label?.trim();
+  if (override) return override;
+  const dept = worker?.department ?? session.hr_department ?? undefined;
+  const roleKey = (session.role ?? "worker").trim().toLowerCase();
+  return workerRoleDisplayLabel(dept, roleKey);
 }
 
 function buildShiftRows(shifts: PulseShiftApi[], zones: PulseZoneApi[], userId: string): UpcomingShiftRow[] {
@@ -366,6 +371,9 @@ export function ProfilePage() {
   const openWr = worker?.work_summary?.open_work_requests ?? null;
   const completedTasks = worker?.work_summary?.completed_tasks ?? null;
 
+  const hrJobTitle = (worker?.job_title ?? session.job_title ?? "").trim();
+  const equippedGamificationTitle = hrJobTitle ? null : equippedTitleDisplay;
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -394,7 +402,8 @@ export function ProfilePage() {
           displayName={fullName || email}
           email={email}
           phone={worker?.phone ?? null}
-          roleLabel={roleDisplay(session)}
+          jobTitle={hrJobTitle || undefined}
+          roleLabel={profileFacilityRoleLine(worker, session)}
           department={worker?.department ?? null}
           facilityLabel={session.company?.name ?? null}
           accountStatus={accountStatusLabel(worker)}
@@ -404,7 +413,7 @@ export function ProfilePage() {
           microsoftAuth={session.auth_provider === "microsoft"}
           portraitRingClassName={portraitStyles.frameClass}
           portraitAnimatedClassName={portraitStyles.animatedClass}
-          equippedTitle={equippedTitleDisplay}
+          equippedTitle={equippedGamificationTitle}
           featuredBadges={featuredBadgesForHeader}
           onAppearanceClick={() => setCustomOpen(true)}
           onAvatarUploaded={(next) => {

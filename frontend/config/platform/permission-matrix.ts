@@ -54,26 +54,72 @@ export function legacyRoleBucketForSlot(slot: PermissionMatrixRoleSlot): "manage
 
 export type PermissionFeatureGroup = { id: string; label: string; description?: string; keys: readonly string[] };
 
+/** Keys mirrored across departments — master Team Management matrix lists every module once. */
+const MAINTENANCE_OPS_KEYS = [
+  "work_requests",
+  "compliance",
+  "inventory",
+  "equipment",
+  "monitoring",
+  "projects",
+] as const;
+
+const COMMS_TOOLS_KEYS = [
+  "comms_assets",
+  "comms_advertising_mapper",
+  "comms_publication_builder",
+  "comms_indesign_pipeline",
+  "comms_campaign_planner",
+] as const;
+
+const LEADERSHIP_KEYS = ["dashboard"] as const;
+
+const SHARED_PROGRAM_KEYS = ["schedule", "team_management", "team_insights", "procedures", "messaging"] as const;
+
+const MAP_KEYS = ["drawings", "zones_devices", "live_map"] as const;
+
+/** Single catalog for company admins — underlying rows are duplicated per workspace department on save. */
+export const MASTER_PERMISSION_FEATURE_GROUPS: PermissionFeatureGroup[] = [
+  {
+    id: "dashboard",
+    label: "Leadership dashboard",
+    description: "Main operations / leadership overview (/overview).",
+    keys: [...LEADERSHIP_KEYS],
+  },
+  {
+    id: "ops",
+    label: "Maintenance & operations",
+    description: "Work requests, inspections, inventory, equipment, monitoring, and projects.",
+    keys: [...MAINTENANCE_OPS_KEYS],
+  },
+  {
+    id: "comms",
+    label: "Communications tools",
+    description: "Publication pipeline, campaigns, assets, advertising mapper, and InDesign export.",
+    keys: [...COMMS_TOOLS_KEYS],
+  },
+  {
+    id: "shared",
+    label: "Scheduling, people & standards",
+    keys: [...SHARED_PROGRAM_KEYS],
+  },
+  {
+    id: "maps",
+    label: "Maps, drawings & devices",
+    keys: [...MAP_KEYS],
+  },
+];
+
+/** Canonical department row duplicated to every key in `department_role_feature_access` on save. */
+export const MASTER_PERMISSION_MATRIX_DEPARTMENT: PermissionMatrixDepartment = "maintenance";
+
 /** Feature toggles shown for the selected department (subset of contract). */
 export function permissionFeatureGroupsForDepartment(dept: PermissionMatrixDepartment): PermissionFeatureGroup[] {
-  const maintenanceOps = [
-    "work_requests",
-    "compliance",
-    "inventory",
-    "equipment",
-    "monitoring",
-    "projects",
-  ] as const;
-  const commsTools = [
-    "comms_assets",
-    "comms_advertising_mapper",
-    "comms_publication_builder",
-    "comms_indesign_pipeline",
-    "comms_campaign_planner",
-  ] as const;
-  const leadership = ["dashboard"] as const;
-  const sharedProgram = ["schedule", "team_management", "team_insights", "procedures", "messaging"] as const;
-  const maps = ["drawings", "zones_devices", "live_map"] as const;
+  const maintenanceOps = MAINTENANCE_OPS_KEYS;
+  const commsTools = COMMS_TOOLS_KEYS;
+  const leadership = LEADERSHIP_KEYS;
+  const sharedProgram = SHARED_PROGRAM_KEYS;
+  const maps = MAP_KEYS;
 
   if (dept === "maintenance") {
     return [
@@ -234,4 +280,72 @@ export function normalizeDepartmentRoleMatrixFromApi(
     }
   }
   return seed;
+}
+
+/**
+ * Pick one authoritative slot map (prefer maintenance), copy to every department row so HR workspace
+ * routing always sees the same permission answers Lisa expects from the master matrix UI.
+ */
+export function unifyDepartmentRoleMatrixForMasterUi(
+  matrix: Record<string, Record<string, string[]>>,
+): Record<string, Record<string, string[]>> {
+  const masterDept = MASTER_PERMISSION_MATRIX_DEPARTMENT;
+  const emptySlots = (): Record<string, string[]> =>
+    Object.fromEntries(PERMISSION_MATRIX_ROLE_SLOTS.map((s) => [s, [] as string[]])) as Record<
+      PermissionMatrixRoleSlot,
+      string[]
+    >;
+
+  const pickSourceRow = (): Record<string, string[]> => {
+    const m = matrix[masterDept];
+    if (m && typeof m === "object") {
+      return PERMISSION_MATRIX_ROLE_SLOTS.reduce(
+        (acc, s) => {
+          acc[s] = [...(m[s] ?? [])];
+          return acc;
+        },
+        {} as Record<PermissionMatrixRoleSlot, string[]>,
+      );
+    }
+    for (const d of PERMISSION_MATRIX_DEPARTMENTS) {
+      const row = matrix[d];
+      if (!row || typeof row !== "object") continue;
+      return PERMISSION_MATRIX_ROLE_SLOTS.reduce(
+        (acc, s) => {
+          acc[s] = [...(row[s] ?? [])];
+          return acc;
+        },
+        {} as Record<PermissionMatrixRoleSlot, string[]>,
+      );
+    }
+    return emptySlots();
+  };
+
+  const slots = pickSourceRow();
+  const out: Record<string, Record<string, string[]>> = {};
+  for (const d of PERMISSION_MATRIX_DEPARTMENTS) {
+    out[d] = {};
+    for (const s of PERMISSION_MATRIX_ROLE_SLOTS) {
+      out[d][s] = [...(slots[s] ?? [])];
+    }
+  }
+  return out;
+}
+
+/** Toggle one module for a role-slot across every department row (single master matrix). */
+export function toggleModuleAcrossDepartmentMatrix(
+  prev: Record<string, Record<string, string[]>>,
+  slot: PermissionMatrixRoleSlot,
+  mod: string,
+): Record<string, Record<string, string[]>> {
+  const next: Record<string, Record<string, string[]>> = { ...prev };
+  for (const d of PERMISSION_MATRIX_DEPARTMENTS) {
+    const row = { ...(next[d] ?? {}) };
+    const cur = new Set(row[slot] ?? []);
+    if (cur.has(mod)) cur.delete(mod);
+    else cur.add(mod);
+    row[slot] = [...cur].sort();
+    next[d] = row;
+  }
+  return next;
 }

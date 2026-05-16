@@ -25,6 +25,7 @@ export function ProfileHeaderCard({
   email,
   phone,
   roleLabel,
+  jobTitle,
   department,
   facilityLabel,
   accountStatus,
@@ -44,6 +45,8 @@ export function ProfileHeaderCard({
   email: string;
   phone: string | null;
   roleLabel: string;
+  /** HR / roster position (shown in sentence case). Takes precedence over cosmetic equipped titles. */
+  jobTitle?: string | null;
   department: string | null;
   facilityLabel: string | null;
   accountStatus: string;
@@ -55,6 +58,7 @@ export function ProfileHeaderCard({
   onEditClick: () => void;
   portraitRingClassName?: string;
   portraitAnimatedClassName?: string;
+  /** Gamification display title — hidden when `jobTitle` is set so HR truth wins. */
   equippedTitle?: string | null;
   featuredBadges?: { id: string; name: string }[];
   onAppearanceClick?: () => void;
@@ -109,14 +113,24 @@ export function ProfileHeaderCard({
               <h1 className="mt-2 font-headline text-3xl font-extrabold tracking-tight text-ds-foreground sm:text-4xl">
                 {displayName || email || "Member"}
               </h1>
-              {equippedTitle ? (
-                <p className="mt-1 text-xs font-bold uppercase tracking-[0.18em] text-[#2B4C7E]/85 dark:text-[#7dd3fc]/90">
-                  {equippedTitle}
+              {jobTitle?.trim() ? (
+                <p className="mt-2 text-lg font-semibold leading-snug tracking-tight text-[color-mix(in_srgb,var(--ds-foreground)_92%,#36F1CD)] dark:text-ds-foreground/95">
+                  {jobTitle.trim()}
                 </p>
-              ) : null}
-              <p className="mt-2 text-base font-semibold text-[color-mix(in_srgb,var(--ds-foreground)_88%,#36F1CD)] dark:text-ds-foreground/90">
-                {roleLabel}
-              </p>
+              ) : (
+                <>
+                  {roleLabel.trim() ? (
+                    <p className="mt-2 text-base font-semibold text-[color-mix(in_srgb,var(--ds-foreground)_88%,#36F1CD)] dark:text-ds-foreground/90">
+                      {roleLabel}
+                    </p>
+                  ) : null}
+                  {equippedTitle ? (
+                    <p className="mt-1 text-xs font-bold uppercase tracking-[0.18em] text-[#2B4C7E]/85 dark:text-[#7dd3fc]/90">
+                      {equippedTitle}
+                    </p>
+                  ) : null}
+                </>
+              )}
               {featuredBadges && featuredBadges.length > 0 ? (
                 <ul className="mt-3 flex flex-wrap justify-center gap-1.5 sm:justify-start">
                   {featuredBadges.map((b) => (

@@ -34,8 +34,55 @@ def _eff(**kwargs):
 def test_no_tenant_role_default_deny() -> None:
     contract = ["dashboard", "monitoring", "compliance"]
     user = _user([UserRole.worker.value])
-    eff = _eff(user=user, contract_names=contract, merged_settings={}, tenant_role=None)
+    eff = _eff(user=user, contract_names=contract, merged_settings={}, tenant_role=None, hr=None)
     assert eff == []
+
+
+def test_department_matrix_without_tenant_role_respects_coordination_slot() -> None:
+    from types import SimpleNamespace
+
+    contract = ["dashboard", "comms_assets"]
+    user = _user([UserRole.worker.value], tenant_role_id=None)
+    hr = SimpleNamespace(department_slugs=["communications"], department="communications", job_title="Coordinator")
+    merged = {
+        "department_role_feature_access": {
+            "communications": {
+                "coordination": ["dashboard", "comms_assets"],
+            },
+        },
+    }
+    eff = _eff(user=user, contract_names=contract, merged_settings=merged, tenant_role=None, hr=hr)
+    assert set(eff) == {"dashboard", "comms_assets"}
+
+
+def test_no_access_slug_denies_despite_matrix() -> None:
+    contract = ["dashboard"]
+    role = TenantRole(
+        id=str(uuid4()),
+        company_id=str(uuid4()),
+        slug="no_access",
+        name="No access",
+        feature_keys=[],
+    )
+    user = _user([UserRole.worker.value], tenant_role_id=role.id)
+    merged = {"department_role_feature_access": {"maintenance": {"team_member": ["dashboard"]}}}
+    eff = _eff(user=user, contract_names=contract, merged_settings=merged, tenant_role=role, hr=None)
+    assert eff == []
+
+
+def test_tenant_role_supersedes_matrix_when_non_empty() -> None:
+    contract = ["dashboard", "monitoring", "compliance"]
+    role = TenantRole(
+        id=str(uuid4()),
+        company_id=str(uuid4()),
+        slug="custom",
+        name="Custom",
+        feature_keys=["dashboard"],
+    )
+    user = _user([UserRole.worker.value], tenant_role_id=role.id)
+    merged = {"department_role_feature_access": {"maintenance": {"team_member": ["monitoring"]}}}
+    eff = _eff(user=user, contract_names=contract, merged_settings=merged, tenant_role=role, hr=None)
+    assert eff == ["dashboard"]
 
 
 def test_tenant_role_feature_keys_intersect_contract() -> None:
