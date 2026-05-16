@@ -173,9 +173,9 @@ async def test_coordination_job_title_inference_warning() -> None:
 
 
 @pytest.mark.asyncio
-async def test_wrong_slot_communications_worker_without_coordination_title() -> None:
-    """Worker on communications department but generic job title ⇒ team_member matrix slot."""
-    contract = ["dashboard"]
+async def test_communications_worker_uses_coordination_baseline() -> None:
+    """Worker on communications department without coordinator title ⇒ coordination baseline."""
+    contract = ["dashboard", "monitoring"]
     merged = {
         "department_role_feature_access": {
             "communications": {
@@ -198,8 +198,9 @@ async def test_wrong_slot_communications_worker_without_coordination_title() -> 
         hr_row=hr,
         tenant_role=None,
     )
-    assert dbg.resolved_slot == "team_member"
-    assert dbg.effective_enabled_features == ["dashboard"]
+    assert dbg.resolved_slot == "coordination"
+    assert dbg.resolved_slot_source == "department_baseline"
+    assert dbg.effective_enabled_features == ["monitoring"]
 
 
 @pytest.mark.asyncio
@@ -386,9 +387,9 @@ async def test_slot_mismatch_monitoring_in_coordination_slot_only() -> None:
         hr_row=hr,
         tenant_role=None,
     )
-    mon = _find_missing(dbg, "monitoring")
-    assert mon is not None
-    assert mon.missing_reason == "slot_mismatch"
+    assert dbg.resolved_slot == "coordination"
+    assert "monitoring" in dbg.effective_enabled_features
+    assert _find_missing(dbg, "monitoring") is None
 
 
 @pytest.mark.asyncio

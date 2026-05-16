@@ -68,12 +68,12 @@ def test_missing_matrix_slot_falls_back_to_job_title() -> None:
     assert src == "job_title_inference"
 
 
-def test_missing_everything_falls_back_to_team_member() -> None:
+def test_missing_everything_uses_department_baseline() -> None:
     user = _user([UserRole.worker.value])
     hr = _hr(job_title=None, matrix_slot=None)
     slot, src = resolve_permission_matrix_slot(user, hr)
-    assert slot == "team_member"
-    assert src == "fallback_default"
+    assert slot == "coordination"
+    assert src == "department_baseline"
 
 
 def test_jwt_manager_tier_without_explicit_slot() -> None:
@@ -86,7 +86,7 @@ def test_jwt_manager_tier_without_explicit_slot() -> None:
 
 def test_legacy_inference_helper_matches_resolve_for_worker() -> None:
     roles = [UserRole.worker.value]
-    slot_l, src_l = infer_matrix_slot_legacy(roles=roles, job_title="Lifeguard")
+    slot_l, src_l = infer_matrix_slot_legacy(roles=roles, job_title="Lifeguard", department="communications")
     user = _user(roles)
     hr = _hr(job_title="Lifeguard", matrix_slot=None)
     slot_r, src_r = resolve_permission_matrix_slot(user, hr)
@@ -121,7 +121,7 @@ async def test_debugger_reports_resolved_slot_source_explicit() -> None:
 
 
 @pytest.mark.asyncio
-async def test_debugger_reports_fallback_default_source() -> None:
+async def test_debugger_reports_department_baseline_source() -> None:
     import app.main  # noqa: F401
 
     from app.core.access_debugger import compute_access_resolution_debug
@@ -131,7 +131,7 @@ async def test_debugger_reports_fallback_default_source() -> None:
     dbg = await compute_access_resolution_debug(
         db=object(),
         target=user,
-        contract_normalized=["dashboard"],
+        contract_normalized=["dashboard", "inventory"],
         merged_settings={
             "department_role_feature_access": {
                 "communications": {
@@ -143,6 +143,6 @@ async def test_debugger_reports_fallback_default_source() -> None:
         hr_row=hr,
         tenant_role=None,
     )
-    assert dbg.resolved_slot == "team_member"
-    assert dbg.resolved_slot_source == "fallback_default"
-    assert any("No explicit matrix_slot" in w for w in dbg.warnings)
+    assert dbg.resolved_slot == "coordination"
+    assert dbg.resolved_slot_source == "department_baseline"
+    assert dbg.effective_enabled_features == ["inventory"]

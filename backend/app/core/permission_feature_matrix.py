@@ -7,6 +7,7 @@ from typing import Any, Literal
 from app.core.department_matrix_baselines import (
     DEPARTMENT_BASELINE_SLOTS,
     LEGACY_TEAM_MEMBER_SLOT,
+    PERMISSION_MATRIX_DEPARTMENTS,
     UNRESOLVED_MATRIX_SLOT,
     department_baseline_slot,
 )
@@ -15,10 +16,6 @@ from app.core.user_roles import user_has_any_role
 from app.core.workspace_departments import normalize_workspace_department_slug, normalize_workspace_department_slug_list
 from app.models.domain import User, UserRole
 from app.models.pulse_models import PulseWorkerHR
-
-PERMISSION_MATRIX_DEPARTMENTS: frozenset[str] = frozenset(
-    {"maintenance", "communications", "aquatics", "reception", "fitness", "racquets", "admin"}
-)
 
 PERMISSION_MATRIX_SLOTS: frozenset[str] = frozenset(
     {

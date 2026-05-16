@@ -93,8 +93,9 @@ class WorkerRowOut(BaseModel):
     matrix_slot_source_kind: Optional[str] = None
     matrix_slot_inferred: bool = False
     matrix_slot_display: Optional[str] = None
-    likely_elevated: bool = False
-    recommended_matrix_slot: Optional[str] = None
+    matrix_slot_operational_label: Optional[str] = None
+    matrix_slot_source_label: Optional[str] = None
+    is_unresolved: bool = False
 
 
 class WorkerSlotAccessAuditRowOut(BaseModel):
@@ -107,15 +108,23 @@ class WorkerSlotAccessAuditRowOut(BaseModel):
     resolved_matrix_slot: str
     matrix_slot_source: str
     matrix_slot_display: str
-    likely_elevated: bool = False
-    likely_elevated_reasons: list[str] = Field(default_factory=list)
-    recommended_matrix_slot: Optional[str] = None
+    matrix_slot_source_label: str = ""
+    is_unresolved: bool = False
 
 
 class WorkerSlotAccessAuditOut(BaseModel):
     items: list[WorkerSlotAccessAuditRowOut] = Field(default_factory=list)
     inferred_count: int = 0
-    elevated_inferred_count: int = 0
+    unresolved_count: int = 0
+
+
+class ApplyDepartmentBaselinesOut(BaseModel):
+    """Result of bulk-assigning department baseline slots to HR records."""
+
+    updated_count: int = 0
+    skipped_explicit: int = 0
+    skipped_no_hr: int = 0
+    by_department: dict[str, int] = Field(default_factory=dict)
 
 
 class WorkerListOut(BaseModel):
@@ -175,7 +184,7 @@ class WorkerCreateIn(BaseModel):
     job_title: Optional[str] = Field(None, max_length=255)
     matrix_slot: Optional[str] = Field(
         None,
-        description="Explicit permission-matrix slot (team_member, coordination, operations, …).",
+        description="Explicit permission-matrix slot (operations, coordination, aquatics_staff, …).",
     )
     shift: Optional[str] = Field(None, max_length=64)
     supervisor_id: Optional[str] = None

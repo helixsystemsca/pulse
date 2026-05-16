@@ -1,99 +1,90 @@
 /**
- * Matrix slot visibility helpers (mirrors backend ``matrix_slot_policy``).
- * Warnings only — does not change authorization.
+ * Matrix slot display helpers — operational labels separate from auth source.
  */
-import { PERMISSION_MATRIX_ROLE_LABEL, type PermissionMatrixRoleSlot } from "@/config/platform/permission-matrix";
-import type { WorkerDetail, WorkerRow } from "@/lib/workersService";
+import {
+  DEPARTMENT_BASELINE_SLOTS,
+  PERMISSION_MATRIX_ROLE_LABEL,
+  UNRESOLVED_MATRIX_SLOT,
+  type PermissionMatrixDepartment,
+  type PermissionMatrixRoleSlot,
+} from "@/config/platform/permission-matrix";
+import type { WorkerRow } from "@/lib/workersService";
 
 export type MatrixSlotSource =
   | "explicit_matrix_slot"
   | "jwt_role"
   | "job_title_inference"
+  | "department_baseline"
   | "department_default"
+  | "unresolved"
   | "fallback_default"
   | "explicit_required_policy";
 
-export type MatrixSlotSourceKind = "explicit" | "inferred" | "fallback" | "policy";
+export type MatrixSlotSourceKind = "explicit" | "inferred" | "baseline" | "unresolved" | "policy";
 
-const ELEVATED_TITLE_KEYWORDS = [
-  "coordinator",
-  "coordination",
-  "supervisor",
-  "manager",
-  "director",
-  "lead",
-  "head of",
-  "administrator",
-  "admin",
-] as const;
-
-const SOURCE_KIND: Record<MatrixSlotSource, MatrixSlotSourceKind> = {
+const SOURCE_KIND: Record<string, MatrixSlotSourceKind> = {
   explicit_matrix_slot: "explicit",
   jwt_role: "inferred",
   job_title_inference: "inferred",
-  department_default: "inferred",
-  fallback_default: "fallback",
+  department_baseline: "baseline",
+  department_default: "baseline",
+  unresolved: "unresolved",
+  fallback_default: "unresolved",
   explicit_required_policy: "policy",
 };
 
+const SOURCE_LABEL: Record<string, string> = {
+  explicit_matrix_slot: "Explicit",
+  jwt_role: "Inferred",
+  job_title_inference: "Inferred",
+  department_baseline: "Department default",
+  department_default: "Department default",
+  unresolved: "Unresolved",
+  fallback_default: "Unresolved",
+  explicit_required_policy: "Policy hold",
+};
+
 export function matrixSlotSourceKind(source: string | null | undefined): MatrixSlotSourceKind {
-  if (!source) return "fallback";
-  return SOURCE_KIND[source as MatrixSlotSource] ?? "inferred";
+  if (!source) return "baseline";
+  return SOURCE_KIND[source] ?? "inferred";
 }
 
 export function formatSlotSourceLabel(source: string | null | undefined): string {
-  const labels: Record<string, string> = {
-    explicit_matrix_slot: "Explicit",
-    jwt_role: "Inferred (JWT role)",
-    job_title_inference: "Inferred (job title)",
-    department_default: "Department default",
-    fallback_default: "Fallback",
-    explicit_required_policy: "Policy enforced",
-  };
-  return labels[source ?? ""] ?? "Inferred";
+  return SOURCE_LABEL[source ?? ""] ?? "Inferred";
 }
 
+export function operationalMatrixSlotLabel(
+  slot: string | null | undefined,
+  department?: string | null,
+): string {
+  if (!slot || slot === UNRESOLVED_MATRIX_SLOT) return "Unresolved";
+  const key = slot as PermissionMatrixRoleSlot;
+  if (key in PERMISSION_MATRIX_ROLE_LABEL) {
+    return PERMISSION_MATRIX_ROLE_LABEL[key];
+  }
+  const dept = (department ?? "").trim().toLowerCase() as PermissionMatrixDepartment;
+  const baseline = DEPARTMENT_BASELINE_SLOTS[dept];
+  if (baseline && slot === baseline) {
+    return PERMISSION_MATRIX_ROLE_LABEL[baseline];
+  }
+  return String(slot).replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+/** Primary roster label — operational identity only. */
+export function formatMatrixSlotOperationalLabel(
+  slot: string | null | undefined,
+  department?: string | null,
+): string {
+  return operationalMatrixSlotLabel(slot, department);
+}
+
+/** @deprecated Use formatMatrixSlotOperationalLabel + formatSlotSourceLabel */
 export function formatMatrixSlotDisplay(
   slot: string | null | undefined,
-  source: string | null | undefined,
+  _source?: string | null,
+  department?: string | null,
 ): string {
-  const slotKey = (slot ?? "team_member") as PermissionMatrixRoleSlot;
-  const slotLabel =
-    PERMISSION_MATRIX_ROLE_LABEL[slotKey] ?? String(slot).replace(/_/g, " ");
-  const suffix = formatSlotSourceLabel(source);
-  return `${slotLabel} (${suffix})`;
-}
-
-export type ElevatedWorkerInput = Pick<
-  WorkerRow,
-  "role" | "roles" | "job_title" | "department" | "department_slugs" | "matrix_slot" | "tenant_role_id"
-> & {
-  feature_allow_extra?: string[] | null;
-  facility_tenant_admin?: boolean;
-};
-
-/** Heuristic: worker should have explicit matrix_slot (warnings only). */
-export function detectLikelyElevatedWorker(worker: ElevatedWorkerInput): {
-  likely: boolean;
-  reasons: string[];
-} {
-  const reasons: string[] = [];
-  const roles = worker.roles?.length ? worker.roles : worker.role ? [worker.role] : [];
-  if (roles.includes("company_admin")) reasons.push("company_admin_role");
-  if (roles.includes("manager")) reasons.push("jwt_manager");
-  if (roles.includes("supervisor")) reasons.push("jwt_supervisor");
-  if (roles.includes("lead")) reasons.push("jwt_lead");
-  if (worker.facility_tenant_admin) reasons.push("facility_tenant_admin");
-
-  const jt = (worker.job_title ?? "").toLowerCase();
-  if (jt && ELEVATED_TITLE_KEYWORDS.some((k) => jt.includes(k))) {
-    reasons.push("job_title_elevated_keyword");
-  }
-  if (worker.department_slugs && worker.department_slugs.length > 1) {
-    reasons.push("multiple_department_slugs");
-  }
-
-  return { likely: reasons.length > 0, reasons };
+  return formatMatrixSlotOperationalLabel(slot, department);
 }
 
 export function isMatrixSlotInferred(row: Pick<WorkerRow, "matrix_slot" | "matrix_slot_inferred">): boolean {
@@ -101,28 +92,40 @@ export function isMatrixSlotInferred(row: Pick<WorkerRow, "matrix_slot" | "matri
   return !row.matrix_slot?.trim();
 }
 
-export function shouldShowInferredAccessWarning(
-  worker: ElevatedWorkerInput & Pick<WorkerRow, "matrix_slot_inferred" | "department">,
+export function isUnresolvedMatrixSlot(
+  source: string | null | undefined,
+  resolvedSlot?: string | null,
 ): boolean {
-  const dept = worker.department?.trim() || worker.department_slugs?.[0];
-  if (!dept) return false;
-  if (!isMatrixSlotInferred(worker)) return false;
-  const { likely } = detectLikelyElevatedWorker(worker);
-  return likely;
-}
-
-export function inferredAccessBannerMessage(recommended?: string | null): string {
-  const rec = recommended ? ` Recommended slot: ${recommended}.` : "";
-  return `This worker is using inferred access rules. Explicit matrix_slot assignment is strongly recommended.${rec}`;
+  return (
+    source === "unresolved" ||
+    source === "fallback_default" ||
+    resolvedSlot === UNRESOLVED_MATRIX_SLOT
+  );
 }
 
 export function isPolicySuppressedSlot(source: string | null | undefined): boolean {
   return source === "explicit_required_policy";
 }
 
+/** @deprecated */
 export function isFallbackTeamMember(
   source: string | null | undefined,
   resolvedSlot: string | null | undefined,
 ): boolean {
-  return source === "fallback_default" && (resolvedSlot ?? "team_member") === "team_member";
+  return isUnresolvedMatrixSlot(source, resolvedSlot);
+}
+
+/** @deprecated */
+export function detectLikelyElevatedWorker(): { likely: boolean; reasons: string[] } {
+  return { likely: false, reasons: [] };
+}
+
+/** @deprecated */
+export function shouldShowInferredAccessWarning(): boolean {
+  return false;
+}
+
+/** @deprecated */
+export function inferredAccessBannerMessage(): string {
+  return "";
 }

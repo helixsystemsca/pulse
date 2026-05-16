@@ -48,8 +48,14 @@ from app.core.workspace_departments import (
     normalize_workspace_department_slug,
     normalize_workspace_department_slug_list,
 )
-from app.core.matrix_slot_policy import worker_slot_audit_fields
-from app.core.permission_feature_matrix import permission_matrix_department_for_user
+from app.core.matrix_slot_policy import (
+    suggest_explicit_matrix_slot_for_department,
+    worker_slot_audit_fields,
+)
+from app.core.permission_feature_matrix import (
+    expand_department_role_matrix_baselines,
+    permission_matrix_department_for_user,
+)
 from app.core.workers_settings_merge import (
     DEFAULT_WORKERS_SETTINGS,
     merge_workers_settings,
@@ -89,6 +95,7 @@ from app.schemas.pulse_workers import (
     WorkerListOut,
     WorkerPatchIn,
     WorkerRowOut,
+    ApplyDepartmentBaselinesOut,
     WorkerSlotAccessAuditOut,
     WorkerSlotAccessAuditRowOut,
     WorkersSettingsOut,
@@ -694,16 +701,16 @@ async def worker_slot_access_audit(
             hr_map[h.user_id] = h
     rows: list[WorkerSlotAccessAuditRowOut] = []
     inferred_count = 0
-    elevated_inferred_count = 0
+    unresolved_count = 0
     for u in users:
         h = hr_map.get(u.id)
         dept = permission_matrix_department_for_user(u, h)
         audit = worker_slot_audit_fields(u, h, department=dept)
-        if not audit["matrix_slot_inferred"]:
+        if not audit["matrix_slot_inferred"] and not audit.get("is_unresolved"):
             continue
         inferred_count += 1
-        if audit["likely_elevated"]:
-            elevated_inferred_count += 1
+        if audit.get("is_unresolved"):
+            unresolved_count += 1
         rows.append(
             WorkerSlotAccessAuditRowOut(
                 id=str(u.id),
@@ -715,16 +722,73 @@ async def worker_slot_access_audit(
                 resolved_matrix_slot=audit["resolved_matrix_slot"],
                 matrix_slot_source=audit["matrix_slot_source"],
                 matrix_slot_display=audit["matrix_slot_display"],
-                likely_elevated=audit["likely_elevated"],
-                likely_elevated_reasons=audit["likely_elevated_reasons"],
-                recommended_matrix_slot=audit["recommended_matrix_slot"],
+                matrix_slot_source_label=audit.get("matrix_slot_source_label") or "",
+                is_unresolved=bool(audit.get("is_unresolved")),
             )
         )
-    rows.sort(key=lambda r: (not r.likely_elevated, (r.full_name or r.email or "").lower()))
+    rows.sort(key=lambda r: (not r.is_unresolved, (r.full_name or r.email or "").lower()))
     return WorkerSlotAccessAuditOut(
         items=rows,
         inferred_count=inferred_count,
-        elevated_inferred_count=elevated_inferred_count,
+        unresolved_count=unresolved_count,
+    )
+
+
+@router.post("/apply-department-baselines", response_model=ApplyDepartmentBaselinesOut)
+async def apply_department_baselines(
+    db: Db,
+    actor: Annotated[User, Depends(get_current_user)],
+    cid: CompanyId,
+) -> ApplyDepartmentBaselinesOut:
+    """Bulk-set explicit HR matrix_slot to each worker's department baseline (skips existing explicit slots)."""
+    await require_workers_roster_page(actor, db, cid)
+    roster_vals = [r.value for r in _ROSTER_ROLES]
+    users = list(
+        (
+            await db.execute(
+                select(User).where(
+                    User.company_id == cid,
+                    User.roles.overlap(pg_array(roster_vals)),
+                    User.is_active.is_(True),
+                )
+            )
+        ).scalars().all()
+    )
+    hr_map: dict[str, PulseWorkerHR] = {}
+    if users:
+        hq = await db.execute(select(PulseWorkerHR).where(PulseWorkerHR.user_id.in_([u.id for u in users])))
+        for h in hq.scalars().all():
+            hr_map[h.user_id] = h
+
+    updated = 0
+    skipped_explicit = 0
+    skipped_no_hr = 0
+    by_department: dict[str, int] = {}
+
+    for u in users:
+        h = hr_map.get(u.id)
+        if not h:
+            skipped_no_hr += 1
+            continue
+        if h.matrix_slot and str(h.matrix_slot).strip():
+            skipped_explicit += 1
+            continue
+        dept = permission_matrix_department_for_user(u, h)
+        baseline = suggest_explicit_matrix_slot_for_department(dept)
+        if not baseline:
+            continue
+        h.matrix_slot = baseline
+        updated += 1
+        by_department[dept] = by_department.get(dept, 0) + 1
+
+    if updated:
+        await db.commit()
+
+    return ApplyDepartmentBaselinesOut(
+        updated_count=updated,
+        skipped_explicit=skipped_explicit,
+        skipped_no_hr=skipped_no_hr,
+        by_department=by_department,
     )
 
 
@@ -810,8 +874,9 @@ async def list_workers(
                 matrix_slot_source_kind=slot_audit["matrix_slot_source_kind"],
                 matrix_slot_inferred=slot_audit["matrix_slot_inferred"],
                 matrix_slot_display=slot_audit["matrix_slot_display"],
-                likely_elevated=slot_audit["likely_elevated"],
-                recommended_matrix_slot=slot_audit["recommended_matrix_slot"],
+                matrix_slot_operational_label=slot_audit.get("matrix_slot_operational_label"),
+                matrix_slot_source_label=slot_audit.get("matrix_slot_source_label"),
+                is_unresolved=bool(slot_audit.get("is_unresolved")),
             )
         )
     return WorkerListOut(items=items)

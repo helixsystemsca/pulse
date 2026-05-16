@@ -22,8 +22,9 @@ export type WorkerRow = {
   matrix_slot_source_kind?: string | null;
   matrix_slot_inferred?: boolean;
   matrix_slot_display?: string | null;
-  likely_elevated?: boolean;
-  recommended_matrix_slot?: string | null;
+  matrix_slot_operational_label?: string | null;
+  matrix_slot_source_label?: string | null;
+  is_unresolved?: boolean;
   /** HR shift key; label comes from workers settings `shifts`. */
   shift?: string | null;
   /** GG (or similar) eligibility — stored on scheduling profile, not as a shift preset. */
@@ -168,18 +169,23 @@ export type WorkerSlotAccessAudit = {
     resolved_matrix_slot: string;
     matrix_slot_source: string;
     matrix_slot_display: string;
-    likely_elevated: boolean;
-    likely_elevated_reasons: string[];
-    recommended_matrix_slot: string | null;
+    matrix_slot_source_label?: string;
+    is_unresolved?: boolean;
   }[];
   inferred_count: number;
-  elevated_inferred_count: number;
+  unresolved_count: number;
 };
 
 export async function fetchWorkerSlotAccessAudit(
   companyId: string | null,
 ): Promise<WorkerSlotAccessAudit> {
   return apiFetch<WorkerSlotAccessAudit>(withCompany("/api/workers/slot-access-audit", companyId));
+}
+
+export async function applyDepartmentMatrixBaselines(
+  companyId: string | null,
+): Promise<{ updated_count: number; skipped_explicit: number; skipped_no_hr: number; by_department: Record<string, number> }> {
+  return apiFetch(withCompany("/api/workers/apply-department-baselines", companyId), { method: "POST" });
 }
 
 export async function fetchWorkerList(

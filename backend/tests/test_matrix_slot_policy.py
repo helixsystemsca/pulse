@@ -1,4 +1,4 @@
-"""Matrix slot policy: unified job title source, resolver/trace consistency, enforcement."""
+"""Matrix slot policy: department baselines, unresolved state, unified resolver."""
 
 from __future__ import annotations
 
@@ -7,6 +7,7 @@ from uuid import uuid4
 
 import pytest
 
+from app.core.department_matrix_baselines import UNRESOLVED_MATRIX_SLOT
 from app.core.matrix_slot_policy import (
     build_inference_attempt_trace,
     resolve_effective_job_title,
@@ -46,76 +47,60 @@ def test_resolve_effective_job_title_prefers_hr() -> None:
     assert resolve_effective_job_title(user, hr) == "HR Title"
 
 
-def test_resolve_effective_job_title_falls_back_to_user() -> None:
-    user = _user(job_title="Communications Coordinator")
-    hr = _hr(job_title=None)
-    assert resolve_effective_job_title(user, hr) == "Communications Coordinator"
-
-
-def test_user_title_only_resolves_coordination() -> None:
-    user = _user(job_title="Communications Coordinator")
-    hr = _hr(job_title=None, matrix_slot=None)
-    slot, source = resolve_matrix_slot_for_access(user, hr)
-    assert slot == "coordination"
-    assert source == "job_title_inference"
-
-
-def test_resolver_and_trace_agree_user_title_only() -> None:
-    user = _user(job_title="Communications Coordinator")
-    hr = _hr(job_title=None, matrix_slot=None)
-    detail = resolve_matrix_slot_detailed(user, hr)
-    trace = build_inference_attempt_trace(user, hr)
-    assert detail.slot == "coordination"
-    assert detail.source == "job_title_inference"
-    assert trace == detail.inference_trace
-    assert any("✓ Job title keyword matched → 'coordination'" in line for line in trace)
-    assert detail.effective_job_title == "Communications Coordinator"
-    assert detail.hr_job_title is None
-    assert detail.user_job_title == "Communications Coordinator"
-
-
-def test_communications_worker_department_default_without_titles() -> None:
+def test_communications_worker_gets_coordination_baseline() -> None:
     user = _user(job_title=None)
     hr = _hr(department="communications", job_title=None, matrix_slot=None)
     slot, source = resolve_matrix_slot_for_access(user, hr)
     assert slot == "coordination"
-    assert source == "department_default"
+    assert source == "department_baseline"
 
 
-def test_maintenance_worker_department_default_operations() -> None:
+def test_maintenance_worker_gets_operations_baseline() -> None:
     user = _user(job_title=None)
     hr = _hr(department="maintenance", department_slugs=["maintenance"], job_title=None, matrix_slot=None)
     slot, source = resolve_matrix_slot_for_access(user, hr)
     assert slot == "operations"
-    assert source == "department_default"
+    assert source == "department_baseline"
 
 
-def test_aquatics_department_no_default_falls_back_to_team_member() -> None:
+def test_aquatics_worker_gets_aquatics_staff_baseline() -> None:
     user = _user(job_title=None)
     hr = _hr(department="aquatics", department_slugs=["aquatics"], job_title=None, matrix_slot=None)
     slot, source = resolve_matrix_slot_for_access(user, hr)
-    assert slot == "team_member"
-    assert source == "fallback_default"
+    assert slot == "aquatics_staff"
+    assert source == "department_baseline"
 
 
-def test_enforcement_suppresses_coordination_with_truthful_source(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("REQUIRE_EXPLICIT_ELEVATED_SLOTS", "true")
-    user = _user(job_title="Communications Coordinator")
-    hr = _hr(job_title=None, matrix_slot=None)
-    detail = resolve_matrix_slot_detailed(user, hr)
-    assert detail.slot == "team_member"
-    assert detail.source == "explicit_required_policy"
-    assert detail.policy_suppressed is True
-    assert detail.suppressed_inferred_slot == "coordination"
-    assert any("✓ Job title keyword matched → 'coordination'" in line for line in detail.inference_trace)
-    assert any("REQUIRE_EXPLICIT_ELEVATED_SLOTS" in line for line in detail.inference_trace)
-    assert build_inference_attempt_trace(user, hr) == detail.inference_trace
-
-
-def test_enforcement_off_user_title_coordination(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.delenv("REQUIRE_EXPLICIT_ELEVATED_SLOTS", raising=False)
+def test_user_title_coordination_before_baseline() -> None:
     user = _user(job_title="Communications Coordinator")
     hr = _hr(job_title=None, matrix_slot=None)
     slot, source = resolve_matrix_slot_for_access(user, hr)
     assert slot == "coordination"
     assert source == "job_title_inference"
+
+
+def test_jwt_manager_before_baseline() -> None:
+    user = _user(roles=[UserRole.manager.value])
+    hr = _hr(department="maintenance", matrix_slot=None)
+    slot, source = resolve_matrix_slot_for_access(user, hr)
+    assert slot == "manager"
+    assert source == "jwt_role"
+
+
+def test_policy_hold_returns_unresolved(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("REQUIRE_EXPLICIT_ELEVATED_SLOTS", "true")
+    user = _user(job_title="Communications Coordinator")
+    hr = _hr(job_title=None, matrix_slot=None)
+    detail = resolve_matrix_slot_detailed(user, hr)
+    assert detail.slot == UNRESOLVED_MATRIX_SLOT
+    assert detail.source == "explicit_required_policy"
+    assert detail.policy_suppressed is True
+    assert detail.suppressed_inferred_slot == "coordination"
+
+
+def test_resolver_and_trace_agree() -> None:
+    user = _user(job_title=None)
+    hr = _hr(department="maintenance", department_slugs=["maintenance"], matrix_slot=None)
+    detail = resolve_matrix_slot_detailed(user, hr)
+    assert detail.inference_trace == build_inference_attempt_trace(user, hr)
+    assert any("Department baseline" in line for line in detail.inference_trace)

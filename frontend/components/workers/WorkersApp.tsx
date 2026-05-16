@@ -35,14 +35,12 @@ import {
   type ResolvedAccessAudit,
 } from "@/lib/accessDebugService";
 import {
-  formatMatrixSlotDisplay,
+  formatMatrixSlotOperationalLabel,
   formatSlotSourceLabel,
-  inferredAccessBannerMessage,
-  isFallbackTeamMember,
-  isMatrixSlotInferred,
+  isUnresolvedMatrixSlot,
   matrixSlotSourceKind,
-  shouldShowInferredAccessWarning,
 } from "@/lib/rbac/matrix-slot-policy";
+import { DEPARTMENT_BASELINE_SLOTS } from "@/config/platform/permission-matrix";
 import { parseClientApiError } from "@/lib/parse-client-api-error";
 import { usePulseAuth } from "@/hooks/usePulseAuth";
 import {
@@ -88,6 +86,7 @@ import {
   fetchUserLoginEvents,
   fetchWorkerDetail,
   fetchWorkerList,
+  applyDepartmentMatrixBaselines,
   fetchWorkerSlotAccessAudit,
   fetchWorkerSettings,
   patchWorker,
@@ -381,28 +380,40 @@ function matrixSlotBadgeClass(kind: string): string {
   if (kind === "policy") {
     return "border-violet-700/35 bg-violet-100 text-violet-950 dark:border-violet-500/40 dark:bg-violet-950/50 dark:text-violet-100";
   }
-  if (kind === "fallback") {
+  if (kind === "unresolved") {
     return "border-red-700/40 bg-red-100 text-red-950 dark:border-red-500/45 dark:bg-red-950/50 dark:text-red-100";
+  }
+  if (kind === "baseline") {
+    return "border-slate-600/30 bg-slate-100 text-slate-900 dark:border-slate-500/35 dark:bg-slate-900/60 dark:text-slate-100";
   }
   return "border-amber-800/35 bg-amber-100 text-amber-950 dark:border-amber-500/40 dark:bg-amber-950/50 dark:text-amber-100";
 }
 
 function WorkerMatrixSlotCell({ row }: { row: WorkerRow }) {
-  const display =
+  const slot = row.resolved_matrix_slot ?? row.matrix_slot;
+  const label =
+    row.matrix_slot_operational_label ??
     row.matrix_slot_display ??
-    formatMatrixSlotDisplay(row.resolved_matrix_slot ?? row.matrix_slot, row.matrix_slot_source);
+    formatMatrixSlotOperationalLabel(slot, row.department);
   const kind = row.matrix_slot_source_kind ?? matrixSlotSourceKind(row.matrix_slot_source);
+  const sourceNote =
+    row.matrix_slot_source_label ??
+    (row.matrix_slot_source ? formatSlotSourceLabel(row.matrix_slot_source) : null);
+  const showSource =
+    sourceNote &&
+    kind !== "explicit" &&
+    kind !== "baseline";
   return (
     <span
       className={cn(
         "inline-flex max-w-[12rem] flex-col gap-0.5 rounded-md border px-2 py-1 text-[10px] font-semibold leading-tight",
         matrixSlotBadgeClass(kind),
       )}
-      title={row.matrix_slot_source ? `Source: ${formatSlotSourceLabel(row.matrix_slot_source)}` : undefined}
+      title={row.matrix_slot_source ? `Assignment: ${formatSlotSourceLabel(row.matrix_slot_source)}` : undefined}
     >
-      <span className="truncate">{display}</span>
-      {row.likely_elevated && isMatrixSlotInferred(row) ? (
-        <span className="text-[9px] font-medium text-inherit/80">Likely elevated — set explicit slot</span>
+      <span className="truncate">{label}</span>
+      {showSource ? (
+        <span className="text-[9px] font-medium text-inherit/75">{sourceNote}</span>
       ) : null}
     </span>
   );
@@ -1991,12 +2002,30 @@ export function WorkersApp() {
                 </button>
               ) : null}
             </div>
-            {slotAccessAudit && slotAccessAudit.elevated_inferred_count > 0 ? (
-              <div className="mb-3 rounded-lg border border-amber-500/45 bg-amber-500/10 px-3 py-2 text-xs text-amber-50">
-                <strong>{slotAccessAudit.elevated_inferred_count}</strong> active worker
-                {slotAccessAudit.elevated_inferred_count === 1 ? "" : "s"} appear elevated but use inferred matrix slots
-                ({slotAccessAudit.inferred_count} total with inferred access). Assign explicit{" "}
-                <span className="font-mono">matrix_slot</span> on each HR profile.
+            {slotAccessAudit && (slotAccessAudit.unresolved_count > 0 || slotAccessAudit.inferred_count > 0) ? (
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-500/40 bg-slate-500/10 px-3 py-2 text-xs text-slate-100">
+                <span>
+                  {slotAccessAudit.inferred_count} worker{slotAccessAudit.inferred_count === 1 ? "" : "s"} without explicit
+                  matrix slot
+                  {slotAccessAudit.unresolved_count > 0
+                    ? ` (${slotAccessAudit.unresolved_count} unresolved)`
+                    : ""}
+                  .
+                </span>
+                {canEditWorkerBasics ? (
+                  <button
+                    type="button"
+                    className={cn(buttonVariants({ surface: "light", intent: "secondary" }), "px-3 py-1 text-[11px]")}
+                    onClick={() => {
+                      void applyDepartmentMatrixBaselines(apiCompany).then(() => {
+                        void fetchWorkerSlotAccessAudit(apiCompany).then(setSlotAccessAudit);
+                        void loadList();
+                      });
+                    }}
+                  >
+                    Apply department baselines
+                  </button>
+                ) : null}
               </div>
             ) : null}
             <p className="mb-3 text-xs leading-relaxed text-ds-muted">
@@ -3118,18 +3147,10 @@ export function WorkersApp() {
               </section>
             ) : null}
 
-            {profile &&
-            shouldShowInferredAccessWarning({
-              ...profile,
-              role: profile.role,
-              roles: profile.roles,
-              matrix_slot_inferred:
-                list.find((r) => r.id === profile.id)?.matrix_slot_inferred ?? !profile.matrix_slot?.trim(),
-            }) ? (
-              <div className="mb-4 rounded-lg border border-amber-500/50 bg-amber-500/15 px-3 py-2.5 text-sm text-amber-50">
-                {inferredAccessBannerMessage(
-                  list.find((r) => r.id === profile.id)?.recommended_matrix_slot ?? "coordination",
-                )}
+            {profile && list.find((r) => r.id === profile.id)?.is_unresolved ? (
+              <div className="mb-4 rounded-lg border border-red-500/50 bg-red-500/15 px-3 py-2.5 text-sm text-red-50">
+                Authorization is unresolved for this worker. Set HR department and matrix slot, or use Apply department
+                baselines in Team Management.
               </div>
             ) : null}
 
@@ -3158,7 +3179,7 @@ export function WorkersApp() {
                       value={positionDraft.matrix_slot}
                       onChange={(e) => setPositionDraft((d) => ({ ...d, matrix_slot: e.target.value }))}
                     >
-                      <option value="">Auto — infer from Pulse roles / job title</option>
+                      <option value="">Auto — department baseline + elevated inference</option>
                       {PERMISSION_MATRIX_ROLE_SLOTS.map((s) => (
                         <option key={s} value={s}>
                           {PERMISSION_MATRIX_ROLE_LABEL[s]}
@@ -3169,11 +3190,15 @@ export function WorkersApp() {
                       Controls which Team Management permission matrix row determines operational module access. This is
                       not the same as Pulse role (JWT) — it only selects the department × slot matrix row.
                     </p>
-                    {!positionDraft.matrix_slot.trim() ? (
-                      <p className="mt-1 text-xs text-amber-200/90">
-                        Auto slot infers from roles or job title and often falls back to{" "}
-                        <span className="font-mono">team_member</span>. Set an explicit slot (e.g.{" "}
-                        <span className="font-mono">coordination</span>) for communications coordinators.
+                    {!positionDraft.matrix_slot.trim() && positionDraft.department ? (
+                      <p className="mt-1 text-xs text-pulse-muted">
+                        Auto uses department baseline (
+                        <span className="font-mono">
+                          {DEPARTMENT_BASELINE_SLOTS[
+                            positionDraft.department as keyof typeof DEPARTMENT_BASELINE_SLOTS
+                          ] ?? "—"}
+                        </span>
+                        ) unless JWT role or job title indicates an elevated slot.
                       </p>
                     ) : null}
                   </div>
@@ -3356,8 +3381,11 @@ export function WorkersApp() {
                         return <WorkerMatrixSlotCell row={row} />;
                       }
                       return profile.matrix_slot
-                        ? formatMatrixSlotDisplay(profile.matrix_slot, "explicit_matrix_slot")
-                        : "Team Member (Fallback — not set on HR)";
+                        ? formatMatrixSlotOperationalLabel(profile.matrix_slot, profile.department)
+                        : formatMatrixSlotOperationalLabel(
+                            row?.resolved_matrix_slot,
+                            profile.department,
+                          );
                     })()}
                   </p>
                   <p>

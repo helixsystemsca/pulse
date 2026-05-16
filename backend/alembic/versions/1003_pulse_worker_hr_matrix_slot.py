@@ -11,8 +11,6 @@ from alembic import op
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from app.core.permission_feature_matrix import infer_matrix_slot_legacy
-
 revision = "1003_pulse_worker_hr_matrix_slot"
 down_revision = "1002_inventory_scopes"
 branch_labels = None
@@ -34,6 +32,9 @@ def _roles_from_pg_array(raw: object) -> list[str]:
 
 
 def upgrade() -> None:
+    #: Lazy import — Alembic loads every revision module at startup; avoid app import cycles.
+    from app.core.permission_feature_matrix import infer_matrix_slot_legacy
+
     conn = op.get_bind()
     ah.safe_add_column(
         op,
@@ -45,7 +46,7 @@ def upgrade() -> None:
     rows = conn.execute(
         sa.text(
             """
-            SELECT h.user_id, h.job_title, u.roles
+            SELECT h.user_id, h.job_title, h.department, u.roles
             FROM pulse_worker_hr h
             JOIN users u ON u.id = h.user_id
             WHERE h.matrix_slot IS NULL
@@ -53,11 +54,13 @@ def upgrade() -> None:
         )
     ).fetchall()
 
-    for user_id, job_title, roles_raw in rows:
+    for user_id, job_title, department, roles_raw in rows:
         roles = _roles_from_pg_array(roles_raw)
-        slot, src = infer_matrix_slot_legacy(roles=roles, job_title=job_title)
-        #: Only persist non-default inference so ``NULL`` keeps legacy fallback (e.g. worker + empty title).
-        if src == "fallback_default":
+        dept = "maintenance"
+        if department:
+            dept = str(department).strip().lower() or dept
+        slot, src = infer_matrix_slot_legacy(roles=roles, job_title=job_title, department=dept)
+        if src in ("unresolved", "fallback_default"):
             continue
         conn.execute(
             sa.text("UPDATE pulse_worker_hr SET matrix_slot = :slot WHERE user_id = :uid"),

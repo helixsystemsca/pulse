@@ -12,11 +12,11 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.department_matrix_baselines import UNRESOLVED_MATRIX_SLOT
 from app.core.matrix_slot_policy import (
-    detect_likely_elevated_worker,
     hr_job_title_raw,
     matrix_slot_fallback_warning_message,
-    recommend_explicit_matrix_slot,
+    matrix_slot_source_annotation,
     require_explicit_elevated_slots,
     resolve_matrix_slot_detailed,
     user_job_title_raw,
@@ -49,16 +49,12 @@ from app.models.rbac_models import TenantRole
 
 
 def _raw_matrix_cell_feats(merged: dict[str, Any], dept: str, slot: str) -> list[str]:
+    from app.core.permission_feature_matrix import matrix_cell_features
+
     matrix = merged.get("department_role_feature_access") or {}
     if not isinstance(matrix, dict):
         return []
-    row = matrix.get(dept)
-    if not isinstance(row, dict):
-        return []
-    raw = row.get(slot)
-    if not isinstance(raw, list):
-        return []
-    return [str(x) for x in raw]
+    return matrix_cell_features(matrix, department=dept, slot=slot)
 
 
 def _all_matrix_cell_canon_keys(merged: dict[str, Any]) -> set[str]:
@@ -441,9 +437,8 @@ class AccessResolutionDebug:
     resolved_slot_source: str = ""
     hr_matrix_slot: str | None = None
     matrix_slot_display: str = ""
-    likely_elevated: bool = False
-    likely_elevated_reasons: list[str] = field(default_factory=list)
-    recommended_matrix_slot: str | None = None
+    matrix_slot_source_label: str = ""
+    is_unresolved: bool = False
     matrix_slot_inference_trace: list[str] = field(default_factory=list)
     require_explicit_elevated_slots: bool = False
     policy_suppressed: bool = False
@@ -568,23 +563,16 @@ async def compute_access_resolution_debug(
             resolved_slot_source=resolved_slot_source,
         )
     )
-    elevated, elev_reasons = detect_likely_elevated_worker(
-        target, hr_row, tenant_role_slug=slug
-    )
-    recommended_slot = recommend_explicit_matrix_slot(target, hr_row, elevated_reasons=elev_reasons)
     inference_trace = list(slot_detail.inference_trace)
     from app.core.matrix_slot_policy import format_matrix_slot_display
 
-    slot_display = format_matrix_slot_display(slot=resolved_slot, source=resolved_slot_source)
+    slot_display = format_matrix_slot_display(
+        slot=resolved_slot, source=resolved_slot_source, department=resolved_dept
+    )
+    slot_source_label = matrix_slot_source_annotation(resolved_slot_source)
     fallback_msg = matrix_slot_fallback_warning_message(resolved_slot=resolved_slot, source=resolved_slot_source)
     if fallback_msg:
         warn.insert(0, fallback_msg)
-    if elevated and resolved_slot_source != "explicit_matrix_slot":
-        warn.insert(
-            0,
-            "LIKELY ELEVATED WORKER: inferred matrix slot — set explicit matrix_slot on HR (recommended: "
-            f"{recommended_slot or 'coordination'}).",
-        )
     matrix_ok = _department_role_matrix_is_configured(merged_settings.get("department_role_feature_access"))
 
     raw_cell = _raw_matrix_cell_feats(merged_settings, resolved_dept, resolved_slot)
@@ -770,9 +758,8 @@ async def compute_access_resolution_debug(
         resolved_slot_source=str(resolved_slot_source),
         hr_matrix_slot=str(hr_matrix_slot) if hr_matrix_slot else None,
         matrix_slot_display=slot_display,
-        likely_elevated=elevated,
-        likely_elevated_reasons=list(elev_reasons),
-        recommended_matrix_slot=recommended_slot,
+        matrix_slot_source_label=slot_source_label,
+        is_unresolved=resolved_slot == UNRESOLVED_MATRIX_SLOT,
         matrix_slot_inference_trace=list(inference_trace),
         require_explicit_elevated_slots=require_explicit_elevated_slots(),
         policy_suppressed=slot_detail.policy_suppressed,

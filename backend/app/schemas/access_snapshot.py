@@ -10,7 +10,9 @@ MatrixSlotSourceOut = Literal[
     "explicit_matrix_slot",
     "jwt_role",
     "job_title_inference",
+    "department_baseline",
     "department_default",
+    "unresolved",
     "fallback_default",
     "explicit_required_policy",
 ]
@@ -20,9 +22,9 @@ class AccessSnapshotAuditOut(BaseModel):
     matrix_slot_source: MatrixSlotSourceOut
     matrix_slot_inferred: bool
     hr_matrix_slot: str | None = None
-    likely_elevated: bool = False
-    likely_elevated_reasons: list[str] = Field(default_factory=list)
-    recommended_matrix_slot: str | None = None
+    is_unresolved: bool = False
+    matrix_slot_operational_label: str | None = None
+    matrix_slot_source_label: str | None = None
     inference_trace: list[str] = Field(default_factory=list)
     require_explicit_elevated_slots: bool = False
     resolution_warnings: list[str] = Field(default_factory=list)

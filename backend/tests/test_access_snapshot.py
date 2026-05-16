@@ -67,7 +67,7 @@ async def test_explicit_coordination_slot_grants_matrix_features() -> None:
 
 
 @pytest.mark.asyncio
-async def test_fallback_team_member_when_slot_unset() -> None:
+async def test_department_baseline_when_slot_unset() -> None:
     user = _user()
     hr = SimpleNamespace(
         department_slugs=["communications"],
@@ -91,8 +91,8 @@ async def test_fallback_team_member_when_slot_unset() -> None:
         merged_settings=merged,
         hr=hr,
     )
-    assert snap.matrix_slot == "team_member"
+    assert snap.matrix_slot == "coordination"
     assert snap.audit is not None
-    assert snap.audit.matrix_slot_source == "fallback_default"
+    assert snap.audit.matrix_slot_source == "department_baseline"
     assert snap.audit.matrix_slot_inferred is True
-    assert snap.features == ["inventory"]
+    assert snap.features == ["comms_publication_builder"]

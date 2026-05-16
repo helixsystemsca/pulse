@@ -1,8 +1,17 @@
-"""Canonical department → baseline matrix slot mapping (organizational model)."""
+"""
+Canonical department → baseline matrix slot mapping (organizational model).
+
+Must remain free of imports from ``permission_feature_matrix`` (Alembic loads app
+modules during migration discovery; a cycle breaks deploy).
+"""
 
 from __future__ import annotations
 
-from app.core.permission_feature_matrix import PERMISSION_MATRIX_DEPARTMENTS
+PERMISSION_MATRIX_DEPARTMENTS: frozenset[str] = frozenset(
+    {"maintenance", "communications", "aquatics", "reception", "fitness", "racquets", "admin"}
+)
+
+_MATRIX_DEPARTMENTS = PERMISSION_MATRIX_DEPARTMENTS
 
 # Authoritative baseline slot per permission-matrix department.
 DEPARTMENT_BASELINE_SLOTS: dict[str, str] = {
@@ -53,4 +62,4 @@ def all_baseline_slots() -> frozenset[str]:
 
 
 def departments_missing_baseline() -> list[str]:
-    return sorted(d for d in PERMISSION_MATRIX_DEPARTMENTS if d not in DEPARTMENT_BASELINE_SLOTS)
+    return sorted(d for d in _MATRIX_DEPARTMENTS if d not in DEPARTMENT_BASELINE_SLOTS)

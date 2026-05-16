@@ -25,6 +25,17 @@ export const PERMISSION_MATRIX_DEPARTMENT_LABEL: Record<PermissionMatrixDepartme
   admin: "Administration",
 };
 
+/** Department → baseline frontline slot (organizational model). */
+export const DEPARTMENT_BASELINE_SLOTS: Record<PermissionMatrixDepartment, PermissionMatrixRoleSlot> = {
+  maintenance: "operations",
+  communications: "coordination",
+  reception: "coordination",
+  aquatics: "aquatics_staff",
+  fitness: "fitness_staff",
+  racquets: "racquets_staff",
+  admin: "admin_staff",
+};
+
 /** Stable keys stored under each department in `department_role_feature_access`. */
 export const PERMISSION_MATRIX_ROLE_SLOTS = [
   "manager",
@@ -32,19 +43,30 @@ export const PERMISSION_MATRIX_ROLE_SLOTS = [
   "supervisor",
   "lead",
   "operations",
+  "aquatics_staff",
+  "fitness_staff",
+  "racquets_staff",
+  "admin_staff",
   "team_member",
 ] as const;
 
 export type PermissionMatrixRoleSlot = (typeof PERMISSION_MATRIX_ROLE_SLOTS)[number];
 
+/** Operational labels shown in roster / admin UI (not internal matrix keys). */
 export const PERMISSION_MATRIX_ROLE_LABEL: Record<PermissionMatrixRoleSlot, string> = {
   manager: "Manager",
   coordination: "Coordination",
   supervisor: "Supervisor",
   lead: "Lead",
   operations: "Operations",
-  team_member: "Team Member",
+  aquatics_staff: "Aquatics Staff",
+  fitness_staff: "Fitness Staff",
+  racquets_staff: "Racquets Staff",
+  admin_staff: "Admin Staff",
+  team_member: "Staff",
 };
+
+export const UNRESOLVED_MATRIX_SLOT = "unresolved";
 
 /** Maps matrix slot → legacy `role_feature_access` bucket (for sync + delegated edits). */
 export function legacyRoleBucketForSlot(slot: PermissionMatrixRoleSlot): "manager" | "supervisor" | "lead" | "worker" {
@@ -53,6 +75,16 @@ export function legacyRoleBucketForSlot(slot: PermissionMatrixRoleSlot): "manage
   if (slot === "lead") return "lead";
   return "worker";
 }
+
+const WORKER_TIER_SLOTS: readonly PermissionMatrixRoleSlot[] = [
+  "coordination",
+  "operations",
+  "aquatics_staff",
+  "fitness_staff",
+  "racquets_staff",
+  "admin_staff",
+  "team_member",
+];
 
 export type PermissionFeatureGroup = { id: string; label: string; description?: string; keys: readonly string[] };
 
@@ -164,10 +196,10 @@ export function permissionFeatureGroupsForDepartment(dept: PermissionMatrixDepar
       {
         id: "dashboard",
         label: "Leadership dashboard",
-        description: "Main operations / leadership overview (/overview).",
         keys: [...leadership],
       },
-      { id: "shared", label: "People & standards", keys: [...sharedProgram] },
+      { id: "comms", label: "Communications tools", keys: [...commsTools] },
+      { id: "shared", label: "Scheduling, people & standards", keys: [...sharedProgram] },
       { id: "maps", label: "Maps, drawings & devices", keys: [...maps] },
     ];
   }
@@ -176,10 +208,9 @@ export function permissionFeatureGroupsForDepartment(dept: PermissionMatrixDepar
       {
         id: "dashboard",
         label: "Leadership dashboard",
-        description: "Main operations / leadership overview (/overview).",
         keys: [...leadership],
       },
-      { id: "programs", label: "Programs & classes", keys: ["schedule"] },
+      { id: "program", label: "Program scheduling", keys: ["schedule"] },
       { id: "shared", label: "People & standards", keys: ["team_management", "team_insights", "procedures", "messaging"] },
       { id: "maps", label: "Maps, drawings & devices", keys: [...maps] },
     ];
@@ -189,20 +220,7 @@ export function permissionFeatureGroupsForDepartment(dept: PermissionMatrixDepar
       {
         id: "dashboard",
         label: "Leadership dashboard",
-        description: "Main operations / leadership overview (/overview).",
         keys: [...leadership],
-      },
-      {
-        id: "ops",
-        label: "Maintenance & operations",
-        description: "Work requests, inspections, inventory, equipment, monitoring, and projects.",
-        keys: [...maintenanceOps],
-      },
-      {
-        id: "comms",
-        label: "Communications tools",
-        description: "Publication pipeline, campaigns, assets, advertising mapper, and InDesign export.",
-        keys: [...commsTools],
       },
       { id: "shared", label: "Scheduling, people & standards", keys: [...sharedProgram] },
       { id: "maps", label: "Maps, drawings & devices", keys: [...maps] },
@@ -230,15 +248,16 @@ export function computeLegacyRoleFeatureAccessFromMatrix(
     return uniq([...acc]);
   };
 
+  const workerUnion = new Set<string>();
+  for (const s of WORKER_TIER_SLOTS) {
+    collect(s).forEach((x) => workerUnion.add(x));
+  }
+
   return {
     manager: collect("manager"),
     supervisor: collect("supervisor"),
     lead: collect("lead"),
-    worker: uniq([
-      ...collect("coordination"),
-      ...collect("operations"),
-      ...collect("team_member"),
-    ]),
+    worker: uniq([...workerUnion]),
   };
 }
 
@@ -265,8 +284,13 @@ export function seedDepartmentRoleMatrixFromLegacy(
     return [...cat];
   };
   for (const d of PERMISSION_MATRIX_DEPARTMENTS) {
+    const baseline = DEPARTMENT_BASELINE_SLOTS[d];
     for (const s of PERMISSION_MATRIX_ROLE_SLOTS) {
-      out[d][s] = [...pick(legacyRoleBucketForSlot(s))];
+      if (s === baseline) {
+        out[d][s] = [...pick("worker")];
+      } else {
+        out[d][s] = [...pick(legacyRoleBucketForSlot(s))];
+      }
     }
   }
   return out;
@@ -295,11 +319,15 @@ export function normalizeDepartmentRoleMatrixFromApi(
   for (const d of PERMISSION_MATRIX_DEPARTMENTS) {
     const row = obj[d];
     if (!row || typeof row !== "object") continue;
+    const baseline = DEPARTMENT_BASELINE_SLOTS[d];
     for (const s of PERMISSION_MATRIX_ROLE_SLOTS) {
       const list = row[s];
       if (Array.isArray(list)) {
         seed[d]![s] = list.map((x) => String(x)).filter((x) => cat.has(x));
       }
+    }
+    if (baseline && !seed[d]![baseline]?.length && seed[d]!.team_member?.length) {
+      seed[d]![baseline] = [...seed[d]!.team_member];
     }
   }
   return seed;

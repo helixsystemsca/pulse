@@ -150,17 +150,23 @@ def resolve_matrix_slot_detailed(user: User, hr: PulseWorkerHR | None) -> Matrix
     trace.append("HR matrix_slot unset — resolving elevated inference, then department baseline.")
     policy_on = require_explicit_elevated_slots()
 
+    def _policy_applies() -> bool:
+        if _infer_slot_from_jwt_roles(list(user.roles or [])):
+            return True
+        if _infer_slot_from_job_title(effective_jt):
+            return True
+        return False
+
     def _maybe_hold(
         slot: str,
         source: MatrixSlotSource,
-        elev_reasons: list[str],
     ) -> MatrixSlotResolution | None:
-        if not policy_on:
+        if not policy_on or not _policy_applies():
             return None
         trace.append(f"✗ Policy would block inferred slot {slot!r} ({source}).")
         return _policy_hold(
             trace=trace,
-            elev_reasons=elev_reasons,
+            elev_reasons=["elevated_inference_requires_explicit_slot"],
             suppressed_slot=slot,
             suppressed_source=source,
             hr_jt=hr_jt,
@@ -171,7 +177,7 @@ def resolve_matrix_slot_detailed(user: User, hr: PulseWorkerHR | None) -> Matrix
     jwt_slot = _infer_slot_from_jwt_roles(list(user.roles or []))
     if jwt_slot:
         trace.append(f"✓ JWT elevated tier → {jwt_slot!r}")
-        held = _maybe_hold(jwt_slot, "jwt_role", ["REQUIRE_EXPLICIT_ELEVATED_SLOTS"])
+        held = _maybe_hold(jwt_slot, "jwt_role")
         if held:
             held.department = dept
             return held
@@ -189,7 +195,7 @@ def resolve_matrix_slot_detailed(user: User, hr: PulseWorkerHR | None) -> Matrix
     title_slot = _infer_slot_from_job_title(effective_jt)
     if title_slot:
         trace.append(f"✓ Job title elevated keyword → {title_slot!r}")
-        held = _maybe_hold(title_slot, "job_title_inference", ["REQUIRE_EXPLICIT_ELEVATED_SLOTS"])
+        held = _maybe_hold(title_slot, "job_title_inference")
         if held:
             held.department = dept
             return held
@@ -207,7 +213,7 @@ def resolve_matrix_slot_detailed(user: User, hr: PulseWorkerHR | None) -> Matrix
     baseline = department_baseline_slot(dept)
     if baseline:
         trace.append(f"✓ Department baseline for {dept!r} → {baseline!r}")
-        held = _maybe_hold(baseline, "department_baseline", ["REQUIRE_EXPLICIT_ELEVATED_SLOTS"])
+        held = _maybe_hold(baseline, "department_baseline")
         if held:
             held.department = dept
             return held
