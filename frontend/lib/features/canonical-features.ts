@@ -64,3 +64,23 @@ export function canonicalizeFeatureKeys(names: Iterable<string>): CanonicalFeatu
   }
   return [...out].sort();
 }
+
+/**
+ * Expand contract feature names for permission-matrix filtering: include raw keys,
+ * canonical equivalents, and paired legacy contract keys (`compliance` ↔ `logs_inspections`, …).
+ */
+export function expandContractKeysForMatrixFilter(catalog: readonly string[]): Set<string> {
+  const s = new Set<string>();
+  for (const raw of catalog) {
+    const t = String(raw).trim();
+    if (!t) continue;
+    s.add(t);
+    const c = toCanonicalFeatureKey(t);
+    if (c) {
+      s.add(c);
+      const legacy = CANONICAL_TO_CONTRACT[c];
+      if (legacy) s.add(legacy);
+    }
+  }
+  return s;
+}

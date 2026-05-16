@@ -78,6 +78,10 @@ import { useResolvedAvatarSrc } from "@/lib/useResolvedAvatarSrc";
 import { cn } from "@/lib/cn";
 import { buttonVariants } from "@/styles/button-variants";
 import {
+  expandContractKeysForMatrixFilter,
+  toCanonicalFeatureKey,
+} from "@/lib/features/canonical-features";
+import {
   MODULE_LABEL,
   PRODUCT_MODULE_PERMISSION_SECTIONS,
 } from "@/config/platform/tenant-product-modules";
@@ -94,6 +98,12 @@ import {
 } from "@/config/platform/permission-matrix";
 
 type CompanyOption = { id: string; name: string };
+
+function matrixModuleToggleLabel(key: string): string {
+  const canonical = toCanonicalFeatureKey(key);
+  if (canonical && MODULE_LABEL[canonical]) return MODULE_LABEL[canonical];
+  return key;
+}
 
 const PRIMARY_BTN = cn(buttonVariants({ surface: "light", intent: "accent" }), "px-5 py-2.5");
 const FIELD = dsInputStackedClass;
@@ -377,6 +387,11 @@ export function WorkersApp() {
   const contractCatalog = useMemo(
     () => session?.contract_enabled_features ?? contractFeatureNamesFromApi,
     [session?.contract_enabled_features, contractFeatureNamesFromApi],
+  );
+
+  const matrixContractKeySet = useMemo(
+    () => expandContractKeysForMatrixFilter(contractCatalog),
+    [contractCatalog],
   );
 
   const [companyPick, setCompanyPick] = useState<string | null>(null);
@@ -1531,9 +1546,108 @@ export function WorkersApp() {
                   ))}
                 </div>
                 <p className="mt-3 text-xs text-ds-muted">
-                  Save with <strong className="font-semibold text-ds-foreground">Save permissions</strong> in the card below (or save any
-                  policy change there).
+                  Save with <strong className="font-semibold text-ds-foreground">Save permissions</strong> in the{" "}
+                  <strong className="font-semibold text-ds-foreground">Permissions</strong> card below (or save any policy
+                  change there).
                 </p>
+              </Card>
+            ) : null}
+
+            {isTenantFullAdmin && contractCatalog.length > 0 ? (
+              <Card variant="secondary" padding="md">
+                <h2 className="text-sm font-bold tracking-tight text-ds-foreground">Permissions</h2>
+                <p className="mt-1 text-xs text-ds-muted">
+                  Choose a workspace <span className="font-semibold text-ds-foreground">department</span> and{" "}
+                  <span className="font-semibold text-ds-foreground">role slot</span> (e.g. Manager vs Team member), then
+                  toggle which product areas that slot may use. This is what most people think of as “which pages each
+                  role sees,” scoped by department. Only modules on your organization&apos;s contract appear here.
+                </p>
+                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <label className={`block ${dsLabelClass}`}>Department</label>
+                    <select
+                      className={FIELD}
+                      value={permissionsDepartment}
+                      onChange={(e) => setPermissionsDepartment(e.target.value as PermissionMatrixDepartment)}
+                    >
+                      {PERMISSION_MATRIX_DEPARTMENTS.map((d) => (
+                        <option key={d} value={d}>
+                          {PERMISSION_MATRIX_DEPARTMENT_LABEL[d]}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className={`block ${dsLabelClass}`}>Role slot</label>
+                    <select
+                      className={FIELD}
+                      value={permissionsSlot}
+                      onChange={(e) => setPermissionsSlot(e.target.value as PermissionMatrixRoleSlot)}
+                    >
+                      {PERMISSION_MATRIX_ROLE_SLOTS.map((s) => (
+                        <option key={s} value={s}>
+                          {PERMISSION_MATRIX_ROLE_LABEL[s]}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <div className="mt-4 space-y-6">
+                  {permissionFeatureGroupsForDepartment(permissionsDepartment).map((section) => {
+                    const mods = section.keys.filter((k) => matrixContractKeySet.has(k));
+                    if (mods.length === 0) return null;
+                    return (
+                      <div key={section.id}>
+                        <h3 className="text-xs font-bold uppercase tracking-wide text-ds-foreground">{section.label}</h3>
+                        {section.description ? (
+                          <p className="mt-1 text-[11px] leading-snug text-ds-muted">{section.description}</p>
+                        ) : null}
+                        <div className="mt-3 space-y-2">
+                          {mods.map((mod) => {
+                            const on = (
+                              departmentRoleFeatureAccessDraft[permissionsDepartment]?.[permissionsSlot] ?? []
+                            ).includes(mod);
+                            return (
+                              <div
+                                key={`${section.id}-${mod}`}
+                                className="ds-inset-panel flex items-center justify-between gap-3 px-3 py-3"
+                              >
+                                <p className="min-w-0 text-sm font-semibold text-ds-foreground">
+                                  {matrixModuleToggleLabel(mod)}
+                                </p>
+                                <button
+                                  type="button"
+                                  role="switch"
+                                  aria-checked={on}
+                                  aria-label={`${matrixModuleToggleLabel(mod)}: ${on ? "on" : "off"}`}
+                                  disabled={!isTenantFullAdmin}
+                                  onClick={() => toggleMatrixModule(permissionsDepartment, permissionsSlot, mod)}
+                                  className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${
+                                    on ? "bg-ds-success" : "bg-ds-border"
+                                  }`}
+                                >
+                                  <span
+                                    className={`absolute top-0.5 left-0.5 h-6 w-6 rounded-full bg-ds-primary shadow transition-transform ${
+                                      on ? "translate-x-5" : "translate-x-0"
+                                    }`}
+                                  />
+                                </button>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                <button
+                  type="button"
+                  className={`${PRIMARY_BTN} mt-4 w-full`}
+                  disabled={accessPolicySaving}
+                  onClick={() => void saveAccessPolicy()}
+                >
+                  {accessPolicySaving ? "Saving…" : "Save permissions"}
+                </button>
               </Card>
             ) : null}
 
